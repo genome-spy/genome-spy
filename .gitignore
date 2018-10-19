@@ -1,0 +1,9 @@
+**/*.map
+**/*.swp
+**/*.swo
+**/*~
+**/.DS_Store
+.vscode/
+node_modules/
+static/private/
+dist/
