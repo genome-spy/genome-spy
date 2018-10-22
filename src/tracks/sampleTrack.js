@@ -1,5 +1,6 @@
 import { Matrix4 } from 'math.gl';
-import { AnimationLoop, Program, VertexArray, Buffer, setParameters, fp64, createGLContext } from 'luma.gl';
+import { AnimationLoop, Program, VertexArray, Buffer,
+    setParameters, fp64, createGLContext, _ShaderCache as ShaderCache } from 'luma.gl';
 import * as d3 from 'd3';
 import Track from './track';
 
@@ -29,18 +30,13 @@ export default class SampleTrack extends Track {
         this.labelFontSize = 11; // TODO: Find a better place
         this.labelFont = "sans-serif";
 
+        // TODO: Consider a setSamples() method
         const ctx = document.createElement("canvas").getContext("2d");
         ctx.font = `${this.labelFontSize}px ${this.labelFont}`;
         this.maxLabelWidth = this.samples
             .map(sample => ctx.measureText(sample.displayName).width)
             .reduce((a, b) => Math.max(a, b), 0);
     }
-
-    /*
-    getHeight() {
-        return 100;
-    }
-    */
 
     /**
      * Returns the minimum width that accommodates the labels on the Y axis.
@@ -99,6 +95,9 @@ export default class SampleTrack extends Track {
             },
 
             onInitialize({ gl, canvas, aspect }) {
+                // TODO: What if multiple gl contexts per track? (labels)
+                thisTrack.shaderCache = new ShaderCache({gl});
+
                 setParameters(gl, {
                     clearColor: [1, 1, 1, 1],
                     clearDepth: [1],
@@ -106,7 +105,7 @@ export default class SampleTrack extends Track {
                     depthFunc: gl.LEQUAL
                 });
 
-                thisTrack.layers.forEach(layer => layer.initialize({thisTrack, gl}));
+                thisTrack.layers.forEach(layer => layer.initialize({sampleTrack: thisTrack, gl}));
             },
 
             onRender(animationProps) {

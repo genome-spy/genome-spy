@@ -63,9 +63,10 @@ export class RectangleModel extends Model {
             y.set([bottom, bottom, top, top, top, bottom], i * VERTICES_PER_RECTANGLE);
             const c = [s.color.r / 255.0, s.color.g / 255.0, s.color.b / 255.0, s.color.opacity];
             color.set([].concat(c, c, c, c, c, c), i * VERTICES_PER_RECTANGLE * 4);
-        })
+        });
 
         super(gl, {
+            shaderCache: opts.shaderCache,
             fs: FRAGMENT_SHADER,
             vs: VERTEX_SHADER,
             modules: [fp64],

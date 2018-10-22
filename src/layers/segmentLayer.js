@@ -18,7 +18,7 @@ export default class SegmentLayer {
         this.models = new Map(Array.from(this.rectsBySample.entries())
             .map(entry => [
                 entry[0],
-                new RectangleModel(gl, entry[1])
+                new RectangleModel(gl, entry[1], { shaderCache: sampleTrack.shaderCache })
             ]));
     }
 
