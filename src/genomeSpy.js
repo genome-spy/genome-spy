@@ -23,16 +23,19 @@ export default class GenomeSpy {
         this.rescaledX = this.xScale;
 
         this.eventEmitter = new EventEmitter();
+
+        this.zoom = d3.zoom();
     }
 
     on(...args) {
+        // TODO: A mixin or multiple inheritance would be nice
         this.eventEmitter.on(...args);
     }
 
     zoomed() {
         this.rescaledX = d3.event.transform.rescaleX(this.xScale);
         //this.animationLoop.setNeedsRedraw("Zoomed");
-        console.log("zoomed()");
+        //console.log("zoomed()");
     }
     
     getVisibleDomain() {
@@ -53,8 +56,12 @@ export default class GenomeSpy {
 
         const genomeExtent = this.chromMapper.extent();
 
-        d3.select(spy.container).call(d3.zoom()
-            // TODO: viewport extent
+        d3.select(spy.container).call(this.zoom
+            /* // Borken!
+            .extent([
+                [this.getAxisWidth(), 0],
+                [this.container.offsetWidth, this.container.offsetHeight]])
+                */
             .scaleExtent([1, genomeExtent[1] / spy.container.offsetWidth / 10])
             .translateExtent([[genomeExtent[0], -Infinity], [genomeExtent[1], Infinity]]) // Check this: https://bl.ocks.org/mbostock/4015254
             .on("zoom", this.zoomed.bind(this)));
@@ -70,63 +77,5 @@ export default class GenomeSpy {
 
             track.initialize({genomeSpy: this, trackContainer});
         });
-
-        /*
-        this.animationLoop = new AnimationLoop({
-            debug: true,
-            onCreateContext() {
-                return createGLContext({ canvas: spy.glCanvas });
-            },
-
-            onInitialize({ gl, canvas, aspect }) {
-                setParameters(gl, {
-                    clearColor: [1, 1, 1, 1],
-                    clearDepth: [1],
-                    depthTest: false,
-                    depthFunc: gl.LEQUAL
-                });
-
-                spy.tracks.forEach(track => track.initializeGl({ gl, spy }));
-            },
-
-            onRender({ gl, width, height, needsRedraw }) {
-
-                if (true || needsRedraw) {
-                    console.log("needsRedraw: " + needsRedraw);
-
-                    const margin = 10;
-
-                    spy.xScale.range([0, width - margin])
-
-                    const projection = new Matrix4().ortho({
-                        left: 0,
-                        right: width,
-                        bottom: height,
-                        top: 0,
-                        near: 0,
-                        far: 500
-                    });
-
-                    //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-                    gl.clear(gl.COLOR_BUFFER_BIT);
-
-                    spy.tracks.forEach(track => {
-                        // TODO: For each track, compute a view matrix that is translated and scaled to appropriate coordinates.
-                        // TODO: Set up clipping
-                        track.renderGl({ spy, gl, projection });
-                    });
-
-                }
-            }
-        });
-        */
-
-
-        /* global window */
-        /*
-        if (!window.website) {
-            this.animationLoop.start();
-        }
-        */
     }
 }

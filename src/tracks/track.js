@@ -5,6 +5,7 @@ export default class Track {
 
     createCanvas() {
         const canvas = document.createElement("canvas");
+        canvas.style.position = "absolute";
         this.trackContainer.appendChild(canvas);
         return canvas;
     }

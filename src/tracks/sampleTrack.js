@@ -26,6 +26,14 @@ export default class SampleTrack extends Track {
         this.layers = layers;
 
         this.margin = 10; // TODO: Find a better place
+        this.labelFontSize = 11; // TODO: Find a better place
+        this.labelFont = "sans-serif";
+
+        const ctx = document.createElement("canvas").getContext("2d");
+        ctx.font = `${this.labelFontSize}px ${this.labelFont}`;
+        this.maxLabelWidth = this.samples
+            .map(sample => ctx.measureText(sample.displayName).width)
+            .reduce((a, b) => Math.max(a, b), 0);
     }
 
     /*
@@ -42,12 +50,23 @@ export default class SampleTrack extends Track {
      * @returns {number} The width
      */
     getMinAxisWidth() {
-        return 0;
+        return this.maxLabelWidth + this.margin;
     }
 
-    resizeCanvas() {
-        this.glCanvas.width = this.trackContainer.offsetWidth;
-        this.glCanvas.height = this.trackContainer.offsetHeight;
+    resizeCanvases() {
+        const axisWidth = this.genomeSpy.getAxisWidth();
+        const trackWidth = this.trackContainer.offsetWidth;
+        const trackHeight = this.trackContainer.offsetHeight;
+
+        this.labelCanvas.width = axisWidth;
+        this.labelCanvas.height = trackHeight;
+
+        this.glCanvas.width = trackWidth - axisWidth;
+        this.glCanvas.style.left = `${axisWidth}px`;
+        this.glCanvas.height = trackHeight;
+
+        this.sampleScale.rangeRound([this.margin, trackHeight - this.margin]);
+        this.renderLabels();
     }
 
     initialize({genomeSpy, trackContainer}) {
@@ -61,12 +80,17 @@ export default class SampleTrack extends Track {
         const thisTrack = this;
         const thisSpy = this.genomeSpy;
 
-        this.trackContainer.style = "flex-grow: 1; overflow: hidden"; // TODO: Make this more abstract
+        this.trackContainer.style = "flex-grow: 1; overflow: hidden; position: relative"; // TODO: Make this more abstract
+
+        this.labelCanvas = this.createCanvas();
 
         // Canvas for WebGL
         this.glCanvas = this.createCanvas();
 
-        genomeSpy.on("layout", this.resizeCanvas.bind(this));
+        // TODO: Find a more appropriate place
+        thisTrack.resizeCanvases();
+
+        genomeSpy.on("layout", this.resizeCanvases.bind(this));
 
         this.animationLoop = new AnimationLoop({
             debug: true,
@@ -75,8 +99,6 @@ export default class SampleTrack extends Track {
             },
 
             onInitialize({ gl, canvas, aspect }) {
-                thisTrack.resizeCanvas();
-
                 setParameters(gl, {
                     clearColor: [1, 1, 1, 1],
                     clearDepth: [1],
@@ -118,31 +140,41 @@ export default class SampleTrack extends Track {
 
     }
 
+    renderLabels() {
+        const ctx = this.labelCanvas.getContext("2d");
+        ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
+
+        ctx.font = `${this.labelFontSize}px ${this.labelFont}`;
+
+        const offset = Math.floor((this.sampleScale.bandwidth() + this.labelFontSize) / 2);
+
+        this.samples.forEach(sample => {
+            ctx.fillText(
+                sample.displayName,
+                this.margin,
+                this.sampleScale(sample.id) + offset);
+        });
+    }
 
     renderGl({gl, projection, width, height}) {
 
         const domain = this.genomeSpy.getVisibleDomain();
-
-        this.sampleScale.rangeRound([this.margin, height - this.margin]);
 
         const globalUniforms = {
             uDomainBegin: fp64.fp64ify(domain[0]),
             uDomainWidth: fp64.fp64ify(domain[1] - domain[0]),
         };
 
-        for (let i = 0; i < this.samples.length; i++) {
-            const sample = this.samples[i];
-            const sampleId = sample.id;
-
+        this.samples.forEach(sample => {
             const view = new Matrix4()
-                .translate([this.margin, this.sampleScale(sampleId), 0])
+                .translate([this.margin, this.sampleScale(sample.id), 0])
                 .scale([width - this.margin, this.sampleScale.bandwidth(), 1]);
 
             const uniforms = Object.assign({
                 uTMatrix: projection.clone().multiplyRight(view),
             }, globalUniforms);
 
-            this.layers.forEach(layer => layer.render(sampleId, gl, uniforms));
-        }
+            this.layers.forEach(layer => layer.render(sample.id, gl, uniforms));
+        });
     }
 }
