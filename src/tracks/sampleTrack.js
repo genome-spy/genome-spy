@@ -1,12 +1,16 @@
 import { Matrix4 } from 'math.gl';
 import { AnimationLoop, Program, VertexArray, Buffer, setParameters, fp64, createGLContext } from 'luma.gl';
+import * as d3 from 'd3';
+import Track from './track';
 
 /**
  * A track that displays one or more samples as sub-tracks.
  */
-export default class SampleTrack {
+export default class SampleTrack extends Track {
 
     constructor(samples, layers) {
+        super(samples, layers);
+
         /*
          * An array of sample objects. Their order stays constant.
          * Properties: id, displayName, data. Data contains arbitrary sample-specific
@@ -20,11 +24,15 @@ export default class SampleTrack {
         this.sampleOrder = [];
 
         this.layers = layers;
+
+        this.margin = 10; // TODO: Find a better place
     }
 
+    /*
     getHeight() {
         return 100;
-    };
+    }
+    */
 
     /**
      * Returns the minimum width that accommodates the labels on the Y axis.
@@ -37,25 +45,85 @@ export default class SampleTrack {
         return 0;
     }
 
-    initializeGl({spy, gl}) {
-        this.layers.forEach(layer => layer.initialize({spy, gl}));
+    resizeCanvas() {
+        this.glCanvas.width = this.trackContainer.offsetWidth;
+        this.glCanvas.height = this.trackContainer.offsetHeight;
     }
 
-    renderGl({spy, gl, projection}) {
+    initialize({genomeSpy, trackContainer}) {
+        super.initialize({genomeSpy, trackContainer});
 
-        // TODO: consider d3's scaleBand
-        const margin = 10;
+        this.sampleScale = d3.scaleBand()
+            .domain(this.samples.map(sample => sample.id))
+            .align(0)
+            .paddingInner(0.25); // TODO: Configurable
 
-        const spacing = 0.25;
-        const trackCount = this.samples.length;
+        const thisTrack = this;
+        const thisSpy = this.genomeSpy;
 
-        const height = 500; // TODO: fix
-        const width = 600; // TODO: fix
+        this.trackContainer.style = "flex-grow: 1; overflow: hidden"; // TODO: Make this more abstract
 
-        const barHeight = Math.floor(height / trackCount * (1 - spacing));
-        const barSpacing = Math.floor(height / trackCount * spacing);
+        // Canvas for WebGL
+        this.glCanvas = this.createCanvas();
 
-        const domain = spy.getVisibleDomain();
+        genomeSpy.on("layout", this.resizeCanvas.bind(this));
+
+        this.animationLoop = new AnimationLoop({
+            debug: true,
+            onCreateContext() {
+                return createGLContext({ canvas: thisTrack.glCanvas });
+            },
+
+            onInitialize({ gl, canvas, aspect }) {
+                thisTrack.resizeCanvas();
+
+                setParameters(gl, {
+                    clearColor: [1, 1, 1, 1],
+                    clearDepth: [1],
+                    depthTest: false,
+                    depthFunc: gl.LEQUAL
+                });
+
+                thisTrack.layers.forEach(layer => layer.initialize({thisTrack, gl}));
+            },
+
+            onRender(animationProps) {
+
+                if (true || animationProps.needsRedraw) {
+                    const height = animationProps.height;
+                    const width = animationProps.width;
+                    const gl = animationProps.gl;
+
+                    thisSpy.xScale.range([0, width - thisTrack.margin]); // TODO: Woot
+
+                    const projection = new Matrix4().ortho({
+                        left: 0,
+                        right: width,
+                        bottom: height,
+                        top: 0,
+                        near: 0,
+                        far: 500
+                    });
+
+                    //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                    gl.clear(gl.COLOR_BUFFER_BIT);
+
+                    thisTrack.renderGl(Object.assign({}, animationProps, { projection }));
+
+                }
+            }
+        });
+
+        this.animationLoop.start();
+
+    }
+
+
+    renderGl({gl, projection, width, height}) {
+
+        const domain = this.genomeSpy.getVisibleDomain();
+
+        this.sampleScale.rangeRound([this.margin, height - this.margin]);
 
         const globalUniforms = {
             uDomainBegin: fp64.fp64ify(domain[0]),
@@ -67,8 +135,8 @@ export default class SampleTrack {
             const sampleId = sample.id;
 
             const view = new Matrix4()
-                .translate([margin, margin + i * (barHeight + barSpacing), 0])
-                .scale([width - margin, barHeight, 1]);
+                .translate([this.margin, this.sampleScale(sampleId), 0])
+                .scale([width - this.margin, this.sampleScale.bandwidth(), 1]);
 
             const uniforms = Object.assign({
                 uTMatrix: projection.clone().multiplyRight(view),

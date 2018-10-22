@@ -1,6 +1,6 @@
-import Events from "eventemitter3"
+import EventEmitter from "eventemitter3";
 import * as d3 from 'd3';
-import { chromMapper } from "./chromMapper"
+import { chromMapper } from "./chromMapper";
 import { AnimationLoop, Program, VertexArray, Buffer, setParameters, fp64, createGLContext } from 'luma.gl';
 import { Matrix4 } from 'math.gl';
 
@@ -22,26 +22,16 @@ export default class GenomeSpy {
         // Zoomed scale
         this.rescaledX = this.xScale;
 
-        // Canvas for WebGL
-        this.glCanvas = this.createCanvas();
-
-        Object.assign(this, Events.prototype);
+        this.eventEmitter = new EventEmitter();
     }
 
-    createCanvas() {
-        const canvas = document.createElement("canvas");
-        canvas.width = null;
-        canvas.height = null;
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
-        this.container.insertBefore(canvas, this.container.firstChild);
-        return canvas;
+    on(...args) {
+        this.eventEmitter.on(...args);
     }
-
 
     zoomed() {
         this.rescaledX = d3.event.transform.rescaleX(this.xScale);
-        this.animationLoop.setNeedsRedraw("Zoomed");
+        //this.animationLoop.setNeedsRedraw("Zoomed");
         console.log("zoomed()");
     }
     
@@ -49,9 +39,17 @@ export default class GenomeSpy {
         return this.rescaledX.domain();
     }
 
+    getAxisWidth() {
+        return this.tracks
+            .map(track => track.getMinAxisWidth())
+            .reduce((a, b) => Math.max(a, b), 0);
+    }
+
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
     launch() {
         const spy = this;
+
+        window.addEventListener('resize', () => this.eventEmitter.emit('layout'), false);
 
         const genomeExtent = this.chromMapper.extent();
 
@@ -61,6 +59,19 @@ export default class GenomeSpy {
             .translateExtent([[genomeExtent[0], -Infinity], [genomeExtent[1], Infinity]]) // Check this: https://bl.ocks.org/mbostock/4015254
             .on("zoom", this.zoomed.bind(this)));
 
+        this.container.styleClass = "genome-spy";
+        this.container.style.display = "flex"; // TODO: CSS
+        this.container.style.flexDirection = "column";
+
+        spy.tracks.forEach(track => {
+            const trackContainer = document.createElement("div");
+            trackContainer.className = "genome-spy-track";
+            this.container.appendChild(trackContainer);
+
+            track.initialize({genomeSpy: this, trackContainer});
+        });
+
+        /*
         this.animationLoop = new AnimationLoop({
             debug: true,
             onCreateContext() {
@@ -80,7 +91,7 @@ export default class GenomeSpy {
 
             onRender({ gl, width, height, needsRedraw }) {
 
-                if (false || needsRedraw) {
+                if (true || needsRedraw) {
                     console.log("needsRedraw: " + needsRedraw);
 
                     const margin = 10;
@@ -108,11 +119,14 @@ export default class GenomeSpy {
                 }
             }
         });
+        */
 
 
         /* global window */
+        /*
         if (!window.website) {
             this.animationLoop.start();
         }
+        */
     }
 }

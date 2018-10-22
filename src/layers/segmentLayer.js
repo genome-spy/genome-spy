@@ -1,4 +1,4 @@
-import { RectangleModel } from '../glModels/rectangleModel'
+import { RectangleModel } from '../glModels/rectangleModel';
 
 /**
  * Segment layer contains genomic segments that may represent
@@ -9,7 +9,9 @@ export default class SegmentLayer {
         this.rectsBySample = rectsBySample; // TODO: replace with recipe
     }
 
-    initialize({spy, gl}) {
+    initialize({sampleTrack, gl}) {
+        this.sampleTrack = sampleTrack;
+
         // TODO: Omit unknown samples
         // Each sample gets its own RectangleModel, which contains all segments of the given sample
         // entries() return an iterator. Array.from is ugly, but performance doesn't matter here.
