@@ -26,14 +26,21 @@ export default class SampleTrack extends Track {
 
         this.layers = layers;
 
+        this.axisArea = {
+            /** Width of an individual sample variable */
+            variableWidth: 12,
+            labelFontSize: 11, // TODO: Find a better place
+            labelFont: "sans-serif"
+        };
+
         this.margin = 10; // TODO: Find a better place
-        this.labelFontSize = 11; // TODO: Find a better place
-        this.labelFont = "sans-serif";
+
+        this.prepareSampleVariables();
 
         // TODO: Consider a setSamples() method
         const ctx = document.createElement("canvas").getContext("2d");
         ctx.font = `${this.labelFontSize}px ${this.labelFont}`;
-        this.maxLabelWidth = this.samples
+        this.axisArea.maxLabelWidth = this.samples
             .map(sample => ctx.measureText(sample.displayName).width)
             .reduce((a, b) => Math.max(a, b), 0);
     }
@@ -46,7 +53,10 @@ export default class SampleTrack extends Track {
      * @returns {number} The width
      */
     getMinAxisWidth() {
-        return this.maxLabelWidth + this.margin;
+        return this.axisArea.maxLabelWidth +
+            this.margin +
+            this.axisArea.variableScales.size * this.axisArea.variableWidth +
+            this.margin;
     }
 
     resizeCanvases() {
@@ -139,19 +149,36 @@ export default class SampleTrack extends Track {
 
     }
 
+    /**
+     * Render the axis area, which contains labels and sample-specific variables
+     */
     renderLabels() {
         const ctx = this.labelCanvas.getContext("2d");
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
         ctx.font = `${this.labelFontSize}px ${this.labelFont}`;
 
-        const offset = Math.floor((this.sampleScale.bandwidth() + this.labelFontSize) / 2);
+        const offset = Math.floor((this.sampleScale.bandwidth() + this.axisArea.labelFontSize) / 2);
+        const variableOffset = Math.ceil(this.axisArea.maxLabelWidth + this.margin * 2);
 
         this.samples.forEach(sample => {
+            const y = this.sampleScale(sample.id);
+
+            ctx.fillStyle = "black";
             ctx.fillText(
                 sample.displayName,
                 this.margin,
-                this.sampleScale(sample.id) + offset);
+                y + offset);
+
+            this.axisArea.variableScales
+                .forEach((valueScale, key) => {
+                    ctx.fillStyle = valueScale(sample.data[key]);
+                    ctx.fillRect(
+                        variableOffset + this.axisArea.variableBandScale(key),
+                        y,
+                        this.axisArea.variableBandScale.bandwidth(),
+                        this.sampleScale.bandwidth());
+                });
         });
     }
 
@@ -175,5 +202,30 @@ export default class SampleTrack extends Track {
 
             this.layers.forEach(layer => layer.render(sample.id, gl, uniforms));
         });
+    }
+
+    /**
+     * Builds scales for sample-specific variables, e.g. clinical data
+     */
+    prepareSampleVariables() {
+        // Find all variables
+        const variableNames = this.samples
+            .flatMap(sample => Object.keys(sample.data))
+            .reduce((set, key) => set.add(key), new Set());
+        
+        // Map a color for a variable (value)
+        this.axisArea.variableScales = new Map(
+            Array.from(variableNames).map(name => [
+                name,
+                d3.scaleOrdinal(d3.schemeCategory10)
+            ])
+        );
+
+        // Map a variable name to a horizontal coordinate
+        this.axisArea.variableBandScale = d3.scaleBand()
+            .domain(Array.from(variableNames.keys()))
+            .paddingInner(0.2)
+            // TODO: Move to renderLabels()
+            .rangeRound([0, this.axisArea.variableWidth * variableNames.size]);
     }
 }

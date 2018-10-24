@@ -21,6 +21,14 @@ function createContainer() {
     return container;
 }
 
+function splitSampleName(name) {
+    const match = name.match(/^((M|H|OC)[0-9]+)_([a-z]+)?((?:[A-Z][a-z]*)+?)(L|R)?([0-9x]+)?(?:_(CL)([0-9]+?))?(?:_(.*))?$/);
+    return {
+        phase: match[3],
+        tissue: match[4]
+    };
+}
+
 Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
   .then(files => {
       const cytobands = parseCytobands(files[0]);
@@ -32,7 +40,7 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
         .map(s => ({
             id: s,
             displayName: s, // label
-            data: { } // sample-specific variables
+            data: splitSampleName(s) // sample-specific variables
         }));
           
       console.log(samples);
