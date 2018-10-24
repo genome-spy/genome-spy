@@ -48,11 +48,16 @@ export default class GenomeSpy {
             .reduce((a, b) => Math.max(a, b), 0);
     }
 
+    _resized() {
+        this.xScale.range([0, this.container.clientWidth - this.getAxisWidth()]);
+        this.eventEmitter.emit('layout');
+    }
+
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
     launch() {
         const spy = this;
 
-        window.addEventListener('resize', () => this.eventEmitter.emit('layout'), false);
+        window.addEventListener('resize', this._resized.bind(this), false);
 
         const genomeExtent = this.chromMapper.extent();
 
@@ -77,5 +82,7 @@ export default class GenomeSpy {
 
             track.initialize({genomeSpy: this, trackContainer});
         });
+
+        this._resized();
     }
 }

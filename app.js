@@ -13,9 +13,15 @@ function createContainer() {
     body.style.margin = 0;
     body.style.padding = 0;
 
+    const padding = "10px";
     const container = document.createElement("div");
-    container.style.width = "100vw";
-    container.style.height = "100vh";
+    container.style.position = "absolute";
+    container.style.top = padding;
+    container.style.right = padding;
+    container.style.bottom = padding;
+    container.style.left = padding;
+    //container.style.width = "100vw";
+    //container.style.height = "100vh";
     body.insertBefore(container, body.firstChild);
 
     return container;

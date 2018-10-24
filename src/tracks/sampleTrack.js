@@ -71,7 +71,8 @@ export default class SampleTrack extends Track {
         this.glCanvas.style.left = `${axisWidth}px`;
         this.glCanvas.height = trackHeight;
 
-        this.sampleScale.rangeRound([this.margin, trackHeight - this.margin]);
+        this.sampleScale.rangeRound([0, trackHeight]);
+
         this.renderLabels();
     }
 
@@ -125,8 +126,6 @@ export default class SampleTrack extends Track {
                     const width = animationProps.width;
                     const gl = animationProps.gl;
 
-                    thisSpy.xScale.range([0, width - thisTrack.margin]); // TODO: Woot
-
                     const projection = new Matrix4().ortho({
                         left: 0,
                         right: width,
@@ -159,7 +158,7 @@ export default class SampleTrack extends Track {
         ctx.font = `${this.labelFontSize}px ${this.labelFont}`;
 
         const offset = Math.floor((this.sampleScale.bandwidth() + this.axisArea.labelFontSize) / 2);
-        const variableOffset = Math.ceil(this.axisArea.maxLabelWidth + this.margin * 2);
+        const variableOffset = Math.ceil(this.axisArea.maxLabelWidth + this.margin);
 
         this.samples.forEach(sample => {
             const y = this.sampleScale(sample.id);
@@ -167,7 +166,7 @@ export default class SampleTrack extends Track {
             ctx.fillStyle = "black";
             ctx.fillText(
                 sample.displayName,
-                this.margin,
+                0,
                 y + offset);
 
             this.axisArea.variableScales
@@ -193,8 +192,8 @@ export default class SampleTrack extends Track {
 
         this.samples.forEach(sample => {
             const view = new Matrix4()
-                .translate([this.margin, this.sampleScale(sample.id), 0])
-                .scale([width - this.margin, this.sampleScale.bandwidth(), 1]);
+                .translate([0, this.sampleScale(sample.id), 0])
+                .scale([width, this.sampleScale.bandwidth(), 1]);
 
             const uniforms = Object.assign({
                 uTMatrix: projection.clone().multiplyRight(view),
