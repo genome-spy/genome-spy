@@ -17,19 +17,17 @@ export default class AxisTrack extends Track {
 
         genomeSpy.on("zoom", this.renderTicks.bind(this));
 
-        genomeSpy.on("layout", function() {
-            this.resizeCanvases();
+        genomeSpy.on("layout", function(layout) {
+            this.resizeCanvases(layout);
             this.renderTicks();
         }.bind(this));
     }
 
-    resizeCanvases() {
-        const axisWidth = this.genomeSpy.getAxisWidth();
-        const trackWidth = this.trackContainer.clientWidth;
+    resizeCanvases(layout) {
         const trackHeight = this.trackContainer.clientHeight;
 
-        this.tickCanvas.width = trackWidth - axisWidth;
-        this.tickCanvas.style.left = `${axisWidth}px`;
+        this.tickCanvas.style.left = `${layout.viewport[0]}px`;
+        this.tickCanvas.width = layout.viewport[1];
         this.tickCanvas.height = trackHeight;
     }
 

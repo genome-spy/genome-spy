@@ -50,8 +50,19 @@ export default class GenomeSpy {
     }
 
     _resized() {
-        this.xScale.range([0, this.container.clientWidth - this.getAxisWidth()]);
-        this.eventEmitter.emit('layout');
+        const aw = this.getAxisWidth();
+        const viewportWidth = this.container.clientWidth - aw;
+
+        this.xScale.range([0, viewportWidth]);
+        this.rescaledX.range([0, viewportWidth]);
+
+        // The layout only deals with horizontal coordinates. The tracks take care of their height.
+        const layout = {
+            axis: [0, aw],
+            viewport: [aw, viewportWidth]
+        };
+
+        this.eventEmitter.emit('layout', layout);
     }
 
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.

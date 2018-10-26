@@ -59,16 +59,15 @@ export default class SampleTrack extends Track {
             this.margin;
     }
 
-    resizeCanvases() {
-        const axisWidth = this.genomeSpy.getAxisWidth();
-        const trackWidth = this.trackContainer.offsetWidth;
-        const trackHeight = this.trackContainer.offsetHeight;
+    resizeCanvases(layout) {
+        const trackHeight = this.trackContainer.clientHeight;
 
-        this.labelCanvas.width = axisWidth;
+        this.labelCanvas.style.left = `${layout.axis[0]}px`;
+        this.labelCanvas.width = layout.axis[1];
         this.labelCanvas.height = trackHeight;
 
-        this.glCanvas.width = trackWidth - axisWidth;
-        this.glCanvas.style.left = `${axisWidth}px`;
+        this.glCanvas.style.left = `${layout.viewport[0]}px`;
+        this.glCanvas.width = layout.viewport[1];
         this.glCanvas.height = trackHeight;
 
         this.sampleScale.rangeRound([0, trackHeight]);
@@ -92,9 +91,6 @@ export default class SampleTrack extends Track {
 
         // Canvas for WebGL
         this.glCanvas = this.createCanvas();
-
-        // TODO: Find a more appropriate place
-        thisTrack.resizeCanvases();
 
         genomeSpy.on("layout", this.resizeCanvases.bind(this));
 
