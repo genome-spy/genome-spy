@@ -1,9 +1,11 @@
 import * as d3 from "d3";
+import Interval from "./utils/interval";
 
 export function chromMapper(chromSizes) {
-	const chroms = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, "X", "Y"].map(v => "chr" + v);
+	// TODO: Generalize and support other organisms beside human 
+	const chromNames = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, "X", "Y"].map(v => "chr" + v);
 
-	const cumReduction = chroms.reduce((r, v) => {
+	const cumReduction = chromNames.reduce((r, v) => {
 		r.a.push(r.soFar);
 		r.m[v] = r.soFar;
 		r.soFar += chromSizes[v];
@@ -13,7 +15,16 @@ export function chromMapper(chromSizes) {
 
 	const cumulativeChromMap = cumReduction.m;
 	const cumulativeChromArray = cumReduction.a;
-	const totalSize = cumReduction.soFar;
+	const totalLength = cumReduction.soFar;
+
+	// Add an imaginary extra chromosome to simplify calculations
+	cumulativeChromArray.push(totalLength);
+
+	const chromosomes = chromNames.map((chrom, i) => ({
+		index: i,
+		name: chrom,
+		continuousInterval: new Interval(cumulativeChromArray[i],cumulativeChromArray[i + 1])
+	}));
 
 	/**
 	 * Prepend a "chr" prefix if it is missing.
@@ -28,39 +39,34 @@ export function chromMapper(chromSizes) {
 	}
 
 	return {
-		linLoc: function (chromLoc) {
-			return this.chromStart(chromLoc[0]) + chromLoc[1];
-		},
-
-		chromLoc: function (linLoc) {
-			if (linLoc >= 0) {
-				const i = d3.bisect(cumulativeChromArray, linLoc) - 1;
-				return [chroms[i], linLoc - cumulativeChromArray[i]];
-			} else {
-				return [chroms[0], 0];
-			}
-		},
-
-		chromStart: function (chrom) {
-			return cumulativeChromMap[prefix(chrom)];
-		},
-
-		chromEnd: function (chrom) {
-			return this.chromStart(chrom) + chromSizes[prefix(chrom)];
-		},
-
-		linearChromPositions: function () {
-			return cumulativeChromArray;
-		},
-
 		extent: function () {
-			return [0, totalSize];
+			return [0, totalLength];
 		},
 
-		chromName: function (index) {
-			return chroms[index];
-		}
+		/**
+		 * Returns a chromosomal locus in continuous domain
+		 * 
+		 * @param {string} chromName 
+		 * @param {number} locus 
+		 */
+		toContinuous: function(chromName, locus) {
+			return cumulativeChromMap[prefix(chromName)] + locus;
+		},
 
+		toChromosomal(continuousLocus) {
+			if (continuousLocus >= totalLength || continuousLocus < 0) return null;
+
+			const i = d3.bisect(cumulativeChromArray, continuousLocus) - 1;
+			return {
+				chromosome: chromosomes[i],
+				locus: continuousLocus - cumulativeChromArray[i]
+			};
+		},
+
+		/**
+		 * Returns linear coordinates and chromosome names
+		 */
+		chromosomes: () => chromosomes
 	};
 }
 

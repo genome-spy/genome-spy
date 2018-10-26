@@ -1,4 +1,5 @@
 import Track from './track';
+import Interval from '../utils/interval';
 
 /**
  * A track that displays ticks
@@ -21,6 +22,13 @@ export default class AxisTrack extends Track {
             this.resizeCanvases(layout);
             this.renderTicks();
         }.bind(this));
+
+        
+        const cm = genomeSpy.chromMapper;
+        this.chromosomes = cm.chromosomes();
+
+        const ctx = this.tickCanvas.getContext("2d");
+        this._chromLabelWidths = this.chromosomes.map(chrom => ctx.measureText(chrom.name).width);
     }
 
     resizeCanvases(layout) {
@@ -32,8 +40,12 @@ export default class AxisTrack extends Track {
     }
 
     renderTicks() {
-        const cm = this.genomeSpy.chromMapper;
+        const chromLabelMarginLeft = 5;
+        const chromLabelMarginRight = 3;
+        const chromLabelMargin = chromLabelMarginLeft + chromLabelMarginRight;
+
         const scale = this.genomeSpy.getZoomedScale();
+        const cm = this.genomeSpy.chromMapper;
 
         const ctx = this.tickCanvas.getContext("2d");
         ctx.clearRect(0, 0, this.tickCanvas.width, this.tickCanvas.height);
@@ -42,13 +54,33 @@ export default class AxisTrack extends Track {
 
         const y = Math.round(this.tickCanvas.height / 2);
 
-        cm.linearChromPositions().forEach((coord, i) => {
-            const x = scale(coord); // TODO: Consider rounding. Would be crisper but less exact
+        // TODO: Consider moving to Track base class
+        const viewportInterval = Interval.fromArray(scale.range());
+        const domainInterval = Interval.fromArray(scale.domain());
 
-            ctx.fillRect(x, 0, 1, this.tickCanvas.height / 3);
+        this.chromosomes.forEach((chrom, i) => {
+            const chromInterval = chrom.continuousInterval.transform(scale); // TODO: Consider rounding. Would be crisper but less exact
+            
+            if (viewportInterval.contains(chromInterval.lower)) {
+                ctx.fillRect(chromInterval.lower, 0, 1, this.tickCanvas.height / 3);
 
-            ctx.fillText(cm.chromName(i), x + 5, y);
+                if (chromInterval.width() > this._chromLabelWidths[i] + chromLabelMargin) {
+                    // TODO: Some cool clipping and masking instead of just hiding
+                    ctx.fillText(chrom.name, chromInterval.lower + chromLabelMarginLeft, y);
+                }
+            }
         });
+
+        // Handle the leftmost chromosome
+        if (domainInterval.lower > 0) {
+            const chrom = cm.toChromosomal(domainInterval.lower).chromosome;
+            const chromInterval = chrom.continuousInterval.transform(scale);
+            const labelWidth = this._chromLabelWidths[chrom.index];
+
+            const x = Math.min(chromInterval.upper - labelWidth  - chromLabelMarginRight, chromLabelMarginLeft);
+
+            ctx.fillText(chrom.name, x, y);
+        }
 
     }
 }

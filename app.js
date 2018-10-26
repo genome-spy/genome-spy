@@ -54,7 +54,6 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
 
       // ---- TODO: recipe ---- ///
       const cm = chromMapper(genome.chromSizes);
-      console.log(cm.linearChromPositions());
 
       const colorScale = d3.scaleLinear()
           .domain([-3, 0, 1.5])
@@ -67,8 +66,8 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
       const segBySample = new Map(bySample.map(entry => [
           entry.key,
           entry.values.map(segment => ({
-              begin: cm.linLoc([segment.chr, +segment.startpos]),
-              end: cm.linLoc([segment.chr, +segment.endpos]),
+              begin: cm.toContinuous(segment.chr, +segment.startpos),
+              end: cm.toContinuous(segment.chr, +segment.endpos),
               color: d3.color(colorScale(+segment.segMean))
           }))]
       ));
@@ -76,8 +75,8 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
       const lohBySample = new Map(bySample.map(entry => [
           entry.key,
           entry.values.map(segment => ({
-              begin: cm.linLoc([segment.chr, +segment.startpos]),
-              end: cm.linLoc([segment.chr, +segment.endpos]),
+              begin: cm.toContinuous(segment.chr, +segment.startpos),
+              end: cm.toContinuous(segment.chr, +segment.endpos),
               paddingTop: 1.0 - Math.abs(segment.bafMean - 0.5) * 2,
               color: d3.color(colorScale(+segment.segMean)).darker(0.6).rgb()
           }))]
