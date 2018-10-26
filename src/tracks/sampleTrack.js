@@ -10,7 +10,7 @@ import Track from './track';
 export default class SampleTrack extends Track {
 
     constructor(samples, layers) {
-        super(samples, layers);
+        super();
 
         /*
          * An array of sample objects. Their order stays constant.
@@ -85,7 +85,6 @@ export default class SampleTrack extends Track {
             .paddingInner(0.25); // TODO: Configurable
 
         const thisTrack = this;
-        const thisSpy = this.genomeSpy;
 
         this.trackContainer.style = "flex-grow: 1; overflow: hidden; position: relative"; // TODO: Make this more abstract
 

@@ -1,8 +1,6 @@
 import EventEmitter from "eventemitter3";
 import * as d3 from 'd3';
 import { chromMapper } from "./chromMapper";
-import { AnimationLoop, Program, VertexArray, Buffer, setParameters, fp64, createGLContext } from 'luma.gl';
-import { Matrix4 } from 'math.gl';
 
 
 /**
@@ -32,14 +30,17 @@ export default class GenomeSpy {
         this.eventEmitter.on(...args);
     }
 
-    zoomed() {
+    _zoomed() {
         this.rescaledX = d3.event.transform.rescaleX(this.xScale);
-        //this.animationLoop.setNeedsRedraw("Zoomed");
-        //console.log("zoomed()");
+        this.eventEmitter.emit('zoom', this.rescaledX);
     }
     
     getVisibleDomain() {
         return this.rescaledX.domain();
+    }
+
+    getZoomedScale() {
+        return this.rescaledX.copy();
     }
 
     getAxisWidth() {
@@ -69,7 +70,7 @@ export default class GenomeSpy {
                 */
             .scaleExtent([1, genomeExtent[1] / spy.container.offsetWidth / 10])
             .translateExtent([[genomeExtent[0], -Infinity], [genomeExtent[1], Infinity]]) // Check this: https://bl.ocks.org/mbostock/4015254
-            .on("zoom", this.zoomed.bind(this)));
+            .on("zoom", this._zoomed.bind(this)));
 
         this.container.styleClass = "genome-spy";
         this.container.style.display = "flex"; // TODO: CSS

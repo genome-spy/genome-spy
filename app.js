@@ -5,6 +5,7 @@ import * as d3 from 'd3';
 import { chromMapper } from "./src/chromMapper";
 import SampleTrack from "./src/tracks/sampleTrack";
 import SegmentLayer from "./src/layers/segmentLayer";
+import AxisTrack from "./src/tracks/axisTrack";
 
 "use strict";
 
@@ -97,8 +98,8 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
               //new SegmentLayer(segmentations, segRecipe),
               //new SegmentLayer(segmentations, lohRecipe),
               //new PointLayer(pointData)
-          ])
-
+          ]),
+          new AxisTrack()
       ]);
       
       spy.launch();

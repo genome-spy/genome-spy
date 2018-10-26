@@ -55,9 +55,13 @@ export function chromMapper(chromSizes) {
 
 		extent: function () {
 			return [0, totalSize];
+		},
+
+		chromName: function (index) {
+			return chroms[index];
 		}
 
-	}
+	};
 }
 
 export function extractChromSizes(cytobands) {
