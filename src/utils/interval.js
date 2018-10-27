@@ -40,4 +40,20 @@ export default class Interval {
     transform(scale) {
         return new Interval(scale(this.lower), scale(this.upper));
     }
+
+    copy() {
+        return new Interval(this.lower, this.upper);
+    }
+
+    withLower(lower) {
+        return new Interval(lower, this.upper);
+    }
+
+    withUpper(upper) {
+        return new Interval(this.lower, upper);
+    }
+
+    toString() {
+        return `[${this.lower}, ${this.upper})`;
+    }
 }

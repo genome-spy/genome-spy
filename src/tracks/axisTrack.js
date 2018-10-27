@@ -1,3 +1,4 @@
+import * as d3 from "d3";
 import Track from './track';
 import Interval from '../utils/interval';
 
@@ -23,12 +24,12 @@ export default class AxisTrack extends Track {
             this.renderTicks();
         }.bind(this));
 
-        
         const cm = genomeSpy.chromMapper;
         this.chromosomes = cm.chromosomes();
 
         const ctx = this.tickCanvas.getContext("2d");
         this._chromLabelWidths = this.chromosomes.map(chrom => ctx.measureText(chrom.name).width);
+        this._maxLocusLabelWidth = ctx.measureText("123,000,000").width;
     }
 
     resizeCanvases(layout) {
@@ -37,37 +38,78 @@ export default class AxisTrack extends Track {
         this.tickCanvas.style.left = `${layout.viewport[0]}px`;
         this.tickCanvas.width = layout.viewport[1];
         this.tickCanvas.height = trackHeight;
+
+        this._maxTickCount = Math.floor(layout.viewport[1] / this._maxLocusLabelWidth / 2.0);
     }
 
     renderTicks() {
         const chromLabelMarginLeft = 5;
         const chromLabelMarginRight = 3;
-        const chromLabelMargin = chromLabelMarginLeft + chromLabelMarginRight;
+        const chromLabelMarginTotal = chromLabelMarginLeft + chromLabelMarginRight;
 
         const scale = this.genomeSpy.getZoomedScale();
         const cm = this.genomeSpy.chromMapper;
 
         const ctx = this.tickCanvas.getContext("2d");
-        ctx.clearRect(0, 0, this.tickCanvas.width, this.tickCanvas.height);
-        ctx.fillStyle = "black";
-        ctx.textBaseline = "middle";
-
         const y = Math.round(this.tickCanvas.height / 2);
 
         // TODO: Consider moving to Track base class
         const viewportInterval = Interval.fromArray(scale.range());
         const domainInterval = Interval.fromArray(scale.domain());
 
-        this.chromosomes.forEach((chrom, i) => {
-            const chromInterval = chrom.continuousInterval.transform(scale); // TODO: Consider rounding. Would be crisper but less exact
-            
-            if (viewportInterval.contains(chromInterval.lower)) {
-                ctx.fillRect(chromInterval.lower, 0, 1, this.tickCanvas.height / 3);
+        const tickStep = d3.tickStep(domainInterval.lower, domainInterval.upper, this._maxTickCount);
 
-                if (chromInterval.width() > this._chromLabelWidths[i] + chromLabelMargin) {
+        const locusTickFormat = tickStep >= 1000000 ? d3.format(".3s") : d3.format(",");
+
+        function renderLocusTicks(interval, visibleInterval = null) {
+            if (interval.width() < 3 * tickStep) return;
+
+            if (visibleInterval == null) {
+                visibleInterval = interval;
+            }
+
+            if (visibleInterval.lower == interval.lower) {
+                visibleInterval = visibleInterval.withLower(visibleInterval.lower + 1);
+            }
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#b0b0b0"; // TODO: Configurable
+
+            // In screen coordinates
+            const screenInterval = interval.transform(scale);
+
+            for (
+                let locus = Math.ceil((visibleInterval.lower - interval.lower) / tickStep) * tickStep;
+                locus + interval.lower < visibleInterval.upper;
+                locus += tickStep
+            ) {
+                const x = scale(locus + interval.lower);
+                const text = locusTickFormat(locus);
+
+                if (x + ctx.measureText(text).width / 2 > screenInterval.upper) break; 
+
+                ctx.fillRect(x, 0, 1, 2);
+                ctx.fillText(text, x, y);
+            }
+        }
+
+        ctx.clearRect(0, 0, this.tickCanvas.width, this.tickCanvas.height);
+        ctx.textBaseline = "middle";
+
+        this.chromosomes.forEach((chrom, i) => {
+            const screenInterval = chrom.continuousInterval.transform(scale); // TODO: Consider rounding. Would be crisper but less exact
+            
+            if (viewportInterval.contains(screenInterval.lower)) {
+                ctx.fillStyle = "black";
+                ctx.fillRect(screenInterval.lower, 0, 1, this.tickCanvas.height / 1);
+
+                if (screenInterval.width() > this._chromLabelWidths[i] + chromLabelMarginTotal) {
                     // TODO: Some cool clipping and masking instead of just hiding
-                    ctx.fillText(chrom.name, chromInterval.lower + chromLabelMarginLeft, y);
+                    ctx.textAlign = "left";
+                    ctx.fillText(chrom.name, screenInterval.lower + chromLabelMarginLeft, y);
                 }
+
+                renderLocusTicks(chrom.continuousInterval);
             }
         });
 
@@ -79,7 +121,16 @@ export default class AxisTrack extends Track {
 
             const x = Math.min(chromInterval.upper - labelWidth  - chromLabelMarginRight, chromLabelMarginLeft);
 
+            ctx.fillStyle = "black";
+            ctx.textAlign = "left";
             ctx.fillText(chrom.name, x, y);
+
+            const a = scale.invert(x + labelWidth + chromLabelMarginTotal);
+            const b = Math.min(chrom.continuousInterval.upper, domainInterval.upper);
+               
+            if (a < b) {
+                renderLocusTicks(chrom.continuousInterval, new Interval(a, b));
+            }
         }
 
     }
