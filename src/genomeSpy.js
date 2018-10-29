@@ -1,6 +1,7 @@
 import EventEmitter from "eventemitter3";
 import * as d3 from 'd3';
 import { chromMapper } from "./chromMapper";
+import Interval from "./utils/interval";
 
 
 /**
@@ -57,9 +58,10 @@ export default class GenomeSpy {
         this.rescaledX.range([0, viewportWidth]);
 
         // The layout only deals with horizontal coordinates. The tracks take care of their height.
+        // TODO: Implement LayoutBuilder
         const layout = {
-            axis: [0, aw],
-            viewport: [aw, viewportWidth]
+            axis: new Interval(0, aw),
+            viewport: new Interval(aw, aw + viewportWidth)
         };
 
         this.eventEmitter.emit('layout', layout);

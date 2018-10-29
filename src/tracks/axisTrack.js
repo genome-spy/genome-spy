@@ -35,11 +35,11 @@ export default class AxisTrack extends Track {
     resizeCanvases(layout) {
         const trackHeight = this.trackContainer.clientHeight;
 
-        this.tickCanvas.style.left = `${layout.viewport[0]}px`;
-        this.tickCanvas.width = layout.viewport[1];
+        this.tickCanvas.style.left = `${layout.viewport.lower}px`;
+        this.tickCanvas.width = layout.viewport.width();
         this.tickCanvas.height = trackHeight;
 
-        this._maxTickCount = Math.floor(layout.viewport[1] / this._maxLocusLabelWidth / 2.0);
+        this._maxTickCount = Math.floor(layout.viewport.width() / this._maxLocusLabelWidth / 2.0);
     }
 
     renderTicks() {

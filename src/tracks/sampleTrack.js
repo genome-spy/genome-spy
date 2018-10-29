@@ -62,12 +62,12 @@ export default class SampleTrack extends Track {
     resizeCanvases(layout) {
         const trackHeight = this.trackContainer.clientHeight;
 
-        this.labelCanvas.style.left = `${layout.axis[0]}px`;
-        this.labelCanvas.width = layout.axis[1];
+        this.labelCanvas.style.left = `${layout.axis.lower}px`;
+        this.labelCanvas.width = layout.axis.width();
         this.labelCanvas.height = trackHeight;
 
-        this.glCanvas.style.left = `${layout.viewport[0]}px`;
-        this.glCanvas.width = layout.viewport[1];
+        this.glCanvas.style.left = `${layout.viewport.lower}px`;
+        this.glCanvas.width = layout.viewport.width();
         this.glCanvas.height = trackHeight;
 
         this.sampleScale.rangeRound([0, trackHeight]);
