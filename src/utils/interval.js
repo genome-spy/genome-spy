@@ -1,7 +1,6 @@
 /**
  * Closed-Open interval [Lower, Upper)
  * 
- * TODO: Tests, tests, tests, tests, tests, tests, tests
  * TODO: Should enforce immutability
  */
 export default class Interval {
@@ -18,6 +17,11 @@ export default class Interval {
         return new Interval(array[0], array[1]);
     }
 
+    equals(otherInterval) {
+        return otherInterval instanceof Interval && 
+            this.lower == otherInterval.lower && this.upper == otherInterval.upper;
+    }
+
     contains(value) {
         return this.lower <= value && value < this.upper;
     }
@@ -26,6 +30,7 @@ export default class Interval {
         return this.lower <= otherInterval.lower && otherInterval.upper <= this.upper;
     }
 
+    // TODO: Empty intervals should be unambigious. Now empty may be "null" or lower = upper
     empty() {
         return this.lower == this.upper;
     }
@@ -39,21 +44,22 @@ export default class Interval {
         return (this.lower + this.upper) / 2;
     }
 
-    // TODO: isConnected, intersection, span, etc
-
     connectedWith(otherInterval) {
-        return this.upper > otherInterval.lower && otherInterval.upper > this.lower;
+        return this.upper >= otherInterval.lower && otherInterval.upper >= this.lower;
     }
     
     intersect(otherInterval) {
         if (!this.connectedWith(otherInterval)) {
-            return null; // TODO: Or maybe an "empty" Interval object
+            // TODO: Or maybe return an "empty" Interval null-object
+            return null;
         }
 
-        return new Interval(
+        const intersection = new Interval(
             Math.max(this.lower, otherInterval.lower),
             Math.min(this.upper, otherInterval.upper)
         );
+
+        return intersection.width() > 0 ? intersection : null;
     }
 
     /**
@@ -67,7 +73,6 @@ export default class Interval {
             return this.copy();
         }
 
-        // TODO: What to do with effectively empty intervals (lower = upper)
         return new Interval(
             Math.min(this.lower, otherInterval.lower),
             Math.max(this.upper, otherInterval.upper)
