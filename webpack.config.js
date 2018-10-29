@@ -16,7 +16,15 @@ const CONFIG = {
   
   plugins: [
     new HtmlWebpackPlugin({title: 'Spy2'})
-  ]
+  ],
+
+  module: {
+    rules: [
+        {
+            test: /\.glsl$/,
+            use: 'webpack-glsl-loader'
+        }
+    ]}
 };
 
 // This line enables bundling against src in this repo rather than installed module
