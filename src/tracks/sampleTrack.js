@@ -1,6 +1,8 @@
 import { Matrix4 } from 'math.gl';
-import { AnimationLoop, Program, VertexArray, Buffer,
-    setParameters, fp64, createGLContext, _ShaderCache as ShaderCache } from 'luma.gl';
+import {
+    setParameters, fp64, createGLContext,
+    _ShaderCache as ShaderCache, resizeGLContext
+} from 'luma.gl';
 import * as d3 from 'd3';
 import Track from './track';
 
@@ -70,9 +72,19 @@ export default class SampleTrack extends Track {
         this.glCanvas.width = layout.viewport.width();
         this.glCanvas.height = trackHeight;
 
-        this.sampleScale.rangeRound([0, trackHeight]);
+        resizeGLContext(this.gl, { useDevicePixels: false });
+        this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
 
-        this.renderLabels();
+        this.projection = Object.freeze(new Matrix4().ortho({
+            left: 0,
+            right: this.gl.drawingBufferWidth,
+            bottom: this.gl.drawingBufferHeight,
+            top: 0,
+            near: 0,
+            far: 500
+        }));
+
+        this.sampleScale.rangeRound([0, trackHeight]);
     }
 
     initialize({genomeSpy, trackContainer}) {
@@ -83,8 +95,6 @@ export default class SampleTrack extends Track {
             .align(0)
             .paddingInner(0.25); // TODO: Configurable
 
-        const thisTrack = this;
-
         this.trackContainer.style = "flex-grow: 1; overflow: hidden; position: relative"; // TODO: Make this more abstract
 
         this.labelCanvas = this.createCanvas();
@@ -92,55 +102,28 @@ export default class SampleTrack extends Track {
         // Canvas for WebGL
         this.glCanvas = this.createCanvas();
 
-        genomeSpy.on("layout", this.resizeCanvases.bind(this));
+        const gl = createGLContext({ canvas: this.glCanvas });
+        this.gl = gl;
+        this.shaderCache = new ShaderCache({ gl });
 
-        this.animationLoop = new AnimationLoop({
-            debug: true,
-            onCreateContext() {
-                return createGLContext({ canvas: thisTrack.glCanvas });
-            },
-
-            onInitialize({ gl, canvas, aspect }) {
-                // TODO: What if multiple gl contexts per track? (labels)
-                thisTrack.shaderCache = new ShaderCache({gl});
-
-                setParameters(gl, {
-                    clearColor: [1, 1, 1, 1],
-                    clearDepth: [1],
-                    depthTest: false,
-                    depthFunc: gl.LEQUAL
-                });
-
-                thisTrack.layers.forEach(layer => layer.initialize({sampleTrack: thisTrack, gl}));
-            },
-
-            onRender(animationProps) {
-
-                if (true || animationProps.needsRedraw) {
-                    const height = animationProps.height;
-                    const width = animationProps.width;
-                    const gl = animationProps.gl;
-
-                    const projection = new Matrix4().ortho({
-                        left: 0,
-                        right: width,
-                        bottom: height,
-                        top: 0,
-                        near: 0,
-                        far: 500
-                    });
-
-                    //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-                    gl.clear(gl.COLOR_BUFFER_BIT);
-
-                    thisTrack.renderGl(Object.assign({}, animationProps, { projection }));
-
-                }
-            }
+        setParameters(gl, {
+            clearColor: [1, 1, 1, 1],
+            clearDepth: [1],
+            depthTest: false,
+            depthFunc: gl.LEQUAL
         });
 
-        this.animationLoop.start();
+        this.layers.forEach(layer => layer.initialize({ sampleTrack: this }));
 
+        genomeSpy.on("layout", layout => {
+            this.resizeCanvases(layout);
+            this.renderLabels();
+            this.renderViewport();
+        });
+
+        genomeSpy.on("zoom", () => {
+            this.renderViewport();
+        });
     }
 
     /**
@@ -176,25 +159,36 @@ export default class SampleTrack extends Track {
         });
     }
 
-    renderGl({gl, projection, width, height}) {
-
+    getDomainUniforms() {
         const domain = this.genomeSpy.getVisibleDomain();
 
-        const globalUniforms = {
+        return {
             uDomainBegin: fp64.fp64ify(domain[0]),
-            uDomainWidth: fp64.fp64ify(domain[1] - domain[0]),
+            uDomainWidth: fp64.fp64ify(domain[1] - domain[0])
         };
+    }
+
+    renderViewport() {
+        const gl = this.gl;
+
+        //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        const width = gl.drawingBufferWidth;
 
         this.samples.forEach(sample => {
             const view = new Matrix4()
                 .translate([0, this.sampleScale(sample.id), 0])
                 .scale([width, this.sampleScale.bandwidth(), 1]);
 
-            const uniforms = Object.assign({
-                uTMatrix: projection.clone().multiplyRight(view),
-            }, globalUniforms);
+            const uniforms = Object.assign(
+                {
+                    uTMatrix: this.projection.clone().multiplyRight(view),
+                },
+                this.getDomainUniforms()
+            );
 
-            this.layers.forEach(layer => layer.render(sample.id, gl, uniforms));
+            this.layers.forEach(layer => layer.render(sample.id, uniforms));
         });
     }
 
