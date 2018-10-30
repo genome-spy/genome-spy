@@ -13,7 +13,7 @@ export default class AxisTrack extends Track {
     initialize({genomeSpy, trackContainer}) {
         super.initialize({genomeSpy, trackContainer});
 
-        this.trackContainer.style = "height: 14px; overflow: hidden; position: relative"; // TODO: Make this more abstract
+        this.trackContainer.style = "height: 17px; overflow: hidden; position: relative"; // TODO: Make this more abstract
 
         this.tickCanvas = this.createCanvas();
 
@@ -27,9 +27,18 @@ export default class AxisTrack extends Track {
         const cm = genomeSpy.chromMapper;
         this.chromosomes = cm.chromosomes();
 
+        // TODO: Configurable
+        this.chromColor = d3.color("black");
+        this.locusColor = d3.color("#a8a8a8");
+        this.fontSize = 12;
+        this.font = "sans-serif";
+
         const ctx = this.tickCanvas.getContext("2d");
+        ctx.font = `${this.fontSize}px ${this.font}`;
+
         this._chromLabelWidths = this.chromosomes.map(chrom => ctx.measureText(chrom.name).width);
         this._maxLocusLabelWidth = ctx.measureText("123,000,000").width;
+
     }
 
     resizeCanvases(layout) {
@@ -51,7 +60,6 @@ export default class AxisTrack extends Track {
         const cm = this.genomeSpy.chromMapper;
 
         const ctx = this.tickCanvas.getContext("2d");
-        const y = Math.round(this.tickCanvas.height / 2);
 
         // TODO: Consider moving to Track base class
         const viewportInterval = Interval.fromArray(scale.range());
@@ -61,7 +69,12 @@ export default class AxisTrack extends Track {
 
         const locusTickFormat = tickStep >= 1000000 ? d3.format(".3s") : d3.format(",");
 
-        function renderLocusTicks(interval, visibleInterval = null) {
+        const y = Math.round(this.tickCanvas.height * 1);
+        ctx.textBaseline = "bottom";
+        ctx.font = `${this.fontSize}px ${this.font}`;
+
+        const renderLocusTicks = (interval, visibleInterval = null, gradientOffset = 0) => {
+            // Need to accommodate least n ticks before any are shown
             if (interval.width() < 3 * tickStep) return;
 
             if (visibleInterval == null) {
@@ -72,11 +85,34 @@ export default class AxisTrack extends Track {
                 visibleInterval = visibleInterval.withLower(visibleInterval.lower + 1);
             }
 
-            ctx.textAlign = "center";
-            ctx.fillStyle = "#b0b0b0"; // TODO: Configurable
+            visibleInterval = visibleInterval.intersect(
+                // Upper bound to the right edge of the viewport
+                new Interval(-Infinity, scale.invert(this.tickCanvas.width + this._maxLocusLabelWidth))
+            ).intersect(
+                // Uppert bound so that the last tick does not overlap with the next chromosome label
+                // TODO: A pretty gradient
+                new Interval(-Infinity, interval.upper - scale.invert(this._maxLocusLabelWidth / 2) + scale.invert(0))
+            );
 
-            // In screen coordinates
-            const screenInterval = interval.transform(scale);
+            if (gradientOffset > 0) {
+                const withOpacity = (color, opacity) => {
+                    const newColor = d3.rgb(color);
+                    newColor.opacity = opacity;
+                    return newColor;
+                };
+
+                // TODO: Performance optimization: Only use gradient for the leftmost locus tick
+                const locusTickGradient = ctx.createLinearGradient(gradientOffset, 0, gradientOffset + 30, 0);
+                locusTickGradient.addColorStop(0,   withOpacity(this.locusColor, 0));
+                locusTickGradient.addColorStop(0.5, withOpacity(this.locusColor, 0.3));
+                locusTickGradient.addColorStop(1,   withOpacity(this.locusColor, 1));
+                ctx.fillStyle = locusTickGradient; 
+
+            } else {
+                ctx.fillStyle = this.locusColor;
+            }
+
+            ctx.textAlign = "center";
 
             for (
                 let locus = Math.ceil((visibleInterval.lower - interval.lower) / tickStep) * tickStep;
@@ -84,23 +120,20 @@ export default class AxisTrack extends Track {
                 locus += tickStep
             ) {
                 const x = scale(locus + interval.lower);
+
                 const text = locusTickFormat(locus);
-
-                if (x + ctx.measureText(text).width / 2 > screenInterval.upper) break; 
-
-                ctx.fillRect(x, 0, 1, 2);
+                ctx.fillRect(x, 0, 1, 3);
                 ctx.fillText(text, x, y);
             }
-        }
+        };
 
         ctx.clearRect(0, 0, this.tickCanvas.width, this.tickCanvas.height);
-        ctx.textBaseline = "middle";
 
         this.chromosomes.forEach((chrom, i) => {
             const screenInterval = chrom.continuousInterval.transform(scale); // TODO: Consider rounding. Would be crisper but less exact
             
             if (viewportInterval.contains(screenInterval.lower)) {
-                ctx.fillStyle = "black";
+                ctx.fillStyle = this.chromColor;
                 ctx.fillRect(screenInterval.lower, 0, 1, this.tickCanvas.height / 1);
 
                 if (screenInterval.width() > this._chromLabelWidths[i] + chromLabelMarginTotal) {
@@ -121,15 +154,15 @@ export default class AxisTrack extends Track {
 
             const x = Math.min(chromInterval.upper - labelWidth  - chromLabelMarginRight, chromLabelMarginLeft);
 
-            ctx.fillStyle = "black";
+            ctx.fillStyle = this.chromColor;
             ctx.textAlign = "left";
             ctx.fillText(chrom.name, x, y);
 
-            const a = scale.invert(x + labelWidth + chromLabelMarginTotal);
-            const b = Math.min(chrom.continuousInterval.upper, domainInterval.upper);
+            const a = scale.invert(x);
+            const b = chrom.continuousInterval.upper;
                
             if (a < b) {
-                renderLocusTicks(chrom.continuousInterval, new Interval(a, b));
+                renderLocusTicks(chrom.continuousInterval, new Interval(a, b), labelWidth + chromLabelMarginLeft);
             }
         }
 
