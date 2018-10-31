@@ -24,6 +24,10 @@ export default class GenomeSpy {
         this.eventEmitter = new EventEmitter();
 
         this.zoom = d3.zoom();
+
+        // TODO: A configuration object
+        /** When zooming, the maximum size of a single discrete unit (nucleotide) in pixels */
+        this.maxUnitZoom = 20;
     }
 
     on(...args) {
@@ -67,6 +71,8 @@ export default class GenomeSpy {
         this.viewportOverlay.style.left = `${aw}px`;
         this.viewportOverlay.style.width = `${viewportWidth}px`;
 
+        this.zoom.translateExtent([[0, -Infinity], [viewportWidth, Infinity]]);
+
         this.eventEmitter.emit('layout', layout);
     }
 
@@ -108,15 +114,11 @@ export default class GenomeSpy {
 
         const genomeExtent = this.chromMapper.extent();
 
-        d3.select(viewportOverlay).call(this.zoom
-            /* // Borken!
-            .extent([
-                [this.getAxisWidth(), 0],
-                [this.container.offsetWidth, this.container.offsetHeight]])
-                */
-            .scaleExtent([1, genomeExtent[1] / this.container.offsetWidth / 10])
-            .translateExtent([[genomeExtent[0], -Infinity], [genomeExtent[1], Infinity]]) // Check this: https://bl.ocks.org/mbostock/4015254
-            .on("zoom", this._zoomed.bind(this)));
+        d3.select(viewportOverlay)
+            .call(this.zoom
+                .scaleExtent([1, genomeExtent[1] / this.container.clientWidth * this.maxUnitZoom])
+                .on("zoom", this._zoomed.bind(this)))
+            .on("wheel", function () { d3.event.preventDefault();});
 
         this.trackStack = trackStack;
         this.viewportOverlay = viewportOverlay;
