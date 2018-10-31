@@ -1,6 +1,6 @@
 import GenomeSpy from "./src/genomeSpy";
 import { get } from './src/ajax';
-import { Genome, parseCytobands } from './src/genome';
+import { Genome, parseUcscCytobands } from './src/genome';
 import * as d3 from 'd3';
 import { chromMapper } from "./src/chromMapper";
 import SampleTrack from "./src/tracks/sampleTrack";
@@ -38,7 +38,7 @@ function splitSampleName(name) {
 
 Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
   .then(files => {
-      const cytobands = parseCytobands(files[0]);
+      const cytobands = parseUcscCytobands(files[0]);
       const segmentations = d3.tsvParse(files[1]);
 
       const genome = new Genome("hg38", { cytobands });
@@ -50,8 +50,6 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
             data: splitSampleName(s) // sample-specific variables
         }));
           
-      console.log(samples);
-
       // ---- TODO: recipe ---- ///
       const cm = chromMapper(genome.chromSizes);
 

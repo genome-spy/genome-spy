@@ -17,17 +17,41 @@ export class Genome {
     }
 }
 
-export function parseCytobands(cytobandData) {
-    return d3.tsvParseRows(cytobandData).filter(b => /^chr[0-9XY]{1,2}$/.test(b[0]));
+// TODO: parseUcscChromSizes()
+
+/**
+ * Parses a UCSC chromosome band table
+ * 
+ * See: https://genome.ucsc.edu/goldenpath/gbdDescriptionsOld.html#ChromosomeBand
+ * 
+ * @param {string} cytobandData cytoband table
+ * @returns an array of cytoband objects
+ */
+export function parseUcscCytobands(cytobandData) {
+    return d3.tsvParseRows(cytobandData)
+        .filter(b => /^chr[0-9XY]{1,2}$/.test(b[0]))
+        .map(row => ({
+            chrom: row[0],
+            chromStart: +row[1],
+            chromEnd: +row[2],
+            name: row[3],
+            gieStain: row[4] 
+        }));
 }
 
+/**
+ * Builds a chromosome-sizes object from a cytoband array
+ * 
+ * @param {*} cytobands 
+ */
 export function cytobandsToChromSizes(cytobands) {
 	const chromSizes = {};
 
 	cytobands.forEach(band => {
-		const chrom = band[0];
-		const end = +band[2];
-		chromSizes[chrom] = Math.max(chromSizes.hasOwnProperty(chrom) ? chromSizes[chrom] : 0, end);
+		const chrom = band.chrom;
+        chromSizes[chrom] = Math.max(
+            chromSizes.hasOwnProperty(chrom) ? chromSizes[chrom] : 0,
+            band.chromEnd + 1);
 	});
 
 	return chromSizes;
