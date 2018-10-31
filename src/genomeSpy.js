@@ -2,7 +2,7 @@ import EventEmitter from "eventemitter3";
 import * as d3 from 'd3';
 import { chromMapper } from "./chromMapper";
 import Interval from "./utils/interval";
-
+import "./styles/genome-spy.scss";
 
 /**
  * The actual browser without any toolbars etc
@@ -80,18 +80,10 @@ export default class GenomeSpy {
     launch() {
         window.addEventListener('resize', this._resized.bind(this), false);
 
-        this.container.classname = "genome-spy";
+        this.container.className = "genome-spy";
 
         const trackStack = document.createElement("div");
         trackStack.className = "track-stack";
-        // TODO: Put these to CSS
-        trackStack.style.position = "absolute";
-        trackStack.style.top = 0;
-        trackStack.style.bottom = 0;
-        trackStack.style.left = 0;
-        trackStack.style.right = 0;
-        trackStack.style.display = "flex";
-        trackStack.style.flexDirection = "column";
 
         this.tracks.forEach(track => {
             const trackContainer = document.createElement("div");
@@ -105,10 +97,6 @@ export default class GenomeSpy {
 
         const viewportOverlay = document.createElement("div");
         viewportOverlay.className = "viewport-overlay";
-        // TODO: Put these to CSS
-        viewportOverlay.style.position = "absolute";
-        viewportOverlay.style.top = 0;
-        viewportOverlay.style.bottom = 0;
 
         this.container.appendChild(viewportOverlay);
 

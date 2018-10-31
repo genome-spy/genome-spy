@@ -1,0 +1,32 @@
+.genome-spy {
+    .track-stack {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .viewport-overlay {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+    }
+
+    .track {
+        overflow: hidden;
+        position: relative;
+    }
+
+    .axis-track {
+        @extend .track;
+    }
+
+    .sample-track {
+        @extend .track;
+
+        flex-grow: 1;
+    }
+}

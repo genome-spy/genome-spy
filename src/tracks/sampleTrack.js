@@ -95,7 +95,7 @@ export default class SampleTrack extends Track {
             .align(0)
             .paddingInner(0.25); // TODO: Configurable
 
-        this.trackContainer.style = "flex-grow: 1; overflow: hidden; position: relative"; // TODO: Make this more abstract
+        this.trackContainer.className = "sample-track";
 
         this.labelCanvas = this.createCanvas();
 

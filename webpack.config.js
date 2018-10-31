@@ -20,11 +20,16 @@ const CONFIG = {
 
   module: {
     rules: [
-        {
-            test: /\.glsl$/,
-            use: 'webpack-glsl-loader'
-        }
-    ]}
+      {
+        test: /\.glsl$/,
+        use: 'webpack-glsl-loader'
+      },
+      {
+        test: /\.(s*)css$/,
+        use: ['style-loader', 'css-loader', 'sass-loader']
+      }
+    ]
+  }
 };
 
 // This line enables bundling against src in this repo rather than installed module

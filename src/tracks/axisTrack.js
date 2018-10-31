@@ -13,7 +13,8 @@ export default class AxisTrack extends Track {
     initialize({genomeSpy, trackContainer}) {
         super.initialize({genomeSpy, trackContainer});
 
-        this.trackContainer.style = "height: 17px; overflow: hidden; position: relative"; // TODO: Make this more abstract
+        this.trackContainer.className = "axis-track";
+        this.trackContainer.style.height = "17px";
 
         this.tickCanvas = this.createCanvas();
 
