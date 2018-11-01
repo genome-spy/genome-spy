@@ -6,6 +6,7 @@ import { chromMapper } from "./src/chromMapper";
 import SampleTrack from "./src/tracks/sampleTrack";
 import SegmentLayer from "./src/layers/segmentLayer";
 import AxisTrack from "./src/tracks/axisTrack";
+import CytobandTrack from "./src/tracks/cytobandTrack";
 
 "use strict";
 
@@ -86,6 +87,7 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
       const container = createContainer();
 
       const spy = new GenomeSpy(container, genome, [
+          new CytobandTrack(),
           new SampleTrack(samples, [
               new SegmentLayer(segBySample),
               new SegmentLayer(lohBySample)
