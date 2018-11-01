@@ -83,6 +83,7 @@ export default class AxisTrack extends Track {
             }
 
             if (visibleInterval.lower == interval.lower) {
+                // Add one to skip zeroth tick
                 visibleInterval = visibleInterval.withLower(visibleInterval.lower + 1);
             }
 
@@ -94,6 +95,9 @@ export default class AxisTrack extends Track {
                 // TODO: A pretty gradient
                 new Interval(-Infinity, interval.upper - scale.invert(this._maxLocusLabelWidth / 2) + scale.invert(0))
             );
+            
+            // An empty interval? Skip.
+            if (visibleInterval == null) return;
 
             if (gradientOffset > 0) {
                 const withOpacity = (color, opacity) => {
