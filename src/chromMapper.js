@@ -15,15 +15,15 @@ export function chromMapper(chromSizes) {
 
 	const cumulativeChromMap = cumReduction.m;
 	const cumulativeChromArray = cumReduction.a;
-	const totalLength = cumReduction.soFar;
+	const extent = new Interval(0, cumReduction.soFar);
 
 	// Add an imaginary extra chromosome to simplify calculations
-	cumulativeChromArray.push(totalLength);
+	cumulativeChromArray.push(extent.width());
 
 	const chromosomes = chromNames.map((chrom, i) => ({
 		index: i,
 		name: chrom,
-		continuousInterval: new Interval(cumulativeChromArray[i],cumulativeChromArray[i + 1])
+		continuousInterval: new Interval(cumulativeChromArray[i], cumulativeChromArray[i + 1])
 	}));
 
 	/**
@@ -40,7 +40,7 @@ export function chromMapper(chromSizes) {
 
 	return {
 		extent: function () {
-			return [0, totalLength];
+			return extent;
 		},
 
 		/**
@@ -53,8 +53,20 @@ export function chromMapper(chromSizes) {
 			return cumulativeChromMap[prefix(chromName)] + locus;
 		},
 
+		/**
+		 * Returns a chromosomal segment as an Interval in continuous domain
+		 * 
+		 * @param {string} chromName 
+		 * @param {number} start 
+		 * @param {number} end 
+		 */
+		segmentToContinuous: function(chromName, start, end) {
+			const offset = cumulativeChromMap[prefix(chromName)];
+			return new Interval(offset + start, offset + end);
+		},
+
 		toChromosomal(continuousLocus) {
-			if (continuousLocus >= totalLength || continuousLocus < 0) return null;
+			if (!extent.contains(continuousLocus)) return null;
 
 			const i = d3.bisect(cumulativeChromArray, continuousLocus) - 1;
 			return {
@@ -68,16 +80,4 @@ export function chromMapper(chromSizes) {
 		 */
 		chromosomes: () => chromosomes
 	};
-}
-
-export function extractChromSizes(cytobands) {
-	const chromSizes = {};
-
-	cytobands.forEach(band => {
-		const chrom = band[0];
-		const end = +band[2];
-		chromSizes[chrom] = Math.max(chromSizes.hasOwnProperty(chrom) ? chromSizes[chrom] : 0, end);
-	});
-
-	return chromSizes;
 }

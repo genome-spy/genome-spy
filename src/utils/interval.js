@@ -104,4 +104,8 @@ export default class Interval {
     toString() {
         return `[${this.lower}, ${this.upper})`;
     }
+
+    toArray() {
+        return [this.lower, this.upper];
+    }
 }

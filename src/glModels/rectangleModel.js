@@ -11,8 +11,8 @@ export class RectangleModel extends Model {
         const color = new Float32Array(segments.length * VERTICES_PER_RECTANGLE * 4);
         
         segments.forEach((s, i) => {
-            const begin = fp64.fp64ify(s.begin * 1.0);
-            const end = fp64.fp64ify(s.end * 1.0);
+            const begin = fp64.fp64ify(s.interval.lower);
+            const end = fp64.fp64ify(s.interval.upper);
             const top = 0.0 + (s.paddingTop ? s.paddingTop : 0);
             const bottom = 1.0 - (s.paddingBottom ? s.paddingBottom : 0);
 

@@ -117,3 +117,7 @@ test("WithUpper", () => {
 test("ToString", () => {
     expect(new Interval(1, 2).toString()).toEqual("[1, 2)");
 });
+
+test("ToArray", () => {
+    expect(new Interval(1, 2).toArray()).toEqual([1, 2]);
+});

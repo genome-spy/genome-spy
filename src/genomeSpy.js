@@ -16,7 +16,7 @@ export default class GenomeSpy {
         this.chromMapper = chromMapper(genome.chromSizes);
 
         this.xScale = d3.scaleLinear()
-            .domain(this.chromMapper.extent());
+            .domain(this.chromMapper.extent().toArray());
         
         // Zoomed scale
         this.rescaledX = this.xScale;
@@ -104,7 +104,7 @@ export default class GenomeSpy {
 
         d3.select(viewportOverlay)
             .call(this.zoom
-                .scaleExtent([1, genomeExtent[1] / this.container.clientWidth * this.maxUnitZoom])
+                .scaleExtent([1, genomeExtent.width() / this.container.clientWidth * this.maxUnitZoom])
                 .on("zoom", this._zoomed.bind(this)))
             .on("wheel", function () { d3.event.preventDefault();});
 
