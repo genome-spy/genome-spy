@@ -6,8 +6,8 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "start": "webpack-dev-server --progress --hot --open -d",
-    "start-local": "webpack-dev-server --env.local --progress --hot --open -d",
+    "start": "webpack-dev-server --mode development --progress --hot --open --config webpack.dev.js",
+    "build": "webpack --mode development --config webpack.prod.js",
     "test": "jest"
   },
   "dependencies": {
@@ -21,10 +21,14 @@
     "@babel/preset-env": "^7.1.0",
     "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^23.6.0",
+    "clean-webpack-plugin": "^0.1.19",
     "css-loader": "^1.0.1",
+    "html-webpack-inline-source-plugin": "0.0.10",
     "html-webpack-plugin": "^3.2.0",
     "jest": "^23.6.0",
+    "mini-css-extract-plugin": "^0.4.4",
     "node-sass": "^4.9.4",
+    "raw-loader": "^0.5.1",
     "regenerator-runtime": "^0.12.1",
     "sass-loader": "^7.1.0",
     "style-loader": "^0.23.1",
@@ -32,6 +36,7 @@
     "webpack-cli": "^3.1.0",
     "webpack-dev-server": "^3.1.1",
     "webpack-glsl-loader": "^1.0.1",
+    "webpack-md5-hash": "0.0.6",
     "webpack-merge": "^4.1.4"
   }
 }
