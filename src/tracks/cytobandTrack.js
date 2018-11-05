@@ -93,15 +93,12 @@ export default class CytobandTrack extends Track {
 
 
         genomeSpy.on("zoom", () => {
-			this.renderBands();
-			this.renderLabels();
+			this.render();
 		});
 
         genomeSpy.on("layout", layout => {
 			this.resizeCanvases(layout);
-
-			this.renderBands();
-			this.renderLabels();
+			this.render();
         });
     }
 
@@ -140,7 +137,13 @@ export default class CytobandTrack extends Track {
             uDomainBegin: fp64.fp64ify(domain[0]),
             uDomainWidth: fp64.fp64ify(domain[1] - domain[0])
         };
-    }
+	}
+	
+	render() {
+		this.renderBands();
+		this.renderLabels();
+		this.renderChromosomeBoundaries();
+	}
 	
 	renderBands() {
         const gl = this.gl;
@@ -206,6 +209,27 @@ export default class CytobandTrack extends Track {
 			}
 		});
 
+	}
+
+	renderChromosomeBoundaries() {
+		const scale = this.genomeSpy.getZoomedScale();
+
+		const ctx = this.bandLabelCanvas.getContext("2d");
+		ctx.strokeStyle = "#909090";
+		ctx.setLineDash([3, 3]);
+
+        // TODO: Consider moving to Track base class
+        const visibleDomain = Interval.fromArray(scale.domain());
+
+        this.genomeSpy.chromMapper.chromosomes().forEach((chrom, i) => {
+			if (i > 0 && visibleDomain.contains(chrom.continuousInterval.lower)) {
+				const x = scale(chrom.continuousInterval.lower);
+				ctx.beginPath();
+				ctx.moveTo(x, 0);
+				ctx.lineTo(x, this.bandLabelCanvas.height);
+				ctx.stroke();
+			}
+		});
 	}
 
 
