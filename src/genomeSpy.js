@@ -55,7 +55,7 @@ export default class GenomeSpy {
     }
 
     _resized() {
-        const aw = this.getAxisWidth();
+        const aw = Math.ceil(this.getAxisWidth());
         const viewportWidth = this.container.clientWidth - aw;
 
         this.xScale.range([0, viewportWidth]);
