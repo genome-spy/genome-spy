@@ -10,10 +10,14 @@ import { RectangleModel } from "../glModels/rectangleModel";
 
 
 const giemsaScale = d3.scaleOrdinal()
-	.domain(["gneg", "gpos25", "gpos50", "gpos75", "gpos100", "acen", "stalk", "gvar"])
-	.range([
+	.domain([
+		"gneg", "gpos25", "gpos50", "gpos75", "gpos100", "acen", "stalk", "gvar"
+	]).range([
 		"#f0f0f0", "#e0e0e0", "#d0d0d0", "#c0c0c0", "#a0a0a0", "#cc4444", "#338833", "#000000"
-	].map(str => d3.color(str)));
+	].map(str => ({
+		background: d3.color(str),
+		foreground: d3.color(d3.hsl(str).l < 0.5 ? "#ddd" : "black")
+	})));
 
 
 function mapUcscCytobands(chromMapper, cytobands) {
@@ -25,6 +29,20 @@ function mapUcscCytobands(chromMapper, cytobands) {
     }));
 }
 
+function computePaddings(band) {
+	if (band.gieStain == "acen") {
+		if (band.name.startsWith("p")) {
+			return { paddingTopRight: 0.5, paddingBottomRight: 0.5 };
+
+		} else if (band.name.startsWith("q")) {
+			return { paddingTopLeft: 0.5, paddingBottomLeft: 0.5 };
+
+		}
+	}
+	return {};
+}
+
+const labelMargin = 3; // px
 
 /**
  * A track that displays cytobands
@@ -57,10 +75,13 @@ export default class CytobandTrack extends Track {
 
 		this.rectangleModel = new RectangleModel(
 			gl,
-			this.mappedCytobands.map(band => ({
-				interval: band.interval,
-				color: giemsaScale(band.gieStain)
-			}))
+			this.mappedCytobands.map(band => Object.assign(
+				{
+					interval: band.interval,
+					color: giemsaScale(band.gieStain).background
+				},
+				computePaddings(band)
+			))
 		);
 
 
@@ -72,12 +93,15 @@ export default class CytobandTrack extends Track {
 
 
         genomeSpy.on("zoom", () => {
-			this.render();
+			this.renderBands();
+			this.renderLabels();
 		});
 
         genomeSpy.on("layout", layout => {
 			this.resizeCanvases(layout);
-			this.render();
+
+			this.renderBands();
+			this.renderLabels();
         });
     }
 
@@ -118,7 +142,7 @@ export default class CytobandTrack extends Track {
         };
     }
 	
-	render() {
+	renderBands() {
         const gl = this.gl;
 
         //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -141,10 +165,9 @@ export default class CytobandTrack extends Track {
 		);
 
 		this.rectangleModel.render(uniforms);
+	}
 
-
-		////// Render labels //////
-
+	renderLabels() {
 		const scale = this.genomeSpy.getZoomedScale();
 		const viewportInterval = Interval.fromArray(scale.range()); // TODO: Provide this from somewhere
 		const ctx = this.bandLabelCanvas.getContext("2d");
@@ -153,11 +176,33 @@ export default class CytobandTrack extends Track {
         ctx.clearRect(0, 0, this.bandLabelCanvas.width, this.bandLabelCanvas.height);
 		const y = this.bandLabelCanvas.height / 2;
 
+		// TODO: For each band, precompute the maximum domain width that yields bandwidth ...
+		// ... that accommodates the label. That would avoid scaling intervals of all bands.
+
 		this.mappedCytobands.forEach((band, i) => {
 			const scaledInt = band.interval.transform(scale);
+			const labelWidth = this._bandLabelWidths[i];
+
 			if (scaledInt.connectedWith(viewportInterval) &&
-				scaledInt.width() > this._bandLabelWidths[i] + 6) {
-					ctx.fillText(band.name, scaledInt.centre(), y);
+				scaledInt.width() > labelWidth + labelMargin * 2)
+			{
+				let x = scaledInt.centre();
+				ctx.fillStyle = giemsaScale(band.gieStain).foreground;
+
+				const threshold = labelWidth / 2 + labelMargin;
+
+				if (x < viewportInterval.lower + threshold) {
+					// leftmost
+					x = Math.max(x, viewportInterval.lower + threshold);
+					x = Math.min(x, scaledInt.upper - threshold);
+
+				} else if (x > viewportInterval.upper - threshold) {
+					// rightmost
+					x = Math.min(x, viewportInterval.upper - threshold);
+					x = Math.max(x, scaledInt.lower + threshold);
+				}
+
+				ctx.fillText(band.name, x, y);
 			}
 		});
 

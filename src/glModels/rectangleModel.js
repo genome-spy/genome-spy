@@ -13,11 +13,15 @@ export class RectangleModel extends Model {
         segments.forEach((s, i) => {
             const begin = fp64.fp64ify(s.interval.lower);
             const end = fp64.fp64ify(s.interval.upper);
-            const top = 0.0 + (s.paddingTop ? s.paddingTop : 0);
-            const bottom = 1.0 - (s.paddingBottom ? s.paddingBottom : 0);
+
+            const topLeft = 0.0 + (s.paddingTopLeft || s.paddingTop || 0);
+            const topRight = 0.0 + (s.paddingTopRight || s.paddingTop || 0);
+
+            const bottomLeft = 1.0 - (s.paddingBottomLeft || s.paddingBottom || 0);
+            const bottomRight = 1.0 - (s.paddingBottomRight || s.paddingBottom || 0);
 
             x.set([].concat(begin, end, begin, end, begin, end), i * VERTICES_PER_RECTANGLE * 2);
-            y.set([bottom, bottom, top, top, top, bottom], i * VERTICES_PER_RECTANGLE);
+            y.set([bottomLeft, bottomRight, topLeft, topRight, topLeft, bottomRight], i * VERTICES_PER_RECTANGLE);
             const c = [s.color.r / 255.0, s.color.g / 255.0, s.color.b / 255.0, s.color.opacity];
             color.set([].concat(c, c, c, c, c, c), i * VERTICES_PER_RECTANGLE * 4);
         });
