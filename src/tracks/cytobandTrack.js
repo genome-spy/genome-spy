@@ -1,16 +1,13 @@
 import * as d3 from "d3";
 import { Matrix4 } from 'math.gl';
 import {
-	Program, assembleShaders, registerShaderModules,
-    setParameters, createGLContext,
-    resizeGLContext, fp64
+	Program, assembleShaders, setParameters, createGLContext, resizeGLContext 
 } from 'luma.gl';
 import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
 import segmentsToVertices from '../gl/segmentsToVertices';
 import Interval from "../utils/interval";
-import Track from "./track";
-
+import WebGlTrack from "./webGlTrack";
 
 
 const giemsaScale = d3.scaleOrdinal()
@@ -51,7 +48,7 @@ const labelMargin = 3; // px
 /**
  * A track that displays cytobands
  */
-export default class CytobandTrack extends Track {
+export default class CytobandTrack extends WebGlTrack {
     constructor() {
 		super();
     }
@@ -65,8 +62,6 @@ export default class CytobandTrack extends Track {
 
 		this.trackContainer.className = "cytoband-track";
         this.trackContainer.style = "height: 20px; margin-bottom: 5px";
-
-		registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
 
         this.glCanvas = this.createCanvas();
         const gl = createGLContext({ canvas: this.glCanvas });
@@ -114,18 +109,9 @@ export default class CytobandTrack extends Track {
         });
     }
 
-	// TODO: Move to base class
-    adjustCanvas(canvas, interval, height) {
-        canvas.style.left = `${interval.lower}px`;
-        canvas.width = interval.width();
-        canvas.height = height;
-    }
-
     resizeCanvases(layout) {
-        const trackHeight = this.trackContainer.clientHeight;
-
-        this.adjustCanvas(this.bandLabelCanvas, layout.viewport, trackHeight);
-        this.adjustCanvas(this.glCanvas, layout.viewport, trackHeight);
+        this.adjustCanvas(this.bandLabelCanvas, layout.viewport);
+        this.adjustCanvas(this.glCanvas, layout.viewport);
 
         resizeGLContext(this.gl, { useDevicePixels: false });
         this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
@@ -141,15 +127,6 @@ export default class CytobandTrack extends Track {
         }));
 	}
 
-	// TODO: Move to base class
-    getDomainUniforms() {
-        const domain = this.genomeSpy.getVisibleDomain();
-
-        return {
-            uDomainBegin: fp64.fp64ify(domain[0]),
-            uDomainWidth: fp64.fp64ify(domain[1] - domain[0])
-        };
-	}
 	
 	render() {
 		this.renderBands();

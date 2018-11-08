@@ -4,12 +4,12 @@ import {
     resizeGLContext
 } from 'luma.gl';
 import * as d3 from 'd3';
-import Track from './track';
+import WebGlTrack from './webGlTrack';
 
 /**
  * A track that displays one or more samples as sub-tracks.
  */
-export default class SampleTrack extends Track {
+export default class SampleTrack extends WebGlTrack {
 
     constructor(samples, layers) {
         super();
@@ -64,13 +64,8 @@ export default class SampleTrack extends Track {
     resizeCanvases(layout) {
         const trackHeight = this.trackContainer.clientHeight;
 
-        this.labelCanvas.style.left = `${layout.axis.lower}px`;
-        this.labelCanvas.width = layout.axis.width();
-        this.labelCanvas.height = trackHeight;
-
-        this.glCanvas.style.left = `${layout.viewport.lower}px`;
-        this.glCanvas.width = layout.viewport.width();
-        this.glCanvas.height = trackHeight;
+        this.adjustCanvas(this.labelCanvas, layout.axis);
+        this.adjustCanvas(this.glCanvas, layout.viewport);
 
         resizeGLContext(this.gl, { useDevicePixels: false });
         this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
@@ -160,14 +155,6 @@ export default class SampleTrack extends Track {
         });
     }
 
-    getDomainUniforms() {
-        const domain = this.genomeSpy.getVisibleDomain();
-
-        return {
-            uDomainBegin: fp64.fp64ify(domain[0]),
-            uDomainWidth: fp64.fp64ify(domain[1] - domain[0])
-        };
-    }
 
     renderViewport() {
         const gl = this.gl;

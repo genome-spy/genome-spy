@@ -3,13 +3,6 @@
  */
 export default class Track {
 
-    createCanvas() {
-        const canvas = document.createElement("canvas");
-        canvas.style.position = "absolute";
-        this.trackContainer.appendChild(canvas);
-        return canvas;
-    }
-
     initialize({genomeSpy, trackContainer}) {
         this.genomeSpy = genomeSpy;
         this.trackContainer = trackContainer;
@@ -24,6 +17,21 @@ export default class Track {
      */
     getMinAxisWidth() {
         return 0;
+    }
+
+    createCanvas() {
+        const canvas = document.createElement("canvas");
+        canvas.style.position = "absolute";
+        this.trackContainer.appendChild(canvas);
+        return canvas;
+    }
+
+    adjustCanvas(canvas, interval) {
+		const trackHeight = this.trackContainer.clientHeight;
+
+        canvas.style.left = `${interval.lower}px`;
+        canvas.width = interval.width();
+        canvas.height = trackHeight;
     }
 
 }
