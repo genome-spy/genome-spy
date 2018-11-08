@@ -1,7 +1,7 @@
 import { Matrix4 } from 'math.gl';
 import {
-    setParameters, fp64, createGLContext,
-    _ShaderCache as ShaderCache, resizeGLContext
+    setParameters, fp64, createGLContext, registerShaderModules,
+    resizeGLContext
 } from 'luma.gl';
 import * as d3 from 'd3';
 import Track from './track';
@@ -102,9 +102,10 @@ export default class SampleTrack extends Track {
         // Canvas for WebGL
         this.glCanvas = this.createCanvas();
 
+        registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
+
         const gl = createGLContext({ canvas: this.glCanvas });
         this.gl = gl;
-        this.shaderCache = new ShaderCache({ gl });
 
         setParameters(gl, {
             clearColor: [1, 1, 1, 1],

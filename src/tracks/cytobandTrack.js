@@ -1,12 +1,16 @@
 import * as d3 from "d3";
 import { Matrix4 } from 'math.gl';
 import {
+	Program, assembleShaders, registerShaderModules,
     setParameters, createGLContext,
     resizeGLContext, fp64
 } from 'luma.gl';
+import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
+import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
+import segmentsToVertices from '../gl/segmentsToVertices';
 import Interval from "../utils/interval";
 import Track from "./track";
-import { RectangleModel } from "../glModels/rectangleModel";
+
 
 
 const giemsaScale = d3.scaleOrdinal()
@@ -62,6 +66,8 @@ export default class CytobandTrack extends Track {
 		this.trackContainer.className = "cytoband-track";
         this.trackContainer.style = "height: 20px; margin-bottom: 5px";
 
+		registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
+
         this.glCanvas = this.createCanvas();
         const gl = createGLContext({ canvas: this.glCanvas });
         this.gl = gl;
@@ -73,8 +79,14 @@ export default class CytobandTrack extends Track {
             depthFunc: gl.LEQUAL
 		});
 
-		this.rectangleModel = new RectangleModel(
-			gl,
+        this.bandProgram = new Program(gl, assembleShaders(gl, {
+            vs: VERTEX_SHADER,
+            fs: FRAGMENT_SHADER,
+            modules: ['fp64']
+        }));
+
+		this.bandVertices = segmentsToVertices(
+			this.bandProgram,
 			this.mappedCytobands.map(band => Object.assign(
 				{
 					interval: band.interval,
@@ -167,7 +179,12 @@ export default class CytobandTrack extends Track {
 			this.getDomainUniforms()
 		);
 
-		this.rectangleModel.render(uniforms);
+        this.bandProgram.draw(Object.assign(
+            {
+                uniforms: Object.assign({ ONE: 1.0 }, uniforms) // WTF: https://github.com/uber/luma.gl/pull/622
+            },
+            this.bandVertices
+        ));
 	}
 
 	renderLabels() {
