@@ -7,6 +7,7 @@ import SampleTrack from "./tracks/sampleTrack";
 import SegmentLayer from "./layers/segmentLayer";
 import AxisTrack from "./tracks/axisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";
+import { GeneTrack, parseCompressedRefseqGeneTsv } from "./tracks/geneTrack";
 
 //import rawCytobands from "../static/cytoBand.hg38.txt";
 //import rawSegments from "../static/private/segsAll.csv";
@@ -25,8 +26,6 @@ function createContainer() {
     container.style.right = padding;
     container.style.bottom = padding;
     container.style.left = padding;
-    //container.style.width = "100vw";
-    //container.style.height = "100vh";
     body.insertBefore(container, body.firstChild);
 
     return container;
@@ -40,7 +39,11 @@ function splitSampleName(name) {
     };
 }
 
-Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
+Promise.all([
+    get("cytoBand.hg38.txt"),
+    get("private/segsAll.csv"),
+    get("private/refSeq_genes.hg38.compressed.txt")
+])
     .then(files => {
         const cytobands = parseUcscCytobands(files[0]);
         const segmentations = d3.tsvParse(files[1]);
@@ -49,6 +52,9 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
         //      const segmentations = d3.tsvParse(rawSegments);
 
         const genome = new Genome("hg38", { cytobands });
+        const cm = chromMapper(genome.chromSizes);
+
+        const genes = parseCompressedRefseqGeneTsv(cm, files[2]);
 
         const samples = Array.from(new Set(segmentations.map(s => s.sample)))
             .map(s => ({
@@ -58,7 +64,6 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
             }));
 
         // ---- TODO: recipe ---- ///
-        const cm = chromMapper(genome.chromSizes);
 
         const colorScale = d3.scaleLinear()
             .domain([-3, 0, 1.5])
@@ -101,7 +106,8 @@ Promise.all([get("cytoBand.hg38.txt"), get("private/segsAll.csv")])
                 //new SegmentLayer(segmentations, lohRecipe),
                 //new PointLayer(pointData)
             ]),
-            new AxisTrack()
+            new AxisTrack(),
+            new GeneTrack(genes)
         ]);
 
         spy.launch();

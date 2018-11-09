@@ -1,3 +1,5 @@
+import Interval from "../utils/interval";
+
 /**
  * Abstract base class for tracks
  */
@@ -32,6 +34,11 @@ export default class Track {
         canvas.style.left = `${interval.lower}px`;
         canvas.width = interval.width();
         canvas.height = trackHeight;
+    }
+
+    getViewportDomain() {
+        // Could be in GenomeSpy too ... TODO: Decide
+        return Interval.fromArray(this.genomeSpy.getVisibleDomain());
     }
 
 }
