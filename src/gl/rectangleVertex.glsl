@@ -10,7 +10,6 @@ uniform vec2 uDomainWidth;
 
 varying vec4 vColor;
 
-//const float precisionThreshold = 1024.0 * 1024.0 * 64.0;
 const float precisionThreshold = 1024.0 * 1024.0 * 8.0;
 
 void main(void) {

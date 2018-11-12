@@ -7,14 +7,16 @@ import {
 import WebGlTrack from './webGlTrack';
 import Interval from "../utils/interval";
 
-import VERTEX_SHADER from '../gl/exonVertex.glsl';
-import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
+import geneVertexShader from '../gl/geneVertex.glsl';
+import geneFragmentShader from '../gl/geneFragment.glsl';
+import exonVertexShader from '../gl/exonVertex.glsl';
+import rectangleFragmentShader from '../gl/rectangleFragment.glsl';
 
 
 // When does something become visible.
 // The values are the width of the visible domain in base pairs
 const overviewBreakpoint = 250 * 1000000;
-const transcriptBreakpoint = 10 * 1000000; // TODO: Should depend on viewport size
+const transcriptBreakpoint = 30 * 1000000; // TODO: Should depend on viewport size
 
 const maxLanes = 7;
 
@@ -24,6 +26,12 @@ export class GeneTrack extends WebGlTrack {
 		super();
 		
 		this.genes = genes;
+		this.geneClusters = detectGeneClusters(genes);
+
+		// TODO: Configuration object
+		this.geneHeight = 15;
+		this.geneSpacing = 5;
+
     }
 
     initialize({genomeSpy, trackContainer}) {
@@ -45,35 +53,43 @@ export class GeneTrack extends WebGlTrack {
             depthFunc: gl.LEQUAL
 		});
 
+        this.geneProgram = new Program(gl, assembleShaders(gl, {
+            vs: geneVertexShader,
+            fs: geneFragmentShader,
+            modules: ['fp64']
+		}));
+
         this.exonProgram = new Program(gl, assembleShaders(gl, {
-            vs: VERTEX_SHADER,
-            fs: FRAGMENT_SHADER,
+            vs: exonVertexShader,
+            fs: rectangleFragmentShader,
+            modules: ['fp64']
+		}));
+
+        this.clusterProgram = new Program(gl, assembleShaders(gl, {
+            vs: exonVertexShader,
+            fs: rectangleFragmentShader,
             modules: ['fp64']
 		}));
 
 		this.visibleGenes = [];
 		
+		this.geneVerticeMap = new Map();
 		this.exonVerticeMap = new Map();
 
-        genomeSpy.on("zoom", () => {
-			if (this.getViewportDomain().width() < transcriptBreakpoint) {
-				this.updateVisibleGenes();
-				this.renderGenes();
+		// exonsToVertices only cares about intervals
+		//this.clusterVertices = exonsToVertices(this.clusterProgram, this.geneClusters);
 
-			} else {
-				// TODO: Only clear if something was visible
-				gl.clear(gl.COLOR_BUFFER_BIT);
-			}
+        genomeSpy.on("zoom", () => {
+			this.render();
 		});
 
         genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
-            this.renderGenes();
+            this.render();
         });
 
         const cm = genomeSpy.chromMapper;
         this.chromosomes = cm.chromosomes();
-
     }
 
     resizeCanvases(layout) {
@@ -95,17 +111,13 @@ export class GeneTrack extends WebGlTrack {
 		
 		
 		// Precompute matrices for different lanes
-
-		const geneHeight = 15;
-		const geneSpacing = 5;
-
 		// Ugh, gimme a range generator!
 		this.laneMatrices = [];
 
 		for (var i = 0; i < maxLanes; i++) {
 			const view = new Matrix4()
-				.translate([0, i * (geneHeight + geneSpacing), 0])
-				.scale([this.gl.drawingBufferWidth, geneHeight, 1]);
+				.translate([0, i * (this.geneHeight + this.geneSpacing), 0])
+				.scale([this.gl.drawingBufferWidth, this.geneHeight, 1]);
 
 			this.laneMatrices.push(this.projection.clone().multiplyRight(view));
 		}
@@ -137,26 +149,45 @@ export class GeneTrack extends WebGlTrack {
 
 		if (entering.length > 0) {
 //			console.log("entering: " + entering.map(g => g.symbol));
-			entering.forEach(g => this.exonVerticeMap.set(
-				g.id,
-				exonsToVertices(
-					this.exonProgram,
-					createExonIntervals(g).map(i => ({ interval: i }))
-				))
+			entering.forEach(g => {
+				this.exonVerticeMap.set(
+					g.id,
+					exonsToVertices(
+						this.exonProgram,
+						createExonIntervals(g).map(i => ({ interval: i }))
+					));
+
+				this.geneVerticeMap.set(
+					g.id,
+					genesToVertices(
+						this.geneProgram,
+						[g]
+					));
+			}
 			);
 		}
 
 		if (exiting.length > 0) {
 //			console.log("exiting: " + exiting.map(g => g.symbol));
 			exiting.forEach(g => {
-				const vertices = this.exonVerticeMap.get(g.id);
-				if (vertices) {
-					vertices.vertexArray.delete();
+				const exonVertices = this.exonVerticeMap.get(g.id);
+				if (exonVertices) {
+					exonVertices.vertexArray.delete();
 					this.exonVerticeMap.delete(g.id);
 
 				} else {
 					// TODO: Figure out what's the problem
-					console.warn("No vertices found for " + g.id);
+					console.warn("No exon vertices found for " + g.id);
+				}
+
+				const geneVertices = this.geneVerticeMap.get(g.id);
+				if (geneVertices) {
+					geneVertices.vertexArray.delete();
+					this.geneVerticeMap.delete(g.id);
+
+				} else {
+					// TODO: Figure out what's the problem
+					console.warn("No gene vertices found for " + g.id);
 				}
 			});
 		}
@@ -164,12 +195,53 @@ export class GeneTrack extends WebGlTrack {
 		//console.log("Visible genes: " + this.visibleGenes.length);
 	}
 
+	render() {
+		const gl = this.gl;
+		gl.clear(gl.COLOR_BUFFER_BIT);
+
+		if (this.getViewportDomain().width() < transcriptBreakpoint) {
+			this.updateVisibleGenes();
+			this.renderGenes();
+
+		} else {
+			//this.renderClusters();
+		}
+	}
+
+	renderClusters() {
+        const gl = this.gl;
+
+		// TODO: Precalc
+		const uniforms = Object.assign(
+			this.getDomainUniforms(),
+			{
+				minWidth: 0.5 / gl.drawingBufferWidth, // How many pixels
+				ONE: 1.0 // WTF: https://github.com/uber/luma.gl/pull/622
+			}
+		);
+
+		// TODO: Precalc
+		const view = new Matrix4()
+//			.translate([0, i * (geneHeight + geneSpacing), 0])
+			.scale([this.gl.drawingBufferWidth, this.geneHeight, 1]);
+
+		// TODO: Precalc
+		const uTMatrix = this.projection.clone().multiplyRight(view);
+
+		this.clusterProgram.draw(Object.assign(
+			{
+				uniforms: Object.assign(
+					uniforms,
+					{ uTMatrix }
+				)
+			},
+			this.clusterVertices
+		));
+	}
+
 
 	renderGenes() {
         const gl = this.gl;
-
-        //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.clear(gl.COLOR_BUFFER_BIT);
 
 		const uniforms = Object.assign(
 			this.getDomainUniforms(),
@@ -179,6 +251,7 @@ export class GeneTrack extends WebGlTrack {
 			}
 		);
 
+		//console.log(`Render ${this.visibleGenes.length} genes, exonMap size ${this.exonVerticeMap.size}`);
 
         this.visibleGenes.forEach(gene => {
 			if (gene.lane >= maxLanes) return;
@@ -192,6 +265,24 @@ export class GeneTrack extends WebGlTrack {
 				},
 				this.exonVerticeMap.get(gene.id)
 			));
+
+			gl.enable(gl.BLEND);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+			gl.disable(gl.DEPTH_TEST);
+
+			this.geneProgram.draw(Object.assign(
+				{
+					uniforms: Object.assign(
+						uniforms,
+						{ uTMatrix: this.laneMatrices[gene.lane] }
+					)
+				},
+				this.geneVerticeMap.get(gene.id)
+			));
+
+			gl.disable(gl.BLEND);
+
+
         });
 	}
 }
@@ -222,8 +313,6 @@ function createExonIntervals(gene) {
 }
 
 function exonsToVertices(program, exons) {
-	// TODO: Could use index buffers here
-
     const VERTICES_PER_RECTANGLE = 6;
     const x = new Float32Array(exons.length * VERTICES_PER_RECTANGLE * 2);
     const y = new Float32Array(exons.length * VERTICES_PER_RECTANGLE);
@@ -257,6 +346,40 @@ function exonsToVertices(program, exons) {
     return {
         vertexArray: vertexArray,
         vertexCount: exons.length * VERTICES_PER_RECTANGLE
+    };
+}
+
+
+function genesToVertices(program, genes) {
+    const VERTICES_PER_RECTANGLE = 6;
+    const x = new Float32Array(genes.length * VERTICES_PER_RECTANGLE * 2);
+    const y = new Float32Array(genes.length * VERTICES_PER_RECTANGLE);
+
+    genes.forEach((gene, i) => {
+        const begin = fp64.fp64ify(gene.interval.lower);
+        const end = fp64.fp64ify(gene.interval.upper);
+
+        const topLeft = 0.0;
+        const topRight = 0.0;
+
+        const bottomLeft = 1.0;
+        const bottomRight = 1.0;
+
+        x.set([].concat(begin, end, begin, end, begin, end), i * VERTICES_PER_RECTANGLE * 2);
+        y.set([bottomLeft, bottomRight, topLeft, topRight, topLeft, bottomRight], i * VERTICES_PER_RECTANGLE);
+    });
+
+    const gl = program.gl;
+    const vertexArray = new VertexArray(gl, { program });
+
+    vertexArray.setAttributes({
+        x: new Buffer(gl, { data: x, size : 2, usage: gl.STATIC_DRAW }),
+        y: new Buffer(gl, { data: y, size : 1, usage: gl.STATIC_DRAW })
+    });
+
+    return {
+        vertexArray: vertexArray,
+        vertexCount: genes.length * VERTICES_PER_RECTANGLE
     };
 }
 
@@ -297,19 +420,26 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
 		g.lane = laneNumber;
 	});
 
+	return genes;
+}
+
+
+function detectGeneClusters(genes) {
 	// For overview purposes we create a union of overlapping transcripts
 	// and merge adjacent segments that are close enough to each other
 
 	const mergeDistance = 75000;
 
-	var concurrentCount = 0;
-	genes.union = [];
-	var leftEdge = null;
-	var previousEnd = 0;
-	var index = 0;
+	let concurrentCount = 0;
+	let union = [];
+	let leftEdge = null;
+	let previousEnd = 0;
+	let index = 0;
 
-	genes.map(g => ({pos: g.interval.lower, start: true}))
-		.concat(genes.map(g => ({pos: g.interval.upper, start: false})))
+	let genesInBlock = [];
+
+	genes.map(g => ({pos: g.interval.lower, start: true, gene: g}))
+		.concat(genes.map(g => ({pos: g.interval.upper, start: false, gene: g})))
 		.sort((a, b) => a.pos - b.pos)
 		.forEach(edge => {
 			if (edge.start) {
@@ -319,12 +449,19 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
 					}
 
 					if (edge.pos - previousEnd > mergeDistance) {
-						genes.union.push({ id: index, interval: new Interval(leftEdge, previousEnd) });
+						union.push({
+							id: index,
+							genes: genesInBlock,
+							interval: new Interval(leftEdge, previousEnd)
+						});
+
+						genesInBlock = [];
 						leftEdge = edge.pos;
 						index++;
 					}
 
 				}
+				genesInBlock.push(edge.gene);
 				concurrentCount++;
 			}
 
@@ -336,8 +473,14 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
 		});
 
 	if (leftEdge) {
-		genes.union.push({ id: index, interval: new Interval(leftEdge, previousEnd) });
+		union.push({
+			id: index,
+			genes: genesInBlock,
+			interval: new Interval(leftEdge, previousEnd)
+		});
 	}
 
-	return genes;
+	console.log(union);
+
+	return union;
 }
