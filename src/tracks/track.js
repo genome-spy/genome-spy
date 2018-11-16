@@ -41,4 +41,12 @@ export default class Track {
         return Interval.fromArray(this.genomeSpy.getVisibleDomain());
     }
 
+    /**
+     * Returns an interval that matches the search string
+     * 
+     * @param {string} string What to search
+     */
+    search(string) {
+        return null;
+    }
 }

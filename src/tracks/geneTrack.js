@@ -285,6 +285,25 @@ export class GeneTrack extends WebGlTrack {
 
         });
 	}
+
+	search(string) {
+		string = string.toUpperCase();
+
+		// TODO: Use array.find (not supported in older browsers)
+		const results = this.genes.filter(d => d.symbol == string);
+		if (results.length > 0) {
+			// Find the longest matching transcript
+			results.sort((a, b) => b.interval.width() - a.interval.width());
+			const interval = results[0].interval;
+
+			// Add some padding around the gene
+			const padding = interval.width() * 0.25;
+			return new Interval(interval.lower - padding, interval.upper + padding);
+
+		} else {
+			return null;
+		}
+	}
 }
 
 

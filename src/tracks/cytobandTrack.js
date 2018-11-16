@@ -25,7 +25,8 @@ function mapUcscCytobands(chromMapper, cytobands) {
     return cytobands.map(band => ({
         interval: chromMapper.segmentToContinuous(
 			band.chrom, band.chromStart, band.chromEnd),
-        name: band.name,
+		name: band.name,
+		chrom: band.chrom,
         gieStain: band.gieStain
     }));
 }
@@ -227,9 +228,6 @@ export default class CytobandTrack extends WebGlTrack {
 	}
 
 
-
-	////// The rest are under construction!
-
 	/**
 	 * Find a range of cytobands using the search string as a prefix
 	 */
@@ -238,13 +236,13 @@ export default class CytobandTrack extends WebGlTrack {
 			d => d.chrom.substring(3) == string :
 			d => (d.chrom.substring(3) + d.name).startsWith(string);
 
-		const bands = cytobands.filter(f);
+		const bands = this.mappedCytobands.filter(f);
 
 		if (bands.length > 0) {
-			return [
-				Math.min.apply(null, bands.map(b => b.linearCenter - (b.end - b.start) / 2)),
-				Math.max.apply(null, bands.map(b => b.linearCenter + (b.end - b.start) / 2))
-			];
+			return new Interval(
+				Math.min.apply(null, bands.map(b => b.interval.centre() - (b.interval.width()) / 2)),
+				Math.max.apply(null, bands.map(b => b.interval.centre() + (b.interval.width()) / 2))
+			);
 		}
 	}
 

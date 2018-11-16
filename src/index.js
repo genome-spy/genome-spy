@@ -1,4 +1,4 @@
-import GenomeSpy from "./genomeSpy";
+import GenomeSpyApp from "./genomeSpyApp";
 import { get } from './ajax';
 import { Genome, parseUcscCytobands } from './genome';
 import * as d3 from 'd3';
@@ -73,6 +73,7 @@ Promise.all([
             .key(d => d.sample)
             .entries(segmentations);
 
+        // TODO: Use https://github.com/d3/d3-array#group
         const segBySample = new Map(bySample.map(entry => [
             entry.key,
             entry.values.map(segment => ({
@@ -95,9 +96,7 @@ Promise.all([
         const segRecipe = {};
         const pointData = [];
 
-        const container = createContainer();
-
-        const spy = new GenomeSpy(container, genome, [
+        const app = new GenomeSpyApp(genome, [
             new CytobandTrack(),
             new SampleTrack(samples, [
                 new SegmentLayer(segBySample),
@@ -109,8 +108,6 @@ Promise.all([
             new AxisTrack(),
             new GeneTrack(genes)
         ]);
-
-        spy.launch();
 
 
     });

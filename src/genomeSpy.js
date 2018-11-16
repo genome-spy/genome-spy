@@ -37,11 +37,15 @@ export default class GenomeSpy {
 
     _zoomed() {
         this.rescaledX = d3.event.transform.rescaleX(this.xScale);
-        this.eventEmitter.emit('zoom', this.rescaledX);
+        this.eventEmitter.emit('zoom', this.getVisibleInterval());
     }
     
     getVisibleDomain() {
         return this.rescaledX.domain();
+    }
+
+    getVisibleInterval() {
+        return Interval.fromArray(this.rescaledX.domain());
     }
 
     getZoomedScale() {
@@ -54,6 +58,19 @@ export default class GenomeSpy {
             .reduce((a, b) => Math.max(a, b), 0);
     }
 
+    zoomTo(interval) {
+        const x = this.xScale;
+		const transform = d3.zoomIdentity
+			.scale(this.viewportOverlay.clientWidth / (x(interval.upper) - x(interval.lower)))
+			.translate(-x(interval.lower), 0);
+
+		d3.select(this.viewportOverlay).transition()
+			.duration(750)
+			// Assume that the transition was triggered by search when the duration is defined
+			//.on("end", onEnd ? onEnd : () => true)
+			.call(this.zoom.transform, transform);
+
+    }
     _resized() {
         const aw = Math.ceil(this.getAxisWidth());
         const viewportWidth = this.container.clientWidth - aw;
@@ -80,7 +97,7 @@ export default class GenomeSpy {
     launch() {
         window.addEventListener('resize', this._resized.bind(this), false);
 
-        this.container.className = "genome-spy";
+        this.container.classList.add("genome-spy");
 
         const trackStack = document.createElement("div");
         trackStack.className = "track-stack";
