@@ -2,6 +2,7 @@ precision highp float;
 
 attribute vec2 x;
 attribute float y;
+attribute float yEdge;
 
 uniform mat4 uTMatrix;
 uniform vec2 uDomainBegin;
@@ -20,5 +21,5 @@ void main(void) {
 
     gl_Position = uTMatrix * vec4(impreciseX, y, 0.0, 1.0);
 
-    vYPos = y;
+    vYPos = yEdge;
 }

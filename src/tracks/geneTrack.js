@@ -11,12 +11,13 @@ import geneVertexShader from '../gl/geneVertex.glsl';
 import geneFragmentShader from '../gl/geneFragment.glsl';
 import exonVertexShader from '../gl/exonVertex.glsl';
 import rectangleFragmentShader from '../gl/rectangleFragment.glsl';
+import fenceSync from "luma.gl/dist/es5/webgl/fence-sync";
 
 
 // When does something become visible.
 // The values are the width of the visible domain in base pairs
 const overviewBreakpoint = 250 * 1000000;
-const transcriptBreakpoint = 30 * 1000000; // TODO: Should depend on viewport size
+const transcriptBreakpoint = 40 * 1000000; // TODO: Should depend on viewport size
 
 const maxLanes = 7;
 
@@ -29,8 +30,8 @@ export class GeneTrack extends WebGlTrack {
 		this.geneClusters = detectGeneClusters(genes);
 
 		// TODO: Configuration object
-		this.geneHeight = 15;
-		this.geneSpacing = 5;
+		this.geneHeight = 11;
+		this.geneSpacing = 4;
 
     }
 
@@ -72,6 +73,8 @@ export class GeneTrack extends WebGlTrack {
 		}));
 
 		this.visibleGenes = [];
+
+		this.visibleClusters = [];
 		
 		this.geneVerticeMap = new Map();
 		this.exonVerticeMap = new Map();
@@ -123,84 +126,74 @@ export class GeneTrack extends WebGlTrack {
 		}
 	}
 	
-	updateVisibleGenes() {
-		// TODO: Should use Intervel Tree here. Let's use a naive binary search kludge for now.
-		const bs = d3.bisector(d => d.interval.lower).left;
-
-		// Assume that all genes are shorter than than this
-		const maxGeneLength = 3 * 1000000;
-
+	updateVisibleClusters() {
 		const vi = this.getViewportDomain();
-
-		// TODO: Optimize! Retain id sets, compute revealed and hidden intervals.
-
-		const geneSubset = this.genes.slice(
-			bs(this.genes, vi.lower - maxGeneLength),
-			bs(this.genes, vi.upper)
-		).filter(g => vi.connectedWith(g.interval));
-
-		const oldIds = new Set(this.visibleGenes.map(g => g.id));
-		const newIds = new Set(geneSubset.map(g => g.id));
-
-		const entering = geneSubset.filter(g => !oldIds.has(g.id));
-		const exiting =  this.visibleGenes.filter(g => !newIds.has(g.id));
 		
-		this.visibleGenes = geneSubset;
+		const clusters = this.geneClusters.slice(
+			d3.bisector(d => d.interval.upper).right(this.geneClusters, vi.lower),
+			d3.bisector(d => d.interval.lower).left(this.geneClusters, vi.upper)
+		);
 
-		if (entering.length > 0) {
-//			console.log("entering: " + entering.map(g => g.symbol));
-			entering.forEach(g => {
-				this.exonVerticeMap.set(
-					g.id,
-					exonsToVertices(
-						this.exonProgram,
-						createExonIntervals(g).map(i => ({ interval: i }))
-					));
+		const oldIds = new Set(this.visibleClusters.map(g => g.id));
+		const newIds = new Set(clusters.map(g => g.id));
 
-				this.geneVerticeMap.set(
-					g.id,
-					genesToVertices(
-						this.geneProgram,
-						[g]
-					));
+		const entering = clusters.filter(g => !oldIds.has(g.id));
+		const exiting =  this.visibleClusters.filter(g => !newIds.has(g.id));
+		
+		this.visibleClusters = clusters;
+
+
+		entering.forEach(cluster => {
+			this.exonVerticeMap.set(
+				cluster.id,
+				exonsToVertices(
+					this.exonProgram,
+					cluster.genes,
+					this.geneHeight,
+					this.geneSpacing
+				));
+
+			this.geneVerticeMap.set(
+				cluster.id,
+				genesToVertices(
+					this.geneProgram,
+					cluster.genes,
+					this.geneHeight,
+					this.geneSpacing
+				));
+		});
+
+		exiting.forEach(cluster => {
+			const exonVertices = this.exonVerticeMap.get(cluster.id);
+			if (exonVertices) {
+				exonVertices.vertexArray.delete();
+				this.exonVerticeMap.delete(cluster.id);
+
+			} else {
+				// TODO: Figure out what's the problem
+				console.warn("No exon vertices found for " + cluster.id);
 			}
-			);
-		}
 
-		if (exiting.length > 0) {
-//			console.log("exiting: " + exiting.map(g => g.symbol));
-			exiting.forEach(g => {
-				const exonVertices = this.exonVerticeMap.get(g.id);
-				if (exonVertices) {
-					exonVertices.vertexArray.delete();
-					this.exonVerticeMap.delete(g.id);
+			const geneVertices = this.geneVerticeMap.get(cluster.id);
+			if (geneVertices) {
+				geneVertices.vertexArray.delete();
+				this.geneVerticeMap.delete(cluster.id);
 
-				} else {
-					// TODO: Figure out what's the problem
-					console.warn("No exon vertices found for " + g.id);
-				}
-
-				const geneVertices = this.geneVerticeMap.get(g.id);
-				if (geneVertices) {
-					geneVertices.vertexArray.delete();
-					this.geneVerticeMap.delete(g.id);
-
-				} else {
-					// TODO: Figure out what's the problem
-					console.warn("No gene vertices found for " + g.id);
-				}
-			});
-		}
-
-		//console.log("Visible genes: " + this.visibleGenes.length);
+			} else {
+				// TODO: Figure out what's the problem
+				console.warn("No gene vertices found for " + cluster.id);
+			}
+		});
 	}
+
 
 	render() {
 		const gl = this.gl;
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		if (this.getViewportDomain().width() < transcriptBreakpoint) {
-			this.updateVisibleGenes();
+//			this.updateVisibleGenes();
+			this.updateVisibleClusters();
 			this.renderGenes();
 
 		} else {
@@ -239,7 +232,6 @@ export class GeneTrack extends WebGlTrack {
 		));
 	}
 
-
 	renderGenes() {
         const gl = this.gl;
 
@@ -251,19 +243,19 @@ export class GeneTrack extends WebGlTrack {
 			}
 		);
 
-		//console.log(`Render ${this.visibleGenes.length} genes, exonMap size ${this.exonVerticeMap.size}`);
+		const view = new Matrix4()
+			.scale([this.gl.drawingBufferWidth, 1, 1]);
+		const uTMatrix = this.projection.clone().multiplyRight(view);
 
-        this.visibleGenes.forEach(gene => {
-			if (gene.lane >= maxLanes) return;
-
+        this.visibleClusters.forEach(cluster => {
 			this.exonProgram.draw(Object.assign(
 				{
 					uniforms: Object.assign(
 						uniforms,
-						{ uTMatrix: this.laneMatrices[gene.lane] }
+						{ uTMatrix: uTMatrix }
 					)
 				},
-				this.exonVerticeMap.get(gene.id)
+				this.exonVerticeMap.get(cluster.id)
 			));
 
 			gl.enable(gl.BLEND);
@@ -274,17 +266,17 @@ export class GeneTrack extends WebGlTrack {
 				{
 					uniforms: Object.assign(
 						uniforms,
-						{ uTMatrix: this.laneMatrices[gene.lane] }
+						{ uTMatrix: uTMatrix, uResolution: this.geneHeight }
 					)
 				},
-				this.geneVerticeMap.get(gene.id)
+				this.geneVerticeMap.get(cluster.id)
 			));
 
 			gl.disable(gl.BLEND);
-
-
         });
+
 	}
+
 
 	search(string) {
 		string = string.toUpperCase();
@@ -331,27 +323,37 @@ function createExonIntervals(gene) {
 	return exons;
 }
 
-function exonsToVertices(program, exons) {
-    const VERTICES_PER_RECTANGLE = 6;
-    const x = new Float32Array(exons.length * VERTICES_PER_RECTANGLE * 2);
-    const y = new Float32Array(exons.length * VERTICES_PER_RECTANGLE);
-    const widths = new Float32Array(exons.length * VERTICES_PER_RECTANGLE);
+function exonsToVertices(program, genes, laneHeight, laneSpacing) {
+	const VERTICES_PER_RECTANGLE = 6;
+	
+	const exonsOfGenes = genes.map(g => createExonIntervals(g));
 
-    exons.forEach((e, i) => {
-        const begin = fp64.fp64ify(e.interval.lower);
-		const end = fp64.fp64ify(e.interval.upper);
-		const width = e.interval.width();
+	const totalExonCount = exonsOfGenes
+		.map(exons => exons.length)
+		.reduce((a, b) => a + b, 0);
 
-        const topLeft = 0.0;
-        const topRight = 0.0;
+    const x = new Float32Array(totalExonCount * VERTICES_PER_RECTANGLE * 2);
+    const y = new Float32Array(totalExonCount * VERTICES_PER_RECTANGLE);
+    const widths = new Float32Array(totalExonCount * VERTICES_PER_RECTANGLE);
 
-        const bottomLeft = 1.0;
-        const bottomRight = 1.0;
+	let i = 0;
 
-        x.set([].concat(begin, end, begin, end, begin, end), i * VERTICES_PER_RECTANGLE * 2);
-        y.set([bottomLeft, bottomRight, topLeft, topRight, topLeft, bottomRight], i * VERTICES_PER_RECTANGLE);
-        widths.set([].concat(-width, width, -width, width, -width, width), i * VERTICES_PER_RECTANGLE);
-    });
+	genes.forEach((gene, gi) => {
+		exonsOfGenes[gi].forEach(exon => {
+			const begin = fp64.fp64ify(exon.lower);
+			const end = fp64.fp64ify(exon.upper);
+			const width = exon.width();
+
+			const top = gene.lane * (laneHeight + laneSpacing);
+			const bottom = top + laneHeight;
+
+			x.set([].concat(begin, end, begin, end, begin, end), i * VERTICES_PER_RECTANGLE * 2);
+			y.set([bottom, bottom, top, top, top, bottom], i * VERTICES_PER_RECTANGLE);
+			widths.set([].concat(-width, width, -width, width, -width, width), i * VERTICES_PER_RECTANGLE);
+
+			i++;
+		});
+	});
 
     const gl = program.gl;
     const vertexArray = new VertexArray(gl, { program });
@@ -364,28 +366,30 @@ function exonsToVertices(program, exons) {
 
     return {
         vertexArray: vertexArray,
-        vertexCount: exons.length * VERTICES_PER_RECTANGLE
+        vertexCount: totalExonCount * VERTICES_PER_RECTANGLE
     };
 }
 
 
-function genesToVertices(program, genes) {
+function genesToVertices(program, genes, laneHeight, laneSpacing) {
     const VERTICES_PER_RECTANGLE = 6;
     const x = new Float32Array(genes.length * VERTICES_PER_RECTANGLE * 2);
-    const y = new Float32Array(genes.length * VERTICES_PER_RECTANGLE);
+	const y = new Float32Array(genes.length * VERTICES_PER_RECTANGLE);
+	const yEdge = new Float32Array(genes.length * VERTICES_PER_RECTANGLE);
 
     genes.forEach((gene, i) => {
         const begin = fp64.fp64ify(gene.interval.lower);
         const end = fp64.fp64ify(gene.interval.upper);
 
-        const topLeft = 0.0;
-        const topRight = 0.0;
+		const top = gene.lane * (laneHeight + laneSpacing);
+		const bottom = top + laneHeight;
 
-        const bottomLeft = 1.0;
-        const bottomRight = 1.0;
+		const topEdge = 0.0;
+		const bottomEdge = 1.0;
 
         x.set([].concat(begin, end, begin, end, begin, end), i * VERTICES_PER_RECTANGLE * 2);
-        y.set([bottomLeft, bottomRight, topLeft, topRight, topLeft, bottomRight], i * VERTICES_PER_RECTANGLE);
+		y.set([bottom, bottom, top, top, top, bottom], i * VERTICES_PER_RECTANGLE);
+        yEdge.set([bottomEdge, bottomEdge, topEdge, topEdge, topEdge, bottomEdge], i * VERTICES_PER_RECTANGLE);
     });
 
     const gl = program.gl;
@@ -393,7 +397,8 @@ function genesToVertices(program, genes) {
 
     vertexArray.setAttributes({
         x: new Buffer(gl, { data: x, size : 2, usage: gl.STATIC_DRAW }),
-        y: new Buffer(gl, { data: y, size : 1, usage: gl.STATIC_DRAW })
+        y: new Buffer(gl, { data: y, size : 1, usage: gl.STATIC_DRAW }),
+        yEdge: new Buffer(gl, { data: yEdge, size : 1, usage: gl.STATIC_DRAW }),
     });
 
     return {
@@ -499,7 +504,7 @@ function detectGeneClusters(genes) {
 		});
 	}
 
-	console.log(union);
+	//console.log(union);
 
 	return union;
 }
