@@ -302,6 +302,9 @@ export class GeneTrack extends WebGlTrack {
 
 function createExonIntervals(gene) {
 
+	// These should be benchmarked...
+
+	/*
 	const geneStart = gene.interval.lower;
 
 	const cumulativeExons = gene.exons.split(",")
@@ -317,8 +320,23 @@ function createExonIntervals(gene) {
 			geneStart + cumulativeExons[i * 2 + 1])
 		);
 	}
+	*/
 
 	// TODO: Check that gene length equals to cumulative length
+
+	const exons = [];
+	const steps = gene.exons.split(",");
+
+	let cumulativePos = gene.interval.lower;
+
+	for (let i = 0; i < steps.length;) {
+		cumulativePos += parseInt(steps[i++], 10);
+		const lower = cumulativePos;
+		cumulativePos += parseInt(steps[i++], 10);
+		const upper = cumulativePos;
+
+		exons.push(new Interval(lower, upper));
+	}
 
 	return exons;
 }
@@ -349,7 +367,7 @@ function exonsToVertices(program, genes, laneHeight, laneSpacing) {
 
 			x.set([].concat(begin, end, begin, end, begin, end), i * VERTICES_PER_RECTANGLE * 2);
 			y.set([bottom, bottom, top, top, top, bottom], i * VERTICES_PER_RECTANGLE);
-			widths.set([].concat(-width, width, -width, width, -width, width), i * VERTICES_PER_RECTANGLE);
+			widths.set([-width, width, -width, width, -width, width], i * VERTICES_PER_RECTANGLE);
 
 			i++;
 		});
@@ -436,7 +454,7 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
 	const lanes = [];
 
 	genes.forEach(g => {
-		let laneNumber = lanes.findIndex(end => end < g.interval.upper);
+		let laneNumber = lanes.findIndex(end => end < g.interval.lower);
 		if (laneNumber < 0) {
 			laneNumber = lanes.push(0) - 1;
 		}
