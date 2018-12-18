@@ -42,7 +42,7 @@ function splitSampleName(name) {
 Promise.all([
     get("cytoBand.hg38.txt"),
     get("private/segsAll.csv"),
-    get("private/refSeq_genes.hg38.compressed.txt")
+    get("private/refSeq_genes_scored.hg38.compressed.txt")
 ])
     .then(files => {
         const cytobands = parseUcscCytobands(files[0]);

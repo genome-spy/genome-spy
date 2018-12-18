@@ -11,7 +11,6 @@ import geneVertexShader from '../gl/geneVertex.glsl';
 import geneFragmentShader from '../gl/geneFragment.glsl';
 import exonVertexShader from '../gl/exonVertex.glsl';
 import rectangleFragmentShader from '../gl/rectangleFragment.glsl';
-import fenceSync from "luma.gl/dist/es5/webgl/fence-sync";
 
 
 // When does something become visible.
@@ -28,10 +27,11 @@ export class GeneTrack extends WebGlTrack {
 		
 		this.genes = genes;
 		this.geneClusters = detectGeneClusters(genes);
+		this.primaryTranscripts = findPrimaryTranscripts(genes);
 
 		// TODO: Configuration object
-		this.geneHeight = 11;
-		this.geneSpacing = 4;
+		this.laneHeight = 11;
+		this.laneSpacing = 4;
 
     }
 
@@ -82,6 +82,8 @@ export class GeneTrack extends WebGlTrack {
 		// exonsToVertices only cares about intervals
 		//this.clusterVertices = exonsToVertices(this.clusterProgram, this.geneClusters);
 
+		this.symbolCanvas = this.createCanvas();
+
         genomeSpy.on("zoom", () => {
 			this.render();
 		});
@@ -97,6 +99,7 @@ export class GeneTrack extends WebGlTrack {
 
     resizeCanvases(layout) {
 		this.adjustCanvas(this.glCanvas, layout.viewport);
+		this.adjustCanvas(this.symbolCanvas, layout.viewport);
 
         resizeGLContext(this.gl, { useDevicePixels: false });
 		this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
@@ -112,18 +115,6 @@ export class GeneTrack extends WebGlTrack {
             far: 500
 		}));
 		
-		
-		// Precompute matrices for different lanes
-		// Ugh, gimme a range generator!
-		this.laneMatrices = [];
-
-		for (var i = 0; i < maxLanes; i++) {
-			const view = new Matrix4()
-				.translate([0, i * (this.geneHeight + this.geneSpacing), 0])
-				.scale([this.gl.drawingBufferWidth, this.geneHeight, 1]);
-
-			this.laneMatrices.push(this.projection.clone().multiplyRight(view));
-		}
 	}
 	
 	updateVisibleClusters() {
@@ -149,8 +140,8 @@ export class GeneTrack extends WebGlTrack {
 				exonsToVertices(
 					this.exonProgram,
 					cluster.genes,
-					this.geneHeight,
-					this.geneSpacing
+					this.laneHeight,
+					this.laneSpacing
 				));
 
 			this.geneVerticeMap.set(
@@ -158,8 +149,8 @@ export class GeneTrack extends WebGlTrack {
 				genesToVertices(
 					this.geneProgram,
 					cluster.genes,
-					this.geneHeight,
-					this.geneSpacing
+					this.laneHeight,
+					this.laneSpacing
 				));
 		});
 
@@ -195,10 +186,47 @@ export class GeneTrack extends WebGlTrack {
 //			this.updateVisibleGenes();
 			this.updateVisibleClusters();
 			this.renderGenes();
+			this.renderSymbols();
 
 		} else {
 			//this.renderClusters();
 		}
+	}
+
+	renderSymbols() {
+		const scale = this.genomeSpy.getZoomedScale();
+		//const viewportInterval = Interval.fromArray(scale.range()); // TODO: Provide this from somewhere
+		const visibleInterval = this.genomeSpy.getVisibleInterval();
+
+		const ctx = this.symbolCanvas.getContext("2d");
+		ctx.textBaseline = "top";
+		ctx.textAlign = "center";
+
+		ctx.strokeStyle = "white";
+		ctx.lineWidth = 2;
+
+		ctx.clearRect(0, 0, this.symbolCanvas.width, this.symbolCanvas.height);
+
+		//const fontSize = 12;
+
+		const yOffset = this.laneHeight / 2 + 1;
+		
+		this.primaryTranscripts
+			.filter(gene => visibleInterval.contains(gene.interval.centre()))
+			.forEach(gene => {
+				const x = scale(gene.interval.centre());
+				const y = gene.lane * (this.laneHeight + this.laneSpacing) + yOffset;
+
+				const text = gene.strand == '-' ? ("< " + gene.symbol) : (gene.symbol + " >");
+
+				ctx.shadowColor = "white";
+				ctx.shadowBlur = 2;
+				ctx.strokeText(text, x, y);
+
+				ctx.shadowColor = "transparent";
+				ctx.fillText(text, x, y);
+			});
+		
 	}
 
 	renderClusters() {
@@ -216,7 +244,7 @@ export class GeneTrack extends WebGlTrack {
 		// TODO: Precalc
 		const view = new Matrix4()
 //			.translate([0, i * (geneHeight + geneSpacing), 0])
-			.scale([this.gl.drawingBufferWidth, this.geneHeight, 1]);
+			.scale([this.gl.drawingBufferWidth, this.laneHeight, 1]);
 
 		// TODO: Precalc
 		const uTMatrix = this.projection.clone().multiplyRight(view);
@@ -266,7 +294,7 @@ export class GeneTrack extends WebGlTrack {
 				{
 					uniforms: Object.assign(
 						uniforms,
-						{ uTMatrix: uTMatrix, uResolution: this.geneHeight }
+						{ uTMatrix: uTMatrix, uResolution: this.laneHeight }
 					)
 				},
 				this.geneVerticeMap.get(cluster.id)
@@ -302,7 +330,7 @@ export class GeneTrack extends WebGlTrack {
 
 function createExonIntervals(gene) {
 
-	// These should be benchmarked...
+	// These implementations should be benchmarked...
 
 	/*
 	const geneStart = gene.interval.lower;
@@ -340,6 +368,7 @@ function createExonIntervals(gene) {
 
 	return exons;
 }
+
 
 function exonsToVertices(program, genes, laneHeight, laneSpacing) {
 	const VERTICES_PER_RECTANGLE = 6;
@@ -442,8 +471,9 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
                 chrom: row[2],
                 start: start,
                 end: end,
-                strand: row[5],
-                exons: row[6],
+				strand: row[5],
+				score: row[6],
+                exons: row[7],
                 // Precalc for optimization
                 interval: cm.segmentToContinuous(row[2], start, end)
             };
@@ -471,6 +501,7 @@ function detectGeneClusters(genes) {
 	// and merge adjacent segments that are close enough to each other
 
 	const mergeDistance = 75000;
+	//const mergeDistance = 200000;
 
 	let concurrentCount = 0;
 	let union = [];
@@ -525,4 +556,25 @@ function detectGeneClusters(genes) {
 	//console.log(union);
 
 	return union;
+}
+
+/**
+ * Finds a primary transcript for each gene symbol.
+ * Currently it returns the one with the lowest lane number.
+ * TODO: Take RefSeqGene scores into account
+ */
+function findPrimaryTranscripts(genes) {
+	const primaries = genes.reduce((acc, gene) => {
+		const symbol = gene.symbol;
+		const old = acc.get(symbol);
+
+		if (!old || gene.lane < old.lane) {
+			acc.set(symbol, gene);
+		}
+
+		return acc;
+
+	}, new Map());
+
+	return Array.from(primaries.values()).sort(gene => gene.interval.lower);
 }
