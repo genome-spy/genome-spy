@@ -4,6 +4,9 @@ import {
 	Program, VertexArray, Buffer, assembleShaders, setParameters, createGLContext,
 	resizeGLContext, fp64
 } from 'luma.gl';
+import TinyQueue from 'tinyqueue';
+
+
 import WebGlTrack from './webGlTrack';
 import Interval from "../utils/interval";
 
@@ -11,12 +14,12 @@ import geneVertexShader from '../gl/geneVertex.glsl';
 import geneFragmentShader from '../gl/geneFragment.glsl';
 import exonVertexShader from '../gl/exonVertex.glsl';
 import rectangleFragmentShader from '../gl/rectangleFragment.glsl';
+import IntervalCollection from "../utils/intervalCollection";
 
 
 // When does something become visible.
 // The values are the width of the visible domain in base pairs
-const overviewBreakpoint = 250 * 1000000;
-const transcriptBreakpoint = 40 * 1000000; // TODO: Should depend on viewport size
+const transcriptBreakpoint = 50 * 1000000; // TODO: Should depend on viewport size
 
 const maxLanes = 7;
 
@@ -29,9 +32,18 @@ export class GeneTrack extends WebGlTrack {
 		this.geneClusters = detectGeneClusters(genes);
 		this.primaryTranscripts = findPrimaryTranscripts(genes);
 
+		// Optimization: use a subset for overview
+		// TODO: Use d3.quickselect, maybe add multiple levels, adjust thresholds
+		const scoreLimit = this.primaryTranscripts.map(gene => gene.score).sort((a, b) => b - a)[200];
+		console.log(scoreLimit);
+		this.overviewPrimaryTranscripts = this.primaryTranscripts.filter(gene => gene.score >= scoreLimit);
+
+		console.log(this.overviewPrimaryTranscripts);
+
+
 		// TODO: Configuration object
-		this.laneHeight = 11;
-		this.laneSpacing = 4;
+		this.laneHeight = 13;
+		this.laneSpacing = 6;
 
     }
 
@@ -39,7 +51,7 @@ export class GeneTrack extends WebGlTrack {
         super.initialize({genomeSpy, trackContainer});
 
         this.trackContainer.className = "gene-track";
-		this.trackContainer.style.height = "60px";
+		this.trackContainer.style.height = "75px";
 		this.trackContainer.style.marginTop = "10px";
 
 		this.glCanvas = this.createCanvas();
@@ -66,18 +78,14 @@ export class GeneTrack extends WebGlTrack {
             modules: ['fp64']
 		}));
 
-        this.clusterProgram = new Program(gl, assembleShaders(gl, {
-            vs: exonVertexShader,
-            fs: rectangleFragmentShader,
-            modules: ['fp64']
-		}));
-
 		this.visibleGenes = [];
 
 		this.visibleClusters = [];
 		
 		this.geneVerticeMap = new Map();
 		this.exonVerticeMap = new Map();
+
+		this.symbolWidths = new Map();
 
 		// exonsToVertices only cares about intervals
 		//this.clusterVertices = exonsToVertices(this.clusterProgram, this.geneClusters);
@@ -183,20 +191,37 @@ export class GeneTrack extends WebGlTrack {
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		if (this.getViewportDomain().width() < transcriptBreakpoint) {
-//			this.updateVisibleGenes();
 			this.updateVisibleClusters();
 			this.renderGenes();
-			this.renderSymbols();
 
+			this.glCanvas.style.opacity = d3.scaleLinear()
+				.range([0, 1])
+				.domain([transcriptBreakpoint, transcriptBreakpoint * 0.6])
+				.clamp(true)(this.getViewportDomain().width());
 		} else {
 			//this.renderClusters();
 		}
+
+		this.renderSymbols();
 	}
 
 	renderSymbols() {
+		const laneOccupancies = [...Array(40).keys()].map(i => new IntervalCollection());
+
 		const scale = this.genomeSpy.getZoomedScale();
-		//const viewportInterval = Interval.fromArray(scale.range()); // TODO: Provide this from somewhere
 		const visibleInterval = this.genomeSpy.getVisibleInterval();
+
+		const transcripts = visibleInterval.width() < 500000000 ? this.primaryTranscripts : this.overviewPrimaryTranscripts;
+
+		const bisector = d3.bisector(gene => gene.interval.centre());
+
+		let visibleTranscripts = transcripts
+			.slice(
+				bisector.right(transcripts, visibleInterval.lower),
+				bisector.left(transcripts, visibleInterval.upper)
+			);
+
+		const priorizer = new TinyQueue(visibleTranscripts, (a, b) => b.score - a.score);
 
 		const ctx = this.symbolCanvas.getContext("2d");
 		ctx.textBaseline = "top";
@@ -205,60 +230,43 @@ export class GeneTrack extends WebGlTrack {
 		ctx.strokeStyle = "white";
 		ctx.lineWidth = 2;
 
+		const yOffset = this.laneHeight / 2 + 1;
+
 		ctx.clearRect(0, 0, this.symbolCanvas.width, this.symbolCanvas.height);
 
-		//const fontSize = 12;
+		let gene;
+		let i = 0;
+		while (i++ < 70 && (gene = priorizer.pop())) {
+			const x = scale(gene.interval.centre());
 
-		const yOffset = this.laneHeight / 2 + 1;
-		
-		this.primaryTranscripts
-			.filter(gene => visibleInterval.contains(gene.interval.centre()))
-			.forEach(gene => {
-				const x = scale(gene.interval.centre());
-				const y = gene.lane * (this.laneHeight + this.laneSpacing) + yOffset;
+			const text = gene.symbol;
 
-				const text = gene.strand == '-' ? ("< " + gene.symbol) : (gene.symbol + " >");
-
-				ctx.shadowColor = "white";
-				ctx.shadowBlur = 2;
-				ctx.strokeText(text, x, y);
-
-				ctx.shadowColor = "transparent";
-				ctx.fillText(text, x, y);
-			});
-		
-	}
-
-	renderClusters() {
-        const gl = this.gl;
-
-		// TODO: Precalc
-		const uniforms = Object.assign(
-			this.getDomainUniforms(),
-			{
-				minWidth: 0.5 / gl.drawingBufferWidth, // How many pixels
-				ONE: 1.0 // WTF: https://github.com/uber/luma.gl/pull/622
+			let width = this.symbolWidths.get(text);
+			if (!width) {
+				width = ctx.measureText(text).width;
+				this.symbolWidths.set(text, width);
 			}
-		);
 
-		// TODO: Precalc
-		const view = new Matrix4()
-//			.translate([0, i * (geneHeight + geneSpacing), 0])
-			.scale([this.gl.drawingBufferWidth, this.laneHeight, 1]);
+			const halfWidth = width / 2 + 5;
+			const bounds = new Interval(x - halfWidth, x + halfWidth);
+			if (!laneOccupancies[gene.lane].addIfRoom(bounds)) {
+				continue;
+			}
 
-		// TODO: Precalc
-		const uTMatrix = this.projection.clone().multiplyRight(view);
+			const y = gene.lane * (this.laneHeight + this.laneSpacing) + yOffset;
 
-		this.clusterProgram.draw(Object.assign(
-			{
-				uniforms: Object.assign(
-					uniforms,
-					{ uTMatrix }
-				)
-			},
-			this.clusterVertices
-		));
+			//const text = gene.strand == '-' ? ("< " + gene.symbol) : (gene.symbol + " >");
+
+			ctx.shadowColor = "white";
+			ctx.shadowBlur = 2;
+			ctx.strokeText(text, x, y);
+
+			ctx.shadowColor = "transparent";
+			ctx.fillText(text, x, y);
+		}
+		
 	}
+
 
 	renderGenes() {
         const gl = this.gl;
@@ -458,12 +466,16 @@ function genesToVertices(program, genes, laneHeight, laneSpacing) {
 export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
     const chromNames = new Set(cm.chromosomes().map(chrom => chrom.name));
 
+	let hack = 0; // A hack. Ensure an unique score for each gene.
+
     const genes = d3.tsvParseRows(geneTsv)
         .filter(row => chromNames.has(row[2]))
         .map(row => {
 
             const start = parseInt(row[3], 10);
-            const end = start + parseInt(row[4], 10);
+			const end = start + parseInt(row[4], 10);
+			
+			hack += 0.0000001;
 
             return {
                 id: row[0],
@@ -472,7 +484,7 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
                 start: start,
                 end: end,
 				strand: row[5],
-				score: row[6],
+				score: +row[6] + hack,
                 exons: row[7],
                 // Precalc for optimization
                 interval: cm.segmentToContinuous(row[2], start, end)
@@ -576,5 +588,5 @@ function findPrimaryTranscripts(genes) {
 
 	}, new Map());
 
-	return Array.from(primaries.values()).sort(gene => gene.interval.lower);
+	return Array.from(primaries.values()).sort(gene => gene.interval.centre());
 }
