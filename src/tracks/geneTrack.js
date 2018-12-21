@@ -19,7 +19,7 @@ import IntervalCollection from "../utils/intervalCollection";
 
 // When does something become visible.
 // The values are the width of the visible domain in base pairs
-const transcriptBreakpoint = 50 * 1000000; // TODO: Should depend on viewport size
+const transcriptBreakpoint = 60 * 1000000; // TODO: Should depend on viewport size
 
 const maxLanes = 7;
 
@@ -42,8 +42,8 @@ export class GeneTrack extends WebGlTrack {
 
 
 		// TODO: Configuration object
-		this.laneHeight = 13;
-		this.laneSpacing = 6;
+		this.laneHeight = 15;
+		this.laneSpacing = 10;
 
     }
 
@@ -51,7 +51,7 @@ export class GeneTrack extends WebGlTrack {
         super.initialize({genomeSpy, trackContainer});
 
         this.trackContainer.className = "gene-track";
-		this.trackContainer.style.height = "75px";
+		this.trackContainer.style.height = (5 * (this.laneHeight + this.laneSpacing)) + "px";
 		this.trackContainer.style.marginTop = "10px";
 
 		this.glCanvas = this.createCanvas();
@@ -196,7 +196,7 @@ export class GeneTrack extends WebGlTrack {
 
 			this.glCanvas.style.opacity = d3.scaleLinear()
 				.range([0, 1])
-				.domain([transcriptBreakpoint, transcriptBreakpoint * 0.6])
+				.domain([transcriptBreakpoint, transcriptBreakpoint * 0.5])
 				.clamp(true)(this.getViewportDomain().width());
 		} else {
 			//this.renderClusters();
@@ -218,8 +218,8 @@ export class GeneTrack extends WebGlTrack {
 		let visibleTranscripts = transcripts
 			.slice(
 				bisector.right(transcripts, visibleInterval.lower),
-				bisector.left(transcripts, visibleInterval.upper)
-			);
+				bisector.left(transcripts, visibleInterval.upper + 1000000)
+			).filter(gene => visibleInterval.connectedWith(gene.interval));
 
 		const priorizer = new TinyQueue(visibleTranscripts, (a, b) => b.score - a.score);
 
@@ -230,7 +230,9 @@ export class GeneTrack extends WebGlTrack {
 		ctx.strokeStyle = "white";
 		ctx.lineWidth = 2;
 
-		const yOffset = this.laneHeight / 2 + 1;
+		ctx.lineJoin = "round";
+
+		const yOffset = this.laneHeight / 2 + 3;
 
 		ctx.clearRect(0, 0, this.symbolCanvas.width, this.symbolCanvas.height);
 
@@ -255,7 +257,17 @@ export class GeneTrack extends WebGlTrack {
 
 			const y = gene.lane * (this.laneHeight + this.laneSpacing) + yOffset;
 
+			ctx.font = "7px sans-serif";
 			//const text = gene.strand == '-' ? ("< " + gene.symbol) : (gene.symbol + " >");
+			if (gene.strand == '-') {
+ 				ctx.fillText("\u25c0", x - width / 2 - 4, y + 2);
+
+			} else {
+ 				ctx.fillText("\u25b6", x + width / 2 + 4, y + 2);
+
+			}
+
+			ctx.font = "10px sans-serif";
 
 			ctx.shadowColor = "white";
 			ctx.shadowBlur = 2;

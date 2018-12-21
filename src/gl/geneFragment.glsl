@@ -12,7 +12,7 @@ uniform float uResolution; //  = 15.0; // TODO: Pass as a uniform
 
 const float arrowSpacing = 2.0;
 const float arrowWidth = 0.5;
-const float arrowOpacity = 0.4;
+const float arrowOpacity = 0.6;
 
 const float direction = -1.0;
 
@@ -23,8 +23,9 @@ void main() {
 
     vec2 st = gl_FragCoord.xy / uResolution;
 
-    float c = arrowOpacity * step(abs(vYPos - 0.5) * 2.0, arrowWidth) *
-        step(mod(st.x + abs(vYPos - 0.5) * direction, arrowSpacing) / arrowSpacing, arrowThickness);
+    //float c = arrowOpacity * step(abs(vYPos - 0.5) * 2.0, arrowWidth) *
+    //    step(mod(st.x + abs(vYPos - 0.5) * direction, arrowSpacing) / arrowSpacing, arrowThickness);
+    float c = 0.0;
     
     c += step(abs(vYPos - 0.5) * 2.0, backboneWidth);
     
