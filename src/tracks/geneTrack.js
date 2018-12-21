@@ -21,8 +21,6 @@ import IntervalCollection from "../utils/intervalCollection";
 // The values are the width of the visible domain in base pairs
 const transcriptBreakpoint = 60 * 1000000; // TODO: Should depend on viewport size
 
-const maxLanes = 7;
-
 
 export class GeneTrack extends WebGlTrack {
     constructor(genes) {
@@ -30,16 +28,11 @@ export class GeneTrack extends WebGlTrack {
 		
 		this.genes = genes;
 		this.geneClusters = detectGeneClusters(genes);
-		this.primaryTranscripts = findPrimaryTranscripts(genes);
 
 		// Optimization: use a subset for overview
 		// TODO: Use d3.quickselect, maybe add multiple levels, adjust thresholds
-		const scoreLimit = this.primaryTranscripts.map(gene => gene.score).sort((a, b) => b - a)[200];
-		console.log(scoreLimit);
-		this.overviewPrimaryTranscripts = this.primaryTranscripts.filter(gene => gene.score >= scoreLimit);
-
-		console.log(this.overviewPrimaryTranscripts);
-
+		const scoreLimit = this.genes.map(gene => gene.score).sort((a, b) => b - a)[200];
+		this.overviewGenes = this.genes.filter(gene => gene.score >= scoreLimit);
 
 		// TODO: Configuration object
 		this.laneHeight = 15;
@@ -51,7 +44,7 @@ export class GeneTrack extends WebGlTrack {
         super.initialize({genomeSpy, trackContainer});
 
         this.trackContainer.className = "gene-track";
-		this.trackContainer.style.height = (5 * (this.laneHeight + this.laneSpacing)) + "px";
+		this.trackContainer.style.height = (3 * (this.laneHeight + this.laneSpacing)) + "px";
 		this.trackContainer.style.marginTop = "10px";
 
 		this.glCanvas = this.createCanvas();
@@ -211,17 +204,17 @@ export class GeneTrack extends WebGlTrack {
 		const scale = this.genomeSpy.getZoomedScale();
 		const visibleInterval = this.genomeSpy.getVisibleInterval();
 
-		const transcripts = visibleInterval.width() < 500000000 ? this.primaryTranscripts : this.overviewPrimaryTranscripts;
+		const genes = visibleInterval.width() < 500000000 ? this.genes : this.overviewGenes;
 
-		const bisector = d3.bisector(gene => gene.interval.centre());
+		const bisector = d3.bisector(gene => gene.interval.lower);
 
-		let visibleTranscripts = transcripts
+		let visibleGenes = genes 
 			.slice(
-				bisector.right(transcripts, visibleInterval.lower),
-				bisector.left(transcripts, visibleInterval.upper + 1000000)
+				bisector.right(genes, visibleInterval.lower - 500000),
+				bisector.left(genes, visibleInterval.upper + 1000000) // TODO: Visible interval
 			).filter(gene => visibleInterval.connectedWith(gene.interval));
 
-		const priorizer = new TinyQueue(visibleTranscripts, (a, b) => b.score - a.score);
+		const priorizer = new TinyQueue(visibleGenes, (a, b) => b.score - a.score);
 
 		const ctx = this.symbolCanvas.getContext("2d");
 		ctx.textBaseline = "top";
@@ -232,7 +225,7 @@ export class GeneTrack extends WebGlTrack {
 
 		ctx.lineJoin = "round";
 
-		const yOffset = this.laneHeight / 2 + 3;
+		const yOffset = this.laneHeight / 2 + 4;
 
 		ctx.clearRect(0, 0, this.symbolCanvas.width, this.symbolCanvas.height);
 
@@ -257,20 +250,19 @@ export class GeneTrack extends WebGlTrack {
 
 			const y = gene.lane * (this.laneHeight + this.laneSpacing) + yOffset;
 
+			ctx.shadowColor = "white";
+			ctx.shadowBlur = 2;
+
 			ctx.font = "7px sans-serif";
-			//const text = gene.strand == '-' ? ("< " + gene.symbol) : (gene.symbol + " >");
 			if (gene.strand == '-') {
  				ctx.fillText("\u25c0", x - width / 2 - 4, y + 2);
 
 			} else {
  				ctx.fillText("\u25b6", x + width / 2 + 4, y + 2);
-
 			}
 
 			ctx.font = "10px sans-serif";
 
-			ctx.shadowColor = "white";
-			ctx.shadowBlur = 2;
 			ctx.strokeText(text, x, y);
 
 			ctx.shadowColor = "transparent";
@@ -481,39 +473,50 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
 	let hack = 0; // A hack. Ensure an unique score for each gene.
 
     const genes = d3.tsvParseRows(geneTsv)
-        .filter(row => chromNames.has(row[2]))
+        .filter(row => chromNames.has(row[1]))
         .map(row => {
 
-            const start = parseInt(row[3], 10);
-			const end = start + parseInt(row[4], 10);
+            const start = parseInt(row[2], 10);
+			const end = start + parseInt(row[3], 10);
 			
 			hack += 0.0000001;
 
             return {
-                id: row[0],
-                symbol: row[1],
-                chrom: row[2],
+				id: row[0],
+                symbol: row[0],
+                chrom: row[1],
                 start: start,
                 end: end,
-				strand: row[5],
-				score: +row[6] + hack,
-                exons: row[7],
+				strand: row[4],
+				score: +row[5] + hack,
+                exons: row[6],
                 // Precalc for optimization
-                interval: cm.segmentToContinuous(row[2], start, end)
+                interval: cm.segmentToContinuous(row[1], start, end)
             };
         });
 
+
+	// Find a free lane for each gene.
 	genes.sort((a, b) => a.interval.lower - b.interval.lower);
 
 	const lanes = [];
 
+	const preference = {
+		'-': 0,
+		'+': 1
+	};
+
+	const isOccupied = (laneIdx, pos) => lanes[laneIdx] && lanes[laneIdx] > pos;
+
 	genes.forEach(g => {
-		let laneNumber = lanes.findIndex(end => end < g.interval.lower);
-		if (laneNumber < 0) {
-			laneNumber = lanes.push(0) - 1;
+		let laneIdx = preference[g.strand];
+		if (isOccupied(laneIdx, g.interval.lower)) {
+			for (laneIdx = 0; laneIdx < 20 && isOccupied(laneIdx, g.interval.lower); laneIdx++) {
+			}
 		}
-		lanes[laneNumber] = g.interval.upper;
-		g.lane = laneNumber;
+
+		lanes[laneIdx] = g.interval.upper;
+		g.lane = laneIdx;
 	});
 
 	return genes;
@@ -524,8 +527,7 @@ function detectGeneClusters(genes) {
 	// For overview purposes we create a union of overlapping transcripts
 	// and merge adjacent segments that are close enough to each other
 
-	const mergeDistance = 75000;
-	//const mergeDistance = 200000;
+	const mergeDistance = 100000;
 
 	let concurrentCount = 0;
 	let union = [];
@@ -577,28 +579,5 @@ function detectGeneClusters(genes) {
 		});
 	}
 
-	//console.log(union);
-
 	return union;
-}
-
-/**
- * Finds a primary transcript for each gene symbol.
- * Currently it returns the one with the lowest lane number.
- * TODO: Take RefSeqGene scores into account
- */
-function findPrimaryTranscripts(genes) {
-	const primaries = genes.reduce((acc, gene) => {
-		const symbol = gene.symbol;
-		const old = acc.get(symbol);
-
-		if (!old || gene.lane < old.lane) {
-			acc.set(symbol, gene);
-		}
-
-		return acc;
-
-	}, new Map());
-
-	return Array.from(primaries.values()).sort(gene => gene.interval.centre());
 }
