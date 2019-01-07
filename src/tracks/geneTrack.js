@@ -34,6 +34,10 @@ export class GeneTrack extends WebGlTrack {
 		const scoreLimit = this.genes.map(gene => gene.score).sort((a, b) => b - a)[200];
 		this.overviewGenes = this.genes.filter(gene => gene.score >= scoreLimit);
 
+		// TODO: Replace 40 with something sensible
+		/** @type {IntervalCollection[]} keeps track of gene symbols on the screen */
+		this.symbolsOnLanes = [...Array(40).keys()].map(i => new IntervalCollection(symbol => symbol.screenInterval));
+
 		// TODO: Configuration object
 		this.laneHeight = 15;
 		this.laneSpacing = 10;
@@ -85,6 +89,9 @@ export class GeneTrack extends WebGlTrack {
 
 		this.symbolCanvas = this.createCanvas();
 
+		//this.symbolCanvas.addEventListener("click", this.handleMouseEvent.bind(this), false);
+		this.symbolCanvas.addEventListener("click", console.log, false);
+
         genomeSpy.on("zoom", () => {
 			this.render();
 		});
@@ -96,7 +103,12 @@ export class GeneTrack extends WebGlTrack {
 
         const cm = genomeSpy.chromMapper;
         this.chromosomes = cm.chromosomes();
-    }
+	}
+	
+	handleMouseEvent(event) {
+		alert(event);
+		console.log(event);
+	}
 
     resizeCanvases(layout) {
 		this.adjustCanvas(this.glCanvas, layout.viewport);
@@ -199,7 +211,7 @@ export class GeneTrack extends WebGlTrack {
 	}
 
 	renderSymbols() {
-		const laneOccupancies = [...Array(40).keys()].map(i => new IntervalCollection());
+		this.symbolsOnLanes.forEach(lane => lane.clear());
 
 		const scale = this.genomeSpy.getZoomedScale();
 		const visibleInterval = this.genomeSpy.getVisibleInterval();
@@ -231,7 +243,7 @@ export class GeneTrack extends WebGlTrack {
 
 		let gene;
 		let i = 0;
-		while (i++ < 70 && (gene = priorizer.pop())) {
+		while (i++ < 70 && (gene = priorizer.pop())) { // TODO: Configurable limit
 			const x = scale(gene.interval.centre());
 
 			const text = gene.symbol;
@@ -244,7 +256,7 @@ export class GeneTrack extends WebGlTrack {
 
 			const halfWidth = width / 2 + 5;
 			const bounds = new Interval(x - halfWidth, x + halfWidth);
-			if (!laneOccupancies[gene.lane].addIfRoom(bounds)) {
+			if (!this.symbolsOnLanes[gene.lane].addIfRoom({ screenInterval: bounds, gene: gene })) {
 				continue;
 			}
 
