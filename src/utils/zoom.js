@@ -87,7 +87,7 @@ export class Zoom {
 
         } else if (event.type == "mousemove" && this.mouseDown) {
             if (event.buttons & 1) {
-                this.transform = this.transform.translate(mouseX - this.lastPoint[0]);
+                this.transform = constrainX(new Transform(this.transform.k, this.transform.x + mouseX - this.lastPoint[0]));
                 this.lastPoint = point;
 
                 event.preventDefault();
