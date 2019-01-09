@@ -1,4 +1,5 @@
 import Interval from "../utils/interval";
+import * as d3 from 'd3';
 
 /**
  * Abstract base class for tracks

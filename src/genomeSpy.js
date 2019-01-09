@@ -2,6 +2,7 @@ import EventEmitter from "eventemitter3";
 import * as d3 from 'd3';
 import { chromMapper } from "./chromMapper";
 import Interval from "./utils/interval";
+import { Zoom } from "./utils/zoom";
 import "./styles/genome-spy.scss";
 
 /**
@@ -23,7 +24,7 @@ export default class GenomeSpy {
 
         this.eventEmitter = new EventEmitter();
 
-        this.zoom = d3.zoom();
+        this.zoom = new Zoom(this._zoomed.bind(this));
 
         // TODO: A configuration object
         /** When zooming, the maximum size of a single discrete unit (nucleotide) in pixels */
@@ -35,8 +36,8 @@ export default class GenomeSpy {
         this.eventEmitter.on(...args);
     }
 
-    _zoomed() {
-        this.rescaledX = d3.event.transform.rescaleX(this.xScale);
+    _zoomed(transform) {
+        this.rescaledX = transform.rescale(this.xScale);
         this.eventEmitter.emit('zoom', this.getVisibleInterval());
     }
     
@@ -71,6 +72,8 @@ export default class GenomeSpy {
 			.call(this.zoom.transform, transform);
 
     }
+
+
     _resized() {
         const aw = Math.ceil(this.getAxisWidth());
         const viewportWidth = this.container.clientWidth - aw;
@@ -85,13 +88,11 @@ export default class GenomeSpy {
             viewport: new Interval(aw, aw + viewportWidth)
         };
 
-        this.viewportOverlay.style.left = `${aw}px`;
-        this.viewportOverlay.style.width = `${viewportWidth}px`;
-
-        this.zoom.translateExtent([[0, -Infinity], [viewportWidth, Infinity]]);
+        this.zoom.scaleExtent = [1, this.chromMapper.extent().width() / this.container.clientWidth * this.maxUnitZoom];
 
         this.eventEmitter.emit('layout', layout);
     }
+
 
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
     launch() {
@@ -112,21 +113,7 @@ export default class GenomeSpy {
 
         this.container.appendChild(trackStack);
 
-        const viewportOverlay = document.createElement("div");
-        viewportOverlay.className = "viewport-overlay";
-
-        this.container.appendChild(viewportOverlay);
-
-        const genomeExtent = this.chromMapper.extent();
-
-        d3.select(viewportOverlay)
-            .call(this.zoom
-                .scaleExtent([1, genomeExtent.width() / this.container.clientWidth * this.maxUnitZoom])
-                .on("zoom", this._zoomed.bind(this)))
-            .on("wheel", function () { d3.event.preventDefault();});
-
         this.trackStack = trackStack;
-        this.viewportOverlay = viewportOverlay;
 
         this._resized();
     }

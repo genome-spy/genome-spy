@@ -107,7 +107,9 @@ export default class CytobandTrack extends WebGlTrack {
         genomeSpy.on("layout", layout => {
 			this.resizeCanvases(layout);
 			this.render();
-        });
+		});
+
+        genomeSpy.zoom.attachZoomEvents(this.bandLabelCanvas);
     }
 
     resizeCanvases(layout) {

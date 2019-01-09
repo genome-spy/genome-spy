@@ -90,7 +90,7 @@ export class GeneTrack extends WebGlTrack {
 		this.symbolCanvas = this.createCanvas();
 
 		//this.symbolCanvas.addEventListener("click", this.handleMouseEvent.bind(this), false);
-		this.symbolCanvas.addEventListener("click", console.log, false);
+		//this.symbolCanvas.addEventListener("click", console.log, false);
 
         genomeSpy.on("zoom", () => {
 			this.render();
@@ -99,7 +99,9 @@ export class GeneTrack extends WebGlTrack {
         genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
             this.render();
-        });
+		});
+
+        genomeSpy.zoom.attachZoomEvents(this.symbolCanvas);
 
         const cm = genomeSpy.chromMapper;
         this.chromosomes = cm.chromosomes();

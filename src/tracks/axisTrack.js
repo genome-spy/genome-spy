@@ -25,6 +25,8 @@ export default class AxisTrack extends Track {
             this.renderTicks();
         }.bind(this));
 
+        genomeSpy.zoom.attachZoomEvents(this.tickCanvas);
+
         const cm = genomeSpy.chromMapper;
         this.chromosomes = cm.chromosomes();
 

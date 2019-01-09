@@ -120,6 +120,8 @@ export default class SampleTrack extends WebGlTrack {
         genomeSpy.on("zoom", () => {
             this.renderViewport();
         });
+
+        genomeSpy.zoom.attachZoomEvents(this.glCanvas);
     }
 
     /**
