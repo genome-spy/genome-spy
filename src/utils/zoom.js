@@ -10,7 +10,7 @@ export class Zoom {
         this.scaleExtent = [0, Infinity];
         this.wheelMultiplier = -(event.deltaMode ? 120 : 1);
         this.listener = listener;
-        this.transform = new Transform(1.0, 0);
+        this.transform = new Transform();
 
         this.mouseDown = false;
         this.lastPoint = null;
@@ -30,7 +30,10 @@ export class Zoom {
     }
 
     zoomTo(transform) {
-        // TODO: Implement
+        console.log("zoomToL");
+        console.log(transform);
+        this.transform = transform;
+        this.listener(this.transform);
     }
 
     handleMouseEvent(event, point, element) {
@@ -104,12 +107,16 @@ export class Zoom {
 
 export class Transform {
     constructor(k, x) {
-        this.k = k;
-        this.x = x;
+        this.k = k || 1;
+        this.x = x || 0;
+    }
+
+    scale(k) {
+        return new Transform(this.k * k, this.x);
     }
 
     translate(x) {
-        return new Transform(this.k, this.x + x);
+        return new Transform(this.k, this.x + this.k * x);
     }
 
     invert(x) {

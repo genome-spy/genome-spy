@@ -2,7 +2,7 @@ import EventEmitter from "eventemitter3";
 import * as d3 from 'd3';
 import { chromMapper } from "./chromMapper";
 import Interval from "./utils/interval";
-import { Zoom } from "./utils/zoom";
+import { Zoom, Transform } from "./utils/zoom";
 import "./styles/genome-spy.scss";
 
 /**
@@ -61,15 +61,19 @@ export default class GenomeSpy {
 
     zoomTo(interval) {
         const x = this.xScale;
-		const transform = d3.zoomIdentity
-			.scale(this.viewportOverlay.clientWidth / (x(interval.upper) - x(interval.lower)))
-			.translate(-x(interval.lower), 0);
+		const transform = new Transform() 
+			.scale(this.layout.viewport.width() / (x(interval.upper) - x(interval.lower)))
+			.translate(-x(interval.lower));
 
+            /*
 		d3.select(this.viewportOverlay).transition()
 			.duration(750)
 			// Assume that the transition was triggered by search when the duration is defined
 			//.on("end", onEnd ? onEnd : () => true)
-			.call(this.zoom.transform, transform);
+            .call(this.zoom.transform, transform);
+            */
+
+        this.zoom.zoomTo(transform);
 
     }
 
@@ -83,14 +87,14 @@ export default class GenomeSpy {
 
         // The layout only deals with horizontal coordinates. The tracks take care of their height.
         // TODO: Implement LayoutBuilder
-        const layout = {
+        this.layout = {
             axis: new Interval(0, aw),
             viewport: new Interval(aw, aw + viewportWidth)
         };
 
         this.zoom.scaleExtent = [1, this.chromMapper.extent().width() / this.container.clientWidth * this.maxUnitZoom];
 
-        this.eventEmitter.emit('layout', layout);
+        this.eventEmitter.emit('layout', this.layout);
     }
 
 
