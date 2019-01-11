@@ -79,7 +79,7 @@ export default class SampleTrack extends WebGlTrack {
             far: 500
         }));
 
-        this.sampleScale.rangeRound([0, trackHeight]);
+        this.sampleScale.range([0, trackHeight]);
     }
 
     initialize({genomeSpy, trackContainer}) {
@@ -88,7 +88,7 @@ export default class SampleTrack extends WebGlTrack {
         this.sampleScale = d3.scaleBand()
             .domain(this.samples.map(sample => sample.id))
             .align(0)
-            .paddingInner(0.25); // TODO: Configurable
+            .paddingInner(0.20); // TODO: Configurable
 
         this.trackContainer.className = "sample-track";
 
@@ -191,13 +191,38 @@ export default class SampleTrack extends WebGlTrack {
             .flatMap(sample => Object.keys(sample.data))
             .reduce((set, key) => set.add(key), new Set());
         
-        // Map a color for a variable (value)
-        this.axisArea.variableScales = new Map(
-            Array.from(variableNames).map(name => [
-                name,
-                d3.scaleOrdinal(d3.schemeCategory10)
-            ])
-        );
+        const inferNumerality = variableName => this.samples
+            .map(sample => sample.data[variableName])
+            .filter(value => typeof value == "string")
+            .filter(value => value !== "")
+            .every(value => /^[\+\-]?\d+(\.\d*)?$/.test(value));
+
+        this.axisArea.variableScales = new Map();
+
+        // TODO: Make all of this configurable
+
+        variableNames.forEach(variableName => {
+            if (inferNumerality(variableName)) {
+                const accessor = sample => sample.data[variableName];
+
+                // Convert types
+                for (let sample of this.samples.values()) {
+                    sample.data[variableName] = parseFloat(accessor(sample));
+                }
+
+                const extent = d3.extent(this.samples, accessor);
+                this.axisArea.variableScales.set(
+                    variableName,
+                    d3.scaleSequential(d3.interpolateInferno)
+                        .domain(extent));
+                
+                // TODO: Diverging scale if domain extends to negative values
+
+            } else {
+                this.axisArea.variableScales.set(variableName, d3.scaleOrdinal(d3.schemeCategory10));
+            }
+        });
+
 
         // Map a variable name to a horizontal coordinate
         this.axisArea.variableBandScale = d3.scaleBand()
