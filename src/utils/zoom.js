@@ -22,7 +22,7 @@ export class Zoom {
      * @param {object} element 
      */
     attachZoomEvents(element) {
-        ["mousedown", "mouseup", "mousemove", "wheel"].forEach(type =>
+        ["mousedown", "wheel", "dragstart"].forEach(type =>
             element.addEventListener(
                 type,
                 e => this.handleMouseEvent(e, d3.clientPoint(element, e), element),
@@ -50,6 +50,9 @@ export class Zoom {
             );
         }
 
+        if (event.type == "dragstart") {
+            return false;
+        }
         if (event.type == "wheel") {
             event.stopPropagation();
             event.preventDefault();
@@ -78,29 +81,23 @@ export class Zoom {
             this.listener(this.transform);
 
         } else if (event.type == "mousedown" && event.button == 0) {
-            this.mouseDown = true;
-            this.lastPoint = point;
+            const referenceTransform = this.transform.x;
 
-        } else if (event.type == "mouseup" && this.mouseDown) {
-            this.mouseDown = false;
-            this.lastPoint = null;
+            event.preventDefault();
 
-        } else if (event.type == "mousemove" && this.mouseDown) {
-            if (event.buttons & 1) {
-                this.transform = constrainX(new Transform(this.transform.k, this.transform.x + mouseX - this.lastPoint[0]));
-                this.lastPoint = point;
-
-                event.preventDefault();
-
+            const onMousemove = function(moveEvent) {
+                this.transform = constrainX(new Transform(this.transform.k, referenceTransform + moveEvent.clientX - event.clientX));
                 this.listener(this.transform);
+            }.bind(this);
 
-            } else {
-                this.mouseDown = false;
-                this.lastPoint = 0;
-            }
+            const onMouseup = function(upEvent) {
+                document.removeEventListener("mousemove", onMousemove);
+                document.removeEventListener("mouseup", onMouseup);
+            };
+
+            document.addEventListener("mouseup", onMouseup, false);
+            document.addEventListener("mousemove", onMousemove, false);
         }
-
-        
 
     }
 }
