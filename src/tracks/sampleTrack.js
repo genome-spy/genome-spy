@@ -17,7 +17,7 @@ export default class SampleTrack extends WebGlTrack {
         /*
          * An array of sample objects. Their order stays constant.
          * Properties: id, displayName, data. Data contains arbitrary sample-specific
-         * variables, e.g. clinical data.
+         * attributes, e.g. clinical data.
          */
         this.samples = samples;
 
@@ -29,15 +29,15 @@ export default class SampleTrack extends WebGlTrack {
         this.layers = layers;
 
         this.axisArea = {
-            /** Width of an individual sample variable */
-            variableWidth: 12,
+            /** Width of an individual sample attribute */
+            attributeWidth: 12,
             labelFontSize: 11, // TODO: Find a better place
             labelFont: "sans-serif"
         };
 
         this.margin = 10; // TODO: Find a better place
 
-        this.prepareSampleVariables();
+        this.prepareSampleAttributes();
 
         // TODO: Consider a setSamples() method
         const ctx = document.createElement("canvas").getContext("2d");
@@ -50,14 +50,14 @@ export default class SampleTrack extends WebGlTrack {
     /**
      * Returns the minimum width that accommodates the labels on the Y axis.
      * The axis area of sampleTrack contains sample labels and sample-specific
-     * variables.
+     * attributes.
      * 
      * @returns {number} The width
      */
     getMinAxisWidth() {
         return this.axisArea.maxLabelWidth +
             this.margin +
-            this.axisArea.variableScales.size * this.axisArea.variableWidth +
+            this.axisArea.attributeScales.size * this.axisArea.attributeWidth +
             this.margin;
     }
 
@@ -125,7 +125,7 @@ export default class SampleTrack extends WebGlTrack {
     }
 
     /**
-     * Render the axis area, which contains labels and sample-specific variables
+     * Render the axis area, which contains labels and sample-specific attributes 
      */
     renderLabels() {
         const ctx = this.labelCanvas.getContext("2d");
@@ -134,7 +134,7 @@ export default class SampleTrack extends WebGlTrack {
         ctx.font = `${this.labelFontSize}px ${this.labelFont}`;
 
         const offset = Math.floor((this.sampleScale.bandwidth() + this.axisArea.labelFontSize) / 2);
-        const variableOffset = Math.ceil(this.axisArea.maxLabelWidth + this.margin);
+        const attributeOffset = Math.ceil(this.axisArea.maxLabelWidth + this.margin);
 
         this.samples.forEach(sample => {
             const y = this.sampleScale(sample.id);
@@ -145,13 +145,13 @@ export default class SampleTrack extends WebGlTrack {
                 0,
                 y + offset);
 
-            this.axisArea.variableScales
+            this.axisArea.attributeScales
                 .forEach((valueScale, key) => {
-                    ctx.fillStyle = valueScale(sample.data[key]);
+                    ctx.fillStyle = valueScale(sample.attributes[key]);
                     ctx.fillRect(
-                        variableOffset + this.axisArea.variableBandScale(key),
+                        attributeOffset + this.axisArea.attributeBandScale(key),
                         y,
-                        this.axisArea.variableBandScale.bandwidth(),
+                        this.axisArea.attributeBandScale.bandwidth(),
                         this.sampleScale.bandwidth());
                 });
         });
@@ -183,52 +183,52 @@ export default class SampleTrack extends WebGlTrack {
     }
 
     /**
-     * Builds scales for sample-specific variables, e.g. clinical data
+     * Builds scales for sample-specific attributes, e.g. clinical data
      */
-    prepareSampleVariables() {
-        // Find all variables
-        const variableNames = this.samples
-            .flatMap(sample => Object.keys(sample.data))
+    prepareSampleAttributes() {
+        // Find all attributes
+        const attributeNames = this.samples
+            .flatMap(sample => Object.keys(sample.attributes))
             .reduce((set, key) => set.add(key), new Set());
         
-        const inferNumerality = variableName => this.samples
-            .map(sample => sample.data[variableName])
+        const inferNumerality = attributeName => this.samples
+            .map(sample => sample.attributes[attributeName])
             .filter(value => typeof value == "string")
             .filter(value => value !== "")
             .every(value => /^[\+\-]?\d+(\.\d*)?$/.test(value));
 
-        this.axisArea.variableScales = new Map();
+        this.axisArea.attributeScales = new Map();
 
         // TODO: Make all of this configurable
 
-        variableNames.forEach(variableName => {
-            if (inferNumerality(variableName)) {
-                const accessor = sample => sample.data[variableName];
+        attributeNames.forEach(attributeName => {
+            if (inferNumerality(attributeName)) {
+                const accessor = sample => sample.attributes[attributeName];
 
                 // Convert types
                 for (let sample of this.samples.values()) {
-                    sample.data[variableName] = parseFloat(accessor(sample));
+                    sample.attributes[attributeName] = parseFloat(accessor(sample));
                 }
 
                 const extent = d3.extent(this.samples, accessor);
-                this.axisArea.variableScales.set(
-                    variableName,
+                this.axisArea.attributeScales.set(
+                    attributeName,
                     d3.scaleSequential(d3.interpolateInferno)
                         .domain(extent));
                 
                 // TODO: Diverging scale if domain extends to negative values
 
             } else {
-                this.axisArea.variableScales.set(variableName, d3.scaleOrdinal(d3.schemeCategory10));
+                this.axisArea.attributeScales.set(attributeName, d3.scaleOrdinal(d3.schemeCategory10));
             }
         });
 
 
-        // Map a variable name to a horizontal coordinate
-        this.axisArea.variableBandScale = d3.scaleBand()
-            .domain(Array.from(variableNames.keys()))
+        // Map a attribute name to a horizontal coordinate
+        this.axisArea.attributeBandScale = d3.scaleBand()
+            .domain(Array.from(attributeNames.keys()))
             .paddingInner(0.2)
             // TODO: Move to renderLabels()
-            .rangeRound([0, this.axisArea.variableWidth * variableNames.size]);
+            .rangeRound([0, this.axisArea.attributeWidth * attributeNames.size]);
     }
 }
