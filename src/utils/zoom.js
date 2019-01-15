@@ -1,14 +1,9 @@
-/**
- * Partially based on d3-zoom:
- * https://github.com/d3/d3-zoom/ Copyright 2010-2016 Mike Bostock
- */
 
 import * as d3 from 'd3';
 
 export class Zoom {
     constructor(listener) {
         this.scaleExtent = [0, Infinity];
-        this.wheelMultiplier = -(event.deltaMode ? 120 : 1);
         this.listener = listener;
         this.transform = new Transform();
 
@@ -30,8 +25,6 @@ export class Zoom {
     }
 
     zoomTo(transform) {
-        console.log("zoomToL");
-        console.log(transform);
         this.transform = transform;
         this.listener(this.transform);
     }
@@ -52,22 +45,24 @@ export class Zoom {
 
         if (event.type == "dragstart") {
             return false;
-        }
-        if (event.type == "wheel") {
+
+        } else if (event.type == "wheel") {
             event.stopPropagation();
             event.preventDefault();
+
+            const wheelMultiplier = -(event.deltaMode ? 120 : 1);
 
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
                 this.transform = constrainX(new Transform(
                     this.transform.k,
-                    this.transform.x + event.deltaX * this.wheelMultiplier));
+                    this.transform.x + event.deltaX * wheelMultiplier));
 
             } else {
                 // https://medium.com/@auchenberg/detecting-multi-touch-trackpad-gestures-in-javascript-a2505babb10e
                 // TODO: Safari gestures
                 const divisor  = event.ctrlKey ? 100 : 500;
 
-                let kFactor = Math.pow(2, event.deltaY * this.wheelMultiplier / divisor);
+                let kFactor = Math.pow(2, event.deltaY * wheelMultiplier / divisor);
 
                 const k = Math.max(Math.min(this.transform.k * kFactor, this.scaleExtent[1]), this.scaleExtent[0]);
 
@@ -81,12 +76,12 @@ export class Zoom {
             this.listener(this.transform);
 
         } else if (event.type == "mousedown" && event.button == 0) {
-            const referenceTransform = this.transform.x;
+            const referenceTransform = this.transform;
 
             event.preventDefault();
 
             const onMousemove = function(moveEvent) {
-                this.transform = constrainX(new Transform(this.transform.k, referenceTransform + moveEvent.clientX - event.clientX));
+                this.transform = constrainX(new Transform(this.transform.k, referenceTransform.x + moveEvent.clientX - event.clientX));
                 this.listener(this.transform);
             }.bind(this);
 
@@ -102,6 +97,10 @@ export class Zoom {
     }
 }
 
+/**
+ * Partially based on d3-zoom:
+ * https://github.com/d3/d3-zoom/ Copyright 2010-2016 Mike Bostock
+ */
 export class Transform {
     constructor(k, x) {
         this.k = k || 1;
