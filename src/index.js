@@ -14,66 +14,201 @@ import { GeneTrack, parseCompressedRefseqGeneTsv } from "./tracks/geneTrack";
 
 "use strict";
 
-function createContainer() {
-    const body = document.body;
-    body.style.margin = 0;
-    body.style.padding = 0;
+const configuration = {
+    genome: "hg38",
+    tracks: [
+        {
+            type: "SampleTrack",
+            samples: "private/ParpiCL_samples.csv",
+            layers: [
+                {
+                    type: "CnvLoh",
+                    data: "private/ParpiCL_cnv_ascatAll.csv",
+                    spec: {
+                        sample: "Sample",
+                        chrom: "Chromosome",
+                        start: "Start",
+                        end: "End",
+                        segMean: "Segment_Mean",
+                        bafMean: "meanBaf",
 
-    const padding = "10px";
-    const container = document.createElement("div");
-    container.style.position = "absolute";
-    container.style.top = padding;
-    container.style.right = padding;
-    container.style.bottom = padding;
-    container.style.left = padding;
-    body.insertBefore(container, body.firstChild);
+                        logSeg: false
+                    }
+                }
+            ]
+        }
+    ]
+};
 
-    return container;
-}
 
-function splitSampleName(name) {
-    const match = name.match(/^((M|H|OC)[0-9]+)_([a-z]+)?((?:[A-Z][a-z]*)+?)(L|R)?([0-9x]+)?(?:_(CL)([0-9]+?))?(?:_(.*))?$/);
-    return {
-        phase: match[3],
-        tissue: match[4]
+initWithConfiguration(configuration);
+
+async function createSampleTrack(cm, sampleTrackConf) {
+    let samples;
+
+    if (sampleTrackConf.samples) {
+        samples = processSamples(await fetch(sampleTrackConf.samples).then(res => res.text()));
+
+    } else {
+        // TODO: infer from data
+        throw("TODO");
+    }
+
+    const layers = [];
+    
+    for (let layerConf of sampleTrackConf.layers) {
+        // TODO: Modularize
+        if (layerConf.type == "CnvLoh") {
+            const segmentations = d3.tsvParse(
+                await fetch(layerConf.data).then(res => res.text())
+            )
+
+            layers.push(...createCnvLohLayers(cm, segmentations, layerConf.spec));
+
+        } else {
+            throw `Unsupported layer type: ${layerConf.type}`;
+        }
     };
+
+    return new SampleTrack(samples, layers);
 }
 
+
+async function initWithConfiguration(conf) {
+    const cytobands = parseUcscCytobands(
+        await fetch(`cytoBand.${conf.genome}.txt`).then(res => res.text()));
+
+    const genome = new Genome("hg38", { cytobands });
+    const cm = chromMapper(genome.chromSizes);
+
+    const genes = parseCompressedRefseqGeneTsv(
+        cm,
+        await fetch(`private/refSeq_genes_scored.${conf.genome}.compressed.txt`).then(res => res.text()));
+
+    const tracks = [];
+    for (let trackConf of conf.tracks) {
+        // TODO: Modularize
+        if (trackConf.type == "SampleTrack") {
+            // TODO: Here's a dependency to cm. Have to rethink this a bit...
+            tracks.push(await createSampleTrack(cm, trackConf));
+
+        } else {
+            throw `Unsupported track type: ${trackConf.type}`;
+        }
+    }
+
+    const app = new GenomeSpyApp(genome, [
+        new CytobandTrack(),
+        ...tracks,
+        new AxisTrack(),
+        new GeneTrack(genes)
+    ]);
+}
+
+
+function extractAttributes(row) {
+    const attributes = Object.assign({}, row);
+    delete attributes.sample;
+    delete attributes.displayName;
+    return attributes;
+}
+
+function processSamples(sampleTsv) {
+    return d3.tsvParse(sampleTsv)
+        .map(row => ({
+            id: row.sample,
+            displayName: row.displayName || row.sample,
+            attributes: extractAttributes(row)
+        }));
+}
+
+
+function createCnvLohLayers(cm, segmentations, spec) {
+    const bySample = d3.nest()
+        .key(d => d[spec.sample])
+        .entries(segmentations);
+
+    const colorScale = d3.scaleLinear()
+        .domain([-3, 0, 1.5]) // TODO: Infer from data
+        .range(["#0050f8", "#f6f6f6", "#ff3000"]);
+
+    const transform = spec.logSeg ? (x => x) : Math.log2;
+
+    const extractInterval = segment => cm.segmentToContinuous(
+        segment[spec.chrom],
+        parseInt(segment[spec.start]),
+        parseInt(segment[spec.end]));
+
+    const baf2loh = baf => (Math.abs(baf) - 0.5) * 2;
+
+    // TODO: Use https://github.com/d3/d3-array#group
+    const segBySample = new Map(bySample.map(entry => [
+        entry.key,
+        entry.values.map(segment => ({
+            interval: extractInterval(segment),
+            color: d3.color(colorScale(transform(parseFloat(segment[spec.segMean]))))
+        }))]
+    ));
+
+    const lohBySample = new Map(bySample.map(entry => [
+        entry.key,
+        entry.values.map(segment => ({
+            interval: extractInterval(segment),
+            paddingTop: 1.0 - baf2loh(parseFloat(segment[spec.bafMean])),
+            color: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.6).rgb()
+        }))]
+    ));
+
+    return [
+        new SegmentLayer(segBySample),
+        new SegmentLayer(lohBySample)
+    ];
+}
+
+
+/*
 Promise.all([
     get("cytoBand.hg38.txt"),
-    get("private/segsAll.csv"),
-    get("private/refSeq_genes_scored.hg38.compressed.txt")
+    get("private/refSeq_genes_scored.hg38.compressed.txt"),
+    //get("private/segsAll.csv"),
+    get("private/ParpiCL_cnv_ascatAll.csv"),
+    get("private/ParpiCL_samples.csv")
 ])
     .then(files => {
         const cytobands = parseUcscCytobands(files[0]);
-        const segmentations = d3.tsvParse(files[1]);
-
-        //      const cytobands = parseUcscCytobands(rawCytobands);
-        //      const segmentations = d3.tsvParse(rawSegments);
 
         const genome = new Genome("hg38", { cytobands });
         const cm = chromMapper(genome.chromSizes);
 
-        const genes = parseCompressedRefseqGeneTsv(cm, files[2]);
+        const genes = parseCompressedRefseqGeneTsv(cm, files[1]);
 
-        const samples = Array.from(new Set(segmentations.map(s => s.sample)))
-            .map(s => ({
-                id: s,
-                displayName: s, // label
-                data: splitSampleName(s) // sample-specific variables
+
+
+        const samples = d3.tsvParse(files[3])
+            .map(row => ({
+                id: row.sample,
+                displayName: row.displayName || row.sample,
+                attributes: extractAttributes(row)
             }));
 
-        // ---- TODO: recipe ---- ///
+        const spec = {
+            sample: "Sample",
+            chrom: "Chromosome",
+            start: "Start",
+            end: "End",
+            segMean: "Segment_Mean",
+            bafMean: "meanBaf",
 
-        const colorScale = d3.scaleLinear()
-            .domain([-3, 0, 1.5])
-            .range(["#0040f8", "#f6f6f6", "#ff2800"]);
+            logSeg: false
+        };
 
-        const bySample = d3.nest()
-            .key(d => d.sample)
-            .entries(segmentations);
 
-        // TODO: Use https://github.com/d3/d3-array#group
+
+    });
+    */
+
+
+        /*
         const segBySample = new Map(bySample.map(entry => [
             entry.key,
             entry.values.map(segment => ({
@@ -90,25 +225,4 @@ Promise.all([
                 color: d3.color(colorScale(+segment.segMean)).darker(0.6).rgb()
             }))]
         ));
-
-        // ---- TODO: recipe ---- ///
-
-        const segRecipe = {};
-        const pointData = [];
-
-        const app = new GenomeSpyApp(genome, [
-            new CytobandTrack(),
-            new SampleTrack(samples, [
-                new SegmentLayer(segBySample),
-                new SegmentLayer(lohBySample)
-                //new SegmentLayer(segmentations, segRecipe),
-                //new SegmentLayer(segmentations, lohRecipe),
-                //new PointLayer(pointData)
-            ]),
-            new AxisTrack(),
-            new GeneTrack(genes)
-        ]);
-
-
-    });
-
+        */
