@@ -60,10 +60,11 @@ export default class GenomeSpy {
     }
 
     zoomTo(interval) {
-        const x = this.xScale;
-		const transform = new Transform() 
-			.scale(this.layout.viewport.width() / (x(interval.upper) - x(interval.lower)))
-			.translate(-x(interval.lower));
+        return new Promise((resolve, reject) => {
+            const x = this.xScale;
+            const transform = new Transform()
+                .scale(this.layout.viewport.width() / (x(interval.upper) - x(interval.lower)))
+                .translate(-x(interval.lower));
 
             /*
 		d3.select(this.viewportOverlay).transition()
@@ -73,7 +74,10 @@ export default class GenomeSpy {
             .call(this.zoom.transform, transform);
             */
 
-        this.zoom.zoomTo(transform);
+            // TODO: Transition
+            this.zoom.zoomTo(transform);
+            resolve();
+        });
 
     }
 

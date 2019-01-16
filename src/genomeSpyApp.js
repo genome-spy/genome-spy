@@ -45,25 +45,40 @@ export default class GenomeSpyApp {
 
         this.gif = new GenomeIntervalFormat(this.genomeSpy.chromMapper);
 
-        const searchInput = elem("search-input");
+        this.searchInput = elem("search-input");
 
         this.genomeSpy.on("zoom", domain => {
-            searchInput.value = this.gif.format(domain.intersect(this.genomeSpy.chromMapper.extent()));
+            this.searchInput.value = this.gif.format(domain.intersect(this.genomeSpy.chromMapper.extent()));
         });
 
-        searchInput.addEventListener("keypress", event => {
+        this.searchInput.addEventListener("focus", event => event.target.select());
+
+        this.searchInput.addEventListener("keypress", event => {
             if (event.keyCode == 13) {
                 event.preventDefault();
                 //rangeSearchHelp.style("display", "none");
-                this.search(searchInput.value);
+                this.search(this.searchInput.value)
+                    .then(() => {
+                        this.searchInput.focus();
+                        this.searchInput.select();
+                    })
+                    .catch(reason => alert(reason));
             }
         });
 
         this.genomeSpy.launch();
         
-        searchInput.value = this.gif.format(this.genomeSpy.getVisibleInterval());
+        this.searchInput.value = this.gif.format(this.genomeSpy.getVisibleInterval());
     }
 
+    /**
+     * Does a search and zooms into a matching interval.
+     * Returns a promise that resolves when the search and transition to the
+     * matching interval is complete.
+     * 
+     * @param {string} string the search string
+     * @returns A promise
+     */
     search(string) {
         // TODO: Consider moving this function to GenomeSpy
 
@@ -76,12 +91,15 @@ export default class GenomeSpyApp {
             .map(t => t.search(string))
             .find(i => i);
 
-		if (interval) {
-            this.genomeSpy.zoomTo(interval);
-			return;
-		}
+        return new Promise((resolve, reject) => {
+            if (interval) {
+                this.genomeSpy.zoomTo(interval)
+                    .then(() => resolve());
 
-		alert(`No matches found for "${string}"`);
+            } else {
+                reject(`No matches found for "${string}"`);
+            }
+        });
     }
 
 }
