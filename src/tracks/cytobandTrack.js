@@ -21,6 +21,13 @@ const giemsaScale = d3.scaleOrdinal()
 	})));
 
 
+const defaultConfig = {
+	fontSize: 11,
+	fontFamily: "sans-serif",
+
+	labelMargin: 3
+};  
+
 function mapUcscCytobands(chromMapper, cytobands) {
     return cytobands.map(band => ({
         interval: chromMapper.segmentToContinuous(
@@ -44,14 +51,14 @@ function computePaddings(band) {
 	return {};
 }
 
-const labelMargin = 3; // px
-
 /**
  * A track that displays cytobands
  */
 export default class CytobandTrack extends WebGlTrack {
     constructor() {
 		super();
+
+		this.config = defaultConfig;
     }
 
     initialize({genomeSpy, trackContainer}) {
@@ -62,7 +69,7 @@ export default class CytobandTrack extends WebGlTrack {
         this.mappedCytobands = mapUcscCytobands(genomeSpy.chromMapper, genomeSpy.genome.cytobands);
 
 		this.trackContainer.className = "cytoband-track";
-        this.trackContainer.style = "height: 20px; margin-bottom: 5px";
+        this.trackContainer.style = "height: 21px";
 
         this.glCanvas = this.createCanvas();
         const gl = createGLContext({ canvas: this.glCanvas });
@@ -97,6 +104,7 @@ export default class CytobandTrack extends WebGlTrack {
 		this.bandLabelCanvas = this.createCanvas();
 
 		const ctx = this.bandLabelCanvas.getContext("2d");
+        ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
         this._bandLabelWidths = this.mappedCytobands.map(band => ctx.measureText(band.name).width);
 
 
@@ -171,6 +179,7 @@ export default class CytobandTrack extends WebGlTrack {
 		const scale = this.genomeSpy.getZoomedScale();
 		const viewportInterval = Interval.fromArray(scale.range()); // TODO: Provide this from somewhere
 		const ctx = this.bandLabelCanvas.getContext("2d");
+        ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
 		ctx.textBaseline = "middle";
 		ctx.textAlign = "center";
         ctx.clearRect(0, 0, this.bandLabelCanvas.width, this.bandLabelCanvas.height);
@@ -184,12 +193,12 @@ export default class CytobandTrack extends WebGlTrack {
 			const labelWidth = this._bandLabelWidths[i];
 
 			if (scaledInt.connectedWith(viewportInterval) &&
-				scaledInt.width() > labelWidth + labelMargin * 2)
+				scaledInt.width() > labelWidth + this.config.labelMargin * 2)
 			{
 				let x = scaledInt.centre();
 				ctx.fillStyle = giemsaScale(band.gieStain).foreground;
 
-				const threshold = labelWidth / 2 + labelMargin;
+				const threshold = labelWidth / 2 + this.config.labelMargin;
 
 				if (x < viewportInterval.lower + threshold) {
 					// leftmost

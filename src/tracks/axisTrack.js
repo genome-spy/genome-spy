@@ -2,19 +2,31 @@ import * as d3 from "d3";
 import Track from './track';
 import Interval from '../utils/interval';
 
+const defaultConfig = {
+    fontSize: 12,
+    fontFamily: "sans-serif",
+
+    chromColor: "black",
+    locusColor: "#a8a8a8"
+};
+
 /**
  * A track that displays ticks
  */
 export default class AxisTrack extends Track {
     constructor() {
         super();
+
+        this.config = defaultConfig;
     }
 
     initialize({genomeSpy, trackContainer}) {
         super.initialize({genomeSpy, trackContainer});
 
+        this.height = Math.ceil(this.config.fontSize * 1.5);
+
         this.trackContainer.className = "axis-track";
-        this.trackContainer.style.height = "17px";
+        this.trackContainer.style.height = `${this.height}px`;
 
         this.tickCanvas = this.createCanvas();
 
@@ -30,14 +42,8 @@ export default class AxisTrack extends Track {
         const cm = genomeSpy.chromMapper;
         this.chromosomes = cm.chromosomes();
 
-        // TODO: Configurable
-        this.chromColor = d3.color("black");
-        this.locusColor = d3.color("#a8a8a8");
-        this.fontSize = 12;
-        this.font = "sans-serif";
-
         const ctx = this.tickCanvas.getContext("2d");
-        ctx.font = `${this.fontSize}px ${this.font}`;
+        ctx.font = `${this.config.fontSize}px ${this.fontFamily}`;
 
         this._chromLabelWidths = this.chromosomes.map(chrom => ctx.measureText(chrom.name).width);
         this._maxLocusLabelWidth = ctx.measureText("123,000,000").width;
@@ -74,7 +80,7 @@ export default class AxisTrack extends Track {
 
         const y = Math.round(this.tickCanvas.height * 1);
         ctx.textBaseline = "bottom";
-        ctx.font = `${this.fontSize}px ${this.font}`;
+        ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
 
         const renderLocusTicks = (interval, visibleInterval = null, gradientOffset = 0) => {
             // Need to accommodate least n ticks before any are shown
@@ -102,21 +108,21 @@ export default class AxisTrack extends Track {
             if (visibleInterval == null) return;
 
             if (gradientOffset > 0) {
-                const withOpacity = (color, opacity) => {
-                    const newColor = d3.rgb(color);
+                const withOpacity = opacity => {
+                    const newColor = d3.rgb(d3.color(this.config.locusColor));
                     newColor.opacity = opacity;
                     return newColor;
                 };
 
                 // TODO: Performance optimization: Only use gradient for the leftmost locus tick
                 const locusTickGradient = ctx.createLinearGradient(gradientOffset, 0, gradientOffset + 30, 0);
-                locusTickGradient.addColorStop(0,   withOpacity(this.locusColor, 0));
-                locusTickGradient.addColorStop(0.5, withOpacity(this.locusColor, 0.3));
-                locusTickGradient.addColorStop(1,   withOpacity(this.locusColor, 1));
+                locusTickGradient.addColorStop(0,   withOpacity(0));
+                locusTickGradient.addColorStop(0.5, withOpacity(0.3));
+                locusTickGradient.addColorStop(1,   withOpacity(1));
                 ctx.fillStyle = locusTickGradient; 
 
             } else {
-                ctx.fillStyle = this.locusColor;
+                ctx.fillStyle = this.config.locusColor;
             }
 
             ctx.textAlign = "center";
@@ -140,7 +146,7 @@ export default class AxisTrack extends Track {
             const screenInterval = chrom.continuousInterval.transform(scale); // TODO: Consider rounding. Would be crisper but less exact
             
             if (viewportInterval.contains(screenInterval.lower)) {
-                ctx.fillStyle = this.chromColor;
+                ctx.fillStyle = this.config.chromColor;
                 ctx.fillRect(screenInterval.lower, 0, 1, this.tickCanvas.height / 1);
 
                 if (screenInterval.width() > this._chromLabelWidths[i] + chromLabelMarginTotal) {
@@ -161,7 +167,7 @@ export default class AxisTrack extends Track {
 
             const x = Math.min(chromInterval.upper - labelWidth  - chromLabelMarginRight, chromLabelMarginLeft);
 
-            ctx.fillStyle = this.chromColor;
+            ctx.fillStyle = this.config.chromColor;
             ctx.textAlign = "left";
             ctx.fillText(chrom.name, x, y);
 

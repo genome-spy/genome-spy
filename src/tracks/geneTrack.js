@@ -17,15 +17,27 @@ import rectangleFragmentShader from '../gl/rectangleFragment.glsl';
 import IntervalCollection from "../utils/intervalCollection";
 
 
-// When does something become visible.
-// The values are the width of the visible domain in base pairs
-const transcriptBreakpoint = 60 * 1000000; // TODO: Should depend on viewport size
+const defaultConfig = {
+	geneFullVisibilityThreshold: 30 * 1000000, // In base pairs
+	geneFadeGradientFactor: 2.2,
+
+	maxSymbolsToShow: 70,
+
+	lanes: 3,
+	laneHeight: 15, // in pixels
+	laneSpacing: 10,
+
+	fontSize: 11, // in pixels
+	fontFamily: "sans-serif"
+};
 
 
 export class GeneTrack extends WebGlTrack {
     constructor(genes) {
 		super();
 		
+		this.config = defaultConfig;
+
 		this.genes = genes;
 		this.geneClusters = detectGeneClusters(genes);
 
@@ -37,19 +49,14 @@ export class GeneTrack extends WebGlTrack {
 		// TODO: Replace 40 with something sensible
 		/** @type {IntervalCollection[]} keeps track of gene symbols on the screen */
 		this.symbolsOnLanes = [...Array(40).keys()].map(i => new IntervalCollection(symbol => symbol.screenInterval));
-
-		// TODO: Configuration object
-		this.laneHeight = 15;
-		this.laneSpacing = 10;
-
     }
 
     initialize({genomeSpy, trackContainer}) {
         super.initialize({genomeSpy, trackContainer});
 
         this.trackContainer.className = "gene-track";
-		this.trackContainer.style.height = (3 * (this.laneHeight + this.laneSpacing)) + "px";
-		this.trackContainer.style.marginTop = "10px";
+		this.trackContainer.style.height = (this.config.lanes * (this.config.laneHeight + this.config.laneSpacing)) + "px";
+		this.trackContainer.style.marginTop = `${this.config.laneSpacing}px`;
 
 		this.glCanvas = this.createCanvas();
 
@@ -155,8 +162,8 @@ export class GeneTrack extends WebGlTrack {
 				exonsToVertices(
 					this.exonProgram,
 					cluster.genes,
-					this.laneHeight,
-					this.laneSpacing
+					this.config.laneHeight,
+					this.config.laneSpacing
 				));
 
 			this.geneVerticeMap.set(
@@ -164,8 +171,8 @@ export class GeneTrack extends WebGlTrack {
 				genesToVertices(
 					this.geneProgram,
 					cluster.genes,
-					this.laneHeight,
-					this.laneSpacing
+					this.config.laneHeight,
+					this.config.laneSpacing
 				));
 		});
 
@@ -197,16 +204,18 @@ export class GeneTrack extends WebGlTrack {
 		const gl = this.gl;
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
-		if (this.getViewportDomain().width() < transcriptBreakpoint) {
+		// TODO: Recycle
+		const bodyOpacity = this.glCanvas.style.opacity = d3.scaleLinear()
+			.range([0, 1])
+			.domain([
+				this.config.geneFullVisibilityThreshold * this.config.geneFadeGradientFactor,
+				this.config.geneFullVisibilityThreshold
+			])
+			.clamp(true)(this.getViewportDomain().width());
+
+		if (bodyOpacity) {
 			this.updateVisibleClusters();
 			this.renderGenes();
-
-			this.glCanvas.style.opacity = d3.scaleLinear()
-				.range([0, 1])
-				.domain([transcriptBreakpoint, transcriptBreakpoint * 0.5])
-				.clamp(true)(this.getViewportDomain().width());
-		} else {
-			//this.renderClusters();
 		}
 
 		this.renderSymbols();
@@ -239,13 +248,13 @@ export class GeneTrack extends WebGlTrack {
 
 		ctx.lineJoin = "round";
 
-		const yOffset = this.laneHeight / 2 + 4;
+		const yOffset = this.config.laneHeight / 2 + 4;
 
 		ctx.clearRect(0, 0, this.symbolCanvas.width, this.symbolCanvas.height);
 
 		let gene;
 		let i = 0;
-		while (i++ < 70 && (gene = priorizer.pop())) { // TODO: Configurable limit
+		while (i++ < this.config.maxSymbolsToShow && (gene = priorizer.pop())) { // TODO: Configurable limit
 			const x = scale(gene.interval.centre());
 
 			const text = gene.symbol;
@@ -262,12 +271,12 @@ export class GeneTrack extends WebGlTrack {
 				continue;
 			}
 
-			const y = gene.lane * (this.laneHeight + this.laneSpacing) + yOffset;
+			const y = gene.lane * (this.config.laneHeight + this.config.laneSpacing) + yOffset;
 
 			ctx.shadowColor = "white";
 			ctx.shadowBlur = 2;
 
-			ctx.font = "7px sans-serif";
+			ctx.font = `${this.config.fontSize * 0.7}px ${this.config.fontFamily}`;
 			if (gene.strand == '-') {
  				ctx.fillText("\u25c0", x - width / 2 - 4, y + 2);
 
@@ -275,7 +284,7 @@ export class GeneTrack extends WebGlTrack {
  				ctx.fillText("\u25b6", x + width / 2 + 4, y + 2);
 			}
 
-			ctx.font = "10px sans-serif";
+			ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
 
 			ctx.strokeText(text, x, y);
 
@@ -320,7 +329,7 @@ export class GeneTrack extends WebGlTrack {
 				{
 					uniforms: Object.assign(
 						uniforms,
-						{ uTMatrix: uTMatrix, uResolution: this.laneHeight }
+						{ uTMatrix: uTMatrix, uResolution: this.config.laneHeight }
 					)
 				},
 				this.geneVerticeMap.get(cluster.id)
@@ -355,6 +364,8 @@ export class GeneTrack extends WebGlTrack {
 
 
 function createExonIntervals(gene) {
+	
+	// TODO: Consider doing this in a web worker to prevent transient drop in FPS
 
 	// These implementations should be benchmarked...
 

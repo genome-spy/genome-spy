@@ -6,6 +6,19 @@ import {
 import * as d3 from 'd3';
 import WebGlTrack from './webGlTrack';
 
+const defaultConfig = {
+    paddingInner: 0.2, // Relative to sample height
+    paddingOuter: 0.2,
+
+    attributeWidth: 12, // in pixels
+    attributePaddingInner: 0.05,
+
+    fontSize: 12,
+    fontFamily: "sans-serif",
+
+    horizontalSpacing: 10 // TODO: Find a better place
+}
+
 /**
  * A track that displays one or more samples as sub-tracks.
  */
@@ -13,6 +26,10 @@ export default class SampleTrack extends WebGlTrack {
 
     constructor(samples, layers) {
         super();
+
+        this.config = defaultConfig;
+
+        this.axisArea = {};
 
         /*
          * An array of sample objects. Their order stays constant.
@@ -28,20 +45,11 @@ export default class SampleTrack extends WebGlTrack {
 
         this.layers = layers;
 
-        this.axisArea = {
-            /** Width of an individual sample attribute */
-            attributeWidth: 12,
-            labelFontSize: 11, // TODO: Find a better place
-            labelFont: "sans-serif"
-        };
-
-        this.margin = 10; // TODO: Find a better place
-
         this.prepareSampleAttributes();
 
         // TODO: Consider a setSamples() method
         const ctx = document.createElement("canvas").getContext("2d");
-        ctx.font = `${this.labelFontSize}px ${this.labelFont}`;
+        ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
         this.axisArea.maxLabelWidth = this.samples
             .map(sample => ctx.measureText(sample.displayName).width)
             .reduce((a, b) => Math.max(a, b), 0);
@@ -56,9 +64,9 @@ export default class SampleTrack extends WebGlTrack {
      */
     getMinAxisWidth() {
         return this.axisArea.maxLabelWidth +
-            this.margin +
-            this.axisArea.attributeScales.size * this.axisArea.attributeWidth +
-            this.margin;
+            this.config.horizontalSpacing +
+            this.axisArea.attributeScales.size * this.config.attributeWidth +
+            this.config.horizontalSpacing;
     }
 
     resizeCanvases(layout) {
@@ -87,8 +95,8 @@ export default class SampleTrack extends WebGlTrack {
 
         this.sampleScale = d3.scaleBand()
             .domain(this.samples.map(sample => sample.id))
-            .align(0)
-            .paddingInner(0.20); // TODO: Configurable
+            .paddingInner(this.config.paddingInner)
+            .paddingOuter(this.config.paddingOuter);
 
         this.trackContainer.className = "sample-track";
 
@@ -131,10 +139,10 @@ export default class SampleTrack extends WebGlTrack {
         const ctx = this.labelCanvas.getContext("2d");
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
-        ctx.font = `${this.labelFontSize}px ${this.labelFont}`;
+        ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
 
-        const offset = Math.floor((this.sampleScale.bandwidth() + this.axisArea.labelFontSize) / 2);
-        const attributeOffset = Math.ceil(this.axisArea.maxLabelWidth + this.margin);
+        const offset = Math.floor((this.sampleScale.bandwidth() + this.config.fontSize) / 2);
+        const attributeOffset = Math.ceil(this.axisArea.maxLabelWidth + this.config.horizontalSpacing);
 
         this.samples.forEach(sample => {
             const y = this.sampleScale(sample.id);
@@ -227,8 +235,8 @@ export default class SampleTrack extends WebGlTrack {
         // Map a attribute name to a horizontal coordinate
         this.axisArea.attributeBandScale = d3.scaleBand()
             .domain(Array.from(attributeNames.keys()))
-            .paddingInner(0.2)
+            .paddingInner(this.config.attributePaddingInner)
             // TODO: Move to renderLabels()
-            .rangeRound([0, this.axisArea.attributeWidth * attributeNames.size]);
+            .range([0, this.config.attributeWidth * attributeNames.size]);
     }
 }
