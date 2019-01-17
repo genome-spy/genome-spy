@@ -17,7 +17,8 @@ const giemsaScale = d3.scaleOrdinal()
 		"#f0f0f0", "#e0e0e0", "#d0d0d0", "#c0c0c0", "#a0a0a0", "#cc4444", "#338833", "#000000"
 	].map(str => ({
 		background: d3.color(str),
-		foreground: d3.color(d3.hsl(str).l < 0.5 ? "#ddd" : "black")
+		foreground: d3.color(d3.hsl(str).l < 0.5 ? "#ddd" : "black"),
+		shadow: d3.color(d3.hsl(str).l < 0.5 ? "transparent" : "rgba(255, 255, 255, 0.35)")
 	})));
 
 
@@ -171,6 +172,11 @@ export default class CytobandTrack extends WebGlTrack {
         ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
 		ctx.textBaseline = "middle";
 		ctx.textAlign = "center";
+
+		const r = window.devicePixelRatio || 1;
+		ctx.shadowOffsetY = 1.0 * r;
+		ctx.shadowBlur = 0.7 * r;
+
 		ctx.clearRect(0, 0, this.bandLabelCanvas.clientWidth, this.bandLabelCanvas.clientHeight);
 
 		const y = this.bandLabelCanvas.clientHeight / 2;
@@ -186,7 +192,10 @@ export default class CytobandTrack extends WebGlTrack {
 				scaledInt.width() > labelWidth + this.config.labelMargin * 2)
 			{
 				let x = scaledInt.centre();
-				ctx.fillStyle = giemsaScale(band.gieStain).foreground;
+
+				const colors = giemsaScale(band.gieStain);
+				ctx.fillStyle = colors.foreground;
+				ctx.shadowColor = colors.shadow;
 
 				const threshold = labelWidth / 2 + this.config.labelMargin;
 
