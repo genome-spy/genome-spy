@@ -229,8 +229,8 @@ export class GeneTrack extends WebGlTrack {
 		ctx.textBaseline = "top";
 		ctx.textAlign = "center";
 
-		ctx.strokeStyle = "white";
-		ctx.lineWidth = 2;
+		ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+		ctx.lineWidth = 3;
 
 		ctx.lineJoin = "round";
 
@@ -259,9 +259,6 @@ export class GeneTrack extends WebGlTrack {
 
 			const y = gene.lane * (this.config.laneHeight + this.config.laneSpacing) + yOffset;
 
-			ctx.shadowColor = "white";
-			ctx.shadowBlur = 2;
-
 			ctx.font = `${this.config.fontSize * 0.7}px ${this.config.fontFamily}`;
 			if (gene.strand == '-') {
  				ctx.fillText("\u25c0", x - width / 2 - 4, y + 2);
@@ -273,8 +270,6 @@ export class GeneTrack extends WebGlTrack {
 			ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
 
 			ctx.strokeText(text, x, y);
-
-			ctx.shadowColor = "transparent";
 			ctx.fillText(text, x, y);
 		}
 		

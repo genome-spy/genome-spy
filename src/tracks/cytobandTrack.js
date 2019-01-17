@@ -18,7 +18,7 @@ const giemsaScale = d3.scaleOrdinal()
 	].map(str => ({
 		background: d3.color(str),
 		foreground: d3.color(d3.hsl(str).l < 0.5 ? "#ddd" : "black"),
-		shadow: d3.color(d3.hsl(str).l < 0.5 ? "transparent" : "rgba(255, 255, 255, 0.35)")
+		shadow: d3.color(d3.hsl(str).l < 0.5 ? "transparent" : "rgba(255, 255, 255, 0.25)")
 	})));
 
 
@@ -175,7 +175,6 @@ export default class CytobandTrack extends WebGlTrack {
 
 		const r = window.devicePixelRatio || 1;
 		ctx.shadowOffsetY = 1.0 * r;
-		ctx.shadowBlur = 0.7 * r;
 
 		ctx.clearRect(0, 0, this.bandLabelCanvas.clientWidth, this.bandLabelCanvas.clientHeight);
 
