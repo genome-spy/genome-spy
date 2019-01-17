@@ -93,7 +93,8 @@ export default class CytobandTrack extends WebGlTrack {
 			this.mappedCytobands.map(band => Object.assign(
 				{
 					interval: band.interval,
-					color: giemsaScale(band.gieStain).background
+					colorTop: giemsaScale(band.gieStain).background.brighter(0.1),
+					colorBottom: giemsaScale(band.gieStain).background.darker(0.3),
 				},
 				computePaddings(band)
 			))
@@ -103,7 +104,7 @@ export default class CytobandTrack extends WebGlTrack {
 		// TODO: Create textures for labels and render everything with WebGL
 		this.bandLabelCanvas = this.createCanvas();
 
-		const ctx = this.bandLabelCanvas.getContext("2d");
+		const ctx = this.get2d(this.bandLabelCanvas);
         ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
         this._bandLabelWidths = this.mappedCytobands.map(band => ctx.measureText(band.name).width);
 
@@ -122,20 +123,8 @@ export default class CytobandTrack extends WebGlTrack {
 
     resizeCanvases(layout) {
         this.adjustCanvas(this.bandLabelCanvas, layout.viewport);
-        this.adjustCanvas(this.glCanvas, layout.viewport);
-
-        resizeGLContext(this.gl, { useDevicePixels: false });
-        this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
-
-		// TODO: Maybe could be provided by some sort of abstraction
-        this.projection = Object.freeze(new Matrix4().ortho({
-            left: 0,
-            right: this.gl.drawingBufferWidth,
-            bottom: this.gl.drawingBufferHeight,
-            top: 0,
-            near: 0,
-            far: 500
-        }));
+		this.adjustCanvas(this.glCanvas, layout.viewport);
+		this.adjustGl(this.gl);
 	}
 
 	
@@ -154,8 +143,8 @@ export default class CytobandTrack extends WebGlTrack {
 		const view = new Matrix4()
 			//.translate([0, 0, 0])
 			.scale([
-				gl.drawingBufferWidth,
-				gl.drawingBufferHeight,
+				this.gl.canvas.clientWidth,
+				this.gl.canvas.clientHeight,
 				1
 			]);
 
@@ -178,12 +167,13 @@ export default class CytobandTrack extends WebGlTrack {
 	renderLabels() {
 		const scale = this.genomeSpy.getZoomedScale();
 		const viewportInterval = Interval.fromArray(scale.range()); // TODO: Provide this from somewhere
-		const ctx = this.bandLabelCanvas.getContext("2d");
+		const ctx = this.get2d(this.bandLabelCanvas);
         ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
 		ctx.textBaseline = "middle";
 		ctx.textAlign = "center";
-        ctx.clearRect(0, 0, this.bandLabelCanvas.width, this.bandLabelCanvas.height);
-		const y = this.bandLabelCanvas.height / 2;
+		ctx.clearRect(0, 0, this.bandLabelCanvas.clientWidth, this.bandLabelCanvas.clientHeight);
+
+		const y = this.bandLabelCanvas.clientHeight / 2;
 
 		// TODO: For each band, precompute the maximum domain width that yields bandwidth ...
 		// ... that accommodates the label. That would avoid scaling intervals of all bands.

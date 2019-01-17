@@ -3,6 +3,10 @@ import { VertexArray, Buffer, fp64 } from 'luma.gl';
 
 const black = d3.color("black");
 
+function color2floatArray(color) {
+    return [color.r / 255.0, color.g / 255.0, color.b / 255.0, color.opacity];
+}
+
 export default function segmentsToVertices(program, segments) {
     const VERTICES_PER_RECTANGLE = 6;
     const x = new Float32Array(segments.length * VERTICES_PER_RECTANGLE * 2);
@@ -20,11 +24,16 @@ export default function segmentsToVertices(program, segments) {
         const bottomRight = 1.0 - (s.paddingBottomRight || s.paddingBottom || 0);
 
         const color = s.color || black;
+        const colorTop = s.colorTop || color;
+        const colorBottom = s.colorBottom || color;
 
         x.set([].concat(begin, end, begin, end, begin, end), i * VERTICES_PER_RECTANGLE * 2);
         y.set([bottomLeft, bottomRight, topLeft, topRight, topLeft, bottomRight], i * VERTICES_PER_RECTANGLE);
-        const c = [color.r / 255.0, color.g / 255.0, color.b / 255.0, color.opacity];
-        colors.set([].concat(c, c, c, c, c, c), i * VERTICES_PER_RECTANGLE * 4);
+
+        // TODO: Use int8 color components instead of floats
+        const tc = color2floatArray(colorTop);
+        const bc = color2floatArray(colorBottom);
+        colors.set([].concat(bc, bc, tc, tc, tc, bc), i * VERTICES_PER_RECTANGLE * 4);
     });
 
     const gl = program.gl;

@@ -122,21 +122,7 @@ export class GeneTrack extends WebGlTrack {
     resizeCanvases(layout) {
 		this.adjustCanvas(this.glCanvas, layout.viewport);
 		this.adjustCanvas(this.symbolCanvas, layout.viewport);
-
-        resizeGLContext(this.gl, { useDevicePixels: false });
-		this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
-
-
-		// TODO: Maybe could be provided by some sort of abstraction
-        this.projection = Object.freeze(new Matrix4().ortho({
-            left: 0,
-            right: this.gl.drawingBufferWidth,
-            bottom: this.gl.drawingBufferHeight,
-            top: 0,
-            near: 0,
-            far: 500
-		}));
-		
+		this.adjustGl(this.gl);
 	}
 	
 	updateVisibleClusters() {
@@ -239,7 +225,7 @@ export class GeneTrack extends WebGlTrack {
 
 		const priorizer = new TinyQueue(visibleGenes, (a, b) => b.score - a.score);
 
-		const ctx = this.symbolCanvas.getContext("2d");
+		const ctx = this.get2d(this.symbolCanvas);
 		ctx.textBaseline = "top";
 		ctx.textAlign = "center";
 
@@ -307,7 +293,7 @@ export class GeneTrack extends WebGlTrack {
 		);
 
 		const view = new Matrix4()
-			.scale([this.gl.drawingBufferWidth, 1, 1]);
+			.scale([this.gl.canvas.clientWidth, 1, 1]);
 		const uTMatrix = this.projection.clone().multiplyRight(view);
 
         this.visibleClusters.forEach(cluster => {

@@ -48,7 +48,7 @@ export default class SampleTrack extends WebGlTrack {
         this.prepareSampleAttributes();
 
         // TODO: Consider a setSamples() method
-        const ctx = document.createElement("canvas").getContext("2d");
+        const ctx = this.get2d(document.createElement("canvas"));
         ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
         this.axisArea.maxLabelWidth = this.samples
             .map(sample => ctx.measureText(sample.displayName).width)
@@ -74,18 +74,7 @@ export default class SampleTrack extends WebGlTrack {
 
         this.adjustCanvas(this.labelCanvas, layout.axis);
         this.adjustCanvas(this.glCanvas, layout.viewport);
-
-        resizeGLContext(this.gl, { useDevicePixels: false });
-        this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
-
-        this.projection = Object.freeze(new Matrix4().ortho({
-            left: 0,
-            right: this.gl.drawingBufferWidth,
-            bottom: this.gl.drawingBufferHeight,
-            top: 0,
-            near: 0,
-            far: 500
-        }));
+        this.adjustGl(this.gl);
 
         this.sampleScale.range([0, trackHeight]);
     }
@@ -136,7 +125,7 @@ export default class SampleTrack extends WebGlTrack {
      * Render the axis area, which contains labels and sample-specific attributes 
      */
     renderLabels() {
-        const ctx = this.labelCanvas.getContext("2d");
+        const ctx = this.get2d(this.labelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
         ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
@@ -172,7 +161,7 @@ export default class SampleTrack extends WebGlTrack {
         //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        const width = gl.drawingBufferWidth;
+        const width = gl.canvas.clientWidth;
 
         this.samples.forEach(sample => {
             const view = new Matrix4()
@@ -221,7 +210,7 @@ export default class SampleTrack extends WebGlTrack {
                 const extent = d3.extent(this.samples, accessor);
                 this.axisArea.attributeScales.set(
                     attributeName,
-                    d3.scaleSequential(d3.interpolateInferno)
+                    d3.scaleSequential(d3.interpolateOrRd)
                         .domain(extent));
                 
                 // TODO: Diverging scale if domain extends to negative values

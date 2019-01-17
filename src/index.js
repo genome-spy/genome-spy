@@ -9,12 +9,7 @@ import AxisTrack from "./tracks/axisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";
 import { GeneTrack, parseCompressedRefseqGeneTsv } from "./tracks/geneTrack";
 
-//import rawCytobands from "../static/cytoBand.hg38.txt";
-//import rawSegments from "../static/private/segsAll.csv";
-
-"use strict";
-
-const configuration = {
+const conf_ParpiCL = {
     genome: "hg38",
     tracks: [
         {
@@ -40,17 +35,51 @@ const configuration = {
     ]
 };
 
+const conf_set5 = {
+    genome: "hg38",
+    tracks: [
+        {
+            type: "SampleTrack",
+            samples: "private/set5_samples.csv",
+            layers: [
+                {
+                    type: "CnvLoh",
+                    data: "private/set5_segsAll.csv",
+                    spec: {
+                        sample: "sample",
+                        chrom: "chr",
+                        start: "startpos",
+                        end: "endpos",
+                        segMean: "segMean",
+                        bafMean: "bafMean",
 
-initWithConfiguration(configuration);
+                        logSeg: true 
+                    }
+                }
+            ]
+        }
+    ]
+};
+
+initWithConfiguration(conf_set5);
+//initWithConfiguration(conf_ParpiCL);
 
 async function createSampleTrack(cm, sampleTrackConf) {
     let samples;
 
     if (sampleTrackConf.samples) {
+        // TODO: Accept a pre-parsed array of objects
         samples = processSamples(await fetch(sampleTrackConf.samples).then(res => res.text()));
 
     } else {
         // TODO: infer from data
+        /*
+        samples = Array.from(new Set(segmentations.map(s => s.sample)))
+        .map(s => ({
+            id: s,
+            displayName: s, // label
+            attributes: { }
+            */
         throw("TODO");
     }
 
@@ -59,6 +88,7 @@ async function createSampleTrack(cm, sampleTrackConf) {
     for (let layerConf of sampleTrackConf.layers) {
         // TODO: Modularize
         if (layerConf.type == "CnvLoh") {
+            // TODO: Accept a pre-parsed array of objects
             const segmentations = d3.tsvParse(
                 await fetch(layerConf.data).then(res => res.text())
             )
@@ -155,7 +185,8 @@ function createCnvLohLayers(cm, segmentations, spec) {
         entry.values.map(segment => ({
             interval: extractInterval(segment),
             paddingTop: 1.0 - baf2loh(parseFloat(segment[spec.bafMean])),
-            color: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.6).rgb()
+            colorTop: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.7).rgb(),
+            colorBottom: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.2).rgb()
         }))]
     ));
 
@@ -164,65 +195,3 @@ function createCnvLohLayers(cm, segmentations, spec) {
         new SegmentLayer(lohBySample)
     ];
 }
-
-
-/*
-Promise.all([
-    get("cytoBand.hg38.txt"),
-    get("private/refSeq_genes_scored.hg38.compressed.txt"),
-    //get("private/segsAll.csv"),
-    get("private/ParpiCL_cnv_ascatAll.csv"),
-    get("private/ParpiCL_samples.csv")
-])
-    .then(files => {
-        const cytobands = parseUcscCytobands(files[0]);
-
-        const genome = new Genome("hg38", { cytobands });
-        const cm = chromMapper(genome.chromSizes);
-
-        const genes = parseCompressedRefseqGeneTsv(cm, files[1]);
-
-
-
-        const samples = d3.tsvParse(files[3])
-            .map(row => ({
-                id: row.sample,
-                displayName: row.displayName || row.sample,
-                attributes: extractAttributes(row)
-            }));
-
-        const spec = {
-            sample: "Sample",
-            chrom: "Chromosome",
-            start: "Start",
-            end: "End",
-            segMean: "Segment_Mean",
-            bafMean: "meanBaf",
-
-            logSeg: false
-        };
-
-
-
-    });
-    */
-
-
-        /*
-        const segBySample = new Map(bySample.map(entry => [
-            entry.key,
-            entry.values.map(segment => ({
-                interval: cm.segmentToContinuous(segment.chr, +segment.startpos, +segment.endpos),
-                color: d3.color(colorScale(+segment.segMean))
-            }))]
-        ));
-
-        const lohBySample = new Map(bySample.map(entry => [
-            entry.key,
-            entry.values.map(segment => ({
-                interval: cm.segmentToContinuous(segment.chr, +segment.startpos, +segment.endpos),
-                paddingTop: 1.0 - Math.abs(segment.bafMean - 0.5) * 2,
-                color: d3.color(colorScale(+segment.segMean)).darker(0.6).rgb()
-            }))]
-        ));
-        */

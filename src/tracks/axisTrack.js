@@ -42,7 +42,7 @@ export default class AxisTrack extends Track {
         const cm = genomeSpy.chromMapper;
         this.chromosomes = cm.chromosomes();
 
-        const ctx = this.tickCanvas.getContext("2d");
+        const ctx = this.get2d(this.tickCanvas);
         ctx.font = `${this.config.fontSize}px ${this.fontFamily}`;
 
         this._chromLabelWidths = this.chromosomes.map(chrom => ctx.measureText(chrom.name).width);
@@ -51,11 +51,7 @@ export default class AxisTrack extends Track {
     }
 
     resizeCanvases(layout) {
-        const trackHeight = this.trackContainer.clientHeight;
-
-        this.tickCanvas.style.left = `${layout.viewport.lower}px`;
-        this.tickCanvas.width = layout.viewport.width();
-        this.tickCanvas.height = trackHeight;
+        this.adjustCanvas(this.tickCanvas, layout.viewport);
 
         this._maxTickCount = Math.floor(layout.viewport.width() / this._maxLocusLabelWidth / 2.0);
     }
@@ -68,7 +64,7 @@ export default class AxisTrack extends Track {
         const scale = this.genomeSpy.getZoomedScale();
         const cm = this.genomeSpy.chromMapper;
 
-        const ctx = this.tickCanvas.getContext("2d");
+        const ctx = this.get2d(this.tickCanvas);
 
         // TODO: Consider moving to Track base class
         const viewportInterval = Interval.fromArray(scale.range());
@@ -78,7 +74,7 @@ export default class AxisTrack extends Track {
 
         const locusTickFormat = tickStep >= 1000000 ? d3.format(".3s") : d3.format(",");
 
-        const y = Math.round(this.tickCanvas.height * 1);
+        const y = Math.round(this.tickCanvas.clientHeight * 1);
         ctx.textBaseline = "bottom";
         ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
 
@@ -97,7 +93,7 @@ export default class AxisTrack extends Track {
 
             visibleInterval = visibleInterval.intersect(
                 // Upper bound to the right edge of the viewport
-                new Interval(-Infinity, scale.invert(this.tickCanvas.width + this._maxLocusLabelWidth))
+                new Interval(-Infinity, scale.invert(this.tickCanvas.clientWidth + this._maxLocusLabelWidth))
             ).intersect(
                 // Uppert bound so that the last tick does not overlap with the next chromosome label
                 // TODO: A pretty gradient
@@ -140,14 +136,14 @@ export default class AxisTrack extends Track {
             }
         };
 
-        ctx.clearRect(0, 0, this.tickCanvas.width, this.tickCanvas.height);
+        ctx.clearRect(0, 0, this.tickCanvas.clientWidth, this.tickCanvas.clientHeight);
 
         this.chromosomes.forEach((chrom, i) => {
             const screenInterval = chrom.continuousInterval.transform(scale); // TODO: Consider rounding. Would be crisper but less exact
             
             if (viewportInterval.contains(screenInterval.lower)) {
                 ctx.fillStyle = this.config.chromColor;
-                ctx.fillRect(screenInterval.lower, 0, 1, this.tickCanvas.height / 1);
+                ctx.fillRect(screenInterval.lower, 0, 1, this.tickCanvas.clientHeight / 1);
 
                 if (screenInterval.width() > this._chromLabelWidths[i] + chromLabelMarginTotal) {
                     // TODO: Some cool clipping and masking instead of just hiding

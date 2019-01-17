@@ -1,5 +1,9 @@
 import Interval from "../utils/interval";
 import * as d3 from 'd3';
+import { Matrix4 } from 'math.gl';
+import {
+    resizeGLContext
+} from 'luma.gl';
 
 /**
  * Abstract base class for tracks
@@ -30,11 +34,39 @@ export default class Track {
     }
 
     adjustCanvas(canvas, interval) {
-		const trackHeight = this.trackContainer.clientHeight;
+        const r = window.devicePixelRatio || 1;
 
-        canvas.style.left = `${interval.lower}px`;
-        canvas.width = interval.width();
-        canvas.height = trackHeight;
+        const trackHeight = this.trackContainer.clientHeight;
+
+        const px = x => `${x}px`;
+        canvas.style.left = px(interval.lower);
+        canvas.style.width = px(interval.width());
+        canvas.style.height = px(trackHeight);
+
+        canvas.width = interval.width() * r;
+        canvas.height = trackHeight * r;
+    }
+
+    adjustGl(gl) {
+        resizeGLContext(gl, { useDevicePixels: true });
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+        this.projection = Object.freeze(new Matrix4().ortho({
+            left: 0,
+            right: gl.canvas.clientWidth,
+            bottom: gl.canvas.clientHeight,
+            top: 0,
+            near: 0,
+            far: 500
+        }));
+    }
+
+    get2d(canvas) {
+        const r = window.devicePixelRatio || 1;
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.scale(r, r);
+        return ctx;
     }
 
     getViewportDomain() {
