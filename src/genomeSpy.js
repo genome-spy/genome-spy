@@ -4,6 +4,7 @@ import { chromMapper } from "./chromMapper";
 import Interval from "./utils/interval";
 import { Zoom, Transform } from "./utils/zoom";
 import "./styles/genome-spy.scss";
+import Tooltip from "./tooltip";
 
 /**
  * The actual browser without any toolbars etc
@@ -111,6 +112,11 @@ export default class GenomeSpy {
         const trackStack = document.createElement("div");
         trackStack.className = "track-stack";
 
+        this.container.appendChild(trackStack);
+        this.trackStack = trackStack;
+
+        this.tooltip = new Tooltip(this.container);
+
         this.tracks.forEach(track => {
             const trackContainer = document.createElement("div");
             trackContainer.className = "genome-spy-track";
@@ -118,10 +124,6 @@ export default class GenomeSpy {
 
             track.initialize({ genomeSpy: this, trackContainer });
         });
-
-        this.container.appendChild(trackStack);
-
-        this.trackStack = trackStack;
 
         this._resized();
     }

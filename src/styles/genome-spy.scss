@@ -1,4 +1,8 @@
+$basic-spacing: 10px;
+
 .genome-spy {
+    position: relative;
+
     .track-stack {
         position: absolute;
         top: 0;
@@ -31,5 +35,27 @@
 
     canvas {
         image-rendering: pixelated;
+    }
+
+    .tooltip {
+        position: absolute;
+
+        max-width: 300px;
+        max-height: 600px;
+        overflow: hidden;
+
+        background: #f6f6f6;
+        padding: $basic-spacing;
+        font-size: 13px;
+
+        box-shadow: 0px 3px 12px 0px rgba(0, 0, 0, 0.21);
+
+        pointer-events: none;
+    }
+
+    .gene-track-tooltip {
+        .summary {
+            font-size: 90%;
+        }
     }
 }

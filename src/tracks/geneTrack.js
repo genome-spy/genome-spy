@@ -2,10 +2,9 @@ import * as d3 from "d3";
 import { Matrix4 } from 'math.gl';
 import {
     Program, VertexArray, Buffer, assembleShaders, setParameters, createGLContext,
-    resizeGLContext, fp64
+    fp64
 } from 'luma.gl';
 import TinyQueue from 'tinyqueue';
-
 
 import WebGlTrack from './webGlTrack';
 import Interval from "../utils/interval";
@@ -16,6 +15,9 @@ import exonVertexShader from '../gl/exonVertex.glsl';
 import rectangleFragmentShader from '../gl/rectangleFragment.glsl';
 import IntervalCollection from "../utils/intervalCollection";
 
+import * as entrez from "../fetchers/entrez";
+import * as html from "../utils/html";
+import HoverHandler from "../hoverHandler";
 
 const defaultConfig = {
     geneFullVisibilityThreshold: 30 * 1000000, // In base pairs
@@ -26,6 +28,7 @@ const defaultConfig = {
     lanes: 3,
     laneHeight: 15, // in pixels
     laneSpacing: 10,
+    symbolYOffset: 2,
 
     fontSize: 11, // in pixels
     fontFamily: "sans-serif"
@@ -49,6 +52,15 @@ export class GeneTrack extends WebGlTrack {
         // TODO: Replace 40 with something sensible
         /** @type {IntervalCollection[]} keeps track of gene symbols on the screen */
         this.symbolsOnLanes = [...Array(40).keys()].map(i => new IntervalCollection(symbol => symbol.screenInterval));
+
+        this.bodyOpacityScale = d3.scaleLinear()
+            .range([0, 1])
+            .domain([
+                this.config.geneFullVisibilityThreshold * this.config.geneFadeGradientFactor,
+                this.config.geneFullVisibilityThreshold
+            ])
+            .clamp(true);
+
     }
 
     initialize({ genomeSpy, trackContainer }) {
@@ -96,8 +108,14 @@ export class GeneTrack extends WebGlTrack {
 
         this.symbolCanvas = this.createCanvas();
 
-        //this.symbolCanvas.addEventListener("click", this.handleMouseEvent.bind(this), false);
-        //this.symbolCanvas.addEventListener("click", console.log, false);
+        this.hoverHandler = new HoverHandler(
+            this.genomeSpy.tooltip,
+            gene => new Promise(resolve => entrez.fetchGeneSummary(gene.symbol)
+                .then(summary => resolve(this.entrezSummary2Html(summary))))
+        );
+
+        this.symbolCanvas.addEventListener("mousemove", event => this.handleMouseMove(event), false);
+        this.symbolCanvas.addEventListener("mouseleave", () => this.hoverHandler.feed(null), false);
 
         genomeSpy.on("zoom", () => {
             this.render();
@@ -114,9 +132,48 @@ export class GeneTrack extends WebGlTrack {
         this.chromosomes = cm.chromosomes();
     }
 
-    handleMouseEvent(event) {
-        alert(event);
-        console.log(event);
+    entrezSummary2Html(summary) {
+        return `
+        <div class="gene-track-tooltip">
+            <div class="title">
+                <strong>${html.escapeHtml(summary.name)}</strong>
+                ${html.escapeHtml(summary.description)}
+            </div>
+
+            <p class="summary">
+                ${html.escapeHtml(summary.summary)}
+            </p>
+
+            <div class="source">
+                Source: NCBI Gene
+            </p>
+        </div>`;
+    }
+
+    handleMouseMove(event) {
+        const findSymbol = point => {
+            const laneTotal = this.config.laneHeight + this.config.laneSpacing;
+
+            // We are interested in symbols, not gene bodies/exons. Adjust y accordingly.
+            const y = point[1] - this.config.laneHeight - this.config.symbolYOffset;
+
+            const laneNumber = Math.round(y / laneTotal);
+
+            // Include some pixels above and below the symbol
+            const margin = 0.3;
+
+            if (laneNumber < 0 || Math.abs(laneNumber * laneTotal - y) > this.config.fontSize * (1 + margin) / 2) {
+                return null;
+            }
+
+            const lane = this.symbolsOnLanes[laneNumber];
+            const intervalWrapper = lane.intervalAt(point[0]);
+            return intervalWrapper ? intervalWrapper.gene : null;
+        }
+
+        const gene = findSymbol(d3.clientPoint(this.symbolCanvas, event));
+
+        this.hoverHandler.feed(gene, event);
     }
 
     resizeCanvases(layout) {
@@ -190,14 +247,8 @@ export class GeneTrack extends WebGlTrack {
         const gl = this.gl;
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        // TODO: Recycle
-        const bodyOpacity = this.glCanvas.style.opacity = d3.scaleLinear()
-            .range([0, 1])
-            .domain([
-                this.config.geneFullVisibilityThreshold * this.config.geneFadeGradientFactor,
-                this.config.geneFullVisibilityThreshold
-            ])
-            .clamp(true)(this.getViewportDomain().width());
+        const bodyOpacity =
+            this.glCanvas.style.opacity = this.bodyOpacityScale(this.getViewportDomain().width());
 
         if (bodyOpacity) {
             this.updateVisibleClusters();
@@ -225,8 +276,10 @@ export class GeneTrack extends WebGlTrack {
 
         const priorizer = new TinyQueue(visibleGenes, (a, b) => b.score - a.score);
 
+        const arrowOpacity = this.bodyOpacityScale(this.getViewportDomain().width());
+
         const ctx = this.get2d(this.symbolCanvas);
-        ctx.textBaseline = "top";
+        ctx.textBaseline = "middle";
         ctx.textAlign = "center";
 
         ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
@@ -234,7 +287,7 @@ export class GeneTrack extends WebGlTrack {
 
         ctx.lineJoin = "round";
 
-        const yOffset = this.config.laneHeight / 2 + 4;
+        const yOffset = this.config.laneHeight + this.config.symbolYOffset;
 
         ctx.clearRect(0, 0, this.symbolCanvas.width, this.symbolCanvas.height);
 
@@ -259,12 +312,18 @@ export class GeneTrack extends WebGlTrack {
 
             const y = gene.lane * (this.config.laneHeight + this.config.laneSpacing) + yOffset;
 
-            ctx.font = `${this.config.fontSize * 0.7}px ${this.config.fontFamily}`;
-            if (gene.strand == '-') {
-                ctx.fillText("\u25c0", x - width / 2 - 4, y + 2);
+            if (arrowOpacity) {
+                ctx.globalAlpha = arrowOpacity;
 
-            } else {
-                ctx.fillText("\u25b6", x + width / 2 + 4, y + 2);
+                ctx.font = `${this.config.fontSize * 0.6}px ${this.config.fontFamily}`;
+                if (gene.strand == '-') {
+                    ctx.fillText("\u25c0", x - width / 2 - 4, y);
+
+                } else {
+                    ctx.fillText("\u25b6", x + width / 2 + 4, y);
+                }
+
+                ctx.globalAlpha = 1;
             }
 
             ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
