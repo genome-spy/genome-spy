@@ -31,19 +31,19 @@ export default class GenomeIntervalFormat {
         // TODO: consider changing [0-9XY] to support other species besides humans
         const matches = str.match(/^(chr[0-9XY]+):([0-9,]+)-(?:(chr[0-9XY]+):)?([0-9,]+)$/);
 
-		if (matches) {
-			const startChr = matches[1];
-			const endChr = matches[3] || startChr;
+        if (matches) {
+            const startChr = matches[1];
+            const endChr = matches[3] || startChr;
 
-			const startIndex = parseInt(matches[2].replace(/,/g, ""));
+            const startIndex = parseInt(matches[2].replace(/,/g, ""));
             const endIndex = parseInt(matches[4].replace(/,/g, ""));
-            
+
             return new Interval(
                 this.chromMapper.toContinuous(startChr, startIndex - 1),
                 this.chromMapper.toContinuous(endChr, endIndex)
             );
 
-		} else {
+        } else {
             return null;
         }
     }

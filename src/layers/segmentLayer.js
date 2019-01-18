@@ -12,7 +12,7 @@ export default class SegmentLayer {
         this.rectsBySample = rectsBySample; // TODO: replace with recipe
     }
 
-    initialize({sampleTrack}) {
+    initialize({ sampleTrack }) {
         this.sampleTrack = sampleTrack;
 
         const gl = sampleTrack.gl;

@@ -10,7 +10,7 @@ import {
  */
 export default class Track {
 
-    initialize({genomeSpy, trackContainer}) {
+    initialize({ genomeSpy, trackContainer }) {
         this.genomeSpy = genomeSpy;
         this.trackContainer = trackContainer;
     }

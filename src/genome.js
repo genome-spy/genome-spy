@@ -35,7 +35,7 @@ export function parseUcscCytobands(cytobandData) {
             chromStart: +row[1],
             chromEnd: +row[2],
             name: row[3],
-            gieStain: row[4] 
+            gieStain: row[4]
         }));
 }
 
@@ -45,14 +45,14 @@ export function parseUcscCytobands(cytobandData) {
  * @param {*} cytobands 
  */
 export function cytobandsToChromSizes(cytobands) {
-	const chromSizes = {};
+    const chromSizes = {};
 
-	cytobands.forEach(band => {
-		const chrom = band.chrom;
+    cytobands.forEach(band => {
+        const chrom = band.chrom;
         chromSizes[chrom] = Math.max(
             chromSizes.hasOwnProperty(chrom) ? chromSizes[chrom] : 0,
             band.chromEnd + 1);
-	});
+    });
 
-	return chromSizes;
+    return chromSizes;
 }

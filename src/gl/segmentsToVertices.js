@@ -40,8 +40,8 @@ export default function segmentsToVertices(program, segments) {
     const vertexArray = new VertexArray(gl, { program });
 
     vertexArray.setAttributes({
-        x: new Buffer(gl, { data: x, size : 2, usage: gl.STATIC_DRAW }),
-        y: new Buffer(gl, { data: y, size : 1, usage: gl.STATIC_DRAW }),
+        x: new Buffer(gl, { data: x, size: 2, usage: gl.STATIC_DRAW }),
+        y: new Buffer(gl, { data: y, size: 1, usage: gl.STATIC_DRAW }),
         color: new Buffer(gl, { data: colors, size: 4, usage: gl.STATIC_DRAW })
     });
 

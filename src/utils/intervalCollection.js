@@ -5,7 +5,7 @@ import * as d3 from "d3";
  * Currently implemented as an ordered array.
  * TODO: Use a binary tree
  */
-export default class IntervalCollection {
+export default class IntervalCollection {
     /**
      * @param {Function} accessor An optional function that extracts the interval from an object
      */
@@ -29,7 +29,7 @@ export default class IntervalCollection {
         // TODO: Use binary search
         let i = 0;
         while (i < this.intervals.length && interval.lower >= this.accessor(this.intervals[i]).upper) {
-                i++;
+            i++;
         }
 
         if (i < this.intervals.length && this.accessor(this.intervals[i]).lower < interval.upper) {

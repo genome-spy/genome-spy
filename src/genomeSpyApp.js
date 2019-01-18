@@ -67,7 +67,7 @@ export default class GenomeSpyApp {
         });
 
         this.genomeSpy.launch();
-        
+
         this.searchInput.value = this.gif.format(this.genomeSpy.getVisibleInterval());
     }
 
@@ -86,7 +86,7 @@ export default class GenomeSpyApp {
             search: string => this.gif.parse(string)
         };
 
-		// Search tracks
+        // Search tracks
         const interval = [domainFinder].concat(this.genomeSpy.tracks)
             .map(t => t.search(string))
             .find(i => i);

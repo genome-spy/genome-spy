@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import { Matrix4 } from 'math.gl';
 import {
-	Program, assembleShaders, registerShaderModules,
+    Program, assembleShaders, registerShaderModules,
     setParameters, createGLContext,
     resizeGLContext, fp64
 } from 'luma.gl';
@@ -13,12 +13,12 @@ import Track from "./track";
 
 export default class WebGlTrack extends Track {
     constructor() {
-		super();
+        super();
     }
 
 
-    initialize({genomeSpy, trackContainer}) {
-        super.initialize({genomeSpy, trackContainer});
+    initialize({ genomeSpy, trackContainer }) {
+        super.initialize({ genomeSpy, trackContainer });
 
         registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
     }
@@ -31,5 +31,5 @@ export default class WebGlTrack extends Track {
             uDomainBegin: fp64.fp64ify(domain[0]),
             uDomainWidth: fp64.fp64ify(domain[1] - domain[0])
         };
-	}
+    }
 }

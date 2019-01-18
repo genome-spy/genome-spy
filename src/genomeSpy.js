@@ -18,7 +18,7 @@ export default class GenomeSpy {
 
         this.xScale = d3.scaleLinear()
             .domain(this.chromMapper.extent().toArray());
-        
+
         // Zoomed scale
         this.rescaledX = this.xScale;
 
@@ -40,7 +40,7 @@ export default class GenomeSpy {
         this.rescaledX = transform.rescale(this.xScale);
         this.eventEmitter.emit('zoom', this.getVisibleInterval());
     }
-    
+
     getVisibleDomain() {
         return this.rescaledX.domain();
     }
@@ -116,7 +116,7 @@ export default class GenomeSpy {
             trackContainer.className = "genome-spy-track";
             trackStack.appendChild(trackContainer);
 
-            track.initialize({genomeSpy: this, trackContainer});
+            track.initialize({ genomeSpy: this, trackContainer });
         });
 
         this.container.appendChild(trackStack);

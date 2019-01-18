@@ -18,7 +18,7 @@ export default class Interval {
     }
 
     equals(otherInterval) {
-        return otherInterval instanceof Interval && 
+        return otherInterval instanceof Interval &&
             this.lower == otherInterval.lower && this.upper == otherInterval.upper;
     }
 
@@ -47,7 +47,7 @@ export default class Interval {
     connectedWith(otherInterval) {
         return this.upper >= otherInterval.lower && otherInterval.upper >= this.lower;
     }
-    
+
     intersect(otherInterval) {
         if (!this.connectedWith(otherInterval)) {
             // TODO: Or maybe return an "empty" Interval null-object

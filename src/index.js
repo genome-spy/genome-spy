@@ -53,7 +53,7 @@ const conf_set5 = {
                         segMean: "segMean",
                         bafMean: "bafMean",
 
-                        logSeg: true 
+                        logSeg: true
                     }
                 }
             ]
@@ -80,11 +80,11 @@ async function createSampleTrack(cm, sampleTrackConf) {
             displayName: s, // label
             attributes: { }
             */
-        throw("TODO");
+        throw ("TODO");
     }
 
     const layers = [];
-    
+
     for (let layerConf of sampleTrackConf.layers) {
         // TODO: Modularize
         if (layerConf.type == "CnvLoh") {

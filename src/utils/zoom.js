@@ -60,7 +60,7 @@ export class Zoom {
             } else {
                 // https://medium.com/@auchenberg/detecting-multi-touch-trackpad-gestures-in-javascript-a2505babb10e
                 // TODO: Safari gestures
-                const divisor  = event.ctrlKey ? 100 : 500;
+                const divisor = event.ctrlKey ? 100 : 500;
 
                 let kFactor = Math.pow(2, event.deltaY * wheelMultiplier / divisor);
 
@@ -80,12 +80,12 @@ export class Zoom {
 
             event.preventDefault();
 
-            const onMousemove = function(moveEvent) {
+            const onMousemove = function (moveEvent) {
                 this.transform = constrainX(new Transform(this.transform.k, referenceTransform.x + moveEvent.clientX - event.clientX));
                 this.listener(this.transform);
             }.bind(this);
 
-            const onMouseup = function(upEvent) {
+            const onMouseup = function (upEvent) {
                 document.removeEventListener("mousemove", onMousemove);
                 document.removeEventListener("mouseup", onMouseup);
             };

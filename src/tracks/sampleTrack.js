@@ -79,8 +79,8 @@ export default class SampleTrack extends WebGlTrack {
         this.sampleScale.range([0, trackHeight]);
     }
 
-    initialize({genomeSpy, trackContainer}) {
-        super.initialize({genomeSpy, trackContainer});
+    initialize({ genomeSpy, trackContainer }) {
+        super.initialize({ genomeSpy, trackContainer });
 
         this.sampleScale = d3.scaleBand()
             .domain(this.samples.map(sample => sample.id))
@@ -187,7 +187,7 @@ export default class SampleTrack extends WebGlTrack {
         const attributeNames = this.samples
             .flatMap(sample => Object.keys(sample.attributes))
             .reduce((set, key) => set.add(key), new Set());
-        
+
         const inferNumerality = attributeName => this.samples
             .map(sample => sample.attributes[attributeName])
             .filter(value => typeof value == "string")
@@ -212,7 +212,7 @@ export default class SampleTrack extends WebGlTrack {
                     attributeName,
                     d3.scaleSequential(d3.interpolateOrRd)
                         .domain(extent));
-                
+
                 // TODO: Diverging scale if domain extends to negative values
 
             } else {

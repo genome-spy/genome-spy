@@ -20,8 +20,8 @@ export default class AxisTrack extends Track {
         this.config = defaultConfig;
     }
 
-    initialize({genomeSpy, trackContainer}) {
-        super.initialize({genomeSpy, trackContainer});
+    initialize({ genomeSpy, trackContainer }) {
+        super.initialize({ genomeSpy, trackContainer });
 
         this.height = Math.ceil(this.config.fontSize * 1.5);
 
@@ -32,7 +32,7 @@ export default class AxisTrack extends Track {
 
         genomeSpy.on("zoom", this.renderTicks.bind(this));
 
-        genomeSpy.on("layout", function(layout) {
+        genomeSpy.on("layout", function (layout) {
             this.resizeCanvases(layout);
             this.renderTicks();
         }.bind(this));
@@ -99,7 +99,7 @@ export default class AxisTrack extends Track {
                 // TODO: A pretty gradient
                 new Interval(-Infinity, interval.upper - scale.invert(this._maxLocusLabelWidth / 2) + scale.invert(0))
             );
-            
+
             // An empty interval? Skip.
             if (visibleInterval == null) return;
 
@@ -112,10 +112,10 @@ export default class AxisTrack extends Track {
 
                 // TODO: Performance optimization: Only use gradient for the leftmost locus tick
                 const locusTickGradient = ctx.createLinearGradient(gradientOffset, 0, gradientOffset + 30, 0);
-                locusTickGradient.addColorStop(0,   withOpacity(0));
+                locusTickGradient.addColorStop(0, withOpacity(0));
                 locusTickGradient.addColorStop(0.5, withOpacity(0.3));
-                locusTickGradient.addColorStop(1,   withOpacity(1));
-                ctx.fillStyle = locusTickGradient; 
+                locusTickGradient.addColorStop(1, withOpacity(1));
+                ctx.fillStyle = locusTickGradient;
 
             } else {
                 ctx.fillStyle = this.config.locusColor;
@@ -140,7 +140,7 @@ export default class AxisTrack extends Track {
 
         this.chromosomes.forEach((chrom, i) => {
             const screenInterval = chrom.continuousInterval.transform(scale); // TODO: Consider rounding. Would be crisper but less exact
-            
+
             if (viewportInterval.contains(screenInterval.lower)) {
                 ctx.fillStyle = this.config.chromColor;
                 ctx.fillRect(screenInterval.lower, 0, 1, this.tickCanvas.clientHeight / 1);
@@ -161,7 +161,7 @@ export default class AxisTrack extends Track {
             const chromInterval = chrom.continuousInterval.transform(scale);
             const labelWidth = this._chromLabelWidths[chrom.index];
 
-            const x = Math.min(chromInterval.upper - labelWidth  - chromLabelMarginRight, chromLabelMarginLeft);
+            const x = Math.min(chromInterval.upper - labelWidth - chromLabelMarginRight, chromLabelMarginLeft);
 
             ctx.fillStyle = this.config.chromColor;
             ctx.textAlign = "left";
@@ -169,7 +169,7 @@ export default class AxisTrack extends Track {
 
             const a = scale.invert(x);
             const b = chrom.continuousInterval.upper;
-               
+
             if (a < b) {
                 renderLocusTicks(chrom.continuousInterval, new Interval(a, b), labelWidth + chromLabelMarginLeft);
             }
