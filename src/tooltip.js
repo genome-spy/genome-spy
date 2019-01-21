@@ -4,6 +4,9 @@ import { clientPoint } from "d3";
 
 export default class Tooltip {
 
+    /**
+     * @param {HTMLElement} container 
+     */
     constructor(container) {
         this.container = container;
 
@@ -13,6 +16,9 @@ export default class Tooltip {
         this.container.appendChild(this.element);
     }
 
+    /**
+     * @param {MouseEvent} mouseEvent 
+     */
     handleMouseMove(mouseEvent) {
         this.mouseCoords = clientPoint(this.container, mouseEvent);
 
@@ -39,6 +45,9 @@ export default class Tooltip {
         ) + "px";
     }
 
+    /**
+     * @param {HTMLElement | string} content 
+     */
     setContent(content) {
         if (!content) {
             this.element.innerHTML = "";

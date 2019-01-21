@@ -10,6 +10,12 @@ import Tooltip from "./tooltip";
  * The actual browser without any toolbars etc
  */
 export default class GenomeSpy {
+    /**
+     * 
+     * @param {HTMLElement} container 
+     * @param {import("./genome").Genome} genome 
+     * @param {import("./tracks/track").default[]} tracks 
+     */
     constructor(container, genome, tracks) {
         this.genome = genome;
         this.container = container;
@@ -122,7 +128,7 @@ export default class GenomeSpy {
             trackContainer.className = "genome-spy-track";
             trackStack.appendChild(trackContainer);
 
-            track.initialize({ genomeSpy: this, trackContainer });
+            track.initialize(this, trackContainer);
         });
 
         this._resized();

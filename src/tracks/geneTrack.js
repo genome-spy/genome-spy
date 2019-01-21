@@ -63,8 +63,12 @@ export class GeneTrack extends WebGlTrack {
 
     }
 
-    initialize({ genomeSpy, trackContainer }) {
-        super.initialize({ genomeSpy, trackContainer });
+    /**
+     * @param {import("../genomeSpy").default} genomeSpy 
+     * @param {HTMLElement} trackContainer 
+     */
+    initialize(genomeSpy, trackContainer) {
+        super.initialize(genomeSpy, trackContainer);
 
         this.trackContainer.className = "gene-track";
         this.trackContainer.style.height = (this.config.lanes * (this.config.laneHeight + this.config.laneSpacing)) + "px";

@@ -12,7 +12,11 @@ export default class SegmentLayer {
         this.rectsBySample = rectsBySample; // TODO: replace with recipe
     }
 
-    initialize({ sampleTrack }) {
+    /**
+     * 
+     * @param {import("../tracks/sampleTrack").default} sampleTrack 
+     */
+    initialize(sampleTrack) {
         this.sampleTrack = sampleTrack;
 
         const gl = sampleTrack.gl;
@@ -31,6 +35,10 @@ export default class SegmentLayer {
             ]));
     }
 
+    /**
+     * @param {string} sampleId 
+     * @param {object} uniforms 
+     */
     render(sampleId, uniforms) {
         this.segmentProgram.draw(Object.assign(
             {

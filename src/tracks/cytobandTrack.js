@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import { Matrix4 } from 'math.gl';
 import {
-    Program, assembleShaders, setParameters, createGLContext, resizeGLContext
+    Program, assembleShaders, setParameters, createGLContext
 } from 'luma.gl';
 import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
@@ -62,15 +62,19 @@ export default class CytobandTrack extends WebGlTrack {
         this.config = defaultConfig;
     }
 
-    initialize({ genomeSpy, trackContainer }) {
-        super.initialize({ genomeSpy, trackContainer });
+    /**
+     * @param {import("../genomeSpy").default} genomeSpy 
+     * @param {HTMLElement} trackContainer 
+     */
+    initialize(genomeSpy, trackContainer) {
+        super.initialize(genomeSpy, trackContainer);
 
         // TODO: Check cytobands' presence in Genome
 
         this.mappedCytobands = mapUcscCytobands(genomeSpy.chromMapper, genomeSpy.genome.cytobands);
 
         this.trackContainer.className = "cytoband-track";
-        this.trackContainer.style = "height: 21px";
+        this.trackContainer.style.height = "21px";
 
         this.glCanvas = this.createCanvas();
         const gl = createGLContext({ canvas: this.glCanvas });

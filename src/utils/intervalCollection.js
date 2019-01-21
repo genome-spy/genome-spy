@@ -1,10 +1,11 @@
-import * as d3 from "d3";
-
 /**
  * A collection of non-overlapping intervals.
  * Currently implemented as an ordered array.
  * TODO: Use a binary tree
+ * 
+ * @typedef { import("./interval").default } Interval
  */
+ 
 export default class IntervalCollection {
     /**
      * @param {Function} accessor An optional function that extracts the interval from an object

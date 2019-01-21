@@ -4,6 +4,10 @@
  * TODO: Should enforce immutability
  */
 export default class Interval {
+    /**
+     * @param {number} lower 
+     * @param {number} upper 
+     */
     constructor(lower, upper) {
         if (isNaN(lower)) throw `Lower value "${lower}" is not a number!`;
         if (isNaN(upper)) throw `Upper value "${upper}" is not a number!`;
@@ -13,19 +17,31 @@ export default class Interval {
         this.upper = upper;
     }
 
+    /**
+     * @param {number[]} array 
+     */
     static fromArray(array) {
         return new Interval(array[0], array[1]);
     }
 
+    /**
+     * @param {Interval} otherInterval 
+     */
     equals(otherInterval) {
         return otherInterval instanceof Interval &&
             this.lower == otherInterval.lower && this.upper == otherInterval.upper;
     }
 
+    /**
+     * @param {number} value 
+     */
     contains(value) {
         return this.lower <= value && value < this.upper;
     }
 
+    /**
+     * @param {Interval} otherInterval 
+     */
     encloses(otherInterval) {
         return this.lower <= otherInterval.lower && otherInterval.upper <= this.upper;
     }
@@ -44,10 +60,16 @@ export default class Interval {
         return (this.lower + this.upper) / 2;
     }
 
+    /**
+     * @param {Interval} otherInterval 
+     */
     connectedWith(otherInterval) {
         return this.upper >= otherInterval.lower && otherInterval.upper >= this.lower;
     }
 
+    /**
+     * @param {Interval} otherInterval 
+     */
     intersect(otherInterval) {
         if (!this.connectedWith(otherInterval)) {
             // TODO: Or maybe return an "empty" Interval null-object
@@ -93,10 +115,16 @@ export default class Interval {
         return new Interval(this.lower, this.upper);
     }
 
+    /**
+     * @param {number} lower 
+     */
     withLower(lower) {
         return new Interval(lower, this.upper);
     }
 
+    /**
+     * @param {number} upper 
+     */
     withUpper(upper) {
         return new Interval(this.lower, upper);
     }

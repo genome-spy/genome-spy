@@ -1,5 +1,4 @@
 import Interval from "../utils/interval";
-import * as d3 from 'd3';
 import { Matrix4 } from 'math.gl';
 import {
     resizeGLContext
@@ -10,7 +9,11 @@ import {
  */
 export default class Track {
 
-    initialize({ genomeSpy, trackContainer }) {
+    /**
+     * @param {import("../genomeSpy").default} genomeSpy 
+     * @param {HTMLElement} trackContainer 
+     */
+    initialize(genomeSpy, trackContainer) {
         this.genomeSpy = genomeSpy;
         this.trackContainer = trackContainer;
     }

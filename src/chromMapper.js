@@ -1,6 +1,10 @@
 import * as d3 from "d3";
 import Interval from "./utils/interval";
 
+/**
+ * @param {Object} chromSizes 
+ * @constructor
+ */
 export function chromMapper(chromSizes) {
     // TODO: Generalize and support other organisms beside human 
     const chromNames = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, "X", "Y"].map(v => "chr" + v);

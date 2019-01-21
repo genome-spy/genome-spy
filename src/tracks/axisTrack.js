@@ -20,8 +20,12 @@ export default class AxisTrack extends Track {
         this.config = defaultConfig;
     }
 
-    initialize({ genomeSpy, trackContainer }) {
-        super.initialize({ genomeSpy, trackContainer });
+    /**
+     * @param {import("../genomeSpy").default} genomeSpy 
+     * @param {HTMLElement} trackContainer 
+     */
+    initialize(genomeSpy, trackContainer) {
+        super.initialize(genomeSpy, trackContainer);
 
         this.height = Math.ceil(this.config.fontSize * 1.5);
 
@@ -43,7 +47,7 @@ export default class AxisTrack extends Track {
         this.chromosomes = cm.chromosomes();
 
         const ctx = this.get2d(this.tickCanvas);
-        ctx.font = `${this.config.fontSize}px ${this.fontFamily}`;
+        ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
 
         this._chromLabelWidths = this.chromosomes.map(chrom => ctx.measureText(chrom.name).width);
         this._maxLocusLabelWidth = ctx.measureText("123,000,000").width;

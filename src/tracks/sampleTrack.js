@@ -1,10 +1,11 @@
 import { Matrix4 } from 'math.gl';
 import {
-    setParameters, fp64, createGLContext, registerShaderModules,
-    resizeGLContext
+    setParameters, fp64, createGLContext, registerShaderModules
 } from 'luma.gl';
 import * as d3 from 'd3';
 import WebGlTrack from './webGlTrack';
+
+// @ts-check
 
 const defaultConfig = {
     paddingInner: 0.2, // Relative to sample height
@@ -31,18 +32,25 @@ export default class SampleTrack extends WebGlTrack {
 
         this.axisArea = {};
 
-        /*
+        /**
          * An array of sample objects. Their order stays constant.
-         * Properties: id, displayName, data. Data contains arbitrary sample-specific
+         * Properties: id, displayName, attributes. Data contains arbitrary sample-specific
          * attributes, e.g. clinical data.
+         * 
+         * @type {{id: string, displayName: string, attributes: Object}[]}
          */
         this.samples = samples;
 
-        /*
+        /**
          * A mapping that specifies the order of the samples.
+         * 
+         * @type {string[]}
          */
         this.sampleOrder = [];
 
+        /**
+         * @type {Array}
+         */
         this.layers = layers;
 
         this.prepareSampleAttributes();
@@ -79,8 +87,12 @@ export default class SampleTrack extends WebGlTrack {
         this.sampleScale.range([0, trackHeight]);
     }
 
-    initialize({ genomeSpy, trackContainer }) {
-        super.initialize({ genomeSpy, trackContainer });
+    /**
+     * @param {import("../genomeSpy").default} genomeSpy 
+     * @param {HTMLElement} trackContainer 
+     */
+    initialize(genomeSpy, trackContainer) {
+        super.initialize(genomeSpy, trackContainer);
 
         this.sampleScale = d3.scaleBand()
             .domain(this.samples.map(sample => sample.id))
@@ -106,7 +118,7 @@ export default class SampleTrack extends WebGlTrack {
             depthFunc: gl.LEQUAL
         });
 
-        this.layers.forEach(layer => layer.initialize({ sampleTrack: this }));
+        this.layers.forEach(layer => layer.initialize(this));
 
         genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
@@ -192,7 +204,7 @@ export default class SampleTrack extends WebGlTrack {
             .map(sample => sample.attributes[attributeName])
             .filter(value => typeof value == "string")
             .filter(value => value !== "")
-            .every(value => /^[\+\-]?\d+(\.\d*)?$/.test(value));
+            .every(value => /^[+-]?\d+(\.\d*)?$/.test(value));
 
         this.axisArea.attributeScales = new Map();
 
