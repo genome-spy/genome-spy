@@ -448,6 +448,14 @@ function createExonIntervals(gene) {
 
 
 function exonsToVertices(program, genes, laneHeight, laneSpacing) {
+
+    /* TODO: Consider using flat shading:
+     * https://www.khronos.org/opengl/wiki/Type_Qualifier_(GLSL)#Interpolation_qualifiers
+
+     * Gene body and exons could be rendered in one pass by alternating between
+     * exons and introns
+     */
+
     const VERTICES_PER_RECTANGLE = 6;
 
     const exonsOfGenes = genes.map(g => createExonIntervals(g));
@@ -535,7 +543,7 @@ function genesToVertices(program, genes, laneHeight, laneSpacing) {
 export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
     const chromNames = new Set(cm.chromosomes().map(chrom => chrom.name));
 
-    let hack = 0; // A hack. Ensure an unique score for each gene.
+    let hack = 0; // A hack. Ensure a unique score for each gene.
 
     const genes = d3.tsvParseRows(geneTsv)
         .filter(row => chromNames.has(row[1]))
@@ -576,7 +584,9 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
     genes.forEach(g => {
         let laneIdx = preference[g.strand];
         if (isOccupied(laneIdx, g.interval.lower)) {
-            for (laneIdx = 0; laneIdx < 20 && isOccupied(laneIdx, g.interval.lower); laneIdx++) {
+            laneIdx = 0;
+            while (laneIdx < 20 && isOccupied(laneIdx, g.interval.lower)) {
+                laneIdx++;
             }
         }
 

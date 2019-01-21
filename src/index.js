@@ -1,5 +1,4 @@
 import GenomeSpyApp from "./genomeSpyApp";
-import { get } from './ajax';
 import { Genome, parseUcscCytobands } from './genome';
 import * as d3 from 'd3';
 import { chromMapper } from "./chromMapper";
@@ -185,8 +184,8 @@ function createCnvLohLayers(cm, segmentations, spec) {
         entry.values.map(segment => ({
             interval: extractInterval(segment),
             paddingTop: 1.0 - baf2loh(parseFloat(segment[spec.bafMean])),
-            colorTop: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.7).rgb(),
-            colorBottom: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.2).rgb()
+            colorTop: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
+            colorBottom: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb()
         }))]
     ));
 
