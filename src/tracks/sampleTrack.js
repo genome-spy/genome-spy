@@ -4,6 +4,7 @@ import {
 } from 'luma.gl';
 import * as d3 from 'd3';
 import WebGlTrack from './webGlTrack';
+import BandScale from '../utils/bandScale';
 
 // @ts-check
 
@@ -94,10 +95,10 @@ export default class SampleTrack extends WebGlTrack {
     initialize(genomeSpy, trackContainer) {
         super.initialize(genomeSpy, trackContainer);
 
-        this.sampleScale = d3.scaleBand()
-            .domain(this.samples.map(sample => sample.id))
-            .paddingInner(this.config.paddingInner)
-            .paddingOuter(this.config.paddingOuter);
+        this.sampleScale = new BandScale();
+        this.sampleScale.domain(this.samples.map(sample => sample.id));
+        this.sampleScale.paddingInner = this.config.paddingInner;
+        this.sampleScale.paddingOuter = this.config.paddingOuter;
 
         this.trackContainer.className = "sample-track";
 
@@ -140,28 +141,29 @@ export default class SampleTrack extends WebGlTrack {
         const ctx = this.get2d(this.labelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
-        ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
+        const fontSize = Math.min(this.config.fontSize, this.sampleScale.bandwidth);
+        ctx.font = `${fontSize}px ${this.config.fontFamily}`;
+        ctx.textBaseline = "middle";
 
-        const offset = Math.floor((this.sampleScale.bandwidth() + this.config.fontSize) / 2);
         const attributeOffset = Math.ceil(this.axisArea.maxLabelWidth + this.config.horizontalSpacing);
 
         this.samples.forEach(sample => {
-            const y = this.sampleScale(sample.id);
+            const band = this.sampleScale.scale(sample.id);
 
             ctx.fillStyle = "black";
             ctx.fillText(
                 sample.displayName,
                 0,
-                y + offset);
+                band.centre());
 
             this.axisArea.attributeScales
                 .forEach((valueScale, key) => {
                     ctx.fillStyle = valueScale(sample.attributes[key]);
                     ctx.fillRect(
                         attributeOffset + this.axisArea.attributeBandScale(key),
-                        y,
+                        band.lower,
                         this.axisArea.attributeBandScale.bandwidth(),
-                        this.sampleScale.bandwidth());
+                        band.width());
                 });
         });
     }
@@ -176,9 +178,11 @@ export default class SampleTrack extends WebGlTrack {
         const width = gl.canvas.clientWidth;
 
         this.samples.forEach(sample => {
+            const band = this.sampleScale.scale(sample.id);
+
             const view = new Matrix4()
-                .translate([0, this.sampleScale(sample.id), 0])
-                .scale([width, this.sampleScale.bandwidth(), 1]);
+                .translate([0, band.lower, 0])
+                .scale([width, band.width(), 1]);
 
             const uniforms = Object.assign(
                 {
