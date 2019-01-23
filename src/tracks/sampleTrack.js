@@ -197,7 +197,8 @@ export default class SampleTrack extends WebGlTrack {
     prepareSampleAttributes() {
         // Find all attributes
         const attributeNames = this.samples
-            .flatMap(sample => Object.keys(sample.attributes))
+            //.flatMap(sample => Object.keys(sample.attributes))
+            .reduce((acc, sample) => acc.concat(Object.keys(sample.attributes)), []) // Firefox 60 ESR
             .reduce((set, key) => set.add(key), new Set());
 
         const inferNumerality = attributeName => this.samples
