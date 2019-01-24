@@ -17,7 +17,7 @@ import IntervalCollection from "../utils/intervalCollection";
 
 import * as entrez from "../fetchers/entrez";
 import * as html from "../utils/html";
-import HoverHandler from "../hoverHandler";
+import MouseTracker from "../mouseTracker";
 
 const defaultConfig = {
     geneFullVisibilityThreshold: 30 * 1000000, // In base pairs
@@ -112,14 +112,13 @@ export class GeneTrack extends WebGlTrack {
 
         this.symbolCanvas = this.createCanvas();
 
-        this.hoverHandler = new HoverHandler(
-            this.genomeSpy.tooltip,
-            gene => new Promise(resolve => entrez.fetchGeneSummary(gene.symbol)
-                .then(summary => resolve(this.entrezSummary2Html(summary))))
-        );
-
-        this.symbolCanvas.addEventListener("mousemove", event => this.handleMouseMove(event), false);
-        this.symbolCanvas.addEventListener("mouseleave", () => this.hoverHandler.feed(null), false);
+        this.mouseTracker = new MouseTracker({
+            element: this.symbolCanvas,
+            resolver: this.findGeneAt.bind(this),
+            tooltip: this.genomeSpy.tooltip,
+            tooltipConverter: gene => new Promise(resolve => entrez.fetchGeneSummary(gene.symbol)
+                .then(summary => resolve(this.entrezSummary2Html(summary)))),
+        });
 
         genomeSpy.on("zoom", () => {
             this.render();
@@ -154,30 +153,24 @@ export class GeneTrack extends WebGlTrack {
         </div>`;
     }
 
-    handleMouseMove(event) {
-        const findSymbol = point => {
-            const laneTotal = this.config.laneHeight + this.config.laneSpacing;
+    findGeneAt(point) {
+        const laneTotal = this.config.laneHeight + this.config.laneSpacing;
 
-            // We are interested in symbols, not gene bodies/exons. Adjust y accordingly.
-            const y = point[1] - this.config.laneHeight - this.config.symbolYOffset;
+        // We are interested in symbols, not gene bodies/exons. Adjust y accordingly.
+        const y = point[1] - this.config.laneHeight - this.config.symbolYOffset;
 
-            const laneNumber = Math.round(y / laneTotal);
+        const laneNumber = Math.round(y / laneTotal);
 
-            // Include some pixels above and below the symbol
-            const margin = 0.3;
+        // Include some pixels above and below the symbol
+        const margin = 0.3;
 
-            if (laneNumber < 0 || Math.abs(laneNumber * laneTotal - y) > this.config.fontSize * (1 + margin) / 2) {
-                return null;
-            }
-
-            const lane = this.symbolsOnLanes[laneNumber];
-            const intervalWrapper = lane.intervalAt(point[0]);
-            return intervalWrapper ? intervalWrapper.gene : null;
+        if (laneNumber < 0 || Math.abs(laneNumber * laneTotal - y) > this.config.fontSize * (1 + margin) / 2) {
+            return null;
         }
 
-        const gene = findSymbol(d3.clientPoint(this.symbolCanvas, event));
-
-        this.hoverHandler.feed(gene, event);
+        const lane = this.symbolsOnLanes[laneNumber];
+        const intervalWrapper = lane.intervalAt(point[0]);
+        return intervalWrapper ? intervalWrapper.gene : null;
     }
 
     resizeCanvases(layout) {

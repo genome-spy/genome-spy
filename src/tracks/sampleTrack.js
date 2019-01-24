@@ -5,6 +5,7 @@ import {
 import * as d3 from 'd3';
 import WebGlTrack from './webGlTrack';
 import BandScale from '../utils/bandScale';
+import MouseTracker from "../mouseTracker";
 
 // @ts-check
 
@@ -121,6 +122,14 @@ export default class SampleTrack extends WebGlTrack {
 
         this.layers.forEach(layer => layer.initialize(this));
 
+        this.viewportMouseTracker = new MouseTracker({
+            element: this.glCanvas,
+            tooltip: this.genomeSpy.tooltip,
+            resolver: this.findSampleAt.bind(this)
+        });
+
+
+
         genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
             this.renderLabels();
@@ -133,6 +142,12 @@ export default class SampleTrack extends WebGlTrack {
 
         genomeSpy.zoom.attachZoomEvents(this.glCanvas);
     }
+
+
+    findSampleAt(point) {
+        return this.sampleScale.invert(point[1]);
+    }
+
 
     /**
      * Render the axis area, which contains labels and sample-specific attributes 
