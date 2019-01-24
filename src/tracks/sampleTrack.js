@@ -53,7 +53,8 @@ export default class SampleTrack extends WebGlTrack {
         this.sampleOrder = [];
 
         /**
-         * @type {Array}
+         * // TODO: layer base class
+         * @type {import("../layers/segmentLayer").default[]}
          */
         this.layers = layers;
 
@@ -139,13 +140,12 @@ export default class SampleTrack extends WebGlTrack {
 
         this.layers.forEach(layer => layer.initialize(this));
 
-        /*
         this.viewportMouseTracker = new MouseTracker({
             element: this.glCanvas,
             tooltip: this.genomeSpy.tooltip,
-            resolver: this.findSampleAt.bind(this)
+            resolver: this.findDatumAt.bind(this),
+            tooltipConverter: datum => Promise.resolve(this.datumToTooltip(datum))
         });
-        */
 
         this.axisAreaMouseTracker = new MouseTracker({
             element: this.labelCanvas,
@@ -173,6 +173,50 @@ export default class SampleTrack extends WebGlTrack {
 
     findSampleIdAt(point) {
         return this.sampleScale.invert(point[1]);
+    }
+
+    /**
+     * TODO: Return multiple datums from overlaid layers
+     * 
+     * @param {number[]} point 
+     */
+    findDatumAt(point) {
+        const [x, y] = point;
+
+        const sampleId = this.sampleScale.invert(y);
+        if (!sampleId) {
+            return null;
+        }
+
+        const domainX = this.genomeSpy.rescaledX.invert(x);
+
+        for (let layer of this.layers) {
+            const datum = layer.findDatum(sampleId, domainX);
+            if (datum) {
+                return datum;
+            }
+        }
+
+        return null;
+    }
+
+    /*
+     * TODO: Multiple datums and layer-specific formatting
+     */
+    datumToTooltip(datum) {
+        const table = '<table class="attributes"' +
+            Object.entries(datum).map(([key, value]) => `
+                <tr>
+                    <th>${html.escapeHtml(key)}</th>
+                    <td>${html.escapeHtml(value)}</td>
+                </tr>`
+            ).join("") +
+            "</table>";
+        
+        return `
+        <div class="sample-track-datum-tooltip">
+            ${table}
+        </div>`
     }
 
     sampleToTooltip(sample) {

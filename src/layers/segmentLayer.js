@@ -10,6 +10,7 @@ import segmentsToVertices from '../gl/segmentsToVertices';
 export default class SegmentLayer {
     constructor(rectsBySample) {
         this.rectsBySample = rectsBySample; // TODO: replace with recipe
+        // TODO: sort rects
     }
 
     /**
@@ -46,5 +47,18 @@ export default class SegmentLayer {
             },
             this.vertices.get(sampleId)
         ));
+    }
+
+    /**
+     * @param {string} sampleId 
+     * @param {number} pos position on the domain
+     */
+    findDatum(sampleId, pos) {
+        const rects = this.rectsBySample.get(sampleId);
+
+        // TODO: BinarySearch
+        const rect = rects.find(rect => rect.interval.contains(pos));
+
+        return rect ? rect.rawDatum : null;
     }
 }

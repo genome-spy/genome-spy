@@ -175,7 +175,8 @@ function createCnvLohLayers(cm, segmentations, spec) {
         entry.key,
         entry.values.map(segment => ({
             interval: extractInterval(segment),
-            color: d3.color(colorScale(transform(parseFloat(segment[spec.segMean]))))
+            color: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))),
+            rawDatum: segment
         }))]
     ));
 
@@ -185,7 +186,8 @@ function createCnvLohLayers(cm, segmentations, spec) {
             interval: extractInterval(segment),
             paddingTop: 1.0 - baf2loh(parseFloat(segment[spec.bafMean])),
             colorTop: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
-            colorBottom: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb()
+            colorBottom: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
+            rawDatum: segment
         }))]
     ));
 

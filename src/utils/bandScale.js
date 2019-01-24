@@ -22,9 +22,8 @@ export default class BandScale {
 
     _rescale() {
         let [start, stop] = this._range;
-        let n = this._indexes.size;
 
-        this.step = (stop - start) / (n - this.paddingInner + 2 * this.paddingOuter);
+        this.step = (stop - start) / (this.n - this.paddingInner + 2 * this.paddingOuter);
         this.bandwidth = this.step * (1 - this.paddingInner);
     }
 
@@ -50,14 +49,9 @@ export default class BandScale {
         value -= this.paddingOuter * this.step;
         const index = Math.floor(value / this.step);
 
-        // TODO: Check index < n
-    
-        if (value % this.step < this.bandwidth) {
-            return this._keys[index];
-
-        } else {
-            return null;
-        }
+        return index >= 0 && index < this.n && value % this.step < this.bandwidth ?
+            this._keys[index] :
+            null
     }
 
     /**
@@ -83,5 +77,9 @@ export default class BandScale {
         }
 
         this._rescale();
+    }
+
+    get n() {
+        return this._indexes.size;
     }
 }

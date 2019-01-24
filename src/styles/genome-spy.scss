@@ -50,6 +50,23 @@ $basic-spacing: 10px;
         box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
 
         pointer-events: none;
+
+        table {
+            margin-top: $basic-spacing;
+            border-collapse: collapse;
+
+            th, td {
+                padding: 0.2em 0.4em;
+
+                &:first-child {
+                    padding-left: 0;
+                }
+            }
+
+            th {
+                text-align: left;
+            }
+        }
     }
 
     .gene-track-tooltip {
@@ -59,23 +76,8 @@ $basic-spacing: 10px;
     }
 
     .sample-track-sample-tooltip table {
-        margin-top: $basic-spacing;
-        border-collapse: collapse;
-
-        th, td {
-            padding: 0.2em 0.4em;
-
-            &:first-child {
-                padding-left: 0;
-            }
-        }
-
         td.color {
             width: 1px;
-        }
-
-        th {
-            text-align: left;
         }
     }
 }
