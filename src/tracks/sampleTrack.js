@@ -6,6 +6,8 @@ import * as d3 from 'd3';
 import WebGlTrack from './webGlTrack';
 import BandScale from '../utils/bandScale';
 import MouseTracker from "../mouseTracker";
+import Interval from '../utils/interval';
+import * as html from "../utils/html";
 
 // @ts-check
 
@@ -87,6 +89,21 @@ export default class SampleTrack extends WebGlTrack {
         this.adjustGl(this.gl);
 
         this.sampleScale.range([0, trackHeight]);
+
+        // TODO: Need a real layoutbuilder
+        const builder = {
+            tail: 0,
+            add: function(width) {
+                const int = new Interval(this.tail, this.tail + width);
+                this.tail += width;
+                return int;
+            }
+        } 
+
+        this.axisArea.labelInterval = builder.add(Math.ceil(this.axisArea.maxLabelWidth));
+        builder.add(this.config.horizontalSpacing);
+        this.axisArea.attributeInterval = builder.add(this.axisArea.attributeScales.size * this.config.attributeWidth);
+
     }
 
     /**
@@ -122,12 +139,22 @@ export default class SampleTrack extends WebGlTrack {
 
         this.layers.forEach(layer => layer.initialize(this));
 
+        /*
         this.viewportMouseTracker = new MouseTracker({
             element: this.glCanvas,
             tooltip: this.genomeSpy.tooltip,
             resolver: this.findSampleAt.bind(this)
         });
+        */
 
+        this.axisAreaMouseTracker = new MouseTracker({
+            element: this.labelCanvas,
+            tooltip: this.genomeSpy.tooltip,
+            resolver: this.findSampleIdAt.bind(this),
+            // TODO: Map for samples
+            tooltipConverter: sampleId => Promise.resolve(
+                this.sampleToTooltip(this.samples.filter(sample => sample.id == sampleId)[0]))
+        });
 
 
         genomeSpy.on("layout", layout => {
@@ -144,9 +171,43 @@ export default class SampleTrack extends WebGlTrack {
     }
 
 
-    findSampleAt(point) {
+    findSampleIdAt(point) {
         return this.sampleScale.invert(point[1]);
     }
+
+    sampleToTooltip(sample) {
+        const numberFormat = d3.format(".4");
+
+        const formatValue = value => {
+            if (typeof value == "number") {
+                return numberFormat(value);
+            } else if (typeof value == "string") {
+                return value;
+            } else {
+                return "";
+            }
+        };
+
+        const table = '<table class="attributes"' +
+            Object.entries(sample.attributes).map(([key, value]) => `
+                <tr>
+                    <th>${html.escapeHtml(key)}</th>
+                    <td>${html.escapeHtml(formatValue(value))}</td>
+                    <td class="color" style="background-color: ${this.axisArea.attributeScales.get(key)(value)}"></td>
+                </tr>`
+            ).join("") +
+            "</table>";
+        
+        return `
+        <div class="sample-track-sample-tooltip">
+            <div class="title">
+                <strong>${html.escapeHtml(sample.id)}</strong>
+            </div>
+
+            ${table}
+        </div>`
+    }
+    
 
 
     /**
@@ -160,22 +221,20 @@ export default class SampleTrack extends WebGlTrack {
         ctx.font = `${fontSize}px ${this.config.fontFamily}`;
         ctx.textBaseline = "middle";
 
-        const attributeOffset = Math.ceil(this.axisArea.maxLabelWidth + this.config.horizontalSpacing);
-
         this.samples.forEach(sample => {
             const band = this.sampleScale.scale(sample.id);
 
             ctx.fillStyle = "black";
             ctx.fillText(
                 sample.displayName,
-                0,
+                this.axisArea.labelInterval.lower,
                 band.centre());
 
             this.axisArea.attributeScales
                 .forEach((valueScale, key) => {
                     ctx.fillStyle = valueScale(sample.attributes[key]);
                     ctx.fillRect(
-                        attributeOffset + this.axisArea.attributeBandScale(key),
+                        this.axisArea.attributeInterval.lower + this.axisArea.attributeBandScale(key),
                         band.lower,
                         this.axisArea.attributeBandScale.bandwidth(),
                         band.width());

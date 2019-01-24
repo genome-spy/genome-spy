@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 
-const defaultConverter = obj => new Promise(resolve => resolve(obj));
+const defaultConverter = obj => Promise.resolve(obj);
 const defaultEqTest = (a, b) => Object.is(a, b);
 
 /**
@@ -29,7 +29,7 @@ export default class MouseTracker {
 
         this.currentTooltipObject = null;
 
-        this.tooltipDelay = 250; // in milliseconds
+        this.tooltipDelay = 400; // in milliseconds
 
         this.timeoutId = null;
 

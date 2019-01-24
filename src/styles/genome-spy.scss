@@ -47,7 +47,7 @@ $basic-spacing: 10px;
         padding: $basic-spacing;
         font-size: 13px;
 
-        box-shadow: 0px 3px 12px 0px rgba(0, 0, 0, 0.21);
+        box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
 
         pointer-events: none;
     }
@@ -55,6 +55,27 @@ $basic-spacing: 10px;
     .gene-track-tooltip {
         .summary {
             font-size: 90%;
+        }
+    }
+
+    .sample-track-sample-tooltip table {
+        margin-top: $basic-spacing;
+        border-collapse: collapse;
+
+        th, td {
+            padding: 0.2em 0.4em;
+
+            &:first-child {
+                padding-left: 0;
+            }
+        }
+
+        td.color {
+            width: 1px;
+        }
+
+        th {
+            text-align: left;
         }
     }
 }
