@@ -62,7 +62,7 @@ export default class MouseTracker {
             throw "Unexpected event: " + event.type;
         }
 
-        this._updateTooltip(resolvedObject);
+        this._updateTooltip(event.buttons == 0 ? resolvedObject : null);
     }
 
 
@@ -76,6 +76,8 @@ export default class MouseTracker {
                 clearTimeout(this.timeoutId);
             }
 
+            this.tooltip.setContent(null);
+
             if (obj) {
                 this.timeoutId = setTimeout(() => {
                     this.tooltipConverter(obj)
@@ -86,9 +88,6 @@ export default class MouseTracker {
                             }
                         });
                 }, this.tooltipDelay);
-
-            } else {
-                this.tooltip.setContent(null);
             }
 
             //console.log(`HoverHandler current: ${obj}`);
