@@ -8,67 +8,22 @@ import AxisTrack from "./tracks/axisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";
 import { GeneTrack, parseCompressedRefseqGeneTsv } from "./tracks/geneTrack";
 
-const conf_ParpiCL = {
-    genome: "hg38",
-    tracks: [
-        {
-            type: "SampleTrack",
-            samples: "private/ParpiCL_samples.csv",
-            layers: [
-                {
-                    type: "CnvLoh",
-                    data: "private/ParpiCL_cnv_ascatAll.csv",
-                    spec: {
-                        sample: "Sample",
-                        chrom: "Chromosome",
-                        start: "Start",
-                        end: "End",
-                        segMean: "Segment_Mean",
-                        bafMean: "meanBaf",
 
-                        logSeg: false
-                    }
-                }
-            ]
-        }
-    ]
-};
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has("conf")) {
+    initWithConfiguration(urlParams.get("conf"))
 
-const conf_set5 = {
-    genome: "hg38",
-    tracks: [
-        {
-            type: "SampleTrack",
-            samples: "private/set5_samples.csv",
-            layers: [
-                {
-                    type: "CnvLoh",
-                    data: "private/set5_segsAll.csv",
-                    spec: {
-                        sample: "sample",
-                        chrom: "chr",
-                        start: "startpos",
-                        end: "endpos",
-                        segMean: "segMean",
-                        bafMean: "bafMean",
+} else {
+    document.body.innerText = "No configuration defined!";
+}
 
-                        logSeg: true
-                    }
-                }
-            ]
-        }
-    ]
-};
 
-initWithConfiguration(conf_set5);
-//initWithConfiguration(conf_ParpiCL);
-
-async function createSampleTrack(cm, sampleTrackConf) {
+async function createSampleTrack(baseurl, cm, sampleTrackConf) {
     let samples;
 
     if (sampleTrackConf.samples) {
         // TODO: Accept a pre-parsed array of objects
-        samples = processSamples(await fetch(sampleTrackConf.samples).then(res => res.text()));
+        samples = processSamples(await fetch(baseurl + sampleTrackConf.samples).then(res => res.text()));
 
     } else {
         // TODO: infer from data
@@ -89,7 +44,7 @@ async function createSampleTrack(cm, sampleTrackConf) {
         if (layerConf.type == "CnvLoh") {
             // TODO: Accept a pre-parsed array of objects
             const segmentations = d3.tsvParse(
-                await fetch(layerConf.data).then(res => res.text())
+                await fetch(baseurl + layerConf.data).then(res => res.text())
             )
 
             layers.push(...createCnvLohLayers(cm, segmentations, layerConf.spec));
@@ -97,13 +52,30 @@ async function createSampleTrack(cm, sampleTrackConf) {
         } else {
             throw `Unsupported layer type: ${layerConf.type}`;
         }
-    };
+    }
 
     return new SampleTrack(samples, layers);
 }
 
 
+/**
+ * @param {object | string} conf configuriation object or url to json configuration
+ */
 async function initWithConfiguration(conf) {
+
+    if (typeof conf == "string") {
+        const url = conf;
+        try {
+            conf = await fetch(url).then(res => res.json());
+        } catch (e) {
+            throw e;
+        }
+
+        conf.baseurl = conf.baseurl || url.match(/^.*\//)[0];
+    } else {
+        conf.baseurl = conf.baseurl || "";
+    }
+
     const cytobands = parseUcscCytobands(
         await fetch(`cytoBand.${conf.genome}.txt`).then(res => res.text()));
 
@@ -118,8 +90,8 @@ async function initWithConfiguration(conf) {
     for (let trackConf of conf.tracks) {
         // TODO: Modularize
         if (trackConf.type == "SampleTrack") {
-            // TODO: Here's a dependency to cm. Have to rethink this a bit...
-            tracks.push(await createSampleTrack(cm, trackConf));
+            // TODO: Here's a dependency to baseurl and cm. Have to rethink this a bit...
+            tracks.push(await createSampleTrack(conf.baseurl, cm, trackConf));
 
         } else {
             throw `Unsupported track type: ${trackConf.type}`;
