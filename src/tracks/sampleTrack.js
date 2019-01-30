@@ -8,6 +8,7 @@ import BandScale from '../utils/bandScale';
 import MouseTracker from "../mouseTracker";
 import Interval from '../utils/interval';
 import * as html from "../utils/html";
+import fisheye from "../utils/fishEye";
 
 // @ts-check
 
@@ -157,6 +158,19 @@ export default class SampleTrack extends WebGlTrack {
         });
 
 
+        if (false) {
+            const moveListener = event => {
+                this.fisheye.focus([0, d3.clientPoint(this.glCanvas, event)[1]]);
+                this.renderViewport();
+                this.renderLabels();
+            }
+
+            this.fisheye = fisheye().radius(100).distortion(5);
+
+            this.glCanvas.addEventListener("mousemove", moveListener, false);
+            this.labelCanvas.addEventListener("mousemove", moveListener, false);
+        }
+
         genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
             this.renderLabels();
@@ -253,6 +267,17 @@ export default class SampleTrack extends WebGlTrack {
     }
     
 
+    _scaleSample(id) {
+        let interval = this.sampleScale.scale(id);
+
+        if (this.fisheye) {
+            const scaleY = y => this.fisheye({ x: 0, y }).y;
+            interval = interval.transform(scaleY);
+        }
+
+        return interval;
+    }
+
 
     /**
      * Render the axis area, which contains labels and sample-specific attributes 
@@ -261,12 +286,13 @@ export default class SampleTrack extends WebGlTrack {
         const ctx = this.get2d(this.labelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
-        const fontSize = Math.min(this.config.fontSize, this.sampleScale.bandwidth);
-        ctx.font = `${fontSize}px ${this.config.fontFamily}`;
         ctx.textBaseline = "middle";
 
         this.samples.forEach(sample => {
-            const band = this.sampleScale.scale(sample.id);
+            const band = this._scaleSample(sample.id);
+
+            const fontSize = Math.min(this.config.fontSize, band.width());
+            ctx.font = `${fontSize}px ${this.config.fontFamily}`;
 
             ctx.fillStyle = "black";
             ctx.fillText(
@@ -296,7 +322,7 @@ export default class SampleTrack extends WebGlTrack {
         const width = gl.canvas.clientWidth;
 
         this.samples.forEach(sample => {
-            const band = this.sampleScale.scale(sample.id);
+            const band = this._scaleSample(sample.id);
 
             const view = new Matrix4()
                 .translate([0, band.lower, 0])
