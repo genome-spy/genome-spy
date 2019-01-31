@@ -156,7 +156,7 @@ export default class CytobandTrack extends WebGlTrack {
         // TODO: Move to base class / abstraction
         const uniforms = Object.assign(
             {
-                uTMatrix: this.projection.clone().multiplyRight(view),
+                uTMatrix: this.viewportProjection.clone().multiplyRight(view),
             },
             this.getDomainUniforms()
         );

@@ -10,8 +10,6 @@ import Interval from '../utils/interval';
 import * as html from "../utils/html";
 import fisheye from "../utils/fishEye";
 
-// @ts-check
-
 const defaultConfig = {
     paddingInner: 0.2, // Relative to sample height
     paddingOuter: 0.2,
@@ -157,19 +155,8 @@ export default class SampleTrack extends WebGlTrack {
                 this.sampleToTooltip(this.samples.filter(sample => sample.id == sampleId)[0]))
         });
 
+        this.initializeFisheye()
 
-        if (false) {
-            const moveListener = event => {
-                this.fisheye.focus([0, d3.clientPoint(this.glCanvas, event)[1]]);
-                this.renderViewport();
-                this.renderLabels();
-            }
-
-            this.fisheye = fisheye().radius(100).distortion(5);
-
-            this.glCanvas.addEventListener("mousemove", moveListener, false);
-            this.labelCanvas.addEventListener("mousemove", moveListener, false);
-        }
 
         genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
@@ -184,6 +171,53 @@ export default class SampleTrack extends WebGlTrack {
         genomeSpy.zoom.attachZoomEvents(this.glCanvas);
     }
 
+    /**
+     * Initializes fisheye functionality.
+     * TODO: Currently a quick hack. Put some effort to design
+     * TODO: Smoothly animated transition to activation/inactivation
+     */
+    initializeFisheye() {
+        /** @type {MouseEvent} */
+        let lastMouseEvent = null;
+
+        const render = () => {
+            this.renderViewport();
+            this.renderLabels();
+        };
+
+        const focus = () => {
+            this.fisheye.focus([0, d3.clientPoint(this.glCanvas, lastMouseEvent)[1]]);
+            render();
+
+        }
+
+        const moveListener = event => {
+            lastMouseEvent = event;
+            if (this.fisheye) {
+                focus();
+            }
+        }
+
+        this.glCanvas.addEventListener("mousemove", moveListener, false);
+        this.labelCanvas.addEventListener("mousemove", moveListener, false);
+
+        // Ad hoc key binding. TODO: Make this more abstract
+        document.body.addEventListener("keydown", event => {
+            if (event.code == "KeyE") {
+                const minWidth = 30;
+                const zoomFactor = Math.max(1, minWidth / this.sampleScale.bandwidth);
+                this.fisheye = fisheye().radius(150).distortion(zoomFactor);
+                focus();
+            }
+        }, false);
+
+        document.body.addEventListener("keyup", event => {
+            if (event.code == "KeyE") {
+                this.fisheye = null;
+                render();
+            }
+        }, false);
+    }
 
     findSampleIdAt(point) {
         return this.sampleScale.invert(point[1]);
@@ -330,7 +364,7 @@ export default class SampleTrack extends WebGlTrack {
 
             const uniforms = Object.assign(
                 {
-                    uTMatrix: this.projection.clone().multiplyRight(view),
+                    uTMatrix: this.viewportProjection.clone().multiplyRight(view),
                 },
                 this.getDomainUniforms()
             );

@@ -1,8 +1,4 @@
 import Interval from "../utils/interval";
-import { Matrix4 } from 'math.gl';
-import {
-    resizeGLContext
-} from 'luma.gl';
 
 /**
  * Abstract base class for tracks
@@ -48,20 +44,6 @@ export default class Track {
 
         canvas.width = interval.width() * r;
         canvas.height = trackHeight * r;
-    }
-
-    adjustGl(gl) {
-        resizeGLContext(gl, { useDevicePixels: true });
-        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-
-        this.projection = Object.freeze(new Matrix4().ortho({
-            left: 0,
-            right: gl.canvas.clientWidth,
-            bottom: gl.canvas.clientHeight,
-            top: 0,
-            near: 0,
-            far: 500
-        }));
     }
 
     get2d(canvas) {

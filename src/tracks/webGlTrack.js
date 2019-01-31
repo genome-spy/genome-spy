@@ -1,6 +1,7 @@
 import {
-    registerShaderModules, fp64
+    resizeGLContext, registerShaderModules, fp64
 } from 'luma.gl';
+import { Matrix4 } from 'math.gl';
 import Track from "./track";
 
 export default class WebGlTrack extends Track {
@@ -16,6 +17,20 @@ export default class WebGlTrack extends Track {
         super.initialize(genomeSpy, trackContainer);
 
         registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
+    }
+
+    adjustGl(gl) {
+        resizeGLContext(gl, { useDevicePixels: true });
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+        this.viewportProjection = Object.freeze(new Matrix4().ortho({
+            left: 0,
+            right: gl.canvas.clientWidth,
+            bottom: gl.canvas.clientHeight,
+            top: 0,
+            near: 0,
+            far: 500
+        }));
     }
 
 

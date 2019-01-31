@@ -9,9 +9,15 @@ export default class Interval {
      * @param {number} upper 
      */
     constructor(lower, upper) {
-        if (isNaN(lower)) throw `Lower value "${lower}" is not a number!`;
-        if (isNaN(upper)) throw `Upper value "${upper}" is not a number!`;
-        if (upper < lower) throw `Upper value is less that lower value! Lower: ${lower}, upper: ${upper}`;
+        if (isNaN(lower)) {
+            throw `Lower value "${lower}" is not a number!`;
+        }
+        if (isNaN(upper)) {
+            throw `Upper value "${upper}" is not a number!`;
+        }
+        if (upper < lower) {
+            throw `Upper value is less that lower value! Lower: ${lower}, upper: ${upper}`;
+        }
 
         this.lower = lower;
         this.upper = upper;

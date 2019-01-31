@@ -345,7 +345,7 @@ export class GeneTrack extends WebGlTrack {
 
         const view = new Matrix4()
             .scale([this.gl.canvas.clientWidth, 1, 1]);
-        const uTMatrix = this.projection.clone().multiplyRight(view);
+        const uTMatrix = this.viewportProjection.clone().multiplyRight(view);
 
         this.visibleClusters.forEach(cluster => {
             this.exonProgram.draw(Object.assign(
