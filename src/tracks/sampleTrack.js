@@ -65,6 +65,8 @@ export default class SampleTrack extends WebGlTrack {
         this.axisArea.maxLabelWidth = this.samples
             .map(sample => ctx.measureText(sample.displayName).width)
             .reduce((a, b) => Math.max(a, b), 0);
+
+        this.textCache = new CanvasTextCache(this.config.fontSize, this.config.fontFamily);
     }
 
     /**
@@ -320,19 +322,16 @@ export default class SampleTrack extends WebGlTrack {
         const ctx = this.get2d(this.labelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
-        ctx.textBaseline = "middle";
-
         this.samples.forEach(sample => {
             const band = this._scaleSample(sample.id);
 
             const fontSize = Math.min(this.config.fontSize, band.width());
-            ctx.font = `${fontSize}px ${this.config.fontFamily}`;
 
-            ctx.fillStyle = "black";
-            ctx.fillText(
+            this.textCache.fillText(ctx,
                 sample.displayName,
                 this.axisArea.labelInterval.lower,
-                band.centre());
+                band.centre(),
+                fontSize);
 
             this.axisArea.attributeScales
                 .forEach((valueScale, key) => {
