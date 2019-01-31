@@ -9,6 +9,8 @@ import MouseTracker from "../mouseTracker";
 import Interval from '../utils/interval';
 import * as html from "../utils/html";
 import fisheye from "../utils/fishEye";
+import CanvasTextCache from "../utils/canvasTextCache";
+import transition, { easeOutElastic, easeOutBack, easeOutBounce, easeInOutBack, easeOutCubic } from "../utils/transition";
 
 const defaultConfig = {
     paddingInner: 0.2, // Relative to sample height
@@ -203,20 +205,43 @@ export default class SampleTrack extends WebGlTrack {
         this.glCanvas.addEventListener("mousemove", moveListener, false);
         this.labelCanvas.addEventListener("mousemove", moveListener, false);
 
+        const minWidth = 30;
+        let zoomFactor = 1;
+
         // Ad hoc key binding. TODO: Make this more abstract
         document.body.addEventListener("keydown", event => {
-            if (event.code == "KeyE") {
-                const minWidth = 30;
-                const zoomFactor = Math.max(1, minWidth / this.sampleScale.bandwidth);
-                this.fisheye = fisheye().radius(150).distortion(zoomFactor);
-                focus();
+            if (!event.repeat && event.code == "KeyE") {
+                this.fisheye = fisheye().radius(150).distortion(1);
+
+                transition({
+                    duration: 150,
+                    from: 1,
+                    to: Math.max(1, minWidth / this.sampleScale.bandwidth),
+                    //easingFunction: easeOutElastic,
+                    onUpdate: value => {
+                        this.fisheye.distortion(value);
+                        zoomFactor = value;
+                        focus();
+                    }
+                });
             }
         }, false);
 
         document.body.addEventListener("keyup", event => {
             if (event.code == "KeyE") {
-                this.fisheye = null;
-                render();
+                transition({
+                    duration: 100,
+                    from: zoomFactor,
+                    to: 1,
+                    onUpdate: value => {
+                        this.fisheye.distortion(value);
+                        zoomFactor = value;
+                        focus();
+                    }
+                }).then(() => {
+                    this.fisheye = null;
+                    render();
+                });
             }
         }, false);
     }
