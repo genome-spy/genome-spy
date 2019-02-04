@@ -10,7 +10,7 @@ import Interval from '../utils/interval';
 import * as html from "../utils/html";
 import fisheye from "../utils/fishEye";
 import CanvasTextCache from "../utils/canvasTextCache";
-import transition, { easeOutElastic, easeOutBack, easeOutBounce, easeInOutBack, easeOutCubic } from "../utils/transition";
+import transition from "../utils/transition";
 
 const defaultConfig = {
     paddingInner: 0.2, // Relative to sample height
@@ -206,16 +206,17 @@ export default class SampleTrack extends WebGlTrack {
         this.labelCanvas.addEventListener("mousemove", moveListener, false);
 
         const minWidth = 30;
-        let zoomFactor = 1;
+        const zero = 0.01
+        let zoomFactor = zero;
 
         // Ad hoc key binding. TODO: Make this more abstract
         document.body.addEventListener("keydown", event => {
             if (!event.repeat && event.code == "KeyE") {
-                this.fisheye = fisheye().radius(150).distortion(1);
+                this.fisheye = fisheye().radius(150);
 
                 transition({
                     duration: 150,
-                    from: 1,
+                    from: zero,
                     to: Math.max(1, minWidth / this.sampleScale.bandwidth),
                     //easingFunction: easeOutElastic,
                     onUpdate: value => {
@@ -232,7 +233,7 @@ export default class SampleTrack extends WebGlTrack {
                 transition({
                     duration: 100,
                     from: zoomFactor,
-                    to: 1,
+                    to: zero,
                     onUpdate: value => {
                         this.fisheye.distortion(value);
                         zoomFactor = value;
