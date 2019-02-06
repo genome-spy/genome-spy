@@ -145,18 +145,10 @@ export default class CytobandTrack extends WebGlTrack {
         //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        const view = new Matrix4()
-            //.translate([0, 0, 0])
-            .scale([
-                this.gl.canvas.clientWidth,
-                this.gl.canvas.clientHeight,
-                1
-            ]);
-
         // TODO: Move to base class / abstraction
         const uniforms = Object.assign(
             {
-                uTMatrix: this.viewportProjection.clone().multiplyRight(view),
+                yPos: [0, 1]
             },
             this.getDomainUniforms()
         );

@@ -378,18 +378,16 @@ export default class SampleTrack extends WebGlTrack {
         //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        const width = gl.canvas.clientWidth;
+        // Normalize to [0, 1]
+        const normalize = d3.scaleLinear()
+            .domain([0, gl.canvas.clientHeight]);
 
         this.samples.forEach(sample => {
-            const band = this._scaleSample(sample.id);
-
-            const view = new Matrix4()
-                .translate([0, band.lower, 0])
-                .scale([width, band.width(), 1]);
+            const band = this._scaleSample(sample.id).transform(normalize);
 
             const uniforms = Object.assign(
                 {
-                    uTMatrix: this.viewportProjection.clone().multiplyRight(view),
+                    yPos: [band.lower, band.width()]
                 },
                 this.getDomainUniforms()
             );
