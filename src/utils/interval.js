@@ -117,6 +117,22 @@ export default class Interval {
         return new Interval(scale(this.lower), scale(this.upper));
     }
 
+    /**
+     * Returns an Interval that is a blend of this and the given interval.
+     * 
+     * This is mainly intended for animated transitions between two intervals.
+     * 
+     * @param {Interval} otherInterval The interval to blend with
+     * @param {number} ratio The ratio of blending, [0, 1]. 0 = all this, 1 = all that
+     */
+    mix(otherInterval, ratio) {
+        const m = (a, b) => a * (1 - ratio) + b * ratio;
+        return new Interval(
+            m(this.lower, otherInterval.lower),
+            m(this.upper, otherInterval.upper)
+        );
+    }
+
     copy() {
         return new Interval(this.lower, this.upper);
     }

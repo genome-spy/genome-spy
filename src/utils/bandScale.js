@@ -82,4 +82,14 @@ export default class BandScale {
     get n() {
         return this._indexes.size;
     }
+
+    clone() {
+        const copy = new BandScale();
+        copy.paddingInner = this.paddingInner;
+        copy.paddingOuter = this.paddingOuter;
+        copy.domain(this._keys);
+        copy.range(this._range)
+
+        return copy;
+    }
 }

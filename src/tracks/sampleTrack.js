@@ -10,7 +10,7 @@ import Interval from '../utils/interval';
 import * as html from "../utils/html";
 import fisheye from "../utils/fishEye";
 import CanvasTextCache from "../utils/canvasTextCache";
-import transition from "../utils/transition";
+import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } from "../utils/transition";
 
 const defaultConfig = {
     paddingInner: 0.2, // Relative to sample height
@@ -51,7 +51,8 @@ export default class SampleTrack extends WebGlTrack {
          * 
          * @type {string[]}
          */
-        this.sampleOrder = [];
+        this.sampleOrder = this.getSamplesSortedByAttribute(s => s.displayName);
+        this.sampleOrderR = this.getSamplesSortedByAttribute(s => s.attributes.tissue);
 
         /**
          * // TODO: layer base class
@@ -93,6 +94,7 @@ export default class SampleTrack extends WebGlTrack {
         this.adjustGl(this.gl);
 
         this.sampleScale.range([0, trackHeight]);
+        this.sampleScaleR.range([0, trackHeight]);
 
         // TODO: Need a real layoutbuilder
         const builder = {
@@ -118,9 +120,14 @@ export default class SampleTrack extends WebGlTrack {
         super.initialize(genomeSpy, trackContainer);
 
         this.sampleScale = new BandScale();
-        this.sampleScale.domain(this.samples.map(sample => sample.id));
+        this.sampleScale.domain(this.sampleOrder);
         this.sampleScale.paddingInner = this.config.paddingInner;
         this.sampleScale.paddingOuter = this.config.paddingOuter;
+
+        this.sampleScaleR = new BandScale();
+        this.sampleScaleR.domain(this.sampleOrderR);
+        this.sampleScaleR.paddingInner = this.config.paddingInner;
+        this.sampleScaleR.paddingOuter = this.config.paddingOuter;
 
         this.trackContainer.className = "sample-track";
 
@@ -173,6 +180,15 @@ export default class SampleTrack extends WebGlTrack {
         });
 
         genomeSpy.zoom.attachZoomEvents(this.glCanvas);
+
+
+        // TODO: Reorganize:
+        document.body.addEventListener("keydown", event => {
+            if (event.key >= '1' && event.key <= '9') {
+                const index = event.key.charCodeAt(0) - '1'.charCodeAt(0);
+                this.sortSamples(s => Object.values(s.attributes)[index]);
+            }
+        });
     }
 
     /**
@@ -340,16 +356,61 @@ export default class SampleTrack extends WebGlTrack {
         return interval;
     }
 
+    /**
+     * 
+     * @param {function} attributeAccessor 
+     */
+    sortSamples(attributeAccessor) {
+        const targetSampleOrder = this.getSamplesSortedByAttribute(attributeAccessor);
+        const targetSampleScale = this.sampleScale.clone();
+        targetSampleScale.domain(targetSampleOrder);
+
+        const yDelay = d3.scaleLinear().domain([0, 0.4]).clamp(true);
+        const xDelay = d3.scaleLinear().domain([0.15, 1]).clamp(true);
+
+        const yEase = normalizedEase(easeInOutQuad);
+        const xEase = normalizedEase(easeInOutSine);
+
+        transition({
+            duration: 1500,
+            easingFunction: easeLinear,
+            onUpdate: value => {
+                const samplePositionResolver = id => this.sampleScale.scale(id)
+                    .mix(targetSampleScale.scale(id), yEase(yDelay(value)));
+                
+                /** @type {RenderOptions} */
+                const options = {
+                    samplePositionResolver,
+                    transitionProgress: xEase(xDelay(value))
+                };
+
+                this.renderViewport(options);
+                this.renderLabels(options);
+
+                
+            }
+        }).then(() => {
+            this.sampleOrder = targetSampleOrder;
+            this.sampleScale = targetSampleScale;
+            this.renderViewport();
+            this.renderLabels();
+        });
+
+    }
 
     /**
      * Render the axis area, which contains labels and sample-specific attributes 
+     * 
+     * @param {RenderOptions} [options]
      */
-    renderLabels() {
+    renderLabels(options) {
+        const positionResolver = (options && options.samplePositionResolver) || (id => this._scaleSample(id));
+
         const ctx = this.get2d(this.labelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
         this.samples.forEach(sample => {
-            const band = this._scaleSample(sample.id);
+            const band = positionResolver(sample.id);
 
             const fontSize = Math.min(this.config.fontSize, band.width());
 
@@ -372,28 +433,63 @@ export default class SampleTrack extends WebGlTrack {
     }
 
 
-    renderViewport() {
+    /**
+     * 
+     * @typedef {Object} RenderOptions
+     * @property {function(string):Interval} samplePositionResolver
+     * @property {number} transitionProgress
+     * 
+     * @param {RenderOptions} [options] 
+     */
+    renderViewport(options) {
         const gl = this.gl;
-
-        //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.clear(gl.COLOR_BUFFER_BIT);
 
         // Normalize to [0, 1]
         const normalize = d3.scaleLinear()
             .domain([0, gl.canvas.clientHeight]);
+        
+        const positionResolver = (options && options.samplePositionResolver) || (id => this._scaleSample(id));
+        const transitionProgress = (options && options.transitionProgress) || 0;
+
+        //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
         this.samples.forEach(sample => {
-            const band = this._scaleSample(sample.id).transform(normalize);
+            const bandLeft = positionResolver(sample.id).transform(normalize);
+            const bandRight = this._scaleSample(sample.id).transform(normalize);
 
             const uniforms = Object.assign(
                 {
-                    yPos: [band.lower, band.width()]
+                    yPosLeft: [bandLeft.lower, bandLeft.width()],
+                    yPosRight: [bandRight.lower, bandRight.width()],
+                    transitionOffset: transitionProgress
                 },
                 this.getDomainUniforms()
             );
 
             this.layers.forEach(layer => layer.render(sample.id, uniforms));
         });
+    }
+
+    /**
+     * 
+     * @param {function} attributeAccessor
+     * @returns {string[]} ids of sorted samples 
+     */
+    getSamplesSortedByAttribute(attributeAccessor) {
+        // TODO: use a stable sorting algorithm, sort based on the current order
+        return [...this.samples].sort((a, b) => {
+            const av = attributeAccessor(a);
+            const bv = attributeAccessor(b);
+
+            if (av < bv) {
+                return -1;
+            } else if (av > bv) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }).map(s => s.id);
     }
 
     /**

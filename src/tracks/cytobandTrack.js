@@ -148,7 +148,8 @@ export default class CytobandTrack extends WebGlTrack {
         // TODO: Move to base class / abstraction
         const uniforms = Object.assign(
             {
-                yPos: [0, 1]
+                yPosLeft: [0, 1],
+                yPosRight: [0, 1]
             },
             this.getDomainUniforms()
         );

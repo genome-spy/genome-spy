@@ -6,8 +6,8 @@
  * @param {TransitionOptions} options
  * 
  * @typedef {Object} TransitionOptions
- * @prop {number} from
- * @prop {number} to 
+ * @prop {number} [from]
+ * @prop {number} [to]
  * @prop {number} [duration] in milliseconds
  * @prop {function} onUpdate
  * @prop {function} [easingFunction]
@@ -30,7 +30,7 @@ export default function transition(options) {
                 window.requestAnimationFrame(step);
 
             } else {
-                options.onUpdate(options.to);
+                options.onUpdate(to);
                 resolve();
             }
         }
@@ -40,6 +40,9 @@ export default function transition(options) {
 
 }
 
+export function normalizedEase(easingFunction) {
+    return x => easingFunction(x, 0, 1, 1);
+}
 
 /*
 *
@@ -77,6 +80,10 @@ export default function transition(options) {
 /*
  * Params: current_time, start_value, end_value, total_time
  */
+
+export function easeLinear(t, b, c, d) {
+    return c*t/d + b;
+};
 
 export function easeInQuad(t, b, c, d) {
     return c*(t/=d)*t + b;

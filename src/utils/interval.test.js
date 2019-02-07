@@ -95,6 +95,15 @@ test("Transform", () => {
     expect(new Interval(1, 2).transform(f)).toEqual(new Interval(10, 20));
 });
 
+test("Mix", () => {
+    const a = new Interval(1, 2);
+    const b = new Interval(5, 10);
+
+    expect(a.mix(b, 0)).toEqual(a);
+    expect(a.mix(b, 0.5)).toEqual(new Interval(3, 6));
+    expect(a.mix(b, 1)).toEqual(b);
+});
+
 test("Copy", () => {
     const interval = new Interval(1, 2);
 
