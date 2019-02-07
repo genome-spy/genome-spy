@@ -52,7 +52,6 @@ export default class SampleTrack extends WebGlTrack {
          * @type {string[]}
          */
         this.sampleOrder = this.getSamplesSortedByAttribute(s => s.displayName);
-        this.sampleOrderR = this.getSamplesSortedByAttribute(s => s.attributes.tissue);
 
         /**
          * // TODO: layer base class
@@ -94,7 +93,6 @@ export default class SampleTrack extends WebGlTrack {
         this.adjustGl(this.gl);
 
         this.sampleScale.range([0, trackHeight]);
-        this.sampleScaleR.range([0, trackHeight]);
 
         // TODO: Need a real layoutbuilder
         const builder = {
@@ -123,11 +121,6 @@ export default class SampleTrack extends WebGlTrack {
         this.sampleScale.domain(this.sampleOrder);
         this.sampleScale.paddingInner = this.config.paddingInner;
         this.sampleScale.paddingOuter = this.config.paddingOuter;
-
-        this.sampleScaleR = new BandScale();
-        this.sampleScaleR.domain(this.sampleOrderR);
-        this.sampleScaleR.paddingInner = this.config.paddingInner;
-        this.sampleScaleR.paddingOuter = this.config.paddingOuter;
 
         this.trackContainer.className = "sample-track";
 
@@ -189,6 +182,15 @@ export default class SampleTrack extends WebGlTrack {
                 this.sortSamples(s => Object.values(s.attributes)[index]);
             }
         });
+
+        this.glCanvas.addEventListener("mousedown", event => {
+            if (event.metaKey) {
+                const point = d3.clientPoint(this.glCanvas, event);
+                const pos = this.genomeSpy.rescaledX.invert(point[0])
+
+                this.sortSamplesByLocus(this.layers[0], pos);
+            }
+        }, false);
     }
 
     /**
@@ -354,6 +356,24 @@ export default class SampleTrack extends WebGlTrack {
         }
 
         return interval;
+    }
+
+
+    /**
+     * 
+     * @param {object} layer
+     * @param {number} pos locus in continuous domain
+     */
+    sortSamplesByLocus(layer, pos) {
+        const valuesBySample = new Map(this.sampleOrder.map(id => [
+            id,
+            +layer.findDatum(id, pos).segMean // TODO: Generify
+        ]));
+
+        const accessor = sample => valuesBySample.get(sample.id);
+
+        this.sortSamples(accessor);
+
     }
 
     /**
