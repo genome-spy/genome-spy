@@ -427,6 +427,8 @@ export default class SampleTrack extends WebGlTrack {
      * @param {RenderOptions} [options]
      */
     renderLabels(options) {
+        // TODO: Implement in WebGL
+
         const positionResolver = (options && options.samplePositionResolver) || (id => this._scaleSample(id));
 
         const ctx = this.get2d(this.labelCanvas);

@@ -130,6 +130,7 @@ export default class CytobandTrack extends WebGlTrack {
         this.adjustCanvas(this.bandLabelCanvas, layout.viewport);
         this.adjustCanvas(this.glCanvas, layout.viewport);
         this.adjustGl(this.gl);
+        this.viewportDimensions = { width: layout.viewport.width(), height: this.trackContainer.clientHeight };
     }
 
 
@@ -164,7 +165,8 @@ export default class CytobandTrack extends WebGlTrack {
 
     renderLabels() {
         const scale = this.genomeSpy.getZoomedScale();
-        const viewportInterval = Interval.fromArray(scale.range()); // TODO: Provide this from somewhere
+        const viewportRange = Interval.fromArray(scale.range()); // TODO: Provide this from somewhere
+
         const ctx = this.get2d(this.bandLabelCanvas);
         ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
         ctx.textBaseline = "middle";
@@ -173,18 +175,23 @@ export default class CytobandTrack extends WebGlTrack {
         const r = window.devicePixelRatio || 1;
         ctx.shadowOffsetY = 1.0 * r;
 
-        ctx.clearRect(0, 0, this.bandLabelCanvas.clientWidth, this.bandLabelCanvas.clientHeight);
+        ctx.clearRect(0, 0, this.viewportDimensions.width, this.viewportDimensions.height);
 
-        const y = this.bandLabelCanvas.clientHeight / 2;
+        const y = this.viewportDimensions.height / 2;
 
-        // TODO: For each band, precompute the maximum domain width that yields bandwidth ...
-        // ... that accommodates the label. That would avoid scaling intervals of all bands.
+        const minLabelWidthInDomain = scale.invert(40) - scale.invert(0); // TODO: replace 40 with max width
+        const viewportDomain = this.genomeSpy.getViewportDomain();
 
         this.mappedCytobands.forEach((band, i) => {
+            // TODO: Subset by binary search or something
+            if (!viewportDomain.connectedWith(band.interval) || band.interval.width() < minLabelWidthInDomain) {
+                return;
+            }
+            
             const scaledInt = band.interval.transform(scale);
             const labelWidth = this._bandLabelWidths[i];
 
-            if (scaledInt.connectedWith(viewportInterval) &&
+            if (scaledInt.connectedWith(viewportRange) &&
                 scaledInt.width() > labelWidth + this.config.labelMargin * 2) {
                 let x = scaledInt.centre();
 
@@ -194,14 +201,14 @@ export default class CytobandTrack extends WebGlTrack {
 
                 const threshold = labelWidth / 2 + this.config.labelMargin;
 
-                if (x < viewportInterval.lower + threshold) {
+                if (x < viewportRange.lower + threshold) {
                     // leftmost
-                    x = Math.max(x, viewportInterval.lower + threshold);
+                    x = Math.max(x, viewportRange.lower + threshold);
                     x = Math.min(x, scaledInt.upper - threshold);
 
-                } else if (x > viewportInterval.upper - threshold) {
+                } else if (x > viewportRange.upper - threshold) {
                     // rightmost
-                    x = Math.min(x, viewportInterval.upper - threshold);
+                    x = Math.min(x, viewportRange.upper - threshold);
                     x = Math.max(x, scaledInt.lower + threshold);
                 }
 
@@ -226,7 +233,7 @@ export default class CytobandTrack extends WebGlTrack {
                 const x = scale(chrom.continuousInterval.lower);
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
-                ctx.lineTo(x, this.bandLabelCanvas.height);
+                ctx.lineTo(x, this.viewportDimensions.height);
                 ctx.stroke();
             }
         });

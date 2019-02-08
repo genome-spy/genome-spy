@@ -35,11 +35,11 @@ export default class WebGlTrack extends Track {
 
 
     getDomainUniforms() {
-        const domain = this.genomeSpy.getVisibleDomain();
+        const domain = this.genomeSpy.getViewportDomain();
 
         return {
-            uDomainBegin: fp64.fp64ify(domain[0]),
-            uDomainWidth: fp64.fp64ify(domain[1] - domain[0])
+            uDomainBegin: fp64.fp64ify(domain.lower),
+            uDomainWidth: fp64.fp64ify(domain.width())
         };
     }
 }

@@ -54,11 +54,6 @@ export default class Track {
         return ctx;
     }
 
-    getViewportDomain() {
-        // Could be in GenomeSpy too ... TODO: Decide
-        return Interval.fromArray(this.genomeSpy.getVisibleDomain());
-    }
-
     /**
      * Returns an interval that matches the search string
      * 

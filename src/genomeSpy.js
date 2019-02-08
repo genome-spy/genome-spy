@@ -45,14 +45,10 @@ export default class GenomeSpy {
 
     _zoomed(transform) {
         this.rescaledX = transform.rescale(this.xScale);
-        this.eventEmitter.emit('zoom', this.getVisibleInterval());
+        this.eventEmitter.emit('zoom', this.getViewportDomain());
     }
 
-    getVisibleDomain() {
-        return this.rescaledX.domain();
-    }
-
-    getVisibleInterval() {
+    getViewportDomain() {
         return Interval.fromArray(this.rescaledX.domain());
     }
 

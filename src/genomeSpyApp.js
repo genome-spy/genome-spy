@@ -68,7 +68,7 @@ export default class GenomeSpyApp {
 
         this.genomeSpy.launch();
 
-        this.searchInput.value = this.gif.format(this.genomeSpy.getVisibleInterval());
+        this.searchInput.value = this.gif.format(this.genomeSpy.getViewportDomain());
     }
 
     /**

@@ -180,7 +180,7 @@ export class GeneTrack extends WebGlTrack {
     }
 
     updateVisibleClusters() {
-        const vi = this.getViewportDomain();
+        const vi = this.genomeSpy.getViewportDomain();
 
         const clusters = this.geneClusters.slice(
             d3.bisector(d => d.interval.upper).right(this.geneClusters, vi.lower),
@@ -245,7 +245,7 @@ export class GeneTrack extends WebGlTrack {
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         const bodyOpacity =
-            this.glCanvas.style.opacity = this.bodyOpacityScale(this.getViewportDomain().width());
+            this.glCanvas.style.opacity = this.bodyOpacityScale(this.genomeSpy.getViewportDomain().width());
 
         if (bodyOpacity) {
             this.updateVisibleClusters();
@@ -259,7 +259,7 @@ export class GeneTrack extends WebGlTrack {
         this.symbolsOnLanes.forEach(lane => lane.clear());
 
         const scale = this.genomeSpy.getZoomedScale();
-        const visibleInterval = this.genomeSpy.getVisibleInterval();
+        const visibleInterval = this.genomeSpy.getViewportDomain();
 
         const genes = visibleInterval.width() < 500000000 ? this.genes : this.overviewGenes;
 
@@ -273,7 +273,7 @@ export class GeneTrack extends WebGlTrack {
 
         const priorizer = new TinyQueue(visibleGenes, (a, b) => b.score - a.score);
 
-        const arrowOpacity = this.bodyOpacityScale(this.getViewportDomain().width());
+        const arrowOpacity = this.bodyOpacityScale(this.genomeSpy.getViewportDomain().width());
 
         const ctx = this.get2d(this.symbolCanvas);
         ctx.textBaseline = "middle";
