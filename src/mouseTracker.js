@@ -38,6 +38,10 @@ export default class MouseTracker {
         }
     }
 
+    clear() {
+        this._updateTooltip(null);
+    }
+
     /**
      * @param {MouseEvent} event 
      */

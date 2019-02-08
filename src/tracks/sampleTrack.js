@@ -391,6 +391,9 @@ export default class SampleTrack extends WebGlTrack {
         const yEase = normalizedEase(easeInOutQuad);
         const xEase = normalizedEase(easeInOutSine);
 
+        this.axisAreaMouseTracker.clear();
+        this.viewportMouseTracker.clear();
+
         transition({
             duration: 1500,
             easingFunction: easeLinear,
