@@ -396,6 +396,14 @@ export class GeneTrack extends WebGlTrack {
             return null;
         }
     }
+
+    searchHelp() {
+        return `<p>Find a gene or transcript. Examples:</p>
+        <ul>
+            <li>BRCA1</li>
+            <li>TP53</li>
+        </ul>`;
+    }
 }
 
 

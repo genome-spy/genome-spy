@@ -62,4 +62,11 @@ export default class Track {
     search(string) {
         return null;
     }
+    
+    /**
+     * Returns search instructions for this track as HTML
+     */
+    searchHelp() {
+        return "";
+    }
 }

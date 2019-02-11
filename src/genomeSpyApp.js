@@ -16,6 +16,7 @@ function createAppDom() {
         </div>
         <div class="search">
             <input type="text" class="search-input" />
+            <div class="search-help"></div>
         </div>
     </nav>
 
@@ -27,6 +28,11 @@ function createAppDom() {
     return body.getElementsByClassName("genome-spy-app")[0];
 }
 
+const rangeSearchHelp = `<p>Focus to a specific range. Examples:</p>
+    <ul>
+        <li>chr8:21,445,873-24,623,697</li>
+        <li>chr4:166,014,727-chr15:23,731,397</li>
+    </ul>`;
 
 
 /**
@@ -45,15 +51,39 @@ export default class GenomeSpyApp {
 
         this.gif = new GenomeIntervalFormat(this.genomeSpy.chromMapper);
 
+        /** @type {HTMLInputElement} */
+        this.toolbar = elem("toolbar");
+
+        /** @type {HTMLInputElement} */
         this.searchInput = elem("search-input");
+
+        /** @type {HTMLElement} */
+        this.searchHelp = elem("search-help");
+
+        // TODO: Remove duplicate helps in case of duplicate tracks
+        this.searchHelp.innerHTML = [rangeSearchHelp, ...tracks.map(t => t.searchHelp())].join("");
 
         this.genomeSpy.on("zoom", domain => {
             this.searchInput.value = this.gif.format(domain.intersect(this.genomeSpy.chromMapper.extent()));
         });
 
-        this.searchInput.addEventListener("focus", event => event.target.select());
+        // TODO: Create a component or something for the search field
 
-        this.searchInput.addEventListener("keypress", event => {
+        this.searchInput.addEventListener("focus", event => {
+            this.searchInput.select();
+
+            this.searchHelp.style.width = this.searchInput.offsetWidth + "px";
+            this.searchHelp.style.top = this.toolbar.offsetHeight + "px";
+
+            this.searchHelp.classList.add("visible");
+        });
+
+        this.searchInput.addEventListener("blur", event => {
+            this.searchHelp.classList.remove("visible");
+            this.searchInput.setSelectionRange(0, 0);
+        })
+
+        this.searchInput.addEventListener("keydown", event => {
             if (event.keyCode == 13) {
                 event.preventDefault();
                 //rangeSearchHelp.style("display", "none");
@@ -63,8 +93,26 @@ export default class GenomeSpyApp {
                         this.searchInput.select();
                     })
                     .catch(reason => alert(reason));
+
+            } else if (event.keyCode == 27) {
+                this.searchInput.blur();
+            }
+
+            event.stopPropagation();
+        });
+
+        // TODO: Implement a centralized shortcut handler
+        document.addEventListener("keydown", event => {
+            if (event.key == "f") {
+                event.preventDefault();
+                this.searchInput.focus();
             }
         });
+
+        elem("genome-spy-container").addEventListener("click", event => {
+            this.searchInput.blur();
+        });
+
 
         this.genomeSpy.launch();
 

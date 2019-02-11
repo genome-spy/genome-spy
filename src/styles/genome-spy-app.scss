@@ -40,7 +40,36 @@ $basic-spacing: 10px;
             font-size: 14px;
             width: 300px;
             padding: 3px 6px;
+
+            position: relative;
         }
+
+        .search-help {
+            box-sizing: border-box;
+            position: absolute;
+            border: none;
+            background: #f6f6f6;
+            font-size: 14px;
+            padding: $basic-spacing;
+            z-index: 1000;
+
+            box-shadow: 0px 3px 14px 0px rgba(0, 0, 0, 0.15);
+
+            > :first-child {
+                margin-top: 0;
+            }
+
+            opacity: 0;
+            transition: opacity 0.20s, transform 0.20s ease-in-out;
+
+            transform: translate(0, 10px);
+
+            &.visible {
+                opacity: 1;
+                transform: translate(0, 0);
+            }
+        }
+
 
         > * {
             padding-left: $basic-spacing;
