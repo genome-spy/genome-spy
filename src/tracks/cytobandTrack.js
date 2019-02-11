@@ -26,7 +26,7 @@ const defaultConfig = {
     fontSize: 11,
     fontFamily: "sans-serif",
 
-    labelMargin: 3
+    labelMargin: 5
 };
 
 function mapUcscCytobands(chromMapper, cytobands) {
@@ -113,6 +113,7 @@ export default class CytobandTrack extends WebGlTrack {
         ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
         this._bandLabelWidths = this.mappedCytobands.map(band => ctx.measureText(band.name).width);
 
+        this._minBandLabelWidth = this._bandLabelWidths.reduce((a, b) => Math.min(a, b), Infinity);
 
         genomeSpy.on("zoom", () => {
             this.render();
@@ -179,7 +180,7 @@ export default class CytobandTrack extends WebGlTrack {
 
         const y = this.viewportDimensions.height / 2;
 
-        const minLabelWidthInDomain = scale.invert(40) - scale.invert(0); // TODO: replace 40 with max width
+        const minLabelWidthInDomain = scale.invert(this._minBandLabelWidth + 2 * this.config.labelMargin) - scale.invert(0);
         const viewportDomain = this.genomeSpy.getViewportDomain();
 
         this.mappedCytobands.forEach((band, i) => {
