@@ -92,6 +92,11 @@ export default class SampleTrack extends WebGlTrack {
         this.adjustCanvas(this.glCanvas, layout.viewport);
         this.adjustGl(this.gl);
 
+        // TODO: Compute available vertical space
+        // TODO: Compute position: above or below
+        this.adjustCanvas(this.attributeLabelCanvas, layout.axis, 100);
+        this.attributeLabelCanvas.style.top = `${trackHeight}px`;
+
         this.sampleScale.range([0, trackHeight]);
 
         // TODO: Need a real layoutbuilder
@@ -128,6 +133,9 @@ export default class SampleTrack extends WebGlTrack {
 
         // Canvas for WebGL
         this.glCanvas = this.createCanvas();
+
+        this.attributeLabelCanvas = this.createCanvas();
+
 
         registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
 
@@ -166,6 +174,7 @@ export default class SampleTrack extends WebGlTrack {
             this.resizeCanvases(layout);
             this.renderLabels();
             this.renderViewport();
+            this.renderLabelAttributes();
         });
 
         genomeSpy.on("zoom", () => {
@@ -455,6 +464,35 @@ export default class SampleTrack extends WebGlTrack {
                         band.width());
                 });
         });
+    }
+
+    renderLabelAttributes() {
+        const ctx = this.get2d(this.attributeLabelCanvas);
+        ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
+
+        ctx.save();
+
+        const fontSize = Math.min(this.axisArea.attributeBandScale.bandwidth(), this.config.fontSize);
+        ctx.font = `${fontSize}px ${this.config.fontFamily}`;
+        
+        ctx.textBaseline = "middle";
+
+        // TODO: Support labels above 
+
+        ctx.rotate(0.5 * Math.PI);
+        ctx.translate(0,
+            -this.axisArea.attributeInterval.lower -
+            this.axisArea.attributeBandScale.bandwidth() / 2);
+
+        this.axisArea.attributeBandScale.domain().forEach(attribute => {
+            ctx.fillText(
+                attribute,
+                0,
+                -this.axisArea.attributeBandScale(attribute));
+        });
+
+        ctx.restore();
+
     }
 
 

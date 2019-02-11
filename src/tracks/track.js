@@ -32,18 +32,24 @@ export default class Track {
         return canvas;
     }
 
-    adjustCanvas(canvas, interval) {
+    /**
+     * 
+     * @param {HTMLCanvasElement} canvas 
+     * @param {Interval} interval 
+     * @param {number} [trackHeight]
+     */
+    adjustCanvas(canvas, interval, trackHeight) {
         const r = window.devicePixelRatio || 1;
 
-        const trackHeight = this.trackContainer.clientHeight;
+        const height = trackHeight || this.trackContainer.clientHeight;
 
         const px = x => `${x}px`;
         canvas.style.left = px(interval.lower);
         canvas.style.width = px(interval.width());
-        canvas.style.height = px(trackHeight);
+        canvas.style.height = px(height);
 
         canvas.width = interval.width() * r;
-        canvas.height = trackHeight * r;
+        canvas.height = height * r;
     }
 
     get2d(canvas) {
