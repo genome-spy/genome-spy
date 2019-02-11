@@ -69,6 +69,12 @@ export default class GenomeSpyApp {
 
         // TODO: Create a component or something for the search field
 
+        this.searchHelp.addEventListener("transitionend", event => {
+            if (!this.searchHelp.classList.contains("visible")) {
+                this.searchHelp.style.visibility = "hidden";
+            }
+        });
+
         this.searchInput.addEventListener("focus", event => {
             this.searchInput.select();
 
@@ -76,6 +82,7 @@ export default class GenomeSpyApp {
             this.searchHelp.style.top = this.toolbar.offsetHeight + "px";
 
             this.searchHelp.classList.add("visible");
+            this.searchHelp.style.visibility = "visible";
         });
 
         this.searchInput.addEventListener("blur", event => {
