@@ -15,7 +15,7 @@ export default class SegmentLayer {
 
     /**
      * 
-     * @param {import("../tracks/sampleTrack").default} sampleTrack 
+     * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
      */
     initialize(sampleTrack) {
         this.sampleTrack = sampleTrack;

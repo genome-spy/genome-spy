@@ -2,7 +2,7 @@ import GenomeSpyApp from "./genomeSpyApp";
 import { Genome, parseUcscCytobands } from './genome';
 import * as d3 from 'd3';
 import { chromMapper } from "./chromMapper";
-import SampleTrack from "./tracks/sampleTrack";
+import SampleTrack from "./tracks/sampleTrack/sampleTrack";
 import SegmentLayer from "./layers/segmentLayer";
 import AxisTrack from "./tracks/axisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";

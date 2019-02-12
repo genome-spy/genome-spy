@@ -53,6 +53,8 @@ export default class Track {
     }
 
     get2d(canvas) {
+        // TODO: Consider moving to some utility module
+
         const r = window.devicePixelRatio || 1;
         const ctx = canvas.getContext("2d");
         ctx.setTransform(1, 0, 0, 1, 0, 0)
