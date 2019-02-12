@@ -3,6 +3,7 @@ import CanvasTextCache from "../../utils/canvasTextCache";
 import MouseTracker from "../../mouseTracker";
 import * as html from "../../utils/html";
 import Interval from '../../utils/interval';
+import contextMenu from '../../contextMenu';
 
 /**
  * Handles sample names and attributes
@@ -39,11 +40,11 @@ export default class AttributePanel {
         this.sampleMouseTracker = new MouseTracker({
             element: this.labelCanvas,
             tooltip: this.sampleTrack.genomeSpy.tooltip,
-            resolver: this.sampleTrack.findSampleIdAt.bind(this.sampleTrack),
+            resolver: this.sampleTrack.findSampleAt.bind(this.sampleTrack),
             // TODO: Map for samples
-            tooltipConverter: sampleId => Promise.resolve(
-                this.sampleToTooltip(this.sampleTrack.samples.filter(sample => sample.id == sampleId)[0]))
-        });
+            tooltipConverter: sample => Promise.resolve(this.sampleToTooltip(sample))
+        })
+            .on("contextmenu", this.createContextMenu.bind(this));
 
         this.attributeLabelMouseTracker = new MouseTracker({
             element: this.attributeLabelCanvas,
@@ -64,6 +65,69 @@ export default class AttributePanel {
             this.sampleTrack.config.horizontalSpacing +
             this.attributeScales.size * this.sampleTrack.config.attributeWidth +
             this.sampleTrack.config.horizontalSpacing;
+    }
+
+    /**
+     * 
+     * @param {object} sample 
+     * @param {MouseEvent} mouseEvent 
+     */
+    createContextMenu(sample, mouseEvent, point) {
+        const attribute = this.findAttributeAt(point)
+
+        if (!sample || !attribute) {
+            mouseEvent.preventDefault();
+            return;
+        }
+
+        const nominal = typeof sample.attributes[attribute] == "string";
+
+        /** @type {import("../../contextMenu").MenuItem[]} */
+        let items = [
+            {
+                label: `${attribute}`,
+                type: "header"
+            },
+            {
+                label: "Sort by attribute",
+                callback: () => this.sampleTrack.sortSamples(s => s.attributes[attribute])
+            }
+        ]
+
+        if (nominal) {
+            items.push({
+                label: "Retain first of each",
+                callback: () => alert("TODO")
+            })
+        }
+
+        if (nominal) {
+            items = [...items, ...[
+                {
+                    type: "divider"
+                },
+                {
+                    label: `${attribute}: ${sample.attributes[attribute]}`,
+                    type: "header"
+                },
+                {
+                    label: "Remove all",
+                    callback: () => alert("TODO")
+                },
+                {
+                    label: "Remove adjacent",
+                    callback: () => alert("TODO")
+                },
+                {
+                    label: "Add missing samples",
+                    callback: () => alert("TODO")
+                },
+            ]];
+        }
+
+        contextMenu({ items }, mouseEvent);
+
+        mouseEvent.preventDefault();
     }
 
     /**

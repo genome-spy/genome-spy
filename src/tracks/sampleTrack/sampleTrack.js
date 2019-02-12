@@ -233,8 +233,9 @@ export default class SampleTrack extends WebGlTrack {
         }, false);
     }
 
-    findSampleIdAt(point) {
-        return this.sampleScale.invert(point[1]);
+    findSampleAt(point) {
+        const sampleId = this.sampleScale.invert(point[1]);
+        return sampleId ? this.samples.find(s => s.id == sampleId) : null;
     }
 
     /**
@@ -323,11 +324,11 @@ export default class SampleTrack extends WebGlTrack {
     /**
      * Updates the visible set of samples. Animates the transition.
      *
-     * @param {string[]} samples 
+     * @param {string[]} sampleIds 
      */
-    updateSamples(samples) {
+    updateSamples(sampleIds) {
         const targetSampleScale = this.sampleScale.clone();
-        targetSampleScale.domain(samples);
+        targetSampleScale.domain(sampleIds);
 
         const yDelay = d3.scaleLinear().domain([0, 0.4]).clamp(true);
         const xDelay = d3.scaleLinear().domain([0.15, 1]).clamp(true);
@@ -357,7 +358,7 @@ export default class SampleTrack extends WebGlTrack {
                 
             }
         }).then(() => {
-            this.sampleOrder = samples;
+            this.sampleOrder = sampleIds;
             this.sampleScale = targetSampleScale;
             this.renderViewport();
             this.attributePanel.renderLabels();

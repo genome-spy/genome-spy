@@ -36,7 +36,7 @@ export default class MouseTracker {
 
         this.currentObject = null;
 
-        for (let type of ["mousemove", "mouseleave", "wheel", "click"]) {
+        for (let type of ["mousemove", "mouseleave", "wheel", "click", "mousedown", "mouseup", "contextmenu"]) {
             element.addEventListener(type, event => this._handleMouseEvent(/** @type {MouseEvent} */(event)), false);
         }
 
@@ -57,10 +57,14 @@ export default class MouseTracker {
      * @param {MouseEvent} event 
      */
     _handleMouseEvent(event) {
+        const point = d3.clientPoint(this.element, event);
+
         let resolvedObject = null;
 
-        if (["mousemove", "click"].includes(event.type)) {
-            resolvedObject = this.resolver(d3.clientPoint(this.element, event));
+        // TODO: Mousedown should record the current object and pass it to mouseup
+
+        if (["mousemove", "click", "mousedown", "mouseup", "contextmenu"].includes(event.type)) {
+            resolvedObject = this.resolver(point);
         }
 
         if (event.type == "mousemove") {
@@ -68,9 +72,14 @@ export default class MouseTracker {
                 this.tooltip.handleMouseMove(event);
             }
 
-        } else if (event.type == "click") {
+        } else if (["click", "mousedown", "mouseup", "contextmenu"].includes(event.type)) {
             if (resolvedObject) {
-                this.eventEmitter.emit(event.detail == 1 ? "click" : "dblclick", resolvedObject, event);
+                let type = event.type;
+                if (type == "click") {
+                    type = event.detail == 1 ? "click" : "dblclick"
+                }
+
+                this.eventEmitter.emit(type, resolvedObject, event, point);
             }
         }
 
@@ -79,13 +88,13 @@ export default class MouseTracker {
         this._updateTooltip(event.buttons == 0 ? resolvedObject : null);
 
         if (resolvedObject && resolvedObject != this.currentObject) {
-            this.eventEmitter.emit("mouseover", resolvedObject, event);
+            this.eventEmitter.emit("mouseover", resolvedObject, event, point);
 
         } else if (resolvedObject && !this.currentObject) {
-            this.eventEmitter.emit("mouseover", resolvedObject, event);
+            this.eventEmitter.emit("mouseover", resolvedObject, event, point);
 
         } else if (!resolvedObject && this.currentObject) {
-            this.eventEmitter.emit("mouseleave", event);
+            this.eventEmitter.emit("mouseleave", event, point);
         }
 
         this.currentObject = resolvedObject;
