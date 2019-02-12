@@ -135,7 +135,7 @@ export default class SampleTrack extends WebGlTrack {
         this.glCanvas = this.createCanvas();
 
         this.attributeLabelCanvas = this.createCanvas();
-
+        this.attributeLabelCanvas.style.zIndex = "1";
 
         registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
 
@@ -167,6 +167,17 @@ export default class SampleTrack extends WebGlTrack {
                 this.sampleToTooltip(this.samples.filter(sample => sample.id == sampleId)[0]))
         });
 
+        this.attributeLabelMouseTracker = new MouseTracker({
+            element: this.attributeLabelCanvas,
+            tooltip: this.genomeSpy.tooltip,
+            resolver: this.findAttributeAt.bind(this),
+            tooltipConverter: attribute => Promise.resolve(attribute)
+        })
+            .on("click", attribute => this.sortSamples(s => s.attributes[attribute]))
+            .on("mouseover", attribute => this.renderAttributeLabels({ hoveredAttribute: attribute }))
+            .on("mouseleave", () => this.renderAttributeLabels());
+
+
         this.initializeFisheye()
 
 
@@ -174,7 +185,7 @@ export default class SampleTrack extends WebGlTrack {
             this.resizeCanvases(layout);
             this.renderLabels();
             this.renderViewport();
-            this.renderLabelAttributes();
+            this.renderAttributeLabels();
         });
 
         genomeSpy.on("zoom", () => {
@@ -272,6 +283,17 @@ export default class SampleTrack extends WebGlTrack {
                 });
             }
         }, false);
+    }
+
+    findAttributeAt(point) {
+        const x = point[0] - this.axisArea.attributeInterval.lower;
+
+        // TODO: Consider using BandScale class instead of d3's scaleBand
+        return this.axisArea.attributeBandScale.domain()
+            .find(attribute => {
+                const bandX = this.axisArea.attributeBandScale(attribute);
+                return x >= bandX && x < bandX + this.axisArea.attributeBandScale.bandwidth();
+            });
     }
 
     findSampleIdAt(point) {
@@ -404,7 +426,7 @@ export default class SampleTrack extends WebGlTrack {
         this.viewportMouseTracker.clear();
 
         transition({
-            duration: 1500,
+            duration: 1200,
             easingFunction: easeLinear,
             onUpdate: value => {
                 const samplePositionResolver = id => this.sampleScale.scale(id)
@@ -466,13 +488,19 @@ export default class SampleTrack extends WebGlTrack {
         });
     }
 
-    renderLabelAttributes() {
+    /**
+     * @typedef {object} RenderAttributeLabelOptions
+     * @prop {string} hoveredAttribute
+     * 
+     * @param {RenderAttributeLabelOptions} [options]
+     */
+    renderAttributeLabels(options) {
         const ctx = this.get2d(this.attributeLabelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
         ctx.save();
 
-        const fontSize = Math.min(this.axisArea.attributeBandScale.bandwidth(), this.config.fontSize);
+        const fontSize = Math.min(this.axisArea.attributeBandScale.bandwidth() * 1.15, this.config.fontSize);
         ctx.font = `${fontSize}px ${this.config.fontFamily}`;
         
         ctx.textBaseline = "middle";
@@ -485,9 +513,11 @@ export default class SampleTrack extends WebGlTrack {
             this.axisArea.attributeBandScale.bandwidth() / 2);
 
         this.axisArea.attributeBandScale.domain().forEach(attribute => {
+            // TODO: Configurable colors
+            ctx.fillStyle = attribute == (options && options.hoveredAttribute) ? "red" : "black";
             ctx.fillText(
                 attribute,
-                0,
+                2,
                 -this.axisArea.attributeBandScale(attribute));
         });
 
