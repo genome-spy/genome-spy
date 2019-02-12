@@ -118,7 +118,8 @@ export class GeneTrack extends WebGlTrack {
             tooltip: this.genomeSpy.tooltip,
             tooltipConverter: gene => new Promise(resolve => entrez.fetchGeneSummary(gene.symbol)
                 .then(summary => resolve(this.entrezSummary2Html(summary)))),
-        });
+        })
+            .on("dblclick", gene => this.genomeSpy.zoomTo(gene.interval.pad(gene.interval.width() * 0.25)));
 
         genomeSpy.on("zoom", () => {
             this.render();
@@ -389,8 +390,7 @@ export class GeneTrack extends WebGlTrack {
             const interval = results[0].interval;
 
             // Add some padding around the gene
-            const padding = interval.width() * 0.25;
-            return new Interval(interval.lower - padding, interval.upper + padding);
+            return interval.pad(interval.length() * 0.25);
 
         } else {
             return null;

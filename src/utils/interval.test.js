@@ -104,6 +104,10 @@ test("Mix", () => {
     expect(a.mix(b, 1)).toEqual(b);
 });
 
+test("Pad", () => {
+    expect(new Interval(1, 2).pad(1)).toEqual(new Interval(0, 3));
+});
+
 test("Copy", () => {
     const interval = new Interval(1, 2);
 

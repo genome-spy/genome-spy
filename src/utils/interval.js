@@ -133,6 +133,15 @@ export default class Interval {
         );
     }
 
+    /**
+     * Returns a new Interval with lower and upper padding of the given length
+     * 
+     * @param {number} length 
+     */
+    pad(length) {
+        return new Interval(this.lower - length, this.upper + length);
+    }
+
     copy() {
         return new Interval(this.lower, this.upper);
     }
