@@ -390,7 +390,7 @@ export class GeneTrack extends WebGlTrack {
             const interval = results[0].interval;
 
             // Add some padding around the gene
-            return interval.pad(interval.length() * 0.25);
+            return interval.pad(interval.width() * 0.25);
 
         } else {
             return null;
