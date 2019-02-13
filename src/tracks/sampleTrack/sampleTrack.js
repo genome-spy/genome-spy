@@ -30,7 +30,7 @@ const defaultConfig = {
  * @typedef {Object} Sample
  * @prop {string} id
  * @prop {string} displayName
- * @prop {Object[]} attributes
+ * @prop {Object[]} attributes Arbitrary sample specific attributes
  */
 export default class SampleTrack extends WebGlTrack {
 
@@ -40,13 +40,11 @@ export default class SampleTrack extends WebGlTrack {
         this.config = defaultConfig;
 
         /**
-         * An array of sample objects. Their order stays constant.
-         * Properties: id, displayName, attributes. Data contains arbitrary sample-specific
-         * attributes, e.g. clinical data.
+         * A map of sample objects
          * 
-         * @type {Sample[]}
+         * @type {Map<string, Sample>}
          */
-        this.samples = samples;
+        this.samples = new Map(samples.map(sample => [sample.id, sample]));
 
         /**
          * A mapping that specifies the order of the samples.
@@ -235,7 +233,7 @@ export default class SampleTrack extends WebGlTrack {
 
     findSampleAt(point) {
         const sampleId = this.sampleScale.invert(point[1]);
-        return sampleId ? this.samples.find(s => s.id == sampleId) : null;
+        return sampleId ? this.samples.get(sampleId) : null;
     }
 
     /**
@@ -374,7 +372,7 @@ export default class SampleTrack extends WebGlTrack {
      */
     getSamplesSortedByAttribute(attributeAccessor) {
         // TODO: use a stable sorting algorithm, sort based on the current order
-        return [...this.samples].sort((a, b) => {
+        return [...this.samples.values()].sort((a, b) => {
             const av = attributeAccessor(a);
             const bv = attributeAccessor(b);
 
@@ -410,9 +408,9 @@ export default class SampleTrack extends WebGlTrack {
         //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        this.samples.forEach(sample => {
-            const bandLeft = positionResolver(sample.id).transform(normalize);
-            const bandRight = this._scaleSample(sample.id).transform(normalize);
+        this.sampleOrder.forEach(sampleId => {
+            const bandLeft = positionResolver(sampleId).transform(normalize);
+            const bandRight = this._scaleSample(sampleId).transform(normalize);
 
             const uniforms = Object.assign(
                 {
@@ -423,7 +421,7 @@ export default class SampleTrack extends WebGlTrack {
                 this.getDomainUniforms()
             );
 
-            this.layers.forEach(layer => layer.render(sample.id, uniforms));
+            this.layers.forEach(layer => layer.render(sampleId, uniforms));
         });
     }
 

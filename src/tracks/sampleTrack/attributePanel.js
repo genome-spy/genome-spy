@@ -21,9 +21,10 @@ export default class AttributePanel {
         const config = this.sampleTrack.config;
 
         // TODO: Consider a setSamples() method
+
         const ctx = this.sampleTrack.get2d(document.createElement("canvas"));
         ctx.font = `${config.fontSize}px ${config.fontFamily}`;
-        this.maxLabelWidth = this.sampleTrack.samples
+        this.maxLabelWidth = [...this.sampleTrack.samples.values()]
             .map(sample => ctx.measureText(sample.displayName).width)
             .reduce((a, b) => Math.max(a, b), 0);
 
@@ -85,18 +86,18 @@ export default class AttributePanel {
         /** @type {import("../../contextMenu").MenuItem[]} */
         let items = [
             {
-                label: `${attribute}`,
+                label: `Attribute: ${attribute}`,
                 type: "header"
             },
             {
-                label: "Sort by attribute",
+                label: "Sort by",
                 callback: () => this.sampleTrack.sortSamples(s => s.attributes[attribute])
             }
         ]
 
         if (nominal) {
             items.push({
-                label: "Retain first of each",
+                label: "Retain first sample of each",
                 callback: () => alert("TODO")
             })
         }
@@ -107,8 +108,16 @@ export default class AttributePanel {
                     type: "divider"
                 },
                 {
-                    label: `${attribute}: ${sample.attributes[attribute]}`,
+                    label: `Samples with ${attribute} = ${sample.attributes[attribute]}`,
                     type: "header"
+                },
+                {
+                    label: "Retain all",
+                    callback: () => alert("TODO")
+                },
+                {
+                    label: "Retain adjacent",
+                    callback: () => alert("TODO")
                 },
                 {
                     label: "Remove all",
@@ -177,8 +186,9 @@ export default class AttributePanel {
         const ctx = this.sampleTrack.get2d(this.labelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
-        this.sampleTrack.samples.forEach(sample => {
-            const band = positionResolver(sample.id);
+        this.sampleTrack.sampleOrder.forEach(sampleId => {
+            const sample = this.sampleTrack.samples.get(sampleId);
+            const band = positionResolver(sampleId);
 
             const fontSize = Math.min(this.sampleTrack.config.fontSize, band.width());
 
@@ -290,7 +300,7 @@ export default class AttributePanel {
      * Builds scales for sample-specific attributes, e.g. clinical data
      */
     prepareSampleAttributes() {
-        const samples = this.sampleTrack.samples;
+        const samples = [...this.sampleTrack.samples.values()];
 
         // Find all attributes
         const attributeNames = samples
