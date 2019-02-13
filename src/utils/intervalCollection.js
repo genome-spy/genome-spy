@@ -1,31 +1,32 @@
 /**
+ * @typedef { import("./interval").default } Interval
+ */
+
+/**
  * A collection of non-overlapping intervals.
  * Currently implemented as an ordered array.
  * TODO: Use a binary tree
  * 
- * @typedef { import("./interval").default } Interval
+ * @class
+ * @template T
  */
- 
 export default class IntervalCollection {
     /**
-     * @param {Function} accessor An optional function that extracts the interval from an object
+     * @param {function(object):Interval} [accessor] An optional function that extracts the interval from an object
+     * @param {T[]} [array] An optional ORDERED array to wrap as an Interval collection
      */
-    constructor(accessor) {
-        this.intervals = [];
-
-        if (accessor) {
-            this.accessor = accessor;
-        } else {
-            this.accessor = i => i;
-        }
+    constructor(accessor, array) {
+        this.intervals = array || [];
+        /** @type {function(object):Interval} */
+        this.accessor = accessor || (i => i);
     }
 
     /**
-     * @param {Interval} interval
+     * @param {T} object
      */
-    _findInsertionPoint(interval) {
+    _findInsertionPoint(object) {
 
-        interval = this.accessor(interval);
+        const interval = this.accessor(object);
 
         // TODO: Use binary search
         let i = 0;
@@ -44,29 +45,29 @@ export default class IntervalCollection {
     /**
      * Adds an interval to the collection. Throws an exception if there was no room.
      * 
-     * @param {Interval} interval
+     * @param {T} object
      */
-    add(interval) {
-        const i = this._findInsertionPoint(interval);
+    add(object) {
+        const i = this._findInsertionPoint(object);
         if (i < 0) {
             throw "No room for the given interval!";
         }
 
-        this.intervals.splice(i, 0, interval);
+        this.intervals.splice(i, 0, object);
     }
 
     /**
      * Adds an interval if there is room for it. Returns true on success.
      * 
-     * @param {Interval} interval 
+     * @param {T} object 
      */
-    addIfRoom(interval) {
-        const i = this._findInsertionPoint(interval);
+    addIfRoom(object) {
+        const i = this._findInsertionPoint(object);
         if (i < 0) {
             return false;
         }
 
-        this.intervals.splice(i, 0, interval);
+        this.intervals.splice(i, 0, object);
         return true;
     }
 
@@ -100,10 +101,10 @@ export default class IntervalCollection {
      * Returns true if one or more intervals in the collection overlaps
      * with the given interval.
      * 
-     * @param {Interval} interval 
+     * @param {T} object 
      */
-    overlaps(interval) {
-        return this._findInsertionPoint(interval) < 0;
+    overlaps(object) {
+        return this._findInsertionPoint(object) < 0;
     }
 
     clear() {
