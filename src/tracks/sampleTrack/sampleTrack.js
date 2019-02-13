@@ -51,7 +51,7 @@ export default class SampleTrack extends WebGlTrack {
          * 
          * @type {string[]}
          */
-        this.sampleOrder = this.getSamplesSortedByAttribute(s => s.displayName);
+        this.sampleOrder = samples.map(s => s.id);
 
         /**
          * // TODO: layer base class
@@ -201,7 +201,7 @@ export default class SampleTrack extends WebGlTrack {
                 transition({
                     duration: 150,
                     from: zero,
-                    to: Math.max(1, minWidth / this.sampleScale.bandwidth),
+                    to: Math.max(1, minWidth / this.sampleScale.getBandWidth()),
                     //easingFunction: easeOutElastic,
                     onUpdate: value => {
                         this.fisheye.distortion(value);
@@ -328,6 +328,10 @@ export default class SampleTrack extends WebGlTrack {
         const targetSampleScale = this.sampleScale.clone();
         targetSampleScale.domain(sampleIds);
 
+        // Animation scales
+        const { from, to } = this.computeCollapsedSampleScales(
+            this.sampleScale, targetSampleScale);
+
         const yDelay = d3.scaleLinear().domain([0, 0.4]).clamp(true);
         const xDelay = d3.scaleLinear().domain([0.15, 1]).clamp(true);
 
@@ -341,8 +345,8 @@ export default class SampleTrack extends WebGlTrack {
             duration: 1200,
             easingFunction: easeLinear,
             onUpdate: value => {
-                const samplePositionResolver = id => this.sampleScale.scale(id)
-                    .mix(targetSampleScale.scale(id), yEase(yDelay(value)));
+                const samplePositionResolver = id => from.scale(id)
+                    .mix(to.scale(id), yEase(yDelay(value)));
                 
                 /** @type {RenderOptions} */
                 const options = {
@@ -361,7 +365,49 @@ export default class SampleTrack extends WebGlTrack {
             this.renderViewport();
             this.attributePanel.renderLabels();
         });
+    }
 
+    /**
+     * Adds missing keys to the target scale as collapsed bands
+     * 
+     * @param {BandScale} source A scale that contains additional keys missing from the target
+     * @param {BandScale} target The scale that will be supplemented with collapsed bands
+     */
+    addCollapsedBands(source, target) {
+        const targetDomain = [...target.getDomain()];
+        const targetWidths = Array(targetDomain.length).fill(1); // TODO: get from target
+
+        let lastInsertionPoint = -1;
+
+        // This is O(n^2), which may be a problem with gigantic sample sets
+
+        for (let key of source.getDomain()) {
+            const targetIndex = targetDomain.indexOf(key);
+            if (targetIndex >= 0) {
+                lastInsertionPoint = targetIndex;
+
+            } else {
+                lastInsertionPoint++;
+                targetDomain.splice(lastInsertionPoint, 0, key);
+                targetWidths.splice(lastInsertionPoint, 0, 0);
+            }
+        }
+
+        const supplementedScale = target.clone();
+        supplementedScale.domain(targetDomain, targetWidths);
+        return supplementedScale;
+    }
+
+    /**
+     * 
+     * @param {BandScale} from 
+     * @param {BandScale} to 
+     */
+    computeCollapsedSampleScales(from, to) {
+        return {
+            from: this.addCollapsedBands(to, from),
+            to: this.addCollapsedBands(from, to)
+        };
     }
 
 
@@ -371,10 +417,10 @@ export default class SampleTrack extends WebGlTrack {
      * @returns {string[]} ids of sorted samples 
      */
     getSamplesSortedByAttribute(attributeAccessor) {
-        // TODO: use a stable sorting algorithm, sort based on the current order
-        return [...this.samples.values()].sort((a, b) => {
-            const av = attributeAccessor(a);
-            const bv = attributeAccessor(b);
+        // TODO: use a stable sorting algorithm
+        return [...this.sampleOrder].sort((a, b) => {
+            const av = attributeAccessor(this.samples.get(a));
+            const bv = attributeAccessor(this.samples.get(b));
 
             if (av < bv) {
                 return -1;
@@ -383,7 +429,7 @@ export default class SampleTrack extends WebGlTrack {
             } else {
                 return 0;
             }
-        }).map(s => s.id);
+        });
     }
 
 

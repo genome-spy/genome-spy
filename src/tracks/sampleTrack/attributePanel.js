@@ -81,7 +81,9 @@ export default class AttributePanel {
             return;
         }
 
-        const nominal = typeof sample.attributes[attribute] == "string";
+        const attributeValue = sample.attributes[attribute];
+
+        const nominal = typeof attributeValue == "string";
 
         /** @type {import("../../contextMenu").MenuItem[]} */
         let items = [
@@ -108,24 +110,18 @@ export default class AttributePanel {
                     type: "divider"
                 },
                 {
-                    label: `Samples with ${attribute} = ${sample.attributes[attribute]}`,
+                    label: `Samples with ${attribute} = ${attributeValue}`,
                     type: "header"
                 },
                 {
                     label: "Retain all",
-                    callback: () => alert("TODO")
-                },
-                {
-                    label: "Retain adjacent",
-                    callback: () => alert("TODO")
+                    callback: () => this.sampleTrack.updateSamples(this.sampleTrack.sampleOrder
+                        .filter(sampleId => this.sampleTrack.samples.get(sampleId).attributes[attribute] === attributeValue))
                 },
                 {
                     label: "Remove all",
-                    callback: () => alert("TODO")
-                },
-                {
-                    label: "Remove adjacent",
-                    callback: () => alert("TODO")
+                    callback: () => this.sampleTrack.updateSamples(this.sampleTrack.sampleOrder
+                        .filter(sampleId => this.sampleTrack.samples.get(sampleId).attributes[attribute] !== attributeValue))
                 },
                 {
                     label: "Add missing samples",
@@ -190,23 +186,25 @@ export default class AttributePanel {
             const sample = this.sampleTrack.samples.get(sampleId);
             const band = positionResolver(sampleId);
 
-            const fontSize = Math.min(this.sampleTrack.config.fontSize, band.width());
+            if (band.width() > 0) {
+                const fontSize = Math.min(this.sampleTrack.config.fontSize, band.width());
 
-            this.textCache.fillText(ctx,
-                sample.displayName,
-                this.labelInterval.lower,
-                band.centre(),
-                fontSize);
+                this.textCache.fillText(ctx,
+                    sample.displayName,
+                    this.labelInterval.lower,
+                    band.centre(),
+                    fontSize);
 
-            this.attributeScales
-                .forEach((valueScale, key) => {
-                    ctx.fillStyle = valueScale(sample.attributes[key]);
-                    ctx.fillRect(
-                        this.attributeInterval.lower + this.attributeBandScale(key),
-                        band.lower,
-                        this.attributeBandScale.bandwidth(),
-                        band.width());
-                });
+                this.attributeScales
+                    .forEach((valueScale, key) => {
+                        ctx.fillStyle = valueScale(sample.attributes[key]);
+                        ctx.fillRect(
+                            this.attributeInterval.lower + this.attributeBandScale(key),
+                            band.lower,
+                            this.attributeBandScale.bandwidth(),
+                            band.width());
+                    });
+            }
         });
     }
 
