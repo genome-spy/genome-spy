@@ -9,6 +9,7 @@ import * as html from "../../utils/html";
 import fisheye from "../../utils/fishEye";
 import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } from "../../utils/transition";
 import AttributePanel from './attributePanel';
+import { shallowArrayEquals } from '../../utils/arrayUtils';
 
 const defaultConfig = {
     paddingInner: 0.20, // Relative to sample height
@@ -47,6 +48,8 @@ export default class SampleTrack extends WebGlTrack {
 
         /**
          * A mapping that specifies the order of the samples.
+         * 
+         * TODO: Implement "SampleManager" with ordering, filtering and unit tests
          * 
          * @type {string[]}
          */
@@ -330,7 +333,13 @@ export default class SampleTrack extends WebGlTrack {
      * @param {function(Sample):number} attributeAccessor 
      */
     sortSamples(attributeAccessor) {
-        this.updateSamples(this.getSamplesSortedByAttribute(attributeAccessor));
+        let sortedSampleIds = this.getSamplesSortedByAttribute(attributeAccessor, false);
+
+        if (shallowArrayEquals(sortedSampleIds, this.sampleOrder)) {
+            sortedSampleIds = this.getSamplesSortedByAttribute(attributeAccessor, true);
+        }
+
+        this.updateSamples(sortedSampleIds);
     }
 
 
@@ -361,12 +370,21 @@ export default class SampleTrack extends WebGlTrack {
     updateSamples(sampleIds) {
 
         // Do nothing if new samples equals the old samples
-        const lastInHistory = this.sampleOrderHistory[this.sampleOrderHistory.length - 1];
-        if (sampleIds.length == lastInHistory.length && lastInHistory.every((s, i) => sampleIds[i] == s)) {
+        if (shallowArrayEquals(sampleIds,
+            this.sampleOrderHistory[this.sampleOrderHistory.length - 1])) {
             return;
         }
 
-        this.sampleOrderHistory.push(sampleIds);
+        // If new samples appear to reverse the last action, backtrack in history
+        if (this.sampleOrderHistory.length > 1 &&
+            shallowArrayEquals(sampleIds,
+            this.sampleOrderHistory[this.sampleOrderHistory.length - 2])) {
+            this.sampleOrderHistory.pop();
+
+        } else {
+            this.sampleOrderHistory.push(sampleIds);
+        }
+
 
         const targetSampleScale = this.sampleScale.clone();
         targetSampleScale.domain(sampleIds);
@@ -463,13 +481,18 @@ export default class SampleTrack extends WebGlTrack {
     /**
      * 
      * @param {function} attributeAccessor
+     * @param {boolean} [descending]
      * @returns {string[]} ids of sorted samples 
      */
-    getSamplesSortedByAttribute(attributeAccessor) {
+    getSamplesSortedByAttribute(attributeAccessor, descending = false) {
         // TODO: use a stable sorting algorithm
         return [...this.sampleOrder].sort((a, b) => {
-            const av = attributeAccessor(this.samples.get(a));
-            const bv = attributeAccessor(this.samples.get(b));
+            let av = attributeAccessor(this.samples.get(a));
+            let bv = attributeAccessor(this.samples.get(b));
+
+            if (descending) {
+                [av, bv] = [bv, av];
+            }
 
             if (av < bv) {
                 return -1;

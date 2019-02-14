@@ -89,6 +89,9 @@ export default class AttributePanel {
         // The following code is scattered with: this.sampleTrack
 
         if (attribute) {
+            // TODO: Sorting and filtering actions should be implemented as command objects,
+            // which can be replayed on the original data
+
             const filterByAttributeValue = (/** @type {function(any, any)} */ operator) => 
                 this.sampleTrack.updateSamples(this.sampleTrack.sampleOrder
                     .filter(sampleId => operator(this.sampleTrack.samples.get(sampleId).attributes[attribute], attributeValue)));
