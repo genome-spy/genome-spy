@@ -111,10 +111,14 @@ export default class Interval {
      * Returns a new Interval that has its lower and upper bounds
      * transformed using the given function.
      * 
-     * @param {function} scale A transform function
+     * @param {function | null} scale A transform function or null
      */
     transform(scale) {
-        return new Interval(scale(this.lower), scale(this.upper));
+        if (scale) {
+            return new Interval(scale(this.lower), scale(this.upper));
+        } else {
+            return this;
+        }
     }
 
     /**

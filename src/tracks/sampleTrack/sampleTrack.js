@@ -5,7 +5,6 @@ import * as d3 from 'd3';
 import WebGlTrack from '../webGlTrack';
 import BandScale from '../../utils/bandScale';
 import MouseTracker from "../../mouseTracker";
-import Interval from '../../utils/interval';
 import * as html from "../../utils/html";
 import fisheye from "../../utils/fishEye";
 import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } from "../../utils/transition";
@@ -68,6 +67,13 @@ export default class SampleTrack extends WebGlTrack {
         this.layers = layers;
 
         this.attributePanel = new AttributePanel(this);
+
+        /**
+         * Global transform for y axis (Samples)
+         * 
+         * @type {?function(number):number}
+         */
+        this.yTransform = null;
     }
 
     /**
@@ -209,6 +215,7 @@ export default class SampleTrack extends WebGlTrack {
         document.body.addEventListener("keydown", event => {
             if (!event.repeat && event.code == "KeyE") {
                 this.fisheye = fisheye().radius(150);
+                this.yTransform = y => this.fisheye({ x: 0, y }).y;
 
                 transition({
                     duration: 150,
@@ -237,6 +244,7 @@ export default class SampleTrack extends WebGlTrack {
                     }
                 }).then(() => {
                     this.fisheye = null;
+                    this.yTransform = null;
                     render();
                 });
             }
@@ -247,7 +255,7 @@ export default class SampleTrack extends WebGlTrack {
         // If space between bands get too small, find closest to make opening
         // of the context menu easier
         const findClosest = this.sampleScale.getRange().width() /
-            this.sampleScale.getDomain().length * this.sampleScale.paddingOuter < 1.5;
+            this.sampleScale.getDomain().length * this.sampleScale.paddingOuter < 2.5;
 
         const sampleId = this.sampleScale.invert(point[1], findClosest);
         return sampleId ? this.samples.get(sampleId) : null;
@@ -298,17 +306,6 @@ export default class SampleTrack extends WebGlTrack {
     }
 
     
-
-    _scaleSample(id) {
-        let interval = this.sampleScale.scale(id);
-
-        if (this.fisheye) {
-            const scaleY = y => this.fisheye({ x: 0, y }).y;
-            interval = interval.transform(scaleY);
-        }
-
-        return interval;
-    }
 
 
     /**
@@ -511,8 +508,14 @@ export default class SampleTrack extends WebGlTrack {
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         leftScale.getDomain().forEach(sampleId => {
-            const bandLeft = leftScale.scale(sampleId).mix(rightScale.scale(sampleId), yTransitionProgress).transform(normalize);
-            const bandRight = leftScale.scale(sampleId).transform(normalize);
+            const bandLeft = leftScale.scale(sampleId)
+                .mix(rightScale.scale(sampleId), yTransitionProgress)
+                .transform(this.yTransform)
+                .transform(normalize);
+
+            const bandRight = leftScale.scale(sampleId)
+                .transform(this.yTransform)
+                .transform(normalize);
 
             const uniforms = Object.assign(
                 {

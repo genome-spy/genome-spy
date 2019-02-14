@@ -190,7 +190,9 @@ export default class AttributePanel {
             const sample = this.sampleTrack.samples.get(sampleId);
             //const band = scale.scale(sampleId);
 
-            const band = leftScale.scale(sampleId).mix(rightScale.scale(sampleId), yTransitionProgress);
+            const band = leftScale.scale(sampleId)
+                .mix(rightScale.scale(sampleId), yTransitionProgress)
+                .transform(this.sampleTrack.yTransform);
 
             if (band.width() > 0) {
                 const fontSize = Math.min(this.sampleTrack.config.fontSize, band.width());
