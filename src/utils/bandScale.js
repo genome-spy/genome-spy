@@ -42,7 +42,7 @@ export default class BandScale {
 
         const bands = [];
 
-        const totalRelativeWidth = this._relativeWidths.reduce((a, b) => a + b, 0);
+        const totalRelativeWidth = this._relativeWidths.reduce((a, b) => a + b, 0) || 1;
 
         const paddedRange = this._range.pad(-this.paddingOuter / 2 / totalRelativeWidth * this._range.width());
 
