@@ -12,8 +12,8 @@ import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } 
 import AttributePanel from './attributePanel';
 
 const defaultConfig = {
-    paddingInner: 0.2, // Relative to sample height
-    paddingOuter: 0.2,
+    paddingInner: 0.20, // Relative to sample height
+    paddingOuter: 0.20,
 
     attributeWidth: 12, // in pixels
     attributePaddingInner: 0.05,
@@ -54,6 +54,14 @@ export default class SampleTrack extends WebGlTrack {
         this.sampleOrder = samples.map(s => s.id);
 
         /**
+         * Keep track of sample set mutations.
+         * TODO: Consider Redux
+         * 
+         * @type {string[][]}
+         */
+        this.sampleOrderHistory = [[...this.sampleOrder]];
+
+        /**
          * // TODO: layer base class
          * @type {import("../../layers/segmentLayer").default[]}
          */
@@ -91,6 +99,7 @@ export default class SampleTrack extends WebGlTrack {
     initialize(genomeSpy, trackContainer) {
         super.initialize(genomeSpy, trackContainer);
 
+        /** @type {BandScale} */
         this.sampleScale = new BandScale();
         this.sampleScale.domain(this.sampleOrder);
         this.sampleScale.paddingInner = this.config.paddingInner;
@@ -146,6 +155,9 @@ export default class SampleTrack extends WebGlTrack {
             if (event.key >= '1' && event.key <= '9') {
                 const index = event.key.charCodeAt(0) - '1'.charCodeAt(0);
                 this.sortSamples(s => Object.values(s.attributes)[index]);
+
+            } else if (event.code == "Backspace") {
+                this.backtrackSamples();
             }
         });
 
@@ -319,18 +331,66 @@ export default class SampleTrack extends WebGlTrack {
         this.updateSamples(this.getSamplesSortedByAttribute(attributeAccessor));
     }
 
+
+    backtrackSamples() {
+        if (this.sampleOrderHistory.length > 1) {
+            this.sampleOrderHistory.pop();
+
+            const sampleIds = this.sampleOrderHistory[this.sampleOrderHistory.length - 1];
+
+            const targetSampleScale = this.sampleScale.clone();
+            targetSampleScale.domain(sampleIds);
+
+            this.animateSampleTransition(this.sampleScale, targetSampleScale, true)
+                .then(() => {
+                    this.sampleOrder = sampleIds;
+                    this.sampleScale = targetSampleScale;
+                    this.renderViewport();
+                    this.attributePanel.renderLabels();
+                });
+        }
+    }
+    
     /**
      * Updates the visible set of samples. Animates the transition.
      *
      * @param {string[]} sampleIds 
      */
     updateSamples(sampleIds) {
+
+        // Do nothing if new samples equals the old samples
+        const lastInHistory = this.sampleOrderHistory[this.sampleOrderHistory.length - 1];
+        if (sampleIds.length == lastInHistory.length && lastInHistory.every((s, i) => sampleIds[i] == s)) {
+            return;
+        }
+
+        this.sampleOrderHistory.push(sampleIds);
+
         const targetSampleScale = this.sampleScale.clone();
         targetSampleScale.domain(sampleIds);
 
-        // Animation scales
-        const { from, to } = this.computeCollapsedSampleScales(
-            this.sampleScale, targetSampleScale);
+        this.animateSampleTransition(this.sampleScale, targetSampleScale)
+            .then(() => {
+                this.sampleOrder = sampleIds;
+                this.sampleScale = targetSampleScale;
+                this.renderViewport();
+                this.attributePanel.renderLabels();
+            });
+    }
+
+    /**
+     * @param {BandScale} from 
+     * @param {BandScale} to 
+     * @param {boolean} reverse 
+     */
+    animateSampleTransition(from, to, reverse = false) {
+
+        from = this.addCollapsedBands(to, from);
+        to = this.addCollapsedBands(from, to);
+
+        if (reverse) {
+            [from, to] = [to, from];
+        }
 
         const yDelay = d3.scaleLinear().domain([0, 0.4]).clamp(true);
         const xDelay = d3.scaleLinear().domain([0.15, 1]).clamp(true);
@@ -341,29 +401,28 @@ export default class SampleTrack extends WebGlTrack {
         this.attributePanel.sampleMouseTracker.clear();
         this.viewportMouseTracker.clear();
 
-        transition({
-            duration: 1200,
+        return transition({
+            from: reverse ? 1 : 0,
+            to: reverse ? 0 : 1,
+            duration: reverse ? 600 : 1200,
             easingFunction: easeLinear,
             onUpdate: value => {
-                const samplePositionResolver = id => from.scale(id)
-                    .mix(to.scale(id), yEase(yDelay(value)));
+                //const samplePositionResolver = id => from.scale(id)
+                //    .mix(to.scale(id), yEase(yDelay(value)));
+
+                //const easingFunction = value => yEase(yDelay(value))
                 
                 /** @type {RenderOptions} */
                 const options = {
-                    samplePositionResolver,
-                    transitionProgress: xEase(xDelay(value))
+                    leftScale: from,
+                    rightScale: to,
+                    yTransitionProgress: yEase(yDelay(value)),
+                    xTransitionProgress: xEase(xDelay(value))
                 };
 
                 this.renderViewport(options);
                 this.attributePanel.renderLabels(options);
-
-                
             }
-        }).then(() => {
-            this.sampleOrder = sampleIds;
-            this.sampleScale = targetSampleScale;
-            this.renderViewport();
-            this.attributePanel.renderLabels();
         });
     }
 
@@ -398,18 +457,6 @@ export default class SampleTrack extends WebGlTrack {
         return supplementedScale;
     }
 
-    /**
-     * 
-     * @param {BandScale} from 
-     * @param {BandScale} to 
-     */
-    computeCollapsedSampleScales(from, to) {
-        return {
-            from: this.addCollapsedBands(to, from),
-            to: this.addCollapsedBands(from, to)
-        };
-    }
-
 
     /**
      * 
@@ -436,8 +483,10 @@ export default class SampleTrack extends WebGlTrack {
     /**
      * 
      * @typedef {Object} RenderOptions
-     * @property {function(string):Interval} samplePositionResolver
-     * @property {number} transitionProgress
+     * @property {BandScale} leftScale
+     * @property {BandScale} rightScale
+     * @property {number} yTransitionProgress
+     * @property {number} xTransitionProgress
      * 
      * @param {RenderOptions} [options] 
      */
@@ -448,21 +497,23 @@ export default class SampleTrack extends WebGlTrack {
         const normalize = d3.scaleLinear()
             .domain([0, gl.canvas.clientHeight]);
         
-        const positionResolver = (options && options.samplePositionResolver) || (id => this._scaleSample(id));
-        const transitionProgress = (options && options.transitionProgress) || 0;
+        const leftScale = (options && options.leftScale) || this.sampleScale
+        const rightScale = (options && options.rightScale) || this.sampleScale
+        const xTransitionProgress = (options && options.xTransitionProgress) || 0;
+        const yTransitionProgress = (options && options.yTransitionProgress) || 0;
 
         //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        this.sampleOrder.forEach(sampleId => {
-            const bandLeft = positionResolver(sampleId).transform(normalize);
-            const bandRight = this._scaleSample(sampleId).transform(normalize);
+        leftScale.getDomain().forEach(sampleId => {
+            const bandLeft = leftScale.scale(sampleId).mix(rightScale.scale(sampleId), yTransitionProgress).transform(normalize);
+            const bandRight = leftScale.scale(sampleId).transform(normalize);
 
             const uniforms = Object.assign(
                 {
                     yPosLeft: [bandLeft.lower, bandLeft.width()],
                     yPosRight: [bandRight.lower, bandRight.width()],
-                    transitionOffset: transitionProgress
+                    transitionOffset: xTransitionProgress
                 },
                 this.getDomainUniforms()
             );
@@ -470,6 +521,4 @@ export default class SampleTrack extends WebGlTrack {
             this.layers.forEach(layer => layer.render(sampleId, uniforms));
         });
     }
-
-
 }

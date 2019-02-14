@@ -18,8 +18,8 @@ export default function transition(options) {
         const endTimestamp = beginTimestamp + (options.duration || 1000);
         const duration = endTimestamp - beginTimestamp;
 
-        const from = options.from || 0;
-        const to = options.to || 1;
+        const from = typeof options.from == "number" ? options.from : 0;
+        const to = typeof options.to == "number" ? options.to : 1;
         const ease = options.easingFunction || easeInOutQuad;
         const change = to - from;
 

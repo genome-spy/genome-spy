@@ -114,12 +114,12 @@ export default class AttributePanel {
                     type: "header"
                 },
                 {
-                    label: "Retain all",
+                    label: "Retain",
                     callback: () => this.sampleTrack.updateSamples(this.sampleTrack.sampleOrder
                         .filter(sampleId => this.sampleTrack.samples.get(sampleId).attributes[attribute] === attributeValue))
                 },
                 {
-                    label: "Remove all",
+                    label: "Remove",
                     callback: () => this.sampleTrack.updateSamples(this.sampleTrack.sampleOrder
                         .filter(sampleId => this.sampleTrack.samples.get(sampleId).attributes[attribute] !== attributeValue))
                 },
@@ -169,22 +169,28 @@ export default class AttributePanel {
      * Render the axis area, which contains labels and sample-specific attributes 
      * 
      * @typedef {Object} RenderOptions
-     * @property {function(string):Interval} samplePositionResolver
-     * @property {number} transitionProgress
+     * @property {import("../../utils/BandScale").default} leftScale
+     * @property {import("../../utils/BandScale").default} rightScale
+     * @property {number} xTransitionProgress
+     * @property {number} yTransitionProgress
      * 
      * @param {RenderOptions} [options]
      */
     renderLabels(options) {
         // TODO: Implement in WebGL
 
-        const positionResolver = (options && options.samplePositionResolver) || (id => this.sampleTrack._scaleSample(id));
+        const leftScale = (options && options.leftScale) || this.sampleTrack.sampleScale;
+        const rightScale = (options && options.rightScale) || this.sampleTrack.sampleScale;
+        const yTransitionProgress = (options && options.yTransitionProgress) || 0;
 
         const ctx = this.sampleTrack.get2d(this.labelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
-        this.sampleTrack.sampleOrder.forEach(sampleId => {
+        leftScale.getDomain().forEach(sampleId => {
             const sample = this.sampleTrack.samples.get(sampleId);
-            const band = positionResolver(sampleId);
+            //const band = scale.scale(sampleId);
+
+            const band = leftScale.scale(sampleId).mix(rightScale.scale(sampleId), yTransitionProgress);
 
             if (band.width() > 0) {
                 const fontSize = Math.min(this.sampleTrack.config.fontSize, band.width());

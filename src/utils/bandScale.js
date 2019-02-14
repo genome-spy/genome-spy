@@ -148,6 +148,9 @@ export default class BandScale {
 
     }
 
+    /**
+     * @returns {BandScale}
+     */
     clone() {
         const copy = new BandScale();
         copy.paddingInner = this.paddingInner;
