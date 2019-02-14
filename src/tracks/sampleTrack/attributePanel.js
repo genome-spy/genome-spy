@@ -74,61 +74,117 @@ export default class AttributePanel {
      * @param {MouseEvent} mouseEvent 
      */
     createContextMenu(sample, mouseEvent, point) {
+
+        /** @type {import("../../contextMenu").MenuItem[]} */
+        let items = [];
+
         const attribute = this.findAttributeAt(point)
 
-        if (!sample || !attribute) {
+        if (!sample) {
             mouseEvent.preventDefault();
             return;
         }
 
-        const attributeValue = sample.attributes[attribute];
+        // TODO: Sample management may need its own class.
+        // The following code is scattered with: this.sampleTrack
 
-        const nominal = typeof attributeValue == "string";
+        if (attribute) {
+            const filterByAttributeValue = (/** @type {function(any, any)} */ operator) => 
+                this.sampleTrack.updateSamples(this.sampleTrack.sampleOrder
+                    .filter(sampleId => operator(this.sampleTrack.samples.get(sampleId).attributes[attribute], attributeValue)));
 
-        /** @type {import("../../contextMenu").MenuItem[]} */
-        let items = [
-            {
-                label: `Attribute: ${attribute}`,
-                type: "header"
-            },
-            {
-                label: "Sort by",
-                callback: () => this.sampleTrack.sortSamples(s => s.attributes[attribute])
-            }
-        ]
+            const attributeValue = sample.attributes[attribute];
 
-        if (nominal) {
-            items.push({
-                label: "Retain first sample of each",
-                callback: () => alert("TODO")
-            })
-        }
+            const nominal = typeof attributeValue == "string";
 
-        if (nominal) {
-            items = [...items, ...[
+            items = items.concat([
                 {
-                    type: "divider"
-                },
-                {
-                    label: `Samples with ${attribute} = ${attributeValue}`,
+                    label: `Attribute: ${attribute}`,
                     type: "header"
                 },
                 {
-                    label: "Retain",
-                    callback: () => this.sampleTrack.updateSamples(this.sampleTrack.sampleOrder
-                        .filter(sampleId => this.sampleTrack.samples.get(sampleId).attributes[attribute] === attributeValue))
+                    label: "Sort by",
+                    callback: () => this.sampleTrack.sortSamples(s => s.attributes[attribute])
+                }
+            ])
+
+            if (nominal) {
+                
+                items.push({
+                    label: "Retain first sample of each",
+                    callback: () => {
+                        const included = new Set();
+                        const checkAndAdd = key => {
+                            const has = included.has(key);
+                            included.add(key);
+                            return has;
+                        };
+
+                        this.sampleTrack.updateSamples(
+                            this.sampleTrack.sampleOrder
+                                .map(sampleId => this.sampleTrack.samples.get(sampleId))
+                                .filter(sample => !checkAndAdd(sample.attributes[attribute]))
+                                .map(sample => sample.id));
+                    }
+                })
+            }
+
+            if (nominal) {
+                items = items.concat([
+                    {
+                        type: "divider"
+                    },
+                    {
+                        label: `Samples with ${attribute} = ${attributeValue}`,
+                        type: "header"
+                    },
+                    {
+                        label: "Retain",
+                        callback: () => filterByAttributeValue((a, chosen) => a === chosen)
+                    },
+                    {
+                        label: "Remove",
+                        callback: () => filterByAttributeValue((a, chosen) => a !== chosen)
+                    },
+                    {
+                        label: "Add missing samples",
+                        callback: () => alert("TODO")
+                    },
+                ]);
+
+            } else {
+                const numberFormat = d3.format(".4");
+
+                items = items.concat([
+                    {
+                        type: "divider"
+                    },
+                    {
+                        label: `Remove ${attribute} less than ${numberFormat(attributeValue)}`,
+                        callback: () => filterByAttributeValue((a, chosen) => a >= chosen)
+                    },
+                    {
+                        label: `Remove ${attribute} greater than ${numberFormat(attributeValue)}`,
+                        callback: () => filterByAttributeValue((a, chosen) => a <= chosen)
+                    }
+                ]);
+            }
+
+        } else {
+            items = items.concat([
+                {
+                    label: `Sample: ${sample.displayName}`,
+                    type: "header"
                 },
                 {
                     label: "Remove",
-                    callback: () => this.sampleTrack.updateSamples(this.sampleTrack.sampleOrder
-                        .filter(sampleId => this.sampleTrack.samples.get(sampleId).attributes[attribute] !== attributeValue))
-                },
-                {
-                    label: "Add missing samples",
-                    callback: () => alert("TODO")
-                },
-            ]];
+                    callback: () => this.sampleTrack.updateSamples(
+                        this.sampleTrack.sampleOrder.filter(id => id != sample.id))
+                }
+
+            ])
         }
+
 
         contextMenu({ items }, mouseEvent);
 

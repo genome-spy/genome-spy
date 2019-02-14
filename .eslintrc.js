@@ -19,7 +19,6 @@ module.exports = {
         "array-element-newline": "off",
         "arrow-body-style": "error",
         "arrow-parens": [
-            "error",
             "as-needed"
         ],
         "arrow-spacing": [
