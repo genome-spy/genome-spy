@@ -71,6 +71,23 @@ test("Interval At", () => {
     expect(c.intervalAt(100)).toBeNull();
 });
 
+test("Closest Interval At", () => {
+    const c = new IntervalCollection();
+    c.add(new Interval(1, 2));
+    c.add(new Interval(4, 5));
+    c.add(new Interval(6, 8));
+    
+    expect(c.intervalAt(0, true)).toEqual(new Interval(1, 2));
+    expect(c.intervalAt(1, true)).toEqual(new Interval(1, 2));
+    expect(c.intervalAt(2.5, true)).toEqual(new Interval(1, 2));
+    expect(c.intervalAt(3.5, true)).toEqual(new Interval(4, 5));
+    expect(c.intervalAt(5.8, true)).toEqual(new Interval(6, 8));
+    expect(c.intervalAt(100, true)).toEqual(new Interval(6, 8));
+
+    const emptyC = new IntervalCollection();
+    expect(emptyC.intervalAt(0, true)).toBeNull();
+});
+
 test("Accessor", () => { 
     const create = (id, lower, upper) => ({
         id: id,

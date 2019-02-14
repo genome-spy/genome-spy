@@ -76,9 +76,10 @@ export default class IntervalCollection {
      * TODO: Consider returning an array (to be compatible with IntervalTree)
      * 
      * @param {number} value the value to find
+     * @param {boolean} [closest] Return closest if no exact match was found
      * @returns a matching interval or object. Null if nothing was found.
      */
-    intervalAt(value) {
+    intervalAt(value, closest = false) {
         if (this.intervals.length == 0) {
             return null;
         }
@@ -89,12 +90,18 @@ export default class IntervalCollection {
             i++;
         }
 
-        if (i < this.intervals.length && this.accessor(this.intervals[i]).contains(value)) {
+        const next = i < this.intervals.length ? this.accessor(this.intervals[i]) : null;
+
+        if (next && next.contains(value)) {
             return this.intervals[i];
 
-        } else {
-            return null;
+        } else if (closest) {
+            const nextDistance = next ? (next.lower - value) : Infinity;
+            const prevDistance = i > 0 ? value - this.accessor(this.intervals[i - 1]).upper : Infinity;
+            return this.intervals[nextDistance < prevDistance ? i : i - 1];
         }
+
+        return null;
     }
 
     /**

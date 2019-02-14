@@ -244,7 +244,12 @@ export default class SampleTrack extends WebGlTrack {
     }
 
     findSampleAt(point) {
-        const sampleId = this.sampleScale.invert(point[1]);
+        // If space between bands get too small, find closest to make opening
+        // of the context menu easier
+        const findClosest = this.sampleScale.getRange().width() /
+            this.sampleScale.getDomain().length * this.sampleScale.paddingOuter < 1.5;
+
+        const sampleId = this.sampleScale.invert(point[1], findClosest);
         return sampleId ? this.samples.get(sampleId) : null;
     }
 
@@ -404,7 +409,7 @@ export default class SampleTrack extends WebGlTrack {
         return transition({
             from: reverse ? 1 : 0,
             to: reverse ? 0 : 1,
-            duration: reverse ? 600 : 1200,
+            duration: reverse ? 500 : 1200,
             easingFunction: easeLinear,
             onUpdate: value => {
                 //const samplePositionResolver = id => from.scale(id)

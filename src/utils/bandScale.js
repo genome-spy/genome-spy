@@ -84,13 +84,14 @@ export default class BandScale {
      * TODO: findClosest flag, which returns the closest band (if padding was hit)
      * 
      * @param {number} value 
+     * @param {boolean} [closest] Return closest if no exact match was found
      */
-    invert(value) {
+    invert(value, closest = false) {
         if (!this._keyCache) {
             this._buildCaches();
         }
 
-        const band = this._bands.intervalAt(value);
+        const band = this._bands.intervalAt(value, closest);
         return band && band.key;
     }
 
@@ -107,6 +108,10 @@ export default class BandScale {
         }
 
         this._keyCache = null;
+    }
+
+    getRange() {
+        return this._range;
     }
 
     /**
