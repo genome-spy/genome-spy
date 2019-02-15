@@ -17,6 +17,9 @@ var currentlyOpenMenuElement;
  * @param {MouseEvent} mouseEvent
  */
 export default function contextMenu(options, mouseEvent) {
+
+    // TODO: Suppress tooltips when context menu is open
+
     if (currentlyOpenMenuElement) {
         currentlyOpenMenuElement.remove();
         currentlyOpenMenuElement = null;
@@ -46,8 +49,11 @@ export default function contextMenu(options, mouseEvent) {
 
             if (item.callback) {
                 itemElement.addEventListener("mouseup", () => {
-                    menuElement.remove();
-                    item.callback();
+                    // Prevent accidental selection when the position of an overflowing menu has been adjusted
+                    if (performance.now() - openedAt > 200) {
+                        menuElement.remove();
+                        item.callback();
+                    }
                 })
             }
 
@@ -63,9 +69,25 @@ export default function contextMenu(options, mouseEvent) {
 
     container.appendChild(menuElement);
 
+    const rect = menuElement.getBoundingClientRect();
+    if (rect.bottom > window.innerHeight) {
+        menuElement.style.top = (window.innerHeight - menuElement.offsetHeight - 10) + "px";
+    }
+    if (rect.right > window.innerWidth) {
+        menuElement.style.left = (window.innerWidth - menuElement.offsetWidth - 10) + "px";
+    }
+
     container.addEventListener(
         "click",
         () => menuElement.remove(),
         { once: true });
+   
+    const openedAt = performance.now();
+    container.addEventListener("mouseup", () => {
+        if (performance.now() - openedAt > 500) {
+            menuElement.remove();
+        }
+    }, { once: true });
 
+    mouseEvent.preventDefault();
 }

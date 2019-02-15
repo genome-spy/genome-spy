@@ -127,6 +127,11 @@ export default class GenomeSpy {
             track.initialize(this, trackContainer);
         });
 
+        // Eat all context menu events that have not been caught by any track.
+        // Prevents annoying browser default context menues from opening when
+        // the user did not quite hit the target.
+        this.container.addEventListener("contextmenu", event => event.preventDefault());
+
         this._resized();
     }
 }

@@ -190,8 +190,6 @@ export default class AttributePanel {
 
 
         contextMenu({ items }, mouseEvent);
-
-        mouseEvent.preventDefault();
     }
 
     /**

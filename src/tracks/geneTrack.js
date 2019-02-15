@@ -18,6 +18,7 @@ import IntervalCollection from "../utils/intervalCollection";
 import * as entrez from "../fetchers/entrez";
 import * as html from "../utils/html";
 import MouseTracker from "../mouseTracker";
+import contextMenu from "../contextMenu";
 
 const defaultConfig = {
     geneFullVisibilityThreshold: 30 * 1000000, // In base pairs
@@ -119,7 +120,8 @@ export class GeneTrack extends WebGlTrack {
             tooltipConverter: gene => new Promise(resolve => entrez.fetchGeneSummary(gene.symbol)
                 .then(summary => resolve(this.entrezSummary2Html(summary)))),
         })
-            .on("dblclick", gene => this.genomeSpy.zoomTo(gene.interval.pad(gene.interval.width() * 0.25)));
+            .on("dblclick", gene => this.genomeSpy.zoomTo(gene.interval.pad(gene.interval.width() * 0.25)))
+            .on("contextmenu", (gene, mouseEvent) => contextMenu({ items: createContextMenuItems(gene) }, mouseEvent))
 
         genomeSpy.on("zoom", () => {
             this.render();
@@ -660,4 +662,40 @@ function detectGeneClusters(genes) {
     }
 
     return union;
+}
+
+
+/**
+ * 
+ * @param {*} gene 
+ * @returns {import("../contextMenu").MenuItem[]}
+ */
+function createContextMenuItems(gene) {
+    const symbol = gene.symbol;
+
+    return [
+        {
+            label: symbol,
+            type: "header"
+        },
+        {
+            type: "divider"
+        },
+        {
+            label: "Search gene symbol in...",
+            type: "header"
+        },
+        {
+            label: "NCBI Gene",
+            callback: () => window.open(`https://www.ncbi.nlm.nih.gov/gene?cmd=search&term=${symbol}%5Bsym%5D`)
+        },
+        {
+            label: "GeneCards",
+            callback: () => window.open(`https://www.genecards.org/Search/Symbol?queryString=${symbol}`)
+        },
+        {
+            label: "OMIM",
+            callback: () => window.open(`https://www.omim.org/search/?index=entry&start=1&limit=10&sort=score+desc%2C+prefix_sort+desc&search=approved_gene_symbol%3A${symbol}`)
+        },
+    ];
 }
