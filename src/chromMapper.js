@@ -43,7 +43,7 @@ export function chromMapper(chromSizes) {
     }
 
     return {
-        extent: function () {
+        extent: function() {
             return extent;
         },
 
@@ -53,7 +53,7 @@ export function chromMapper(chromSizes) {
          * @param {string} chromName 
          * @param {number} locus 
          */
-        toContinuous: function (chromName, locus) {
+        toContinuous: function(chromName, locus) {
             return cumulativeChromMap[prefix(chromName)] + locus;
         },
 
@@ -64,12 +64,16 @@ export function chromMapper(chromSizes) {
          * @param {number} start 
          * @param {number} end 
          */
-        segmentToContinuous: function (chromName, start, end) {
+        segmentToContinuous: function(chromName, start, end) {
             const offset = cumulativeChromMap[prefix(chromName)];
             return new Interval(offset + start, offset + end);
         },
 
-        toChromosomal(continuousLocus) {
+        /**
+         * 
+         * @param {number} continuousLocus 
+         */
+        toChromosomal: function(continuousLocus) {
             if (!extent.contains(continuousLocus)) return null;
 
             const i = d3.bisect(cumulativeChromArray, continuousLocus) - 1;

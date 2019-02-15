@@ -52,6 +52,12 @@ export default class AxisTrack extends Track {
         this._chromLabelWidths = this.chromosomes.map(chrom => ctx.measureText(chrom.name).width);
         this._maxLocusLabelWidth = ctx.measureText("123,000,000").width;
 
+        this.tickCanvas.addEventListener("dblclick", event => 
+            genomeSpy.zoomTo(
+                cm.toChromosomal(genomeSpy.getZoomedScale().invert(
+                    d3.clientPoint(this.tickCanvas, event)[0]
+                )).chromosome.continuousInterval));
+
     }
 
     resizeCanvases(layout) {
