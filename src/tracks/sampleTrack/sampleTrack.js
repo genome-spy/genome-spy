@@ -182,12 +182,11 @@ export default class SampleTrack extends WebGlTrack {
 
     /**
      * Initializes fisheye functionality.
-     * TODO: Currently a quick hack. Put some effort to design
-     * TODO: Smoothly animated transition to activation/inactivation
      */
     initializeFisheye() {
         /** @type {MouseEvent} */
         let lastMouseEvent = null;
+        let persistentFisheye = false;
 
         const render = () => {
             this.renderViewport();
@@ -207,51 +206,70 @@ export default class SampleTrack extends WebGlTrack {
             }
         }
 
-        this.glCanvas.addEventListener("mousemove", moveListener, false);
-        this.attributePanel.labelCanvas.addEventListener("mousemove", moveListener, false);
+        this.genomeSpy.container.addEventListener("mousemove", moveListener);
 
         const minWidth = 30;
         const zero = 0.01
         let zoomFactor = zero;
 
+        const closeFisheye = () => {
+            transition({
+                duration: 100,
+                from: zoomFactor,
+                to: zero,
+                onUpdate: value => {
+                    this.fisheye.distortion(value);
+                    zoomFactor = value;
+                    focus();
+                }
+            }).then(() => {
+                this.fisheye = null;
+                this.yTransform = null;
+                render();
+            });
+        };
+
+        const openFisheye = () => {
+            this.fisheye = fisheye().radius(150);
+
+            this.yTransform = y => this.fisheye({ x: 0, y }).y;
+
+            transition({
+                duration: 150,
+                from: zero,
+                to: Math.max(1, minWidth / this.sampleScale.getBandWidth()),
+                //easingFunction: easeOutElastic,
+                onUpdate: value => {
+                    this.fisheye.distortion(value);
+                    zoomFactor = value;
+                    focus();
+                }
+            });
+
+        };
+
         // Ad hoc key binding. TODO: Make this more abstract
         document.body.addEventListener("keydown", event => {
             if (!event.repeat && event.code == "KeyE") {
-                this.fisheye = fisheye().radius(150);
-                this.yTransform = y => this.fisheye({ x: 0, y }).y;
+                if (!persistentFisheye) {
+                    openFisheye();
+                    persistentFisheye = event.shiftKey;
 
-                transition({
-                    duration: 150,
-                    from: zero,
-                    to: Math.max(1, minWidth / this.sampleScale.getBandWidth()),
-                    //easingFunction: easeOutElastic,
-                    onUpdate: value => {
-                        this.fisheye.distortion(value);
-                        zoomFactor = value;
-                        focus();
-                    }
-                });
+                } else if (event.shiftKey) {
+                    closeFisheye();
+                    persistentFisheye = false;
+
+                } else {
+                    persistentFisheye = false;
+                }
             }
-        }, false);
+        });
 
         document.body.addEventListener("keyup", event => {
-            if (event.code == "KeyE") {
-                transition({
-                    duration: 100,
-                    from: zoomFactor,
-                    to: zero,
-                    onUpdate: value => {
-                        this.fisheye.distortion(value);
-                        zoomFactor = value;
-                        focus();
-                    }
-                }).then(() => {
-                    this.fisheye = null;
-                    this.yTransform = null;
-                    render();
-                });
+            if (event.code == "KeyE" && this.fisheye && !persistentFisheye && !event.shiftKey) {
+                closeFisheye();
             }
-        }, false);
+        });
     }
 
     findSampleAt(point) {
