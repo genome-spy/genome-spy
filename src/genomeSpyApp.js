@@ -2,6 +2,9 @@ import GenomeSpy from "./genomeSpy";
 import "./styles/genome-spy-app.scss";
 import GenomeIntervalFormat from "./utils/genomeIntervalFormat";
 
+import { icon } from '@fortawesome/fontawesome-svg-core'
+import { faUndo } from '@fortawesome/free-solid-svg-icons'
+
 
 function createAppDom() {
     const body = document.body;
@@ -41,6 +44,11 @@ const rangeSearchHelp = `<p>Focus to a specific range. Examples:</p>
  * into a React or Vue based application.
  */
 export default class GenomeSpyApp {
+    /**
+     * 
+     * @param {import("genome").Genome} genome 
+     * @param {import("./tracks/track").default[]} tracks 
+     */
     constructor(genome, tracks) {
         // TODO: Have to figure out how the pieces should really be glued together
         const appContainer = createAppDom();
@@ -121,6 +129,21 @@ export default class GenomeSpyApp {
         elem("genome-spy-container").addEventListener("click", event => {
             this.searchInput.blur();
         });
+
+
+        // The following adds a dependency to specific kinds of tracks.
+        // Maybe the tracks should be given means to add buttons to applications...
+        const sampleTrack = tracks.filter(track => track.backtrackSamples)[0]; // Ugh, hack.
+        if (sampleTrack) {
+            const backButton = document.createElement("button");
+            backButton.classList.add("tool-btn");
+            backButton.classList.add("backtrack-samples");
+            backButton.title = "Backtrack samples";
+            backButton.appendChild(icon(faUndo).node[0]);
+            backButton.addEventListener("click", () => sampleTrack.backtrackSamples());
+
+            this.toolbar.appendChild(backButton);
+        }
 
 
         this.genomeSpy.launch();

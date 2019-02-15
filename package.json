@@ -9,13 +9,18 @@
     "type": "git",
     "url": "https://github.com/tuner/genome-spy-gl"
   },
-  "sideEffects": ["*.scss"],
+  "sideEffects": [
+    "*.scss"
+  ],
   "scripts": {
     "start": "webpack-dev-server --mode development --progress --hot --open --config webpack.dev.js",
     "build": "webpack --mode production --config webpack.prod.js",
     "test": "jest"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.7.2",
+    "@fortawesome/fontawesome-svg-core": "^1.2.15",
+    "@fortawesome/free-solid-svg-icons": "^5.7.2",
     "d3": "^5.7.0",
     "eventemitter3": "^3.1.0",
     "luma.gl": "^6.0.0",
