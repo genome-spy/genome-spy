@@ -5,6 +5,7 @@ import Interval from "./utils/interval";
 import { Zoom, Transform } from "./utils/zoom";
 import "./styles/genome-spy.scss";
 import Tooltip from "./tooltip";
+import transition, { easeLinear } from "./utils/transition";
 
 /**
  * The actual browser without any toolbars etc
@@ -62,26 +63,33 @@ export default class GenomeSpy {
             .reduce((a, b) => Math.max(a, b), 0);
     }
 
-    zoomTo(interval) {
-        return new Promise((resolve, reject) => {
-            const x = this.xScale;
-            const transform = new Transform()
-                .scale(this.layout.viewport.width() / (x(interval.upper) - x(interval.lower)))
-                .translate(-x(interval.lower));
 
-            /*
-		d3.select(this.viewportOverlay).transition()
-			.duration(750)
-			// Assume that the transition was triggered by search when the duration is defined
-			//.on("end", onEnd ? onEnd : () => true)
-            .call(this.zoom.transform, transform);
-            */
+    /**
+     * 
+     * @param {Interval} target 
+     */
+    zoomTo(target) {
+        const x = this.xScale;
+        const source = this.getViewportDomain();
 
-            // TODO: Transition
-            this.zoom.zoomTo(transform);
-            resolve();
+        const intervalToTransform = interval => new Transform()
+            .scale(this.layout.viewport.width() / (x(interval.upper) - x(interval.lower)))
+            .translate(-x(interval.lower));
+
+        const interpolateZoom = d3.interpolateZoom(
+            [source.centre(), 0, source.width()],
+            [target.centre(), 0, target.width()]
+        );
+
+        return transition({
+            duration: 300 + interpolateZoom.duration * 0.07,
+            //easingFunction: easeLinear,
+            onUpdate: value => {
+                const i = interpolateZoom(value);
+                const interval = new Interval(i[0] - i[2] / 2, i[0] + i[2] / 2);
+                this.zoom.zoomTo(intervalToTransform(interval))
+            }
         });
-
     }
 
 
