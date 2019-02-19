@@ -1,11 +1,10 @@
 import * as d3 from "d3";
-import { Matrix4 } from 'math.gl';
 import {
     Program, assembleShaders, setParameters, createGLContext
 } from 'luma.gl';
 import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
-import segmentsToVertices from '../gl/segmentsToVertices';
+import { segmentsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
 import Interval from "../utils/interval";
 import WebGlTrack from "./webGlTrack";
 
@@ -93,8 +92,8 @@ export default class CytobandTrack extends WebGlTrack {
             modules: ['fp64']
         }));
 
-        this.bandVertices = segmentsToVertices(
-            this.bandProgram,
+        const vertices = segmentsToVertices(
+            gl,
             this.mappedCytobands.map(band => Object.assign(
                 {
                     interval: band.interval,
@@ -104,6 +103,8 @@ export default class CytobandTrack extends WebGlTrack {
                 computePaddings(band)
             ))
         );
+
+        this.vertexData = verticesToVertexData(this.bandProgram, vertices);
 
 
         // TODO: Create textures for labels and render everything with WebGL
@@ -160,7 +161,7 @@ export default class CytobandTrack extends WebGlTrack {
             {
                 uniforms: Object.assign({ ONE: 1.0 }, uniforms) // WTF: https://github.com/uber/luma.gl/pull/622
             },
-            this.bandVertices
+            this.vertexData
         ));
     }
 

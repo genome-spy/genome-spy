@@ -1,7 +1,7 @@
 import { Program, assembleShaders } from 'luma.gl';
 import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
-import segmentsToVertices from '../gl/segmentsToVertices';
+import { segmentsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
 
 /**
  * Segment layer contains genomic segments that may represent
@@ -29,10 +29,10 @@ export default class SegmentLayer {
         }));
 
         // TODO: Omit unknown samples
-        this.vertices = new Map(Array.from(this.rectsBySample.entries())
+        this.vertexDatas = new Map(Array.from(this.rectsBySample.entries())
             .map(entry => [
                 entry[0],
-                segmentsToVertices(this.segmentProgram, entry[1])
+                verticesToVertexData(this.segmentProgram, segmentsToVertices(gl, entry[1]))
             ]));
     }
 
@@ -45,7 +45,7 @@ export default class SegmentLayer {
             {
                 uniforms: Object.assign({ ONE: 1.0 }, uniforms) // WTF: https://github.com/uber/luma.gl/pull/622
             },
-            this.vertices.get(sampleId)
+            this.vertexDatas.get(sampleId)
         ));
     }
 
