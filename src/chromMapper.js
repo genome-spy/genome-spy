@@ -1,4 +1,5 @@
-import * as d3 from "d3";
+import { bisect } from 'd3-array';
+
 import Interval from "./utils/interval";
 
 /**
@@ -76,7 +77,7 @@ export function chromMapper(chromSizes) {
         toChromosomal: function(continuousLocus) {
             if (!extent.contains(continuousLocus)) return null;
 
-            const i = d3.bisect(cumulativeChromArray, continuousLocus) - 1;
+            const i = bisect(cumulativeChromArray, continuousLocus) - 1;
             return {
                 chromosome: chromosomes[i],
                 locus: continuousLocus - cumulativeChromArray[i]

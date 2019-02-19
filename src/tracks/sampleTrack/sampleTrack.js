@@ -1,13 +1,14 @@
+import { scaleLinear } from 'd3-scale';
 import {
     setParameters, fp64, createGLContext, registerShaderModules
 } from 'luma.gl';
-import * as d3 from 'd3';
 import WebGlTrack from '../webGlTrack';
 import BandScale from '../../utils/bandScale';
 import MouseTracker from "../../mouseTracker";
 import * as html from "../../utils/html";
 import fisheye from "../../utils/fishEye";
 import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } from "../../utils/transition";
+import clientPoint from "../../utils/point";
 import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
 
@@ -172,7 +173,7 @@ export default class SampleTrack extends WebGlTrack {
 
         this.glCanvas.addEventListener("mousedown", event => {
             if (event.metaKey) {
-                const point = d3.clientPoint(this.glCanvas, event);
+                const point = clientPoint(this.glCanvas, event);
                 const pos = this.genomeSpy.rescaledX.invert(point[0])
 
                 this.sortSamplesByLocus(this.layers[0], pos);
@@ -194,7 +195,7 @@ export default class SampleTrack extends WebGlTrack {
         };
 
         const focus = () => {
-            this.fisheye.focus([0, d3.clientPoint(this.glCanvas, lastMouseEvent)[1]]);
+            this.fisheye.focus([0, clientPoint(this.glCanvas, lastMouseEvent)[1]]);
             render();
 
         }
@@ -430,8 +431,8 @@ export default class SampleTrack extends WebGlTrack {
             [from, to] = [to, from];
         }
 
-        const yDelay = d3.scaleLinear().domain([0, 0.4]).clamp(true);
-        const xDelay = d3.scaleLinear().domain([0.15, 1]).clamp(true);
+        const yDelay = scaleLinear().domain([0, 0.4]).clamp(true);
+        const xDelay = scaleLinear().domain([0.15, 1]).clamp(true);
 
         const yEase = normalizedEase(easeInOutQuad);
         const xEase = normalizedEase(easeInOutSine);
@@ -537,7 +538,7 @@ export default class SampleTrack extends WebGlTrack {
         const gl = this.gl;
 
         // Normalize to [0, 1]
-        const normalize = d3.scaleLinear()
+        const normalize = scaleLinear()
             .domain([0, gl.canvas.clientHeight]);
         
         const leftScale = (options && options.leftScale) || this.sampleScale

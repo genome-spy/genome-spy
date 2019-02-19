@@ -1,10 +1,11 @@
-import * as d3 from 'd3';
+import { format as d3format } from 'd3-format';
+
 import Interval from "./interval";
 
 export default class GenomeIntervalFormat {
     constructor(chromMapper) {
         this.chromMapper = chromMapper;
-        this.numberFormat = d3.format(",d");
+        this.numberFormat = d3format(",d");
     }
 
     /**

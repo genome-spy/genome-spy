@@ -1,4 +1,5 @@
-import * as d3 from "d3";
+import { scaleOrdinal } from 'd3-scale';
+import { color, hsl } from 'd3-color';
 import {
     Program, assembleShaders, setParameters, createGLContext
 } from 'luma.gl';
@@ -9,15 +10,15 @@ import Interval from "../utils/interval";
 import WebGlTrack from "./webGlTrack";
 
 
-const giemsaScale = d3.scaleOrdinal()
+const giemsaScale = scaleOrdinal()
     .domain([
         "gneg", "gpos25", "gpos50", "gpos75", "gpos100", "acen", "stalk", "gvar"
     ]).range([
         "#f0f0f0", "#e0e0e0", "#d0d0d0", "#c0c0c0", "#a0a0a0", "#cc4444", "#338833", "#000000"
     ].map(str => ({
-        background: d3.color(str),
-        foreground: d3.color(d3.hsl(str).l < 0.5 ? "#ddd" : "black"),
-        shadow: d3.color(d3.hsl(str).l < 0.5 ? "transparent" : "rgba(255, 255, 255, 0.25)")
+        background: color(str),
+        foreground: color(hsl(str).l < 0.5 ? "#ddd" : "black"),
+        shadow: color(hsl(str).l < 0.5 ? "transparent" : "rgba(255, 255, 255, 0.25)")
     })));
 
 

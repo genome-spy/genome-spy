@@ -1,5 +1,7 @@
+import { scaleLinear } from 'd3-scale';
+import { interpolateZoom } from 'd3-interpolate';
+
 import EventEmitter from "eventemitter3";
-import * as d3 from 'd3';
 import { chromMapper } from "./chromMapper";
 import Interval from "./utils/interval";
 import { Zoom, Transform } from "./utils/zoom";
@@ -24,7 +26,7 @@ export default class GenomeSpy {
 
         this.chromMapper = chromMapper(genome.chromSizes);
 
-        this.xScale = d3.scaleLinear()
+        this.xScale = scaleLinear()
             .domain(this.chromMapper.extent().toArray());
 
         // Zoomed scale
@@ -76,16 +78,16 @@ export default class GenomeSpy {
             .scale(this.layout.viewport.width() / (x(interval.upper) - x(interval.lower)))
             .translate(-x(interval.lower));
 
-        const interpolateZoom = d3.interpolateZoom(
+        const interpolate = interpolateZoom(
             [source.centre(), 0, source.width()],
             [target.centre(), 0, target.width()]
         );
 
         return transition({
-            duration: 300 + interpolateZoom.duration * 0.07,
+            duration: 300 + interpolate.duration * 0.07,
             //easingFunction: easeLinear,
             onUpdate: value => {
-                const i = interpolateZoom(value);
+                const i = interpolate(value);
                 const interval = new Interval(i[0] - i[2] / 2, i[0] + i[2] / 2);
                 this.zoom.zoomTo(intervalToTransform(interval))
             }

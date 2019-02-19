@@ -1,8 +1,8 @@
-import * as d3 from "d3";
+import { color } from 'd3-color';
 import { VertexArray, Buffer, fp64 } from 'luma.gl';
 import Interval from "../utils/interval";
 
-const black = d3.color("black");
+const black = color("black");
 
 function color2floatArray(color) {
     return [color.r / 255.0, color.g / 255.0, color.b / 255.0, color.opacity];

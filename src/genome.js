@@ -1,4 +1,4 @@
-import * as d3 from 'd3';
+import { tsvParseRows } from 'd3-dsv';
 
 export class Genome {
     constructor(name, { chromSizes = null, cytobands = null }) {
@@ -28,7 +28,7 @@ export class Genome {
  * @returns an array of cytoband objects
  */
 export function parseUcscCytobands(cytobandData) {
-    return d3.tsvParseRows(cytobandData)
+    return tsvParseRows(cytobandData)
         .filter(b => /^chr[0-9XY]{1,2}$/.test(b[0]))
         .map(row => ({
             chrom: row[0],

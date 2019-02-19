@@ -1,5 +1,4 @@
-
-import * as d3 from 'd3';
+import clientPoint from './point';
 
 export class Zoom {
     constructor(listener) {
@@ -20,7 +19,7 @@ export class Zoom {
         ["mousedown", "wheel", "dragstart"].forEach(type =>
             element.addEventListener(
                 type,
-                e => this.handleMouseEvent(e, d3.clientPoint(element, e), element),
+                e => this.handleMouseEvent(e, clientPoint(element, e), element),
                 false));
     }
 

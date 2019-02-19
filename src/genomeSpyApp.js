@@ -59,6 +59,8 @@ export default class GenomeSpyApp {
 
         this.gif = new GenomeIntervalFormat(this.genomeSpy.chromMapper);
 
+        // TODO: Use WebComponents, for example: https://lit-element.polymer-project.org/
+
         /** @type {HTMLInputElement} */
         this.toolbar = elem("toolbar");
 
@@ -138,7 +140,7 @@ export default class GenomeSpyApp {
             const backButton = document.createElement("button");
             backButton.classList.add("tool-btn");
             backButton.classList.add("backtrack-samples");
-            backButton.title = "Backtrack samples";
+            backButton.title = "Backtrack samples (⌫)";
             backButton.appendChild(icon(faUndo).node[0]);
             backButton.addEventListener("click", () => sampleTrack.backtrackSamples());
 

@@ -1,4 +1,8 @@
-import * as d3 from 'd3';
+import { format as d3format } from 'd3-format';
+import { scaleSequential, scaleOrdinal, scaleBand } from 'd3-scale';
+import { schemeCategory10, interpolateOrRd } from 'd3-scale-chromatic';
+import { extent } from 'd3-array';
+
 import CanvasTextCache from "../../utils/canvasTextCache";
 import MouseTracker from "../../mouseTracker";
 import * as html from "../../utils/html";
@@ -156,7 +160,7 @@ export default class AttributePanel {
                 ]);
 
             } else {
-                const numberFormat = d3.format(".4");
+                const numberFormat = d3format(".4");
 
                 items = items.concat([
                     {
@@ -325,7 +329,7 @@ export default class AttributePanel {
 
 
     sampleToTooltip(sample) {
-        const numberFormat = d3.format(".4");
+        const numberFormat = d3format(".4");
 
         const formatValue = value => {
             if (typeof value == "number") {
@@ -390,22 +394,21 @@ export default class AttributePanel {
                     sample.attributes[attributeName] = parseFloat(accessor(sample));
                 }
 
-                const extent = d3.extent(samples, accessor);
                 this.attributeScales.set(
                     attributeName,
-                    d3.scaleSequential(d3.interpolateOrRd)
-                        .domain(extent));
+                    scaleSequential(interpolateOrRd)
+                        .domain(extent(samples, accessor)));
 
                 // TODO: Diverging scale if domain extends to negative values
 
             } else {
-                this.attributeScales.set(attributeName, d3.scaleOrdinal(d3.schemeCategory10));
+                this.attributeScales.set(attributeName, scaleOrdinal(schemeCategory10));
             }
         });
 
 
         // Map a attribute name to a horizontal coordinate
-        this.attributeBandScale = d3.scaleBand()
+        this.attributeBandScale = scaleBand()
             .domain(Array.from(attributeNames.keys()))
             .paddingInner(this.sampleTrack.config.attributePaddingInner)
             // TODO: Move to renderLabels()

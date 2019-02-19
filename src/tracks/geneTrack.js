@@ -1,4 +1,8 @@
-import * as d3 from "d3";
+
+import { scaleLinear } from 'd3-scale';
+import { bisector } from 'd3-array';
+import { tsvParseRows } from 'd3-dsv';
+
 import { Matrix4 } from 'math.gl';
 import {
     Program, VertexArray, Buffer, assembleShaders, setParameters, createGLContext,
@@ -54,7 +58,7 @@ export class GeneTrack extends WebGlTrack {
         /** @type {IntervalCollection[]} keeps track of gene symbols on the screen */
         this.symbolsOnLanes = [...Array(40).keys()].map(i => new IntervalCollection(symbol => symbol.screenInterval));
 
-        this.bodyOpacityScale = d3.scaleLinear()
+        this.bodyOpacityScale = scaleLinear()
             .range([0, 1])
             .domain([
                 this.config.geneFullVisibilityThreshold * this.config.geneFadeGradientFactor,
@@ -186,8 +190,8 @@ export class GeneTrack extends WebGlTrack {
         const vi = this.genomeSpy.getViewportDomain();
 
         const clusters = this.geneClusters.slice(
-            d3.bisector(d => d.interval.upper).right(this.geneClusters, vi.lower),
-            d3.bisector(d => d.interval.lower).left(this.geneClusters, vi.upper)
+            bisector(d => d.interval.upper).right(this.geneClusters, vi.lower),
+            bisector(d => d.interval.lower).left(this.geneClusters, vi.upper)
         );
 
         const oldIds = new Set(this.visibleClusters.map(g => g.id));
@@ -266,12 +270,12 @@ export class GeneTrack extends WebGlTrack {
 
         const genes = visibleInterval.width() < 500000000 ? this.genes : this.overviewGenes;
 
-        const bisector = d3.bisector(gene => gene.interval.lower);
+        const bisec = bisector(gene => gene.interval.lower);
 
         let visibleGenes = genes
             .slice(
-                bisector.right(genes, visibleInterval.lower - 500000),
-                bisector.left(genes, visibleInterval.upper + 1000000) // TODO: Visible interval
+                bisec.right(genes, visibleInterval.lower - 500000),
+                bisec.left(genes, visibleInterval.upper + 1000000) // TODO: Visible interval
             ).filter(gene => visibleInterval.connectedWith(gene.interval));
 
         const priorizer = new TinyQueue(visibleGenes, (a, b) => b.score - a.score);
@@ -552,7 +556,7 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
 
     let hack = 0; // A hack. Ensure a unique score for each gene.
 
-    const genes = d3.tsvParseRows(geneTsv)
+    const genes = tsvParseRows(geneTsv)
         .filter(row => chromNames.has(row[1]))
         .map(row => {
 

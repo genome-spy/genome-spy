@@ -1,4 +1,4 @@
-import { clientPoint } from "d3";
+import clientPoint from './utils/point';
 
 // TODO: Figure out a proper place for this class
 

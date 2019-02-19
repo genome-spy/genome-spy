@@ -1,5 +1,5 @@
-import * as d3 from "d3";
 import EventEmitter from "eventemitter3";
+import clientPoint from "./utils/point";
 
 const defaultConverter = obj => Promise.resolve(obj);
 const defaultEqTest = (a, b) => Object.is(a, b);
@@ -57,7 +57,7 @@ export default class MouseTracker {
      * @param {MouseEvent} event 
      */
     _handleMouseEvent(event) {
-        const point = d3.clientPoint(this.element, event);
+        const point = clientPoint(this.element, event);
 
         let resolvedObject = null;
 

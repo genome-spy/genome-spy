@@ -1,6 +1,10 @@
-import * as d3 from "d3";
+import { tickStep } from 'd3-array';
+import { format as d3format } from 'd3-format';
+import { rgb, color } from 'd3-color';
+
 import Track from './track';
 import Interval from '../utils/interval';
+import clientPoint from '../utils/point';
 
 const defaultConfig = {
     fontSize: 12,
@@ -55,7 +59,7 @@ export default class AxisTrack extends Track {
         this.tickCanvas.addEventListener("dblclick", event => 
             genomeSpy.zoomTo(
                 cm.toChromosomal(genomeSpy.getZoomedScale().invert(
-                    d3.clientPoint(this.tickCanvas, event)[0]
+                    clientPoint(this.tickCanvas, event)[0]
                 )).chromosome.continuousInterval));
 
     }
@@ -80,9 +84,9 @@ export default class AxisTrack extends Track {
         const viewportInterval = Interval.fromArray(scale.range());
         const domainInterval = Interval.fromArray(scale.domain());
 
-        const tickStep = d3.tickStep(domainInterval.lower, domainInterval.upper, this._maxTickCount);
+        const step = tickStep(domainInterval.lower, domainInterval.upper, this._maxTickCount);
 
-        const locusTickFormat = tickStep >= 1000000 ? d3.format(".3s") : d3.format(",");
+        const locusTickFormat = step >= 1000000 ? d3format(".3s") : d3format(",");
 
         const y = Math.round(this.tickCanvas.clientHeight * 1);
         ctx.textBaseline = "bottom";
@@ -90,7 +94,7 @@ export default class AxisTrack extends Track {
 
         const renderLocusTicks = (interval, visibleInterval = null, gradientOffset = 0) => {
             // Need to accommodate least n ticks before any are shown
-            if (interval.width() < 3 * tickStep) return;
+            if (interval.width() < 3 * step) return;
 
             if (visibleInterval == null) {
                 visibleInterval = interval;
@@ -115,7 +119,7 @@ export default class AxisTrack extends Track {
 
             if (gradientOffset > 0) {
                 const withOpacity = opacity => {
-                    const newColor = d3.rgb(d3.color(this.config.locusColor));
+                    const newColor = rgb(color(this.config.locusColor));
                     newColor.opacity = opacity;
                     return newColor;
                 };
@@ -134,9 +138,9 @@ export default class AxisTrack extends Track {
             ctx.textAlign = "center";
 
             for (
-                let locus = Math.ceil((visibleInterval.lower - interval.lower) / tickStep) * tickStep;
+                let locus = Math.ceil((visibleInterval.lower - interval.lower) / step) * step;
                 locus + interval.lower < visibleInterval.upper;
-                locus += tickStep
+                locus += step
             ) {
                 const x = scale(locus + interval.lower);
 

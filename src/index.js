@@ -1,6 +1,10 @@
+import { tsvParse } from 'd3-dsv';
+import { group } from 'd3-array';
+import { scaleLinear } from 'd3-scale';
+import { color } from 'd3-color';
+
 import GenomeSpyApp from "./genomeSpyApp";
 import { Genome, parseUcscCytobands } from './genome';
-import * as d3 from 'd3';
 import { chromMapper } from "./chromMapper";
 import SampleTrack from "./tracks/sampleTrack/sampleTrack";
 import SegmentLayer from "./layers/segmentLayer";
@@ -43,7 +47,7 @@ async function createSampleTrack(baseurl, cm, sampleTrackConf) {
         // TODO: Modularize
         if (layerConf.type == "CnvLoh") {
             // TODO: Accept a pre-parsed array of objects
-            const segmentations = d3.tsvParse(
+            const segmentations = tsvParse(
                 await fetch(baseurl + layerConf.data).then(res => res.text())
             )
 
@@ -115,7 +119,7 @@ function extractAttributes(row) {
 }
 
 function processSamples(sampleTsv) {
-    return d3.tsvParse(sampleTsv)
+    return tsvParse(sampleTsv)
         .map(row => ({
             id: row.sample,
             displayName: row.displayName || row.sample,
@@ -125,11 +129,9 @@ function processSamples(sampleTsv) {
 
 
 function createCnvLohLayers(cm, segmentations, spec) {
-    const bySample = d3.nest()
-        .key(d => d[spec.sample])
-        .entries(segmentations);
+    const bySample = group(segmentations, d => d[spec.sample]);
 
-    const colorScale = d3.scaleLinear()
+    const colorScale = scaleLinear()
         .domain([-3, 0, 1.5]) // TODO: Infer from data
         .range(["#0050f8", "#f6f6f6", "#ff3000"]);
 
@@ -142,23 +144,22 @@ function createCnvLohLayers(cm, segmentations, spec) {
 
     const baf2loh = baf => (Math.abs(baf) - 0.5) * 2;
 
-    // TODO: Use https://github.com/d3/d3-array#group
-    const segBySample = new Map(bySample.map(entry => [
-        entry.key,
-        entry.values.map(segment => ({
+    const segBySample = new Map([...bySample.entries()].map(entry => [
+        entry[0],
+        entry[1].map(segment => ({
             interval: extractInterval(segment),
-            color: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))),
+            color: color(colorScale(transform(parseFloat(segment[spec.segMean])))),
             rawDatum: segment
         }))]
     ));
 
-    const lohBySample = new Map(bySample.map(entry => [
-        entry.key,
-        entry.values.map(segment => ({
+    const lohBySample = new Map([...bySample.entries()].map(entry => [
+        entry[0],
+        entry[1].map(segment => ({
             interval: extractInterval(segment),
             paddingTop: 1.0 - baf2loh(parseFloat(segment[spec.bafMean])),
-            colorTop: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
-            colorBottom: d3.color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
+            colorTop: color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
+            colorBottom: color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
             rawDatum: segment
         }))]
     ));
