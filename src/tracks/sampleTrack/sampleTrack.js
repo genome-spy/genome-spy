@@ -559,14 +559,12 @@ export default class SampleTrack extends WebGlTrack {
                 .transform(this.yTransform)
                 .transform(normalize);
 
-            const uniforms = Object.assign(
-                {
-                    yPosLeft: [bandLeft.lower, bandLeft.width()],
-                    yPosRight: [bandRight.lower, bandRight.width()],
-                    transitionOffset: xTransitionProgress
-                },
-                this.getDomainUniforms()
-            );
+            const uniforms = {
+                yPosLeft: [bandLeft.lower, bandLeft.width()],
+                yPosRight: [bandRight.lower, bandRight.width()],
+                transitionOffset: xTransitionProgress,
+                ...this.getDomainUniforms()
+            };
 
             this.layers.forEach(layer => layer.render(sampleId, uniforms));
         });

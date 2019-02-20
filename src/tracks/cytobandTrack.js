@@ -150,20 +150,15 @@ export default class CytobandTrack extends WebGlTrack {
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         // TODO: Move to base class / abstraction
-        const uniforms = Object.assign(
-            {
-                yPosLeft: [0, 1],
-                yPosRight: [0, 1]
-            },
-            this.getDomainUniforms()
-        );
+        const uniforms = {
+            yPosLeft: [0, 1],
+            yPosRight: [0, 1],
+            ONE: 1.0, // WTF: https://github.com/uber/luma.gl/pull/622
+            ...this.getDomainUniforms()
+        };
 
-        this.bandProgram.draw(Object.assign(
-            {
-                uniforms: Object.assign({ ONE: 1.0 }, uniforms) // WTF: https://github.com/uber/luma.gl/pull/622
-            },
-            this.vertexData
-        ));
+        this.bandProgram.setUniforms(uniforms);
+        this.bandProgram.draw(this.vertexData);
     }
 
     renderLabels() {

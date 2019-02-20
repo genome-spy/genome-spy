@@ -342,42 +342,35 @@ export class GeneTrack extends WebGlTrack {
     renderGenes() {
         const gl = this.gl;
 
-        const uniforms = Object.assign(
-            this.getDomainUniforms(),
-            {
-                minWidth: 0.5 / gl.drawingBufferWidth, // How many pixels
-                ONE: 1.0 // WTF: https://github.com/uber/luma.gl/pull/622
-            }
-        );
+        const uniforms = {
+            minWidth: 0.5 / gl.drawingBufferWidth, // How many pixels
+            ONE: 1.0, // WTF: https://github.com/uber/luma.gl/pull/622
+            ...this.getDomainUniforms()
+        };
 
         const view = new Matrix4()
             .scale([this.gl.canvas.clientWidth, 1, 1]);
         const uTMatrix = this.viewportProjection.clone().multiplyRight(view);
 
         this.visibleClusters.forEach(cluster => {
-            this.exonProgram.draw(Object.assign(
-                {
-                    uniforms: Object.assign(
-                        uniforms,
-                        { uTMatrix: uTMatrix }
-                    )
-                },
-                this.exonVerticeMap.get(cluster.id)
-            ));
+            this.exonProgram.setUniforms({
+                ...uniforms,
+                uTMatrix
+            });
+            
+            this.exonProgram.draw(this.exonVerticeMap.get(cluster.id));
 
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
             gl.disable(gl.DEPTH_TEST);
 
-            this.geneProgram.draw(Object.assign(
-                {
-                    uniforms: Object.assign(
-                        uniforms,
-                        { uTMatrix: uTMatrix, uResolution: this.config.laneHeight }
-                    )
-                },
-                this.geneVerticeMap.get(cluster.id)
-            ));
+            this.geneProgram.setUniforms({
+                ...uniforms,
+                uTMatrix,
+                uResolution: this.config.laneHeight
+            });
+
+            this.geneProgram.draw(this.geneVerticeMap.get(cluster.id));
 
             gl.disable(gl.BLEND);
         });

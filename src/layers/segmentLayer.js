@@ -41,12 +41,14 @@ export default class SegmentLayer {
      * @param {object} uniforms 
      */
     render(sampleId, uniforms) {
-        this.segmentProgram.draw(Object.assign(
-            {
-                uniforms: Object.assign({ ONE: 1.0 }, uniforms) // WTF: https://github.com/uber/luma.gl/pull/622
-            },
-            this.vertexDatas.get(sampleId)
-        ));
+        this.segmentProgram.setUniforms({
+            ...uniforms,
+            ONE: 1.0, // WTF: https://github.com/uber/luma.gl/pull/622
+        });
+        this.segmentProgram.draw({
+            ...this.vertexDatas.get(sampleId),
+            uniforms: null // Explicityly specify null to prevent erroneous deprecation warning
+        });
     }
 
     /**
