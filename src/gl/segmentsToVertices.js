@@ -27,64 +27,58 @@ function color2floatArray(color) {
  * 
  * @param {WebGLRenderingContext} gl Used for constants. Vertices are not bound to the context.
  * @param {SegmentSpec[]} segments
+ * @param {number} [tesselationThreshold] Tesselate segments if they are shorter than the threshold
  */
-export function segmentsToVertices(gl, segments) {
-    // Tesselate segments if they are shorter than the given minimum width
-    // TODO: Use GL TriangleStrip
-    // TODO: ConfigurableThreshold
-    const tesselationThreshold = 10000000;
+export function segmentsToVertices(gl, segments, tesselationThreshold = 8000000) {
 
     const x = [];
     const y = [];
     const colors = [];
 
+    // TODO: This is a bit slow and should be profiled more carefully
+
     for (let s of segments) {
-        let tiles;
-        if (s.interval.width() > tesselationThreshold) {
-            tiles = [];
-            const tileCount = Math.ceil(s.interval.width() / tesselationThreshold);
-            const tileWidth = s.interval.width() / tileCount;
+        // Emulate 64bit floats using two 32bit floats
+        const begin = fp64.fp64ify(s.interval.lower);
+        const end = fp64.fp64ify(s.interval.upper);
 
-            for (let i = 0; i < tileCount; i++) {
-                const interval = new Interval(
-                    s.interval.lower + i * tileWidth,
-                    s.interval.lower + (i + 1) * tileWidth);
-                
-                const tile = Object.assign({}, s);
-                // TODO: Interpolate paddings
-                tile.interval = interval;
+        const topLeft = 0.0 + (s.paddingTopLeft || s.paddingTop || 0);
+        const topRight = 0.0 + (s.paddingTopRight || s.paddingTop || 0);
 
-                tiles.push(tile);
-            }
+        const bottomLeft = 1.0 - (s.paddingBottomLeft || s.paddingBottom || 0);
+        const bottomRight = 1.0 - (s.paddingBottomRight || s.paddingBottom || 0);
 
-        } else {
-            tiles = [s];
+        const color = s.color || black;
+        const colorTop = s.colorTop || color;
+        const colorBottom = s.colorBottom || color;
+
+        // TODO: Conserve memory, use int8 color components instead of floats
+        const tc = color2floatArray(colorTop);
+        const bc = color2floatArray(colorBottom);
+
+        // Start a new segment. Duplicate the first vertex to produce degenerate triangles
+        x.push(...begin);
+        y.push(bottomLeft);
+        colors.push(...bc);
+
+        // Tesselate segments
+        const tileCount = Math.ceil(s.interval.width() / tesselationThreshold);
+        for (let i = 0; i <= tileCount; i++) {
+            const r = i / tileCount;
+            // Interpolate X & Y
+            // TODO: Computation could be optimized a bit. Width is computed repetedly, etc..
+            const iX = fp64.fp64ify(s.interval.lower + s.interval.width() * r);
+            const iBottom = bottomLeft + (bottomRight - bottomLeft) * r;
+            const iTop = topLeft + (topRight - topLeft) * r;
+            x.push(...iX, ...iX);
+            y.push(iBottom, iTop);
+            colors.push(...bc, ...tc);
         }
 
-        for (let t of tiles) {
-            const begin = fp64.fp64ify(t.interval.lower);
-            const end = fp64.fp64ify(t.interval.upper);
-
-            const topLeft = 0.0 + (t.paddingTopLeft || t.paddingTop || 0);
-            const topRight = 0.0 + (t.paddingTopRight || t.paddingTop || 0);
-
-            const bottomLeft = 1.0 - (t.paddingBottomLeft || t.paddingBottom || 0);
-            const bottomRight = 1.0 - (t.paddingBottomRight || t.paddingBottom || 0);
-
-            const color = t.color || black;
-            const colorTop = t.colorTop || color;
-            const colorBottom = t.colorBottom || color;
-
-            // TODO: Use int8 color components instead of floats
-            const tc = color2floatArray(colorTop);
-            const bc = color2floatArray(colorBottom);
-
-            // Create quads from two triangles
-            // TODO: Spreading and pushing is slow. Figure out something...
-            x.push(...begin, ...end, ...begin, ...end, ...begin, ...end);
-            y.push(bottomLeft, bottomRight, topLeft, topRight, topLeft, bottomRight);
-            colors.push(...bc, ...bc, ...tc, ...tc, ...tc, ...bc);
-        }
+        // Duplicate the last vertex to produce a degenerate triangle between the segments
+        x.push(...end);
+        y.push(topRight);
+        colors.push(...tc);
     }
 
     return {
@@ -94,7 +88,7 @@ export function segmentsToVertices(gl, segments) {
             color: { data: new Float32Array(colors), size: 4, usage: gl.STATIC_DRAW }
         },
         vertexCount: y.length,
-        drawMode: gl.TRIANGLES
+        drawMode: gl.TRIANGLE_STRIP
     };
 }
 
@@ -111,6 +105,7 @@ export function verticesToVertexData(program, vertices) {
     const mapMembers = (obj, f) => 
         Object.assign({}, ...Object.keys(obj).map(k => ({[k]: f(obj[k])})));
 
+    // Put each TypedArray into a Buffer
     vertexArray.setAttributes(mapMembers(vertices.arrays, obj => new Buffer(gl, obj)));
 
     return {
