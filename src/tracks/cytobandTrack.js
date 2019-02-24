@@ -158,7 +158,10 @@ export default class CytobandTrack extends WebGlTrack {
         };
 
         this.bandProgram.setUniforms(uniforms);
-        this.bandProgram.draw(this.vertexData);
+        this.bandProgram.draw({
+            ...this.vertexData,
+            uniforms: null
+        });
     }
 
     renderLabels() {

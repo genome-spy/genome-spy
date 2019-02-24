@@ -358,7 +358,10 @@ export class GeneTrack extends WebGlTrack {
                 uTMatrix
             });
             
-            this.exonProgram.draw(this.exonVerticeMap.get(cluster.id));
+            this.exonProgram.draw({
+                ...this.exonVerticeMap.get(cluster.id),
+                uniforms: null
+            });
 
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -370,7 +373,10 @@ export class GeneTrack extends WebGlTrack {
                 uResolution: this.config.laneHeight
             });
 
-            this.geneProgram.draw(this.geneVerticeMap.get(cluster.id));
+            this.geneProgram.draw({
+                ...this.geneVerticeMap.get(cluster.id),
+                uniforms: null 
+            });
 
             gl.disable(gl.BLEND);
         });
@@ -455,7 +461,8 @@ function exonsToVertices(program, genes, laneHeight, laneSpacing) {
 
     /* TODO: Consider using flat shading:
      * https://www.khronos.org/opengl/wiki/Type_Qualifier_(GLSL)#Interpolation_qualifiers
-
+     * https://stackoverflow.com/a/40101324/1547896
+     * 
      * Gene body and exons could be rendered in one pass by alternating between
      * exons and introns
      */
@@ -495,9 +502,9 @@ function exonsToVertices(program, genes, laneHeight, laneSpacing) {
     const vertexArray = new VertexArray(gl, { program });
 
     vertexArray.setAttributes({
-        x: new Buffer(gl, { data: x, size: 2, usage: gl.STATIC_DRAW }),
-        y: new Buffer(gl, { data: y, size: 1, usage: gl.STATIC_DRAW }),
-        width: new Buffer(gl, { data: widths, size: 1, usage: gl.STATIC_DRAW }),
+        x: new Buffer(gl, { data: x, accessor: { size: 2 }, usage: gl.STATIC_DRAW }),
+        y: new Buffer(gl, { data: y, usage: gl.STATIC_DRAW }),
+        width: new Buffer(gl, { data: widths, usage: gl.STATIC_DRAW }),
     });
 
     return {
@@ -532,9 +539,9 @@ function genesToVertices(program, genes, laneHeight, laneSpacing) {
     const vertexArray = new VertexArray(gl, { program });
 
     vertexArray.setAttributes({
-        x: new Buffer(gl, { data: x, size: 2, usage: gl.STATIC_DRAW }),
-        y: new Buffer(gl, { data: y, size: 1, usage: gl.STATIC_DRAW }),
-        yEdge: new Buffer(gl, { data: yEdge, size: 1, usage: gl.STATIC_DRAW }),
+        x: new Buffer(gl, { data: x, accessor: { size: 2 }, usage: gl.STATIC_DRAW }),
+        y: new Buffer(gl, { data: y, usage: gl.STATIC_DRAW }),
+        yEdge: new Buffer(gl, { data: yEdge, usage: gl.STATIC_DRAW }),
     });
 
     return {
@@ -568,7 +575,8 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
                 score: +row[5] + hack,
                 exons: row[6],
                 // Precalc for optimization
-                interval: cm.segmentToContinuous(row[1], start, end)
+                interval: cm.segmentToContinuous(row[1], start, end),
+                lane: undefined
             };
         });
 

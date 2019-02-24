@@ -83,9 +83,9 @@ export function segmentsToVertices(gl, segments, tesselationThreshold = 8000000)
 
     return {
         arrays: {
-            x: { data: new Float32Array(x), size: 2, usage: gl.STATIC_DRAW },
-            y: { data: new Float32Array(y), size: 1, usage: gl.STATIC_DRAW },
-            color: { data: new Float32Array(colors), size: 4, usage: gl.STATIC_DRAW }
+            x: { data: new Float32Array(x), accessor: { size: 2 }, usage: gl.STATIC_DRAW },
+            y: { data: new Float32Array(y), usage: gl.STATIC_DRAW },
+            color: { data: new Float32Array(colors), accessor: { size: 4 }, usage: gl.STATIC_DRAW }
         },
         vertexCount: y.length,
         drawMode: gl.TRIANGLE_STRIP

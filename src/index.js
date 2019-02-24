@@ -144,6 +144,8 @@ function createCnvLohLayers(cm, segmentations, spec) {
 
     const baf2loh = baf => (Math.abs(baf) - 0.5) * 2;
 
+    // TODO: Precompute colors for the domain and use a lookup table. This is currently a bit slow.
+
     const segBySample = new Map([...bySample.entries()].map(entry => [
         entry[0],
         entry[1].map(segment => ({
