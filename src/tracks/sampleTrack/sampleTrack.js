@@ -549,6 +549,8 @@ export default class SampleTrack extends WebGlTrack {
         //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
+        const domainUniforms = this.getDomainUniforms();
+
         leftScale.getDomain().forEach(sampleId => {
             const bandLeft = leftScale.scale(sampleId)
                 .mix(rightScale.scale(sampleId), yTransitionProgress)
@@ -563,7 +565,7 @@ export default class SampleTrack extends WebGlTrack {
                 yPosLeft: [bandLeft.lower, bandLeft.width()],
                 yPosRight: [bandRight.lower, bandRight.width()],
                 transitionOffset: xTransitionProgress,
-                ...this.getDomainUniforms()
+                ...domainUniforms
             };
 
             this.layers.forEach(layer => layer.render(sampleId, uniforms));

@@ -11,6 +11,7 @@ import SegmentLayer from "./layers/segmentLayer";
 import AxisTrack from "./tracks/axisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";
 import { GeneTrack, parseCompressedRefseqGeneTsv } from "./tracks/geneTrack";
+import PointLayer from './layers/pointLayer';
 
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -20,7 +21,6 @@ if (urlParams.has("conf")) {
 } else {
     document.body.innerText = "No configuration defined!";
 }
-
 
 async function createSampleTrack(baseurl, cm, sampleTrackConf) {
     let samples;
@@ -57,6 +57,12 @@ async function createSampleTrack(baseurl, cm, sampleTrackConf) {
             throw `Unsupported layer type: ${layerConf.type}`;
         }
     }
+
+    const variants = tsvParse(
+        await fetch(baseurl + "variants.csv").then(res => res.text())
+    )
+
+    layers.push(...createVariantLayer(cm, variants));
 
     return new SampleTrack(samples, layers);
 }
@@ -127,6 +133,50 @@ function processSamples(sampleTsv) {
         }));
 }
 
+
+/**
+ * 
+ * @param {*} cm 
+ * @param {object[]} variants 
+ */
+function createVariantLayer(cm, variants) {
+
+    // Some ad-hoc code to parse a custom variant TSV files
+
+    const vafLowerLimit = 0.1;
+
+    const variantsBySample = new Map();
+
+    const positions = variants
+        .map(v => cm.toContinuous(v["CHROM"], +v["POS"]));
+
+    const sampleColumns = variants.columns
+        .filter(k => k.endsWith(".AF"));
+
+    for (const sampleColumn of sampleColumns) {
+        const sampleId = sampleColumn.replace(/\.AF$/, "");
+
+        const datums = [];
+
+        for (let i = 0; i < positions.length; i++) {
+            const variant = variants[i];
+            const vaf = Number.parseFloat(variant[sampleColumn]);
+            if (vaf >= vafLowerLimit) {
+                datums.push({
+                    pos: positions[i],
+                    size: Math.sqrt(vaf),
+                    rawDatum: variant
+                });
+            }
+        }
+
+        variantsBySample.set(sampleId, datums);
+    }
+
+    return [
+        new PointLayer(variantsBySample)
+    ];
+}
 
 function createCnvLohLayers(cm, segmentations, spec) {
     const bySample = group(segmentations, d => d[spec.sample]);
