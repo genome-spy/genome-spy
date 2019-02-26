@@ -23,14 +23,15 @@ uniform float maxPointSizeAbsolute;
 /** Maximum point size as the fraction of sample height */
 uniform float maxPointSizeRelative;
 
-//varying float vSize;
 
 varying vec4 vColor;
+varying float vSize;
 
 const float precisionThreshold = 1024.0 * 1024.0 * 8.0;
 
 void main(void) {
     
+    // TODO: Allow using y for visual encoding
     const float y = 0.5;
 
     /** X coordinate on normalized [0, 1] scale */
@@ -66,8 +67,8 @@ void main(void) {
 
     gl_Position = vec4(ndc, 0.0, 1.0);
 
-    gl_PointSize = size * min(maxPointSizeAbsolute, viewportHeight * height * maxPointSizeRelative);
+    vSize = size * min(maxPointSizeAbsolute, viewportHeight * height * maxPointSizeRelative);
+    gl_PointSize = vSize;
 
     vColor = color;
-    //vSize = size;
 }
