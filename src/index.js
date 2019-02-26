@@ -3,6 +3,9 @@ import { group } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { color } from 'd3-color';
 
+import { scaleOrdinal } from 'd3-scale';
+import { schemeCategory10 } from 'd3-scale-chromatic';
+
 import GenomeSpyApp from "./genomeSpyApp";
 import { Genome, parseUcscCytobands } from './genome';
 import { chromMapper } from "./chromMapper";
@@ -143,12 +146,18 @@ function createVariantLayer(cm, variants) {
 
     // Some ad-hoc code to parse a custom variant TSV files
 
-    const vafLowerLimit = 0.1;
+    const colorScale = scaleOrdinal(schemeCategory10);
+
+    const vafLowerLimit = 0.05;
 
     const variantsBySample = new Map();
 
-    const positions = variants
-        .map(v => cm.toContinuous(v["CHROM"], +v["POS"]));
+    const sharedVariantAttributes = variants
+        .map(v => ({
+            pos: cm.toContinuous(v["CHROM"], +v["POS"]),
+            color: color(colorScale(v["Func.refGene"])), // TODO: Precompute colors
+            rawDatum: v
+        }));
 
     const sampleColumns = variants.columns
         .filter(k => k.endsWith(".AF"));
@@ -158,14 +167,13 @@ function createVariantLayer(cm, variants) {
 
         const datums = [];
 
-        for (let i = 0; i < positions.length; i++) {
+        for (let i = 0; i < sharedVariantAttributes.length; i++) {
             const variant = variants[i];
             const vaf = Number.parseFloat(variant[sampleColumn]);
             if (vaf >= vafLowerLimit) {
                 datums.push({
-                    pos: positions[i],
+                    ...sharedVariantAttributes[i],
                     size: Math.sqrt(vaf),
-                    rawDatum: variant
                 });
             }
         }

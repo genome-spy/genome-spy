@@ -1,5 +1,6 @@
+import { color } from 'd3-color';
 import { Program, assembleShaders, fp64 } from 'luma.gl';
-import { verticesToVertexData } from '../gl/segmentsToVertices';
+import { color2floatArray, verticesToVertexData } from '../gl/segmentsToVertices';
 import VERTEX_SHADER from '../gl/pointVertex.glsl';
 import FRAGMENT_SHADER from '../gl/pointFragment.glsl';
 
@@ -31,14 +32,24 @@ export default class PointLayer {
         
         this.vertexDatas = new Map();
 
+        const gray = color("gray");
+
         for (let [sample, points] of this.pointsBySample.entries()) {
             this.vertexDatas.set(
                 sample,
                 verticesToVertexData(this.segmentProgram, {
                     arrays: {
-                        x: new Float32Array(
-                            points.map(p => fp64.fp64ify(p.pos)).reduce((a, b) => { a.push(...b); return a; }, [])),
-                        size: new Float32Array(points.map(p => p.size))
+                        x: {
+                            data: new Float32Array(
+                                points.map(p => fp64.fp64ify(p.pos)).reduce((a, b) => { a.push(...b); return a; }, [])),
+                            accessor: { size: 2 } /* gl.STATIC_DRAW */
+                        },
+                        size: new Float32Array(points.map(p => p.size)),
+                        color: { data:
+                            new Float32Array(
+                                points.map(p => color2floatArray(p.color || gray)).reduce((a, b) => { a.push(...b); return a; }, [])),
+                            accessor: { size: 4 }
+                        }
                     },
                     vertexCount: points.length,
                     drawMode: gl.POINTS

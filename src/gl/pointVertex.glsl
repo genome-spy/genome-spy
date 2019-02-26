@@ -2,7 +2,7 @@
 precision highp float;
 
 attribute vec2 x;
-//attribute vec4 color;
+attribute vec4 color;
 attribute float size;
 
 
@@ -15,8 +15,6 @@ uniform vec2 yPosRight;
 
 uniform float transitionOffset;
 
-//varying vec4 vColor;
-
 uniform float viewportHeight;
 
 /** Maximum point size in pixels */
@@ -26,6 +24,8 @@ uniform float maxPointSizeAbsolute;
 uniform float maxPointSizeRelative;
 
 //varying float vSize;
+
+varying vec4 vColor;
 
 const float precisionThreshold = 1024.0 * 1024.0 * 8.0;
 
@@ -68,6 +68,6 @@ void main(void) {
 
     gl_PointSize = size * min(maxPointSizeAbsolute, viewportHeight * height * maxPointSizeRelative);
 
-    //vColor = color;
+    vColor = color;
     //vSize = size;
 }

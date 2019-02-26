@@ -4,7 +4,7 @@ import Interval from "../utils/interval";
 
 const black = color("black");
 
-function color2floatArray(color) {
+export function color2floatArray(color) {
     return [color.r / 255.0, color.g / 255.0, color.b / 255.0, color.opacity];
 }
 
