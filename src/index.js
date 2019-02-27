@@ -16,6 +16,9 @@ import CytobandTrack from "./tracks/cytobandTrack";
 import { GeneTrack, parseCompressedRefseqGeneTsv } from "./tracks/geneTrack";
 import PointLayer from './layers/pointLayer';
 
+//
+// This file is a MESS and will be cleaned as the final architecture emerges
+//
 
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.has("conf")) {
@@ -65,7 +68,7 @@ async function createSampleTrack(baseurl, cm, sampleTrackConf) {
         await fetch(baseurl + "variants.csv").then(res => res.text())
     )
 
-    layers.push(...createVariantLayer(cm, variants));
+    layers.push(...createVariantLayer(cm, variants, variantConfig));
 
     return new SampleTrack(samples, layers);
 }
@@ -138,51 +141,127 @@ function processSamples(sampleTsv) {
 
 
 /**
+ * @typedef {Object} GatherConfig
+ * @prop {string} columnRegex
+ * @prop {string} attribute
+ * 
+ * @typedef {Object} VariantDataConfig
+ *    A configuration that specifies how data should be mapped
+ *    to PointSpecs. The ultimate aim is to make this very generic
+ *    and applicable to multiple types of data and visual encodings.
+ * @prop {GatherConfig[]} gather
+ * @prop {string} chrom
+ * @prop {string} pos
+ * @prop {Object} encodings TODO
+ */
+
+/** @type VariantDataConfig */
+const variantConfig = {
+    // Gather sample-specific attributes from columns
+    gather: [{
+        // Match the columns. First group indentifies the sample
+        columnRegex: "^(.*)\\.AF$",
+        // Publish the value as..
+        attribute: "VAF"
+    }],
+    chrom: "CHROM",
+    pos: "POS",
+    encodings: {
+        color: {
+            attribute: "ExonicFunc.refGene",
+            domain: ["nonsynonymous_SNV", "stoploss", "stopgain"]
+            // range: [...custom rgb values here... or name of a color scheme]
+        },
+        // Shorthand for attribute object
+        size: "VAF"
+    }
+    // TODO: Filtering
+}
+
+
+/**
+ * 
+ * @param {Object[]} rows Data parsed with d3.dsv
+ * @param {GatherConfig[]} gatherConfigs
+ */
+function gather(rows, gatherConfigs) {
+    // TODO: Support multiple attributes
+    if (gatherConfigs.length > 1) {
+        throw 'Currently only one attribute is supported in Gather configuration!';
+    }
+    const gatherConfig = gatherConfigs[0];
+    
+    const columnRegex = new RegExp(gatherConfig.columnRegex);
+
+    /** @type {string} */
+    const sampleColumns = rows.columns.filter(k => columnRegex.test(k));
+
+    /** @type {Map<string, object>} */
+    const gatheredAttributes = new Map();
+
+    for (const sampleColumn of sampleColumns) {
+        const sampleId = columnRegex.exec(sampleColumn)[1];
+
+        const datums = rows.map(row => ({
+            // TODO: Multiple attributes
+            [gatherConfig.attribute]: row[sampleColumn]
+        }));
+        
+        gatheredAttributes.set(sampleId, datums);
+    }
+
+    return gatheredAttributes;
+}
+
+/**
  * 
  * @param {*} cm 
- * @param {object[]} variants 
+ * @param {object[]} rows
+ * @param {VariantDataConfig} dataConfig
  */
-function createVariantLayer(cm, variants) {
+function createVariantLayer(cm, rows, dataConfig) {
 
     // Some ad-hoc code to parse a custom variant TSV files
 
+    // ATTENTION! This is currently coded against a very specific config and is thus VERY fragile!
     const colorScale = scaleOrdinal(schemeCategory10);
+    const mapSharedVariables = d => ({
+        color: color(colorScale(d[dataConfig.encodings.color.attribute]))
+    });
 
-    const vafLowerLimit = 0.05;
+    const mapSampleVariables = d => ({
+        size: parseFloat(d[dataConfig.encodings.size])
+    });
 
-    const variantsBySample = new Map();
+    const vafLowerLimit = 0.05; // TODO: Configurable, implement in Configuration
 
-    const sharedVariantAttributes = variants
-        .map(v => ({
-            pos: cm.toContinuous(v["CHROM"], +v["POS"]),
-            color: color(colorScale(v["Func.refGene"])), // TODO: Precompute colors
-            rawDatum: v
+    const inclusionPredicate = d => d.size >= vafLowerLimit;
+    
+    const gatheredSamples = gather(rows, dataConfig.gather);
+    
+    const sharedVariantVariables = rows
+        .map(d => ({
+            // TODO: 0 or 1 based addressing?
+            // Add 0.5 to center the symbol inside nucleotide boundaries
+            pos: cm.toContinuous(d[dataConfig.chrom], +d[dataConfig.pos]) + 0.5,
+            ...mapSharedVariables(d)
         }));
 
-    const sampleColumns = variants.columns
-        .filter(k => k.endsWith(".AF"));
+    const pointsBySample = new Map();
 
-    for (const sampleColumn of sampleColumns) {
-        const sampleId = sampleColumn.replace(/\.AF$/, "");
-
-        const datums = [];
-
-        for (let i = 0; i < sharedVariantAttributes.length; i++) {
-            const variant = variants[i];
-            const vaf = Number.parseFloat(variant[sampleColumn]);
-            if (vaf >= vafLowerLimit) {
-                datums.push({
-                    ...sharedVariantAttributes[i],
-                    size: Math.sqrt(vaf),
-                });
-            }
-        }
-
-        variantsBySample.set(sampleId, datums);
+    for (const [sampleId, gatheredRows] of gatheredSamples) {
+        pointsBySample.set(
+            sampleId,
+            sharedVariantVariables.map((shared, i) => ({
+                ...shared,
+                ...mapSampleVariables(gatheredRows[i])
+            }))
+                .filter(inclusionPredicate)
+        )
     }
 
     return [
-        new PointLayer(variantsBySample)
+        new PointLayer(pointsBySample)
     ];
 }
 

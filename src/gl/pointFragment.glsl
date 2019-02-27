@@ -9,6 +9,7 @@ varying vec4 vColor;
 varying float vSize;
 
 // TODO: Implement more symbols: diamond, triangle, etc
+// http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 
 void main() {
     float dist = distance(gl_PointCoord, vec2(0.5));
