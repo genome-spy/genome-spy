@@ -94,7 +94,6 @@ export default class CytobandTrack extends WebGlTrack {
         }));
 
         const vertices = segmentsToVertices(
-            gl,
             this.mappedCytobands.map(band => Object.assign(
                 {
                     interval: band.interval,

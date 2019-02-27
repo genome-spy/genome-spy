@@ -3,6 +3,16 @@ import { VertexArray, Buffer, fp64 } from 'luma.gl';
 import Interval from "../utils/interval";
 
 const black = color("black");
+const gray = color("gray");
+
+// https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
+// TODO: Use @luma.gl/constants 
+const glConst = {
+    POINTS: 0x0000,
+    TRIANGLES: 0x0004,
+    TRIANGLE_STRIP: 0x0005,
+    STATIC_DRAW: 0x88E4
+};
 
 export function color2floatArray(color) {
     return [color.r / 255.0, color.g / 255.0, color.b / 255.0, color.opacity];
@@ -17,19 +27,18 @@ export function color2floatArray(color) {
  * @prop {number} [paddingBottom]
  * @prop {number} [paddingBottomLeft]
  * @prop {number} [paddingBottomRight]
- * @prop {number} [color]
- * @prop {number} [colorTop]
- * @prop {number} [colorBottom]
+ * @prop {Object} [color]
+ * @prop {Object} [colorTop]
+ * @prop {Object} [colorBottom]
  */
 
 /**
  * Converts the given segments into typed arrays of vertices
  * 
- * @param {WebGLRenderingContext} gl Used for constants. Vertices are not bound to the context.
  * @param {SegmentSpec[]} segments
  * @param {number} [tesselationThreshold] Tesselate segments if they are shorter than the threshold
  */
-export function segmentsToVertices(gl, segments, tesselationThreshold = 8000000) {
+export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
 
     const x = [];
     const y = [];
@@ -83,15 +92,45 @@ export function segmentsToVertices(gl, segments, tesselationThreshold = 8000000)
 
     return {
         arrays: {
-            x: { data: new Float32Array(x), accessor: { size: 2 }, usage: gl.STATIC_DRAW },
-            y: { data: new Float32Array(y), usage: gl.STATIC_DRAW },
-            color: { data: new Float32Array(colors), accessor: { size: 4 }, usage: gl.STATIC_DRAW }
+            x: { data: new Float32Array(x), accessor: { size: 2 } },
+            y: { data: new Float32Array(y) },
+            color: { data: new Float32Array(colors), accessor: { size: 4 } }
         },
         vertexCount: y.length,
-        drawMode: gl.TRIANGLE_STRIP
+        drawMode: glConst.TRIANGLE_STRIP
     };
 }
 
+
+/**
+ * @typedef {Object} PointSpec
+ * @prop {number} pos
+ * @prop {number} [size]
+ * @prop {Object} [color]
+ * TODO: y, symbol
+ */
+
+/**
+ * Converts the given points into typed arrays of vertices
+ * 
+ * @param {PointSpec[]} points
+ */
+export function pointsToVertices(points) {
+
+    const x = points.map(p => fp64.fp64ify(p.pos)).reduce((a, b) => { a.push(...b); return a; }, []);
+    const size = points.map(p => p.size || 1.0);
+    const color = points.map(p => color2floatArray(p.color || gray)).reduce((a, b) => { a.push(...b); return a; }, []);
+
+    return {
+        arrays: {
+            x: { data: new Float32Array(x), accessor: { size: 2 } },
+            size: { data: new Float32Array(size) },
+            color: { data: new Float32Array(color), accessor: { size: 4 } }
+        },
+        vertexCount: points.length,
+        drawMode: glConst.POINTS
+    };
+}
 
 /**
  * 
@@ -106,7 +145,8 @@ export function verticesToVertexData(program, vertices) {
         Object.assign({}, ...Object.keys(obj).map(k => ({[k]: f(obj[k])})));
 
     // Put each TypedArray into a Buffer
-    vertexArray.setAttributes(mapMembers(vertices.arrays, obj => new Buffer(gl, obj)));
+    vertexArray.setAttributes(mapMembers(vertices.arrays,
+        obj => new Buffer(gl, { ...obj, usage: glConst.STATIC_DRAW })));
 
     return {
         vertexArray: vertexArray,

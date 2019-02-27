@@ -32,7 +32,7 @@ export default class SegmentLayer {
         this.vertexDatas = new Map(Array.from(this.rectsBySample.entries())
             .map(entry => [
                 entry[0],
-                verticesToVertexData(this.segmentProgram, segmentsToVertices(gl, entry[1]))
+                verticesToVertexData(this.segmentProgram, segmentsToVertices(entry[1]))
             ]));
     }
 
