@@ -87,4 +87,17 @@ describe("EncodingMapper", () => {
         expect(wrapArray([10, 11, 12, 13, 14]).map(map))
             .toEqual([0, 0, 0.5, 1, 1].map(vs.defaultSequentialInterpolator));
     })
+});
+
+
+test("CreateFilter", () => {
+    const filter = vs.createFilter(/** @type {import('./visualScales').SimpleFilterConfig } */{
+        attribute: "x",
+        operator: "lte",
+        value: 5
+    });
+
+    // Not very good coverage here, but the cases are trivial
+
+    expect(filter({ x: "4" })).toBeTruthy();
 })

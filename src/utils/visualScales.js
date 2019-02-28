@@ -9,6 +9,9 @@ import * as d3ScaleChromatic from 'd3-scale-chromatic';
 
 import { inferNumeric } from './variableTools';
 
+export const defaultOrdinalScheme = d3ScaleChromatic.schemeCategory10;
+export const defaultSequentialInterpolator = d3ScaleChromatic.interpolateYlOrRd;
+
 /**
  * @typedef {Object} GatherConfig
  * @prop {string} columnRegex
@@ -21,6 +24,11 @@ import { inferNumeric } from './variableTools';
  * @prop {number[] | string[]} [domain]
  * @prop {number[] | string[]} [range]
  * 
+ * @typedef {Object} SimpleFilterConfig
+ * @prop {string} attribute
+ * @prop {string} operator eq, neq, lt, lte, gte, gt
+ * @prop {*} value
+ * 
  * @typedef {Object} VariantDataConfig
  *    A configuration that specifies how data should be mapped
  *    to PointSpecs. The ultimate aim is to make this very generic
@@ -28,8 +36,31 @@ import { inferNumeric } from './variableTools';
  * @prop {GatherConfig[]} gather
  * @prop {string} chrom
  * @prop {string} pos
- * @prop {Object} encodings TODO
+ * @prop {Object} encodings 
+ * @prop {SimpleFilterConfig[]} filters
  */
+
+ /**
+  * 
+  * @param {SimpleFilterConfig} filterConfig 
+  */
+ export function createFilter(filterConfig) {
+     const v = filterConfig.value;
+
+     const accessor = x => x[filterConfig.attribute];
+
+     // Assume that x is a string. Not very robust, but should be enough for now
+     switch (filterConfig.operator) {
+         case "eq":  return x => accessor(x) == v;
+         case "neq": return x => accessor(x) != v;
+         case "lt":  return x => accessor(x) < v;
+         case "lte": return x => accessor(x) <= v;
+         case "gte": return x => accessor(x) >= v;
+         case "gt":  return x => accessor(x) > v;
+         default:
+            throw Error(`Unknown operator: ${filterConfig.operator}`);
+     }
+ }
 
 /**
  * @param {EncodingConfig | string} encodingConfig 
@@ -42,9 +73,6 @@ export function formalizeEncodingConfig(encodingConfig) {
 
     return encodingConfig;
 }
-
-export const defaultOrdinalScheme = d3ScaleChromatic.schemeCategory10;
-export const defaultSequentialInterpolator = d3ScaleChromatic.interpolateYlOrRd;
 
 /**
  * Creates a function that maps attributes to visual variables

@@ -13,7 +13,7 @@ import CytobandTrack from "./tracks/cytobandTrack";
 import { GeneTrack, parseCompressedRefseqGeneTsv } from "./tracks/geneTrack";
 import PointLayer from './layers/pointLayer';
 
-import { gather, formalizeEncodingConfig, createEncodingMapper } from './utils/visualScales';
+import { gather, formalizeEncodingConfig, createEncodingMapper, createFilter } from './utils/visualScales';
 
 //
 // This file is a MESS and will be cleaned as the final architecture emerges
@@ -164,8 +164,12 @@ const variantConfig = {
         },
         // Shorthand for attribute object
         size: "VAF"
-    }
-    // TODO: Filtering
+    },
+    filters: [{
+        attribute: "VAF",
+        operator: "gte",
+        value: 0.05
+    }]
 }
 
 /**
@@ -191,6 +195,7 @@ function createVariantLayer(cm, rows, dataConfig) {
      */
     const isShared = attribute => rows.columns.indexOf(attribute) >= 0;
 
+
     const createCompositeMapper = (
         /** @type {function(string):boolean} */inclusionPredicate,
         /** @type {object[]} */sampleData
@@ -213,19 +218,42 @@ function createVariantLayer(cm, rows, dataConfig) {
                 }
             });
 
-            return (datum) => {
+            const compositeMapper = d => {
                 const mapped = {}
                 Object.entries(mappers).forEach(([visualVariable, mapper]) => {
-                    mapped[visualVariable] = mapper(datum);
+                    mapped[visualVariable] = mapper(d);
                 });
                 return mapped;
             };
+
+            // Export for tooltips
+            compositeMapper.mappers = mappers;
+
+            return compositeMapper;
     }
 
-    
-    const vafLowerLimit = 0.05; // TODO: Configurable, implement in Configuration
 
-    const inclusionPredicate = d => d.size >= vafLowerLimit;
+    const createCompositeFilter = (
+        /** @type {function(string):boolean} */inclusionPredicate
+    ) => {
+        // Trivial case
+        if (!dataConfig.filters || dataConfig.filters.length <= 0) {
+            return d => true;
+        }
+
+        const filterInstances = dataConfig.filters
+            .filter(filter => inclusionPredicate(filter.attribute))
+            .map(createFilter)
+        
+        return d => filterInstances.every(filter => filter(d));
+    }
+    
+
+    const filterSharedVariables = createCompositeFilter(isShared);
+
+    const columns = rows.columns;
+    rows = rows.filter(filterSharedVariables);
+    rows.columns = columns;
     
     const gatheredSamples = gather(rows, dataConfig.gather);
 
@@ -235,6 +263,8 @@ function createVariantLayer(cm, rows, dataConfig) {
     const mapSampleVariables = gatheredSamples.size > 0 ?
         createCompositeMapper(x => !isShared(x), Array.prototype.concat.apply([], [...gatheredSamples.values()])) :
         x => ({});
+    
+    const filterSampleVariables = createCompositeFilter(x => !isShared(x));
     
     const sharedVariantVariables = rows
         .map(d => ({
@@ -247,20 +277,26 @@ function createVariantLayer(cm, rows, dataConfig) {
     const pointsBySample = new Map();
 
     for (const [sampleId, gatheredRows] of gatheredSamples) {
-        pointsBySample.set(
-            sampleId,
-            sharedVariantVariables.map((shared, i) => ({
-                ...shared,
-                ...mapSampleVariables(gatheredRows[i])
-            }))
-//                .filter(inclusionPredicate)
-        )
+        const combined = [];
+
+        for (let i = 0; i < sharedVariantVariables.length; i++) {
+            const gathered = gatheredRows[i];
+            if (filterSampleVariables(gathered)) {
+                combined.push({
+                    ...sharedVariantVariables[i],
+                    ...mapSampleVariables(gathered)
+                });
+            }
+        }
+
+        pointsBySample.set(sampleId, combined);
     }
 
     return [
         new PointLayer(pointsBySample)
     ];
 }
+
 
 function createCnvLohLayers(cm, segmentations, spec) {
     const bySample = group(segmentations, d => d[spec.sample]);
