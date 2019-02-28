@@ -1,10 +1,7 @@
 import { tsvParse } from 'd3-dsv';
-import { group } from 'd3-array';
+import { group, extent } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { color } from 'd3-color';
-
-import { scaleOrdinal } from 'd3-scale';
-import { schemeCategory10 } from 'd3-scale-chromatic';
 
 import GenomeSpyApp from "./genomeSpyApp";
 import { Genome, parseUcscCytobands } from './genome';
@@ -15,6 +12,8 @@ import AxisTrack from "./tracks/axisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";
 import { GeneTrack, parseCompressedRefseqGeneTsv } from "./tracks/geneTrack";
 import PointLayer from './layers/pointLayer';
+
+import { gather, formalizeEncodingConfig, createEncodingMapper } from './utils/visualScales';
 
 //
 // This file is a MESS and will be cleaned as the final architecture emerges
@@ -141,18 +140,8 @@ function processSamples(sampleTsv) {
 
 
 /**
- * @typedef {Object} GatherConfig
- * @prop {string} columnRegex
- * @prop {string} attribute
- * 
- * @typedef {Object} VariantDataConfig
- *    A configuration that specifies how data should be mapped
- *    to PointSpecs. The ultimate aim is to make this very generic
- *    and applicable to multiple types of data and visual encodings.
- * @prop {GatherConfig[]} gather
- * @prop {string} chrom
- * @prop {string} pos
- * @prop {Object} encodings TODO
+ * @typedef {import("./utils/visualScales").VariantDataConfig} VariantDataConfig
+ * @typedef {import("./utils/visualScales").EncodingConfig} EncodingConfig
  */
 
 /** @type VariantDataConfig */
@@ -167,50 +156,16 @@ const variantConfig = {
     chrom: "CHROM",
     pos: "POS",
     encodings: {
+        /** @type {EncodingConfig} */
         color: {
             attribute: "ExonicFunc.refGene",
-            domain: ["nonsynonymous_SNV", "stoploss", "stopgain"]
+            domain: ["nonsynonymous_SNV", "unknown", "stoploss", "stopgain"],
             // range: [...custom rgb values here... or name of a color scheme]
         },
         // Shorthand for attribute object
         size: "VAF"
     }
     // TODO: Filtering
-}
-
-
-/**
- * 
- * @param {Object[]} rows Data parsed with d3.dsv
- * @param {GatherConfig[]} gatherConfigs
- */
-function gather(rows, gatherConfigs) {
-    // TODO: Support multiple attributes
-    if (gatherConfigs.length > 1) {
-        throw 'Currently only one attribute is supported in Gather configuration!';
-    }
-    const gatherConfig = gatherConfigs[0];
-    
-    const columnRegex = new RegExp(gatherConfig.columnRegex);
-
-    /** @type {string} */
-    const sampleColumns = rows.columns.filter(k => columnRegex.test(k));
-
-    /** @type {Map<string, object>} */
-    const gatheredAttributes = new Map();
-
-    for (const sampleColumn of sampleColumns) {
-        const sampleId = columnRegex.exec(sampleColumn)[1];
-
-        const datums = rows.map(row => ({
-            // TODO: Multiple attributes
-            [gatherConfig.attribute]: row[sampleColumn]
-        }));
-        
-        gatheredAttributes.set(sampleId, datums);
-    }
-
-    return gatheredAttributes;
 }
 
 /**
@@ -223,21 +178,63 @@ function createVariantLayer(cm, rows, dataConfig) {
 
     // Some ad-hoc code to parse a custom variant TSV files
 
-    // ATTENTION! This is currently coded against a very specific config and is thus VERY fragile!
-    const colorScale = scaleOrdinal(schemeCategory10);
-    const mapSharedVariables = d => ({
-        color: color(colorScale(d[dataConfig.encodings.color.attribute]))
-    });
+    // TODO: Make enum, include constraints for ranges, etc, maybe some metadata (description)
+    // TODO: Move to PointLayer or something...
+    const visualVariables = {
+        color: { type: "color" },
+        size: { type: "number" }
+    }
 
-    const mapSampleVariables = d => ({
-        size: parseFloat(d[dataConfig.encodings.size])
-    });
+    /**
+     * Now we assume that attribute is gathered if it is not in shared.
+     * TODO: Throw an exception if it's was not published from gathered data
+     */
+    const isShared = attribute => rows.columns.indexOf(attribute) >= 0;
 
+    const createCompositeMapper = (
+        /** @type {function(string):boolean} */inclusionPredicate,
+        /** @type {object[]} */sampleData
+    ) => {
+        const mappers = {};
+
+        Object.entries(dataConfig.encodings || {})
+            .forEach(([/** @type {string} */visualVariable, /** @type {EncodingConfig} */encodingConfig]) => {
+                if (!visualVariables[visualVariable]) {
+                    throw `Unknown visual variable: ${visualVariable}`;
+                }
+                
+                encodingConfig = formalizeEncodingConfig(encodingConfig);
+
+                if (inclusionPredicate(encodingConfig.attribute)) {
+                    mappers[visualVariable] = createEncodingMapper(
+                        visualVariables[visualVariable].type,
+                        encodingConfig,
+                        sampleData)
+                }
+            });
+
+            return (datum) => {
+                const mapped = {}
+                Object.entries(mappers).forEach(([visualVariable, mapper]) => {
+                    mapped[visualVariable] = mapper(datum);
+                });
+                return mapped;
+            };
+    }
+
+    
     const vafLowerLimit = 0.05; // TODO: Configurable, implement in Configuration
 
     const inclusionPredicate = d => d.size >= vafLowerLimit;
     
     const gatheredSamples = gather(rows, dataConfig.gather);
+
+    const mapSharedVariables = createCompositeMapper(isShared, rows);
+
+    // TODO: Maybe sampleData could be iterable
+    const mapSampleVariables = gatheredSamples.size > 0 ?
+        createCompositeMapper(x => !isShared(x), Array.prototype.concat.apply([], [...gatheredSamples.values()])) :
+        x => ({});
     
     const sharedVariantVariables = rows
         .map(d => ({
@@ -256,7 +253,7 @@ function createVariantLayer(cm, rows, dataConfig) {
                 ...shared,
                 ...mapSampleVariables(gatheredRows[i])
             }))
-                .filter(inclusionPredicate)
+//                .filter(inclusionPredicate)
         )
     }
 

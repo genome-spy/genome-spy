@@ -8,6 +8,7 @@ import MouseTracker from "../../mouseTracker";
 import * as html from "../../utils/html";
 import Interval from '../../utils/interval';
 import contextMenu from '../../contextMenu';
+import { inferNumeric } from '../../utils/variableTools';
 
 /**
  * Handles sample names and attributes
@@ -375,19 +376,13 @@ export default class AttributePanel {
             .reduce((acc, sample) => acc.concat(Object.keys(sample.attributes)), []) // Firefox 60 ESR
             .reduce((set, key) => set.add(key), new Set());
 
-        const inferNumerality = attributeName => samples
-            .map(sample => sample.attributes[attributeName])
-            .filter(value => typeof value == "string")
-            .filter(value => value !== "")
-            .every(value => /^[+-]?\d+(\.\d*)?$/.test(value));
-
         this.attributeScales = new Map();
 
         // TODO: Make all of this configurable
 
         attributeNames.forEach(attributeName => {
-            if (inferNumerality(attributeName)) {
-                const accessor = sample => sample.attributes[attributeName];
+            const accessor = sample => sample.attributes[attributeName];
+            if (inferNumeric(samples.map(accessor))) {
 
                 // Convert types
                 for (let sample of samples.values()) {

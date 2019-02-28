@@ -1,9 +1,9 @@
-import { color } from 'd3-color';
+import { color as d3color } from 'd3-color';
 import { VertexArray, Buffer, fp64 } from 'luma.gl';
 import Interval from "../utils/interval";
 
-const black = color("black");
-const gray = color("gray");
+const black = d3color("black");
+const gray = d3color("gray");
 
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
 // TODO: Use @luma.gl/constants 
@@ -15,6 +15,9 @@ const glConst = {
 };
 
 export function color2floatArray(color) {
+    if (typeof color == "string") {
+        color = d3color(color);
+    }
     return [color.r / 255.0, color.g / 255.0, color.b / 255.0, color.opacity];
 }
 
@@ -116,6 +119,8 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
  * @param {PointSpec[]} points
  */
 export function pointsToVertices(points) {
+
+    points = points.filter(p => p.size !== 0.0);
 
     const x = points.map(p => fp64.fp64ify(p.pos)).reduce((a, b) => { a.push(...b); return a; }, []);
     const size = points.map(p => typeof p.size == "number" ? Math.sqrt(p.size) : 1.0);
