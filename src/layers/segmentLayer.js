@@ -67,48 +67,31 @@ export default class SegmentLayer {
             for (const segment of segments) {
                 const interval = extractInterval(segment);
                 const color = d3color(colorScale(transform(parseFloat(segment[spec.segMean]))));
+                const loh = spec.bafMean ? baf2loh(parseFloat(segment[spec.bafMean])) : 0;
 
                 rects.push(
                     {
                         interval,
+                        paddingBottom: loh,
                         color,
-                        rawDatum: segment
-                    },
-                    {
-                        interval,
-                        paddingTop: 1.0 - baf2loh(parseFloat(segment[spec.bafMean])),
-                        color: color.darker(0.5).rgb(),
                         rawDatum: segment
                     }
                 );
+
+                if (loh) {
+                    rects.push(
+                        {
+                            interval,
+                            paddingTop: 1.0 - loh,
+                            color: color.darker(0.5).rgb(),
+                            rawDatum: segment
+                        }
+                    )
+                };
             }
 
             this.rectsBySample.set(sample, rects);
         }
-
-        /*
-        this.rectsBySample = new Map([...bySample.entries()].map(([sample, segments]) => [
-            sample,
-            segments.map(segment => ({
-                interval: extractInterval(segment),
-                color: color(colorScale(transform(parseFloat(segment[spec.segMean])))),
-                rawDatum: segment
-            }))]
-        ));
-        */
-
-        /*
-        const lohBySample = new Map([...bySample.entries()].map(entry => [
-            entry[0],
-            entry[1].map(segment => ({
-                interval: extractInterval(segment),
-                paddingTop: 1.0 - baf2loh(parseFloat(segment[spec.bafMean])),
-                colorTop: color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
-                colorBottom: color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
-                rawDatum: segment
-            }))]
-        ));
-        */
     }
 
     _initGL() {
