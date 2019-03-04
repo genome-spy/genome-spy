@@ -126,9 +126,15 @@ export default class GenomeSpy {
 
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
     async launch() {
+        this.loadingMessageElement = document.createElement("div");
+        this.loadingMessageElement.className = "loading-message";
+        this.loadingMessageElement.innerHTML = `<div class="message">Loading...</div>`;
+        this.container.appendChild(this.loadingMessageElement);
+
         window.addEventListener('resize', this._resized.bind(this), false);
 
         this.container.classList.add("genome-spy");
+        this.container.classList.add("loading");
         
         // Load chromsizes etc
         await this.genome.initialize();
@@ -147,14 +153,22 @@ export default class GenomeSpy {
         this.container.addEventListener("contextmenu", event => event.preventDefault());
 
         const trackStack = document.createElement("div");
-        trackStack.className = "track-stack";
+        trackStack.classList.add("track-stack");
 
         this.container.appendChild(trackStack);
         this.trackStack = trackStack;
 
         this.tooltip = new Tooltip(this.container);
 
-        this.tracks = this.config.tracks.map(trackConfig => new trackTypes[trackConfig.type](this, trackConfig));
+        try {
+            this.tracks = this.config.tracks.map(trackConfig => new trackTypes[trackConfig.type](this, trackConfig));
+
+        } catch (reason) {
+            console.error(reason.message);
+            console.error(reason.stack);
+            alert("Error: " + reason.toString());
+            return;
+        }
     
         await Promise.all(this.tracks.map(track => {
             const trackContainer = document.createElement("div");
@@ -162,8 +176,15 @@ export default class GenomeSpy {
             trackStack.appendChild(trackContainer);
 
             return track.initialize(trackContainer);
-        }));
 
-        this._resized();
+        })).then(() => {
+            this._resized();
+            this.container.classList.remove("loading");
+
+        }).catch(reason => {
+            console.error(reason.message);
+            console.error(reason.stack);
+            alert("Error: " + reason.toString());
+        });
     }
 }
