@@ -108,8 +108,9 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
 /**
  * @typedef {Object} PointSpec
  * @prop {number} pos
- * @prop {number} [size]
+ * @prop {number} [size] Width or height of the symbol
  * @prop {Object} [color]
+ * @prop {Object} [rawDatum] Shown as tooltip
  * TODO: y, symbol, orientation, aspectRatio
  */
 

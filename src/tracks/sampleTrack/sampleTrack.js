@@ -344,8 +344,9 @@ export default class SampleTrack extends WebGlTrack {
 
         const domainX = this.genomeSpy.rescaledX.invert(x);
 
-        for (let layer of this.layers) {
-            const datum = layer.findDatum(sampleId, domainX);
+        // Start matching from the top layer
+        for (let i = this.layers.length - 1; i >= 0; i--) {
+            const datum = this.layers[i].findDatum(sampleId, domainX, y);
             if (datum) {
                 return datum;
             }
@@ -362,7 +363,7 @@ export default class SampleTrack extends WebGlTrack {
             Object.entries(datum).map(([key, value]) => `
                 <tr>
                     <th>${html.escapeHtml(key)}</th>
-                    <td>${html.escapeHtml(value)}</td>
+                    <td>${html.escapeHtml(value.toString())}</td>
                 </tr>`
             ).join("") +
             "</table>";

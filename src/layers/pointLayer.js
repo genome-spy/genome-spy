@@ -19,6 +19,9 @@ const visualVariables = {
     size: { type: "number" }
 };
 
+const maxPointSizeRelative = 0.7;
+const maxPointSizeAbsolute = 25;
+
 export default class PointLayer {
     /**
      * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
@@ -128,9 +131,14 @@ export default class PointLayer {
                 ...mapSharedVariables(d)
             }));
 
+        /**
+         * @typedef {import('../gl/segmentsToVertices').PointSpec} PointSpec
+         * @type {Map<string, PointSpec[]>}
+         */
         this.pointsBySample = new Map();
 
         for (const [sampleId, gatheredRows] of gatheredSamples) {
+            /** @type {PointSpec[]} */
             const combined = [];
 
             for (let i = 0; i < sharedVariantVariables.length; i++) {
@@ -138,7 +146,8 @@ export default class PointLayer {
                 if (filterSampleVariables(gathered)) {
                     combined.push({
                         ...sharedVariantVariables[i],
-                        ...mapSampleVariables(gathered)
+                        ...mapSampleVariables(gathered),
+                        rawDatum: rows[i]
                     });
                 }
             }
@@ -184,8 +193,8 @@ export default class PointLayer {
                 ...uniforms,
                 viewportHeight: this.sampleTrack.glCanvas.clientHeight * window.devicePixelRatio,
                 devicePixelRatio: window.devicePixelRatio,
-                maxPointSizeRelative: 0.7,
-                maxPointSizeAbsolute: 25 * window.devicePixelRatio,
+                maxPointSizeRelative,
+                maxPointSizeAbsolute: maxPointSizeAbsolute * window.devicePixelRatio,
                 ...fp64.getUniforms()
             });
             this.segmentProgram.draw({
@@ -199,17 +208,38 @@ export default class PointLayer {
 
     /**
      * @param {string} sampleId 
-     * @param {number} pos position on the domain
+     * @param {number} domainPos position on the domain
+     * @param {number} y position inside the viewport in pixels
      */
-    findDatum(sampleId, pos) {
-        return;
-        /*
-        const rects = this.rectsBySample.get(sampleId);
+    findDatum(sampleId, domainPos, y) {
+        // TODO: Fisheye may need some adjustments
 
-        // TODO: BinarySearch
-        const rect = rects.find(rect => rect.interval.contains(pos));
+        const points = this.pointsBySample.get(sampleId);
+        if (!points) {
+            return null;
+        }
 
-        return rect ? rect.rawDatum : null;
-        */
+        const bandInterval = this.sampleTrack.sampleScale.scale(sampleId);
+        const pointY = bandInterval.centre();
+
+        const maxPointSize = Math.min(maxPointSizeAbsolute, maxPointSizeRelative * bandInterval.width());
+
+        const distance = (x1, x2, y1, y2) => Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+
+        const scale = this.genomeSpy.rescaledX;
+
+        const x = scale(domainPos);
+
+        // TODO: BinarySearch! First compute the possible range based on the maximum point size...
+        // ... and then perform a linear search through it
+        let lastMatch = null;
+        for (const point of points) {
+            const dist = distance(x, scale(point.pos), y, pointY);
+            if (dist < maxPointSize * point.size) {
+                lastMatch = point;
+            }
+        }
+
+        return lastMatch ? lastMatch.rawDatum : null;
     }
 }
