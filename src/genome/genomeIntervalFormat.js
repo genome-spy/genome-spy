@@ -1,10 +1,13 @@
 import { format as d3format } from 'd3-format';
 
-import Interval from "./interval";
+import Interval from "../utils/interval";
 
 export default class GenomeIntervalFormat {
-    constructor(chromMapper) {
-        this.chromMapper = chromMapper;
+    /**
+     * @param {import("./genome").default} genome 
+     */
+    constructor(genome) {
+        this.genome = genome;
         this.numberFormat = d3format(",d");
     }
 
@@ -19,8 +22,8 @@ export default class GenomeIntervalFormat {
     format(interval) {
 
         // Because of the open upper bound, one is first decreased from the upper bound and later added back.
-        const begin = this.chromMapper.toChromosomal(interval.lower);
-        const end = this.chromMapper.toChromosomal(interval.upper - 1);
+        const begin = this.genome.chromMapper.toChromosomal(interval.lower);
+        const end = this.genome.chromMapper.toChromosomal(interval.upper - 1);
 
         return begin.chromosome.name + ":" +
             this.numberFormat(Math.floor(begin.locus + 1)) + "-" +
@@ -40,8 +43,8 @@ export default class GenomeIntervalFormat {
             const endIndex = parseInt(matches[4].replace(/,/g, ""));
 
             return new Interval(
-                this.chromMapper.toContinuous(startChr, startIndex - 1),
-                this.chromMapper.toContinuous(endChr, endIndex)
+                this.genome.chromMapper.toContinuous(startChr, startIndex - 1),
+                this.genome.chromMapper.toContinuous(endChr, endIndex)
             );
 
         } else {

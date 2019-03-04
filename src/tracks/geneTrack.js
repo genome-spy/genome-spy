@@ -24,6 +24,7 @@ import * as html from "../utils/html";
 import MouseTracker from "../mouseTracker";
 import contextMenu from "../contextMenu";
 
+
 const defaultConfig = {
     geneFullVisibilityThreshold: 30 * 1000000, // In base pairs
     geneFadeGradientFactor: 2.2,
@@ -40,19 +41,11 @@ const defaultConfig = {
 };
 
 
-export class GeneTrack extends WebGlTrack {
-    constructor(genes) {
-        super();
+export default class GeneTrack extends WebGlTrack {
+    constructor(genomeSpy, config) {
+        super(genomeSpy, config);
 
-        this.config = defaultConfig;
-
-        this.genes = genes;
-        this.geneClusters = detectGeneClusters(genes);
-
-        // Optimization: use a subset for overview
-        // TODO: Use d3.quickselect, maybe add multiple levels, adjust thresholds
-        const scoreLimit = this.genes.map(gene => gene.score).sort((a, b) => b - a)[200];
-        this.overviewGenes = this.genes.filter(gene => gene.score >= scoreLimit);
+        this.styles = defaultConfig;
 
         // TODO: Replace 40 with something sensible
         /** @type {IntervalCollection[]} keeps track of gene symbols on the screen */
@@ -61,23 +54,37 @@ export class GeneTrack extends WebGlTrack {
         this.bodyOpacityScale = scaleLinear()
             .range([0, 1])
             .domain([
-                this.config.geneFullVisibilityThreshold * this.config.geneFadeGradientFactor,
-                this.config.geneFullVisibilityThreshold
+                this.styles.geneFullVisibilityThreshold * this.styles.geneFadeGradientFactor,
+                this.styles.geneFullVisibilityThreshold
             ])
             .clamp(true);
 
     }
 
+    setGenes(genes) {
+        this.genes = genes;
+
+        this.geneClusters = detectGeneClusters(genes);
+
+        // Optimization: use a subset for overview
+        // TODO: Use d3.quickselect, maybe add multiple levels, adjust thresholds
+        const scoreLimit = this.genes.map(gene => gene.score).sort((a, b) => b - a)[200];
+        this.overviewGenes = this.genes.filter(gene => gene.score >= scoreLimit);
+    }
+
     /**
-     * @param {import("../genomeSpy").default} genomeSpy 
      * @param {HTMLElement} trackContainer 
      */
-    initialize(genomeSpy, trackContainer) {
-        super.initialize(genomeSpy, trackContainer);
+    async initialize(trackContainer) {
+        await super.initialize(trackContainer);
 
         this.trackContainer.className = "gene-track";
-        this.trackContainer.style.height = (this.config.lanes * (this.config.laneHeight + this.config.laneSpacing)) + "px";
-        this.trackContainer.style.marginTop = `${this.config.laneSpacing}px`;
+        this.trackContainer.style.height = (this.styles.lanes * (this.styles.laneHeight + this.styles.laneSpacing)) + "px";
+        this.trackContainer.style.marginTop = `${this.styles.laneSpacing}px`;
+
+        this.setGenes(parseCompressedRefseqGeneTsv(
+            this.genomeSpy.chromMapper,
+            await fetch(`private/refSeq_genes_scored.${this.genomeSpy.genome.name}.compressed.txt`).then(res => res.text())));
 
         this.glCanvas = this.createCanvas();
 
@@ -127,19 +134,16 @@ export class GeneTrack extends WebGlTrack {
             .on("dblclick", gene => this.genomeSpy.zoomTo(gene.interval.pad(gene.interval.width() * 0.25)))
             .on("contextmenu", (gene, mouseEvent) => contextMenu({ items: createContextMenuItems(gene) }, mouseEvent))
 
-        genomeSpy.on("zoom", () => {
+        this.genomeSpy.on("zoom", () => {
             this.render();
         });
 
-        genomeSpy.on("layout", layout => {
+        this.genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
             this.render();
         });
 
-        genomeSpy.zoom.attachZoomEvents(this.symbolCanvas);
-
-        const cm = genomeSpy.chromMapper;
-        this.chromosomes = cm.chromosomes();
+        this.genomeSpy.zoom.attachZoomEvents(this.symbolCanvas);
     }
 
     entrezSummary2Html(summary) {
@@ -161,17 +165,17 @@ export class GeneTrack extends WebGlTrack {
     }
 
     findGeneAt(point) {
-        const laneTotal = this.config.laneHeight + this.config.laneSpacing;
+        const laneTotal = this.styles.laneHeight + this.styles.laneSpacing;
 
         // We are interested in symbols, not gene bodies/exons. Adjust y accordingly.
-        const y = point[1] - this.config.laneHeight - this.config.symbolYOffset;
+        const y = point[1] - this.styles.laneHeight - this.styles.symbolYOffset;
 
         const laneNumber = Math.round(y / laneTotal);
 
         // Include some pixels above and below the symbol
         const margin = 0.3;
 
-        if (laneNumber < 0 || Math.abs(laneNumber * laneTotal - y) > this.config.fontSize * (1 + margin) / 2) {
+        if (laneNumber < 0 || Math.abs(laneNumber * laneTotal - y) > this.styles.fontSize * (1 + margin) / 2) {
             return null;
         }
 
@@ -209,8 +213,8 @@ export class GeneTrack extends WebGlTrack {
                 exonsToVertices(
                     this.exonProgram,
                     cluster.genes,
-                    this.config.laneHeight,
-                    this.config.laneSpacing
+                    this.styles.laneHeight,
+                    this.styles.laneSpacing
                 ));
 
             this.geneVerticeMap.set(
@@ -218,8 +222,8 @@ export class GeneTrack extends WebGlTrack {
                 genesToVertices(
                     this.geneProgram,
                     cluster.genes,
-                    this.config.laneHeight,
-                    this.config.laneSpacing
+                    this.styles.laneHeight,
+                    this.styles.laneSpacing
                 ));
         });
 
@@ -291,13 +295,13 @@ export class GeneTrack extends WebGlTrack {
 
         ctx.lineJoin = "round";
 
-        const yOffset = this.config.laneHeight + this.config.symbolYOffset;
+        const yOffset = this.styles.laneHeight + this.styles.symbolYOffset;
 
         ctx.clearRect(0, 0, this.symbolCanvas.width, this.symbolCanvas.height);
 
         let gene;
         let i = 0;
-        while (i++ < this.config.maxSymbolsToShow && (gene = priorizer.pop())) { // TODO: Configurable limit
+        while (i++ < this.styles.maxSymbolsToShow && (gene = priorizer.pop())) { // TODO: Configurable limit
             const x = scale(gene.interval.centre());
 
             const text = gene.symbol;
@@ -314,12 +318,12 @@ export class GeneTrack extends WebGlTrack {
                 continue;
             }
 
-            const y = gene.lane * (this.config.laneHeight + this.config.laneSpacing) + yOffset;
+            const y = gene.lane * (this.styles.laneHeight + this.styles.laneSpacing) + yOffset;
 
             if (arrowOpacity) {
                 ctx.globalAlpha = arrowOpacity;
 
-                ctx.font = `${this.config.fontSize * 0.6}px ${this.config.fontFamily}`;
+                ctx.font = `${this.styles.fontSize * 0.6}px ${this.styles.fontFamily}`;
                 if (gene.strand == '-') {
                     ctx.fillText("\u25c0", x - width / 2 - 4, y);
 
@@ -330,7 +334,7 @@ export class GeneTrack extends WebGlTrack {
                 ctx.globalAlpha = 1;
             }
 
-            ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
+            ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
 
             ctx.strokeText(text, x, y);
             ctx.fillText(text, x, y);
@@ -370,7 +374,7 @@ export class GeneTrack extends WebGlTrack {
             this.geneProgram.setUniforms({
                 ...uniforms,
                 uTMatrix,
-                uResolution: this.config.laneHeight
+                uResolution: this.styles.laneHeight
             });
 
             this.geneProgram.draw({

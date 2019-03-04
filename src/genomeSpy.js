@@ -2,12 +2,28 @@ import { scaleLinear } from 'd3-scale';
 import { interpolateZoom } from 'd3-interpolate';
 
 import EventEmitter from "eventemitter3";
-import { chromMapper } from "./chromMapper";
 import Interval from "./utils/interval";
 import { Zoom, Transform } from "./utils/zoom";
 import "./styles/genome-spy.scss";
 import Tooltip from "./tooltip";
 import transition, { easeLinear } from "./utils/transition";
+
+import Genome from './genome/genome';
+
+import SampleTrack from "./tracks/sampleTrack/sampleTrack";
+import AxisTrack from "./tracks/axisTrack";
+import CytobandTrack from "./tracks/cytobandTrack";
+import GeneTrack from "./tracks/geneTrack";
+
+
+// TODO: Figure out if these could be discovered automatically by WebPack or something
+const trackTypes = {
+    "SampleTrack": SampleTrack,
+    "CytobandTrack": CytobandTrack,
+    "AxisTrack": AxisTrack,
+    "GeneTrack": GeneTrack
+};
+
 
 /**
  * The actual browser without any toolbars etc
@@ -16,29 +32,23 @@ export default class GenomeSpy {
     /**
      * 
      * @param {HTMLElement} container 
-     * @param {import("./genome").Genome} genome 
-     * @param {import("./tracks/track").default[]} tracks 
      */
-    constructor(container, genome, tracks) {
-        this.genome = genome;
+    constructor(container, config) {
         this.container = container;
-        this.tracks = tracks;
-
-        this.chromMapper = chromMapper(genome.chromSizes);
-
-        this.xScale = scaleLinear()
-            .domain(this.chromMapper.extent().toArray());
-
-        // Zoomed scale
-        this.rescaledX = this.xScale;
+        this.config = config;
 
         this.eventEmitter = new EventEmitter();
+
+        // Initialized later
+        this.genome = new Genome(this.config.genome);
 
         this.zoom = new Zoom(this._zoomed.bind(this));
 
         // TODO: A configuration object
         /** When zooming, the maximum size of a single discrete unit (nucleotide) in pixels */
         this.maxUnitZoom = 20;
+
+        this.tracks = [];
     }
 
     on(...args) {
@@ -114,12 +124,27 @@ export default class GenomeSpy {
         this.eventEmitter.emit('layout', this.layout);
     }
 
-
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
-    launch() {
+    async launch() {
         window.addEventListener('resize', this._resized.bind(this), false);
 
         this.container.classList.add("genome-spy");
+        
+        // Load chromsizes etc
+        await this.genome.initialize();
+
+        this.chromMapper = this.genome.chromMapper;
+
+        this.xScale = scaleLinear()
+            .domain(this.chromMapper.extent().toArray());
+
+        // Zoomed scale
+        this.rescaledX = this.xScale;
+
+        // Eat all context menu events that have not been caught by any track.
+        // Prevents annoying browser default context menues from opening when
+        // the user did not quite hit the target.
+        this.container.addEventListener("contextmenu", event => event.preventDefault());
 
         const trackStack = document.createElement("div");
         trackStack.className = "track-stack";
@@ -129,18 +154,15 @@ export default class GenomeSpy {
 
         this.tooltip = new Tooltip(this.container);
 
-        this.tracks.forEach(track => {
+        this.tracks = this.config.tracks.map(trackConfig => new trackTypes[trackConfig.type](this, trackConfig));
+    
+        await Promise.all(this.tracks.map(track => {
             const trackContainer = document.createElement("div");
             trackContainer.className = "genome-spy-track";
             trackStack.appendChild(trackContainer);
 
-            track.initialize(this, trackContainer);
-        });
-
-        // Eat all context menu events that have not been caught by any track.
-        // Prevents annoying browser default context menues from opening when
-        // the user did not quite hit the target.
-        this.container.addEventListener("contextmenu", event => event.preventDefault());
+            return track.initialize(trackContainer);
+        }));
 
         this._resized();
     }

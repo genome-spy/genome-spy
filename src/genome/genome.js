@@ -1,23 +1,43 @@
 import { tsvParseRows } from 'd3-dsv';
+import { chromMapper } from "./chromMapper";
 
-export class Genome {
-    constructor(name, { chromSizes = null, cytobands = null }) {
-        this.name = name;
+// TODO: Create an abstract "CoordinateSystem" base class
 
-        if (cytobands) {
-            this.cytobands = cytobands;
-            this.chromSizes = cytobandsToChromSizes(cytobands);
+/**
+ * @typedef {Object} GenomeConfig
+ * @prop {string} name
+ */
 
-        } else if (chromSizes) {
-            this.chromSizes = chromSizes;
+export default class Genome {
+    /**
+     * @param {GenomeConfig} config
+     */
+    constructor(config) {
+        this.config = config;
+    }
 
-        } else {
-            throw "Either chromSizes or cytobands must be defined!";
-        }
+    get name() {
+        return this.config.name;
+    }
+
+    async initialize() {
+
+        // TODO: load chromsizes
+
+        this.chromSizes = await fetch(`genome/${this.name}.chrom.sizes`)
+            .then(res => res.text())
+            .then(parseChromSizes);
+
+        this.chromMapper = chromMapper(this.chromSizes);
     }
 }
 
-// TODO: parseUcscChromSizes()
+export function parseChromSizes(chromSizesData) {
+    // TODO: Support other organisms too
+    return new Map(tsvParseRows(chromSizesData)
+        .filter(row => /^chr[0-9XY]{1,2}$/.test(row[0]))
+        .map(([chrom, size]) => [chrom, parseInt(size)]));
+}
 
 /**
  * Parses a UCSC chromosome band table
@@ -29,6 +49,7 @@ export class Genome {
  */
 export function parseUcscCytobands(cytobandData) {
     return tsvParseRows(cytobandData)
+        // TODO: Support other organisms too
         .filter(b => /^chr[0-9XY]{1,2}$/.test(b[0]))
         .map(row => ({
             chrom: row[0],

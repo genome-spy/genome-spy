@@ -7,10 +7,16 @@ export default class Track {
 
     /**
      * @param {import("../genomeSpy").default} genomeSpy 
+     */
+    constructor(genomeSpy, config) {
+        this.config = config || {};
+        this.genomeSpy = genomeSpy
+    }
+
+    /**
      * @param {HTMLElement} trackContainer 
      */
-    initialize(genomeSpy, trackContainer) {
-        this.genomeSpy = genomeSpy;
+    async initialize(trackContainer) {
         this.trackContainer = trackContainer;
     }
 

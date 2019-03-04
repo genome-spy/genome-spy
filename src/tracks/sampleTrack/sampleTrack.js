@@ -1,4 +1,5 @@
 import { scaleLinear } from 'd3-scale';
+import { tsvParse } from 'd3-dsv';
 import {
     setParameters, fp64, createGLContext, registerShaderModules
 } from 'luma.gl';
@@ -11,8 +12,10 @@ import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } 
 import clientPoint from "../../utils/point";
 import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
+import PointLayer from '../../layers/pointLayer';
+import SegmentLayer from '../../layers/segmentLayer';
 
-const defaultConfig = {
+const defaultStyles = {
     paddingInner: 0.20, // Relative to sample height
     paddingOuter: 0.20,
 
@@ -25,6 +28,28 @@ const defaultConfig = {
     horizontalSpacing: 10 // TODO: Find a better place
 }
 
+
+function extractAttributes(row) {
+    const attributes = Object.assign({}, row);
+    delete attributes.sample;
+    delete attributes.displayName;
+    return attributes;
+}
+
+function processSamples(sampleTsv) {
+    return tsvParse(sampleTsv)
+        .map(row => ({
+            id: row.sample,
+            displayName: row.displayName || row.sample,
+            attributes: extractAttributes(row)
+        }));
+}
+
+export const layerTypes = {
+    "PointLayer": PointLayer,
+    "CnvLoh": SegmentLayer
+};
+
 /**
  * A track that displays one or more samples as sub-tracks.
  * 
@@ -35,10 +60,42 @@ const defaultConfig = {
  */
 export default class SampleTrack extends WebGlTrack {
 
-    constructor(samples, layers) {
-        super();
+    constructor(genomeSpy, config) {
+        super(genomeSpy, config);
 
-        this.config = defaultConfig;
+        this.styles = defaultStyles;
+
+        this.attributePanel = new AttributePanel(this);
+
+        /**
+         * Global transform for y axis (Samples)
+         * 
+         * @type {?function(number):number}
+         */
+        this.yTransform = null;
+
+
+        /** @type {import("../../layers/segmentLayer").default[]} */
+        this.layers = [];
+
+        for (let layerConf of config.layers) {
+            const layerClass = layerTypes[layerConf.type];
+            if (layerClass) {
+                this.layers.push(new layerClass(this, layerConf));
+
+            } else {
+                throw new Error(`Unsupported layer type: ${layerConf.type}`);
+            }
+        }
+    }
+
+
+    /**
+     * 
+     * @param {Sample[]} samples 
+     */
+    setSamples(samples) {
+        // TODO: Support dynamic configuration
 
         /**
          * A map of sample objects
@@ -63,21 +120,6 @@ export default class SampleTrack extends WebGlTrack {
          * @type {string[][]}
          */
         this.sampleOrderHistory = [[...this.sampleOrder]];
-
-        /**
-         * // TODO: layer base class
-         * @type {import("../../layers/segmentLayer").default[]}
-         */
-        this.layers = layers;
-
-        this.attributePanel = new AttributePanel(this);
-
-        /**
-         * Global transform for y axis (Samples)
-         * 
-         * @type {?function(number):number}
-         */
-        this.yTransform = null;
     }
 
     /**
@@ -103,19 +145,23 @@ export default class SampleTrack extends WebGlTrack {
     }
 
     /**
-     * @param {import("../../genomeSpy").default} genomeSpy 
      * @param {HTMLElement} trackContainer 
      */
-    initialize(genomeSpy, trackContainer) {
-        super.initialize(genomeSpy, trackContainer);
+    async initialize(trackContainer) {
+        await super.initialize(trackContainer);
+
+        this.trackContainer.className = "sample-track";
+
+        // TODO: Accept a pre-parsed array of objects
+        // TODO: Get samples from layers if they were not provided
+        this.setSamples(processSamples(await fetch(this.genomeSpy.config.baseurl + this.config.samples).then(res => res.text())));
 
         /** @type {BandScale} */
         this.sampleScale = new BandScale();
         this.sampleScale.domain(this.sampleOrder);
-        this.sampleScale.paddingInner = this.config.paddingInner;
-        this.sampleScale.paddingOuter = this.config.paddingOuter;
+        this.sampleScale.paddingInner = this.styles.paddingInner;
+        this.sampleScale.paddingOuter = this.styles.paddingOuter;
 
-        this.trackContainer.className = "sample-track";
 
         // Canvas for WebGL
         this.glCanvas = this.createCanvas();
@@ -132,7 +178,7 @@ export default class SampleTrack extends WebGlTrack {
             depthFunc: gl.LEQUAL
         });
 
-        this.layers.forEach(layer => layer.initialize(this));
+        await Promise.all(this.layers.map(layer => layer.initialize()));
 
         this.viewportMouseTracker = new MouseTracker({
             element: this.glCanvas,
@@ -146,18 +192,18 @@ export default class SampleTrack extends WebGlTrack {
         this.initializeFisheye()
 
 
-        genomeSpy.on("layout", layout => {
+        this.genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
             this.attributePanel.renderLabels();
             this.attributePanel.renderAttributeLabels();
             this.renderViewport();
         });
 
-        genomeSpy.on("zoom", () => {
+        this.genomeSpy.on("zoom", () => {
             this.renderViewport();
         });
 
-        genomeSpy.zoom.attachZoomEvents(this.glCanvas);
+        this.genomeSpy.zoom.attachZoomEvents(this.glCanvas);
 
 
         // TODO: Reorganize:
@@ -568,7 +614,10 @@ export default class SampleTrack extends WebGlTrack {
                 ...domainUniforms
             };
 
-            this.layers.forEach(layer => layer.render(sampleId, uniforms));
+            //this.layers.forEach(layer => layer.render(sampleId, uniforms));
+            for (const layer of this.layers) {
+                layer.render(sampleId, uniforms);
+            }
         });
     }
 }

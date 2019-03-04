@@ -1,3 +1,8 @@
+import { group, extent } from 'd3-array';
+import { scaleLinear } from 'd3-scale';
+import { color as d3color } from 'd3-color';
+import { tsvParse } from 'd3-dsv';
+
 import { Program, assembleShaders } from 'luma.gl';
 import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
@@ -8,19 +13,106 @@ import { segmentsToVertices, verticesToVertexData } from '../gl/segmentsToVertic
  * copy number variation, for example.
  */
 export default class SegmentLayer {
-    constructor(rectsBySample) {
-        this.rectsBySample = rectsBySample; // TODO: replace with recipe
-        // TODO: sort rects
+
+    /**
+     * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
+     * @param {Object} layerConfig 
+     */
+    constructor(sampleTrack, layerConfig) {
+        this.layerConfig = layerConfig;
+
+        this.dataConfig = this.layerConfig.spec;
+
+        this.sampleTrack = sampleTrack;
+        this.genomeSpy = sampleTrack.genomeSpy;
     }
 
     /**
      * 
-     * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
      */
-    initialize(sampleTrack) {
-        this.sampleTrack = sampleTrack;
+    async initialize() {
+        await this.createCnvLohSegments();
 
-        const gl = sampleTrack.gl;
+        this._initGL();
+    }
+
+    async createCnvLohSegments() {
+        const spec = this.dataConfig;
+        const cm = this.genomeSpy.genome.chromMapper;
+
+        const segmentations = tsvParse(
+            await fetch(this.genomeSpy.config.baseurl + this.layerConfig.data).then(res => res.text()));
+
+        const bySample = group(segmentations, d => d[spec.sample]);
+
+        const colorScale = scaleLinear()
+            .domain([-3, 0, 1.5]) // TODO: Infer from data
+            .range(["#0050f8", "#f6f6f6", "#ff3000"]);
+
+        const transform = spec.logSeg ? (x => x) : Math.log2;
+
+        const extractInterval = segment => cm.segmentToContinuous(
+            segment[spec.chrom],
+            parseInt(segment[spec.start]),
+            parseInt(segment[spec.end]));
+
+        const baf2loh = baf => (Math.abs(baf) - 0.5) * 2;
+
+        // TODO: Precompute colors for the domain and use a lookup table. This is currently a bit slow.
+
+        this.rectsBySample = new Map();
+
+        for (const [sample, segments] of bySample.entries()) {
+            const rects = [];
+            for (const segment of segments) {
+                const interval = extractInterval(segment);
+                const color = d3color(colorScale(transform(parseFloat(segment[spec.segMean]))));
+
+                rects.push(
+                    {
+                        interval,
+                        color,
+                        rawDatum: segment
+                    },
+                    {
+                        interval,
+                        paddingTop: 1.0 - baf2loh(parseFloat(segment[spec.bafMean])),
+                        color: color.darker(0.5).rgb(),
+                        rawDatum: segment
+                    }
+                );
+            }
+
+            this.rectsBySample.set(sample, rects);
+        }
+
+        /*
+        this.rectsBySample = new Map([...bySample.entries()].map(([sample, segments]) => [
+            sample,
+            segments.map(segment => ({
+                interval: extractInterval(segment),
+                color: color(colorScale(transform(parseFloat(segment[spec.segMean])))),
+                rawDatum: segment
+            }))]
+        ));
+        */
+
+        /*
+        const lohBySample = new Map([...bySample.entries()].map(entry => [
+            entry[0],
+            entry[1].map(segment => ({
+                interval: extractInterval(segment),
+                paddingTop: 1.0 - baf2loh(parseFloat(segment[spec.bafMean])),
+                colorTop: color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
+                colorBottom: color(colorScale(transform(parseFloat(segment[spec.segMean])))).darker(0.5).rgb(),
+                rawDatum: segment
+            }))]
+        ));
+        */
+    }
+
+    _initGL() {
+        const gl = this.sampleTrack.gl;
 
         this.segmentProgram = new Program(gl, assembleShaders(gl, {
             vs: VERTEX_SHADER,

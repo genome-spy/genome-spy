@@ -23,17 +23,9 @@ export default class AttributePanel {
     constructor(sampleTrack) {
         this.sampleTrack = sampleTrack;
 
-        const config = this.sampleTrack.config;
+        this.styles = this.sampleTrack.styles;
 
-        // TODO: Consider a setSamples() method
-
-        const ctx = this.sampleTrack.get2d(document.createElement("canvas"));
-        ctx.font = `${config.fontSize}px ${config.fontFamily}`;
-        this.maxLabelWidth = [...this.sampleTrack.samples.values()]
-            .map(sample => ctx.measureText(sample.displayName).width)
-            .reduce((a, b) => Math.max(a, b), 0);
-
-        this.textCache = new CanvasTextCache(config.fontSize, config.fontFamily);
+        this.textCache = new CanvasTextCache(this.styles.fontSize, this.styles.fontFamily);
     }
 
 
@@ -62,15 +54,22 @@ export default class AttributePanel {
             .on("mouseover", attribute => this.renderAttributeLabels({ hoveredAttribute: attribute }))
             .on("mouseleave", () => this.renderAttributeLabels());
 
+        // TODO: Consider a setSamples() method
+        const ctx = this.sampleTrack.get2d(document.createElement("canvas"));
+        ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
+        this.maxLabelWidth = [...this.sampleTrack.samples.values()]
+            .map(sample => ctx.measureText(sample.displayName).width)
+            .reduce((a, b) => Math.max(a, b), 0);
+
         this.prepareSampleAttributes();
 
     }
 
     getMinWidth() {
         return this.maxLabelWidth +
-            this.sampleTrack.config.horizontalSpacing +
-            this.attributeScales.size * this.sampleTrack.config.attributeWidth +
-            this.sampleTrack.config.horizontalSpacing;
+            this.sampleTrack.styles.horizontalSpacing +
+            this.attributeScales.size * this.sampleTrack.styles.attributeWidth +
+            this.sampleTrack.styles.horizontalSpacing;
     }
 
     /**
@@ -222,8 +221,8 @@ export default class AttributePanel {
         } 
 
         this.labelInterval = builder.add(Math.ceil(this.maxLabelWidth));
-        builder.add(this.sampleTrack.config.horizontalSpacing);
-        this.attributeInterval = builder.add(this.attributeScales.size * this.sampleTrack.config.attributeWidth);
+        builder.add(this.sampleTrack.styles.horizontalSpacing);
+        this.attributeInterval = builder.add(this.attributeScales.size * this.sampleTrack.styles.attributeWidth);
     }
 
 
@@ -257,7 +256,7 @@ export default class AttributePanel {
                 .transform(this.sampleTrack.yTransform);
 
             if (band.width() > 0) {
-                const fontSize = Math.min(this.sampleTrack.config.fontSize, band.width());
+                const fontSize = Math.min(this.sampleTrack.styles.fontSize, band.width());
 
                 this.textCache.fillText(ctx,
                     sample.displayName,
@@ -291,8 +290,8 @@ export default class AttributePanel {
 
         ctx.save();
 
-        const fontSize = Math.min(this.attributeBandScale.bandwidth() * 1.15, this.sampleTrack.config.fontSize);
-        ctx.font = `${fontSize}px ${this.sampleTrack.config.fontFamily}`;
+        const fontSize = Math.min(this.attributeBandScale.bandwidth() * 1.15, this.sampleTrack.styles.fontSize);
+        ctx.font = `${fontSize}px ${this.sampleTrack.styles.fontFamily}`;
         
         ctx.textBaseline = "middle";
 
@@ -405,9 +404,9 @@ export default class AttributePanel {
         // Map a attribute name to a horizontal coordinate
         this.attributeBandScale = scaleBand()
             .domain(Array.from(attributeNames.keys()))
-            .paddingInner(this.sampleTrack.config.attributePaddingInner)
+            .paddingInner(this.sampleTrack.styles.attributePaddingInner)
             // TODO: Move to renderLabels()
-            .range([0, this.sampleTrack.config.attributeWidth * attributeNames.size]);
+            .range([0, this.sampleTrack.styles.attributeWidth * attributeNames.size]);
     }
 
 }

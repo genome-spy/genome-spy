@@ -1,9 +1,9 @@
 import { bisect } from 'd3-array';
 
-import Interval from "./utils/interval";
+import Interval from "../utils/interval";
 
 /**
- * @param {Object} chromSizes 
+ * @param {Map<string, number>} chromSizes 
  * @constructor
  */
 export function chromMapper(chromSizes) {
@@ -13,7 +13,7 @@ export function chromMapper(chromSizes) {
     const cumReduction = chromNames.reduce((r, v) => {
         r.a.push(r.soFar);
         r.m[v] = r.soFar;
-        r.soFar += chromSizes[v];
+        r.soFar += chromSizes.get(v);
         return r;
 
     }, { soFar: 0, m: {}, a: [] });

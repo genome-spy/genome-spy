@@ -6,7 +6,7 @@ import Track from './track';
 import Interval from '../utils/interval';
 import clientPoint from '../utils/point';
 
-const defaultConfig = {
+const defaultStyles = {
     fontSize: 12,
     fontFamily: "sans-serif",
 
@@ -18,47 +18,46 @@ const defaultConfig = {
  * A track that displays ticks
  */
 export default class AxisTrack extends Track {
-    constructor() {
-        super();
+    constructor(genomeSpy, config) {
+        super(genomeSpy, config);
 
-        this.config = defaultConfig;
+        this.styles = defaultStyles;
     }
 
     /**
-     * @param {import("../genomeSpy").default} genomeSpy 
      * @param {HTMLElement} trackContainer 
      */
-    initialize(genomeSpy, trackContainer) {
-        super.initialize(genomeSpy, trackContainer);
+    async initialize(trackContainer) {
+        await super.initialize(trackContainer);
 
-        this.height = Math.ceil(this.config.fontSize * 1.5);
+        this.height = Math.ceil(this.styles.fontSize * 1.5);
 
         this.trackContainer.className = "axis-track";
         this.trackContainer.style.height = `${this.height}px`;
 
         this.tickCanvas = this.createCanvas();
 
-        genomeSpy.on("zoom", this.renderTicks.bind(this));
+        this.genomeSpy.on("zoom", this.renderTicks.bind(this));
 
-        genomeSpy.on("layout", function (layout) {
+        this.genomeSpy.on("layout", function (layout) {
             this.resizeCanvases(layout);
             this.renderTicks();
         }.bind(this));
 
-        genomeSpy.zoom.attachZoomEvents(this.tickCanvas);
+        this.genomeSpy.zoom.attachZoomEvents(this.tickCanvas);
 
-        const cm = genomeSpy.chromMapper;
+        const cm = this.genomeSpy.chromMapper;
         this.chromosomes = cm.chromosomes();
 
         const ctx = this.get2d(this.tickCanvas);
-        ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
+        ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
 
         this._chromLabelWidths = this.chromosomes.map(chrom => ctx.measureText(chrom.name).width);
         this._maxLocusLabelWidth = ctx.measureText("123,000,000").width;
 
         this.tickCanvas.addEventListener("dblclick", event => 
-            genomeSpy.zoomTo(
-                cm.toChromosomal(genomeSpy.getZoomedScale().invert(
+            this.genomeSpy.zoomTo(
+                cm.toChromosomal(this.genomeSpy.getZoomedScale().invert(
                     clientPoint(this.tickCanvas, event)[0]
                 )).chromosome.continuousInterval));
 
@@ -90,7 +89,7 @@ export default class AxisTrack extends Track {
 
         const y = Math.round(this.tickCanvas.clientHeight * 1);
         ctx.textBaseline = "bottom";
-        ctx.font = `${this.config.fontSize}px ${this.config.fontFamily}`;
+        ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
 
         const renderLocusTicks = (interval, visibleInterval = null, gradientOffset = 0) => {
             // Need to accommodate least n ticks before any are shown
@@ -119,7 +118,7 @@ export default class AxisTrack extends Track {
 
             if (gradientOffset > 0) {
                 const withOpacity = opacity => {
-                    const newColor = rgb(color(this.config.locusColor));
+                    const newColor = rgb(color(this.styles.locusColor));
                     newColor.opacity = opacity;
                     return newColor;
                 };
@@ -132,7 +131,7 @@ export default class AxisTrack extends Track {
                 ctx.fillStyle = locusTickGradient;
 
             } else {
-                ctx.fillStyle = this.config.locusColor;
+                ctx.fillStyle = this.styles.locusColor;
             }
 
             ctx.textAlign = "center";
@@ -156,7 +155,7 @@ export default class AxisTrack extends Track {
             const screenInterval = chrom.continuousInterval.transform(scale); // TODO: Consider rounding. Would be crisper but less exact
 
             if (viewportInterval.contains(screenInterval.lower)) {
-                ctx.fillStyle = this.config.chromColor;
+                ctx.fillStyle = this.styles.chromColor;
                 ctx.fillRect(screenInterval.lower, 0, 1, this.tickCanvas.clientHeight / 1);
 
                 if (screenInterval.width() > this._chromLabelWidths[i] + chromLabelMarginTotal) {
@@ -177,7 +176,7 @@ export default class AxisTrack extends Track {
 
             const x = Math.min(chromInterval.upper - labelWidth - chromLabelMarginRight, chromLabelMarginLeft);
 
-            ctx.fillStyle = this.config.chromColor;
+            ctx.fillStyle = this.styles.chromColor;
             ctx.textAlign = "left";
             ctx.fillText(chrom.name, x, y);
 

@@ -5,16 +5,12 @@ import { Matrix4 } from 'math.gl';
 import Track from "./track";
 
 export default class WebGlTrack extends Track {
-    constructor() {
-        super();
+    constructor(genomeSpy, config) {
+        super(genomeSpy, config);
     }
 
-    /**
-     * @param {import("../genomeSpy").default} genomeSpy 
-     * @param {HTMLElement} trackContainer 
-     */
-    initialize(genomeSpy, trackContainer) {
-        super.initialize(genomeSpy, trackContainer);
+    async initialize(trackContainer) {
+        await super.initialize(trackContainer);
 
         registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
     }

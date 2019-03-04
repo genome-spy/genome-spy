@@ -110,7 +110,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
  * @prop {number} pos
  * @prop {number} [size]
  * @prop {Object} [color]
- * TODO: y, symbol
+ * TODO: y, symbol, orientation, aspectRatio
  */
 
 /**
