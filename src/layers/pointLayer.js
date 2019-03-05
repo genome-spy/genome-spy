@@ -19,7 +19,7 @@ const visualVariables = {
     size: { type: "number" }
 };
 
-const maxPointSizeRelative = 0.7;
+const maxPointSizeRelative = 0.8;
 const maxPointSizeAbsolute = 25;
 
 export default class PointLayer {
