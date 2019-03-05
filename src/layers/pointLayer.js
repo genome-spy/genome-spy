@@ -37,11 +37,8 @@ export default class PointLayer {
         this.genomeSpy = sampleTrack.genomeSpy;
     }
 
-    async initialize() {
+    processData(rows) {
         const cm = this.genomeSpy.genome.chromMapper;
-
-        let rows = tsvParse(await fetch(this.genomeSpy.config.baseurl + this.layerConfig.data[0])
-            .then(data => data.text()));
 
         // TODO: Move parsing, gathering, etc logic to a separate module
 
@@ -50,7 +47,6 @@ export default class PointLayer {
          * TODO: Throw an exception if it's was not published from gathered data
          */
         const isShared = attribute => rows.columns.indexOf(attribute) >= 0;
-
 
         const createCompositeMapper = (
         /** @type {function(string):boolean} */inclusionPredicate,
@@ -135,7 +131,7 @@ export default class PointLayer {
          * @typedef {import('../gl/segmentsToVertices').PointSpec} PointSpec
          * @type {Map<string, PointSpec[]>}
          */
-        this.pointsBySample = new Map();
+        const pointsBySample = new Map();
 
         for (const [sampleId, gatheredRows] of gatheredSamples) {
             /** @type {PointSpec[]} */
@@ -152,7 +148,39 @@ export default class PointLayer {
                 }
             }
 
-            this.pointsBySample.set(sampleId, combined);
+            if (combined.length) {
+                pointsBySample.set(sampleId, combined);
+            }
+        }
+
+        return pointsBySample;
+    }
+
+    async fetchAndParse(url) {
+        return fetch(url)
+            .then(data => data.text())
+            .then(raw => this.processData(tsvParse(raw)));
+    }
+
+    async initialize() {
+
+        // TODO: Support "dataSource", immediate data as objects, etc...
+        const dataFiles = typeof this.layerConfig.data == "string" ?
+            [this.layerConfig.data] :
+            this.layerConfig.data;
+
+        const urls = dataFiles.map(filename => this.genomeSpy.config.baseurl + filename);
+        const fileResults = await Promise.all(urls.map(url => this.fetchAndParse(url)));
+
+        /**
+         * @typedef {import('../gl/segmentsToVertices').PointSpec} PointSpec
+         * @type {Map<string, PointSpec[]>}
+         */
+        this.pointsBySample = new Map();
+        for (const map of fileResults) {
+            for (const [sample, points] of map) {
+                this.pointsBySample.set(sample, points);
+            }
         }
 
         this._initGL();
