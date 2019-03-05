@@ -19,6 +19,7 @@ const visualVariables = {
     size: { type: "number" }
 };
 
+// TODO: Style object
 const maxPointSizeRelative = 0.8;
 const maxPointSizeAbsolute = 25;
 
@@ -40,7 +41,9 @@ export default class PointLayer {
     processData(rows) {
         const cm = this.genomeSpy.genome.chromMapper;
 
-        // TODO: Move parsing, gathering, etc logic to a separate module
+        // TODO: Move parsing, gathering, etc logic to a separate module.
+        // TODO: Make this more abstract and adapt for segments too
+        // TODO: Split into smaller functions
 
         /**
          * Now we assume that attribute is gathered if it is not in shared.
@@ -179,7 +182,13 @@ export default class PointLayer {
         this.pointsBySample = new Map();
         for (const map of fileResults) {
             for (const [sample, points] of map) {
-                this.pointsBySample.set(sample, points);
+                // TODO: Would be more efficient to filter in gather phase
+                if (this.sampleTrack.samples.has(sample)) {
+                    this.pointsBySample.set(sample, points);
+
+                } else {
+                    console.log(`Skipping unknown sample: ${sample}`);
+                }
             }
         }
 
