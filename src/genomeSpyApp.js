@@ -99,6 +99,8 @@ export default class GenomeSpyApp {
 
         this.searchInput.addEventListener("blur", event => {
             this.searchHelp.classList.remove("visible");
+            this.searchInput.setSelectionRange(0, 0);
+            this.searchInput.value = this.gif.format(this.genomeSpy.getViewportDomain());
         })
 
         this.searchInput.addEventListener("keydown", event => {
@@ -113,7 +115,6 @@ export default class GenomeSpyApp {
                     .catch(reason => alert(reason));
 
             } else if (event.keyCode == 27) {
-                this.searchInput.setSelectionRange(0, 0);
                 this.searchInput.blur();
 
             } else {
@@ -124,7 +125,7 @@ export default class GenomeSpyApp {
 
         // TODO: Implement a centralized shortcut handler
         document.addEventListener("keydown", event => {
-            if (event.key == "f") {
+            if (event.key == "f" && !(event.metaKey || event.altKey || event.ctrlKey)) {
                 event.preventDefault();
                 this.searchInput.focus();
             }
