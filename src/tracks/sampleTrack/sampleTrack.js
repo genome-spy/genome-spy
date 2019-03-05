@@ -217,12 +217,13 @@ export default class SampleTrack extends WebGlTrack {
             }
         });
 
+        // TODO: Make generic, use context-menu etc...
         this.glCanvas.addEventListener("mousedown", event => {
-            if (event.metaKey) {
+            if (event.altKey) {
                 const point = clientPoint(this.glCanvas, event);
                 const pos = this.genomeSpy.rescaledX.invert(point[0])
 
-                this.sortSamplesByLocus(this.layers[0], pos);
+                this.sortSamplesByLocus(this.layers[0], pos, event.shiftKey ? "bafMean" : "segMean");
             }
         }, false);
     }
@@ -382,10 +383,10 @@ export default class SampleTrack extends WebGlTrack {
      * @param {object} layer
      * @param {number} pos locus in continuous domain
      */
-    sortSamplesByLocus(layer, pos) {
+    sortSamplesByLocus(layer, pos, attribute) {
         const valuesBySample = new Map(this.sampleOrder.map(id => [
             id,
-            +layer.findDatum(id, pos).segMean // TODO: Generify
+            +layer.findDatum(id, pos)[attribute]
         ]));
 
         const accessor = sample => valuesBySample.get(sample.id);
