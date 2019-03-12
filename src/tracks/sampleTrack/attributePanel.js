@@ -146,7 +146,9 @@ export default class AttributePanel {
                         type: "divider"
                     },
                     {
-                        label: `Samples with ${attribute} = ${attributeValue}`,
+                        label: attributeValue === "" ?
+                            `Samples with undefined ${attribute}` :
+                            `Samples with ${attribute} = ${attributeValue}`,
                         type: "header"
                     },
                     {
@@ -169,16 +171,28 @@ export default class AttributePanel {
                 items = items.concat([
                     {
                         type: "divider"
-                    },
-                    {
-                        label: `Remove ${attribute} less than ${numberFormat(attributeValue)}`,
-                        callback: () => filterByAttributeValue((a, chosen) => a >= chosen)
-                    },
-                    {
-                        label: `Remove ${attribute} greater than ${numberFormat(attributeValue)}`,
-                        callback: () => filterByAttributeValue((a, chosen) => a <= chosen)
-                    }
-                ]);
+                    }]);
+
+                if (isDefined(attributeValue)) {
+                    items = items.concat([
+                        {
+                            label: `Remove ${attribute} less than ${numberFormat(attributeValue)}`,
+                            callback: () => filterByAttributeValue((a, chosen) => isNaN(a) || a >= chosen)
+                        },
+                        {
+                            label: `Remove ${attribute} greater than ${numberFormat(attributeValue)}`,
+                            callback: () => filterByAttributeValue((a, chosen) => isNaN(a) || a <= chosen)
+                        }
+                    ]);
+
+                } else {
+                    items = items.concat([
+                        {
+                            label: `Remove undefined ${attribute}`,
+                            callback: () => filterByAttributeValue((a, chosen) => !isNaN(a))
+                        }
+                    ]);
+                }
             }
 
         } else {
