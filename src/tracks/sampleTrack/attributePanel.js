@@ -1,7 +1,7 @@
 import { format as d3format } from 'd3-format';
 import { scaleSequential, scaleOrdinal, scaleBand } from 'd3-scale';
 import { schemeCategory10, interpolateOrRd } from 'd3-scale-chromatic';
-import { extent } from 'd3-array';
+import { quantile, extent } from 'd3-array';
 
 import CanvasTextCache from "../../utils/canvasTextCache";
 import MouseTracker from "../../mouseTracker";
@@ -61,9 +61,12 @@ export default class AttributePanel {
         // TODO: Consider a setSamples() method
         const ctx = this.sampleTrack.get2d(document.createElement("canvas"));
         ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
-        this.maxLabelWidth = [...this.sampleTrack.samples.values()]
-            .map(sample => ctx.measureText(sample.displayName).width)
-            .reduce((a, b) => Math.max(a, b), 0);
+
+        this.maxLabelWidth = quantile(
+            [...this.sampleTrack.samples.values()]
+                .map(sample => ctx.measureText(sample.displayName).width),
+            0.95);
+            
 
         this.prepareSampleAttributes();
 
