@@ -10,6 +10,10 @@ import Interval from '../../utils/interval';
 import contextMenu from '../../contextMenu';
 import { inferNumeric } from '../../utils/variableTools';
 
+function isDefined(value) {
+    return value !== "" && !(typeof value == "number" && isNaN(value)) && value !== null;
+}
+
 /**
  * Handles sample names and attributes
  * 
@@ -266,7 +270,9 @@ export default class AttributePanel {
 
                 this.attributeScales
                     .forEach((valueScale, key) => {
-                        ctx.fillStyle = valueScale(sample.attributes[key]);
+                        const value = sample.attributes[key];
+                        
+                        ctx.fillStyle = isDefined(value) ? valueScale(value) : this.styles.naColor;
                         ctx.fillRect(
                             this.attributeInterval.lower + this.attributeBandScale(key),
                             band.lower,
@@ -276,7 +282,6 @@ export default class AttributePanel {
             }
         });
     }
-
 
     /**
      * @typedef {object} RenderAttributeLabelOptions
@@ -332,7 +337,9 @@ export default class AttributePanel {
         const numberFormat = d3format(".4");
 
         const formatValue = value => {
-            if (typeof value == "number") {
+            if (!isDefined(value)) {
+                return "";
+            } else if (typeof value == "number") {
                 return numberFormat(value);
             } else if (typeof value == "string") {
                 return value;
@@ -341,12 +348,16 @@ export default class AttributePanel {
             }
         };
 
+        const getColor = (key, value) => isDefined(value) ?
+            this.attributeScales.get(key)(value) :
+            this.styles.naColor;
+
         const table = '<table class="attributes"' +
             Object.entries(sample.attributes).map(([key, value]) => `
                 <tr>
                     <th>${html.escapeHtml(key)}</th>
                     <td>${html.escapeHtml(formatValue(value))}</td>
-                    <td class="color" style="background-color: ${this.attributeScales.get(key)(value)}"></td>
+                    <td class="color" style="background-color: ${getColor(key, value)}"></td>
                 </tr>`
             ).join("") +
             "</table>";

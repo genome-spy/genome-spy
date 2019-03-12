@@ -22,6 +22,8 @@ const defaultStyles = {
     attributeWidth: 12, // in pixels
     attributePaddingInner: 0.05,
 
+    naColor: "#D0D0D0",
+
     fontSize: 12,
     fontFamily: "sans-serif",
 
@@ -552,10 +554,12 @@ export default class SampleTrack extends WebGlTrack {
      * @returns {string[]} ids of sorted samples 
      */
     getSamplesSortedByAttribute(attributeAccessor, descending = false) {
-        // TODO: use a stable sorting algorithm
+        const replaceNaN = x => (typeof x == "number" && isNaN(x)) ? -Infinity : x;
+
         return [...this.sampleOrder].sort((a, b) => {
-            let av = attributeAccessor(this.samples.get(a));
-            let bv = attributeAccessor(this.samples.get(b));
+            let av = replaceNaN(attributeAccessor(this.samples.get(a)));
+            let bv = replaceNaN(attributeAccessor(this.samples.get(b)));
+
 
             if (descending) {
                 [av, bv] = [bv, av];
