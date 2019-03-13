@@ -221,7 +221,7 @@ export default class SampleTrack extends WebGlTrack {
 
         // TODO: Make generic, use context-menu etc...
         this.glCanvas.addEventListener("mousedown", event => {
-            if (event.altKey) {
+            if (event.ctrlKey) {
                 const point = clientPoint(this.glCanvas, event);
                 const pos = this.genomeSpy.rescaledX.invert(point[0])
 
