@@ -99,7 +99,6 @@ export default class GenomeSpyApp {
 
         this.searchInput.addEventListener("blur", event => {
             this.searchHelp.classList.remove("visible");
-            this.searchInput.setSelectionRange(0, 0);
             this.searchInput.value = this.gif.format(this.genomeSpy.getViewportDomain());
         })
 
