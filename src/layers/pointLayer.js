@@ -6,7 +6,7 @@ import { pointsToVertices, verticesToVertexData } from '../gl/segmentsToVertices
 import VERTEX_SHADER from '../gl/pointVertex.glsl';
 import FRAGMENT_SHADER from '../gl/pointFragment.glsl';
 
-import { gather, formalizeEncodingConfig, createEncodingMapper, createFilter } from '../utils/visualScales';
+import { processData } from '../data/dataMapper';
 
 /**
  * PointLayer contains individual genomic loci. For instance, point mutations
@@ -38,131 +38,10 @@ export default class PointLayer {
         this.genomeSpy = sampleTrack.genomeSpy;
     }
 
-    processData(rows) {
-        const cm = this.genomeSpy.genome.chromMapper;
-
-        // TODO: Move parsing, gathering, etc logic to a separate module.
-        // TODO: Make this more abstract and adapt for segments too
-        // TODO: Split into smaller functions
-
-        /**
-         * Now we assume that attribute is gathered if it is not in shared.
-         * TODO: Throw an exception if it's was not published from gathered data
-         */
-        const isShared = attribute => rows.columns.indexOf(attribute) >= 0;
-
-        const createCompositeMapper = (
-        /** @type {function(string):boolean} */inclusionPredicate,
-        /** @type {object[]} */sampleData
-        ) => {
-            const mappers = {};
-
-            Object.entries(this.dataConfig.encodings || {})
-                .forEach(([/** @type {string} */visualVariable, /** @type {EncodingConfig} */encodingConfig]) => {
-                    if (!visualVariables[visualVariable]) {
-                        throw `Unknown visual variable: ${visualVariable}`;
-                    }
-
-                    encodingConfig = formalizeEncodingConfig(encodingConfig);
-
-                    if (inclusionPredicate(encodingConfig.attribute)) {
-                        mappers[visualVariable] = createEncodingMapper(
-                            visualVariables[visualVariable].type,
-                            encodingConfig,
-                            sampleData)
-                    }
-                });
-
-            const compositeMapper = d => {
-                const mapped = {}
-                Object.entries(mappers).forEach(([visualVariable, mapper]) => {
-                    mapped[visualVariable] = mapper(d);
-                });
-                return mapped;
-            };
-
-            // Export for tooltips
-            compositeMapper.mappers = mappers;
-
-            return compositeMapper;
-        }
-
-
-        const createCompositeFilter = (
-        /** @type {function(string):boolean} */inclusionPredicate
-        ) => {
-            // Trivial case
-            if (!this.dataConfig.filters || this.dataConfig.filters.length <= 0) {
-                return d => true;
-            }
-
-            const filterInstances = this.dataConfig.filters
-                .filter(filter => inclusionPredicate(filter.attribute))
-                .map(createFilter)
-
-            return d => filterInstances.every(filter => filter(d));
-        }
-
-
-        const filterSharedVariables = createCompositeFilter(isShared);
-
-        // Columns property was added by d3.dsv. Filter drops it. Have to add it back
-        const columns = rows.columns;
-        rows = rows.filter(filterSharedVariables);
-        rows.columns = columns;
-
-        const gatheredSamples = gather(rows, this.dataConfig.gather);
-
-        const mapSharedVariables = createCompositeMapper(isShared, rows);
-
-        // TODO: Maybe sampleData could be iterable
-        const mapSampleVariables = gatheredSamples.size > 0 ?
-            createCompositeMapper(x => !isShared(x), Array.prototype.concat.apply([], [...gatheredSamples.values()])) :
-            x => ({});
-
-        const filterSampleVariables = createCompositeFilter(x => !isShared(x));
-
-        const sharedVariantVariables = rows
-            .map(d => ({
-                // TODO: 0 or 1 based addressing?
-                // Add 0.5 to center the symbol inside nucleotide boundaries
-                pos: cm.toContinuous(d[this.dataConfig.chrom], +d[this.dataConfig.pos]) + 0.5,
-                ...mapSharedVariables(d)
-            }));
-
-        /**
-         * @typedef {import('../gl/segmentsToVertices').PointSpec} PointSpec
-         * @type {Map<string, PointSpec[]>}
-         */
-        const pointsBySample = new Map();
-
-        for (const [sampleId, gatheredRows] of gatheredSamples) {
-            /** @type {PointSpec[]} */
-            const combined = [];
-
-            for (let i = 0; i < sharedVariantVariables.length; i++) {
-                const gathered = gatheredRows[i];
-                if (filterSampleVariables(gathered)) {
-                    combined.push({
-                        ...sharedVariantVariables[i],
-                        ...mapSampleVariables(gathered),
-                        rawDatum: rows[i]
-                    });
-                }
-            }
-
-            if (combined.length) {
-                pointsBySample.set(sampleId, combined);
-            }
-        }
-
-        return pointsBySample;
-    }
-
     async fetchAndParse(url) {
         return fetch(url)
             .then(data => data.text())
-            .then(raw => this.processData(tsvParse(raw)));
+            .then(raw => processData(this.dataConfig, tsvParse(raw), this.genomeSpy.genome));
     }
 
     async initialize() {
