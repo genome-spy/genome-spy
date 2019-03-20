@@ -1,11 +1,8 @@
 
-import { formalizeEncodingConfig, createEncodingMapper } from '../data/visualScales';
+import { formalizeEncodingConfig, createEncodingMapper, createCompositeEncodingMapper } from '../data/visualScales';
+import { gatherTransform } from './transforms/gather';
 
 /**
- * @typedef {Object} GatherConfig
- * @prop {string} columnRegex
- * @prop {string} as 
- * 
  * @typedef {Object} SimpleFilterConfig
  * @prop {string} field 
  * @prop {string} operator eq, neq, lt, lte, gte, gt
@@ -15,11 +12,12 @@ import { formalizeEncodingConfig, createEncodingMapper } from '../data/visualSca
  *    A configuration that specifies how data should be mapped
  *    to PointSpecs. The ultimate aim is to make this very generic
  *    and applicable to multiple types of data and visual encodings.
- * @prop {GatherConfig[]} gather
+ * @prop {object[]} [transform]
+ * @prop {string} [sample]
  * @prop {string} chrom
  * @prop {string} pos
  * @prop {Object} encoding 
- * @prop {SimpleFilterConfig[]} filters
+ * @prop {SimpleFilterConfig[]} [filters]
  */
 
 // TODO: Make enum, include constraints for ranges, etc, maybe some metadata (description)
@@ -28,6 +26,31 @@ const visualVariables = {
     size: { type: "number" }
 };
 
+const transformers = {
+    gather: gatherTransform
+};
+
+/**
+ * 
+ * @param {object[]} transformConfigs 
+ */
+function transformData(transformConfigs, rows) {
+    for (const transformConfig of transformConfigs) {
+        const type = transformConfig.type;
+        if (!type) {
+            throw new Error("Type not defined in transformConfig!");
+        }
+
+        const transformer = transformers[type];
+        if (!transformer) {
+            throw new Error(`Unknown transformer type: ${type}`);
+        }
+
+        rows = transformer(transformConfig, rows);
+    }
+
+    return rows;
+}
 
 /**
  * 
@@ -38,93 +61,25 @@ const visualVariables = {
 export function processData(dataConfig, rows, genome) {
     const cm = genome.chromMapper;
 
-    // TODO: Move parsing, gathering, etc logic to a separate module.
-    // TODO: Make this more abstract and adapt for segments too
-    // TODO: Split into smaller functions
+    // TODO: Validate that data contains all fields that are referenced in the config.
+    // ... just to prevent mysterious undefineds
 
-    /**
-     * Now we assume that attribute is gathered if it is not in shared.
-     * TODO: Throw an exception if it's was not published from gathered data
-     */
-    const isShared = field => rows.columns.indexOf(field) >= 0;
-
-    const createCompositeMapper = (
-        /** @type {function(string):boolean} */inclusionPredicate,
-        /** @type {object[]} */sampleData
-    ) => {
-        const mappers = {};
-
-        Object.entries(dataConfig.encoding || {})
-            .forEach(([/** @type {string} */visualVariable, /** @type {EncodingConfig} */encodingConfig]) => {
-                if (!visualVariables[visualVariable]) {
-                    throw `Unknown visual variable: ${visualVariable}`;
-                }
-
-                encodingConfig = formalizeEncodingConfig(encodingConfig);
-
-                if (inclusionPredicate(encodingConfig.field)) {
-                    mappers[visualVariable] = createEncodingMapper(
-                        visualVariables[visualVariable].type,
-                        encodingConfig,
-                        sampleData)
-                }
-            });
-
-        const compositeMapper = d => {
-            const mapped = {}
-            Object.entries(mappers).forEach(([visualVariable, mapper]) => {
-                mapped[visualVariable] = mapper(d);
-            });
-            return mapped;
-        };
-
-        // Export for tooltips
-        compositeMapper.mappers = mappers;
-
-        return compositeMapper;
+    if (dataConfig.transform) {
+        rows = transformData(dataConfig.transform, rows);
     }
 
+    const encode = createCompositeEncodingMapper(dataConfig.encoding, visualVariables, rows);
 
-    const createCompositeFilter = (
-        /** @type {function(string):boolean} */inclusionPredicate
-    ) => {
-        // Trivial case
-        if (!dataConfig.filters || dataConfig.filters.length <= 0) {
-            return d => true;
-        }
-
-        const filterInstances = dataConfig.filters
-            .filter(filter => inclusionPredicate(filter.field))
-            .map(createFilter)
-
-        return d => filterInstances.every(filter => filter(d));
-    }
-
-
-    const filterSharedVariables = createCompositeFilter(isShared);
-
-    // Columns property was added by d3.dsv. Filter drops it. Have to add it back
-    const columns = rows.columns;
-    rows = rows.filter(filterSharedVariables);
-    rows.columns = columns;
-
-    const gatheredSamples = gather(rows, dataConfig.gather);
-
-    const mapSharedVariables = createCompositeMapper(isShared, rows);
-
-    // TODO: Maybe sampleData could be iterable
-    const mapSampleVariables = gatheredSamples.size > 0 ?
-        createCompositeMapper(x => !isShared(x), Array.prototype.concat.apply([], [...gatheredSamples.values()])) :
-        x => ({});
-
-    const filterSampleVariables = createCompositeFilter(x => !isShared(x));
-
-    const sharedVariantVariables = rows
+    // TODO: Check that dataConfig.sample matches sample of gatherTransform
+    // TODO: Support data that has just a single sample (no sample column)
+    const extractSample = d => d[dataConfig.sample];
+    
+    const mappedRows = rows
         .map(d => ({
             // TODO: 0 or 1 based addressing?
             // Add 0.5 to center the symbol inside nucleotide boundaries
             pos: cm.toContinuous(d[dataConfig.chrom], +d[dataConfig.pos]) + 0.5,
-            ...mapSharedVariables(d)
+            ...encode(d)
         }));
 
     /**
@@ -133,62 +88,20 @@ export function processData(dataConfig, rows, genome) {
      */
     const pointsBySample = new Map();
 
-    for (const [sampleId, gatheredRows] of gatheredSamples) {
-        /** @type {PointSpec[]} */
-        const combined = [];
-
-        for (let i = 0; i < sharedVariantVariables.length; i++) {
-            const gathered = gatheredRows[i];
-            if (filterSampleVariables(gathered)) {
-                combined.push({
-                    ...sharedVariantVariables[i],
-                    ...mapSampleVariables(gathered),
-                    rawDatum: rows[i]
-                });
-            }
-        }
-
-        if (combined.length) {
-            pointsBySample.set(sampleId, combined);
+    const addSpec = (sampleId, spec) => {
+        let specs = pointsBySample.get(sampleId);
+        if (specs) {
+            specs.push(spec);
+        } else {
+            pointsBySample.set(sampleId, [spec]);
         }
     }
+    
+    mappedRows.forEach((spec, i) => addSpec(extractSample(rows[i]), spec));
 
     return pointsBySample;
 }
 
-
-/**
- * @param {Object[]} rows Data parsed with d3.dsv
- * @param {GatherConfig[]} gatherConfigs
- */
-export function gather(rows, gatherConfigs) {
-    // TODO: Support multiple fields 
-    if (gatherConfigs.length > 1) {
-        throw 'Currently only one field is supported in Gather configuration!';
-    }
-    const gatherConfig = gatherConfigs[0];
-    
-    const columnRegex = new RegExp(gatherConfig.columnRegex);
-
-    /** @type {string} */
-    const sampleColumns = rows.columns.filter(k => columnRegex.test(k));
-
-    /** @type {Map<string, object>} */
-    const gatheredFields = new Map();
-
-    for (const sampleColumn of sampleColumns) {
-        const sampleId = columnRegex.exec(sampleColumn)[1];
-
-        const datums = rows.map(row => ({
-            // TODO: Multiple fields 
-            [gatherConfig.as]: row[sampleColumn]
-        }));
-        
-        gatheredFields.set(sampleId, datums);
-    }
-
-    return gatheredFields;
-}
 
 /**
  * 
@@ -208,6 +121,6 @@ export function gather(rows, gatherConfigs) {
          case "gte": return x => accessor(x) >= v;
          case "gt":  return x => accessor(x) > v;
          default:
-            throw Error(`Unknown operator: ${filterConfig.operator}`);
+            throw new Error(`Unknown operator: ${filterConfig.operator}`);
      }
  }

@@ -120,9 +120,6 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
  * @param {PointSpec[]} points
  */
 export function pointsToVertices(points) {
-
-    points = points.filter(p => p.size !== 0.0);
-
     const x = points.map(p => fp64.fp64ify(p.pos)).reduce((a, b) => { a.push(...b); return a; }, []);
     const size = points.map(p => typeof p.size == "number" ? Math.sqrt(p.size) : 1.0);
     const color = points.map(p => color2floatArray(p.color || gray)).reduce((a, b) => { a.push(...b); return a; }, []);

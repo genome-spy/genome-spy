@@ -130,3 +130,41 @@ export function createEncodingMapper(type, encodingConfig, sampleData) {
     return mapper;
 }
 
+
+/**
+ * 
+ * @param {EncodingConfig[]} encodingConfigs 
+ * @param {object} visualVariables
+ * @param {object[]} sampleData 
+ */
+export function createCompositeEncodingMapper(encodingConfigs, visualVariables, sampleData) {
+    const mappers = {};
+
+    Object.entries(encodingConfigs || {})
+        .forEach(([/** @type {string} */visualVariable, /** @type {EncodingConfig} */encodingConfig]) => {
+            if (!visualVariables[visualVariable]) {
+                throw Error(`Unknown visual variable: ${visualVariable}`);
+            }
+
+            encodingConfig = formalizeEncodingConfig(encodingConfig);
+
+            mappers[visualVariable] = createEncodingMapper(
+                visualVariables[visualVariable].type,
+                encodingConfig,
+                sampleData)
+        });
+
+    const compositeMapper = d => {
+        const mapped = {}
+        Object.entries(mappers).forEach(([visualVariable, mapper]) => {
+            mapped[visualVariable] = mapper(d);
+        });
+        return mapped;
+    };
+
+    // Export for tooltips
+    compositeMapper.mappers = mappers;
+
+    return compositeMapper;
+}
+

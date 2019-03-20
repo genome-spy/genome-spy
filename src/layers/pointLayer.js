@@ -31,7 +31,7 @@ export default class PointLayer {
     constructor(sampleTrack, layerConfig) {
         this.layerConfig = layerConfig;
 
-        /* @type {import("../utils/visualScales").VariantDataConfig} */
+        /** @type {import("../data/dataMapper").VariantDataConfig} */
         this.dataConfig = this.layerConfig.spec;
 
         this.sampleTrack = sampleTrack;
@@ -88,9 +88,12 @@ export default class PointLayer {
         this.vertexDatas = new Map();
 
         for (let [sample, points] of this.pointsBySample.entries()) {
-            this.vertexDatas.set(
-                sample,
-                verticesToVertexData(this.segmentProgram, pointsToVertices(points)));
+            points = points.filter(p => p.size !== 0.0);
+            if (points.length) {
+                this.vertexDatas.set(
+                    sample,
+                    verticesToVertexData(this.segmentProgram, pointsToVertices(points)));
+            }
         }
     }
 
@@ -99,7 +102,7 @@ export default class PointLayer {
      * @param {object} uniforms 
      */
     render(sampleId, uniforms) {
-        if (this.pointsBySample.has(sampleId)) {
+        if (this.vertexDatas.has(sampleId)) {
             const gl = this.sampleTrack.gl;
 
             gl.enable(gl.BLEND);

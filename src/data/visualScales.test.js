@@ -17,7 +17,7 @@ describe("EncodingMapper", () => {
     test("Trivial numeric", () => {
         /** @type {EncodingConfig} */
         const encodingConfig = {
-            attribute: "x"
+            field: "x"
         }
 
         const map = vs.createEncodingMapper("number", encodingConfig);
@@ -31,7 +31,7 @@ describe("EncodingMapper", () => {
     test("Nominal colors with sample data", () => {
         /** @type {EncodingConfig} */
         const encodingConfig = {
-            attribute: "x"
+            field: "x"
         }
 
         // When the domain is inferred from sample data, it will be sorted in natural order
@@ -49,7 +49,7 @@ describe("EncodingMapper", () => {
 
         /** @type {EncodingConfig} */
         const encodingConfig = {
-            attribute: "x",
+            field: "x",
             domain: ["A", "C", "B", "D"],
             range: customRange
         }
@@ -64,7 +64,7 @@ describe("EncodingMapper", () => {
     test("Ordinal colors with sample data", () => {
         /** @type {EncodingConfig} */
         const encodingConfig = {
-            attribute: "x"
+            field: "x"
         }
 
         const sampleData = wrapArray([4, 5, 3, 1, 2, 3]);
@@ -78,7 +78,7 @@ describe("EncodingMapper", () => {
     test("Ordinal colors with explicit domain", () => {
         /** @type {EncodingConfig} */
         const encodingConfig = {
-            attribute: "x",
+            field: "x",
             domain: [11, 13]
         }
 
