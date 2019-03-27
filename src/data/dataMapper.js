@@ -28,7 +28,8 @@ const visualVariables = {
 };
 
 const transformers = {
-    gather: gatherTransform
+    gather: gatherTransform,
+    simpleFilter: simpleFilterTransform
 };
 
 /**
@@ -96,6 +97,15 @@ export function processData(dataConfig, rows, mapperFactory) {
     return pointsBySample;
 }
 
+
+/**
+ * 
+ * @param {SimpleFilterConfig} simpleFilterConfig 
+ * @param {Object[]} rows
+ */
+export function simpleFilterTransform(simpleFilterConfig, rows) {
+    return rows.filter(createFilter(simpleFilterConfig));
+}
 
 /**
  * 

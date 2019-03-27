@@ -1,12 +1,9 @@
-import { color } from 'd3-color';
-import { tsvParse } from 'd3-dsv';
-
 import { Program, assembleShaders, fp64 } from 'luma.gl';
 import { pointsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
 import VERTEX_SHADER from '../gl/pointVertex.glsl';
 import FRAGMENT_SHADER from '../gl/pointFragment.glsl';
 
-import { processData } from '../data/dataMapper';
+import DataLayer from './dataLayer';
 
 /**
  * PointLayer contains individual genomic loci. For instance, point mutations
@@ -24,53 +21,17 @@ const visualVariables = {
 const maxPointSizeRelative = 0.8;
 const maxPointSizeAbsolute = 25;
 
-export default class PointLayer {
+export default class PointLayer extends DataLayer {
     /**
      * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
      * @param {Object} layerConfig 
      */
     constructor(sampleTrack, layerConfig) {
-        this.layerConfig = layerConfig;
-
-        /** @type {import("../data/dataMapper").VariantDataConfig} */
-        this.dataConfig = this.layerConfig.spec;
-
-        this.sampleTrack = sampleTrack;
-        this.genomeSpy = sampleTrack.genomeSpy;
-    }
-
-    async fetchAndParse(url) {
-        return fetch(url)
-            .then(data => data.text())
-            .then(raw => processData(this.dataConfig, tsvParse(raw), this.genomeSpy.visualMapperFactory));
+        super(sampleTrack, layerConfig);
     }
 
     async initialize() {
-
-        // TODO: Support "dataSource", immediate data as objects, etc...
-        const dataFiles = typeof this.layerConfig.data == "string" ?
-            [this.layerConfig.data] :
-            this.layerConfig.data;
-
-        const urls = dataFiles.map(filename => this.genomeSpy.config.baseurl + filename);
-        const fileResults = await Promise.all(urls.map(url => this.fetchAndParse(url)));
-
-        /**
-         * @typedef {import('../gl/segmentsToVertices').PointSpec} PointSpec
-         * @type {Map<string, PointSpec[]>}
-         */
-        this.pointsBySample = new Map();
-        for (const map of fileResults) {
-            for (const [sample, points] of map) {
-                // TODO: Would be more efficient to filter in gather phase
-                if (this.sampleTrack.samples.has(sample)) {
-                    this.pointsBySample.set(sample, points);
-
-                } else {
-                    console.log(`Skipping unknown sample: ${sample}`);
-                }
-            }
-        }
+        await super.initialize();
 
         this._initGL();
     }
