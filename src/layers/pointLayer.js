@@ -15,6 +15,7 @@ import { processData } from '../data/dataMapper';
 
 // TODO: Make enum, include constraints for ranges, etc, maybe some metadata (description)
 const visualVariables = {
+    x: { type: "number" },
     color: { type: "color" },
     size: { type: "number" }
 };
@@ -41,7 +42,7 @@ export default class PointLayer {
     async fetchAndParse(url) {
         return fetch(url)
             .then(data => data.text())
-            .then(raw => processData(this.dataConfig, tsvParse(raw), this.genomeSpy.genome));
+            .then(raw => processData(this.dataConfig, tsvParse(raw), this.genomeSpy.visualMapperFactory));
     }
 
     async initialize() {

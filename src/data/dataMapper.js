@@ -1,5 +1,5 @@
 
-import { formalizeEncodingConfig, createEncodingMapper, createCompositeEncodingMapper } from '../data/visualScales';
+import { formalizeEncodingConfig, createFieldEncodingMapper, createCompositeEncodingMapper } from '../data/visualScales';
 import { gatherTransform } from './transforms/gather';
 
 /**
@@ -22,6 +22,7 @@ import { gatherTransform } from './transforms/gather';
 
 // TODO: Make enum, include constraints for ranges, etc, maybe some metadata (description)
 const visualVariables = {
+    x: { type: "number" },
     color: { type: "color" },
     size: { type: "number" }
 };
@@ -56,10 +57,9 @@ function transformData(transformConfigs, rows) {
  * 
  * @param {VariantDataConfig} dataConfig 
  * @param {object[]} rows 
- * @param {import("../genome/genome").default} genome 
+ * @param {import("./visualScales").VisualMapperFactory} mapperFactory
  */
-export function processData(dataConfig, rows, genome) {
-    const cm = genome.chromMapper;
+export function processData(dataConfig, rows, mapperFactory) {
 
     // TODO: Validate that data contains all fields that are referenced in the config.
     // ... just to prevent mysterious undefineds
@@ -68,19 +68,13 @@ export function processData(dataConfig, rows, genome) {
         rows = transformData(dataConfig.transform, rows);
     }
 
-    const encode = createCompositeEncodingMapper(dataConfig.encoding, visualVariables, rows);
+    const encode = createCompositeEncodingMapper(mapperFactory, dataConfig.encoding, visualVariables, rows);
 
     // TODO: Check that dataConfig.sample matches sample of gatherTransform
     // TODO: Support data that has just a single sample (no sample column)
     const extractSample = d => d[dataConfig.sample];
     
-    const mappedRows = rows
-        .map(d => ({
-            // TODO: 0 or 1 based addressing?
-            // Add 0.5 to center the symbol inside nucleotide boundaries
-            pos: cm.toContinuous(d[dataConfig.chrom], +d[dataConfig.pos]) + 0.5,
-            ...encode(d)
-        }));
+    const mappedRows = rows.map(d => encode(d));
 
     /**
      * @typedef {import('../gl/segmentsToVertices').PointSpec} PointSpec

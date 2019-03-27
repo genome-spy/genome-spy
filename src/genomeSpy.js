@@ -9,6 +9,7 @@ import Tooltip from "./tooltip";
 import transition, { easeLinear } from "./utils/transition";
 
 import Genome from './genome/genome';
+import { VisualMapperFactory } from './data/visualScales';
 
 import SampleTrack from "./tracks/sampleTrack/sampleTrack";
 import AxisTrack from "./tracks/axisTrack";
@@ -49,6 +50,8 @@ export default class GenomeSpy {
         this.maxUnitZoom = 20;
 
         this.tracks = [];
+
+        this.visualMapperFactory = new VisualMapperFactory();
     }
 
     on(...args) {
@@ -138,6 +141,7 @@ export default class GenomeSpy {
         
         // Load chromsizes etc
         await this.genome.initialize();
+        this.visualMapperFactory.registerMapper(this.genome.getMapperDef());
 
         this.chromMapper = this.genome.chromMapper;
 

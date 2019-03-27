@@ -107,7 +107,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
 
 /**
  * @typedef {Object} PointSpec
- * @prop {number} pos
+ * @prop {number} x
  * @prop {number} [size] Width or height of the symbol
  * @prop {Object} [color]
  * @prop {Object} [rawDatum] Shown as tooltip
@@ -120,7 +120,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
  * @param {PointSpec[]} points
  */
 export function pointsToVertices(points) {
-    const x = points.map(p => fp64.fp64ify(p.pos)).reduce((a, b) => { a.push(...b); return a; }, []);
+    const x = points.map(p => fp64.fp64ify(p.x)).reduce((a, b) => { a.push(...b); return a; }, []);
     const size = points.map(p => typeof p.size == "number" ? Math.sqrt(p.size) : 1.0);
     const color = points.map(p => color2floatArray(p.color || gray)).reduce((a, b) => { a.push(...b); return a; }, []);
 

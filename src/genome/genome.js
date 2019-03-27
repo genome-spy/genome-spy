@@ -30,6 +30,23 @@ export default class Genome {
 
         this.chromMapper = chromMapper(this.chromSizes);
     }
+
+    createGenomicCoordVisualMapper(targetType, encodingConfig) {
+        const adjustment = typeof encodingConfig.adjustment == "number" ? encodingConfig.adjustment : 0;
+
+        return d => this.chromMapper.toContinuous(
+            d[encodingConfig.chrom],
+            parseInt(d[encodingConfig.pos])
+        ) + adjustment;
+    }
+
+    getMapperDef() {
+        return {
+            predicate: encodingConfig => typeof encodingConfig.chrom == "string" && typeof encodingConfig.pos == "string",
+            mapperCreator: this.createGenomicCoordVisualMapper.bind(this)
+        }
+    }
+    
 }
 
 export function parseChromSizes(chromSizesData) {

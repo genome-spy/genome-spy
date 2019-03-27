@@ -2,7 +2,7 @@
 // TODO: Sensible name for file, organization
 
 import { extent } from 'd3-array';
-import { color } from 'd3-color';
+import { color as d3color } from 'd3-color';
 
 import { scaleOrdinal, scaleSequential } from 'd3-scale';
 import * as d3ScaleChromatic from 'd3-scale-chromatic';
@@ -13,12 +13,21 @@ export const defaultOrdinalScheme = d3ScaleChromatic.schemeCategory10;
 export const defaultSequentialInterpolator = d3ScaleChromatic.interpolateYlOrRd;
 
 /**
- * @typedef {Object} EncodingConfig
+ * @typedef {Object} FieldEncodingConfig
  *    Defines how attributes (fields) are mapped to visual variables.
- * @prop {string} [field] A field of the data. An alternative to constant.
- * @prop {string | number} [value] A constant in the range. An alternative to field.
+ * @prop {string} field A field of the data. An alternative to constant.
  * @prop {number[] | string[]} [domain]
  * @prop {number[] | string[]} [range]
+ * @prop {String} [type]
+ * 
+ * @typedef {Object} ValueEncodingConfig
+ * @prop {string | number} value A constant in the range. An alternative to field.
+ * 
+ * @typedef {Object} GenomicCoordinateEncodingConfig
+ * @prop {string} chrom
+ * @prop {string} pos
+ * 
+ * @typedef {FieldEncodingConfig | ValueEncodingConfig | GenomicCoordinateEncodingConfig} EncodingConfig
  * 
  * @typedef {Object} VariantDataConfig
  *    A configuration that specifies how data should be mapped
@@ -33,47 +42,49 @@ export const defaultSequentialInterpolator = d3ScaleChromatic.interpolateYlOrRd;
 
  
 /**
- * @param {EncodingConfig | string} encodingConfig 
- * @returns {EncodingConfig}
+ * @param {FieldEncodingConfig | string} encodingConfig 
+ * @returns {FieldEncodingConfig}
  */
-export function formalizeEncodingConfig(encodingConfig) {
+function formalizeFieldEncodingConfig(encodingConfig) {
     if (typeof encodingConfig == "string") {
-        encodingConfig = { field: encodingConfig };
+        return { 
+            field: encodingConfig
+        };
     }
 
     return encodingConfig;
 }
 
 /**
- * Creates a function that maps attributes to visual variables
+ * Creates a function that maps fields to visual variables
  * 
- * @param {string} type
- * @param {EncodingConfig | string} encodingConfig 
+ * @param {string} targetType
+ * @param {FieldEncodingConfig | string} encodingConfig 
  * @param {object[]} [sampleData] Sample data for inferring types and domains
  * @returns {function(object):any}
  */
-export function createEncodingMapper(type, encodingConfig, sampleData) {
+export function createFieldEncodingMapper(targetType, encodingConfig, sampleData) {
     // TODO: Consider dynamic code generation:
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function
 
     // TODO: Support constants
 
-    encodingConfig = formalizeEncodingConfig(encodingConfig);
+    encodingConfig = formalizeFieldEncodingConfig(encodingConfig);
 
-    const accessor = d => d[/** @type {EncodingConfig} */(encodingConfig).field]
+    const accessor = d => d[/** @type {FieldEncodingConfig} */(encodingConfig).field]
 
     /** @type {function(any):any} */
     let mapper;
 
     let numericDomain;
 
-    if (type == "number") {
+    if (targetType == "number") {
         numericDomain = true;
         // TODO: Support domain and range and enforce ranges. For example, size must be within [0, 1]  
         // TODO: Infer domain from the sample data
         mapper = x => parseFloat(accessor(x));
         
-    } else if (type == "color") {
+    } else if (targetType == "color") {
         // Nominal or range types can be encoded as colors. Have to figure out which to use.
 
         let domain;
@@ -119,7 +130,7 @@ export function createEncodingMapper(type, encodingConfig, sampleData) {
 
 
     } else {
-        throw `Unknown type: ${type}`;
+        throw `Unknown type: ${targetType}`;
         // TODO: Support nominal types for symbols etc
     }
 
@@ -130,28 +141,70 @@ export function createEncodingMapper(type, encodingConfig, sampleData) {
     return mapper;
 }
 
+/**
+ * 
+ * @param {string} targetType 
+ * @param {ValueEncodingConfig} encodingConfig 
+ */
+function createConstantValueMapper(targetType, encodingConfig) {
+    const value = encodingConfig.value;
+
+    if (targetType == "color") {
+        const color = d3color(/** @type {any} */(value));
+        if (!color) {
+            throw new Error(`Not a proper color: ${value}`);
+        }
+
+        return () => color;
+
+    } else if (targetType == "number") {
+        const number = Number(value);
+        if (isNaN(number)) {
+            throw new Error(`Not a proper number: ${value}`);
+        }
+
+        return () => number;
+    }
+}
 
 /**
  * 
- * @param {EncodingConfig[]} encodingConfigs 
+ * @param {VisualMapperFactory} mapperFactory 
+ * @param {Object[]} encodingConfigs 
  * @param {object} visualVariables
  * @param {object[]} sampleData 
  */
-export function createCompositeEncodingMapper(encodingConfigs, visualVariables, sampleData) {
+export function createCompositeEncodingMapper(mapperFactory, encodingConfigs, visualVariables, sampleData) {
     const mappers = {};
 
     Object.entries(encodingConfigs || {})
-        .forEach(([/** @type {string} */visualVariable, /** @type {EncodingConfig} */encodingConfig]) => {
+        .forEach(([/** @type {string} */visualVariable, encodingConfig]) => {
             if (!visualVariables[visualVariable]) {
-                throw Error(`Unknown visual variable: ${visualVariable}`);
+                throw Error(`Unknown visual variable "${visualVariable}" in ${JSON.stringify(encodingConfigs)}`);
             }
 
-            encodingConfig = formalizeEncodingConfig(encodingConfig);
+            const targetType = visualVariables[visualVariable].type;
 
-            mappers[visualVariable] = createEncodingMapper(
-                visualVariables[visualVariable].type,
-                encodingConfig,
-                sampleData)
+            mappers[visualVariable] = mapperFactory.createMapper(targetType, encodingConfig, sampleData);
+
+            /*
+            if (encodingConfig.field) {
+                encodingConfig = formalizeFieldEncodingConfig(encodingConfig);
+
+                mappers[visualVariable] = createFieldEncodingMapper(
+                    targetType,
+                    encodingConfig,
+                    sampleData);
+
+            } else if (encodingConfig.value) {
+                mappers[visualVariable] = createConstantValueMapper(
+                    targetType,
+                    encodingConfig);
+
+            } else if (encodingConfig.chrom) {
+                // ...
+            }
+            */
         });
 
     const compositeMapper = d => {
@@ -168,3 +221,40 @@ export function createCompositeEncodingMapper(encodingConfigs, visualVariables, 
     return compositeMapper;
 }
 
+export class VisualMapperFactory {
+    constructor() {
+        /** @type {{ predicate: function, mapperCreator: function }[]} */
+        this.mappers = [{
+            predicate: encodingConfig => typeof encodingConfig.value != "undefined",
+            mapperCreator: createConstantValueMapper
+        }, {
+            predicate: encodingConfig => typeof encodingConfig == "string" || typeof encodingConfig.field == "string",
+            mapperCreator: createFieldEncodingMapper
+        }];
+    }
+
+    registerMapper(predicatorAndCreator) {
+        this.mappers.push(predicatorAndCreator);
+    }
+
+    findMapperCreator(encodingConfig) {
+        const t = this.mappers.find(t => t.predicate(encodingConfig));
+        if (t) {
+            return t.mapperCreator;
+        } else {
+            throw new Error("Can not find a mapper for encoding config: " + JSON.stringify(encodingConfig));
+        }
+    }
+
+    /**
+     * Creates a function that maps data to visual variables
+     * 
+     * @param {string} targetType
+     * @param {Object | string} encodingConfig 
+     * @param {object[]} [sampleData] Sample data for inferring types and domains
+     * @returns {function(object):any}
+     */
+    createMapper(targetType, encodingConfig, sampleData) {
+        return this.findMapperCreator(encodingConfig)(targetType, encodingConfig, sampleData);
+    }
+}

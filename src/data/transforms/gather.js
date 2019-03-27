@@ -3,7 +3,7 @@
  * @prop {string} type
  * @prop {string} columnRegex
  * @prop {string} as 
- * @prop {string} [sampleAs] Default: sampleId
+ * @prop {string} [sampleAs] Default: sample
  */
 
 /**
@@ -55,7 +55,7 @@ export function gatherTransform(gatherConfig, rows) {
     for (const [sampleId, gatheredRowsOfSample] of gatheredFields.entries()) {
         for (let i = 0; i < gatheredRowsOfSample.length; i++) {
             tidyRows.push({
-                [gatherConfig.sampleAs || "sampleId"]: sampleId,
+                [gatherConfig.sampleAs || "sample"]: sampleId,
                 ...strippedRows[i],
                 ...gatheredRowsOfSample[i],
             });

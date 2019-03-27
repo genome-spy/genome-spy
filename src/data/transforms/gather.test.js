@@ -26,12 +26,12 @@ describe("Gather", () => {
 
     test("Transform single variable", () => {
         expect(gatherTransform(singleGatherConfig, sampleData)).toEqual([
-            { sampleId: "sample1", row: 1, a: "r1s1a", sample1_b: "r1s1b", sample2_b: "r1s2b" },
-            { sampleId: "sample1", row: 2, a: "r2s1a", sample1_b: "r2s1b", sample2_b: "r2s2b" },
-            { sampleId: "sample1", row: 3, a: "r3s1a", sample1_b: "r3s1b", sample2_b: "r3s2b" },
-            { sampleId: "sample2", row: 1, a: "r1s2a", sample1_b: "r1s1b", sample2_b: "r1s2b" },
-            { sampleId: "sample2", row: 2, a: "r2s2a", sample1_b: "r2s1b", sample2_b: "r2s2b" },
-            { sampleId: "sample2", row: 3, a: "r3s2a", sample1_b: "r3s1b", sample2_b: "r3s2b" }
+            { sample: "sample1", row: 1, a: "r1s1a", sample1_b: "r1s1b", sample2_b: "r1s2b" },
+            { sample: "sample1", row: 2, a: "r2s1a", sample1_b: "r2s1b", sample2_b: "r2s2b" },
+            { sample: "sample1", row: 3, a: "r3s1a", sample1_b: "r3s1b", sample2_b: "r3s2b" },
+            { sample: "sample2", row: 1, a: "r1s2a", sample1_b: "r1s1b", sample2_b: "r1s2b" },
+            { sample: "sample2", row: 2, a: "r2s2a", sample1_b: "r2s1b", sample2_b: "r2s2b" },
+            { sample: "sample2", row: 3, a: "r3s2a", sample1_b: "r3s1b", sample2_b: "r3s2b" }
         ]);
     });
 
