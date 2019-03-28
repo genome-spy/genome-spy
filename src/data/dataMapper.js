@@ -1,5 +1,5 @@
 
-import { formalizeEncodingConfig, createFieldEncodingMapper, createCompositeEncodingMapper } from '../data/visualScales';
+import { formalizeEncodingConfig, createFieldEncodingMapper, createCompositeEncodingMapper } from './visualEncoders';
 import { gatherTransform } from './transforms/gather';
 
 /**
@@ -58,7 +58,7 @@ function transformData(transformConfigs, rows) {
  * 
  * @param {VariantDataConfig} dataConfig 
  * @param {object[]} rows 
- * @param {import("./visualScales").VisualMapperFactory} mapperFactory
+ * @param {import("./visualEncoders").VisualMapperFactory} mapperFactory
  */
 export function processData(dataConfig, rows, mapperFactory) {
 

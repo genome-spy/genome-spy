@@ -13,21 +13,29 @@ export const defaultOrdinalScheme = d3ScaleChromatic.schemeCategory10;
 export const defaultSequentialInterpolator = d3ScaleChromatic.interpolateYlOrRd;
 
 /**
+ * @typedef {Object} ScaleConfig
+ * @prop {number[] | string[]} [domain]
+ * @prop {number[] | string[]} [range]
+ * 
+ * 
  * @typedef {Object} FieldEncodingConfig
  *    Defines how attributes (fields) are mapped to visual variables.
  * @prop {string} field A field of the data. An alternative to constant.
- * @prop {number[] | string[]} [domain]
- * @prop {number[] | string[]} [range]
+ * @prop {ScaleConfig} [scale]
  * @prop {String} [type]
+ * 
  * 
  * @typedef {Object} ValueEncodingConfig
  * @prop {string | number} value A constant in the range. An alternative to field.
+ * 
  * 
  * @typedef {Object} GenomicCoordinateEncodingConfig
  * @prop {string} chrom
  * @prop {string} pos
  * 
+ * 
  * @typedef {FieldEncodingConfig | ValueEncodingConfig | GenomicCoordinateEncodingConfig} EncodingConfig
+ * 
  * 
  * @typedef {Object} VariantDataConfig
  *    A configuration that specifies how data should be mapped
@@ -48,9 +56,12 @@ export const defaultSequentialInterpolator = d3ScaleChromatic.interpolateYlOrRd;
 function formalizeFieldEncodingConfig(encodingConfig) {
     if (typeof encodingConfig == "string") {
         return { 
-            field: encodingConfig
+            field: encodingConfig,
+            scale: {}
         };
     }
+
+    encodingConfig.scale = encodingConfig.scale || {};
 
     return encodingConfig;
 }
@@ -76,10 +87,10 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
     /** @type {function(any):any} */
     let mapper;
 
-    let numericDomain;
+    let continuousDomain;
 
     if (targetType == "number") {
-        numericDomain = true;
+        continuousDomain = true;
         // TODO: Support domain and range and enforce ranges. For example, size must be within [0, 1]  
         // TODO: Infer domain from the sample data
         mapper = x => parseFloat(accessor(x));
@@ -88,9 +99,9 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
         // Nominal or range types can be encoded as colors. Have to figure out which to use.
 
         let domain;
-        if (encodingConfig.domain) {
-            domain = encodingConfig.domain;
-            numericDomain = encodingConfig.domain.every(x => typeof x == "number");
+        if (encodingConfig.scale.domain) {
+            domain = encodingConfig.scale.domain;
+            continuousDomain = encodingConfig.scale.domain.every(x => typeof x == "number");
             // TODO: Check length if numeric
 
         } else {
@@ -98,8 +109,8 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
                 throw `Can't infer domain for ${encodingConfig.field}. No sampleData provided!`
             }
             const samples = sampleData.map(accessor);
-            numericDomain = inferNumeric(samples);
-            if (numericDomain) {
+            continuousDomain = inferNumeric(samples);
+            if (continuousDomain) {
                 domain = extent(samples, parseFloat);
 
             } else {
@@ -107,7 +118,7 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
             }
         }
 
-        if (numericDomain) {
+        if (continuousDomain) {
             // TODO: Configurable interpolator
             // TODO: Support custom interpolators as an array of colors
             const scale = scaleSequential(defaultSequentialInterpolator)
@@ -119,7 +130,7 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
         } else {
             // TODO: Custom range by name
             const scale = scaleOrdinal(
-                /** @type {ReadonlyArray} */(encodingConfig.range) ||
+                /** @type {ReadonlyArray} */(encodingConfig.scale.range) ||
                 defaultOrdinalScheme
             )
                 .domain(domain)
@@ -136,7 +147,7 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
 
     // TODO: Add tests:
     mapper.config = encodingConfig;
-    mapper.numeric = numericDomain;
+    mapper.continuous = continuousDomain;
 
     return mapper;
 }

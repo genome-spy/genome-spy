@@ -9,7 +9,7 @@ import Tooltip from "./tooltip";
 import transition, { easeLinear } from "./utils/transition";
 
 import Genome from './genome/genome';
-import { VisualMapperFactory } from './data/visualScales';
+import { VisualMapperFactory } from './data/visualEncoders';
 
 import SampleTrack from "./tracks/sampleTrack/sampleTrack";
 import AxisTrack from "./tracks/axisTrack";

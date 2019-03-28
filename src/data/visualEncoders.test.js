@@ -1,4 +1,4 @@
-import * as vs from './visualScales';
+import * as vs from './visualEncoders';
 
 
 function wrap(value) {
@@ -10,7 +10,7 @@ function wrapArray(values) {
 }
 
 /**
- * @typedef {import('./visualScales').FieldEncodingConfig} FieldEncodingConfig
+ * @typedef {import('./visualEncoders').FieldEncodingConfig} FieldEncodingConfig
  */
 describe("EncodingMapper", () => {
     
@@ -50,8 +50,10 @@ describe("EncodingMapper", () => {
         /** @type {FieldEncodingConfig} */
         const encodingConfig = {
             field: "x",
-            domain: ["A", "C", "B", "D"],
-            range: customRange
+            scale: {
+                domain: ["A", "C", "B", "D"],
+                range: customRange
+            }
         }
 
         const map = vs.createFieldEncodingMapper("color", encodingConfig);
@@ -79,7 +81,9 @@ describe("EncodingMapper", () => {
         /** @type {FieldEncodingConfig} */
         const encodingConfig = {
             field: "x",
-            domain: [11, 13]
+            scale: {
+                domain: [11, 13]
+            }
         }
 
         const map = vs.createFieldEncodingMapper("color", encodingConfig);
