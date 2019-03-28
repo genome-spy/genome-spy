@@ -14,14 +14,18 @@ export default class DataLayer {
         this.sampleTrack = sampleTrack;
         this.genomeSpy = sampleTrack.genomeSpy;
 
-        /** @type {import("../data/dataMapper").VariantDataConfig} */
+        /** @type {import("../data/dataMapper").DataConfig} */
         this.dataConfig = this.layerConfig.spec;
+
+        this.visualVariables = {};
     }
 
     async fetchAndParse(url) {
         return fetch(url)
             .then(data => data.text())
-            .then(raw => processData(this.dataConfig, tsvParse(raw), this.genomeSpy.visualMapperFactory));
+            .then(raw => processData(
+                this.dataConfig, tsvParse(raw),
+                this.genomeSpy.visualMapperFactory, this.visualVariables));
     }
 
     async initialize() {

@@ -10,12 +10,6 @@ import DataLayer from './dataLayer';
  * can be shown on a PointLayer.
  */
 
-// TODO: Make enum, include constraints for ranges, etc, maybe some metadata (description)
-const visualVariables = {
-    x: { type: "number" },
-    color: { type: "color" },
-    size: { type: "number" }
-};
 
 // TODO: Style object
 const maxPointSizeRelative = 0.8;
@@ -28,6 +22,13 @@ export default class PointLayer extends DataLayer {
      */
     constructor(sampleTrack, layerConfig) {
         super(sampleTrack, layerConfig);
+
+        // TODO: Make enum, include constraints for ranges, etc, maybe some metadata (description)
+        this.visualVariables = {
+            x: { type: "number" },
+            color: { type: "color" },
+            size: { type: "number" }
+        };
     }
 
     async initialize() {

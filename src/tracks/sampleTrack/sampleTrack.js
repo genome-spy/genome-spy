@@ -12,6 +12,8 @@ import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } 
 import clientPoint from "../../utils/point";
 import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
+
+import RectLayer from '../../layers/rectLayer';
 import PointLayer from '../../layers/pointLayer';
 import SegmentLayer from '../../layers/segmentLayer';
 
@@ -49,7 +51,8 @@ function processSamples(sampleTsv) {
 
 export const layerTypes = {
     "PointLayer": PointLayer,
-    "CnvLoh": SegmentLayer
+    "CnvLoh": SegmentLayer,
+    "rect": RectLayer
 };
 
 /**

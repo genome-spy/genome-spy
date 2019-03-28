@@ -4,7 +4,7 @@
 import { extent } from 'd3-array';
 import { color as d3color } from 'd3-color';
 
-import { scaleOrdinal, scaleSequential } from 'd3-scale';
+import { scaleLinear, scaleOrdinal, scaleSequential } from 'd3-scale';
 import * as d3ScaleChromatic from 'd3-scale-chromatic';
 
 import { inferNumeric } from '../utils/variableTools';
@@ -36,16 +36,6 @@ export const defaultSequentialInterpolator = d3ScaleChromatic.interpolateYlOrRd;
  * 
  * @typedef {FieldEncodingConfig | ValueEncodingConfig | GenomicCoordinateEncodingConfig} EncodingConfig
  * 
- * 
- * @typedef {Object} VariantDataConfig
- *    A configuration that specifies how data should be mapped
- *    to PointSpecs. The ultimate aim is to make this very generic
- *    and applicable to multiple types of data and visual encodings.
- * @prop {GatherConfig[]} gather
- * @prop {string} chrom
- * @prop {string} pos
- * @prop {Object} encodings 
- * @prop {SimpleFilterConfig[]} filters
  */
 
  
@@ -82,6 +72,8 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
 
     encodingConfig = formalizeFieldEncodingConfig(encodingConfig);
 
+    const scaleConfig = encodingConfig.scale;
+
     const accessor = d => d[/** @type {FieldEncodingConfig} */(encodingConfig).field]
 
     /** @type {function(any):any} */
@@ -99,9 +91,9 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
         // Nominal or range types can be encoded as colors. Have to figure out which to use.
 
         let domain;
-        if (encodingConfig.scale.domain) {
-            domain = encodingConfig.scale.domain;
-            continuousDomain = encodingConfig.scale.domain.every(x => typeof x == "number");
+        if (scaleConfig.domain) {
+            domain = scaleConfig.domain;
+            continuousDomain = scaleConfig.domain.every(x => typeof x == "number");
             // TODO: Check length if numeric
 
         } else {
@@ -119,10 +111,18 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
         }
 
         if (continuousDomain) {
-            // TODO: Configurable interpolator
-            // TODO: Support custom interpolators as an array of colors
-            const scale = scaleSequential(defaultSequentialInterpolator)
-                .domain(/** @type {[number, number]} */(domain))
+            let scale ;
+
+            if (scaleConfig.range) {
+                // TODO: color "schemes"
+                scale = scaleLinear().range(scaleConfig.range);
+
+            } else {
+                // TODO: Configurable interpolator
+                scale = scaleSequential(defaultSequentialInterpolator);
+            }
+
+            scale.domain(/** @type {[number, number]} */(domain))
                 .clamp(true);
 
             mapper = x => scale(parseFloat(accessor(x)));
@@ -130,7 +130,7 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
         } else {
             // TODO: Custom range by name
             const scale = scaleOrdinal(
-                /** @type {ReadonlyArray} */(encodingConfig.scale.range) ||
+                /** @type {ReadonlyArray} */(scaleConfig.range) ||
                 defaultOrdinalScheme
             )
                 .domain(domain)

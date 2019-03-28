@@ -22,6 +22,74 @@ export function color2floatArray(color) {
 }
 
 /**
+ * @typedef {Object} RectSpec
+ * @prop {number} x
+ * @prop {number} x2
+ * @prop {number} y
+ * @prop {number} y2
+ * @prop {Object | string} color
+ */
+
+/**
+ * Converts the given rects into typed arrays of vertices
+ * 
+ * @param {RectSpec[]} rects 
+ * @param {number} [tesselationThreshold] Tesselate segments if they are shorter than the threshold
+ */
+export function rectsToVertices(rects, tesselationThreshold = 8000000) {
+
+    const xArr = [];
+    const yArr = [];
+    const cArr = [];
+
+    // TODO: This is a bit slow and should be profiled more carefully
+
+    for (let r of rects) {
+        const [x, x2] = r.x <= r.x2 ? [r.x, r.x2] : [r.x2, r.x];
+        const [y, y2] = r.y <= r.y2 ? [r.y, r.y2] : [r.y2, r.y];
+
+        const color = r.color || black;
+
+        // TODO: Conserve memory, use int8 color components instead of floats
+        const c = color2floatArray(color);
+
+        // Start a new segment. Duplicate the first vertex to produce degenerate triangles
+        xArr.push(...fp64.fp64ify(x));
+        yArr.push(y);
+        cArr.push(...c);
+
+        const width = r.x2 - r.x;
+
+        // Tesselate segments
+        const tileCount = Math.ceil(width / tesselationThreshold);
+        for (let i = 0; i <= tileCount; i++) {
+            const frac = i / tileCount;
+            // Interpolate X & Y
+            // Emulate 64bit floats using two 32bit floats
+            const iX = fp64.fp64ify(r.x + width * frac);
+            xArr.push(...iX, ...iX);
+            yArr.push(y, y2);
+            cArr.push(...c, ...c);
+        }
+
+        // Duplicate the last vertex to produce a degenerate triangle between the segments
+        xArr.push(...fp64.fp64ify(x2));
+        yArr.push(y2);
+        cArr.push(...c);
+    }
+
+    return {
+        arrays: {
+            x: { data: new Float32Array(xArr), accessor: { size: 2 } },
+            y: { data: new Float32Array(yArr) },
+            color: { data: new Float32Array(cArr), accessor: { size: 4 } }
+        },
+        vertexCount: yArr.length,
+        drawMode: glConst.TRIANGLE_STRIP
+    };
+}
+
+/**
  * @typedef {Object} SegmentSpec Describes how a segment should be visualized
  * @prop {Interval} interval
  * @prop {number} [paddingTop]

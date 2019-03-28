@@ -8,24 +8,12 @@ import { gatherTransform } from './transforms/gather';
  * @prop {string} operator eq, neq, lt, lte, gte, gt
  * @prop {*} value
  * 
- * @typedef {Object} VariantDataConfig
- *    A configuration that specifies how data should be mapped
- *    to PointSpecs. The ultimate aim is to make this very generic
- *    and applicable to multiple types of data and visual encodings.
+ * @typedef {Object} DataConfig
  * @prop {object[]} [transform]
  * @prop {string} [sample]
- * @prop {string} chrom
- * @prop {string} pos
  * @prop {Object} encoding 
- * @prop {SimpleFilterConfig[]} [filters]
+ * 
  */
-
-// TODO: Make enum, include constraints for ranges, etc, maybe some metadata (description)
-const visualVariables = {
-    x: { type: "number" },
-    color: { type: "color" },
-    size: { type: "number" }
-};
 
 const transformers = {
     gather: gatherTransform,
@@ -56,11 +44,12 @@ function transformData(transformConfigs, rows) {
 
 /**
  * 
- * @param {VariantDataConfig} dataConfig 
+ * @param {DataConfig} dataConfig 
  * @param {object[]} rows 
  * @param {import("./visualEncoders").VisualMapperFactory} mapperFactory
+ * @param {Object} visualVariables
  */
-export function processData(dataConfig, rows, mapperFactory) {
+export function processData(dataConfig, rows, mapperFactory, visualVariables) {
 
     // TODO: Validate that data contains all fields that are referenced in the config.
     // ... just to prevent mysterious undefineds
