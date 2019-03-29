@@ -3,7 +3,7 @@ import { pointsToVertices, verticesToVertexData } from '../gl/segmentsToVertices
 import VERTEX_SHADER from '../gl/pointVertex.glsl';
 import FRAGMENT_SHADER from '../gl/pointFragment.glsl';
 
-import DataLayer from './dataLayer';
+import ViewUnit from './viewUnit';
 
 /**
  * PointLayer contains individual genomic loci. For instance, point mutations
@@ -15,10 +15,10 @@ import DataLayer from './dataLayer';
 const maxPointSizeRelative = 0.8;
 const maxPointSizeAbsolute = 25;
 
-export default class PointLayer extends DataLayer {
+export default class PointMark extends ViewUnit {
     /**
      * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
-     * @param {Object} layerConfig 
+     * @param {import('./viewUnit').ViewUnitConfig} layerConfig 
      */
     constructor(sampleTrack, layerConfig) {
         super(sampleTrack, layerConfig);

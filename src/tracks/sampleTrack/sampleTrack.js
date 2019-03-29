@@ -13,8 +13,8 @@ import clientPoint from "../../utils/point";
 import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
 
-import RectLayer from '../../layers/rectLayer';
-import PointLayer from '../../layers/pointLayer';
+import RectMark from '../../layers/rectMark';
+import PointMark from '../../layers/pointMark';
 import SegmentLayer from '../../layers/segmentLayer';
 
 const defaultStyles = {
@@ -49,10 +49,10 @@ function processSamples(sampleTsv) {
         }));
 }
 
-export const layerTypes = {
-    "PointLayer": PointLayer,
+export const markTypes = {
+    "point": PointMark,
     "CnvLoh": SegmentLayer,
-    "rect": RectLayer
+    "rect": RectMark
 };
 
 /**
@@ -83,13 +83,13 @@ export default class SampleTrack extends WebGlTrack {
         /** @type {import("../../layers/segmentLayer").default[]} */
         this.layers = [];
 
-        for (let layerConf of config.layers) {
-            const layerClass = layerTypes[layerConf.type];
+        for (let layerConf of config.layer) {
+            const layerClass = markTypes[layerConf.mark];
             if (layerClass) {
                 this.layers.push(new layerClass(this, layerConf));
 
             } else {
-                throw new Error(`Unsupported layer type: ${layerConf.type}`);
+                throw new Error(`Unsupported mark type: ${layerConf.mark}`);
             }
         }
     }

@@ -4,10 +4,10 @@ import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
 import { rectsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
 
-import DataLayer from './dataLayer';
+import ViewUnit from './viewUnit';
 
 
-export default class RectLayer extends DataLayer {
+export default class RectMark extends ViewUnit {
     /**
      * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
      * @param {Object} layerConfig 

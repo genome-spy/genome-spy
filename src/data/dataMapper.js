@@ -8,11 +8,6 @@ import { gatherTransform } from './transforms/gather';
  * @prop {string} operator eq, neq, lt, lte, gte, gt
  * @prop {*} value
  * 
- * @typedef {Object} DataConfig
- * @prop {object[]} [transform]
- * @prop {string} [sample]
- * @prop {Object} encoding 
- * 
  */
 
 const transformers = {
@@ -44,7 +39,7 @@ function transformData(transformConfigs, rows) {
 
 /**
  * 
- * @param {DataConfig} dataConfig 
+ * @param {LayerConfig} dataConfig 
  * @param {object[]} rows 
  * @param {import("./visualEncoders").VisualMapperFactory} mapperFactory
  * @param {Object} visualVariables

@@ -1,21 +1,29 @@
-import { color } from 'd3-color';
 import { tsvParse } from 'd3-dsv';
 import { processData } from '../data/dataMapper';
+/**
+ * @typedef {Object} ViewUnitConfig
+ * @prop {ViewUnitConfig[]} [layer]
+ * @prop {string} [mark]
+ * @prop {object} [data] 
+ * @prop {object[]} [transform]
+ * @prop {string} [sample]
+ * @prop {Object} [encoding]
+ */
 
-export default class DataLayer {
+ /**
+  * Generic data layer base class
+  */
+export default class ViewUnit {
 
     /**
      * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
-     * @param {Object} layerConfig 
+     * @param {ViewUnitConfig} layerConfig 
      */
     constructor(sampleTrack, layerConfig) {
         this.layerConfig = layerConfig;
 
         this.sampleTrack = sampleTrack;
         this.genomeSpy = sampleTrack.genomeSpy;
-
-        /** @type {import("../data/dataMapper").DataConfig} */
-        this.dataConfig = this.layerConfig.spec;
 
         this.visualVariables = {};
     }
@@ -24,7 +32,7 @@ export default class DataLayer {
         return fetch(url)
             .then(data => data.text())
             .then(raw => processData(
-                this.dataConfig, tsvParse(raw),
+                this.layerConfig, tsvParse(raw),
                 this.genomeSpy.visualMapperFactory, this.visualVariables));
     }
 
