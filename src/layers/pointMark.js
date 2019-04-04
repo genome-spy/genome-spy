@@ -4,31 +4,19 @@ import VERTEX_SHADER from '../gl/pointVertex.glsl';
 import FRAGMENT_SHADER from '../gl/pointFragment.glsl';
 
 import ViewUnit from './viewUnit';
-
-/**
- * PointLayer contains individual genomic loci. For instance, point mutations
- * can be shown on a PointLayer.
- */
+import Mark from './mark';
 
 
 // TODO: Style object
 const maxPointSizeRelative = 0.8;
 const maxPointSizeAbsolute = 25;
 
-export default class PointMark extends ViewUnit {
+export default class PointMark extends Mark {
     /**
-     * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
-     * @param {import('./viewUnit').ViewUnitConfig} layerConfig 
+     * @param {import("./viewUnit").UnitContext} unitContext
      */
-    constructor(sampleTrack, layerConfig) {
-        super(sampleTrack, layerConfig);
-
-        // TODO: Make enum, include constraints for ranges, etc, maybe some metadata (description)
-        this.visualVariables = {
-            x: { type: "number" },
-            color: { type: "color" },
-            size: { type: "number" }
-        };
+    constructor(unitContext) {
+        super(unitContext)
     }
 
     async initialize() {
@@ -39,7 +27,7 @@ export default class PointMark extends ViewUnit {
 
 
     _initGL() {
-        const gl = this.sampleTrack.gl;
+        const gl = this.gl;
 
         this.segmentProgram = new Program(gl, assembleShaders(gl, {
             vs: VERTEX_SHADER,
@@ -50,7 +38,7 @@ export default class PointMark extends ViewUnit {
         
         this.vertexDatas = new Map();
 
-        for (let [sample, points] of this.pointsBySample.entries()) {
+        for (let [sample, points] of this.specsBySample.entries()) {
             points = points.filter(p => p.size !== 0.0);
             if (points.length) {
                 this.vertexDatas.set(
@@ -66,14 +54,14 @@ export default class PointMark extends ViewUnit {
      */
     render(sampleId, uniforms) {
         if (this.vertexDatas.has(sampleId)) {
-            const gl = this.sampleTrack.gl;
+            const gl = this.gl;
 
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
             this.segmentProgram.setUniforms({
                 ...uniforms,
-                viewportHeight: this.sampleTrack.glCanvas.clientHeight * window.devicePixelRatio,
+                viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight * window.devicePixelRatio,
                 devicePixelRatio: window.devicePixelRatio,
                 maxPointSizeRelative,
                 maxPointSizeAbsolute: maxPointSizeAbsolute * window.devicePixelRatio,
@@ -94,6 +82,7 @@ export default class PointMark extends ViewUnit {
      * @param {number} y position inside the viewport in pixels
      */
     findDatum(sampleId, domainPos, y) {
+        return;
         // TODO: Fisheye may need some adjustments
 
         const points = this.pointsBySample.get(sampleId);

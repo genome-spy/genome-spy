@@ -11,7 +11,7 @@ sampleData.columns = ["row", "sample1_a", "sample2_a", "sample1_b", "sample2_b"]
 const singleGatherConfig = {
     type: "gather",
     columnRegex: "^(.*)_a$",
-    as: "a"
+    asValue: "a"
 }
 
 describe("Gather", () => {

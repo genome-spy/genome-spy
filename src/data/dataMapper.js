@@ -19,7 +19,7 @@ const transformers = {
  * 
  * @param {object[]} transformConfigs 
  */
-function transformData(transformConfigs, rows) {
+export function transformData(transformConfigs, rows) {
     for (const transformConfig of transformConfigs) {
         const type = transformConfig.type;
         if (!type) {
@@ -39,47 +39,46 @@ function transformData(transformConfigs, rows) {
 
 /**
  * 
- * @param {LayerConfig} dataConfig 
+ * @param {object[]} encodingConfigs 
  * @param {object[]} rows 
  * @param {import("./visualEncoders").VisualMapperFactory} mapperFactory
- * @param {Object} visualVariables
+ * @returns {object[]}
  */
-export function processData(dataConfig, rows, mapperFactory, visualVariables) {
+export function processData(encodingConfigs, rows, mapperFactory) {
 
     // TODO: Validate that data contains all fields that are referenced in the config.
     // ... just to prevent mysterious undefineds
 
-    if (dataConfig.transform) {
-        rows = transformData(dataConfig.transform, rows);
-    }
+    const encode = createCompositeEncodingMapper(mapperFactory, encodingConfigs, rows);
 
-    const encode = createCompositeEncodingMapper(mapperFactory, dataConfig.encoding, visualVariables, rows);
+    return rows.map(d => encode(d));
+}
 
-    // TODO: Check that dataConfig.sample matches sample of gatherTransform
-    // TODO: Support data that has just a single sample (no sample column)
-    const extractSample = d => d[dataConfig.sample];
-    
-    const mappedRows = rows.map(d => encode(d));
-
-    /**
-     * @typedef {import('../gl/segmentsToVertices').PointSpec} PointSpec
-     * @type {Map<string, PointSpec[]>}
-     */
-    const pointsBySample = new Map();
+/**
+ * 
+ * @param {object[]} rows The original data
+ * @param {object[]} specs The specs based on the rows
+ * @param {function(object):string} sampleExtractor
+ * @returns {Map<string, object[]>}
+ */
+export function groupBySample(rows, specs, sampleExtractor) {
+    /** @type {Map<string, object[]>} */
+    const specsBySample = new Map();
 
     const addSpec = (sampleId, spec) => {
-        let specs = pointsBySample.get(sampleId);
+        let specs = specsBySample.get(sampleId);
         if (specs) {
             specs.push(spec);
         } else {
-            pointsBySample.set(sampleId, [spec]);
+            specsBySample.set(sampleId, [spec]);
         }
     }
-    
-    mappedRows.forEach((spec, i) => addSpec(extractSample(rows[i]), spec));
 
-    return pointsBySample;
+    specs.forEach((spec, i) => addSpec(sampleExtractor(rows[i]), spec));
+
+    return specsBySample;
 }
+
 
 
 /**

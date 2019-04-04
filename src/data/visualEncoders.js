@@ -38,6 +38,15 @@ export const defaultSequentialInterpolator = d3ScaleChromatic.interpolateYlOrRd;
  * 
  */
 
+
+const visualVariables = {
+    x: { type: "number" },
+    x2: { type: "number" },
+    y: { type: "number" },
+    y2: { type: "number" },
+    color: { type: "color" },
+    size: { type: "number" }
+};
  
 /**
  * @param {FieldEncodingConfig | string} encodingConfig 
@@ -182,10 +191,10 @@ function createConstantValueMapper(targetType, encodingConfig) {
  * 
  * @param {VisualMapperFactory} mapperFactory 
  * @param {Object[]} encodingConfigs 
- * @param {object} visualVariables
  * @param {object[]} sampleData 
  */
-export function createCompositeEncodingMapper(mapperFactory, encodingConfigs, visualVariables, sampleData) {
+export function createCompositeEncodingMapper(mapperFactory, encodingConfigs, sampleData) {
+
     const mappers = {};
 
     Object.entries(encodingConfigs || {})
@@ -198,24 +207,6 @@ export function createCompositeEncodingMapper(mapperFactory, encodingConfigs, vi
 
             mappers[visualVariable] = mapperFactory.createMapper(targetType, encodingConfig, sampleData);
 
-            /*
-            if (encodingConfig.field) {
-                encodingConfig = formalizeFieldEncodingConfig(encodingConfig);
-
-                mappers[visualVariable] = createFieldEncodingMapper(
-                    targetType,
-                    encodingConfig,
-                    sampleData);
-
-            } else if (encodingConfig.value) {
-                mappers[visualVariable] = createConstantValueMapper(
-                    targetType,
-                    encodingConfig);
-
-            } else if (encodingConfig.chrom) {
-                // ...
-            }
-            */
         });
 
     const compositeMapper = d => {

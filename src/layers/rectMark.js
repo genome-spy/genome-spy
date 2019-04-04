@@ -1,39 +1,27 @@
 
-import { Program, assembleShaders } from 'luma.gl';
+import { Program, assembleShaders, fp64 } from 'luma.gl';
 import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
 import { rectsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
 
-import ViewUnit from './viewUnit';
+import Mark from './mark';
 
 
-export default class RectMark extends ViewUnit {
+export default class RectMark extends Mark {
     /**
-     * @param {import("../tracks/sampleTrack/sampleTrack").default} sampleTrack 
-     * @param {Object} layerConfig 
+     * @param {import("./viewUnit").UnitContext} unitContext
      */
-    constructor(sampleTrack, layerConfig) {
-        super(sampleTrack, layerConfig);
-
-        // TODO: Make enum, include constraints for ranges, etc, maybe some metadata (description)
-        this.visualVariables = {
-            x:  { type: "number" },
-            x2: { type: "number" },
-            y:  { type: "number" },
-            y2: { type: "number" },
-            color: { type: "color" }
-        };
+    constructor(unitContext) {
+        super(unitContext)
     }
 
     async initialize() {
         await super.initialize();
-
-        this._initGL();
     }
 
 
     _initGL() {
-        const gl = this.sampleTrack.gl;
+        const gl = this.gl;
 
         this.segmentProgram = new Program(gl, assembleShaders(gl, {
             vs: VERTEX_SHADER,
@@ -41,11 +29,10 @@ export default class RectMark extends ViewUnit {
             modules: ['fp64']
         }));
 
-        
         this.vertexDatas = new Map();
 
-        for (let [sample, points] of this.pointsBySample.entries()) {
-            points = points.filter(p => p.x2 > p.x);
+        for (let [sample, points] of this.specsBySample.entries()) {
+            points = points.filter(p => p.x2 > p.x && p.y2 > p.y);
             if (points.length) {
                 this.vertexDatas.set(
                     sample,
@@ -61,7 +48,7 @@ export default class RectMark extends ViewUnit {
     render(sampleId, uniforms) {
         this.segmentProgram.setUniforms({
             ...uniforms,
-            ONE: 1.0, // WTF: https://github.com/uber/luma.gl/pull/622
+            ...fp64.getUniforms()
         });
         this.segmentProgram.draw({
             ...this.vertexDatas.get(sampleId),
@@ -74,6 +61,7 @@ export default class RectMark extends ViewUnit {
      * @param {number} pos position on the domain
      */
     findDatum(sampleId, pos) {
+        return;
         const rects = this.pointsBySample.get(sampleId);
 
         // TODO: BinarySearch

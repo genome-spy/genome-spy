@@ -2,8 +2,8 @@
  * @typedef {Object} GatherConfig
  * @prop {string} type
  * @prop {string} columnRegex
- * @prop {string} as 
- * @prop {string} [sampleAs] Default: sample
+ * @prop {string} asValue
+ * @prop {string} [asKey] Default: sample
  */
 
 /**
@@ -25,7 +25,7 @@ export function gather(gatherConfig, rows) {
 
         const datums = rows.map(row => ({
             // TODO: Multiple fields 
-            [gatherConfig.as]: row[sampleColumn]
+            [gatherConfig.asValue]: row[sampleColumn]
         }));
         
         gatheredFields.set(sampleId, datums);
@@ -55,7 +55,7 @@ export function gatherTransform(gatherConfig, rows) {
     for (const [sampleId, gatheredRowsOfSample] of gatheredFields.entries()) {
         for (let i = 0; i < gatheredRowsOfSample.length; i++) {
             tidyRows.push({
-                [gatherConfig.sampleAs || "sample"]: sampleId,
+                [gatherConfig.asKey || "sample"]: sampleId,
                 ...strippedRows[i],
                 ...gatheredRowsOfSample[i],
             });

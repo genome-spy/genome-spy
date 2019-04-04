@@ -12,10 +12,7 @@ import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } 
 import clientPoint from "../../utils/point";
 import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
-
-import RectMark from '../../layers/rectMark';
-import PointMark from '../../layers/pointMark';
-import SegmentLayer from '../../layers/segmentLayer';
+import ViewUnit from '../../layers/viewUnit';
 
 const defaultStyles = {
     paddingInner: 0.20, // Relative to sample height
@@ -49,11 +46,6 @@ function processSamples(sampleTsv) {
         }));
 }
 
-export const markTypes = {
-    "point": PointMark,
-    "CnvLoh": SegmentLayer,
-    "rect": RectMark
-};
 
 /**
  * A track that displays one or more samples as sub-tracks.
@@ -65,6 +57,11 @@ export const markTypes = {
  */
 export default class SampleTrack extends WebGlTrack {
 
+    /**
+     * 
+     * @param {import("../../genomeSpy").default } genomeSpy 
+     * @param {object | import("../../layers/viewUnit").ViewUnitConfig} config 
+     */
     constructor(genomeSpy, config) {
         super(genomeSpy, config);
 
@@ -80,18 +77,11 @@ export default class SampleTrack extends WebGlTrack {
         this.yTransform = null;
 
 
-        /** @type {import("../../layers/segmentLayer").default[]} */
-        this.layers = [];
-
-        for (let layerConf of config.layer) {
-            const layerClass = markTypes[layerConf.mark];
-            if (layerClass) {
-                this.layers.push(new layerClass(this, layerConf));
-
-            } else {
-                throw new Error(`Unsupported mark type: ${layerConf.mark}`);
-            }
-        }
+        this.viewUnit = new ViewUnit(
+           { genomeSpy, sampleTrack: this },
+           undefined,
+           config
+        );
     }
 
 
@@ -183,7 +173,7 @@ export default class SampleTrack extends WebGlTrack {
             depthFunc: gl.LEQUAL
         });
 
-        await Promise.all(this.layers.map(layer => layer.initialize()));
+        await this.viewUnit.initialize();
 
         this.viewportMouseTracker = new MouseTracker({
             element: this.glCanvas,
@@ -623,10 +613,11 @@ export default class SampleTrack extends WebGlTrack {
                 ...domainUniforms
             };
 
-            //this.layers.forEach(layer => layer.render(sampleId, uniforms));
-            for (const layer of this.layers) {
-                layer.render(sampleId, uniforms);
-            }
+
+            this.viewUnit.visit(vu => {
+                if (vu.mark) {
+                    vu.mark.render(sampleId, uniforms);
+                }});
         });
     }
 }
