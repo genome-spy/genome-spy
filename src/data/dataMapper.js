@@ -1,6 +1,7 @@
 
 import { formalizeEncodingConfig, createFieldEncodingMapper, createCompositeEncodingMapper } from './visualEncoders';
 import { gatherTransform } from './transforms/gather';
+import { calculateTransform } from './transforms/calculate';
 
 /**
  * @typedef {Object} SimpleFilterConfig
@@ -12,7 +13,8 @@ import { gatherTransform } from './transforms/gather';
 
 const transformers = {
     gather: gatherTransform,
-    simpleFilter: simpleFilterTransform
+    simpleFilter: simpleFilterTransform,
+    calculate: calculateTransform
 };
 
 /**
