@@ -163,7 +163,11 @@ export default class SampleTrack extends WebGlTrack {
 
         registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
 
-        const gl = createGLContext({ canvas: this.glCanvas });
+        const gl = createGLContext({
+            canvas: this.glCanvas,
+            manageState: false
+        });
+
         this.gl = gl;
 
         setParameters(gl, {
@@ -172,6 +176,9 @@ export default class SampleTrack extends WebGlTrack {
             depthTest: false,
             depthFunc: gl.LEQUAL
         });
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
         await this.viewUnit.initialize();
 

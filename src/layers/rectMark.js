@@ -31,12 +31,12 @@ export default class RectMark extends Mark {
 
         this.vertexDatas = new Map();
 
-        for (let [sample, points] of this.specsBySample.entries()) {
-            points = points.filter(p => p.x2 > p.x && p.y2 > p.y);
-            if (points.length) {
+        for (let [sample, rects] of this.specsBySample.entries()) {
+            rects = rects.filter(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0);
+            if (rects.length) {
                 this.vertexDatas.set(
                     sample,
-                    verticesToVertexData(this.segmentProgram, rectsToVertices(points)));
+                    verticesToVertexData(this.segmentProgram, rectsToVertices(rects)));
             }
         }
     }

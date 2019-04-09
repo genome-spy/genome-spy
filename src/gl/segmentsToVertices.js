@@ -2,6 +2,10 @@ import { color as d3color } from 'd3-color';
 import { VertexArray, Buffer, fp64 } from 'luma.gl';
 import Interval from "../utils/interval";
 
+/*
+ * TODO: Optimize constant values: compile them dynamically into vertex shader
+ */
+
 const black = d3color("black");
 const gray = d3color("gray");
 
@@ -27,7 +31,8 @@ export function color2floatArray(color) {
  * @prop {number} x2
  * @prop {number} y
  * @prop {number} y2
- * @prop {Object | string} color
+ * @prop {Object | string} [color]
+ * @prop {number} [opacity]
  */
 
 /**
@@ -40,15 +45,17 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
 
     const xArr = [];
     const yArr = [];
-    const cArr = [];
+    const colorArr = [];
+    const opacityArr = [];
 
     // TODO: This is a bit slow and should be profiled more carefully
 
     for (let r of rects) {
         const [x, x2] = r.x <= r.x2 ? [r.x, r.x2] : [r.x2, r.x];
-        const [y, y2] = r.y <= r.y2 ? [r.y, r.y2] : [r.y2, r.y];
+        const [y, y2] = r.y <= r.y2 ? [1 - r.y, 1 - r.y2] : [1 - r.y2, 1 - r.y];
 
         const color = r.color || black;
+        const opacity = typeof r.opacity == "number" ? r.opacity : 1;
 
         // TODO: Conserve memory, use int8 color components instead of floats
         const c = color2floatArray(color);
@@ -56,7 +63,8 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
         // Start a new segment. Duplicate the first vertex to produce degenerate triangles
         xArr.push(...fp64.fp64ify(x));
         yArr.push(y);
-        cArr.push(...c);
+        colorArr.push(...c);
+        opacityArr.push(opacity);
 
         const width = r.x2 - r.x;
 
@@ -69,20 +77,23 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
             const iX = fp64.fp64ify(r.x + width * frac);
             xArr.push(...iX, ...iX);
             yArr.push(y, y2);
-            cArr.push(...c, ...c);
+            colorArr.push(...c, ...c);
+            opacityArr.push(opacity, opacity);
         }
 
         // Duplicate the last vertex to produce a degenerate triangle between the segments
         xArr.push(...fp64.fp64ify(x2));
         yArr.push(y2);
-        cArr.push(...c);
+        colorArr.push(...c);
+        opacityArr.push(opacity);
     }
 
     return {
         arrays: {
             x: { data: new Float32Array(xArr), accessor: { size: 2 } },
             y: { data: new Float32Array(yArr) },
-            color: { data: new Float32Array(cArr), accessor: { size: 4 } }
+            color: { data: new Float32Array(colorArr), accessor: { size: 4 } },
+            opacity: { data: new Float32Array(opacityArr) }
         },
         vertexCount: yArr.length,
         drawMode: glConst.TRIANGLE_STRIP
@@ -114,6 +125,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
     const x = [];
     const y = [];
     const colors = [];
+    const opacities = [];
 
     // TODO: This is a bit slow and should be profiled more carefully
 
@@ -140,6 +152,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
         x.push(...begin);
         y.push(bottomLeft);
         colors.push(...bc);
+        opacities.push(1);
 
         // Tesselate segments
         const tileCount = Math.ceil(s.interval.width() / tesselationThreshold);
@@ -153,19 +166,22 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
             x.push(...iX, ...iX);
             y.push(iBottom, iTop);
             colors.push(...bc, ...tc);
+            opacities.push(1, 1);
         }
 
         // Duplicate the last vertex to produce a degenerate triangle between the segments
         x.push(...end);
         y.push(topRight);
         colors.push(...tc);
+        opacities.push(1);
     }
 
     return {
         arrays: {
             x: { data: new Float32Array(x), accessor: { size: 2 } },
             y: { data: new Float32Array(y) },
-            color: { data: new Float32Array(colors), accessor: { size: 4 } }
+            color: { data: new Float32Array(colors), accessor: { size: 4 } },
+            opacity: { data: new Float32Array(opacities) }
         },
         vertexCount: y.length,
         drawMode: glConst.TRIANGLE_STRIP

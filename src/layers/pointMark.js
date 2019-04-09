@@ -54,11 +54,6 @@ export default class PointMark extends Mark {
      */
     render(sampleId, uniforms) {
         if (this.vertexDatas.has(sampleId)) {
-            const gl = this.gl;
-
-            gl.enable(gl.BLEND);
-            gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
             this.segmentProgram.setUniforms({
                 ...uniforms,
                 viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight * window.devicePixelRatio,
@@ -71,8 +66,6 @@ export default class PointMark extends Mark {
                 ...this.vertexDatas.get(sampleId),
                 uniforms: null // Explicityly specify null to prevent erroneous deprecation warning
             });
-
-            gl.disable(gl.BLEND);
         }
     }
 

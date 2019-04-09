@@ -45,7 +45,8 @@ const visualVariables = {
     y: { type: "number" },
     y2: { type: "number" },
     color: { type: "color" },
-    size: { type: "number" }
+    size: { type: "number" },
+    opacity: { type: "number" }
 };
  
 /**

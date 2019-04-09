@@ -3,6 +3,7 @@ precision highp float;
 attribute vec2 x;
 attribute float y;
 attribute vec4 color;
+attribute float opacity;
 
 
 uniform vec2 uDomainBegin;
@@ -55,5 +56,5 @@ void main(void) {
 
     gl_Position = vec4(ndc, 0.0, 1.0);
 
-    vColor = color;
+    vColor = vec4(color.rgb * opacity, opacity);
 }
