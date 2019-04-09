@@ -27,7 +27,7 @@ import contextMenu from "../contextMenu";
 
 const defaultConfig = {
     geneFullVisibilityThreshold: 30 * 1000000, // In base pairs
-    geneFadeGradientFactor: 2.2,
+    geneFadeGradientFactor: 2.8,
 
     maxSymbolsToShow: 70,
 
@@ -97,6 +97,9 @@ export default class GeneTrack extends WebGlTrack {
             depthTest: false,
             depthFunc: gl.LEQUAL
         });
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
         this.geneProgram = new Program(gl, assembleShaders(gl, {
             vs: geneVertexShader,
@@ -347,11 +350,13 @@ export default class GeneTrack extends WebGlTrack {
         const gl = this.gl;
 
         const uniforms = {
-            minWidth: 0.5 / gl.drawingBufferWidth, // How many pixels
+            uMinWidth: 0.5 / gl.drawingBufferWidth, // How many pixels
+            uColor: [0, 0, 0],
             ONE: 1.0, // WTF: https://github.com/uber/luma.gl/pull/622
             ...this.getDomainUniforms()
         };
 
+        // TODO: Get rid of the matrix
         const view = new Matrix4()
             .scale([this.gl.canvas.clientWidth, 1, 1]);
         const uTMatrix = this.viewportProjection.clone().multiplyRight(view);
@@ -367,10 +372,6 @@ export default class GeneTrack extends WebGlTrack {
                 uniforms: null
             });
 
-            gl.enable(gl.BLEND);
-            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-            gl.disable(gl.DEPTH_TEST);
-
             this.geneProgram.setUniforms({
                 ...uniforms,
                 uTMatrix,
@@ -381,8 +382,6 @@ export default class GeneTrack extends WebGlTrack {
                 ...this.geneVerticeMap.get(cluster.id),
                 uniforms: null 
             });
-
-            gl.disable(gl.BLEND);
         });
 
     }
