@@ -40,6 +40,7 @@ export const defaultSequentialInterpolator = d3ScaleChromatic.interpolateYlOrRd;
 
 
 const visualVariables = {
+    sample: { type: "string" },
     x: { type: "number" },
     x2: { type: "number" },
     y: { type: "number" },
@@ -91,7 +92,10 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
 
     let continuousDomain;
 
-    if (targetType == "number") {
+    if (targetType == "string") {
+        mapper = x => "" + accessor(x);
+
+    } else if (targetType == "number") {
         continuousDomain = true;
         // TODO: Support domain and range and enforce ranges. For example, size must be within [0, 1]  
         // TODO: Infer domain from the sample data
@@ -185,6 +189,9 @@ function createConstantValueMapper(targetType, encodingConfig) {
         }
 
         return () => number;
+
+    } else {
+        throw new Error(`Unsupported target type: ${targetType} in ${JSON.stringify(encodingConfig)}`);
     }
 }
 

@@ -1,5 +1,6 @@
 import { tsvParse } from 'd3-dsv';
-import { processData, transformData, groupBySample } from '../data/dataMapper';
+import { group } from 'd3-array';
+import { processData, transformData } from '../data/dataMapper';
 
 import RectMark from '../layers/rectMark';
 import PointMark from '../layers/pointMark';
@@ -114,17 +115,12 @@ export default class ViewUnit {
                 throw new Error("Can not create mark, no encodings specified!");
             }
 
-            if (!this.config.sample) {
-                // TODO: Consider moving sample to encoding
-                throw new Error("Sample column has not been defined!");
-            }
-
             const markClass = markTypes[this.config.mark];
             if (markClass) {
                 /** @type {import("./mark").default} */
                 const mark = new markClass(this.context);
                 const specs = processData(encoding, concatedData, this.context.genomeSpy.visualMapperFactory);
-                const specsBySample = groupBySample(concatedData, specs, d => d[this.config.sample])
+                const specsBySample = group(specs, d => d.sample)
                 mark.setSpecs(specsBySample);
                 await mark.initialize();
 

@@ -56,32 +56,6 @@ export function processData(encodingConfigs, rows, mapperFactory) {
     return rows.map(d => encode(d));
 }
 
-/**
- * 
- * @param {object[]} rows The original data
- * @param {object[]} specs The specs based on the rows
- * @param {function(object):string} sampleExtractor
- * @returns {Map<string, object[]>}
- */
-export function groupBySample(rows, specs, sampleExtractor) {
-    /** @type {Map<string, object[]>} */
-    const specsBySample = new Map();
-
-    const addSpec = (sampleId, spec) => {
-        let specs = specsBySample.get(sampleId);
-        if (specs) {
-            specs.push(spec);
-        } else {
-            specsBySample.set(sampleId, [spec]);
-        }
-    }
-
-    specs.forEach((spec, i) => addSpec(sampleExtractor(rows[i]), spec));
-
-    return specsBySample;
-}
-
-
 
 /**
  * 
