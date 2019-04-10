@@ -2,7 +2,7 @@ import * as dm from './dataMapper';
 
 test("CreateFilter", () => {
     const filter = dm.createFilter(/** @type {import('./dataMapper').SimpleFilterConfig } */{
-        attribute: "x",
+        field: "x",
         operator: "lte",
         value: 5
     });
