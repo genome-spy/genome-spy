@@ -32,12 +32,12 @@ export default class Genome {
     }
 
     createGenomicCoordVisualMapper(targetType, encodingConfig) {
-        const adjustment = typeof encodingConfig.adjustment == "number" ? encodingConfig.adjustment : 0;
+        const offset = typeof encodingConfig.offset == "number" ? encodingConfig.offset : 0;
 
         return d => this.chromMapper.toContinuous(
             d[encodingConfig.chrom],
             parseInt(d[encodingConfig.pos])
-        ) + adjustment;
+        ) + offset;
     }
 
     getMapperDef() {
