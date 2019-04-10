@@ -2,6 +2,7 @@
 import { formalizeEncodingConfig, createFieldEncodingMapper, createCompositeEncodingMapper } from './visualEncoders';
 import { gatherTransform } from './transforms/gather';
 import { calculateTransform } from './transforms/calculate';
+import { regexMatchTransform } from './transforms/regexMatch';
 
 /**
  * @typedef {Object} SimpleFilterConfig
@@ -12,9 +13,10 @@ import { calculateTransform } from './transforms/calculate';
  */
 
 const transformers = {
+    calculate: calculateTransform,
     gather: gatherTransform,
-    simpleFilter: simpleFilterTransform,
-    calculate: calculateTransform
+    regexMatch: regexMatchTransform,
+    simpleFilter: simpleFilterTransform
 };
 
 /**
