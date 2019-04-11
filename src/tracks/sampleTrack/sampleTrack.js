@@ -13,6 +13,7 @@ import clientPoint from "../../utils/point";
 import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
 import ViewUnit from '../../layers/viewUnit';
+import DataSource from '../../data/dataSource';
 
 const defaultStyles = {
     paddingInner: 0.20, // Relative to sample height
@@ -37,8 +38,11 @@ function extractAttributes(row) {
     return attributes;
 }
 
-function processSamples(sampleTsv) {
-    return tsvParse(sampleTsv)
+/**
+ * @param {any[]} flatSamples 
+ */
+function processSamples(flatSamples) {
+    return flatSamples 
         .map(row => ({
             id: row.sample,
             displayName: row.displayName || row.sample,
@@ -78,7 +82,11 @@ export default class SampleTrack extends WebGlTrack {
 
 
         this.viewUnit = new ViewUnit(
-           { genomeSpy, sampleTrack: this },
+            {
+                genomeSpy,
+                sampleTrack: this,
+                getDataSource: config => new DataSource(config, genomeSpy.config.baseurl)
+            },
            undefined,
            config
         );
@@ -147,9 +155,14 @@ export default class SampleTrack extends WebGlTrack {
 
         this.trackContainer.className = "sample-track";
 
-        // TODO: Accept a pre-parsed array of objects
-        // TODO: Get samples from layers if they were not provided
-        this.setSamples(processSamples(await fetch(this.genomeSpy.config.baseurl + this.config.samples).then(res => res.text())));
+        if (this.config.samples) {
+            const sampleDataSource = new DataSource(this.config.samples.data, this.genomeSpy.config.baseurl);
+            this.setSamples(processSamples(await sampleDataSource.getConcatedData()));
+
+        } else {
+            // TODO: Get samples from layers if they were not provided
+            throw new Error("No samples defined!");
+        }
 
         /** @type {BandScale} */
         this.sampleScale = new BandScale();

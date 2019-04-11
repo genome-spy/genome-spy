@@ -174,7 +174,10 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
 function createConstantValueMapper(targetType, encodingConfig) {
     const value = encodingConfig.value;
 
-    if (targetType == "color") {
+    if (targetType == "string") {
+        return () => "" + value;
+
+    } else if (targetType == "color") {
         const color = d3color(/** @type {any} */(value));
         if (!color) {
             throw new Error(`Not a proper color: ${value}`);

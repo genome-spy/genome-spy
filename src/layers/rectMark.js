@@ -46,12 +46,18 @@ export default class RectMark extends Mark {
      * @param {object} uniforms 
      */
     render(sampleId, uniforms) {
+        const vertices = this.vertexDatas.get(sampleId);
+        if (!vertices) {
+            // TODO: Log if debug-mode or something
+            return;
+        }
+
         this.segmentProgram.setUniforms({
             ...uniforms,
             ...fp64.getUniforms()
         });
         this.segmentProgram.draw({
-            ...this.vertexDatas.get(sampleId),
+            ...vertices,
             uniforms: null // Explicityly specify null to prevent erroneous deprecation warning
         });
     }

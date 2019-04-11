@@ -1,4 +1,3 @@
-import { tsvParse } from 'd3-dsv';
 import { group } from 'd3-array';
 import { processData, transformData } from '../data/dataMapper';
 
@@ -17,6 +16,7 @@ import PointMark from '../layers/pointMark';
  * @typedef {Object} UnitContext
  * @prop {import("../tracks/sampleTrack/sampleTrack").default} [sampleTrack]
  * @prop {import("../genomeSpy").default} genomeSpy
+ * @prop {function(string):import("../data/dataSource").default} getDataSource
  */
 
 // TODO: Find a proper place
@@ -42,18 +42,6 @@ export default class ViewUnit {
 
         this.layers = (config.layer || [])
             .map(unitConfig => new ViewUnit(context, this, unitConfig));
-    }
-
-    async fetchData(dataConfig) {
-        // TODO: Support "dataSource", immediate data as objects, etc...
-        // TODO: Create an own module for data loading
-        const dataFiles = typeof dataConfig.url == "string" ?
-            [dataConfig.url] :
-            dataConfig.url;
-
-        const urls = dataFiles.map(filename => this.context.genomeSpy.config.baseurl + filename);
-
-        return Promise.all(urls.map(url => fetch(url).then(data => data.text())));
     }
 
     getData() {
@@ -89,8 +77,7 @@ export default class ViewUnit {
     async initialize() {
 
         if (this.config.data) {
-            const rawDataFiles = await this.fetchData(this.config.data);
-            this.data = rawDataFiles.map(d => tsvParse(d));
+            this.data = await this.context.getDataSource(this.config.data).getDatasets();
 
             // TODO: Concat data frames if they have identical columns
         }
