@@ -38,6 +38,9 @@ export default class RectMark extends Mark {
 
         for (let [sample, rects] of this.specsBySample.entries()) {
             rects = rects.filter(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0);
+            // Draw shortest rects last. Together with minRectWidth, this makes, for example,
+            // narrow copy number segments more clearly visible at an overview zoom level.
+            rects.sort((a, b) => b.x2 - b.x - a.x2 + a.x);
             if (rects.length) {
                 this.vertexDatas.set(
                     sample,
