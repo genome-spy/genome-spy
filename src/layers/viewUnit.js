@@ -12,6 +12,7 @@ import PointMark from '../layers/pointMark';
  * @prop {object[]} [transform]
  * @prop {string} [sample]
  * @prop {Object} [encoding]
+ * @prop {Object} [renderConfig]
  * 
  * @typedef {Object} UnitContext
  * @prop {import("../tracks/sampleTrack/sampleTrack").default} [sampleTrack]
@@ -56,26 +57,22 @@ export default class ViewUnit {
         return null;
     }
 
+    getRenderConfig() {
+        const pe = this.parentUnit ? this.parentUnit.getRenderConfig() : {};
+        const te = this.config.renderConfig || {};
+
+        return Object.assign({}, pe, te);
+    }
+
     getEncoding() {
-        const pe = this.parentUnit ? this.parentUnit.getEncoding() : undefined;
-        const te = this.config.encoding;
+        const pe = this.parentUnit ? this.parentUnit.getEncoding() : {};
+        const te = this.config.encoding || {};
 
-        if (te) {
-            if (pe) {
-                return Object.assign({}, pe, te);
-
-            } else {
-                return te;
-            }
-
-        } else {
-            return pe;
-        }
+        return Object.assign({}, pe, te);
     }
 
 
     async initialize() {
-
         if (this.config.data) {
             this.data = await this.context.getDataSource(this.config.data).getDatasets();
 
@@ -105,7 +102,7 @@ export default class ViewUnit {
             const markClass = markTypes[this.config.mark];
             if (markClass) {
                 /** @type {import("./mark").default} */
-                const mark = new markClass(this.context);
+                const mark = new markClass(this.context, this);
                 const specs = processData(encoding, concatedData, this.context.genomeSpy.visualMapperFactory);
                 const specsBySample = group(specs, d => d.sample)
                 mark.setSpecs(specsBySample);

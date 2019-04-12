@@ -6,13 +6,18 @@ import { rectsToVertices, verticesToVertexData } from '../gl/segmentsToVertices'
 
 import Mark from './mark';
 
+const defaultRenderConfig = {
+    minRectWidth: 1.0,
+    minRectOpacity: 0.0
+};
 
 export default class RectMark extends Mark {
     /**
      * @param {import("./viewUnit").UnitContext} unitContext
+     * @param {import("./viewUnit").default} viewUnit
      */
-    constructor(unitContext) {
-        super(unitContext)
+    constructor(unitContext, viewUnit) {
+        super(unitContext, viewUnit)
     }
 
     async initialize() {
@@ -39,6 +44,8 @@ export default class RectMark extends Mark {
                     verticesToVertexData(this.segmentProgram, rectsToVertices(rects)));
             }
         }
+
+        this.renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
     }
 
     /**
@@ -55,7 +62,8 @@ export default class RectMark extends Mark {
         this.segmentProgram.setUniforms({
             ...uniforms,
             ...fp64.getUniforms(),
-            uMinWidth: 1.0 / this.unitContext.sampleTrack.gl.drawingBufferWidth, // How many pixels
+            uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.sampleTrack.gl.drawingBufferWidth, // How many pixels
+            uMinOpacity: this.renderConfig.minRectOpacity || 0.0
         });
         this.segmentProgram.draw({
             ...vertices,

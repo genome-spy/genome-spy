@@ -11,7 +11,7 @@ attribute float width;
 uniform float uMinWidth;
 
 /** Minimum rect opacity when the rect is narrower than the minimum width */
-const float minOpacity = 0.10;
+uniform float uMinOpacity;
 
 float applyMinWidth(inout float normalizedX) {
     float opacity = 1.0;
@@ -25,7 +25,7 @@ float applyMinWidth(inout float normalizedX) {
 
             // Clamp opacity to ensure that all exons are at least somewhat visible
             // TODO: Could use gamma correction here
-            opacity = max(abs(normalizedWidth) / uMinWidth, minOpacity);
+            opacity = max(abs(normalizedWidth) / uMinWidth, uMinOpacity);
         }
     }
 

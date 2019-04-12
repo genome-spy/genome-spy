@@ -14,9 +14,10 @@ const maxPointSizeAbsolute = 25;
 export default class PointMark extends Mark {
     /**
      * @param {import("./viewUnit").UnitContext} unitContext
+     * @param {import("./viewUnit").default} viewUnit
      */
-    constructor(unitContext) {
-        super(unitContext)
+    constructor(unitContext, viewUnit) {
+        super(unitContext, viewUnit)
     }
 
     async initialize() {

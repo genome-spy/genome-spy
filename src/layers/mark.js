@@ -5,10 +5,12 @@ export default class Mark {
 
     /**
      * @param {import("./viewUnit").UnitContext} unitContext
+     * @param {import("./viewUnit").default} viewUnit
      */
-    constructor(unitContext) {
+    constructor(unitContext, viewUnit) {
         this.unitContext = unitContext;
         this.gl = unitContext.sampleTrack.gl;
+        this.viewUnit = viewUnit;
     }
 
     async initialize() {
