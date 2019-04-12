@@ -54,7 +54,8 @@ export default class RectMark extends Mark {
 
         this.segmentProgram.setUniforms({
             ...uniforms,
-            ...fp64.getUniforms()
+            ...fp64.getUniforms(),
+            uMinWidth: 1.0 / this.unitContext.sampleTrack.gl.drawingBufferWidth, // How many pixels
         });
         this.segmentProgram.draw({
             ...vertices,

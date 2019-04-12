@@ -44,6 +44,7 @@ export function color2floatArray(color) {
 export function rectsToVertices(rects, tesselationThreshold = 8000000) {
 
     const xArr = [];
+    const widthArr = [];
     const yArr = [];
     const colorArr = [];
     const opacityArr = [];
@@ -54,6 +55,8 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
         const [x, x2] = r.x <= r.x2 ? [r.x, r.x2] : [r.x2, r.x];
         const [y, y2] = r.y <= r.y2 ? [1 - r.y, 1 - r.y2] : [1 - r.y2, 1 - r.y];
 
+        const width = x2 - x;
+
         const color = r.color || black;
         const opacity = typeof r.opacity == "number" ? r.opacity : 1;
 
@@ -62,11 +65,10 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
 
         // Start a new segment. Duplicate the first vertex to produce degenerate triangles
         xArr.push(...fp64.fp64ify(x));
+        widthArr.push(-width);
         yArr.push(y);
         colorArr.push(...c);
         opacityArr.push(opacity);
-
-        const width = r.x2 - r.x;
 
         // Tesselate segments
         const tileCount = Math.ceil(width / tesselationThreshold);
@@ -79,10 +81,19 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
             yArr.push(y, y2);
             colorArr.push(...c, ...c);
             opacityArr.push(opacity, opacity);
+
+            let w = 0;
+            if (i == 0) {
+                w = -width;
+            } else if (i >= tileCount) {
+                w = width;
+            }
+            widthArr.push(w, w);
         }
 
         // Duplicate the last vertex to produce a degenerate triangle between the segments
         xArr.push(...fp64.fp64ify(x2));
+        widthArr.push(width);
         yArr.push(y2);
         colorArr.push(...c);
         opacityArr.push(opacity);
@@ -92,6 +103,7 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
         arrays: {
             x: { data: new Float32Array(xArr), accessor: { size: 2 } },
             y: { data: new Float32Array(yArr) },
+            width: { data: new Float32Array(widthArr) },
             color: { data: new Float32Array(colorArr), accessor: { size: 4 } },
             opacity: { data: new Float32Array(opacityArr) }
         },
@@ -180,6 +192,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
         arrays: {
             x: { data: new Float32Array(x), accessor: { size: 2 } },
             y: { data: new Float32Array(y) },
+            width: { data: new Float32Array(y.length) },
             color: { data: new Float32Array(colors), accessor: { size: 4 } },
             opacity: { data: new Float32Array(opacities) }
         },

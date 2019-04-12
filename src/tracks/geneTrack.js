@@ -350,7 +350,7 @@ export default class GeneTrack extends WebGlTrack {
         const gl = this.gl;
 
         const uniforms = {
-            uMinWidth: 0.5 / gl.drawingBufferWidth, // How many pixels
+            uMinWidth: 1.0 / gl.drawingBufferWidth, // How many pixels
             uColor: [0, 0, 0],
             ONE: 1.0, // WTF: https://github.com/uber/luma.gl/pull/622
             ...this.getDomainUniforms()
