@@ -62,8 +62,6 @@ $basic-spacing: 10px;
 
     .sample-track {
         @extend .track;
-
-        flex-grow: 1;
     }
 
     canvas {

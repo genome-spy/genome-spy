@@ -1,5 +1,4 @@
 import { scaleLinear } from 'd3-scale';
-import { tsvParse } from 'd3-dsv';
 import {
     setParameters, fp64, createGLContext, registerShaderModules
 } from 'luma.gl';
@@ -27,7 +26,9 @@ const defaultStyles = {
     fontSize: 12,
     fontFamily: "sans-serif",
 
-    horizontalSpacing: 10 // TODO: Find a better place
+    horizontalSpacing: 10, // TODO: Find a better place
+
+    height: null // Use "flex-grow: 1" if no height has been specified
 }
 
 
@@ -69,7 +70,7 @@ export default class SampleTrack extends WebGlTrack {
     constructor(genomeSpy, config) {
         super(genomeSpy, config);
 
-        this.styles = defaultStyles;
+        this.styles = Object.assign({}, defaultStyles, config.styles);
 
         this.attributePanel = new AttributePanel(this);
 
@@ -155,6 +156,13 @@ export default class SampleTrack extends WebGlTrack {
 
         this.trackContainer.className = "sample-track";
 
+        // TODO: Move to upper level
+        if (typeof this.styles.height == "number") {
+            this.trackContainer.style.height = `${this.styles.height}px`
+        } else {
+            this.trackContainer.style.flexGrow = "1";
+        }
+
         if (this.config.samples) {
             const sampleDataSource = new DataSource(this.config.samples.data, this.genomeSpy.config.baseurl);
             this.setSamples(processSamples(await sampleDataSource.getConcatedData()));
@@ -233,6 +241,7 @@ export default class SampleTrack extends WebGlTrack {
         });
 
         // TODO: Make generic, use context-menu etc...
+        /*
         this.glCanvas.addEventListener("mousedown", event => {
             if (event.ctrlKey) {
                 const point = clientPoint(this.glCanvas, event);
@@ -241,6 +250,7 @@ export default class SampleTrack extends WebGlTrack {
                 this.sortSamplesByLocus(this.layers[0], pos, event.shiftKey ? "bafMean" : "segMean");
             }
         }, false);
+        */
     }
 
     /**
