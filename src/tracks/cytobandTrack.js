@@ -3,8 +3,8 @@ import { color, hsl } from 'd3-color';
 import {
     Program, assembleShaders, setParameters, createGLContext
 } from 'luma.gl';
-import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
-import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
+import VERTEX_SHADER from '../gl/rectangle.vertex.glsl';
+import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
 import { segmentsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
 import { parseUcscCytobands } from '../genome/genome';
 import Interval from "../utils/interval";

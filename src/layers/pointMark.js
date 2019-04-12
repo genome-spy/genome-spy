@@ -1,7 +1,7 @@
 import { Program, assembleShaders, fp64 } from 'luma.gl';
 import { pointsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
-import VERTEX_SHADER from '../gl/pointVertex.glsl';
-import FRAGMENT_SHADER from '../gl/pointFragment.glsl';
+import VERTEX_SHADER from '../gl/point.vertex.glsl';
+import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
 
 import ViewUnit from './viewUnit';
 import Mark from './mark';

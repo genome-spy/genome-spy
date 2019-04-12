@@ -1,7 +1,7 @@
 
 import { Program, assembleShaders, fp64 } from 'luma.gl';
-import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
-import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
+import VERTEX_SHADER from '../gl/rectangle.vertex.glsl';
+import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
 import { rectsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
 
 import Mark from './mark';

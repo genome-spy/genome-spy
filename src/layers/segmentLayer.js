@@ -4,8 +4,8 @@ import { color as d3color } from 'd3-color';
 import { tsvParse } from 'd3-dsv';
 
 import { Program, assembleShaders } from 'luma.gl';
-import VERTEX_SHADER from '../gl/rectangleVertex.glsl';
-import FRAGMENT_SHADER from '../gl/rectangleFragment.glsl';
+import VERTEX_SHADER from '../gl/rectangle.vertex.glsl';
+import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
 import { segmentsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
 
 /**

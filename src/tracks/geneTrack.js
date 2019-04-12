@@ -13,10 +13,10 @@ import TinyQueue from 'tinyqueue';
 import WebGlTrack from './webGlTrack';
 import Interval from "../utils/interval";
 
-import geneVertexShader from '../gl/geneVertex.glsl';
-import geneFragmentShader from '../gl/geneFragment.glsl';
-import exonVertexShader from '../gl/exonVertex.glsl';
-import rectangleFragmentShader from '../gl/rectangleFragment.glsl';
+import geneVertexShader from '../gl/gene.vertex.glsl';
+import geneFragmentShader from '../gl/gene.fragment.glsl';
+import exonVertexShader from '../gl/exon.vertex.glsl';
+import rectangleFragmentShader from '../gl/rectangle.fragment.glsl';
 import IntervalCollection from "../utils/intervalCollection";
 
 import * as entrez from "../fetchers/entrez";
