@@ -34,10 +34,9 @@ export default class AttributePanel {
 
 
     initialize() {
-        this.labelCanvas = this.sampleTrack.createCanvas();
+        this.prepareSampleAttributes();
 
-        this.attributeLabelCanvas = this.sampleTrack.createCanvas();
-        this.attributeLabelCanvas.style.zIndex = "1";
+        this.labelCanvas = this.sampleTrack.createCanvas();
 
         this.sampleMouseTracker = new MouseTracker({
             element: this.labelCanvas,
@@ -48,16 +47,6 @@ export default class AttributePanel {
         })
             .on("contextmenu", this.createContextMenu.bind(this));
 
-        this.attributeLabelMouseTracker = new MouseTracker({
-            element: this.attributeLabelCanvas,
-            tooltip: this.sampleTrack.genomeSpy.tooltip,
-            resolver: this.findAttributeAt.bind(this),
-            tooltipConverter: attribute => Promise.resolve(attribute)
-        })
-            .on("click", attribute => this.sampleTrack.sortSamples(s => s.attributes[attribute]))
-            .on("mouseover", attribute => this.renderAttributeLabels({ hoveredAttribute: attribute }))
-            .on("mouseleave", () => this.renderAttributeLabels());
-
         // TODO: Consider a setSamples() method
         const ctx = this.sampleTrack.get2d(document.createElement("canvas"));
         ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
@@ -66,9 +55,22 @@ export default class AttributePanel {
             [...this.sampleTrack.samples.values()]
                 .map(sample => ctx.measureText(sample.displayName).width),
             0.95);
-            
 
-        this.prepareSampleAttributes();
+        if (this.attributeScales.size > 0) {
+            this.attributeLabelCanvas = this.sampleTrack.createCanvas();
+            this.attributeLabelCanvas.style.zIndex = "1";
+
+            this.attributeLabelMouseTracker = new MouseTracker({
+                element: this.attributeLabelCanvas,
+                tooltip: this.sampleTrack.genomeSpy.tooltip,
+                resolver: this.findAttributeAt.bind(this),
+                tooltipConverter: attribute => Promise.resolve(attribute)
+            })
+                .on("click", attribute => this.sampleTrack.sortSamples(s => s.attributes[attribute]))
+                .on("mouseover", attribute => this.renderAttributeLabels({ hoveredAttribute: attribute }))
+                .on("mouseleave", () => this.renderAttributeLabels());
+
+        }
 
     }
 
@@ -228,8 +230,10 @@ export default class AttributePanel {
 
         // TODO: Compute available vertical space
         // TODO: Compute position: above or below
+        if (this.attributeLabelCanvas) {
         this.sampleTrack.adjustCanvas(this.attributeLabelCanvas, axisInterval, 100);
         this.attributeLabelCanvas.style.top = `${trackHeight}px`;
+        }
 
         // TODO: Need a real layoutbuilder
         const builder = {
@@ -307,6 +311,10 @@ export default class AttributePanel {
      * @param {RenderAttributeLabelOptions} [options]
      */
     renderAttributeLabels(options) {
+        if (!this.attributeLabelCanvas) {
+            return;
+        }
+
         const ctx = this.sampleTrack.get2d(this.attributeLabelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
