@@ -1,4 +1,4 @@
-import { calculateTransform } from './calculate';
+import calculateTransform from './calculate';
 
 test("CalculateTransform", () => {
     const data = [{ a: 2 }, { a: 3 }];

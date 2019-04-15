@@ -9,7 +9,7 @@
 
 // TODO: Implement asType (string, integer, float, boolean)
 
-export function regexMatchTransform(config, rows) {
+export default function regexMatchTransform(config, rows) {
     const re = new RegExp(config.regex);
 
     return rows.map(row => {

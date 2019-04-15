@@ -1,7 +1,8 @@
-import * as dm from './dataMapper';
+import * as dm from '../dataMapper';
+import { createFilter } from './simpleFilter';
 
 test("CreateFilter", () => {
-    const filter = dm.createFilter(/** @type {import('./dataMapper').SimpleFilterConfig } */{
+    const filter = createFilter(/** @type {import('./simpleFilter').SimpleFilterConfig } */{
         field: "x",
         operator: "lte",
         value: 5

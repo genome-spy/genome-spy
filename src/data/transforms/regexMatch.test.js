@@ -1,4 +1,4 @@
-import { regexMatchTransform } from './regexMatch';
+import regexMatchTransform from './regexMatch';
 
 describe("RegexMatchTransform", () => {
     const rows = [

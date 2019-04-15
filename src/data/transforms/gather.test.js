@@ -1,4 +1,4 @@
-import { gather, gatherTransform } from "./gather";
+import gatherTransform, { gather } from "./gather";
 
 const sampleData = [
     { row: 1, sample1_a: "r1s1a", sample2_a: "r1s2a", sample1_b: "r1s1b", sample2_b: "r1s2b" },

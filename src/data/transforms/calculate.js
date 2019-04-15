@@ -13,7 +13,7 @@ import { parse, codegen } from 'vega-expression';
   * @param {CalculateConfig} calculateConfig 
   * @param {Object[]} rows 
   */
-export function calculateTransform(calculateConfig, rows) {
+export default function calculateTransform(calculateConfig, rows) {
     const cg = codegen({
         blacklist: [],
         whitelist: ["datum"],

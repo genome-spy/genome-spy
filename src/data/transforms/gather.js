@@ -35,7 +35,7 @@ export function gather(gatherConfig, rows) {
 }
 
 
-export function gatherTransform(gatherConfig, rows) {
+export default function gatherTransform(gatherConfig, rows) {
     const columnRegex = new RegExp(gatherConfig.columnRegex);
     const gatheredFields = gather(gatherConfig, rows);
 
