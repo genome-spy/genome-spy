@@ -1,19 +1,18 @@
 import { parse, codegen } from 'vega-expression';
 
 /**
- * @typedef {Object} CalculateConfig
- * @prop {string} type
- * @prop {string} calculate
+ * @typedef {Object} FormulaConfig
+ * @prop {string} expr
  * @prop {string} as
  */
 
 
  /**
   * 
-  * @param {CalculateConfig} calculateConfig 
+  * @param {FormulaConfig} formulaConfig 
   * @param {Object[]} rows 
   */
-export default function calculateTransform(calculateConfig, rows) {
+export default function calculateTransform(formulaConfig, rows) {
     const cg = codegen({
         blacklist: [],
         whitelist: ["datum"],
@@ -22,7 +21,7 @@ export default function calculateTransform(calculateConfig, rows) {
     });
     console.log(cg);
 
-    const parsed = parse(calculateConfig.calculate);
+    const parsed = parse(formulaConfig.expr);
     console.log(parsed);
 
     const generatedCode = cg(parsed);
@@ -34,6 +33,6 @@ export default function calculateTransform(calculateConfig, rows) {
 
     return rows.map(row => ({
         ...row,
-        [calculateConfig.as]: fn(row, global)
+        [formulaConfig.as]: fn(row, global)
     }));
 }
