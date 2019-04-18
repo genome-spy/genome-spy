@@ -1,8 +1,13 @@
-import { tsvParse } from 'd3-dsv';
+import { read } from 'datalib';
 
 /**
+ * @typedef {Object} FormatConfig
+ * @prop {String} type
+ * @prop {Object} [parse]
+ */
+/**
  * @typedef {Object} DataConfig
- * @prop {String} [type]
+ * @prop {FormatConfig} [format]
  * @prop {String[] | String} [url]
  * @prop {Object[]} [values]
  * 
@@ -27,25 +32,40 @@ export default class DataSource {
      * @returns {Promise<any[][]>}
      */
     async getDatasets() {
+        let format = this.config.format;
+        if (format && typeof format.parse == "undefined") {
+            format = {
+                ...format,
+                parse: "auto"
+            };
+        }
+
         let data;
 
         if (this.config.values) {
-            if (!Array.isArray(this.config.values)) {
-                throw new Error('"values" in data configuration is not an array!');
+            const values = this.config.values;
+
+            if (Array.isArray(values)) {
+                data = values;
+
+            } else if (typeof values == "string") {
+                data = read(values, format); // TODO: Require format & type
+
+            } else {
+                throw new Error('"values" in data configuration is not an array nor a string!');
             }
 
-            data = this.config.values;
+            data = [data];
 
         } else if (this.config.url) {
             const rawData = await this.fetchData();
-            data = rawData.map(d => tsvParse(d)); // TODO: CSV, etc
+            // TODO: Infer format from file extension
+            data = rawData.map(d => read(d, format));
 
         } else {
             throw new Error('No "url" or "values" defined in data configuration!');
         }
 
-
-        // TODO: type inference and conversion
 
         return data;
     }
@@ -60,7 +80,6 @@ export default class DataSource {
         const urls = dataFiles.map(u => this.addBaseUrl(u));
 
         return Promise.all(urls.map(url => fetch(url).then(data => data.text())));
-
     }
 
     addBaseUrl(url) {

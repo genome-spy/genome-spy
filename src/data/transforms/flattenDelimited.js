@@ -21,6 +21,8 @@ export default function flattenDelimitedTransform(config, rows) {
     const as = config.as || config.fields;
 
     for (const row of rows) {
+        if (fields.some(f => !row[f])) continue;
+
         const splitFields = fields.map((f, i) => row[f].split(separators[i]));
         validateSplit(splitFields, row);
         const flatLen = splitFields[0].length;
