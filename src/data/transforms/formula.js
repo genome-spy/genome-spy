@@ -19,13 +19,9 @@ export default function calculateTransform(formulaConfig, rows) {
         globalvar: "global",
         fieldvar: "datum"
     });
-    console.log(cg);
 
     const parsed = parse(formulaConfig.expr);
-    console.log(parsed);
-
     const generatedCode = cg(parsed);
-    console.log(generatedCode);
 
     const global = { };
 
