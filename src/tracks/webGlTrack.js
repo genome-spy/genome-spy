@@ -1,5 +1,5 @@
-import { fp64 } from 'luma.gl';
 import { Matrix4 } from 'math.gl';
+import { fp64ify } from '../gl/includes/fp64-utils';
 import Track from "./track";
 
 export default class WebGlTrack extends Track {
@@ -32,8 +32,8 @@ export default class WebGlTrack extends Track {
         const domain = this.genomeSpy.getViewportDomain();
 
         return {
-            uDomainBegin: fp64.fp64ify(domain.lower),
-            uDomainWidth: fp64.fp64ify(domain.width())
+            uDomainBegin: fp64ify(domain.lower),
+            uDomainWidth: fp64ify(domain.width())
         };
     }
 }

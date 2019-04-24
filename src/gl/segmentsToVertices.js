@@ -1,5 +1,5 @@
 import { color as d3color } from 'd3-color';
-import { VertexArray, Buffer, fp64 } from 'luma.gl';
+import { fp64ify } from './includes/fp64-utils';
 import Interval from "../utils/interval";
 
 /*
@@ -64,7 +64,7 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
         const c = color2floatArray(color);
 
         // Start a new segment. Duplicate the first vertex to produce degenerate triangles
-        xArr.push(...fp64.fp64ify(x));
+        xArr.push(...fp64ify(x));
         widthArr.push(-width);
         yArr.push(y);
         colorArr.push(...c);
@@ -76,7 +76,7 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
             const frac = i / tileCount;
             // Interpolate X & Y
             // Emulate 64bit floats using two 32bit floats
-            const iX = fp64.fp64ify(r.x + width * frac);
+            const iX = fp64ify(r.x + width * frac);
             xArr.push(...iX, ...iX);
             yArr.push(y, y2);
             colorArr.push(...c, ...c);
@@ -92,7 +92,7 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
         }
 
         // Duplicate the last vertex to produce a degenerate triangle between the segments
-        xArr.push(...fp64.fp64ify(x2));
+        xArr.push(...fp64ify(x2));
         widthArr.push(width);
         yArr.push(y2);
         colorArr.push(...c);
@@ -101,10 +101,10 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
 
     return {
         arrays: {
-            x: { data: new Float32Array(xArr), accessor: { size: 2 }, numComponents: 2 },
+            x: { data: new Float32Array(xArr), numComponents: 2 },
             y: { data: new Float32Array(yArr), numComponents: 1 },
             width: { data: new Float32Array(widthArr), numComponents: 1  },
-            color: { data: new Float32Array(colorArr), accessor: { size: 4 }, numComponents: 4 },
+            color: { data: new Float32Array(colorArr), numComponents: 4 },
             opacity: { data: new Float32Array(opacityArr), numComponents: 1  }
         },
         vertexCount: yArr.length,
@@ -143,8 +143,8 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
 
     for (let s of segments) {
         // Emulate 64bit floats using two 32bit floats
-        const begin = fp64.fp64ify(s.interval.lower);
-        const end = fp64.fp64ify(s.interval.upper);
+        const begin = fp64ify(s.interval.lower);
+        const end = fp64ify(s.interval.upper);
 
         const topLeft = 0.0 + (s.paddingTopLeft || s.paddingTop || 0);
         const topRight = 0.0 + (s.paddingTopRight || s.paddingTop || 0);
@@ -172,7 +172,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
             const r = i / tileCount;
             // Interpolate X & Y
             // TODO: Computation could be optimized a bit. Width is computed repetedly, etc..
-            const iX = fp64.fp64ify(s.interval.lower + s.interval.width() * r);
+            const iX = fp64ify(s.interval.lower + s.interval.width() * r);
             const iBottom = bottomLeft + (bottomRight - bottomLeft) * r;
             const iTop = topLeft + (topRight - topLeft) * r;
             x.push(...iX, ...iX);
@@ -190,10 +190,10 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
 
     return {
         arrays: {
-            x: { data: new Float32Array(x), accessor: { size: 2 }, numComponents: 2 },
+            x: { data: new Float32Array(x), numComponents: 2 },
             y: { data: new Float32Array(y), numComponents: 1 },
             width: { data: new Float32Array(y.length), numComponents: 1 },
-            color: { data: new Float32Array(colors), accessor: { size: 4 }, numComponents: 4 },
+            color: { data: new Float32Array(colors), numComponents: 4 },
             opacity: { data: new Float32Array(opacities), numComponents: 1 }
         },
         vertexCount: y.length,
@@ -217,40 +217,17 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
  * @param {PointSpec[]} points
  */
 export function pointsToVertices(points) {
-    const x = points.map(p => fp64.fp64ify(p.x)).reduce((a, b) => { a.push(...b); return a; }, []);
+    const x = points.map(p => fp64ify(p.x)).reduce((a, b) => { a.push(...b); return a; }, []);
     const size = points.map(p => typeof p.size == "number" ? Math.sqrt(p.size) : 1.0);
     const color = points.map(p => color2floatArray(p.color || gray)).reduce((a, b) => { a.push(...b); return a; }, []);
 
     return {
         arrays: {
-            x: { data: new Float32Array(x), accessor: { size: 2 }, numComponents: 2 },
+            x: { data: new Float32Array(x), numComponents: 2 },
             size: { data: new Float32Array(size), numComponents: 1 },
-            color: { data: new Float32Array(color), accessor: { size: 4 }, numComponents: 4 }
+            color: { data: new Float32Array(color), numComponents: 4 }
         },
         vertexCount: points.length,
         drawMode: glConst.POINTS
-    };
-}
-
-/**
- * 
- * @param {*} program 
- * @param {*} vertices 
- */
-export function verticesToVertexData(program, vertices) {
-    const gl = program.gl;
-    const vertexArray = new VertexArray(gl, { program });
-
-    const mapMembers = (obj, f) => 
-        Object.assign({}, ...Object.keys(obj).map(k => ({[k]: f(obj[k])})));
-
-    // Put each TypedArray into a Buffer
-    vertexArray.setAttributes(mapMembers(vertices.arrays,
-        obj => new Buffer(gl, { ...obj, usage: glConst.STATIC_DRAW })));
-
-    return {
-        vertexArray: vertexArray,
-        vertexCount: vertices.vertexCount,
-        drawMode: vertices.drawMode
     };
 }

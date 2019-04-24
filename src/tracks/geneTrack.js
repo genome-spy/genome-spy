@@ -5,7 +5,6 @@ import { bisector } from 'd3-array';
 import { tsvParseRows } from 'd3-dsv';
 
 import { Matrix4 } from 'math.gl';
-import { fp64 } from 'luma.gl';
 import TinyQueue from 'tinyqueue';
 
 import WebGlTrack from './webGlTrack';
@@ -17,6 +16,7 @@ import geneFragmentShader from '../gl/gene.fragment.glsl';
 import exonVertexShader from '../gl/exon.vertex.glsl';
 import rectangleFragmentShader from '../gl/rectangle.fragment.glsl';
 
+import { fp64ify } from '../gl/includes/fp64-utils';
 
 import * as entrez from "../fetchers/entrez";
 import * as html from "../utils/html";
@@ -466,8 +466,8 @@ function exonsToVertices(genes, laneHeight, laneSpacing) {
 
     genes.forEach((gene, gi) => {
         exonsOfGenes[gi].forEach(exon => {
-            const begin = fp64.fp64ify(exon.lower);
-            const end = fp64.fp64ify(exon.upper);
+            const begin = fp64ify(exon.lower);
+            const end = fp64ify(exon.upper);
             const width = exon.width();
 
             const top = gene.lane * (laneHeight + laneSpacing);
@@ -499,8 +499,8 @@ function genesToVertices(genes, laneHeight, laneSpacing) {
     const yEdge = new Float32Array(genes.length * VERTICES_PER_RECTANGLE);
 
     genes.forEach((gene, i) => {
-        const begin = fp64.fp64ify(gene.interval.lower);
-        const end = fp64.fp64ify(gene.interval.upper);
+        const begin = fp64ify(gene.interval.lower);
+        const end = fp64ify(gene.interval.upper);
 
         const top = gene.lane * (laneHeight + laneSpacing);
         const bottom = top + laneHeight;
