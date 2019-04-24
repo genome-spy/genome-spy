@@ -1,28 +1,30 @@
+import * as twgl from 'twgl-base.js';
 
 import { scaleLinear } from 'd3-scale';
 import { bisector } from 'd3-array';
 import { tsvParseRows } from 'd3-dsv';
 
 import { Matrix4 } from 'math.gl';
-import {
-    Program, VertexArray, Buffer, assembleShaders, setParameters, createGLContext,
-    fp64
-} from 'luma.gl';
+import { fp64 } from 'luma.gl';
 import TinyQueue from 'tinyqueue';
 
 import WebGlTrack from './webGlTrack';
 import Interval from "../utils/interval";
+import IntervalCollection from "../utils/intervalCollection";
 
 import geneVertexShader from '../gl/gene.vertex.glsl';
 import geneFragmentShader from '../gl/gene.fragment.glsl';
 import exonVertexShader from '../gl/exon.vertex.glsl';
 import rectangleFragmentShader from '../gl/rectangle.fragment.glsl';
-import IntervalCollection from "../utils/intervalCollection";
+
 
 import * as entrez from "../fetchers/entrez";
 import * as html from "../utils/html";
 import MouseTracker from "../mouseTracker";
 import contextMenu from "../contextMenu";
+
+
+const STREAM_DRAW = 0x88E0;
 
 
 const defaultConfig = {
@@ -86,39 +88,14 @@ export default class GeneTrack extends WebGlTrack {
             this.genomeSpy.chromMapper,
             await fetch(`private/refSeq_genes_scored.${this.genomeSpy.genome.name}.compressed.txt`).then(res => res.text())));
 
-        this.glCanvas = this.createCanvas();
-
-        const gl = createGLContext({ canvas: this.glCanvas });
-        this.gl = gl;
-
-        setParameters(gl, {
-            clearColor: [1, 1, 1, 1],
-            clearDepth: [1],
-            depthTest: false,
-            depthFunc: gl.LEQUAL
-        });
-
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
-        this.geneProgram = new Program(gl, assembleShaders(gl, {
-            vs: geneVertexShader,
-            fs: geneFragmentShader,
-            modules: ['fp64']
-        }));
-
-        this.exonProgram = new Program(gl, assembleShaders(gl, {
-            vs: exonVertexShader,
-            fs: rectangleFragmentShader,
-            modules: ['fp64']
-        }));
+        this.initializeWebGL();
 
         this.visibleGenes = [];
 
         this.visibleClusters = [];
 
-        this.geneVerticeMap = new Map();
-        this.exonVerticeMap = new Map();
+        this.geneBufferInfoMap = new Map();
+        this.exonBufferInfoMap = new Map();
 
         this.symbolWidths = new Map();
 
@@ -147,6 +124,19 @@ export default class GeneTrack extends WebGlTrack {
         });
 
         this.genomeSpy.zoom.attachZoomEvents(this.symbolCanvas);
+    }
+
+    initializeWebGL() {
+        this.glCanvas = this.createCanvas();
+        const gl = this.glCanvas.getContext("webgl");
+        this.gl = gl;
+
+        gl.clearColor(1, 1, 1, 1);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+        this.geneProgramInfo = twgl.createProgramInfo(gl, [ geneVertexShader, geneFragmentShader ]);
+        this.exonProgramInfo = twgl.createProgramInfo(gl, [ exonVertexShader, rectangleFragmentShader ]);
     }
 
     entrezSummary2Html(summary) {
@@ -209,47 +199,33 @@ export default class GeneTrack extends WebGlTrack {
 
         this.visibleClusters = clusters;
 
+        const createBufferInfo = (vertices) =>
+            twgl.createBufferInfoFromArrays(
+                this.gl,
+                vertices.arrays,
+                { numElements: vertices.numElements });
 
         entering.forEach(cluster => {
-            this.exonVerticeMap.set(
+            this.exonBufferInfoMap.set(
                 cluster.id,
-                exonsToVertices(
-                    this.exonProgram,
+                createBufferInfo(exonsToVertices(
                     cluster.genes,
                     this.styles.laneHeight,
                     this.styles.laneSpacing
-                ));
+                )));
 
-            this.geneVerticeMap.set(
+            this.geneBufferInfoMap.set(
                 cluster.id,
-                genesToVertices(
-                    this.geneProgram,
+                createBufferInfo(genesToVertices(
                     cluster.genes,
                     this.styles.laneHeight,
                     this.styles.laneSpacing
-                ));
+                )));
         });
 
         exiting.forEach(cluster => {
-            const exonVertices = this.exonVerticeMap.get(cluster.id);
-            if (exonVertices) {
-                exonVertices.vertexArray.delete();
-                this.exonVerticeMap.delete(cluster.id);
-
-            } else {
-                // TODO: Figure out what's the problem
-                console.warn("No exon vertices found for " + cluster.id);
-            }
-
-            const geneVertices = this.geneVerticeMap.get(cluster.id);
-            if (geneVertices) {
-                geneVertices.vertexArray.delete();
-                this.geneVerticeMap.delete(cluster.id);
-
-            } else {
-                // TODO: Figure out what's the problem
-                console.warn("No gene vertices found for " + cluster.id);
-            }
+            this.exonBufferInfoMap.delete(cluster.id);
+            this.geneBufferInfoMap.delete(cluster.id);
         });
     }
 
@@ -361,29 +337,33 @@ export default class GeneTrack extends WebGlTrack {
             .scale([this.gl.canvas.clientWidth, 1, 1]);
         const uTMatrix = this.viewportProjection.clone().multiplyRight(view);
 
-        this.visibleClusters.forEach(cluster => {
-            this.exonProgram.setUniforms({
-                ...uniforms,
-                uTMatrix
-            });
-            
-            this.exonProgram.draw({
-                ...this.exonVerticeMap.get(cluster.id),
-                uniforms: null
-            });
+        
 
-            this.geneProgram.setUniforms({
-                ...uniforms,
-                uTMatrix,
-                uResolution: this.styles.laneHeight
-            });
-
-            this.geneProgram.draw({
-                ...this.geneVerticeMap.get(cluster.id),
-                uniforms: null 
-            });
+        gl.useProgram(this.geneProgramInfo.program);
+        twgl.setUniforms(this.geneProgramInfo, {
+            ...uniforms,
+            uTMatrix,
+            uResolution: this.styles.laneHeight
         });
 
+        this.visibleClusters.forEach(cluster => {
+            const bufferInfo = this.geneBufferInfoMap.get(cluster.id);
+            twgl.setBuffersAndAttributes(gl, this.geneProgramInfo, bufferInfo);
+            twgl.drawBufferInfo(gl, bufferInfo);
+        });
+
+
+        gl.useProgram(this.exonProgramInfo.program);
+        twgl.setUniforms(this.exonProgramInfo, {
+            ...uniforms,
+            uTMatrix,
+        });
+
+        this.visibleClusters.forEach(cluster => {
+            const bufferInfo = this.exonBufferInfoMap.get(cluster.id);
+            twgl.setBuffersAndAttributes(gl, this.exonProgramInfo, bufferInfo);
+            twgl.drawBufferInfo(gl, bufferInfo);
+        });
     }
 
 
@@ -460,7 +440,7 @@ function createExonIntervals(gene) {
 }
 
 
-function exonsToVertices(program, genes, laneHeight, laneSpacing) {
+function exonsToVertices(genes, laneHeight, laneSpacing) {
 
     /* TODO: Consider using flat shading:
      * https://www.khronos.org/opengl/wiki/Type_Qualifier_(GLSL)#Interpolation_qualifiers
@@ -501,23 +481,18 @@ function exonsToVertices(program, genes, laneHeight, laneSpacing) {
         });
     });
 
-    const gl = program.gl;
-    const vertexArray = new VertexArray(gl, { program });
-
-    vertexArray.setAttributes({
-        x: new Buffer(gl, { data: x, accessor: { size: 2 }, usage: gl.STATIC_DRAW }),
-        y: new Buffer(gl, { data: y, usage: gl.STATIC_DRAW }),
-        width: new Buffer(gl, { data: widths, usage: gl.STATIC_DRAW }),
-    });
-
     return {
-        vertexArray: vertexArray,
-        vertexCount: totalExonCount * VERTICES_PER_RECTANGLE
+        arrays: {
+            x: { data: x, numComponents: 2, drawType: STREAM_DRAW },
+            y: { data: y, numComponents: 1, drawType: STREAM_DRAW },
+            width: { data: widths, numComponents: 1, drawType: STREAM_DRAW },
+        },
+        numElements: totalExonCount * VERTICES_PER_RECTANGLE
     };
 }
 
 
-function genesToVertices(program, genes, laneHeight, laneSpacing) {
+function genesToVertices(genes, laneHeight, laneSpacing) {
     const VERTICES_PER_RECTANGLE = 6;
     const x = new Float32Array(genes.length * VERTICES_PER_RECTANGLE * 2);
     const y = new Float32Array(genes.length * VERTICES_PER_RECTANGLE);
@@ -538,18 +513,13 @@ function genesToVertices(program, genes, laneHeight, laneSpacing) {
         yEdge.set([bottomEdge, bottomEdge, topEdge, topEdge, topEdge, bottomEdge], i * VERTICES_PER_RECTANGLE);
     });
 
-    const gl = program.gl;
-    const vertexArray = new VertexArray(gl, { program });
-
-    vertexArray.setAttributes({
-        x: new Buffer(gl, { data: x, accessor: { size: 2 }, usage: gl.STATIC_DRAW }),
-        y: new Buffer(gl, { data: y, usage: gl.STATIC_DRAW }),
-        yEdge: new Buffer(gl, { data: yEdge, usage: gl.STATIC_DRAW }),
-    });
-
     return {
-        vertexArray: vertexArray,
-        vertexCount: genes.length * VERTICES_PER_RECTANGLE
+        arrays: {
+            x: { data: x, numComponents: 2, drawType: STREAM_DRAW },
+            y: { data: y, numComponents: 1, drawType: STREAM_DRAW },
+            yEdge: { data: yEdge, numComponents: 1, drawType: STREAM_DRAW },
+        },
+        numElements: genes.length * VERTICES_PER_RECTANGLE
     };
 }
 

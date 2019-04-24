@@ -27,11 +27,7 @@ export default class RectMark extends Mark {
     _initGL() {
         const gl = this.gl;
 
-        this.programInfo = twgl.createProgramInfo(gl, [
-            VERTEX_SHADER,
-            FRAGMENT_SHADER
-        ]);
-
+        this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
         this.bufferInfos = new Map();
 
@@ -47,29 +43,33 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @param {string} sampleId 
-     * @param {object} uniforms 
+     * @param {object[]} samples 
+     * @param {object} globalUniforms 
      */
-    render(sampleId, uniforms) {
-        const bufferInfo = this.bufferInfos.get(sampleId);
-        if (!bufferInfo) {
-            // TODO: Log if debug-mode or something
-            return;
-        }
-
+    render(samples, globalUniforms) {
         const gl = this.gl;
 
         gl.useProgram(this.programInfo.program);
-
-        twgl.setBuffersAndAttributes(gl, this.programInfo, bufferInfo)
         twgl.setUniforms(this.programInfo, {
-            ...uniforms,
-            //...fp64.getUniforms(),
+            ...globalUniforms,
             uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.sampleTrack.gl.drawingBufferWidth, // How many pixels
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0
         });
 
-        twgl.drawBufferInfo(gl, bufferInfo, gl.TRIANGLE_STRIP);
+        for (const sampleData of samples) {
+            const bufferInfo = this.bufferInfos.get(sampleData.sampleId);
+            if (!bufferInfo) {
+                // TODO: Log if debug-mode or something
+                continue;
+            }
+
+            twgl.setBuffersAndAttributes(gl, this.programInfo, bufferInfo)
+            twgl.setUniforms(this.programInfo, {
+                ...sampleData.uniforms,
+            });
+
+            twgl.drawBufferInfo(gl, bufferInfo, gl.TRIANGLE_STRIP);
+        }
     }
 
     /**

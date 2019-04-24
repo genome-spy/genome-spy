@@ -1,11 +1,9 @@
+import * as twgl from 'twgl-base.js';
 import { scaleOrdinal } from 'd3-scale';
 import { color, hsl } from 'd3-color';
-import {
-    Program, assembleShaders, setParameters, createGLContext
-} from 'luma.gl';
 import VERTEX_SHADER from '../gl/rectangle.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
-import { segmentsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
+import { segmentsToVertices } from '../gl/segmentsToVertices';
 import { parseUcscCytobands } from '../genome/genome';
 import Interval from "../utils/interval";
 import WebGlTrack from "./webGlTrack";
@@ -77,37 +75,7 @@ export default class CytobandTrack extends WebGlTrack {
 
         this.mappedCytobands = mapUcscCytobands(this.genomeSpy.chromMapper, cytobands);
 
-
-        this.glCanvas = this.createCanvas();
-        const gl = createGLContext({ canvas: this.glCanvas });
-        this.gl = gl;
-
-        setParameters(gl, {
-            clearColor: [1, 1, 1, 1],
-            clearDepth: [1],
-            depthTest: false,
-            depthFunc: gl.LEQUAL
-        });
-
-        this.bandProgram = new Program(gl, assembleShaders(gl, {
-            vs: VERTEX_SHADER,
-            fs: FRAGMENT_SHADER,
-            modules: ['fp64']
-        }));
-
-        const vertices = segmentsToVertices(
-            this.mappedCytobands.map(band => Object.assign(
-                {
-                    interval: band.interval,
-                    colorTop: giemsaScale(band.gieStain).background.brighter(0.1),
-                    colorBottom: giemsaScale(band.gieStain).background.darker(0.3),
-                },
-                computePaddings(band)
-            ))
-        );
-
-        this.vertexData = verticesToVertexData(this.bandProgram, vertices);
-
+        this.initializeWebGL();
 
         // TODO: Create textures for labels and render everything with WebGL
         this.bandLabelCanvas = this.createCanvas();
@@ -130,6 +98,38 @@ export default class CytobandTrack extends WebGlTrack {
         this.genomeSpy.zoom.attachZoomEvents(this.bandLabelCanvas);
     }
 
+    initializeWebGL() {
+        this.glCanvas = this.createCanvas();
+        const gl = this.glCanvas.getContext("webgl");
+        this.gl = gl;
+
+        gl.clearColor(1, 1, 1, 1);
+
+        this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
+
+        const vertices = segmentsToVertices(
+            this.mappedCytobands.map(band => Object.assign(
+                {
+                    interval: band.interval,
+                    colorTop: giemsaScale(band.gieStain).background.brighter(0.1),
+                    colorBottom: giemsaScale(band.gieStain).background.darker(0.3),
+                },
+                computePaddings(band)
+            ))
+        );
+
+        this.bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertices.arrays);
+
+        gl.useProgram(this.programInfo.program);
+        twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+        twgl.setUniforms(this.programInfo, {
+            // TODO: Move to base class / abstraction
+            yPosLeft: [0, 1],
+            yPosRight: [0, 1],
+            ONE: 1.0, // fp64 hack
+        });
+    }
+
     resizeCanvases(layout) {
         this.adjustCanvas(this.bandLabelCanvas, layout.viewport);
         this.adjustCanvas(this.glCanvas, layout.viewport);
@@ -147,22 +147,10 @@ export default class CytobandTrack extends WebGlTrack {
     renderBands() {
         const gl = this.gl;
 
-        //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        // TODO: Move to base class / abstraction
-        const uniforms = {
-            yPosLeft: [0, 1],
-            yPosRight: [0, 1],
-            ONE: 1.0, // WTF: https://github.com/uber/luma.gl/pull/622
-            ...this.getDomainUniforms()
-        };
-
-        this.bandProgram.setUniforms(uniforms);
-        this.bandProgram.draw({
-            ...this.vertexData,
-            uniforms: null
-        });
+        twgl.setUniforms(this.programInfo, this.getDomainUniforms());
+        twgl.drawBufferInfo(gl, this.bufferInfo, gl.TRIANGLE_STRIP);
     }
 
     renderLabels() {

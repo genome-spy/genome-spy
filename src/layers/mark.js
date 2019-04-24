@@ -31,10 +31,10 @@ export default class Mark {
     }
 
     /**
-     * @param {string} sampleId 
-     * @param {object} uniforms 
+     * @param {object[]} samples
+     * @param {object} globalUniforms 
      */
-    render(sampleId, uniforms) {
+    render(samples, globalUniforms) {
     }
 
     /**

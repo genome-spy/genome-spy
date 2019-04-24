@@ -48,31 +48,35 @@ export default class PointMark extends Mark {
     }
 
     /**
-     * @param {string} sampleId 
-     * @param {object} uniforms 
+     * @param {object[]} samples 
+     * @param {object} globalUniforms 
      */
-    render(sampleId, uniforms) {
-        const bufferInfo = this.bufferInfos.get(sampleId);
-        if (!bufferInfo) {
-            // TODO: Log if debug-mode or something
-            return;
-        }
-
+    render(samples, globalUniforms) {
         const gl = this.gl;
 
         gl.useProgram(this.programInfo.program);
-
-        twgl.setBuffersAndAttributes(gl, this.programInfo, bufferInfo)
         twgl.setUniforms(this.programInfo, {
-            ...uniforms,
-            //...fp64.getUniforms(),
+            ...globalUniforms,
             viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight * window.devicePixelRatio,
             devicePixelRatio: window.devicePixelRatio,
             maxPointSizeRelative,
             maxPointSizeAbsolute: maxPointSizeAbsolute * window.devicePixelRatio,
         });
 
-        twgl.drawBufferInfo(gl, bufferInfo, gl.POINTS);
+        for (const sampleData of samples) {
+            const bufferInfo = this.bufferInfos.get(sampleData.sampleId);
+            if (!bufferInfo) {
+                // TODO: Log if debug-mode or something
+                continue;
+            }
+
+            twgl.setBuffersAndAttributes(gl, this.programInfo, bufferInfo)
+            twgl.setUniforms(this.programInfo, {
+                ...sampleData.uniforms,
+            });
+
+            twgl.drawBufferInfo(gl, bufferInfo, gl.POINTS);
+        }
     }
 
     /**

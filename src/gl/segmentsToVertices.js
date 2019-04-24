@@ -190,11 +190,11 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
 
     return {
         arrays: {
-            x: { data: new Float32Array(x), accessor: { size: 2 } },
-            y: { data: new Float32Array(y) },
-            width: { data: new Float32Array(y.length) },
-            color: { data: new Float32Array(colors), accessor: { size: 4 } },
-            opacity: { data: new Float32Array(opacities) }
+            x: { data: new Float32Array(x), accessor: { size: 2 }, numComponents: 2 },
+            y: { data: new Float32Array(y), numComponents: 1 },
+            width: { data: new Float32Array(y.length), numComponents: 1 },
+            color: { data: new Float32Array(colors), accessor: { size: 4 }, numComponents: 4 },
+            opacity: { data: new Float32Array(opacities), numComponents: 1 }
         },
         vertexCount: y.length,
         drawMode: glConst.TRIANGLE_STRIP

@@ -1,6 +1,4 @@
-import {
-    resizeGLContext, registerShaderModules, fp64
-} from 'luma.gl';
+import { fp64 } from 'luma.gl';
 import { Matrix4 } from 'math.gl';
 import Track from "./track";
 
@@ -11,12 +9,12 @@ export default class WebGlTrack extends Track {
 
     async initialize(trackContainer) {
         await super.initialize(trackContainer);
-
-        registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
     }
 
     adjustGl(gl) {
-        resizeGLContext(gl, { useDevicePixels: true });
+        gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
+        gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio; 
+
         gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
         this.viewportProjection = Object.freeze(new Matrix4().ortho({
