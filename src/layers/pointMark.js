@@ -1,4 +1,4 @@
-import { Program, assembleShaders, fp64 } from 'luma.gl';
+import * as twgl from 'twgl-base.js';
 import { pointsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
 import VERTEX_SHADER from '../gl/point.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
@@ -30,21 +30,19 @@ export default class PointMark extends Mark {
     _initGL() {
         const gl = this.gl;
 
-        this.segmentProgram = new Program(gl, assembleShaders(gl, {
-            vs: VERTEX_SHADER,
-            fs: FRAGMENT_SHADER,
-            modules: ['fp64']
-        }));
+        this.programInfo = twgl.createProgramInfo(gl, [
+            VERTEX_SHADER,
+            FRAGMENT_SHADER
+        ]);
 
-        
-        this.vertexDatas = new Map();
+
+        this.bufferInfos = new Map();
 
         for (let [sample, points] of this.specsBySample.entries()) {
             points = points.filter(p => p.size !== 0.0);
             if (points.length) {
-                this.vertexDatas.set(
-                    sample,
-                    verticesToVertexData(this.segmentProgram, pointsToVertices(points)));
+                const vertexData = pointsToVertices(points);
+                this.bufferInfos.set(sample, twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays));
             }
         }
     }
@@ -54,26 +52,27 @@ export default class PointMark extends Mark {
      * @param {object} uniforms 
      */
     render(sampleId, uniforms) {
-        const vertices = this.vertexDatas.get(sampleId);
-        if (!vertices) {
+        const bufferInfo = this.bufferInfos.get(sampleId);
+        if (!bufferInfo) {
             // TODO: Log if debug-mode or something
             return;
         }
 
-        if (this.vertexDatas.has(sampleId)) {
-            this.segmentProgram.setUniforms({
-                ...uniforms,
-                viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight * window.devicePixelRatio,
-                devicePixelRatio: window.devicePixelRatio,
-                maxPointSizeRelative,
-                maxPointSizeAbsolute: maxPointSizeAbsolute * window.devicePixelRatio,
-                ...fp64.getUniforms()
-            });
-            this.segmentProgram.draw({
-                ...vertices,
-                uniforms: null // Explicityly specify null to prevent erroneous deprecation warning
-            });
-        }
+        const gl = this.gl;
+
+        gl.useProgram(this.programInfo.program);
+
+        twgl.setBuffersAndAttributes(gl, this.programInfo, bufferInfo)
+        twgl.setUniforms(this.programInfo, {
+            ...uniforms,
+            //...fp64.getUniforms(),
+            viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight * window.devicePixelRatio,
+            devicePixelRatio: window.devicePixelRatio,
+            maxPointSizeRelative,
+            maxPointSizeAbsolute: maxPointSizeAbsolute * window.devicePixelRatio,
+        });
+
+        twgl.drawBufferInfo(gl, bufferInfo, gl.POINTS);
     }
 
     /**

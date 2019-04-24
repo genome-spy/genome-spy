@@ -12,10 +12,13 @@ uniform highp vec2 uDomainWidth;
 float normalizeX() {
     float normalizedX;
 
-    if (uDomainWidth.x < precisionThreshold) {
+    if (false && uDomainWidth.x < precisionThreshold) {
+        normalizedX = 0.0;
+        /*
         vec2 translated = sub_fp64(x, uDomainBegin);
         // Normalize to [0, 1]
         normalizedX = div_fp64(translated, uDomainWidth).x;
+        */
 
     } else {
         normalizedX = (x.x - uDomainBegin.x) / uDomainWidth.x;

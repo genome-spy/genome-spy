@@ -32,6 +32,7 @@
     "eventemitter3": "^3.1.0",
     "luma.gl": "^6.4.2",
     "tinyqueue": "^2.0.0",
+    "twgl-base.js": "^4.9.1",
     "vega-expression": "^2.6.0"
   },
   "devDependencies": {

@@ -178,28 +178,7 @@ export default class SampleTrack extends WebGlTrack {
         this.sampleScale.paddingInner = this.styles.paddingInner;
         this.sampleScale.paddingOuter = this.styles.paddingOuter;
 
-
-        // Canvas for WebGL
-        this.glCanvas = this.createCanvas();
-
-        registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
-
-        const gl = createGLContext({
-            canvas: this.glCanvas,
-            manageState: false
-        });
-
-        this.gl = gl;
-
-        setParameters(gl, {
-            clearColor: [1, 1, 1, 1],
-            clearDepth: [1],
-            depthTest: false,
-            depthFunc: gl.LEQUAL
-        });
-
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        this.initializeWebGL();
 
         await this.viewUnit.initialize();
 
@@ -251,6 +230,30 @@ export default class SampleTrack extends WebGlTrack {
             }
         }, false);
         */
+    }
+
+    initializeWebGL() {
+        // Canvas for WebGL
+        this.glCanvas = this.createCanvas();
+
+        registerShaderModules([fp64], { ignoreMultipleRegistrations: true });
+
+        const gl = createGLContext({
+            canvas: this.glCanvas,
+            manageState: false
+        });
+
+        this.gl = gl;
+
+        setParameters(gl, {
+            clearColor: [1, 1, 1, 1],
+            clearDepth: [1],
+            depthTest: false,
+            depthFunc: gl.LEQUAL
+        });
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     }
 
     /**
@@ -626,7 +629,8 @@ export default class SampleTrack extends WebGlTrack {
 
         const domainUniforms = this.getDomainUniforms();
 
-        leftScale.getDomain().forEach(sampleId => {
+
+        const uniforms = leftScale.getDomain().map(sampleId => {
             const bandLeft = leftScale.scale(sampleId)
                 .mix(rightScale.scale(sampleId), yTransitionProgress)
                 .transform(this.yTransform)
@@ -636,18 +640,21 @@ export default class SampleTrack extends WebGlTrack {
                 .transform(this.yTransform)
                 .transform(normalize);
 
-            const uniforms = {
-                yPosLeft: [bandLeft.lower, bandLeft.width()],
-                yPosRight: [bandRight.lower, bandRight.width()],
-                transitionOffset: xTransitionProgress,
-                ...domainUniforms
+            return {
+                sampleId,
+                uniforms: {
+                    yPosLeft: [bandLeft.lower, bandLeft.width()],
+                    yPosRight: [bandRight.lower, bandRight.width()],
+                    transitionOffset: xTransitionProgress,
+                    ...domainUniforms
+                }
             };
+        });
 
-
-            this.viewUnit.visit(vu => {
-                if (vu.mark) {
-                    vu.mark.render(sampleId, uniforms);
-                }});
+        this.viewUnit.visit(vu => {
+            if (vu.mark) {
+                uniforms.forEach(u => vu.mark.render(u.sampleId, u.uniforms));
+            }
         });
     }
 }

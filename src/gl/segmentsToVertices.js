@@ -101,11 +101,11 @@ export function rectsToVertices(rects, tesselationThreshold = 8000000) {
 
     return {
         arrays: {
-            x: { data: new Float32Array(xArr), accessor: { size: 2 } },
-            y: { data: new Float32Array(yArr) },
-            width: { data: new Float32Array(widthArr) },
-            color: { data: new Float32Array(colorArr), accessor: { size: 4 } },
-            opacity: { data: new Float32Array(opacityArr) }
+            x: { data: new Float32Array(xArr), accessor: { size: 2 }, numComponents: 2 },
+            y: { data: new Float32Array(yArr), numComponents: 1 },
+            width: { data: new Float32Array(widthArr), numComponents: 1  },
+            color: { data: new Float32Array(colorArr), accessor: { size: 4 }, numComponents: 4 },
+            opacity: { data: new Float32Array(opacityArr), numComponents: 1  }
         },
         vertexCount: yArr.length,
         drawMode: glConst.TRIANGLE_STRIP
@@ -223,9 +223,9 @@ export function pointsToVertices(points) {
 
     return {
         arrays: {
-            x: { data: new Float32Array(x), accessor: { size: 2 } },
-            size: { data: new Float32Array(size) },
-            color: { data: new Float32Array(color), accessor: { size: 4 } }
+            x: { data: new Float32Array(x), accessor: { size: 2 }, numComponents: 2 },
+            size: { data: new Float32Array(size), numComponents: 1 },
+            color: { data: new Float32Array(color), accessor: { size: 4 }, numComponents: 4 }
         },
         vertexCount: points.length,
         drawMode: glConst.POINTS
