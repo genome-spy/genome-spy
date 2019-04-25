@@ -1,7 +1,7 @@
 import * as twgl from 'twgl-base.js';
 import VERTEX_SHADER from '../gl/rectangle.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
-import { rectsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
+import { RectVertexBuilder } from '../gl/segmentsToVertices';
 
 import Mark from './mark';
 
@@ -29,15 +29,14 @@ export default class RectMark extends Mark {
 
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
-        this.bufferInfos = new Map();
-
-        for (let [sample, rects] of this.specsBySample.entries()) {
-            rects = rects.filter(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0);
-            if (rects.length) {
-                const vertexData = rectsToVertices(rects);
-                this.bufferInfos.set(sample, twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays));
-            }
+        const builder = new RectVertexBuilder();
+        for (const [sample, rects] of this.specsBySample.entries()) {
+            builder.addBatch(sample, rects);
         }
+        const vertexData = builder.toArrays();
+
+        this.rangeMap = vertexData.rangeMap;
+        this.bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays);
 
         this.renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
     }
@@ -56,19 +55,14 @@ export default class RectMark extends Mark {
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0
         });
 
+        twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+
         for (const sampleData of samples) {
-            const bufferInfo = this.bufferInfos.get(sampleData.sampleId);
-            if (!bufferInfo) {
-                // TODO: Log if debug-mode or something
-                continue;
+            const range = this.rangeMap.get(sampleData.sampleId);
+            if (range) {
+                twgl.setUniforms(this.programInfo, sampleData.uniforms);
+                twgl.drawBufferInfo(gl, this.bufferInfo, gl.TRIANGLE_STRIP, range.count, range.offset);
             }
-
-            twgl.setBuffersAndAttributes(gl, this.programInfo, bufferInfo)
-            twgl.setUniforms(this.programInfo, {
-                ...sampleData.uniforms,
-            });
-
-            twgl.drawBufferInfo(gl, bufferInfo, gl.TRIANGLE_STRIP);
         }
     }
 

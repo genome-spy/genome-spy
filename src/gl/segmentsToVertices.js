@@ -10,7 +10,6 @@ const black = d3color("black");
 const gray = d3color("gray");
 
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
-// TODO: Use @luma.gl/constants 
 const glConst = {
     POINTS: 0x0000,
     TRIANGLES: 0x0004,
@@ -36,8 +35,164 @@ export function color2floatArray(color) {
  */
 
 /**
+ * @typedef {Object} PointSpec
+ * @prop {number} x
+ * @prop {number} [size] Width or height of the symbol
+ * @prop {Object} [color]
+ * @prop {Object} [rawDatum] Shown as tooltip
+ * TODO: y, symbol, orientation, aspectRatio
+ */
+
+ export class RectVertexBuilder {
+    constructor(tesselationThreshold = 8000000) {
+        this.tesselationThreshold = tesselationThreshold;
+
+        this.xArr = [];
+        this.widthArr = [];
+        this.yArr = [];
+        this.colorArr = [];
+        this.opacityArr = [];
+
+        this.rangeMap = new Map();
+    }
+
+    /**
+     * 
+     * @param {string} key 
+     * @param {RectSpec[]} rects 
+     */
+    addBatch(key, rects) {
+        const offset = this.yArr.length;
+
+        for (let r of rects) {
+            const [x, x2] = r.x <= r.x2 ? [r.x, r.x2] : [r.x2, r.x];
+            const [y, y2] = r.y <= r.y2 ? [1 - r.y, 1 - r.y2] : [1 - r.y2, 1 - r.y];
+
+            const width = x2 - x;
+
+            const color = r.color || black;
+            const opacity = typeof r.opacity == "number" ? r.opacity : 1;
+
+
+            if (!(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0)) continue;
+
+            // TODO: Conserve memory, use int8 color components instead of floats
+            const c = color2floatArray(color);
+
+            // Start a new segment. Duplicate the first vertex to produce degenerate triangles
+            this.xArr.push(...fp64ify(x));
+            this.widthArr.push(-width);
+            this.yArr.push(y);
+            this.colorArr.push(...c);
+            this.opacityArr.push(opacity);
+
+            // Tesselate segments
+            const tileCount = Math.ceil(width / this.tesselationThreshold);
+            for (let i = 0; i <= tileCount; i++) {
+                const frac = i / tileCount;
+                // Interpolate X & Y
+                // Emulate 64bit floats using two 32bit floats
+                const iX = fp64ify(r.x + width * frac);
+                this.xArr.push(...iX, ...iX);
+                this.yArr.push(y, y2);
+                this.colorArr.push(...c, ...c);
+                this.opacityArr.push(opacity, opacity);
+
+                let w = 0;
+                if (i == 0) {
+                    w = -width;
+                } else if (i >= tileCount) {
+                    w = width;
+                }
+                this.widthArr.push(w, w);
+            }
+
+            // Duplicate the last vertex to produce a degenerate triangle between the segments
+            this.xArr.push(...fp64ify(x2));
+            this.widthArr.push(width);
+            this.yArr.push(y2);
+            this.colorArr.push(...c);
+            this.opacityArr.push(opacity);
+        }
+
+        const count = this.yArr.length - offset;
+        if (count) {
+            this.rangeMap.set(key, {
+                offset, count 
+                // TODO: Add some indices that allow rendering just a range
+            });
+        }
+    }
+
+    toArrays() {
+        return {
+            arrays: {
+                x:       { data: new Float32Array(this.xArr), numComponents: 2 },
+                y:       { data: new Float32Array(this.yArr), numComponents: 1 },
+                width:   { data: new Float32Array(this.widthArr), numComponents: 1 },
+                color:   { data: new Float32Array(this.colorArr), numComponents: 4 },
+                opacity: { data: new Float32Array(this.opacityArr), numComponents: 1 }
+            },
+            vertexCount: this.yArr.length,
+            drawMode: glConst.TRIANGLE_STRIP,
+            rangeMap: this.rangeMap
+        };
+    }
+}
+
+export class PointVertexBuilder {
+    constructor() {
+        this.xArr = [];
+        this.sizeArr = [];
+        this.colorArr = [];
+        this.index = 0;
+
+        this.rangeMap = new Map();
+    }
+
+    /**
+     * 
+     * @param {String} key 
+     * @param {PointSpec[]} points 
+     */
+    addBatch(key, points) {
+        const offset = this.index;
+
+        for (const p of points) {
+            this.xArr.push(...fp64ify(p.x));
+            this.sizeArr.push(typeof p.size == "number" ? Math.sqrt(p.size) : 1.0);
+            this.colorArr.push(...color2floatArray(p.color || gray));
+
+            this.index++;
+        }
+
+        const count = this.index - offset;
+        if (count) {
+            this.rangeMap.set(key, {
+                offset, count 
+                // TODO: Add some indices that allow rendering just a range
+            });
+        }
+    }
+
+    toArrays() {
+        return {
+            arrays: {
+                x:     { data: new Float32Array(this.xArr), numComponents: 2 },
+                size:  { data: new Float32Array(this.sizeArr), numComponents: 1 },
+                color: { data: new Float32Array(this.colorArr), numComponents: 4 }
+            },
+            vertexCount: this.index,
+            drawMode: glConst.POINTS,
+            rangeMap: this.rangeMap
+        };
+    }
+}
+
+/**
  * Converts the given rects into typed arrays of vertices
  * 
+ * @deprecated Use RectVertexBuilder
  * @param {RectSpec[]} rects 
  * @param {number} [tesselationThreshold] Tesselate segments if they are shorter than the threshold
  */
@@ -201,33 +356,3 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
     };
 }
 
-
-/**
- * @typedef {Object} PointSpec
- * @prop {number} x
- * @prop {number} [size] Width or height of the symbol
- * @prop {Object} [color]
- * @prop {Object} [rawDatum] Shown as tooltip
- * TODO: y, symbol, orientation, aspectRatio
- */
-
-/**
- * Converts the given points into typed arrays of vertices
- * 
- * @param {PointSpec[]} points
- */
-export function pointsToVertices(points) {
-    const x = points.map(p => fp64ify(p.x)).reduce((a, b) => { a.push(...b); return a; }, []);
-    const size = points.map(p => typeof p.size == "number" ? Math.sqrt(p.size) : 1.0);
-    const color = points.map(p => color2floatArray(p.color || gray)).reduce((a, b) => { a.push(...b); return a; }, []);
-
-    return {
-        arrays: {
-            x: { data: new Float32Array(x), numComponents: 2 },
-            size: { data: new Float32Array(size), numComponents: 1 },
-            color: { data: new Float32Array(color), numComponents: 4 }
-        },
-        vertexCount: points.length,
-        drawMode: glConst.POINTS
-    };
-}

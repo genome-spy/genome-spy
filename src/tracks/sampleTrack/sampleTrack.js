@@ -1,4 +1,6 @@
+import * as twgl from 'twgl-base.js';
 import { scaleLinear } from 'd3-scale';
+
 import WebGlTrack from '../webGlTrack';
 import BandScale from '../../utils/bandScale';
 import MouseTracker from "../../mouseTracker";
@@ -233,7 +235,7 @@ export default class SampleTrack extends WebGlTrack {
         // Canvas for WebGL
         this.glCanvas = this.createCanvas();
 
-        const gl = this.glCanvas.getContext("webgl");
+        const gl = twgl.getContext(this.glCanvas);
 
         this.gl = gl;
 

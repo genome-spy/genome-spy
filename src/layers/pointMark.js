@@ -1,5 +1,5 @@
 import * as twgl from 'twgl-base.js';
-import { pointsToVertices, verticesToVertexData } from '../gl/segmentsToVertices';
+import { PointVertexBuilder } from '../gl/segmentsToVertices';
 import VERTEX_SHADER from '../gl/point.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
 
@@ -30,21 +30,17 @@ export default class PointMark extends Mark {
     _initGL() {
         const gl = this.gl;
 
-        this.programInfo = twgl.createProgramInfo(gl, [
-            VERTEX_SHADER,
-            FRAGMENT_SHADER
-        ]);
+        this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
 
-        this.bufferInfos = new Map();
-
-        for (let [sample, points] of this.specsBySample.entries()) {
-            points = points.filter(p => p.size !== 0.0);
-            if (points.length) {
-                const vertexData = pointsToVertices(points);
-                this.bufferInfos.set(sample, twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays));
-            }
+        const builder = new PointVertexBuilder();
+        for (const [sample, points] of this.specsBySample.entries()) {
+            builder.addBatch(sample, points);
         }
+        const vertexData = builder.toArrays();
+
+        this.rangeMap = vertexData.rangeMap;
+        this.bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays);
     }
 
     /**
@@ -63,19 +59,14 @@ export default class PointMark extends Mark {
             maxPointSizeAbsolute: maxPointSizeAbsolute * window.devicePixelRatio,
         });
 
+        twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+
         for (const sampleData of samples) {
-            const bufferInfo = this.bufferInfos.get(sampleData.sampleId);
-            if (!bufferInfo) {
-                // TODO: Log if debug-mode or something
-                continue;
+            const range = this.rangeMap.get(sampleData.sampleId);
+            if (range) {
+                twgl.setUniforms(this.programInfo, sampleData.uniforms);
+                twgl.drawBufferInfo(gl, this.bufferInfo, gl.POINTS, range.count, range.offset);
             }
-
-            twgl.setBuffersAndAttributes(gl, this.programInfo, bufferInfo)
-            twgl.setUniforms(this.programInfo, {
-                ...sampleData.uniforms,
-            });
-
-            twgl.drawBufferInfo(gl, bufferInfo, gl.POINTS);
         }
     }
 
