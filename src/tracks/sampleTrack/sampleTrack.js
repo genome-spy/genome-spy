@@ -379,6 +379,9 @@ export default class SampleTrack extends WebGlTrack {
         for (const mark of this.getLayers().reverse()) {
             const datum = mark.findDatum(sampleId, x, y, bandInterval);
             if (datum) {
+                // DIRTY HACK! TODO: Come up with something cleaner
+                this.__tooltipMappers = mark.fieldMappers;
+                
                 return datum.rawDatum;
             }
         }
@@ -407,11 +410,22 @@ export default class SampleTrack extends WebGlTrack {
             }
         }
 
+        const that = this;
+        function legend(key, datum) {
+            const mapper = that.__tooltipMappers && that.__tooltipMappers[key];
+
+            if (mapper && mapper.targetType == "color") {
+                return `<span class="color-legend" style="background-color: ${mapper(datum)}"></span>`;
+            }
+            
+            return "";
+        } 
+
         const table = '<table class="attributes"' +
             Object.entries(datum).map(([key, value]) => `
                 <tr>
                     <th>${html.escapeHtml(key)}</th>
-                    <td>${html.escapeHtml(toString(value))}</td>
+                    <td>${html.escapeHtml(toString(value))} ${legend(key, datum)}</td>
                 </tr>`
             ).join("") +
             "</table>";

@@ -1,5 +1,4 @@
-
-
+import { group } from 'd3-array';
 
 export default class Mark {
 
@@ -18,12 +17,14 @@ export default class Mark {
     }
 
     /**
-     * 
-     * @param {Map<string, object[]>} specs Mark specs keyed by sampleId
+     * @param {object[]} specs
      */
     setSpecs(specs) {
-        this.specsBySample = specs;
+        /** @type {Map<string, object[]>} */
+        this.specsBySample = group(specs, d => d.sample);
 
+        // For tooltips
+        this.fieldMappers = specs.fieldMappers; 
     }
 
     _initGL() {

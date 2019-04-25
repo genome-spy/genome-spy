@@ -38,9 +38,22 @@ export function processData(encodingConfigs, rows, mapperFactory) {
 
     const encode = createCompositeEncodingMapper(mapperFactory, encodingConfigs, rows);
 
-    return rows.map(d => {
+    const specs = rows.map(d => {
         const encoded = encode(d);
         encoded.rawDatum = d;
         return encoded;
     });
+
+
+    const fieldMappers = [];
+    for (const mapper of Object.values(encode.mappers)) {
+        if (mapper.config && mapper.config.field) {
+            fieldMappers[mapper.config.field] = mapper;
+        }
+    }
+
+    // For tooltips
+    specs.fieldMappers = fieldMappers;
+
+    return specs;
 }

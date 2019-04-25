@@ -105,6 +105,14 @@ $basic-spacing: 10px;
                 text-align: left;
             }
         }
+
+        .color-legend {
+            display: inline-block;
+            width: 0.8em;
+            height: 0.8em;
+            margin-left: 0.4em;
+            box-shadow: 0px 0px 3px 1px white;
+        }
     }
 
     .gene-track-tooltip {

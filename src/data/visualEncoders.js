@@ -80,6 +80,8 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function
 
     // TODO: Support constants
+    
+    // TODO: XXXXXXX  Decide whether we have encoders or mappers and name them consistently! XXXXXXX
 
     encodingConfig = formalizeFieldEncodingConfig(encodingConfig);
 
@@ -91,6 +93,7 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
     let mapper;
 
     let continuousDomain;
+    let scale;
 
     if (targetType == "string") {
         mapper = x => "" + accessor(x);
@@ -115,7 +118,7 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
                 throw `Can't infer domain for ${encodingConfig.field}. No sampleData provided!`
             }
             const samples = sampleData.map(accessor);
-            continuousDomain = inferNumeric(samples);
+            continuousDomain = inferNumeric(samples); // TODO: Use datalib
             if (continuousDomain) {
                 domain = extent(samples, parseFloat);
 
@@ -125,8 +128,6 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
         }
 
         if (continuousDomain) {
-            let scale ;
-
             if (scaleConfig.range) {
                 // TODO: color "schemes"
                 scale = scaleLinear().range(scaleConfig.range);
@@ -143,7 +144,7 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
 
         } else {
             // TODO: Custom range by name
-            const scale = scaleOrdinal(
+            scale = scaleOrdinal(
                 /** @type {ReadonlyArray} */(scaleConfig.range) ||
                 defaultOrdinalScheme
             )
@@ -159,7 +160,8 @@ export function createFieldEncodingMapper(targetType, encodingConfig, sampleData
         // TODO: Support nominal types for symbols etc
     }
 
-    // TODO: Add tests:
+    mapper.scale = scale;
+    mapper.targetType = targetType;
     mapper.config = encodingConfig;
     mapper.continuous = continuousDomain;
 
@@ -222,9 +224,9 @@ export function createCompositeEncodingMapper(mapperFactory, encodingConfigs, sa
 
     const compositeMapper = d => {
         const mapped = {}
-        Object.entries(mappers).forEach(([visualVariable, mapper]) => {
-            mapped[visualVariable] = mapper(d);
-        });
+        for (const visualVariable in mappers) {
+            mapped[visualVariable] = mappers[visualVariable](d);
+        }
         return mapped;
     };
 

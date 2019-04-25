@@ -1,4 +1,3 @@
-import { group } from 'd3-array';
 import { processData, transformData } from '../data/dataMapper';
 
 import RectMark from '../layers/rectMark';
@@ -104,8 +103,7 @@ export default class ViewUnit {
                 /** @type {import("./mark").default} */
                 const mark = new markClass(this.context, this);
                 const specs = processData(encoding, concatedData, this.context.genomeSpy.visualMapperFactory);
-                const specsBySample = group(specs, d => d.sample)
-                mark.setSpecs(specsBySample);
+                mark.setSpecs(specs);
                 await mark.initialize();
 
                 this.mark = mark;
