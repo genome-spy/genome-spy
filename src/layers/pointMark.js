@@ -98,6 +98,6 @@ export default class PointMark extends Mark {
             }
         }
 
-        return lastMatch ? lastMatch : null;
+        return lastMatch;
     }
 }

@@ -1,5 +1,6 @@
 import * as twgl from 'twgl-base.js';
 import { scaleLinear } from 'd3-scale';
+import { format as d3format } from 'd3-format';
 
 import WebGlTrack from '../webGlTrack';
 import BandScale from '../../utils/bandScale';
@@ -378,7 +379,7 @@ export default class SampleTrack extends WebGlTrack {
         for (const mark of this.getLayers().reverse()) {
             const datum = mark.findDatum(sampleId, x, y, bandInterval);
             if (datum) {
-                return datum;
+                return datum.rawDatum;
             }
         }
 
@@ -389,11 +390,28 @@ export default class SampleTrack extends WebGlTrack {
      * TODO: Multiple datums and layer-specific formatting
      */
     datumToTooltip(datum) {
+        const numberFormat = d3format(".4~r");
+
+        function toString(object) {
+            if (typeof object == "string") {
+                return object.substring(0, 30);
+
+            } else if (typeof object == "number") {
+                return numberFormat(object);
+
+            } else if (object === null) {
+                return "";
+
+            } else {
+                return "?" + typeof object;
+            }
+        }
+
         const table = '<table class="attributes"' +
             Object.entries(datum).map(([key, value]) => `
                 <tr>
                     <th>${html.escapeHtml(key)}</th>
-                    <td>${html.escapeHtml(value.toString())}</td>
+                    <td>${html.escapeHtml(toString(value))}</td>
                 </tr>`
             ).join("") +
             "</table>";

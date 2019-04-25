@@ -85,10 +85,16 @@ $basic-spacing: 10px;
 
         table {
             margin-top: $basic-spacing;
+
+            &:first-child {
+                margin-top: 0;
+            }
+
             border-collapse: collapse;
 
             th, td {
                 padding: 0.2em 0.4em;
+                vertical-align: top;
 
                 &:first-child {
                     padding-left: 0;

@@ -86,6 +86,6 @@ export default class RectMark extends Mark {
              scaledX >= rect.x && scaledX < rect.x2 &&
              scaledY >= rect.y && scaledY < rect.y2);
 
-        return rect ? rect : null;
+        return rect;
     }
 }

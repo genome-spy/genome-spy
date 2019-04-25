@@ -38,5 +38,9 @@ export function processData(encodingConfigs, rows, mapperFactory) {
 
     const encode = createCompositeEncodingMapper(mapperFactory, encodingConfigs, rows);
 
-    return rows.map(d => encode(d));
+    return rows.map(d => {
+        const encoded = encode(d);
+        encoded.rawDatum = d;
+        return encoded;
+    });
 }
