@@ -39,9 +39,11 @@ export default class Mark {
 
     /**
      * @param {string} sampleId 
-     * @param {number} pos position on the domain
+     * @param {number} x position on the range
+     * @param {number} y position on the range
+     * @param {import("../utils/interval").default} yBand the matched band on the band scale
      */
-    findDatum(sampleId, pos) {
+    findDatum(sampleId, x, y, yBand) {
         return null;
     }
 }

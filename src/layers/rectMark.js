@@ -4,6 +4,7 @@ import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
 import { RectVertexBuilder } from '../gl/segmentsToVertices';
 
 import Mark from './mark';
+import { readSync } from 'fs';
 
 const defaultRenderConfig = {
     minRectWidth: 1.0,
@@ -66,17 +67,25 @@ export default class RectMark extends Mark {
         }
     }
 
+
     /**
      * @param {string} sampleId 
-     * @param {number} pos position on the domain
+     * @param {number} x position on the viewport
+     * @param {number} y position on the viewport
+     * @param {import("../utils/interval").default} yBand the matched band on the band scale
      */
-    findDatum(sampleId, pos) {
-        return;
-        const rects = this.pointsBySample.get(sampleId);
+    findDatum(sampleId, x, y, yBand) {
+        const rects = this.specsBySample.get(sampleId);
 
-        // TODO: BinarySearch
-        const rect = rects.find(rect => pos >= rect.x && pos < rect.x2);
+        const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
 
-        return rect ? rect.rawDatum : null;
+        // TODO: Needs work when proper scales are added to the y axis
+        const scaledY = 1 - (y - yBand.lower) / yBand.width();
+
+        const rect = rects.find(rect =>
+             scaledX >= rect.x && scaledX < rect.x2 &&
+             scaledY >= rect.y && scaledY < rect.y2);
+
+        return rect ? rect : null;
     }
 }

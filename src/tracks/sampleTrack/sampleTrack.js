@@ -347,6 +347,20 @@ export default class SampleTrack extends WebGlTrack {
     }
 
     /**
+     * Returns all marks in the order they are rendered
+     */
+    getLayers() {
+        /** @type {import("../../layers/mark").default[]} */
+        const layers = [];
+        this.viewUnit.visit(vu => {
+            if (vu.mark) {
+                layers.push(vu.mark);
+            }
+        });
+        return layers;
+    }
+
+    /**
      * TODO: Return multiple datums from overlaid layers
      * 
      * @param {number[]} point 
@@ -359,11 +373,10 @@ export default class SampleTrack extends WebGlTrack {
             return null;
         }
 
-        const domainX = this.genomeSpy.rescaledX.invert(x);
+        const bandInterval = this.sampleScale.scale(sampleId);
 
-        // Start matching from the top layer
-        for (let i = this.layers.length - 1; i >= 0; i--) {
-            const datum = this.layers[i].findDatum(sampleId, domainX, y);
+        for (const mark of this.getLayers().reverse()) {
+            const datum = mark.findDatum(sampleId, x, y, bandInterval);
             if (datum) {
                 return datum;
             }
