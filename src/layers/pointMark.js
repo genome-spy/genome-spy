@@ -11,6 +11,8 @@ import Mark from './mark';
 const maxPointSizeRelative = 0.8;
 const maxPointSizeAbsolute = 25;
 
+const fractionToShow = 0.02;
+
 export default class PointMark extends Mark {
     /**
      * @param {import("./viewUnit").UnitContext} unitContext
@@ -57,6 +59,7 @@ export default class PointMark extends Mark {
             devicePixelRatio: window.devicePixelRatio,
             maxPointSizeRelative,
             maxPointSizeAbsolute: maxPointSizeAbsolute * window.devicePixelRatio,
+            fractionToShow: fractionToShow // TODO: Configurable
         });
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
@@ -90,14 +93,50 @@ export default class PointMark extends Mark {
 
         const scale = this.unitContext.sampleTrack.genomeSpy.rescaledX;
 
+        const margin = 0.005; // TODO: Configurable
+        const threshold = this.unitContext.genomeSpy.getExpZoomLevel() * fractionToShow;
+        const thresholdWithMargin = threshold * (1 + margin);
+
         let lastMatch = null;
         for (const point of points) {
-            const dist = distance(x, scale(point.x), y, pointY);
-            if (dist < maxPointSize * point.size) {
-                lastMatch = point;
+            if (1 - point.zoomThreshold < thresholdWithMargin) {
+                const dist = distance(x, scale(point.x), y, pointY);
+                if (dist < maxPointSize * point.size) {
+                    lastMatch = point;
+                }
             }
         }
 
         return lastMatch;
     }
+}
+
+
+
+/**
+ * https://www.wikiwand.com/en/Smoothstep
+ * 
+ * @param {number} edge0 
+ * @param {number} edge1
+ * @param {number} x
+ */
+function smoothstep(edge0, edge1, x) {
+    // Scale, bias and saturate x to 0..1 range
+    x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+    // Evaluate polynomial
+    return x * x * (3 - 2 * x);
+}
+
+/**
+ * 
+ * @param {number} x 
+ * @param {number} lowerlimit 
+ * @param {number} upperlimit 
+ */
+function clamp(x, lowerlimit, upperlimit) {
+    if (x < lowerlimit)
+        x = lowerlimit;
+    if (x > upperlimit)
+        x = upperlimit;
+    return x;
 }

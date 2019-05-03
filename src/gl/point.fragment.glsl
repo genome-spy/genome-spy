@@ -6,6 +6,7 @@ const lowp vec4 black = vec4(vec3(0), 1);
 uniform lowp float devicePixelRatio;
 
 varying lowp vec4 vColor;
+varying lowp float vOpacity;
 varying float vSize;
 
 // TODO: Implement more symbols: diamond, triangle, etc
@@ -26,7 +27,7 @@ void main() {
     float strokeWidth = 0.7 * devicePixelRatio * pixelWidth;
     
     lowp float strokeFraction = smoothstep(0.5 - strokeWidth, 0.5 - strokeWidth - pixelWidth, dist);
-    lowp float alpha = smoothstep(0.5, 0.5 - pixelWidth, dist);
+    lowp float alpha = smoothstep(0.5, 0.5 - pixelWidth, dist) * vOpacity;
 
     gl_FragColor = mix(strokeColor, fillColor, strokeFraction) * alpha;
 }

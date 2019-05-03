@@ -662,7 +662,8 @@ export default class SampleTrack extends WebGlTrack {
 
         const globalUniforms = {
             ...this.getDomainUniforms(),
-            transitionOffset: xTransitionProgress
+            transitionOffset: xTransitionProgress,
+            zoomLevel: this.genomeSpy.getExpZoomLevel()
         };
 
         const samples = leftScale.getDomain().map(sampleId => {

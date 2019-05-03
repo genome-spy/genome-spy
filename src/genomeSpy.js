@@ -45,9 +45,7 @@ export default class GenomeSpy {
 
         this.zoom = new Zoom(this._zoomed.bind(this));
 
-        // TODO: A configuration object
-        /** When zooming, the maximum size of a single discrete unit (nucleotide) in pixels */
-        this.maxUnitZoom = 20;
+        this.maxUnitZoom = 30;
 
         this.tracks = [];
 
@@ -78,6 +76,24 @@ export default class GenomeSpy {
             .reduce((a, b) => Math.max(a, b), 0);
     }
 
+
+    /**
+     * Returns the current zoom level. [0, 1]
+     */
+    getLinearZoomLevel() {
+        const b = this.chromMapper.extent().width();
+        const y = this.getViewportDomain().width();
+        const a = this.maxUnitZoom; 
+
+        return Math.log2(b / y) / Math.log2(b / a);
+    }
+
+    getExpZoomLevel() {
+        const b = this.chromMapper.extent().width();
+        const y = this.getViewportDomain().width();
+        
+        return b / y;
+    }
 
     /**
      * 
@@ -122,7 +138,7 @@ export default class GenomeSpy {
             viewport: new Interval(aw, aw + viewportWidth)
         };
 
-        this.zoom.scaleExtent = [1, this.chromMapper.extent().width() / this.container.clientWidth * this.maxUnitZoom];
+        this.zoom.scaleExtent = [1, this.chromMapper.extent().width() / this.maxUnitZoom];
 
         this.eventEmitter.emit('layout', this.layout);
     }

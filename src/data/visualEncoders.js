@@ -47,7 +47,8 @@ const visualVariables = {
     y2: { type: "number" },
     color: { type: "color" },
     size: { type: "number" },
-    opacity: { type: "number" }
+    opacity: { type: "number" },
+    zoomThreshold: { type: "number" }
 };
  
 /**

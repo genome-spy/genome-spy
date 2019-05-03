@@ -39,6 +39,7 @@ export function color2floatArray(color) {
  * @prop {number} x
  * @prop {number} [size] Width or height of the symbol
  * @prop {Object} [color]
+ * @prop {number} [zoomThreshold]
  * @prop {Object} [rawDatum] Shown as tooltip
  * TODO: y, symbol, orientation, aspectRatio
  */
@@ -145,6 +146,7 @@ export class PointVertexBuilder {
         this.xArr = [];
         this.sizeArr = [];
         this.colorArr = [];
+        this.thresholdArr = [];
         this.index = 0;
 
         this.rangeMap = new Map();
@@ -162,6 +164,7 @@ export class PointVertexBuilder {
             this.xArr.push(...fp64ify(p.x));
             this.sizeArr.push(typeof p.size == "number" ? Math.sqrt(p.size) : 1.0);
             this.colorArr.push(...color2floatArray(p.color || gray));
+            this.thresholdArr.push(p.zoomThreshold || 1.0);
 
             this.index++;
         }
@@ -180,7 +183,8 @@ export class PointVertexBuilder {
             arrays: {
                 x:     { data: new Float32Array(this.xArr), numComponents: 2 },
                 size:  { data: new Float32Array(this.sizeArr), numComponents: 1 },
-                color: { data: new Float32Array(this.colorArr), numComponents: 4 }
+                color: { data: new Float32Array(this.colorArr), numComponents: 4 },
+                zoomThreshold: { data: new Float32Array(this.thresholdArr), numComponents: 1 }
             },
             vertexCount: this.index,
             drawMode: glConst.POINTS,
