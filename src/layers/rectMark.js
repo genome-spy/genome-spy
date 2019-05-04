@@ -4,7 +4,6 @@ import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
 import { RectVertexBuilder } from '../gl/segmentsToVertices';
 
 import Mark from './mark';
-import { readSync } from 'fs';
 
 const defaultRenderConfig = {
     minRectWidth: 1.0,
@@ -18,6 +17,10 @@ export default class RectMark extends Mark {
      */
     constructor(unitContext, viewUnit) {
         super(unitContext, viewUnit)
+
+        // Needs blending or not. TODO: Make handling of defaults more systematic
+        const opacity = viewUnit.getEncoding().opacity;
+        this.opaque = !opacity || opacity.value >= 1.0;
     }
 
     async initialize() {
@@ -48,6 +51,12 @@ export default class RectMark extends Mark {
      */
     render(samples, globalUniforms) {
         const gl = this.gl;
+
+        if (this.opaque) {
+            gl.disable(gl.BLEND);
+        } else {
+            gl.enable(gl.BLEND);
+        }
 
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {

@@ -241,7 +241,6 @@ export default class SampleTrack extends WebGlTrack {
         this.gl = gl;
 
         gl.clearColor(1, 1, 1, 1);
-        gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     }
 

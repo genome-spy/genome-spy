@@ -52,6 +52,7 @@ export default class PointMark extends Mark {
     render(samples, globalUniforms) {
         const gl = this.gl;
 
+        gl.enable(gl.BLEND);
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
