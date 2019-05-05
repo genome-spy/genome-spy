@@ -612,7 +612,7 @@ export default class SampleTrack extends WebGlTrack {
      * @returns {string[]} ids of sorted samples 
      */
     getSamplesSortedByAttribute(attributeAccessor, descending = false) {
-        const replaceNaN = x => (typeof x == "number" && isNaN(x)) ? -Infinity : x;
+        const replaceNaN = x => (typeof x == "number" && isNaN(x)) ? -Infinity : x === null ? "" : x;
 
         return [...this.sampleOrder].sort((a, b) => {
             let av = replaceNaN(attributeAccessor(this.samples.get(a)));
