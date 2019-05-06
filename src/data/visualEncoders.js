@@ -206,8 +206,9 @@ function createConstantValueMapper(targetType, encodingConfig) {
  * @param {VisualMapperFactory} mapperFactory 
  * @param {Object[]} encodingConfigs 
  * @param {object[]} sampleData 
+ * @param {object} [baseObject] prototype for specs. Allows setting constants etc
  */
-export function createCompositeEncodingMapper(mapperFactory, encodingConfigs, sampleData) {
+export function createCompositeEncodingMapper(mapperFactory, encodingConfigs, sampleData, baseObject) {
 
     const mappers = {};
 
@@ -224,7 +225,7 @@ export function createCompositeEncodingMapper(mapperFactory, encodingConfigs, sa
         });
 
     const compositeMapper = d => {
-        const mapped = {}
+        const mapped = typeof baseObject == "object" ? Object.create(baseObject) : {};
         for (const visualVariable in mappers) {
             mapped[visualVariable] = mappers[visualVariable](d);
         }

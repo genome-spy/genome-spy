@@ -29,14 +29,15 @@ export function transformData(transformConfigs, rows) {
  * @param {object[]} encodingConfigs 
  * @param {object[]} rows 
  * @param {import("./visualEncoders").VisualMapperFactory} mapperFactory
+ * @param {object} [baseObject] prototype for specs. Allows setting constants etc
  * @returns {object[]}
  */
-export function processData(encodingConfigs, rows, mapperFactory) {
+export function processData(encodingConfigs, rows, mapperFactory, baseObject) {
 
     // TODO: Validate that data contains all fields that are referenced in the config.
     // ... just to prevent mysterious undefineds
 
-    const encode = createCompositeEncodingMapper(mapperFactory, encodingConfigs, rows);
+    const encode = createCompositeEncodingMapper(mapperFactory, encodingConfigs, rows, baseObject);
 
     const specs = rows.map(d => {
         const encoded = encode(d);

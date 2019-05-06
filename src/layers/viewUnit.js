@@ -6,7 +6,7 @@ import PointMark from '../layers/pointMark';
 /**
  * @typedef {Object} ViewUnitConfig
  * @prop {ViewUnitConfig[]} [layer]
- * @prop {string} [mark]
+ * @prop {string | object} [mark]
  * @prop {object} [data] 
  * @prop {object[]} [transform]
  * @prop {string} [sample]
@@ -98,11 +98,14 @@ export default class ViewUnit {
                 throw new Error("Can not create mark, no encodings specified!");
             }
 
-            const markClass = markTypes[this.config.mark];
+            const markClass = markTypes[typeof this.config.mark == "object" ? this.config.mark.type : this.config.mark];
             if (markClass) {
                 /** @type {import("./mark").default} */
                 const mark = new markClass(this.context, this);
-                const specs = processData(encoding, concatedData, this.context.genomeSpy.visualMapperFactory);
+                const baseObject = {
+                    _viewUnit: this
+                };
+                const specs = processData(encoding, concatedData, this.context.genomeSpy.visualMapperFactory, baseObject);
                 mark.setSpecs(specs);
                 await mark.initialize();
 
@@ -112,6 +115,7 @@ export default class ViewUnit {
                 throw new Error(`No such mark: ${this.config.mark}`);
             }
         }
+        // TODO: Warn if mark is missing and current ViewUnit node is a leaf
 
         for (const viewUnit of this.layers) {
             await viewUnit.initialize();

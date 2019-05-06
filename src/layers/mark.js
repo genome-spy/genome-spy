@@ -10,6 +10,7 @@ export default class Mark {
         this.unitContext = unitContext;
         this.gl = unitContext.sampleTrack.gl;
         this.viewUnit = viewUnit;
+        this.markConfig = typeof viewUnit.config.mark == "object" ? viewUnit.config.mark : {};
     }
 
     async initialize() {

@@ -13,6 +13,7 @@ import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
 import ViewUnit from '../../layers/viewUnit';
 import DataSource from '../../data/dataSource';
+import { Z_FILTERED } from 'zlib';
 
 const defaultStyles = {
     paddingInner: 0.20, // Relative to sample height
@@ -361,7 +362,7 @@ export default class SampleTrack extends WebGlTrack {
     }
 
     /**
-     * TODO: Return multiple datums from overlaid layers
+     * Returns the datum (actually the mark spec) at the specified point
      * 
      * @param {number[]} point 
      */
@@ -376,23 +377,29 @@ export default class SampleTrack extends WebGlTrack {
         const bandInterval = this.sampleScale.scale(sampleId);
 
         for (const mark of this.getLayers().reverse()) {
-            const datum = mark.findDatum(sampleId, x, y, bandInterval);
-            if (datum) {
-                // DIRTY HACK! TODO: Come up with something cleaner
-                this.__tooltipMappers = mark.fieldMappers;
-                
-                return datum.rawDatum;
+            if (mark.markConfig.tooltip !== null) {
+                const spec = mark.findDatum(sampleId, x, y, bandInterval);
+                if (spec) {
+                    return spec;
+                }
             }
         }
 
         return null;
     }
 
-    /*
-     * TODO: Multiple datums and layer-specific formatting
-     */
-    datumToTooltip(datum) {
+    datumToTooltip(spec) {
         const numberFormat = d3format(".4~r");
+
+        const datum = spec.rawDatum;
+
+        /** @type {ViewUnit} */
+        const viewUnit = spec._viewUnit;
+
+        const markConfig = viewUnit.mark.markConfig;
+        const propertyFilter = markConfig.tooltip && markConfig.tooltip.skipFields ?
+            entry => markConfig.tooltip.skipFields.indexOf(entry[0]) < 0 :
+            entry => true;
 
         function toString(object) {
             if (typeof object == "string") {
@@ -409,9 +416,8 @@ export default class SampleTrack extends WebGlTrack {
             }
         }
 
-        const that = this;
         function legend(key, datum) {
-            const mapper = that.__tooltipMappers && that.__tooltipMappers[key];
+            const mapper = viewUnit.mark.fieldMappers && viewUnit.mark.fieldMappers[key];
 
             if (mapper && mapper.targetType == "color") {
                 return `<span class="color-legend" style="background-color: ${mapper(datum)}"></span>`;
@@ -421,7 +427,7 @@ export default class SampleTrack extends WebGlTrack {
         } 
 
         const table = '<table class="attributes"' +
-            Object.entries(datum).map(([key, value]) => `
+            Object.entries(datum).filter(propertyFilter).map(([key, value]) => `
                 <tr>
                     <th>${html.escapeHtml(key)}</th>
                     <td>${html.escapeHtml(toString(value))} ${legend(key, datum)}</td>
