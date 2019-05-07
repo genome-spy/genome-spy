@@ -4,9 +4,16 @@ import RectMark from '../layers/rectMark';
 import PointMark from '../layers/pointMark';
 
 /**
+ * @typedef {Object} MarkConfig
+ * @prop {string} type
+ * @prop {object} [tooltip]
+ * @prop {object} [sorting]
+ */
+
+/**
  * @typedef {Object} ViewUnitConfig
  * @prop {ViewUnitConfig[]} [layer]
- * @prop {string | object} [mark]
+ * @prop {string | MarkConfig | object} [mark]
  * @prop {object} [data] 
  * @prop {object[]} [transform]
  * @prop {string} [sample]

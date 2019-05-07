@@ -97,4 +97,35 @@ export default class RectMark extends Mark {
 
         return rect;
     }
+
+
+    /**
+     * Finds a datum that overlaps the given value on domain.
+     * The result is unspecified if multiple datums are found.
+     * 
+     * TODO: Rename the other findDatum to findSpec
+     * 
+     * @param {string} sampleId
+     * @param {number} x position on the x domain
+     */
+    findDatumAt(sampleId, x) {
+        const rects = this.specsBySample.get(sampleId);
+        const rect = rects.find(rect => x >= rect.x && x < rect.x2);
+        return rect && rect.rawDatum || undefined;
+    }
+
+
+    getRangeAggregates() {
+        // Aggregates can be used for sorting and filtering
+
+        // TODO: Implement
+        // Stuff that computes aggregates for a field of a (ordered) set of datums
+        // Quantitative: Max, min, (weighted) mean, count, (total) difference between adjacent columns
+        // Categorical: The most common category, other?
+        return {
+            quantitative: null,
+            categorical: null
+        };
+    }
+
 }

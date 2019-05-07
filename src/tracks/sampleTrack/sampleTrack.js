@@ -1,6 +1,8 @@
 import * as twgl from 'twgl-base.js';
 import { scaleLinear } from 'd3-scale';
 import { format as d3format } from 'd3-format';
+import { zip } from 'd3-array';
+import * as dl from 'datalib';
 
 import WebGlTrack from '../webGlTrack';
 import BandScale from '../../utils/bandScale';
@@ -13,7 +15,7 @@ import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
 import ViewUnit from '../../layers/viewUnit';
 import DataSource from '../../data/dataSource';
-import { Z_FILTERED } from 'zlib';
+import contextMenu from '../../contextMenu';
 
 const defaultStyles = {
     paddingInner: 0.20, // Relative to sample height
@@ -188,7 +190,8 @@ export default class SampleTrack extends WebGlTrack {
             tooltip: this.genomeSpy.tooltip,
             resolver: this.findDatumAt.bind(this),
             tooltipConverter: datum => Promise.resolve(this.datumToTooltip(datum))
-        });
+        })
+            .on("contextmenu", this.createContextMenu.bind(this));
 
 
         this.attributePanel.initialize();
@@ -446,24 +449,56 @@ export default class SampleTrack extends WebGlTrack {
         </div>`
     }
 
-    
+    /**
+     * 
+     * @param {object} sample 
+     * @param {MouseEvent} mouseEvent 
+     */
+    createContextMenu(datum, mouseEvent, point) {
 
+        /** @type {import("../../contextMenu").MenuItem[]} */
+        let items = [];
+        
+        const scaledX = this.genomeSpy.rescaledX.invert(point[0]);
+
+        for (const mark of this.getLayers()) {
+            if (mark.markConfig && mark.markConfig.sorting) {
+                items.push({
+                    label: mark.viewUnit.config.title || "- No title -", 
+                    type: "header"
+                });
+
+                for (const field of mark.markConfig.sorting.fields) {
+                    items.push({
+                        label: `Sort by ${field}`,
+                        callback: () => this.sortSamplesByLocus(mark, scaledX, field)
+                    });
+                }
+            }
+        }
+    
+        contextMenu({ items }, mouseEvent);
+    }
 
     /**
      * 
-     * @param {object} layer
      * @param {number} pos locus in continuous domain
      */
-    sortSamplesByLocus(layer, pos, attribute) {
-        const valuesBySample = new Map(this.sampleOrder.map(id => [
-            id,
-            +layer.findDatum(id, pos)[attribute]
-        ]));
+    sortSamplesByLocus(mark, pos, attribute) {
+        const getAttribute = d => d ? d[attribute] : undefined;
+
+        const values = this.sampleOrder.map(id => getAttribute(mark.findDatumAt(id, pos)));
+
+        // nulls & undefineds break sorting
+        const sanitize = dl.type(values) == "number" ?
+            (d => dl.isValid(d) ? d : -Infinity) :
+            (d => dl.isValid(d) ? d : "")
+
+        const valuesBySample = new Map(zip(this.sampleOrder, values.map(sanitize)));
 
         const accessor = sample => valuesBySample.get(sample.id);
 
         this.sortSamples(accessor);
-
     }
 
     /**
