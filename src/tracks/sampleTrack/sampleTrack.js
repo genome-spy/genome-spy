@@ -434,8 +434,13 @@ export default class SampleTrack extends WebGlTrack {
                 </tr>`
             ).join("") +
             "</table>";
+
+        const title = viewUnit.config.title ?
+            `<div class="title"><strong>${html.escapeHtml(viewUnit.config.title)}</strong></div>` :
+            "";
         
         return `
+        ${title}
         <div class="sample-track-datum-tooltip">
             ${table}
         </div>`

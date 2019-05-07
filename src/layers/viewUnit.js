@@ -12,6 +12,7 @@ import PointMark from '../layers/pointMark';
  * @prop {string} [sample]
  * @prop {Object} [encoding]
  * @prop {Object} [renderConfig]
+ * @prop {string} [title]
  * 
  * @typedef {Object} UnitContext
  * @prop {import("../tracks/sampleTrack/sampleTrack").default} [sampleTrack]
