@@ -16,6 +16,7 @@ import { shallowArrayEquals } from '../../utils/arrayUtils';
 import ViewUnit from '../../layers/viewUnit';
 import DataSource from '../../data/dataSource';
 import contextMenu from '../../contextMenu';
+import Interval from '../../utils/interval';
 
 const defaultStyles = {
     paddingInner: 0.20, // Relative to sample height
@@ -191,7 +192,8 @@ export default class SampleTrack extends WebGlTrack {
             resolver: this.findDatumAt.bind(this),
             tooltipConverter: datum => Promise.resolve(this.datumToTooltip(datum))
         })
-            .on("contextmenu", this.createContextMenu.bind(this));
+            .on("contextmenu", this.createContextMenu.bind(this))
+            .on("dblclick", this.zoomToSpec.bind(this));
 
 
         this.attributePanel.initialize();
@@ -348,6 +350,20 @@ export default class SampleTrack extends WebGlTrack {
 
         const sampleId = this.sampleScale.invert(point[1], findClosest);
         return sampleId ? this.samples.get(sampleId) : null;
+    }
+
+    
+    zoomToSpec(spec, mouseEvent, point) {
+        // TODO: handle case: x = 0
+        if (spec.x && spec.x2) {
+            const interval = new Interval(spec.x, spec.x2);
+            this.genomeSpy.zoomTo(interval.pad(interval.width() * 0.25));
+
+        } else if (spec.x && !spec.x2) {
+            const width = 1000000; // TODO: Configurable
+
+            this.genomeSpy.zoomTo(new Interval(spec.x - width / 2, spec.x + width / 2));
+        }
     }
 
     /**
