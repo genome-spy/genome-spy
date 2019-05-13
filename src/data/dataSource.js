@@ -71,15 +71,20 @@ export default class DataSource {
     }
 
     async fetchData() {
-        // TODO: Support "dataSource", immediate data as objects, etc...
-        // TODO: Create an own module for data loading
         const dataFiles = typeof this.config.url == "string" ?
             [this.config.url] :
             this.config.url;
 
         const urls = dataFiles.map(u => this.addBaseUrl(u));
 
-        return Promise.all(urls.map(url => fetch(url).then(data => data.text())));
+        // TODO: Improve performance by feeding data to the transformation pipeline as soon as it has been loaded.
+        // ... wait for all only when the complete data is needed.
+        return Promise.all(urls.map(url => fetch(url).then(response => {
+            if (!response.ok) {
+                throw new Error(`Can not load ${response.url}: ${response.status} ${response.statusText}`);
+            }
+            return response.text()
+        })));
     }
 
     addBaseUrl(url) {
