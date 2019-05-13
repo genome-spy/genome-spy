@@ -407,8 +407,7 @@ export default class AttributePanel {
 
         // Find all attributes
         const attributeNames = samples
-            //.flatMap(sample => Object.keys(sample.attributes))
-            .reduce((acc, sample) => acc.concat(Object.keys(sample.attributes)), []) // Firefox 60 ESR
+            .flatMap(sample => Object.keys(sample.attributes))
             .reduce((set, key) => set.add(key), new Set());
 
         this.attributeScales = new Map();

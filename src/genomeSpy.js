@@ -1,3 +1,5 @@
+import 'array-flat-polyfill';
+
 import { scaleLinear } from 'd3-scale';
 import { interpolateZoom } from 'd3-interpolate';
 

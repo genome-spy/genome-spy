@@ -21,6 +21,7 @@
     "@fortawesome/fontawesome-free": "^5.7.2",
     "@fortawesome/fontawesome-svg-core": "^1.2.15",
     "@fortawesome/free-solid-svg-icons": "^5.7.2",
+    "array-flat-polyfill": "^1.0.1",
     "d3-array": "^2.0.3",
     "d3-color": "^1.2.3",
     "d3-dsv": "^1.1.1",
