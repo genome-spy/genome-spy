@@ -111,6 +111,7 @@ export default class AttributePanel {
 
             const attributeValue = sample.attributes[attribute];
 
+            // TODO: Does not work with missing values
             const nominal = typeof attributeValue == "string";
 
             items = items.concat([
@@ -163,11 +164,7 @@ export default class AttributePanel {
                     {
                         label: "Remove",
                         callback: () => filterByAttributeValue((a, chosen) => a !== chosen)
-                    },
-                    {
-                        label: "Add missing samples",
-                        callback: () => alert("TODO")
-                    },
+                    }
                 ]);
 
             } else {
@@ -194,7 +191,7 @@ export default class AttributePanel {
                     items = items.concat([
                         {
                             label: `Remove undefined ${attribute}`,
-                            callback: () => filterByAttributeValue((a, chosen) => !isNaN(a))
+                            callback: () => filterByAttributeValue((a, chosen) => (typeof a == "string") || (a !== null && !isNaN(a)))
                         }
                     ]);
                 }
