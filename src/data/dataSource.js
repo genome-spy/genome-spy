@@ -12,6 +12,10 @@ import { read } from 'datalib';
  * @prop {Object[]} [values]
  * 
  */
+
+ /**
+  * 
+  */
 export default class DataSource {
     /**
      * 
@@ -32,62 +36,80 @@ export default class DataSource {
      * @returns {Promise<any[][]>}
      */
     async getDatasets() {
-        let format = this.config.format;
-        if (format && typeof format.parse == "undefined") {
-            format = {
-                ...format,
-                parse: "auto"
-            };
-        }
-
-        let data;
-
         if (this.config.values) {
-            const values = this.config.values;
-
-            if (Array.isArray(values)) {
-                data = values;
-
-            } else if (typeof values == "string") {
-                data = read(values, format); // TODO: Require format & type
-
-            } else {
-                throw new Error('"values" in data configuration is not an array nor a string!');
-            }
-
-            data = [data];
+            return this._getImmediateData();
 
         } else if (this.config.url) {
-            const rawData = await this.fetchData();
-            // TODO: Infer format from file extension
-            data = rawData.map(d => read(d, format));
+            return await this._fetchAndReadAll();
 
         } else {
             throw new Error('No "url" or "values" defined in data configuration!');
         }
-
-
-        return data;
     }
 
-    async fetchData() {
-        const dataFiles = typeof this.config.url == "string" ?
-            [this.config.url] :
-            this.config.url;
+    _getFormat(type) {
+        const format = { ...this.config.format };
 
-        const urls = dataFiles.map(u => this.addBaseUrl(u));
+        format.type = format.type || type;
+        format.parse = format.parse || "auto";
 
-        // TODO: Improve performance by feeding data to the transformation pipeline as soon as it has been loaded.
-        // ... wait for all only when the complete data is needed.
-        return Promise.all(urls.map(url => fetch(url).then(response => {
+        if (!format.type) {
+            throw new Error("Format for data source was not defined and it could not be inferred: " + JSON.stringify(this.config));
+        }
+
+        return format;
+    }
+
+    _extractTypeFromUrl(url) {
+        const match = url.match(/\.(csv|tsv|json)/)
+        return match ? match[1] : null;
+    }
+
+    _getImmediateData() {
+        let data;
+        const values = this.config.values;
+
+        if (Array.isArray(values)) {
+            // It's an array of objects
+            data = values;
+
+        } else if (typeof values == "string") {
+            // It's a string that needs to be parsed
+            data = read(values, this._getFormat());
+
+        } else {
+            throw new Error('"values" in data configuration is not an array nor a string!');
+        }
+
+        return [data];
+    }
+
+    /**
+     * 
+     * @param {string} url May be relative
+     */
+    async _fetchAndRead(url) {
+        return fetch(this._addBaseUrl(url)).then(response => {
             if (!response.ok) {
                 throw new Error(`Can not load ${response.url}: ${response.status} ${response.statusText}`);
             }
-            return response.text()
-        })));
+            return response.text();
+        }).then(text => read(text, this._getFormat(this._extractTypeFromUrl(url))));
     }
 
-    addBaseUrl(url) {
+    async _fetchAndReadAll() {
+        const url = this.config.url;
+
+        const dataFiles = typeof url == "string" ?
+            [this.config.url] :
+            this.config.url;
+
+        // TODO: Improve performance by feeding data to the transformation pipeline as soon as it has been loaded.
+        // ... wait for all only when the complete data is needed.
+        return Promise.all(dataFiles.map(url => this._fetchAndRead(url)));
+    }
+
+    _addBaseUrl(url) {
         if (/^http(s):\/\//.test(url)) {
             return url;
 
@@ -99,6 +121,5 @@ export default class DataSource {
             return this.baseUrl + url;
         }
     }
-
     
 }
