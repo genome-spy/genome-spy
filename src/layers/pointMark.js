@@ -8,8 +8,14 @@ import Mark from './mark';
 
 
 // TODO: Style object
-const maxPointSizeRelative = 0.8;
-const maxPointSizeAbsolute = 25;
+const defaultRenderConfig = {
+    // Fraction of sample height
+    maxPointSizeRelative: 0.8,
+    // In pixels
+    maxMaxPointSizeAbsolute: 25,
+    // In pixels
+    minMaxPointSizeAbsolute: 4.5
+}
 
 const fractionToShow = 0.02;
 
@@ -43,6 +49,8 @@ export default class PointMark extends Mark {
 
         this.rangeMap = vertexData.rangeMap;
         this.bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays);
+
+        this.renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
     }
 
     /**
@@ -58,8 +66,9 @@ export default class PointMark extends Mark {
             ...globalUniforms,
             viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight * window.devicePixelRatio,
             devicePixelRatio: window.devicePixelRatio,
-            maxPointSizeRelative,
-            maxPointSizeAbsolute: maxPointSizeAbsolute * window.devicePixelRatio,
+            maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
+            maxMaxPointSizeAbsolute: this.renderConfig.maxMaxPointSizeAbsolute * window.devicePixelRatio,
+            minMaxPointSizeAbsolute: this.renderConfig.minMaxPointSizeAbsolute * window.devicePixelRatio,
             fractionToShow: fractionToShow // TODO: Configurable
         });
 
@@ -88,7 +97,9 @@ export default class PointMark extends Mark {
 
         const pointY = yBand.centre();
 
-        const maxPointSize = Math.min(maxPointSizeAbsolute, maxPointSizeRelative * yBand.width());
+        const maxPointSize = Math.max(
+            this.renderConfig.minMaxPointSizeAbsolute,
+            Math.min(this.renderConfig.maxMaxPointSizeAbsolute, this.renderConfig.maxPointSizeRelative * yBand.width()));
 
         const distance = (x1, x2, y1, y2) => Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 
