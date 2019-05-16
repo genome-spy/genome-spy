@@ -1,4 +1,5 @@
 import { read } from 'datalib';
+import { DataGroup, GroupGroup, Group } from './group';
 
 /**
  * @typedef {Object} FormatConfig
@@ -13,9 +14,8 @@ import { read } from 'datalib';
  * 
  */
 
- /**
-  * 
-  */
+
+
 export default class DataSource {
     /**
      * 
@@ -27,15 +27,17 @@ export default class DataSource {
         this.baseUrl = baseUrl;
     }
 
-    async getConcatedData() {
-        const datasets = await this.getDatasets();
-        return datasets.flat();
+    /**
+     * @returns {Promise<object[]>}
+     */
+    async getUngroupedData() {
+        return this.getData().then(g => g.ungroupAll().data);
     }
 
     /**
-     * @returns {Promise<any[][]>}
+     * @returns {Promise<Group>}
      */
-    async getDatasets() {
+    async getData() {
         if (this.config.values) {
             return this._getImmediateData();
 
@@ -81,12 +83,13 @@ export default class DataSource {
             throw new Error('"values" in data configuration is not an array nor a string!');
         }
 
-        return [data];
+        return new DataGroup("immediate", data);
     }
 
     /**
      * 
      * @param {string} url May be relative
+     * @returns {Promise<DataGroup>}
      */
     async _fetchAndRead(url) {
         return fetch(this._addBaseUrl(url)).then(response => {
@@ -94,19 +97,31 @@ export default class DataSource {
                 throw new Error(`Can not load ${response.url}: ${response.status} ${response.statusText}`);
             }
             return response.text();
-        }).then(text => read(text, this._getFormat(this._extractTypeFromUrl(url))));
+        }).then(text => new DataGroup(
+            url,
+            read(text, this._getFormat(this._extractTypeFromUrl(url)))
+        ));
     }
 
+    /**
+     * @returns {Promise<Group>}
+     */
     async _fetchAndReadAll() {
         const url = this.config.url;
 
-        const dataFiles = typeof url == "string" ?
-            [this.config.url] :
-            this.config.url;
-
         // TODO: Improve performance by feeding data to the transformation pipeline as soon as it has been loaded.
         // ... wait for all only when the complete data is needed.
-        return Promise.all(dataFiles.map(url => this._fetchAndRead(url)));
+
+        if (typeof url == "string") {
+            return this._fetchAndRead(url);
+
+        } else if (Array.isArray(url)) {
+            return new GroupGroup("root",
+                await Promise.all(/** @type {string[]} */(url).map(url => this._fetchAndRead(url))));
+
+        } else {
+            throw new Error("url is neither a string nor an array: " + JSON.stringify(url));
+        }
     }
 
     _addBaseUrl(url) {

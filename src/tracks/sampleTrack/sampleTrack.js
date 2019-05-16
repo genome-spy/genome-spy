@@ -169,7 +169,7 @@ export default class SampleTrack extends WebGlTrack {
 
         if (this.config.samples) {
             const sampleDataSource = new DataSource(this.config.samples.data, this.genomeSpy.config.baseurl);
-            this.setSamples(processSamples(await sampleDataSource.getConcatedData()));
+            this.setSamples(processSamples(await sampleDataSource.getUngroupedData()));
 
         } else {
             // TODO: Get samples from layers if they were not provided

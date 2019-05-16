@@ -52,6 +52,9 @@ export default class ViewUnit {
             .map(unitConfig => new ViewUnit(context, this, unitConfig));
     }
 
+    /**
+     * @returns {import("../data/group").Group}
+     */
     getData() {
         if (this.data) {
             return this.data;
@@ -81,24 +84,20 @@ export default class ViewUnit {
 
     async initialize() {
         if (this.config.data) {
-            this.data = await this.context.getDataSource(this.config.data).getDatasets();
-
-            // TODO: Concat data frames if they have identical columns
+            this.data = await this.context.getDataSource(this.config.data).getData();
         }
 
         if (this.config.transform) {
-            const data = this.getData();
-            this.data = data.map(dataFrame => transformData(this.config.transform, dataFrame));
+            this.data = transformData(this.config.transform, this.getData());
         }
 
         if (this.config.mark) {
             const data = this.getData();
             if (!data) {
-                // TODO: Check if all visual channels have constant values and create a single implicit data item
                 throw new Error("Can not create mark, no data available!");
             }
 
-            const concatedData = data.flat();
+            const ungroupedData = data.ungroupAll().data;
 
             const encoding = this.getEncoding();
             if (!encoding) {
@@ -113,7 +112,7 @@ export default class ViewUnit {
                 const baseObject = {
                     _viewUnit: this
                 };
-                const specs = processData(encoding, concatedData, this.context.genomeSpy.visualMapperFactory, baseObject);
+                const specs = processData(encoding, ungroupedData, this.context.genomeSpy.visualMapperFactory, baseObject);
                 mark.setSpecs(specs);
                 await mark.initialize();
 
