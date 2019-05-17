@@ -610,6 +610,8 @@ export default class SampleTrack extends WebGlTrack {
         this.attributePanel.sampleMouseTracker.clear();
         this.viewportMouseTracker.clear();
 
+        this.getLayers().forEach(layer => layer.onBeforeSampleAnimation());
+
         return transition({
             from: reverse ? 1 : 0,
             to: reverse ? 0 : 1,
@@ -632,7 +634,7 @@ export default class SampleTrack extends WebGlTrack {
                 this.renderViewport(options);
                 this.attributePanel.renderLabels(options);
             }
-        });
+        }).then(() => this.getLayers().forEach(layer => layer.onAfterSampleAnimation()));
     }
 
     /**

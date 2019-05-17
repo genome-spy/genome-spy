@@ -45,7 +45,12 @@ export function color2floatArray(color) {
  */
 
  export class RectVertexBuilder {
-    constructor(tesselationThreshold = 8000000) {
+     /**
+      * 
+      * @param {number} [tesselationThreshold]
+      *     If the rect is narrower than the threshold, tesselate it into pieces
+      */
+    constructor(tesselationThreshold = Infinity) {
         this.tesselationThreshold = tesselationThreshold;
 
         this.xArr = [];
@@ -77,7 +82,8 @@ export function color2floatArray(color) {
 
             if (!(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0)) continue;
 
-            // TODO: Conserve memory, use int8 color components instead of floats
+            // TODO: Conserve memory, use int8 color components instead of floats...
+            // ... or store the raw value and scale it in the vertex shader
             const c = color2floatArray(color);
 
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
@@ -88,7 +94,7 @@ export function color2floatArray(color) {
             this.opacityArr.push(opacity);
 
             // Tesselate segments
-            const tileCount = Math.ceil(width / this.tesselationThreshold);
+            const tileCount = Math.ceil(width / this.tesselationThreshold) || 1;
             for (let i = 0; i <= tileCount; i++) {
                 const frac = i / tileCount;
                 // Interpolate X & Y

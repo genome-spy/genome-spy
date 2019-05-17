@@ -2,12 +2,18 @@ import * as twgl from 'twgl-base.js';
 import VERTEX_SHADER from '../gl/rectangle.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
 import { RectVertexBuilder } from '../gl/segmentsToVertices';
+import Interval from '../utils/interval';
 
 import Mark from './mark';
 
 const defaultRenderConfig = {
     minRectWidth: 1.0,
     minRectOpacity: 0.0
+};
+
+const tesselationConfig = {
+    zoomThreshold: 10,
+    tiles: 35
 };
 
 export default class RectMark extends Mark {
@@ -27,20 +33,47 @@ export default class RectMark extends Mark {
         await super.initialize();
     }
 
+    onBeforeSampleAnimation() {
+        const interval = this.unitContext.genomeSpy.getViewportDomain();
+
+        if (interval.width() < this.unitContext.genomeSpy.genome.chromMapper.extent().width() / tesselationConfig.zoomThreshold) {
+            // TODO: Only bufferize the samples that are being animated
+            this._sampleBufferInfo = this._createSampleBufferInfo(interval,
+                interval.width() / tesselationConfig.tiles);
+        }            
+
+    }
+
+    onAfterSampleAnimation() {
+        this._sampleBufferInfo = this._fullSampleBufferInfo;
+    }
+
+    /**
+     * 
+     * @param {import("../utils/interval").default} [interval]
+     * @param {number} [tesselationThreshold]
+     */
+    _createSampleBufferInfo(interval, tesselationThreshold) {
+        const builder = new RectVertexBuilder(tesselationThreshold);
+        for (const [sample, rects] of this.specsBySample.entries()) {
+            builder.addBatch(sample, interval ? clipRects(rects, interval) : rects);
+        }
+        const vertexData = builder.toArrays();
+
+        return {
+            rangeMap: vertexData.rangeMap,
+            bufferInfo: twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays)
+        };
+    }
 
     _initGL() {
         const gl = this.gl;
 
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
-        const builder = new RectVertexBuilder();
-        for (const [sample, rects] of this.specsBySample.entries()) {
-            builder.addBatch(sample, rects);
-        }
-        const vertexData = builder.toArrays();
-
-        this.rangeMap = vertexData.rangeMap;
-        this.bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays);
+        this._fullSampleBufferInfo = this._createSampleBufferInfo(null,
+            this.unitContext.genomeSpy.genome.chromMapper.extent().width() / tesselationConfig.zoomThreshold / tesselationConfig.tiles);
+        this._sampleBufferInfo = this._fullSampleBufferInfo;
 
         this.renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
     }
@@ -65,13 +98,14 @@ export default class RectMark extends Mark {
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0
         });
 
-        twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+        twgl.setBuffersAndAttributes(gl, this.programInfo, this._sampleBufferInfo.bufferInfo);
 
         for (const sampleData of samples) {
-            const range = this.rangeMap.get(sampleData.sampleId);
+            const range = this._sampleBufferInfo.rangeMap.get(sampleData.sampleId);
             if (range) {
                 twgl.setUniforms(this.programInfo, sampleData.uniforms);
-                twgl.drawBufferInfo(gl, this.bufferInfo, gl.TRIANGLE_STRIP, range.count, range.offset);
+                // TODO: draw only the part that intersects with the viewport
+                twgl.drawBufferInfo(gl, this._sampleBufferInfo, gl.TRIANGLE_STRIP, range.count, range.offset);
             }
         }
     }
@@ -128,4 +162,33 @@ export default class RectMark extends Mark {
         };
     }
 
+}
+
+/**
+ * 
+ * @param {import("../gl/segmentsToVertices").RectSpec[]} rects 
+ * @param {import("../utils/interval").default} interval
+ */
+function clipRects(rects, interval) {
+    const lower = interval.lower, upper = interval.upper;
+    const clipped = [];
+
+    for (const rect of rects) {
+        if (rect.x2 < lower || rect.x > upper) {
+            // TODO: Use binary search for culling
+            continue;
+
+        } else if (rect.x >= lower && rect.x2 <= upper) {
+            clipped.push(rect);
+
+        } else {
+            clipped.push({
+                ...rect,
+                x: Math.max(rect.x, lower),
+                x2: Math.min(rect.x2, upper)
+            });
+        }
+    }
+
+    return clipped;
 }

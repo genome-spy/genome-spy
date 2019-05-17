@@ -28,6 +28,10 @@ export default class Mark {
         this.fieldMappers = specs.fieldMappers; 
     }
 
+    onBeforeSampleAnimation() { }
+
+    onAfterSampleAnimation() { }
+
     _initGL() {
 
     }
