@@ -64,11 +64,11 @@ export default class PointMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight * window.devicePixelRatio,
+            viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight,
             devicePixelRatio: window.devicePixelRatio,
             maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
-            maxMaxPointSizeAbsolute: this.renderConfig.maxMaxPointSizeAbsolute * window.devicePixelRatio,
-            minMaxPointSizeAbsolute: this.renderConfig.minMaxPointSizeAbsolute * window.devicePixelRatio,
+            maxMaxPointSizeAbsolute: this.renderConfig.maxMaxPointSizeAbsolute,
+            minMaxPointSizeAbsolute: this.renderConfig.minMaxPointSizeAbsolute,
             fractionToShow: fractionToShow // TODO: Configurable
         });
 

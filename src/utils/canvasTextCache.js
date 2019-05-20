@@ -19,7 +19,7 @@ export default class CanvasTextCache {
         /** Relative padding above and below the text */
         this.vPadding = 0.0;
 
-        this.dpr = window.devicePixelRatio || 1;
+        this._dpr = window.devicePixelRatio || 1;
 
         this.measureContext = document.createElement("canvas").getContext("2d");
         this.measureContext.font = `${this.fontSize}px ${this.fontFamily}`;
@@ -36,10 +36,10 @@ export default class CanvasTextCache {
             canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
             const width = this.measureContext.measureText(text).width;
-            canvas.height = Math.ceil(this._getTextHeight() * this.dpr);
-            canvas.width = Math.ceil(width * this.dpr);
+            canvas.height = Math.ceil(this._getTextHeight() * this._dpr);
+            canvas.width = Math.ceil(width * this._dpr);
             
-            ctx.scale(this.dpr, this.dpr);
+            ctx.scale(this._dpr, this._dpr);
             ctx.font = `${this.fontSize}px ${this.fontFamily}`;
             ctx.textBaseline = 'middle';
             ctx.fillText(text, 0, Math.round(this._getTextHeight() / 2));
@@ -63,7 +63,7 @@ export default class CanvasTextCache {
      * @param {?number} fontSize
      */
     fillText(targetCtx, text, x, y, fontSize = null) {
-        const scaleFactor = (fontSize ? (fontSize / this.fontSize) : 1) / this.dpr;
+        const scaleFactor = (fontSize ? (fontSize / this.fontSize) : 1) / this._dpr;
 
         const textCanvas = this._getText(text);
         const targetHeight = textCanvas.height * scaleFactor;
@@ -72,6 +72,11 @@ export default class CanvasTextCache {
         targetCtx.drawImage(textCanvas,
             x, Math.round(y - targetHeight / 2),
             targetWidth, targetHeight);
+    }
+
+    clearCache() {
+        this.cache = new Map();
+        this._dpr = window.devicePixelRatio || 1;
     }
 
 }

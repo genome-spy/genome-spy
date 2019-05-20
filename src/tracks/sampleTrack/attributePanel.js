@@ -30,6 +30,8 @@ export default class AttributePanel {
         this.styles = this.sampleTrack.styles;
 
         this.textCache = new CanvasTextCache(this.styles.fontSize, this.styles.fontFamily);
+        
+        this._dpr = window.devicePixelRatio;
     }
 
 
@@ -268,6 +270,11 @@ export default class AttributePanel {
 
         const ctx = this.sampleTrack.get2d(this.labelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
+
+        if (window.devicePixelRatio != this._dpr) {
+            this._dpr = window.devicePixelRatio;
+            this.textCache.clearCache();
+        }
 
         leftScale.getDomain().forEach(sampleId => {
             const sample = this.sampleTrack.samples.get(sampleId);

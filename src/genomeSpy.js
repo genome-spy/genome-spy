@@ -52,6 +52,8 @@ export default class GenomeSpy {
         this.tracks = [];
 
         this.visualMapperFactory = new VisualMapperFactory();
+
+        this._dpr = window.devicePixelRatio;
     }
 
     on(...args) {
@@ -90,6 +92,9 @@ export default class GenomeSpy {
         return Math.log2(b / y) / Math.log2(b / a);
     }
 
+    /**
+     * Returns the current zoom level, [1, Infinity)
+     */
     getExpZoomLevel() {
         const b = this.chromMapper.extent().width();
         const y = this.getViewportDomain().width();
@@ -153,6 +158,13 @@ export default class GenomeSpy {
         this.container.appendChild(this.loadingMessageElement);
 
         window.addEventListener('resize', this._resized.bind(this), false);
+
+        window.addEventListener('mousemove', () => {
+            if (window.devicePixelRatio != this._dpr) {
+                this._dpr = window.devicePixelRatio;
+                this._resized();
+            }
+        });
 
         this.container.classList.add("genome-spy");
         this.container.classList.add("loading");

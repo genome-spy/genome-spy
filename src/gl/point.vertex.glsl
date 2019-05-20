@@ -9,6 +9,7 @@ attribute float size;
 attribute float zoomThreshold;
 
 uniform float viewportHeight;
+uniform lowp float devicePixelRatio;
 
 /** Maximum point size in pixels */
 uniform lowp float maxMaxPointSizeAbsolute;
@@ -53,7 +54,7 @@ void main(void) {
 
     gl_Position = vec4(ndc, 0.0, 1.0);
 
-    vSize = size * computeMaxSize(height) * thresholdFactor;
+    vSize = size * computeMaxSize(height) * thresholdFactor * devicePixelRatio;
 
     gl_PointSize = vSize;
 
