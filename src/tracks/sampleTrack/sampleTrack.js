@@ -421,17 +421,26 @@ export default class SampleTrack extends WebGlTrack {
             entry => true;
 
         function toString(object) {
-            if (typeof object == "string") {
+            if (object === null) {
+                return "";
+            }
+
+            const type = dl.type.infer([object]);
+
+            if (type == "string") {
                 return object.substring(0, 30);
 
-            } else if (typeof object == "number") {
+            } else if (type == "integer") {
+                return "" + object;
+
+            } else if (type == "number") {
                 return numberFormat(object);
 
-            } else if (object === null) {
-                return "";
+            } else if (type == "boolean") {
+                return object ? "True" : "False";
 
             } else {
-                return "?" + typeof object;
+                return "?" + type + " " + object;
             }
         }
 
