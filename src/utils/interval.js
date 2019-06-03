@@ -74,6 +74,15 @@ export default class Interval {
     }
 
     /**
+     * Interpolates between lower and upper bounds
+     * 
+     * @param {number} ratio between 0 and 1
+     */
+    interpolate(ratio) {
+        return this.lower + ratio * this.width();
+    }
+
+    /**
      * @param {Interval} otherInterval 
      */
     intersect(otherInterval) {

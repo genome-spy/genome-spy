@@ -44,31 +44,46 @@ export function color2floatArray(color) {
  * TODO: y, symbol, orientation, aspectRatio
  */
 
- export class RectVertexBuilder {
-     /**
-      * 
-      * @param {number} [tesselationThreshold]
-      *     If the rect is narrower than the threshold, tesselate it into pieces
-      */
-    constructor(tesselationThreshold = Infinity) {
+export class RectVertexBuilder {
+    /**
+     * 
+     * @param {number} [tesselationThreshold]
+     *     If the rect is narrower than the threshold, tesselate it into pieces
+     */
+    constructor(constants, variables, tesselationThreshold = Infinity) {
+        // TODO: Provide default values and provide them as constants
+
         this.tesselationThreshold = tesselationThreshold;
 
-        this.xArr = [];
-        this.widthArr = [];
-        this.yArr = [];
-        this.colorArr = [];
-        this.opacityArr = [];
+        const converters = {
+            color: { f: spec => color2floatArray(spec.color), numComponents: 4 },
+            opacity: { f: spec => spec.opacity, numComponents: 1 },
+        };
+
+        this.constants = constants || {};
+
+        this.variableBuilder = ArrayBuilder.create(converters, variables);
+
+        this.updateX = this.variableBuilder.createUpdater("x", 2);
+        this.updateY = this.variableBuilder.createUpdater("y", 1);
+        this.updateWidth = this.variableBuilder.createUpdater("width", 1);
+
+        this.constantBuilder = ArrayBuilder.create(converters, Object.keys(constants));
+        this.constantBuilder.updateFromSpec(
+            Object.fromEntries(Object.entries(constants)
+                    .map(entry => [entry[0], entry[1]])));
+        this.constantBuilder.pushAll();
 
         this.rangeMap = new Map();
     }
 
     /**
-     * 
+     *
      * @param {string} key 
      * @param {RectSpec[]} rects 
      */
     addBatch(key, rects) {
-        const offset = this.yArr.length;
+        const offset = this.variableBuilder.vertexCount;
 
         for (let r of rects) {
             const [x, x2] = r.x <= r.x2 ? [r.x, r.x2] : [r.x2, r.x];
@@ -76,34 +91,19 @@ export function color2floatArray(color) {
 
             const width = x2 - x;
 
-            const color = r.color || black;
-            const opacity = typeof r.opacity == "number" ? r.opacity : 1;
-
-
             if (!(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0)) continue;
 
-            // TODO: Conserve memory, use int8 color components instead of floats...
-            // ... or store the raw value and scale it in the vertex shader
-            const c = color2floatArray(color);
-
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
-            this.xArr.push(...fp64ify(x));
-            this.widthArr.push(-width);
-            this.yArr.push(y);
-            this.colorArr.push(...c);
-            this.opacityArr.push(opacity);
+            this.variableBuilder.updateFromSpec(r);
+            this.updateX(fp64ify(x));
+            this.updateWidth(-width);
+            this.updateY(y);
+            this.variableBuilder.pushAll();
 
             // Tesselate segments
             const tileCount = Math.ceil(width / this.tesselationThreshold) || 1;
             for (let i = 0; i <= tileCount; i++) {
                 const frac = i / tileCount;
-                // Interpolate X & Y
-                // Emulate 64bit floats using two 32bit floats
-                const iX = fp64ify(r.x + width * frac);
-                this.xArr.push(...iX, ...iX);
-                this.yArr.push(y, y2);
-                this.colorArr.push(...c, ...c);
-                this.opacityArr.push(opacity, opacity);
 
                 let w = 0;
                 if (i == 0) {
@@ -111,18 +111,24 @@ export function color2floatArray(color) {
                 } else if (i >= tileCount) {
                     w = width;
                 }
-                this.widthArr.push(w, w);
+
+                this.updateWidth(w);
+                this.updateX(fp64ify(r.x + width * frac));
+                this.updateY(y);
+                this.variableBuilder.pushAll();
+                this.updateY(y2);
+                this.variableBuilder.pushAll();
             }
 
             // Duplicate the last vertex to produce a degenerate triangle between the segments
-            this.xArr.push(...fp64ify(x2));
-            this.widthArr.push(width);
-            this.yArr.push(y2);
-            this.colorArr.push(...c);
-            this.opacityArr.push(opacity);
+            this.variableBuilder.updateFromSpec(r);
+            this.updateX(fp64ify(x2));
+            this.updateWidth(width);
+            this.updateY(y2);
+            this.variableBuilder.pushAll();
         }
 
-        const count = this.yArr.length - offset;
+        const count = this.variableBuilder.vertexCount - offset;
         if (count) {
             this.rangeMap.set(key, {
                 offset, count 
@@ -134,13 +140,10 @@ export function color2floatArray(color) {
     toArrays() {
         return {
             arrays: {
-                x:       { data: new Float32Array(this.xArr), numComponents: 2 },
-                y:       { data: new Float32Array(this.yArr), numComponents: 1 },
-                width:   { data: new Float32Array(this.widthArr), numComponents: 1 },
-                color:   { data: new Float32Array(this.colorArr), numComponents: 4 },
-                opacity: { data: new Float32Array(this.opacityArr), numComponents: 1 }
+                ...this.variableBuilder.arrays,
+                ...this.constantBuilder.toValues()
             },
-            vertexCount: this.yArr.length,
+            vertexCount: this.variableBuilder.vertexCount,
             drawMode: glConst.TRIANGLE_STRIP,
             rangeMap: this.rangeMap
         };
@@ -148,15 +151,38 @@ export function color2floatArray(color) {
 }
 
 export class PointVertexBuilder {
-    constructor() {
-        this.xArr = [];
-        this.sizeArr = [];
-        this.colorArr = [];
-        this.thresholdArr = [];
-        this.index = 0;
+    /**
+     * 
+     * @param {Object.<string, any[]>} constants
+     * @param {string[]} variables names of variables
+     */
+    constructor(constants, variables) {
 
+        // TODO: Provide default values and provide them as constants
+
+        const converters = {
+            x:     { f: spec => fp64ify(spec.x),              numComponents: 2 },
+            y:     { f: spec => spec.y,                       numComponents: 1 },
+            size:  { f: spec => Math.sqrt(spec.size),         numComponents: 1 },
+            color: { f: spec => color2floatArray(spec.color), numComponents: 4 },
+            zoomThreshold: { f: spec => spec.zoomThreshold,   numComponents: 1 },
+        };
+
+        this.constants = constants || {};
+
+        this.variableBuilder = ArrayBuilder.create(converters, variables);
+
+        this.constantBuilder = ArrayBuilder.create(converters, Object.keys(constants));
+        this.constantBuilder.updateFromSpec(
+            Object.fromEntries(Object.entries(this.constants)
+                    .map(entry => [entry[0], entry[1]])));
+        this.constantBuilder.pushAll();
+
+
+        this.index = 0;
         this.rangeMap = new Map();
     }
+
 
     /**
      * 
@@ -167,11 +193,7 @@ export class PointVertexBuilder {
         const offset = this.index;
 
         for (const p of points) {
-            this.xArr.push(...fp64ify(p.x));
-            this.sizeArr.push(typeof p.size == "number" ? Math.sqrt(p.size) : 1.0);
-            this.colorArr.push(...color2floatArray(p.color || gray));
-            this.thresholdArr.push(p.zoomThreshold || 1.0);
-
+            this.variableBuilder.pushFromSpec(p);
             this.index++;
         }
 
@@ -187,94 +209,14 @@ export class PointVertexBuilder {
     toArrays() {
         return {
             arrays: {
-                x:     { data: new Float32Array(this.xArr), numComponents: 2 },
-                size:  { data: new Float32Array(this.sizeArr), numComponents: 1 },
-                color: { data: new Float32Array(this.colorArr), numComponents: 4 },
-                zoomThreshold: { data: new Float32Array(this.thresholdArr), numComponents: 1 }
+                ...this.variableBuilder.arrays,
+                ...this.constantBuilder.toValues()
             },
             vertexCount: this.index,
             drawMode: glConst.POINTS,
             rangeMap: this.rangeMap
         };
     }
-}
-
-/**
- * Converts the given rects into typed arrays of vertices
- * 
- * @deprecated Use RectVertexBuilder
- * @param {RectSpec[]} rects 
- * @param {number} [tesselationThreshold] Tesselate segments if they are shorter than the threshold
- */
-export function rectsToVertices(rects, tesselationThreshold = 8000000) {
-
-    const xArr = [];
-    const widthArr = [];
-    const yArr = [];
-    const colorArr = [];
-    const opacityArr = [];
-
-    // TODO: This is a bit slow and should be profiled more carefully
-
-    for (let r of rects) {
-        const [x, x2] = r.x <= r.x2 ? [r.x, r.x2] : [r.x2, r.x];
-        const [y, y2] = r.y <= r.y2 ? [1 - r.y, 1 - r.y2] : [1 - r.y2, 1 - r.y];
-
-        const width = x2 - x;
-
-        const color = r.color || black;
-        const opacity = typeof r.opacity == "number" ? r.opacity : 1;
-
-        // TODO: Conserve memory, use int8 color components instead of floats
-        const c = color2floatArray(color);
-
-        // Start a new segment. Duplicate the first vertex to produce degenerate triangles
-        xArr.push(...fp64ify(x));
-        widthArr.push(-width);
-        yArr.push(y);
-        colorArr.push(...c);
-        opacityArr.push(opacity);
-
-        // Tesselate segments
-        const tileCount = Math.ceil(width / tesselationThreshold);
-        for (let i = 0; i <= tileCount; i++) {
-            const frac = i / tileCount;
-            // Interpolate X & Y
-            // Emulate 64bit floats using two 32bit floats
-            const iX = fp64ify(r.x + width * frac);
-            xArr.push(...iX, ...iX);
-            yArr.push(y, y2);
-            colorArr.push(...c, ...c);
-            opacityArr.push(opacity, opacity);
-
-            let w = 0;
-            if (i == 0) {
-                w = -width;
-            } else if (i >= tileCount) {
-                w = width;
-            }
-            widthArr.push(w, w);
-        }
-
-        // Duplicate the last vertex to produce a degenerate triangle between the segments
-        xArr.push(...fp64ify(x2));
-        widthArr.push(width);
-        yArr.push(y2);
-        colorArr.push(...c);
-        opacityArr.push(opacity);
-    }
-
-    return {
-        arrays: {
-            x: { data: new Float32Array(xArr), numComponents: 2 },
-            y: { data: new Float32Array(yArr), numComponents: 1 },
-            width: { data: new Float32Array(widthArr), numComponents: 1  },
-            color: { data: new Float32Array(colorArr), numComponents: 4 },
-            opacity: { data: new Float32Array(opacityArr), numComponents: 1  }
-        },
-        vertexCount: yArr.length,
-        drawMode: glConst.TRIANGLE_STRIP
-    };
 }
 
 /**
@@ -364,5 +306,103 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
         vertexCount: y.length,
         drawMode: glConst.TRIANGLE_STRIP
     };
+}
+
+
+class ArrayBuilder {
+    // TODO: Support strided layout. May yield better performance or not. No consensus in literature.
+
+    /**
+     * 
+     * @param {*} converters 
+     * @param {string[]} attributes Which attributes to include
+     */
+    static create(converters, attributes) {
+        const builder = new ArrayBuilder();
+
+        Object.entries(converters)
+            .filter(entry => attributes.includes(entry[0]))
+            .forEach(entry => builder.addSpecConverter(entry[0], entry[1].numComponents, entry[1].f));
+
+        return builder;
+    }
+
+    constructor() {
+        this.arrays = {};
+
+        /** @type {function[]} */
+        this.pushers = [];
+
+        /** @type {function[]} */
+        this.specConverters = [];
+
+        this.vertexCount = 0;
+    }
+
+    /**
+     * 
+     * @param {string} attributeName 
+     * @param {number} numComponents 
+     * @param {function} converter
+     */
+    addSpecConverter(attributeName, numComponents, converter) {
+        const updater = this.createUpdater(attributeName, numComponents);
+        this.specConverters.push(spec => updater(converter(spec)));
+    }
+
+    /**
+     * 
+     * @param {string} attributeName 
+     * @param {number} numComponents 
+     * @return {function(number|number[])}
+     */
+    createUpdater(attributeName, numComponents) {
+        let pendingValue;
+
+        const array = [];
+        this.arrays[attributeName] = {
+            data: array,
+            numComponents: numComponents
+        };
+
+        const updater = function(value) {
+            pendingValue = value;
+        }
+
+        this.pushers.push(
+            numComponents == 1 ?
+                () => array.push(pendingValue) :
+                () => array.push(...pendingValue));
+
+        return updater;
+    }
+
+    pushAll() {
+        for (const pusher of this.pushers) {
+            pusher();
+        }
+        this.vertexCount++;
+    }
+
+    updateFromSpec(spec) {
+        for (const converter of this.specConverters) {
+            converter(spec);
+        }
+    }
+
+    pushFromSpec(spec) {
+        this.updateFromSpec(spec);
+        this.pushAll();
+    }
+
+    /**
+     * Creates TWGL constant arrays
+     */
+    toValues() {
+        return Object.fromEntries(
+            Object.entries(this.arrays)
+                .map(entry => [entry[0], { value: entry[1].data }])
+        );
+    }
 }
 

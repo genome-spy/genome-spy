@@ -41,7 +41,7 @@ export default class PointMark extends Mark {
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
 
-        const builder = new PointVertexBuilder();
+        const builder = new PointVertexBuilder(this.viewUnit.getConstantValues(), this.viewUnit.getVariableChannels());
         for (const [sample, points] of this.specsBySample.entries()) {
             builder.addBatch(sample, points);
         }
@@ -95,8 +95,6 @@ export default class PointMark extends Mark {
             return null;
         }
 
-        const pointY = yBand.centre();
-
         const maxPointSize = Math.max(
             this.renderConfig.minMaxPointSizeAbsolute,
             Math.min(this.renderConfig.maxMaxPointSizeAbsolute, this.renderConfig.maxPointSizeRelative * yBand.width()));
@@ -112,7 +110,8 @@ export default class PointMark extends Mark {
         let lastMatch = null;
         for (const point of points) {
             if (1 - point.zoomThreshold < thresholdWithMargin) {
-                const dist = distance(x, scale(point.x), y, pointY);
+                // TODO: Optimize by computing mouse y on the band scale
+                const dist = distance(x, scale(point.x), y, yBand.interpolate(1 - point.y));
                 if (dist < maxPointSize * point.size) {
                     lastMatch = point;
                 }

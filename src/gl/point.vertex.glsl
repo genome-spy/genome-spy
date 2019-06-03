@@ -3,8 +3,9 @@ precision mediump float;
 @import ./includes/xdomain;
 @import ./includes/sampleTransition;
 
+attribute float y;
 attribute lowp vec4 color;
-attribute float size;
+attribute float size; // Diameter or width/height
 
 attribute float zoomThreshold;
 
@@ -39,14 +40,11 @@ float computeMaxSize(float height) {
 }
 
 void main(void) {
-    
-    // TODO: Allow using y for visual encoding
-    const float y = 0.5;
 
     float thresholdFactor = computeThresholdFactor();
     float normalizedX = normalizeX();
 
-    vec2 translated = transit(normalizedX, y);
+    vec2 translated = transit(normalizedX, (1.0 - y));
     float translatedY = translated[0];
     float height = translated[1];
 

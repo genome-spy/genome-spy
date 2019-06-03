@@ -68,6 +68,14 @@ test("ConnectedWith", () => {
     expect(interval.connectedWith(new Interval(7, 8))).toEqual(false);
 });
 
+test("Interpolate", () => {
+    const interval = new Interval(1, 3);
+    expect(interval.interpolate(0.0)).toBe(1);
+    expect(interval.interpolate(0.5)).toBe(2);
+    expect(interval.interpolate(1.0)).toBe(3);
+
+});
+
 test("Intersect", () => {
     const interval = new Interval(3, 6);
     expect(interval.intersect(new Interval(1, 2))).toBeNull();

@@ -33,7 +33,7 @@
     "eventemitter3": "^3.1.0",
     "math.gl": "^2.3.1",
     "tinyqueue": "^2.0.0",
-    "twgl-base.js": "^4.9.1",
+    "twgl-base.js": "^4.10.0",
     "vega-expression": "^2.6.0"
   },
   "devDependencies": {

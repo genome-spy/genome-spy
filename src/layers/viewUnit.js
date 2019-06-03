@@ -81,6 +81,23 @@ export default class ViewUnit {
         return Object.assign({}, pe, te);
     }
 
+    getVariableChannels() {
+        // TODO: Test presence of field and chrom/pos instead of missingness value
+        return Object.entries(this.getEncoding())
+            .filter(entry => typeof entry[1].value == "undefined")
+            .map(entry => entry[0]);
+    }
+
+    /**
+     * @return {Object}
+     */
+    getConstantValues() {
+        return Object.fromEntries(
+            Object.entries(this.getEncoding())
+                .filter(entry => typeof entry[1].value != "undefined")
+                .map(entry => [entry[0], entry[1].value]));
+    }
+
 
     async initialize() {
         if (this.config.data) {

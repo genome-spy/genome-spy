@@ -54,7 +54,10 @@ export default class RectMark extends Mark {
      * @param {number} [tesselationThreshold]
      */
     _createSampleBufferInfo(interval, tesselationThreshold) {
-        const builder = new RectVertexBuilder(tesselationThreshold);
+        const builder = new RectVertexBuilder(
+           this.viewUnit.getConstantValues(), this.viewUnit.getVariableChannels(),
+           tesselationThreshold);
+
         for (const [sample, rects] of this.specsBySample.entries()) {
             builder.addBatch(sample, interval ? clipRects(rects, interval) : rects);
         }
