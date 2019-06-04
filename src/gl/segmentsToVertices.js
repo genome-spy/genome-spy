@@ -87,7 +87,7 @@ export class RectVertexBuilder {
 
         for (let r of rects) {
             const [x, x2] = r.x <= r.x2 ? [r.x, r.x2] : [r.x2, r.x];
-            const [y, y2] = r.y <= r.y2 ? [1 - r.y, 1 - r.y2] : [1 - r.y2, 1 - r.y];
+            const [y, y2] = r.y <= r.y2 ? [r.y, r.y2] : [r.y2, r.y];
 
             const width = x2 - x;
 
@@ -161,10 +161,11 @@ export class PointVertexBuilder {
         // TODO: Provide default values and provide them as constants
 
         const converters = {
-            x:     { f: spec => fp64ify(spec.x),              numComponents: 2 },
-            y:     { f: spec => spec.y,                       numComponents: 1 },
-            size:  { f: spec => Math.sqrt(spec.size),         numComponents: 1 },
-            color: { f: spec => color2floatArray(spec.color), numComponents: 4 },
+            x:       { f: spec => fp64ify(spec.x),              numComponents: 2 },
+            y:       { f: spec => spec.y,                       numComponents: 1 },
+            size:    { f: spec => Math.sqrt(spec.size),         numComponents: 1 },
+            color:   { f: spec => color2floatArray(spec.color), numComponents: 4 },
+            opacity: { f: spec => spec.opacity,                 numComponents: 1 },
             zoomThreshold: { f: spec => spec.zoomThreshold,   numComponents: 1 },
         };
 

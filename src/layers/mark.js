@@ -36,6 +36,23 @@ export default class Mark {
 
     }
 
+    _getYDomain() {
+        const yEncoding = this.viewUnit.getEncoding()["y"];
+        const scale = yEncoding.scale;
+        if (scale) {
+           const domain = scale.domain;
+           if (domain) {
+               if (Array.isArray(domain) && domain.length == 2) {
+                   return domain;
+               } else {
+                   throw new Error("Invalid domain: " + JSON.stringify(domain));
+               }
+           }
+        }
+        
+        return [0, 1];
+    }
+
     /**
      * @param {object[]} samples
      * @param {object} globalUniforms 

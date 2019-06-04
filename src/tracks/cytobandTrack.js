@@ -111,8 +111,8 @@ export default class CytobandTrack extends WebGlTrack {
             this.mappedCytobands.map(band => Object.assign(
                 {
                     interval: band.interval,
-                    colorTop: giemsaScale(band.gieStain).background.brighter(0.1),
-                    colorBottom: giemsaScale(band.gieStain).background.darker(0.3),
+                    colorTop: giemsaScale(band.gieStain).background.darker(0.3),
+                    colorBottom: giemsaScale(band.gieStain).background.brighter(0.1)
                 },
                 computePaddings(band)
             ))
@@ -126,6 +126,8 @@ export default class CytobandTrack extends WebGlTrack {
             // TODO: Move to base class / abstraction
             yPosLeft: [0, 1],
             yPosRight: [0, 1],
+            uYDomainBegin: 0,
+            uYDomainWidth: 1,
             ONE: 1.0, // fp64 hack
         });
     }

@@ -1,10 +1,11 @@
 precision mediump float;
 
 @import ./includes/xdomain;
+@import ./includes/ydomain;
 @import ./includes/sampleTransition;
 
-attribute float y;
 attribute lowp vec4 color;
+attribute lowp float opacity;
 attribute float size; // Diameter or width/height
 
 attribute float zoomThreshold;
@@ -44,7 +45,7 @@ void main(void) {
     float thresholdFactor = computeThresholdFactor();
     float normalizedX = normalizeX();
 
-    vec2 translated = transit(normalizedX, (1.0 - y));
+    vec2 translated = transit(normalizedX, (1.0 - normalizeY()));
     float translatedY = translated[0];
     float height = translated[1];
 
@@ -57,5 +58,5 @@ void main(void) {
     gl_PointSize = vSize;
 
     vColor = color;
-    vOpacity = thresholdFactor;
+    vOpacity = opacity * thresholdFactor;
 }

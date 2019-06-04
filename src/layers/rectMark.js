@@ -31,6 +31,8 @@ export default class RectMark extends Mark {
 
     async initialize() {
         await super.initialize();
+
+        this.yDomain = this._getYDomain();
     }
 
     onBeforeSampleAnimation() {
@@ -97,6 +99,8 @@ export default class RectMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
+            uYDomainBegin: this.yDomain[0],
+            uYDomainWidth: this.yDomain[1] - this.yDomain[0],
             uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.sampleTrack.gl.drawingBufferWidth, // How many pixels
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0
         });

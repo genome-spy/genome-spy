@@ -5,6 +5,7 @@ import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
 
 import ViewUnit from './viewUnit';
 import Mark from './mark';
+import { shallowArrayEquals } from '../utils/arrayUtils';
 
 
 // TODO: Style object
@@ -30,6 +31,8 @@ export default class PointMark extends Mark {
 
     async initialize() {
         await super.initialize();
+
+        this.yDomain = this._getYDomain();
 
         this._initGL();
     }
@@ -60,10 +63,15 @@ export default class PointMark extends Mark {
     render(samples, globalUniforms) {
         const gl = this.gl;
 
+        this.viewUnit.getEncoding
+        
+
         gl.enable(gl.BLEND);
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
+            uYDomainBegin: this.yDomain[0],
+            uYDomainWidth: this.yDomain[1] - this.yDomain[0],
             viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight,
             devicePixelRatio: window.devicePixelRatio,
             maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
