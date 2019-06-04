@@ -5,7 +5,7 @@ precision mediump float;
 @import ./includes/minWidth;
 @import ./includes/sampleTransition;
 
-attribute vec4 color;
+attribute vec3 color;
 attribute lowp float opacity;
 
 varying vec4 vColor;
@@ -21,5 +21,5 @@ void main(void) {
     vec2 ndc = vec2(normalizedX, 1.0 - translatedY) * 2.0 - 1.0;
 
     gl_Position = vec4(ndc, 0.0, 1.0);
-    vColor = vec4(color.rgb * opa, opa);
+    vColor = vec4(color * opa, opa);
 }

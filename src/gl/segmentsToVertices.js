@@ -21,7 +21,7 @@ export function color2floatArray(color) {
     if (typeof color == "string") {
         color = d3color(color);
     }
-    return [color.r / 255.0, color.g / 255.0, color.b / 255.0, color.opacity];
+    return [color.r / 255.0, color.g / 255.0, color.b / 255.0];
 }
 
 /**
@@ -56,7 +56,7 @@ export class RectVertexBuilder {
         this.tesselationThreshold = tesselationThreshold;
 
         const converters = {
-            color: { f: spec => color2floatArray(spec.color), numComponents: 4 },
+            color: { f: spec => color2floatArray(spec.color), numComponents: 3 },
             opacity: { f: spec => spec.opacity, numComponents: 1 },
         };
 
@@ -164,7 +164,7 @@ export class PointVertexBuilder {
             x:       { f: spec => fp64ify(spec.x),              numComponents: 2 },
             y:       { f: spec => spec.y,                       numComponents: 1 },
             size:    { f: spec => Math.sqrt(spec.size),         numComponents: 1 },
-            color:   { f: spec => color2floatArray(spec.color), numComponents: 4 },
+            color:   { f: spec => color2floatArray(spec.color), numComponents: 3 },
             opacity: { f: spec => spec.opacity,                 numComponents: 1 },
             zoomThreshold: { f: spec => spec.zoomThreshold,   numComponents: 1 },
         };
@@ -301,7 +301,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
             x: { data: new Float32Array(x), numComponents: 2 },
             y: { data: new Float32Array(y), numComponents: 1 },
             width: { data: new Float32Array(y.length), numComponents: 1 },
-            color: { data: new Float32Array(colors), numComponents: 4 },
+            color: { data: new Float32Array(colors), numComponents: 3 },
             opacity: { data: new Float32Array(opacities), numComponents: 1 }
         },
         vertexCount: y.length,

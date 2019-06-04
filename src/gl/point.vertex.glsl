@@ -4,7 +4,7 @@ precision mediump float;
 @import ./includes/ydomain;
 @import ./includes/sampleTransition;
 
-attribute lowp vec4 color;
+attribute lowp vec3 color;
 attribute lowp float opacity;
 attribute float size; // Diameter or width/height
 
@@ -26,7 +26,6 @@ uniform float zoomLevel;
 uniform float fractionToShow;
 
 varying vec4 vColor;
-varying float vOpacity;
 varying float vSize;
 
 
@@ -57,6 +56,5 @@ void main(void) {
 
     gl_PointSize = vSize;
 
-    vColor = color;
-    vOpacity = opacity * thresholdFactor;
+    vColor = vec4(color, opacity * thresholdFactor);
 }
