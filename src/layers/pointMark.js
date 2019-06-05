@@ -15,7 +15,9 @@ const defaultRenderConfig = {
     // In pixels
     maxMaxPointSizeAbsolute: 25,
     // In pixels
-    minMaxPointSizeAbsolute: 4.5
+    minMaxPointSizeAbsolute: 4.5,
+    // TODO: Compute default based on the number of data
+    zoomLevelForMaxPointSize: 1.0
 }
 
 const fractionToShow = 0.02;
@@ -56,6 +58,20 @@ export default class PointMark extends Mark {
         this.renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
     }
 
+    getMaxMaxPointSizeAbsolute() {
+        const zoomLevel = this.renderConfig.zoomLevelForMaxPointSize;
+
+        const min = this.renderConfig.minMaxPointSizeAbsolute;
+        const max = this.renderConfig.maxMaxPointSizeAbsolute;
+
+        const initial = Math.pow(min / max, 3);
+
+        let maxPointSizeAbsolute = 
+            Math.pow(Math.min(1, this.unitContext.genomeSpy.getExpZoomLevel() / zoomLevel + initial), 1 / 3) * max;
+
+        return maxPointSizeAbsolute;
+    }
+
     /**
      * @param {object[]} samples 
      * @param {object} globalUniforms 
@@ -75,7 +91,7 @@ export default class PointMark extends Mark {
             viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight,
             devicePixelRatio: window.devicePixelRatio,
             maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
-            maxMaxPointSizeAbsolute: this.renderConfig.maxMaxPointSizeAbsolute,
+            maxMaxPointSizeAbsolute: this.getMaxMaxPointSizeAbsolute(),
             minMaxPointSizeAbsolute: this.renderConfig.minMaxPointSizeAbsolute,
             fractionToShow: fractionToShow // TODO: Configurable
         });
