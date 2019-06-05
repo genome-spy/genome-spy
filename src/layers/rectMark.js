@@ -101,7 +101,7 @@ export default class RectMark extends Mark {
             ...globalUniforms,
             uYDomainBegin: this.yDomain[0],
             uYDomainWidth: this.yDomain[1] - this.yDomain[0],
-            uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.sampleTrack.gl.drawingBufferWidth, // How many pixels
+            uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.sampleTrack.gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0
         });
 
