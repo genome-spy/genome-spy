@@ -210,11 +210,12 @@ function clipRects(rects, interval) {
             clipped.push(rect);
 
         } else {
-            clipped.push({
-                ...rect,
-                x: Math.max(rect.x, lower),
-                x2: Math.min(rect.x2, upper)
-            });
+            clipped.push(Object.assign(Object.create(rect),
+                {
+                    x: Math.max(rect.x, lower),
+                    x2: Math.min(rect.x2, upper)
+                }
+            ));
         }
     }
 
