@@ -18,7 +18,16 @@ const defaultRenderConfig = {
     minMaxPointSizeAbsolute: 4.5,
     // TODO: Compute default based on the number of data
     zoomLevelForMaxPointSize: 1.0
-}
+};
+
+const defaultEncoding = {
+    x:       { value: 0 },
+    y:       { value: 0.5 },
+    color:   { value: "#1f77b4" },
+    opacity: { value: 1.0 },
+    size:    { value: 1.0 },
+    zoomThreshold: { value: 1.0 }
+};
 
 const fractionToShow = 0.02;
 
@@ -29,6 +38,10 @@ export default class PointMark extends Mark {
      */
     constructor(unitContext, viewUnit) {
         super(unitContext, viewUnit)
+    }
+
+    getDefaultEncoding() {
+        return defaultEncoding;
     }
 
     async initialize() {
@@ -45,8 +58,10 @@ export default class PointMark extends Mark {
 
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
+        const builder = new PointVertexBuilder(
+            Mark.getConstantValues(this.getEncoding()),
+            Mark.getVariableChannels(this.getEncoding()));
 
-        const builder = new PointVertexBuilder(this.viewUnit.getConstantValues(), this.viewUnit.getVariableChannels());
         for (const [sample, points] of this.specsBySample.entries()) {
             builder.addBatch(sample, points);
         }

@@ -11,6 +11,15 @@ const defaultRenderConfig = {
     minRectOpacity: 0.0
 };
 
+const defaultEncoding = {
+    x:       { value: 0 },
+    x2:      { value: 0 },
+    y:       { value: 0 },
+    y2:      { value: 1.0 }, // full-height bars
+    color:   { value: "#1f77b4" },
+    opacity: { value: 1.0 },
+};
+
 const tesselationConfig = {
     zoomThreshold: 10,
     tiles: 35
@@ -27,6 +36,10 @@ export default class RectMark extends Mark {
         // Needs blending or not. TODO: Make handling of defaults more systematic
         const opacity = viewUnit.getEncoding().opacity;
         this.opaque = !opacity || opacity.value >= 1.0;
+    }
+
+    getDefaultEncoding() {
+        return defaultEncoding;
     }
 
     async initialize() {
@@ -57,7 +70,8 @@ export default class RectMark extends Mark {
      */
     _createSampleBufferInfo(interval, tesselationThreshold) {
         const builder = new RectVertexBuilder(
-           this.viewUnit.getConstantValues(), this.viewUnit.getVariableChannels(),
+           Mark.getConstantValues(this.getEncoding()),
+           Mark.getVariableChannels(this.getEncoding()),
            tesselationThreshold);
 
         for (const [sample, rects] of this.specsBySample.entries()) {

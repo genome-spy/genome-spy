@@ -18,6 +18,9 @@ const glConst = {
 };
 
 export function color2floatArray(color) {
+    if (!color) {
+        return [1, 0, 1]; // Just an indicator of error
+    }
     if (typeof color == "string") {
         color = d3color(color);
     }

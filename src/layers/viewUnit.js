@@ -48,6 +48,7 @@ export default class ViewUnit {
         this.parentUnit = parentUnit;
         this.config = config; 
 
+        // TODO: "subunits" which may be layered or stacked (concatenated) vertically
         this.layers = (config.layer || [])
             .map(unitConfig => new ViewUnit(context, this, unitConfig));
     }
@@ -81,24 +82,6 @@ export default class ViewUnit {
         return Object.assign({}, pe, te);
     }
 
-    getVariableChannels() {
-        // TODO: Test presence of field and chrom/pos instead of missingness value
-        return Object.entries(this.getEncoding())
-            .filter(entry => typeof entry[1].value == "undefined")
-            .map(entry => entry[0]);
-    }
-
-    /**
-     * @return {Object}
-     */
-    getConstantValues() {
-        return Object.fromEntries(
-            Object.entries(this.getEncoding())
-                .filter(entry => typeof entry[1].value != "undefined")
-                .map(entry => [entry[0], entry[1].value]));
-    }
-
-
     async initialize() {
         if (this.config.data) {
             this.data = await this.context.getDataSource(this.config.data).getData();
@@ -116,17 +99,15 @@ export default class ViewUnit {
 
             const ungroupedData = data.ungroupAll().data;
 
-            const encoding = this.getEncoding();
-            if (!encoding) {
-                // Actually, in future, we might have a mark that takes no encodings
-                throw new Error("Can not create mark, no encodings specified!");
-            }
-
             const markClass = markTypes[typeof this.config.mark == "object" ? this.config.mark.type : this.config.mark];
             if (markClass) {
                 /** @type {import("./mark").default} */
                 const mark = new markClass(this.context, this);
+
+                const encoding = Object.assign({}, mark.getDefaultEncoding(), this.getEncoding());
+
                 const baseObject = {
+                    // TODO: Defaults
                     _viewUnit: this
                 };
                 const specs = processData(encoding, ungroupedData, this.context.genomeSpy.visualMapperFactory, baseObject);

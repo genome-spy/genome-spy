@@ -218,10 +218,11 @@ export function createCompositeEncodingMapper(mapperFactory, encodingConfigs, sa
                 throw Error(`Unknown visual variable "${visualVariable}" in ${JSON.stringify(encodingConfigs)}`);
             }
 
-            const targetType = visualVariables[visualVariable].type;
-
-            mappers[visualVariable] = mapperFactory.createMapper(targetType, encodingConfig, sampleData);
-
+            // Skip constants that have already been defined in the baseObject
+            if (typeof baseObject[visualVariable] == "undefined") {
+                const targetType = visualVariables[visualVariable].type;
+                mappers[visualVariable] = mapperFactory.createMapper(targetType, encodingConfig, sampleData);
+            }
         });
 
     const compositeMapper = d => {
