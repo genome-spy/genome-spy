@@ -1,4 +1,7 @@
 import * as twgl from 'twgl-base.js';
+import { comparator } from 'datalib';
+import { bisector } from 'd3-array';
+import { scaleLinear } from 'd3-scale';
 import { PointVertexBuilder } from '../gl/segmentsToVertices';
 import VERTEX_SHADER from '../gl/point.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
@@ -52,6 +55,18 @@ export default class PointMark extends Mark {
         this._initGL();
     }
 
+    /**
+     * @param {object[]} specs
+     */
+    setSpecs(specs) {
+        super.setSpecs(specs);
+
+        // Sort for binary search
+        const c = comparator('x');
+        for (const points of this.specsBySample.values()) {
+            points.sort(c);
+        }
+    }
 
     _initGL() {
         const gl = this.gl;
@@ -94,8 +109,6 @@ export default class PointMark extends Mark {
     render(samples, globalUniforms) {
         const gl = this.gl;
 
-        this.viewUnit.getEncoding
-        
 
         gl.enable(gl.BLEND);
         gl.useProgram(this.programInfo.program);
@@ -117,6 +130,7 @@ export default class PointMark extends Mark {
             const range = this.rangeMap.get(sampleData.sampleId);
             if (range) {
                 twgl.setUniforms(this.programInfo, sampleData.uniforms);
+                // TODO: Restrict range, use binary search
                 twgl.drawBufferInfo(gl, this.bufferInfo, gl.POINTS, range.count, range.offset);
             }
         }
@@ -136,22 +150,32 @@ export default class PointMark extends Mark {
 
         const maxPointSize = Math.max(
             this.renderConfig.minMaxPointSizeAbsolute,
-            Math.min(this.renderConfig.maxMaxPointSizeAbsolute, this.renderConfig.maxPointSizeRelative * yBand.width()));
+            Math.min(this.getMaxMaxPointSizeAbsolute(), this.renderConfig.maxPointSizeRelative * yBand.width()));
 
         const distance = (x1, x2, y1, y2) => Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 
-        const scale = this.unitContext.sampleTrack.genomeSpy.rescaledX;
+        const xScale = this.unitContext.sampleTrack.genomeSpy.rescaledX;
+
+        const yScale = scaleLinear()
+            .domain(this._getYDomain())
+            .range([0, 1]);
+
+        const bisect = bisector(point => point.x).left;
+        // Find the range may contain the point
+        const pointSubset = points.slice(
+            bisect(points, xScale.invert(x - maxPointSize / 2)),
+            bisect(points, xScale.invert(x + maxPointSize / 2)));
 
         const margin = 0.005; // TODO: Configurable
         const threshold = this.unitContext.genomeSpy.getExpZoomLevel() * fractionToShow;
         const thresholdWithMargin = threshold * (1 + margin);
 
         let lastMatch = null;
-        for (const point of points) {
+        for (const point of pointSubset) {
             if (1 - point.zoomThreshold < thresholdWithMargin) {
                 // TODO: Optimize by computing mouse y on the band scale
-                const dist = distance(x, scale(point.x), y, yBand.interpolate(1 - point.y));
-                if (dist < maxPointSize * point.size) {
+                const dist = distance(x, xScale(point.x), y, yBand.interpolate(1 - yScale(point.y)));
+                if (dist < maxPointSize * Math.sqrt(point.size) / 2) {
                     lastMatch = point;
                 }
             }

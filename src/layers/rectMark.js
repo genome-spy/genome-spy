@@ -1,4 +1,5 @@
 import * as twgl from 'twgl-base.js';
+import { scaleLinear } from 'd3-scale';
 import VERTEX_SHADER from '../gl/rectangle.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
 import { RectVertexBuilder } from '../gl/segmentsToVertices';
@@ -143,8 +144,14 @@ export default class RectMark extends Mark {
 
         const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
 
-        // TODO: Needs work when proper scales are added to the y axis
-        const scaledY = 1 - (y - yBand.lower) / yBand.width();
+        const yScale = scaleLinear()
+            .domain(this._getYDomain())
+            .range([0, 1]);
+
+        const scaledY = yScale.invert(1 - (y - yBand.lower) / yBand.width());
+
+        // TODO: Support overlapping rects
+        // TODO: Take minWidth into account
 
         const rect = rects.find(rect =>
              scaledX >= rect.x && scaledX < rect.x2 &&
