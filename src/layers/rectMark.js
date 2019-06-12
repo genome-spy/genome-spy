@@ -1,7 +1,7 @@
 import * as twgl from 'twgl-base.js';
 import { scaleLinear } from 'd3-scale';
-import VERTEX_SHADER from '../gl/rectangle.vertex.glsl';
-import FRAGMENT_SHADER from '../gl/rectangle.fragment.glsl';
+import VERTEX_SHADER from '../gl/rect.vertex.glsl';
+import FRAGMENT_SHADER from '../gl/rect.fragment.glsl';
 import { RectVertexBuilder } from '../gl/segmentsToVertices';
 import Interval from '../utils/interval';
 
@@ -117,6 +117,7 @@ export default class RectMark extends Mark {
             uYDomainBegin: this.yDomain[0],
             uYDomainWidth: this.yDomain[1] - this.yDomain[0],
             uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.sampleTrack.gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
+            uMinHeight : (this.renderConfig.minRectHeight || 0.0) / this.unitContext.sampleTrack.gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0
         });
 

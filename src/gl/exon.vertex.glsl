@@ -2,9 +2,10 @@
 precision mediump float;
 
 @import ./includes/xdomain;
+@import ./includes/ydomain;
 @import ./includes/minWidth;
 
-attribute float y;
+//attribute float y;
 
 uniform mat4 uTMatrix;
 

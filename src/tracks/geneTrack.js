@@ -14,7 +14,7 @@ import IntervalCollection from "../utils/intervalCollection";
 import geneVertexShader from '../gl/gene.vertex.glsl';
 import geneFragmentShader from '../gl/gene.fragment.glsl';
 import exonVertexShader from '../gl/exon.vertex.glsl';
-import rectangleFragmentShader from '../gl/rectangle.fragment.glsl';
+import rectangleFragmentShader from '../gl/rect.fragment.glsl';
 
 import { fp64ify } from '../gl/includes/fp64-utils';
 
@@ -486,6 +486,7 @@ function exonsToVertices(genes, laneHeight, laneSpacing) {
             x: { data: x, numComponents: 2, drawType: STREAM_DRAW },
             y: { data: y, numComponents: 1, drawType: STREAM_DRAW },
             width: { data: widths, numComponents: 1, drawType: STREAM_DRAW },
+            height: { value: [0] }
         },
         numElements: totalExonCount * VERTICES_PER_RECTANGLE
     };

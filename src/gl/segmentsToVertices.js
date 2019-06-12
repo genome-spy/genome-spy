@@ -53,7 +53,7 @@ export class RectVertexBuilder {
      * @param {number} [tesselationThreshold]
      *     If the rect is narrower than the threshold, tesselate it into pieces
      */
-    constructor(constants, variables, tesselationThreshold = Infinity) {
+    constructor(constants, variables, tesselationThreshold = Infinity, renderOptions) {
         // TODO: Provide default values and provide them as constants
 
         this.tesselationThreshold = tesselationThreshold;
@@ -69,7 +69,9 @@ export class RectVertexBuilder {
 
         this.updateX = this.variableBuilder.createUpdater("x", 2);
         this.updateY = this.variableBuilder.createUpdater("y", 1);
+        // TODO: Optimization: width/height could be constants when minWidth/minHeight are zero
         this.updateWidth = this.variableBuilder.createUpdater("width", 1);
+        this.updateHeight = this.variableBuilder.createUpdater("height", 1);
 
         this.constantBuilder = ArrayBuilder.create(converters, Object.keys(constants));
         this.constantBuilder.updateFromSpec(
@@ -93,14 +95,17 @@ export class RectVertexBuilder {
             const [y, y2] = r.y <= r.y2 ? [r.y, r.y2] : [r.y2, r.y];
 
             const width = x2 - x;
+            const height = y2 - y || Math.pow(0.1, 20); // A hack to allow minHeight for zero-height rects.
 
-            if (!(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0)) continue;
+            // TODO: Fix this
+            //if (!(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0)) continue;
 
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
             this.variableBuilder.updateFromSpec(r);
             this.updateX(fp64ify(x));
             this.updateWidth(-width);
             this.updateY(y);
+            this.updateHeight(height);
             this.variableBuilder.pushAll();
 
             // Tesselate segments
@@ -118,8 +123,10 @@ export class RectVertexBuilder {
                 this.updateWidth(w);
                 this.updateX(fp64ify(r.x + width * frac));
                 this.updateY(y);
+                this.updateHeight(height);
                 this.variableBuilder.pushAll();
                 this.updateY(y2);
+                this.updateHeight(-height);
                 this.variableBuilder.pushAll();
             }
 
@@ -127,6 +134,7 @@ export class RectVertexBuilder {
             this.variableBuilder.updateFromSpec(r);
             this.updateX(fp64ify(x2));
             this.updateWidth(width);
+            this.updateHeight(-height);
             this.updateY(y2);
             this.variableBuilder.pushAll();
         }
