@@ -9,7 +9,7 @@ export default class Mark {
      */
     constructor(unitContext, viewUnit) {
         this.unitContext = unitContext;
-        this.gl = unitContext.sampleTrack.gl;
+        this.gl = unitContext.track.gl;
         this.viewUnit = viewUnit;
         this.markConfig = typeof viewUnit.config.mark == "object" ? viewUnit.config.mark : {};
     }
@@ -47,8 +47,13 @@ export default class Mark {
      * @param {object[]} specs
      */
     setSpecs(specs) {
-        /** @type {Map<string, object[]>} */
-        this.specsBySample = group(specs, d => d.sample);
+        if (this.viewUnit.getEncoding()["sample"]) {
+            /** @type {Map<string, object[]>} */
+            this.specsBySample = group(specs, d => d.sample);
+
+        } else {
+            this.specsBySample = new Map([["default", specs]]);
+        }
 
         // For tooltips
         this.fieldMappers = specs.fieldMappers; 

@@ -116,7 +116,7 @@ export default class PointMark extends Mark {
             ...globalUniforms,
             uYDomainBegin: this.yDomain[0],
             uYDomainWidth: this.yDomain[1] - this.yDomain[0],
-            viewportHeight: this.unitContext.sampleTrack.glCanvas.clientHeight,
+            viewportHeight: this.unitContext.track.glCanvas.clientHeight,
             devicePixelRatio: window.devicePixelRatio,
             maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
             maxMaxPointSizeAbsolute: this.getMaxMaxPointSizeAbsolute(),
@@ -143,7 +143,7 @@ export default class PointMark extends Mark {
      * @param {import("../utils/interval").default} yBand the matched band on the band scale
      */
     findDatum(sampleId, x, y, yBand) {
-        const points = this.specsBySample.get(sampleId);
+        const points = this.specsBySample.get(sampleId || "default");
         if (!points) {
             return null;
         }
@@ -154,7 +154,7 @@ export default class PointMark extends Mark {
 
         const distance = (x1, x2, y1, y2) => Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 
-        const xScale = this.unitContext.sampleTrack.genomeSpy.rescaledX;
+        const xScale = this.unitContext.track.genomeSpy.rescaledX;
 
         const yScale = scaleLinear()
             .domain(this._getYDomain())

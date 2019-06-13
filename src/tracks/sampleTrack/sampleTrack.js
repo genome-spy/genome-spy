@@ -1,22 +1,19 @@
 import * as twgl from 'twgl-base.js';
 import { scaleLinear } from 'd3-scale';
-import { format as d3format } from 'd3-format';
 import { zip } from 'd3-array';
 import * as dl from 'datalib';
 
-import WebGlTrack from '../webGlTrack';
+import SimpleTrack from '../simpleTrack';
 import BandScale from '../../utils/bandScale';
-import MouseTracker from "../../mouseTracker";
-import * as html from "../../utils/html";
 import fisheye from "../../utils/fishEye";
 import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } from "../../utils/transition";
 import clientPoint from "../../utils/point";
 import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
-import ViewUnit from '../../layers/viewUnit';
 import DataSource from '../../data/dataSource';
 import contextMenu from '../../contextMenu';
 import Interval from '../../utils/interval';
+import { runInThisContext } from 'vm';
 
 const defaultStyles = {
     paddingInner: 0.20, // Relative to sample height
@@ -64,7 +61,7 @@ function processSamples(flatSamples) {
  * @prop {string} displayName
  * @prop {Object[]} attributes Arbitrary sample specific attributes
  */
-export default class SampleTrack extends WebGlTrack {
+export default class SampleTrack extends SimpleTrack {
 
     /**
      * 
@@ -84,17 +81,6 @@ export default class SampleTrack extends WebGlTrack {
          * @type {?function(number):number}
          */
         this.yTransform = null;
-
-
-        this.viewUnit = new ViewUnit(
-            {
-                genomeSpy,
-                sampleTrack: this,
-                getDataSource: config => new DataSource(config, genomeSpy.config.baseurl)
-            },
-           undefined,
-           config
-        );
     }
 
 
@@ -142,13 +128,10 @@ export default class SampleTrack extends WebGlTrack {
     }
 
     resizeCanvases(layout) {
+        super.resizeCanvases(layout);
+
         const trackHeight = this.trackContainer.clientHeight;
-
-        this.adjustCanvas(this.glCanvas, layout.viewport);
-        this.adjustGl(this.gl);
-
         this.sampleScale.range([0, trackHeight]);
-
         this.attributePanel.resizeCanvases(layout.axis);
     }
 
@@ -156,17 +139,6 @@ export default class SampleTrack extends WebGlTrack {
      * @param {HTMLElement} trackContainer 
      */
     async initialize(trackContainer) {
-        await super.initialize(trackContainer);
-
-        this.trackContainer.className = "sample-track";
-
-        // TODO: Move to upper level
-        if (typeof this.styles.height == "number") {
-            this.trackContainer.style.height = `${this.styles.height}px`
-        } else {
-            this.trackContainer.style.flexGrow = "1";
-        }
-
         if (this.config.samples) {
             const sampleDataSource = new DataSource(this.config.samples.data, this.genomeSpy.config.baseurl);
             this.setSamples(processSamples(await sampleDataSource.getUngroupedData()));
@@ -176,43 +148,26 @@ export default class SampleTrack extends WebGlTrack {
             throw new Error("No samples defined!");
         }
 
+        await super.initialize(trackContainer);
+
+        this.trackContainer.className = "sample-track";
+
         /** @type {BandScale} */
         this.sampleScale = new BandScale();
         this.sampleScale.domain(this.sampleOrder);
         this.sampleScale.paddingInner = this.styles.paddingInner;
         this.sampleScale.paddingOuter = this.styles.paddingOuter;
 
-        this.initializeWebGL();
-
-        await this.viewUnit.initialize();
-
-        this.viewportMouseTracker = new MouseTracker({
-            element: this.glCanvas,
-            tooltip: this.genomeSpy.tooltip,
-            resolver: this.findDatumAt.bind(this),
-            tooltipConverter: datum => Promise.resolve(this.datumToTooltip(datum))
-        })
+        this.viewportMouseTracker
             .on("contextmenu", this.createContextMenu.bind(this))
-            .on("dblclick", this.zoomToSpec.bind(this));
-
 
         this.attributePanel.initialize();
         this.initializeFisheye()
 
-
         this.genomeSpy.on("layout", layout => {
-            this.resizeCanvases(layout);
             this.attributePanel.renderLabels();
             this.attributePanel.renderAttributeLabels();
-            this.renderViewport();
         });
-
-        this.genomeSpy.on("zoom", () => {
-            this.renderViewport();
-        });
-
-        this.genomeSpy.zoom.attachZoomEvents(this.glCanvas);
-
 
         // TODO: Reorganize:
         document.body.addEventListener("keydown", event => {
@@ -224,31 +179,8 @@ export default class SampleTrack extends WebGlTrack {
                 this.backtrackSamples();
             }
         });
-
-        // TODO: Make generic, use context-menu etc...
-        /*
-        this.glCanvas.addEventListener("mousedown", event => {
-            if (event.ctrlKey) {
-                const point = clientPoint(this.glCanvas, event);
-                const pos = this.genomeSpy.rescaledX.invert(point[0])
-
-                this.sortSamplesByLocus(this.layers[0], pos, event.shiftKey ? "bafMean" : "segMean");
-            }
-        }, false);
-        */
     }
 
-    initializeWebGL() {
-        // Canvas for WebGL
-        this.glCanvas = this.createCanvas();
-
-        const gl = twgl.getContext(this.glCanvas);
-
-        this.gl = gl;
-
-        gl.clearColor(1, 1, 1, 1);
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    }
 
     /**
      * Initializes fisheye functionality.
@@ -352,54 +284,6 @@ export default class SampleTrack extends WebGlTrack {
         return sampleId ? this.samples.get(sampleId) : null;
     }
 
-    
-    zoomToSpec(spec, mouseEvent, point) {
-        // TODO: handle case: x = 0
-        if (spec.x && spec.x2) {
-            const interval = new Interval(spec.x, spec.x2);
-            this.genomeSpy.zoomTo(interval.pad(interval.width() * 0.25));
-
-        } else if (spec.x && !spec.x2) {
-            const width = 1000000; // TODO: Configurable
-
-            this.genomeSpy.zoomTo(new Interval(spec.x - width / 2, spec.x + width / 2));
-        }
-    }
-
-    /**
-     * Returns all marks in the order they are rendered
-     */
-    getMarks() {
-        /** @type {import("../../layers/mark").default[]} */
-        const layers = [];
-        this.viewUnit.visit(vu => {
-            if (vu.mark) {
-                layers.push(vu.mark);
-            }
-        });
-        return layers;
-    }
-
-    getYDomainsAndAxes() {
-        // TODO:
-        // 1. Collect all y scales and axis confs
-        // 2. Union shared scales and axes
-        // 3. Return a list...
-        
-        const marks = this.getMarks();
-        if (marks.length > 0) {
-            const mark = marks[0];
-
-            return [
-                {
-                    title: "Blaa",
-                    axisConf: null,
-                    domain: mark._getYDomain()
-                }
-            ]
-        }
-    }
-
     /**
      * Returns the datum (actually the mark spec) at the specified point
      * 
@@ -427,72 +311,6 @@ export default class SampleTrack extends WebGlTrack {
         return null;
     }
 
-    datumToTooltip(spec) {
-        const numberFormat = d3format(".4~r");
-
-        const datum = spec.rawDatum;
-
-        /** @type {ViewUnit} */
-        const viewUnit = spec._viewUnit;
-
-        const markConfig = viewUnit.mark.markConfig;
-        const propertyFilter = markConfig.tooltip && markConfig.tooltip.skipFields ?
-            entry => markConfig.tooltip.skipFields.indexOf(entry[0]) < 0 :
-            entry => true;
-
-        function toString(object) {
-            if (object === null) {
-                return "";
-            }
-
-            const type = dl.type.infer([object]);
-
-            if (type == "string") {
-                return object.substring(0, 30);
-
-            } else if (type == "integer") {
-                return "" + object;
-
-            } else if (type == "number") {
-                return numberFormat(object);
-
-            } else if (type == "boolean") {
-                return object ? "True" : "False";
-
-            } else {
-                return "?" + type + " " + object;
-            }
-        }
-
-        function legend(key, datum) {
-            const mapper = viewUnit.mark.fieldMappers && viewUnit.mark.fieldMappers[key];
-
-            if (mapper && mapper.targetType == "color") {
-                return `<span class="color-legend" style="background-color: ${mapper(datum)}"></span>`;
-            }
-            
-            return "";
-        } 
-
-        const table = '<table class="attributes"' +
-            Object.entries(datum).filter(propertyFilter).map(([key, value]) => `
-                <tr>
-                    <th>${html.escapeHtml(key)}</th>
-                    <td>${html.escapeHtml(toString(value))} ${legend(key, datum)}</td>
-                </tr>`
-            ).join("") +
-            "</table>";
-
-        const title = viewUnit.config.title ?
-            `<div class="title"><strong>${html.escapeHtml(viewUnit.config.title)}</strong></div>` :
-            "";
-        
-        return `
-        ${title}
-        <div class="sample-track-datum-tooltip">
-            ${table}
-        </div>`
-    }
 
     /**
      * 

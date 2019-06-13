@@ -17,10 +17,12 @@ import SampleTrack from "./tracks/sampleTrack/sampleTrack";
 import AxisTrack from "./tracks/axisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";
 import GeneTrack from "./tracks/geneTrack";
+import SimpleTrack from './tracks/simpleTrack';
 
 
 // TODO: Figure out if these could be discovered automatically by WebPack or something
 const trackTypes = {
+    "SimpleTrack": SimpleTrack,
     "SampleTrack": SampleTrack,
     "CytobandTrack": CytobandTrack,
     "AxisTrack": AxisTrack,

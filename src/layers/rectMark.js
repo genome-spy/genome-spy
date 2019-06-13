@@ -3,7 +3,6 @@ import { scaleLinear } from 'd3-scale';
 import VERTEX_SHADER from '../gl/rect.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rect.fragment.glsl';
 import { RectVertexBuilder } from '../gl/segmentsToVertices';
-import Interval from '../utils/interval';
 
 import Mark from './mark';
 
@@ -116,8 +115,8 @@ export default class RectMark extends Mark {
             ...globalUniforms,
             uYDomainBegin: this.yDomain[0],
             uYDomainWidth: this.yDomain[1] - this.yDomain[0],
-            uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.sampleTrack.gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
-            uMinHeight : (this.renderConfig.minRectHeight || 0.0) / this.unitContext.sampleTrack.gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels
+            uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.track.gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
+            uMinHeight : (this.renderConfig.minRectHeight || 0.0) / this.unitContext.track.gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0
         });
 
@@ -141,7 +140,7 @@ export default class RectMark extends Mark {
      * @param {import("../utils/interval").default} yBand the matched band on the band scale
      */
     findDatum(sampleId, x, y, yBand) {
-        const rects = this.specsBySample.get(sampleId);
+        const rects = this.specsBySample.get(sampleId || "default");
 
         const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
 

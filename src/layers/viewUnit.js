@@ -22,7 +22,7 @@ import PointMark from '../layers/pointMark';
  * @prop {string} [title]
  * 
  * @typedef {Object} UnitContext
- * @prop {import("../tracks/sampleTrack/sampleTrack").default} [sampleTrack]
+ * @prop {import("../tracks/sampleTrack/simpleTrack").default} [track]
  * @prop {import("../genomeSpy").default} genomeSpy
  * @prop {function(string):import("../data/dataSource").default} getDataSource
  */
