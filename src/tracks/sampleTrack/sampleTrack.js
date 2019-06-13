@@ -369,7 +369,7 @@ export default class SampleTrack extends WebGlTrack {
     /**
      * Returns all marks in the order they are rendered
      */
-    getLayers() {
+    getMarks() {
         /** @type {import("../../layers/mark").default[]} */
         const layers = [];
         this.viewUnit.visit(vu => {
@@ -378,6 +378,26 @@ export default class SampleTrack extends WebGlTrack {
             }
         });
         return layers;
+    }
+
+    getYDomainsAndAxes() {
+        // TODO:
+        // 1. Collect all y scales and axis confs
+        // 2. Union shared scales and axes
+        // 3. Return a list...
+        
+        const marks = this.getMarks();
+        if (marks.length > 0) {
+            const mark = marks[0];
+
+            return [
+                {
+                    title: "Blaa",
+                    axisConf: null,
+                    domain: mark._getYDomain()
+                }
+            ]
+        }
     }
 
     /**
@@ -395,7 +415,7 @@ export default class SampleTrack extends WebGlTrack {
 
         const bandInterval = this.sampleScale.scale(sampleId);
 
-        for (const mark of this.getLayers().reverse()) {
+        for (const mark of this.getMarks().reverse()) {
             if (mark.markConfig.tooltip !== null) {
                 const spec = mark.findDatum(sampleId, x, y, bandInterval);
                 if (spec) {
@@ -486,7 +506,7 @@ export default class SampleTrack extends WebGlTrack {
         
         const scaledX = this.genomeSpy.rescaledX.invert(point[0]);
 
-        for (const mark of this.getLayers()) {
+        for (const mark of this.getMarks()) {
             if (mark.markConfig && mark.markConfig.sorting) {
                 items.push({
                     label: mark.viewUnit.config.title || "- No title -", 
@@ -619,7 +639,7 @@ export default class SampleTrack extends WebGlTrack {
         this.attributePanel.sampleMouseTracker.clear();
         this.viewportMouseTracker.clear();
 
-        this.getLayers().forEach(layer => layer.onBeforeSampleAnimation());
+        this.getMarks().forEach(layer => layer.onBeforeSampleAnimation());
 
         return transition({
             from: reverse ? 1 : 0,
@@ -643,7 +663,7 @@ export default class SampleTrack extends WebGlTrack {
                 this.renderViewport(options);
                 this.attributePanel.renderLabels(options);
             }
-        }).then(() => this.getLayers().forEach(layer => layer.onAfterSampleAnimation()));
+        }).then(() => this.getMarks().forEach(layer => layer.onAfterSampleAnimation()));
     }
 
     /**
