@@ -1,6 +1,5 @@
 import GenomeSpy from "./genomeSpy";
 import "./styles/genome-spy-app.scss";
-import GenomeIntervalFormat from "./genome/genomeIntervalFormat";
 
 import { icon } from '@fortawesome/fontawesome-svg-core'
 import { faUndo } from '@fortawesome/free-solid-svg-icons'
@@ -56,8 +55,6 @@ export default class GenomeSpyApp {
 
         this.genomeSpy = new GenomeSpy(elem("genome-spy-container"), config);
 
-        this.gif = new GenomeIntervalFormat(this.genomeSpy.genome);
-
         // TODO: Use WebComponents, for example: https://lit-element.polymer-project.org/
 
         /** @type {HTMLInputElement} */
@@ -70,7 +67,7 @@ export default class GenomeSpyApp {
         this.searchHelp = elem("search-help");
 
         this.genomeSpy.on("zoom", domain => {
-            this.searchInput.value = this.gif.format(domain.intersect(this.genomeSpy.chromMapper.extent()));
+            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(domain.intersect(this.genomeSpy.getDomain()));
         });
 
         // TODO: Create a component or something for the search field
@@ -99,7 +96,7 @@ export default class GenomeSpyApp {
 
         this.searchInput.addEventListener("blur", event => {
             this.searchHelp.classList.remove("visible");
-            this.searchInput.value = this.gif.format(this.genomeSpy.getViewportDomain());
+            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(this.genomeSpy.getViewportDomain());
         })
 
         this.searchInput.addEventListener("keydown", event => {
@@ -152,8 +149,7 @@ export default class GenomeSpyApp {
     async launch() {
         await this.genomeSpy.launch();
 
-        this.searchInput.value = this.gif.format(this.genomeSpy.getViewportDomain());
-
+        this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(this.genomeSpy.getViewportDomain());
     }
 
     /**
@@ -168,7 +164,7 @@ export default class GenomeSpyApp {
         // TODO: Consider moving this function to GenomeSpy
 
         const domainFinder = {
-            search: string => this.gif.parse(string)
+            search: string => this.genomeSpy.coordinateSystem.parseInterval(string)
         };
 
         // Search tracks

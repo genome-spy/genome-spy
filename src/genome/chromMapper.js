@@ -75,7 +75,7 @@ export function chromMapper(chromSizes) {
          * @param {number} continuousLocus 
          */
         toChromosomal: function(continuousLocus) {
-            if (!extent.contains(continuousLocus)) return null;
+            if (!extent.contains(continuousLocus)) return null; // TODO: Consider displaying a warning
 
             const i = bisect(cumulativeChromArray, continuousLocus) - 1;
             return {

@@ -12,8 +12,6 @@ import AttributePanel from './attributePanel';
 import { shallowArrayEquals } from '../../utils/arrayUtils';
 import DataSource from '../../data/dataSource';
 import contextMenu from '../../contextMenu';
-import Interval from '../../utils/interval';
-import { runInThisContext } from 'vm';
 
 const defaultStyles = {
     paddingInner: 0.20, // Relative to sample height

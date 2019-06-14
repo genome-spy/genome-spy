@@ -22,6 +22,7 @@ import * as entrez from "../fetchers/entrez";
 import * as html from "../utils/html";
 import MouseTracker from "../mouseTracker";
 import contextMenu from "../contextMenu";
+import Genome from '../genome/genome';
 
 
 const STREAM_DRAW = 0x88E0;
@@ -84,9 +85,15 @@ export default class GeneTrack extends WebGlTrack {
         this.trackContainer.style.height = (this.styles.lanes * (this.styles.laneHeight + this.styles.laneSpacing)) + "px";
         this.trackContainer.style.marginTop = `${this.styles.laneSpacing}px`;
 
+        /** @type {Genome} */
+        const genome = this.genomeSpy.coordinateSystem;
+        if (!(genome instanceof Genome)) {
+            throw new Error("The coordinate system is not genomic!");
+        }
+
         this.setGenes(parseCompressedRefseqGeneTsv(
-            this.genomeSpy.chromMapper,
-            await fetch(`private/refSeq_genes_scored.${this.genomeSpy.genome.name}.compressed.txt`).then(res => res.text())));
+            genome.chromMapper,
+            await fetch(`private/refSeq_genes_scored.${genome.name}.compressed.txt`).then(res => res.text())));
 
         this.initializeWebGL();
 

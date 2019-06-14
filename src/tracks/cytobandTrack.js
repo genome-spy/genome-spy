@@ -4,7 +4,7 @@ import { color, hsl } from 'd3-color';
 import VERTEX_SHADER from '../gl/rect.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rect.fragment.glsl';
 import { segmentsToVertices } from '../gl/segmentsToVertices';
-import { parseUcscCytobands } from '../genome/genome';
+import Genome, { parseUcscCytobands } from '../genome/genome';
 import Interval from "../utils/interval";
 import WebGlTrack from "./webGlTrack";
 
@@ -59,6 +59,11 @@ export default class CytobandTrack extends WebGlTrack {
         super(genomeSpy, config);
 
         this.styles = defaultStyles;
+
+        this.genome = genomeSpy.coordinateSystem;
+        if (!(this.genome instanceof Genome)) {
+            throw new Error("The coordinate system is not genomic!");
+        }
     }
 
     /**
@@ -71,9 +76,9 @@ export default class CytobandTrack extends WebGlTrack {
         this.trackContainer.style.height = "21px";
 
         const cytobands = parseUcscCytobands(
-            await fetch(`genome/cytoBand.${this.genomeSpy.genome.name}.txt`).then(res => res.text()));
+            await fetch(`genome/cytoBand.${this.genome.name}.txt`).then(res => res.text()));
 
-        this.mappedCytobands = mapUcscCytobands(this.genomeSpy.chromMapper, cytobands);
+        this.mappedCytobands = mapUcscCytobands(this.genome.chromMapper, cytobands);
 
         this.initializeWebGL();
 
@@ -220,7 +225,7 @@ export default class CytobandTrack extends WebGlTrack {
         // TODO: Consider moving to Track base class
         const visibleDomain = Interval.fromArray(scale.domain());
 
-        this.genomeSpy.chromMapper.chromosomes().forEach((chrom, i) => {
+        this.genome.chromMapper.chromosomes().forEach((chrom, i) => {
             if (i > 0 && visibleDomain.contains(chrom.continuousInterval.lower)) {
                 const x = scale(chrom.continuousInterval.lower);
                 ctx.beginPath();

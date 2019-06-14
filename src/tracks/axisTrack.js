@@ -5,6 +5,7 @@ import { rgb, color } from 'd3-color';
 import Track from './track';
 import Interval from '../utils/interval';
 import clientPoint from '../utils/point';
+import Genome from '../genome/genome';
 
 const defaultStyles = {
     fontSize: 12,
@@ -22,6 +23,11 @@ export default class AxisTrack extends Track {
         super(genomeSpy, config);
 
         this.styles = defaultStyles;
+
+        this.genome = genomeSpy.coordinateSystem;
+        if (!(this.genome instanceof Genome)) {
+            throw new Error("The coordinate system is not genomic!");
+        }
     }
 
     /**
@@ -46,7 +52,7 @@ export default class AxisTrack extends Track {
 
         this.genomeSpy.zoom.attachZoomEvents(this.tickCanvas);
 
-        const cm = this.genomeSpy.chromMapper;
+        const cm = this.genome.chromMapper;
         this.chromosomes = cm.chromosomes();
 
         const ctx = this.get2d(this.tickCanvas);
@@ -75,7 +81,7 @@ export default class AxisTrack extends Track {
         const chromLabelMarginTotal = chromLabelMarginLeft + chromLabelMarginRight;
 
         const scale = this.genomeSpy.getZoomedScale();
-        const cm = this.genomeSpy.chromMapper;
+        const cm = this.genome.chromMapper;
 
         const ctx = this.get2d(this.tickCanvas);
 

@@ -18,9 +18,11 @@ import AxisTrack from "./tracks/axisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";
 import GeneTrack from "./tracks/geneTrack";
 import SimpleTrack from './tracks/simpleTrack';
+import RealCoordinateSystem from './realCoordinateSystem';
 
 
 // TODO: Figure out if these could be discovered automatically by WebPack or something
+// TODO: Provide an API for registering new track types
 const trackTypes = {
     "SimpleTrack": SimpleTrack,
     "SampleTrack": SampleTrack,
@@ -44,11 +46,9 @@ export default class GenomeSpy {
 
         this.eventEmitter = new EventEmitter();
 
-        // Initialized later
-        this.genome = new Genome(this.config.genome);
-
         this.zoom = new Zoom(this._zoomed.bind(this));
 
+        // TODO: Move to CoordinateSystem
         this.maxUnitZoom = 30;
 
         this.tracks = [];
@@ -56,6 +56,9 @@ export default class GenomeSpy {
         this.visualMapperFactory = new VisualMapperFactory();
 
         this._dpr = window.devicePixelRatio;
+
+        /** @type {import("./coordinateSystem").default} */
+        this.coordinateSystem = null;
     }
 
     on(...args) {
@@ -68,6 +71,22 @@ export default class GenomeSpy {
         this.eventEmitter.emit('zoom', this.getViewportDomain());
     }
 
+    /**
+     * Returns the hard domain of the coordinate system if it is specified.
+     * Otherwise returns the shared domain of the data.
+     * 
+     * @return {Interval} the domain
+     */
+    getDomain() {
+        // TODO: Compute from data whene no hard extent is present
+        return this.coordinateSystem.getExtent();
+    }
+
+    /**
+     * Returns the portion of the domain that is currently visible in the viewport
+     * 
+     * @return {Interval} the domain
+     */
     getViewportDomain() {
         return Interval.fromArray(this.rescaledX.domain());
     }
@@ -87,18 +106,23 @@ export default class GenomeSpy {
      * Returns the current zoom level. [0, 1]
      */
     getLinearZoomLevel() {
-        const b = this.chromMapper.extent().width();
-        const y = this.getViewportDomain().width();
-        const a = this.maxUnitZoom; 
+        const extent = this.coordinateSystem.getExtent();
+        if (extent) {
+            // TODO: Get extent from the data
+            const b = extent.width();
+            const y = this.getViewportDomain().width();
+            const a = this.maxUnitZoom;
 
-        return Math.log2(b / y) / Math.log2(b / a);
+            return Math.log2(b / y) / Math.log2(b / a);
+        }
     }
 
     /**
      * Returns the current zoom level, [1, Infinity)
      */
     getExpZoomLevel() {
-        const b = this.chromMapper.extent().width();
+        // TODO: Get from zoom object
+        const b = this.getDomain().width();
         const y = this.getViewportDomain().width();
         
         return b / y;
@@ -147,7 +171,7 @@ export default class GenomeSpy {
             viewport: new Interval(aw, aw + viewportWidth)
         };
 
-        this.zoom.scaleExtent = [1, this.chromMapper.extent().width() / this.maxUnitZoom];
+        this.zoom.scaleExtent = [1, this.getDomain().width() / this.maxUnitZoom];
 
         this.eventEmitter.emit('layout', this.layout);
     }
@@ -171,14 +195,16 @@ export default class GenomeSpy {
         this.container.classList.add("genome-spy");
         this.container.classList.add("loading");
         
-        // Load chromsizes etc
-        await this.genome.initialize();
-        this.visualMapperFactory.registerMapper(this.genome.getMapperDef());
+        if (this.config.genome) {
+            this.coordinateSystem = new Genome(this.config.genome);
+        } else {
+            this.coordinateSystem = new RealCoordinateSystem();
+        }
+        await this.coordinateSystem.initialize(this);
 
-        this.chromMapper = this.genome.chromMapper;
 
         this.xScale = scaleLinear()
-            .domain(this.chromMapper.extent().toArray());
+            .domain(this.getDomain().toArray());
 
         // Zoomed scale
         this.rescaledX = this.xScale;

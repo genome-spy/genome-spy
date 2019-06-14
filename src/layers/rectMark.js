@@ -51,7 +51,7 @@ export default class RectMark extends Mark {
     onBeforeSampleAnimation() {
         const interval = this.unitContext.genomeSpy.getViewportDomain();
 
-        if (interval.width() < this.unitContext.genomeSpy.genome.chromMapper.extent().width() / tesselationConfig.zoomThreshold) {
+        if (interval.width() < this.unitContext.genomeSpy.getDomain().width() / tesselationConfig.zoomThreshold) {
             // TODO: Only bufferize the samples that are being animated
             this._sampleBufferInfo = this._createSampleBufferInfo(interval,
                 interval.width() / tesselationConfig.tiles);
@@ -91,7 +91,7 @@ export default class RectMark extends Mark {
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(null,
-            this.unitContext.genomeSpy.genome.chromMapper.extent().width() / tesselationConfig.zoomThreshold / tesselationConfig.tiles);
+            this.unitContext.genomeSpy.getDomain().width() / tesselationConfig.zoomThreshold / tesselationConfig.tiles);
         this._sampleBufferInfo = this._fullSampleBufferInfo;
 
         this.renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
@@ -104,6 +104,7 @@ export default class RectMark extends Mark {
     render(samples, globalUniforms) {
         const gl = this.gl;
 
+        // TODO: Check renderConfig.rectMinOpacity
         if (this.opaque) {
             gl.disable(gl.BLEND);
         } else {

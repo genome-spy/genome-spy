@@ -1,5 +1,8 @@
+import { format as d3format } from 'd3-format';
 import { tsvParseRows } from 'd3-dsv';
 import { chromMapper } from "./chromMapper";
+import CoordinateSystem from '../coordinateSystem';
+import Interval from '../utils/interval';
 
 // TODO: Create an abstract "CoordinateSystem" base class
 
@@ -8,27 +11,38 @@ import { chromMapper } from "./chromMapper";
  * @prop {string} name
  */
 
-export default class Genome {
+export default class Genome extends CoordinateSystem {
     /**
      * @param {GenomeConfig} config
      */
     constructor(config) {
+        super();
         this.config = config;
+        
+        this.numberFormat = d3format(",d");
     }
 
     get name() {
         return this.config.name;
     }
 
-    async initialize() {
-
-        // TODO: load chromsizes
+    /**
+     * 
+     * @param {import("../genomeSpy").default} genomeSpy 
+     */
+    async initialize(genomeSpy) {
 
         this.chromSizes = await fetch(`genome/${this.name}.chrom.sizes`)
             .then(res => res.text())
             .then(parseChromSizes);
 
         this.chromMapper = chromMapper(this.chromSizes);
+
+        genomeSpy.visualMapperFactory.registerMapper({
+            predicate: encodingConfig => typeof encodingConfig.chrom == "string" && typeof encodingConfig.pos == "string",
+            mapperCreator: this.createGenomicCoordVisualMapper.bind(this)
+        });
+
     }
 
     createGenomicCoordVisualMapper(targetType, encodingConfig) {
@@ -40,13 +54,65 @@ export default class Genome {
         ) + offset;
     }
 
-    getMapperDef() {
-        return {
-            predicate: encodingConfig => typeof encodingConfig.chrom == "string" && typeof encodingConfig.pos == "string",
-            mapperCreator: this.createGenomicCoordVisualMapper.bind(this)
-        }
-    }
     
+    /**
+     * Returns a UCSC Genome Browser -style string presentation of the interval.
+     * However, the interval may span multiple chromosomes, which is incompatible
+     * with UCSC.
+     * 
+     * The inteval is shown as one-based closed-open range.
+     * See https://genome.ucsc.edu/FAQ/FAQtracks#tracks1
+     * 
+     * @param {import("./utils/interval").default} interval 
+     * @returns {string}
+     */
+    formatInterval(interval) {
+        // Because of the open upper bound, one is first decreased from the upper bound and later added back.
+        const begin = this.chromMapper.toChromosomal(interval.lower);
+        const end = this.chromMapper.toChromosomal(interval.upper - 1);
+
+        return begin.chromosome.name + ":" +
+            this.numberFormat(Math.floor(begin.locus + 1)) + "-" +
+            (begin.chromosome != end.chromosome ? (end.chromosome.name + ":") : "") +
+            this.numberFormat(Math.ceil(end.locus + 1));
+    }
+
+    /**
+     * 
+     * @param {string} str 
+     * @returns {void | import("./utils/interval").default}
+     */
+    parseInterval(str) {
+        // TODO: consider changing [0-9XY] to support other species besides humans
+        const matches = str.match(/^(chr[0-9XY]+):([0-9,]+)-(?:(chr[0-9XY]+):)?([0-9,]+)$/);
+
+        if (matches) {
+            const startChr = matches[1];
+            const endChr = matches[3] || startChr;
+
+            const startIndex = parseInt(matches[2].replace(/,/g, ""));
+            const endIndex = parseInt(matches[4].replace(/,/g, ""));
+
+            return new Interval(
+                this.chromMapper.toContinuous(startChr, startIndex - 1),
+                this.chromMapper.toContinuous(endChr, endIndex)
+            );
+
+        } else {
+            return null;
+        }
+
+    }
+
+
+    /**
+     * If the coordinate system has a hard extent, return it. Otherwise returns undefined.
+     * 
+     * @returns {void | import("../utils/interval").default}
+     */
+    getExtent() {
+        return this.chromMapper.extent();
+    }
 }
 
 export function parseChromSizes(chromSizesData) {
