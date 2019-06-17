@@ -94,8 +94,8 @@ export class RectVertexBuilder {
             const [x, x2] = r.x <= r.x2 ? [r.x, r.x2] : [r.x2, r.x];
             const [y, y2] = r.y <= r.y2 ? [r.y, r.y2] : [r.y2, r.y];
 
-            const width = x2 - x;
-            const height = y2 - y || Math.pow(0.1, 20); // A hack to allow minHeight for zero-height rects.
+            const width = x2 - x || Math.pow(0.1, 20); // A hack to allow minWidth for zero-height rects.
+            const height = y2 - y || Math.pow(0.1, 20); // TODO: Fix the hack
 
             // TODO: Fix this
             //if (!(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0)) continue;

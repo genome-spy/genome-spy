@@ -31,6 +31,6 @@ export default class RealCoordinateSystem extends CoordinateSystem {
      * 
      * @returns {void | import("./utils/interval").default}
      */
-    getExtent() { return new Interval(0, 10);}
+    getExtent() { }
 
 }

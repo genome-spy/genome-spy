@@ -1,0 +1,16 @@
+{
+    "tracks": [
+        {
+            "type": "SimpleTrack",
+            
+            "data": { "url": "sincos.csv" },
+
+            "mark": "point",
+
+            "encoding": {
+                "x": { "field": "x" },
+                "y": { "field": "sin" }
+            }
+        }
+    ]
+}

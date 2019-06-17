@@ -79,7 +79,25 @@ export default class GenomeSpy {
      */
     getDomain() {
         // TODO: Compute from data whene no hard extent is present
-        return this.coordinateSystem.getExtent();
+        let domain = this.coordinateSystem.getExtent();
+        if (!domain) {
+            /** @type {import("./utils/interval").default} */
+            let interval;
+            for (const track of this.tracks) {
+                if (interval) {
+                    // Ugh, empty intervals could be useful here....
+                    const trackInterval = track.getXDomain();
+                    if (trackInterval) {
+                        interval = interval.span(trackInterval);
+                    }
+                } else {
+                    interval = track.getXDomain();
+                }
+            }
+            return interval;
+        }
+
+        return domain || new Interval(0, 1);
     }
 
     /**
@@ -171,7 +189,7 @@ export default class GenomeSpy {
             viewport: new Interval(aw, aw + viewportWidth)
         };
 
-        this.zoom.scaleExtent = [1, this.getDomain().width() / this.maxUnitZoom];
+        this.zoom.scaleExtent = [1, this.getDomain().width() / this.maxUnitZoom || Infinity];
 
         this.eventEmitter.emit('layout', this.layout);
     }
@@ -202,12 +220,6 @@ export default class GenomeSpy {
         }
         await this.coordinateSystem.initialize(this);
 
-
-        this.xScale = scaleLinear()
-            .domain(this.getDomain().toArray());
-
-        // Zoomed scale
-        this.rescaledX = this.xScale;
 
         // Eat all context menu events that have not been caught by any track.
         // Prevents annoying browser default context menues from opening when
@@ -240,6 +252,12 @@ export default class GenomeSpy {
             return track.initialize(trackContainer);
 
         })).then(() => {
+            this.xScale = scaleLinear()
+                .domain(this.getDomain().toArray());
+
+            // Zoomed scale
+            this.rescaledX = this.xScale;
+
             this._resized();
             this.container.classList.remove("loading");
 

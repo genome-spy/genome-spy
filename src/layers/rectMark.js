@@ -1,10 +1,12 @@
 import * as twgl from 'twgl-base.js';
+import { extent } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import VERTEX_SHADER from '../gl/rect.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rect.fragment.glsl';
 import { RectVertexBuilder } from '../gl/segmentsToVertices';
 
 import Mark from './mark';
+import Interval from '../utils/interval';
 
 const defaultRenderConfig = {
     minRectWidth: 1.0,
@@ -45,7 +47,14 @@ export default class RectMark extends Mark {
     async initialize() {
         await super.initialize();
 
-        this.yDomain = this._getYDomain();
+        this.yDomain = this.getYDomain();
+    }
+
+    extractDataDomains(specs) {
+        return {
+            x: Interval.fromArray(extent(specs, point => point.x)).span(Interval.fromArray(extent(specs, point => point.x2))),
+            y: Interval.fromArray(extent(specs, point => point.y)).span(Interval.fromArray(extent(specs, point => point.y2)))
+        };
     }
 
     onBeforeSampleAnimation() {
@@ -88,10 +97,14 @@ export default class RectMark extends Mark {
     _initGL() {
         const gl = this.gl;
 
+        // TODO: Fix the domain width:
+        //const domainWidth = this.unitContext.genomeSpy.getDomain().width();
+        const domainWidth = this.getXDomain().width();
+
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(null,
-            this.unitContext.genomeSpy.getDomain().width() / tesselationConfig.zoomThreshold / tesselationConfig.tiles);
+            domainWidth / tesselationConfig.zoomThreshold / tesselationConfig.tiles);
         this._sampleBufferInfo = this._fullSampleBufferInfo;
 
         this.renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
@@ -114,8 +127,8 @@ export default class RectMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYDomainBegin: this.yDomain[0],
-            uYDomainWidth: this.yDomain[1] - this.yDomain[0],
+            uYDomainBegin: this.yDomain.lower,
+            uYDomainWidth: this.yDomain.width(),
             uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.track.gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
             uMinHeight : (this.renderConfig.minRectHeight || 0.0) / this.unitContext.track.gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0
@@ -146,7 +159,7 @@ export default class RectMark extends Mark {
         const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
 
         const yScale = scaleLinear()
-            .domain(this._getYDomain())
+            .domain(this.getYDomain().toArray())
             .range([0, 1]);
 
         const scaledY = yScale.invert(1 - (y - yBand.lower) / yBand.width());

@@ -1,14 +1,13 @@
 import * as twgl from 'twgl-base.js';
 import { comparator } from 'datalib';
-import { bisector } from 'd3-array';
+import { extent, bisector } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { PointVertexBuilder } from '../gl/segmentsToVertices';
 import VERTEX_SHADER from '../gl/point.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
 
-import ViewUnit from './viewUnit';
 import Mark from './mark';
-import { shallowArrayEquals } from '../utils/arrayUtils';
+import Interval from '../utils/interval';
 
 
 // TODO: Style object
@@ -50,7 +49,7 @@ export default class PointMark extends Mark {
     async initialize() {
         await super.initialize();
 
-        this.yDomain = this._getYDomain();
+        this.yDomain = this.getYDomain();
 
         this._initGL();
     }
@@ -66,6 +65,13 @@ export default class PointMark extends Mark {
         for (const points of this.specsBySample.values()) {
             points.sort(c);
         }
+    }
+
+    extractDataDomains(specs) {
+        return {
+            x: Interval.fromArray(extent(specs, point => point.x)),
+            y: Interval.fromArray(extent(specs, point => point.y)),
+        };
     }
 
     _initGL() {
@@ -114,8 +120,8 @@ export default class PointMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYDomainBegin: this.yDomain[0],
-            uYDomainWidth: this.yDomain[1] - this.yDomain[0],
+            uYDomainBegin: this.yDomain.lower,
+            uYDomainWidth: this.yDomain.width(),
             viewportHeight: this.unitContext.track.glCanvas.clientHeight,
             devicePixelRatio: window.devicePixelRatio,
             maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
@@ -157,7 +163,7 @@ export default class PointMark extends Mark {
         const xScale = this.unitContext.track.genomeSpy.rescaledX;
 
         const yScale = scaleLinear()
-            .domain(this._getYDomain())
+            .domain(this.getYDomain().toArray())
             .range([0, 1]);
 
         const bisect = bisector(point => point.x).left;

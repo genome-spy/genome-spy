@@ -1,0 +1,32 @@
+
+{
+    "tracks": [
+        {
+            "type": "SimpleTrack",
+            
+            "data": { "url": "sincos.csv" },
+
+            "encoding": {
+                "x": { "field": "x" },
+                "y": { "field": "sin" }
+            },
+
+            "layer": [
+                {
+                    "mark": "rect",
+                    "encoding": {
+                        "x2": { "field": "x" },
+                        "y2": { "value": 0 }
+                    },
+                    "renderConfig": {
+                        "minRectWidth": 3.0,
+                        "minRectOpacity": 1.0
+                    }
+                },
+                {
+                    "mark": "point"
+                }
+            ]
+        }
+    ]
+}

@@ -1,5 +1,6 @@
 import { group } from 'd3-array';
 import { processData } from '../data/dataMapper';
+import Interval from '../utils/interval';
 
 export default class Mark {
 
@@ -47,6 +48,8 @@ export default class Mark {
      * @param {object[]} specs
      */
     setSpecs(specs) {
+        this.dataDomains = this.extractDataDomains(specs);
+
         if (this.viewUnit.getEncoding()["sample"]) {
             /** @type {Map<string, object[]>} */
             this.specsBySample = group(specs, d => d.sample);
@@ -59,6 +62,15 @@ export default class Mark {
         this.fieldMappers = specs.fieldMappers; 
     }
 
+    extractDataDomains(specs) {
+        // override in subclasses!
+        // TODO: Figure out where to get domains for color/size attributes etc
+        return {
+            x: new Interval(0, 1),
+            y: new Interval(0, 1)
+        };
+    }
+
     onBeforeSampleAnimation() { }
 
     onAfterSampleAnimation() { }
@@ -67,23 +79,42 @@ export default class Mark {
 
     }
 
-    _getYDomain() {
-        const yEncoding = this.viewUnit.getEncoding()["y"];
-        if (yEncoding) {
-            const scale = yEncoding.scale;
+
+    getResolvedYDomain() {
+        // TODO: Implement
+    }
+
+    getYDomain() {
+        return this.getDomain("y");
+    }
+
+    getXDomain() {
+        return this.getDomain("x");
+    }
+
+    /**
+     * 
+     * @param {string} dimension 
+     * @returns {Interval}
+     */
+    getDomain(dimension) {
+        const encoding = this.viewUnit.getEncoding()[dimension];
+        if (encoding) {
+            const scale = encoding.scale;
             if (scale) {
                 const domain = scale.domain;
                 if (domain) {
                     if (Array.isArray(domain) && domain.length == 2) {
-                        return domain;
+                        // TODO: Support nominal/ordinal
+                        return Interval.fromArray(domain);
                     } else {
                         throw new Error("Invalid domain: " + JSON.stringify(domain));
                     }
                 }
             }
         }
-        
-        return [0, 1];
+
+        return this.dataDomains[dimension];
     }
 
     /**
