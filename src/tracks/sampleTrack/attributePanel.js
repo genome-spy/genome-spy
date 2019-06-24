@@ -202,15 +202,23 @@ export default class AttributePanel {
         } else {
             items = items.concat([
                 {
+                    label: "Sort by name",
+                    callback: () => this.sampleTrack.sortSamples(s => s.displayName)
+                },
+                {
                     label: `Sample: ${sample.displayName}`,
                     type: "header"
+                },
+                {
+                    label: "Retain",
+                    callback: () => this.sampleTrack.updateSamples(
+                        this.sampleTrack.sampleOrder.filter(id => id == sample.id))
                 },
                 {
                     label: "Remove",
                     callback: () => this.sampleTrack.updateSamples(
                         this.sampleTrack.sampleOrder.filter(id => id != sample.id))
                 }
-
             ])
         }
 
