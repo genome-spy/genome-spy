@@ -56,7 +56,7 @@ export default class AttributePanel {
         this.maxLabelWidth = quantile(
             [...this.sampleTrack.samples.values()]
                 .map(sample => ctx.measureText(sample.displayName).width),
-            0.95);
+            0.98);
 
         if (this.attributeScales.size > 0) {
             this.attributeLabelCanvas = this.sampleTrack.createCanvas();
