@@ -156,22 +156,24 @@ export default class RectMark extends Mark {
     findDatum(sampleId, x, y, yBand) {
         const rects = this.specsBySample.get(sampleId || "default");
 
-        const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
+        if (rects) {
+            const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
 
-        const yScale = scaleLinear()
-            .domain(this.getYDomain().toArray())
-            .range([0, 1]);
+            const yScale = scaleLinear()
+                .domain(this.getYDomain().toArray())
+                .range([0, 1]);
 
-        const scaledY = yScale.invert(1 - (y - yBand.lower) / yBand.width());
+            const scaledY = yScale.invert(1 - (y - yBand.lower) / yBand.width());
 
-        // TODO: Support overlapping rects
-        // TODO: Take minWidth into account
+            // TODO: Support overlapping rects
+            // TODO: Take minWidth into account
 
-        const rect = rects.find(rect =>
-             scaledX >= rect.x && scaledX < rect.x2 &&
-             scaledY >= rect.y && scaledY < rect.y2);
+            const rect = rects.find(rect =>
+                scaledX >= rect.x && scaledX < rect.x2 &&
+                scaledY >= rect.y && scaledY < rect.y2);
 
-        return rect;
+            return rect;
+        }
     }
 
 
@@ -186,8 +188,10 @@ export default class RectMark extends Mark {
      */
     findDatumAt(sampleId, x) {
         const rects = this.specsBySample.get(sampleId);
-        const rect = rects.find(rect => x >= rect.x && x < rect.x2);
-        return rect && rect.rawDatum || undefined;
+        if (rects) {
+            const rect = rects.find(rect => x >= rect.x && x < rect.x2);
+            return rect && rect.rawDatum || undefined;
+        }
     }
 
 
