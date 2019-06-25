@@ -89,7 +89,7 @@ export default class SimpleTrack extends WebGlTrack {
             this.glCanvas,
             point => {
                 const datum = this.findDatumAt(point);
-                if (datum._mark instanceof PointMark) {
+                if (datum && datum._mark instanceof PointMark) {
                     // Snap the mouse cursor to the center of point marks to ease zooming
                     // TODO: Add a snap method to mark classes -> more abstract design
                     point[0] = this.genomeSpy.rescaledX(datum.x);
