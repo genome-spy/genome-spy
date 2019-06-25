@@ -8,6 +8,7 @@ import WebGlTrack from './webGlTrack';
 import DataSource from '../data/dataSource';
 import MouseTracker from '../mouseTracker';
 import * as html from '../utils/html';
+import PointMark from '../layers/pointMark';
 
 
 const defaultStyles = {
@@ -84,7 +85,19 @@ export default class SimpleTrack extends WebGlTrack {
             this.renderViewport();
         });
 
-        this.genomeSpy.zoom.attachZoomEvents(this.glCanvas);
+        this.genomeSpy.zoom.attachZoomEvents(
+            this.glCanvas,
+            point => {
+                const datum = this.findDatumAt(point);
+                if (datum._mark instanceof PointMark) {
+                    // Snap the mouse cursor to the center of point marks to ease zooming
+                    // TODO: Add a snap method to mark classes -> more abstract design
+                    point[0] = this.genomeSpy.rescaledX(datum.x);
+                }
+                // TODO: Support RectMarks with minWidth
+
+                return point;
+            });
 
         await this.viewUnit.initialize();
     }

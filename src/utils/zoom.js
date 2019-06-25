@@ -14,12 +14,18 @@ export class Zoom {
      * Adds mouse/touch listeners for zoom
      * 
      * @param {object} element 
+     * @param {function(number[]):(number[]|undefined)} [wheelSnapHandler]
      */
-    attachZoomEvents(element) {
+    attachZoomEvents(element, wheelSnapHandler) {
         ["mousedown", "wheel", "dragstart"].forEach(type =>
             element.addEventListener(
                 type,
-                e => this.handleMouseEvent(e, clientPoint(element, e), element),
+                e => {
+                    const point = wheelSnapHandler ?
+                        wheelSnapHandler(clientPoint(element, e)) : 
+                        clientPoint(element, e);
+                    this.handleMouseEvent(e, point, element)
+                },
                 false));
     }
 
