@@ -1,5 +1,5 @@
 {
-  "name": "genome-spy-gl",
+  "name": "genome-spy",
   "description": "Rewrite of GenomeSpy, now with WebGL",
   "contributors": [
     "Kari Lavikka"
@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tuner/genome-spy-gl"
+    "url": "https://github.com/tuner/genome-spy"
   },
   "sideEffects": [
     "*.scss"
@@ -18,28 +18,29 @@
     "test": "jest"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^5.7.2",
-    "@fortawesome/fontawesome-svg-core": "^1.2.15",
-    "@fortawesome/free-solid-svg-icons": "^5.7.2",
+    "@fortawesome/fontawesome-free": "^5.9.0",
+    "@fortawesome/fontawesome-svg-core": "^1.2.19",
+    "@fortawesome/free-solid-svg-icons": "^5.9.0",
     "array-flat-polyfill": "^1.0.1",
-    "d3-array": "^2.0.3",
+    "d3-array": "^2.2.0",
     "d3-color": "^1.2.3",
     "d3-dsv": "^1.1.1",
     "d3-format": "^1.3.2",
     "d3-interpolate": "^1.3.2",
-    "d3-scale": "^2.2.2",
+    "d3-scale": "^3.0.0",
     "d3-scale-chromatic": "^1.3.3",
     "datalib": "^1.9.2",
-    "eventemitter3": "^3.1.0",
-    "math.gl": "^2.3.1",
-    "tinyqueue": "^2.0.0",
-    "twgl-base.js": "^4.10.0",
-    "vega-expression": "^2.6.0"
+    "eventemitter3": "^3.1.2",
+    "math.gl": "^2.3.3",
+    "tinyqueue": "^2.0.3",
+    "twgl-base.js": "^4.11.0",
+    "vega-expression": "^2.6.0",
+    "vega-scale": "^4.1.1"
   },
   "devDependencies": {
-    "@babel/cli": "^7.2.3",
-    "@babel/core": "^7.3.3",
-    "@babel/preset-env": "^7.3.1",
+    "@babel/cli": "^7.4.4",
+    "@babel/core": "^7.4.5",
+    "@babel/preset-env": "^7.4.5",
     "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^23.6.0",
     "clean-webpack-plugin": "^0.1.19",
@@ -48,14 +49,14 @@
     "html-webpack-plugin": "^3.2.0",
     "jest": "^23.6.0",
     "mini-css-extract-plugin": "^0.5.0",
-    "node-sass": "^4.11.0",
+    "node-sass": "^4.12.0",
     "raw-loader": "^0.5.1",
     "regenerator-runtime": "^0.12.1",
     "sass-loader": "^7.1.0",
     "style-loader": "^0.23.1",
-    "webpack": "^4.29.5",
-    "webpack-cli": "^3.2.3",
-    "webpack-dev-server": "^3.1.14",
+    "webpack": "^4.35.0",
+    "webpack-cli": "^3.3.5",
+    "webpack-dev-server": "^3.7.2",
     "webpack-glsl-loader": "^1.0.1",
     "webpack-md5-hash": "0.0.6",
     "webpack-merge": "^4.2.1"
