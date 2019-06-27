@@ -1,5 +1,5 @@
 import * as twgl from 'twgl-base.js';
-import { comparator } from 'datalib';
+import { compare } from 'vega-util';
 import { extent, bisector } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { PointVertexBuilder } from '../gl/segmentsToVertices';
@@ -61,7 +61,7 @@ export default class PointMark extends Mark {
         super.setSpecs(specs);
 
         // Sort for binary search
-        const c = comparator('x');
+        const c = compare('x');
         for (const points of this.specsBySample.values()) {
             points.sort(c);
         }

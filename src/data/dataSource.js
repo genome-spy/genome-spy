@@ -1,4 +1,4 @@
-import { read } from 'datalib';
+import { read } from 'vega-loader';
 import { DataGroup, GroupGroup, Group } from './group';
 
 /**

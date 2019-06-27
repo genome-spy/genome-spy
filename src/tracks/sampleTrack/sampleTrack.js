@@ -1,7 +1,7 @@
 import * as twgl from 'twgl-base.js';
 import { scaleLinear } from 'd3-scale';
 import { zip } from 'd3-array';
-import * as dl from 'datalib';
+import { inferType } from 'vega-loader';
 
 import SimpleTrack from '../simpleTrack';
 import BandScale from '../../utils/bandScale';
@@ -350,10 +350,12 @@ export default class SampleTrack extends SimpleTrack {
 
         const values = this.sampleOrder.map(id => getAttribute(mark.findDatumAt(id, pos)));
 
+        const isValid = x => x != null && x === x;
+
         // nulls & undefineds break sorting
-        const sanitize = dl.type(values) == "number" ?
-            (d => dl.isValid(d) ? d : -Infinity) :
-            (d => dl.isValid(d) ? d : "")
+        const sanitize = inferType(values) == "number" ?
+            (d => isValid(d) ? d : -Infinity) :
+            (d => isValid(d) ? d : "")
 
         const valuesBySample = new Map(zip(this.sampleOrder, values.map(sanitize)));
 

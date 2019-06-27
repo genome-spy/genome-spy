@@ -14,8 +14,10 @@ export function gather(gatherConfig, rows) {
     
     const columnRegex = new RegExp(gatherConfig.columnRegex);
 
+    const keys = Object.keys(rows[0]);
+
     /** @type {string[]} */
-    const sampleColumns = rows.columns.filter(k => columnRegex.test(k));
+    const sampleColumns = keys.filter(k => columnRegex.test(k));
 
     /** @type {Map<string, object>} */
     const gatheredFields = new Map();
@@ -36,6 +38,10 @@ export function gather(gatherConfig, rows) {
 
 
 export default function gatherTransform(gatherConfig, rows) {
+    if (rows.length == 0) {
+        return [];
+    }
+
     const columnRegex = new RegExp(gatherConfig.columnRegex);
     const gatheredFields = gather(gatherConfig, rows);
 

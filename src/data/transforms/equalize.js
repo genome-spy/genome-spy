@@ -1,6 +1,6 @@
 // See: https://observablehq.com/@tuner/histogram-equalization
 
-import { accessor as dlAccessor } from 'datalib';
+import { field } from 'vega-util';
 import { bisectRight } from 'd3-array';
 
 /**
@@ -16,7 +16,7 @@ import { bisectRight } from 'd3-array';
   * @param {object[]} rows 
   */
 export default function equalizeTransform(equalizeConfig, rows) {
-    const accessor = dlAccessor(equalizeConfig.field);
+    const accessor = field(equalizeConfig.field);
     const as = equalizeConfig.as || equalizeConfig.field;
 
     const equalizer = createEqualizer(rows.map(accessor), equalizeConfig.buckets || 50);

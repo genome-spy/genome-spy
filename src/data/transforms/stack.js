@@ -1,6 +1,7 @@
+import { accessor as dlAccessor, compare } from 'vega-util';
+
 import {
-    accessor as dlAccessor,
-    comparator as dlComparator,
+    // TODO: Find replacements to get rid of datalib
     groupby as dlGroupby,
     sum as dlSum
 } from 'datalib';
@@ -82,7 +83,7 @@ function createComparator(compareDef) {
         asArray(compareDef.order) :
         fields.map(f => "ascending");
 
-    return dlComparator(fields.map((field, i) => (orders[i] == "ascending" ? "+" : "-") + field));
+    return compare(fields.map((field, i) => (orders[i] == "ascending" ? "+" : "-") + field));
 }
 
 /**

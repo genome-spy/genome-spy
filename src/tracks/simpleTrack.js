@@ -1,5 +1,5 @@
 import * as twgl from 'twgl-base.js';
-import * as dl from 'datalib';
+import { inferType } from 'vega-loader';
 import { format as d3format } from 'd3-format';
 
 import Interval from '../utils/interval';
@@ -210,7 +210,7 @@ export default class SimpleTrack extends WebGlTrack {
                 return "";
             }
 
-            const type = dl.type.infer([object]);
+            const type = inferType([object]);
 
             if (type == "string") {
                 return object.substring(0, 30);
