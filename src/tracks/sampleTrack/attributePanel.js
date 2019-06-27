@@ -1,18 +1,26 @@
 import { format as d3format } from 'd3-format';
 import { scaleSequential, scaleOrdinal, scaleBand } from 'd3-scale';
 import { schemeCategory10, interpolateOrRd } from 'd3-scale-chromatic';
-import { quantile, extent } from 'd3-array';
+import { quantile, extent, range } from 'd3-array';
+import { inferType } from 'vega-loader';
+import * as vs from 'vega-scale';
 
 import CanvasTextCache from "../../utils/canvasTextCache";
 import MouseTracker from "../../mouseTracker";
 import * as html from "../../utils/html";
 import Interval from '../../utils/interval';
 import contextMenu from '../../contextMenu';
-import { inferNumeric } from '../../utils/variableTools';
 
 function isDefined(value) {
     return value !== "" && !(typeof value == "number" && isNaN(value)) && value !== null;
 }
+
+// TODO: Move to a more generic place
+const FieldType = {
+    NOMINAL: "nominal",
+    ORDINAL: "ordinal",
+    QUANTITATIVE: "quantitative"
+};
 
 /**
  * Handles sample names and attributes
@@ -68,7 +76,7 @@ export default class AttributePanel {
                 resolver: this.findAttributeAt.bind(this),
                 tooltipConverter: attribute => Promise.resolve(attribute)
             })
-                .on("click", attribute => this.sampleTrack.sortSamples(s => s.attributes[attribute]))
+                .on("click", attribute => this._sortByAttribute(attribute))
                 .on("mouseover", attribute => this.renderAttributeLabels({ hoveredAttribute: attribute }))
                 .on("mouseleave", () => this.renderAttributeLabels());
 
@@ -123,7 +131,7 @@ export default class AttributePanel {
                 },
                 {
                     label: "Sort by",
-                    callback: () => this.sampleTrack.sortSamples(s => s.attributes[attribute])
+                    callback: () => this._sortByAttribute(attribute)
                 }
             ])
 
@@ -224,6 +232,28 @@ export default class AttributePanel {
 
 
         contextMenu({ items }, mouseEvent);
+    }
+
+    /**
+     * @param {string} attribute
+     */
+    _sortByAttribute(attribute) {
+        let accessor;
+        const scale = this.attributeScales.get(attribute);
+        if (scale.type == "ordinal") {
+            // Ordinal values have a specific natural order. Use that for sorting.
+            const lookup = vs.scale("ordinal")()
+                .domain(scale.domain())
+                .range(range(0, scale.domain().length))
+                .unknown(-1);
+
+            accessor = s => lookup(s.attributes[attribute]);
+
+        } else {
+            accessor = s => s.attributes[attribute];
+        }
+
+        this.sampleTrack.sortSamples(accessor);
     }
 
     /**
@@ -409,6 +439,9 @@ export default class AttributePanel {
         </div>`
     }
 
+    _getAttributeConfig(attributeName) {
+        return ((this.sampleTrack.config.samples ? this.sampleTrack.config.samples.attributes : {}) || {})[attributeName] || {};
+    }
 
 
     /**
@@ -424,31 +457,58 @@ export default class AttributePanel {
 
         this.attributeScales = new Map();
 
-        // TODO: Make all of this configurable
-
         attributeNames.forEach(attributeName => {
+            // TODO: While building scales, ensure that the (auto inferred) data type matches the explicitly specified domain
+            // ... otherwise mystery-errors are thrown later
+
+            // TODO: Generify scale creation, use it on simple/sampletrack too
+
+            let scale;
+
             const accessor = sample => sample.attributes[attributeName];
-            if (inferNumeric(samples.map(accessor))) {
+            const attributeConfig = this._getAttributeConfig(attributeName);
 
-                // Convert types
-                for (let sample of samples.values()) {
-                    sample.attributes[attributeName] = parseFloat(accessor(sample));
+            let fieldType = attributeConfig.fieldType;
+            if (!fieldType) {
+                switch (inferType(samples.map(accessor))) {
+                    case "integer":
+                    case "number":
+                        fieldType = FieldType.QUANTITATIVE;
+                        break;
+                    default:
+                        fieldType = FieldType.NOMINAL;
                 }
+            }
 
-                this.attributeScales.set(
-                    attributeName,
-                    scaleSequential(interpolateOrRd)
-                        .domain(extent(samples, accessor)));
+            if (fieldType == FieldType.QUANTITATIVE) {
+                scale = vs.scale("sequential")()
+                    .domain(attributeConfig.domain || extent(samples, accessor))
+                    .interpolator(vs.scheme(attributeConfig.scheme || "orangered"));
 
-                // TODO: Diverging scale if domain extends to negative values
+                // TODO: If a (color) range has been specified, create a linear scale instead
 
             } else {
-                this.attributeScales.set(attributeName, scaleOrdinal(schemeCategory10));
+                const domain = attributeConfig.domain || [...new Set(samples.map(accessor))].sort();
+
+                // TODO: The default scheme should be different for nominal and ordinal data
+
+                let scheme = vs.scheme(attributeConfig.scheme || (domain.length <= 10 ? "tableau10" : "tableau20"));
+                if (typeof scheme == "function") {
+                    scheme = vs.quantizeInterpolator(scheme, domain.length);
+                }
+
+                scale = vs.scale("ordinal")()
+                    .domain(domain)
+                    .range(scheme)
+                    .unknown(this.styles.naColor);
             }
+            
+            this.attributeScales.set(attributeName, scale);
+
         });
 
 
-        // Map a attribute name to a horizontal coordinate
+        // Map an attribute name to a horizontal coordinate
         this.attributeBandScale = scaleBand()
             .domain(Array.from(attributeNames.keys()))
             .paddingInner(this.sampleTrack.styles.attributePaddingInner)

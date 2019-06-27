@@ -20,7 +20,7 @@ const defaultStyles = {
     attributeWidth: 12, // in pixels
     attributePaddingInner: 0.05,
 
-    naColor: "#D0D0D0",
+    naColor: "#D8D8D8",
 
     fontSize: 12,
     fontFamily: "sans-serif",
