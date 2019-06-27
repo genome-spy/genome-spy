@@ -5,6 +5,7 @@ import { quantile, extent, range } from 'd3-array';
 import { inferType } from 'vega-loader';
 import * as vs from 'vega-scale';
 
+import formatObject from '../../utils/formatObject';
 import CanvasTextCache from "../../utils/canvasTextCache";
 import MouseTracker from "../../mouseTracker";
 import * as html from "../../utils/html";
@@ -401,20 +402,6 @@ export default class AttributePanel {
 
 
     sampleToTooltip(sample) {
-        const numberFormat = d3format(".4");
-
-        const formatValue = value => {
-            if (!isDefined(value)) {
-                return "";
-            } else if (typeof value == "number") {
-                return numberFormat(value);
-            } else if (typeof value == "string") {
-                return value;
-            } else {
-                return "";
-            }
-        };
-
         const getColor = (key, value) => isDefined(value) ?
             this.attributeScales.get(key)(value) :
             this.styles.naColor;
@@ -423,7 +410,7 @@ export default class AttributePanel {
             Object.entries(sample.attributes).map(([key, value]) => `
                 <tr>
                     <th>${html.escapeHtml(key)}</th>
-                    <td>${html.escapeHtml(formatValue(value))}</td>
+                    <td>${html.escapeHtml(formatObject(value))}</td>
                     <td class="color" style="background-color: ${getColor(key, value)}"></td>
                 </tr>`
             ).join("") +

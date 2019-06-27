@@ -1,7 +1,6 @@
 import * as twgl from 'twgl-base.js';
-import { inferType } from 'vega-loader';
-import { format as d3format } from 'd3-format';
 
+import formatObject from '../utils/formatObject';
 import Interval from '../utils/interval';
 import ViewUnit from '../layers/viewUnit';
 import WebGlTrack from './webGlTrack';
@@ -193,8 +192,6 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     datumToTooltip(spec) {
-        const numberFormat = d3format(".4~r");
-
         const datum = spec.rawDatum;
 
         /** @type {import("../layers/viewUnit").default} */
@@ -204,30 +201,6 @@ export default class SimpleTrack extends WebGlTrack {
         const propertyFilter = markConfig.tooltip && markConfig.tooltip.skipFields ?
             entry => markConfig.tooltip.skipFields.indexOf(entry[0]) < 0 :
             entry => true;
-
-        function toString(object) {
-            if (object === null) {
-                return "";
-            }
-
-            const type = inferType([object]);
-
-            if (type == "string") {
-                return object.substring(0, 30);
-
-            } else if (type == "integer") {
-                return "" + object;
-
-            } else if (type == "number") {
-                return numberFormat(object);
-
-            } else if (type == "boolean") {
-                return object ? "True" : "False";
-
-            } else {
-                return "?" + type + " " + object;
-            }
-        }
 
         function legend(key, datum) {
             const mapper = viewUnit.mark.fieldMappers && viewUnit.mark.fieldMappers[key];
@@ -243,7 +216,7 @@ export default class SimpleTrack extends WebGlTrack {
             Object.entries(datum).filter(propertyFilter).map(([key, value]) => `
                 <tr>
                     <th>${html.escapeHtml(key)}</th>
-                    <td>${html.escapeHtml(toString(value))} ${legend(key, datum)}</td>
+                    <td>${html.escapeHtml(formatObject(value))} ${legend(key, datum)}</td>
                 </tr>`
             ).join("") +
             "</table>";
