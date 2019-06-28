@@ -93,7 +93,7 @@ export default class GeneTrack extends WebGlTrack {
 
         this.setGenes(parseCompressedRefseqGeneTsv(
             genome.chromMapper,
-            await fetch(`private/refSeq_genes_scored.${genome.name}.compressed.txt`).then(res => res.text())));
+            await fetch(`private/refSeq_genes_scored.${genome.name}.compressed.txt`, { credentials: 'include' }).then(res => res.text())));
 
         this.initializeWebGL();
 

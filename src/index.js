@@ -14,22 +14,34 @@ if (urlParams.has("conf")) {
  */
 async function initWithConfiguration(conf) {
 
-    if (typeof conf == "string") {
-        const url = conf;
-        try {
-            conf = await fetch(url).then(res => res.json());
-        } catch (e) {
-            throw e;
+    try {
+        if (typeof conf == "string") {
+            const url = conf;
+            try {
+                conf = await fetch(url, { credentials: 'include' })
+                    .then(res => {
+                        if (res.ok) {
+                            return res.json();
+                        }
+                        throw new Error(`Could not load configuration: ${conf} \nReason: ${res.status} ${res.statusText}`);
+                    });
+            } catch (e) {
+                throw e;
+            }
+
+            conf.baseurl = conf.baseurl || url.match(/^.*\//)[0];
+        } else {
+            conf.baseurl = conf.baseurl || "";
         }
 
-        conf.baseurl = conf.baseurl || url.match(/^.*\//)[0];
-    } else {
-        conf.baseurl = conf.baseurl || "";
+        const app = new GenomeSpyApp(conf);
+        app.launch();
+
+    } catch(e) {
+        console.log(e);
+        alert(e);
     }
 
-
-    const app = new GenomeSpyApp(conf);
-    app.launch();
 }
 
 
