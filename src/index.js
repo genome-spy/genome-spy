@@ -1,13 +1,12 @@
 
 import GenomeSpyApp from "./genomeSpyApp";
 
-const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.has("conf")) {
-    initWithConfiguration(urlParams.get("conf"))
+const defaultConf = "config.json";
 
-} else {
-    document.body.innerText = "No configuration defined!";
-}
+const urlParams = new URLSearchParams(window.location.search);
+
+initWithConfiguration(urlParams.get("conf") || defaultConf);
+
 
 /**
  * @param {object | string} conf configuriation object or url to json configuration
@@ -29,7 +28,11 @@ async function initWithConfiguration(conf) {
                 throw e;
             }
 
-            conf.baseurl = conf.baseurl || url.match(/^.*\//)[0];
+            if (!conf.baseurl) {
+                const m = url.match(/^.*\//);
+                conf.baseurl = m && m[0] || "./";
+            }
+
         } else {
             conf.baseurl = conf.baseurl || "";
         }
@@ -39,7 +42,10 @@ async function initWithConfiguration(conf) {
 
     } catch(e) {
         console.log(e);
-        alert(e);
+        
+        const pre = document.createElement("pre");
+        pre.innerText = e.toString();
+        document.body.appendChild(pre);
     }
 
 }
