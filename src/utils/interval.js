@@ -100,20 +100,36 @@ export default class Interval {
     }
 
     /**
-     * Returns an Interval that encloses both this and the other Interval
+     * Returns an Interval that encloses both this and the other Interval or value.
      * 
-     * @param {Interval} otherInterval The other interval
+     * @param {Interval | number} other The other interval or value
      */
-    span(otherInterval) {
+    span(other) {
         // Handle empty interval
-        if (otherInterval == null) {
-            return this.copy();
+        if (other == null) {
+            return this;
         }
 
-        return new Interval(
-            Math.min(this.lower, otherInterval.lower),
-            Math.max(this.upper, otherInterval.upper)
-        );
+        if (other instanceof Interval) {
+            if (this.encloses(other)) {
+                return this;
+            } else {
+                return new Interval(
+                    Math.min(this.lower, other.lower),
+                    Math.max(this.upper, other.upper)
+                );
+            }
+
+        } else {
+            if (this.contains(other)) {
+                return this;
+            } else {
+                return new Interval(
+                    Math.min(this.lower, other),
+                    Math.max(this.upper, other)
+                );
+            }
+        }
     }
 
     /**

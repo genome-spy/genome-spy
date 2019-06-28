@@ -91,11 +91,13 @@ test("Intersect", () => {
 test("Span", () => {
     const interval = new Interval(1, 2);
     expect(interval.span(null)).toEqual(interval);
-    expect(interval.span(null)).not.toBe(interval);
 
     expect(new Interval(1, 2).span(new Interval(1, 2))).toEqual(new Interval(1, 2));
     expect(new Interval(1, 2).span(new Interval(4, 5))).toEqual(new Interval(1, 5));
     expect(new Interval(4, 5).span(new Interval(1, 2))).toEqual(new Interval(1, 5));
+
+    expect(new Interval(1, 2).span(3)).toEqual(new Interval(1, 3));
+    expect(new Interval(2, 3).span(1)).toEqual(new Interval(1, 3));
 });
 
 test("Transform", () => {
