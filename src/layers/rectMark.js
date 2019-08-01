@@ -10,6 +10,7 @@ import Interval from '../utils/interval';
 
 const defaultRenderConfig = {
     minRectWidth: 1.0,
+    minRectHeight: 0.0,
     minRectOpacity: 0.0
 };
 
@@ -157,6 +158,12 @@ export default class RectMark extends Mark {
         const rects = this.specsBySample.get(sampleId || "default");
 
         if (rects) {
+            const unitMinWidth = this.renderConfig.minRectWidth / this.unitContext.track.gl.drawingBufferWidth / window.devicePixelRatio;
+            const halfMinWidth = unitMinWidth * this.unitContext.genomeSpy.getViewportDomain().width() / 2;
+
+            const unitMinHeight = this.renderConfig.minRectHeight / this.unitContext.track.gl.drawingBufferHeight / window.devicePixelRatio;
+            const halfMinHeight = unitMinHeight * this.getYDomain().width() / 2; // TODO: take yBand into account
+
             const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
 
             const yScale = scaleLinear()
@@ -165,32 +172,36 @@ export default class RectMark extends Mark {
 
             const scaledY = yScale.invert(1 - (y - yBand.lower) / yBand.width());
 
-            // TODO: Support overlapping rects
-            // TODO: Take minWidth into account
+            const matchX = this.renderConfig.minRectWidth ?
+                rect => {
+                    const halfWidth = Math.max((rect.x2 - rect.x) / 2, halfMinWidth);
+                    const centre = (rect.x + rect.x2) / 2;
 
-            const rect = rects.find(rect =>
-                scaledX >= rect.x && scaledX < rect.x2 &&
-                scaledY >= rect.y && scaledY < rect.y2);
+                    return scaledX >= centre - halfWidth && scaledX < centre + halfWidth;
+                } :
+                rect => {
+                    return scaledX >= rect.x && scaledX < rect.x2;
+                };
 
-            return rect;
-        }
-    }
+            const matchY = this.renderConfig.minRectHeight ? 
+                rect => {
+                    const halfHeight = Math.max(Math.abs((rect.y2 - rect.y)) / 2, halfMinHeight);
+                    const centre = (rect.y + rect.y2) / 2;
 
+                    return scaledY >= centre - halfHeight && scaledY < centre + halfHeight;
+                } :
+                rect => {
+                    return scaledY >= rect.y && scaledY < rect.y2
+                };
 
-    /**
-     * Finds a datum that overlaps the given value on domain.
-     * The result is unspecified if multiple datums are found.
-     * 
-     * TODO: Rename the other findDatum to findSpec
-     * 
-     * @param {string} sampleId
-     * @param {number} x position on the x domain
-     */
-    findDatumAt(sampleId, x) {
-        const rects = this.specsBySample.get(sampleId);
-        if (rects) {
-            const rect = rects.find(rect => x >= rect.x && x < rect.x2);
-            return rect && rect.rawDatum || undefined;
+            let lastMatch = null;
+            for (let rect of rects) {
+                if (matchX(rect) && matchY(rect)) {
+                    lastMatch = rect;
+                }
+            }
+
+            return lastMatch;
         }
     }
 
