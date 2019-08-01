@@ -1,10 +1,6 @@
-import { accessor as dlAccessor, compare } from 'vega-util';
+import { compare, field as vuField } from 'vega-util';
 
-import {
-    // TODO: Find replacements to get rid of datalib
-    groupby as dlGroupby,
-    sum as dlSum
-} from 'datalib';
+import { groups as d3groups, sum as d3sum } from 'd3-array';
 
 /**
  * 
@@ -30,10 +26,12 @@ export default function stackTransform(config, rows) {
 
     const as = config.as || ["y0", "y1"]; // TODO: Validate
 
-    const groups = dlGroupby(config.groupby)
-        .execute(rows)
+    const groupFields = config.groupby.map(vuField);
 
-    const accessor = config.field ? dlAccessor(config.field) : row => 1;
+    const groups = d3groups(rows, row => groupFields.map(f => f(row)).join())
+        .map(a => a[1]);
+
+    const accessor = config.field ? vuField(config.field) : row => 1;
 
     const comparator = createComparator(config.sort);
 
@@ -45,12 +43,12 @@ export default function stackTransform(config, rows) {
 
 
     for (const group of groups) {
-        group.values.sort(comparator);
+        group.sort(comparator);
         
-        const sum = dlSum(group.values, accessor);
+        const sum = d3sum(group, accessor);
 
         let prev = 0;
-        for (const row of group.values) {
+        for (const row of group) {
             const current = prev + accessor(row);
             
             newRows.push({
