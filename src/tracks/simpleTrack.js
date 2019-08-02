@@ -1,4 +1,7 @@
 import * as twgl from 'twgl-base.js';
+import { ticks as d3ticks } from 'd3-array'
+import { scaleLinear } from 'd3-scale';
+import { format as d3format } from 'd3-format';
 
 import formatObject from '../utils/formatObject';
 import Interval from '../utils/interval';
@@ -57,6 +60,8 @@ export default class SimpleTrack extends WebGlTrack {
 
         this.initializeWebGL();
 
+        this.leftCanvas = this.createCanvas();
+
         this.trackContainer.className = "simple-track";
 
         // TODO: Move to upper level
@@ -78,6 +83,7 @@ export default class SimpleTrack extends WebGlTrack {
         this.genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
             this.renderViewport();
+            this.renderYAxis();
         });
 
         this.genomeSpy.on("zoom", () => {
@@ -104,6 +110,9 @@ export default class SimpleTrack extends WebGlTrack {
     resizeCanvases(layout) {
         this.adjustCanvas(this.glCanvas, layout.viewport);
         this.adjustGl(this.gl);
+
+        const trackHeight = this.trackContainer.clientHeight;
+        this.adjustCanvas(this.leftCanvas, layout.axis, trackHeight);
     }
 
     zoomToSpec(spec, mouseEvent, point) {
@@ -163,7 +172,7 @@ export default class SimpleTrack extends WebGlTrack {
                 {
                     title: "Blaa",
                     axisConf: null,
-                    domain: mark._getYDomain()
+                    domain: mark.getYDomain()
                 }
             ]
         }
@@ -259,5 +268,55 @@ export default class SimpleTrack extends WebGlTrack {
                 vu.mark.render(samples, globalUniforms)
             }
         });
+    }
+
+    getMinAxisWidth() {
+        return 40; // TODO: Compute from data
+    }
+
+    renderYAxis() {
+        const conf = {
+            tickSize: 5,
+            tickWidth: 1,
+            offset: 0,
+            labelPadding: 5,
+            labelFontSize: 10
+        };
+
+        const axisWidth = this.leftCanvas.clientWidth;
+        const axisHeight = this.leftCanvas.clientHeight;
+
+        const ctx = this.get2d(this.leftCanvas);
+        const daa = this.getYDomainsAndAxes()[0]; // TODO: Support multiple domains
+
+        const domain = daa.domain;
+        const scale = scaleLinear()
+            .domain(domain.toArray())
+            .range([this.trackContainer.clientHeight, 0]);
+
+        const format = domain.upper >= 1 && domain.upper <= 100 ?
+            d3format(".2f") :
+            d3format(".2s");
+
+        const ticks = d3ticks(domain.lower, domain.upper, Math.min(20, Math.round(axisHeight / conf.labelFontSize / 2)));
+
+        const tickX = axisWidth - conf.tickSize - conf.offset;
+        const textX = tickX - conf.labelPadding;
+
+        ctx.font = `sans-serif ${conf.labelFontSize}px`;
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+
+        ctx.fillRect(
+            tickX + conf.tickSize - conf.tickWidth,
+            scale(ticks[ticks.length - 1]) - conf.tickWidth / 2,
+            conf.tickWidth,
+            Math.abs(scale(ticks[0]) - scale(ticks[ticks.length - 1])) + conf.tickWidth);
+
+        for (const tick of ticks) {
+            const y = scale(tick);
+            ctx.fillRect(tickX, y - conf.tickWidth / 2, conf.tickSize, conf.tickWidth);
+            ctx.fillText(format(tick), textX, y);
+        }
     }
 }

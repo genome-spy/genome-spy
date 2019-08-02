@@ -68,6 +68,9 @@ export default class Track {
         canvas.height = height * r;
     }
 
+    /**
+     * @returns {CanvasRenderingContext2D}
+     */
     get2d(canvas) {
         // TODO: Consider moving to some utility module
 

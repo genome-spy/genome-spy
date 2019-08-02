@@ -47,7 +47,7 @@ export default class AttributePanel {
     initialize() {
         this.prepareSampleAttributes();
 
-        this.labelCanvas = this.sampleTrack.createCanvas();
+        this.labelCanvas = this.sampleTrack.leftCanvas;
 
         this.sampleMouseTracker = new MouseTracker({
             element: this.labelCanvas,
@@ -269,8 +269,8 @@ export default class AttributePanel {
         // TODO: Compute available vertical space
         // TODO: Compute position: above or below
         if (this.attributeLabelCanvas) {
-        this.sampleTrack.adjustCanvas(this.attributeLabelCanvas, axisInterval, 100);
-        this.attributeLabelCanvas.style.top = `${trackHeight}px`;
+            this.sampleTrack.adjustCanvas(this.attributeLabelCanvas, axisInterval, 100);
+            this.attributeLabelCanvas.style.top = `${trackHeight}px`;
         }
 
         // TODO: Need a real layoutbuilder
