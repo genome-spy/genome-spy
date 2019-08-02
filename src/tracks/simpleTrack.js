@@ -5,12 +5,12 @@ import { format as d3format } from 'd3-format';
 
 import formatObject from '../utils/formatObject';
 import Interval from '../utils/interval';
-import ViewUnit from '../layers/viewUnit';
+import ViewUnit from '../marks/viewUnit';
 import WebGlTrack from './webGlTrack';
 import DataSource from '../data/dataSource';
 import MouseTracker from '../mouseTracker';
 import * as html from '../utils/html';
-import PointMark from '../layers/pointMark';
+import PointMark from '../marks/pointMark';
 
 
 const defaultStyles = {
@@ -22,7 +22,7 @@ export default class SimpleTrack extends WebGlTrack {
     /**
      * 
      * @param {import("./../genomeSpy").default } genomeSpy 
-     * @param {object | import("../layers/viewUnit").ViewUnitConfig} config 
+     * @param {object | import("../marks/viewUnit").ViewUnitConfig} config 
      */
     constructor(genomeSpy, config) {
         super(genomeSpy, config);
@@ -148,7 +148,7 @@ export default class SimpleTrack extends WebGlTrack {
      * Returns all marks in the order they are rendered
      */
     getMarks() {
-        /** @type {import("../layers/mark").default[]} */
+        /** @type {import("../marks/mark").default[]} */
         const layers = [];
         this.viewUnit.visit(vu => {
             if (vu.mark) {
@@ -203,7 +203,7 @@ export default class SimpleTrack extends WebGlTrack {
     datumToTooltip(spec) {
         const datum = spec.rawDatum;
 
-        /** @type {import("../layers/viewUnit").default} */
+        /** @type {import("../marks/viewUnit").default} */
         const viewUnit = spec._viewUnit;
 
         const markConfig = viewUnit.mark.markConfig;

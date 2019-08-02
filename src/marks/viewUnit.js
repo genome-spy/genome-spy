@@ -1,7 +1,7 @@
 import { processData, transformData } from '../data/dataMapper';
 
-import RectMark from '../layers/rectMark';
-import PointMark from '../layers/pointMark';
+import RectMark from './rectMark';
+import PointMark from './pointMark';
 
 /**
  * @typedef {Object} MarkConfig
