@@ -95,6 +95,7 @@ test("Span", () => {
     expect(new Interval(1, 2).span(new Interval(1, 2))).toEqual(new Interval(1, 2));
     expect(new Interval(1, 2).span(new Interval(4, 5))).toEqual(new Interval(1, 5));
     expect(new Interval(4, 5).span(new Interval(1, 2))).toEqual(new Interval(1, 5));
+    expect(new Interval(4, 5).span(new Interval(8, 8))).toEqual(new Interval(4, 8));
 
     expect(new Interval(1, 2).span(3)).toEqual(new Interval(1, 3));
     expect(new Interval(2, 3).span(1)).toEqual(new Interval(1, 3));

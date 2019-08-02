@@ -9,14 +9,14 @@ export default class Interval {
      * @param {number} upper 
      */
     constructor(lower, upper) {
-        if (isNaN(lower)) {
-            throw `Lower value "${lower}" is not a number!`;
+        if (typeof lower !== "number" || isNaN(lower)) {
+            throw new Error(`Lower value "${lower}" is not a number!`);
         }
-        if (isNaN(upper)) {
-            throw `Upper value "${upper}" is not a number!`;
+        if (typeof upper !== "number" || isNaN(upper)) {
+            throw new Error(`Upper value "${upper}" is not a number!`);
         }
         if (upper < lower) {
-            throw `Upper value is less that lower value! Lower: ${lower}, upper: ${upper}`;
+            throw new Error(`Upper value is less that lower value! Lower: ${lower}, upper: ${upper}`);
         }
 
         this.lower = lower;
@@ -101,6 +101,7 @@ export default class Interval {
 
     /**
      * Returns an Interval that encloses both this and the other Interval or value.
+     * If the other interval is null, returns this interval.
      * 
      * @param {Interval | number} other The other interval or value
      */
