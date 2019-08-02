@@ -109,7 +109,7 @@ export class RectVertexBuilder {
             this.variableBuilder.pushAll();
 
             // Tesselate segments
-            const tileCount = Math.ceil(width / this.tesselationThreshold) || 1;
+            const tileCount = width < Infinity && Math.ceil(width / this.tesselationThreshold) || 1;
             for (let i = 0; i <= tileCount; i++) {
                 const frac = i / tileCount;
 
@@ -286,7 +286,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
         opacities.push(1);
 
         // Tesselate segments
-        const tileCount = Math.ceil(s.interval.width() / tesselationThreshold);
+        const tileCount = s.interval.width() < Infinity && Math.ceil(s.interval.width() / tesselationThreshold);
         for (let i = 0; i <= tileCount; i++) {
             const r = i / tileCount;
             // Interpolate X & Y

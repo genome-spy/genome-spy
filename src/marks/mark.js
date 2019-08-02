@@ -30,7 +30,8 @@ export default class Mark {
         }
         const ungroupedData = data.ungroupAll().data;
 
-        const encoding = this.getEncoding();
+        //const encoding = this.getEncoding();
+        const encoding = Object.assign({}, this.getDefaultEncoding(), this.getEncoding());
 
         const baseObject = {
             ...Mark.getConstantValues(encoding),

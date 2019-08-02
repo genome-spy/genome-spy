@@ -24,7 +24,7 @@ const defaultEncoding = {
 };
 
 const tesselationConfig = {
-    zoomThreshold: 10,
+    zoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix
     tiles: 35
 };
 
@@ -52,9 +52,16 @@ export default class RectMark extends Mark {
     }
 
     extractDataDomains(specs) {
+        // Here's a lot of hacking for infinite domain widths (used by horiz/vert rules)
+
+        const inf2null = x => x === -Infinity || x === Infinity ? null : x;
+
+        const xExtent = extent([...specs.map(p => p.x), ...specs.map(p => p.x2)].map(inf2null));
+        const yExtent = extent([...specs.map(p => p.y), ...specs.map(p => p.y2)].map(inf2null));
+
         return {
-            x: Interval.fromArray(extent(specs, point => point.x)).span(Interval.fromArray(extent(specs, point => point.x2))),
-            y: Interval.fromArray(extent(specs, point => point.y)).span(Interval.fromArray(extent(specs, point => point.y2)))
+            x: typeof xExtent[0] == "number" ? Interval.fromArray(xExtent) : null,
+            y: typeof yExtent[0] == "number" ? Interval.fromArray(yExtent) : null
         };
     }
 
@@ -98,9 +105,8 @@ export default class RectMark extends Mark {
     _initGL() {
         const gl = this.gl;
 
-        // TODO: Fix the domain width:
-        //const domainWidth = this.unitContext.genomeSpy.getDomain().width();
-        const domainWidth = this.getXDomain().width();
+        const xDomain = this.getXDomain();
+        const domainWidth = xDomain ? xDomain.width() : Infinity;
 
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
