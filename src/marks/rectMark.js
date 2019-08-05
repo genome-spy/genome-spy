@@ -164,10 +164,10 @@ export default class RectMark extends Mark {
         const rects = this.specsBySample.get(sampleId || "default");
 
         if (rects) {
-            const unitMinWidth = this.renderConfig.minRectWidth / this.unitContext.track.gl.drawingBufferWidth / window.devicePixelRatio;
+            const unitMinWidth = this.renderConfig.minRectWidth / this.unitContext.track.gl.drawingBufferWidth * window.devicePixelRatio;
             const halfMinWidth = unitMinWidth * this.unitContext.genomeSpy.getViewportDomain().width() / 2;
 
-            const unitMinHeight = this.renderConfig.minRectHeight / this.unitContext.track.gl.drawingBufferHeight / window.devicePixelRatio;
+            const unitMinHeight = this.renderConfig.minRectHeight / this.unitContext.track.gl.drawingBufferHeight * window.devicePixelRatio;
             const halfMinHeight = unitMinHeight * this.getYDomain().width() / 2; // TODO: take yBand into account
 
             const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
@@ -186,7 +186,7 @@ export default class RectMark extends Mark {
                     return scaledX >= centre - halfWidth && scaledX < centre + halfWidth;
                 } :
                 rect => {
-                    return scaledX >= rect.x && scaledX < rect.x2;
+                    return (scaledX >= rect.x && scaledX < rect.x2) || (scaledX >= rect.x2 && scaledX < rect.x);
                 };
 
             const matchY = this.renderConfig.minRectHeight ? 
@@ -197,7 +197,7 @@ export default class RectMark extends Mark {
                     return scaledY >= centre - halfHeight && scaledY < centre + halfHeight;
                 } :
                 rect => {
-                    return scaledY >= rect.y && scaledY < rect.y2
+                    return (scaledY >= rect.y && scaledY < rect.y2) || (scaledY >= rect.y2 && scaledY < rect.y)
                 };
 
             let lastMatch = null;
