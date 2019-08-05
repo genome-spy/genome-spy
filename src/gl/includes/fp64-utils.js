@@ -30,9 +30,8 @@
  */
 export function fp64ify(a, out = [], startIndex = 0) {
     const hiPart = Math.fround(a);
-    const loPart = a - hiPart;
     out[startIndex] = hiPart;
-    out[startIndex + 1] = loPart;
+    out[startIndex + 1] = isFinite(hiPart) ? a - hiPart : 0;
     return out;
 }
 

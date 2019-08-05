@@ -134,7 +134,7 @@ export default class RectMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYDomainBegin: this.yDomain.lower,
+            uYDomainBegin: this.yDomain.lower, // TODO: Use resolved domain
             uYDomainWidth: this.yDomain.width(),
             uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.track.gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
             uMinHeight : (this.renderConfig.minRectHeight || 0.0) / this.unitContext.track.gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels

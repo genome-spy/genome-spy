@@ -8,10 +8,15 @@
                     "data": { "values": [{ "y": 0 }]},
                     "mark": "rule",
                     "encoding": {
-                        "y": { "field": "y" }
-                    },
-                    "scale": {
-                        "domain": [-1, 1]
+                        "y": {
+                            "field": "y",
+                            "scale": {
+                                "domain": [-1, 1]
+                            }
+                        },
+                        "color": {
+                            "value": "lightgray"
+                        }
                     }
                 },
                 {

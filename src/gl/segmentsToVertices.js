@@ -56,7 +56,7 @@ export class RectVertexBuilder {
     constructor(constants, variables, tesselationThreshold = Infinity, renderOptions) {
         // TODO: Provide default values and provide them as constants
 
-        this.tesselationThreshold = tesselationThreshold;
+        this.tesselationThreshold = tesselationThreshold || Infinity;
 
         const converters = {
             color: { f: spec => color2floatArray(spec.color), numComponents: 3 },
@@ -121,7 +121,13 @@ export class RectVertexBuilder {
                 }
 
                 this.updateWidth(w);
-                this.updateX(fp64ify(r.x + width * frac));
+
+                // Note: Infinity is used for horizontal and vertical rule marks that have unspecified start/end coords
+                const tx = isFinite(width) ?
+                    x + width * frac :
+                    i == 0 ? -Infinity : Infinity;
+
+                this.updateX(fp64ify(tx));
                 this.updateY(y);
                 this.updateHeight(height);
                 this.variableBuilder.pushAll();
