@@ -13,6 +13,8 @@ attribute highp vec2 x;
 uniform highp vec2 uXDomainBegin;
 uniform highp vec2 uXDomainWidth;
 
+uniform float uXOffset;
+
 /**
  * Does viewport transformation and returns the X coordinate on a normalized [0, 1] scale
  */
@@ -34,5 +36,5 @@ float normalizeX() {
         normalizedX = (x.x - uXDomainBegin.x) / uXDomainWidth.x;
     }
 
-    return normalizedX;
+    return normalizedX + uXOffset;
 }

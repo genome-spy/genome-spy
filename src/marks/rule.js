@@ -1,5 +1,5 @@
 
-import RectMark from './rectMark';
+import RectMark from './rectMark.js';
 
 const defaultRenderConfig = {
     size: 1.0, // TODO: Provide through encoding
@@ -12,8 +12,8 @@ const defaultRenderConfig = {
  */
 export default class RuleMark extends RectMark {
     /**
-     * @param {import("./viewUnit").UnitContext} unitContext
-     * @param {import("./viewUnit").default} viewUnit
+     * @param {import("./viewUnit.js").UnitContext} unitContext
+     * @param {import("./viewUnit.js").default} viewUnit
      */
     constructor(unitContext, viewUnit) {
         super(unitContext, viewUnit)
@@ -67,7 +67,9 @@ export default class RuleMark extends RectMark {
 
         const renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
 
-        this.viewUnit.config.renderConfig = vertical ?
+        this.viewUnit.config.renderConfig = this.viewUnit.config.renderConfig || {};
+        
+        Object.assign(this.viewUnit.config.renderConfig, vertical ?
             {
                 minRectWidth: renderConfig.size,
                 minRectHeight: renderConfig.minLength,
@@ -77,7 +79,7 @@ export default class RuleMark extends RectMark {
                 minRectWidth: renderConfig.minLength,
                 minRectHeight: renderConfig.size,
                 minRectOpacity: 1.0
-            }; 
+            }); 
 
         super.setSpecs(specs)
     }

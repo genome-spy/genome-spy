@@ -115,13 +115,14 @@ export default class PointMark extends Mark {
     render(samples, globalUniforms) {
         const gl = this.gl;
 
-
         gl.enable(gl.BLEND);
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
             uYDomainBegin: this.yDomain.lower,
             uYDomainWidth: this.yDomain.width(),
+            uXOffset: (this.renderConfig.xOffset || 0.0) / gl.drawingBufferWidth * window.devicePixelRatio,
+            uYOffset: (this.renderConfig.yOffset || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio,
             viewportHeight: this.unitContext.track.glCanvas.clientHeight,
             devicePixelRatio: window.devicePixelRatio,
             maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
@@ -153,6 +154,9 @@ export default class PointMark extends Mark {
         if (!points) {
             return null;
         }
+
+        x -= (this.renderConfig.xOffset || 0.0);
+        y += (this.renderConfig.yOffset || 0.0);
 
         const maxPointSize = Math.max(
             this.renderConfig.minMaxPointSizeAbsolute,

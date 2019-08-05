@@ -136,9 +136,11 @@ export default class RectMark extends Mark {
             ...globalUniforms,
             uYDomainBegin: this.yDomain.lower, // TODO: Use resolved domain
             uYDomainWidth: this.yDomain.width(),
-            uMinWidth: (this.renderConfig.minRectWidth || 1.0) / this.unitContext.track.gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
-            uMinHeight : (this.renderConfig.minRectHeight || 0.0) / this.unitContext.track.gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels
-            uMinOpacity: this.renderConfig.minRectOpacity || 0.0
+            uMinWidth: (this.renderConfig.minRectWidth || 1.0) / gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
+            uMinHeight : (this.renderConfig.minRectHeight || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels
+            uMinOpacity: this.renderConfig.minRectOpacity || 0.0,
+            uXOffset: (this.renderConfig.xOffset || 0.0) / gl.drawingBufferWidth * window.devicePixelRatio,
+            uYOffset: (this.renderConfig.yOffset || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio,
         });
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this._sampleBufferInfo.bufferInfo);
@@ -163,11 +165,17 @@ export default class RectMark extends Mark {
     findDatum(sampleId, x, y, yBand) {
         const rects = this.specsBySample.get(sampleId || "default");
 
+        const gl = this.unitContext.track.gl;
+        const dpr = window.devicePixelRatio;
+
+        x -= (this.renderConfig.xOffset || 0.0);
+        y += (this.renderConfig.yOffset || 0.0);
+
         if (rects) {
-            const unitMinWidth = this.renderConfig.minRectWidth / this.unitContext.track.gl.drawingBufferWidth * window.devicePixelRatio;
+            const unitMinWidth = this.renderConfig.minRectWidth / gl.drawingBufferWidth * dpr;
             const halfMinWidth = unitMinWidth * this.unitContext.genomeSpy.getViewportDomain().width() / 2;
 
-            const unitMinHeight = this.renderConfig.minRectHeight / this.unitContext.track.gl.drawingBufferHeight * window.devicePixelRatio;
+            const unitMinHeight = this.renderConfig.minRectHeight / gl.drawingBufferHeight * dpr;
             const halfMinHeight = unitMinHeight * this.getYDomain().width() / 2; // TODO: take yBand into account
 
             const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
