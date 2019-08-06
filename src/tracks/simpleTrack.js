@@ -146,26 +146,6 @@ export default class SimpleTrack extends WebGlTrack {
         return layers;
     }
 
-    getYDomainsAndAxes() {
-        // TODO:
-        // 1. Collect all y scales and axis confs
-        // 2. Union shared scales and axes
-        // 3. Return a list...
-        
-        const marks = this.getMarks();
-        if (marks.length > 0) {
-            const mark = marks[0];
-
-            return [
-                {
-                    title: "Blaa",
-                    axisConf: null,
-                    domain: mark.getYDomain()
-                }
-            ]
-        }
-    }
-
     /**
      * Returns the datum (actually the mark spec) at the specified point
      * 
@@ -260,6 +240,26 @@ export default class SimpleTrack extends WebGlTrack {
 
     getMinAxisWidth() {
         return 40; // TODO: Compute from data
+    }
+
+    getYDomainsAndAxes() {
+        // TODO:
+        // 1. Collect all y scales and axis confs
+        // 2. Union shared scales and axes
+        // 3. Return a list...
+        
+        const marks = this.getMarks();
+        if (marks.length > 0) {
+            const mark = marks[0];
+
+            return [
+                {
+                    title: "Blaa",
+                    axisConf: null,
+                    domain: /** @type {Interval} */(mark.getResolvedDomain("y"))
+                }
+            ]
+        }
     }
 
     renderYAxis() {
