@@ -108,6 +108,9 @@ export default class RectMark extends Mark {
         const xDomain = this.getXDomain();
         const domainWidth = xDomain ? xDomain.width() : Infinity;
 
+        // TODO: const domainWidth = this.unitContext.genomeSpy.getDomain().width();
+        // But it requires that all data are first loaded in order to extract the domain
+
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(null,
@@ -131,11 +134,13 @@ export default class RectMark extends Mark {
             gl.enable(gl.BLEND);
         }
 
+        const yDomain = /** @type {Interval} */(this.getResolvedDomain("y"));
+
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYDomainBegin: this.yDomain.lower, // TODO: Use resolved domain
-            uYDomainWidth: this.yDomain.width(),
+            uYDomainBegin: yDomain.lower,
+            uYDomainWidth: yDomain.width(),
             uMinWidth: (this.renderConfig.minRectWidth || 1.0) / gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
             uMinHeight : (this.renderConfig.minRectHeight || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0,
@@ -172,16 +177,18 @@ export default class RectMark extends Mark {
         y += (this.renderConfig.yOffset || 0.0);
 
         if (rects) {
+            const yDomain = /** @type {Interval} */(this.getResolvedDomain("y")); // Could be cached...
+
             const unitMinWidth = this.renderConfig.minRectWidth / gl.drawingBufferWidth * dpr;
             const halfMinWidth = unitMinWidth * this.unitContext.genomeSpy.getViewportDomain().width() / 2;
 
             const unitMinHeight = this.renderConfig.minRectHeight / gl.drawingBufferHeight * dpr;
-            const halfMinHeight = unitMinHeight * this.getYDomain().width() / 2; // TODO: take yBand into account
+            const halfMinHeight = unitMinHeight * yDomain.width() / 2; // TODO: take yBand into account
 
             const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
 
             const yScale = scaleLinear()
-                .domain(this.getYDomain().toArray())
+                .domain(yDomain.toArray())
                 .range([0, 1]);
 
             const scaledY = yScale.invert(1 - (y - yBand.lower) / yBand.width());

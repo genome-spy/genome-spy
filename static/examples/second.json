@@ -9,10 +9,7 @@
                     "mark": "rule",
                     "encoding": {
                         "y": {
-                            "field": "y",
-                            "scale": {
-                                "domain": [-1, 1]
-                            }
+                            "field": "y"
                         },
                         "color": {
                             "value": "lightgray"

@@ -51,6 +51,7 @@ export default class GenomeSpy {
         // TODO: Move to CoordinateSystem
         this.maxUnitZoom = 30;
 
+        /** @type {import("./tracks/Track").default[]} */
         this.tracks = [];
 
         this.visualMapperFactory = new VisualMapperFactory();
@@ -74,6 +75,8 @@ export default class GenomeSpy {
     /**
      * Returns the hard domain of the coordinate system if it is specified.
      * Otherwise returns the shared domain of the data.
+     * 
+     * TODO: Rename and emphasize X axis
      * 
      * @return {Interval} the domain
      */

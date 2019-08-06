@@ -1,6 +1,7 @@
 import { group } from 'd3-array';
 import { processData } from '../data/dataMapper';
 import Interval from '../utils/interval';
+import ViewUnit from './viewUnit';
 
 export default class Mark {
 
@@ -81,30 +82,80 @@ export default class Mark {
     }
 
 
-    getResolvedYDomain() {
-        // TODO: Implement
+    /**
+     * Returns the domain for the specified channel based on the resolution rules.
+     * However, X (horizontal) is a special case as the extent of the coordinate
+     * system is always returned.
+     * 
+     * Modeled after: https://vega.github.io/vega-lite/docs/resolve.html
+     * 
+     * @param {string} channel 
+     * @returns {Interval | string[] | void}
+     */
+    getResolvedDomain(channel) {
+        if (channel === 'x') {
+            return this.unitContext.genomeSpy.getDomain();
+        }
+
+        /** @type {string} */
+        let resolve;
+
+        /** @type {ViewUnit} */
+        let vu = this.viewUnit;
+        while (vu.parentUnit && !resolve) {
+            vu = vu.parentUnit;
+            resolve = vu.config.resolve && vu.config.resolve.scale && vu.config.resolve.scale[channel];
+        }
+
+        // Use defaults
+        if (!resolve) {
+            // TODO: Add logic here when compositions other than layering are implemented
+            if (channel === 'y') {
+                resolve = "shared";
+            }
+        }
+
+        if (resolve === "independent") {
+            return this.getDomain(channel);
+        } else if (resolve === "shared") {
+            return vu.getUnionDomain(channel);
+        } else {
+            throw new Error("Invalid resolution rule: " + resolve);
+        }
     }
 
+
+    /**
+     * Returns the configured domain of the Y (vertical) scale or computes it from
+     * the extent of the data. 
+     */
     getYDomain() {
         return this.getDomain("y");
     }
 
+    /**
+     * Returns the configured domain of X (horizontal) scale or computes it from
+     * the extent of the data. 
+     */
     getXDomain() {
         return this.getDomain("x");
     }
 
     /**
+     * Returns the domain of the specified channel of this mark.
+     * Either returns a configured domain or extracts it from the data.
      * 
-     * @param {string} dimension 
-     * @returns {Interval}
+     * @param {string} channel 
+     * @returns {Interval | string[]}
      */
-    getDomain(dimension) {
-        const encoding = this.viewUnit.getEncoding()[dimension];
+    getDomain(channel) {
+        const encoding = this.viewUnit.getEncoding()[channel];
         if (encoding) {
             const scale = encoding.scale;
             if (scale) {
                 const domain = scale.domain;
                 if (domain) {
+                    // TODO: Also check that the two-element domain has numbers
                     if (Array.isArray(domain) && domain.length == 2) {
                         // TODO: Support nominal/ordinal
                         return Interval.fromArray(domain);
@@ -115,7 +166,12 @@ export default class Mark {
             }
         }
 
-        return this.dataDomains[dimension];
+        // TODO: Include constant values defined in encodings
+        const domain = this.dataDomains[channel];
+        if (domain === undefined) {
+            throw new Error(`No domain available for channel ${channel}`);
+        }
+        return domain;
     }
 
     /**

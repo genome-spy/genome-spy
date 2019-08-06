@@ -109,7 +109,7 @@ export class RectVertexBuilder {
             this.variableBuilder.pushAll();
 
             // Tesselate segments
-            const tileCount = width < Infinity && Math.ceil(width / this.tesselationThreshold) || 1;
+            const tileCount = width < Infinity ? Math.ceil(width / this.tesselationThreshold) : 1;
             for (let i = 0; i <= tileCount; i++) {
                 const frac = i / tileCount;
 

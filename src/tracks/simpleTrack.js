@@ -129,19 +129,7 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     getXDomain() {
-        /** @type {import("../utils/interval").default} */
-        let interval;
-        for (const mark of this.getMarks()) {
-            if (interval) {
-                const markInterval = mark.getXDomain();
-                if (markInterval) {
-                    interval = interval.span(markInterval);
-                }
-            } else {
-                interval = mark.getXDomain();
-            }
-        }
-        return interval;
+        return /** @type {Interval | void} */(this.viewUnit.getUnionDomain("x"));
     }
 
     /**

@@ -1,5 +1,6 @@
 import { processData, transformData } from '../data/dataMapper';
 
+import Interval from '../utils/interval';
 import RectMark from './rectMark';
 import PointMark from './pointMark';
 import RuleMark from './rule';
@@ -21,6 +22,7 @@ import RuleMark from './rule';
  * @prop {Object} [encoding]
  * @prop {Object} [renderConfig]
  * @prop {string} [title]
+ * @prop {Object} [resolve]
  * 
  * @typedef {Object} UnitContext
  * @prop {import("../tracks/sampleTrack/simpleTrack").default} [track]
@@ -119,7 +121,6 @@ export default class ViewUnit {
      * @param {function(ViewUnit):void} visitor 
      */
     visit(visitor) {
-        // TODO: Consider generator
         visitor(this);
 
         for (const viewUnit of this.layers) {
@@ -127,4 +128,45 @@ export default class ViewUnit {
         }
     }
 
+    /**
+     * Collects the unioned domain for the specified channel in the view hierarchy, starting
+     * from this node.
+     * 
+     * @param {string} channel 
+     * @returns {Interval | string[] | void}
+     */
+    getUnionDomain(channel) {
+        /** @type{Interval | string[]} */
+        let domain;
+
+        this.visit(vu => {
+            if (vu.mark) {
+                const md = vu.mark.getDomain(channel);
+                if (!md) {
+                    return;
+
+                } else if (!domain) {
+                    domain = md;
+
+                } else {
+                    if (domain instanceof Interval && md instanceof Interval) {
+                        domain = domain.span(md);
+
+                    } else if (Array.isArray(domain) && Array.isArray(md)) {
+                        // Inefficient but preserves order
+                        for (const value of md) {
+                            if (!domain.includes(value)) {
+                                domain.push(value);
+                            }
+                        }
+
+                    } else {
+                        throw new Error(`Mismatching types. Can't union domains for channel ${channel}.`);
+                    }
+                }
+            }
+        })
+
+        return domain;
+    }
 }
