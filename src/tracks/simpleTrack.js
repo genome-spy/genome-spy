@@ -286,7 +286,10 @@ export default class SimpleTrack extends WebGlTrack {
             d3format(".2f") :
             d3format(".2s");
 
-        const ticks = d3ticks(domain.lower, domain.upper, Math.min(20, Math.round(axisHeight / conf.labelFontSize / 2)));
+        // Slightly decrease the tick density as the height increases
+        const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / conf.labelFontSize / 1.7);
+
+        const ticks = d3ticks(domain.lower, domain.upper, tickCount);
 
         const tickX = axisWidth - conf.tickSize - conf.offset;
         const textX = tickX - conf.labelPadding;
