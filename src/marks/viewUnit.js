@@ -94,28 +94,10 @@ export default class ViewUnit {
         }
 
         if (this.config.mark) {
-            /*
-            const data = this.getData();
-            if (!data) {
-                throw new Error("Can not create mark, no data available!");
-            }
-
-            const ungroupedData = data.ungroupAll().data;
-            */
             const markClass = markTypes[typeof this.config.mark == "object" ? this.config.mark.type : this.config.mark];
             if (markClass) {
                 /** @type {import("./mark").default} */
                 const mark = new markClass(this.context, this);
-                /*
-                const encoding = Object.assign({}, mark.getDefaultEncoding(), this.getEncoding());
-
-                const baseObject = {
-                    // TODO: Defaults
-                    _viewUnit: this
-                };
-                const specs = processData(encoding, ungroupedData, this.context.genomeSpy.visualMapperFactory, baseObject);
-                mark.setSpecs(specs);
-                */
                 await mark.initialize();
 
                 this.mark = mark;
