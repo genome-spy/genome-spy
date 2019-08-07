@@ -134,15 +134,17 @@ export default class GenomeSpyApp {
 
         // The following adds a dependency to specific kinds of tracks.
         // Maybe the tracks should be given means to add buttons to applications...
-        const backButton = document.createElement("button");
-        backButton.classList.add("tool-btn");
-        backButton.classList.add("backtrack-samples");
-        backButton.title = "Backtrack samples (⌫)";
-        backButton.appendChild(icon(faUndo).node[0]);
-        backButton.addEventListener("click",
-            () => this.genomeSpy.tracks.filter(track => track.backtrackSamples)[0].backtrackSamples()); // Ugh, hack
-
-        this.toolbar.appendChild(backButton);
+        if (config.tracks && config.tracks.find(t => t.type == "SampleTrack")) {
+            const backButton = document.createElement("button");
+            backButton.classList.add("tool-btn"); 
+            backButton.classList.add("backtrack-samples");
+            backButton.title = "Backtrack samples (⌫)";
+            backButton.appendChild(icon(faUndo).node[0]);
+            backButton.addEventListener("click",
+                () => this.genomeSpy.tracks.filter(track => track.backtrackSamples)[0].backtrackSamples()); // Ugh, hack
+                
+            this.toolbar.appendChild(backButton);
+        }
 
     }
 
