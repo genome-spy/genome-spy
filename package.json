@@ -1,10 +1,12 @@
 {
   "name": "genome-spy",
-  "description": "Rewrite of GenomeSpy, now with WebGL",
-  "contributors": [
-    "Kari Lavikka"
-  ],
-  "license": "MIT",
+  "description": "GenomeSpy, a genome browser with WebGL and a grammar of graphics",
+  "author": {
+    "name": "Kari Lavikka",
+    "email": "kari.lavikka@helsinki.fi"
+  },
+  "contributors": [],
+  "license": "BSD-2-Clause",
   "repository": {
     "type": "git",
     "url": "https://github.com/tuner/genome-spy"
