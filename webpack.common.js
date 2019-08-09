@@ -6,7 +6,7 @@ module.exports = {
 
   plugins: [
     new HtmlWebpackPlugin({
-      title: 'GenomeSpy GL',
+      title: 'GenomeSpy',
       hash: true
     })
   ],

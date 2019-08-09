@@ -15,8 +15,8 @@
     "*.scss"
   ],
   "scripts": {
-    "start": "webpack-dev-server --mode development --progress --hot --open --config webpack.dev.js",
-    "build": "webpack --mode production --config webpack.prod.js",
+    "start": "webpack-dev-server --progress --hot --open --config webpack.dev.js",
+    "build": "webpack --config webpack.prod.js",
     "test": "jest"
   },
   "dependencies": {
