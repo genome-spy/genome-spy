@@ -1,6 +1,5 @@
 # GenomeSpy
 
-GenomeSpy is a genome browser with focus on exploratory data analysis, sample comparison,
-fluid interactions, and high usability.
+GenomeSpy is a genome browser with WebGL and a grammar of graphics
 
 Documentation will be written as the project matures.
