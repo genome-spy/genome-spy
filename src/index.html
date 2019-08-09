@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>GenomeSpy</title>
+  </head>
+  <body>
+      <script>
+const defaultConf = "config.json";
+
+const urlParams = new URLSearchParams(window.location.search);
+
+genomeSpyLib.initWithConfiguration(urlParams.get("conf") || defaultConf);
+      </script>
+  </body>
+</html>

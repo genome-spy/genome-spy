@@ -1,15 +1,17 @@
-import GenomeSpyApp from "./genomeSpyApp.js";
 
-export { GenomeSpyApp };
+import { GenomeSpyApp } from "./index";
 
-export { default as GenomeSpy } from "./genomeSpy.js";
-export { default as Interval } from "./utils/interval.js";
+const defaultConf = "config.json";
+
+const urlParams = new URLSearchParams(window.location.search);
+
+initWithConfiguration(urlParams.get("conf") || defaultConf);
 
 
 /**
  * @param {object | string} conf configuriation object or url to json configuration
  */
-export async function initWithConfiguration(conf) {
+async function initWithConfiguration(conf) {
 
     try {
         if (typeof conf == "string") {
@@ -38,11 +40,15 @@ export async function initWithConfiguration(conf) {
         const app = new GenomeSpyApp(conf);
         app.launch();
 
-    } catch (e) {
+    } catch(e) {
         console.log(e);
         
         const pre = document.createElement("pre");
         pre.innerText = e.toString();
         document.body.appendChild(pre);
     }
+
 }
+
+
+
