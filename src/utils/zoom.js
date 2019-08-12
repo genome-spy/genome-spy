@@ -8,6 +8,8 @@ export class Zoom {
 
         this.mouseDown = false;
         this.lastPoint = null;
+
+        this.zoomInertia = new Inertia();
     }
 
     /**
@@ -62,27 +64,35 @@ export class Zoom {
                     this.transform.k,
                     this.transform.x + event.deltaX * wheelMultiplier));
 
+                this.listener(this.transform);
+
             } else {
                 // https://medium.com/@auchenberg/detecting-multi-touch-trackpad-gestures-in-javascript-a2505babb10e
                 // TODO: Safari gestures
                 const divisor = event.ctrlKey ? 100 : 500;
 
-                let kFactor = Math.pow(2, event.deltaY * wheelMultiplier / divisor);
+                const callback = delta => {
+                    let kFactor = Math.pow(2, delta);
 
-                const k = Math.max(Math.min(this.transform.k * kFactor, this.scaleExtent[1]), this.scaleExtent[0]);
+                    const k = Math.max(Math.min(this.transform.k * kFactor, this.scaleExtent[1]), this.scaleExtent[0]);
 
-                kFactor = k / this.transform.k;
+                    kFactor = k / this.transform.k;
 
-                const x = (this.transform.x - mouseX) * kFactor + mouseX;
+                    const x = (this.transform.x - mouseX) * kFactor + mouseX;
 
-                this.transform = constrainX(new Transform(k, x));
+                    this.transform = constrainX(new Transform(k, x));
+                    this.listener(this.transform);
+                }
+
+                const momentum = event.deltaY * wheelMultiplier / divisor;
+                this.zoomInertia.setMomentum(Math.min(Math.abs(momentum), 0.6) * Math.sign(momentum), callback);
             }
 
-            this.listener(this.transform);
 
         } else if (event.type == "mousedown" && event.button == 0) {
             const referenceTransform = this.transform;
 
+            this.zoomInertia.cancel();
             event.preventDefault();
 
             const onMousemove = function (moveEvent) {
@@ -130,5 +140,62 @@ export class Transform {
 
     toString() {
         return `translate(${this.x}) scale(${this.k})`;
+    }
+}
+
+
+/**
+ * Creates some inertia, mainly for zooming with a mechanical mouse wheel
+ */
+class Inertia {
+    constructor() {
+        this.damping = 10;
+        this.maxInitialMomentum = 0.05; // TODO: Proper acceleration
+        this.lowerLimit = 0.001; // When to stop updating
+        this.clear();
+    }
+
+    clear() {
+        this.momentum = 0;
+        this.timestamp = null;
+        this.loop = null;
+        this.callback = null;
+    }
+
+    cancel() {
+        if (this.loop) {
+            window.cancelAnimationFrame(this.loop);
+            this.clear();
+        }
+    }
+
+    setMomentum(value, callback) {
+        if (value * this.momentum < 0) {
+            this.momentum = 0;
+
+        } else if (this.momentum == 0) {
+            value = Math.min(Math.abs(value), this.maxInitialMomentum) * Math.sign(value);
+        }
+
+        this.momentum = value;
+        this.callback = callback;
+
+        if (!this.loop) {
+            this.animate();
+        }
+    }
+
+    animate(timestamp) {
+        const timeDelta = (timestamp - this.timestamp) || 0;
+        this.timestamp = timestamp;
+
+        this.momentum *= (1 - this.damping * timeDelta / 1000); // TODO: Should use Math.pow here
+
+        this.callback(this.momentum);
+        if (Math.abs(this.momentum) > this.lowerLimit) {
+            this.loop = window.requestAnimationFrame(this.animate.bind(this));
+        } else {
+            this.clear();
+        }
     }
 }
