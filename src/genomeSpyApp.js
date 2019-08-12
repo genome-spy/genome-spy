@@ -85,6 +85,16 @@ export default class GenomeSpyApp {
                 ...this.genomeSpy.tracks.map(t => t.searchHelp())
             ].join("");
 
+            this.searchHelp.querySelectorAll("li").forEach(elem =>
+                elem.addEventListener("click", event => {
+                    const term = event.target.innerText;
+                    typeSlowly(term, this.searchInput)
+                        .then(() => {
+                            this.searchInput.blur();
+                            this.search(term);
+                        });
+                }));
+
             this.searchInput.select();
 
             this.searchHelp.style.width = this.searchInput.offsetWidth + "px";
@@ -185,4 +195,29 @@ export default class GenomeSpyApp {
         });
     }
 
+}
+
+/**
+ * 
+ * @param {string} text 
+ * @param {HTMLInputElement} element 
+ */
+function typeSlowly(text, element) {
+    return new Promise(resolve => {
+        let i = 0;
+        const delay = 700 / text.length + 30;
+
+        function next() {
+            element.value = text.substring(0, i);
+
+            if (i >= text.length) {
+                setTimeout(resolve, 500);
+            } else {
+                i++;
+                setTimeout(next, Math.random() * delay * 2);
+            }
+        }
+
+        next();
+    });
 }

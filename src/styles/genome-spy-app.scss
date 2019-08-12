@@ -69,6 +69,10 @@ $basic-spacing: 10px;
                 opacity: 1;
                 transform: translate(0, 0);
             }
+
+            li {
+                cursor: pointer;
+            }
         }
 
 
