@@ -226,6 +226,22 @@ export default class RectMark extends Mark {
         }
     }
 
+    /**
+     * Finds a datum that overlaps the given value on domain.
+     * The result is unspecified if multiple datums are found.
+     * 
+     * TODO: Rename the other findDatum to findSpec
+     * 
+     * @param {string} sampleId
+     * @param {number} x position on the x domain
+     */
+    findDatumAt(sampleId, x) {
+        const rects = this.specsBySample.get(sampleId);
+        if (rects) {
+            const rect = rects.find(rect => x >= rect.x && x < rect.x2);
+            return rect && rect.rawDatum || undefined;
+        }
+    }
 
     getRangeAggregates() {
         // Aggregates can be used for sorting and filtering
