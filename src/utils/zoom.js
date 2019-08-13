@@ -149,7 +149,7 @@ export class Transform {
  */
 class Inertia {
     constructor() {
-        this.damping = 10;
+        this.damping = 0.99999;
         this.maxInitialMomentum = 0.05; // TODO: Proper acceleration
         this.lowerLimit = 0.001; // When to stop updating
         this.clear();
@@ -189,7 +189,8 @@ class Inertia {
         const timeDelta = (timestamp - this.timestamp) || 0;
         this.timestamp = timestamp;
 
-        this.momentum *= (1 - this.damping * timeDelta / 1000); // TODO: Should use Math.pow here
+        const damp = Math.pow(1 - this.damping, timeDelta / 1000)
+        this.momentum *= damp;
 
         this.callback(this.momentum);
         if (Math.abs(this.momentum) > this.lowerLimit) {
