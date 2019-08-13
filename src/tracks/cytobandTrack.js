@@ -7,7 +7,9 @@ import { segmentsToVertices } from '../gl/segmentsToVertices';
 import Genome, { parseUcscCytobands } from '../genome/genome';
 import Interval from "../utils/interval";
 import WebGlTrack from "./webGlTrack";
+import MouseTracker from "../mouseTracker";
 
+// TODO: Implement cytoband track by using the grammar. Needs some grammar improvements, though.
 
 const giemsaScale = scaleOrdinal()
     .domain([
@@ -90,6 +92,12 @@ export default class CytobandTrack extends WebGlTrack {
         this._bandLabelWidths = this.mappedCytobands.map(band => ctx.measureText(band.name).width);
 
         this._minBandLabelWidth = this._bandLabelWidths.reduce((a, b) => Math.min(a, b), Infinity);
+
+        this.mouseTracker = new MouseTracker({
+            element: this.bandLabelCanvas,
+            resolver: this.findCytobandAt.bind(this)
+        })
+            .on("dblclick", cytoband => this.genomeSpy.zoomTo(cytoband.interval.pad(cytoband.interval.width() * 0.25)));
 
         this.genomeSpy.on("zoom", () => {
             this.render();
@@ -236,6 +244,10 @@ export default class CytobandTrack extends WebGlTrack {
         });
     }
 
+    findCytobandAt(point) {
+        const pos = this.genomeSpy.rescaledX.invert(point[0]);
+        return this.mappedCytobands.find(cytoband => cytoband.interval.contains(pos));
+    }
 
     /**
      * Find a range of cytobands using the search string as a prefix

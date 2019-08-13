@@ -24,6 +24,7 @@ import MouseTracker from "../mouseTracker";
 import contextMenu from "../contextMenu";
 import Genome from '../genome/genome';
 
+// TODO: Implement gene track by using the grammar. Needs plenty of grammar improvements, though.
 
 const STREAM_DRAW = 0x88E0;
 
