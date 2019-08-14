@@ -133,12 +133,24 @@ export default class PointMark extends Mark {
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
+        const bisect = bisector(point => point.x).left;
+        const visibleDomain = this.unitContext.genomeSpy.getViewportDomain();
+        // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
+        const paddedDomain = visibleDomain.pad(visibleDomain.width() * 0.01);
+
         for (const sampleData of samples) {
             const range = this.rangeMap.get(sampleData.sampleId);
             if (range) {
-                twgl.setUniforms(this.programInfo, sampleData.uniforms);
-                // TODO: Restrict range, use binary search
-                twgl.drawBufferInfo(gl, this.bufferInfo, gl.POINTS, range.count, range.offset);
+                // Render only points that reside inside the viewport
+                const specs = this.specsBySample.get(sampleData.sampleId);
+                const lower = bisect(specs, paddedDomain.lower);
+                const upper = bisect(specs, paddedDomain.upper);
+                const length = upper - lower;
+
+                if (length) {
+                    twgl.setUniforms(this.programInfo, sampleData.uniforms);
+                    twgl.drawBufferInfo(gl, this.bufferInfo, gl.POINTS, length, range.offset + lower);
+                }
             }
         }
     }
@@ -172,6 +184,7 @@ export default class PointMark extends Mark {
 
         const bisect = bisector(point => point.x).left;
         // Find the range may contain the point
+        // TODO: Dont's slice, just use the indices to limit iteration
         const pointSubset = points.slice(
             bisect(points, xScale.invert(x - maxPointSize / 2)),
             bisect(points, xScale.invert(x + maxPointSize / 2)));
