@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 
-# Creates a compressed version of RefSeq genes.
-# 
+# Creates a compressed version of RefSeq genes:
 # 1) Exons of all overlapping isoforms are merged
 # 2) Exons are run-length encoded
 #
 # Original RefSeqGene format:
 # https://genome.ucsc.edu/FAQ/FAQformat.html#format1
 #
-# Plus citation counts and stuff:
-# https://docs.higlass.io/data_preparation.html#bed-files
+# GenomeSpy uses scores to prioritizes gene symbols shown on the gene track.
+# A method described on HiGlass' website assigns each gene a score based
+# on its citation count. The produced geneAnnotations.bed file can be
+# compressed using this script.
 #
-# (c) Kari Lavikka
+# https://docs.higlass.io/data_preparation.html#gene-annotation-tracks
+#
+# Usage:
+# python3 compressGeneAnnotations.py geneAnnotations.bed > geneAnnotations.txt
+#
+# Copyright (c) Kari Lavikka
 # 
 
 import csv
