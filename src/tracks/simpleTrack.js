@@ -1,5 +1,5 @@
 import * as twgl from 'twgl-base.js';
-import { ticks as d3ticks } from 'd3-array'
+import { ticks as d3ticks, max as d3max } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { format as d3format } from 'd3-format';
 
@@ -239,7 +239,7 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     getMinAxisWidth() {
-        return 40; // TODO: Compute from data
+        return 50; // TODO: Compute from data
     }
 
     getYDomainsAndAxes() {
@@ -264,11 +264,13 @@ export default class SimpleTrack extends WebGlTrack {
 
     renderYAxis() {
         const conf = {
-            tickSize: 5,
+            tickSize: 6,
             tickWidth: 1,
+            tickColor: "gray",
             offset: 0,
             labelPadding: 5,
-            labelFontSize: 10
+            labelFontSize: 10,
+            labelColor: "black"
         };
 
         const axisWidth = this.leftCanvas.clientWidth;
@@ -282,12 +284,12 @@ export default class SimpleTrack extends WebGlTrack {
             .domain(domain.toArray())
             .range([this.trackContainer.clientHeight, 0]);
 
-        const format = domain.upper >= 1 && domain.upper <= 100 ?
-            d3format(".2f") :
-            d3format(".2s");
-
         // Slightly decrease the tick density as the height increases
         const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / conf.labelFontSize / 1.7);
+
+        const maxAbs = d3max(scale.domain(), x => Math.abs(x));
+
+        const format = scale.tickFormat(tickCount, maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined);
 
         const ticks = d3ticks(domain.lower, domain.upper, tickCount);
 
@@ -298,6 +300,7 @@ export default class SimpleTrack extends WebGlTrack {
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
 
+        ctx.fillStyle = conf.tickColor;
         ctx.fillRect(
             tickX + conf.tickSize - conf.tickWidth,
             scale(ticks[ticks.length - 1]) - conf.tickWidth / 2,
@@ -306,7 +309,9 @@ export default class SimpleTrack extends WebGlTrack {
 
         for (const tick of ticks) {
             const y = scale(tick);
+            ctx.fillStyle = conf.tickColor;
             ctx.fillRect(tickX, y - conf.tickWidth / 2, conf.tickSize, conf.tickWidth);
+            ctx.fillStyle = conf.labelColor;
             ctx.fillText(format(tick), textX, y);
         }
     }
