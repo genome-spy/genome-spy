@@ -5,11 +5,11 @@
 
             "layer": [
                 {
-                    "data": { "values": [{ "y": 0 }]},
+                    "data": { "values": [ 0 ]},
                     "mark": "rule",
                     "encoding": {
                         "y": {
-                            "field": "y"
+                            "field": "data"
                         },
                         "color": {
                             "value": "lightgray"
@@ -17,11 +17,24 @@
                     }
                 },
                 {
-                    "data": { "url": "sincos.csv" },
+                    "data": {
+                        "sequence": {
+                            "start": 0,
+                            "stop": 6.284,
+                            "step": 0.39269908169,
+                            "as": "x"
+                        }
+                    },
+
+                    "transform": [{
+                        "type": "formula",
+                        "expr": "sin(datum.x)",
+                        "as": "sin(x)"
+                    }],
 
                     "encoding": {
                         "x": { "field": "x" },
-                        "y": { "field": "sin" }
+                        "y": { "field": "sin(x)" }
                     },
 
                     "layer": [

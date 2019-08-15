@@ -1,4 +1,5 @@
 import { read } from 'vega-loader';
+import { range as d3range } from 'd3-array';
 import { DataGroup, GroupGroup, Group } from './group';
 
 /**
@@ -6,12 +7,21 @@ import { DataGroup, GroupGroup, Group } from './group';
  * @prop {String} type
  * @prop {Object} [parse]
  */
+
+ /**
+  * @typedef {Object} SequenceConfig
+  * @prop {number} start
+  * @prop {number} stop
+  * @prop {number} [step]
+  * @prop {string} [as] 
+  */
+
 /**
  * @typedef {Object} DataConfig
  * @prop {FormatConfig} [format]
  * @prop {String[] | String} [url]
  * @prop {Object[]} [values]
- * 
+ * @prop {SequenceConfig} [sequence]
  */
 
 
@@ -41,6 +51,9 @@ export default class DataSource {
         if (this.config.values) {
             return this._getImmediateData();
 
+        } else if (this.config.sequence) {
+            return this._getSequence();
+            
         } else if (this.config.url) {
             return await this._fetchAndReadAll();
 
@@ -72,8 +85,19 @@ export default class DataSource {
         const values = this.config.values;
 
         if (Array.isArray(values)) {
-            // It's an array of objects
-            data = values;
+            if (values.length > 0) {
+                if (typeof values[0] == "object") {
+                    // It's an array of objects
+                    // TODO: Should check the whole array and abort if types are heterogeneous
+                    data = values;
+
+                } else {
+                    // Wrap scalars to objects
+                    data = values.map(d => ({ data: d }));
+                }
+            } else {
+                data = [];
+            }
 
         } else if (typeof values == "string") {
             // It's a string that needs to be parsed
@@ -84,6 +108,20 @@ export default class DataSource {
         }
 
         return new DataGroup("immediate", data);
+    }
+
+    _getSequence() {
+        const conf = this.config.sequence;
+        if (typeof conf.start !== "number" || typeof conf.stop !== "number") {
+            throw new Error("Missing or invalid start or stop in sequence generator config: " + JSON.stringify(conf));
+        }
+
+        const data = d3range(conf.start, conf.stop, conf.step || 1)
+            .map(x => ({
+                [conf.as || "data"]: x
+            }));
+        
+            return new DataGroup("sequence", data);
     }
 
     /**
