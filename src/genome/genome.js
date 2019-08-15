@@ -4,11 +4,11 @@ import { chromMapper } from "./chromMapper";
 import CoordinateSystem from '../coordinateSystem';
 import Interval from '../utils/interval';
 
-// TODO: Create an abstract "CoordinateSystem" base class
-
+const defaultBaseUrl = "https://genomespy.app/data/genomes";
 /**
  * @typedef {Object} GenomeConfig
  * @prop {string} name
+ * @prop {string} baseUrl
  */
 
 export default class Genome extends CoordinateSystem {
@@ -18,7 +18,11 @@ export default class Genome extends CoordinateSystem {
     constructor(config) {
         super();
         this.config = config;
-        
+
+        if (typeof this.config.name !== "string") {
+            throw new Error("No name has been defined for the genome assembly!");
+        }
+
         this.numberFormat = d3format(",d");
     }
 
@@ -32,8 +36,22 @@ export default class Genome extends CoordinateSystem {
      */
     async initialize(genomeSpy) {
 
-        this.chromSizes = await fetch(`genome/${this.name}.chrom.sizes`)
-            .then(res => res.text())
+        if (this.config.baseUrl) {
+            this.baseUrl = /^http(s)?/.test(this.config.baseUrl) ?
+                this.config.baseUrl :
+                genomeSpy.config.baseurl + "/" + this.config.baseUrl;
+        } else {
+            this.baseUrl = defaultBaseUrl;
+        }
+        
+        const url = `${this.baseUrl}/${this.config.name}/${this.name}.chrom.sizes`;
+        this.chromSizes = await fetch(url, { credentials: 'same-origin' })
+            .then(res => {
+                if (res.ok) {
+                    return res.text();
+                }
+                throw new Error(`Could not load chrom sizes: ${url} \nReason: ${res.status} ${res.statusText}`);
+            })
             .then(parseChromSizes);
 
         this.chromMapper = chromMapper(this.chromSizes);

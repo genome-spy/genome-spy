@@ -213,17 +213,6 @@ export default class GenomeSpy {
             }
         });
 
-        this.container.classList.add("genome-spy");
-        this.container.classList.add("loading");
-        
-        if (this.config.genome) {
-            this.coordinateSystem = new Genome(this.config.genome);
-        } else {
-            this.coordinateSystem = new RealCoordinateSystem();
-        }
-        await this.coordinateSystem.initialize(this);
-
-
         // Eat all context menu events that have not been caught by any track.
         // Prevents annoying browser default context menues from opening when
         // the user did not quite hit the target.
@@ -237,10 +226,21 @@ export default class GenomeSpy {
 
         this.tooltip = new Tooltip(this.container);
 
+        this.container.classList.add("genome-spy");
+        this.container.classList.add("loading");
+        
         try {
+            if (this.config.genome) {
+                this.coordinateSystem = new Genome(this.config.genome);
+            } else {
+                this.coordinateSystem = new RealCoordinateSystem();
+            }
+            await this.coordinateSystem.initialize(this);
+
             this.tracks = this.config.tracks.map(trackConfig => new trackTypes[trackConfig.type](this, trackConfig));
 
         } catch (reason) {
+            this.container.classList.remove("loading");
             console.error(reason.message);
             console.error(reason.stack);
             alert("Error: " + reason.toString());
@@ -265,6 +265,7 @@ export default class GenomeSpy {
             this.container.classList.remove("loading");
 
         }).catch(reason => {
+            this.container.classList.remove("loading");
             console.error(reason.message);
             console.error(reason.stack);
             alert("Error: " + reason.toString());

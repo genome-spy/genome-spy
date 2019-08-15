@@ -77,8 +77,16 @@ export default class CytobandTrack extends WebGlTrack {
         this.trackContainer.className = "cytoband-track";
         this.trackContainer.style.height = "21px";
 
+        const url = `${this.genome.baseUrl}/${this.genome.name}/cytoBand.${this.genome.name}.txt`;
+
         const cytobands = parseUcscCytobands(
-            await fetch(`genome/cytoBand.${this.genome.name}.txt`, { credentials: 'include' }).then(res => res.text()));
+            await fetch(url, { credentials: 'same-origin' })
+                .then(res => {
+                    if (res.ok) {
+                        return res.text();
+                    }
+                    throw new Error(`Could not load cytobands: ${url} \nReason: ${res.status} ${res.statusText}`);
+                }));
 
         this.mappedCytobands = mapUcscCytobands(this.genome.chromMapper, cytobands);
 

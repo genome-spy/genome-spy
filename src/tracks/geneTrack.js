@@ -92,9 +92,16 @@ export default class GeneTrack extends WebGlTrack {
             throw new Error("The coordinate system is not genomic!");
         }
 
+        const url = `${genome.baseUrl}/${genome.name}/refSef_genes_scored_compressed.${genome.name}.txt`;
         this.setGenes(parseCompressedRefseqGeneTsv(
             genome.chromMapper,
-            await fetch(`private/refSeq_genes_scored.${genome.name}.compressed.txt`, { credentials: 'include' }).then(res => res.text())));
+            await fetch(url, { credentials: 'same-origin' })
+                .then(res => {
+                    if (res.ok) {
+                        return res.text();
+                    }
+                    throw new Error(`Could not load gene annotations: ${url} \nReason: ${res.status} ${res.statusText}`);
+                })));
 
         this.initializeWebGL();
 
