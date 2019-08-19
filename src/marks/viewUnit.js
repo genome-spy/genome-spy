@@ -138,35 +138,108 @@ export default class ViewUnit {
     getUnionDomain(channel) {
         /** @type{Interval | string[]} */
         let domain;
+        const encodings = [];
 
         this.visit(vu => {
-            if (vu.mark) {
-                const md = vu.mark.getDomain(channel);
-                if (!md) {
-                    return;
+            if (!vu.mark) {
+                return;
+            }
 
-                } else if (!domain) {
-                    domain = md;
+            const md = vu.mark.getDomain(channel);
+            if (!md) {
+                return;
 
-                } else {
-                    if (domain instanceof Interval && md instanceof Interval) {
-                        domain = domain.span(md);
+            } else if (!domain) {
+                domain = md;
 
-                    } else if (Array.isArray(domain) && Array.isArray(md)) {
-                        // Inefficient but preserves order
-                        for (const value of md) {
-                            if (!domain.includes(value)) {
-                                domain.push(value);
-                            }
-                        }
+            } else if (domain instanceof Interval && md instanceof Interval) {
+                domain = domain.span(md);
 
-                    } else {
-                        throw new Error(`Mismatching types. Can't union domains for channel ${channel}.`);
+            } else if (Array.isArray(domain) && Array.isArray(md)) {
+                // Inefficient but preserves order
+                for (const value of md) {
+                    if (!domain.includes(value)) {
+                        domain.push(value);
                     }
                 }
+
+            } else {
+                throw new Error(`Mismatching types. Can't union domains for channel ${channel}.`);
+            }
+
+            const encoding = vu.mark.getEncoding()[channel];
+            if (encoding) {
+                encodings.push(encoding);
             }
         })
 
-        return domain;
+        return Object.assign(Object.create(domain), { encodings });
+    }
+
+
+    /**
+     * Returns a array of mark groups that have common scales, etc
+     * N.B. Call this at root!
+     * 
+     * @param {string} channel 
+     */
+    resolve(channel) {
+        const groups = [];
+
+        dfs(this);
+
+        return groups;
+
+        /**
+         * 
+         * @param {ViewUnit} viewUnit 
+         * @param {string} [state]
+         * @param {array} [sharedGroup]
+         */
+        function dfs(viewUnit, state, sharedGroup) {
+            if (viewUnit.mark) {
+                if (sharedGroup) {
+                    sharedGroup.push(viewUnit.mark);
+                } else {
+                    groups.push([viewUnit.mark]);
+                }
+                return;
+            }
+
+            if (!viewUnit.layers) {
+                return;
+            }
+
+            if (viewUnit.getEncoding()[channel]) {
+                // Default to shared for all channels.
+                // This needs to be adjusted when concatenation and others are implemented
+                const choice = viewUnit.config.resolve && viewUnit.config.resolve.scale && viewUnit.config.resolve.scale[channel] || "shared";
+
+                switch (choice) {
+                case "shared":
+                    if (state !== "shared") {
+                        sharedGroup = [];
+                        groups.push(sharedGroup);
+                    }
+                    break;
+
+                case "independent":
+                    if (state === "shared") {
+                        throw new Error("Having an independent resolution under a shared one is not allowed!");
+                    }
+                    break;
+
+                default:
+                    throw new Error(`Unknown resolution: ${choice}`);
+                }
+
+                state = choice;
+            }
+
+
+            for (const child of viewUnit.layers) {
+                dfs(child, state, sharedGroup)
+            }
+        }
     }
 }

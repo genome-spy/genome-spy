@@ -81,7 +81,6 @@ export default class Mark {
 
     }
 
-
     /**
      * Returns the domain for the specified channel based on the resolution rules.
      * However, X (horizontal) is a special case as the extent of the coordinate
@@ -165,12 +164,16 @@ export default class Mark {
                 }
             }
         }
+        // Note: encoding should be always present. Rules are an exception, though.
+        // A horizontal rule has implicit encoding for x channel and an infinite domain.
+        // The same applies to vertical rules. It's hacky and may need some fixing.
 
         // TODO: Include constant values defined in encodings
         const domain = this.dataDomains[channel];
         if (domain === undefined) {
             throw new Error(`No domain available for channel ${channel}`);
         }
+
         return domain;
     }
 
