@@ -25,7 +25,16 @@ export default function calculateTransform(formulaConfig, rows) {
 
     const global = { };
 
+    // eslint-disable-next-line no-new-func
     const fn = Function("datum", "global", `"use strict"; return (${generatedCode.code});`);
+
+    /*
+    // Faster, but causes side effects:
+    for (const row of rows) {
+        row[formulaConfig.as] = fn(row, global);
+    }
+    return rows;
+    */
 
     return rows.map(row => ({
         ...row,
