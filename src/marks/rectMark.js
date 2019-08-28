@@ -11,7 +11,9 @@ import Interval from '../utils/interval';
 const defaultRenderConfig = {
     minRectWidth: 1.0,
     minRectHeight: 0.0,
-    minRectOpacity: 0.0
+    minRectOpacity: 0.0,
+    xOffset: 0.0,
+    yOffset: 0.0
 };
 
 const defaultEncoding = {
@@ -30,27 +32,19 @@ const tesselationConfig = {
 
 export default class RectMark extends Mark {
     /**
-     * @param {import("./viewUnit").UnitContext} unitContext
-     * @param {import("./viewUnit").default} viewUnit
+     * @param {import("../view/unitView").default} unitView
      */
-    constructor(unitContext, viewUnit) {
-        super(unitContext, viewUnit)
+    constructor(unitView) {
+        super(unitView)
 
-        // Needs blending or not. TODO: Make handling of defaults more systematic
-        const opacity = viewUnit.getEncoding().opacity;
-        this.opaque = !opacity || opacity.value >= 1.0;
+        this.opaque = this.getEncoding().opacity.value >= 1.0;
     }
 
     getDefaultEncoding() {
         return defaultEncoding;
     }
 
-    async initialize() {
-        await super.initialize();
-
-        this.yDomain = this.getYDomain();
-    }
-
+    /*
     extractDataDomains(specs) {
         // Here's a lot of hacking for infinite domain widths (used by horiz/vert rules)
 
@@ -64,11 +58,12 @@ export default class RectMark extends Mark {
             y: typeof yExtent[0] == "number" ? Interval.fromArray(yExtent) : null
         };
     }
+    */
 
     onBeforeSampleAnimation() {
-        const interval = this.unitContext.genomeSpy.getViewportDomain();
+        const interval = this.getContext().genomeSpy.getViewportDomain();
 
-        if (interval.width() < this.unitContext.genomeSpy.getDomain().width() / tesselationConfig.zoomThreshold) {
+        if (interval.width() < this.getContext().genomeSpy.getDomain().width() / tesselationConfig.zoomThreshold) {
             // TODO: Only bufferize the samples that are being animated
             this._sampleBufferInfo = this._createSampleBufferInfo(interval,
                 interval.width() / tesselationConfig.tiles);
@@ -89,7 +84,8 @@ export default class RectMark extends Mark {
         const builder = new RectVertexBuilder(
            Mark.getConstantValues(this.getEncoding()),
            Mark.getVariableChannels(this.getEncoding()),
-           tesselationThreshold);
+           tesselationThreshold,
+           {});
 
         for (const [sample, rects] of this.specsBySample.entries()) {
             builder.addBatch(sample, interval ? clipRects(rects, interval) : rects);
@@ -102,7 +98,8 @@ export default class RectMark extends Mark {
         };
     }
 
-    _initGL() {
+    initializeGraphics() {
+        super.initializeGraphics();
         const gl = this.gl;
 
         const xDomain = this.getXDomain();
@@ -117,7 +114,10 @@ export default class RectMark extends Mark {
             domainWidth / tesselationConfig.zoomThreshold / tesselationConfig.tiles);
         this._sampleBufferInfo = this._fullSampleBufferInfo;
 
-        this.renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
+        this.renderConfig = {
+            ...defaultRenderConfig,
+            ...this.unitView.getRenderConfig()
+        };
     }
 
     /**
@@ -134,7 +134,8 @@ export default class RectMark extends Mark {
             gl.enable(gl.BLEND);
         }
 
-        const yDomain = /** @type {Interval} */(this.getResolvedDomain("y"));
+        const yDomain = /** @type {Interval} */(this.getYDomain());
+        
 
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
@@ -170,22 +171,22 @@ export default class RectMark extends Mark {
     findDatum(sampleId, x, y, yBand) {
         const rects = this.specsBySample.get(sampleId || "default");
 
-        const gl = this.unitContext.track.gl;
+        const gl = this.getContext().track.gl;
         const dpr = window.devicePixelRatio;
 
         x -= (this.renderConfig.xOffset || 0.0);
         y += (this.renderConfig.yOffset || 0.0);
 
         if (rects) {
-            const yDomain = /** @type {Interval} */(this.getResolvedDomain("y")); // Could be cached...
+            const yDomain = this.getYDomain(); // Could be cached...
 
             const unitMinWidth = this.renderConfig.minRectWidth / gl.drawingBufferWidth * dpr;
-            const halfMinWidth = unitMinWidth * this.unitContext.genomeSpy.getViewportDomain().width() / 2;
+            const halfMinWidth = unitMinWidth * this.getContext().genomeSpy.getViewportDomain().width() / 2;
 
             const unitMinHeight = this.renderConfig.minRectHeight / gl.drawingBufferHeight * dpr;
             const halfMinHeight = unitMinHeight * yDomain.width() / 2; // TODO: take yBand into account
 
-            const scaledX = this.unitContext.genomeSpy.rescaledX.invert(x);
+            const scaledX = this.getContext().genomeSpy.rescaledX.invert(x);
 
             const yScale = scaleLinear()
                 .domain(yDomain.toArray())

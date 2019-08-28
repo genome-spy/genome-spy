@@ -8,8 +8,8 @@
             "mark": "point",
 
             "encoding": {
-                "x": { "field": "x" },
-                "y": { "field": "sin" }
+                "x": { "field": "x", "type": "quantitative" },
+                "y": { "field": "sin", "type": "quantitative" }
             }
         }
     ]

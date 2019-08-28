@@ -6,10 +6,19 @@ const CleanWebpackPlugin = require('clean-webpack-plugin');
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const path = require('path');
 
 module.exports = merge(common, {
     mode: 'production',
     devtool: 'source-map',
+
+    output: {
+        filename: '[name].js',
+        library: 'genomeSpyLib',
+        libraryTarget: 'umd',
+        path: path.resolve(__dirname, 'dist')
+    },
+
     plugins: [
         new CleanWebpackPlugin(['dist']),
         new MiniCssExtractPlugin({

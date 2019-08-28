@@ -312,7 +312,7 @@ export default class SampleTrack extends SimpleTrack {
 
     /**
      * 
-     * @param {object} sample 
+     * @param {object} datum 
      * @param {MouseEvent} mouseEvent 
      */
     createContextMenu(datum, mouseEvent, point) {
@@ -325,7 +325,7 @@ export default class SampleTrack extends SimpleTrack {
         for (const mark of this.getMarks()) {
             if (mark.markConfig && mark.markConfig.sorting) {
                 items.push({
-                    label: mark.viewUnit.config.title || "- No title -", 
+                    label: mark.unitView.spec.title || "- No title -", 
                     type: "header"
                 });
 
@@ -595,10 +595,8 @@ export default class SampleTrack extends SimpleTrack {
             };
         });
 
-        this.viewUnit.visit(vu => {
-            if (vu.mark) {
-                vu.mark.render(samples, globalUniforms)
-            }
-        });
+        for (const mark of this.getMarks()) {
+            mark.render(samples, globalUniforms)
+        }
     }
 }

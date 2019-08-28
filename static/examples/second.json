@@ -9,7 +9,8 @@
                     "mark": "rule",
                     "encoding": {
                         "y": {
-                            "field": "data"
+                            "field": "data",
+                            "type": "quantitative"
                         },
                         "color": {
                             "value": "lightgray"
@@ -33,8 +34,8 @@
                     }],
 
                     "encoding": {
-                        "x": { "field": "x" },
-                        "y": { "field": "sin(x)" }
+                        "x": { "field": "x", "type": "quantitative" },
+                        "y": { "field": "sin(x)", "type": "quantitative" }
                     },
 
                     "layer": [

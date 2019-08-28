@@ -35,23 +35,19 @@ const fractionToShow = 0.02;
 
 export default class PointMark extends Mark {
     /**
-     * @param {import("./viewUnit").UnitContext} unitContext
-     * @param {import("./viewUnit").default} viewUnit
+     * @param {import("../view/unitView").UnitView} unitView
      */
-    constructor(unitContext, viewUnit) {
-        super(unitContext, viewUnit)
+    constructor(unitView) {
+        super(unitView)
     }
 
     getDefaultEncoding() {
         return defaultEncoding;
     }
 
-    async initialize() {
-        await super.initialize();
 
-        this.yDomain = this.getYDomain();
-
-        this._initGL();
+    async initializeData() {
+        await super.initializeData();
     }
 
     /**
@@ -67,14 +63,17 @@ export default class PointMark extends Mark {
         }
     }
 
+    /*
     extractDataDomains(specs) {
         return {
             x: Interval.fromArray(extent(specs, point => point.x)),
             y: Interval.fromArray(extent(specs, point => point.y)),
         };
     }
+    */
 
-    _initGL() {
+    initializeGraphics() {
+        super.initializeGraphics();
         const gl = this.gl;
 
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
@@ -91,7 +90,7 @@ export default class PointMark extends Mark {
         this.rangeMap = vertexData.rangeMap;
         this.bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays);
 
-        this.renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
+        this.renderConfig = Object.assign({}, defaultRenderConfig, this.unitView.getRenderConfig());
     }
 
     getMaxMaxPointSizeAbsolute() {
@@ -103,7 +102,7 @@ export default class PointMark extends Mark {
         const initial = Math.pow(min / max, 3);
 
         let maxPointSizeAbsolute = 
-            Math.pow(Math.min(1, this.unitContext.genomeSpy.getExpZoomLevel() / zoomLevel + initial), 1 / 3) * max;
+            Math.pow(Math.min(1, this.getContext().genomeSpy.getExpZoomLevel() / zoomLevel + initial), 1 / 3) * max;
 
         return maxPointSizeAbsolute;
     }
@@ -115,15 +114,17 @@ export default class PointMark extends Mark {
     render(samples, globalUniforms) {
         const gl = this.gl;
 
+        const yDomain = this.getYDomain();
+
         gl.enable(gl.BLEND);
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYDomainBegin: this.yDomain.lower,
-            uYDomainWidth: this.yDomain.width(),
+            uYDomainBegin: yDomain.lower,
+            uYDomainWidth: yDomain.width(),
             uXOffset: (this.renderConfig.xOffset || 0.0) / gl.drawingBufferWidth * window.devicePixelRatio,
             uYOffset: (this.renderConfig.yOffset || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio,
-            viewportHeight: this.unitContext.track.glCanvas.clientHeight,
+            viewportHeight: this.getContext().track.glCanvas.clientHeight,
             devicePixelRatio: window.devicePixelRatio,
             maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
             maxMaxPointSizeAbsolute: this.getMaxMaxPointSizeAbsolute(),
@@ -134,7 +135,7 @@ export default class PointMark extends Mark {
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
         const bisect = bisector(point => point.x).left;
-        const visibleDomain = this.unitContext.genomeSpy.getViewportDomain();
+        const visibleDomain = this.getContext().genomeSpy.getViewportDomain();
         // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
         const paddedDomain = visibleDomain.pad(visibleDomain.width() * 0.01);
 
@@ -176,7 +177,7 @@ export default class PointMark extends Mark {
 
         const distance = (x1, x2, y1, y2) => Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 
-        const xScale = this.unitContext.track.genomeSpy.rescaledX;
+        const xScale = this.getContext().track.genomeSpy.rescaledX;
 
         const yScale = scaleLinear()
             .domain(this.getYDomain().toArray())
@@ -190,7 +191,7 @@ export default class PointMark extends Mark {
             bisect(points, xScale.invert(x + maxPointSize / 2)));
 
         const margin = 0.005; // TODO: Configurable
-        const threshold = this.unitContext.genomeSpy.getExpZoomLevel() * fractionToShow;
+        const threshold = this.getContext().genomeSpy.getExpZoomLevel() * fractionToShow;
         const thresholdWithMargin = threshold * (1 + margin);
 
         let lastMatch = null;

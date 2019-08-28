@@ -5,12 +5,14 @@ import { format as d3format } from 'd3-format';
 
 import formatObject from '../utils/formatObject';
 import Interval from '../utils/interval';
-import ViewUnit from '../marks/viewUnit';
 import WebGlTrack from './webGlTrack';
 import DataSource from '../data/dataSource';
 import MouseTracker from '../mouseTracker';
 import * as html from '../utils/html';
 import PointMark from '../marks/pointMark';
+import View from '../view/view';
+import UnitView from '../view/unitView';
+import { createView } from '../view/viewUtils';
 
 
 const defaultStyles = {
@@ -22,22 +24,22 @@ export default class SimpleTrack extends WebGlTrack {
     /**
      * 
      * @param {import("./../genomeSpy").default } genomeSpy 
-     * @param {object | import("../marks/viewUnit").ViewUnitConfig} config 
+     * @param {object} config 
      */
     constructor(genomeSpy, config) {
         super(genomeSpy, config);
 
         this.styles = Object.assign({}, defaultStyles, config.styles);
 
-        this.viewUnit = new ViewUnit(
-            {
-                genomeSpy,
-                track: this,
-                getDataSource: config => new DataSource(config, genomeSpy.config.baseurl)
-            },
-           undefined,
-           config
-        );
+        const spec = /** @type {import("../view/viewUtils").Spec} */config;
+        const context = {
+            genomeSpy, // TODO: An interface instead of a GenomeSpy
+            track: this,
+            getDataSource: config => new DataSource(config, genomeSpy.config.baseurl)
+        };
+
+        /** @type {View} */
+        this.view = createView(spec, context);
     }
 
     initializeWebGL() {
@@ -104,7 +106,24 @@ export default class SimpleTrack extends WebGlTrack {
                 return point;
             });
 
-        await this.viewUnit.initialize();
+        await this.initializeViewHierarchy();
+    }
+
+    async initializeViewHierarchy() {
+        await Promise.all(this.getFlattenedViews().map(view => view.loadData()));
+
+        for (const view of this.getFlattenedViews()) {
+            view.transformData();
+        }
+
+        for (const mark of this.getMarks()) {
+            mark.unitView.resolve(); // TODO: Better place
+        }
+
+        for (const mark of this.getMarks()) {
+            await mark.initializeData(); // TODO: async needed?
+            mark.initializeGraphics();
+        }
     }
 
     resizeCanvases(layout) {
@@ -129,21 +148,23 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     getXDomain() {
-        return /** @type {Interval | void} */(this.viewUnit.getUnionDomain("x"));
+        return /** @type {Interval} */(this.view.resolutions["x"].getDomain());
     }
 
     /**
      * Returns all marks in the order they are rendered
      */
     getMarks() {
-        /** @type {import("../marks/mark").default[]} */
-        const layers = [];
-        this.viewUnit.visit(vu => {
-            if (vu.mark) {
-                layers.push(vu.mark);
-            }
-        });
-        return layers;
+        return this.getFlattenedViews()
+            .filter(view => view instanceof UnitView)
+            .map(view => (/** @type {UnitView} */(view)).mark)
+    }
+
+    getFlattenedViews() {
+        /** @type {View[]} */
+        const views = [];
+        this.view.visit(view => views.push(view));
+        return views;
     }
 
     /**
@@ -171,16 +192,16 @@ export default class SimpleTrack extends WebGlTrack {
     datumToTooltip(spec) {
         const datum = spec.rawDatum;
 
-        /** @type {import("../marks/viewUnit").default} */
-        const viewUnit = spec._viewUnit;
+        /** @type {import("../view/unitView").default} */
+        const unitView = spec._viewUnit;
 
-        const markConfig = viewUnit.mark.markConfig;
+        const markConfig = unitView.mark.markConfig;
         const propertyFilter = markConfig.tooltip && markConfig.tooltip.skipFields ?
             entry => markConfig.tooltip.skipFields.indexOf(entry[0]) < 0 :
             entry => true;
 
         function legend(key, datum) {
-            const mapper = viewUnit.mark.fieldMappers && viewUnit.mark.fieldMappers[key];
+            const mapper = unitView.mark.fieldMappers && unitView.mark.fieldMappers[key];
 
             if (mapper && mapper.targetType == "color") {
                 return `<span class="color-legend" style="background-color: ${mapper(datum)}"></span>`;
@@ -198,8 +219,8 @@ export default class SimpleTrack extends WebGlTrack {
             ).join("") +
             "</table>";
 
-        const title = viewUnit.config.title ?
-            `<div class="title"><strong>${html.escapeHtml(viewUnit.config.title)}</strong></div>` :
+        const title = unitView.spec.title ?
+            `<div class="title"><strong>${html.escapeHtml(unitView.spec.title)}</strong></div>` :
             "";
         
         return `
@@ -231,11 +252,9 @@ export default class SimpleTrack extends WebGlTrack {
             }
         ]
 
-        this.viewUnit.visit(vu => {
-            if (vu.mark) {
-                vu.mark.render(samples, globalUniforms)
-            }
-        });
+        for (const mark of this.getMarks()) {
+            mark.render(samples, globalUniforms)
+        }
     }
 
     getMinAxisWidth() {
@@ -248,15 +267,16 @@ export default class SimpleTrack extends WebGlTrack {
         // 2. Union shared scales and axes
         // 3. Return a list...
         
-        const marks = this.getMarks();
-        if (marks.length > 0) {
-            const mark = marks[0];
-
+        const resolutions = this.getFlattenedViews()
+            .map(view => view.resolutions["y"])
+            .filter(resolution => resolution);
+        
+        if (resolutions.length > 0) {
             return [
                 {
                     title: "Blaa",
                     axisConf: null,
-                    domain: /** @type {Interval} */(mark.getResolvedDomain("y"))
+                    domain: /** @type {Interval} */(resolutions[0].getDomain())
                 }
             ]
         }

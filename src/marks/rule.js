@@ -11,14 +11,13 @@ const defaultRenderConfig = {
  * a more straightforward configuration for rules.
  */
 export default class RuleMark extends RectMark {
-    /**
-     * @param {import("./viewUnit.js").UnitContext} unitContext
-     * @param {import("./viewUnit.js").default} viewUnit
-     */
-    constructor(unitContext, viewUnit) {
-        super(unitContext, viewUnit)
-    }
 
+    /**
+     * @param {import("../view/unitView").default} unitView
+     */
+    constructor(unitView) {
+        super(unitView)
+    }
 
     /**
      * @param {object[]} specs
@@ -29,7 +28,7 @@ export default class RuleMark extends RectMark {
         }
 
         const proto = Object.getPrototypeOf(specs[0]);
-        const encoding = this.viewUnit.getEncoding();
+        const encoding = this.unitView.getEncoding();
 
         /** @type {function(object):void} */
         let sup;
@@ -65,11 +64,14 @@ export default class RuleMark extends RectMark {
 
         specs.forEach(sup);
 
-        const renderConfig = Object.assign({}, defaultRenderConfig, this.viewUnit.getRenderConfig());
+        const renderConfig = {
+            ...defaultRenderConfig,
+            ...this.unitView.getRenderConfig()
+        }
 
-        this.viewUnit.config.renderConfig = this.viewUnit.config.renderConfig || {};
+        this.unitView.spec.renderConfig = this.unitView.spec.renderConfig || {};
         
-        Object.assign(this.viewUnit.config.renderConfig, vertical ?
+        Object.assign(this.unitView.spec.renderConfig, vertical ?
             {
                 minRectWidth: renderConfig.size,
                 minRectHeight: renderConfig.minLength,

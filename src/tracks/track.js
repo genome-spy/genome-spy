@@ -1,5 +1,3 @@
-import Interval from "../utils/interval";
-
 /**
  * Abstract base class for tracks
  */
@@ -7,9 +5,10 @@ export default class Track {
 
     /**
      * @param {import("../genomeSpy").default} genomeSpy 
+     * @param {object} [config]
      */
     constructor(genomeSpy, config) {
-        this.config = config || {};
+        this.config = config || {};
         this.genomeSpy = genomeSpy
     }
 
@@ -32,14 +31,12 @@ export default class Track {
     }
 
     /**
-     * Returns the domain of data that is being laid on the x axis of the track.
-     * Return undefined if the track does not have data.
+     * Returns the domain of the data that is being laid on the x axis of the track.
+     * Returns undefined if the track does not have data.
      * 
      * @return {void | import("../utils/interval").default}
      */
-    getXDomain() {
-
-    }
+    getXDomain() { }
 
     createCanvas() {
         const canvas = document.createElement("canvas");

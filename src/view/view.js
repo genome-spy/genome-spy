@@ -1,44 +1,25 @@
-import UnitModel from "./unitModel";
-import LayerModel from "./layerModel";
 
 import { processData, transformData } from '../data/dataMapper';
 
 /**
- * @typedef {Object} EncodingSpec
- * @prop {string} type
- * @prop {string} [axis]
- * @prop {string} [field]
- * @prop {string} [value]
- * @prop {object} [scale]
- * @prop {object} [sort]
+ * @typedef { import("./viewUtils").Spec } Spec
+ * @typedef { import("./viewUtils").EncodingSpec } EncodingSpec
+ * @typedef { import("./viewUtils").ViewContext} ViewContext 
  */
-
-/**
- * @typedef {Object} Spec
- * @prop {Spec[]} [layer]
- * @prop {string | MarkConfig | object} [mark]
- * @prop {object} [data] 
- * @prop {object[]} [transform]
- * @prop {string} [sample]
- * @prop {Object.<string, EncodingSpec>} [encoding]
- * @prop {Object} [renderConfig]
- * @prop {string} [title]
- * @prop {Object} [resolve]
- */
-
-export default class Model {
+export default class View {
     /**
      * 
-     * @param {*} context 
-     * @param {Model} parent 
-     * @param {string} name 
      * @param {Spec} spec
+     * @param {ViewContext} context 
+     * @param {View} parent 
+     * @param {string} name 
      */
-    constructor(context, parent, name, spec) {
+    constructor(spec, context, parent, name) {
         this.context = context;
         this.parent = parent;
-        this.name = name;
+        this.name = spec.name || name;
         this.spec = spec;
+        /** @type { View[] } */
         this.children = [];
 
         /** @type {Object.<string, import("./resolution").default>}  Resolved channels. Supports only scales for now.. */
@@ -48,7 +29,7 @@ export default class Model {
     
     /**
      * 
-     * @param {function(Model):void} visitor 
+     * @param {function(View):void} visitor 
      */
     visit(visitor) {
         visitor(this);
@@ -69,12 +50,17 @@ export default class Model {
         const pe = this.parent ? this.parent.getEncoding() : {};
         const te = this.spec.encoding || {};
 
+        // TODO: Validate encoding, e.g. missing type etc..
+
         return {
             ...pe,
             ...te
         }
     }
 
+    /**
+     * @return {Object.<string, Object>}
+     */
     getRenderConfig() {
         const pe = this.parent ? this.parent.getRenderConfig() : {};
         const te = this.spec.renderConfig || {};
@@ -83,6 +69,15 @@ export default class Model {
             ...pe,
             ...te
         };
+    }
+
+    /**
+     * 
+     * @param {string} channel 
+     * @returns {import("./resolution").default}
+     */
+    getResolution(channel) {
+        return this.resolutions[channel] || (this.parent && this.parent.getResolution(channel)) || undefined;
     }
 
     /**
@@ -102,38 +97,18 @@ export default class Model {
         return null;
     }
 
-    async loadAndTransformData() {
+    async loadData() {
         if (this.spec.data) {
             this.data = await this.context.getDataSource(this.spec.data).getData();
         }
+    }
 
+    /**
+     * Must be called in depth-first order
+     */
+    transformData() {
         if (this.spec.transform) {
             this.data = transformData(this.spec.transform, this.getData());
         }
     }
-
-}
-
-
-export function isUnitSpec(spec) {
-    return typeof spec.mark === "object";
-}
-
-export function isLayerSpec(spec) {
-    return typeof spec.layer === "object";
-}
-
-export function getModelClass(spec) {
-    if (isUnitSpec(spec)) {
-        return UnitModel;
-    } else if (isLayerSpec(spec)) {
-        return LayerModel;
-    } else {
-        throw new Error("Invalid spec, cannot figure out a model: " + JSON.stringify(spec));
-    }
-}
-
-export function createModel(spec) {
-    const Model = getModelClass(spec);
-    return new Model(null, null, "root", spec);
 }

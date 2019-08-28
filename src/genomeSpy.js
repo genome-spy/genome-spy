@@ -81,7 +81,7 @@ export default class GenomeSpy {
      * @return {Interval} the domain
      */
     getDomain() {
-        // TODO: Compute from data whene no hard extent is present
+        // TODO: Compute from data when no hard extent is present
         let domain = this.coordinateSystem.getExtent();
         if (!domain) {
             /** @type {import("./utils/interval").default} */
