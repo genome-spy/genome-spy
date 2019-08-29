@@ -19,6 +19,35 @@ const defaultStyles = {
     height: null
 }
 
+// Based on: https://vega.github.io/vega-lite/docs/axis.html
+const defaultAxisProps = {
+    minExtent: 30, // TODO
+    maxExtent: Infinity, // TODO
+    offset: 0,
+
+    domain: true,
+    domainWidth: 1,
+    domainColor: "gray",
+
+    ticks: true,
+    tickSize: 6,
+    tickWidth: 1,
+    tickColor: "gray",
+
+    labels: true,
+    labelPadding: 4,
+    labelFont: "sans-serif",
+    labelFontSize: 10,
+    labelLimit: 180, // TODO
+    labelColor: "black",
+    /** @type { string } */
+    format: null,
+
+    titleColor: "black",
+    titleFont: "sans-serif",
+    titleFontSize: 10,
+    titlePadding: 5
+};
 
 export default class SimpleTrack extends WebGlTrack {
     /**
@@ -257,82 +286,200 @@ export default class SimpleTrack extends WebGlTrack {
         }
     }
 
-    getMinAxisWidth() {
-        return 50; // TODO: Compute from data
-    }
 
-    getYDomainsAndAxes() {
-        // TODO:
-        // 1. Collect all y scales and axis confs
-        // 2. Union shared scales and axes
-        // 3. Return a list...
-        
+    getMinAxisWidth() {
+        // This function is terribly copypasted from renderYAxis().
+        // TODO: Have to come up with a more maintainable and perhaps more performant solution.
+
+        const axisPadding = 10;
+
+        const axisHeight = this.trackContainer.clientHeight;
+
+        const ctx = this.get2d(this.leftCanvas);
         const resolutions = this.getFlattenedViews()
             .map(view => view.resolutions["y"])
             .filter(resolution => resolution);
-        
-        if (resolutions.length > 0) {
-            return [
-                {
-                    title: "Blaa",
-                    axisConf: null,
-                    domain: /** @type {Interval} */(resolutions[0].getDomain())
-                }
-            ]
+
+        let xPos = 0;
+
+        for (const resolution of resolutions) {
+            const resolutionAxisProps = resolution.getAxisProps();
+            if (resolutionAxisProps === null) {
+                continue;
+            }
+
+            const props = {
+                ...defaultAxisProps,
+                ...resolutionAxisProps
+            };
+
+            xPos -= props.offset;
+
+            const domain = /** @type {Interval} */(resolution.getDomain());
+
+            const scale = scaleLinear()
+                .domain(domain.toArray())
+                .range([this.trackContainer.clientHeight, 0]);
+
+            // Slightly decrease the tick density as the height increases
+            const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / props.labelFontSize / 1.7);
+
+            /** @type {array} */
+            const ticks = d3ticks(domain.lower, domain.upper, tickCount);
+
+            // --- Ticks ---
+
+            if (props.ticks) {
+                xPos -= props.tickSize;
+            }
+
+            // --- Labels ---
+
+            if (props.labels) {
+                xPos -= props.labelPadding;
+
+                const maxAbs = d3max(scale.domain(), x => Math.abs(x));
+                const format = scale.tickFormat(tickCount, props.format || (maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined));
+
+                ctx.font = `${props.labelFont} ${props.labelFontSize}px`;
+                ctx.textAlign = "right";
+                ctx.textBaseline = "middle";
+
+                xPos -= ticks
+                    .map(tick => ctx.measureText(format(tick)).width)
+                    .reduce((a, b) => Math.max(a, b));
+            }
+
+            // --- Title ---
+
+            const titleText = resolution.getTitle();
+
+            if (titleText) {
+                xPos -= props.titlePadding;
+                xPos -= props.titleFontSize;
+            }
+
+            xPos -= axisPadding;
         }
+
+        return -xPos - axisPadding;
     }
 
     renderYAxis() {
-        const conf = {
-            tickSize: 6,
-            tickWidth: 1,
-            tickColor: "gray",
-            offset: 0,
-            labelPadding: 5,
-            labelFontSize: 10,
-            labelColor: "black"
-        };
 
+        /** Padding between multiple axes */
+        const axisPadding = 10;
+
+        const axisHeight = this.trackContainer.clientHeight;
         const axisWidth = this.leftCanvas.clientWidth;
-        const axisHeight = this.leftCanvas.clientHeight;
 
         const ctx = this.get2d(this.leftCanvas);
-        const daa = this.getYDomainsAndAxes()[0]; // TODO: Support multiple domains
 
-        const domain = daa.domain;
-        const scale = scaleLinear()
-            .domain(domain.toArray())
-            .range([this.trackContainer.clientHeight, 0]);
+        const resolutions = this.getFlattenedViews()
+            .map(view => view.resolutions["y"])
+            .filter(resolution => resolution);
 
-        // Slightly decrease the tick density as the height increases
-        const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / conf.labelFontSize / 1.7);
+        let xPos = axisWidth;
 
-        const maxAbs = d3max(scale.domain(), x => Math.abs(x));
+        for (const resolution of resolutions) {
+            const resolutionAxisProps = resolution.getAxisProps();
+            if (resolutionAxisProps === null) {
+                continue;
+            }
 
-        const format = scale.tickFormat(tickCount, maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined);
+            const props = {
+                ...defaultAxisProps,
+                ...resolutionAxisProps
+            };
 
-        const ticks = d3ticks(domain.lower, domain.upper, tickCount);
+            xPos -= props.offset;
 
-        const tickX = axisWidth - conf.tickSize - conf.offset;
-        const textX = tickX - conf.labelPadding;
+            const domain = /** @type {Interval} */(resolution.getDomain());
 
-        ctx.font = `sans-serif ${conf.labelFontSize}px`;
-        ctx.textAlign = "right";
-        ctx.textBaseline = "middle";
+            const scale = scaleLinear()
+                .domain(domain.toArray())
+                .range([this.trackContainer.clientHeight, 0]);
 
-        ctx.fillStyle = conf.tickColor;
-        ctx.fillRect(
-            tickX + conf.tickSize - conf.tickWidth,
-            scale(ticks[ticks.length - 1]) - conf.tickWidth / 2,
-            conf.tickWidth,
-            Math.abs(scale(ticks[0]) - scale(ticks[ticks.length - 1])) + conf.tickWidth);
+            // Slightly decrease the tick density as the height increases
+            const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / props.labelFontSize / 1.7);
 
-        for (const tick of ticks) {
-            const y = scale(tick);
-            ctx.fillStyle = conf.tickColor;
-            ctx.fillRect(tickX, y - conf.tickWidth / 2, conf.tickSize, conf.tickWidth);
-            ctx.fillStyle = conf.labelColor;
-            ctx.fillText(format(tick), textX, y);
+            /** @type {array} */
+            const ticks = d3ticks(domain.lower, domain.upper, tickCount);
+
+            // --- Domain line ---
+
+            if (props.domain) {
+                ctx.fillStyle = props.domainColor;
+                ctx.fillRect(
+                    xPos - props.domainWidth,
+                    scale(ticks[ticks.length - 1]) - props.tickWidth / 2,
+                    props.domainWidth,
+                    Math.abs(scale(ticks[0]) - scale(ticks[ticks.length - 1])) + props.tickWidth);
+            }
+
+            // --- Ticks ---
+
+            if (props.ticks) {
+                xPos -= props.tickSize;
+
+                for (const tick of ticks) {
+                    const y = scale(tick);
+                    ctx.fillStyle = props.tickColor;
+                    ctx.fillRect(xPos, y - props.tickWidth / 2, props.tickSize, props.tickWidth);
+                }
+            }
+
+            // --- Labels ---
+
+            if (props.labels) {
+                xPos -= props.labelPadding;
+
+                const maxAbs = d3max(scale.domain(), x => Math.abs(x));
+
+                const format = scale.tickFormat(tickCount, props.format || (maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined));
+
+                ctx.font = `${props.labelFont} ${props.labelFontSize}px`;
+                ctx.textAlign = "right";
+                ctx.textBaseline = "middle";
+
+                for (const tick of ticks) {
+                    const y = scale(tick);
+                    ctx.fillStyle = props.labelColor;
+                    ctx.fillText(format(tick), xPos, y);
+                }
+
+                xPos -= ticks
+                    .map(tick => ctx.measureText(format(tick)).width)
+                    .reduce((a, b) => Math.max(a, b));
+            }
+
+
+            // --- Title ---
+
+            const titleText = resolution.getTitle();
+
+            if (titleText) {
+                xPos -= props.titlePadding;
+                xPos -= props.titleFontSize;
+
+                ctx.save();
+
+                ctx.translate(xPos, axisHeight / 2);
+                ctx.rotate(-Math.PI / 2);
+
+                ctx.fillStyle = props.titleColor;
+
+                ctx.font = `${props.titleFont} ${props.titleFontSize}px`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "top";
+
+                ctx.fillText(titleText, 0, 0);
+
+                ctx.restore();
+            }
+
+            xPos -= axisPadding;
+
         }
     }
 }

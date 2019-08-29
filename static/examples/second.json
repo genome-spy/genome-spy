@@ -10,7 +10,8 @@
                     "encoding": {
                         "y": {
                             "field": "data",
-                            "type": "quantitative"
+                            "type": "quantitative",
+                            "axis": null
                         },
                         "color": {
                             "value": "lightgray"

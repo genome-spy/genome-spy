@@ -18,11 +18,12 @@ import LayerView from './layerView';
 /**
  * @typedef {Object} EncodingSpec
  * @prop {string} type
- * @prop {string} [axis]
+ * @prop {Object} [axis] 
  * @prop {string} [field]
  * @prop {string} [value]
  * @prop {object} [scale]
  * @prop {object} [sort]
+ * @prop {string} [title]
  */
 
 /**
