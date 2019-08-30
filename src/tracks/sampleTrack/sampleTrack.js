@@ -3,6 +3,7 @@ import { scaleLinear } from 'd3-scale';
 import { zip } from 'd3-array';
 import { inferType } from 'vega-loader';
 
+import { getMarks } from '../../view/viewUtils';
 import SimpleTrack from '../simpleTrack';
 import BandScale from '../../utils/bandScale';
 import fisheye from "../../utils/fishEye";
@@ -297,7 +298,7 @@ export default class SampleTrack extends SimpleTrack {
 
         const bandInterval = this.sampleScale.scale(sampleId);
 
-        for (const mark of this.getMarks().reverse()) {
+        for (const mark of getMarks(this.viewRoot).reverse()) {
             if (mark.markConfig.tooltip !== null) {
                 const spec = mark.findDatum(sampleId, x, y, bandInterval);
                 if (spec) {
@@ -595,7 +596,7 @@ export default class SampleTrack extends SimpleTrack {
             };
         });
 
-        for (const mark of this.getMarks()) {
+        for (const mark of getMarks(this.viewRoot)) {
             mark.render(samples, globalUniforms)
         }
     }

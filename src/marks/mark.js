@@ -46,7 +46,7 @@ export default class Mark {
             _viewUnit: this.unitView
         };
 
-        const specs = processData(encoding, ungroupedData, this.getContext().genomeSpy.visualMapperFactory, baseObject);
+        const specs = processData(encoding, ungroupedData, this.getContext().visualMapperFactory, baseObject);
         this.setSpecs(specs);
     }
 

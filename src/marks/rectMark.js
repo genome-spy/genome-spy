@@ -81,6 +81,7 @@ export default class RectMark extends Mark {
      * @param {number} [tesselationThreshold]
      */
     _createSampleBufferInfo(interval, tesselationThreshold) {
+        // TODO: Disable tesselation on SimpleTrack - no need for it
         const builder = new RectVertexBuilder(
            Mark.getConstantValues(this.getEncoding()),
            Mark.getVariableChannels(this.getEncoding()),

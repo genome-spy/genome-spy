@@ -12,7 +12,13 @@ import * as html from '../utils/html';
 import PointMark from '../marks/pointMark';
 import View from '../view/view';
 import UnitView from '../view/unitView';
-import { createView } from '../view/viewUtils';
+
+import {
+    createView,
+    getFlattenedViews,
+    getMarks,
+    initializeViewHierarchy
+} from '../view/viewUtils';
 
 
 const defaultStyles = {
@@ -62,13 +68,14 @@ export default class SimpleTrack extends WebGlTrack {
 
         const spec = /** @type {import("../view/viewUtils").Spec} */config;
         const context = {
+            visualMapperFactory: genomeSpy.visualMapperFactory,
             genomeSpy, // TODO: An interface instead of a GenomeSpy
             track: this,
             getDataSource: config => new DataSource(config, genomeSpy.config.baseurl)
         };
 
         /** @type {View} */
-        this.view = createView(spec, context);
+        this.viewRoot = createView(spec, context);
     }
 
     initializeWebGL() {
@@ -135,22 +142,14 @@ export default class SimpleTrack extends WebGlTrack {
                 return point;
             });
 
-        await this.initializeViewHierarchy();
+        await initializeViewHierarchy(this.viewRoot);
+
+        this.initializeGraphics();
     }
 
-    async initializeViewHierarchy() {
-        await Promise.all(this.getFlattenedViews().map(view => view.loadData()));
 
-        for (const view of this.getFlattenedViews()) {
-            view.transformData();
-        }
-
-        for (const mark of this.getMarks()) {
-            mark.unitView.resolve(); // TODO: Better place
-        }
-
-        for (const mark of this.getMarks()) {
-            await mark.initializeData(); // TODO: async needed?
+    initializeGraphics() {
+        for (const mark of getMarks(this.viewRoot)) {
             mark.initializeGraphics();
         }
     }
@@ -177,23 +176,7 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     getXDomain() {
-        return /** @type {Interval} */(this.view.resolutions["x"].getDomain());
-    }
-
-    /**
-     * Returns all marks in the order they are rendered
-     */
-    getMarks() {
-        return this.getFlattenedViews()
-            .filter(view => view instanceof UnitView)
-            .map(view => (/** @type {UnitView} */(view)).mark)
-    }
-
-    getFlattenedViews() {
-        /** @type {View[]} */
-        const views = [];
-        this.view.visit(view => views.push(view));
-        return views;
+        return /** @type {Interval} */(this.viewRoot.resolutions["x"].getDomain());
     }
 
     /**
@@ -206,7 +189,7 @@ export default class SimpleTrack extends WebGlTrack {
 
         const bandInterval = new Interval(0, this.glCanvas.clientHeight);
 
-        for (const mark of this.getMarks().reverse()) {
+        for (const mark of getMarks(this.viewRoot).reverse()) {
             if (mark.markConfig.tooltip !== null) {
                 const spec = mark.findDatum(undefined, x, y, bandInterval);
                 if (spec) {
@@ -281,7 +264,7 @@ export default class SimpleTrack extends WebGlTrack {
             }
         ]
 
-        for (const mark of this.getMarks()) {
+        for (const mark of getMarks(this.viewRoot)) {
             mark.render(samples, globalUniforms)
         }
     }
@@ -296,7 +279,7 @@ export default class SimpleTrack extends WebGlTrack {
         const axisHeight = this.trackContainer.clientHeight;
 
         const ctx = this.get2d(this.leftCanvas);
-        const resolutions = this.getFlattenedViews()
+        const resolutions = getFlattenedViews(this.viewRoot)
             .map(view => view.resolutions["y"])
             .filter(resolution => resolution);
 
@@ -375,7 +358,7 @@ export default class SimpleTrack extends WebGlTrack {
 
         const ctx = this.get2d(this.leftCanvas);
 
-        const resolutions = this.getFlattenedViews()
+        const resolutions = getFlattenedViews(this.viewRoot)
             .map(view => view.resolutions["y"])
             .filter(resolution => resolution);
 
