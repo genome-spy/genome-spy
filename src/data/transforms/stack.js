@@ -33,7 +33,7 @@ export default function stackTransform(config, rows) {
 
     const accessor = config.field ? vuField(config.field) : row => 1;
 
-    const comparator = createComparator(config.sort);
+    const comparator = config.sort ? compare(config.sort.field, config.sort.order) : "undefined";
 
     const offsetF = config.offset == "normalize" ?
         (value, sum) => value / sum :
@@ -43,7 +43,9 @@ export default function stackTransform(config, rows) {
 
 
     for (const group of groups) {
-        group.sort(comparator);
+        if (comparator) {
+            group.sort(comparator);
+        }
         
         const sum = d3sum(group, accessor);
 
