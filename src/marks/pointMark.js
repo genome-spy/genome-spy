@@ -57,20 +57,12 @@ export default class PointMark extends Mark {
         super.setSpecs(specs);
 
         // Sort for binary search
+        // TODO: use https://github.com/Pimm/mapsort if sorting with accessors
         const c = compare('x');
         for (const points of this.specsBySample.values()) {
             points.sort(c);
         }
     }
-
-    /*
-    extractDataDomains(specs) {
-        return {
-            x: Interval.fromArray(extent(specs, point => point.x)),
-            y: Interval.fromArray(extent(specs, point => point.y)),
-        };
-    }
-    */
 
     initializeGraphics() {
         super.initializeGraphics();

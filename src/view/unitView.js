@@ -163,7 +163,7 @@ export default class UnitView extends ContainerView {
     }
 
     /**
-     * Extracts and cacheds the domain from the data.
+     * Extracts and caches the domain from the data.
      * 
      * @param {string} channel 
      * @param {string} type secondary channels have an implicit type based on the primary channel
@@ -180,7 +180,8 @@ export default class UnitView extends ContainerView {
         const encodingSpec = this.getEncoding()[channel];
 
         if (encodingSpec && isString(encodingSpec.field)) {
-            const accessor = field(encodingSpec.field);
+            const accessor = this.context.accessorFactory.createAccessor(encodingSpec);
+            // TODO: Optimize cases where accessor returns a constant
             domain = (encodingSpec.type || type) === "quantitative" ?
                 Interval.fromArray(extent(data, accessor)) :
                 new DiscreteDomain([...new Set(data.map(accessor))]);

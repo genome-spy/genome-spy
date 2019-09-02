@@ -19,6 +19,7 @@ import CytobandTrack from "./tracks/cytobandTrack";
 import GeneTrack from "./tracks/geneTrack";
 import SimpleTrack from './tracks/simpleTrack';
 import RealCoordinateSystem from './realCoordinateSystem';
+import AccessorFactory from './encoder/accessor';
 
 
 // TODO: Figure out if these could be discovered automatically by WebPack or something
@@ -54,7 +55,9 @@ export default class GenomeSpy {
         /** @type {import("./tracks/Track").default[]} */
         this.tracks = [];
 
+        // TODO: Replace visualMapper with accessor 'n stuff
         this.visualMapperFactory = new VisualMapperFactory();
+        this.accessorFactory = new AccessorFactory();
 
         this._dpr = window.devicePixelRatio;
 

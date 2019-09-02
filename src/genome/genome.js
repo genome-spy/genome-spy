@@ -61,6 +61,17 @@ export default class Genome extends CoordinateSystem {
             mapperCreator: this.createGenomicCoordVisualMapper.bind(this)
         });
 
+        genomeSpy.accessorFactory.register(encoding => {
+            if (encoding.chrom && encoding.pos) {
+                const offset = typeof encoding.offset == "number" ? encoding.offset : 0;
+                return d => this.chromMapper.toContinuous(
+                    d[encodingConfig.chrom],
+                    parseInt(d[encodingConfig.pos])
+                ) + offset;
+
+            }
+        });
+
     }
 
     createGenomicCoordVisualMapper(targetType, encodingConfig) {

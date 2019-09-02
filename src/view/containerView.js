@@ -22,8 +22,4 @@ export default class ContainerView extends View {
     getConfiguredOrDefaultResolution(channel) {
         return this.spec.resolve && this.spec.resolve.scale && this.spec.resolve.scale[channel] || "shared";
     }
-
-    getContext() {
-        return this.parent.context;
-    }
 }

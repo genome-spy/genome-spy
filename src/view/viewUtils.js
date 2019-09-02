@@ -7,6 +7,7 @@ import View from './view';
  * @prop {import("../tracks/simpleTrack").default} [track]
  * @prop {import("../genomeSpy").default} genomeSpy TODO: Break genomeSpy dependency
  * @prop {function(string):import("../data/dataSource").default} getDataSource
+ * @prop {import("../encoder/accessor").default} accessorFactory
  */
 
 /**
@@ -21,10 +22,12 @@ import View from './view';
  * @prop {string} [type]
  * @prop {Object} [axis] 
  * @prop {string} [field]
- * @prop {string} [value]
+ * @prop {string} [value] a constant value in the context of the range
  * @prop {object} [scale]
- * @prop {object} [sort]
+ * @prop {object} [sort] TODO: implement
  * @prop {string} [title]
+ * @prop {string} [expr] a vega-expression
+ * @prop {string | number} [constant] a constant value in the context of the data domain
  */
 
 /**

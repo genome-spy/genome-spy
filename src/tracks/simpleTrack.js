@@ -69,6 +69,7 @@ export default class SimpleTrack extends WebGlTrack {
         const spec = /** @type {import("../view/viewUtils").Spec} */config;
         const context = {
             visualMapperFactory: genomeSpy.visualMapperFactory,
+            accessorFactory: genomeSpy.accessorFactory,
             genomeSpy, // TODO: An interface instead of a GenomeSpy
             track: this,
             getDataSource: config => new DataSource(config, genomeSpy.config.baseurl)
