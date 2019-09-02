@@ -1,6 +1,4 @@
-import {
-    create, createAndInitialize
-} from './testUtils'
+import { createAndInitialize } from './testUtils'
 
 const spec = {
     data: { values: [] },
@@ -26,7 +24,7 @@ const spec = {
             }
         }
     ]
-}
+};
 
 describe("Scales resolve with with non-trivial hierarchy", () => {
 
@@ -59,11 +57,59 @@ describe("Titles resolve properly", () => {
     };
 
     test("Shared scales have joined titles", () => {
-        return createAndInitialize(sharedSpec).then(root=>
+        return createAndInitialize(sharedSpec).then(root =>
             expect(root.children[0].getResolution("y").getTitle()).toEqual("a, b")
         );
     });
 
-    test.todo("Test that title is taken from axis title, encoding title, field name.")
+    test("Title is taken from axis title, encoding title, and field name, in that order.", () => {
 
+        return Promise.all([
+            createAndInitialize({
+                data: { values: [1] },
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "a",
+                        type: "quantitative",
+                    }
+                }
+            }).then(root =>
+                expect(root.getResolution("y").getTitle()).toEqual("a")
+            ),
+        
+            createAndInitialize({
+                data: { values: [1] },
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "a",
+                        title: "x",
+                        type: "quantitative",
+                    }
+                }
+            }).then(root =>
+                expect(root.getResolution("y").getTitle()).toEqual("x")
+            ),
+
+            createAndInitialize({
+                data: { values: [1] },
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "a",
+                        title: "x",
+                        type: "quantitative",
+                        axis: {
+                            title: "z"
+                        }
+                    }
+                }
+            }).then(root =>
+                expect(root.getResolution("y").getTitle()).toEqual("z")
+            )]);
+
+    });
+
+    test.todo("Test legend titles when legends are implemented");
 });
