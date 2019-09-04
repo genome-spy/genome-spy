@@ -1,4 +1,7 @@
 import { createAndInitialize } from './testUtils'
+import {
+    toRegularArray as r
+} from '../utils/domainArray';
 
 const spec = {
     data: { values: [] },
@@ -30,7 +33,7 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
 
     test("Scales (domains) are shared by default on layers", () => {
         return createAndInitialize(spec).then(view =>
-            expect(view.getResolution("y").getDomain().toArray()).toEqual([1, 5])
+            expect(r(view.getResolution("y").getDomain())).toEqual([1, 5])
         );
     });
 
@@ -42,8 +45,8 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
 
         return createAndInitialize(independentSpec).then(view => {
             expect(view.getResolution("y")).toBeUndefined();
-            expect(view.children[0].getResolution("y").getDomain().toArray()).toEqual([1, 2]);
-            expect(view.children[1].getResolution("y").getDomain().toArray()).toEqual([4, 5]);
+            expect(r(view.children[0].getResolution("y").getDomain())).toEqual([1, 2]);
+            expect(r(view.children[1].getResolution("y").getDomain())).toEqual([4, 5]);
         });
 
     });

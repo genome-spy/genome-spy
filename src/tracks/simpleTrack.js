@@ -177,7 +177,7 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     getXDomain() {
-        return /** @type {Interval} */(this.viewRoot.resolutions["x"].getDomain());
+        return Interval.fromArray(this.viewRoot.resolutions["x"].getDomain());
     }
 
     /**
@@ -299,17 +299,17 @@ export default class SimpleTrack extends WebGlTrack {
 
             xPos -= props.offset;
 
-            const domain = /** @type {Interval} */(resolution.getDomain());
+            const domain = resolution.getDomain();
 
             const scale = scaleLinear()
-                .domain(domain.toArray())
+                .domain(domain)
                 .range([this.trackContainer.clientHeight, 0]);
 
             // Slightly decrease the tick density as the height increases
             const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / props.labelFontSize / 1.7);
 
             /** @type {array} */
-            const ticks = d3ticks(domain.lower, domain.upper, tickCount);
+            const ticks = d3ticks(domain[0], domain[1], tickCount);
 
             // --- Ticks ---
 
@@ -378,17 +378,17 @@ export default class SimpleTrack extends WebGlTrack {
 
             xPos -= props.offset;
 
-            const domain = /** @type {Interval} */(resolution.getDomain());
+            const domain = resolution.getDomain();
 
             const scale = scaleLinear()
-                .domain(domain.toArray())
+                .domain(domain)
                 .range([this.trackContainer.clientHeight, 0]);
 
             // Slightly decrease the tick density as the height increases
             const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / props.labelFontSize / 1.7);
 
             /** @type {array} */
-            const ticks = d3ticks(domain.lower, domain.upper, tickCount);
+            const ticks = d3ticks(domain[0], domain[1], tickCount);
 
             // --- Domain line ---
 

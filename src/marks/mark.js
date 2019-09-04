@@ -78,8 +78,8 @@ export default class Mark {
      * TODO: Abstract away!
      */
     getYDomain() {
-        // TODO: Resolved
-        return /** @type {Interval} */(this.unitView.getResolution("y").getDomain());
+        // TODO: Get rid of the Interval
+        return Interval.fromArray(this.unitView.getResolution("y").getDomain());
     }
 
     /**

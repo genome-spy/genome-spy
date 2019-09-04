@@ -1,11 +1,6 @@
 import {
-    field,
     isString
 } from 'vega-util';
-
-import {
-    extent
-} from 'd3-array';
 
 import RectMark from '../marks/rectMark';
 import PointMark from '../marks/pointMark';
@@ -13,21 +8,22 @@ import RuleMark from '../marks/rule';
 
 import ContainerView from './containerView';
 import Resolution from './resolution';
-import Interval from '../utils/interval';
-import DiscreteDomain from '../utils/discreteDomain';
-import { isSecondaryChannel, channelWithSecondarys, secondaryChannels } from './viewUtils';
+import { isSecondaryChannel, secondaryChannels } from './viewUtils';
+import createDomain from '../utils/domainArray';
 
+/**
+ * @typedef {import("../utils/domainArray").DomainArray} DomainArray 
+ */
 
-// TODO: Find a proper place, make extendible
+/**
+ * @type {Object.<string, typeof import("../marks/mark").default>}
+ * TODO: Find a proper place, make extendible
+ */
 export const markTypes = {
     point: PointMark,
     rect: RectMark,
     rule: RuleMark
 };
-
-/**
- * @typedef {(Interval | DiscreteDomain)} Domain
- */
 
 export default class UnitView extends ContainerView { 
 
@@ -43,7 +39,7 @@ export default class UnitView extends ContainerView {
 
         /**
          * Cache for extracted domains
-         * @type {Object.<string, Domain>}
+         * @type {Object.<string, DomainArray>}
          */
         this._dataDomains = {};
 
@@ -113,7 +109,7 @@ export default class UnitView extends ContainerView {
      * Either returns a configured domain or extracts it from the data.
      * 
      * @param {string} channel 
-     * @returns {Interval | DiscreteDomain | void}
+     * @returns {DomainArray}
      */
     getDomain(channel) {
         if (isSecondaryChannel(channel)) {
@@ -124,16 +120,7 @@ export default class UnitView extends ContainerView {
         const type = encodingSpec.type;
         const specDomain = encodingSpec && encodingSpec.scale && encodingSpec.scale.domain;
         if (specDomain) {
-            if (type == "quantitative") {
-                if (Array.isArray(specDomain) && specDomain.length >= 2) {
-                    // Pick the first and last. May contain more than two if the scale is piecewise.
-                    return new Interval(specDomain[0], specDomain[specDomain.length - 1]);
-                } else {
-                    throw new Error("Invalid domain: " + JSON.stringify(specDomain));
-                }
-            } else {
-                return new DiscreteDomain(specDomain);
-            }
+            return createDomain(type).extendAll(specDomain);
         }
 
         // Note: encoding should be always present. Rules are an exception, though.
@@ -151,11 +138,7 @@ export default class UnitView extends ContainerView {
         if (secondaryChannel) {
             const secondaryDomain = this._extractDomain(secondaryChannel, type);
             if (secondaryDomain) {
-                if (type == "quantitative") {
-                    domain = domain.span(secondaryDomain);
-                } else {
-                    domain.add(secondaryDomain);
-                }
+                domain.extendAll(secondaryDomain);
             }
         }
 
@@ -167,7 +150,7 @@ export default class UnitView extends ContainerView {
      * 
      * @param {string} channel 
      * @param {string} type secondary channels have an implicit type based on the primary channel
-     * @returns {Interval | DiscreteDomain | void}
+     * @returns {DomainArray}
      */
     _extractDomain(channel, type) {
         if (this._dataDomains[channel]) {
@@ -180,11 +163,10 @@ export default class UnitView extends ContainerView {
         const encodingSpec = this.getEncoding()[channel];
 
         if (encodingSpec && isString(encodingSpec.field)) {
-            const accessor = this.context.accessorFactory.createAccessor(encodingSpec);
             // TODO: Optimize cases where accessor returns a constant
-            domain = (encodingSpec.type || type) === "quantitative" ?
-                Interval.fromArray(extent(data, accessor)) :
-                new DiscreteDomain([...new Set(data.map(accessor))]);
+            const accessor = this.context.accessorFactory.createAccessor(encodingSpec);
+            domain = createDomain(encodingSpec.type || type)
+                .extendAll(data.map(accessor));
         }
 
         this._dataDomains[channel] = domain;

@@ -4,7 +4,9 @@ import LayerView from './layerView';
 import {
     create, createAndInitialize
 } from './testUtils'
-
+import {
+    toRegularArray as r
+} from '../utils/domainArray';
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", () => {
@@ -52,7 +54,7 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec).then(view =>
-            expect(view.getDomain("y").toArray()).toEqual([0, 1000])
+            expect(r(view.getDomain("y"))).toEqual([0, 1000])
         );
 
     });
@@ -70,7 +72,7 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec).then(view =>
-            expect(view.getDomain("y").toArray()).toEqual([1, 3])
+            expect(r(view.getDomain("y"))).toEqual([1, 3])
         );
 
     });
@@ -91,7 +93,7 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec).then(view =>
-            expect(view.getDomain("y").toArray()).toEqual([1, 5])
+            expect(r(view.getDomain("y"))).toEqual([1, 5])
         );
     });
 

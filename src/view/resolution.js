@@ -3,11 +3,11 @@ import {
 } from 'vega-util';
 
 import mergeObjects from '../utils/mergeObjects';
-import DiscreteDomain from "../utils/discreteDomain";
 
 /**
- * @typedef { import("../utils/interval").default } Interval
- * @typedef {import("./unitView").default} UnitView
+ * @typedef {import("../utils/domainArray").DomainArray} DomainArray 
+ * @typedef {import("../utils/interval").default} Interval
+ * @typedef { import("./unitView").default} UnitView
  */
 
 export default class Resolution {
@@ -80,29 +80,21 @@ export default class Resolution {
     }
 
     /**
-     * @return { Interval | DiscreteDomain | void }
+     * @return { DomainArray }
      */
     getDomain() {
         const domains = this.views.map(view => view.getDomain(this.channel));
-        if (domains.length === 1) {
+        if (domains.length > 1) {
+            return domains
+                .filter(domain => domain)
+                .reduce((acc, curr) => acc.extendAll(curr));
+
+        } else if (domains.length === 1) {
             return domains[0];
         }
 
-        switch (this.type) {
-        case "quantitative":
-            // TODO: What about piecewise domains?
-            return (/** @type {Interval[]} */(domains)).reduce((prev, curr) => prev.span(curr));
-        case "ordinal":
-        case "nominal": {
-            const domain = new DiscreteDomain();
-            for (const d of domains) {
-                domain.add(d);
-            }
-            return domain;
-        }
-        default:
-            throw new Error(`Missing or unknown type on channel ${this.channel}`);
-        }
+        // TODO: Better error message
+        throw new Error("Cannot resolve domain!");
     }
 
     getScale() {
