@@ -323,7 +323,7 @@ export default class SampleTrack extends SimpleTrack {
         
         const scaledX = this.genomeSpy.rescaledX.invert(point[0]);
 
-        for (const mark of this.getMarks()) {
+        for (const mark of getMarks(this.viewRoot)) {
             if (mark.markConfig && mark.markConfig.sorting) {
                 items.push({
                     label: mark.unitView.spec.title || "- No title -", 
@@ -458,7 +458,7 @@ export default class SampleTrack extends SimpleTrack {
         this.attributePanel.sampleMouseTracker.clear();
         this.viewportMouseTracker.clear();
 
-        this.getMarks().forEach(layer => layer.onBeforeSampleAnimation());
+        getMarks(this.viewRoot).forEach(layer => layer.onBeforeSampleAnimation());
 
         return transition({
             from: reverse ? 1 : 0,
@@ -482,7 +482,7 @@ export default class SampleTrack extends SimpleTrack {
                 this.renderViewport(options);
                 this.attributePanel.renderLabels(options);
             }
-        }).then(() => this.getMarks().forEach(layer => layer.onAfterSampleAnimation()));
+        }).then(() => getMarks(this.viewRoot).forEach(layer => layer.onAfterSampleAnimation()));
     }
 
     /**
