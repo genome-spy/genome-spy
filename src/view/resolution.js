@@ -3,6 +3,7 @@ import {
 } from 'vega-util';
 
 import mergeObjects from '../utils/mergeObjects';
+import createScale from '../scale/scale';
 
 /**
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray 
@@ -55,6 +56,14 @@ export default class Resolution {
         }
     }
 
+    getScaleProps() {
+        const propArray = this.views
+            .map(view => this._getEncoding(view).scale);
+        
+        // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
+        return mergeObjects(propArray.filter(props => props !== undefined), "scale", ["domain"]);
+    }
+
     getTitle() {
         /** @param {UnitView} view} */
         const computeTitle = view => {
@@ -98,8 +107,19 @@ export default class Resolution {
     }
 
     getScale() {
-        // TODO: Merge and build a scale
-        throw new Error("TODO");
+        const domain = this.getDomain();
+
+        // TODO: zero
+
+        const props = {
+            type: getDefaultScaleType(this.channel, domain.type),
+            ...getDefaultScaleProperties(this.channel, domain.type),
+            ...this.getScaleProps(),
+            domain,
+            ...getLockedScaleProperties(this.channel)
+        };
+
+        return createScale(props);
     }
 
     /**
@@ -109,4 +129,69 @@ export default class Resolution {
     _getEncoding(view) {
         return view.getEncoding()[this.channel];
     }
+}
+
+
+
+/**
+ * 
+ * @param {string} channel 
+ * @param {string} dataType 
+ */
+function getDefaultScaleType(channel, dataType) {
+    // TODO: Band scale, Bin-Quantitative
+
+    /** @type {Object.<string, string[]>} */
+    const defaults = {
+        x: [null, "linear"],
+        y: ["point", "linear"],
+        size: ["point", "linear"],
+        opacity: ["point", "linear"],
+        color: ["ordinal", "linear"],
+        shape: ["ordinal", null],
+    };
+
+    return defaults[channel][dataType == "quantitative" ? 1 : 0];
+
+}
+
+/**
+ * 
+ * @param {string} channel 
+ * @param {string} dataType 
+ */
+function getDefaultScaleProperties(channel, dataType) {
+    if (channel == "color") {
+        // TODO: Named ranges
+        const scheme = dataType == "nominal" ? "tableau10" :
+            dataType == "ordinal" ? "blues" :
+                "viridis";
+        
+        return {
+            scheme
+        };
+    }
+
+    return {};
+}
+
+/**
+ * Properties that are always overriden
+ * 
+ * @param {string} channel 
+ */
+function getLockedScaleProperties(channel) {
+
+    /** @type {Object.<string, any>} */
+    const locked = {
+        // TODO: x
+        y: {
+            range: [0, 1]
+        },
+        size: {
+            range: [0, 1]
+        }
+    }
+
+    return locked[channel] || {};
 }

@@ -301,15 +301,16 @@ export default class SimpleTrack extends WebGlTrack {
 
             const domain = resolution.getDomain();
 
-            const scale = scaleLinear()
-                .domain(domain)
+            const scale = resolution.getScale()
+                .copy()
                 .range([this.trackContainer.clientHeight, 0]);
 
             // Slightly decrease the tick density as the height increases
             const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / props.labelFontSize / 1.7);
 
             /** @type {array} */
-            const ticks = d3ticks(domain[0], domain[1], tickCount);
+            //const ticks = d3ticks(domain[0], domain[1], tickCount);
+            const ticks = scale.ticks(tickCount);
 
             // --- Ticks ---
 
@@ -380,15 +381,15 @@ export default class SimpleTrack extends WebGlTrack {
 
             const domain = resolution.getDomain();
 
-            const scale = scaleLinear()
-                .domain(domain)
+            const scale = resolution.getScale()
+                .copy()
                 .range([this.trackContainer.clientHeight, 0]);
 
             // Slightly decrease the tick density as the height increases
             const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / props.labelFontSize / 1.7);
 
             /** @type {array} */
-            const ticks = d3ticks(domain[0], domain[1], tickCount);
+            const ticks = scale.ticks(tickCount);
 
             // --- Domain line ---
 
