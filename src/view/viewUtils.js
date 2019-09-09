@@ -15,30 +15,28 @@ import View from './view';
  * @prop {string} type
  * @prop {object} [tooltip]
  * @prop {object} [sorting]
- */
-
-/**
+ * 
  * @typedef {Object} EncodingSpec
  * @prop {string} [type]
  * @prop {Object} [axis] 
  * @prop {string} [field]
- * @prop {string} [value] a constant value in the context of the range
+ * @prop {string | number} [value] a constant value in the context of the range
  * @prop {object} [scale]
  * @prop {object} [sort] TODO: implement
  * @prop {string} [title]
  * @prop {string} [expr] a vega-expression
  * @prop {string | number} [constant] a constant value in the context of the data domain
- */
-
-/**
+ * 
+ * @typedef {Object.<string, EncodingSpec>} EncodingSpecs
+ * 
  * @typedef {Object} Spec
  * @prop {string} [name]
  * @prop {Spec[]} [layer]
- * @prop {string | MarkConfig | object} [mark]
+ * @prop {string | MarkConfig } [mark]
  * @prop {object} [data] 
  * @prop {object[]} [transform]
  * @prop {string} [sample]
- * @prop {Object.<string, EncodingSpec>} [encoding]
+ * @prop {EncodingSpecs} [encoding]
  * @prop {Object} [renderConfig]
  * @prop {string} [title]
  * @prop {Object} [resolve]
@@ -126,31 +124,4 @@ export async function initializeViewHierarchy(root) {
     for (const mark of getMarks(root)) {
         await mark.initializeData(); // TODO: async needed?
     }
-}
-
-// ----------------------------------------------
-// TODO: Proper place for these:
-
-/** @type {Object.<string, string>} */
-export const secondaryChannels = {
-    x: "x2",
-    y: "y2"
-};
-
-/**
- * 
- * @param {string} channel 
- */
-export function isSecondaryChannel(channel) {
-    return Object.values(secondaryChannels).includes(channel);
-
-}
-
-/**
- * Returns an array that contains the given channel and its secondary channel if one exists.
- * 
- * @param {string} channel 
- */
-export function channelWithSecondarys(channel) {
-    return secondaryChannels[channel] ? [channel, secondaryChannels[channel]] : [channel];
 }

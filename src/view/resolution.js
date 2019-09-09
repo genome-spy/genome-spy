@@ -92,24 +92,31 @@ export default class Resolution {
      * @return { DomainArray }
      */
     getDomain() {
-        const domains = this.views.map(view => view.getDomain(this.channel));
+        const domains = this.views
+            .map(view => view.getDomain(this.channel))
+            .filter(domain => !!domain);
+
         if (domains.length > 1) {
             return domains
-                .filter(domain => domain)
                 .reduce((acc, curr) => acc.extendAll(curr));
 
         } else if (domains.length === 1) {
             return domains[0];
         }
 
-        // TODO: Better error message
-        throw new Error("Cannot resolve domain!");
+        throw new Error(`Cannot resolve domain! Channel: ${this.channel}, views: ${this.views.map(v => v.name).join(", ")}`);
     }
 
     getScale() {
+        if (this._scale) {
+            return this._scale;
+        }
+
         const domain = this.getDomain();
 
-        // TODO: zero
+        if (!domain) {
+            return;
+        }
 
         const props = {
             type: getDefaultScaleType(this.channel, domain.type),
@@ -119,7 +126,14 @@ export default class Resolution {
             ...getLockedScaleProperties(this.channel)
         };
 
-        return createScale(props);
+        // A hack to remove ambigious color configs. TODO: Something more formal
+        if (Array.isArray(props.range)) {
+            delete props.scheme;
+        }
+
+        this._scale = createScale(props);
+        console.log(`Channel: ${this.channel}, scale type: ${this._scale.type}, props: ${JSON.stringify(props)}`);
+        return this._scale;
     }
 
     /**
@@ -141,17 +155,20 @@ export default class Resolution {
 function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
 
-    /** @type {Object.<string, string[]>} */
+    /** @type {Object.<string, string[]>} [nominal/ordinal, quantitative]*/
     const defaults = {
-        x: [null, "linear"],
+        x: [null, "identity"],
         y: ["point", "linear"],
         size: ["point", "linear"],
         opacity: ["point", "linear"],
         color: ["ordinal", "linear"],
         shape: ["ordinal", null],
+        sample: ["identity", null]
     };
 
-    return defaults[channel][dataType == "quantitative" ? 1 : 0];
+    return defaults[channel] ?
+        defaults[channel][dataType == "quantitative" ? 1 : 0] :
+        dataType == "quantitative" ? "linear" : "ordinal";
 
 }
 
@@ -161,18 +178,19 @@ function getDefaultScaleType(channel, dataType) {
  * @param {string} dataType 
  */
 function getDefaultScaleProperties(channel, dataType) {
+    const props = {};
+
     if (channel == "color") {
         // TODO: Named ranges
-        const scheme = dataType == "nominal" ? "tableau10" :
+        props.scheme = dataType == "nominal" ? "tableau10" :
             dataType == "ordinal" ? "blues" :
                 "viridis";
         
-        return {
-            scheme
-        };
+    } else if (channel == "size") {
+        props.range = [0, 1]
     }
 
-    return {};
+    return props;
 }
 
 /**
@@ -189,7 +207,7 @@ function getLockedScaleProperties(channel) {
             range: [0, 1]
         },
         size: {
-            range: [0, 1]
+//            range: [0, 1]
         }
     }
 

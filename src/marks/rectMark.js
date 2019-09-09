@@ -16,6 +16,7 @@ const defaultRenderConfig = {
     yOffset: 0.0
 };
 
+/** @type {import("../view/viewUtils").EncodingSpecs} */
 const defaultEncoding = {
     x:       { value: 0 },
     x2:      { value: 0 },
@@ -37,28 +38,13 @@ export default class RectMark extends Mark {
     constructor(unitView) {
         super(unitView)
 
+        // TODO: Check renderConfig.rectMinOpacity
         this.opaque = this.getEncoding().opacity.value >= 1.0;
     }
 
     getDefaultEncoding() {
-        return defaultEncoding;
+        return { ...super.getDefaultEncoding(), ...defaultEncoding };
     }
-
-    /*
-    extractDataDomains(specs) {
-        // Here's a lot of hacking for infinite domain widths (used by horiz/vert rules)
-
-        const inf2null = x => x === -Infinity || x === Infinity ? null : x;
-
-        const xExtent = extent([...specs.map(p => p.x), ...specs.map(p => p.x2)].map(inf2null));
-        const yExtent = extent([...specs.map(p => p.y), ...specs.map(p => p.y2)].map(inf2null));
-
-        return {
-            x: typeof xExtent[0] == "number" ? Interval.fromArray(xExtent) : null,
-            y: typeof yExtent[0] == "number" ? Interval.fromArray(yExtent) : null
-        };
-    }
-    */
 
     onBeforeSampleAnimation() {
         const interval = this.getContext().genomeSpy.getViewportDomain();
@@ -82,14 +68,12 @@ export default class RectMark extends Mark {
      */
     _createSampleBufferInfo(interval, tesselationThreshold) {
         // TODO: Disable tesselation on SimpleTrack - no need for it
-        const builder = new RectVertexBuilder(
-           Mark.getConstantValues(this.getEncoding()),
-           Mark.getVariableChannels(this.getEncoding()),
-           tesselationThreshold,
-           {});
+        const builder = new RectVertexBuilder(this.encoders, tesselationThreshold, {});
 
-        for (const [sample, rects] of this.specsBySample.entries()) {
-            builder.addBatch(sample, interval ? clipRects(rects, interval) : rects);
+        for (const [sample, data] of this.dataBySample.entries()) {
+            //builder.addBatch(sample, interval ? clipRects(rects, interval) : rects);
+            // TODO: clipRects!
+            builder.addBatch(sample, data);
         }
         const vertexData = builder.toArrays();
 
@@ -128,7 +112,6 @@ export default class RectMark extends Mark {
     render(samples, globalUniforms) {
         const gl = this.gl;
 
-        // TODO: Check renderConfig.rectMinOpacity
         if (this.opaque) {
             gl.disable(gl.BLEND);
         } else {
@@ -141,8 +124,10 @@ export default class RectMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYDomainBegin: yDomain.lower,
-            uYDomainWidth: yDomain.width(),
+            //uYDomainBegin: yDomain.lower,
+            uYDomainBegin: 0,
+            //uYDomainWidth: yDomain.width(),
+            uYDomainWidth: 1,
             uMinWidth: (this.renderConfig.minRectWidth || 1.0) / gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
             uMinHeight : (this.renderConfig.minRectHeight || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels
             uMinOpacity: this.renderConfig.minRectOpacity || 0.0,
@@ -170,7 +155,7 @@ export default class RectMark extends Mark {
      * @param {import("../utils/interval").default} yBand the matched band on the band scale
      */
     findDatum(sampleId, x, y, yBand) {
-        const rects = this.specsBySample.get(sampleId || "default");
+        const rects = this.dataBySample.get(sampleId || "default");
 
         const gl = this.getContext().track.gl;
         const dpr = window.devicePixelRatio;

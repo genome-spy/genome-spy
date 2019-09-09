@@ -1,14 +1,10 @@
-import {
-    isString
-} from 'vega-util';
-
 import RectMark from '../marks/rectMark';
 import PointMark from '../marks/pointMark';
 import RuleMark from '../marks/rule';
 
 import ContainerView from './containerView';
 import Resolution from './resolution';
-import { isSecondaryChannel, secondaryChannels } from './viewUtils';
+import { isSecondaryChannel, secondaryChannels } from '../encoder/encoder';
 import createDomain from '../utils/domainArray';
 
 /**
@@ -43,18 +39,18 @@ export default class UnitView extends ContainerView {
          */
         this._dataDomains = {};
 
-        /** @type {string} */
-        const markType = typeof this.spec.mark == "object" ? this.spec.mark.type : this.spec.mark;
-        const Mark = markTypes[markType];
+        const Mark = markTypes[this.getMarkType()];
         if (Mark) {
             /** @type {import("../marks/mark").default} */
             this.mark = new Mark(this);
 
         } else {
-            throw new Error(`No such mark: ${markType}`);
+            throw new Error(`No such mark: ${this.getMarkType()}`);
         }
+    }
 
-        //this.resolve();
+    getMarkType() {
+        return typeof this.spec.mark == "object" ? this.spec.mark.type : this.spec.mark;
     }
 
     /**
@@ -63,13 +59,18 @@ export default class UnitView extends ContainerView {
      */
     resolve() {
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
-        // TODO: Remove and complain about extra channels.
         
+        const encoding = this.getEncoding();
         // eslint-disable-next-line guard-for-in
-        for (const channel in this.getEncoding()) {
+        for (const channel in encoding) {
             if (isSecondaryChannel(channel)) {
                 // TODO: Secondary channels should be pulled up as "primarys".
                 // Example: The titles of both y and y2 should be shown on the y axis 
+                continue;
+            }
+
+            if (!this.context.accessorFactory.createAccessor(encoding[channel], true)) {
+                // The channel has no fields or anything, so it's likely just a "value". Let's skip.
                 continue;
             }
 
@@ -118,16 +119,18 @@ export default class UnitView extends ContainerView {
 
         const encodingSpec = this.getEncoding()[channel];
         const type = encodingSpec.type;
+        if (!type) {
+            throw new Error(`No data type for channel "${channel}"!`);
+            // TODO: Support defaults
+        }
         const specDomain = encodingSpec && encodingSpec.scale && encodingSpec.scale.domain;
         if (specDomain) {
-            return createDomain(type).extendAll(specDomain);
+            return createDomain(type, specDomain);
         }
 
         // Note: encoding should be always present. Rules are an exception, though.
         // A horizontal rule has implicit encoding for x channel and an infinite domain.
         // The same applies to vertical rules. It's hacky and may need some fixing.
-
-        // TODO: Include constant values defined in encodings
 
         let domain = this._extractDomain(channel, type);
         if (!domain) {
@@ -162,11 +165,17 @@ export default class UnitView extends ContainerView {
 
         const encodingSpec = this.getEncoding()[channel];
 
-        if (encodingSpec && isString(encodingSpec.field)) {
-            // TODO: Optimize cases where accessor returns a constant
-            const accessor = this.context.accessorFactory.createAccessor(encodingSpec);
-            domain = createDomain(encodingSpec.type || type)
-                .extendAll(data.map(accessor));
+        if (encodingSpec) {
+            const accessor = this.context.accessorFactory.createAccessor(encodingSpec, true);
+            if (accessor) {
+                domain = createDomain(type);
+
+                if (accessor.constant) {
+                    domain.extend(accessor({}));
+                } else {
+                    domain.extendAll(data.map(accessor));
+                }
+            }
         }
 
         this._dataDomains[channel] = domain;

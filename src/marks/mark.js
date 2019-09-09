@@ -1,6 +1,7 @@
 import { group } from 'd3-array';
 import { processData } from '../data/dataMapper';
 import Interval from '../utils/interval';
+import createEncoders from '../encoder/encoder';
 
 export default class Mark {
 
@@ -12,63 +13,79 @@ export default class Mark {
         this.markConfig = typeof unitView.spec.mark == "object" ? unitView.spec.mark : {};
     }
     
+    /**
+     * @returns {import("../view/viewUtils").EncodingSpecs}
+     */
     getDefaultEncoding() {
-        return {};
+        return {
+            sample: null
+        };
     }
 
     /**
      * Returns the encoding spec supplemented with mark's default encodings
-     * @returns {Object.<string, import("../view/view").EncodingSpec>}
+     * @returns {import("../view/viewUtils").EncodingSpecs}
      */
     getEncoding() {
-        return {
-            ...this.getDefaultEncoding(),
-            ...this.unitView.getEncoding()
-        };
+        const defaults = this.getDefaultEncoding();
+        const configured = this.unitView.getEncoding();
+
+        for (const channel in configured) {
+            if (typeof defaults[channel] !== "object") {
+                throw new Error(`Unsupported channel "${channel}" in ${this.getType()}'s encoding: ${JSON.stringify(configured)}`);
+            }
+        }
+        
+        return { ...defaults, ...configured };
     }
 
     getContext() {
         return this.unitView.context;
     }
 
+    getType() {
+        return this.unitView.getMarkType();
+    }
+
     async initializeData() {
         const data = this.unitView.getData();
         if (!data) {
+            // TODO: Show view path in error
             throw new Error("Can not initialize mark, no data available!");
         }
-        const ungroupedData = data.ungroupAll().data;
+
+        // TODO: Optimize. Now inherited data is ungrouped in all children
+        const ungrouped = data.ungroupAll().data;
 
         const encoding = this.getEncoding();
 
-        const baseObject = {
-            ...Mark.getConstantValues(encoding),
-            _mark: this,
-            _viewUnit: this.unitView
-        };
+        if (encoding["sample"]) {
+            // TODO: Optimize. Now inherited data is grouped by sample in all children
+            const accessor = this.getContext().accessorFactory.createAccessor(encoding["sample"]); 
+            /** @type {Map<string, object[]>} */
+            this.dataBySample = group(ungrouped, accessor);
 
-        const specs = processData(encoding, ungroupedData, this.getContext().visualMapperFactory, baseObject);
-        this.setSpecs(specs);
+        } else {
+            this.dataBySample = new Map([["default", ungrouped]]);
+        }
     }
 
     initializeGraphics() {
+        const encoding = this.getEncoding();
+
+        /** @type {function(string):function} */
+        const scaleSource = channel => {
+            const resolution = this.unitView.getResolution(channel);
+            if (resolution) {
+                return resolution.getScale();
+            }
+        }
+
+        this.encoders = createEncoders(encoding, scaleSource, this.getContext().accessorFactory);
+
         this.gl = this.getContext().track.gl; // TODO: FIXME FIXME FIXME FIXME FIXME FIXME 
     }
 
-    /**
-     * @param {object[]} specs
-     */
-    setSpecs(specs) {
-        if (this.getEncoding()["sample"]) {
-            /** @type {Map<string, object[]>} */
-            this.specsBySample = group(specs, d => d.sample);
-
-        } else {
-            this.specsBySample = new Map([["default", specs]]);
-        }
-
-        // For tooltips
-        this.fieldMappers = specs.fieldMappers; 
-    }
 
     onBeforeSampleAnimation() { }
 
@@ -79,7 +96,7 @@ export default class Mark {
      */
     getYDomain() {
         // TODO: Get rid of the Interval
-        return Interval.fromArray(this.unitView.getResolution("y").getDomain());
+        return Interval.fromArray(this.unitView.getResolution("y").getScale().domain());
     }
 
     /**
@@ -106,27 +123,5 @@ export default class Mark {
     findDatum(sampleId, x, y, yBand) {
         return null;
     }
-
-
-    /**
-     * @param {Object} encoding
-     * @return {String[]}
-     */
-    static getVariableChannels(encoding) {
-        // TODO: Test presence of field and chrom/pos instead of missingness value
-        return Object.entries(encoding)
-            .filter(entry => typeof entry[1].value == "undefined")
-            .map(entry => entry[0]);
-    }
-
-    /**
-     * @param {Object} encoding
-     * @return {Object}
-     */
-    static getConstantValues(encoding) {
-        return Object.fromEntries(
-            Object.entries(encoding)
-                .filter(entry => typeof entry[1].value != "undefined")
-                .map(entry => [entry[0], entry[1].value]));
-    }
 }
+

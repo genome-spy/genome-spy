@@ -56,31 +56,16 @@ export default class Genome extends CoordinateSystem {
 
         this.chromMapper = chromMapper(this.chromSizes);
 
-        genomeSpy.visualMapperFactory.registerMapper({
-            predicate: encodingConfig => typeof encodingConfig.chrom == "string" && typeof encodingConfig.pos == "string",
-            mapperCreator: this.createGenomicCoordVisualMapper.bind(this)
-        });
-
         genomeSpy.accessorFactory.register(encoding => {
             if (encoding.chrom && encoding.pos) {
                 const offset = typeof encoding.offset == "number" ? encoding.offset : 0;
-                return d => this.chromMapper.toContinuous(
-                    d[encodingConfig.chrom],
-                    parseInt(d[encodingConfig.pos])
-                ) + offset;
+                const chrom = encoding.chrom;
+                const pos = encoding.pos;
 
+                return d => this.chromMapper.toContinuous(d[chrom], d[pos]) + offset;
             }
         });
 
-    }
-
-    createGenomicCoordVisualMapper(targetType, encodingConfig) {
-        const offset = typeof encodingConfig.offset == "number" ? encodingConfig.offset : 0;
-
-        return d => this.chromMapper.toContinuous(
-            d[encodingConfig.chrom],
-            parseInt(d[encodingConfig.pos])
-        ) + offset;
     }
 
     
@@ -92,7 +77,7 @@ export default class Genome extends CoordinateSystem {
      * The inteval is shown as one-based closed-open range.
      * See https://genome.ucsc.edu/FAQ/FAQtracks#tracks1
      * 
-     * @param {import("./utils/interval").default} interval 
+     * @param {import("../utils/interval").default} interval 
      * @returns {string}
      */
     formatInterval(interval) {

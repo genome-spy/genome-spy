@@ -1,5 +1,5 @@
 import createDomain, {
-    toRegularArray as r
+    toRegularArray as r, PiecewiseDomain
 } from './domainArray';
 
 describe("Build quantitative domains", () => {
@@ -26,9 +26,9 @@ describe("Build quantitative domains", () => {
         expect(r(b)).toEqual([1, 5]);
     });
 
-    test("Throws on a non-numeric scalar", () => {
+    test("Coerces to number", () => {
         const b = createDomain("quantitative");
-        expect(() => b.extend("hello!")).toThrow();
+        expect(r(b.extend("123"))).toEqual([123, 123]);
     });
 });
 
@@ -51,6 +51,28 @@ describe("Build ordinal domains", () => {
         b.extend("d");
         expect(r(b)).toEqual(["a", "b", "c", "d"]);
     });
+});
+
+describe("Build piecewise domains", () => {
+    test("Creates a piecewise domain", () => {
+        expect(createDomain("quantitative", [1])).toBeInstanceOf(PiecewiseDomain);
+        expect(createDomain("quantitative", [1, 2, 3])).toBeInstanceOf(PiecewiseDomain);
+        expect(createDomain("quantitative", [3, 2, 1])).toBeInstanceOf(PiecewiseDomain);
+        expect(r(createDomain("quantitative", [3, 2, 1]))).toEqual([3, 2, 1]);
+    });
+
+    test("Throws on domain that is not stricly increasing or decreasing", () => {
+        expect(() => createDomain("quantitative", [2, 1, 3])).toThrow();
+        expect(() => createDomain("quantitative", [2, 3, 1])).toThrow();
+        expect(() => createDomain("quantitative", [3, 0, 2])).toThrow();
+        expect(() => createDomain("quantitative", [0, 3, 2])).toThrow();
+        expect(() => createDomain("quantitative", [1, 2, 2, 3])).toThrow();
+    });
+
+    test("Throws on mutation attempts", () => {
+        expect(() => createDomain("quantitative", [1, 2, 3]).extend(2)).toThrow();
+    });
+
 });
 
 describe("Annotations", () => {

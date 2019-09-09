@@ -36,14 +36,25 @@
 
                     "encoding": {
                         "x": { "field": "x", "type": "quantitative" },
-                        "y": { "field": "sin(x)", "type": "quantitative" }
+                        "y": {
+                            "field": "sin(x)",
+                            "type": "quantitative",
+                            "scale": {
+                                "type": "sqrt",
+                                "padding": 0.1
+                            }
+                        },
+                        "color": {
+                            "field": "sin(x)",
+                            "type": "quantitative"
+                        }
                     },
 
                     "layer": [
                         {
                             "mark": "rule",
                             "encoding": {
-                                "y2": { "value": 0 }
+                                "y2": { "constant": 0 }
                             },
                             "renderConfig": {
                                 "size": 3.0

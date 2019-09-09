@@ -1,5 +1,4 @@
 
-import { createCompositeEncodingMapper } from './visualEncoders';
 import transformers from './transforms/transforms';
 
 /**
@@ -29,39 +28,4 @@ export function transformData(transformConfigs, data) {
     }
 
     return data;
-}
-
-/**
- * 
- * @param {object[]} encodingConfigs 
- * @param {object[]} rows 
- * @param {import("./visualEncoders").VisualMapperFactory} mapperFactory
- * @param {object} [baseObject] prototype for specs. Allows setting constants etc
- * @returns {object[]}
- */
-export function processData(encodingConfigs, rows, mapperFactory, baseObject) {
-
-    // TODO: Validate that data contains all fields that are referenced in the config.
-    // ... just to prevent mysterious undefineds
-
-    const encode = createCompositeEncodingMapper(mapperFactory, encodingConfigs, rows, baseObject);
-
-    const specs = rows.map(d => {
-        const encoded = encode(d);
-        encoded.rawDatum = d;
-        return encoded;
-    });
-
-
-    const fieldMappers = [];
-    for (const mapper of Object.values(encode.mappers)) {
-        if (mapper.config && mapper.config.field) {
-            fieldMappers[mapper.config.field] = mapper;
-        }
-    }
-
-    // For tooltips
-    specs.fieldMappers = fieldMappers;
-
-    return specs;
 }

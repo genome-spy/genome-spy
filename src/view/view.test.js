@@ -21,7 +21,11 @@ describe("Trivial creations and initializations", () => {
     test("Parses and initializes a trivial spec", () => {
         const spec = {
             data: { values: [1] },
-            mark: "point"
+            mark: "point",
+            encoding: {
+                x: { field: "data" },
+                y: { field: "data" },
+            }
         };
         
         expect(createAndInitialize(spec)).resolves.toBeInstanceOf(UnitView);
@@ -43,6 +47,7 @@ describe("Test domain handling", () => {
             data: dataSpec,
             mark: "point",
             encoding: {
+                x: { field: "a" },
                 y: {
                     field: "a",
                     type: "quantitative",
@@ -59,11 +64,31 @@ describe("Test domain handling", () => {
 
     });
 
+    test("Includes a constant in the domain", () => {
+        const spec = {
+            data: dataSpec,
+            mark: "point",
+            encoding: {
+                x: { constant: 123, type: "quantitative" },
+                y: { field: "a" }
+            }
+        };
+
+        return createAndInitialize(spec).then(view =>
+            expect(r(view.getDomain("x"))).toEqual([123, 123])
+        );
+
+    });
+
     test("Extracts domain from the data", () => {
         const spec = {
             data: dataSpec,
             mark: "point",
             encoding: {
+                x: {
+                    field: "a",
+                    type: "quantitative"
+                },
                 y: {
                     field: "a",
                     type: "quantitative"
@@ -82,6 +107,7 @@ describe("Test domain handling", () => {
             data: dataSpec, 
             mark: "rect",
             encoding: {
+                x: { field: "a" },
                 y: {
                     field: "a",
                     type: "quantitative"

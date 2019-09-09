@@ -9,21 +9,25 @@ const spec = {
         {
             mark: "point",
             encoding: {
+                x: { field: "a" },
                 y: {
                     field: "a",
                     type: "quantitative",
                     scale: { domain: [1, 2] }
-                }
+                },
+                color: { value: "red" }
             }
         },
         {
             mark: "point",
             encoding: {
+                x: { field: "a" },
                 y: {
                     field: "b",
                     type: "quantitative",
                     scale: { domain: [4, 5] }
-                }
+                },
+                color: { value: "green" }
             }
         }
     ]
@@ -31,10 +35,12 @@ const spec = {
 
 describe("Scales resolve with with non-trivial hierarchy", () => {
 
-    test("Scales (domains) are shared by default on layers", () => {
-        return createAndInitialize(spec).then(view =>
-            expect(r(view.getResolution("y").getDomain())).toEqual([1, 5])
-        );
+    test("Scales (domains) are shared and merged by default on layers", () => {
+        return createAndInitialize(spec).then(view => {
+            expect(r(view.getResolution("y").getDomain())).toEqual([1, 5]);
+            expect(r(view.children[0].getResolution("y").getDomain())).toEqual([1, 5]);
+            expect(r(view.children[1].getResolution("y").getDomain())).toEqual([1, 5]);
+        });
     });
 
     test("Independent scales (domains) are not pulled up", () => {
@@ -48,7 +54,12 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
             expect(r(view.children[0].getResolution("y").getDomain())).toEqual([1, 2]);
             expect(r(view.children[1].getResolution("y").getDomain())).toEqual([4, 5]);
         });
+    });
 
+    test("Channels with just values (no fields or scales) do not resolve", () => {
+        return createAndInitialize(spec).then(view =>
+            expect(view.getResolution("color")).toBeUndefined()
+        );
     });
 });
 
@@ -72,6 +83,7 @@ describe("Titles resolve properly", () => {
                 data: { values: [1] },
                 mark: "point",
                 encoding: {
+                    x: { field: "a" },
                     y: {
                         field: "a",
                         type: "quantitative",
@@ -85,6 +97,7 @@ describe("Titles resolve properly", () => {
                 data: { values: [1] },
                 mark: "point",
                 encoding: {
+                    x: { field: "a" },
                     y: {
                         field: "a",
                         title: "x",
@@ -99,6 +112,7 @@ describe("Titles resolve properly", () => {
                 data: { values: [1] },
                 mark: "point",
                 encoding: {
+                    x: { field: "a" },
                     y: {
                         field: "a",
                         title: "x",

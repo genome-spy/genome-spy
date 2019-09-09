@@ -50,20 +50,24 @@ export function color2floatArray(color) {
 export class RectVertexBuilder {
     /**
      * 
+     * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
      * @param {number} [tesselationThreshold]
      *     If the rect is narrower than the threshold, tesselate it into pieces
      */
-    constructor(constants, variables, tesselationThreshold = Infinity, renderOptions) {
-        // TODO: Provide default values and provide them as constants
+    constructor(encoders, tesselationThreshold = Infinity, renderOptions) {
+
+        this.encoders = encoders;
+        const e = encoders;
 
         this.tesselationThreshold = tesselationThreshold || Infinity;
 
         const converters = {
-            color: { f: spec => color2floatArray(spec.color), numComponents: 3 },
-            opacity: { f: spec => spec.opacity, numComponents: 1 },
+            color:   { f: d => color2floatArray(e.color(d)), numComponents: 3 },
+            opacity: { f: d => e.opacity(d), numComponents: 1 },
         };
 
-        this.constants = constants || {};
+        const constants = Object.entries(encoders).filter(e => e[1].constant).map(e => e[0]);
+        const variables = Object.entries(encoders).filter(e => !e[1].constant).map(e => e[0]);
 
         this.variableBuilder = ArrayBuilder.create(converters, variables);
 
@@ -73,10 +77,8 @@ export class RectVertexBuilder {
         this.updateWidth = this.variableBuilder.createUpdater("width", 1);
         this.updateHeight = this.variableBuilder.createUpdater("height", 1);
 
-        this.constantBuilder = ArrayBuilder.create(converters, Object.keys(constants));
-        this.constantBuilder.updateFromSpec(
-            Object.fromEntries(Object.entries(constants)
-                    .map(entry => [entry[0], entry[1]])));
+        this.constantBuilder = ArrayBuilder.create(converters, constants);
+        this.constantBuilder.updateFromSpec({});
         this.constantBuilder.pushAll();
 
         this.rangeMap = new Map();
@@ -85,23 +87,33 @@ export class RectVertexBuilder {
     /**
      *
      * @param {string} key 
-     * @param {RectSpec[]} rects 
+     * @param {object} data
      */
-    addBatch(key, rects) {
+    addBatch(key, data) {
         const offset = this.variableBuilder.vertexCount;
 
-        for (let r of rects) {
-            const [x, x2] = r.x <= r.x2 ? [r.x, r.x2] : [r.x2, r.x];
-            const [y, y2] = r.y <= r.y2 ? [r.y, r.y2] : [r.y2, r.y];
+        const e = this.encoders;
+
+        for (const d of data) {
+            let x = e.x(d), x2 = e.x2(d),
+                y = e.y(d), y2 = e.y2(d);
+            
+            if (x > x2) {
+                [x, x2] = [x2, x];
+            }
+
+            if (y > y2) {
+                [y, y2] = [y2, y];
+            }
 
             const width = x2 - x || Math.pow(0.1, 20); // A hack to allow minWidth for zero-height rects.
             const height = y2 - y || Math.pow(0.1, 20); // TODO: Fix the hack
 
-            // TODO: Fix this
+            // TODO: Fix this (filter out invisible rects)
             //if (!(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0)) continue;
 
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
-            this.variableBuilder.updateFromSpec(r);
+            this.variableBuilder.updateFromSpec(d);
             this.updateX(fp64ify(x));
             this.updateWidth(-width);
             this.updateY(y);
@@ -109,7 +121,8 @@ export class RectVertexBuilder {
             this.variableBuilder.pushAll();
 
             // Tesselate segments
-            const tileCount = width < Infinity ? Math.ceil(width / this.tesselationThreshold) : 1;
+            //const tileCount = width < Infinity ? Math.ceil(width / this.tesselationThreshold) : 1;
+            const tileCount = 1; // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
             for (let i = 0; i <= tileCount; i++) {
                 const frac = i / tileCount;
 
@@ -137,7 +150,7 @@ export class RectVertexBuilder {
             }
 
             // Duplicate the last vertex to produce a degenerate triangle between the segments
-            this.variableBuilder.updateFromSpec(r);
+            this.variableBuilder.updateFromSpec(d);
             this.updateX(fp64ify(x2));
             this.updateWidth(width);
             this.updateHeight(-height);
@@ -170,32 +183,29 @@ export class RectVertexBuilder {
 export class PointVertexBuilder {
     /**
      * 
-     * @param {Object.<string, any[]>} constants
-     * @param {string[]} variables names of variables
+     * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
      */
-    constructor(constants, variables) {
+    constructor(encoders) {
 
-        // TODO: Provide default values and provide them as constants
+        const e = encoders;
 
         const converters = {
-            x:       { f: spec => fp64ify(spec.x),              numComponents: 2 },
-            y:       { f: spec => spec.y,                       numComponents: 1 },
-            size:    { f: spec => Math.sqrt(spec.size),         numComponents: 1 },
-            color:   { f: spec => color2floatArray(spec.color), numComponents: 3 },
-            opacity: { f: spec => spec.opacity,                 numComponents: 1 },
-            zoomThreshold: { f: spec => spec.zoomThreshold,   numComponents: 1 },
+            x:       { f: d => fp64ify(e.x(d)),              numComponents: 2 },
+            y:       { f: d => e.y(d),                       numComponents: 1 },
+            size:    { f: d => Math.sqrt(e.size(d)),         numComponents: 1 },
+            color:   { f: d => color2floatArray(e.color(d)), numComponents: 3 },
+            opacity: { f: d => e.opacity(d),                 numComponents: 1 },
+            zoomThreshold: { f: d => e.zoomThreshold(d),     numComponents: 1 },
         };
 
-        this.constants = constants || {};
+        const constants = Object.entries(encoders).filter(e => e[1].constant).map(e => e[0]);
+        const variables = Object.entries(encoders).filter(e => !e[1].constant).map(e => e[0]);
 
         this.variableBuilder = ArrayBuilder.create(converters, variables);
+        this.constantBuilder = ArrayBuilder.create(converters, constants);
 
-        this.constantBuilder = ArrayBuilder.create(converters, Object.keys(constants));
-        this.constantBuilder.updateFromSpec(
-            Object.fromEntries(Object.entries(this.constants)
-                    .map(entry => [entry[0], entry[1]])));
+        this.constantBuilder.updateFromSpec({});
         this.constantBuilder.pushAll();
-
 
         this.index = 0;
         this.rangeMap = new Map();
@@ -365,7 +375,7 @@ class ArrayBuilder {
      */
     addSpecConverter(attributeName, numComponents, converter) {
         const updater = this.createUpdater(attributeName, numComponents);
-        this.specConverters.push(spec => updater(converter(spec)));
+        this.specConverters.push(d => updater(converter(d)));
     }
 
     /**

@@ -30,6 +30,7 @@ export default class WebGlTrack extends Track {
 
     getDomainUniforms() {
         const domain = this.genomeSpy.getViewportDomain();
+        // TODO: const range = domain.transform()
 
         return {
             uXDomainBegin: fp64ify(domain.lower),

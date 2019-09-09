@@ -15,7 +15,7 @@ export default class AccessorFactory {
         this.register(encoding => (encoding.expr ? createExpressionAccessor(encoding.expr) : undefined));
 
         this.register(encoding => {
-            if (encoding.constant) {
+            if (encoding.constant !== undefined) {
                 const accessor = constant(encoding.constant);
                 accessor.constant = true; // Can be optimized downstream
                 return accessor;
@@ -34,8 +34,9 @@ export default class AccessorFactory {
     /**
      * 
      * @param {EncodingSpec} encoding 
+     * @param {boolean} [quiet] Don't throw error if encoding spec is incomplete
      */
-    createAccessor(encoding) {
+    createAccessor(encoding, quiet) {
         for (const creator of this.accessorCreators) {
             const accessor = creator(encoding);
             if (accessor) {
@@ -43,8 +44,10 @@ export default class AccessorFactory {
             }
         }
 
-        // TODO: Some context to the message
-        throw new Error(`Can not create an accessor. Incomplete encoding configuration: ${JSON.stringify(encoding)}`);
+        if (!quiet) {
+            // TODO: Some context to the message
+            throw new Error(`Can not create an accessor. Incomplete encoding configuration: ${JSON.stringify(encoding)}`);
+        }
     }
 }
 

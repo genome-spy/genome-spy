@@ -1,5 +1,5 @@
 import * as twgl from 'twgl-base.js';
-import { compare } from 'vega-util';
+import mapsort from 'mapsort';
 import { extent, bisector } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { PointVertexBuilder } from '../gl/segmentsToVertices';
@@ -7,7 +7,6 @@ import VERTEX_SHADER from '../gl/point.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
 
 import Mark from './mark';
-import Interval from '../utils/interval';
 
 
 // TODO: Style object
@@ -22,6 +21,7 @@ const defaultRenderConfig = {
     zoomLevelForMaxPointSize: 1.0
 };
 
+/** @type {import("../view/viewUtils").EncodingSpecs} */
 const defaultEncoding = {
     x:       { value: 0 },
     y:       { value: 0.5 },
@@ -35,34 +35,29 @@ const fractionToShow = 0.02;
 
 export default class PointMark extends Mark {
     /**
-     * @param {import("../view/unitView").UnitView} unitView
+     * @param {import("../view/unitView").default} unitView
      */
     constructor(unitView) {
         super(unitView)
     }
 
     getDefaultEncoding() {
-        return defaultEncoding;
+        return { ...super.getDefaultEncoding(), ...defaultEncoding };
     }
 
 
     async initializeData() {
         await super.initializeData();
+
+        const encoding = this.getEncoding();
+        const accessor = this.getContext().accessorFactory.createAccessor(encoding["x"]); 
+        
+        // Sort each point of each sample for binary search
+        /** @type {Map<string, object[]>} */
+        this.dataBySample = new Map([...this.dataBySample.entries()].map(e =>
+            [e[0], mapsort(e[1], accessor, (a, b) => a - b)]));
     }
 
-    /**
-     * @param {object[]} specs
-     */
-    setSpecs(specs) {
-        super.setSpecs(specs);
-
-        // Sort for binary search
-        // TODO: use https://github.com/Pimm/mapsort if sorting with accessors
-        const c = compare('x');
-        for (const points of this.specsBySample.values()) {
-            points.sort(c);
-        }
-    }
 
     initializeGraphics() {
         super.initializeGraphics();
@@ -70,11 +65,9 @@ export default class PointMark extends Mark {
 
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
-        const builder = new PointVertexBuilder(
-            Mark.getConstantValues(this.getEncoding()),
-            Mark.getVariableChannels(this.getEncoding()));
+        const builder = new PointVertexBuilder(this.encoders);
 
-        for (const [sample, points] of this.specsBySample.entries()) {
+        for (const [sample, points] of this.dataBySample.entries()) {
             builder.addBatch(sample, points);
         }
         const vertexData = builder.toArrays();
@@ -112,8 +105,10 @@ export default class PointMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYDomainBegin: yDomain.lower,
-            uYDomainWidth: yDomain.width(),
+            //uYDomainBegin: yDomain.lower,
+            uYDomainBegin: 0,
+            //uYDomainWidth: yDomain.width(),
+            uYDomainWidth: 1,
             uXOffset: (this.renderConfig.xOffset || 0.0) / gl.drawingBufferWidth * window.devicePixelRatio,
             uYOffset: (this.renderConfig.yOffset || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio,
             viewportHeight: this.getContext().track.glCanvas.clientHeight,
@@ -126,7 +121,8 @@ export default class PointMark extends Mark {
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
-        const bisect = bisector(point => point.x).left;
+        const xAccessor = this.encoders.x.accessor;
+        const bisect = bisector(d => xAccessor(d)).left;
         const visibleDomain = this.getContext().genomeSpy.getViewportDomain();
         // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
         const paddedDomain = visibleDomain.pad(visibleDomain.width() * 0.01);
@@ -135,7 +131,7 @@ export default class PointMark extends Mark {
             const range = this.rangeMap.get(sampleData.sampleId);
             if (range) {
                 // Render only points that reside inside the viewport
-                const specs = this.specsBySample.get(sampleData.sampleId);
+                const specs = this.dataBySample.get(sampleData.sampleId);
                 const lower = bisect(specs, paddedDomain.lower);
                 const upper = bisect(specs, paddedDomain.upper);
                 const length = upper - lower;
@@ -155,7 +151,7 @@ export default class PointMark extends Mark {
      * @param {import("../utils/interval").default} yBand the matched band on the band scale
      */
     findDatum(sampleId, x, y, yBand) {
-        const points = this.specsBySample.get(sampleId || "default");
+        const points = this.dataBySample.get(sampleId || "default");
         if (!points) {
             return null;
         }

@@ -53,9 +53,7 @@ export class QuantitativeDomain extends DomainArray {
             return this;
         }
 
-        if (typeof value !== "number") {
-            throw new Error("Quantitative domain accepts only numbers!")
-        }
+        value = +value;
 
         if (this.length) {
             if (value < this[0]) {
@@ -112,6 +110,35 @@ export class NominalDomain extends OrdinalDomain {
     }
 }
 
+export class PiecewiseDomain extends DomainArray {
+    /**
+     * 
+     * @param {number[]} initialDomain 
+     */
+    constructor(initialDomain) {
+        super();
+
+        let sum = 0;
+        for (let i = 1; i < initialDomain.length; i++) {
+            sum += Math.sign(initialDomain[i] - initialDomain[i - 1])
+        }
+        if (Math.abs(sum) != initialDomain.length - 1) {
+            throw new Error("Piecewise domain must be strictly increasing or decreasing: " + JSON.stringify(initialDomain));
+        }
+
+        initialDomain.forEach(x => this.push(x));
+    }
+
+    /**
+     * 
+     * @param {scalar} value 
+     * @returns {DomainArray}
+     */
+    extend(value) {
+        throw new Error("Piecewise domains are immutable!");
+    }
+}
+
 /**
  * @type Object.<string, typeof DomainArray>
  */
@@ -124,11 +151,20 @@ const domainTypes = {
 /**
  * 
  * @param {string} type 
+ * @param {scalar[]} [initialDomain]
  */
-export default function createDomain(type) {
-    if (domainTypes[type]) {
+export default function createDomain(type, initialDomain) {
+    if (type == "quantitative" && isPiecewiseArray(initialDomain)) {
+        const b = new PiecewiseDomain(/** @type {number[]} */(initialDomain));
+        b.type = type;
+        return b;
+
+    } else if (domainTypes[type]) {
         const b = new domainTypes[type]();
         b.type = type;
+        if (initialDomain) {
+            b.extendAll(initialDomain);
+        }
         return b;
     }
     
@@ -150,4 +186,12 @@ export function isDomainArray(array) {
  */
 export function toRegularArray(domainArray) {
     return [...domainArray];
+}
+
+/**
+ * @param {scalar[]} array
+ */
+function isPiecewiseArray(array) {
+    return array && array.length > 0 && array.length != 2 &&
+        array.every(x => typeof x === "number");
 }

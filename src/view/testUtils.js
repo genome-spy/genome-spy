@@ -5,7 +5,6 @@
 
 import { createView, initializeViewHierarchy } from "./viewUtils";
 import DataSource from '../data/dataSource';
-import { VisualMapperFactory } from "../data/visualEncoders";
 import AccessorFactory from "../encoder/accessor";
 
 /**
@@ -16,7 +15,6 @@ export function create(spec) {
     const context = {
         /** @param {object} config */
         getDataSource: config => new DataSource(config, "."),
-        visualMapperFactory: new VisualMapperFactory(),
         accessorFactory: new AccessorFactory()
     };
 

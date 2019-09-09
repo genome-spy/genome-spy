@@ -1,0 +1,22 @@
+{
+    "tracks": [
+        {
+            "type": "SimpleTrack",
+            
+            "data": {
+                "values": [
+                    { "x": 0.25, "x2": 0.75 }
+                ]
+            },
+
+            "mark": "rect",
+
+            "encoding": {
+                "x":  { "field": "x", "type": "quantitative", "scale": { "domain": [0, 1] } },
+                "x2": { "field": "x2" },
+                "y":  { "field": "x", "type": "quantitative", "scale": { "domain": [0, 1] } },
+                "y2": { "field": "x2" }
+            }
+        }
+    ]
+}

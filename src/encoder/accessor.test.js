@@ -17,13 +17,14 @@ test("Creates an expression accessor", () => {
 });
 
 test("Creates a constant accessor", () => {
-    const accessor = af.createAccessor({ constant: 1000 }); 
-    expect(accessor(datum)).toEqual(1000);
-    expect(accessor.constant).toBeTruthy();
+    const accessor = af.createAccessor({ constant: 0 }); 
+    expect(accessor(datum)).toEqual(0);
+    expect(accessor.constant).toBeDefined();
 });
 
 test("Throws on incomplete encoding spec", () => {
     expect(() => af.createAccessor({})).toThrow();
+    expect(() => af.createAccessor({}, true)).not.toThrow();
 })
 
 test("Registers and creates a custom accessor", () => {

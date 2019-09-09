@@ -309,8 +309,7 @@ export default class SimpleTrack extends WebGlTrack {
             const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / props.labelFontSize / 1.7);
 
             /** @type {array} */
-            //const ticks = d3ticks(domain[0], domain[1], tickCount);
-            const ticks = scale.ticks(tickCount);
+            const ticks = scale.ticks ? scale.ticks(tickCount) : scale.domain();
 
             // --- Ticks ---
 
@@ -324,7 +323,9 @@ export default class SimpleTrack extends WebGlTrack {
                 xPos -= props.labelPadding;
 
                 const maxAbs = d3max(scale.domain(), x => Math.abs(x));
-                const format = scale.tickFormat(tickCount, props.format || (maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined));
+                const format = scale.tickFormat ?
+                    scale.tickFormat(tickCount, props.format || (maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined)) :
+                    value => value;
 
                 ctx.font = `${props.labelFont} ${props.labelFontSize}px`;
                 ctx.textAlign = "right";
@@ -389,7 +390,7 @@ export default class SimpleTrack extends WebGlTrack {
             const tickCount = Math.round(axisHeight / Math.exp(axisHeight / 800) / props.labelFontSize / 1.7);
 
             /** @type {array} */
-            const ticks = scale.ticks(tickCount);
+            const ticks = scale.ticks ? scale.ticks(tickCount) : scale.domain();
 
             // --- Domain line ---
 
@@ -421,7 +422,9 @@ export default class SimpleTrack extends WebGlTrack {
 
                 const maxAbs = d3max(scale.domain(), x => Math.abs(x));
 
-                const format = scale.tickFormat(tickCount, props.format || (maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined));
+                const format = scale.tickFormat ?
+                    scale.tickFormat(tickCount, props.format || (maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined)) :
+                    value => value;
 
                 ctx.font = `${props.labelFont} ${props.labelFontSize}px`;
                 ctx.textAlign = "right";
