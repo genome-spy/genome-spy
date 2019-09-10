@@ -68,11 +68,12 @@ export default class RectMark extends Mark {
      */
     _createSampleBufferInfo(interval, tesselationThreshold) {
         // TODO: Disable tesselation on SimpleTrack - no need for it
-        const builder = new RectVertexBuilder(this.encoders, tesselationThreshold, {});
+        const builder = new RectVertexBuilder(this.encoders, {
+            tesselationThreshold,
+            visibleRange: interval ? interval.toArray() : undefined
+        });
 
         for (const [sample, data] of this.dataBySample.entries()) {
-            //builder.addBatch(sample, interval ? clipRects(rects, interval) : rects);
-            // TODO: clipRects!
             builder.addBatch(sample, data);
         }
         const vertexData = builder.toArrays();
@@ -239,34 +240,4 @@ export default class RectMark extends Mark {
         };
     }
 
-}
-
-/**
- * 
- * @param {import("../gl/segmentsToVertices").RectSpec[]} rects 
- * @param {import("../utils/interval").default} interval
- */
-function clipRects(rects, interval) {
-    const lower = interval.lower, upper = interval.upper;
-    const clipped = [];
-
-    for (const rect of rects) {
-        if (rect.x2 < lower || rect.x > upper) {
-            // TODO: Use binary search for culling
-            continue;
-
-        } else if (rect.x >= lower && rect.x2 <= upper) {
-            clipped.push(rect);
-
-        } else {
-            clipped.push(Object.assign(Object.create(rect),
-                {
-                    x: Math.max(rect.x, lower),
-                    x2: Math.min(rect.x2, upper)
-                }
-            ));
-        }
-    }
-
-    return clipped;
 }

@@ -69,12 +69,16 @@ export class RectVertexBuilder {
     /**
      * 
      * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
-     * @param {number} [tesselationThreshold]
+     * @param {Object} object
+     * @param {number} [object.tesselationThreshold]
      *     If the rect is narrower than the threshold, tesselate it into pieces
+     * @param {number[]} [object.visibleRange]
      */
-    constructor(encoders, tesselationThreshold = Infinity, renderOptions) {
+    constructor(encoders, { tesselationThreshold = Infinity, visibleRange = [-Infinity, Infinity]}) {
 
         this.encoders = encoders;
+        this.visibleRange = visibleRange;
+
         const e = encoders;
 
         this.tesselationThreshold = tesselationThreshold || Infinity;
@@ -111,14 +115,25 @@ export class RectVertexBuilder {
         const offset = this.variableBuilder.vertexCount;
 
         const e = this.encoders;
+        const [lower, upper] = this.visibleRange;
 
         for (const d of data) {
-            let x = e.x(d), x2 = e.x2(d),
-                y = e.y(d), y2 = e.y2(d);
+            let x = e.x(d), x2 = e.x2(d);
             
             if (x > x2) {
                 [x, x2] = [x2, x];
             }
+
+            // Skip rects that fall outside the visible range. TODO: Optimize by using binary search / interval tree
+            if (x2 < lower || x > upper) {
+                continue;
+            }
+
+            if (x < lower) x = lower;
+            if (x2 > upper) x2 = upper;
+
+
+            let y = e.y(d), y2 = e.y2(d);
 
             if (y > y2) {
                 [y, y2] = [y2, y];
@@ -126,9 +141,6 @@ export class RectVertexBuilder {
 
             const width = x2 - x || Math.pow(0.1, 20); // A hack to allow minWidth for zero-height rects.
             const height = y2 - y || Math.pow(0.1, 20); // TODO: Fix the hack
-
-            // TODO: Fix this (filter out invisible rects)
-            //if (!(p => p.x2 > p.x && p.y2 > p.y && p.opacity !== 0)) continue;
 
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
             this.variableBuilder.updateFromSpec(d);
@@ -139,8 +151,7 @@ export class RectVertexBuilder {
             this.variableBuilder.pushAll();
 
             // Tesselate segments
-            //const tileCount = width < Infinity ? Math.ceil(width / this.tesselationThreshold) : 1;
-            const tileCount = 1; // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
+            const tileCount = width < Infinity ? Math.ceil(width / this.tesselationThreshold) : 1;
             for (let i = 0; i <= tileCount; i++) {
                 const frac = i / tileCount;
 

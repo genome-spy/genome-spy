@@ -1,7 +1,5 @@
 import * as twgl from 'twgl-base.js';
 import { ticks as d3ticks, max as d3max } from 'd3-array';
-import { scaleLinear } from 'd3-scale';
-import { format as d3format } from 'd3-format';
 
 import formatObject from '../utils/formatObject';
 import Interval from '../utils/interval';
