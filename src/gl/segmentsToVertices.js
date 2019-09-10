@@ -1,4 +1,5 @@
 import { color as d3color } from 'd3-color';
+import { fastmap, isString } from 'vega-util';
 import { fp64ify } from './includes/fp64-utils';
 import Interval from "../utils/interval";
 
@@ -17,14 +18,31 @@ const glConst = {
     STATIC_DRAW: 0x88E4
 };
 
-export function color2floatArray(color) {
+function color2floatArray(color) {
     if (!color) {
         return [1, 0, 1]; // Just an indicator of error
-    }
-    if (typeof color == "string") {
+        
+    } else if (isString(color)) {
         color = d3color(color);
     }
     return [color.r / 255.0, color.g / 255.0, color.b / 255.0];
+}
+
+function createCachingColor2floatArray() {
+    const cache = fastmap();
+    
+    return color => {
+        if (isString(color) && cache.size < 30) {
+            let value = cache.get(color);
+            if (value) {
+                return value;
+            }
+            value = color2floatArray(color);
+            cache.set(color, value);
+            return value;
+        }
+        return color2floatArray(color);
+    }
 }
 
 /**
@@ -189,11 +207,13 @@ export class PointVertexBuilder {
 
         const e = encoders;
 
+        const c2f = createCachingColor2floatArray();
+
         const converters = {
             x:       { f: d => fp64ify(e.x(d)),              numComponents: 2 },
             y:       { f: d => e.y(d),                       numComponents: 1 },
             size:    { f: d => Math.sqrt(e.size(d)),         numComponents: 1 },
-            color:   { f: d => color2floatArray(e.color(d)), numComponents: 3 },
+            color:   { f: d => c2f(e.color(d)),              numComponents: 3 },
             opacity: { f: d => e.opacity(d),                 numComponents: 1 },
             zoomThreshold: { f: d => e.zoomThreshold(d),     numComponents: 1 },
         };
