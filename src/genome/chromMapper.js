@@ -55,6 +55,7 @@ export function chromMapper(chromSizes) {
          * @param {number} locus 
          */
         toContinuous: function(chromName, locus) {
+            locus = +locus;
             return cumulativeChromMap[prefix(chromName)] + locus;
         },
 
