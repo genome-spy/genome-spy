@@ -11,7 +11,6 @@ import MouseTracker from '../mouseTracker';
 import * as html from '../utils/html';
 import PointMark from '../marks/pointMark';
 import View from '../view/view';
-import UnitView from '../view/unitView';
 
 import {
     createView,
@@ -68,7 +67,6 @@ export default class SimpleTrack extends WebGlTrack {
 
         const spec = /** @type {import("../view/viewUtils").Spec} */config;
         const context = {
-            visualMapperFactory: genomeSpy.visualMapperFactory,
             accessorFactory: genomeSpy.accessorFactory,
             genomeSpy, // TODO: An interface instead of a GenomeSpy
             track: this,
@@ -113,8 +111,9 @@ export default class SimpleTrack extends WebGlTrack {
         this.viewportMouseTracker = new MouseTracker({
             element: this.glCanvas,
             tooltip: this.genomeSpy.tooltip,
-            resolver: this.findDatumAt.bind(this),
-            tooltipConverter: datum => Promise.resolve(this.datumToTooltip(datum))
+            resolver: this.findDatumAndMarkAt.bind(this),
+            tooltipConverter: datum => Promise.resolve(this.datumToTooltip(datum)),
+            eqTest: (a, b) => (Object.is(a && a.datum, b && b.datum))
         })
             .on("dblclick", this.zoomToSpec.bind(this));
 
@@ -132,11 +131,14 @@ export default class SimpleTrack extends WebGlTrack {
         this.genomeSpy.zoom.attachZoomEvents(
             this.glCanvas,
             point => {
-                const datum = this.findDatumAt(point);
-                if (datum && datum._mark instanceof PointMark) {
-                    // Snap the mouse cursor to the center of point marks to ease zooming
-                    // TODO: Add a snap method to mark classes -> more abstract design
-                    point[0] = this.genomeSpy.rescaledX(datum.x);
+                const datumAndMark = this.findDatumAndMarkAt(point);
+                if (datumAndMark) {
+                    const datum = datumAndMark.datum, mark = datumAndMark.mark; 
+                    if (mark instanceof PointMark) {
+                        // Snap the mouse cursor to the center of point marks to ease zooming
+                        // TODO: Add a snap method to mark classes -> more abstract design
+                        point[0] = this.genomeSpy.rescaledX(mark.encoders.x(datum));
+                    }
                 }
                 // TODO: Support RectMarks with minWidth
 
@@ -183,43 +185,56 @@ export default class SimpleTrack extends WebGlTrack {
     /**
      * Returns the datum (actually the mark spec) at the specified point
      * 
+     * @typedef {Object} DatumAndMark
+     * @prop {object} datum
+     * @prop {import("../marks/mark").default} mark
+     * 
      * @param {number[]} point 
+     * @returns {DatumAndMark}
      */
-    findDatumAt(point) {
+    findDatumAndMarkAt(point) {
         const [x, y] = point;
 
         const bandInterval = new Interval(0, this.glCanvas.clientHeight);
 
         for (const mark of getMarks(this.viewRoot).reverse()) {
             if (mark.markConfig.tooltip !== null) {
-                const spec = mark.findDatum(undefined, x, y, bandInterval);
-                if (spec) {
-                    return spec;
+                const datum = mark.findDatum(undefined, x, y, bandInterval);
+                if (datum) {
+                    return { datum, mark };
                 }
             }
         }
-
-        return null;
     }
 
-    datumToTooltip(spec) {
-        const datum = spec.rawDatum;
+    /**
+     * 
+     * @param {DatumAndMark} datumAndMark 
+     */
+    datumToTooltip(datumAndMark) {
+        const datum = datumAndMark.datum;
+        const mark = datumAndMark.mark;
 
-        /** @type {import("../view/unitView").default} */
-        const unitView = spec._viewUnit;
-
-        const markConfig = unitView.mark.markConfig;
-        const propertyFilter = markConfig.tooltip && markConfig.tooltip.skipFields ?
+        const markConfig = mark.markConfig;
+        const propertyFilter = markConfig && markConfig.tooltip && markConfig.tooltip.skipFields ?
             entry => markConfig.tooltip.skipFields.indexOf(entry[0]) < 0 :
             entry => true;
 
+        /**
+         * @param {string} key
+         * @param {object} datum
+         */
         function legend(key, datum) {
-            const mapper = unitView.mark.fieldMappers && unitView.mark.fieldMappers[key];
-
-            if (mapper && mapper.targetType == "color") {
-                return `<span class="color-legend" style="background-color: ${mapper(datum)}"></span>`;
+            for (const [channel, encoder] of Object.entries(mark.encoders)) {
+                if (encoder.accessor && encoder.accessor.fields.includes(key)) {
+                    switch (channel) {
+                        case "color":
+                            return `<span class="color-legend" style="background-color: ${encoder(datum)}"></span>`;
+                        default:
+                    }
+                }
             }
-            
+
             return "";
         } 
 
@@ -232,8 +247,8 @@ export default class SimpleTrack extends WebGlTrack {
             ).join("") +
             "</table>";
 
-        const title = unitView.spec.title ?
-            `<div class="title"><strong>${html.escapeHtml(unitView.spec.title)}</strong></div>` :
+        const title = mark.unitView.spec.title ?
+            `<div class="title"><strong>${html.escapeHtml(mark.unitView.spec.title)}</strong></div>` :
             "";
         
         return `

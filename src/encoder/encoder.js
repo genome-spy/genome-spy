@@ -1,6 +1,11 @@
 
 /**
- * @typedef {(function(object):(string|number)) & { constant: boolean, invert: function, accessor: function}} Encoder
+ * @typedef {Object} EncoderMetadata
+ * @prop {boolean} constant
+ * @prop {function} invert
+ * @prop {import("./accessor").Accessor} accessor
+ * 
+ * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder
  */
 
 /**
@@ -9,6 +14,7 @@
  * @param {import("../view/viewUtils").EncodingSpecs} encodingSpecs 
  * @param {function(string):function} scaleSource 
  * @param {function(string):(import("./accessor").Accessor)} accessorSource 
+ * @returns {Object.<string, Encoder>}
  */
 export default function createEncoders(encodingSpecs, scaleSource, accessorSource) {
     return Object.fromEntries(
@@ -25,8 +31,9 @@ export default function createEncoders(encodingSpecs, scaleSource, accessorSourc
  * 
  * @param {import("../view/viewUtils").EncodingSpec} encodingSpec
  * @param {function} scaleSource
- * @param {function} accessor
+ * @param {import("./accessor").Accessor} accessor
  * @param {string} accessor
+ * @returns {Encoder}
  */
 function createEncoder(encodingSpec, scale, accessor, channel) {
     /** @type {Encoder} */

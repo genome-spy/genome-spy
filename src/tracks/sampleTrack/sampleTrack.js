@@ -288,7 +288,7 @@ export default class SampleTrack extends SimpleTrack {
      * 
      * @param {number[]} point 
      */
-    findDatumAt(point) {
+    findDatumAndMarkAt(point) {
         const [x, y] = point;
 
         const sampleId = this.sampleScale.invert(y);
@@ -300,14 +300,12 @@ export default class SampleTrack extends SimpleTrack {
 
         for (const mark of getMarks(this.viewRoot).reverse()) {
             if (mark.markConfig.tooltip !== null) {
-                const spec = mark.findDatum(sampleId, x, y, bandInterval);
-                if (spec) {
-                    return spec;
+                const datum = mark.findDatum(sampleId, x, y, bandInterval);
+                if (datum) {
+                    return { datum, mark };
                 }
             }
         }
-
-        return null;
     }
 
 
