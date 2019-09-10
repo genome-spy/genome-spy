@@ -49,8 +49,7 @@ export default class PointMark extends Mark {
     async initializeData() {
         await super.initializeData();
 
-        const encoding = this.getEncoding();
-        const accessor = this.getContext().accessorFactory.createAccessor(encoding["x"]); 
+        const accessor = this.unitView.getAccessor("x");
         
         // Sort each point of each sample for binary search
         /** @type {Map<string, object[]>} */
@@ -98,8 +97,6 @@ export default class PointMark extends Mark {
      */
     render(samples, globalUniforms) {
         const gl = this.gl;
-
-        const yDomain = this.getYDomain();
 
         gl.enable(gl.BLEND);
         gl.useProgram(this.programInfo.program);

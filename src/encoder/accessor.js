@@ -1,8 +1,9 @@
 import { parse, codegen } from 'vega-expression';
 import { field, constant } from 'vega-util';
 
-
 /**
+ * @typedef {function(object):any} Accessor
+ * 
  * @typedef {import("../view/viewUtils").EncodingSpec} EncodingSpec
  */
 export default class AccessorFactory {
@@ -34,19 +35,13 @@ export default class AccessorFactory {
     /**
      * 
      * @param {EncodingSpec} encoding 
-     * @param {boolean} [quiet] Don't throw error if encoding spec is incomplete
      */
-    createAccessor(encoding, quiet) {
+    createAccessor(encoding) {
         for (const creator of this.accessorCreators) {
             const accessor = creator(encoding);
             if (accessor) {
                 return accessor;
             }
-        }
-
-        if (!quiet) {
-            // TODO: Some context to the message
-            throw new Error(`Can not create an accessor. Incomplete encoding configuration: ${JSON.stringify(encoding)}`);
         }
     }
 }

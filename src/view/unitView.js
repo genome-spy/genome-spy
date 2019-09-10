@@ -9,6 +9,7 @@ import createDomain from '../utils/domainArray';
 
 /**
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray 
+ * @typedef {import("../encoder/accessor").Accessor} Accessor 
  */
 
 /**
@@ -38,6 +39,12 @@ export default class UnitView extends ContainerView {
          * @type {Object.<string, DomainArray>}
          */
         this._dataDomains = {};
+
+        /**
+         * Cache for accessors
+         * @type {Object.<string, Accessor>}
+         */
+        this._accessors = {};
 
         const Mark = markTypes[this.getMarkType()];
         if (Mark) {
@@ -69,7 +76,7 @@ export default class UnitView extends ContainerView {
                 continue;
             }
 
-            if (!this.context.accessorFactory.createAccessor(encoding[channel], true)) {
+            if (!this.getAccessor(channel)) {
                 // The channel has no fields or anything, so it's likely just a "value". Let's skip.
                 continue;
             }
@@ -103,6 +110,23 @@ export default class UnitView extends ContainerView {
             }
             view = view.parent;
         } while (view);
+    }
+
+    /**
+     * 
+     * @param {string} channel 
+     */
+    getAccessor(channel) {
+        if (this._accessors.hasOwnProperty(channel)) {
+            return this._accessors[channel];
+        }
+
+        const encoding = this.mark.getEncoding(); // Mark provides encodings with defaults and possible modifications
+        if (encoding && encoding[channel]) {
+            const accessor = this.context.accessorFactory.createAccessor(encoding[channel]);
+            this._accessors[channel] = accessor;
+            return accessor;
+        }        
     }
 
     /**

@@ -50,8 +50,6 @@ export default class View {
         const pe = this.parent ? this.parent.getEncoding() : {};
         const te = this.spec.encoding || {};
 
-        // TODO: Validate encoding, e.g. missing type etc..
-
         return {
             ...pe,
             ...te

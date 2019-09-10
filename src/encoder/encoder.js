@@ -8,16 +8,16 @@
  * 
  * @param {import("../view/viewUtils").EncodingSpecs} encodingSpecs 
  * @param {function(string):function} scaleSource 
- * @param {import("./accessor").default} accessorFactory 
+ * @param {function(string):(import("./accessor").Accessor)} accessorSource 
  */
-export default function createEncoders(encodingSpecs, scaleSource, accessorFactory) {
+export default function createEncoders(encodingSpecs, scaleSource, accessorSource) {
     return Object.fromEntries(
         Object.keys(encodingSpecs)
             .filter(channel => encodingSpecs[channel] !== null)
             .map(channel => [
                 channel,
                 createEncoder(encodingSpecs[channel], scaleSource(primaryChannel(channel)),
-                    accessorFactory.createAccessor(encodingSpecs[channel] || {}, true), channel)
+                    accessorSource(channel), channel)
             ]));
 }
 

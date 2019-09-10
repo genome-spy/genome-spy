@@ -48,6 +48,8 @@ export default class Mark {
     }
 
     async initializeData() {
+        // TODO: Consider putting initializeData to unitView
+
         const data = this.unitView.getData();
         if (!data) {
             // TODO: Show view path in error
@@ -57,11 +59,9 @@ export default class Mark {
         // TODO: Optimize. Now inherited data is ungrouped in all children
         const ungrouped = data.ungroupAll().data;
 
-        const encoding = this.getEncoding();
-
-        if (encoding["sample"]) {
+        const accessor = this.unitView.getAccessor("sample"); 
+        if (accessor) {
             // TODO: Optimize. Now inherited data is grouped by sample in all children
-            const accessor = this.getContext().accessorFactory.createAccessor(encoding["sample"]); 
             /** @type {Map<string, object[]>} */
             this.dataBySample = group(ungrouped, accessor);
 
@@ -81,7 +81,8 @@ export default class Mark {
             }
         }
 
-        this.encoders = createEncoders(encoding, scaleSource, this.getContext().accessorFactory);
+        // TODO: Consider putting encoders to unitView
+        this.encoders = createEncoders(encoding, scaleSource, scale => this.unitView.getAccessor(scale));
 
         this.gl = this.getContext().track.gl; // TODO: FIXME FIXME FIXME FIXME FIXME FIXME 
     }
@@ -96,7 +97,7 @@ export default class Mark {
      */
     getYDomain() {
         // TODO: Get rid of the Interval
-        return Interval.fromArray(this.unitView.getResolution("y").getScale().domain());
+        return Interval.fromArray(this.getScale("y").domain());
     }
 
     /**
@@ -106,6 +107,14 @@ export default class Mark {
         return this.getContext().genomeSpy.getDomain();
     }
 
+    /**
+     * Returns a resolved scale for the given channel
+     * 
+     * @param {string} channel 
+     */
+    getScale(channel) {
+        return this.unitView.getResolution(channel).getScale();
+    }
 
     /**
      * @param {object[]} samples

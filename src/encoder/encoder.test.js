@@ -22,8 +22,10 @@ describe("Encoder", () => {
     const scaleSource = channel => scales[channel];
     
     const accessorFactory = new AccessorFactory();
+    const accesorSource = channel => 
+        accessorFactory.createAccessor(encodingSpecs[channel]);
 
-    const encoders = createEncoders(encodingSpecs, scaleSource, accessorFactory);
+    const encoders = createEncoders(encodingSpecs, scaleSource, accesorSource);
 
     const datum = {
         a: 5,
@@ -32,7 +34,7 @@ describe("Encoder", () => {
     };
 
     test("Throws on a broken spec", () =>
-        expect(() => createEncoders({ x: {} }, x => null, accessorFactory)).toThrow());
+        expect(() => createEncoders({ x: {} }, x => null, accesorSource)).toThrow());
 
     test("The encoder object contains all channels", () =>
         expect(["x", "y", "z", "size"].every(channel => typeof encoders[channel] === "function"))
