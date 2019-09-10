@@ -148,10 +148,12 @@ export default class PointMark extends Mark {
      * @param {import("../utils/interval").default} yBand the matched band on the band scale
      */
     findDatum(sampleId, x, y, yBand) {
-        const points = this.dataBySample.get(sampleId || "default");
-        if (!points) {
+        const data = this.dataBySample.get(sampleId || "default");
+        if (!data) {
             return null;
         }
+
+        const e = this.encoders;
 
         x -= (this.renderConfig.xOffset || 0.0);
         y += (this.renderConfig.yOffset || 0.0);
@@ -164,28 +166,24 @@ export default class PointMark extends Mark {
 
         const xScale = this.getContext().track.genomeSpy.rescaledX;
 
-        const yScale = scaleLinear()
-            .domain(this.getYDomain().toArray())
-            .range([0, 1]);
-
-        const bisect = bisector(point => point.x).left;
-        // Find the range may contain the point
+        const bisect = bisector(e.x).left;
+        // Find the range that may contain the point
         // TODO: Dont's slice, just use the indices to limit iteration
-        const pointSubset = points.slice(
-            bisect(points, xScale.invert(x - maxPointSize / 2)),
-            bisect(points, xScale.invert(x + maxPointSize / 2)));
+        const subset = data.slice(
+            bisect(data, xScale.invert(x - maxPointSize / 2)),
+            bisect(data, xScale.invert(x + maxPointSize / 2)));
 
         const margin = 0.005; // TODO: Configurable
         const threshold = this.getContext().genomeSpy.getExpZoomLevel() * fractionToShow;
         const thresholdWithMargin = threshold * (1 + margin);
 
         let lastMatch = null;
-        for (const point of pointSubset) {
-            if (1 - point.zoomThreshold < thresholdWithMargin) {
+        for (const d of subset) {
+            if (1 - e.zoomThreshold(d) < thresholdWithMargin) {
                 // TODO: Optimize by computing mouse y on the band scale
-                const dist = distance(x, xScale(point.x), y, yBand.interpolate(1 - yScale(point.y)));
-                if (dist < maxPointSize * Math.sqrt(point.size) / 2) {
-                    lastMatch = point;
+                const dist = distance(x, xScale(e.x(d)), y, yBand.interpolate(1 - e.y(d)));
+                if (dist < maxPointSize * Math.sqrt(e.size(d)) / 2) {
+                    lastMatch = d;
                 }
             }
         }

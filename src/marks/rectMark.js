@@ -155,7 +155,7 @@ export default class RectMark extends Mark {
      * @param {import("../utils/interval").default} yBand the matched band on the band scale
      */
     findDatum(sampleId, x, y, yBand) {
-        const rects = this.dataBySample.get(sampleId || "default");
+        const data = this.dataBySample.get(sampleId || "default");
 
         const gl = this.getContext().track.gl;
         const dpr = window.devicePixelRatio;
@@ -163,49 +163,45 @@ export default class RectMark extends Mark {
         x -= (this.renderConfig.xOffset || 0.0);
         y += (this.renderConfig.yOffset || 0.0);
 
-        if (rects) {
-            const yDomain = this.getYDomain(); // Could be cached...
+        if (data) {
+            const e = this.encoders;
 
             const unitMinWidth = this.renderConfig.minRectWidth / gl.drawingBufferWidth * dpr;
             const halfMinWidth = unitMinWidth * this.getContext().genomeSpy.getViewportDomain().width() / 2;
 
             const unitMinHeight = this.renderConfig.minRectHeight / gl.drawingBufferHeight * dpr;
-            const halfMinHeight = unitMinHeight * yDomain.width() / 2; // TODO: take yBand into account
+            const halfMinHeight = unitMinHeight / 2; // TODO: take yBand into account
 
             const scaledX = this.getContext().genomeSpy.rescaledX.invert(x);
 
-            const yScale = scaleLinear()
-                .domain(yDomain.toArray())
-                .range([0, 1]);
-
-            const scaledY = yScale.invert(1 - (y - yBand.lower) / yBand.width());
+            const scaledY = 1 - (y - yBand.lower) / yBand.width();
 
             const matchX = this.renderConfig.minRectWidth ?
-                rect => {
-                    const halfWidth = Math.max((rect.x2 - rect.x) / 2, halfMinWidth);
-                    const centre = (rect.x + rect.x2) / 2;
+                d => {
+                    const halfWidth = Math.max((e.x2(d) - e.x(d)) / 2, halfMinWidth);
+                    const centre = (e.x(d) + e.x2(d)) / 2;
 
                     return scaledX >= centre - halfWidth && scaledX < centre + halfWidth;
                 } :
-                rect => {
-                    return (scaledX >= rect.x && scaledX < rect.x2) || (scaledX >= rect.x2 && scaledX < rect.x);
+                d => {
+                    return (scaledX >= e.x(d) && scaledX < e.x2(d)) || (scaledX >= e.x2(d) && scaledX < e.x(x));
                 };
 
             const matchY = this.renderConfig.minRectHeight ? 
-                rect => {
-                    const halfHeight = Math.max(Math.abs((rect.y2 - rect.y)) / 2, halfMinHeight);
-                    const centre = (rect.y + rect.y2) / 2;
+                d => {
+                    const halfHeight = Math.max(Math.abs((e.y2(d) - e.y(d))) / 2, halfMinHeight);
+                    const centre = (e.y(d) + e.y2(d)) / 2;
 
                     return scaledY >= centre - halfHeight && scaledY < centre + halfHeight;
                 } :
-                rect => {
-                    return (scaledY >= rect.y && scaledY < rect.y2) || (scaledY >= rect.y2 && scaledY < rect.y)
+                d => {
+                    return (scaledY >= e.y(d) && scaledY < e.y2(d)) || (scaledY >= e.y2(d) && scaledY < e.y(d))
                 };
 
             let lastMatch = null;
-            for (let rect of rects) {
-                if (matchX(rect) && matchY(rect)) {
-                    lastMatch = rect;
+            for (let datum of data) {
+                if (matchX(datum) && matchY(datum)) {
+                    lastMatch = datum;
                 }
             }
 
