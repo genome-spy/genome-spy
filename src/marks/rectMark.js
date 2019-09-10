@@ -220,10 +220,10 @@ export default class RectMark extends Mark {
      * @param {number} x position on the x domain
      */
     findDatumAt(sampleId, x) {
-        const rects = this.specsBySample.get(sampleId);
-        if (rects) {
-            const rect = rects.find(rect => x >= rect.x && x < rect.x2);
-            return rect && rect.rawDatum || undefined;
+        const e = this.encoders;
+        const data = this.dataBySample.get(sampleId);
+        if (data) {
+            return data.find(d => x >= e.x(d) && x < e.x2(d));
         }
     }
 
