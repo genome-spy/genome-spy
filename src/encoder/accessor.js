@@ -2,23 +2,37 @@ import { parse, codegen } from 'vega-expression';
 import { field, constant } from 'vega-util';
 
 /**
- * @typedef {function(object):any} Accessor
+ * @typedef {Object} AccessorMetadata
+ * @prop {boolean} constant Accessor returns a constant value
+ * @prop {string[]} fields The fields that the return value is based on (if any)
+ * 
+ * @typedef {(function(object):any) & AccessorMetadata} Accessor
  * 
  * @typedef {import("../view/viewUtils").EncodingSpec} EncodingSpec
  */
 export default class AccessorFactory {
     constructor() {
-        /** @type {(function(EncodingSpec):(function(object):any))[]} */
+        /** @type {(function(EncodingSpec):Accessor)[]} */
         this.accessorCreators = [];
 
-        this.register(encoding => (encoding.field ? field(encoding.field) : undefined));
+        this.register(encoding => {
+            if (encoding.field) {
+                /** @type {Accessor} */
+                const accessor = field(encoding.field);
+                accessor.constant = false;
+                accessor.fields = [encoding.field];
+                return accessor;
+            }
+        });
 
         this.register(encoding => (encoding.expr ? createExpressionAccessor(encoding.expr) : undefined));
 
         this.register(encoding => {
             if (encoding.constant !== undefined) {
+                /** @type {Accessor} */
                 const accessor = constant(encoding.constant);
                 accessor.constant = true; // Can be optimized downstream
+                accessor.fields = [];
                 return accessor;
             }
         });
@@ -26,7 +40,7 @@ export default class AccessorFactory {
 
     /**
      * 
-     * @param {(function(EncodingSpec):(function(object):any))} creator 
+     * @param {function(EncodingSpec):Accessor} creator 
      */
     register(creator) {
         this.accessorCreators.push(creator);
@@ -68,5 +82,9 @@ function createExpressionAccessor(expr) {
     // eslint-disable-next-line no-new-func
     const fn = Function("datum", "global", `"use strict"; return (${generatedCode.code});`);
 
-    return /** @param {object} datum*/ datum => fn(datum, global);
+    /** @type {Accessor} */
+    const accessor = datum => fn(datum, global);
+    accessor.fields = generatedCode.fields;
+    accessor.constant = accessor.fields.length == 0; // Not bulletproof, eh
+    return accessor;
 }

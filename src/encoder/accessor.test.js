@@ -9,17 +9,24 @@ const datum = {
 }
 
 test("Creates a field accessor", () => {
-    expect(af.createAccessor({ field: "a" })(datum)).toEqual(1);
+    const a = af.createAccessor({ field: "a" });
+    expect(a(datum)).toEqual(1);
+    expect(a.constant).toBeFalsy();
+    expect(a.fields).toEqual(["a"]);
 });
 
 test("Creates an expression accessor", () => {
-    expect(af.createAccessor({ expr: "datum.b + datum.c" })(datum)).toEqual(5);
+    const a = af.createAccessor({ expr: "datum.b + datum.c" })
+    expect(a(datum)).toEqual(5);
+    expect(a.constant).toBeFalsy();
+    expect(a.fields.sort()).toEqual(["b", "c"].sort());
 });
 
 test("Creates a constant accessor", () => {
-    const accessor = af.createAccessor({ constant: 0 }); 
-    expect(accessor(datum)).toEqual(0);
-    expect(accessor.constant).toBeDefined();
+    const a = af.createAccessor({ constant: 0 }); 
+    expect(a(datum)).toEqual(0);
+    expect(a.constant).toBeTruthy();
+    expect(a.fields).toEqual([]);
 });
 
 test("Returns undefined on incomplete encoding spec", () => {

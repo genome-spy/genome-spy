@@ -62,7 +62,11 @@ export default class Genome extends CoordinateSystem {
                 const chrom = encoding.chrom;
                 const pos = encoding.pos;
 
-                return d => this.chromMapper.toContinuous(d[chrom], d[pos]) + offset;
+                /** @type {import("../encoder/accessor").Accessor} */
+                const accessor = d => this.chromMapper.toContinuous(d[chrom], d[pos]) + offset;
+                accessor.constant = false;
+                accessor.fields = [chrom, pos];
+                return accessor;
             }
         });
 
