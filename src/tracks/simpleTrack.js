@@ -113,7 +113,7 @@ export default class SimpleTrack extends WebGlTrack {
             tooltipConverter: datum => Promise.resolve(this.datumToTooltip(datum)),
             eqTest: (a, b) => (Object.is(a && a.datum, b && b.datum))
         })
-            .on("dblclick", this.zoomToSpec.bind(this));
+            .on("dblclick", this.zoomToDatum.bind(this));
 
 
         this.genomeSpy.on("layout", layout => {
@@ -163,16 +163,24 @@ export default class SimpleTrack extends WebGlTrack {
         this.adjustCanvas(this.leftCanvas, layout.axis, trackHeight);
     }
 
-    zoomToSpec(spec, mouseEvent, point) {
+    /**
+     * 
+     * @param {DatumAndMark} datumAndMark 
+     * @param {MouseEvent} mouseEvent 
+     * @param {*} point 
+     */
+    zoomToDatum(datumAndMark, mouseEvent, point) {
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(datumAndMark.mark.encoders);
+        const d = datumAndMark.datum;
         // TODO: handle case: x = 0
-        if (spec.x && spec.x2) {
-            const interval = new Interval(spec.x, spec.x2);
+        if (e.x && e.x2) {
+            const interval = new Interval(e.x(d), e.x2(d));
             this.genomeSpy.zoomTo(interval.pad(interval.width() * 0.25));
 
-        } else if (spec.x && !spec.x2) {
+        } else if (e.x && !e.x2) {
             const width = 1000000; // TODO: Configurable
 
-            this.genomeSpy.zoomTo(new Interval(spec.x - width / 2, spec.x + width / 2));
+            this.genomeSpy.zoomTo(new Interval(e.x(d) - width / 2, e.x(d) + width / 2));
         }
     }
 
