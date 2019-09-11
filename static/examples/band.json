@@ -1,0 +1,38 @@
+{
+    "tracks": [
+        {
+            "type": "SimpleTrack",
+            
+            "data": { "url": "companylist.csv" },
+
+            "mark": "rect",
+
+            "transform": [
+                {
+                    "type": "simpleFilter",
+                    "field": "MarketCap",
+                    "operator": "gte",
+                    "value": 50000000000
+                }
+            ],
+
+            "encoding": {
+                "x": {
+                    "field": "MarketCap",
+                    "type": "quantitative"
+                },
+                "x2": {
+                    "constant": 0
+                },
+                "y": {
+                    "field": "Name",
+                    "type": "nominal",
+                    "scale": {
+                        "type": "band",
+                        "padding": 0.2
+                    }
+                }
+            }
+        }
+    ]
+}

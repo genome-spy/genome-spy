@@ -18,10 +18,10 @@ const defaultRenderConfig = {
 
 /** @type {import("../view/viewUtils").EncodingSpecs} */
 const defaultEncoding = {
-    x:       { value: 0 },
-    x2:      { value: 0 },
-    y:       { value: 0 },
-    y2:      { value: 1.0 }, // full-height bars
+    x:       null,
+    x2:      null,
+    y:       null,
+    y2:      null,
     color:   { value: "#1f77b4" },
     opacity: { value: 1.0 },
 };
@@ -88,6 +88,13 @@ export default class RectMark extends Mark {
         super.initializeGraphics();
         const gl = this.gl;
 
+        // A hack to support band scales
+        const yScale = this.getScale("y");
+        if (!this.getEncoding()["y2"] && yScale.bandwidth) {
+            const bandwidth = yScale.bandwidth();
+            this.encoders.y2 = d => this.encoders.y(d) + bandwidth;
+        }
+
         const xDomain = this.getXDomain();
         const domainWidth = xDomain ? xDomain.width() : Infinity;
 
@@ -118,9 +125,6 @@ export default class RectMark extends Mark {
         } else {
             gl.enable(gl.BLEND);
         }
-
-        const yDomain = /** @type {Interval} */(this.getYDomain());
-        
 
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
@@ -165,7 +169,7 @@ export default class RectMark extends Mark {
         y += (this.renderConfig.yOffset || 0.0);
 
         if (data) {
-            const e = this.encoders;
+            const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(this.encoders);
 
             const unitMinWidth = this.renderConfig.minRectWidth / gl.drawingBufferWidth * dpr;
             const halfMinWidth = unitMinWidth * this.getContext().genomeSpy.getViewportDomain().width() / 2;

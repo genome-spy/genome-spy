@@ -393,8 +393,6 @@ export default class SimpleTrack extends WebGlTrack {
 
             xPos -= props.offset;
 
-            const domain = resolution.getDomain();
-
             const scale = resolution.getScale()
                 .copy()
                 .range([this.trackContainer.clientHeight, 0]);
@@ -416,13 +414,15 @@ export default class SimpleTrack extends WebGlTrack {
                     Math.abs(scale(ticks[0]) - scale(ticks[ticks.length - 1])) + props.tickWidth);
             }
 
+            const tickOffset = (scale.bandwidth && scale.bandwidth() || 0) / 2;
+
             // --- Ticks ---
 
             if (props.ticks) {
                 xPos -= props.tickSize;
 
                 for (const tick of ticks) {
-                    const y = scale(tick);
+                    const y = scale(tick) + tickOffset;
                     ctx.fillStyle = props.tickColor;
                     ctx.fillRect(xPos, y - props.tickWidth / 2, props.tickSize, props.tickWidth);
                 }
@@ -444,7 +444,7 @@ export default class SimpleTrack extends WebGlTrack {
                 ctx.textBaseline = "middle";
 
                 for (const tick of ticks) {
-                    const y = scale(tick);
+                    const y = scale(tick) + tickOffset;
                     ctx.fillStyle = props.labelColor;
                     ctx.fillText(format(tick), xPos, y);
                 }

@@ -6,6 +6,7 @@
  * @prop {import("./accessor").Accessor} accessor
  * 
  * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder
+ * @typedef {(function(object):number) & EncoderMetadata} NumberEncoder
  */
 
 /**

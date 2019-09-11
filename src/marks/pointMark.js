@@ -153,7 +153,7 @@ export default class PointMark extends Mark {
             return null;
         }
 
-        const e = this.encoders;
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(this.encoders);
 
         x -= (this.renderConfig.xOffset || 0.0);
         y += (this.renderConfig.yOffset || 0.0);
