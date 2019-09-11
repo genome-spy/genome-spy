@@ -71,6 +71,9 @@
                                         "domain": [-0.01, 0.01],
                                         "range": ["triangle-down", "diamond", "triangle-up"]
                                     }
+                                },
+                                "strokeWidth": {
+                                    "value": 0
                                 }
                             }
                         }

@@ -8,7 +8,8 @@ uniform lowp float devicePixelRatio;
 varying lowp vec4 vColor;
 varying float vSize;
 varying lowp float vShape;
-varying float vStrokeWidth;
+varying lowp float vStrokeWidth;
+varying lowp float vGradientStrength;
 
 const float CIRCLE = 0.0;
 const float SQUARE = 1.0;
@@ -44,6 +45,7 @@ float sdEquilateralTriangle(bool flip, bool swap) {
     if (flip) {
         p.y = -p.y;
     }
+    p.y += 0.25;
 
     const float k = sqrt(3.0);
     p.x = abs(p.x) - 1.0;
@@ -118,7 +120,7 @@ void main() {
 
     lowp vec3 strokeColor = mix(vColor.rgb, black, 0.3); 
     // Stuble radial gradient
-    lowp vec3 fillColor = mix(vColor.rgb, white, -dist * 0.3);
+    lowp vec3 fillColor = mix(vColor.rgb, white, -dist * vGradientStrength);
 
     // Could use fwidth here, but GL_OES_standard_derivatives is not always available
     float pixelWidth = 2.0 / vSize;

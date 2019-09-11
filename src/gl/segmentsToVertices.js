@@ -222,14 +222,15 @@ export class PointVertexBuilder {
         const c2f = createCachingColor2floatArray();
 
         const converters = {
-            x:       { f: d => fp64ify(e.x(d)),              numComponents: 2 },
-            y:       { f: d => e.y(d),                       numComponents: 1 },
-            size:    { f: d => Math.sqrt(e.size(d)),         numComponents: 1 },
-            color:   { f: d => c2f(e.color(d)),              numComponents: 3 },
-            opacity: { f: d => e.opacity(d),                 numComponents: 1 },
-            zoomThreshold: { f: d => e.zoomThreshold(d),     numComponents: 1 },
-            shape:   { f: d => shapes[e.shape(d)] || 0,      numComponents: 1 },
-            strokeWidth: { f: d => e.strokeWidth(d),         numComponents: 1 }
+            x:                { f: d => fp64ify(e.x(d)),         numComponents: 2 },
+            y:                { f: e.y,                          numComponents: 1 },
+            size:             { f: d => Math.sqrt(e.size(d)),    numComponents: 1 },
+            color:            { f: d => c2f(e.color(d)),         numComponents: 3 },
+            opacity:          { f: e.opacity,                    numComponents: 1 },
+            zoomThreshold:    { f: e.zoomThreshold,              numComponents: 1 },
+            shape:            { f: d => shapes[e.shape(d)] || 0, numComponents: 1 },
+            strokeWidth:      { f: e.strokeWidth,                numComponents: 1 },
+            gradientStrength: { f: e.gradientStrength,           numComponents: 1 }
         };
 
         const constants = Object.entries(encoders).filter(e =>  e[1].constant).map(e => e[0]);

@@ -23,14 +23,15 @@ const defaultRenderConfig = {
 
 /** @type {import("../view/viewUtils").EncodingSpecs} */
 const defaultEncoding = {
-    x:       { value: 0 },
-    y:       { value: 0.5 },
-    color:   { value: "#1f77b4" },
-    opacity: { value: 1.0 },
-    size:    { value: 1.0 },
-    zoomThreshold: { value: 1.0 },
-    shape:   { value: "circle" },
-    strokeWidth: { value: 0.7 }
+    x:                { value: 0 },
+    y:                { value: 0.5 },
+    color:            { value: "#1f77b4" },
+    opacity:          { value: 1.0 },
+    size:             { value: 1.0 },
+    zoomThreshold:    { value: 1.0 },
+    shape:            { value: "circle" },
+    strokeWidth:      { value: 0.7 },
+    gradientStrength: { value: 0.0 }
 };
 
 // TODO: Configurable !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

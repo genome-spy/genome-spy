@@ -8,9 +8,9 @@ attribute lowp vec3 color;
 attribute lowp float opacity;
 attribute float size; // Diameter or width/height
 attribute lowp float shape;
-attribute float strokeWidth;
-
+attribute lowp float strokeWidth;
 attribute float zoomThreshold;
+attribute lowp float gradientStrength;
 
 uniform float viewportHeight;
 uniform lowp float devicePixelRatio;
@@ -27,10 +27,11 @@ uniform lowp float maxPointSizeRelative;
 uniform float zoomLevel;
 uniform float fractionToShow;
 
-varying vec4 vColor;
-varying float vSize;
-varying float vShape;
-varying float vStrokeWidth;
+varying lowp vec4 vColor;
+varying lowp float vSize;
+varying lowp float vShape;
+varying lowp float vStrokeWidth;
+varying lowp float vGradientStrength;
 
 
 float computeThresholdFactor() {
@@ -63,4 +64,5 @@ void main(void) {
     vColor = vec4(color, opacity * thresholdFactor);
     vShape = shape;
     vStrokeWidth = strokeWidth;
+    vGradientStrength = gradientStrength;
 }

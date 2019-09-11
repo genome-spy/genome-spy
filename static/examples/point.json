@@ -4,7 +4,8 @@
             "type": "SimpleTrack",
 
             "renderConfig": {
-                "maxMaxPointSizeAbsolute": 40 
+                "maxPointSizeRelative": 0.085,
+                "maxMaxPointSizeAbsolute": 60 
             },
             
             "data": {
@@ -38,7 +39,7 @@
                 "y": {
                     "field": "y",
                     "type": "nominal",
-                    "scale": { "paddingOuter": 0.2 }
+                    "scale": { "paddingOuter": 0.3 }
                 },
                 "shape": {
                     "field": "x",
@@ -60,6 +61,13 @@
                     "type": "quantitative",
                     "scale": {
                         "range": [0, 4]
+                    }
+                },
+                "gradientStrength": {
+                    "field": "x",
+                    "type": "quantitative",
+                    "scale": {
+                        "range": [0, 1]
                     }
                 }
             }
