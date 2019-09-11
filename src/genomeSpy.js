@@ -77,30 +77,31 @@ export default class GenomeSpy {
      * Otherwise returns the shared domain of the data.
      * 
      * TODO: Rename and emphasize X axis
+     * TODO: Return DomainArray
+     * TODO: Tracks should actually be views and X scale should be resolved as shared here
      * 
      * @return {Interval} the domain
      */
     getDomain() {
         // TODO: Compute from data when no hard extent is present
-        let domain = this.coordinateSystem.getExtent();
-        if (!domain) {
-            /** @type {import("./utils/interval").default} */
-            let interval;
+        let extent = this.coordinateSystem.getExtent();
+        if (!extent) {
+            /** @type {import("./utils/domainArray").DomainArray} */
+            let domain;
             for (const track of this.tracks) {
-                if (interval) {
-                    // Ugh, empty intervals could be useful here....
-                    const trackInterval = track.getXDomain();
-                    if (trackInterval) {
-                        interval = interval.span(trackInterval);
+                if (domain) {
+                    const trackDomain = track.getXDomain();
+                    if (trackDomain) {
+                        domain.extendAll(trackDomain);
                     }
                 } else {
-                    interval = track.getXDomain();
+                    domain = track.getXDomain();
                 }
             }
-            return interval;
+            return Interval.fromArray(domain);
         }
 
-        return domain || new Interval(0, 1);
+        return extent || new Interval(0, 1);
     }
 
     /**

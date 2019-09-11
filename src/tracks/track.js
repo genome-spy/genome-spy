@@ -34,9 +34,11 @@ export default class Track {
      * Returns the domain of the data that is being laid on the x axis of the track.
      * Returns undefined if the track does not have data.
      * 
-     * @return {void | import("../utils/interval").default}
+     * @return {import("../utils/domainArray").DomainArray}
      */
-    getXDomain() { }
+    getXDomain() {
+        return undefined;
+    }
 
     createCanvas() {
         const canvas = document.createElement("canvas");

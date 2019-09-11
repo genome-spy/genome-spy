@@ -177,7 +177,7 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     getXDomain() {
-        return Interval.fromArray(this.viewRoot.resolutions["x"].getDomain());
+        return this.viewRoot.resolutions["x"].getDomain();
     }
 
     /**
