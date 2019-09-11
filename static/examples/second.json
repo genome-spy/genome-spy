@@ -61,7 +61,18 @@
                             }
                         },
                         {
-                            "mark": "point"
+                            "mark": "point",
+                            "encoding": {
+                                "shape": {
+                                    "field": "sin(x)",
+                                    "type": "quantitative",
+                                    "scale": {
+                                        "type": "threshold",
+                                        "domain": [-0.01, 0.01],
+                                        "range": ["triangle-down", "diamond", "triangle-up"]
+                                    }
+                                }
+                            }
                         }
                     ]
                 }

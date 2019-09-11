@@ -7,6 +7,8 @@ precision mediump float;
 attribute lowp vec3 color;
 attribute lowp float opacity;
 attribute float size; // Diameter or width/height
+attribute lowp float shape;
+attribute float strokeWidth;
 
 attribute float zoomThreshold;
 
@@ -27,6 +29,8 @@ uniform float fractionToShow;
 
 varying vec4 vColor;
 varying float vSize;
+varying float vShape;
+varying float vStrokeWidth;
 
 
 float computeThresholdFactor() {
@@ -57,4 +61,6 @@ void main(void) {
     gl_PointSize = vSize;
 
     vColor = vec4(color, opacity * thresholdFactor);
+    vShape = shape;
+    vStrokeWidth = strokeWidth;
 }

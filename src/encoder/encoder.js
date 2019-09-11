@@ -57,7 +57,7 @@ function createEncoder(encodingSpec, scale, accessor, channel) {
         encoder.accessor = accessor;
 
     } else {
-        throw new Error("No value or accessor!");
+        throw new Error(`Missing value or accessor (field, expr, constant) on channel "${channel}": ${JSON.stringify(encodingSpec)}`);
     }
 
     encoder.invert = scale ? 

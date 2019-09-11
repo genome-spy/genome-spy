@@ -28,10 +28,24 @@ const defaultEncoding = {
     color:   { value: "#1f77b4" },
     opacity: { value: 1.0 },
     size:    { value: 1.0 },
-    zoomThreshold: { value: 1.0 }
+    zoomThreshold: { value: 1.0 },
+    shape:   { value: "circle" },
+    strokeWidth: { value: 0.7 }
 };
 
+// TODO: Configurable !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 const fractionToShow = 0.02;
+
+export const shapes = Object.fromEntries([
+    "circle",
+    "square",
+    "triangle-up",
+    "cross",
+    "diamond",
+    "triangle-down",
+    "triangle-right",
+    "triangle-left"
+].map((shape, i) => [shape, i]));
 
 export default class PointMark extends Mark {
     /**

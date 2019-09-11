@@ -5,6 +5,8 @@ import {
 import mergeObjects from '../utils/mergeObjects';
 import createScale from '../scale/scale';
 
+import { shapes } from '../marks/pointMark'; // TODO: Fix silly dependency
+
 /**
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray 
  * @typedef {import("../utils/interval").default} Interval
@@ -173,6 +175,7 @@ function getDefaultScaleType(channel, dataType) {
 }
 
 /**
+ * TODO: These actually depend on the mark, so this is clearly a wrong place 
  * 
  * @param {string} channel 
  * @param {string} dataType 
@@ -185,6 +188,11 @@ function getDefaultScaleProperties(channel, dataType) {
         props.scheme = dataType == "nominal" ? "tableau10" :
             dataType == "ordinal" ? "blues" :
                 "viridis";
+
+    } else if (channel == "shape") {
+        // of point mark
+        props.range = Object.keys(shapes);
+
         
     } else if (channel == "size") {
         props.range = [0, 1]
