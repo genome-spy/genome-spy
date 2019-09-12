@@ -197,7 +197,9 @@ export default class UnitView extends ContainerView {
                 if (accessor.constant) {
                     domain.extend(accessor({}));
                 } else {
-                    domain.extendAll(data.map(accessor));
+                    for (const datum of data) {
+                        domain.extend(accessor(datum));
+                    }
                 }
             }
         }
