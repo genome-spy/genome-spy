@@ -78,7 +78,9 @@ export default class PointMark extends Mark {
 
         this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
 
-        const builder = new PointVertexBuilder(this.encoders);
+        const vertexCount = this.dataBySample.size === 1 ? [...this.dataBySample.values()][0].length : undefined; // TODO: Sum all samples
+
+        const builder = new PointVertexBuilder(this.encoders, vertexCount);
 
         for (const [sample, points] of this.dataBySample.entries()) {
             builder.addBatch(sample, points);

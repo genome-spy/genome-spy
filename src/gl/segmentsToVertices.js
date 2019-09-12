@@ -26,7 +26,7 @@ function color2floatArray(color) {
     } else if (isString(color)) {
         color = d3color(color);
     }
-    return [color.r / 255.0, color.g / 255.0, color.b / 255.0];
+    return new Float32Array([color.r / 255.0, color.g / 255.0, color.b / 255.0]);
 }
 
 function createCachingColor2floatArray() {
@@ -101,7 +101,7 @@ export class RectVertexBuilder {
         this.updateHeight = this.variableBuilder.createUpdater("height", 1);
 
         this.constantBuilder = ArrayBuilder.create(converters, constants);
-        this.constantBuilder.updateFromSpec({});
+        this.constantBuilder.updateFromDatum({});
         this.constantBuilder.pushAll();
 
         this.rangeMap = new Map();
@@ -144,7 +144,7 @@ export class RectVertexBuilder {
             const height = y2 - y || Math.pow(0.1, 20); // TODO: Fix the hack
 
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
-            this.variableBuilder.updateFromSpec(d);
+            this.variableBuilder.updateFromDatum(d);
             this.updateX(fp64ify(x));
             this.updateWidth(-width);
             this.updateY(y);
@@ -180,7 +180,7 @@ export class RectVertexBuilder {
             }
 
             // Duplicate the last vertex to produce a degenerate triangle between the segments
-            this.variableBuilder.updateFromSpec(d);
+            this.variableBuilder.updateFromDatum(d);
             this.updateX(fp64ify(x2));
             this.updateWidth(width);
             this.updateHeight(-height);
@@ -214,8 +214,9 @@ export class PointVertexBuilder {
     /**
      * 
      * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
+     * @param {number} [size] Number of points if known, uses TypedArray
      */
-    constructor(encoders) {
+    constructor(encoders, size) {
 
         const e = encoders;
 
@@ -236,10 +237,10 @@ export class PointVertexBuilder {
         const constants = Object.entries(encoders).filter(e =>  e[1].constant).map(e => e[0]);
         const variables = Object.entries(encoders).filter(e => !e[1].constant).map(e => e[0]);
 
-        this.variableBuilder = ArrayBuilder.create(converters, variables);
+        this.variableBuilder = ArrayBuilder.create(converters, variables, size);
         this.constantBuilder = ArrayBuilder.create(converters, constants);
 
-        this.constantBuilder.updateFromSpec({});
+        this.constantBuilder.updateFromDatum({});
         this.constantBuilder.pushAll();
 
         this.index = 0;
@@ -256,7 +257,7 @@ export class PointVertexBuilder {
         const offset = this.index;
 
         for (const p of points) {
-            this.variableBuilder.pushFromSpec(p);
+            this.variableBuilder.pushFromDatum(p);
             this.index++;
         }
 
@@ -379,25 +380,33 @@ class ArrayBuilder {
      * 
      * @param {*} converters 
      * @param {string[]} attributes Which attributes to include
+     * @param {number} size Size if known, uses TypedArray
      */
-    static create(converters, attributes) {
-        const builder = new ArrayBuilder();
+    static create(converters, attributes, size = undefined) {
+        const builder = new ArrayBuilder(size);
 
         Object.entries(converters)
             .filter(entry => attributes.includes(entry[0]))
-            .forEach(entry => builder.addSpecConverter(entry[0], entry[1].numComponents, entry[1].f));
+            .forEach(entry => builder.addConverter(entry[0], entry[1].numComponents, entry[1].f));
 
         return builder;
     }
 
-    constructor() {
+    /**
+     * 
+     * @param {number} size Size if known, uses TypedArray
+     */
+    constructor(size) {
+        this.size = size;
+
+        /** @type {Object.<string, {data: number[], numComponents: number}>} */
         this.arrays = {};
 
         /** @type {function[]} */
         this.pushers = [];
 
         /** @type {function[]} */
-        this.specConverters = [];
+        this.converters = [];
 
         this.vertexCount = 0;
     }
@@ -408,9 +417,9 @@ class ArrayBuilder {
      * @param {number} numComponents 
      * @param {function} converter
      */
-    addSpecConverter(attributeName, numComponents, converter) {
+    addConverter(attributeName, numComponents, converter) {
         const updater = this.createUpdater(attributeName, numComponents);
-        this.specConverters.push(d => updater(converter(d)));
+        this.converters.push(d => updater(converter(d)));
     }
 
     /**
@@ -420,22 +429,38 @@ class ArrayBuilder {
      * @return {function(number|number[])}
      */
     createUpdater(attributeName, numComponents) {
+        /** @type {number | number[]} */
         let pendingValue;
 
-        const array = [];
+        const typed = !!this.size;
+
+        /** @type {number[] | Float32Array} */
+        const array = typed ? new Float32Array(this.size * numComponents) : [];
         this.arrays[attributeName] = {
             data: array,
             numComponents: numComponents
         };
 
+        /** @param {number} value */
         const updater = function(value) {
             pendingValue = value;
         }
 
         this.pushers.push(
             numComponents == 1 ?
-                () => array.push(pendingValue) :
-                () => array.push(...pendingValue));
+                () => array[this.vertexCount] = /** @type {number} */(pendingValue) :
+                (typed ? 
+                    () => {
+                        array.set(pendingValue, this.vertexCount * numComponents);
+
+                    } :
+                    () => {
+                        const offset = this.vertexCount * numComponents;
+                        for (let i = 0; i < numComponents; i++) {
+                            array[offset + i] = /** @type {number} */(pendingValue[i]);
+                        }
+                    }
+                ));
 
         return updater;
     }
@@ -447,14 +472,22 @@ class ArrayBuilder {
         this.vertexCount++;
     }
 
-    updateFromSpec(spec) {
-        for (const converter of this.specConverters) {
-            converter(spec);
+    /**
+     * 
+     * @param {object} datum 
+     */
+    updateFromDatum(datum) {
+        for (const converter of this.converters) {
+            converter(datum);
         }
     }
 
-    pushFromSpec(spec) {
-        this.updateFromSpec(spec);
+    /**
+     * 
+     * @param {object} datum 
+     */
+    pushFromDatum(datum) {
+        this.updateFromDatum(datum);
         this.pushAll();
     }
 
