@@ -203,6 +203,9 @@ export default class RectMark extends Mark {
                     return (scaledY >= e.y(d) && scaledY < e.y2(d)) || (scaledY >= e.y2(d) && scaledY < e.y(d))
                 };
 
+            // The current search "algorithm" is the grand old linear search. However, it does not scale to
+            // very large data sets.
+            // TODO: Use indexing based on interval trees or R-trees
             let lastMatch = null;
             for (let datum of data) {
                 if (matchX(datum) && matchY(datum)) {

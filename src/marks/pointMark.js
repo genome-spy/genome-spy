@@ -173,6 +173,7 @@ export default class PointMark extends Mark {
         x -= (this.renderConfig.xOffset || 0.0);
         y += (this.renderConfig.yOffset || 0.0);
 
+        // TODO: Extract a method for maxPointSize and use it in the render method too
         const maxPointSize = Math.max(
             this.renderConfig.minMaxPointSizeAbsolute,
             Math.min(this.getMaxMaxPointSizeAbsolute(), this.renderConfig.maxPointSizeRelative * yBand.width()));
@@ -182,18 +183,17 @@ export default class PointMark extends Mark {
         const xScale = this.getContext().track.genomeSpy.rescaledX;
 
         const bisect = bisector(e.x).left;
-        // Find the range that may contain the point
-        // TODO: Dont's slice, just use the indices to limit iteration
-        const subset = data.slice(
-            bisect(data, xScale.invert(x - maxPointSize / 2)),
-            bisect(data, xScale.invert(x + maxPointSize / 2)));
+        // Use binary search to find the range that may contain the point
+        const begin = bisect(data, xScale.invert(x - maxPointSize / 2));
+        const end = bisect(data, xScale.invert(x + maxPointSize / 2));
 
         const margin = 0.005; // TODO: Configurable
         const threshold = this.getContext().genomeSpy.getExpZoomLevel() * fractionToShow;
         const thresholdWithMargin = threshold * (1 + margin);
 
         let lastMatch = null;
-        for (const d of subset) {
+        for (let i = begin; i < end; i++) {
+            const d = data[i];
             if (1 - e.zoomThreshold(d) < thresholdWithMargin) {
                 // TODO: Optimize by computing mouse y on the band scale
                 const dist = distance(x, xScale(e.x(d)), y, yBand.interpolate(1 - e.y(d)));
@@ -201,6 +201,7 @@ export default class PointMark extends Mark {
                     lastMatch = d;
                 }
             }
+            // TODO: If exact match wasn't found, return the closest match within a radius of a couple of pixels
         }
 
         return lastMatch;
