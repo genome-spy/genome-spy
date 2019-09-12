@@ -2,7 +2,7 @@ import { color as d3color } from 'd3-color';
 import { fastmap, isString } from 'vega-util';
 import { fp64ify } from './includes/fp64-utils';
 import Interval from "../utils/interval";
-import { shapes } from "../marks/pointMark"; // Circular dependency, TODO: Fix
+import { SHAPES } from "../marks/pointMark"; // Circular dependency, TODO: Fix
 
 /*
  * TODO: Optimize constant values: compile them dynamically into vertex shader
@@ -86,7 +86,7 @@ export class RectVertexBuilder {
 
         const converters = {
             color:   { f: d => color2floatArray(e.color(d)), numComponents: 3 },
-            opacity: { f: d => e.opacity(d), numComponents: 1 },
+            opacity: { f: e.opacity, numComponents: 1 },
         };
 
         const constants = Object.entries(encoders).filter(e => e[1].constant).map(e => e[0]);
@@ -228,7 +228,7 @@ export class PointVertexBuilder {
             color:            { f: d => c2f(e.color(d)),         numComponents: 3 },
             opacity:          { f: e.opacity,                    numComponents: 1 },
             zoomThreshold:    { f: e.zoomThreshold,              numComponents: 1 },
-            shape:            { f: d => shapes[e.shape(d)] || 0, numComponents: 1 },
+            shape:            { f: d => SHAPES[e.shape(d)] || 0, numComponents: 1 },
             strokeWidth:      { f: e.strokeWidth,                numComponents: 1 },
             gradientStrength: { f: e.gradientStrength,           numComponents: 1 }
         };

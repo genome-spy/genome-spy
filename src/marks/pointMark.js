@@ -1,7 +1,6 @@
 import * as twgl from 'twgl-base.js';
 import mapsort from 'mapsort';
 import { extent, bisector } from 'd3-array';
-import { scaleLinear } from 'd3-scale';
 import { PointVertexBuilder } from '../gl/segmentsToVertices';
 import VERTEX_SHADER from '../gl/point.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
@@ -37,7 +36,7 @@ const defaultEncoding = {
 // TODO: Configurable !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 const fractionToShow = 0.02;
 
-export const shapes = Object.fromEntries([
+export const SHAPES = Object.fromEntries([
     "circle",
     "square",
     "triangle-up",
@@ -133,8 +132,7 @@ export default class PointMark extends Mark {
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
-        const xAccessor = this.encoders.x.accessor;
-        const bisect = bisector(d => xAccessor(d)).left;
+        const bisect = bisector(this.encoders.x.accessor).left;
         const visibleDomain = this.getContext().genomeSpy.getViewportDomain();
         // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
         const paddedDomain = visibleDomain.pad(visibleDomain.width() * 0.01);

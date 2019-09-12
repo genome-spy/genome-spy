@@ -1,12 +1,9 @@
 import * as twgl from 'twgl-base.js';
-import { extent } from 'd3-array';
-import { scaleLinear } from 'd3-scale';
 import VERTEX_SHADER from '../gl/rect.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rect.fragment.glsl';
 import { RectVertexBuilder } from '../gl/segmentsToVertices';
 
 import Mark from './mark';
-import Interval from '../utils/interval';
 
 const defaultRenderConfig = {
     minRectWidth: 1.0,

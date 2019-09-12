@@ -5,7 +5,7 @@ import {
 import mergeObjects from '../utils/mergeObjects';
 import createScale from '../scale/scale';
 
-import { shapes } from '../marks/pointMark'; // TODO: Fix silly dependency
+import { SHAPES } from '../marks/pointMark'; // TODO: Fix silly dependency
 
 /**
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray 
@@ -191,7 +191,7 @@ function getDefaultScaleProperties(channel, dataType) {
 
     } else if (channel == "shape") {
         // of point mark
-        props.range = Object.keys(shapes);
+        props.range = Object.keys(SHAPES);
 
         
     } else if (channel == "size") {
