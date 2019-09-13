@@ -158,7 +158,7 @@ export default class UnitView extends ContainerView {
 
         let domain = this._extractDomain(channel, type);
         if (!domain) {
-            console.warn(`No domain available for channel ${channel} on ${this.name}`);
+            console.warn(`Cannot extract domain for channel "${channel}" on ${this.getPathString()}. You can specify it explicitly.`);
         }
 
         const secondaryChannel = secondaryChannels[channel];

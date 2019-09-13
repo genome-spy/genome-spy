@@ -20,9 +20,8 @@ export default class LayerView extends ContainerView {
         /** @type { View[] } */
         this.children = (spec.layer || [])
             .map((childSpec, i) => {
-                const name = this.name + "-layer_" + i;
                 const View = getViewClass(childSpec);
-                return new View(childSpec, context, this, name);
+                return new View(childSpec, context, this, "layer" + i);
             });
     }
 

@@ -26,6 +26,21 @@ export default class View {
         this.resolutions = {
         }
     }
+
+    getPathString() {
+        /** @type {string[]} */
+        const path = [];
+        /** @type {import("./view").default} */
+        // eslint-disable-next-line consistent-this
+        let view = this;
+        do {
+            path.push(view.name);
+            view = view.parent;
+        } while (view);
+
+        return path.reverse().join("/");
+    }
+
     
     /**
      * 

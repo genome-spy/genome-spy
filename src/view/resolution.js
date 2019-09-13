@@ -106,7 +106,7 @@ export default class Resolution {
             return domains[0];
         }
 
-        throw new Error(`Cannot resolve domain! Channel: ${this.channel}, views: ${this.views.map(v => v.name).join(", ")}`);
+        throw new Error(`Cannot resolve domain! Channel: ${this.channel}, views: ${this.views.map(v => v.getPathString()).join(", ")}`);
     }
 
     getScale() {

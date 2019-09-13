@@ -114,7 +114,12 @@ export default class Mark {
      * @param {string} channel 
      */
     getScale(channel) {
-        return this.unitView.getResolution(channel).getScale();
+        const resolution = this.unitView.getResolution(channel)
+        if (resolution) {
+            return resolution.getScale();
+        } else {
+            throw new Error(`Cannot find a resolved scale for channel "${channel}" at ${this.unitView.getPathString()} (${this.getType()})`);
+        }
     }
 
     /**
