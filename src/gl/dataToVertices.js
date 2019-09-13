@@ -3,7 +3,7 @@ import { fastmap, isString } from 'vega-util';
 import { fp64ify } from './includes/fp64-utils';
 import Interval from "../utils/interval";
 import { SHAPES } from "../marks/pointMark"; // Circular dependency, TODO: Fix
-import ArrayBuilder from "./arraybuilder";
+import ArrayBuilder from "./arrayBuilder";
 
 /*
  * TODO: Optimize constant values: compile them dynamically into vertex shader
