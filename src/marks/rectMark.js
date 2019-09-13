@@ -1,7 +1,7 @@
 import * as twgl from 'twgl-base.js';
 import VERTEX_SHADER from '../gl/rect.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rect.fragment.glsl';
-import { RectVertexBuilder } from '../gl/segmentsToVertices';
+import { RectVertexBuilder } from '../gl/dataToVertices';
 
 import Mark from './mark';
 

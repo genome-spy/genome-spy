@@ -3,13 +3,11 @@ import { fastmap, isString } from 'vega-util';
 import { fp64ify } from './includes/fp64-utils';
 import Interval from "../utils/interval";
 import { SHAPES } from "../marks/pointMark"; // Circular dependency, TODO: Fix
+import ArrayBuilder from "./arraybuilder";
 
 /*
  * TODO: Optimize constant values: compile them dynamically into vertex shader
  */
-
-const black = d3color("black");
-const gray = d3color("gray");
 
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
 const glConst = {
@@ -46,25 +44,6 @@ function createCachingColor2floatArray() {
     }
 }
 
-/**
- * @typedef {Object} RectSpec
- * @prop {number} x
- * @prop {number} x2
- * @prop {number} y
- * @prop {number} y2
- * @prop {Object | string} [color]
- * @prop {number} [opacity]
- */
-
-/**
- * @typedef {Object} PointSpec
- * @prop {number} x
- * @prop {number} [size] Width or height of the symbol
- * @prop {Object} [color]
- * @prop {number} [zoomThreshold]
- * @prop {Object} [rawDatum] Shown as tooltip
- * TODO: y, symbol, orientation, aspectRatio
- */
 
 export class RectVertexBuilder {
     /**
@@ -84,6 +63,7 @@ export class RectVertexBuilder {
 
         this.tesselationThreshold = tesselationThreshold || Infinity;
 
+        /** @type {Object.<string, import("./arraybuilder").Converter>} */
         const converters = {
             color:   { f: d => color2floatArray(e.color(d)), numComponents: 3 },
             opacity: { f: e.opacity, numComponents: 1 },
@@ -115,7 +95,7 @@ export class RectVertexBuilder {
     addBatch(key, data) {
         const offset = this.variableBuilder.vertexCount;
 
-        const e = this.encoders;
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(this.encoders);
         const [lower, upper] = this.visibleRange;
 
         for (const d of data) {
@@ -218,10 +198,11 @@ export class PointVertexBuilder {
      */
     constructor(encoders, size) {
 
-        const e = encoders;
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(encoders);
 
         const c2f = createCachingColor2floatArray();
 
+        /** @type {Object.<string, import("./arraybuilder").Converter>} */
         const converters = {
             x:                { f: d => fp64ify(e.x(d)),         numComponents: 2 },
             y:                { f: e.y,                          numComponents: 1 },
@@ -251,7 +232,7 @@ export class PointVertexBuilder {
     /**
      * 
      * @param {String} key 
-     * @param {PointSpec[]} points 
+     * @param {object[]} points 
      */
     addBatch(key, points) {
         const offset = this.index;
@@ -298,12 +279,15 @@ export class PointVertexBuilder {
  */
 
 /**
+ * Legacy stuff here.
  * Converts the given segments into typed arrays of vertices
  * 
  * @param {SegmentSpec[]} segments
  * @param {number} [tesselationThreshold] Tesselate segments if they are shorter than the threshold
  */
 export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
+
+    const black = d3color("black");
 
     const x = [];
     const y = [];
@@ -373,132 +357,5 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
 }
 
 
-class ArrayBuilder {
-    // TODO: Support strided layout. May yield better performance or not. No consensus in literature.
 
-    /**
-     * 
-     * @param {*} converters 
-     * @param {string[]} attributes Which attributes to include
-     * @param {number} size Size if known, uses TypedArray
-     */
-    static create(converters, attributes, size = undefined) {
-        const builder = new ArrayBuilder(size);
-
-        Object.entries(converters)
-            .filter(entry => attributes.includes(entry[0]))
-            .forEach(entry => builder.addConverter(entry[0], entry[1].numComponents, entry[1].f));
-
-        return builder;
-    }
-
-    /**
-     * 
-     * @param {number} size Size if known, uses TypedArray
-     */
-    constructor(size) {
-        this.size = size;
-
-        /** @type {Object.<string, {data: number[], numComponents: number}>} */
-        this.arrays = {};
-
-        /** @type {function[]} */
-        this.pushers = [];
-
-        /** @type {function[]} */
-        this.converters = [];
-
-        this.vertexCount = 0;
-    }
-
-    /**
-     * 
-     * @param {string} attributeName 
-     * @param {number} numComponents 
-     * @param {function} converter
-     */
-    addConverter(attributeName, numComponents, converter) {
-        const updater = this.createUpdater(attributeName, numComponents);
-        this.converters.push(d => updater(converter(d)));
-    }
-
-    /**
-     * 
-     * @param {string} attributeName 
-     * @param {number} numComponents 
-     * @return {function(number|number[])}
-     */
-    createUpdater(attributeName, numComponents) {
-        /** @type {number | number[]} */
-        let pendingValue;
-
-        const typed = !!this.size;
-
-        /** @type {number[] | Float32Array} */
-        const array = typed ? new Float32Array(this.size * numComponents) : [];
-        this.arrays[attributeName] = {
-            data: array,
-            numComponents: numComponents
-        };
-
-        /** @param {number} value */
-        const updater = function(value) {
-            pendingValue = value;
-        }
-
-        this.pushers.push(
-            numComponents == 1 ?
-                () => array[this.vertexCount] = /** @type {number} */(pendingValue) :
-                (typed ? 
-                    () => {
-                        array.set(pendingValue, this.vertexCount * numComponents);
-
-                    } :
-                    () => {
-                        const offset = this.vertexCount * numComponents;
-                        for (let i = 0; i < numComponents; i++) {
-                            array[offset + i] = /** @type {number} */(pendingValue[i]);
-                        }
-                    }
-                ));
-
-        return updater;
-    }
-
-    pushAll() {
-        for (const pusher of this.pushers) {
-            pusher();
-        }
-        this.vertexCount++;
-    }
-
-    /**
-     * 
-     * @param {object} datum 
-     */
-    updateFromDatum(datum) {
-        for (const converter of this.converters) {
-            converter(datum);
-        }
-    }
-
-    /**
-     * 
-     * @param {object} datum 
-     */
-    pushFromDatum(datum) {
-        this.updateFromDatum(datum);
-        this.pushAll();
-    }
-
-    /**
-     * Creates TWGL constant arrays
-     */
-    toValues() {
-        return Object.fromEntries(
-            Object.entries(this.arrays)
-                .map(entry => [entry[0], { value: entry[1].data }])
-        );
-    }
-}
 

@@ -3,7 +3,7 @@ import { scaleOrdinal } from 'd3-scale';
 import { color, hsl } from 'd3-color';
 import VERTEX_SHADER from '../gl/rect.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/rect.fragment.glsl';
-import { segmentsToVertices } from '../gl/segmentsToVertices';
+import { segmentsToVertices } from '../gl/dataToVertices';
 import Genome, { parseUcscCytobands } from '../genome/genome';
 import Interval from "../utils/interval";
 import WebGlTrack from "./webGlTrack";

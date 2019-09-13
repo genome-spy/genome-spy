@@ -1,7 +1,7 @@
 import * as twgl from 'twgl-base.js';
 import mapsort from 'mapsort';
 import { extent, bisector } from 'd3-array';
-import { PointVertexBuilder } from '../gl/segmentsToVertices';
+import { PointVertexBuilder } from '../gl/dataToVertices';
 import VERTEX_SHADER from '../gl/point.vertex.glsl';
 import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
 
