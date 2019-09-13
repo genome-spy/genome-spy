@@ -1,13 +1,18 @@
 
-/** Location and height of the band on the Y axis on a normalized [0, 1] scale */
+/**
+ * Location and height of the band on the Y axis on a normalized [0, 1] scale.
+ * Top as the first element, height as the second element.
+ */
 uniform vec2 yPosLeft;
 uniform vec2 yPosRight;
+
 uniform float transitionOffset;
 
 vec2 transit(float normalizedX, float y) {
     float top, height;
 
     if (yPosLeft == yPosRight) {
+        // Left and right are the same, no bending
         top = yPosLeft[0];
         height = yPosLeft[1];
 
