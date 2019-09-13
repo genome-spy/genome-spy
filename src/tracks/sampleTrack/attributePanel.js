@@ -1,7 +1,6 @@
 import { format as d3format } from 'd3-format';
-import { scaleSequential, scaleOrdinal, scaleBand } from 'd3-scale';
-import { schemeCategory10, interpolateOrRd } from 'd3-scale-chromatic';
-import { quantile, extent, range } from 'd3-array';
+import { scaleBand } from 'd3-scale';
+import { quantile, range } from 'd3-array';
 import { inferType } from 'vega-loader';
 import * as vs from 'vega-scale';
 
@@ -11,6 +10,8 @@ import MouseTracker from "../../mouseTracker";
 import * as html from "../../utils/html";
 import Interval from '../../utils/interval';
 import contextMenu from '../../contextMenu';
+import createDomain from '../../utils/domainArray';
+import createScale from '../../scale/scale';
 
 function isDefined(value) {
     return value !== "" && !(typeof value == "number" && isNaN(value)) && value !== null;
@@ -445,17 +446,13 @@ export default class AttributePanel {
         this.attributeScales = new Map();
 
         attributeNames.forEach(attributeName => {
-            // TODO: While building scales, ensure that the (auto inferred) data type matches the explicitly specified domain
-            // ... otherwise mystery-errors are thrown later
-
-            // TODO: Generify scale creation, use it on simple/sampletrack too
 
             let scale;
 
             const accessor = sample => sample.attributes[attributeName];
             const attributeConfig = this._getAttributeConfig(attributeName);
 
-            let fieldType = attributeConfig.fieldType;
+            let fieldType = attributeConfig.type;
             if (!fieldType) {
                 switch (inferType(samples.map(accessor))) {
                     case "integer":
@@ -466,29 +463,29 @@ export default class AttributePanel {
                         fieldType = FieldType.NOMINAL;
                 }
             }
+            
+            const scaleConfig = attributeConfig.scale || {};
 
-            if (fieldType == FieldType.QUANTITATIVE) {
-                scale = vs.scale("sequential")()
-                    .domain(attributeConfig.domain || extent(samples, accessor))
-                    .interpolator(vs.scheme(attributeConfig.scheme || "orangered"));
-
-                // TODO: If a (color) range has been specified, create a linear scale instead
-
-            } else {
-                const domain = attributeConfig.domain || [...new Set(samples.map(accessor))].sort();
-
-                // TODO: The default scheme should be different for nominal and ordinal data
-
-                let scheme = vs.scheme(attributeConfig.scheme || (domain.length <= 10 ? "tableau10" : "tableau20"));
-                if (typeof scheme == "function") {
-                    scheme = vs.quantizeInterpolator(scheme, domain.length);
-                }
-
-                scale = vs.scale("ordinal")()
-                    .domain(domain)
-                    .range(scheme)
-                    .unknown(this.styles.naColor);
+            if (!scaleConfig.type) {
+                scaleConfig.type = fieldType == FieldType.QUANTITATIVE ? "linear" : "ordinal"
             }
+
+            if (!scaleConfig.domain) {
+                scaleConfig.domain = createDomain(fieldType);
+                /** @type {import('../../view/unitView').DomainArray} */(scaleConfig.domain)
+                    .extendAll([...new Set(samples.map(accessor))].sort());
+            }
+
+            if (!scaleConfig.range && !scaleConfig.scheme) {
+                if (fieldType == FieldType.NOMINAL) {
+                    scaleConfig.scheme = scaleConfig.domain.length <= 10 ? "tableau10" : "tableau20"
+                } else {
+                    scaleConfig.scheme = "orangered";
+                }
+            }
+
+            scale = createScale(scaleConfig)
+                .unknown(this.styles.naColor);
             
             this.attributeScales.set(attributeName, scale);
 
