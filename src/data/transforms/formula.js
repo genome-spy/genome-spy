@@ -1,9 +1,11 @@
 import { parse, codegen } from 'vega-expression';
+import { createConfigItem } from '@babel/core';
 
 /**
  * @typedef {Object} FormulaConfig
  * @prop {string} expr
  * @prop {string} as
+ * @prop {boolean} [inplace] Modify the rows in place (a temp hack)
  */
 
 
@@ -28,16 +30,19 @@ export default function calculateTransform(formulaConfig, rows) {
     // eslint-disable-next-line no-new-func
     const fn = Function("datum", "global", `"use strict"; return (${generatedCode.code});`);
 
-    /*
-    // Faster, but causes side effects:
-    for (const row of rows) {
-        row[formulaConfig.as] = fn(row, global);
-    }
-    return rows;
-    */
+    
+    if (formulaConfig.inplace) {
+        // Faster, but causes side effects.
+        // TODO: Build a "dataflow graph" and infer where in-place modifications are acceptable
+        for (const row of rows) {
+            row[formulaConfig.as] = fn(row, global);
+        }
+        return rows;
 
-    return rows.map(row => ({
-        ...row,
-        [formulaConfig.as]: fn(row, global)
-    }));
+    } else {
+        return rows.map(row => ({
+            ...row,
+            [formulaConfig.as]: fn(row, global)
+        }));
+    }
 }
