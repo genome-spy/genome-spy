@@ -129,6 +129,11 @@ export default class UnitView extends ContainerView {
         }        
     }
 
+    _getCoordinateSystemExtent() {
+        const cs = this.context.coordinateSystem;
+        return cs && cs.getExtent() || undefined;
+    }
+
     /**
      * Returns the domain of the specified channel of this domain/mark.
      * Either returns a configured domain or extracts it from the data.
@@ -137,6 +142,12 @@ export default class UnitView extends ContainerView {
      * @returns {DomainArray}
      */
     getDomain(channel) {
+        if (channel === "x" && this._getCoordinateSystemExtent()) {
+            // Skip unnecessary extent computation
+            // However, if we want to initially zoom to the extent of the data, this needs to done differently
+            return createDomain("quantitative", this._getCoordinateSystemExtent().toArray());
+        }
+
         if (isSecondaryChannel(channel)) {
             throw new Error(`getDomain(${channel}), must only be called for primary channels!`);
         }

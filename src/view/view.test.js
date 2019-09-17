@@ -7,6 +7,7 @@ import {
 import {
     toRegularArray as r
 } from '../utils/domainArray';
+import Interval from '../utils/interval';
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", () => {
@@ -121,6 +122,29 @@ describe("Test domain handling", () => {
         return createAndInitialize(spec).then(view =>
             expect(r(view.getDomain("y"))).toEqual([1, 5])
         );
+    });
+
+    test("Uses the coordinate system provided extent/domain on the x channel", () => {
+        const spec = {
+            data: { values: [1] },
+            mark: "point",
+            encoding: {
+                x: { field: "data", type: "quantitative" },
+                y: { field: "data", type: "quantitative" },
+            }
+        };
+
+        const context = {
+            coordinateSystem: {
+                getExtent: () => new Interval(0, 2)
+            }
+        };
+
+        return createAndInitialize(spec, context).then(view => {
+            expect(r(view.getDomain("x"))).toEqual([0, 2]);
+            expect(r(view.getDomain("y"))).toEqual([1, 1]);
+        });
+
     });
 
 });

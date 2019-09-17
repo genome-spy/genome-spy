@@ -65,6 +65,7 @@ export default class SimpleTrack extends WebGlTrack {
 
         const spec = /** @type {import("../view/viewUtils").Spec} */config;
         const context = {
+            coordinateSystem: genomeSpy.coordinateSystem,
             accessorFactory: genomeSpy.accessorFactory,
             genomeSpy, // TODO: An interface instead of a GenomeSpy
             track: this,
@@ -268,7 +269,6 @@ export default class SimpleTrack extends WebGlTrack {
     renderViewport() {
         const gl = this.gl;
 
-        //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         const globalUniforms = {

@@ -10,23 +10,26 @@ import AccessorFactory from "../encoder/accessor";
 /**
  * 
  * @param {import("./viewUtils").Spec} spec 
+ * @param {import("./viewUtils").ViewContex} [context]
  */
-export function create(spec) {
-    const context = {
+export function create(spec, context) {
+    const c = {
+        ...context || {},
         /** @param {object} config */
         getDataSource: config => new DataSource(config, "."),
         accessorFactory: new AccessorFactory()
     };
 
-    return createView(spec, context);
+    return createView(spec, c);
 }
 
 /**
  * 
  * @param {import("./viewUtils").Spec} spec 
+ * @param {import("./viewUtils").ViewContex} [context]
  */
-export async function createAndInitialize(spec) {
-    const view = create(spec);
+export async function createAndInitialize(spec, context) {
+    const view = create(spec, context);
     await initializeViewHierarchy(view);
     return view;
 }

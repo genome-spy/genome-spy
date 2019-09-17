@@ -20,12 +20,13 @@ export default class CoordinateSystem {
      */
     parseInterval(str) { }
 
-
     /**
      * If the coordinate system has a hard extent, return it. Otherwise returns undefined.
      * 
-     * @returns {void | import("./utils/interval").default}
+     * @returns {import("./utils/interval").default}
      */
-    getExtent() { }
+    getExtent() {
+        return undefined;
+    }
 
 }

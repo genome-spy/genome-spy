@@ -8,6 +8,7 @@ import View from './view';
  * @prop {import("../genomeSpy").default} genomeSpy TODO: Break genomeSpy dependency
  * @prop {function(string):import("../data/dataSource").default} getDataSource
  * @prop {import("../encoder/accessor").default} accessorFactory
+ * @prop {import("../coordinateSystem").default} coordinateSystem
  */
 
 /**
