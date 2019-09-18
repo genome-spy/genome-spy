@@ -12,10 +12,7 @@ import View from './view';
  */
 
 /**
- * @typedef {Object} MarkConfig
- * @prop {string} type
- * @prop {object} [tooltip]
- * @prop {object} [sorting]
+ * @typedef {import("../spec/view").MarkConfig} MarkConfig
  * 
  * @typedef {Object} EncodingSpec
  * @prop {string} [type]
