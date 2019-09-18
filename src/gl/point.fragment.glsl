@@ -124,11 +124,19 @@ void main() {
 
     // Could use fwidth here, but GL_OES_standard_derivatives is not always available
     float pixelWidth = 2.0 / vSize;
-    float strokeWidth = vStrokeWidth * devicePixelRatio * pixelWidth; // TODO: Move computation to vertex shader
-    
-    lowp float strokeFraction = smoothstep(-strokeWidth, -strokeWidth - pixelWidth, dist);
-    lowp float alpha = smoothstep(0.0, -pixelWidth, dist) * vColor.a;
 
-    gl_FragColor = vec4(mix(strokeColor, fillColor, strokeFraction) * alpha, alpha);
+    if (vStrokeWidth > 0.0) {
+        float strokeWidth = vStrokeWidth * devicePixelRatio * pixelWidth; // TODO: Move computation to vertex shader
+
+        lowp float strokeFraction = smoothstep(-strokeWidth, -strokeWidth - pixelWidth, dist);
+        lowp float alpha = smoothstep(0., -pixelWidth, dist) * vColor.a;
+
+        gl_FragColor = vec4(mix(strokeColor, fillColor, strokeFraction) * alpha, alpha);
+
+    } else {
+        lowp float alpha = smoothstep(0., -pixelWidth, dist) * vColor.a;
+
+        gl_FragColor = vec4(fillColor * alpha, alpha);
+    }
 }
 
