@@ -6,7 +6,7 @@ import { inferType } from 'vega-loader';
 import { getMarks } from '../../view/viewUtils';
 import SimpleTrack from '../simpleTrack';
 import BandScale from '../../utils/bandScale';
-import fisheye from "../../utils/fishEye";
+import fisheye from "../../utils/fisheye";
 import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } from "../../utils/transition";
 import clientPoint from "../../utils/point";
 import AttributePanel from './attributePanel';
