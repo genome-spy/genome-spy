@@ -7,7 +7,7 @@ export default class ContainerView extends View {
     
     /**
      * 
-     * @param {import("./view").Spec} spec
+     * @param {import("./view").ViewSpec} spec
      * @param {import("./view").ViewContext} context 
      * @param {import("./view").default} parent 
      * @param {string} name 

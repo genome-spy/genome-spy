@@ -26,13 +26,15 @@ export default class UnitView extends ContainerView {
 
     /**
      * 
-     * @param {import("./viewUtils").Spec} spec
+     * @param {import("../spec/view").UnitSpec} spec
      * @param {import("./viewUtils").ViewContext} context 
      * @param {import("./view").default} parent 
      * @param {string} name 
      */
     constructor(spec, context, parent, name) {
         super(spec, context, parent, name)
+        
+        this.spec = spec; // Set here again to keep types happy
 
         /**
          * Cache for extracted domains
@@ -218,7 +220,5 @@ export default class UnitView extends ContainerView {
         this._dataDomains[channel] = domain;
 
         return domain;
-
-        // TODO: value / constant
     }
 }

@@ -1,6 +1,5 @@
 import UnitView from './unitView';
 import LayerView from './layerView';
-import View from './view';
 
 /**
  * @typedef {Object} ViewContext 
@@ -13,36 +12,12 @@ import View from './view';
 
 /**
  * @typedef {import("../spec/view").MarkConfig} MarkConfig
- * 
- * @typedef {Object} EncodingSpec
- * @prop {string} [type]
- * @prop {Object} [axis] 
- * @prop {string} [field]
- * @prop {string | number} [value] a constant value in the context of the range
- * @prop {object} [scale]
- * @prop {object} [sort] TODO: implement
- * @prop {string} [title]
- * @prop {string} [expr] a vega-expression
- * @prop {string | number} [constant] a constant value in the context of the data domain
- * 
- * @typedef {Object.<string, EncodingSpec>} EncodingSpecs
- * 
- * @typedef {Object} Spec
- * @prop {string} [name]
- * @prop {Spec[]} [layer]
- * @prop {string | MarkConfig } [mark]
- * @prop {object} [data] 
- * @prop {object[]} [transform]
- * @prop {string} [sample]
- * @prop {EncodingSpecs} [encoding]
- * @prop {Object} [renderConfig]
- * @prop {string} [title]
- * @prop {Object} [resolve]
- */
-
+ * @typedef {import("../spec/view").EncodingConfig} EncodingConfig
+ * @typedef {import("../spec/view").ViewSpec} ViewSpec
+ * @typedef {import("./view").default} View
 /**
  * 
- * @param {Spec} spec 
+ * @param {ViewSpec} spec 
  */
 export function isUnitSpec(spec) {
     return typeof spec.mark === "string" || typeof spec.mark === "object";
@@ -50,7 +25,7 @@ export function isUnitSpec(spec) {
 
 /**
  * 
- * @param {Spec} spec 
+ * @param {ViewSpec} spec 
  */
 export function isLayerSpec(spec) {
     return typeof spec.layer === "object";
@@ -58,7 +33,7 @@ export function isLayerSpec(spec) {
 
 /**
  * 
- * @param {Spec} spec 
+ * @param {ViewSpec} spec 
  * @returns {typeof View} 
  */
 export function getViewClass(spec) {
@@ -73,7 +48,7 @@ export function getViewClass(spec) {
 
 /**
  * 
- * @param {Spec} spec 
+ * @param {ViewSpec} spec 
  * @param {ViewContext} context 
  */
 export function createView(spec, context) {

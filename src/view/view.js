@@ -1,15 +1,15 @@
 
-import { processData, transformData } from '../data/dataMapper';
+import { transformData } from '../data/dataMapper';
 
 /**
- * @typedef { import("./viewUtils").Spec } Spec
- * @typedef { import("./viewUtils").EncodingSpec } EncodingSpec
+ * @typedef { import("./viewUtils").ViewSpec } ViewSpec
+ * @typedef { import("./viewUtils").EncodingConfig } EncodingConfig
  * @typedef { import("./viewUtils").ViewContext} ViewContext 
  */
 export default class View {
     /**
      * 
-     * @param {Spec} spec
+     * @param {ViewSpec} spec
      * @param {ViewContext} context 
      * @param {View} parent 
      * @param {string} name 
@@ -59,7 +59,7 @@ export default class View {
     }
 
     /**
-     * @return {Object.<string, EncodingSpec>}
+     * @return {Object.<string, EncodingConfig>}
      */
     getEncoding() {
         const pe = this.parent ? this.parent.getEncoding() : {};
