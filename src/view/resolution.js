@@ -54,7 +54,8 @@ export default class Resolution {
             // No axis whatsoever is wanted
             return null;
         } else {
-            return mergeObjects(propArray.filter(props => props !== undefined), "axis", ["title"]);
+            return /** @type { import("../spec/axis").Axis} */(mergeObjects(propArray.filter(props => props !== undefined), "axis", ["title"]));
+            
         }
     }
 
@@ -63,7 +64,7 @@ export default class Resolution {
             .map(view => this._getEncoding(view).scale);
         
         // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
-        return mergeObjects(propArray.filter(props => props !== undefined), "scale", ["domain"]);
+        return /** @type { import("../spec/scale").Scale} */(mergeObjects(propArray.filter(props => props !== undefined), "scale", ["domain"]));
     }
 
     getTitle() {

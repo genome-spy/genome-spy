@@ -1,5 +1,5 @@
 import * as twgl from 'twgl-base.js';
-import { ticks as d3ticks, max as d3max } from 'd3-array';
+import { max as d3max } from 'd3-array';
 
 import formatObject from '../utils/formatObject';
 import Interval from '../utils/interval';
@@ -9,7 +9,12 @@ import MouseTracker from '../mouseTracker';
 import * as html from '../utils/html';
 import PointMark from '../marks/pointMark';
 import View from '../view/view';
-
+import {
+    validTicks,
+    tickValues,
+    tickFormat,
+    tickCount
+} from '../scale/ticks';
 import {
     createView,
     getFlattenedViews,
@@ -23,7 +28,11 @@ const defaultStyles = {
 }
 
 // Based on: https://vega.github.io/vega-lite/docs/axis.html
+/** @type { import("../spec/axis").Axis} */
 const defaultAxisProps = {
+    /** @type {number[] | string[] | boolean[]} */
+    values: null,
+
     minExtent: 30, // TODO
     maxExtent: Infinity, // TODO
     offset: 0,
@@ -36,6 +45,11 @@ const defaultAxisProps = {
     tickSize: 6,
     tickWidth: 1,
     tickColor: "gray",
+
+    /** @type {number} */
+    tickCount: null,
+    /** @type {number} */
+    tickMinStep: null,
 
     labels: true,
     labelPadding: 4,
@@ -294,7 +308,7 @@ export default class SimpleTrack extends WebGlTrack {
     getMinAxisWidth() {
         return this.getYAxisLayouts()
             .map(layout => layout.offsets.title)
-            .reduce((a, b) => Math.max(a, b));
+            .reduce((a, b) => Math.max(a, b), 0);
     }
 
     renderYAxis() {
@@ -309,13 +323,18 @@ export default class SimpleTrack extends WebGlTrack {
             // --- Domain line ---
 
             if (props.domain) {
-                const ticks = axisLayout.ticks;
+                const truncated = true;
+
+                const domain = truncated ?
+                    axisLayout.ticks :
+                    scale.domain();
+
                 ctx.fillStyle = props.domainColor;
                 ctx.fillRect(
                     axisWidth - axisLayout.offsets.domain - props.domainWidth,
-                    scale(ticks[ticks.length - 1]) - props.tickWidth / 2,
+                    scale(domain[domain.length - 1]) - props.tickWidth / 2,
                     props.domainWidth,
-                    Math.abs(scale(ticks[0]) - scale(ticks[ticks.length - 1])) + props.tickWidth);
+                    Math.abs(scale(domain[0]) - scale(domain[domain.length - 1])) + props.tickWidth + (scale.bandwidth ? scale.bandwidth() : 0));
             }
 
             // --- Ticks ---
@@ -389,15 +408,14 @@ export default class SimpleTrack extends WebGlTrack {
         const axisLayouts = [];
 
         for (const resolution of resolutions) {
-            const scale = resolution.getScale()
-                .copy()
-                .range([axisLength, 0]);
+            const scale = resolution.getScale();
 
             const resolutionAxisProps = resolution.getAxisProps();
             if (resolutionAxisProps === null) {
                 continue;
             }
 
+            /** @type { import("../spec/axis").Axis} */
             const props = {
                 ...defaultAxisProps,
                 ...resolutionAxisProps
@@ -416,7 +434,7 @@ export default class SimpleTrack extends WebGlTrack {
                 tickLabels: [],
                 /** @type {string} */
                 title: undefined,
-                scale: scale,
+                scale: scale.copy().range([axisLength, 0]),
                 props: props
             };
             axisLayouts.push(axisLayout);
@@ -425,11 +443,15 @@ export default class SimpleTrack extends WebGlTrack {
             axisLayout.offsets.domain = pos;
 
             // Slightly decrease the tick density as the height increases
-            const tickCount = Math.round(axisLength / Math.exp(axisLength / 800) / props.labelFontSize / 1.7);
+            let count = props.tickCount ||
+                Math.round(axisLength / Math.exp(axisLength / 800) / props.labelFontSize / 1.7);
+
+            count = tickCount(scale, count, props.tickMinStep);
 
             /** @type {array} */
-            axisLayout.ticks = scale.ticks ? scale.ticks(tickCount) : scale.domain();
-
+            axisLayout.ticks = props.values ?
+                validTicks(scale, props.values, count) :
+                tickValues(scale, count);
 
             // --- Ticks ---
 
@@ -444,11 +466,11 @@ export default class SimpleTrack extends WebGlTrack {
                 pos += props.labelPadding;
                 axisLayout.offsets.labels = pos;
 
-                const maxAbs = d3max(scale.domain(), x => Math.abs(x));
+                // TODO:
+                // const maxAbs = d3max(scale.domain(), x => Math.abs(x));
+                // scale.tickFormat(axisLayout.ticks.length, props.format || (maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined)) :
 
-                const format = scale.tickFormat ?
-                    scale.tickFormat(axisLayout.ticks.length, props.format || (maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined)) :
-                    value => value;
+                const format = tickFormat(scale, count, props.format);
 
                 axisLayout.tickLabels = axisLayout.ticks.map(format);
 

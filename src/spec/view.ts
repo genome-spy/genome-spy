@@ -1,5 +1,6 @@
 import { Data } from "./data";
 import { Scale } from "./scale";
+import { Axis } from "./axis";
 
 export type Scalar = string | number | boolean;
 
@@ -24,7 +25,7 @@ export interface EncodingConfig {
     /** A constant value on the data domain */
     constant?: Scalar;
     scale?: Scale;
-    axis?: object;
+    axis?: Axis;
     title?: string
 }
 
