@@ -2,8 +2,7 @@
 @import ./fp64-arithmetic;
 
 // https://stackoverflow.com/a/47543127
-const float FLT_MAX = 3.402823466e+38;
-const float FLT_MIN = 1.175494351e-38;
+const float FLT_MAX =  3.402823466e+38;
 
 /**
  * When to switch to fp64
@@ -27,10 +26,11 @@ uniform float uXOffset;
 /**
  * Does viewport transformation and returns the X coordinate on a normalized [0, 1] scale
  */
+
 float normalizeX() {
     float normalizedX;
 
-    if (x.x <= FLT_MIN) {
+    if (x.x <= -FLT_MAX) {
         // Clamp almost negative infinite to zero (the left edge of the viewport)
         normalizedX = 0.0;
 
