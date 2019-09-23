@@ -60,6 +60,9 @@ export default class GenomeSpy {
 
         /** @type {import("./coordinateSystem").default} */
         this.coordinateSystem = null;
+
+        /** @type {Map<string, Object[]>} Named datasets */
+        this.datasets = new Map(); 
     }
 
     on(...args) {

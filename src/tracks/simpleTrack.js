@@ -83,7 +83,7 @@ export default class SimpleTrack extends WebGlTrack {
             accessorFactory: genomeSpy.accessorFactory,
             genomeSpy, // TODO: An interface instead of a GenomeSpy
             track: this,
-            getDataSource: config => new DataSource(config, genomeSpy.config.baseurl)
+            getDataSource: config => new DataSource(config, genomeSpy.config.baseurl, genomeSpy.datasets)
         };
 
         /** @type {View} */

@@ -70,6 +70,7 @@ export default class Genome extends CoordinateSystem {
             }
         });
 
+        genomeSpy.datasets.set("chromSizes", [...this.chromSizes.entries()].map(e => ({ chrom: e[0], size: e[1] })));
     }
 
     

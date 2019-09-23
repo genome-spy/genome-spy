@@ -17,13 +17,8 @@ import { DataGroup, GroupGroup, Group } from './group';
   */
 
 /**
- * @typedef {Object} DataConfig
- * @prop {FormatConfig} [format]
- * @prop {String[] | String} [url]
- * @prop {Object[]} [values]
- * @prop {SequenceConfig} [sequence]
+ * @typedef {import("../spec/data").Data} DataConfig
  */
-
 
 
 export default class DataSource {
@@ -31,10 +26,12 @@ export default class DataSource {
      * 
      * @param {DataConfig} config 
      * @param {String} baseUrl
+     * @param {Map<string, Object[]>} [datasets] Named datasets
      */
-    constructor(config, baseUrl) {
+    constructor(config, baseUrl, datasets) {
         this.config = config;
         this.baseUrl = baseUrl;
+        this.datasets = datasets || new Map();
     }
 
     /**
@@ -57,8 +54,15 @@ export default class DataSource {
         } else if (this.config.url) {
             return await this._fetchAndReadAll();
 
+        } else if (this.config.name) {
+            if (this.datasets.has(this.config.name)) {
+                return new DataGroup(this.config.name, this.datasets.get(this.config.name));
+            } else {
+                throw new Error("No such named dataset: " + this.config.name);
+            }
+
         } else {
-            throw new Error('No "url" or "values" defined in data configuration!');
+            throw new Error('No "url", "values", "sequence", or "name" defined in data configuration!');
         }
     }
 

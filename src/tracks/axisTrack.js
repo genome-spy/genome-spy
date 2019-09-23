@@ -147,7 +147,7 @@ export default class AxisTrack extends Track {
                 locus + interval.lower < visibleInterval.upper;
                 locus += step
             ) {
-                const x = scale(locus + interval.lower);
+                const x = scale(locus + interval.lower) - 0.5;
 
                 const text = locusTickFormat(locus);
                 ctx.fillRect(x, 0, 1, 3);
@@ -162,12 +162,12 @@ export default class AxisTrack extends Track {
 
             if (viewportInterval.contains(screenInterval.lower)) {
                 ctx.fillStyle = this.styles.chromColor;
-                ctx.fillRect(screenInterval.lower, 0, 1, this.tickCanvas.clientHeight / 1);
+                ctx.fillRect(screenInterval.lower - 0.5, 0, 1, this.tickCanvas.clientHeight / 1);
 
                 if (screenInterval.width() > this._chromLabelWidths[i] + chromLabelMarginTotal) {
                     // TODO: Some cool clipping and masking instead of just hiding
                     ctx.textAlign = "left";
-                    ctx.fillText(chrom.name, screenInterval.lower + chromLabelMarginLeft, y);
+                    ctx.fillText(chrom.name, screenInterval.lower - 0.5 + chromLabelMarginLeft, y);
                 }
 
                 renderLocusTicks(chrom.continuousInterval);
