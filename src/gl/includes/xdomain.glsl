@@ -1,9 +1,6 @@
 
 @import ./fp64-arithmetic;
 
-// https://stackoverflow.com/a/47543127
-const float FLT_MAX =  3.402823466e+38;
-
 /**
  * When to switch to fp64
  * Note: this hack works with integer genomic coordinates but likely breaks with everything else
@@ -28,6 +25,9 @@ uniform float uXOffset;
  */
 
 float normalizeX() {
+    // https://stackoverflow.com/a/47543127
+    const float FLT_MAX =  3.402823466e+38;
+
     float normalizedX;
 
     if (x.x <= -FLT_MAX) {
