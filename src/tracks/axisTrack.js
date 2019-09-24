@@ -59,7 +59,6 @@ export default class AxisTrack extends Track {
         ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
 
         this._chromLabelWidths = this.chromosomes.map(chrom => ctx.measureText(chrom.name).width);
-        this._maxLocusLabelWidth = ctx.measureText("123,000,000").width;
 
         this.tickCanvas.addEventListener("dblclick", event => 
             this.genomeSpy.zoomTo(
@@ -71,8 +70,7 @@ export default class AxisTrack extends Track {
 
     resizeCanvases(layout) {
         this.adjustCanvas(this.tickCanvas, layout.viewport);
-
-        this._maxTickCount = Math.floor(layout.viewport.width() / this._maxLocusLabelWidth / 2.0);
+        this._layout = layout;
     }
 
     renderTicks() {
@@ -89,34 +87,39 @@ export default class AxisTrack extends Track {
         const viewportInterval = Interval.fromArray(scale.range());
         const domainInterval = Interval.fromArray(scale.domain());
 
-        const step = tickStep(domainInterval.lower, domainInterval.upper, this._maxTickCount);
+        const locusTickFormat = domainInterval.width() > 5e7 ? d3format(".3s") : d3format(",");
 
-        const locusTickFormat = step >= 1000000 ? d3format(".3s") : d3format(",");
+        const maxRawLocusLabelWidth = ctx.measureText(locusTickFormat(1.23e8)).width;
 
         const y = Math.round(this.tickCanvas.clientHeight * 1);
         ctx.textBaseline = "bottom";
         ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
 
-        const renderLocusTicks = (interval, visibleInterval = null, gradientOffset = 0) => {
+        const renderLocusTicks = (interval, chromLabelWidth, visibleInterval = null, gradientOffset = 0) => {
+
+            const maxLocusLabelWidth = maxRawLocusLabelWidth + chromLabelWidth / 2;
+            const maxTickCount = Math.min(20, Math.floor(this._layout.viewport.width() / maxLocusLabelWidth / 2.0));
+            const step = tickStep(domainInterval.lower, domainInterval.upper, maxTickCount);
+
             // Need to accommodate least n ticks before any are shown
-            if (interval.width() < 3 * step) return;
+            if (interval.width() < 2.5 * step) return;
 
             if (visibleInterval == null) {
                 visibleInterval = interval;
             }
 
             if (visibleInterval.lower == interval.lower) {
-                // Add one to skip zeroth tick
+                // Add one to skip the zeroth tick
                 visibleInterval = visibleInterval.withLower(visibleInterval.lower + 1);
             }
 
             visibleInterval = visibleInterval.intersect(
                 // Upper bound to the right edge of the viewport
-                new Interval(-Infinity, scale.invert(this.tickCanvas.clientWidth + this._maxLocusLabelWidth))
+                new Interval(-Infinity, scale.invert(this.tickCanvas.clientWidth + maxLocusLabelWidth))
             ).intersect(
                 // Uppert bound so that the last tick does not overlap with the next chromosome label
                 // TODO: A pretty gradient
-                new Interval(-Infinity, interval.upper - scale.invert(this._maxLocusLabelWidth / 2) + scale.invert(0))
+                new Interval(-Infinity, interval.upper - scale.invert(maxLocusLabelWidth / 2) + scale.invert(0))
             );
 
             // An empty interval? Skip.
@@ -158,7 +161,7 @@ export default class AxisTrack extends Track {
         ctx.clearRect(0, 0, this.tickCanvas.clientWidth, this.tickCanvas.clientHeight);
 
         this.chromosomes.forEach((chrom, i) => {
-            const screenInterval = chrom.continuousInterval.transform(scale); // TODO: Consider rounding. Would be crisper but less exact
+            const screenInterval = chrom.continuousInterval.transform(scale);
 
             if (viewportInterval.contains(screenInterval.lower)) {
                 ctx.fillStyle = this.styles.chromColor;
@@ -170,7 +173,7 @@ export default class AxisTrack extends Track {
                     ctx.fillText(chrom.name, screenInterval.lower - 0.5 + chromLabelMarginLeft, y);
                 }
 
-                renderLocusTicks(chrom.continuousInterval);
+                renderLocusTicks(chrom.continuousInterval, this._chromLabelWidths[i]);
             }
         });
 
@@ -190,7 +193,7 @@ export default class AxisTrack extends Track {
             const b = chrom.continuousInterval.upper;
 
             if (a < b) {
-                renderLocusTicks(chrom.continuousInterval, new Interval(a, b), labelWidth + chromLabelMarginLeft);
+                renderLocusTicks(chrom.continuousInterval, labelWidth, new Interval(a, b), labelWidth + chromLabelMarginLeft);
             }
         }
 
