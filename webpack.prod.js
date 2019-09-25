@@ -7,10 +7,15 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
-
+//const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+ 
 module.exports = merge(common, {
     mode: 'production',
     devtool: 'source-map',
+
+    entry: {
+        main: './src/index.js'
+    },
 
     output: {
         filename: '[name].js',
@@ -27,6 +32,7 @@ module.exports = merge(common, {
         new webpack.BannerPlugin({
             banner: `${meta.name} v${meta.version} - Copyright ${(new Date()).getFullYear()} ${meta.author.name}`,
         })
+        //new BundleAnalyzerPlugin()
         //new HtmlWebpackPlugin({
         //    inlineSource: '.(js|css)$' // embed all javascript and css inline
         //}),
