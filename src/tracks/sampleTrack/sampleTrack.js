@@ -138,16 +138,27 @@ export default class SampleTrack extends SimpleTrack {
      * @param {HTMLElement} trackContainer 
      */
     async initialize(trackContainer) {
+        await super.initialize(trackContainer);
+
         if (this.config.samples) {
             const sampleDataSource = new DataSource(this.config.samples.data, this.genomeSpy.config.baseurl);
             this.setSamples(processSamples(await sampleDataSource.getUngroupedData()));
 
         } else {
-            // TODO: Get samples from layers if they were not provided
-            throw new Error("No samples defined!");
+            const resolution = this.viewRoot.getResolution("sample");
+            if (resolution) {
+                this.setSamples(resolution.getDomain().map(s => ({
+                    id: s,
+                    displayName: s,
+                    attributes: []
+                })));
+            }
         }
 
-        await super.initialize(trackContainer);
+        if (!this.samples) {
+            throw new Error("No samples defined!"); // TODO: How to fix?
+        }
+        
 
         this.trackContainer.className = "sample-track";
 

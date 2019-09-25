@@ -23,8 +23,7 @@ export default function stackTransform(config, rows) {
 
     const accessor = config.field ? vuField(config.field) : row => 1;
 
-    // TODO: Elaborate what "undefined" means
-    const comparator = config.sort ? compare(config.sort.field, config.sort.order) : "undefined";
+    const comparator = config.sort ? compare(config.sort.field, config.sort.order) : undefined;
 
     const offsetF = config.offset == "normalize" ?
         (value, sum) => value / sum :
@@ -57,21 +56,3 @@ export default function stackTransform(config, rows) {
 
     return newRows;
 }
-
-
-/**
- * TODO: Move to utilities
- * 
- * @param {any[] | any} obj 
- */
-function asArray(obj) {
-    if (Array.isArray(obj)) {
-        return obj;
-
-    } else if (typeof obj != "undefined") {
-        return [obj]
-
-    } else {
-        return [];
-    }
-} 
