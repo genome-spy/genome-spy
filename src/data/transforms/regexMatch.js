@@ -1,30 +1,33 @@
 
 /**
- * @typedef {Object} RegexMatchConfig
- * @prop {string} regex
- * @prop {string} field
- * @prop {string[]} as
- * @prop {boolean} [skipInvalidInput] Don't copmlain about invalid input. Just skip it.
+ * @typedef {import("../../spec/transform").RegexExtractConfig} RegexExtractConfig
  */
 
 // TODO: Implement asType (string, integer, float, boolean)
 
+/**
+ * 
+ * @param {RegexExtractConfig} config 
+ * @param {*} rows 
+ */
 export default function regexMatchTransform(config, rows) {
     const re = new RegExp(config.regex);
+
+    const as = typeof config.as == "string" ? [config.as] : config.as;
 
     return rows.map(row => {
         const newRow = { ...row };
 
         const value = row[config.field];
-        if (typeof value == "string") {
+        if (typeof value === "string") {
             const m = value.match(re);
 
             if (m) {
-                if (m.length - 1 != config.as.length) {
+                if (m.length - 1 != as.length) {
                     throw new Error('The number of RegEx groups and the length of "as" do not match!');
                 }
 
-                config.as.forEach((group, i) => {
+                as.forEach((group, i) => {
                     newRow[group] = m[i + 1];
                 });
 

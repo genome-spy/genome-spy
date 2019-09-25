@@ -1,10 +1,9 @@
 /**
- * @typedef {Object} GatherConfig
- * @prop {string} type
- * @prop {string} columnRegex
- * @prop {string} asValue
- * @prop {string} [asKey] Default: sample
+ * @typedef {import("../../spec/transform").GatherConfig} GatherConfig
  */
+
+// See: https://vega.github.io/vega/docs/transforms/fold/
+
 
 /**
  * @param {GatherConfig} gatherConfig
@@ -36,7 +35,10 @@ export function gather(gatherConfig, rows) {
     return gatheredFields;
 }
 
-
+/**
+ * @param {GatherConfig} gatherConfig
+ * @param {Object[]} rows Data parsed with d3.dsv
+ */
 export default function gatherTransform(gatherConfig, rows) {
     if (rows.length == 0) {
         return [];

@@ -3,17 +3,7 @@ import { compare, field as vuField } from 'vega-util';
 import { groups as d3groups, sum as d3sum } from 'd3-array';
 
 /**
- * 
- * @typedef {Object} Compare
- * @prop {String[] | String} field
- * @prop {String[] | String} order
- * 
- * @typedef {Object} StackConfig
- * @prop {String} [field] Constant value 1 if the field is not defined
- * @prop {String[]} groupby
- * @prop {Compare} [sort]
- * @prop {String} [offset] zero / center / normalize
- * @prop {String[]} [as]
+ * @typedef {import("../../spec/transform").StackConfig} StackConfig
  */
 
  /**
@@ -33,6 +23,7 @@ export default function stackTransform(config, rows) {
 
     const accessor = config.field ? vuField(config.field) : row => 1;
 
+    // TODO: Elaborate what "undefined" means
     const comparator = config.sort ? compare(config.sort.field, config.sort.order) : "undefined";
 
     const offsetF = config.offset == "normalize" ?
@@ -53,6 +44,7 @@ export default function stackTransform(config, rows) {
         for (const row of group) {
             const current = prev + accessor(row);
             
+            // TODO: Modify in-place if safe
             newRows.push({
                 ...row,
                 [as[0]]: offsetF(prev, sum),
@@ -66,25 +58,6 @@ export default function stackTransform(config, rows) {
     return newRows;
 }
 
-/**
- * TODO: Move to utilities
- * 
- * @param {Compare} compareDef 
- */
-function createComparator(compareDef) {
-    if (!compareDef) {
-        return (a, b) => 0;
-    }
-
-    // TODO: Check validity
-
-    const fields = asArray(compareDef.field);
-    const orders = compareDef.order ?
-        asArray(compareDef.order) :
-        fields.map(f => "ascending");
-
-    return compare(fields.map((field, i) => (orders[i] == "ascending" ? "+" : "-") + field));
-}
 
 /**
  * TODO: Move to utilities

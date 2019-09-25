@@ -54,3 +54,8 @@ TODO: make SimpleFilter compatible with VL's Filter
 ### Layer
 
     * Resolve
+
+## Expression
+
+TODO
+Subset of https://github.com/vega/vega/tree/master/packages/vega-expression

@@ -19,3 +19,19 @@ export function isHomogeneous(a) {
     const first = a[0];
     return a.every(x => x === first);
 }
+
+/**
+ * 
+ * @param {any[] | any} obj 
+ */
+export function asArray(obj) {
+    if (Array.isArray(obj)) {
+        return obj;
+
+    } else if (typeof obj != "undefined") {
+        return [obj]
+
+    } else {
+        return [];
+    }
+} 

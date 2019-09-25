@@ -1,6 +1,7 @@
+import { asArray } from "../../utils/arrayUtils";
 
 /**
- * @typedef {Object} FlattenDelimitedConfig
+ * @typedef {import("../../spec/transform").FlattenDelimitedConfig} FlattenDelimitedConfig
  * @prop {string[]} separators
  * @prop {string[]} fields
  * @prop {string[]} [as]
@@ -14,11 +15,19 @@
 export default function flattenDelimitedTransform(config, rows) {
     const newRows = [];
 
-    // TODO: Validate config. Check that arrays, equal lengths, string elements, etc...
+    // TODO: Validate config. string elements, etc...
 
-    const separators = config.separators;
-    const fields = config.fields;
-    const as = config.as || config.fields;
+    const fields = asArray(config.field);
+    const separators = asArray(config.separator);
+    const as = asArray(config.as || config.field);
+
+    if (fields.length !== separators.length || fields.length !== as.length) {
+        throw new Error(`Lengths of "separator" (${separators.length}), "fields" (${fields.length}), and "as" (${as.length}) do not match!`)
+    }
+
+    if (!fields.length) {
+        return;
+    }
 
     for (const row of rows) {
         if (fields.some(f => !row[f])) continue;
@@ -42,6 +51,6 @@ export default function flattenDelimitedTransform(config, rows) {
 function validateSplit(splitFields, row) {
     const splitLengths = splitFields.map(f => f.length);
     if (!splitLengths.every(x => x == splitLengths[0])) {
-        throw new Error("Mismatching number of elements in fields to be split: " + JSON.stringify(row));
+        throw new Error("Mismatching number of elements in the fields to be split: " + JSON.stringify(row));
     }
 }

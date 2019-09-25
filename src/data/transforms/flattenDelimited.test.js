@@ -12,8 +12,9 @@ describe("FlattenDelimited transform", () => {
     test("With a single field", () => {
         /** @type {import("./flattenDelimited").FlattenDelimitedConfig} */
         const config = {
-            fields: ["a"],
-            separators: [", "]
+            type: "flattenDelimited",
+            field: "a",
+            separator: ", "
         };
 
         expect(flattenDelimitedTransform(config, sampleData)).toEqual([
@@ -30,9 +31,10 @@ describe("FlattenDelimited transform", () => {
     test("With two fields", () => {
         /** @type {import("./flattenDelimited").FlattenDelimitedConfig} */
         const config = {
-            fields: ["a", "b"],
+            type: "flattenDelimited",
+            field: ["a", "b"],
             as: ["a", "c"],
-            separators: [", ", "-"]
+            separator: [", ", "-"]
         };
 
         expect(flattenDelimitedTransform(config, sampleData)).toEqual([
@@ -53,11 +55,22 @@ describe("FlattenDelimited transform", () => {
 
         /** @type {import("./flattenDelimited").FlattenDelimitedConfig} */
         const config = {
-            fields: ["a", "b"],
-            separators: ["-", "-"]
+            type: "flattenDelimited",
+            field: ["a", "b"],
+            separator: ["-", "-"]
         };
 
         expect(() => flattenDelimitedTransform(config, data)).toThrow();
-    })
+    });
 
+    test("Throws on mismatching spec lengths", () => {
+        /** @type {import("./flattenDelimited").FlattenDelimitedConfig} */
+        const config = {
+            type: "flattenDelimited",
+            field: ["a", "b"],
+            separator: ["a"],
+        };
+
+        expect(() => flattenDelimitedTransform(config, sampleData)).toThrow();
+    });
 })

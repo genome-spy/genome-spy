@@ -1,10 +1,7 @@
 import { parse, codegen } from 'vega-expression';
 
 /**
- * @typedef {Object} FormulaConfig
- * @prop {string} expr
- * @prop {string} as
- * @prop {boolean} [inplace] Modify the rows in place (a temp hack)
+ * @typedef {import("../../spec/transform").FormulaConfig} FormulaConfig
  */
 
 
