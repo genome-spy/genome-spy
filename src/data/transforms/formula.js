@@ -1,5 +1,4 @@
 import { parse, codegen } from 'vega-expression';
-import { createConfigItem } from '@babel/core';
 
 /**
  * @typedef {Object} FormulaConfig
