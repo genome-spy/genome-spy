@@ -132,3 +132,18 @@ export interface SimpleFilterConfig extends TransformConfigBase {
 
     value: number | string | boolean;
 }
+
+export interface UngroupConfig extends TransformConfigBase {
+    type: "ungroup";
+}
+
+export type TransformConfig =
+    UngroupConfig |
+    FlattenDelimitedConfig |
+    FormulaConfig |
+    GatherConfig |
+    RegexExtractConfig |
+    SimpleFilterConfig |
+    StackConfig;
+
+    

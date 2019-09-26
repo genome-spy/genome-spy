@@ -1,6 +1,7 @@
 import { Data } from "./data";
 import { Scale } from "./scale";
 import { Axis } from "./axis";
+import { TransformConfig } from "./transform";
 
 export type Scalar = string | number | boolean;
 
@@ -31,26 +32,24 @@ export interface EncodingConfig {
 
 export type EncodingConfigs = Record<string, EncodingConfig>;
 
-export interface ViewSpec {
+export interface ViewSpecBase {
     name?: string;
     data?: Data;
-    transform?: object[];
+    transform?: TransformConfig[];
     encoding?: Record<string, EncodingConfig>;
     title?: string;
     description?: string;
 }
 
-export interface LayerSpec extends ViewSpec {
+export interface LayerSpec extends ViewSpecBase {
     layer: ViewSpec[];
     resolve?: object;
 }
 
 export type ContainerSpec = LayerSpec;
 
-export interface UnitSpec extends ViewSpec {
+export interface UnitSpec extends ViewSpecBase {
     mark: string | MarkConfig;
 }
 
-export interface TransformConfig {
-    type: string;
-}
+export type ViewSpec = UnitSpec | LayerSpec;

@@ -3,7 +3,7 @@ import transformers from './transforms/transforms';
 
 /**
  * 
- * @param {object[]} transformConfigs 
+ * @param {import("../spec/transform").TransformConfig[]} transformConfigs
  * @param {import("group").Group} data
  */
 export function transformData(transformConfigs, data) {
