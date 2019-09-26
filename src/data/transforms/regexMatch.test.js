@@ -6,7 +6,9 @@ describe("RegexMatchTransform", () => {
         { a: "23-45" },
     ];
 
+    /** @type {import("./regexMatch").RegexExtractConfig} */
     const config = {
+        type: "regexExtract",
         regex: "^(\\d+)-(\\d+)$",
         field: "a",
         as: ["b", "c"]
@@ -21,7 +23,9 @@ describe("RegexMatchTransform", () => {
     });
 
     test("Invalid config", () => {
+    /** @type {import("./regexMatch").RegexExtractConfig} */
         const config2 = {
+            type: "regexExtract",
             regex: "^(\\d+)-(\\d+)$",
             field: "a",
             as: ["b", "c", "d"]

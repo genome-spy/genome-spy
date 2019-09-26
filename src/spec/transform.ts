@@ -1,10 +1,12 @@
 
-export interface TransformConfig {
+export interface TransformConfigBase {
     /** The type of the transform to be applied */
     type: string;
 }
 
-export interface FormulaConfig extends TransformConfig {
+export interface FormulaConfig extends TransformConfigBase {
+    type: "formula";
+
     /** An expression string */
     expr: string;
 
@@ -16,7 +18,9 @@ export interface FormulaConfig extends TransformConfig {
 }
 
 
-export interface RegexExtractConfig extends TransformConfig {
+export interface RegexExtractConfig extends TransformConfigBase {
+    type: "regexExtract";
+
     /**
      * A valid JavaScript regular expression with at least one group. For example: `"^Sample(\\d+)$".
      * Read more at: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
@@ -41,7 +45,9 @@ export interface RegexExtractConfig extends TransformConfig {
 }
 
 
-export interface GatherConfig extends TransformConfig {
+export interface GatherConfig extends TransformConfigBase {
+    type: "gather";
+
     columnRegex: string;
 
     asValue: string;
@@ -66,7 +72,9 @@ export interface CompareConfig {
 
 export type StackOffset = "zero" | "center" | "normalize";
 
-export interface StackConfig extends TransformConfig {
+export interface StackConfig extends TransformConfigBase {
+    type: "stack";
+
     /**
      * The field to stack. If no field is defined, a constant value of one is assumed.
      */
@@ -96,7 +104,9 @@ export interface StackConfig extends TransformConfig {
     as: string[];
 }
 
-export interface FlattenDelimitedConfig extends TransformConfig {
+export interface FlattenDelimitedConfig extends TransformConfigBase {
+    type: "flattenDelimited";
+
     /**
      * Field(s) to split and flatten
      */
@@ -111,4 +121,14 @@ export interface FlattenDelimitedConfig extends TransformConfig {
      * The output field name(s) for the flattened field. Default: the input fields.
      */
     as?: string[] | string;
+}
+
+export interface SimpleFilterConfig extends TransformConfigBase {
+    type: "simpleFilter";
+
+    field: string;
+
+    operator: "eq" | "neq" | "lt" | "lte" | "gte";
+
+    value: number | string | boolean;
 }

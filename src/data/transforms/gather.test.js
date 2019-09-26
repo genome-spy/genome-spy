@@ -8,6 +8,7 @@ const sampleData = [
 
 sampleData.columns = ["row", "sample1_a", "sample2_a", "sample1_b", "sample2_b"];
 
+/** @type { import("./gather").GatherConfig } */
 const singleGatherConfig = {
     type: "gather",
     columnRegex: "^(.*)_a$",

@@ -1,14 +1,9 @@
 
 /**
- * @typedef {Object} SimpleFilterConfig
- * @prop {string} field 
- * @prop {string} operator eq, neq, lt, lte, gte, gt
- * @prop {*} value
- * 
+ * @typedef {import("../../spec").SimpleFilterConfig} SimpleFilterConfig
  */
 
 /**
- * 
  * @param {SimpleFilterConfig} simpleFilterConfig 
  * @param {Object[]} rows
  */

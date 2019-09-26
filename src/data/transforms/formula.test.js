@@ -4,6 +4,7 @@ test("CalculateTransform", () => {
     const data = [{ a: 2 }, { a: 3 }];
 
     expect(formulaTransform({
+        type: "formula",
         expr: "datum.a * 2",
         as: "b"
     }, data))

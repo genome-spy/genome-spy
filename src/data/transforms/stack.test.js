@@ -9,6 +9,7 @@ const sampleData = [
 
 /** @type {import("./stack").StackConfig} */
 const baseConf = {
+    type: "stack",
     field: "value",
     groupby: ["group"],
     sort: {
