@@ -1,4 +1,6 @@
-# Introduction
+---
+title: Introduction
+---
 
 GenomeSpy is an interactive visualization tool for genomic data. It provides
 a grammar for mapping data to various visual channels (position, color, etc.)

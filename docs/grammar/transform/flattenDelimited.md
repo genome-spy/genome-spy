@@ -12,7 +12,7 @@ Given the following data:
 | patient | tissue | value |
 | - | - | - |
 | A | Ova,Asc | 4,2 |
-| B | Adn,Asc,Ute | 6, 3, 4 |
+| B | Adn,Asc,Ute | 6,3,4 |
 
 ... and configuration:
 

@@ -10,7 +10,7 @@ that it has a horizontally scrollable viewport and vertically stacked tracks.
 Type: `SimpleTrack`
 
 Simple track allows for specifying a custom visualization by using the
-visualization grammar.
+[visualization grammar](grammar/grammar.md).
 
 TODO: Trivial usage example
 
@@ -22,7 +22,7 @@ Type: `SampleTrack`
 
 Sample track is an extension of the simple track and allows for creation of a
 faceted view to the data. The view specification is repeated for subgroups of
-the data, eg. multiple biological samples.
+the data, e.g. for multiple biological samples.
 
 A group is assigned to a datum by specifying the `sample` channel in mark
 encoding:
@@ -46,11 +46,14 @@ along with optional sample-specific attributes such as various clinical data.
 The attributes are shown as color-coded columns in the left axis area. The
 user can use these attributes to interactively filter and sort the samples.
 
+TODO: Figure, display some example data
+
 The sample-specific data must contain a `sample` column, which identifies the
 sample. All other columns are regarded as attributes. By default, the
 attribute data types are inferred from the data; numeric attributes are
 interpreted as `quantitative` data, all others as `nominal`. To adjust the
-data types and scales, the attributes can be specified explicitly:
+data types and [scales](grammar/scale.md), the attributes can be specified
+explicitly:
 
 ```javascript
 {
@@ -73,11 +76,41 @@ data types and scales, the attributes can be specified explicitly:
 }
 ```
 
-See Scale (TODO: link) documentation to further blablaa ...
+See [Scale](grammar/scale.md) documentation to further blablaa ...
 
-TODO: Full live example
+TODO: Link to a full live example
 
 TODO: A note about the difference to band scale
+
+### Sorting samples
+
+Samples can be interactively ordered by sample-specific attributes and the actual data.
+
+#### By sample-specific attributes
+
+You can sort the samples by clicking the labels of the attributes.
+
+TODO: A link to a visualization
+
+#### By the actual data
+
+TODO:
+
+* How to sort
+  * Screenshot of the context-menu
+* How to specify
+
+### Filtering samples
+
+SampleTrack also allows for interactive filtering of the samples.
+
+TODO:
+
+* Right-click to open a context-menu (screenshot)
+* Retain
+* Remove
+* Retain first of each
+* History / backtrack button
 
 ## Special tracks
 

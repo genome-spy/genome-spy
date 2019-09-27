@@ -26,7 +26,7 @@ Given the following data:
 
 TODO: Rename to Regex Extract
 
-New fields are added to the data:
+Three new fields are added to the data:
 
 | Gene | Genome Location         | Chrom | Start     | End       |
 | ---- | ----------------------- | ----- | --------- | --------- |
