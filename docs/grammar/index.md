@@ -1,4 +1,6 @@
-# The Grammar of Graphics
+---
+title: The Grammar of Graphics
+---
 
 The visualization grammar of GenomeSpy is a subset and a dialect of
 [Vega-Lite](https://vega.github.io/vega-lite/). However, the goals of
@@ -13,33 +15,11 @@ documentation.
 
 ## Data input
 
-GenomeSpy inputs tabular data as *CSV*, *TSV*, or *JSON* files. Currently,
-common bioinformatic data formats such as *BED* or *BigWig* are not directly
-supported. They must be first converted into one of the tabular formats above.
+[Data Input](data.md)
 
-TODO: Add an example of URL data here
+## Transforms
 
-With the exception of the geographical formats and generators, data
-specification of GenomeSpy identical to Vega-Lite's
-[data](https://vega.github.io/vega-lite/docs/data.html) property.
-
-## Transformation
-
-### Flatten Delimited
-
-### Formula
-
-### Gather
-
-### Regex Match
-
-TODO: Rename to Regex Extract
-
-### Stack
-
-### Filter
-
-TODO: make SimpleFilter compatible with VL's Filter
+[Transforms](transform/transforms.md)
 
 ## Encoding
 
