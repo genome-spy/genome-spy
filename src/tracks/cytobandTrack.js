@@ -147,8 +147,8 @@ export default class CytobandTrack extends WebGlTrack {
             // TODO: Move to base class / abstraction
             yPosLeft: [0, 1],
             yPosRight: [0, 1],
-            uYDomainBegin: 0,
-            uYDomainWidth: 1,
+            uYTranslate: 0,
+            uYScale: 1,
             ONE: 1.0, // fp64 hack
         });
     }

@@ -118,10 +118,8 @@ export default class PointMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            //uYDomainBegin: yDomain.lower,
-            uYDomainBegin: 0,
-            //uYDomainWidth: yDomain.width(),
-            uYDomainWidth: 1,
+            uYTranslate: 0,
+            uYScale: 1,
             uXOffset: (this.renderConfig.xOffset || 0.0) / gl.drawingBufferWidth * window.devicePixelRatio,
             uYOffset: (this.renderConfig.yOffset || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio,
             viewportHeight: this.getContext().track.glCanvas.clientHeight,

@@ -1,6 +1,6 @@
 
-uniform highp float uYDomainBegin;
-uniform highp float uYDomainWidth;
+uniform highp float uYScale;
+uniform highp float uYTranslate;
 
 uniform float uYOffset;
 
@@ -18,6 +18,6 @@ float normalizeY() {
     } else if (y >= FLT_MAX) {
         return 1.0;
     } else {
-        return (y - uYDomainBegin) / uYDomainWidth + uYOffset;
+        return y * uYScale + uYTranslate + uYOffset;
     }
 }

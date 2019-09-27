@@ -5,15 +5,15 @@
  * When to switch to fp64
  * Note: this hack works with integer genomic coordinates but likely breaks with everything else
  */
-const float precisionThreshold = 1024.0 * 1024.0 * 8.0;
+const float precisionThreshold = 1.0 / (1024.0 * 1024.0 * 8.0);
 
 /**
  * X coordinate of the vertex as fp64 (emulated 64bit floating point)
  */
 attribute highp vec2 x;
 
-uniform highp vec2 uXDomainBegin;
-uniform highp vec2 uXDomainWidth;
+uniform highp vec2 uXScale;
+uniform highp vec2 uXTranslate;
 
 /**
  * Post-transformation translation of the vertex on the X axis
@@ -38,15 +38,13 @@ float normalizeX() {
         // Clamp almost positive infinite to zero (the right edge of the viewport)
         normalizedX = 1.0;
 
-    } else if (uXDomainWidth.x < precisionThreshold) {
+    } else if (uXScale.x > precisionThreshold) {
         // Use emulated 64bit floating points
-        vec2 translated = sub_fp64(x, uXDomainBegin);
-        // Normalize to [0, 1]
-        normalizedX = div_fp64(translated, uXDomainWidth).x;
+        normalizedX = sum_fp64(mul_fp64(x, uXScale), uXTranslate).x;
 
     } else {
         // 32bit floats provide enough precision are enough
-        normalizedX = (x.x - uXDomainBegin.x) / uXDomainWidth.x;
+        normalizedX = x.x * uXScale.x + uXTranslate.x;
     }
 
     return normalizedX + uXOffset;

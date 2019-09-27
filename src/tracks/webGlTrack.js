@@ -33,8 +33,8 @@ export default class WebGlTrack extends Track {
         // TODO: const range = domain.transform()
 
         return {
-            uXDomainBegin: fp64ify(domain.lower),
-            uXDomainWidth: fp64ify(domain.width())
+            uXScale: fp64ify(1.0 / domain.width()),
+            uXTranslate: fp64ify(-domain.lower / domain.width())
         };
     }
 }

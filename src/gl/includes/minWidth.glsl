@@ -18,7 +18,7 @@ float applyMinWidth(inout float normalizedX) {
     float opacity = 1.0;
 
     if (width != 0.0) {
-        float normalizedWidth = width / uXDomainWidth.x;
+        float normalizedWidth = width * uXScale.x;
         if (abs(normalizedWidth) < uMinWidth) {
             // The rectangle is too narrow, stretch it to make it more visible
             normalizedX += (uMinWidth * sign(width) - normalizedWidth) / 2.0;

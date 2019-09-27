@@ -22,8 +22,8 @@ varying vec4 vColor;
 
 
 float applyMinHeight(float normalizedY) {
-    if (height != 0.0 && uYDomainWidth > 0.0) {
-        float normalizedHeight = height / uYDomainWidth * yPosLeft[1]; // TODO: Fix: Broken inside transition!
+    if (height != 0.0) {
+        float normalizedHeight = height * uYScale * yPosLeft[1]; // TODO: Fix: Broken inside transition!
         if (abs(normalizedHeight) < uMinHeight) {
             normalizedY += (uMinHeight * sign(height) - normalizedHeight) / 2.0;
         }
