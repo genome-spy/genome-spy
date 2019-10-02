@@ -142,16 +142,13 @@ export default class GeneTrack extends WebGlTrack {
     }
 
     initializeWebGL() {
-        this.glCanvas = this.createCanvas();
-        const gl = this.glCanvas.getContext("webgl");
-        this.gl = gl;
+        super.initializeWebGL();
+        this.gl.enable(this.gl.BLEND);
 
-        gl.clearColor(1, 1, 1, 1);
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
-        this.geneProgramInfo = twgl.createProgramInfo(gl, [ geneVertexShader, geneFragmentShader ]);
-        this.exonProgramInfo = twgl.createProgramInfo(gl, [ exonVertexShader, rectangleFragmentShader ]);
+        this.geneProgramInfo = twgl.createProgramInfo(this.gl,
+            [ geneVertexShader, geneFragmentShader ].map(shader => this.processShader(shader)));
+        this.exonProgramInfo = twgl.createProgramInfo(this.gl,
+            [ exonVertexShader, rectangleFragmentShader ].map(shader => this.processShader(shader)));
     }
 
     entrezSummary2Html(summary) {
@@ -343,7 +340,6 @@ export default class GeneTrack extends WebGlTrack {
         const uniforms = {
             uMinWidth: 1.0 / gl.drawingBufferWidth, // How many pixels
             uColor: [0, 0, 0],
-            ONE: 1.0, // WTF: https://github.com/uber/luma.gl/pull/622
             ...this.getDomainUniforms()
         };
 

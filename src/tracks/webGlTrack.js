@@ -1,5 +1,6 @@
+import * as twgl from 'twgl-base.js';
 import { Matrix4 } from 'math.gl';
-import { fp64ify } from '../gl/includes/fp64-utils';
+import { getPlatformShaderDefines, fp64ify } from '../gl/includes/fp64-utils';
 import Track from "./track";
 
 export default class WebGlTrack extends Track {
@@ -11,7 +12,31 @@ export default class WebGlTrack extends Track {
         await super.initialize(trackContainer);
     }
 
-    adjustGl(gl) {
+    initializeWebGL() {
+        // Canvas for WebGL
+        this.glCanvas = this.createCanvas();
+
+        const gl = twgl.getContext(this.glCanvas);
+
+        this.gl = gl;
+
+        gl.clearColor(1, 1, 1, 1);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+        this._shaderDefines = getPlatformShaderDefines(gl);       
+    }
+
+    /**
+     * @param {string} shaderCode
+     */
+    processShader(shaderCode) {
+        return this._shaderDefines + "\n" + shaderCode;
+    }
+
+
+    adjustGl() {
+        const gl = this.gl;
+
         gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
         gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio; 
 
@@ -34,7 +59,8 @@ export default class WebGlTrack extends Track {
 
         return {
             uXScale: fp64ify(1.0 / domain.width()),
-            uXTranslate: fp64ify(-domain.lower / domain.width())
+            uXTranslate: fp64ify(-domain.lower / domain.width()),
+            ONE: 1.0
         };
     }
 }

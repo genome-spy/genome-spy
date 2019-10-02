@@ -1,6 +1,3 @@
-import * as twgl from 'twgl-base.js';
-import { max as d3max } from 'd3-array';
-
 import formatObject from '../utils/formatObject';
 import Interval from '../utils/interval';
 import WebGlTrack from './webGlTrack';
@@ -90,18 +87,6 @@ export default class SimpleTrack extends WebGlTrack {
         this.viewRoot = createView(spec, context);
     }
 
-    initializeWebGL() {
-        // Canvas for WebGL
-        this.glCanvas = this.createCanvas();
-
-        const gl = twgl.getContext(this.glCanvas);
-
-        this.gl = gl;
-
-        gl.clearColor(1, 1, 1, 1);
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    }
-
     /**
      * @param {HTMLElement} trackContainer 
      */
@@ -172,7 +157,7 @@ export default class SimpleTrack extends WebGlTrack {
 
     resizeCanvases(layout) {
         this.adjustCanvas(this.glCanvas, layout.viewport);
-        this.adjustGl(this.gl);
+        this.adjustGl();
 
         const trackHeight = this.trackContainer.clientHeight;
         this.adjustCanvas(this.leftCanvas, layout.axis, trackHeight);

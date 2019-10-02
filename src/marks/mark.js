@@ -1,5 +1,4 @@
 import { group } from 'd3-array';
-import { processData } from '../data/dataMapper';
 import Interval from '../utils/interval';
 import createEncoders from '../encoder/encoder';
 
@@ -86,6 +85,13 @@ export default class Mark {
         this.encoders = createEncoders(encoding, scaleSource, scale => this.unitView.getAccessor(scale));
 
         this.gl = this.getContext().track.gl; // TODO: FIXME FIXME FIXME FIXME FIXME FIXME 
+    }
+
+    /**
+     * @param {string} shaderCode
+     */
+    processShader(shaderCode) {
+        return this.getContext().track.processShader(shaderCode);
     }
 
 

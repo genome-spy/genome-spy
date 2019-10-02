@@ -76,7 +76,8 @@ export default class PointMark extends Mark {
         super.initializeGraphics();
         const gl = this.gl;
 
-        this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
+        this.programInfo = twgl.createProgramInfo(gl,
+            [ VERTEX_SHADER, FRAGMENT_SHADER ].map(s => this.processShader(s)));
 
         const vertexCount = this.dataBySample.size === 1 ? [...this.dataBySample.values()][0].length : undefined; // TODO: Sum all samples
 

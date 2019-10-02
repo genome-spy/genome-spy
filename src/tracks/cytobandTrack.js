@@ -120,13 +120,12 @@ export default class CytobandTrack extends WebGlTrack {
     }
 
     initializeWebGL() {
-        this.glCanvas = this.createCanvas();
-        const gl = this.glCanvas.getContext("webgl");
-        this.gl = gl;
+        super.initializeWebGL();
 
-        gl.clearColor(1, 1, 1, 1);
+        const gl = this.gl;
 
-        this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
+        this.programInfo = twgl.createProgramInfo(gl,
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s)));
 
         const vertices = segmentsToVertices(
             this.mappedCytobands.map(band => Object.assign(
@@ -148,15 +147,14 @@ export default class CytobandTrack extends WebGlTrack {
             yPosLeft: [0, 1],
             yPosRight: [0, 1],
             uYTranslate: 0,
-            uYScale: 1,
-            ONE: 1.0, // fp64 hack
+            uYScale: 1
         });
     }
 
     resizeCanvases(layout) {
         this.adjustCanvas(this.bandLabelCanvas, layout.viewport);
         this.adjustCanvas(this.glCanvas, layout.viewport);
-        this.adjustGl(this.gl);
+        this.adjustGl();
         this.viewportDimensions = { width: layout.viewport.width(), height: this.trackContainer.clientHeight };
     }
 

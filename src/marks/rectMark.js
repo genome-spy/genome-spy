@@ -98,7 +98,8 @@ export default class RectMark extends Mark {
         // TODO: const domainWidth = this.unitContext.genomeSpy.getDomain().width();
         // But it requires that all data are first loaded in order to extract the domain
 
-        this.programInfo = twgl.createProgramInfo(gl, [ VERTEX_SHADER, FRAGMENT_SHADER ]);
+        this.programInfo = twgl.createProgramInfo(gl,
+            [ VERTEX_SHADER, FRAGMENT_SHADER ].map(s => this.processShader(s)));
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(null,
             domainWidth / tesselationConfig.zoomThreshold / tesselationConfig.tiles);
