@@ -1,5 +1,5 @@
 ---
-title: Flatten Delimited Transform
+title: Flatten Delimited
 ---
 
 FlattenDelimited transform flattens (or normalizes) a field or a set of
@@ -16,7 +16,7 @@ Given the following data:
 
 ... and configuration:
 
-```javascript
+```json
 {
     "type": "flattenDelimited",
     "field": ["tissue", "value"],

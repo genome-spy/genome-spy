@@ -3,7 +3,7 @@ title: Coordinate system
 ---
 
 Just as genome browsers, GenomeSpy has a horizontally scrollable viewport.
-The horizontal (x) axis is always quantitative and linear. In other words, it
+The horizontal axis is always quantitative and linear. In other words, it
 is used for presenting numeric values, e.g. quantities or coordinates on the
 scrollable viewport.
 
@@ -27,7 +27,7 @@ Example: Encode the value of the `foo` field as a position on the horizontal axi
 
 To support easy visualization of genomic data, GenomeSpy provides a specific
 genomic coordinate system, which maps the discrete chromosomes or contigs
-onto the linear axis.
+onto the continuous linear axis.
 
 To activate the genomic coordinate system, add `genome` property to the
 root level configuration object:

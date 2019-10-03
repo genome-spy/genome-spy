@@ -1,5 +1,5 @@
 ---
-title: Regex Extract Transform
+title: Regex Extract
 ---
 
 RegexMatch filter extracts and adds one or more new fields to the data
@@ -15,7 +15,7 @@ Given the following data:
 
 ... and configuration:
 
-```javascript
+```json
 {
     "type": "regexMatch",
     "field": "Genome Location",

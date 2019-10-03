@@ -1,5 +1,5 @@
 ---
-title: Formula Transform
+title: Formula
 ---
 
 The formula transform calculates and adds a new field to the data.
@@ -15,7 +15,7 @@ Given the following data:
 
 ... and configuration:
 
-```javascript
+```json
 {
     "type": "formula",
     "expr": "datum.x + datum.y",

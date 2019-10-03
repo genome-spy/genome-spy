@@ -1,0 +1,6 @@
+site_name: GenomeSpy
+theme: material
+markdown_extensions:
+  - codehilite
+  - toc:
+      permalink: true

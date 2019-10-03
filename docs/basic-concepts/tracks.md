@@ -10,7 +10,7 @@ that it has a horizontally scrollable viewport and vertically stacked tracks.
 Type: `SimpleTrack`
 
 Simple track allows for specifying a custom visualization by using the
-[visualization grammar](grammar/grammar.md).
+[visualization grammar](../grammar/index.md).
 
 TODO: Trivial usage example
 
@@ -27,12 +27,15 @@ the data, e.g. for multiple biological samples.
 A group is assigned to a datum by specifying the `sample` channel in mark
 encoding:
 
-```javascript
-"encoding": {
+```json
+{
     ...,
-    "sample": {
-        "field": "sampleId",
-        "type": "nominal"
+    "encoding": {
+        ...,
+        "sample": {
+            "field": "sampleId",
+            "type": "nominal"
+        }
     }
 }
 ```
@@ -55,7 +58,7 @@ interpreted as `quantitative` data, all others as `nominal`. To adjust the
 data types and [scales](grammar/scale.md), the attributes can be specified
 explicitly:
 
-```javascript
+```json
 {
     "type": "SampleTrack",
     "samples": {
