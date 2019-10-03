@@ -9,3 +9,4 @@ static/private/
 dist/
 coverage/
 .Rproj.user
+docs/app/

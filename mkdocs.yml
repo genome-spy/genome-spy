@@ -4,3 +4,5 @@ markdown_extensions:
   - codehilite
   - toc:
       permalink: true
+extra_javascript:
+  - app/main.js
