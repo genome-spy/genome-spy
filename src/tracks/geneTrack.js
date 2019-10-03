@@ -70,9 +70,10 @@ export default class GeneTrack extends WebGlTrack {
 
         this.geneClusters = detectGeneClusters(genes);
 
-        // Optimization: use a subset for overview
-        // TODO: Use d3.quickselect, maybe add multiple levels, adjust thresholds
-        const scoreLimit = this.genes.map(gene => gene.score).sort((a, b) => b - a)[200];
+        // Compute "overview genes". It is just an optimization for topK queries when the majority of the genome is visible
+        const n = 300; // An arbitrary limit
+        const topGenes = topK(this.genes, n, (a, b) => b.score - a.score);
+        const scoreLimit = topGenes[topGenes.length - 1].score;
         this.overviewGenes = this.genes.filter(gene => gene.score >= scoreLimit);
     }
 
@@ -263,7 +264,8 @@ export default class GeneTrack extends WebGlTrack {
         const scale = this.genomeSpy.getZoomedScale();
         const visibleInterval = this.genomeSpy.getViewportDomain();
 
-        const genes = visibleInterval.width() < 500000000 ? this.genes : this.overviewGenes;
+        const genes = this.genomeSpy.getExpZoomLevel() > this.overviewGenes.length / this.styles.maxSymbolsToShow
+            ? this.genes : this.overviewGenes;
 
         const bisec = bisector(gene => gene.interval.lower);
 
@@ -273,7 +275,7 @@ export default class GeneTrack extends WebGlTrack {
                 bisec.left(genes, visibleInterval.upper + 1000000) // TODO: Visible interval
             ).filter(gene => visibleInterval.connectedWith(gene.interval));
 
-        const priorizer = new TinyQueue(visibleGenes, (a, b) => b.score - a.score);
+        const topGenes = topK(visibleGenes, this.styles.maxSymbolsToShow, (a, b) => b.score - a.score);
 
         const arrowOpacity = this.bodyOpacityScale(this.genomeSpy.getViewportDomain().width());
 
@@ -290,9 +292,7 @@ export default class GeneTrack extends WebGlTrack {
 
         ctx.clearRect(0, 0, this.symbolCanvas.width, this.symbolCanvas.height);
 
-        let gene;
-        let i = 0;
-        while (i++ < this.styles.maxSymbolsToShow && (gene = priorizer.pop())) { // TODO: Configurable limit
+        for (const gene of topGenes) {
             const x = scale(gene.interval.centre());
 
             const text = gene.symbol;
@@ -688,4 +688,40 @@ function createContextMenuItems(gene) {
             callback: () => window.open(`https://www.omim.org/search/?index=entry&start=1&limit=10&sort=score+desc%2C+prefix_sort+desc&search=approved_gene_symbol%3A${symbol}`)
         },
     ];
+}
+
+/**
+ * Finds the top K
+ * 
+ * Based on ideas at https://lemire.me/blog/2017/06/21/top-speed-for-top-k-queries/
+ * 
+ * @param {any[]} data
+ * @param {number} k 
+ * @param {function(any, any):number} compare 
+ */
+function topK(data, k, compare) {
+    const negCompare = (a, b) => compare(b, a);
+    const queue = new TinyQueue([], negCompare);
+
+    let i;
+
+    let n = 0;
+    for (i = 0; i < k && i < data.length; i++) {
+        queue.push(data[i]);
+    }
+
+    for (; i < data.length; i++) {
+        const d = data[i];
+        if (negCompare(d, queue.peek()) > 0) {
+            queue.push(d);
+            queue.pop();
+        }
+    }
+
+    const result = [];
+    while (queue.length) {
+        result.push(queue.pop());
+    }
+
+    return result.reverse();
 }
