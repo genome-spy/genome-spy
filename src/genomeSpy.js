@@ -272,7 +272,7 @@ export default class GenomeSpy {
             this.container.classList.remove("loading");
             console.error(reason.message);
             console.error(reason.stack);
-            alert("Error: " + reason.toString());
+            this.container.innerHTML = "Error: " + reason.toString();
         });
     }
 }
