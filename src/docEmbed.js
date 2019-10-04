@@ -43,29 +43,45 @@ async function embed(container, conf) {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll(".embed-example").forEach(async elem => {
-        const htmlElement = /** @type {HTMLElement} */(elem);
-        const url = htmlElement.dataset.url;
+async function initialize(exampleElement) {
+    const htmlElement = /** @type {HTMLElement} */(exampleElement);
+    const url = htmlElement.dataset.url;
 
-        if (url) {
-            let container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
-            if (!container) {
-                container = document.createElement("div");
-                container.className = "embed-container";
-                htmlElement.appendChild(container);
-            }
-
-            const conf = await fetchConf(url);
-            embed(container, conf)
-
-        } else {
-            const spec = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-spec"));
-            const container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
-
-            if (spec && container) {
-                embed(container, JSON.parse(spec.textContent));
-            }
+    if (url) {
+        let container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
+        if (!container) {
+            container = document.createElement("div");
+            container.className = "embed-container";
+            htmlElement.appendChild(container);
         }
-    })
+
+        const conf = await fetchConf(url);
+        embed(container, conf)
+
+    } else {
+        const spec = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-spec"));
+        const container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
+
+        if (spec && container) {
+            embed(container, JSON.parse(spec.textContent));
+        }
+    }
+}
+    
+document.addEventListener("DOMContentLoaded", () => {
+
+    const examples = document.querySelectorAll(".embed-example");
+
+    let observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const example = entry.target;
+                initialize(example);
+                observer.unobserve(example);
+            }
+        });
+    });
+
+    examples.forEach(example => observer.observe(example));
+
 });

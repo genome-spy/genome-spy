@@ -1,5 +1,9 @@
 # Point
 
+Point mark displays each data item as a symbol. Points can be used to create
+a scatter plot. In the genomic context, they could represent, for example,
+point mutations at genomic loci.
+
 <div class="embed-example">
 <div class="embed-container" style="height: 200px"></div>
 <div class="embed-spec">
@@ -23,12 +27,9 @@
 </div>
 </div>
 
-TODO:
+TODO: Everything
 
-* Everything
-* Semantic zoom
-* Geometric zoom
-
+## Examples
 
 <div class="embed-example">
 <div class="embed-container" style="height: 300px"></div>
@@ -72,3 +73,50 @@ TODO:
 
 </div>
 </div>
+
+## Zoom behavior
+
+### Geometric zoom
+
+<div class="embed-example">
+<div class="embed-container" style="height: 300px"></div>
+<div class="embed-spec">
+
+```json
+{
+    "tracks": [{
+        "type": "SimpleTrack",
+        "data": {
+            "sequence": { "start": 0, "stop": 200000, "as": "x" }
+        },
+        "transform": [
+            { "type": "formula", "expr": "random() * 0.682", "as": "u" },
+            {
+                "type": "formula",
+                "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618 + sin(datum.x / 10000)",
+                "as": "y"
+            }
+        ],
+        "mark": "point",
+        "encoding": {
+            "x": { "field": "x", "type": "quantitative" },
+            "y": { "field": "y", "type": "quantitative" },
+            "opacity": { "value": 0.6 }
+        },
+        "renderConfig": {
+            "maxMaxPointSizeAbsolute": 15,
+            "minMaxPointSizeAbsolute": 1,
+            "zoomLevelForMaxPointSize": 4000
+        }
+    }]
+}
+```
+
+</div>
+</div>
+
+TODO
+
+### Semantic zoom
+
+TODO
