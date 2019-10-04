@@ -13,4 +13,6 @@ interactively.
 
 # Example
 
+TODO: An example with some sensible data
+
 <div class="embed-example" data-url="data/examples/sampletrack.json" style="height: 300px"></div>

@@ -461,7 +461,7 @@ export default class SimpleTrack extends WebGlTrack {
 
                 pos += axisLayout.tickLabels
                     .map(label => ctx.measureText(label).width)
-                    .reduce((a, b) => Math.max(a, b));
+                    .reduce((a, b) => Math.max(a, b), 0);
             }
 
             // --- Title ---

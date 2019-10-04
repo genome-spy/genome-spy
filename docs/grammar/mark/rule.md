@@ -1,0 +1,5 @@
+# Rule
+
+TODO:
+
+* MinLength

@@ -11,15 +11,20 @@ scrollable viewport.
 
 By default, the coordinate system uses ordinary real numbers.
 
-Example: Encode the value of the `foo` field as a position on the horizontal axis:
+### Example
 
-```javascript
-"encoding": {
-    "x": {
-        "field": "foo",
-        "type": "quantitative"
-    },
-    ...
+Encode the value of the field `foo` as a position on the horizontal axis:
+
+```json
+{
+    ...,
+    "encoding": {
+        "x": {
+            "field": "foo",
+            "type": "quantitative"
+        },
+        ...
+    }
 }
 ```
 
@@ -32,7 +37,7 @@ onto the continuous linear axis.
 To activate the genomic coordinate system, add `genome` property to the
 root level configuration object:
 
-```javascript
+```json
 {
     "genome": {
         "name": "hg38"
@@ -48,15 +53,18 @@ TODO: How to specify custom genomes.
 With Genomic coordinate system enabled, you can encode the genomic coordinates
 conveniently:
 
-```javascript
-"encoding": {
-    "x": {
-        "chrom": "Chr",
-        "pos": "Pos",
-        "offset": -1.0,
-        "type": "quantitative"
-    },
-    ...
+```json
+{
+    ...,
+    "encoding": {
+        "x": {
+            "chrom": "Chr",
+            "pos": "Pos",
+            "offset": -1.0,
+            "type": "quantitative"
+        },
+        ...
+    }
 }
 ```
 

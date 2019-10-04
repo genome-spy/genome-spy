@@ -1,8 +1,13 @@
 site_name: GenomeSpy
 theme: material
 markdown_extensions:
+  - pymdownx.magiclink
   - codehilite
+  - admonition
   - toc:
       permalink: true
 extra_javascript:
   - app/main.js
+extra_css:
+  - stylesheets/extra.css
+repo_url: https://github.com/tuner/genome-spy

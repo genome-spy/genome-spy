@@ -7,7 +7,7 @@ import GenomeSpyApp from "./genomeSpyApp.js";
  * @param {string} url 
  */
 async function fetchConf(url) {
-    const conf = await fetch(url, { credentials: 'include' })
+    const conf = await fetch(url, { credentials: 'same-origin' })
         .then(res => {
             if (res.ok) {
                 return res.json();
@@ -30,14 +30,13 @@ async function fetchConf(url) {
 async function embed(container, conf) {
 
     try {
-        conf.baseurl = conf.baseurl || "";
+        conf.baseurl = conf.baseurl || "./";
 
+        console.log(conf);
         const app = new GenomeSpy(container, conf);
         await app.launch();
 
     } catch (e) {
-        console.log(e);
-        
         const pre = document.createElement("pre");
         pre.innerText = e.toString();
         container.appendChild(pre);
@@ -48,8 +47,25 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".embed-example").forEach(async elem => {
         const htmlElement = /** @type {HTMLElement} */(elem);
         const url = htmlElement.dataset.url;
-        const conf = await fetchConf(url);
 
-        embed(htmlElement, conf)
+        if (url) {
+            let container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
+            if (!container) {
+                container = document.createElement("div");
+                container.className = "embed-container";
+                htmlElement.appendChild(container);
+            }
+
+            const conf = await fetchConf(url);
+            embed(container, conf)
+
+        } else {
+            const spec = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-spec"));
+            const container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
+
+            if (spec && container) {
+                embed(container, JSON.parse(spec.textContent));
+            }
+        }
     })
 });
