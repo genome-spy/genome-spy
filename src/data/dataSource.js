@@ -134,7 +134,7 @@ export default class DataSource {
      * @returns {Promise<DataGroup>}
      */
     async _fetchAndRead(url) {
-        return fetch(this._addBaseUrl(url), { credentials: 'include' }).then(response => {
+        return fetch(this._addBaseUrl(url), { credentials: 'same-origin' }).then(response => {
             if (!response.ok) {
                 throw new Error(`Can not load ${response.url}: ${response.status} ${response.statusText}`);
             }

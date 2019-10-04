@@ -15,7 +15,7 @@ export async function initWithConfiguration(conf) {
         if (typeof conf == "string") {
             const url = conf;
             try {
-                conf = await fetch(url, { credentials: 'include' })
+                conf = await fetch(url, { credentials: 'same-origin' })
                     .then(res => {
                         if (res.ok) {
                             return res.json();
