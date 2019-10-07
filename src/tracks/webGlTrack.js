@@ -18,6 +18,10 @@ export default class WebGlTrack extends Track {
 
         const gl = twgl.getContext(this.glCanvas);
 
+        if (!gl) {
+            throw new Error("Unable to initialize WebGL. Your browser or machine may not support it.");
+        }
+
         this.gl = gl;
 
         gl.clearColor(1, 1, 1, 1);
