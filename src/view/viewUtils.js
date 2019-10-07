@@ -1,5 +1,6 @@
 import UnitView from './unitView';
 import LayerView from './layerView';
+import { configureDefaultResolutions } from './resolution';
 
 /**
  * @typedef {Object} ViewContext 
@@ -52,8 +53,8 @@ export function getViewClass(spec) {
  * @param {ViewContext} context 
  */
 export function createView(spec, context) {
-    const View = getViewClass(spec);
-    return new View(spec, context, null, "root");
+    const ViewClass = getViewClass(spec);
+    return /** @type {View} */(new ViewClass(spec, context, null, "root"));
 }
 
 
@@ -93,6 +94,8 @@ export async function initializeViewHierarchy(root) {
             view.resolve();
         }
     }
+
+    configureDefaultResolutions(root);
 
     for (const mark of getMarks(root)) {
         await mark.initializeData(); // TODO: async needed?

@@ -9,8 +9,8 @@ import AccessorFactory from "../encoder/accessor";
 
 /**
  * 
- * @param {import("./viewUtils").Spec} spec 
- * @param {import("./viewUtils").ViewContex} [context]
+ * @param {import("./viewUtils").ViewSpec} spec 
+ * @param {import("./viewUtils").ViewContext} [context]
  */
 export function create(spec, context) {
     const c = {
@@ -25,8 +25,8 @@ export function create(spec, context) {
 
 /**
  * 
- * @param {import("./viewUtils").Spec} spec 
- * @param {import("./viewUtils").ViewContex} [context]
+ * @param {import("./viewUtils").ViewSpec} spec 
+ * @param {import("./viewUtils").ViewContext} [context]
  */
 export async function createAndInitialize(spec, context) {
     const view = create(spec, context);

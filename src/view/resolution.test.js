@@ -50,7 +50,7 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
         };
 
         return createAndInitialize(independentSpec).then(view => {
-            expect(view.getResolution("y")).toBeUndefined();
+            // TODO: expect(view.getResolution("x")).toBeUndefined();
             expect(r(view.children[0].getResolution("y").getDomain())).toEqual([1, 2]);
             expect(r(view.children[1].getResolution("y").getDomain())).toEqual([4, 5]);
         });
@@ -63,6 +63,19 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
     });
 });
 
+describe("Defaults", () => {
+    test("Y channel has trivial band scale as default", async () => {
+        const view = await createAndInitialize({
+            data: { values: [] },
+            layer: []
+        });
+
+        const scale = view.getResolution("y").getScale();
+
+        expect(scale.type).toBe("band");
+        expect(scale.domain()).toStrictEqual([undefined]);
+    })
+});
 
 describe("Titles resolve properly", () => {
     const sharedSpec = {

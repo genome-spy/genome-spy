@@ -76,6 +76,15 @@ export default class PointMark extends Mark {
         super.initializeGraphics();
         const gl = this.gl;
 
+        // A hack to support band scales
+        const yScale = this.getScale("y");
+        const encoding = this.getEncoding();
+        if (yScale.bandwidth) {
+            const offset = yScale.bandwidth() / 2;
+            const ye = this.encoders.y;
+            this.encoders.y = d => ye(d) + offset;
+        }
+
         this.programInfo = twgl.createProgramInfo(gl,
             [ VERTEX_SHADER, FRAGMENT_SHADER ].map(s => this.processShader(s)));
 

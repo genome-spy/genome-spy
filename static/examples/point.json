@@ -38,8 +38,7 @@
                 },
                 "y": {
                     "field": "y",
-                    "type": "nominal",
-                    "scale": { "paddingOuter": 0.3 }
+                    "type": "nominal"
                 },
                 "shape": {
                     "field": "x",

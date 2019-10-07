@@ -13,7 +13,7 @@ export default class Mark {
     }
     
     /**
-     * @returns {import("../view/viewUtils").EncodingSpecs}
+     * @returns {import("../spec/view").EncodingConfigs}
      */
     getDefaultEncoding() {
         return {
@@ -24,7 +24,7 @@ export default class Mark {
 
     /**
      * Returns the encoding spec supplemented with mark's default encodings
-     * @returns {import("../view/viewUtils").EncodingSpecs}
+     * @returns {import("../spec/view").EncodingConfigs}
      */
     getEncoding() {
         const defaults = this.getDefaultEncoding();

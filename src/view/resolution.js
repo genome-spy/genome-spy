@@ -27,6 +27,17 @@ export default class Resolution {
     }
 
     /**
+     * @param {string} channel
+     * @param {object} scaleConfig 
+     */
+    static createExplicitResolution(channel, scaleConfig) {
+        const r = new Resolution(channel);
+        r.scale = scaleConfig;
+        r._scale = createScale(r.scale);
+        return r;
+    }
+
+    /**
      * N.B. This is expected to be called in depth-first order
      * 
      * @param {UnitView} view
@@ -161,7 +172,7 @@ function getDefaultScaleType(channel, dataType) {
     /** @type {Object.<string, string[]>} [nominal/ordinal, quantitative]*/
     const defaults = {
         x: [null, "identity"],
-        y: ["point", "linear"],
+        y: ["band", "linear"],
         size: ["point", "linear"],
         opacity: ["point", "linear"],
         color: ["ordinal", "linear"],
@@ -221,4 +232,22 @@ function getLockedScaleProperties(channel) {
     }
 
     return locked[channel] || {};
+}
+
+
+/**
+ * @param {import("./view").default} root
+ */
+export function configureDefaultResolutions(root) {
+    if (!root.resolutions.y) {
+        root.resolutions.y = Resolution.createExplicitResolution(
+            "y",
+            {
+                type: "band",
+                domain: [undefined],
+                range: [0, 1]
+            });
+        root.resolutions.y.getAxisProps = () => null;
+    }
+
 }

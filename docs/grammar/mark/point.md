@@ -59,7 +59,7 @@ TODO: Everything
 
             "encoding": {
                 "x":  { "field": "x", "type": "quantitative" },
-                "y": { "field": "y", "type": "nominal", "scale": { "paddingOuter": 0.3 } },
+                "y": { "field": "y", "type": "nominal" },
                 "shape": { "field": "x", "type": "nominal" },
                 "color": { "expr": "datum.x + datum.y", "type": "quantitative", "scale": { "scheme": "sinebow" } },
                 "size": { "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))", "type": "quantitative" },
