@@ -1,7 +1,10 @@
 # Rule
 
+Rule mark displays each data item as a line segment. Rules can span the whole
+width or height of the view. Alternatively, they may have specific endpoints.
+
 <div class="embed-example">
-<div class="embed-container" style="height: 200px"></div>
+<div class="embed-container" style="height: 150px"></div>
 <div class="embed-spec">
 
 ```json

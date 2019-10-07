@@ -1,6 +1,6 @@
 # Point
 
-Point mark displays each data item as a symbol. Points can be used to create
+Point mark displays each data item as a symbol. Points are often used to create
 a scatter plot. In the genomic context, they could represent, for example,
 point mutations at genomic loci.
 

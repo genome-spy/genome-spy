@@ -1,5 +1,7 @@
 # Rect
 
+Rect mark displays each data item as a rectangle.
+
 <div class="embed-example">
 <div class="embed-container" style="height: 300px"></div>
 <div class="embed-spec">
