@@ -206,7 +206,7 @@ export class PointVertexBuilder {
         const converters = {
             x:                { f: d => fp64ify(e.x(d)),         numComponents: 2 },
             y:                { f: e.y,                          numComponents: 1 },
-            size:             { f: d => Math.sqrt(e.size(d)),    numComponents: 1 },
+            size:             { f: e.size,                       numComponents: 1 },
             color:            { f: d => c2f(e.color(d)),         numComponents: 3 },
             opacity:          { f: e.opacity,                    numComponents: 1 },
             zoomThreshold:    { f: e.zoomThreshold,              numComponents: 1 },

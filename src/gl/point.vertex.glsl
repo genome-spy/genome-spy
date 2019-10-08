@@ -15,20 +15,20 @@ attribute lowp float gradientStrength;
 uniform float viewportHeight;
 uniform lowp float devicePixelRatio;
 
-/** Maximum point size in pixels */
-uniform lowp float maxMaxPointSizeAbsolute;
-
-/** Minimum Maximum point size in pixels */
-uniform lowp float minMaxPointSizeAbsolute;
-
 /** Maximum point size as the fraction of sample height */
 uniform lowp float maxPointSizeRelative;
+
+/** Scale factor for geometric zoom */
+uniform float uScaleFactor;
+
+/** The size of the largest point in the data */
+uniform float uMaxPointSize;
 
 uniform float zoomLevel;
 uniform float fractionToShow;
 
-varying lowp vec4 vColor;
 varying lowp float vSize;
+varying lowp vec4 vColor;
 varying lowp float vShape;
 varying lowp float vStrokeWidth;
 varying lowp float vGradientStrength;
@@ -36,17 +36,17 @@ varying lowp float vGradientStrength;
 
 float computeThresholdFactor() {
     float margin = zoomLevel * 0.005;
-    return 1.0 - sqrt(smoothstep(zoomThreshold, zoomThreshold + margin, 1.0 - zoomLevel * fractionToShow));
+    return 1.0 - smoothstep(zoomThreshold, zoomThreshold + margin, 1.0 - zoomLevel * fractionToShow);
 }
 
-float computeMaxSize(float height) {
-    return max(smoothstep(0.0, 3.0, viewportHeight * height) * minMaxPointSizeAbsolute,
-        min(maxMaxPointSizeAbsolute, viewportHeight * height * maxPointSizeRelative));
+float scaleDown(float bandHeight) {
+    float factor = bandHeight * maxPointSizeRelative / sqrt(uMaxPointSize);
+
+    return min(1.0, factor);
 }
 
 void main(void) {
 
-    float thresholdFactor = computeThresholdFactor();
     float normalizedX = normalizeX();
 
     vec2 translated = transit(normalizedX, (1.0 - normalizeY()));
@@ -57,11 +57,30 @@ void main(void) {
 
     gl_Position = vec4(ndc, 0.0, 1.0);
 
-    vSize = size * computeMaxSize(height) * thresholdFactor * devicePixelRatio;
+    float thresholdFactor = computeThresholdFactor();
+
+    vSize = sqrt(size) *
+        uScaleFactor *
+        scaleDown(height * viewportHeight) *
+        thresholdFactor *
+        devicePixelRatio;
+
+    // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
+    // no flickering etc.
+    float opa;
+    const float sizeLimit = 2.0;
+    if (vSize < sizeLimit) {
+        // We do some "cheap" gamma correction here. It breaks on dark background, though.
+        // First we take a square of the size and then apply "gamma" of 1.5.
+        opa = opacity * pow(vSize / sizeLimit, 2.5);
+        vSize = sizeLimit;
+    } else {
+        opa = opacity;
+    }
 
     gl_PointSize = vSize;
 
-    vColor = vec4(color, opacity * thresholdFactor);
+    vColor = vec4(color, opa * thresholdFactor);
     vShape = shape;
     vStrokeWidth = strokeWidth;
     vGradientStrength = gradientStrength;

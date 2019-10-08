@@ -1,6 +1,5 @@
 
 import GenomeSpy from "./genomeSpy";
-import GenomeSpyApp from "./genomeSpyApp.js";
 
 /**
  * 
@@ -45,26 +44,31 @@ async function embed(container, conf) {
 
 async function initialize(exampleElement) {
     const htmlElement = /** @type {HTMLElement} */(exampleElement);
+    const container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
     const url = htmlElement.dataset.url;
 
-    if (url) {
-        let container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
-        if (!container) {
-            container = document.createElement("div");
-            container.className = "embed-container";
-            htmlElement.appendChild(container);
+    try {
+        if (url) {
+            let container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
+            if (!container) {
+                container = document.createElement("div");
+                container.className = "embed-container";
+                htmlElement.appendChild(container);
+            }
+
+            const conf = await fetchConf(url);
+            embed(container, conf)
+
+        } else {
+            const spec = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-spec"));
+
+            if (spec && container) {
+                embed(container, JSON.parse(spec.textContent));
+            }
         }
-
-        const conf = await fetchConf(url);
-        embed(container, conf)
-
-    } else {
-        const spec = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-spec"));
-        const container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
-
-        if (spec && container) {
-            embed(container, JSON.parse(spec.textContent));
-        }
+    } catch (e) {
+        console.error(e);
+        container.innerText = e.message;
     }
 }
     

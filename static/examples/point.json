@@ -53,7 +53,10 @@
                 },
                 "size": {
                     "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))",
-                    "type": "quantitative"
+                    "type": "quantitative",
+                    "scale": {
+                        "range": [0, 4000]
+                    }
                 },
                 "strokeWidth": {
                     "field": "y",

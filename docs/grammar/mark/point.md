@@ -17,7 +17,8 @@ point mutations at genomic loci.
             "mark": "point",
             "encoding": {
                 "x": { "field": "x", "type": "quantitative" },
-                "y": { "field": "sin", "type": "quantitative" }
+                "y": { "field": "sin", "type": "quantitative" },
+                "size": { "field": "x", "type": "quantitative" }
             }
         }
     ]
@@ -28,6 +29,8 @@ point mutations at genomic loci.
 </div>
 
 TODO: Everything
+
+TODO: Size scaling on SampleTrack
 
 ## Examples
 
@@ -62,7 +65,7 @@ TODO: Everything
                 "y": { "field": "y", "type": "nominal" },
                 "shape": { "field": "x", "type": "nominal" },
                 "color": { "expr": "datum.x + datum.y", "type": "quantitative", "scale": { "scheme": "sinebow" } },
-                "size": { "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))", "type": "quantitative" },
+                "size": { "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))", "type": "quantitative", "scale": { "range": [0, 1000]} },
                 "strokeWidth": { "field": "y", "type": "quantitative", "scale": { "range": [0, 4] } },
                 "gradientStrength": { "field": "x", "type": "quantitative", "scale": { "range": [0, 1] } }
             }
@@ -101,12 +104,11 @@ TODO: Everything
         "encoding": {
             "x": { "field": "x", "type": "quantitative" },
             "y": { "field": "y", "type": "quantitative" },
+            "size": { "value": 200 },
             "opacity": { "value": 0.6 }
         },
         "renderConfig": {
-            "maxMaxPointSizeAbsolute": 15,
-            "minMaxPointSizeAbsolute": 1,
-            "zoomLevelForMaxPointSize": 4000
+            "zoomLevelForMaxPointSize": 1200
         }
     }]
 }

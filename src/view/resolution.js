@@ -207,7 +207,7 @@ function getDefaultScaleProperties(channel, dataType) {
 
         
     } else if (channel == "size") {
-        props.range = [0, 1]
+        props.range = [0, 400] // TODO: Configurable default
     }
 
     return props;
@@ -225,9 +225,6 @@ function getLockedScaleProperties(channel) {
         // TODO: x
         y: {
             range: [0, 1]
-        },
-        size: {
-//            range: [0, 1]
         }
     }
 

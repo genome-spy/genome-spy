@@ -26,7 +26,7 @@ const defaultEncoding = {
     y:                { value: 0.5 },
     color:            { value: "#1f77b4" },
     opacity:          { value: 1.0 },
-    size:             { value: 1.0 },
+    size:             { value: 100.0 },
     zoomThreshold:    { value: 1.0 },
     shape:            { value: "circle" },
     strokeWidth:      { value: 0.7 },
@@ -117,6 +117,25 @@ export default class PointMark extends Mark {
         return maxPointSizeAbsolute;
     }
 
+    _getGeometricScaleFactor() {
+        const zoomLevel = this.renderConfig.zoomLevelForMaxPointSize;
+
+        return Math.pow(Math.min(1, this.getContext().genomeSpy.getExpZoomLevel() / zoomLevel), 1 / 3);
+
+    }
+
+    _getMaxPointSize() {
+        const e = this.encoders.size;
+        if (e.constant) {
+            return e();
+        } else {
+            // TODO: encoder should provide an access to the scale
+            return this.getScale("size")
+                .range()
+                .reduce((a, b) => Math.max(a, b));
+        }
+    }
+
     /**
      * @param {object[]} samples 
      * @param {object} globalUniforms 
@@ -137,6 +156,8 @@ export default class PointMark extends Mark {
             maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
             maxMaxPointSizeAbsolute: this.getMaxMaxPointSizeAbsolute(),
             minMaxPointSizeAbsolute: this.renderConfig.minMaxPointSizeAbsolute,
+            uMaxPointSize: this._getMaxPointSize(),
+            uScaleFactor: this._getGeometricScaleFactor(),
             fractionToShow: fractionToShow // TODO: Configurable
         });
 
