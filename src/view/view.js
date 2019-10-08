@@ -107,7 +107,7 @@ export default class View {
             return this.parent.getData();
         }
 
-        return null;
+        throw new Error(`No data are available at ${this.getPathString()} or its parents.`);
     }
 
     async loadData() {

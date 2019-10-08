@@ -272,7 +272,22 @@ export default class GenomeSpy {
             this.container.classList.remove("loading");
             console.error(reason.message);
             console.error(reason.stack);
-            this.container.innerHTML = "Error: " + reason.toString();
+            createMessageBox(this.container, reason.toString());
         });
     }
+}
+
+/**
+ * 
+ * @param {HTMLElement} container
+ * @param {string} message 
+ */
+function createMessageBox(container, message) {
+    // Uh, need a templating thingy
+    const messageBox = document.createElement("div");
+    messageBox.className = "message-box";
+    const messageText = document.createElement("div");
+    messageText.textContent = message;
+    messageBox.appendChild(messageText);
+    container.appendChild(messageBox);
 }

@@ -106,6 +106,7 @@ $basic-spacing: 10px;
 
             th {
                 text-align: left;
+                font-weight: bold;
             }
         }
 
@@ -127,6 +128,19 @@ $basic-spacing: 10px;
     .sample-track-sample-tooltip table {
         td.color {
             width: 1px;
+        }
+    }
+
+    .message-box {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+
+        > div {
+            border: 1px solid red;
+            padding: 10px;
+            background: #fff0f0;
         }
     }
 }
