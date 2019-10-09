@@ -10,3 +10,4 @@ dist/
 coverage/
 .Rproj.user
 docs/app/
+site/

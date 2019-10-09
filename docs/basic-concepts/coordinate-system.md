@@ -4,7 +4,7 @@ title: Coordinate system
 
 Just as genome browsers, GenomeSpy has a horizontally scrollable viewport.
 The horizontal axis is always quantitative and linear. In other words, it
-is used for presenting numeric values, e.g. quantities or coordinates on the
+is used for presenting numeric values, e.g., quantities or coordinates on the
 scrollable viewport.
 
 ## Real numbers

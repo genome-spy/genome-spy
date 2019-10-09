@@ -28,11 +28,54 @@ point mutations at genomic loci.
 </div>
 </div>
 
-TODO: Everything
+## Point mark channels
+
+In addition to standard [position](../encoding/index.md) channels and
+`color`, `opacity`, and `strokeWidth` channels, point mark has the following
+channels:
+
+`size`
+:   Type: Number
+
+    The size of the mark.
+    
+    **Default value:** `100`
+
+`shape`
+:   Type: String
+
+    One of `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`,
+    `"triangle-down"`, `"triangle-right"`, or `"triangle-left"`.
+
+    **Default value:** `"circle"`
+
+`gradientStrength`
+:   Type: Number
+
+    Gradient strength controls the amount of the gradient eye-candy effect.
+    Valid values are between `0` and `1`.
+
+    **Default value:** `0`
+
+## Point mark properties
+
+`geometricZoomBound`
+:   Type: Number
+
+    Blablaa
+
+    **Default value:** `0`
+
+
 
 TODO: Size scaling on SampleTrack
 
 ## Examples
+
+### Plenty of points
+
+The example below demonstrates how the points can be varied by using
+`shape`, `color`, `size`, `strokeWidth`, and `gradientStrength` channels.
 
 <div class="embed-example">
 <div class="embed-container" style="height: 300px"></div>
@@ -43,11 +86,6 @@ TODO: Size scaling on SampleTrack
     "tracks": [
         {
             "type": "SimpleTrack",
-
-            "renderConfig": {
-                "maxPointSizeRelative": 0.085,
-                "maxMaxPointSizeAbsolute": 60
-            },
 
             "data": {
                 "sequence": { "start": 0, "stop": 200, "as": "z" }
@@ -65,7 +103,7 @@ TODO: Size scaling on SampleTrack
                 "y": { "field": "y", "type": "nominal" },
                 "shape": { "field": "x", "type": "nominal" },
                 "color": { "expr": "datum.x + datum.y", "type": "quantitative", "scale": { "scheme": "sinebow" } },
-                "size": { "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))", "type": "quantitative", "scale": { "range": [0, 1000]} },
+                "size": { "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))", "type": "quantitative", "scale": { "range": [0, 700]} },
                 "strokeWidth": { "field": "y", "type": "quantitative", "scale": { "range": [0, 4] } },
                 "gradientStrength": { "field": "x", "type": "quantitative", "scale": { "range": [0, 1] } }
             }

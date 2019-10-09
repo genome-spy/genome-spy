@@ -1,6 +1,7 @@
 site_name: GenomeSpy
 theme: material
 markdown_extensions:
+  - markdown.extensions.def_list
   - pymdownx.magiclink
   - codehilite
   - admonition
