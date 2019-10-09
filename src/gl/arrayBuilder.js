@@ -1,3 +1,4 @@
+import fromEntries from 'fromentries';
 
 /**
  * @typedef {Object} Converter
@@ -133,7 +134,7 @@ export default class ArrayBuilder {
      * Creates TWGL constant arrays
      */
     toValues() {
-        return Object.fromEntries(
+        return fromEntries(
             Object.entries(this.arrays)
                 .map(entry => [entry[0], { value: entry[1].data }])
         );

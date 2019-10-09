@@ -20,7 +20,6 @@ import SimpleTrack from './tracks/simpleTrack';
 import RealCoordinateSystem from './realCoordinateSystem';
 import AccessorFactory from './encoder/accessor';
 
-
 // TODO: Figure out if these could be discovered automatically by WebPack or something
 // TODO: Provide an API for registering new track types
 const trackTypes = {

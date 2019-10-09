@@ -1,3 +1,4 @@
+import fromEntries from 'fromentries';
 import * as twgl from 'twgl-base.js';
 import mapsort from 'mapsort';
 import { extent, bisector } from 'd3-array';
@@ -36,7 +37,7 @@ const defaultEncoding = {
 // TODO: Configurable !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 const fractionToShow = 0.02;
 
-export const SHAPES = Object.fromEntries([
+export const SHAPES = fromEntries([
     "circle",
     "square",
     "triangle-up",

@@ -1,3 +1,4 @@
+import fromEntries from 'fromentries';
 
 /**
  * @typedef {Object} EncoderMetadata
@@ -18,7 +19,7 @@
  * @returns {Object.<string, Encoder>}
  */
 export default function createEncoders(encodingSpecs, scaleSource, accessorSource) {
-    return Object.fromEntries(
+    return fromEntries(
         Object.keys(encodingSpecs)
             .filter(channel => encodingSpecs[channel] !== null)
             .map(channel => [
