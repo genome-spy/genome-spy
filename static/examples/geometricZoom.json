@@ -12,16 +12,15 @@
                 "as": "y"
             }
         ],
-        "mark": "point",
+        "mark": {
+            "type": "point",
+            "geometricZoomBound": 11
+        },
         "encoding": {
             "x": { "field": "x", "type": "quantitative" },
             "y": { "field": "y", "type": "quantitative" },
+            "size": { "value": 200 },
             "opacity": { "value": 0.6 }
-        },
-        "renderConfig": {
-            "maxMaxPointSizeAbsolute": 15,
-            "minMaxPointSizeAbsolute": 1,
-            "zoomLevelForMaxPointSize": 4000
         }
     }]
 }

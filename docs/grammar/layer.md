@@ -56,6 +56,7 @@
                                     "range": ["triangle-down", "diamond", "triangle-up"]
                                 }
                             },
+                            "size": { "value": 500 },
                             "strokeWidth": { "value": 0 }
                         }
                     }

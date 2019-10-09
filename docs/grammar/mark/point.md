@@ -79,7 +79,26 @@ TODO: Size scaling on SampleTrack
 
 ## Zoom behavior
 
+Although points are infinitely small on the real number line, they have a
+specific diameter on the screen. Thus, closely located points tend to overlap
+each other. Decreasing the point size reduces the probability of overlap, but
+in a zoomed-in view, the plot may become overly sparse.
+
+Point mark provides two specific zooming behaviors that adjust the point size
+and visibility based on the zoom level.
+
 ### Geometric zoom
+
+Geometric zoom scales the point size down if the current zoom level is lower
+than the specified level (bound). `geometricZoomBound` mark property enables
+geometric zooming. The value is the negative base two logarithm of the
+relative width of the visible domain. Example: `0`: (the default) full-size
+points are always shown, `1`: when a half of the domain is visible, `2`: when
+a quarter is visible, and so on.
+
+The example below displays 200 000 semi-randomly generated points. The points
+reach their full size when 1 / 2^10.5 of the domain is visible, which equals
+about 1500X zoom.
 
 <div class="embed-example">
 <div class="embed-container" style="height: 300px"></div>
@@ -100,15 +119,15 @@ TODO: Size scaling on SampleTrack
                 "as": "y"
             }
         ],
-        "mark": "point",
+        "mark": {
+            "type": "point",
+            "geometricZoomBound": 10.5
+        },
         "encoding": {
             "x": { "field": "x", "type": "quantitative" },
             "y": { "field": "y", "type": "quantitative" },
             "size": { "value": 200 },
             "opacity": { "value": 0.6 }
-        },
-        "renderConfig": {
-            "zoomLevelForMaxPointSize": 1200
         }
     }]
 }
@@ -117,7 +136,9 @@ TODO: Size scaling on SampleTrack
 </div>
 </div>
 
-TODO
+!!! tip
+    You can use geometric zoom to improve rendering performance. Smaller points
+    are faster to render than large points.
 
 ### Semantic zoom
 

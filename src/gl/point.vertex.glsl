@@ -27,7 +27,7 @@ uniform float uMaxPointSize;
 uniform float zoomLevel;
 uniform float fractionToShow;
 
-varying lowp float vSize;
+varying float vSize;
 varying lowp vec4 vColor;
 varying lowp float vShape;
 varying lowp float vStrokeWidth;

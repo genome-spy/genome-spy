@@ -104,7 +104,7 @@ export default class PointMark extends Mark {
     }
 
     getMaxMaxPointSizeAbsolute() {
-        const zoomLevel = this.renderConfig.zoomLevelForMaxPointSize;
+        const zoomLevel = Math.pow(2, this.markConfig.geometricZoomBound || 0);
 
         const min = this.renderConfig.minMaxPointSizeAbsolute;
         const max = this.renderConfig.maxMaxPointSizeAbsolute;
@@ -118,7 +118,7 @@ export default class PointMark extends Mark {
     }
 
     _getGeometricScaleFactor() {
-        const zoomLevel = this.renderConfig.zoomLevelForMaxPointSize;
+        const zoomLevel = Math.pow(2, this.markConfig.geometricZoomBound || 0);
 
         return Math.pow(Math.min(1, this.getContext().genomeSpy.getExpZoomLevel() / zoomLevel), 1 / 3);
 
