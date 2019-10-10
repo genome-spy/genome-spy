@@ -9,16 +9,17 @@ import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
 import Mark from './mark';
 
 
-// TODO: Style object
-const defaultRenderConfig = {
-    // Fraction of sample height
-    maxPointSizeRelative: 0.8,
-    // In pixels
-    maxMaxPointSizeAbsolute: 25,
-    // In pixels
-    minMaxPointSizeAbsolute: 4.5,
-    // TODO: Compute default based on the number of data
-    zoomLevelForMaxPointSize: 1.0
+const defaultMarkProperties = {
+    xOffset: 0,
+    yOffset: 0,
+
+    /** TODO: Implement */
+    relativeSizing: false,
+
+    maxRelativePointDiameter: 0.8,
+    minAbsolutePointDiameter: 0,
+
+    geometricZoomBound: 0
 };
 
 /** @type {import("../view/viewUtils").EncodingSpecs} */
@@ -53,7 +54,13 @@ export default class PointMark extends Mark {
      * @param {import("../view/unitView").default} unitView
      */
     constructor(unitView) {
-        super(unitView)
+        super(unitView);
+
+        /** @type {Record<string, any>} */
+        this.markConfig = {
+            ...defaultMarkProperties,
+            ...this.markConfig
+        };
     }
 
     getDefaultEncoding() {
@@ -79,7 +86,6 @@ export default class PointMark extends Mark {
 
         // A hack to support band scales
         const yScale = this.getScale("y");
-        const encoding = this.getEncoding();
         if (yScale.bandwidth) {
             const offset = yScale.bandwidth() / 2;
             const ye = this.encoders.y;
@@ -100,31 +106,17 @@ export default class PointMark extends Mark {
 
         this.rangeMap = vertexData.rangeMap;
         this.bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays);
-
-        this.renderConfig = Object.assign({}, defaultRenderConfig, this.unitView.getRenderConfig());
-    }
-
-    getMaxMaxPointSizeAbsolute() {
-        const zoomLevel = Math.pow(2, this.markConfig.geometricZoomBound || 0);
-
-        const min = this.renderConfig.minMaxPointSizeAbsolute;
-        const max = this.renderConfig.maxMaxPointSizeAbsolute;
-
-        const initial = Math.pow(min / max, 3);
-
-        let maxPointSizeAbsolute = 
-            Math.pow(Math.min(1, this.getContext().genomeSpy.getExpZoomLevel() / zoomLevel + initial), 1 / 3) * max;
-
-        return maxPointSizeAbsolute;
     }
 
     _getGeometricScaleFactor() {
         const zoomLevel = Math.pow(2, this.markConfig.geometricZoomBound || 0);
 
         return Math.pow(Math.min(1, this.getContext().genomeSpy.getExpZoomLevel() / zoomLevel), 1 / 3);
-
     }
 
+    /**
+     * Returns the maximum size of the points in the data, before any scaling
+     */
     _getMaxPointSize() {
         const e = this.encoders.size;
         if (e.constant) {
@@ -143,6 +135,7 @@ export default class PointMark extends Mark {
      */
     render(samples, globalUniforms) {
         const gl = this.gl;
+        const dpr = window.devicePixelRatio;
 
         gl.enable(gl.BLEND);
         gl.useProgram(this.programInfo.program);
@@ -150,13 +143,12 @@ export default class PointMark extends Mark {
             ...globalUniforms,
             uYTranslate: 0,
             uYScale: 1,
-            uXOffset: (this.renderConfig.xOffset || 0.0) / gl.drawingBufferWidth * window.devicePixelRatio,
-            uYOffset: (this.renderConfig.yOffset || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio,
-            viewportHeight: this.getContext().track.glCanvas.clientHeight,
-            devicePixelRatio: window.devicePixelRatio,
-            maxPointSizeRelative: this.renderConfig.maxPointSizeRelative,
-            maxMaxPointSizeAbsolute: this.getMaxMaxPointSizeAbsolute(),
-            minMaxPointSizeAbsolute: this.renderConfig.minMaxPointSizeAbsolute,
+            uXOffset: this.markConfig.xOffset / gl.drawingBufferWidth * dpr,
+            uYOffset: this.markConfig.yOffset / gl.drawingBufferHeight * dpr,
+            uViewportHeight: gl.drawingBufferHeight,
+            uDevicePixelRatio: dpr,
+            uMaxRelativePointDiameter: this.markConfig.maxRelativePointDiameter,
+            uMinAbsolutePointDiameter: this.markConfig.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),
             uScaleFactor: this._getGeometricScaleFactor(),
             fractionToShow: fractionToShow // TODO: Configurable
@@ -200,13 +192,20 @@ export default class PointMark extends Mark {
 
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(this.encoders);
 
-        x -= (this.renderConfig.xOffset || 0.0);
-        y += (this.renderConfig.yOffset || 0.0);
+        x -= this.markConfig.xOffset;
+        y += this.markConfig.yOffset;
 
-        // TODO: Extract a method for maxPointSize and use it in the render method too
-        const maxPointSize = Math.max(
-            this.renderConfig.minMaxPointSizeAbsolute,
-            Math.min(this.getMaxMaxPointSizeAbsolute(), this.renderConfig.maxPointSizeRelative * yBand.width()));
+        // TODO: This unmaintainable mess should really be replaced with picking
+        const maxPointDiameter = Math.sqrt(this._getMaxPointSize());
+        const factor = Math.max(
+            this.markConfig.minAbsolutePointDiameter,
+            Math.min(
+                yBand.width() * this.markConfig.maxRelativePointDiameter,
+                maxPointDiameter
+            )
+        ) / maxPointDiameter;
+
+        const sizeScaleFactor = this._getGeometricScaleFactor() * factor;
 
         const distance = (x1, x2, y1, y2) => Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 
@@ -214,8 +213,8 @@ export default class PointMark extends Mark {
 
         const bisect = bisector(e.x).left;
         // Use binary search to find the range that may contain the point
-        const begin = bisect(data, xScale.invert(x - maxPointSize / 2));
-        const end = bisect(data, xScale.invert(x + maxPointSize / 2));
+        const begin = bisect(data, xScale.invert(x - maxPointDiameter / 2 * sizeScaleFactor));
+        const end = bisect(data, xScale.invert(x + maxPointDiameter / 2 * sizeScaleFactor));
 
         const margin = 0.005; // TODO: Configurable
         const threshold = this.getContext().genomeSpy.getExpZoomLevel() * fractionToShow;
@@ -227,7 +226,7 @@ export default class PointMark extends Mark {
             if (1 - e.zoomThreshold(d) < thresholdWithMargin) {
                 // TODO: Optimize by computing mouse y on the band scale
                 const dist = distance(x, xScale(e.x(d)), y, yBand.interpolate(1 - e.y(d)));
-                if (dist < maxPointSize * Math.sqrt(e.size(d)) / 2) {
+                if (dist < sizeScaleFactor * Math.sqrt(e.size(d)) / 2) {
                     lastMatch = d;
                 }
             }

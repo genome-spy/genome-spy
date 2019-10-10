@@ -74,6 +74,9 @@
                                 },
                                 "strokeWidth": {
                                     "value": 0
+                                },
+                                "size": {
+                                    "value": 500
                                 }
                             }
                         }

@@ -188,6 +188,7 @@ information about the gene.
 !!! note "How the scoring is actually done"
     * Follow https://docs.higlass.io/data_preparation.html#gene-annotation-tracks
     * Use `utils/compressGeneAnnotations.py` to compress the data.
+    * TODO: then what?
 
 ### Example
 

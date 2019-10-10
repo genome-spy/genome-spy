@@ -12,11 +12,13 @@ attribute lowp float strokeWidth;
 attribute float zoomThreshold;
 attribute lowp float gradientStrength;
 
-uniform float viewportHeight;
-uniform lowp float devicePixelRatio;
+uniform float uViewportHeight;
+uniform lowp float uDevicePixelRatio;
 
-/** Maximum point size as the fraction of sample height */
-uniform lowp float maxPointSizeRelative;
+/** Maximum size of the largest point as the fraction of the height of the (faceted) view */
+uniform lowp float uMaxRelativePointDiameter;
+/** Minimum width/height in pixels of the largest point */
+uniform lowp float uMinAbsolutePointDiameter;
 
 /** Scale factor for geometric zoom */
 uniform float uScaleFactor;
@@ -39,10 +41,20 @@ float computeThresholdFactor() {
     return 1.0 - smoothstep(zoomThreshold, zoomThreshold + margin, 1.0 - zoomLevel * fractionToShow);
 }
 
+/**
+ * Computes a scaling factor for the points.
+ * To some extent, this could be done in JavaScript and passed as uniform.
+ * It would consume more cpu cycles, though.
+ */
 float scaleDown(float bandHeight) {
-    float factor = bandHeight * maxPointSizeRelative / sqrt(uMaxPointSize);
+    float maxPointDiameter = sqrt(uMaxPointSize);
+    // TODO: Optimize: we first divide by DPR here and later multiply by it
+    float factor = bandHeight * uMaxRelativePointDiameter / uDevicePixelRatio;
 
-    return min(1.0, factor);
+    // Points should not be visible on zero-height bands. Using smoothstep to hide them.
+    float minimum = smoothstep(0.0, 1.5, bandHeight) * uMinAbsolutePointDiameter;
+
+    return max(minimum, min(maxPointDiameter, factor)) / maxPointDiameter;
 }
 
 void main(void) {
@@ -61,9 +73,9 @@ void main(void) {
 
     vSize = sqrt(size) *
         uScaleFactor *
-        scaleDown(height * viewportHeight) *
+        scaleDown(height * uViewportHeight) *
         thresholdFactor *
-        devicePixelRatio;
+        uDevicePixelRatio;
 
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.

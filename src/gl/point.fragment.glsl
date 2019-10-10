@@ -3,7 +3,7 @@ precision mediump float;
 const lowp vec3 white = vec3(1.0);
 const lowp vec3 black = vec3(0.0);
 
-uniform lowp float devicePixelRatio;
+uniform lowp float uDevicePixelRatio;
 
 varying lowp vec4 vColor;
 varying float vSize;
@@ -126,7 +126,7 @@ void main() {
     float pixelWidth = 2.0 / vSize;
 
     if (vStrokeWidth > 0.0) {
-        float strokeWidth = vStrokeWidth * devicePixelRatio * pixelWidth; // TODO: Move computation to vertex shader
+        float strokeWidth = vStrokeWidth * uDevicePixelRatio * pixelWidth; // TODO: Move computation to vertex shader
 
         lowp float strokeFraction = smoothstep(-strokeWidth, -strokeWidth - pixelWidth, dist);
         lowp float alpha = smoothstep(0., -pixelWidth, dist) * vColor.a;

@@ -37,7 +37,9 @@ channels:
 `size`
 :   Type: Number
 
-    The size of the mark.
+    The area of the point in pixels. In practice, the area is less because
+    the shapes do not fill their rectangular container. Example: the diameter
+    of a circle with the size of `100` is 10 (sqrt(100)) pixels.
     
     **Default value:** `100`
 
@@ -62,13 +64,32 @@ channels:
 `geometricZoomBound`
 :   Type: Number
 
-    Blablaa
+    The property enables [geometric zooming](#geometric-zoom).
+    The value is the base 2 logarithmic zoom level where the maximum point
+    size is reached.
 
     **Default value:** `0`
 
+`maxRelativePointDiameter`
+:   Type: Number
 
+    When a faceted visualization (Sample Track) has tens or hundreds of subgroups,
+    the individual views may be smaller than the diameter of the point marks.
+    `maxRelativePointDiameter` property adjusts the scaling so that the
+    largest possible point in the data is no larger than the specified fraction
+    of the view height.
 
-TODO: Size scaling on SampleTrack
+    **Default value:** `0.8`
+
+`minAbsolutePointDiameter`
+:   Type: Number
+
+    The `minAbsolutePointDiameter` property works in concert with `maxRelativePointDiameter`.
+    The property specifies in pixels the absolute lower limit of the diameter of
+    the largest possible point in the data.
+
+    **Default value:** `0.0`
+
 
 ## Examples
 
