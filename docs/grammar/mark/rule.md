@@ -28,14 +28,37 @@ width or height of the view. Alternatively, they may have specific endpoints.
 </div>
 </div>
 
-TODO:
+!!! warning "It's actually a rectangle!"
+    Currently, rule mark is just a specialization of Rect mark. This imposes
+    some shortcomings, such as missing support for slanted lines and variable
+    stroke widths.
 
-* MinLength
-* MinOpacity
-* Offsets
+## Channels
 
-## Ranged rules
+TODO, but in principle, the same as in [Rect mark](./rect.md).
 
+## Properties
+
+TODO, but in principle, the same as in [Rect mark](./rect.md) plus the following:
+
+`size`
+:   Type: Number
+
+    The stroke width of the lines in pixels.
+
+    **Default value:** `1`
+
+`minLength`
+:   Type: Number
+
+    The minimum length of the rule. 
+    The property translates to `minLength` or `minWidth` of Rect mark.
+
+    **Default value:** `0`
+
+## Examples
+
+### Ranged rules
 
 <div class="embed-example">
 <div class="embed-container" style="height: 150px"></div>

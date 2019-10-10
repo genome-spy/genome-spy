@@ -28,7 +28,7 @@ point mutations at genomic loci.
 </div>
 </div>
 
-## Point mark channels
+## Channels
 
 In addition to standard [position](../encoding/index.md) channels and
 `color`, `opacity`, and `strokeWidth` channels, point mark has the following
@@ -59,7 +59,7 @@ channels:
 
     **Default value:** `0`
 
-## Point mark properties
+## Properties
 
 `geometricZoomBound`
 :   Type: Number
