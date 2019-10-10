@@ -35,12 +35,12 @@
                 "layer": [
                     {
                         "name": "Arrow shafts",
-                        "mark": "rule",
+                        "mark": {
+                            "type": "rule",
+                            "size": 3.0
+                        },
                         "encoding": {
                             "y2": { "constant": 0 }
-                        },
-                        "renderConfig": {
-                            "size": 3.0
                         }
                     },
                     {

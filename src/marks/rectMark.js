@@ -5,10 +5,10 @@ import { RectVertexBuilder } from '../gl/dataToVertices';
 
 import Mark from './mark';
 
-const defaultRenderConfig = {
-    minRectWidth: 1.0,
-    minRectHeight: 0.0,
-    minRectOpacity: 0.0,
+const defaultMarkProperties = {
+    minWidth: 1.0,
+    minHeight: 0.0,
+    minOpacity: 0.0,
     xOffset: 0.0,
     yOffset: 0.0
 };
@@ -35,8 +35,14 @@ export default class RectMark extends Mark {
     constructor(unitView) {
         super(unitView)
 
-        // TODO: Check renderConfig.rectMinOpacity
-        this.opaque = this.getEncoding().opacity.value >= 1.0;
+        /** @type {Record<string, any>} */
+        this.properties = {
+            ...defaultMarkProperties,
+            ...this.properties
+        };
+
+        // TODO: Check markProperties.rectMinOpacity
+        this.opaque = this.getEncoding().opacity.value >= 1.0 && this.properties.minOpacity >= 1.0;
     }
 
     getDefaultEncoding() {
@@ -113,11 +119,6 @@ export default class RectMark extends Mark {
         this._fullSampleBufferInfo = this._createSampleBufferInfo(null,
             domainWidth / tesselationConfig.zoomThreshold / tesselationConfig.tiles);
         this._sampleBufferInfo = this._fullSampleBufferInfo;
-
-        this.renderConfig = {
-            ...defaultRenderConfig,
-            ...this.unitView.getRenderConfig()
-        };
     }
 
     /**
@@ -126,6 +127,7 @@ export default class RectMark extends Mark {
      */
     render(samples, globalUniforms) {
         const gl = this.gl;
+        const dpr = window.devicePixelRatio;
 
         if (this.opaque) {
             gl.disable(gl.BLEND);
@@ -138,11 +140,11 @@ export default class RectMark extends Mark {
             ...globalUniforms,
             uYTranslate: 0,
             uYScale: 1,
-            uMinWidth: (this.renderConfig.minRectWidth || 1.0) / gl.drawingBufferWidth * window.devicePixelRatio, // How many pixels
-            uMinHeight : (this.renderConfig.minRectHeight || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio, // How many pixels
-            uMinOpacity: this.renderConfig.minRectOpacity || 0.0,
-            uXOffset: (this.renderConfig.xOffset || 0.0) / gl.drawingBufferWidth * window.devicePixelRatio,
-            uYOffset: (this.renderConfig.yOffset || 0.0) / gl.drawingBufferHeight * window.devicePixelRatio,
+            uMinWidth: this.properties.minWidth  / gl.drawingBufferWidth * dpr, // How many pixels
+            uMinHeight : this.properties.minHeight / gl.drawingBufferHeight * dpr, // How many pixels
+            uMinOpacity: this.properties.minOpacity,
+            uXOffset: this.properties.xOffset / gl.drawingBufferWidth * dpr,
+            uYOffset: this.properties.yOffset / gl.drawingBufferHeight * dpr,
         });
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this._sampleBufferInfo.bufferInfo);
@@ -152,6 +154,7 @@ export default class RectMark extends Mark {
             if (range) {
                 twgl.setUniforms(this.programInfo, sampleData.uniforms);
                 // TODO: draw only the part that intersects with the viewport
+                // Could use: http://lin-ear-th-inking.blogspot.com/2007/06/packed-1-dimensional-r-tree.html
                 twgl.drawBufferInfo(gl, this._sampleBufferInfo, gl.TRIANGLE_STRIP, range.count, range.offset);
             }
         }
@@ -170,23 +173,23 @@ export default class RectMark extends Mark {
         const gl = this.getContext().track.gl;
         const dpr = window.devicePixelRatio;
 
-        x -= (this.renderConfig.xOffset || 0.0);
-        y += (this.renderConfig.yOffset || 0.0);
+        x -= this.properties.xOffset;
+        y += this.properties.yOffset;
 
         if (data) {
             const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(this.encoders);
 
-            const unitMinWidth = this.renderConfig.minRectWidth / gl.drawingBufferWidth * dpr;
+            const unitMinWidth = this.properties.minWidth / gl.drawingBufferWidth * dpr;
             const halfMinWidth = unitMinWidth * this.getContext().genomeSpy.getViewportDomain().width() / 2;
 
-            const unitMinHeight = this.renderConfig.minRectHeight / gl.drawingBufferHeight * dpr;
+            const unitMinHeight = this.properties.minHeight / gl.drawingBufferHeight * dpr;
             const halfMinHeight = unitMinHeight / 2; // TODO: take yBand into account
 
             const scaledX = this.getContext().genomeSpy.rescaledX.invert(x);
 
             const scaledY = 1 - (y - yBand.lower) / yBand.width();
 
-            const matchX = this.renderConfig.minRectWidth ?
+            const matchX = this.properties.minWidth ?
                 d => {
                     const halfWidth = Math.max((e.x2(d) - e.x(d)) / 2, halfMinWidth);
                     const centre = (e.x(d) + e.x2(d)) / 2;
@@ -197,7 +200,7 @@ export default class RectMark extends Mark {
                     return (scaledX >= e.x(d) && scaledX < e.x2(d)) || (scaledX >= e.x2(d) && scaledX < e.x(x));
                 };
 
-            const matchY = this.renderConfig.minRectHeight ? 
+            const matchY = this.properties.minHeight ? 
                 d => {
                     const halfHeight = Math.max(Math.abs((e.y2(d) - e.y(d))) / 2, halfMinHeight);
                     const centre = (e.y(d) + e.y2(d)) / 2;

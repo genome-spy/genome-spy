@@ -204,7 +204,7 @@ export default class SimpleTrack extends WebGlTrack {
         const bandInterval = new Interval(0, this.glCanvas.clientHeight);
 
         for (const mark of getMarks(this.viewRoot).reverse()) {
-            if (mark.markConfig.tooltip !== null) {
+            if (mark.properties.tooltip !== null) {
                 const datum = mark.findDatum(undefined, x, y, bandInterval);
                 if (datum) {
                     return { datum, mark };
@@ -221,9 +221,9 @@ export default class SimpleTrack extends WebGlTrack {
         const datum = datumAndMark.datum;
         const mark = datumAndMark.mark;
 
-        const markConfig = mark.markConfig;
-        const propertyFilter = markConfig && markConfig.tooltip && markConfig.tooltip.skipFields ?
-            entry => markConfig.tooltip.skipFields.indexOf(entry[0]) < 0 :
+        const props = mark.properties;
+        const propertyFilter = props && props.tooltip && props.tooltip.skipFields ?
+            entry => props.tooltip.skipFields.indexOf(entry[0]) < 0 :
             entry => true;
 
         /**

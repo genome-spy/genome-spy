@@ -310,7 +310,7 @@ export default class SampleTrack extends SimpleTrack {
         const bandInterval = this.sampleScale.scale(sampleId);
 
         for (const mark of getMarks(this.viewRoot).reverse()) {
-            if (mark.markConfig.tooltip !== null) {
+            if (mark.properties.tooltip !== null) {
                 const datum = mark.findDatum(sampleId, x, y, bandInterval);
                 if (datum) {
                     return { datum, mark };

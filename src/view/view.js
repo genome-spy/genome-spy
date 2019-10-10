@@ -72,19 +72,6 @@ export default class View {
     }
 
     /**
-     * @return {Object.<string, Object>}
-     */
-    getRenderConfig() {
-        const pe = this.parent ? this.parent.getRenderConfig() : {};
-        const te = this.spec.renderConfig || {};
-
-        return {
-            ...pe,
-            ...te
-        };
-    }
-
-    /**
      * 
      * @param {string} channel 
      * @returns {import("./resolution").default}

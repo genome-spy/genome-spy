@@ -2,11 +2,6 @@
     "tracks": [
         {
             "type": "SimpleTrack",
-
-            "renderConfig": {
-                "maxPointSizeRelative": 0.085,
-                "maxMaxPointSizeAbsolute": 60 
-            },
             
             "data": {
                 "sequence": {

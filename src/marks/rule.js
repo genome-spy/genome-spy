@@ -1,7 +1,7 @@
 
 import RectMark from './rectMark.js';
 
-const defaultRenderConfig = {
+const defaultMarkProperties = {
     size: 1.0, // TODO: Provide through encoding
     minLength: 0.0
 };
@@ -28,26 +28,27 @@ export default class RuleMark extends RectMark {
     constructor(unitView) {
         super(unitView)
 
-        const renderConfig = {
-            ...defaultRenderConfig,
-            ...this.unitView.getRenderConfig()
-        }
+        /** @type {Record<string, any>} */
+        this.properties = {
+            ...defaultMarkProperties,
+            ...this.properties
+        };
 
-        this.unitView.spec.renderConfig = this.unitView.spec.renderConfig || {};
-        
         const encoding = this.getEncoding();
         const vertical = encoding[verticalSym];
 
-        Object.assign(this.unitView.spec.renderConfig, vertical ?
+        const props = this.properties;
+
+        Object.assign(this.properties, vertical ?
             {
-                minRectWidth: renderConfig.size,
-                minRectHeight: renderConfig.minLength,
-                minRectOpacity: 1.0
+                minWidth: props.size,
+                minHeight: props.minLength,
+                minOpacity: 1.0
             } :
             {
-                minRectWidth: renderConfig.minLength,
-                minRectHeight: renderConfig.size,
-                minRectOpacity: 1.0
+                minWidth: props.minLength,
+                minHeight: props.size,
+                minOpacity: 1.0
             }); 
 
     }

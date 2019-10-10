@@ -10,7 +10,7 @@ export default class Mark {
     constructor(unitView) {
         this.unitView = unitView;
         /** @type {Record<string, any>} */
-        this.markConfig = typeof unitView.spec.mark == "object" ? unitView.spec.mark : {};
+        this.properties = typeof unitView.spec.mark == "object" ? unitView.spec.mark : {};
     }
     
     /**

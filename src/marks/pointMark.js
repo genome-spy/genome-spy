@@ -57,9 +57,9 @@ export default class PointMark extends Mark {
         super(unitView);
 
         /** @type {Record<string, any>} */
-        this.markConfig = {
+        this.properties = {
             ...defaultMarkProperties,
-            ...this.markConfig
+            ...this.properties
         };
     }
 
@@ -109,7 +109,7 @@ export default class PointMark extends Mark {
     }
 
     _getGeometricScaleFactor() {
-        const zoomLevel = Math.pow(2, this.markConfig.geometricZoomBound || 0);
+        const zoomLevel = Math.pow(2, this.properties.geometricZoomBound || 0);
 
         return Math.pow(Math.min(1, this.getContext().genomeSpy.getExpZoomLevel() / zoomLevel), 1 / 3);
     }
@@ -143,12 +143,12 @@ export default class PointMark extends Mark {
             ...globalUniforms,
             uYTranslate: 0,
             uYScale: 1,
-            uXOffset: this.markConfig.xOffset / gl.drawingBufferWidth * dpr,
-            uYOffset: this.markConfig.yOffset / gl.drawingBufferHeight * dpr,
+            uXOffset: this.properties.xOffset / gl.drawingBufferWidth * dpr,
+            uYOffset: this.properties.yOffset / gl.drawingBufferHeight * dpr,
             uViewportHeight: gl.drawingBufferHeight,
             uDevicePixelRatio: dpr,
-            uMaxRelativePointDiameter: this.markConfig.maxRelativePointDiameter,
-            uMinAbsolutePointDiameter: this.markConfig.minAbsolutePointDiameter,
+            uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
+            uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),
             uScaleFactor: this._getGeometricScaleFactor(),
             fractionToShow: fractionToShow // TODO: Configurable
@@ -192,15 +192,15 @@ export default class PointMark extends Mark {
 
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(this.encoders);
 
-        x -= this.markConfig.xOffset;
-        y += this.markConfig.yOffset;
+        x -= this.properties.xOffset;
+        y += this.properties.yOffset;
 
         // TODO: This unmaintainable mess should really be replaced with picking
         const maxPointDiameter = Math.sqrt(this._getMaxPointSize());
         const factor = Math.max(
-            this.markConfig.minAbsolutePointDiameter,
+            this.properties.minAbsolutePointDiameter,
             Math.min(
-                yBand.width() * this.markConfig.maxRelativePointDiameter,
+                yBand.width() * this.properties.maxRelativePointDiameter,
                 maxPointDiameter
             )
         ) / maxPointDiameter;

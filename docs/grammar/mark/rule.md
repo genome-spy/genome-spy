@@ -78,14 +78,14 @@ TODO, but in principle, the same as in [Rect mark](./rect.md) plus the following
                     { "y": "D", "x": 1, "x2": 5 }
                 ]
             },
-            "mark": "rule",
+            "mark": {
+                "type": "rule",
+                "size": 7
+            },
             "encoding": {
                 "y":     { "field": "y",  "type": "nominal" },
                 "x":     { "field": "x",  "type": "quantitative" },
                 "x2":    { "field": "x2" }
-            },
-            "renderConfig": {
-                "size": 7
             }
         }
     ]

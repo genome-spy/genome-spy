@@ -24,6 +24,7 @@
   "scripts": {
     "start": "webpack-dev-server --progress --hot --open --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js",
+    "buildDocJs": "webpack --config webpack.doc.js",
     "test": "jest"
   },
   "dependencies": {
