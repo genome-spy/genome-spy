@@ -1,5 +1,8 @@
 # Layer
 
+Layering allows for superimposing multiple plots on top of each other. By default,
+the layers share their scales and axes, unioning the data domains.
+
 <div class="embed-example">
 <div class="embed-container" style="height: 300px"></div>
 <div class="embed-spec">
@@ -8,10 +11,10 @@
 {
     "tracks": [{
         "type": "SimpleTrack",
-
+        "name": "Lollipot plot example",
         "layer": [
             {
-                "name": "Horizontal line",
+                "name": "Baseline",
                 "data": { "values": [ 0 ]},
                 "mark": "rule",
                 "encoding": {
@@ -70,4 +73,171 @@
 </div>
 </div>
 
-## Resolve
+
+GenomeSpy replicates the [hierarchical
+composition](https://vega.github.io/vega-lite/docs/composition.html) model of
+Vega-Lite, although currently, `layer` is the only supported composition
+operator.
+
+To specify multiple layers, use the `layer` property:
+
+```json
+{
+    "layer": [
+        ...  // Single or layered view specifications
+    ]
+}
+```
+
+The provided array may contain both single view specifications or layered
+specifications. In the lollipop plot **example** above, the layered root view
+contains the "Baseline" view and the layered "Arrows" view.
+
+The encodings and data that are specified in a layer view propagate to its
+descendants. For example, the "Arrow shafts" and "Arrowheads" views inherit
+the *sin function* dataset and the encodings for channels `x`, `y`, and
+`color` from their parent, the "Arrows" view.
+
+
+
+## Scale resolution
+
+TODO: Some explanation, meanwhile: check
+https://vega.github.io/vega-lite/docs/resolve.html
+
+```json
+{
+    "resolve": {
+        // Scale resolution
+        "scale": {
+            CHANNEL: ...
+        }
+    }
+}
+```
+
+### Shared
+
+The example below shows an excerpt of segmented copy number data along with
+the raw SNP logR values. The domain of the `y` channel is unioned by default.
+
+<div class="embed-example hidden-spec">
+<div class="embed-container" style="height: 300px"></div>
+<div class="show-spec"><a href="#">Show specification</a></div>
+<div class="embed-spec">
+
+```json
+{
+    "tracks": [
+        {
+            "type": "SimpleTrack",
+            "layer": [
+                {
+                    "data": { "url": "../../data/cnv_chr19_raw.tsv" },
+                    "title": "Single probe",
+
+                    "mark": {
+                        "type": "point",
+                        "geometricZoomBound": 9.5
+                    },
+
+                    "encoding": {
+                        "x": { "field": "Position", "type": "quantitative" },
+                        "y": { "field": "logR", "type": "quantitative" },
+                        "color": { "value": "#404068" },
+                        "size": { "value": 225 },
+                        "opacity": { "value": 0.25 }
+                    }
+                },
+                {
+                    "data": {
+                        "url": "../../data/cnv_chr19_segs.tsv"
+                    },
+                    "title": "Segment mean",
+                    "mark": {
+                        "type": "rule",
+                        "size": 3.0,
+                        "minLength": 3.0
+                    },
+                    "encoding": {
+                        "x":  { "field": "startpos", "type": "quantitative" },
+                        "x2": { "field": "endpos" },
+                        "y":  { "field": "segMean", "type": "quantitative" },
+                        "color": { "value": "#ff4422" }
+                    }
+
+                }
+            ]
+        }
+    ]
+}
+```
+
+</div>
+</div>
+
+### Independent
+
+By specifying that the scales of the `y` channel should remain `independent`,
+both layers get their own scales and axes. Obviously, such a configuration makes
+no sense with these data.
+
+<div class="embed-example hidden-spec">
+<div class="embed-container" style="height: 300px"></div>
+<div class="show-spec"><a href="#">Show specification</a></div>
+<div class="embed-spec">
+
+```json
+{
+    "tracks": [
+        {
+            "type": "SimpleTrack",
+            "resolve": {
+                "scale": {
+                    "y": "independent"
+                }
+            },
+            "layer": [
+                {
+                    "data": { "url": "../../data/cnv_chr19_raw.tsv" },
+                    "title": "Single probe",
+
+                    "mark": {
+                        "type": "point",
+                        "geometricZoomBound": 9.5
+                    },
+
+                    "encoding": {
+                        "x": { "field": "Position", "type": "quantitative" },
+                        "y": { "field": "logR", "type": "quantitative" },
+                        "color": { "value": "#404068" },
+                        "size": { "value": 225 },
+                        "opacity": { "value": 0.25 }
+                    }
+                },
+                {
+                    "data": {
+                        "url": "../../data/cnv_chr19_segs.tsv"
+                    },
+                    "title": "Segment mean",
+                    "mark": {
+                        "type": "rule",
+                        "size": 3.0,
+                        "minLength": 3.0
+                    },
+                    "encoding": {
+                        "x":  { "field": "startpos", "type": "quantitative" },
+                        "x2": { "field": "endpos" },
+                        "y":  { "field": "segMean", "type": "quantitative" },
+                        "color": { "value": "#ff4422" }
+                    }
+
+                }
+            ]
+        }
+    ]
+}
+```
+
+</div>
+</div>

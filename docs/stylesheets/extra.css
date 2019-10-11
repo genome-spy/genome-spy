@@ -4,6 +4,21 @@
     height: 230px;
 }
 
+.hidden-spec .embed-spec {
+    display: none;
+}
+
+.hidden-spec .show-spec {
+    text-align: center;
+    font-size: 75%;
+    position: relative;
+    top: -1em;
+}
+
+:not(.hidden-spec) > .show-spec {
+    display: none;
+}
+
 .md-typeset dl p {
     margin-top: 0.6em;
     margin-bottom: 0.6em;

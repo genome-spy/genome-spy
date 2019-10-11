@@ -107,12 +107,12 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
         {
             "type": "SimpleTrack",
             "data": {
-                "sequence": { "start": 0, "stop": 100, "as": "z" }
+                "sequence": { "start": 0, "stop": 1000, "as": "z" }
             },
             "transform": [
-                { "type": "formula", "as": "sample", "expr": "floor(datum.z / 10) + 1" },
-                { "type": "formula", "as": "measurement", "expr": "sin(datum.z / 2)" },
-                { "type": "formula", "as": "x", "expr": "datum.z % 10" }
+                { "type": "formula", "as": "sample", "expr": "floor(datum.z / 100) + 1" },
+                { "type": "formula", "as": "x", "expr": "datum.z % 100" },
+                { "type": "formula", "as": "measurement", "expr": "sin(datum.x / 9) + cos(datum.sample / 2 + 3.25)" }
             ],
             "mark": "rect",
             "encoding": {

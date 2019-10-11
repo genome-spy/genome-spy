@@ -86,6 +86,18 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    examples.forEach(example => observer.observe(example));
+    examples.forEach(example => {
+        if (example.classList.contains("hidden-spec")) {
+            const showSpec = example.querySelector(".show-spec a");
+            if (showSpec) {
+                showSpec.addEventListener("click", e => {
+                    example.classList.remove("hidden-spec");
+                    e.preventDefault();
+                });
+            }
+        }
+
+        observer.observe(example);
+    });
 
 });

@@ -64,8 +64,8 @@ channels:
 `geometricZoomBound`
 :   Type: Number
 
-    The property enables [geometric zooming](#geometric-zoom).
-    The value is the base 2 logarithmic zoom level where the maximum point
+    Enables [geometric zooming](#geometric-zoom).
+    The value is the base two logarithmic zoom level where the maximum point
     size is reached.
 
     **Default value:** `0`
