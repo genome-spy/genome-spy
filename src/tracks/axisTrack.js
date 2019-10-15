@@ -145,14 +145,22 @@ export default class AxisTrack extends Track {
 
             ctx.textAlign = "center";
 
+            // Put the tick in the middle of the locus/base
+            const offset = 0.5;
+            
+            // GenomeSpy uses the same coordinate logic as USCS GenomeBrowser_
+            // "1-start, fully-closed" = coordinates positioned within the web-based UCSC Genome Browser.
+            // "0-start, half-open" = coordinates stored in database tables.
+            const labelValueOffset = 1;
+
             for (
-                let locus = Math.ceil((visibleInterval.lower - interval.lower) / step) * step;
+                let locus = Math.ceil((visibleInterval.lower - interval.lower) / step) * step + offset - labelValueOffset;
                 locus + interval.lower < visibleInterval.upper;
                 locus += step
             ) {
                 const x = scale(locus + interval.lower) - 0.5;
 
-                const text = locusTickFormat(locus);
+                const text = locusTickFormat(locus - offset + labelValueOffset);
                 ctx.fillRect(x, 0, 1, 3);
                 ctx.fillText(text, x, y);
             }
