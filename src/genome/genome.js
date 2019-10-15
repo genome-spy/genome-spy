@@ -86,8 +86,9 @@ export default class Genome extends CoordinateSystem {
      * @returns {string}
      */
     formatInterval(interval) {
-        // Because of the open upper bound, one is first decreased from the upper bound and later added back.
-        const begin = this.chromMapper.toChromosomal(interval.lower);
+        // Round the lower end
+        const begin = this.chromMapper.toChromosomal(interval.lower + 0.5);
+        // Because of the open upper bound, one is first subtracted from the upper bound and later added back.
         const end = this.chromMapper.toChromosomal(interval.upper - 1);
 
         return begin.chromosome.name + ":" +
