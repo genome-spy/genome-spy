@@ -206,9 +206,8 @@ export default class SampleTrack extends SimpleTrack {
         };
 
         const focus = () => {
-            this.fisheye.focus([0, clientPoint(this.glCanvas, lastMouseEvent)[1]]);
+            this.fisheye.focus(clientPoint(this.glCanvas, lastMouseEvent)[1]);
             render();
-
         }
 
         const moveListener = event => {
@@ -244,7 +243,7 @@ export default class SampleTrack extends SimpleTrack {
         const openFisheye = () => {
             this.fisheye = fisheye().radius(150);
 
-            this.yTransform = y => this.fisheye({ x: 0, y }).y;
+            this.yTransform = this.fisheye;
 
             transition({
                 duration: 150,

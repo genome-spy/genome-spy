@@ -4,19 +4,21 @@
  * https://github.com/d3/d3-plugins/blob/master/fisheye/
  */
 export default function() {
-    var radius = 200,
+    let radius = 200,
         distortion = 2,
-        k0,
-        k1,
-        focus = [0, 0];
+        k0 = 1, k1 = 1,
+        focus = 0;
 
-    function fisheye(d) {
-        var dx = d.x - focus[0],
-            dy = d.y - focus[1],
-            dd = Math.sqrt(dx * dx + dy * dy);
-        if (!dd || dd >= radius) return { x: d.x, y: d.y, z: dd >= radius ? 1 : 10 };
-        var k = k0 * (1 - Math.exp(-dd * k1)) / dd * .75 + .25;
-        return { x: focus[0] + dx * k, y: focus[1] + dy * k, z: Math.min(k, 10) };
+    /**
+     * 
+     * @param {number} x 
+     */
+    function fisheye(x) {
+        const dx = x - focus;
+        const dd = Math.abs(dx);
+        if (!dd || dd >= radius) return x;
+        const k = k0 * (1 - Math.exp(-dd * k1)) / dd * 0.75 + 0.25;
+        return focus + dx * k;
     }
 
     function rescale() {
@@ -26,18 +28,27 @@ export default function() {
         return fisheye;
     }
 
+    /**
+     * @param {number} _
+     */
     fisheye.radius = function (_) {
         if (!arguments.length) return radius;
         radius = +_;
         return rescale();
     };
 
+    /**
+     * @param {number} _
+     */
     fisheye.distortion = function (_) {
         if (!arguments.length) return distortion;
         distortion = +_;
         return rescale();
     };
 
+    /**
+     * @param {number} _
+     */
     fisheye.focus = function (_) {
         if (!arguments.length) return focus;
         focus = _;
