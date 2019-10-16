@@ -185,7 +185,7 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     getXDomain() {
-        return this.viewRoot.resolutions["x"].getDomain();
+        return this.viewRoot.resolutions["x"].getScale().domain();
     }
 
     /**
