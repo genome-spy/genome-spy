@@ -11,7 +11,7 @@ the layers share their scales and axes, unioning the data domains.
 {
     "tracks": [{
         "type": "SimpleTrack",
-        "name": "Lollipot plot example",
+        "name": "Lollipop plot example",
         "layer": [
             {
                 "name": "Baseline",
