@@ -9,64 +9,61 @@ the layers share their scales and axes, unioning the data domains.
 
 ```json
 {
-    "tracks": [{
-        "type": "SimpleTrack",
-        "name": "Lollipop plot example",
-        "layer": [
-            {
-                "name": "Baseline",
-                "data": { "values": [ 0 ]},
-                "mark": "rule",
-                "encoding": {
-                    "y": { "field": "data", "type": "quantitative", "axis": null },
-                    "color": { "value": "lightgray" }
-                }
-            },
-            {
-                "name": "Arrows",
-                "data": {
-                    "sequence": { "start": 0, "stop": 6.284, "step": 0.39269908169, "as": "x" }
-                },
-                "transform": [
-                    { "type": "formula", "expr": "sin(datum.x)", "as": "sin(x)" }
-                ],
-                "encoding": {
-                    "x": { "field": "x", "type": "quantitative" },
-                    "y": { "field": "sin(x)", "type": "quantitative", "scale": { "padding": 0.1 } },
-                    "color": { "field": "sin(x)", "type": "quantitative" }
-                },
-                "layer": [
-                    {
-                        "name": "Arrow shafts",
-                        "mark": {
-                            "type": "rule",
-                            "size": 3.0
-                        },
-                        "encoding": {
-                            "y2": { "constant": 0 }
-                        }
-                    },
-                    {
-                        "name": "Arrowheads",
-                        "mark": "point",
-                        "encoding": {
-                            "shape": {
-                                "field": "sin(x)",
-                                "type": "quantitative",
-                                "scale": {
-                                    "type": "threshold",
-                                    "domain": [-0.01, 0.01],
-                                    "range": ["triangle-down", "diamond", "triangle-up"]
-                                }
-                            },
-                            "size": { "value": 500 },
-                            "strokeWidth": { "value": 0 }
-                        }
-                    }
-                ]
+    "name": "Lollipop plot example",
+    "layer": [
+        {
+            "name": "Baseline",
+            "data": { "values": [ 0 ]},
+            "mark": "rule",
+            "encoding": {
+                "y": { "field": "data", "type": "quantitative", "axis": null },
+                "color": { "value": "lightgray" }
             }
-        ]
-    }]
+        },
+        {
+            "name": "Arrows",
+            "data": {
+                "sequence": { "start": 0, "stop": 6.284, "step": 0.39269908169, "as": "x" }
+            },
+            "transform": [
+                { "type": "formula", "expr": "sin(datum.x)", "as": "sin(x)" }
+            ],
+            "encoding": {
+                "x": { "field": "x", "type": "quantitative" },
+                "y": { "field": "sin(x)", "type": "quantitative", "scale": { "padding": 0.1 } },
+                "color": { "field": "sin(x)", "type": "quantitative" }
+            },
+            "layer": [
+                {
+                    "name": "Arrow shafts",
+                    "mark": {
+                        "type": "rule",
+                        "size": 3.0
+                    },
+                    "encoding": {
+                        "y2": { "constant": 0 }
+                    }
+                },
+                {
+                    "name": "Arrowheads",
+                    "mark": "point",
+                    "encoding": {
+                        "shape": {
+                            "field": "sin(x)",
+                            "type": "quantitative",
+                            "scale": {
+                                "type": "threshold",
+                                "domain": [-0.01, 0.01],
+                                "range": ["triangle-down", "diamond", "triangle-up"]
+                            }
+                        },
+                        "size": { "value": 500 },
+                        "strokeWidth": { "value": 0 }
+                    }
+                }
+            ]
+        }
+    ]
 }
 ```
 
@@ -128,46 +125,41 @@ the raw SNP logR values. The domain of the `y` channel is unioned by default.
 
 ```json
 {
-    "tracks": [
+    "layer": [
         {
-            "type": "SimpleTrack",
-            "layer": [
-                {
-                    "data": { "url": "../../data/cnv_chr19_raw.tsv" },
-                    "title": "Single probe",
+            "data": { "url": "../../data/cnv_chr19_raw.tsv" },
+            "title": "Single probe",
 
-                    "mark": {
-                        "type": "point",
-                        "geometricZoomBound": 9.5
-                    },
+            "mark": {
+                "type": "point",
+                "geometricZoomBound": 9.5
+            },
 
-                    "encoding": {
-                        "x": { "field": "Position", "type": "quantitative" },
-                        "y": { "field": "logR", "type": "quantitative" },
-                        "color": { "value": "#404068" },
-                        "size": { "value": 225 },
-                        "opacity": { "value": 0.25 }
-                    }
-                },
-                {
-                    "data": {
-                        "url": "../../data/cnv_chr19_segs.tsv"
-                    },
-                    "title": "Segment mean",
-                    "mark": {
-                        "type": "rule",
-                        "size": 3.0,
-                        "minLength": 3.0
-                    },
-                    "encoding": {
-                        "x":  { "field": "startpos", "type": "quantitative" },
-                        "x2": { "field": "endpos" },
-                        "y":  { "field": "segMean", "type": "quantitative" },
-                        "color": { "value": "#ff4422" }
-                    }
+            "encoding": {
+                "x": { "field": "Position", "type": "quantitative" },
+                "y": { "field": "logR", "type": "quantitative" },
+                "color": { "value": "#404068" },
+                "size": { "value": 225 },
+                "opacity": { "value": 0.25 }
+            }
+        },
+        {
+            "data": {
+                "url": "../../data/cnv_chr19_segs.tsv"
+            },
+            "title": "Segment mean",
+            "mark": {
+                "type": "rule",
+                "size": 3.0,
+                "minLength": 3.0
+            },
+            "encoding": {
+                "x":  { "field": "startpos", "type": "quantitative" },
+                "x2": { "field": "endpos" },
+                "y":  { "field": "segMean", "type": "quantitative" },
+                "color": { "value": "#ff4422" }
+            }
 
-                }
-            ]
         }
     ]
 }
@@ -189,51 +181,46 @@ no sense with these data.
 
 ```json
 {
-    "tracks": [
+    "resolve": {
+        "scale": {
+            "y": "independent"
+        }
+    },
+    "layer": [
         {
-            "type": "SimpleTrack",
-            "resolve": {
-                "scale": {
-                    "y": "independent"
-                }
+            "data": { "url": "../../data/cnv_chr19_raw.tsv" },
+            "title": "Single probe",
+
+            "mark": {
+                "type": "point",
+                "geometricZoomBound": 9.5
             },
-            "layer": [
-                {
-                    "data": { "url": "../../data/cnv_chr19_raw.tsv" },
-                    "title": "Single probe",
 
-                    "mark": {
-                        "type": "point",
-                        "geometricZoomBound": 9.5
-                    },
+            "encoding": {
+                "x": { "field": "Position", "type": "quantitative" },
+                "y": { "field": "logR", "type": "quantitative" },
+                "color": { "value": "#404068" },
+                "size": { "value": 225 },
+                "opacity": { "value": 0.25 }
+            }
+        },
+        {
+            "data": {
+                "url": "../../data/cnv_chr19_segs.tsv"
+            },
+            "title": "Segment mean",
+            "mark": {
+                "type": "rule",
+                "size": 3.0,
+                "minLength": 3.0
+            },
+            "encoding": {
+                "x":  { "field": "startpos", "type": "quantitative" },
+                "x2": { "field": "endpos" },
+                "y":  { "field": "segMean", "type": "quantitative" },
+                "color": { "value": "#ff4422" }
+            }
 
-                    "encoding": {
-                        "x": { "field": "Position", "type": "quantitative" },
-                        "y": { "field": "logR", "type": "quantitative" },
-                        "color": { "value": "#404068" },
-                        "size": { "value": 225 },
-                        "opacity": { "value": 0.25 }
-                    }
-                },
-                {
-                    "data": {
-                        "url": "../../data/cnv_chr19_segs.tsv"
-                    },
-                    "title": "Segment mean",
-                    "mark": {
-                        "type": "rule",
-                        "size": 3.0,
-                        "minLength": 3.0
-                    },
-                    "encoding": {
-                        "x":  { "field": "startpos", "type": "quantitative" },
-                        "x2": { "field": "endpos" },
-                        "y":  { "field": "segMean", "type": "quantitative" },
-                        "color": { "value": "#ff4422" }
-                    }
-
-                }
-            ]
         }
     ]
 }

@@ -19,6 +19,7 @@ import GeneTrack from "./tracks/geneTrack";
 import SimpleTrack from './tracks/simpleTrack';
 import RealCoordinateSystem from './realCoordinateSystem';
 import AccessorFactory from './encoder/accessor';
+import { isViewSpec } from './view/viewUtils';
 
 // TODO: Figure out if these could be discovered automatically by WebPack or something
 // TODO: Provide an API for registering new track types
@@ -38,9 +39,12 @@ export default class GenomeSpy {
     /**
      * 
      * @param {HTMLElement} container 
+     * @param {object} config
      */
     constructor(container, config) {
         this.container = container;
+
+        /** Root level configuration object */
         this.config = config;
 
         this.eventEmitter = new EventEmitter();
@@ -200,6 +204,7 @@ export default class GenomeSpy {
         this.eventEmitter.emit('layout', this.layout);
     }
 
+
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
     async launch() {
         this.loadingMessageElement = document.createElement("div");
@@ -240,24 +245,30 @@ export default class GenomeSpy {
             }
             await this.coordinateSystem.initialize(this);
 
-            this.tracks = this.config.tracks.map(trackConfig => new trackTypes[trackConfig.type](this, trackConfig));
+            let tracksConfig;
+            if (isViewSpec(this.config)) {
+                // Wrap view spec in a track
+                tracksConfig = [
+                    {
+                        type: "SimpleTrack",
+                        ...this.config
+                    }
+                ]
 
-        } catch (reason) {
-            this.container.classList.remove("loading");
-            console.error(reason.message);
-            console.error(reason.stack);
-            alert("Error: " + reason.toString());
-            return;
-        }
-    
-        await Promise.all(this.tracks.map(track => {
-            const trackContainer = document.createElement("div");
-            trackContainer.className = "genome-spy-track";
-            trackStack.appendChild(trackContainer);
+            } else {
+                tracksConfig = this.config.tracks;
+            }
+            this.tracks = tracksConfig.map(/** @param {object} trackConfig */trackConfig => new trackTypes[trackConfig.type](this, trackConfig));
 
-            return track.initialize(trackContainer);
+            await Promise.all(this.tracks.map(track => {
+                const trackContainer = document.createElement("div");
+                trackContainer.className = "genome-spy-track";
+                trackStack.appendChild(trackContainer);
 
-        })).then(() => {
+                return track.initialize(trackContainer);
+
+            }));
+
             this.xScale = scaleLinear()
                 .domain(this.getDomain().toArray());
 
@@ -265,14 +276,15 @@ export default class GenomeSpy {
             this.rescaledX = this.xScale;
 
             this._resized();
-            this.container.classList.remove("loading");
 
-        }).catch(reason => {
-            this.container.classList.remove("loading");
+        } catch (reason) {
             console.error(reason.message);
             console.error(reason.stack);
             createMessageBox(this.container, reason.toString());
-        });
+
+        } finally {
+            this.container.classList.remove("loading");
+        }
     }
 }
 

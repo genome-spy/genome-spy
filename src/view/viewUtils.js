@@ -16,6 +16,8 @@ import { configureDefaultResolutions } from './resolution';
  * @typedef {import("../spec/view").EncodingConfig} EncodingConfig
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("./view").default} View
+ */
+
 /**
  * 
  * @param {ViewSpec} spec 
@@ -30,6 +32,14 @@ export function isUnitSpec(spec) {
  */
 export function isLayerSpec(spec) {
     return typeof spec.layer === "object";
+}
+
+/**
+ * 
+ * @param {ViewSpec} spec 
+ */
+export function isViewSpec(spec) {
+    return isUnitSpec(spec) || isLayerSpec(spec);
 }
 
 /**

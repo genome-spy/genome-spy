@@ -1,51 +1,45 @@
 {
-    "tracks": [
+    "data": {
+        "values": [
+            { "x": 0.20, "x2": 0.40 },
+            { "x": 0.60, "x2": 0.80 }
+        ]
+    },
+
+    "layer": [
         {
-            "type": "SimpleTrack",
-            
-            "data": {
-                "values": [
-                    { "x": 0.20, "x2": 0.40 },
-                    { "x": 0.60, "x2": 0.80 }
-                ]
-            },
+            "mark": "rect",
+
+            "encoding": {
+                "x":  { "field": "x", "type": "quantitative", "scale": { "domain": [0, 1] } },
+                "x2": { "field": "x2" },
+                "y":  { "field": "x", "type": "quantitative", "scale": { "domain": [0, 1] } },
+                "y2": { "field": "x2" }
+            }
+        },
+        {
+            "transform": [{
+                "type": "gather",
+                "columnRegex": [ "^(x.?)$" ],
+                "asValue": [ "z" ]
+            }],
 
             "layer": [
                 {
-                    "mark": "rect",
+                    "mark": "rule",
 
                     "encoding": {
-                        "x":  { "field": "x", "type": "quantitative", "scale": { "domain": [0, 1] } },
-                        "x2": { "field": "x2" },
-                        "y":  { "field": "x", "type": "quantitative", "scale": { "domain": [0, 1] } },
-                        "y2": { "field": "x2" }
+                        "x": { "field": "z", "type": "quantitative" },
+                        "color": { "value": "darkgray" }
                     }
                 },
                 {
-                    "transform": [{
-                        "type": "gather",
-                        "columnRegex": [ "^(x.?)$" ],
-                        "asValue": [ "z" ]
-                    }],
+                    "mark": "rule",
 
-                    "layer": [
-                        {
-                            "mark": "rule",
-
-                            "encoding": {
-                                "x": { "field": "z", "type": "quantitative" },
-                                "color": { "value": "darkgray" }
-                            }
-                        },
-                        {
-                            "mark": "rule",
-
-                            "encoding": {
-                                "y": { "field": "z", "type": "quantitative" },
-                                "color": { "value": "darkgray" }
-                            }
-                        }
-                    ]
+                    "encoding": {
+                        "y": { "field": "z", "type": "quantitative" },
+                        "color": { "value": "darkgray" }
+                    }
                 }
             ]
         }

@@ -8,28 +8,23 @@ Rect mark displays each data item as a rectangle.
 
 ```json
 {
-    "tracks": [
-        {
-            "type": "SimpleTrack",
-            "data": {
-                "sequence": { "start": 0, "stop": 20, "as": "z" }
-            },
-            "transform": [
-                { "type": "formula", "as": "x",  "expr": "random()" },
-                { "type": "formula", "as": "x2", "expr": "datum.x + random() * 0.3" },
-                { "type": "formula", "as": "y",  "expr": "random()" },
-                { "type": "formula", "as": "y2", "expr": "datum.y + random() * 0.4" }
-            ],
-            "mark": "rect",
-            "encoding": {
-                "x":     { "field": "x", "type": "quantitative" },
-                "x2":    { "field": "x2" },
-                "y":     { "field": "y", "type": "quantitative" },
-                "y2":    { "field": "y2" },
-                "color": { "field": "z", "type": "quantitative" }
-            }
-        }
-    ]
+    "data": {
+        "sequence": { "start": 0, "stop": 20, "as": "z" }
+    },
+    "transform": [
+        { "type": "formula", "as": "x",  "expr": "random()" },
+        { "type": "formula", "as": "x2", "expr": "datum.x + random() * 0.3" },
+        { "type": "formula", "as": "y",  "expr": "random()" },
+        { "type": "formula", "as": "y2", "expr": "datum.y + random() * 0.4" }
+    ],
+    "mark": "rect",
+    "encoding": {
+        "x":     { "field": "x", "type": "quantitative" },
+        "x2":    { "field": "x2" },
+        "y":     { "field": "y", "type": "quantitative" },
+        "y2":    { "field": "y2" },
+        "color": { "field": "z", "type": "quantitative" }
+    }
 }
 ```
 
@@ -103,32 +98,27 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 
 ```json
 {
-    "tracks": [
-        {
-            "type": "SimpleTrack",
-            "data": {
-                "sequence": { "start": 0, "stop": 1000, "as": "z" }
-            },
-            "transform": [
-                { "type": "formula", "as": "sample", "expr": "floor(datum.z / 100) + 1" },
-                { "type": "formula", "as": "x", "expr": "datum.z % 100" },
-                { "type": "formula", "as": "measurement", "expr": "sin(datum.x / 9) + cos(datum.sample / 2 + 3.25)" }
-            ],
-            "mark": "rect",
-            "encoding": {
-                "x":     { "field": "x", "type": "quantitative" },
-                "x2":    { "expr": "datum.x + 1" },
-                "y":     { "field": "sample", "type": "nominal" },
-                "color": {
-                    "field": "measurement",
-                    "type": "quantitative",
-                    "scale": {
-                        "scheme": "magma"
-                    }
-                }
+    "data": {
+        "sequence": { "start": 0, "stop": 1000, "as": "z" }
+    },
+    "transform": [
+        { "type": "formula", "as": "sample", "expr": "floor(datum.z / 100) + 1" },
+        { "type": "formula", "as": "x", "expr": "datum.z % 100" },
+        { "type": "formula", "as": "measurement", "expr": "sin(datum.x / 9) + cos(datum.sample / 2 + 3.25)" }
+    ],
+    "mark": "rect",
+    "encoding": {
+        "x":     { "field": "x", "type": "quantitative" },
+        "x2":    { "expr": "datum.x + 1" },
+        "y":     { "field": "sample", "type": "nominal" },
+        "color": {
+            "field": "measurement",
+            "type": "quantitative",
+            "scale": {
+                "scheme": "magma"
             }
         }
-    ]
+    }
 }
 ```
 
@@ -143,33 +133,28 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 
 ```json
 {
-    "tracks": [
-        {
-            "type": "SimpleTrack",
-            "data": {
-                "sequence": { "start": -12.57, "stop": 12.57, "step": 0.39269908169, "as": "x" }
-            },
-            "transform": [
-                { "type": "formula", "expr": "sin(datum.x) + datum.x / 7", "as": "y" }
-            ],
-            "mark": "rect",
-            "encoding": {
-                "x":  { "field": "x", "type": "quantitative" },
-                "x2": { "expr": "datum.x + 0.35" },
-                "y":  { "field": "y", "type": "quantitative" },
-                "y2": { "constant": 0 },
-                "color": {
-                    "field": "y",
-                    "type": "quantitative",
-                    "scale": {
-                        "type": "threshold",
-                        "domain": [ 0 ],
-                        "range": [ "#ed553b", "#20639b" ]
-                    }
-                }
+    "data": {
+        "sequence": { "start": -12.57, "stop": 12.57, "step": 0.39269908169, "as": "x" }
+    },
+    "transform": [
+        { "type": "formula", "expr": "sin(datum.x) + datum.x / 7", "as": "y" }
+    ],
+    "mark": "rect",
+    "encoding": {
+        "x":  { "field": "x", "type": "quantitative" },
+        "x2": { "expr": "datum.x + 0.35" },
+        "y":  { "field": "y", "type": "quantitative" },
+        "y2": { "constant": 0 },
+        "color": {
+            "field": "y",
+            "type": "quantitative",
+            "scale": {
+                "type": "threshold",
+                "domain": [ 0 ],
+                "range": [ "#ed553b", "#20639b" ]
             }
         }
-    ]
+    }
 }
 ```
 

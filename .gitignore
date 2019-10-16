@@ -6,6 +6,7 @@
 .vscode/
 node_modules/
 static/private/
+static/examples/drafts/
 dist/
 coverage/
 .Rproj.user

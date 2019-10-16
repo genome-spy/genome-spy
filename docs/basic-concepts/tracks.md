@@ -100,7 +100,10 @@ explicitly:
             ...
         }
     },
-    "encoding": { ... },
+    "encoding": {
+        "sample": { "field": "sampleId", "type": "nominal" }
+        ...
+    },
     ...
 }
 ```

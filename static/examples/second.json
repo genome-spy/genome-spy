@@ -1,86 +1,80 @@
 {
-    "tracks": [
+    "layer": [
         {
-            "type": "SimpleTrack",
+            "data": { "values": [ 0 ]},
+            "mark": "rule",
+            "encoding": {
+                "y": {
+                    "field": "data",
+                    "type": "quantitative",
+                    "axis": null
+                },
+                "color": {
+                    "value": "lightgray"
+                }
+            }
+        },
+        {
+            "data": {
+                "sequence": {
+                    "start": 0,
+                    "stop": 6.284,
+                    "step": 0.39269908169,
+                    "as": "x"
+                }
+            },
+
+            "transform": [{
+                "type": "formula",
+                "expr": "sin(datum.x)",
+                "as": "sin(x)"
+            }],
+
+            "encoding": {
+                "x": { "field": "x", "type": "quantitative" },
+                "y": {
+                    "field": "sin(x)",
+                    "type": "quantitative",
+                    "scale": {
+                        "type": "sqrt",
+                        "padding": 0.1
+                    }
+                },
+                "color": {
+                    "field": "sin(x)",
+                    "type": "quantitative"
+                }
+            },
 
             "layer": [
                 {
-                    "data": { "values": [ 0 ]},
-                    "mark": "rule",
+                    "mark": {
+                        "type": "rule",
+                        "size": 3.0
+                    },
                     "encoding": {
-                        "y": {
-                            "field": "data",
-                            "type": "quantitative",
-                            "axis": null
-                        },
-                        "color": {
-                            "value": "lightgray"
-                        }
+                        "y2": { "constant": 0 }
                     }
                 },
                 {
-                    "data": {
-                        "sequence": {
-                            "start": 0,
-                            "stop": 6.284,
-                            "step": 0.39269908169,
-                            "as": "x"
-                        }
-                    },
-
-                    "transform": [{
-                        "type": "formula",
-                        "expr": "sin(datum.x)",
-                        "as": "sin(x)"
-                    }],
-
+                    "mark": "point",
                     "encoding": {
-                        "x": { "field": "x", "type": "quantitative" },
-                        "y": {
+                        "shape": {
                             "field": "sin(x)",
                             "type": "quantitative",
                             "scale": {
-                                "type": "sqrt",
-                                "padding": 0.1
+                                "type": "threshold",
+                                "domain": [-0.01, 0.01],
+                                "range": ["triangle-down", "diamond", "triangle-up"]
                             }
                         },
-                        "color": {
-                            "field": "sin(x)",
-                            "type": "quantitative"
-                        }
-                    },
-
-                    "layer": [
-                        {
-                            "mark": {
-                                "type": "rule",
-                                "size": 3.0
-                            },
-                            "encoding": {
-                                "y2": { "constant": 0 }
-                            }
+                        "strokeWidth": {
+                            "value": 0
                         },
-                        {
-                            "mark": "point",
-                            "encoding": {
-                                "shape": {
-                                    "field": "sin(x)",
-                                    "type": "quantitative",
-                                    "scale": {
-                                        "type": "threshold",
-                                        "domain": [-0.01, 0.01],
-                                        "range": ["triangle-down", "diamond", "triangle-up"]
-                                    }
-                                },
-                                "strokeWidth": {
-                                    "value": 0
-                                },
-                                "size": {
-                                    "value": 500
-                                }
-                            }
+                        "size": {
+                            "value": 500
                         }
-                    ]
+                    }
                 }
             ]
         }
