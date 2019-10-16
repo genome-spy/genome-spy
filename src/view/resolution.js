@@ -195,7 +195,12 @@ function getDefaultScaleType(channel, dataType) {
 function getDefaultScaleProperties(channel, dataType) {
     const props = {};
 
-    if (channel == "color") {
+    if (channel == "y" || channel == "x") {
+        // TODO: Switch to true when all Y-axis labels can be drawn fully visible
+        // However, nice should only be true when the domain has not been specified explicitly
+        props.nice = false;
+
+    } else if (channel == "color") {
         // TODO: Named ranges
         props.scheme = dataType == "nominal" ? "tableau10" :
             dataType == "ordinal" ? "blues" :
