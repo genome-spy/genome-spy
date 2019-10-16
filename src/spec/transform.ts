@@ -4,6 +4,13 @@ export interface TransformConfigBase {
     type: string;
 }
 
+export interface FilterConfig extends TransformConfigBase {
+    type: "filter";
+
+    /** An expression string */
+    expr: string;
+}
+
 export interface FormulaConfig extends TransformConfigBase {
     type: "formula";
 

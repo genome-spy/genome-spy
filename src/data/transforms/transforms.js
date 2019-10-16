@@ -1,20 +1,21 @@
+import formula from './formula';
+import gather from './gather';
+import regexMatch from './regexMatch';
+import simpleFilter from './simpleFilter';
+import filter from './filter';
+import flattenDelimited from './flattenDelimited';
+import stack from './stack';
+import equalize from './equalize';
 
-import formulaTransform from './formula';
-import gatherTransform from './gather';
-import regexMatchTransform from './regexMatch';
-import simpleFilterTransform from './simpleFilter';
-import flattenDelimitedTransform from './flattenDelimited';
-import stackTransform from './stack';
-import equalizeTransform from './equalize';
-
-const transformers = {
-    equalize: equalizeTransform,
-    flattenDelimited: flattenDelimitedTransform,
-    formula: formulaTransform,
-    gather: gatherTransform,
-    regexMatch: regexMatchTransform,
-    simpleFilter: simpleFilterTransform,
-    stack: stackTransform
+const transforms = {
+    equalize,
+    filter,
+    flattenDelimited,
+    formula,
+    gather,
+    regexMatch,
+    simpleFilter,
+    stack
 };
 
-export default transformers;
+export default transforms;
