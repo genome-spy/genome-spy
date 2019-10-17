@@ -98,7 +98,7 @@ export default class Genome extends CoordinateSystem {
     /**
      * 
      * @param {string} str 
-     * @returns {void | import("./utils/interval").default}
+     * @returns {import("../utils/interval").default}
      */
     parseInterval(str) {
         // TODO: consider changing [0-9XY] to support other species besides humans
@@ -126,7 +126,7 @@ export default class Genome extends CoordinateSystem {
     /**
      * If the coordinate system has a hard extent, return it. Otherwise returns undefined.
      * 
-     * @returns {void | import("../utils/interval").default}
+     * @returns {import("../utils/interval").default}
      */
     getExtent() {
         return this.chromMapper.extent();

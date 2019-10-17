@@ -59,6 +59,7 @@ export default class GenomeSpy {
 
         this.accessorFactory = new AccessorFactory();
 
+        /** @type {number} */
         this._dpr = window.devicePixelRatio;
 
         /** @type {import("./coordinateSystem").default} */
@@ -73,6 +74,9 @@ export default class GenomeSpy {
         this.eventEmitter.on(...args);
     }
 
+    /**
+     * @param {Transform} transform
+     */
     _zoomed(transform) {
         this.rescaledX = transform.rescale(this.xScale);
         this.eventEmitter.emit('zoom', this.getViewportDomain());
@@ -306,7 +310,7 @@ export default class GenomeSpy {
                     // We first create a view and then figure out if it needs faceting (SampleTrack)
 
                     /** @type {import("view/viewUtils").ViewContext} */
-                    const context = {...baseContext}
+                    const context = { ...baseContext }
                     const viewRoot = createView(spec, context);
                     resolveScales(viewRoot);
                     const Track = viewRoot.resolutions["sample"] ? SampleTrack : SimpleTrack;

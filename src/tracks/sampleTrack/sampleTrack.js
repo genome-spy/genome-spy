@@ -1,4 +1,3 @@
-import * as twgl from 'twgl-base.js';
 import { scaleLinear } from 'd3-scale';
 import { zip } from 'd3-array';
 import { inferType } from 'vega-loader';
@@ -175,7 +174,7 @@ export default class SampleTrack extends SimpleTrack {
         this.attributePanel.initialize();
         this.initializeFisheye()
 
-        this.genomeSpy.on("layout", layout => {
+        this.genomeSpy.on("layout", () => {
             this.attributePanel.renderLabels();
             this.attributePanel.renderAttributeLabels();
         });
@@ -211,7 +210,7 @@ export default class SampleTrack extends SimpleTrack {
             render();
         }
 
-        const moveListener = event => {
+        const moveListener = /** @param {MouseEvent} event */ event => {
             lastMouseEvent = event;
             if (this.fisheye) {
                 focus();
@@ -229,20 +228,21 @@ export default class SampleTrack extends SimpleTrack {
                 duration: 100,
                 from: zoomFactor,
                 to: zero,
-                onUpdate: value => {
+                onUpdate: /** @param {number} value */ value => {
                     this.fisheye.distortion(value);
                     zoomFactor = value;
                     focus();
                 }
             }).then(() => {
-                this.fisheye = null;
-                this.yTransform = null;
+                this.fisheye = undefined;
+                this.yTransform = undefined;
                 render();
             });
         };
 
         const openFisheye = () => {
-            this.fisheye = fisheye().radius(150);
+            this.fisheye = fisheye();
+            this.fisheye.radius(150);
 
             this.yTransform = this.fisheye;
 
@@ -251,7 +251,7 @@ export default class SampleTrack extends SimpleTrack {
                 from: zero,
                 to: Math.max(1, minWidth / this.sampleScale.getBandWidth()),
                 //easingFunction: easeOutElastic,
-                onUpdate: value => {
+                onUpdate: /** @param {number} value */ value => {
                     this.fisheye.distortion(value);
                     zoomFactor = value;
                     focus();
@@ -284,6 +284,9 @@ export default class SampleTrack extends SimpleTrack {
         });
     }
 
+    /**
+     * @param {number[]} point 
+     */
     findSampleAt(point) {
         // If space between bands get too small, find closest to make opening
         // of the context menu easier
@@ -324,6 +327,7 @@ export default class SampleTrack extends SimpleTrack {
      * 
      * @param {object} datum 
      * @param {MouseEvent} mouseEvent 
+     * @param {number[]} point 
      */
     createContextMenu(datum, mouseEvent, point) {
 
@@ -333,13 +337,13 @@ export default class SampleTrack extends SimpleTrack {
         const scaledX = this.genomeSpy.rescaledX.invert(point[0]);
 
         for (const mark of getMarks(this.viewRoot)) {
-            if (mark.markConfig && mark.markConfig.sorting) {
+            if (mark.properties && mark.properties.sorting) {
                 items.push({
                     label: mark.unitView.spec.title || "- No title -", 
                     type: "header"
                 });
 
-                for (const field of mark.markConfig.sorting.fields) {
+                for (const field of mark.properties.sorting.fields) {
                     items.push({
                         label: `Sort by ${field}`,
                         callback: () => this.sortSamplesByLocus(mark, scaledX, field)
@@ -353,7 +357,9 @@ export default class SampleTrack extends SimpleTrack {
 
     /**
      * 
+     * @param {import("../../marks/mark").default} mark
      * @param {number} pos locus in continuous domain
+     * @param {string} attribute
      */
     sortSamplesByLocus(mark, pos, attribute) {
         const getAttribute = d => d ? d[attribute] : undefined;

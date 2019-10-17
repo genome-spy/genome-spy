@@ -15,7 +15,7 @@ export default class RealCoordinateSystem extends CoordinateSystem {
     /**
      * 
      * @param {string} str 
-     * @returns {void | import("./utils/interval").default}
+     * @returns {import("./utils/interval").default}
      */
     parseInterval(str) {
         const matches = str.match(/^(-?\d+)-(-?\d+)$/);
@@ -29,8 +29,10 @@ export default class RealCoordinateSystem extends CoordinateSystem {
     /**
      * If the coordinate system has a hard extent, return it. Otherwise returns undefined.
      * 
-     * @returns {void | import("./utils/interval").default}
+     * @returns {import("./utils/interval").default}
      */
-    getExtent() { }
+    getExtent() {
+        return undefined;
+    }
 
 }

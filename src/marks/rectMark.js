@@ -10,10 +10,13 @@ const defaultMarkProperties = {
     minHeight: 0.0,
     minOpacity: 0.0,
     xOffset: 0.0,
-    yOffset: 0.0
+    yOffset: 0.0,
+
+    tesselationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
+    tesselationTiles: 35
 };
 
-/** @type {import("../view/viewUtils").EncodingSpecs} */
+/** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
     x:       null,
     x2:      null,
@@ -21,11 +24,6 @@ const defaultEncoding = {
     y2:      null,
     color:   { value: "#1f77b4" },
     opacity: { value: 1.0 },
-};
-
-const tesselationConfig = {
-    zoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix
-    tiles: 35
 };
 
 export default class RectMark extends Mark {
@@ -52,10 +50,10 @@ export default class RectMark extends Mark {
     onBeforeSampleAnimation() {
         const interval = this.getContext().genomeSpy.getViewportDomain();
 
-        if (interval.width() < this.getContext().genomeSpy.getDomain().width() / tesselationConfig.zoomThreshold) {
+        if (interval.width() < this.getContext().genomeSpy.getDomain().width() / this.properties.tesselationZoomThreshold) {
             // TODO: Only bufferize the samples that are being animated
             this._sampleBufferInfo = this._createSampleBufferInfo(interval,
-                interval.width() / tesselationConfig.tiles);
+                interval.width() / this.properties.tesselationTiles);
         }            
 
     }
@@ -117,7 +115,7 @@ export default class RectMark extends Mark {
             [ VERTEX_SHADER, FRAGMENT_SHADER ].map(s => this.processShader(s)));
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(null,
-            domainWidth / tesselationConfig.zoomThreshold / tesselationConfig.tiles);
+            domainWidth / this.properties.tesselationZoomThreshold / this.properties.tesselationTiles);
         this._sampleBufferInfo = this._fullSampleBufferInfo;
     }
 
@@ -140,8 +138,8 @@ export default class RectMark extends Mark {
             ...globalUniforms,
             uYTranslate: 0,
             uYScale: 1,
-            uMinWidth: this.properties.minWidth  / gl.drawingBufferWidth * dpr, // How many pixels
-            uMinHeight : this.properties.minHeight / gl.drawingBufferHeight * dpr, // How many pixels
+            uMinWidth: this.properties.minWidth / gl.drawingBufferWidth * dpr, // How many pixels
+            uMinHeight: this.properties.minHeight / gl.drawingBufferHeight * dpr, // How many pixels
             uMinOpacity: this.properties.minOpacity,
             uXOffset: this.properties.xOffset / gl.drawingBufferWidth * dpr,
             uYOffset: this.properties.yOffset / gl.drawingBufferHeight * dpr,
@@ -233,6 +231,7 @@ export default class RectMark extends Mark {
      * 
      * @param {string} sampleId
      * @param {number} x position on the x domain
+     * @returns {object}
      */
     findDatumAt(sampleId, x) {
         const e = this.encoders;

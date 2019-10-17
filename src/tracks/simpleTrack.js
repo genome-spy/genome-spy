@@ -1,11 +1,9 @@
 import formatObject from '../utils/formatObject';
 import Interval from '../utils/interval';
 import WebGlTrack from './webGlTrack';
-import DataSource from '../data/dataSource';
 import MouseTracker from '../mouseTracker';
 import * as html from '../utils/html';
 import PointMark from '../marks/pointMark';
-import View from '../view/view';
 import {
     validTicks,
     tickValues,
@@ -13,11 +11,9 @@ import {
     tickCount
 } from '../scale/ticks';
 import {
-    createView,
     getFlattenedViews,
     getMarks,
     initializeData,
-    resolveScales
 } from '../view/viewUtils';
 
 
@@ -122,7 +118,8 @@ export default class SimpleTrack extends WebGlTrack {
             point => {
                 const datumAndMark = this.findDatumAndMarkAt(point);
                 if (datumAndMark) {
-                    const datum = datumAndMark.datum, mark = datumAndMark.mark; 
+                    const datum = datumAndMark.datum,
+                        mark = datumAndMark.mark; 
                     if (mark instanceof PointMark) {
                         // Snap the mouse cursor to the center of point marks to ease zooming
                         // TODO: Add a snap method to mark classes -> more abstract design
