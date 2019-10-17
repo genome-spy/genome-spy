@@ -61,8 +61,12 @@ export interface ImportConfig {
     params?: object
 }
 
+export interface ImportSpec {
+    import: ImportConfig
+}
+
 export interface TrackSpec {
-    tracks?: (ViewSpec | { import: ImportConfig })[]
+    tracks?: (ViewSpec | ImportSpec)[]
 }
 
 

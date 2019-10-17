@@ -19,7 +19,7 @@ import GeneTrack from "./tracks/geneTrack";
 import SimpleTrack from './tracks/simpleTrack';
 import RealCoordinateSystem from './realCoordinateSystem';
 import AccessorFactory from './encoder/accessor';
-import { isViewSpec, createView, resolveScales, isTrackSpec } from './view/viewUtils';
+import { isViewSpec, createView, resolveScales, isTrackSpec, isImportSpec } from './view/viewUtils';
 import DataSource from './data/dataSource';
 
 /**
@@ -257,14 +257,51 @@ export default class GenomeSpy {
             /** @type {import("spec/view").TrackSpec & import("spec/view").RootConfig} */
             let rootWithTracks;
 
+            // Ensure that we have at least one track
             if (isViewSpec(this.config)) {
                 rootWithTracks = this.config;
                 rootWithTracks.tracks = [this.config];
+
             } else if (isTrackSpec(this.config)) {
                 rootWithTracks = this.config;
+
+            } else {
+                throw new Error("The config root has no tracks nor views: " + JSON.stringify(this.config));
             }
 
-            this.tracks = rootWithTracks.tracks.map(spec => {
+            this.tracks = await Promise.all(rootWithTracks.tracks.map(async spec => {
+                if (isImportSpec(spec)) {
+                    if (spec.import.name) {
+                        if (!trackTypes[spec.import.name]) {
+                            throw new Error(`Unknown track name: ${spec.import.name}`)
+                        }
+                        // Currently, all named imports are custom, hardcoded tracks
+                        return new trackTypes[spec.import.name](this, spec);
+
+                    } else if (spec.import.url) {
+                        // Replace the current spec with an imported one
+
+                        const absolute = /^(http(s)?)?:\/\//.test(spec.import.url);
+                        const url = absolute ? spec.import.url : this.config.baseUrl + "/" + spec.import.url;
+
+                        const importedSpec = await fetch(url, { credentials: 'same-origin' })
+                            .then(res => {
+                                if (res.ok) {
+                                    return res.json();
+                                }
+                                throw new Error(`Could not load chrom sizes: ${url} \nReason: ${res.status} ${res.statusText}`);
+                            });
+                        
+                        // TODO: BaseUrl should be updated for the imported view
+                        if (isViewSpec(importedSpec)) {
+                            spec = importedSpec;
+                        } else {
+                            throw new Error(`The imported spec "${url}" is not a view spec: ${JSON.stringify(spec)}`);
+                        }
+                    }
+
+                }
+                
                 if (isViewSpec(spec)) {
                     // We first create a view and then figure out if it needs faceting (SampleTrack)
 
@@ -278,17 +315,10 @@ export default class GenomeSpy {
                     context.track = track;
 
                     return track;
+                } 
 
-                } else if (spec.import && spec.import.name) {
-                    if (!trackTypes[spec.import.name]) {
-                        throw new Error(`Unknown track name: ${spec.import.name}`)
-                    }
-                    return new trackTypes[spec.import.name](this, spec);
-
-                } else {
-                    throw new Error("Can't figure out which track to create: " + JSON.stringify(spec));
-                }
-            });
+                throw new Error("Can't figure out which track to create: " + JSON.stringify(spec));
+            }));
 
             await Promise.all(this.tracks.map(track => {
                 const trackContainer = document.createElement("div");
