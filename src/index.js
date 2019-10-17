@@ -26,13 +26,13 @@ export async function initWithConfiguration(conf) {
                 throw e;
             }
 
-            if (!conf.baseurl) {
+            if (!conf.baseUrl) {
                 const m = url.match(/^.*\//);
-                conf.baseurl = m && m[0] || "./";
+                conf.baseUrl = m && m[0] || "./";
             }
 
         } else {
-            conf.baseurl = conf.baseurl || "";
+            conf.baseUrl = conf.baseUrl || "";
         }
 
         const app = new GenomeSpyApp(conf);

@@ -4,11 +4,9 @@ import { chromMapper } from "./chromMapper";
 import CoordinateSystem from '../coordinateSystem';
 import Interval from '../utils/interval';
 
-const defaultBaseUrl = "https://genomespy.app/data/genomes";
+const defaultBaseUrl = "https://genomespy.app/data/genomes/";
 /**
- * @typedef {Object} GenomeConfig
- * @prop {string} name
- * @prop {string} baseUrl
+ * @typedef {import("../spec/genome").GenomeConfig} GenomeConfig
  */
 
 export default class Genome extends CoordinateSystem {
@@ -39,7 +37,7 @@ export default class Genome extends CoordinateSystem {
         if (this.config.baseUrl) {
             this.baseUrl = /^http(s)?/.test(this.config.baseUrl) ?
                 this.config.baseUrl :
-                genomeSpy.config.baseurl + "/" + this.config.baseUrl;
+                genomeSpy.config.baseUrl + "/" + this.config.baseUrl;
         } else {
             this.baseUrl = defaultBaseUrl;
         }

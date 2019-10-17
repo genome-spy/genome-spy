@@ -19,9 +19,12 @@ import GeneTrack from "./tracks/geneTrack";
 import SimpleTrack from './tracks/simpleTrack';
 import RealCoordinateSystem from './realCoordinateSystem';
 import AccessorFactory from './encoder/accessor';
-import { isViewSpec, createView, resolveScales } from './view/viewUtils';
+import { isViewSpec, createView, resolveScales, isTrackSpec } from './view/viewUtils';
 import DataSource from './data/dataSource';
 
+/**
+ * @type {Record<String, typeof import("./tracks/track").default>}
+ */
 const trackTypes = {
     "cytobands": CytobandTrack,
     "genomeAxis": AxisTrack,
@@ -36,7 +39,7 @@ export default class GenomeSpy {
     /**
      * 
      * @param {HTMLElement} container 
-     * @param {object} config
+     * @param {import("spec/view").RootSpec} config
      */
     constructor(container, config) {
         this.container = container;
@@ -248,42 +251,44 @@ export default class GenomeSpy {
                 coordinateSystem: this.coordinateSystem,
                 accessorFactory: this.accessorFactory,
                 genomeSpy: this, // TODO: An interface instead of a GenomeSpy
-                getDataSource: config => new DataSource(config, this.config.baseurl, this.datasets)
+                getDataSource: config => new DataSource(config, this.config.baseUrl, this.datasets)
             };
 
-            let rootConfig = this.config;
+            /** @type {import("spec/view").TrackSpec & import("spec/view").RootConfig} */
+            let rootWithTracks;
 
             if (isViewSpec(this.config)) {
-                rootConfig.tracks = [this.config];
+                rootWithTracks = this.config;
+                rootWithTracks.tracks = [this.config];
+            } else if (isTrackSpec(this.config)) {
+                rootWithTracks = this.config;
             }
 
-            if (this.config.tracks) {
-                this.tracks = this.config.tracks.map(spec => {
-                    if (isViewSpec(spec)) {
-                        // We first create a view and then figure out if it needs faceting (SampleTrack)
+            this.tracks = rootWithTracks.tracks.map(spec => {
+                if (isViewSpec(spec)) {
+                    // We first create a view and then figure out if it needs faceting (SampleTrack)
 
-                        /** @type {import("view/viewUtils").ViewContext} */
-                        const context = {...baseContext}
-                        const viewRoot = createView(spec, context);
-                        resolveScales(viewRoot);
-                        const Track = viewRoot.resolutions["sample"] ? SampleTrack : SimpleTrack;
+                    /** @type {import("view/viewUtils").ViewContext} */
+                    const context = {...baseContext}
+                    const viewRoot = createView(spec, context);
+                    resolveScales(viewRoot);
+                    const Track = viewRoot.resolutions["sample"] ? SampleTrack : SimpleTrack;
 
-                        const track = new Track(this, spec, viewRoot);
-                        context.track = track;
+                    const track = new Track(this, spec, viewRoot);
+                    context.track = track;
 
-                        return track;
+                    return track;
 
-                    } else if (spec.import && spec.import.name) {
-                        if (!trackTypes[spec.import.name]) {
-                            throw new Error(`Unknown track name: ${spec.import.name}`)
-                        }
-                        return new trackTypes[spec.import.name](this, spec);
-
-                    } else {
-                        throw new Error("Can't figure out which track to create: " + JSON.stringify(spec));
+                } else if (spec.import && spec.import.name) {
+                    if (!trackTypes[spec.import.name]) {
+                        throw new Error(`Unknown track name: ${spec.import.name}`)
                     }
-                });
-            }
+                    return new trackTypes[spec.import.name](this, spec);
+
+                } else {
+                    throw new Error("Can't figure out which track to create: " + JSON.stringify(spec));
+                }
+            });
 
             await Promise.all(this.tracks.map(track => {
                 const trackContainer = document.createElement("div");

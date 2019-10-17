@@ -14,9 +14,9 @@ async function fetchConf(url) {
             throw new Error(`Could not load configuration: ${conf} \nReason: ${res.status} ${res.statusText}`);
         });
 
-    if (!conf.baseurl) {
+    if (!conf.baseUrl) {
         const m = url.match(/^.*\//);
-        conf.baseurl = m && m[0] || "./";
+        conf.baseUrl = m && m[0] || "./";
     }
 
     return conf;
@@ -29,7 +29,7 @@ async function fetchConf(url) {
 async function embed(container, conf) {
 
     try {
-        conf.baseurl = conf.baseurl || "./";
+        conf.baseUrl = conf.baseUrl || "./";
 
         console.log(conf);
         const app = new GenomeSpy(container, conf);

@@ -2,6 +2,7 @@ import { Data } from "./data";
 import { Scale } from "./scale";
 import { Axis } from "./axis";
 import { TransformConfig } from "./transform";
+import { GenomeConfig } from "../genome/genome";
 
 export type Scalar = string | number | boolean;
 
@@ -53,3 +54,22 @@ export interface UnitSpec extends ViewSpecBase {
 }
 
 export type ViewSpec = UnitSpec | LayerSpec;
+
+export interface ImportConfig {
+    name?: string,
+    url?: string,
+    params?: object
+}
+
+export interface TrackSpec {
+    tracks?: (ViewSpec | { import: ImportConfig })[]
+}
+
+
+export interface RootConfig {
+    genome?: GenomeConfig,
+    baseUrl?: string
+}
+
+export type RootSpec = (ViewSpec | TrackSpec) & RootConfig;
+

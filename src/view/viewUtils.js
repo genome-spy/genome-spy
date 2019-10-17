@@ -17,6 +17,8 @@ import { configureDefaultResolutions } from './resolution';
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec 
  * @typedef {import("../spec/view").UnitSpec} UnitSpec 
+ * @typedef {import("../spec/view").TrackSpec} TrackSpec 
+ * @typedef {import("../spec/view").ImportConfig} ImportConfig 
  * @typedef {import("./view").default} View
  */
 
@@ -40,11 +42,29 @@ export function isLayerSpec(spec) {
 
 /**
  * 
- * @param {ViewSpec} spec 
+ * @param {object} spec 
  * @returns {spec is ViewSpec}
  */
 export function isViewSpec(spec) {
     return isUnitSpec(spec) || isLayerSpec(spec);
+}
+
+/**
+ * 
+ * @param {object} spec 
+ * @returns {spec is TrackSpec}
+ */
+export function isTrackSpec(spec) {
+    return Array.isArray(spec.tracks);
+}
+
+/**
+ * 
+ * @param {object} config 
+ * @returns {spec is ImportConfig}
+ */
+export function isImportConfig(config) {
+    return config.name || config.url;
 }
 
 /**

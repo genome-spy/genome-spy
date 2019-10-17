@@ -142,7 +142,7 @@ export default class SampleTrack extends SimpleTrack {
         await super.initialize(trackContainer);
 
         if (this.config.samples) {
-            const sampleDataSource = new DataSource(this.config.samples.data, this.genomeSpy.config.baseurl);
+            const sampleDataSource = new DataSource(this.config.samples.data, this.genomeSpy.config.baseUrl);
             this.setSamples(processSamples(await sampleDataSource.getUngroupedData()));
 
         } else {
