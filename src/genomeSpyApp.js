@@ -144,7 +144,7 @@ export default class GenomeSpyApp {
 
         // The following adds a dependency to specific kinds of tracks.
         // Maybe the tracks should be given means to add buttons to applications...
-        if (config.tracks && config.tracks.find(t => t.type == "SampleTrack")) {
+        if (true) { // TODO: only show when a SampleTrack is present
             const backButton = document.createElement("button");
             backButton.classList.add("tool-btn"); 
             backButton.classList.add("backtrack-samples");
