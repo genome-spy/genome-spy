@@ -19,16 +19,13 @@ import GeneTrack from "./tracks/geneTrack";
 import SimpleTrack from './tracks/simpleTrack';
 import RealCoordinateSystem from './realCoordinateSystem';
 import AccessorFactory from './encoder/accessor';
-import { isViewSpec } from './view/viewUtils';
+import { isViewSpec, createView, resolveScales } from './view/viewUtils';
+import DataSource from './data/dataSource';
 
-// TODO: Figure out if these could be discovered automatically by WebPack or something
-// TODO: Provide an API for registering new track types
 const trackTypes = {
-    "SimpleTrack": SimpleTrack,
-    "SampleTrack": SampleTrack,
-    "CytobandTrack": CytobandTrack,
-    "AxisTrack": AxisTrack,
-    "GeneTrack": GeneTrack
+    "cytobands": CytobandTrack,
+    "genomeAxis": AxisTrack,
+    "geneAnnotation": GeneTrack
 };
 
 
@@ -245,20 +242,48 @@ export default class GenomeSpy {
             }
             await this.coordinateSystem.initialize(this);
 
-            let tracksConfig;
-            if (isViewSpec(this.config)) {
-                // Wrap view spec in a track
-                tracksConfig = [
-                    {
-                        type: "SimpleTrack",
-                        ...this.config
-                    }
-                ]
 
-            } else {
-                tracksConfig = this.config.tracks;
+            /** @type {import("view/viewUtils").ViewContext} */
+            const baseContext = {
+                coordinateSystem: this.coordinateSystem,
+                accessorFactory: this.accessorFactory,
+                genomeSpy: this, // TODO: An interface instead of a GenomeSpy
+                getDataSource: config => new DataSource(config, this.config.baseurl, this.datasets)
+            };
+
+            let rootConfig = this.config;
+
+            if (isViewSpec(this.config)) {
+                rootConfig.tracks = [this.config];
             }
-            this.tracks = tracksConfig.map(/** @param {object} trackConfig */trackConfig => new trackTypes[trackConfig.type](this, trackConfig));
+
+            if (this.config.tracks) {
+                this.tracks = this.config.tracks.map(spec => {
+                    if (isViewSpec(spec)) {
+                        // We first create a view and then figure out if it needs faceting (SampleTrack)
+
+                        /** @type {import("view/viewUtils").ViewContext} */
+                        const context = {...baseContext}
+                        const viewRoot = createView(spec, context);
+                        resolveScales(viewRoot);
+                        const Track = viewRoot.resolutions["sample"] ? SampleTrack : SimpleTrack;
+
+                        const track = new Track(this, spec, viewRoot);
+                        context.track = track;
+
+                        return track;
+
+                    } else if (spec.import && spec.import.name) {
+                        if (!trackTypes[spec.import.name]) {
+                            throw new Error(`Unknown track name: ${spec.import.name}`)
+                        }
+                        return new trackTypes[spec.import.name](this, spec);
+
+                    } else {
+                        throw new Error("Can't figure out which track to create: " + JSON.stringify(spec));
+                    }
+                });
+            }
 
             await Promise.all(this.tracks.map(track => {
                 const trackContainer = document.createElement("div");

@@ -16,7 +16,8 @@ import {
     createView,
     getFlattenedViews,
     getMarks,
-    initializeViewHierarchy
+    initializeData,
+    resolveScales
 } from '../view/viewUtils';
 
 
@@ -68,23 +69,13 @@ export default class SimpleTrack extends WebGlTrack {
      * 
      * @param {import("./../genomeSpy").default } genomeSpy 
      * @param {object} config 
+     * @param {import("../view/view").default} viewRoot 
      */
-    constructor(genomeSpy, config) {
+    constructor(genomeSpy, config, viewRoot) {
         super(genomeSpy, config);
 
         this.styles = Object.assign({}, defaultStyles, config.styles);
-
-        const spec = /** @type {import("../view/viewUtils").Spec} */config;
-        const context = {
-            coordinateSystem: genomeSpy.coordinateSystem,
-            accessorFactory: genomeSpy.accessorFactory,
-            genomeSpy, // TODO: An interface instead of a GenomeSpy
-            track: this,
-            getDataSource: config => new DataSource(config, genomeSpy.config.baseurl, genomeSpy.datasets)
-        };
-
-        /** @type {View} */
-        this.viewRoot = createView(spec, context);
+        this.viewRoot = viewRoot;
     }
 
     /**
@@ -143,7 +134,7 @@ export default class SimpleTrack extends WebGlTrack {
                 return point;
             });
 
-        await initializeViewHierarchy(this.viewRoot);
+        await initializeData(this.viewRoot);
 
         this.initializeGraphics();
     }

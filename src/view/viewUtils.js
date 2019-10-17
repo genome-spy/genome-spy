@@ -6,7 +6,7 @@ import { configureDefaultResolutions } from './resolution';
  * @typedef {Object} ViewContext 
  * @prop {import("../tracks/simpleTrack").default} [track]
  * @prop {import("../genomeSpy").default} genomeSpy TODO: Break genomeSpy dependency
- * @prop {function(string):import("../data/dataSource").default} getDataSource
+ * @prop {function(import("../spec/data").Data):import("../data/dataSource").default} getDataSource
  * @prop {import("../encoder/accessor").default} accessorFactory
  * @prop {import("../coordinateSystem").default} coordinateSystem
  */
@@ -15,12 +15,15 @@ import { configureDefaultResolutions } from './resolution';
  * @typedef {import("../spec/view").MarkConfig} MarkConfig
  * @typedef {import("../spec/view").EncodingConfig} EncodingConfig
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
+ * @typedef {import("../spec/view").LayerSpec} LayerSpec 
+ * @typedef {import("../spec/view").UnitSpec} UnitSpec 
  * @typedef {import("./view").default} View
  */
 
 /**
  * 
  * @param {ViewSpec} spec 
+ * @returns {spec is UnitSpec}
  */
 export function isUnitSpec(spec) {
     return typeof spec.mark === "string" || typeof spec.mark === "object";
@@ -29,6 +32,7 @@ export function isUnitSpec(spec) {
 /**
  * 
  * @param {ViewSpec} spec 
+ * @returns {spec is LayerSpec}
  */
 export function isLayerSpec(spec) {
     return typeof spec.layer === "object";
@@ -37,6 +41,7 @@ export function isLayerSpec(spec) {
 /**
  * 
  * @param {ViewSpec} spec 
+ * @returns {spec is ViewSpec}
  */
 export function isViewSpec(spec) {
     return isUnitSpec(spec) || isLayerSpec(spec);
@@ -91,13 +96,8 @@ export function getFlattenedViews(root) {
 /**
  * @param {View} root
  */
-export async function initializeViewHierarchy(root) {
+export function resolveScales(root) {
     const views = getFlattenedViews(root);
-    await Promise.all(views.map(view => view.loadData()));
-
-    for (const view of views) {
-        view.transformData();
-    }
 
     for (const view of views) {
         if (view instanceof UnitView) {
@@ -105,7 +105,21 @@ export async function initializeViewHierarchy(root) {
         }
     }
 
+    // Actually configures some hacky scales
     configureDefaultResolutions(root);
+}
+
+/**
+ * @param {View} root
+ */
+export async function initializeData(root) {
+    const views = getFlattenedViews(root);
+
+    await Promise.all(views.map(view => view.loadData()));
+
+    for (const view of views) {
+        view.transformData();
+    }
 
     for (const mark of getMarks(root)) {
         await mark.initializeData(); // TODO: async needed?

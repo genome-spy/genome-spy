@@ -1,6 +1,6 @@
----
-title: Tracks
----
+# Tracks
+
+OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED 
 
 GenomeSpy resembles genome browsers such as IGV or JBrowse in the sense
 that it has a horizontally scrollable viewport and vertically stacked tracks.
@@ -86,7 +86,6 @@ explicitly:
 
 ```json
 {
-    "type": "SampleTrack",
     "samples": {
         "data": { "url": "samples.tsv" },
         "attributes": {
@@ -205,9 +204,9 @@ using the `hg38` genome assembly.
 {
     "genome": { "name": "hg38" },
     "tracks": [
-        { "type": "CytobandTrack" },
-        { "type": "GeneTrack" },
-        { "type": "AxisTrack" }
+        { "import": { "name": "cytobands" } },
+        { "import": { "name": "geneAnnotation" } },
+        { "import": { "name": "genomeAxis" } }
     ]
 }
 ```

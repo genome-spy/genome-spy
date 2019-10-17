@@ -10,7 +10,6 @@ point mutations at genomic loci.
 
 ```json
 {
-    "type": "SimpleTrack",
     "data": { "url": "../../../data/examples/sincos.csv" },
     "mark": "point",
     "encoding": {

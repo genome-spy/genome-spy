@@ -3,7 +3,7 @@
  * TODO: Find a better place and convention
  */
 
-import { createView, initializeViewHierarchy } from "./viewUtils";
+import { createView, resolveScales, initializeData } from "./viewUtils";
 import DataSource from '../data/dataSource';
 import AccessorFactory from "../encoder/accessor";
 
@@ -30,6 +30,7 @@ export function create(spec, context) {
  */
 export async function createAndInitialize(spec, context) {
     const view = create(spec, context);
-    await initializeViewHierarchy(view);
+    resolveScales(view);
+    await initializeData(view);
     return view;
 }

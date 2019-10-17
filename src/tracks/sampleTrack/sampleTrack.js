@@ -65,10 +65,11 @@ export default class SampleTrack extends SimpleTrack {
     /**
      * 
      * @param {import("../../genomeSpy").default } genomeSpy 
-     * @param {object | import("../../marks/viewUnit").ViewUnitConfig} config 
+     * @param {object} config 
+     * @param {import("../../view/view").default} viewRoot 
      */
-    constructor(genomeSpy, config) {
-        super(genomeSpy, config);
+    constructor(genomeSpy, config, viewRoot) {
+        super(genomeSpy, config, viewRoot);
 
         this.styles = Object.assign({}, defaultStyles, config.styles);
 
