@@ -1,9 +1,11 @@
----
-title: Regex Extract
----
+# Regex Extract
 
-RegexMatch filter extracts and adds one or more new fields to the data
+RegexExtract filter extracts and adds one or more new fields to the data
 by using a regular expression.
+
+## Parameters
+
+TODO
 
 ## Example
 
@@ -17,7 +19,7 @@ Given the following data:
 
 ```json
 {
-    "type": "regexMatch",
+    "type": "regexExtract",
     "field": "Genome Location",
     "regex": "^(X|Y|\\d+):(\\d+)-(\\d+)$",
     "as": ["Chrom", "Start", "End"]

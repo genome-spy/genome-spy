@@ -1,6 +1,6 @@
 import formula from './formula';
 import gather from './gather';
-import regexMatch from './regexMatch';
+import regexExtract from './regexExtract';
 import simpleFilter from './simpleFilter';
 import filter from './filter';
 import flattenDelimited from './flattenDelimited';
@@ -13,7 +13,7 @@ const transforms = {
     flattenDelimited,
     formula,
     gather,
-    regexMatch,
+    regexExtract,
     simpleFilter,
     stack
 };

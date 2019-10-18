@@ -1,4 +1,4 @@
-import regexMatchTransform from './regexMatch';
+import regexMatchTransform from './regexExtract';
 
 describe("RegexMatchTransform", () => {
     const rows = [
@@ -6,7 +6,7 @@ describe("RegexMatchTransform", () => {
         { a: "23-45" },
     ];
 
-    /** @type {import("./regexMatch").RegexExtractConfig} */
+    /** @type {import("./regexExtract").RegexExtractConfig} */
     const config = {
         type: "regexExtract",
         regex: "^(\\d+)-(\\d+)$",
@@ -23,7 +23,7 @@ describe("RegexMatchTransform", () => {
     });
 
     test("Invalid config", () => {
-    /** @type {import("./regexMatch").RegexExtractConfig} */
+    /** @type {import("./regexExtract").RegexExtractConfig} */
         const config2 = {
             type: "regexExtract",
             regex: "^(\\d+)-(\\d+)$",
