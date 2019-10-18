@@ -9,7 +9,7 @@ the layers share their scales and axes, unioning the data domains.
 
 ```json
 {
-    "name": "Lollipop plot example",
+    "description": "Lollipop plot example",
     "layer": [
         {
             "name": "Baseline",

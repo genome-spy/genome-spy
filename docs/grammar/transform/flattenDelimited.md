@@ -1,9 +1,11 @@
----
-title: Flatten Delimited
----
+# Flatten Delimited
 
 FlattenDelimited transform flattens (or normalizes) a field or a set of
 fields that contain delimited values.
+
+## Parameters
+
+TODO
 
 ## Example
 

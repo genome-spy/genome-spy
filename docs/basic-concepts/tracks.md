@@ -150,26 +150,30 @@ same time. To focus on a few specific samples, you can activate the fisheye
 tool by pressing and holding the `e` key on the keyboard. Shift + `e` leaves
 the fisheye activated even after you release the key.
 
+## Importing tracks
+
+TODO
+
 ## Special genomic tracks
 
 GenomeSpy provides three tracks, that are intended to be used with genomic data.
 
 ### Genome axis track
 
-Type: `AxisTrack`
+Name: `genomeAxis`
 
 Genome axis track displays the chromosome boundaries and intra-chromosomal
 coordinates.
 
 ### Cytoband track
 
-Type: `CytobandTrack`
+Name: `cytobands`
 
 Cytoband track displays the cytobands if the genome configuration provides them.
 
 ### Gene annotations
 
-Type: `GeneTrack`
+Name: `geneAnnotation`
 
 Gene track displays RefSeq gene annotations. As it is impractical to show all
 20 000 gene symbols at the same time, gene track uses score-based
