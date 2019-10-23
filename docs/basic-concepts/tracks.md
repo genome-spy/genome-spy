@@ -1,162 +1,120 @@
 # Tracks
 
-OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED 
+GenomeSpy resembles genome browsers such as
+[IGV](http://software.broadinstitute.org/software/igv/) or
+[JBrowse](https://jbrowse.org) in the sense that it has a horizontally
+scrollable viewport and vertically stacked tracks.
 
-GenomeSpy resembles genome browsers such as IGV or JBrowse in the sense
-that it has a horizontally scrollable viewport and vertically stacked tracks.
-The different track types are documented below.
+Tracks are the basic building block of GenomeSpy visualizations. They allows
+for specifying custom visualizations by using the [visualization
+grammar](../grammar/index.md). Tracks can be shared and
+[imported](#importing-tracks) from external files.
 
-## Simple track
+All the tracks share their `x` channel, i.e. the horizontal scale and axis
+(see [coordinate systems](./coordinate-system.md)).
 
-Type: `SimpleTrack`
+To specify a view with one or multiple tracks, define a `tracks` array
+in the root configuration object.
 
-Simple track allows for specifying custom visualizations by using the
-[visualization grammar](../grammar/index.md).
+## Example
 
-<div class="embed-example" data-url="../../data/examples/first.json">
-    <div class="embed-container"></div>
-</div>
+This example specifies a single track:
 
-## Sample track
-
-Type: `SampleTrack`
-
-Sample track is an extension of the simple track and allows for creation of a
-faceted view to the data. The view specification is repeated for subgroups of
-the data, e.g. for multiple biological samples. This is also known as
-small multiples, conditioning, or trellising.
-
-To specify a field that indicates the subgroup, use the `sample` channel in
-mark encoding:
+<div class="embed-example">
+<div class="embed-container" style="height: 200px"></div>
+<div class="embed-spec">
 
 ```json
 {
-    ...,
-    "encoding": {
-        ...,
-        "sample": {
-            "field": "sampleId",
-            "type": "nominal"
+    "tracks": [
+        {
+            "data": { "url": "../../../data/examples/sincos.csv" },
+            "mark": "point",
+            "encoding": {
+                "x": { "field": "x", "type": "quantitative" },
+                "y": { "field": "sin", "type": "quantitative" }
+            }
         }
+    ]
+}
+```
+
+</div>
+</div>
+
+Single tracks need not be explicitly wrapped in the `tracks` array as
+GenomeSpy does it for you. The example above can also be specified more
+succinctly:
+
+```json
+{
+    "data": { "url": "../../../data/examples/sincos.csv" },
+    "mark": "point",
+    "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "sin", "type": "quantitative" }
     }
 }
 ```
 
-Sample track of GenomeSpy is analogous to the [Facet
-operator](https://vega.github.io/vega-lite/docs/facet.html) of Vega-Lite.
-However, Vega-Lite does not support multiple datasets inside the faceted
-view. Sample track allows you to visualize multidimensional data, for
-instance, copy numbers and point mutations of multiple samples at the same
-time.
+## Importing tracks
 
-TODO: Explain how the `sample` channel is resolved.
+GenomeSpy facilitates reusing views by allowing tracks to be imported from
+external specification files. The files can be placed flexibly – it may be
+practical to split large specifications into multiple files and place them in
+the same directory. On the other hand, if you have created, for example, an
+annotation track that you would like the share with the research community,
+you can upload the specification file and the associated data on a publicly
+accessible web server.
 
-<div class="embed-example" data-url="../../data/examples/sampletrack.json">
-    <div class="embed-container"></div>
-</div>
+### Named tracks
 
-!!! warning "Y axis ticks"
-    The Y axis ticks are not available on Sample tracks at the moment.
-    Will be fixed at a later time.
+GenomeSpy provides a few built-in tracks, mainly to support genomic data
+exploration. They must be imported by a name. Read more at [special genomic
+tracks](#special-genomic-tracks).
 
-!!! note "But we have Band scale?"
-    Superficially similar results can be achieved by using Band scale
-    on the `y` channel. However, you can not adjust the intra-band 
-    y-position, as the `y` channel is already reserved for assigning
-    a band for a datum. On the other hand, with Band scale, the
-    graphical marks can span multiple bands. You could, for example,
-    draw lines between the bands.
-
-
-
-### Explicit sample identifiers
-
-By default, the identifiers of the subgroups (samples) are extracted from the
-data. However, you can also explicitly specify the sample ids along with
-optional sample-specific attributes such as various clinical data. The
-attributes are shown as color-coded columns in the left axis area. The user
-can use these attributes to interactively filter and sort the samples.
-
-The sample-specific data must contain a `sample` column, which identifies the
-sample. All other columns are regarded as attributes. By default, the
-attribute data types are inferred from the data; numeric attributes are
-interpreted as `quantitative` data, all others as `nominal`. To adjust the
-data types and [scales](grammar/scale.md), the attributes can be specified
-explicitly:
+Usage:
 
 ```json
 {
-    "samples": {
-        "data": { "url": "samples.tsv" },
-        "attributes": {
-            "RIN_Qual": {
-                "type": "ordinal",
-                "scale": {
-                    "domain": [ "<5UQ", "5-7UQ", "5-7R", ">7R", ">7Q" ],
-                    "scheme": "orangered"
-                }
-            },
-            ...
-        }
-    },
-    "encoding": {
-        "sample": { "field": "sampleId", "type": "nominal" }
-        ...
-    },
-    ...
+    ...,
+    "tracks": [
+        ...,
+        { "import": { "name": "cytobands" } }
+    ]
 }
 ```
 
-See [Scale](../grammar/scale.md) documentation to further blablaa ...
+### Importing from an URL
 
-TODO: Link to a full live example
+You can also import tracks from relative and absolute URLs. Relative URLs
+are imported with respect to the current [baseUrl](TODO!).
 
-### Sorting samples
+The imported specification must contain a single or layered view – multiple
+tracks in a single imported specification are not currently supported. The
+baseUrl of the imported specification is updated to match its directory.
+Thus, you can publish a track by placing its specification and data available
+in the same directory on a web server.
 
-Samples can be interactively ordered by sample-specific attributes and the
-actual data.
+Usage:
 
-#### By sample-specific attributes
+```json
+{
+    ...,
+    "tracks": [
+        ...,
+        { "import": { "url": "includes/annotations.json" } },
+        { "import": { "url": "https://genomespy.app/tracks/cosmic/census_hg38.json" } }
+    ]
+}
+```
 
-You can sort the samples by clicking the labels of the attributes.
-
-TODO: A link to a visualization
-
-#### By the actual data
-
-TODO:
-
-* How to sort
-  * Screenshot of the context-menu
-* How to specify
-
-### Filtering samples
-
-SampleTrack also allows for interactive filtering of the samples. Open a
-context-menu by clicking on the attributes with the right mouse button:
-
-![Sample context-menu](../img/sample-context-menu.png)
-
-TODO:
-
-* Explain the menu
-* Provide an interactive example right here
-
-### Fisheye tool
-
-Sample track is designed to handle hundreds of samples. In order to see
-phenomena that span multiple samples, the whole sample set is shown at the
-same time. To focus on a few specific samples, you can activate the fisheye
-tool by pressing and holding the `e` key on the keyboard. Shift + `e` leaves
-the fisheye activated even after you release the key.
-
-## Importing tracks
-
-TODO
 
 ## Special genomic tracks
 
-GenomeSpy provides three tracks, that are intended to be used with genomic data.
+GenomeSpy provides three tracks, that are intended to be used with genomic
+data. To add any of these tracks to your view specification, use the
+[import](#importing-tracks) directive.
 
 ### Genome axis track
 
@@ -169,7 +127,8 @@ coordinates.
 
 Name: `cytobands`
 
-Cytoband track displays the cytobands if the genome configuration provides them.
+Cytoband track displays the cytobands if the [genome
+configuration](coordinate-system.md#genomic-coordinates) provides them.
 
 ### Gene annotations
 
@@ -199,10 +158,11 @@ information about the gene.
 ### Example
 
 This example displays cytobands, gene annotations, and genomic coordinates
-using the `hg38` genome assembly.
+using the `hg38` genome assembly. It also import a COSMIC Cancer Gene Census
+track from *genomespy.app* website.
 
 <div class="embed-example">
-    <div class="embed-container" style="height: 120px"></div>
+    <div class="embed-container" style="height: 140px"></div>
     <div class="embed-spec">
 ```json
 {
@@ -210,6 +170,7 @@ using the `hg38` genome assembly.
     "tracks": [
         { "import": { "name": "cytobands" } },
         { "import": { "name": "geneAnnotation" } },
+        { "import": { "url": "https://genomespy.app/tracks/cosmic/census_hg38.json" } },
         { "import": { "name": "genomeAxis" } }
     ]
 }

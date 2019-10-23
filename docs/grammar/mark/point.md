@@ -111,7 +111,7 @@ The example below demonstrates how the points can be varied by using
     "mark": "point",
 
     "encoding": {
-        "x":  { "field": "x", "type": "quantitative" },
+        "x": { "field": "x", "type": "quantitative" },
         "y": { "field": "y", "type": "nominal" },
         "shape": { "field": "x", "type": "nominal" },
         "color": { "expr": "datum.x + datum.y", "type": "quantitative", "scale": { "scheme": "sinebow" } },

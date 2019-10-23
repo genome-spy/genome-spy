@@ -1,6 +1,4 @@
----
-title: Coordinate system
----
+# Coordinate systems
 
 Just as genome browsers, GenomeSpy has a horizontally scrollable viewport.
 The horizontal axis is always quantitative and linear. In other words, it
@@ -48,7 +46,7 @@ root level configuration object:
 
 Currently, GenomeSpy has built-in support for `hg19` and `hg38` assemblies.
 
-TODO: How to specify custom genomes.
+TODO: How to specify custom genomes, cytobands and gene annotations.
 
 With Genomic coordinate system enabled, you can encode the genomic coordinates
 conveniently:

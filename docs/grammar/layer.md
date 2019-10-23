@@ -73,8 +73,8 @@ the layers share their scales and axes, unioning the data domains.
 
 GenomeSpy replicates the [hierarchical
 composition](https://vega.github.io/vega-lite/docs/composition.html) model of
-Vega-Lite, although currently, `layer` is the only supported composition
-operator.
+Vega-Lite, although currently, `layer` and [faceting](facet.md) are the only
+supported composition operators.
 
 To specify multiple layers, use the `layer` property:
 
