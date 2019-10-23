@@ -28,7 +28,7 @@ This example specifies a single track:
 {
     "tracks": [
         {
-            "data": { "url": "../../../data/examples/sincos.csv" },
+            "data": { "url": "../../data/examples/sincos.csv" },
             "mark": "point",
             "encoding": {
                 "x": { "field": "x", "type": "quantitative" },
@@ -43,12 +43,12 @@ This example specifies a single track:
 </div>
 
 Single tracks need not be explicitly wrapped in the `tracks` array as
-GenomeSpy does it for you. The example above can also be specified more
-succinctly:
+GenomeSpy does it for you automatically. The example above can also be
+specified more succinctly:
 
 ```json
 {
-    "data": { "url": "../../../data/examples/sincos.csv" },
+    "data": { "url": "../../data/examples/sincos.csv" },
     "mark": "point",
     "encoding": {
         "x": { "field": "x", "type": "quantitative" },
@@ -120,8 +120,8 @@ data. To add any of these tracks to your view specification, use the
 
 Name: `genomeAxis`
 
-Genome axis track displays the chromosome boundaries and intra-chromosomal
-coordinates.
+Genome axis track displays the chromosome boundaries, names, and
+intra-chromosomal coordinates.
 
 ### Cytoband track
 
@@ -146,7 +146,7 @@ provided annotation are unioned. Thus, only one "super isoform" of each gene
 is shown (there are a few exceptions, though).
 
 Hovering the gene symbols with mouse fetches gene summary information from RefSeq
-and displays it in a tooltip. Pressing the right mouse button on a gene symbol
+and displays it in a tooltip. Clicking the right mouse button on a gene symbol
 opens a context-menu that provides shortcuts to certain databases for further
 information about the gene.
 

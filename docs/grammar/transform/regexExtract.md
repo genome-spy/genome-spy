@@ -1,7 +1,7 @@
 # Regex Extract
 
-RegexExtract filter extracts and adds one or more new fields to the data
-by using a regular expression.
+RegexExtract extracts and adds one or more new fields to the data by using a
+regular expression.
 
 ## Parameters
 
@@ -25,8 +25,6 @@ Given the following data:
     "as": ["Chrom", "Start", "End"]
 }
 ```
-
-TODO: Rename to Regex Extract
 
 Three new fields are added to the data:
 

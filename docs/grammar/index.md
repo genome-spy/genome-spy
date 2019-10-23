@@ -9,7 +9,7 @@ is intended for visualizing genomic coordinates. In its current form, the
 grammar of GenomeSpy is limited to specifying the visual encoding and certain
 data transformations. GenomeSpy tries to faithfully follow Vega-Lite's
 grammar where practical. Thus, this documentation has many references to
-Vega-Lite's documentation.
+its documentation.
 
 ## View Specification
 
@@ -19,7 +19,7 @@ Vega-Lite's documentation.
 
 ## Transforms
 
-[Transforms](transform/transforms.md)
+[Transforms](transform/index.md)
 
 ## Encoding
 

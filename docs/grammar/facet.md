@@ -57,7 +57,8 @@ are displayed as subtracks.
         "type": "stack",
         "field": "x",
         "groupby": ["sample"],
-        "offset": "normalize"
+        "offset": "normalize",
+        "as": ["from", "to"]
     }],
 
     "mark": "rect",
@@ -66,8 +67,8 @@ are displayed as subtracks.
         "sample": { "field": "sample", "type": "nominal" },
         "y": { "value": 0 },
         "y2": { "value": 1 },
-        "x": { "field": "y0", "type": "quantitative" },
-        "x2": { "field": "y1", "type": "quantitative" },
+        "x": { "field": "from", "type": "quantitative" },
+        "x2": { "field": "to" },
         "color": { "field": "x", "type": "nominal" }
     }
 }
@@ -81,7 +82,7 @@ are displayed as subtracks.
     Will be fixed at a later time.
 
 !!! note "But we have Band scale?"
-    Superficially similar results can be achieved by using Band scale
+    Superficially similar results can be achieved by using [Band scale](encoding/scale.md)
     on the `y` channel. However, you can not adjust the intra-band 
     y-position, as the `y` channel is already reserved for assigning
     a band for a datum. On the other hand, with Band scale, the
@@ -99,11 +100,11 @@ attributes are shown as color-coded columns in the left axis area. The user
 can use these attributes to interactively [filter](#filtering-samples) and
 [sort](#sorting-samples) the samples.
 
-The sample-specific data must contain a `sample` column, which identifies the
+The associated data must contain a `sample` column, which identifies the
 sample. All other columns are regarded as attributes. By default, the
 attribute data types are inferred from the data; numeric attributes are
 interpreted as `quantitative` data, all others as `nominal`. To adjust the
-data types and [scales](grammar/scale.md), the attributes can be specified
+data types and [scales](encoding/scale.md), the attributes can be specified
 explicitly:
 
 ```json
@@ -129,7 +130,7 @@ explicitly:
 }
 ```
 
-See [Scale](../grammar/scale.md) documentation to further blablaa ...
+See [Scale](encoding/scale.md) documentation to further blablaa ...
 
 TODO: Link to a full live example
 
