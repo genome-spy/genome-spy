@@ -1,0 +1,1 @@
+# GenomeSpy Schema Extension

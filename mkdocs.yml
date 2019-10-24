@@ -7,6 +7,7 @@ markdown_extensions:
   - admonition
   - toc:
       permalink: true
+  - genomespy_extension
 extra_javascript:
   - app/main.js
 extra_css:
