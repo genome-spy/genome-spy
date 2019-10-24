@@ -25,6 +25,7 @@
     "start": "webpack-dev-server --progress --hot --open --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js",
     "buildDocJs": "webpack --config webpack.doc.js",
+    "buildSchema": "ts-json-schema-generator -p src/spec/transform.ts > docs/genomespy-schema.json",
     "test": "jest"
   },
   "dependencies": {
@@ -65,6 +66,7 @@
     "regenerator-runtime": "^0.12.1",
     "sass-loader": "^7.3.1",
     "style-loader": "^0.23.1",
+    "ts-json-schema-generator": "^0.54.0",
     "webpack": "^4.41.2",
     "webpack-bundle-analyzer": "^3.6.0",
     "webpack-cli": "^3.3.9",

@@ -20,7 +20,11 @@ export interface FormulaConfig extends TransformConfigBase {
     /** The (new) field where the computed value is written to */
     as: string;
 
-    /** Modify the rows in place (a temporary hack). Will be removed. */
+    /**
+     * Modify the rows in place (a temporary hack). Will be removed.
+     * 
+     * **Default:** `false`
+     */
     inplace?: boolean;
 }
 
@@ -29,13 +33,14 @@ export interface RegexExtractConfig extends TransformConfigBase {
     type: "regexExtract";
 
     /**
-     * A valid JavaScript regular expression with at least one group. For example: `"^Sample(\\d+)$".
+     * A valid JavaScript regular expression with at least one group. For example: `"^Sample(\\d+)$"`.
+     * 
      * Read more at: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
      **/
     regex: string;
 
     /**
-     * The field that is subject to extraction.
+     * The source field
      */
     field: string;
 
@@ -46,7 +51,8 @@ export interface RegexExtractConfig extends TransformConfigBase {
 
     /**
      * Do not complain about invalid input. Just skip it and leave the new fields undefined on the affected datum.
-     * Default: false
+     * 
+     * **Default:** `false`
      **/
     skipInvalidInput?: boolean;
 }
@@ -59,7 +65,7 @@ export interface GatherConfig extends TransformConfigBase {
 
     asValue: string;
 
-    /** Default: sample */
+    /** **Default:** `"sample"` */
     asKey?: string;
 }
 
@@ -76,8 +82,6 @@ export interface CompareConfig {
      */
     order: SortOrder[] | SortOrder;
 }
-
-export type StackOffset = "zero" | "center" | "normalize";
 
 export interface StackConfig extends TransformConfigBase {
     type: "stack";
@@ -99,14 +103,16 @@ export interface StackConfig extends TransformConfigBase {
 
     /**
      * How to offset the values in a stack.
-     * "zero" (default) starts stacking at 0.
-     * "center" centers the values around zero.
-     * "normalize" computes intra-stack percentages and normalizes the values to the range of [0, 1].
+     * `"zero"` (default) starts stacking at 0.
+     * `"center"` centers the values around zero.
+     * `"normalize"` computes intra-stack percentages and normalizes the values to the range of `[0, 1]`.
      */
-    offset?: StackOffset;
+    offset?: "zero" | "center" | "normalize";
 
     /**
-     * Fields to write the stacked values. Default: ["y0", "y1"]
+     * Fields to write the stacked values.
+     * 
+     * **Default:** `["y0", "y1"]`
      */
     as: string[];
 }
@@ -125,7 +131,9 @@ export interface FlattenDelimitedConfig extends TransformConfigBase {
     separator: string[] | string;
 
     /**
-     * The output field name(s) for the flattened field. Default: the input fields.
+     * The output field name(s) for the flattened field.
+     * 
+     * **Default:** the input fields.
      */
     as?: string[] | string;
 }

@@ -19,7 +19,21 @@
     display: none;
 }
 
+.md-typeset dl dd {
+    margin-top: 0.5em;
+}
+
+.md-typeset dl {
+    line-height: 1.5em;
+}
+
 .md-typeset dl p {
     margin-top: 0.6em;
     margin-bottom: 0.6em;
+}
+
+.md-typeset dl span.required {
+    margin-left: 1em;
+    color: #888;
+    font-size: 80%;
 }

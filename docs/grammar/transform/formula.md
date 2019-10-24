@@ -4,7 +4,7 @@ The formula transform calculates and adds a new field to the data.
 
 ## Parameters
 
-TODO
+SCHEMA FormulaConfig
 
 ## Example
 

@@ -1,11 +1,23 @@
 # Stack
 
-TODO
+* computes stacked layout
+* For example, stacked bar chart
 
 ## Parameters
 
-TODO
+SCHEMA StackConfig
 
 ## Example
 
-TODO
+```json
+{
+    "type": "stack",
+    "groupby": ["chrom", "startpos"],
+    "sort": {
+        "field": "Role in Cancer"
+    },
+    "offset": "normalize"
+}
+```
+
+TODO: Explanation
