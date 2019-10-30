@@ -48,12 +48,13 @@ export default class GenomeSpyApp {
      * @param {Object} config
      */
     constructor(config) {
+        this.config = config;
+
         // TODO: Have to figure out how the pieces should really be glued together
         const appContainer = createAppDom();
+        this.appContainer = appContainer;
 
         const elem = className => /** @type {HTMLElement} */(appContainer.getElementsByClassName(className)[0]);
-
-        this.genomeSpy = new GenomeSpy(elem("genome-spy-container"), config);
 
         // TODO: Use WebComponents, for example: https://lit-element.polymer-project.org/
 
@@ -65,10 +66,6 @@ export default class GenomeSpyApp {
 
         /** @type {HTMLElement} */
         this.searchHelp = elem("search-help");
-
-        this.genomeSpy.on("zoom", domain => {
-            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(domain.intersect(this.genomeSpy.getDomain()));
-        });
 
         // TODO: Create a component or something for the search field
 
@@ -91,7 +88,7 @@ export default class GenomeSpyApp {
                     typeSlowly(term, this.searchInput)
                         .then(() => {
                             this.searchInput.blur();
-                            this.search(term);
+                            this.genomeSpy.search(term);
                         });
                 }));
 
@@ -159,40 +156,28 @@ export default class GenomeSpyApp {
     }
 
     async launch() {
-        await this.genomeSpy.launch();
+        const elem = className => /** @type {HTMLElement} */(this.appContainer.getElementsByClassName(className)[0]);
 
+        this.genomeSpy = new GenomeSpy(elem("genome-spy-container"), this.config);
+        this.genomeSpy.on("zoom", domain => {
+            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(domain.intersect(this.genomeSpy.getDomain()));
+        });
+
+
+        await this.genomeSpy.launch();
         this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(this.genomeSpy.getViewportDomain());
     }
 
     /**
-     * Does a search and zooms into a matching interval.
-     * Returns a promise that resolves when the search and transition to the
-     * matching interval is complete.
      * 
-     * @param {string} string the search string
-     * @returns A promise
+     * @param {object} config 
      */
-    search(string) {
-        // TODO: Consider moving this function to GenomeSpy
+    async updateConfig(config) {
+        this.config = config;
+        // TODO: Preserve viewport
+        this.genomeSpy.destroy();
+        await this.launch();
 
-        const domainFinder = {
-            search: string => this.genomeSpy.coordinateSystem.parseInterval(string)
-        };
-
-        // Search tracks
-        const interval = [domainFinder].concat(this.genomeSpy.tracks)
-            .map(t => t.search(string))
-            .find(i => i);
-
-        return new Promise((resolve, reject) => {
-            if (interval) {
-                this.genomeSpy.zoomTo(interval)
-                    .then(() => resolve());
-
-            } else {
-                reject(`No matches found for "${string}"`);
-            }
-        });
     }
 
 }

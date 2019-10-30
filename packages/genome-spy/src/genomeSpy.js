@@ -196,6 +196,36 @@ export default class GenomeSpy {
         });
     }
 
+    /**
+     * Performs a search and zooms into the first matching interval.
+     * Returns a promise that resolves when the search and the transition to the
+     * matching interval are complete.
+     * 
+     * @param {string} string the search string
+     * @returns A promise
+     */
+    search(string) {
+        // TODO: Consider moving this function to GenomeSpy
+
+        const domainFinder = {
+            search: string => this.coordinateSystem.parseInterval(string)
+        };
+
+        // Search tracks
+        const interval = [domainFinder].concat(this.tracks)
+            .map(t => t.search(string))
+            .find(i => i);
+
+        return new Promise((resolve, reject) => {
+            if (interval) {
+                this.zoomTo(interval)
+                    .then(() => resolve());
+
+            } else {
+                reject(`No matches found for "${string}"`);
+            }
+        });
+    }
 
     _resized() {
         const aw = Math.ceil(this.getAxisWidth());
@@ -222,19 +252,25 @@ export default class GenomeSpy {
         this.loadingMessageElement.innerHTML = `<div class="message">Loading...</div>`;
         this.container.appendChild(this.loadingMessageElement);
 
-        window.addEventListener('resize', this._resized.bind(this), false);
+        this._listeners = [
+            { target: window, type: "resize", listener: this._resized.bind(this) },
+            {
+                target: window, type: "mousemove", listener: () => {
+                    if (window.devicePixelRatio != this._dpr) {
+                        this._dpr = window.devicePixelRatio;
+                        this._resized();
+                    }
+                }
+            },
+            // Eat all context menu events that have not been caught by any track.
+            // Prevents annoying browser default context menues from opening when
+            // the user did not quite hit the target.
+            { target: this.container, type: "contextmenu", listener: event => event.preventDefault() }
+        ];
 
-        window.addEventListener('mousemove', () => {
-            if (window.devicePixelRatio != this._dpr) {
-                this._dpr = window.devicePixelRatio;
-                this._resized();
-            }
-        });
-
-        // Eat all context menu events that have not been caught by any track.
-        // Prevents annoying browser default context menues from opening when
-        // the user did not quite hit the target.
-        this.container.addEventListener("contextmenu", event => event.preventDefault());
+        for (const e of this._listeners) {
+            e.target.addEventListener(e.type, e.listener);
+        }
 
         const trackStack = document.createElement("div");
         trackStack.classList.add("track-stack");
@@ -246,6 +282,22 @@ export default class GenomeSpy {
 
         this.container.classList.add("genome-spy");
         this.container.classList.add("loading");
+    }
+
+    /**
+     * Unregisters all listeners, removes all created dom elements, removes all css classes from the container
+     */
+    destroy() {
+        for (const e of this._listeners) {
+            e.target.removeEventListener(e.type, e.listener);
+        }
+
+        while (this.container.firstChild) {
+            this.container.firstChild.remove();
+        }
+
+        this.container.classList.remove("genome-spy");
+        this.container.classList.remove("loading");
     }
 
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
