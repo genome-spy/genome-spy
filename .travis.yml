@@ -1,3 +1,17 @@
 language: node_js
 node_js:
   - 12
+
+before_install:
+  - npm list -g lerna --depth=0 || npm install -g lerna
+
+install:
+  - npm run bootstrap
+
+cache:
+  directories:
+    - node_modules
+    - $(npm config get prefix)/lib/node_modules # globally installed stuff (i.e. lerna)
+
+script:
+  - lerna run test

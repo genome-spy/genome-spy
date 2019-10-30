@@ -1,0 +1,22 @@
+{
+  "name": "genome-spy-doc-embed",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Embeds GenomeSpy to documentation",
+  "author": "Kari Lavikka <kari.lavikka@helsinki.fi>",
+  "homepage": "",
+  "license": "BSD-2-Clause",
+  "main": "lib/index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "webpack --config webpack.config.js"
+  },
+  "dependencies": {
+    "genome-spy": "^0.0.1"
+  }
+}

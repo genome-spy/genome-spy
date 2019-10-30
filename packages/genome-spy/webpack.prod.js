@@ -14,7 +14,7 @@ module.exports = merge(common, {
     devtool: 'source-map',
 
     entry: {
-        main: './src/index.js'
+        index: './src/index.js'
     },
 
     output: {

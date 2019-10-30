@@ -10,8 +10,8 @@
 .vscode/
 node_modules/
 
-/static/private/
-/static/examples/drafts/
+**/static/private/
+**/static/examples/drafts/
 
 /docs/app/
 /docs/genomespy-schema.json

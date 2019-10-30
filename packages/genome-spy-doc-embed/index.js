@@ -1,5 +1,5 @@
 
-import GenomeSpy from "./genomeSpy";
+import { GenomeSpy } from "genome-spy";
 
 /**
  * 
