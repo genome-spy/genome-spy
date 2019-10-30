@@ -1,53 +1,6 @@
 {
-  "name": "genome-spy",
-  "description": "GenomeSpy, a genome browser with WebGL and a grammar of graphics",
-  "author": {
-    "name": "Kari Lavikka",
-    "email": "kari.lavikka@helsinki.fi"
-  },
-  "contributors": [],
-  "license": "BSD-2-Clause",
-  "version": "0.0.1",
-  "main": "dist/index.js",
-  "module": "src/index.js",
-  "files": [
-    "dist/",
-    "src/"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/tuner/genome-spy"
-  },
-  "sideEffects": [
-    "*.scss"
-  ],
-  "scripts": {
-    "start": "webpack-dev-server --progress --hot --open --config webpack.dev.js",
-    "build": "webpack --config webpack.prod.js",
-    "buildDocJs": "webpack --config webpack.doc.js",
-    "buildSchema": "ts-json-schema-generator -p src/spec/transform.ts > docs/genomespy-schema.json",
-    "test": "jest"
-  },
-  "dependencies": {
-    "@fortawesome/fontawesome-free": "^5.11.2",
-    "@fortawesome/fontawesome-svg-core": "^1.2.25",
-    "@fortawesome/free-solid-svg-icons": "^5.11.2",
-    "array-flat-polyfill": "^1.0.1",
-    "d3-array": "^2.3.3",
-    "d3-color": "^1.4.0",
-    "d3-format": "^1.4.1",
-    "d3-scale": "^3.2.0",
-    "eventemitter3": "^3.1.2",
-    "fromentries": "^1.2.0",
-    "mapsort": "^1.0.2",
-    "math.gl": "^2.3.3",
-    "tinyqueue": "^2.0.3",
-    "twgl-base.js": "^4.12.1",
-    "vega-expression": "^2.6.2",
-    "vega-loader": "^4.1.2",
-    "vega-scale": "^4.1.3",
-    "vega-util": "^1.12.0"
-  },
+  "name": "root",
+  "private": true,
   "devDependencies": {
     "@babel/cli": "^7.6.4",
     "@babel/core": "^7.6.4",
@@ -60,6 +13,7 @@
     "html-webpack-inline-source-plugin": "0.0.10",
     "html-webpack-plugin": "^3.2.0",
     "jest": "^24.9.0",
+    "lerna": "^3.18.3",
     "mini-css-extract-plugin": "^0.5.0",
     "node-sass": "^4.13.0",
     "raw-loader": "^0.5.1",
@@ -74,5 +28,17 @@
     "webpack-glsl-loader": "^1.0.1",
     "webpack-md5-hash": "0.0.6",
     "webpack-merge": "^4.2.2"
-  }
+  },
+  "scripts": {
+    "bootstrap": "lerna bootstrap",
+    "builddocs": "mkdir -p docs/app && cp packages/genome-spy/dist/index.css docs/app/genome-spy.css && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && cp packages/genome-spy-doc-embed/dist/main.js docs/app/doc-embed.js && mkdocs build",
+    "test": "lerna run test"
+  },
+  "dependencies": {
+    "genome-spy": "file:packages/genome-spy",
+    "genome-spy-doc-embed": "file:packages/genome-spy-doc-embed"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }
