@@ -32,13 +32,11 @@
   "scripts": {
     "bootstrap": "lerna bootstrap",
     "builddocs": "mkdir -p docs/app && cp packages/genome-spy/dist/index.css docs/app/genome-spy.css && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && cp packages/genome-spy-doc-embed/dist/main.js docs/app/doc-embed.js && mkdocs build",
-    "test": "lerna run test"
+    "test": "lerna run test",
+    "start": "lerna run start --scope=genome-spy --stream"
   },
   "dependencies": {
     "genome-spy": "file:packages/genome-spy",
     "genome-spy-doc-embed": "file:packages/genome-spy-doc-embed"
-  },
-  "workspaces": [
-    "packages/*"
-  ]
+  }
 }
