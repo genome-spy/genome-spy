@@ -1,0 +1,22 @@
+{
+  "name": "genome-spy-playground",
+  "private": true,
+  "version": "0.0.1",
+  "description": "A playground for testing GenomeSpy visualizations",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "webpack-dev-server --progress --hot --config webpack.config.js",
+    "build": "webpack --config webpack.prod.js"
+  },
+  "author": "Kari Lavikka",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.11.2",
+    "@fortawesome/fontawesome-svg-core": "^1.2.25",
+    "@fortawesome/free-solid-svg-icons": "^5.11.2",
+    "codemirror": "^5.49.2",
+    "genome-spy": "^0.0.1",
+    "jsonlint-mod": "^1.7.5",
+    "lit-html": "^1.1.2"
+  }
+}

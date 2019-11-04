@@ -11,5 +11,6 @@ markdown_extensions:
 extra_javascript:
   - app/main.js
 extra_css:
+  - app/main.css
   - stylesheets/extra.css
 repo_url: https://github.com/tuner/genome-spy

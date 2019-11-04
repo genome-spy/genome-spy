@@ -23,7 +23,7 @@
     "ts-json-schema-generator": "^0.54.0",
     "webpack": "^4.41.2",
     "webpack-bundle-analyzer": "^3.6.0",
-    "webpack-cli": "^3.3.9",
+    "webpack-cli": "^3.3.10",
     "webpack-dev-server": "^3.9.0",
     "webpack-glsl-loader": "^1.0.1",
     "webpack-md5-hash": "0.0.6",
@@ -31,12 +31,13 @@
   },
   "scripts": {
     "bootstrap": "lerna bootstrap",
-    "builddocs": "mkdir -p docs/app && cp packages/genome-spy/dist/index.css docs/app/genome-spy.css && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && cp packages/genome-spy-doc-embed/dist/main.js docs/app/doc-embed.js && mkdocs build",
+    "builddocs": "mkdir -p docs/app && cp packages/genome-spy-doc-embed/dist/* docs/app/ && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && mkdocs build",
     "test": "lerna run test",
     "start": "lerna run start --scope=genome-spy --stream"
   },
   "dependencies": {
     "genome-spy": "file:packages/genome-spy",
-    "genome-spy-doc-embed": "file:packages/genome-spy-doc-embed"
+    "genome-spy-doc-embed": "file:packages/genome-spy-doc-embed",
+    "genome-spy-playground": "file:packages/genome-spy-playground"
   }
 }

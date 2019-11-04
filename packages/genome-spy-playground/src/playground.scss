@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css?family=Medula+One&display=swap');
+
+body {
+    margin: 0;
+    padding: 0;
+
+    font-family: sans-serif;
+}
+
+.playground-container {
+    display: grid;
+    height: 100vh;
+
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 46px 1fr;
+
+    grid-template-areas:
+        "toolbar toolbar"
+        "editor genome-spy";
+    
+    &.stacked {
+        grid-template-rows: 46px 1fr 1fr;
+        grid-template-areas:
+            "toolbar toolbar"
+            "genome-spy genome-spy"
+            "editor editor";
+    }
+}
+
+.editor-container {
+    grid-area: editor;
+    min-width: 0;
+    min-height: 0;
+
+    .CodeMirror {
+        height: 100%;
+        width: 100%;
+        background: none;
+    }
+}
+
+.genome-spy-container {
+    grid-area: genome-spy; 
+    padding: 10px;
+
+    .stacked & {
+        border-bottom: 1px solid lightgray;
+    }
+
+    .parallel & {
+        border-left: 1px solid lightgray;
+    }
+}
+
+.toolbar {
+    $bgcolor: #548FCC;
+
+    grid-area: toolbar;
+    background-color: $bgcolor;
+    color: white;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+
+    display: flex;
+    align-items: center;
+
+    > * {
+        margin-left: 10px;
+    }
+
+    button {
+
+    }
+
+    .title {
+        font-family: 'Medula One', cursive;
+        font-size: 30px;
+    }
+}
