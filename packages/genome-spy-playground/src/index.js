@@ -1,6 +1,11 @@
 import { html, render } from 'lit-html';
 
+import { icon } from '@fortawesome/fontawesome-svg-core'
+import { faColumns } from '@fortawesome/free-solid-svg-icons'
+
 import JsonLint from 'jsonlint-mod';
+
+import defaultSpec from './defaultspec.json.txt';
 
 import CodeMirror from 'codemirror/lib/codemirror.js';
 import 'codemirror/mode/javascript/javascript.js';
@@ -21,9 +26,11 @@ import { GenomeSpy } from 'genome-spy';
 
 window.jsonlint = JsonLint;
 
+const STORAGE_KEY = "playgroundSpec";
+
 let genomeSpy;
 let codeMirror;
-let x = 123;
+let spec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
 
 let layout = "parallel";
 
@@ -57,9 +64,10 @@ function update() {
         genomeSpy = new GenomeSpy(document.querySelector(".genome-spy-container"), spec);
         genomeSpy.launch();
 
+        window.localStorage.setItem(STORAGE_KEY, value);
+
     } catch (e) {
         console.log(e);
-        //alert(`Invalid JSON: ${e.message}`);
     }
     
 }
@@ -68,6 +76,7 @@ const toolbarTemplate = () => html`
     <div class="toolbar">
         <span class="title">GenomeSpy Playground</span>
         <button @click=${toggleLayout}>
+            ${icon(faColumns).node[0]}
             Toggle layout
         </button>
     </div>
@@ -78,7 +87,7 @@ const layoutTemplate = () => html`
     <div class="playground-container ${layout}">
         ${toolbarTemplate()}
         <div class="editor-container">
-            <textarea class="editor">xyz</textarea>
+            <textarea class="editor">${spec}</textarea>
         </div>
         <div class="genome-spy-container ">
             
@@ -113,3 +122,4 @@ const debouncedUpdate = debounce(update, 400);
 codeMirror.on("change", debouncedUpdate);
 
 
+update();

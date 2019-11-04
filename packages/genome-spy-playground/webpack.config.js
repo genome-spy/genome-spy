@@ -34,6 +34,10 @@ module.exports = {
             {
                 test: /\.glsl$/,
                 use: 'webpack-glsl-loader'
+            },
+            {
+                test: /\.(txt|[ct]sv)$/,
+                use: 'raw-loader'
             }
         ]
     }

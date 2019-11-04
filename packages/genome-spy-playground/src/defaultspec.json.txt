@@ -1,0 +1,23 @@
+{
+    "data": {
+        "sequence": { "start": 0, "stop": 1000, "as": "z" }
+    },
+    "transform": [
+        { "type": "formula", "as": "sample", "expr": "floor(datum.z / 100) + 1" },
+        { "type": "formula", "as": "x", "expr": "datum.z % 100" },
+        { "type": "formula", "as": "measurement", "expr": "sin(datum.x / 9) + cos(datum.sample / 2 + 3.25)" }
+    ],
+    "mark": "rect",
+    "encoding": {
+        "x":     { "field": "x", "type": "quantitative" },
+        "x2":    { "expr": "datum.x + 1" },
+        "y":     { "field": "sample", "type": "nominal" },
+        "color": {
+            "field": "measurement",
+            "type": "quantitative",
+            "scale": {
+                "scheme": "magma"
+            }
+        }
+    }
+}
