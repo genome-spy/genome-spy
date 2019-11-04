@@ -228,8 +228,11 @@ export default class GenomeSpy {
     }
 
     _resized() {
+        const cs = window.getComputedStyle(this.container, null);
+        const width = this.container.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+
         const aw = Math.ceil(this.getAxisWidth());
-        const viewportWidth = this.container.clientWidth - aw;
+        const viewportWidth = width - aw;
 
         this.xScale.range([0, viewportWidth]);
         this.rescaledX.range([0, viewportWidth]);
