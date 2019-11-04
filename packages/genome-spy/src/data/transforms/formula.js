@@ -1,44 +1,29 @@
-import { parse, codegen } from 'vega-expression';
-
+import createFunction from '../../utils/expression';
 /**
  * @typedef {import("../../spec/transform").FormulaConfig} FormulaConfig
  */
-
 
  /**
   * 
   * @param {FormulaConfig} formulaConfig 
   * @param {Object[]} rows 
   */
-export default function calculateTransform(formulaConfig, rows) {
-    const cg = codegen({
-        blacklist: [],
-        whitelist: ["datum"],
-        globalvar: "global",
-        fieldvar: "datum"
-    });
+export default function formulaTransform(formulaConfig, rows) {
 
-    const parsed = parse(formulaConfig.expr);
-    const generatedCode = cg(parsed);
+    const fn = createFunction(formulaConfig.expr);
 
-    const global = { };
-
-    // eslint-disable-next-line no-new-func
-    const fn = Function("datum", "global", `"use strict"; return (${generatedCode.code});`);
-
-    
     if (formulaConfig.inplace) {
         // Faster, but causes side effects.
         // TODO: Build a "dataflow graph" and infer where in-place modifications are acceptable
         for (const row of rows) {
-            row[formulaConfig.as] = fn(row, global);
+            row[formulaConfig.as] = fn(row);
         }
         return rows;
 
     } else {
         return rows.map(row => ({
             ...row,
-            [formulaConfig.as]: fn(row, global)
+            [formulaConfig.as]: fn(row)
         }));
     }
 }

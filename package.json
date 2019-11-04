@@ -32,7 +32,7 @@
   "scripts": {
     "bootstrap": "lerna bootstrap",
     "builddocs": "mkdir -p docs/app && cp packages/genome-spy-doc-embed/dist/* docs/app/ && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && mkdocs build",
-    "test": "lerna run test",
+    "test": "lerna run test --stream",
     "start": "lerna run start --scope=genome-spy --stream"
   },
   "dependencies": {

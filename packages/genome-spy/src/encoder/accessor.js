@@ -1,4 +1,5 @@
-import { parse, codegen } from 'vega-expression';
+import createFunction from '../utils/expression';
+
 import { field, constant } from 'vega-util';
 
 /**
@@ -65,26 +66,9 @@ export default class AccessorFactory {
  * @param {string} expr
  */
 function createExpressionAccessor(expr) {
-    // Copypaste from formula transform. TODO: Consider extracting a function.
-
-    const cg = codegen({
-        blacklist: [],
-        whitelist: ["datum"],
-        globalvar: "global",
-        fieldvar: "datum"
-    });
-
-    const parsed = parse(expr);
-    const generatedCode = cg(parsed);
-
-    const global = { };
-
-    // eslint-disable-next-line no-new-func
-    const fn = Function("datum", "global", `"use strict"; return (${generatedCode.code});`);
 
     /** @type {Accessor} */
-    const accessor = datum => fn(datum, global);
-    accessor.fields = generatedCode.fields;
+    const accessor = createFunction(expr);
     accessor.constant = accessor.fields.length == 0; // Not bulletproof, eh
     return accessor;
 }

@@ -1,6 +1,6 @@
 import formulaTransform from './formula';
 
-test("CalculateTransform", () => {
+test("FormulaTransform", () => {
     const data = [{ a: 2 }, { a: 3 }];
 
     expect(formulaTransform({
