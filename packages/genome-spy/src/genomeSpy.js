@@ -116,7 +116,12 @@ export default class GenomeSpy {
                     domain = track.getXDomain();
                 }
             }
-            return Interval.fromArray(domain);
+
+            try {
+                return Interval.fromArray(domain);
+            } catch (e) {
+                throw new Error("Cannot extract domain for the x axis");
+            }
         }
 
         return extent || new Interval(0, 1);
