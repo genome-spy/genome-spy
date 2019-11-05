@@ -136,13 +136,16 @@ export default class DataSource {
     async _fetchAndRead(url) {
         return fetch(this._addBaseUrl(url), { credentials: 'same-origin' }).then(response => {
             if (!response.ok) {
-                throw new Error(`Can not load ${response.url}: ${response.status} ${response.statusText}`);
+                throw new Error(`Cannot load ${response.url}: ${response.status} ${response.statusText}`);
             }
             return response.text();
         }).then(text => new DataGroup(
             url,
             read(text, this._getFormat(this._extractTypeFromUrl(url)))
-        ));
+        )).catch(reason => {
+            console.error(reason);
+            throw new Error(`Cannot fetch data file: ${url}`);
+        });
     }
 
     /**
