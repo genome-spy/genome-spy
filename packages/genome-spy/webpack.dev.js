@@ -13,9 +13,7 @@ module.exports = merge(common, {
     
     plugins: [
         new HtmlWebpackPlugin({
-            title: 'GenomeSpy',
-            hash: true,
-            inject: 'head'
+            title: 'GenomeSpy'
         })
     ],
 

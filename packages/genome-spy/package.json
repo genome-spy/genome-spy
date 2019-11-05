@@ -21,7 +21,7 @@
     "*.scss"
   ],
   "scripts": {
-    "start": "webpack-dev-server --progress --hot --open --config webpack.dev.js",
+    "start": "webpack-dev-server --progress --hot --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js",
     "buildSchema": "ts-json-schema-generator -p src/spec/transform.ts > dist/genome-spy-schema.json",
     "test": "jest"

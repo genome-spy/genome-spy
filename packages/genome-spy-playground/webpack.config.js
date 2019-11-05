@@ -13,12 +13,11 @@ module.exports = {
     plugins: [
         new HtmlWebpackPlugin({
             title: 'GenomeSpy Playground',
-            hash: true
         })
     ],
 
-    devServer: {
-        // contentBase: path.join(__dirname, 'static')
+    resolve: {
+        symlinks: false
     },
 
     module: {

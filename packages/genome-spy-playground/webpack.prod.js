@@ -1,6 +1,7 @@
 const merge = require('webpack-merge');
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 module.exports = {
     mode: 'production',
@@ -14,7 +15,8 @@ module.exports = {
         new HtmlWebpackPlugin({
             title: 'GenomeSpy Playground',
             hash: true
-        })
+        }),
+        new MiniCssExtractPlugin()
     ],
 
     output: {
@@ -26,7 +28,7 @@ module.exports = {
             {
                 test: /\.(s*)css$/,
                 use: [
-                    'style-loader',
+                    MiniCssExtractPlugin.loader,
                     'css-loader',
                     'sass-loader'
                 ]

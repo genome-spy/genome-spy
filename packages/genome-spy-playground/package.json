@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "description": "A playground for testing GenomeSpy visualizations",
   "main": "dist/index.js",
+  "module": "src/index.js",
   "scripts": {
     "start": "webpack-dev-server --progress --hot --config webpack.config.js",
     "build": "webpack --config webpack.prod.js"
