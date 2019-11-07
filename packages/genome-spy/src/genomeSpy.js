@@ -73,13 +73,34 @@ export default class GenomeSpy {
         /** @type {import("./coordinateSystem").default} */
         this.coordinateSystem = null;
 
-        /** @type {Map<string, Object[]>} Named datasets */
-        this.datasets = new Map(); 
+        /** @type {(function(string):object[])[]} */
+        this.namedDataProviders = [];
     }
 
     on(...args) {
         // TODO: A mixin or multiple inheritance would be nice
         this.eventEmitter.on(...args);
+    }
+
+    /**
+     * 
+     * @param {function(string):object[]} provider 
+     */
+    registerNamedDataProvider(provider) {
+        this.namedDataProviders.unshift(provider);
+    }
+
+    /**
+     * 
+     * @param {string} name 
+     */
+    getNamedData(name) {
+        for (const provider of this.namedDataProviders) {
+            const data = provider(name);
+            if (data) {
+                return data;
+            }
+        }
     }
 
     /**
@@ -326,7 +347,7 @@ export default class GenomeSpy {
                 coordinateSystem: this.coordinateSystem,
                 accessorFactory: this.accessorFactory,
                 genomeSpy: this, // TODO: An interface instead of a GenomeSpy
-                getDataSource: config => new DataSource(config, this.config.baseUrl, this.datasets)
+                getDataSource: config => new DataSource(config, this.config.baseUrl, this.getNamedData.bind(this))
             };
 
             // If the top-level object is a view spec, wrap it in a track spec
@@ -434,7 +455,7 @@ async function createTrack(spec, genomeSpy, baseContext) {
         const context = {
             ...baseContext,
             // Hack for imported tracks, as their baseUrl needs to be updated
-            getDataSource: config => new DataSource(config, spec.baseUrl || genomeSpy.config.baseUrl, genomeSpy.datasets)
+            getDataSource: config => new DataSource(config, spec.baseUrl || genomeSpy.config.baseUrl, genomeSpy.getNamedData.bind(genomeSpy))
         }
 
         const viewRoot = createView(spec, context);

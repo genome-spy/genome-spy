@@ -68,7 +68,12 @@ export default class Genome extends CoordinateSystem {
             }
         });
 
-        genomeSpy.datasets.set("chromSizes", [...this.chromSizes.entries()].map(e => ({ chrom: e[0], size: e[1] })));
+        const namedData = [...this.chromSizes.entries()].map(e => ({ chrom: e[0], size: e[1] }));
+        genomeSpy.registerNamedDataProvider(name => {
+            if (name == "chromSizes") {
+                return namedData;
+            }
+        });
     }
 
     

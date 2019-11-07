@@ -26,12 +26,12 @@ export default class DataSource {
      * 
      * @param {DataConfig} config 
      * @param {String} baseUrl
-     * @param {Map<string, Object[]>} [datasets] Named datasets
+     * @param {function(string):object[]} [namedDataProvider] Named datasets
      */
-    constructor(config, baseUrl, datasets) {
+    constructor(config, baseUrl, namedDataProvider) {
         this.config = config;
         this.baseUrl = baseUrl;
-        this.datasets = datasets || new Map();
+        this.namedDataProvider = namedDataProvider;
     }
 
     /**
@@ -55,8 +55,9 @@ export default class DataSource {
             return await this._fetchAndReadAll();
 
         } else if (this.config.name) {
-            if (this.datasets.has(this.config.name)) {
-                return new DataGroup(this.config.name, this.datasets.get(this.config.name));
+            const data = this.namedDataProvider(this.config.name);
+            if (data) {
+                return new DataGroup(this.config.name, data);
             } else {
                 throw new Error("No such named dataset: " + this.config.name);
             }
