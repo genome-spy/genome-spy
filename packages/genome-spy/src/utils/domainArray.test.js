@@ -57,6 +57,7 @@ describe("Build piecewise domains", () => {
     test("Creates a piecewise domain", () => {
         expect(createDomain("quantitative", [1])).toBeInstanceOf(PiecewiseDomain);
         expect(createDomain("quantitative", [1, 2, 3])).toBeInstanceOf(PiecewiseDomain);
+        expect(createDomain("quantitative", [1, 2, 3, 4])).toBeInstanceOf(PiecewiseDomain);
         expect(createDomain("quantitative", [3, 2, 1])).toBeInstanceOf(PiecewiseDomain);
         expect(r(createDomain("quantitative", [3, 2, 1]))).toEqual([3, 2, 1]);
     });
@@ -70,8 +71,12 @@ describe("Build piecewise domains", () => {
     });
 
     test("Throws on mutation attempts", () => {
-        expect(() => createDomain("quantitative", [1, 2, 3]).extend(2)).toThrow();
+        expect(() => createDomain("quantitative", [1, 2, 3]).extend(4)).toThrow();
     });
+
+    test("Does not throw when extending with existing value", () => {
+        expect(r(createDomain("quantitative", [1, 2, 3]).extend(2))).toEqual([1, 2, 3]);
+    })
 
 });
 

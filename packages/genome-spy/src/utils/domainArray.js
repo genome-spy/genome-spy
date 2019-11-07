@@ -1,3 +1,4 @@
+import { shallowArrayEquals } from "./arrayUtils";
 
 /**
  * @typedef {boolean | number | string} scalar
@@ -135,7 +136,11 @@ export class PiecewiseDomain extends DomainArray {
      * @returns {DomainArray}
      */
     extend(value) {
-        throw new Error("Piecewise domains are immutable!");
+        if (this.includes(value)) {
+            return this;
+        }
+
+        throw new Error("Piecewise domains are immutable and cannot be unioned!");
     }
 }
 
