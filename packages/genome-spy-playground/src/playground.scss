@@ -16,21 +16,31 @@ body {
     display: grid;
     height: 100vh;
 
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 46px 2fr 1fr;
+    $toolbar-height: 46px;
 
-    grid-template-areas:
-        "toolbar toolbar"
-        "editor genome-spy"
-        "files genome-spy";
+    &.parallel {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: $toolbar-height 2fr 1fr;
+        grid-template-areas:
+            "toolbar toolbar"
+            "editor genome-spy"
+            "files genome-spy";
+    }
     
     &.stacked {
-        grid-template-rows: 46px 1fr 1fr;
+        grid-template-rows: $toolbar-height 1fr 1fr;
         grid-template-columns: 1fr 500px;
         grid-template-areas:
             "toolbar toolbar"
             "genome-spy genome-spy"
             "editor files";
+    }
+
+    &.full {
+        grid-template-rows: $toolbar-height 1fr;
+        grid-template-areas:
+            "toolbar"
+            "genome-spy";
     }
 }
 
@@ -43,6 +53,10 @@ body {
         height: 100%;
         width: 100%;
         background: none;
+    }
+
+    .full & {
+        display: none;
     }
 }
 
@@ -71,6 +85,10 @@ body {
 
     .parallel & {
         border-top: $border;
+    }
+
+    .full & {
+        display: none;
     }
 }
 

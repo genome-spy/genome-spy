@@ -36,7 +36,8 @@ let storedSpec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
 
 let previousStringifiedSpec = "";
 
-let layout = "stacked";
+const layouts = ["stacked", "parallel", "full"];
+let layout = layouts[0];
 
 const files = {};
 
@@ -44,7 +45,7 @@ const files = {};
 let currentTab;
 
 function toggleLayout() {
-    layout = layout == "parallel" ? "stacked" : "parallel";
+    layout = layouts[(layouts.indexOf(layout) + 1) % layouts.length];
     renderLayout();
     window.dispatchEvent(new Event('resize'));
 }
