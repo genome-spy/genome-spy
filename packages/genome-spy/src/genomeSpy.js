@@ -270,7 +270,7 @@ export default class GenomeSpy {
             viewport: new Interval(aw, aw + viewportWidth)
         };
 
-        this.zoom.scaleExtent = [1, this.getDomain().width() / this.maxUnitZoom || Infinity];
+        this.zoom.scaleExtent = [1, this.coordinateSystem.getExtent() ? this.getDomain().width() / this.maxUnitZoom : Infinity];
 
         this.eventEmitter.emit('layout', this.layout);
     }
