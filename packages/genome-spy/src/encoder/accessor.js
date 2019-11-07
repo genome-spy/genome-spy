@@ -18,11 +18,16 @@ export default class AccessorFactory {
 
         this.register(encoding => {
             if (encoding.field) {
-                /** @type {Accessor} */
-                const accessor = field(encoding.field);
-                accessor.constant = false;
-                accessor.fields = [encoding.field];
-                return accessor;
+                try {
+                    /** @type {Accessor} */
+                    const accessor = field(encoding.field);
+                    accessor.constant = false;
+                    accessor.fields = [encoding.field];
+                    return accessor;
+
+                } catch (e) {
+                    throw new Error(`Invalid field definition: ${e.message}`);
+                }
             }
         });
 
