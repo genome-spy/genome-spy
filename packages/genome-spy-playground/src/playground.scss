@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css?family=Medula+One&display=swap');
 
 $basic-spacing: 10px;
+$border-color: lightgray;
+$border: 1px solid $border-color;
+
 
 body {
     margin: 0;
@@ -9,27 +12,29 @@ body {
     font-family: sans-serif;
 }
 
-.playground-container {
+#playground-layout {
     display: grid;
     height: 100vh;
 
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: 46px 1fr;
+    grid-template-rows: 46px 2fr 1fr;
 
     grid-template-areas:
         "toolbar toolbar"
-        "editor genome-spy";
+        "editor genome-spy"
+        "files genome-spy";
     
     &.stacked {
         grid-template-rows: 46px 1fr 1fr;
+        grid-template-columns: 1fr 500px;
         grid-template-areas:
             "toolbar toolbar"
             "genome-spy genome-spy"
-            "editor editor";
+            "editor files";
     }
 }
 
-.editor-container {
+#editor-pane {
     grid-area: editor;
     min-width: 0;
     min-height: 0;
@@ -41,16 +46,31 @@ body {
     }
 }
 
-.genome-spy-container {
+#genome-spy-pane {
     grid-area: genome-spy; 
-    padding: 10px;
+    padding: $basic-spacing;
 
     .stacked & {
-        border-bottom: 1px solid lightgray;
+        border-bottom: $border;
     }
 
     .parallel & {
-        border-left: 1px solid lightgray;
+        border-left: $border;
+    }
+}
+
+#file-pane {
+    grid-area: files;
+    padding: $basic-spacing;
+
+    //overflow: auto;
+
+    .stacked & {
+        border-left: $border;
+    }
+
+    .parallel & {
+        border-top: $border;
     }
 }
 
@@ -99,5 +119,70 @@ body {
         font-family: 'Medula One', cursive;
         font-size: 30px;
         margin-right: 10px;
+    }
+}
+
+ul.tabs {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    margin-bottom: $basic-spacing;
+
+    font-size: 13px;
+
+    li {
+        display: block;
+
+        margin: 0;
+        padding: $basic-spacing / 2 $basic-spacing;
+
+        border-bottom: 2px solid #eee;
+
+        &.selected {
+            border-bottom-color: #ccc;
+            background-color: #eee;
+        }
+    }
+
+    a {
+        color: black;
+        text-decoration: none;
+    }
+}
+
+.tab-pages {
+    > div {
+        display: none;
+
+        &.selected {
+            display: block;
+        }
+
+        overflow: auto;
+
+        .stacked & {
+            height: calc(50vh - 80px); // Fugly hack, 80px is an approx
+        }
+
+        .parallel & {
+            height: 25vh;
+        }
+    }
+}
+
+.data-sample-table {
+    font-size: 11px;
+
+    border-collapse: collapse;
+
+    td, th {
+        text-align: left;
+
+        $b: 1px solid #ddd;
+
+        border-top: $b;
+        border-bottom: $b;
+
+        padding: 5px;
     }
 }

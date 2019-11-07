@@ -5,6 +5,8 @@ import { faColumns } from '@fortawesome/free-solid-svg-icons'
 
 import JsonLint from 'jsonlint-mod';
 
+import { read } from 'vega-loader';
+
 import defaultSpec from './defaultspec.json.txt';
 
 import CodeMirror from 'codemirror/lib/codemirror.js';
@@ -34,6 +36,11 @@ let spec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
 
 let layout = "parallel";
 
+const files = {};
+
+/** @type {string} */
+let currentTab;
+
 function toggleLayout() {
     layout = layout == "parallel" ? "stacked" : "parallel";
     renderLayout();
@@ -52,6 +59,13 @@ const debounce = (func, delay) => {
     }
 }
 
+function getNamedData(name) {
+    const file = files[name];
+    if (file) {
+        return file.data;
+    }
+}
+
 function update() {
     const value = codeMirror.getValue();
     try {
@@ -61,7 +75,8 @@ function update() {
             genomeSpy.destroy();
         }
 
-        genomeSpy = new GenomeSpy(document.querySelector(".genome-spy-container"), spec);
+        genomeSpy = new GenomeSpy(document.querySelector("#genome-spy-pane"), spec);
+        genomeSpy.registerNamedDataProvider(getNamedData);
         genomeSpy.launch();
 
         window.localStorage.setItem(STORAGE_KEY, value);
@@ -70,6 +85,59 @@ function update() {
         console.log(e);
     }
     
+}
+
+// https://simon-schraeder.de/posts/filereader-async/
+function readFileAsync(file) {
+    return new Promise((resolve, reject) => {
+        let reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsText(file);
+    })
+}
+
+/**
+ * @param {string} contents
+ */
+function inferFileType(contents, name) {
+    if (/\.json$/.test(name)) {
+        return "json";
+    } else {
+        // In bioinformatics, csv files are often actually tsv files
+        return contents.indexOf('\t') >= 0 ? 'tsv' : 'csv';
+    }
+}
+
+async function handleFiles(event) {
+    const fileList = event.target.files;
+
+    for (const file of fileList) {
+        const textContent = await readFileAsync(file);
+
+        const data = read(textContent, {
+            type: inferFileType(textContent, file.name),
+            parse: 'auto'
+        });
+
+        files[file.name] = {
+            metadata: file,
+            data
+        };
+
+        currentTab = file.name;
+    }
+
+    renderLayout();
+    update();
+}
+
+function changeTab(event) {
+    const name = event.target.parentElement.dataset.name;
+    currentTab = name;
+
+    event.preventDefault();
+    renderLayout();
 }
 
 const toolbarTemplate = () => html`
@@ -82,15 +150,69 @@ const toolbarTemplate = () => html`
     </div>
 `;
 
+const singleFileTemplate = f => {
+    const cols = Object.keys(f.data[0]);
+    const rows = f.data.slice(0, 30);
+
+    const alignments = cols.map(col => "text-align: " + (typeof f.data[0][col] === "number" ? "right" : "left"))
+
+    return html`
+        <table class="data-sample-table">
+            <thead>
+                <tr>
+                    ${cols.map((c, i) => html`<th style=${alignments[i]}>${c}</th>`)}
+                </tr>
+            </thead>
+            <tbody>
+                ${rows.map(row => html`
+                    <tr>
+                        ${cols.map((c, i) => html`<td style=${alignments[i]}>${row[c]}</td>`)}
+                    </tr>
+                `)}
+                ${rows.length < f.data.length ?
+        html`
+                    <tr>
+                        ${cols.map((c, i) => html`<td style=${alignments[i]}>...</td>`)}
+                    </tr>
+                ` :
+        ``}
+            </tbody>
+        </table>
+    `
+};
+
+const fileTemplate = () => html`
+    <ul class="tabs">
+        ${Object.keys(files).map(name => html`<li data-name=${name} class=${name == currentTab ? "selected" : ""}><a href="#" @click=${changeTab}>${name}</a></li>`)}
+        <li class=${currentTab === undefined ? "selected" : ""}><a href="#" @click=${changeTab}>Add new file</a></li>
+        <li style="flex-grow: 1"></li>
+    </ul>
+
+    <div class="tab-pages">
+        ${Object.keys(files).map(name => html`
+            <div class=${name == currentTab ? "selected" : ""}>
+                ${singleFileTemplate(files[name])}
+            </div>`)}
+
+        <div class=${currentTab === undefined ? "selected" : ""}>
+            <form>
+                <input type="file" id="fileInput" @change=${handleFiles}>
+            </form>
+        </div>
+    </div>
+`;
 
 const layoutTemplate = () => html`
-    <div class="playground-container ${layout}">
+    <div id="playground-layout" class="${layout}">
         ${toolbarTemplate()}
-        <div class="editor-container">
+        <div id="editor-pane">
             <textarea class="editor">${spec}</textarea>
         </div>
-        <div class="genome-spy-container ">
+        <div id="genome-spy-pane">
             
+        </div>
+        <div id="file-pane">
+            ${fileTemplate()}
         </div>
     </div>
 `;
@@ -102,7 +224,7 @@ function renderLayout() {
 renderLayout();
 
 codeMirror = CodeMirror.fromTextArea(
-    document.querySelector(".editor-container .editor"),
+    document.querySelector("#editor-pane .editor"),
     {
         lineNumbers: true,
         mode: "application/json",
