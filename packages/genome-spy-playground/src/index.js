@@ -32,7 +32,9 @@ const STORAGE_KEY = "playgroundSpec";
 
 let genomeSpy;
 let codeMirror;
-let spec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
+let storedSpec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
+
+let previousStringifiedSpec = "";
 
 let layout = "parallel";
 
@@ -66,20 +68,29 @@ function getNamedData(name) {
     }
 }
 
-function update() {
+function update(force = false) {
     const value = codeMirror.getValue();
+    window.localStorage.setItem(STORAGE_KEY, value);
+
     try {
-        const spec = JSON.parse(value);
+        const parsedSpec = JSON.parse(value);
+
+        // Don't update if the the new spec is equivalent
+        const stringifiedSpec = JSON.stringify(parsedSpec);
+        if (stringifiedSpec === previousStringifiedSpec && !force) {
+            return;
+        }
+
+        previousStringifiedSpec = stringifiedSpec;
 
         if (genomeSpy) {
             genomeSpy.destroy();
         }
 
-        genomeSpy = new GenomeSpy(document.querySelector("#genome-spy-pane"), spec);
+        genomeSpy = new GenomeSpy(document.querySelector("#genome-spy-pane"), parsedSpec);
         genomeSpy.registerNamedDataProvider(getNamedData);
         genomeSpy.launch();
 
-        window.localStorage.setItem(STORAGE_KEY, value);
 
     } catch (e) {
         console.log(e);
@@ -129,7 +140,7 @@ async function handleFiles(event) {
     }
 
     renderLayout();
-    update();
+    update(true);
 }
 
 function changeTab(event) {
@@ -206,7 +217,7 @@ const layoutTemplate = () => html`
     <div id="playground-layout" class="${layout}">
         ${toolbarTemplate()}
         <div id="editor-pane">
-            <textarea class="editor">${spec}</textarea>
+            <textarea class="editor">${storedSpec}</textarea>
         </div>
         <div id="genome-spy-pane">
             
@@ -239,7 +250,7 @@ codeMirror = CodeMirror.fromTextArea(
 
 codeMirror.setSize("100%", "100%");
 
-const debouncedUpdate = debounce(update, 400);
+const debouncedUpdate = debounce(() => update(), 500);
 
 codeMirror.on("change", debouncedUpdate);
 
