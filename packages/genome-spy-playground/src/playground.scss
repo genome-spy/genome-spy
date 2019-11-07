@@ -86,11 +86,28 @@ body {
     display: flex;
     align-items: center;
 
-    > * {
-        margin-left: $basic-spacing;
+    .title svg {
+        font-size: 80%;
+        margin-right: 0.3em;
     }
 
-    button {
+    > * {
+        margin-left: $basic-spacing;
+        display: block;
+    }
+
+    > :last-child {
+        margin-right: $basic-spacing;
+    }
+
+    .spacer {
+        flex-grow: 1;
+    }
+
+    button, a {
+        display: flex;
+        align-items: center;
+
         color: white;
         font-size: 16px;
         border: none;
@@ -109,10 +126,18 @@ body {
             outline: none;
         }
 
-        > svg {
-            margin-right: 3px;
+        svg {
+            font-size: 120%;
         }
 
+        > :not(:first-child) {
+            margin-left: 0.5em;
+        }
+
+    }
+
+    a {
+        text-decoration: none;
     }
 
     .title {

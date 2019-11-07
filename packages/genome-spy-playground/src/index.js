@@ -1,7 +1,7 @@
 import { html, render } from 'lit-html';
 
 import { icon } from '@fortawesome/fontawesome-svg-core'
-import { faColumns } from '@fortawesome/free-solid-svg-icons'
+import { faColumns, faQuestionCircle, faDna } from '@fortawesome/free-solid-svg-icons'
 
 import JsonLint from 'jsonlint-mod';
 
@@ -36,7 +36,7 @@ let storedSpec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
 
 let previousStringifiedSpec = "";
 
-let layout = "parallel";
+let layout = "stacked";
 
 const files = {};
 
@@ -153,11 +153,16 @@ function changeTab(event) {
 
 const toolbarTemplate = () => html`
     <div class="toolbar">
-        <span class="title">GenomeSpy Playground</span>
+        <span class="title">
+            ${icon(faDna).node[0]}
+            <span>GenomeSpy Playground</span>
+        </span>
         <button @click=${toggleLayout}>
             ${icon(faColumns).node[0]}
-            Toggle layout
+            <span>Toggle layout</span>
         </button>
+        <span class="spacer"></span>
+        <a href="https://genomespy.app/docs/" target="_blank">${icon(faQuestionCircle).node[0]} <span>Docs</span></a>
     </div>
 `;
 
@@ -214,18 +219,18 @@ const fileTemplate = () => html`
 `;
 
 const layoutTemplate = () => html`
-    <div id="playground-layout" class="${layout}">
+    <section id="playground-layout" class="${layout}">
         ${toolbarTemplate()}
-        <div id="editor-pane">
+        <section id="editor-pane">
             <textarea class="editor">${storedSpec}</textarea>
-        </div>
-        <div id="genome-spy-pane">
+        </section>
+        <section id="genome-spy-pane">
             
-        </div>
-        <div id="file-pane">
+        </section>
+        <section id="file-pane">
             ${fileTemplate()}
-        </div>
-    </div>
+        </section>
+    </section>
 `;
 
 function renderLayout() {
