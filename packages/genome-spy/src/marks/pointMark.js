@@ -72,6 +72,10 @@ export default class PointMark extends Mark {
         await super.initializeData();
 
         const accessor = this.unitView.getAccessor("x");
+
+        if (!accessor) {
+            throw new Error("x channel is undefined!");
+        }
         
         // Sort each point of each sample for binary search
         /** @type {Map<string, object[]>} */
