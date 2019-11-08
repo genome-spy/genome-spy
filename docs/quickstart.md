@@ -1,9 +1,14 @@
----
-title: Quick Start
----
+# Quick Start
+
+TODO
+
+## Playground
+
+https://genomespy.app/playground/
+
+## Local or remote web server
 
 TODO:
 
-* Upload or link a config at https://genomespy.app
-* Embed on any web page as a browser component
 * Use a local web server: https://docs.python.org/3/library/http.server.html
+* [API](api.md)

@@ -377,9 +377,10 @@ export default class GenomeSpy {
             this._resized();
 
         } catch (reason) {
-            console.error(reason.message);
+            const message = `${reason.view ? `At ${reason.view.getPathString()}: ` : ''}${reason.toString()}`;
+            console.error(message);
             console.error(reason.stack);
-            createMessageBox(this.container, reason.toString());
+            createMessageBox(this.container, message);
 
         } finally {
             this.container.classList.remove("loading");

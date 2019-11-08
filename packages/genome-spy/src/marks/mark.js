@@ -48,7 +48,7 @@ export default class Mark {
         return this.unitView.getMarkType();
     }
 
-    async initializeData() {
+    initializeData() {
         // TODO: Consider putting initializeData to unitView
 
         const data = this.unitView.getData();

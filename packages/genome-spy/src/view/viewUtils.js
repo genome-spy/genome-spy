@@ -127,13 +127,11 @@ export function getFlattenedViews(root) {
  * @param {View} root
  */
 export function resolveScales(root) {
-    const views = getFlattenedViews(root);
-
-    for (const view of views) {
+    root.visit(view => {
         if (view instanceof UnitView) {
             view.resolve();
         }
-    }
+    });
 
     // Actually configures some hacky scales
     configureDefaultResolutions(root);
@@ -143,15 +141,20 @@ export function resolveScales(root) {
  * @param {View} root
  */
 export async function initializeData(root) {
-    const views = getFlattenedViews(root);
+    /** @type {Promise[]} */
+    const promises = [];
 
-    await Promise.all(views.map(view => view.loadData()));
+    root.visit(view => {
+        // TODO: Add view to exceptions. Does not work now
+        promises.push(view.loadData());
+    });
+    await Promise.all(promises);
 
-    for (const view of views) {
-        view.transformData();
-    }
+    root.visit(view => view.transformData());
 
-    for (const mark of getMarks(root)) {
-        await mark.initializeData(); // TODO: async needed?
-    }
+    root.visit(view => {
+        if (view instanceof UnitView) {
+            view.mark.initializeData();
+        }
+    });
 }

@@ -40,14 +40,20 @@ export default class View {
 
         return path.reverse().join("/");
     }
-
     
     /**
+     * Visits child views in depth-first order
      * 
      * @param {function(View):void} visitor 
      */
     visit(visitor) {
-        visitor(this);
+        try {
+            visitor(this);
+        } catch (e) {
+            // Augment the extension with the view
+            e.view = this;
+            throw e;
+        }
 
         for (const viewUnit of this.children) {
             viewUnit.visit(visitor);

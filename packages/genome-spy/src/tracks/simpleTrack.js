@@ -15,6 +15,7 @@ import {
     getMarks,
     initializeData,
 } from '../view/viewUtils';
+import UnitView from '../view/unitView';
 
 
 const defaultStyles = {
@@ -138,9 +139,11 @@ export default class SimpleTrack extends WebGlTrack {
 
 
     initializeGraphics() {
-        for (const mark of getMarks(this.viewRoot)) {
-            mark.initializeGraphics();
-        }
+        this.viewRoot.visit(view => {
+            if (view instanceof UnitView) {
+                view.mark.initializeGraphics();
+            }
+        });
     }
 
     resizeCanvases(layout) {

@@ -68,8 +68,8 @@ export default class PointMark extends Mark {
     }
 
 
-    async initializeData() {
-        await super.initializeData();
+    initializeData() {
+        super.initializeData();
 
         const accessor = this.unitView.getAccessor("x");
 
