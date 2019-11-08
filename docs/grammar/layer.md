@@ -39,9 +39,6 @@ the layers share their scales and axes, unioning the data domains.
                     "mark": {
                         "type": "rule",
                         "size": 3.0
-                    },
-                    "encoding": {
-                        "y2": { "constant": 0 }
                     }
                 },
                 {

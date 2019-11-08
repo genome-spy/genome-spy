@@ -415,6 +415,9 @@ function wrapInTrack(rootSpec) {
  * @param {import("view/viewUtils").ViewContext} baseContext
  */
 async function createTrack(spec, genomeSpy, baseContext) {
+
+    // TODO: Exctract a spec preprocessing phase
+
     if (isImportSpec(spec)) {
         if (spec.import.name) {
             if (!trackTypes[spec.import.name]) {
@@ -434,7 +437,7 @@ async function createTrack(spec, genomeSpy, baseContext) {
                     if (res.ok) {
                         return res.json();
                     }
-                    throw new Error(`Could not load chrom sizes: ${url} \nReason: ${res.status} ${res.statusText}`);
+                    throw new Error(`Could not load imported track spec: ${url} \nReason: ${res.status} ${res.statusText}`);
                 });
 
             // TODO: BaseUrl should be updated for the imported view
@@ -446,7 +449,6 @@ async function createTrack(spec, genomeSpy, baseContext) {
                 throw new Error(`The imported spec "${url}" is not a view spec: ${JSON.stringify(spec)}`);
             }
         }
-
     }
 
     if (isViewSpec(spec)) {

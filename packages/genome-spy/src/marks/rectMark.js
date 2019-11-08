@@ -47,6 +47,26 @@ export default class RectMark extends Mark {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
     }
 
+    /**
+     * @returns {import("../spec/view").EncodingConfigs}
+     */
+    getEncoding() {
+        const encoding = super.getEncoding();
+        if (encoding.y) {
+            if (encoding.y.type == "quantitative" && !encoding.y2) {
+                encoding.y2 = {
+                    constant: 0
+                }
+            }
+
+        } else {
+            encoding.y = { value: 0 };
+            encoding.y2 = { value: 1 };
+        }
+
+        return encoding;
+    }
+
     onBeforeSampleAnimation() {
         const interval = this.getContext().genomeSpy.getViewportDomain();
 

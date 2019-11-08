@@ -144,7 +144,6 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
         "x":  { "field": "x", "type": "quantitative" },
         "x2": { "expr": "datum.x + 0.35" },
         "y":  { "field": "y", "type": "quantitative" },
-        "y2": { "constant": 0 },
         "color": {
             "field": "y",
             "type": "quantitative",

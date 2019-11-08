@@ -58,7 +58,12 @@ export default class RuleMark extends RectMark {
     }
 
     getEncoding() {
-        const encoding = {...super.getEncoding()};
+        // Inference of y & y2 of rect mark is incompatible with rule mark
+        const encoding = {
+            ...this.getDefaultEncoding(),
+            ...this.unitView.getEncoding()
+        };
+
         let vertical;
 
         if (encoding.x && !encoding.y) {
@@ -84,6 +89,11 @@ export default class RuleMark extends RectMark {
             // Limited horizontal rule
             vertical = false;
             encoding.y2 = encoding.y;
+
+        } else if (encoding.y && encoding.x && !encoding.x2 && encoding.y.type == "quantitative" && !encoding.y2) {
+            vertical = true;
+            encoding.x2 = encoding.x;
+            encoding.y2 = { constant: 0 }
 
         } else {
             throw new Error("Invalid x and y encodings for rule mark: " + JSON.stringify(encoding));

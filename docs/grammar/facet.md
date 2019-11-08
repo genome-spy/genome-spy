@@ -229,8 +229,6 @@ it in the example below:
 
     "encoding": {
         "sample": { "field": "sample", "type": "nominal" },
-        "y": { "value": 0 },
-        "y2": { "value": 1 },
         "x": { "field": "y0", "type": "quantitative" },
         "x2": { "field": "y1", "type": "quantitative" },
         "color": { "field": "x", "type": "quantitative" }
