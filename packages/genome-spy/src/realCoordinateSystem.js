@@ -2,10 +2,9 @@ import CoordinateSystem from "./coordinateSystem";
 import Interval from "./utils/interval";
 
 export default class RealCoordinateSystem extends CoordinateSystem {
-
     /**
-     * 
-     * @param {import("./utils/interval").default} interval 
+     *
+     * @param {import("./utils/interval").default} interval
      * @returns {string}
      */
     formatInterval(interval) {
@@ -13,8 +12,8 @@ export default class RealCoordinateSystem extends CoordinateSystem {
     }
 
     /**
-     * 
-     * @param {string} str 
+     *
+     * @param {string} str
      * @returns {import("./utils/interval").default}
      */
     parseInterval(str) {
@@ -25,14 +24,12 @@ export default class RealCoordinateSystem extends CoordinateSystem {
         return null;
     }
 
-
     /**
      * If the coordinate system has a hard extent, return it. Otherwise returns undefined.
-     * 
+     *
      * @returns {import("./utils/interval").default}
      */
     getExtent() {
         return undefined;
     }
-
 }

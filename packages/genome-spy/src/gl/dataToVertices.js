@@ -1,6 +1,6 @@
-import { color as d3color } from 'd3-color';
-import { fastmap, isString } from 'vega-util';
-import { fp64ify } from './includes/fp64-utils';
+import { color as d3color } from "d3-color";
+import { fastmap, isString } from "vega-util";
+import { fp64ify } from "./includes/fp64-utils";
 import Interval from "../utils/interval";
 import { SHAPES } from "../marks/pointMark"; // Circular dependency, TODO: Fix
 import ArrayBuilder from "./arrayBuilder";
@@ -14,22 +14,25 @@ const glConst = {
     POINTS: 0x0000,
     TRIANGLES: 0x0004,
     TRIANGLE_STRIP: 0x0005,
-    STATIC_DRAW: 0x88E4
+    STATIC_DRAW: 0x88e4
 };
 
 function color2floatArray(color) {
     if (!color) {
         return [1, 0, 1]; // Just an indicator of error
-        
     } else if (isString(color)) {
         color = d3color(color);
     }
-    return new Float32Array([color.r / 255.0, color.g / 255.0, color.b / 255.0]);
+    return new Float32Array([
+        color.r / 255.0,
+        color.g / 255.0,
+        color.b / 255.0
+    ]);
 }
 
 function createCachingColor2floatArray() {
     const cache = fastmap();
-    
+
     return color => {
         if (isString(color) && cache.size < 30) {
             let value = cache.get(color);
@@ -41,21 +44,25 @@ function createCachingColor2floatArray() {
             return value;
         }
         return color2floatArray(color);
-    }
+    };
 }
-
 
 export class RectVertexBuilder {
     /**
-     * 
+     *
      * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
      * @param {Object} object
      * @param {number} [object.tesselationThreshold]
      *     If the rect is narrower than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
      */
-    constructor(encoders, { tesselationThreshold = Infinity, visibleRange = [-Infinity, Infinity]}) {
-
+    constructor(
+        encoders,
+        {
+            tesselationThreshold = Infinity,
+            visibleRange = [-Infinity, Infinity]
+        }
+    ) {
         this.encoders = encoders;
         this.visibleRange = visibleRange;
 
@@ -65,12 +72,16 @@ export class RectVertexBuilder {
 
         /** @type {Object.<string, import("./arraybuilder").Converter>} */
         const converters = {
-            color:   { f: d => color2floatArray(e.color(d)), numComponents: 3 },
-            opacity: { f: e.opacity, numComponents: 1 },
+            color: { f: d => color2floatArray(e.color(d)), numComponents: 3 },
+            opacity: { f: e.opacity, numComponents: 1 }
         };
 
-        const constants = Object.entries(encoders).filter(e => e[1].constant).map(e => e[0]);
-        const variables = Object.entries(encoders).filter(e => !e[1].constant).map(e => e[0]);
+        const constants = Object.entries(encoders)
+            .filter(e => e[1].constant)
+            .map(e => e[0]);
+        const variables = Object.entries(encoders)
+            .filter(e => !e[1].constant)
+            .map(e => e[0]);
 
         this.variableBuilder = ArrayBuilder.create(converters, variables);
 
@@ -89,18 +100,20 @@ export class RectVertexBuilder {
 
     /**
      *
-     * @param {string} key 
+     * @param {string} key
      * @param {object} data
      */
     addBatch(key, data) {
         const offset = this.variableBuilder.vertexCount;
 
-        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(this.encoders);
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
+            .encoders);
         const [lower, upper] = this.visibleRange;
 
         for (const d of data) {
-            let x = e.x(d), x2 = e.x2(d);
-            
+            let x = e.x(d),
+                x2 = e.x2(d);
+
             if (x > x2) {
                 [x, x2] = [x2, x];
             }
@@ -113,8 +126,8 @@ export class RectVertexBuilder {
             if (x < lower) x = lower;
             if (x2 > upper) x2 = upper;
 
-
-            let y = e.y(d), y2 = e.y2(d);
+            let y = e.y(d),
+                y2 = e.y2(d);
 
             if (y > y2) {
                 [y, y2] = [y2, y];
@@ -132,7 +145,10 @@ export class RectVertexBuilder {
             this.variableBuilder.pushAll();
 
             // Tesselate segments
-            const tileCount = width < Infinity ? Math.ceil(width / this.tesselationThreshold) : 1;
+            const tileCount =
+                width < Infinity
+                    ? Math.ceil(width / this.tesselationThreshold)
+                    : 1;
             for (let i = 0; i <= tileCount; i++) {
                 const frac = i / tileCount;
 
@@ -146,9 +162,11 @@ export class RectVertexBuilder {
                 this.updateWidth(w);
 
                 // Note: Infinity is used for horizontal and vertical rule marks that have unspecified start/end coords
-                const tx = isFinite(width) ?
-                    x + width * frac :
-                    i == 0 ? -Infinity : Infinity;
+                const tx = isFinite(width)
+                    ? x + width * frac
+                    : i == 0
+                    ? -Infinity
+                    : Infinity;
 
                 this.updateX(fp64ify(tx));
                 this.updateY(y);
@@ -171,7 +189,8 @@ export class RectVertexBuilder {
         const count = this.variableBuilder.vertexCount - offset;
         if (count) {
             this.rangeMap.set(key, {
-                offset, count 
+                offset,
+                count
                 // TODO: Add some indices that allow rendering just a range
             });
         }
@@ -192,31 +211,34 @@ export class RectVertexBuilder {
 
 export class PointVertexBuilder {
     /**
-     * 
+     *
      * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
      * @param {number} [size] Number of points if known, uses TypedArray
      */
     constructor(encoders, size) {
-
-        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(encoders);
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (encoders);
 
         const c2f = createCachingColor2floatArray();
 
         /** @type {Object.<string, import("./arraybuilder").Converter>} */
         const converters = {
-            x:                { f: d => fp64ify(e.x(d)),         numComponents: 2 },
-            y:                { f: e.y,                          numComponents: 1 },
-            size:             { f: e.size,                       numComponents: 1 },
-            color:            { f: d => c2f(e.color(d)),         numComponents: 3 },
-            opacity:          { f: e.opacity,                    numComponents: 1 },
-            zoomThreshold:    { f: e.zoomThreshold,              numComponents: 1 },
-            shape:            { f: d => SHAPES[e.shape(d)] || 0, numComponents: 1 },
-            strokeWidth:      { f: e.strokeWidth,                numComponents: 1 },
-            gradientStrength: { f: e.gradientStrength,           numComponents: 1 }
+            x: { f: d => fp64ify(e.x(d)), numComponents: 2 },
+            y: { f: e.y, numComponents: 1 },
+            size: { f: e.size, numComponents: 1 },
+            color: { f: d => c2f(e.color(d)), numComponents: 3 },
+            opacity: { f: e.opacity, numComponents: 1 },
+            zoomThreshold: { f: e.zoomThreshold, numComponents: 1 },
+            shape: { f: d => SHAPES[e.shape(d)] || 0, numComponents: 1 },
+            strokeWidth: { f: e.strokeWidth, numComponents: 1 },
+            gradientStrength: { f: e.gradientStrength, numComponents: 1 }
         };
 
-        const constants = Object.entries(encoders).filter(e =>  e[1].constant).map(e => e[0]);
-        const variables = Object.entries(encoders).filter(e => !e[1].constant).map(e => e[0]);
+        const constants = Object.entries(encoders)
+            .filter(e => e[1].constant)
+            .map(e => e[0]);
+        const variables = Object.entries(encoders)
+            .filter(e => !e[1].constant)
+            .map(e => e[0]);
 
         this.variableBuilder = ArrayBuilder.create(converters, variables, size);
         this.constantBuilder = ArrayBuilder.create(converters, constants);
@@ -228,11 +250,10 @@ export class PointVertexBuilder {
         this.rangeMap = new Map();
     }
 
-
     /**
-     * 
-     * @param {String} key 
-     * @param {object[]} points 
+     *
+     * @param {String} key
+     * @param {object[]} points
      */
     addBatch(key, points) {
         const offset = this.index;
@@ -245,7 +266,8 @@ export class PointVertexBuilder {
         const count = this.index - offset;
         if (count) {
             this.rangeMap.set(key, {
-                offset, count 
+                offset,
+                count
                 // TODO: Add some indices that allow rendering just a range
             });
         }
@@ -281,12 +303,11 @@ export class PointVertexBuilder {
 /**
  * Legacy stuff here.
  * Converts the given segments into typed arrays of vertices
- * 
+ *
  * @param {SegmentSpec[]} segments
  * @param {number} [tesselationThreshold] Tesselate segments if they are shorter than the threshold
  */
 export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
-
     const black = d3color("black");
 
     const x = [];
@@ -305,7 +326,8 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
         const topRight = 0.0 + (s.paddingTopRight || s.paddingTop || 0);
 
         const bottomLeft = 1.0 - (s.paddingBottomLeft || s.paddingBottom || 0);
-        const bottomRight = 1.0 - (s.paddingBottomRight || s.paddingBottom || 0);
+        const bottomRight =
+            1.0 - (s.paddingBottomRight || s.paddingBottom || 0);
 
         const color = s.color || black;
         const colorTop = s.colorTop || color;
@@ -322,7 +344,9 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
         opacities.push(1);
 
         // Tesselate segments
-        const tileCount = s.interval.width() < Infinity && Math.ceil(s.interval.width() / tesselationThreshold);
+        const tileCount =
+            s.interval.width() < Infinity &&
+            Math.ceil(s.interval.width() / tesselationThreshold);
         for (let i = 0; i <= tileCount; i++) {
             const r = i / tileCount;
             // Interpolate X & Y
@@ -355,7 +379,3 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
         drawMode: glConst.TRIANGLE_STRIP
     };
 }
-
-
-
-

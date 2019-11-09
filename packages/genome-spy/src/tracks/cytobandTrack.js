@@ -1,10 +1,10 @@
-import * as twgl from 'twgl-base.js';
-import { scaleOrdinal } from 'd3-scale';
-import { color, hsl } from 'd3-color';
-import VERTEX_SHADER from '../gl/rect.vertex.glsl';
-import FRAGMENT_SHADER from '../gl/rect.fragment.glsl';
-import { segmentsToVertices } from '../gl/dataToVertices';
-import Genome, { parseUcscCytobands } from '../genome/genome';
+import * as twgl from "twgl-base.js";
+import { scaleOrdinal } from "d3-scale";
+import { color, hsl } from "d3-color";
+import VERTEX_SHADER from "../gl/rect.vertex.glsl";
+import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
+import { segmentsToVertices } from "../gl/dataToVertices";
+import Genome, { parseUcscCytobands } from "../genome/genome";
 import Interval from "../utils/interval";
 import WebGlTrack from "./webGlTrack";
 import MouseTracker from "../mouseTracker";
@@ -13,15 +13,33 @@ import MouseTracker from "../mouseTracker";
 
 const giemsaScale = scaleOrdinal()
     .domain([
-        "gneg", "gpos25", "gpos50", "gpos75", "gpos100", "acen", "stalk", "gvar"
-    ]).range([
-        "#f0f0f0", "#e0e0e0", "#d0d0d0", "#c0c0c0", "#a0a0a0", "#cc4444", "#338833", "#000000"
-    ].map(str => ({
-        background: color(str),
-        foreground: color(hsl(str).l < 0.5 ? "#ddd" : "black"),
-        shadow: color(hsl(str).l < 0.5 ? "transparent" : "rgba(255, 255, 255, 0.25)")
-    })));
-
+        "gneg",
+        "gpos25",
+        "gpos50",
+        "gpos75",
+        "gpos100",
+        "acen",
+        "stalk",
+        "gvar"
+    ])
+    .range(
+        [
+            "#f0f0f0",
+            "#e0e0e0",
+            "#d0d0d0",
+            "#c0c0c0",
+            "#a0a0a0",
+            "#cc4444",
+            "#338833",
+            "#000000"
+        ].map(str => ({
+            background: color(str),
+            foreground: color(hsl(str).l < 0.5 ? "#ddd" : "black"),
+            shadow: color(
+                hsl(str).l < 0.5 ? "transparent" : "rgba(255, 255, 255, 0.25)"
+            )
+        }))
+    );
 
 const defaultStyles = {
     fontSize: 11,
@@ -33,7 +51,10 @@ const defaultStyles = {
 function mapUcscCytobands(chromMapper, cytobands) {
     return cytobands.map(band => ({
         interval: chromMapper.segmentToContinuous(
-            band.chrom, band.chromStart, band.chromEnd),
+            band.chrom,
+            band.chromStart,
+            band.chromEnd
+        ),
         name: band.name,
         chrom: band.chrom,
         gieStain: band.gieStain
@@ -44,10 +65,8 @@ function computePaddings(band) {
     if (band.gieStain == "acen") {
         if (band.name.startsWith("p")) {
             return { paddingTopRight: 0.5, paddingBottomRight: 0.5 };
-
         } else if (band.name.startsWith("q")) {
             return { paddingTopLeft: 0.5, paddingBottomLeft: 0.5 };
-
         }
     }
     return {};
@@ -69,7 +88,7 @@ export default class CytobandTrack extends WebGlTrack {
     }
 
     /**
-     * @param {HTMLElement} trackContainer 
+     * @param {HTMLElement} trackContainer
      */
     async initialize(trackContainer) {
         await super.initialize(trackContainer);
@@ -80,15 +99,20 @@ export default class CytobandTrack extends WebGlTrack {
         const url = `${this.genome.baseUrl}/${this.genome.name}/cytoBand.${this.genome.name}.txt`;
 
         const cytobands = parseUcscCytobands(
-            await fetch(url, { credentials: 'same-origin' })
-                .then(res => {
-                    if (res.ok) {
-                        return res.text();
-                    }
-                    throw new Error(`Could not load cytobands: ${url} \nReason: ${res.status} ${res.statusText}`);
-                }));
+            await fetch(url, { credentials: "same-origin" }).then(res => {
+                if (res.ok) {
+                    return res.text();
+                }
+                throw new Error(
+                    `Could not load cytobands: ${url} \nReason: ${res.status} ${res.statusText}`
+                );
+            })
+        );
 
-        this.mappedCytobands = mapUcscCytobands(this.genome.chromMapper, cytobands);
+        this.mappedCytobands = mapUcscCytobands(
+            this.genome.chromMapper,
+            cytobands
+        );
 
         this.initializeWebGL();
 
@@ -97,15 +121,23 @@ export default class CytobandTrack extends WebGlTrack {
 
         const ctx = this.get2d(this.bandLabelCanvas);
         ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
-        this._bandLabelWidths = this.mappedCytobands.map(band => ctx.measureText(band.name).width);
+        this._bandLabelWidths = this.mappedCytobands.map(
+            band => ctx.measureText(band.name).width
+        );
 
-        this._minBandLabelWidth = this._bandLabelWidths.reduce((a, b) => Math.min(a, b), Infinity);
+        this._minBandLabelWidth = this._bandLabelWidths.reduce(
+            (a, b) => Math.min(a, b),
+            Infinity
+        );
 
         this.mouseTracker = new MouseTracker({
             element: this.bandLabelCanvas,
             resolver: this.findCytobandAt.bind(this)
-        })
-            .on("dblclick", cytoband => this.genomeSpy.zoomTo(cytoband.interval.pad(cytoband.interval.width() * 0.25)));
+        }).on("dblclick", cytoband =>
+            this.genomeSpy.zoomTo(
+                cytoband.interval.pad(cytoband.interval.width() * 0.25)
+            )
+        );
 
         this.genomeSpy.on("zoom", () => {
             this.render();
@@ -124,21 +156,32 @@ export default class CytobandTrack extends WebGlTrack {
 
         const gl = this.gl;
 
-        this.programInfo = twgl.createProgramInfo(gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s)));
-
-        const vertices = segmentsToVertices(
-            this.mappedCytobands.map(band => Object.assign(
-                {
-                    interval: band.interval,
-                    colorTop: giemsaScale(band.gieStain).background.darker(0.3),
-                    colorBottom: giemsaScale(band.gieStain).background.brighter(0.1)
-                },
-                computePaddings(band)
-            ))
+        this.programInfo = twgl.createProgramInfo(
+            gl,
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s))
         );
 
-        this.bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertices.arrays);
+        const vertices = segmentsToVertices(
+            this.mappedCytobands.map(band =>
+                Object.assign(
+                    {
+                        interval: band.interval,
+                        colorTop: giemsaScale(band.gieStain).background.darker(
+                            0.3
+                        ),
+                        colorBottom: giemsaScale(
+                            band.gieStain
+                        ).background.brighter(0.1)
+                    },
+                    computePaddings(band)
+                )
+            )
+        );
+
+        this.bufferInfo = twgl.createBufferInfoFromArrays(
+            this.gl,
+            vertices.arrays
+        );
 
         gl.useProgram(this.programInfo.program);
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
@@ -155,9 +198,11 @@ export default class CytobandTrack extends WebGlTrack {
         this.adjustCanvas(this.bandLabelCanvas, layout.viewport);
         this.adjustCanvas(this.glCanvas, layout.viewport);
         this.adjustGl();
-        this.viewportDimensions = { width: layout.viewport.width(), height: this.trackContainer.clientHeight };
+        this.viewportDimensions = {
+            width: layout.viewport.width(),
+            height: this.trackContainer.clientHeight
+        };
     }
-
 
     render() {
         this.renderBands();
@@ -186,24 +231,37 @@ export default class CytobandTrack extends WebGlTrack {
         const r = window.devicePixelRatio || 1;
         ctx.shadowOffsetY = 1.0 * r;
 
-        ctx.clearRect(0, 0, this.viewportDimensions.width, this.viewportDimensions.height);
+        ctx.clearRect(
+            0,
+            0,
+            this.viewportDimensions.width,
+            this.viewportDimensions.height
+        );
 
         const y = this.viewportDimensions.height / 2;
 
-        const minLabelWidthInDomain = scale.invert(this._minBandLabelWidth + 2 * this.styles.labelMargin) - scale.invert(0);
+        const minLabelWidthInDomain =
+            scale.invert(
+                this._minBandLabelWidth + 2 * this.styles.labelMargin
+            ) - scale.invert(0);
         const viewportDomain = this.genomeSpy.getViewportDomain();
 
         this.mappedCytobands.forEach((band, i) => {
             // TODO: Subset by binary search or something
-            if (!viewportDomain.connectedWith(band.interval) || band.interval.width() < minLabelWidthInDomain) {
+            if (
+                !viewportDomain.connectedWith(band.interval) ||
+                band.interval.width() < minLabelWidthInDomain
+            ) {
                 return;
             }
-            
+
             const scaledInt = band.interval.transform(scale);
             const labelWidth = this._bandLabelWidths[i];
 
-            if (scaledInt.connectedWith(viewportRange) &&
-                scaledInt.width() > labelWidth + this.styles.labelMargin * 2) {
+            if (
+                scaledInt.connectedWith(viewportRange) &&
+                scaledInt.width() > labelWidth + this.styles.labelMargin * 2
+            ) {
                 let x = scaledInt.centre();
 
                 const colors = giemsaScale(band.gieStain);
@@ -216,7 +274,6 @@ export default class CytobandTrack extends WebGlTrack {
                     // leftmost
                     x = Math.max(x, viewportRange.lower + threshold);
                     x = Math.min(x, scaledInt.upper - threshold);
-
                 } else if (x > viewportRange.upper - threshold) {
                     // rightmost
                     x = Math.min(x, viewportRange.upper - threshold);
@@ -226,7 +283,6 @@ export default class CytobandTrack extends WebGlTrack {
                 ctx.fillText(band.name, x, y);
             }
         });
-
     }
 
     renderChromosomeBoundaries() {
@@ -240,7 +296,10 @@ export default class CytobandTrack extends WebGlTrack {
         const visibleDomain = Interval.fromArray(scale.domain());
 
         this.genome.chromMapper.chromosomes().forEach((chrom, i) => {
-            if (i > 0 && visibleDomain.contains(chrom.continuousInterval.lower)) {
+            if (
+                i > 0 &&
+                visibleDomain.contains(chrom.continuousInterval.lower)
+            ) {
                 const x = scale(chrom.continuousInterval.lower);
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
@@ -252,23 +311,31 @@ export default class CytobandTrack extends WebGlTrack {
 
     findCytobandAt(point) {
         const pos = this.genomeSpy.rescaledX.invert(point[0]);
-        return this.mappedCytobands.find(cytoband => cytoband.interval.contains(pos));
+        return this.mappedCytobands.find(cytoband =>
+            cytoband.interval.contains(pos)
+        );
     }
 
     /**
      * Find a range of cytobands using the search string as a prefix
      */
     search(string) {
-        const f = /^[0-9]+$/.test(string) ?
-            d => d.chrom.substring(3) == string :
-            d => (d.chrom.substring(3) + d.name).startsWith(string);
+        const f = /^[0-9]+$/.test(string)
+            ? d => d.chrom.substring(3) == string
+            : d => (d.chrom.substring(3) + d.name).startsWith(string);
 
         const bands = this.mappedCytobands.filter(f);
 
         if (bands.length > 0) {
             return new Interval(
-                Math.min.apply(null, bands.map(b => b.interval.centre() - (b.interval.width()) / 2)),
-                Math.max.apply(null, bands.map(b => b.interval.centre() + (b.interval.width()) / 2))
+                Math.min.apply(
+                    null,
+                    bands.map(b => b.interval.centre() - b.interval.width() / 2)
+                ),
+                Math.max.apply(
+                    null,
+                    bands.map(b => b.interval.centre() + b.interval.width() / 2)
+                )
             );
         }
     }
@@ -282,7 +349,4 @@ export default class CytobandTrack extends WebGlTrack {
                 <li>8</li>
             </ul>`;
     }
-
 }
-
-

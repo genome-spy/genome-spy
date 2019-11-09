@@ -1,9 +1,8 @@
 import GenomeSpy from "./genomeSpy";
 import "./styles/genome-spy-app.scss";
 
-import { icon } from '@fortawesome/fontawesome-svg-core'
-import { faUndo } from '@fortawesome/free-solid-svg-icons'
-
+import { icon } from "@fortawesome/fontawesome-svg-core";
+import { faUndo } from "@fortawesome/free-solid-svg-icons";
 
 function createAppDom() {
     const body = document.body;
@@ -36,7 +35,6 @@ const rangeSearchHelp = `<p>Focus to a specific range. Examples:</p>
         <li>chr4:166,014,727-chr15:23,731,397</li>
     </ul>`;
 
-
 /**
  * A simple wrapper for the GenomeSpy component.
  * Eventually this will be replaced or will transform
@@ -44,7 +42,7 @@ const rangeSearchHelp = `<p>Focus to a specific range. Examples:</p>
  */
 export default class GenomeSpyApp {
     /**
-     * 
+     *
      * @param {Object} config
      */
     constructor(config) {
@@ -54,7 +52,10 @@ export default class GenomeSpyApp {
         const appContainer = createAppDom();
         this.appContainer = appContainer;
 
-        const elem = className => /** @type {HTMLElement} */(appContainer.getElementsByClassName(className)[0]);
+        const elem = className =>
+            /** @type {HTMLElement} */ (appContainer.getElementsByClassName(
+                className
+            )[0]);
 
         // TODO: Use WebComponents, for example: https://lit-element.polymer-project.org/
 
@@ -85,12 +86,12 @@ export default class GenomeSpyApp {
             this.searchHelp.querySelectorAll("li").forEach(elem =>
                 elem.addEventListener("click", event => {
                     const term = event.target.innerText;
-                    typeSlowly(term, this.searchInput)
-                        .then(() => {
-                            this.searchInput.blur();
-                            this.genomeSpy.search(term);
-                        });
-                }));
+                    typeSlowly(term, this.searchInput).then(() => {
+                        this.searchInput.blur();
+                        this.genomeSpy.search(term);
+                    });
+                })
+            );
 
             this.searchInput.select();
 
@@ -103,32 +104,34 @@ export default class GenomeSpyApp {
 
         this.searchInput.addEventListener("blur", event => {
             this.searchHelp.classList.remove("visible");
-            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(this.genomeSpy.getViewportDomain());
-        })
+            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(
+                this.genomeSpy.getViewportDomain()
+            );
+        });
 
         this.searchInput.addEventListener("keydown", event => {
             if (event.keyCode == 13) {
                 event.preventDefault();
-                
+
                 this.search(this.searchInput.value)
                     .then(() => {
                         this.searchInput.focus();
                         this.searchInput.select();
                     })
                     .catch(reason => alert(reason));
-
             } else if (event.keyCode == 27) {
                 this.searchInput.blur();
-
             } else {
                 event.stopPropagation();
             }
-            
         });
 
         // TODO: Implement a centralized shortcut handler
         document.addEventListener("keydown", event => {
-            if (event.key == "f" && !(event.metaKey || event.altKey || event.ctrlKey)) {
+            if (
+                event.key == "f" &&
+                !(event.metaKey || event.altKey || event.ctrlKey)
+            ) {
                 event.preventDefault();
                 this.searchInput.focus();
             }
@@ -138,54 +141,63 @@ export default class GenomeSpyApp {
             this.searchInput.blur();
         });
 
-
         // The following adds a dependency to specific kinds of tracks.
         // Maybe the tracks should be given means to add buttons to applications...
-        if (true) { // TODO: only show when a SampleTrack is present
+        if (true) {
+            // TODO: only show when a SampleTrack is present
             const backButton = document.createElement("button");
-            backButton.classList.add("tool-btn"); 
+            backButton.classList.add("tool-btn");
             backButton.classList.add("backtrack-samples");
             backButton.title = "Backtrack samples (⌫)";
             backButton.appendChild(icon(faUndo).node[0]);
-            backButton.addEventListener("click",
-                () => this.genomeSpy.tracks.filter(track => track.backtrackSamples)[0].backtrackSamples()); // Ugh, hack
-                
+            backButton.addEventListener("click", () =>
+                this.genomeSpy.tracks
+                    .filter(track => track.backtrackSamples)[0]
+                    .backtrackSamples()
+            ); // Ugh, hack
+
             this.toolbar.appendChild(backButton);
         }
-
     }
 
     async launch() {
-        const elem = className => /** @type {HTMLElement} */(this.appContainer.getElementsByClassName(className)[0]);
+        const elem = className =>
+            /** @type {HTMLElement} */ (this.appContainer.getElementsByClassName(
+                className
+            )[0]);
 
-        this.genomeSpy = new GenomeSpy(elem("genome-spy-container"), this.config);
+        this.genomeSpy = new GenomeSpy(
+            elem("genome-spy-container"),
+            this.config
+        );
         this.genomeSpy.on("zoom", domain => {
-            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(domain.intersect(this.genomeSpy.getDomain()));
+            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(
+                domain.intersect(this.genomeSpy.getDomain())
+            );
         });
 
-
         await this.genomeSpy.launch();
-        this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(this.genomeSpy.getViewportDomain());
+        this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(
+            this.genomeSpy.getViewportDomain()
+        );
     }
 
     /**
-     * 
-     * @param {object} config 
+     *
+     * @param {object} config
      */
     async updateConfig(config) {
         this.config = config;
         // TODO: Preserve viewport
         this.genomeSpy.destroy();
         await this.launch();
-
     }
-
 }
 
 /**
- * 
- * @param {string} text 
- * @param {HTMLInputElement} element 
+ *
+ * @param {string} text
+ * @param {HTMLInputElement} element
  */
 function typeSlowly(text, element) {
     return new Promise(resolve => {

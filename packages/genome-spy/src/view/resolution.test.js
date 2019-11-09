@@ -1,7 +1,5 @@
-import { createAndInitialize } from './testUtils'
-import {
-    toRegularArray as r
-} from '../utils/domainArray';
+import { createAndInitialize } from "./testUtils";
+import { toRegularArray as r } from "../utils/domainArray";
 
 const spec = {
     data: { values: [] },
@@ -34,12 +32,17 @@ const spec = {
 };
 
 describe("Scales resolve with with non-trivial hierarchy", () => {
-
     test("Scales (domains) are shared and merged by default on layers", () => {
         return createAndInitialize(spec).then(view => {
             expect(r(view.getResolution("y").getDomain())).toEqual([1, 5]);
-            expect(r(view.children[0].getResolution("y").getDomain())).toEqual([1, 5]);
-            expect(r(view.children[1].getResolution("y").getDomain())).toEqual([1, 5]);
+            expect(r(view.children[0].getResolution("y").getDomain())).toEqual([
+                1,
+                5
+            ]);
+            expect(r(view.children[1].getResolution("y").getDomain())).toEqual([
+                1,
+                5
+            ]);
         });
     });
 
@@ -51,8 +54,14 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
 
         return createAndInitialize(independentSpec).then(view => {
             // TODO: expect(view.getResolution("x")).toBeUndefined();
-            expect(r(view.children[0].getResolution("y").getDomain())).toEqual([1, 2]);
-            expect(r(view.children[1].getResolution("y").getDomain())).toEqual([4, 5]);
+            expect(r(view.children[0].getResolution("y").getDomain())).toEqual([
+                1,
+                2
+            ]);
+            expect(r(view.children[1].getResolution("y").getDomain())).toEqual([
+                4,
+                5
+            ]);
         });
     });
 
@@ -74,7 +83,7 @@ describe("Defaults", () => {
 
         expect(scale.type).toBe("band");
         expect(scale.domain()).toStrictEqual([undefined]);
-    })
+    });
 });
 
 describe("Titles resolve properly", () => {
@@ -85,12 +94,13 @@ describe("Titles resolve properly", () => {
 
     test("Shared scales have joined titles", () => {
         return createAndInitialize(sharedSpec).then(root =>
-            expect(root.children[0].getResolution("y").getTitle()).toEqual("a, b")
+            expect(root.children[0].getResolution("y").getTitle()).toEqual(
+                "a, b"
+            )
         );
     });
 
     test("Title is taken from axis title, encoding title, and field name, in that order.", () => {
-
         return Promise.all([
             createAndInitialize({
                 data: { values: [1] },
@@ -99,13 +109,13 @@ describe("Titles resolve properly", () => {
                     x: { field: "a" },
                     y: {
                         field: "a",
-                        type: "quantitative",
+                        type: "quantitative"
                     }
                 }
             }).then(root =>
                 expect(root.getResolution("y").getTitle()).toEqual("a")
             ),
-        
+
             createAndInitialize({
                 data: { values: [1] },
                 mark: "point",
@@ -114,7 +124,7 @@ describe("Titles resolve properly", () => {
                     y: {
                         field: "a",
                         title: "x",
-                        type: "quantitative",
+                        type: "quantitative"
                     }
                 }
             }).then(root =>
@@ -137,8 +147,8 @@ describe("Titles resolve properly", () => {
                 }
             }).then(root =>
                 expect(root.getResolution("y").getTitle()).toEqual("z")
-            )]);
-
+            )
+        ]);
     });
 
     test.todo("Test legend titles when legends are implemented");

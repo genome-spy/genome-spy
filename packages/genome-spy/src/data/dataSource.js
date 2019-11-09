@@ -1,6 +1,6 @@
-import { read } from 'vega-loader';
-import { range as d3range } from 'd3-array';
-import { DataGroup, GroupGroup, Group } from './group';
+import { read } from "vega-loader";
+import { range as d3range } from "d3-array";
+import { DataGroup, GroupGroup, Group } from "./group";
 
 /**
  * @typedef {Object} FormatConfig
@@ -8,23 +8,22 @@ import { DataGroup, GroupGroup, Group } from './group';
  * @prop {Object} [parse]
  */
 
- /**
-  * @typedef {Object} SequenceConfig
-  * @prop {number} start
-  * @prop {number} stop
-  * @prop {number} [step]
-  * @prop {string} [as] 
-  */
+/**
+ * @typedef {Object} SequenceConfig
+ * @prop {number} start
+ * @prop {number} stop
+ * @prop {number} [step]
+ * @prop {string} [as]
+ */
 
 /**
  * @typedef {import("../spec/data").Data} DataConfig
  */
 
-
 export default class DataSource {
     /**
-     * 
-     * @param {DataConfig} config 
+     *
+     * @param {DataConfig} config
      * @param {String} baseUrl
      * @param {function(string):object[]} [namedDataProvider] Named datasets
      */
@@ -47,13 +46,10 @@ export default class DataSource {
     async getData() {
         if (this.config.values) {
             return this._getImmediateData();
-
         } else if (this.config.sequence) {
             return this._getSequence();
-            
         } else if (this.config.url) {
             return await this._fetchAndReadAll();
-
         } else if (this.config.name) {
             const data = this.namedDataProvider(this.config.name);
             if (data) {
@@ -61,9 +57,10 @@ export default class DataSource {
             } else {
                 throw new Error("No such named dataset: " + this.config.name);
             }
-
         } else {
-            throw new Error('No "url", "values", "sequence", or "name" defined in data configuration!');
+            throw new Error(
+                'No "url", "values", "sequence", or "name" defined in data configuration!'
+            );
         }
     }
 
@@ -74,14 +71,17 @@ export default class DataSource {
         format.parse = format.parse || "auto";
 
         if (!format.type) {
-            throw new Error("Format for data source was not defined and it could not be inferred: " + JSON.stringify(this.config));
+            throw new Error(
+                "Format for data source was not defined and it could not be inferred: " +
+                    JSON.stringify(this.config)
+            );
         }
 
         return format;
     }
 
     _extractTypeFromUrl(url) {
-        const match = url.match(/\.(csv|tsv|json)/)
+        const match = url.match(/\.(csv|tsv|json)/);
         return match ? match[1] : null;
     }
 
@@ -95,7 +95,6 @@ export default class DataSource {
                     // It's an array of objects
                     // TODO: Should check the whole array and abort if types are heterogeneous
                     data = values;
-
                 } else {
                     // Wrap scalars to objects
                     data = values.map(d => ({ data: d }));
@@ -103,13 +102,13 @@ export default class DataSource {
             } else {
                 data = [];
             }
-
         } else if (typeof values == "string") {
             // It's a string that needs to be parsed
             data = read(values, this._getFormat());
-
         } else {
-            throw new Error('"values" in data configuration is not an array nor a string!');
+            throw new Error(
+                '"values" in data configuration is not an array nor a string!'
+            );
         }
 
         return new DataGroup("immediate", data);
@@ -118,35 +117,48 @@ export default class DataSource {
     _getSequence() {
         const conf = this.config.sequence;
         if (typeof conf.start !== "number" || typeof conf.stop !== "number") {
-            throw new Error("Missing or invalid start or stop in sequence generator config: " + JSON.stringify(conf));
+            throw new Error(
+                "Missing or invalid start or stop in sequence generator config: " +
+                    JSON.stringify(conf)
+            );
         }
 
-        const data = d3range(conf.start, conf.stop, conf.step || 1)
-            .map(x => ({
-                [conf.as || "data"]: x
-            }));
-        
-            return new DataGroup("sequence", data);
+        const data = d3range(conf.start, conf.stop, conf.step || 1).map(x => ({
+            [conf.as || "data"]: x
+        }));
+
+        return new DataGroup("sequence", data);
     }
 
     /**
-     * 
+     *
      * @param {string} url May be relative
      * @returns {Promise<DataGroup>}
      */
     async _fetchAndRead(url) {
-        return fetch(this._addBaseUrl(url), { credentials: 'same-origin' }).then(response => {
-            if (!response.ok) {
-                throw new Error(`Cannot load ${response.url}: ${response.status} ${response.statusText}`);
-            }
-            return response.text();
-        }).then(text => new DataGroup(
-            url,
-            read(text, this._getFormat(this._extractTypeFromUrl(url)))
-        )).catch(reason => {
-            console.error(reason);
-            throw new Error(`Cannot fetch data file: ${url}`);
-        });
+        return fetch(this._addBaseUrl(url), { credentials: "same-origin" })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(
+                        `Cannot load ${response.url}: ${response.status} ${response.statusText}`
+                    );
+                }
+                return response.text();
+            })
+            .then(
+                text =>
+                    new DataGroup(
+                        url,
+                        read(
+                            text,
+                            this._getFormat(this._extractTypeFromUrl(url))
+                        )
+                    )
+            )
+            .catch(reason => {
+                console.error(reason);
+                throw new Error(`Cannot fetch data file: ${url}`);
+            });
     }
 
     /**
@@ -160,20 +172,25 @@ export default class DataSource {
 
         if (typeof url == "string") {
             return this._fetchAndRead(url);
-
         } else if (Array.isArray(url)) {
-            return new GroupGroup("root",
-                await Promise.all(/** @type {string[]} */(url).map(url => this._fetchAndRead(url))));
-
+            return new GroupGroup(
+                "root",
+                await Promise.all(
+                    /** @type {string[]} */ (url).map(url =>
+                        this._fetchAndRead(url)
+                    )
+                )
+            );
         } else {
-            throw new Error("url is neither a string nor an array: " + JSON.stringify(url));
+            throw new Error(
+                "url is neither a string nor an array: " + JSON.stringify(url)
+            );
         }
     }
 
     _addBaseUrl(url) {
         if (/^http(s):\/\//.test(url)) {
             return url;
-
         } else {
             if (!this.baseUrl) {
                 throw new Error("No baseUrl defined!");
@@ -182,5 +199,4 @@ export default class DataSource {
             return this.baseUrl + url;
         }
     }
-    
 }

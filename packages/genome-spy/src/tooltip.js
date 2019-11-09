@@ -1,11 +1,10 @@
-import clientPoint from './utils/point';
+import clientPoint from "./utils/point";
 
 // TODO: Figure out a proper place for this class
 
 export default class Tooltip {
-
     /**
-     * @param {HTMLElement} container 
+     * @param {HTMLElement} container
      */
     constructor(container) {
         this.container = container;
@@ -17,7 +16,7 @@ export default class Tooltip {
     }
 
     /**
-     * @param {MouseEvent} mouseEvent 
+     * @param {MouseEvent} mouseEvent
      */
     handleMouseMove(mouseEvent) {
         this.mouseCoords = clientPoint(this.container, mouseEvent);
@@ -30,7 +29,7 @@ export default class Tooltip {
     updatePlacement() {
         /** Space between pointer and tooltip box */
         const spacing = 20;
-       
+
         const [mouseX, mouseY] = this.mouseCoords;
 
         let x = mouseX + spacing;
@@ -39,14 +38,15 @@ export default class Tooltip {
         }
         this.element.style.left = x + "px";
 
-        this.element.style.top = Math.min(
-            mouseY + spacing,
-            this.container.clientHeight - this.element.offsetHeight
-        ) + "px";
+        this.element.style.top =
+            Math.min(
+                mouseY + spacing,
+                this.container.clientHeight - this.element.offsetHeight
+            ) + "px";
     }
 
     /**
-     * @param {HTMLElement | string} content 
+     * @param {HTMLElement | string} content
      */
     setContent(content) {
         if (!content) {
@@ -57,11 +57,9 @@ export default class Tooltip {
 
         if (typeof content == "string") {
             this.element.innerHTML = content;
-
         } else if (content instanceof HTMLElement) {
             this.element.innerHTML = "";
             this.element.appendChild(content);
-
         } else {
             this.element.innerText = "Unknown type";
         }
@@ -71,5 +69,4 @@ export default class Tooltip {
         // TODO: update placement
         this.element.style.visibility = "visible";
     }
-
 }

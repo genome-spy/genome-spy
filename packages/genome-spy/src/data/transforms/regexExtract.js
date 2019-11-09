@@ -1,4 +1,3 @@
-
 /**
  * @typedef {import("../../spec/transform").RegexExtractConfig} RegexExtractConfig
  */
@@ -6,9 +5,9 @@
 // TODO: Implement asType (string, integer, float, boolean)
 
 /**
- * 
- * @param {RegexExtractConfig} config 
- * @param {*} rows 
+ *
+ * @param {RegexExtractConfig} config
+ * @param {*} rows
  */
 export default function regexMatchTransform(config, rows) {
     const re = new RegExp(config.regex);
@@ -24,19 +23,23 @@ export default function regexMatchTransform(config, rows) {
 
             if (m) {
                 if (m.length - 1 != as.length) {
-                    throw new Error('The number of RegEx groups and the length of "as" do not match!');
+                    throw new Error(
+                        'The number of RegEx groups and the length of "as" do not match!'
+                    );
                 }
 
                 as.forEach((group, i) => {
                     newRow[group] = m[i + 1];
                 });
-
             } else if (!config.skipInvalidInput) {
-                throw new Error(`"${value}" does not match the given regex: ${re.toString()}`);
+                throw new Error(
+                    `"${value}" does not match the given regex: ${re.toString()}`
+                );
             }
-
         } else if (!config.skipInvalidInput) {
-            throw new Error(`Trying to match a non-string field. Encountered type: ${typeof value}`);
+            throw new Error(
+                `Trying to match a non-string field. Encountered type: ${typeof value}`
+            );
         }
 
         return newRow;

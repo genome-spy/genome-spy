@@ -4,7 +4,6 @@ import { scaleLinear } from "d3-scale";
 import createEncoders from "./encoder";
 
 describe("Encoder", () => {
-
     /** @type {import("../view/viewUtils").EncodingSpecs} */
     const encodingSpecs = {
         x: { value: 0 },
@@ -20,9 +19,9 @@ describe("Encoder", () => {
     };
 
     const scaleSource = channel => scales[channel];
-    
+
     const accessorFactory = new AccessorFactory();
-    const accesorSource = channel => 
+    const accesorSource = channel =>
         accessorFactory.createAccessor(encodingSpecs[channel]);
 
     const encoders = createEncoders(encodingSpecs, scaleSource, accesorSource);
@@ -34,14 +33,18 @@ describe("Encoder", () => {
     };
 
     test("Throws on a broken spec", () =>
-        expect(() => createEncoders({ x: {} }, x => null, accesorSource)).toThrow());
+        expect(() =>
+            createEncoders({ x: {} }, x => null, accesorSource)
+        ).toThrow());
 
     test("The encoder object contains all channels", () =>
-        expect(["x", "y", "z", "size"].every(channel => typeof encoders[channel] === "function"))
-            .toBeTruthy());
+        expect(
+            ["x", "y", "z", "size"].every(
+                channel => typeof encoders[channel] === "function"
+            )
+        ).toBeTruthy());
 
-    test("Returns a value", () => 
-        expect(encoders.x(datum)).toEqual(0));
+    test("Returns a value", () => expect(encoders.x(datum)).toEqual(0));
 
     test("Encodes and returns a constant using a scale", () =>
         expect(encoders.z(datum)).toBeCloseTo(0.1));
@@ -51,7 +54,7 @@ describe("Encoder", () => {
 
     test("Accesses a field on a secondary channel and uses the scale from the primary", () =>
         expect(encoders.y2(datum)).toBeCloseTo(0.6));
-    
+
     test("Constant encoder is annotated", () => {
         expect(encoders.y.constant).toBeFalsy();
         expect(encoders.z.constant).toBeTruthy();
@@ -66,6 +69,4 @@ describe("Encoder", () => {
     });
 
     test.todo("Test access to accessor");
-
-
 });

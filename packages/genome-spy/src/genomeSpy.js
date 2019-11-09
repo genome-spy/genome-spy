@@ -1,7 +1,7 @@
-import 'array-flat-polyfill';
+import "array-flat-polyfill";
 
-import { scaleLinear } from 'd3-scale';
-import { interpolateZoom } from 'd3-interpolate';
+import { scaleLinear } from "d3-scale";
+import { interpolateZoom } from "d3-interpolate";
 
 import EventEmitter from "eventemitter3";
 import Interval from "./utils/interval";
@@ -10,25 +10,31 @@ import "./styles/genome-spy.scss";
 import Tooltip from "./tooltip";
 import transition, { easeLinear } from "./utils/transition";
 
-import Genome from './genome/genome';
+import Genome from "./genome/genome";
 
 import SampleTrack from "./tracks/sampleTrack/sampleTrack";
 import AxisTrack from "./tracks/axisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";
 import GeneTrack from "./tracks/geneTrack";
-import SimpleTrack from './tracks/simpleTrack';
-import RealCoordinateSystem from './realCoordinateSystem';
-import AccessorFactory from './encoder/accessor';
-import { isViewSpec, createView, resolveScales, isTrackSpec, isImportSpec } from './view/viewUtils';
-import DataSource from './data/dataSource';
+import SimpleTrack from "./tracks/simpleTrack";
+import RealCoordinateSystem from "./realCoordinateSystem";
+import AccessorFactory from "./encoder/accessor";
+import {
+    isViewSpec,
+    createView,
+    resolveScales,
+    isTrackSpec,
+    isImportSpec
+} from "./view/viewUtils";
+import DataSource from "./data/dataSource";
 
 /**
  * @type {Record<String, typeof import("./tracks/track").default>}
  */
 const trackTypes = {
-    "cytobands": CytobandTrack,
-    "genomeAxis": AxisTrack,
-    "geneAnnotation": GeneTrack
+    cytobands: CytobandTrack,
+    genomeAxis: AxisTrack,
+    geneAnnotation: GeneTrack
 };
 
 /**
@@ -45,8 +51,8 @@ const trackTypes = {
  */
 export default class GenomeSpy {
     /**
-     * 
-     * @param {HTMLElement} container 
+     *
+     * @param {HTMLElement} container
      * @param {RootSpec} config
      */
     constructor(container, config) {
@@ -83,16 +89,16 @@ export default class GenomeSpy {
     }
 
     /**
-     * 
-     * @param {function(string):object[]} provider 
+     *
+     * @param {function(string):object[]} provider
      */
     registerNamedDataProvider(provider) {
         this.namedDataProviders.unshift(provider);
     }
 
     /**
-     * 
-     * @param {string} name 
+     *
+     * @param {string} name
      */
     getNamedData(name) {
         for (const provider of this.namedDataProviders) {
@@ -108,17 +114,17 @@ export default class GenomeSpy {
      */
     _zoomed(transform) {
         this.rescaledX = transform.rescale(this.xScale);
-        this.eventEmitter.emit('zoom', this.getViewportDomain());
+        this.eventEmitter.emit("zoom", this.getViewportDomain());
     }
 
     /**
      * Returns the hard domain of the coordinate system if it is specified.
      * Otherwise returns the shared domain of the data.
-     * 
+     *
      * TODO: Rename and emphasize X axis
      * TODO: Return DomainArray
      * TODO: Tracks should actually be views and X scale should be resolved as shared here
-     * 
+     *
      * @return {Interval} the domain
      */
     getDomain() {
@@ -150,7 +156,7 @@ export default class GenomeSpy {
 
     /**
      * Returns the portion of the domain that is currently visible in the viewport
-     * 
+     *
      * @return {Interval} the domain
      */
     getViewportDomain() {
@@ -166,7 +172,6 @@ export default class GenomeSpy {
             .map(track => track.getMinAxisWidth())
             .reduce((a, b) => Math.max(a, b), 0);
     }
-
 
     /**
      * Returns the current zoom level. [0, 1]
@@ -190,21 +195,25 @@ export default class GenomeSpy {
         // TODO: Get from zoom object
         const b = this.getDomain().width();
         const y = this.getViewportDomain().width();
-        
+
         return b / y;
     }
 
     /**
-     * 
-     * @param {Interval} target 
+     *
+     * @param {Interval} target
      */
     zoomTo(target) {
         const x = this.xScale;
         const source = this.getViewportDomain();
 
-        const intervalToTransform = interval => new Transform()
-            .scale(this.layout.viewport.width() / (x(interval.upper) - x(interval.lower)))
-            .translate(-x(interval.lower));
+        const intervalToTransform = interval =>
+            new Transform()
+                .scale(
+                    this.layout.viewport.width() /
+                        (x(interval.upper) - x(interval.lower))
+                )
+                .translate(-x(interval.lower));
 
         const interpolate = interpolateZoom(
             [source.centre(), 0, source.width()],
@@ -217,7 +226,7 @@ export default class GenomeSpy {
             onUpdate: value => {
                 const i = interpolate(value);
                 const interval = new Interval(i[0] - i[2] / 2, i[0] + i[2] / 2);
-                this.zoom.zoomTo(intervalToTransform(interval))
+                this.zoom.zoomTo(intervalToTransform(interval));
             }
         });
     }
@@ -226,7 +235,7 @@ export default class GenomeSpy {
      * Performs a search and zooms into the first matching interval.
      * Returns a promise that resolves when the search and the transition to the
      * matching interval are complete.
-     * 
+     *
      * @param {string} string the search string
      * @returns A promise
      */
@@ -238,15 +247,14 @@ export default class GenomeSpy {
         };
 
         // Search tracks
-        const interval = [domainFinder].concat(this.tracks)
+        const interval = [domainFinder]
+            .concat(this.tracks)
             .map(t => t.search(string))
             .find(i => i);
 
         return new Promise((resolve, reject) => {
             if (interval) {
-                this.zoomTo(interval)
-                    .then(() => resolve());
-
+                this.zoomTo(interval).then(() => resolve());
             } else {
                 reject(`No matches found for "${string}"`);
             }
@@ -255,7 +263,10 @@ export default class GenomeSpy {
 
     _resized() {
         const cs = window.getComputedStyle(this.container, null);
-        const width = this.container.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        const width =
+            this.container.clientWidth -
+            parseFloat(cs.paddingLeft) -
+            parseFloat(cs.paddingRight);
 
         const aw = Math.ceil(this.getAxisWidth());
         const viewportWidth = width - aw;
@@ -270,9 +281,14 @@ export default class GenomeSpy {
             viewport: new Interval(aw, aw + viewportWidth)
         };
 
-        this.zoom.scaleExtent = [1, this.coordinateSystem.getExtent() ? this.getDomain().width() / this.maxUnitZoom : Infinity];
+        this.zoom.scaleExtent = [
+            1,
+            this.coordinateSystem.getExtent()
+                ? this.getDomain().width() / this.maxUnitZoom
+                : Infinity
+        ];
 
-        this.eventEmitter.emit('layout', this.layout);
+        this.eventEmitter.emit("layout", this.layout);
     }
 
     _prepareContainer() {
@@ -282,9 +298,15 @@ export default class GenomeSpy {
         this.container.appendChild(this.loadingMessageElement);
 
         this._listeners = [
-            { target: window, type: "resize", listener: this._resized.bind(this) },
             {
-                target: window, type: "mousemove", listener: () => {
+                target: window,
+                type: "resize",
+                listener: this._resized.bind(this)
+            },
+            {
+                target: window,
+                type: "mousemove",
+                listener: () => {
                     if (window.devicePixelRatio != this._dpr) {
                         this._dpr = window.devicePixelRatio;
                         this._resized();
@@ -294,7 +316,11 @@ export default class GenomeSpy {
             // Eat all context menu events that have not been caught by any track.
             // Prevents annoying browser default context menues from opening when
             // the user did not quite hit the target.
-            { target: this.container, type: "contextmenu", listener: event => event.preventDefault() }
+            {
+                target: this.container,
+                type: "contextmenu",
+                listener: event => event.preventDefault()
+            }
         ];
 
         for (const e of this._listeners) {
@@ -341,47 +367,55 @@ export default class GenomeSpy {
             }
             await this.coordinateSystem.initialize(this);
 
-
             /** @type {import("view/viewUtils").ViewContext} */
             const baseContext = {
                 coordinateSystem: this.coordinateSystem,
                 accessorFactory: this.accessorFactory,
                 genomeSpy: this, // TODO: An interface instead of a GenomeSpy
-                getDataSource: config => new DataSource(config, this.config.baseUrl, this.getNamedData.bind(this))
+                getDataSource: config =>
+                    new DataSource(
+                        config,
+                        this.config.baseUrl,
+                        this.getNamedData.bind(this)
+                    )
             };
 
             // If the top-level object is a view spec, wrap it in a track spec
             const rootWithTracks = wrapInTrack(this.config);
 
             // Create the tracks and their view hierarchies
-            this.tracks = await Promise.all(rootWithTracks.tracks.map(spec => createTrack(spec, this, baseContext)));
+            this.tracks = await Promise.all(
+                rootWithTracks.tracks.map(spec =>
+                    createTrack(spec, this, baseContext)
+                )
+            );
 
             // Create container and initialize the the tracks, i.e. load the data and create WebGL buffers
-            await Promise.all(this.tracks.map(track => {
-                const trackContainer = document.createElement("div");
-                trackContainer.className = "genome-spy-track";
-                this.trackStack.appendChild(trackContainer);
+            await Promise.all(
+                this.tracks.map(track => {
+                    const trackContainer = document.createElement("div");
+                    trackContainer.className = "genome-spy-track";
+                    this.trackStack.appendChild(trackContainer);
 
-                return track.initialize(trackContainer);
-
-            }));
+                    return track.initialize(trackContainer);
+                })
+            );
 
             // TODO: Support other scales too
-            this.xScale = scaleLinear()
-                .domain(this.getDomain().toArray());
+            this.xScale = scaleLinear().domain(this.getDomain().toArray());
 
             // Zoomed scale
             this.rescaledX = this.xScale;
 
             // Initiate layout calculation and render the tracks
             this._resized();
-
         } catch (reason) {
-            const message = `${reason.view ? `At ${reason.view.getPathString()}: ` : ''}${reason.toString()}`;
+            const message = `${
+                reason.view ? `At ${reason.view.getPathString()}: ` : ""
+            }${reason.toString()}`;
             console.error(message);
             console.error(reason.stack);
             createMessageBox(this.container, message);
-
         } finally {
             this.container.classList.remove("loading");
         }
@@ -389,23 +423,24 @@ export default class GenomeSpy {
 }
 
 /**
- * 
- * @param {RootSpec} rootSpec 
+ *
+ * @param {RootSpec} rootSpec
  * @returns {TrackSpec}
  */
 function wrapInTrack(rootSpec) {
     // Ensure that we have at least one track
     if (isViewSpec(rootSpec)) {
         // TODO: Clean extra properties
-        const trackSpec = /** @type {TrackSpec} */(rootSpec);
+        const trackSpec = /** @type {TrackSpec} */ (rootSpec);
         trackSpec.tracks = [rootSpec];
         return trackSpec;
-
     } else if (isTrackSpec(rootSpec)) {
         return rootSpec;
-
     } else {
-        throw new Error("The config root has no tracks nor views: " + JSON.stringify(rootSpec));
+        throw new Error(
+            "The config root has no tracks nor views: " +
+                JSON.stringify(rootSpec)
+        );
     }
 }
 
@@ -415,38 +450,44 @@ function wrapInTrack(rootSpec) {
  * @param {import("view/viewUtils").ViewContext} baseContext
  */
 async function createTrack(spec, genomeSpy, baseContext) {
-
     // TODO: Exctract a spec preprocessing phase
 
     if (isImportSpec(spec)) {
         if (spec.import.name) {
             if (!trackTypes[spec.import.name]) {
-                throw new Error(`Unknown track name: ${spec.import.name}`)
+                throw new Error(`Unknown track name: ${spec.import.name}`);
             }
             // Currently, all named imports are custom, hardcoded tracks
             return new trackTypes[spec.import.name](genomeSpy, spec);
-
         } else if (spec.import.url) {
             // Replace the current spec with an imported one
 
             const absolute = /^(http(s)?)?:\/\//.test(spec.import.url);
-            const url = absolute ? spec.import.url : genomeSpy.config.baseUrl + "/" + spec.import.url;
+            const url = absolute
+                ? spec.import.url
+                : genomeSpy.config.baseUrl + "/" + spec.import.url;
 
-            const importedSpec = await fetch(url, { credentials: 'same-origin' })
-                .then(res => {
-                    if (res.ok) {
-                        return res.json();
-                    }
-                    throw new Error(`Could not load imported track spec: ${url} \nReason: ${res.status} ${res.statusText}`);
-                });
+            const importedSpec = await fetch(url, {
+                credentials: "same-origin"
+            }).then(res => {
+                if (res.ok) {
+                    return res.json();
+                }
+                throw new Error(
+                    `Could not load imported track spec: ${url} \nReason: ${res.status} ${res.statusText}`
+                );
+            });
 
             // TODO: BaseUrl should be updated for the imported view
             if (isViewSpec(importedSpec)) {
                 spec = importedSpec;
                 spec.baseUrl = url.match(/^.*\//)[0];
-
             } else {
-                throw new Error(`The imported spec "${url}" is not a view spec: ${JSON.stringify(spec)}`);
+                throw new Error(
+                    `The imported spec "${url}" is not a view spec: ${JSON.stringify(
+                        spec
+                    )}`
+                );
             }
         }
     }
@@ -458,12 +499,19 @@ async function createTrack(spec, genomeSpy, baseContext) {
         const context = {
             ...baseContext,
             // Hack for imported tracks, as their baseUrl needs to be updated
-            getDataSource: config => new DataSource(config, spec.baseUrl || genomeSpy.config.baseUrl, genomeSpy.getNamedData.bind(genomeSpy))
-        }
+            getDataSource: config =>
+                new DataSource(
+                    config,
+                    spec.baseUrl || genomeSpy.config.baseUrl,
+                    genomeSpy.getNamedData.bind(genomeSpy)
+                )
+        };
 
         const viewRoot = createView(spec, context);
         resolveScales(viewRoot);
-        const Track = viewRoot.resolutions["sample"] ? SampleTrack : SimpleTrack;
+        const Track = viewRoot.resolutions["sample"]
+            ? SampleTrack
+            : SimpleTrack;
 
         const track = new Track(genomeSpy, spec, viewRoot);
         context.track = track;
@@ -471,13 +519,15 @@ async function createTrack(spec, genomeSpy, baseContext) {
         return track;
     }
 
-    throw new Error("Can't figure out which track to create: " + JSON.stringify(spec));
+    throw new Error(
+        "Can't figure out which track to create: " + JSON.stringify(spec)
+    );
 }
 
 /**
- * 
+ *
  * @param {HTMLElement} container
- * @param {string} message 
+ * @param {string} message
  */
 function createMessageBox(container, message) {
     // Uh, need a templating thingy

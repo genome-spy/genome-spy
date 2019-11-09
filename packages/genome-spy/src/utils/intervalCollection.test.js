@@ -2,7 +2,6 @@ import IntervalCollection from "./intervalCollection";
 import Interval from "./interval";
 
 test("Add", () => {
-
     const reference = [
         new Interval(0, 1),
         new Interval(1, 2),
@@ -76,7 +75,7 @@ test("Closest Interval At", () => {
     c.add(new Interval(1, 2));
     c.add(new Interval(4, 5));
     c.add(new Interval(6, 8));
-    
+
     expect(c.intervalAt(0, true)).toEqual(new Interval(1, 2));
     expect(c.intervalAt(1, true)).toEqual(new Interval(1, 2));
     expect(c.intervalAt(2.5, true)).toEqual(new Interval(1, 2));
@@ -88,7 +87,7 @@ test("Closest Interval At", () => {
     expect(emptyC.intervalAt(0, true)).toBeNull();
 });
 
-test("Accessor", () => { 
+test("Accessor", () => {
     const create = (id, lower, upper) => ({
         id: id,
         interval: new Interval(lower, upper)

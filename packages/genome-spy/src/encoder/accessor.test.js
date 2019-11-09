@@ -1,4 +1,4 @@
-import AccessorFactory from './accessor';
+import AccessorFactory from "./accessor";
 
 const af = new AccessorFactory();
 
@@ -6,7 +6,7 @@ const datum = {
     a: 1,
     b: 2,
     c: 3
-}
+};
 
 test("Creates a field accessor", () => {
     const a = af.createAccessor({ field: "a" });
@@ -16,14 +16,14 @@ test("Creates a field accessor", () => {
 });
 
 test("Creates an expression accessor", () => {
-    const a = af.createAccessor({ expr: "datum.b + datum.c" })
+    const a = af.createAccessor({ expr: "datum.b + datum.c" });
     expect(a(datum)).toEqual(5);
     expect(a.constant).toBeFalsy();
     expect(a.fields.sort()).toEqual(["b", "c"].sort());
 });
 
 test("Creates a constant accessor", () => {
-    const a = af.createAccessor({ constant: 0 }); 
+    const a = af.createAccessor({ constant: 0 });
     expect(a(datum)).toEqual(0);
     expect(a.constant).toBeTruthy();
     expect(a.fields).toEqual([]);
@@ -31,7 +31,7 @@ test("Creates a constant accessor", () => {
 
 test("Returns undefined on incomplete encoding spec", () => {
     expect(af.createAccessor({})).toBeUndefined();
-})
+});
 
 test("Registers and creates a custom accessor", () => {
     const af = new AccessorFactory();
@@ -41,5 +41,5 @@ test("Registers and creates a custom accessor", () => {
         }
     });
 
-    expect(af.createAccessor({ iddqd: "a", idkfa: "b"})(datum)).toEqual("1-2");
+    expect(af.createAccessor({ iddqd: "a", idkfa: "b" })(datum)).toEqual("1-2");
 });

@@ -2,18 +2,17 @@
  * Abstract base class for tracks
  */
 export default class Track {
-
     /**
-     * @param {import("../genomeSpy").default} genomeSpy 
+     * @param {import("../genomeSpy").default} genomeSpy
      * @param {object} [config]
      */
     constructor(genomeSpy, config) {
         this.config = config || {};
-        this.genomeSpy = genomeSpy
+        this.genomeSpy = genomeSpy;
     }
 
     /**
-     * @param {HTMLElement} trackContainer 
+     * @param {HTMLElement} trackContainer
      */
     async initialize(trackContainer) {
         this.trackContainer = trackContainer;
@@ -23,7 +22,7 @@ export default class Track {
      * Returns the minimum width that accommodates the labels on the Y axis.
      * The axis area of sampleTrack contains sample labels and sample-specific
      * variables.
-     * 
+     *
      * @returns {number} The width
      */
     getMinAxisWidth() {
@@ -33,7 +32,7 @@ export default class Track {
     /**
      * Returns the domain of the data that is being laid on the x axis of the track.
      * Returns undefined if the track does not have data.
-     * 
+     *
      * @return {import("../utils/domainArray").DomainArray}
      */
     getXDomain() {
@@ -48,9 +47,9 @@ export default class Track {
     }
 
     /**
-     * 
-     * @param {HTMLCanvasElement} canvas 
-     * @param {Interval} interval 
+     *
+     * @param {HTMLCanvasElement} canvas
+     * @param {Interval} interval
      * @param {number} [trackHeight]
      */
     adjustCanvas(canvas, interval, trackHeight) {
@@ -75,20 +74,20 @@ export default class Track {
 
         const r = window.devicePixelRatio || 1;
         const ctx = canvas.getContext("2d");
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(r, r);
         return ctx;
     }
 
     /**
      * Returns an interval that matches the search string
-     * 
+     *
      * @param {string} string What to search
      */
     search(string) {
         return null;
     }
-    
+
     /**
      * Returns search instructions for this track as HTML
      */

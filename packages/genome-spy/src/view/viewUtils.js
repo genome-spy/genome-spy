@@ -1,9 +1,9 @@
-import UnitView from './unitView';
-import LayerView from './layerView';
-import { configureDefaultResolutions } from './resolution';
+import UnitView from "./unitView";
+import LayerView from "./layerView";
+import { configureDefaultResolutions } from "./resolution";
 
 /**
- * @typedef {Object} ViewContext 
+ * @typedef {Object} ViewContext
  * @prop {import("../tracks/simpleTrack").default} [track]
  * @prop {import("../genomeSpy").default} genomeSpy TODO: Break genomeSpy dependency
  * @prop {function(import("../spec/data").Data):import("../data/dataSource").default} getDataSource
@@ -15,17 +15,17 @@ import { configureDefaultResolutions } from './resolution';
  * @typedef {import("../spec/view").MarkConfig} MarkConfig
  * @typedef {import("../spec/view").EncodingConfig} EncodingConfig
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
- * @typedef {import("../spec/view").LayerSpec} LayerSpec 
- * @typedef {import("../spec/view").UnitSpec} UnitSpec 
- * @typedef {import("../spec/view").TrackSpec} TrackSpec 
+ * @typedef {import("../spec/view").LayerSpec} LayerSpec
+ * @typedef {import("../spec/view").UnitSpec} UnitSpec
+ * @typedef {import("../spec/view").TrackSpec} TrackSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
- * @typedef {import("../spec/view").ImportConfig} ImportConfig 
+ * @typedef {import("../spec/view").ImportConfig} ImportConfig
  * @typedef {import("./view").default} View
  */
 
 /**
- * 
- * @param {ViewSpec} spec 
+ *
+ * @param {ViewSpec} spec
  * @returns {spec is UnitSpec}
  */
 export function isUnitSpec(spec) {
@@ -33,8 +33,8 @@ export function isUnitSpec(spec) {
 }
 
 /**
- * 
- * @param {ViewSpec} spec 
+ *
+ * @param {ViewSpec} spec
  * @returns {spec is LayerSpec}
  */
 export function isLayerSpec(spec) {
@@ -42,8 +42,8 @@ export function isLayerSpec(spec) {
 }
 
 /**
- * 
- * @param {object} spec 
+ *
+ * @param {object} spec
  * @returns {spec is ViewSpec}
  */
 export function isViewSpec(spec) {
@@ -51,8 +51,8 @@ export function isViewSpec(spec) {
 }
 
 /**
- * 
- * @param {object} spec 
+ *
+ * @param {object} spec
  * @returns {spec is TrackSpec}
  */
 export function isTrackSpec(spec) {
@@ -60,8 +60,8 @@ export function isTrackSpec(spec) {
 }
 
 /**
- * 
- * @param {object} config 
+ *
+ * @param {object} config
  * @returns {config is ImportConfig}
  */
 export function isImportConfig(config) {
@@ -69,8 +69,8 @@ export function isImportConfig(config) {
 }
 
 /**
- * 
- * @param {object} spec 
+ *
+ * @param {object} spec
  * @returns {spec is ImportSpec}
  */
 export function isImportSpec(spec) {
@@ -78,9 +78,9 @@ export function isImportSpec(spec) {
 }
 
 /**
- * 
- * @param {ViewSpec} spec 
- * @returns {typeof View} 
+ *
+ * @param {ViewSpec} spec
+ * @returns {typeof View}
  */
 export function getViewClass(spec) {
     if (isUnitSpec(spec)) {
@@ -88,20 +88,21 @@ export function getViewClass(spec) {
     } else if (isLayerSpec(spec)) {
         return LayerView;
     } else {
-        throw new Error("Invalid spec, cannot figure out the view: " + JSON.stringify(spec));
+        throw new Error(
+            "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)
+        );
     }
 }
 
 /**
- * 
- * @param {ViewSpec} spec 
- * @param {ViewContext} context 
+ *
+ * @param {ViewSpec} spec
+ * @param {ViewContext} context
  */
 export function createView(spec, context) {
     const ViewClass = getViewClass(spec);
-    return /** @type {View} */(new ViewClass(spec, context, null, "root"));
+    return /** @type {View} */ (new ViewClass(spec, context, null, "root"));
 }
-
 
 /**
  * Returns all marks in the order (DFS) they are rendered
@@ -110,7 +111,7 @@ export function createView(spec, context) {
 export function getMarks(root) {
     return getFlattenedViews(root)
         .filter(view => view instanceof UnitView)
-        .map(view => (/** @type {UnitView} */(view)).mark)
+        .map(view => /** @type {UnitView} */ (view).mark);
 }
 
 /**

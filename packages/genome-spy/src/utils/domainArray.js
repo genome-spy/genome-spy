@@ -4,7 +4,7 @@ import { shallowArrayEquals } from "./arrayUtils";
  * @typedef {boolean | number | string} scalar
  */
 
-export class DomainArray extends /** @type {Array<scalar>} */Array {
+export class DomainArray /** @type {Array<scalar>} */ extends Array {
     constructor() {
         super();
         /** @type {string} */
@@ -12,8 +12,8 @@ export class DomainArray extends /** @type {Array<scalar>} */Array {
     }
 
     /**
-     * 
-     * @param {scalar} value 
+     *
+     * @param {scalar} value
      * @returns {DomainArray}
      */
     extend(value) {
@@ -21,13 +21,15 @@ export class DomainArray extends /** @type {Array<scalar>} */Array {
     }
 
     /**
-     * 
-     * @param {Iterable<scalar>} values 
+     *
+     * @param {Iterable<scalar>} values
      * @returns {DomainArray}
      */
     extendAll(values) {
         if (values instanceof DomainArray && values.type != this.type) {
-            throw new Error(`Cannot combine different types of domains: ${this.type} and ${values.type}`)
+            throw new Error(
+                `Cannot combine different types of domains: ${this.type} and ${values.type}`
+            );
         }
 
         for (const value of values) {
@@ -45,8 +47,8 @@ export class QuantitativeDomain extends DomainArray {
     }
 
     /**
-     * 
-     * @param {scalar} value 
+     *
+     * @param {scalar} value
      * @returns {DomainArray}
      */
     extend(value) {
@@ -62,7 +64,6 @@ export class QuantitativeDomain extends DomainArray {
             } else if (value > this[1]) {
                 this[1] = value;
             }
-
         } else {
             this.push(value);
             this.push(value);
@@ -85,8 +86,8 @@ export class OrdinalDomain extends DomainArray {
     }
 
     /**
-     * 
-     * @param {scalar} value 
+     *
+     * @param {scalar} value
      * @returns {DomainArray}
      */
     extend(value) {
@@ -101,7 +102,6 @@ export class OrdinalDomain extends DomainArray {
 
         return this;
     }
-
 }
 
 export class NominalDomain extends OrdinalDomain {
@@ -113,26 +113,29 @@ export class NominalDomain extends OrdinalDomain {
 
 export class PiecewiseDomain extends DomainArray {
     /**
-     * 
-     * @param {number[]} initialDomain 
+     *
+     * @param {number[]} initialDomain
      */
     constructor(initialDomain) {
         super();
 
         let sum = 0;
         for (let i = 1; i < initialDomain.length; i++) {
-            sum += Math.sign(initialDomain[i] - initialDomain[i - 1])
+            sum += Math.sign(initialDomain[i] - initialDomain[i - 1]);
         }
         if (Math.abs(sum) != initialDomain.length - 1) {
-            throw new Error("Piecewise domain must be strictly increasing or decreasing: " + JSON.stringify(initialDomain));
+            throw new Error(
+                "Piecewise domain must be strictly increasing or decreasing: " +
+                    JSON.stringify(initialDomain)
+            );
         }
 
         initialDomain.forEach(x => this.push(x));
     }
 
     /**
-     * 
-     * @param {scalar} value 
+     *
+     * @param {scalar} value
      * @returns {DomainArray}
      */
     extend(value) {
@@ -140,7 +143,9 @@ export class PiecewiseDomain extends DomainArray {
             return this;
         }
 
-        throw new Error("Piecewise domains are immutable and cannot be unioned!");
+        throw new Error(
+            "Piecewise domains are immutable and cannot be unioned!"
+        );
     }
 }
 
@@ -148,22 +153,21 @@ export class PiecewiseDomain extends DomainArray {
  * @type Object.<string, typeof DomainArray>
  */
 const domainTypes = {
-    "quantitative": QuantitativeDomain,
-    "nominal": NominalDomain,
-    "ordinal": OrdinalDomain
-}
+    quantitative: QuantitativeDomain,
+    nominal: NominalDomain,
+    ordinal: OrdinalDomain
+};
 
 /**
- * 
- * @param {string} type 
+ *
+ * @param {string} type
  * @param {scalar[]} [initialDomain]
  */
 export default function createDomain(type, initialDomain) {
     if (type == "quantitative" && isPiecewiseArray(initialDomain)) {
-        const b = new PiecewiseDomain(/** @type {number[]} */(initialDomain));
+        const b = new PiecewiseDomain(/** @type {number[]} */ (initialDomain));
         b.type = type;
         return b;
-
     } else if (domainTypes[type]) {
         const b = new domainTypes[type]();
         b.type = type;
@@ -172,13 +176,13 @@ export default function createDomain(type, initialDomain) {
         }
         return b;
     }
-    
+
     throw new Error("Unknown type: " + type);
 }
 
 /**
- * 
- * @param {array} array 
+ *
+ * @param {array} array
  */
 export function isDomainArray(array) {
     return array instanceof DomainArray;
@@ -186,8 +190,8 @@ export function isDomainArray(array) {
 
 /**
  * For unit tests
- * 
- * @param {DomainArray} domainArray 
+ *
+ * @param {DomainArray} domainArray
  */
 export function toRegularArray(domainArray) {
     return [...domainArray];
@@ -197,6 +201,10 @@ export function toRegularArray(domainArray) {
  * @param {scalar[]} array
  */
 function isPiecewiseArray(array) {
-    return array && array.length > 0 && array.length != 2 &&
-        array.every(x => typeof x === "number");
+    return (
+        array &&
+        array.length > 0 &&
+        array.length != 2 &&
+        array.every(x => typeof x === "number")
+    );
 }

@@ -1,10 +1,10 @@
-import fromEntries from 'fromentries';
+import fromEntries from "fromentries";
 
 /**
  * @typedef {Object} Converter
  * @prop {function(object)} f
  * @prop {number} [numComponents]
- * 
+ *
  */
 export default class ArrayBuilder {
     // TODO: Support strided layout. May yield better performance or not. No consensus in literature.
@@ -19,13 +19,19 @@ export default class ArrayBuilder {
 
         Object.entries(converters)
             .filter(entry => attributes.includes(entry[0]))
-            .forEach(entry => builder.addConverter(entry[0], entry[1].numComponents || 1, entry[1].f));
+            .forEach(entry =>
+                builder.addConverter(
+                    entry[0],
+                    entry[1].numComponents || 1,
+                    entry[1].f
+                )
+            );
 
         return builder;
     }
 
     /**
-     * 
+     *
      * @param {number} size Size if known, uses TypedArray
      */
     constructor(size) {
@@ -44,9 +50,9 @@ export default class ArrayBuilder {
     }
 
     /**
-     * 
-     * @param {string} attributeName 
-     * @param {number} numComponents 
+     *
+     * @param {string} attributeName
+     * @param {number} numComponents
      * @param {function} converter
      */
     addConverter(attributeName, numComponents, converter) {
@@ -55,9 +61,9 @@ export default class ArrayBuilder {
     }
 
     /**
-     * 
-     * @param {string} attributeName 
-     * @param {number} numComponents 
+     *
+     * @param {string} attributeName
+     * @param {number} numComponents
      * @return {function(number|number[])}
      */
     createUpdater(attributeName, numComponents) {
@@ -77,7 +83,7 @@ export default class ArrayBuilder {
         /** @param {number} value */
         const updater = function(value) {
             pendingValue = value;
-        }
+        };
 
         let pusher;
 
@@ -85,20 +91,22 @@ export default class ArrayBuilder {
 
         if (numComponents == 1) {
             pusher = () => {
-                array[this.vertexCount] = /** @type {number} */(pendingValue)
+                array[this.vertexCount] = /** @type {number} */ (pendingValue);
             };
-
         } else if (typed) {
-            pusher = () => /** @type {Float32Array} */(array)
-                .set(/** @type {Float32Array} */(pendingValue), this.vertexCount * numComponents);
-
+            pusher = () =>
+                /** @type {Float32Array} */ (array).set(
+                    /** @type {Float32Array} */ (pendingValue),
+                    this.vertexCount * numComponents
+                );
         } else {
             pusher = () => {
                 const offset = this.vertexCount * numComponents;
                 for (let i = 0; i < numComponents; i++) {
-                    array[offset + i] = /** @type {number[]} */(pendingValue)[i];
+                    array[offset + i] =
+                        /** @type {number[]} */ (pendingValue)[i];
                 }
-            }
+            };
         }
         this.pushers.push(pusher);
         return updater;
@@ -112,8 +120,8 @@ export default class ArrayBuilder {
     }
 
     /**
-     * 
-     * @param {object} datum 
+     *
+     * @param {object} datum
      */
     updateFromDatum(datum) {
         for (const converter of this.converters) {
@@ -122,8 +130,8 @@ export default class ArrayBuilder {
     }
 
     /**
-     * 
-     * @param {object} datum 
+     *
+     * @param {object} datum
      */
     pushFromDatum(datum) {
         this.updateFromDatum(datum);
@@ -135,8 +143,10 @@ export default class ArrayBuilder {
      */
     toValues() {
         return fromEntries(
-            Object.entries(this.arrays)
-                .map(entry => [entry[0], { value: entry[1].data }])
+            Object.entries(this.arrays).map(entry => [
+                entry[0],
+                { value: entry[1].data }
+            ])
         );
     }
 }

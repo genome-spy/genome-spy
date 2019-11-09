@@ -1,14 +1,12 @@
-import flattenDelimitedTransform from './flattenDelimited';
+import flattenDelimitedTransform from "./flattenDelimited";
 
 const sampleData = [
     { id: 1, a: "q, w, e", b: "a-s-d" },
     { id: 2, a: "r, t, y", b: "f-g-h" },
     { id: 3, a: "u", b: "j" }
-]
-
+];
 
 describe("FlattenDelimited transform", () => {
-
     test("With a single field", () => {
         /** @type {import("./flattenDelimited").FlattenDelimitedConfig} */
         const config = {
@@ -49,9 +47,12 @@ describe("FlattenDelimited transform", () => {
     });
 
     test("Throws on differing field lengths", () => {
-        const data = [{
-            a: "1-2", b: "1-2-3"
-        }];
+        const data = [
+            {
+                a: "1-2",
+                b: "1-2-3"
+            }
+        ];
 
         /** @type {import("./flattenDelimited").FlattenDelimitedConfig} */
         const config = {
@@ -68,9 +69,9 @@ describe("FlattenDelimited transform", () => {
         const config = {
             type: "flattenDelimited",
             field: ["a", "b"],
-            separator: ["a"],
+            separator: ["a"]
         };
 
         expect(() => flattenDelimitedTransform(config, sampleData)).toThrow();
     });
-})
+});

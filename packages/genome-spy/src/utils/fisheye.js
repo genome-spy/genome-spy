@@ -6,24 +6,25 @@
 export default function() {
     let radius = 200,
         distortion = 2,
-        k0 = 1, k1 = 1,
+        k0 = 1,
+        k1 = 1,
         focus = 0;
 
     /**
-     * 
-     * @param {number} x 
+     *
+     * @param {number} x
      */
     function fisheye(x) {
         const dx = x - focus;
         const dd = Math.abs(dx);
         if (!dd || dd >= radius) return x;
-        const k = k0 * (1 - Math.exp(-dd * k1)) / dd * 0.75 + 0.25;
+        const k = ((k0 * (1 - Math.exp(-dd * k1))) / dd) * 0.75 + 0.25;
         return focus + dx * k;
     }
 
     function rescale() {
         k0 = Math.exp(distortion);
-        k0 = k0 / (k0 - 1) * radius;
+        k0 = (k0 / (k0 - 1)) * radius;
         k1 = distortion / radius;
         return fisheye;
     }
@@ -31,7 +32,7 @@ export default function() {
     /**
      * @param {number} _
      */
-    fisheye.radius = function (_) {
+    fisheye.radius = function(_) {
         if (!arguments.length) return radius;
         radius = +_;
         return rescale();
@@ -40,7 +41,7 @@ export default function() {
     /**
      * @param {number} _
      */
-    fisheye.distortion = function (_) {
+    fisheye.distortion = function(_) {
         if (!arguments.length) return distortion;
         distortion = +_;
         return rescale();
@@ -49,7 +50,7 @@ export default function() {
     /**
      * @param {number} _
      */
-    fisheye.focus = function (_) {
+    fisheye.focus = function(_) {
         if (!arguments.length) return focus;
         focus = _;
         return fisheye;

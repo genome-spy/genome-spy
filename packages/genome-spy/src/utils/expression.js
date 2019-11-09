@@ -1,9 +1,8 @@
-
-import { parse, codegen } from 'vega-expression';
+import { parse, codegen } from "vega-expression";
 
 /**
- * 
- * @param {string} expr 
+ *
+ * @param {string} expr
  */
 export default function createFunction(expr, global = {}) {
     const cg = codegen({
@@ -18,13 +17,15 @@ export default function createFunction(expr, global = {}) {
         const generatedCode = cg(parsed);
 
         // eslint-disable-next-line no-new-func
-        const fn = Function("datum", "global", `"use strict"; return (${generatedCode.code});`);
-        
+        const fn = Function(
+            "datum",
+            "global",
+            `"use strict"; return (${generatedCode.code});`
+        );
 
         const fun = /** @param {object} x */ x => fn(x, global);
         fun.fields = generatedCode.fields;
         return fun;
-
     } catch (e) {
         throw new Error(`Invalid expression: ${expr}, ${e.message}`);
     }

@@ -1,26 +1,16 @@
-import formatObject from '../utils/formatObject';
-import Interval from '../utils/interval';
-import WebGlTrack from './webGlTrack';
-import MouseTracker from '../mouseTracker';
-import * as html from '../utils/html';
-import PointMark from '../marks/pointMark';
-import {
-    validTicks,
-    tickValues,
-    tickFormat,
-    tickCount
-} from '../scale/ticks';
-import {
-    getFlattenedViews,
-    getMarks,
-    initializeData,
-} from '../view/viewUtils';
-import UnitView from '../view/unitView';
-
+import formatObject from "../utils/formatObject";
+import Interval from "../utils/interval";
+import WebGlTrack from "./webGlTrack";
+import MouseTracker from "../mouseTracker";
+import * as html from "../utils/html";
+import PointMark from "../marks/pointMark";
+import { validTicks, tickValues, tickFormat, tickCount } from "../scale/ticks";
+import { getFlattenedViews, getMarks, initializeData } from "../view/viewUtils";
+import UnitView from "../view/unitView";
 
 const defaultStyles = {
     height: null
-}
+};
 
 // Based on: https://vega.github.io/vega-lite/docs/axis.html
 /** @type { import("../spec/axis").Axis} */
@@ -63,10 +53,10 @@ const defaultAxisProps = {
 
 export default class SimpleTrack extends WebGlTrack {
     /**
-     * 
-     * @param {import("./../genomeSpy").default } genomeSpy 
-     * @param {object} config 
-     * @param {import("../view/view").default} viewRoot 
+     *
+     * @param {import("./../genomeSpy").default } genomeSpy
+     * @param {object} config
+     * @param {import("../view/view").default} viewRoot
      */
     constructor(genomeSpy, config, viewRoot) {
         super(genomeSpy, config);
@@ -76,7 +66,7 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     /**
-     * @param {HTMLElement} trackContainer 
+     * @param {HTMLElement} trackContainer
      */
     async initialize(trackContainer) {
         await super.initialize(trackContainer);
@@ -89,7 +79,7 @@ export default class SimpleTrack extends WebGlTrack {
 
         // TODO: Move to upper level
         if (typeof this.styles.height == "number") {
-            this.trackContainer.style.height = `${this.styles.height}px`
+            this.trackContainer.style.height = `${this.styles.height}px`;
         } else {
             this.trackContainer.style.flexGrow = "1";
         }
@@ -98,11 +88,10 @@ export default class SimpleTrack extends WebGlTrack {
             element: this.glCanvas,
             tooltip: this.genomeSpy.tooltip,
             resolver: this.findDatumAndMarkAt.bind(this),
-            tooltipConverter: datum => Promise.resolve(this.datumToTooltip(datum)),
-            eqTest: (a, b) => (Object.is(a && a.datum, b && b.datum))
-        })
-            .on("dblclick", this.zoomToDatum.bind(this));
-
+            tooltipConverter: datum =>
+                Promise.resolve(this.datumToTooltip(datum)),
+            eqTest: (a, b) => Object.is(a && a.datum, b && b.datum)
+        }).on("dblclick", this.zoomToDatum.bind(this));
 
         this.genomeSpy.on("layout", layout => {
             this.resizeCanvases(layout);
@@ -114,29 +103,26 @@ export default class SimpleTrack extends WebGlTrack {
             this.renderViewport();
         });
 
-        this.genomeSpy.zoom.attachZoomEvents(
-            this.glCanvas,
-            point => {
-                const datumAndMark = this.findDatumAndMarkAt(point);
-                if (datumAndMark) {
-                    const datum = datumAndMark.datum,
-                        mark = datumAndMark.mark; 
-                    if (mark instanceof PointMark) {
-                        // Snap the mouse cursor to the center of point marks to ease zooming
-                        // TODO: Add a snap method to mark classes -> more abstract design
-                        point[0] = this.genomeSpy.rescaledX(mark.encoders.x(datum));
-                    }
+        this.genomeSpy.zoom.attachZoomEvents(this.glCanvas, point => {
+            const datumAndMark = this.findDatumAndMarkAt(point);
+            if (datumAndMark) {
+                const datum = datumAndMark.datum,
+                    mark = datumAndMark.mark;
+                if (mark instanceof PointMark) {
+                    // Snap the mouse cursor to the center of point marks to ease zooming
+                    // TODO: Add a snap method to mark classes -> more abstract design
+                    point[0] = this.genomeSpy.rescaledX(mark.encoders.x(datum));
                 }
-                // TODO: Support RectMarks with minWidth
+            }
+            // TODO: Support RectMarks with minWidth
 
-                return point;
-            });
+            return point;
+        });
 
         await initializeData(this.viewRoot);
 
         this.initializeGraphics();
     }
-
 
     initializeGraphics() {
         this.viewRoot.visit(view => {
@@ -155,23 +141,26 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     /**
-     * 
-     * @param {DatumAndMark} datumAndMark 
-     * @param {MouseEvent} mouseEvent 
-     * @param {*} point 
+     *
+     * @param {DatumAndMark} datumAndMark
+     * @param {MouseEvent} mouseEvent
+     * @param {*} point
      */
     zoomToDatum(datumAndMark, mouseEvent, point) {
-        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(datumAndMark.mark.encoders);
+        const e =
+            /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (datumAndMark
+                .mark.encoders);
         const d = datumAndMark.datum;
         // TODO: handle case: x = 0
         if (e.x && e.x2) {
             const interval = new Interval(e.x(d), e.x2(d));
             this.genomeSpy.zoomTo(interval.pad(interval.width() * 0.25));
-
         } else if (e.x && !e.x2) {
             const width = 1000000; // TODO: Configurable
 
-            this.genomeSpy.zoomTo(new Interval(e.x(d) - width / 2, e.x(d) + width / 2));
+            this.genomeSpy.zoomTo(
+                new Interval(e.x(d) - width / 2, e.x(d) + width / 2)
+            );
         }
     }
 
@@ -181,12 +170,12 @@ export default class SimpleTrack extends WebGlTrack {
 
     /**
      * Returns the datum (actually the mark spec) at the specified point
-     * 
+     *
      * @typedef {Object} DatumAndMark
      * @prop {object} datum
      * @prop {import("../marks/mark").default} mark
-     * 
-     * @param {number[]} point 
+     *
+     * @param {number[]} point
      * @returns {DatumAndMark}
      */
     findDatumAndMarkAt(point) {
@@ -205,17 +194,18 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     /**
-     * 
-     * @param {DatumAndMark} datumAndMark 
+     *
+     * @param {DatumAndMark} datumAndMark
      */
     datumToTooltip(datumAndMark) {
         const datum = datumAndMark.datum;
         const mark = datumAndMark.mark;
 
         const props = mark.properties;
-        const propertyFilter = props && props.tooltip && props.tooltip.skipFields ?
-            entry => props.tooltip.skipFields.indexOf(entry[0]) < 0 :
-            entry => true;
+        const propertyFilter =
+            props && props.tooltip && props.tooltip.skipFields
+                ? entry => props.tooltip.skipFields.indexOf(entry[0]) < 0
+                : entry => true;
 
         /**
          * @param {string} key
@@ -226,35 +216,46 @@ export default class SimpleTrack extends WebGlTrack {
                 if (encoder.accessor && encoder.accessor.fields.includes(key)) {
                     switch (channel) {
                         case "color":
-                            return `<span class="color-legend" style="background-color: ${encoder(datum)}"></span>`;
+                            return `<span class="color-legend" style="background-color: ${encoder(
+                                datum
+                            )}"></span>`;
                         default:
                     }
                 }
             }
 
             return "";
-        } 
+        }
 
-        const table = '<table class="attributes"' +
-            Object.entries(datum).filter(propertyFilter).map(([key, value]) => `
+        const table =
+            '<table class="attributes"' +
+            Object.entries(datum)
+                .filter(propertyFilter)
+                .map(
+                    ([key, value]) => `
                 <tr>
                     <th>${html.escapeHtml(key)}</th>
-                    <td>${html.escapeHtml(formatObject(value))} ${legend(key, datum)}</td>
+                    <td>${html.escapeHtml(formatObject(value))} ${legend(
+                        key,
+                        datum
+                    )}</td>
                 </tr>`
-            ).join("") +
+                )
+                .join("") +
             "</table>";
 
-        const title = mark.unitView.spec.title ?
-            `<div class="title"><strong>${html.escapeHtml(mark.unitView.spec.title)}</strong></div>` :
-            "";
-        
+        const title = mark.unitView.spec.title
+            ? `<div class="title"><strong>${html.escapeHtml(
+                  mark.unitView.spec.title
+              )}</strong></div>`
+            : "";
+
         return `
         ${title}
         <div class="sample-track-datum-tooltip">
             ${table}
-        </div>`
+        </div>`;
     }
-
 
     renderViewport() {
         const gl = this.gl;
@@ -274,10 +275,10 @@ export default class SimpleTrack extends WebGlTrack {
                     yPosRight: [0, 1]
                 }
             }
-        ]
+        ];
 
         for (const mark of getMarks(this.viewRoot)) {
-            mark.render(samples, globalUniforms)
+            mark.render(samples, globalUniforms);
         }
     }
 
@@ -301,27 +302,36 @@ export default class SimpleTrack extends WebGlTrack {
             if (props.domain) {
                 const truncated = true;
 
-                const domain = truncated ?
-                    axisLayout.ticks :
-                    scale.domain();
+                const domain = truncated ? axisLayout.ticks : scale.domain();
 
                 ctx.fillStyle = props.domainColor;
                 ctx.fillRect(
                     axisWidth - axisLayout.offsets.domain - props.domainWidth,
                     scale(domain[domain.length - 1]) - props.tickWidth / 2,
                     props.domainWidth,
-                    Math.abs(scale(domain[0]) - scale(domain[domain.length - 1])) + props.tickWidth + (scale.bandwidth ? scale.bandwidth() : 0));
+                    Math.abs(
+                        scale(domain[0]) - scale(domain[domain.length - 1])
+                    ) +
+                        props.tickWidth +
+                        (scale.bandwidth ? scale.bandwidth() : 0)
+                );
             }
 
             // --- Ticks ---
 
-            const tickOffset = (scale.bandwidth && scale.bandwidth() || 0) / 2;
+            const tickOffset =
+                ((scale.bandwidth && scale.bandwidth()) || 0) / 2;
 
             if (props.ticks) {
                 for (const tick of axisLayout.ticks) {
                     const y = scale(tick) + tickOffset;
                     ctx.fillStyle = props.tickColor;
-                    ctx.fillRect(axisWidth - axisLayout.offsets.ticks, y - props.tickWidth / 2, props.tickSize, props.tickWidth);
+                    ctx.fillRect(
+                        axisWidth - axisLayout.offsets.ticks,
+                        y - props.tickWidth / 2,
+                        props.tickSize,
+                        props.tickWidth
+                    );
                 }
             }
 
@@ -338,7 +348,11 @@ export default class SimpleTrack extends WebGlTrack {
 
                     const y = scale(tick) + tickOffset;
                     ctx.fillStyle = props.labelColor;
-                    ctx.fillText(label, axisWidth - axisLayout.offsets.labels, y);
+                    ctx.fillText(
+                        label,
+                        axisWidth - axisLayout.offsets.labels,
+                        y
+                    );
                 }
             }
 
@@ -347,7 +361,10 @@ export default class SimpleTrack extends WebGlTrack {
             if (axisLayout.title) {
                 ctx.save();
 
-                ctx.translate(axisWidth - axisLayout.offsets.title, axisLength / 2);
+                ctx.translate(
+                    axisWidth - axisLayout.offsets.title,
+                    axisLength / 2
+                );
                 ctx.rotate(-Math.PI / 2);
 
                 ctx.fillStyle = props.titleColor;
@@ -367,7 +384,6 @@ export default class SimpleTrack extends WebGlTrack {
      * Computes layout and tick labels for the axes
      */
     getYAxisLayouts() {
-
         /** Padding between multiple axes: TODO: Configurable */
         const axisPadding = 10;
 
@@ -419,15 +435,21 @@ export default class SimpleTrack extends WebGlTrack {
             axisLayout.offsets.domain = pos;
 
             // Slightly decrease the tick density as the height increases
-            let count = props.tickCount ||
-                Math.round(axisLength / Math.exp(axisLength / 800) / props.labelFontSize / 1.7);
+            let count =
+                props.tickCount ||
+                Math.round(
+                    axisLength /
+                        Math.exp(axisLength / 800) /
+                        props.labelFontSize /
+                        1.7
+                );
 
             count = tickCount(scale, count, props.tickMinStep);
 
             /** @type {array} */
-            axisLayout.ticks = props.values ?
-                validTicks(scale, props.values, count) :
-                tickValues(scale, count);
+            axisLayout.ticks = props.values
+                ? validTicks(scale, props.values, count)
+                : tickValues(scale, count);
 
             // --- Ticks ---
 

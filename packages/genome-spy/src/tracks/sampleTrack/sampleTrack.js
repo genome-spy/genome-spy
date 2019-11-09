@@ -1,21 +1,26 @@
-import { scaleLinear } from 'd3-scale';
-import { zip } from 'd3-array';
-import { inferType } from 'vega-loader';
+import { scaleLinear } from "d3-scale";
+import { zip } from "d3-array";
+import { inferType } from "vega-loader";
 
-import { getMarks } from '../../view/viewUtils';
-import SimpleTrack from '../simpleTrack';
-import BandScale from '../../utils/bandScale';
+import { getMarks } from "../../view/viewUtils";
+import SimpleTrack from "../simpleTrack";
+import BandScale from "../../utils/bandScale";
 import fisheye from "../../utils/fisheye";
-import transition, { easeLinear, normalizedEase, easeInOutQuad, easeInOutSine } from "../../utils/transition";
+import transition, {
+    easeLinear,
+    normalizedEase,
+    easeInOutQuad,
+    easeInOutSine
+} from "../../utils/transition";
 import clientPoint from "../../utils/point";
-import AttributePanel from './attributePanel';
-import { shallowArrayEquals } from '../../utils/arrayUtils';
-import DataSource from '../../data/dataSource';
-import contextMenu from '../../contextMenu';
+import AttributePanel from "./attributePanel";
+import { shallowArrayEquals } from "../../utils/arrayUtils";
+import DataSource from "../../data/dataSource";
+import contextMenu from "../../contextMenu";
 
 const defaultStyles = {
-    paddingInner: 0.20, // Relative to sample height
-    paddingOuter: 0.20,
+    paddingInner: 0.2, // Relative to sample height
+    paddingOuter: 0.2,
 
     attributeWidth: 12, // in pixels
     attributePaddingInner: 0.05,
@@ -28,8 +33,7 @@ const defaultStyles = {
     horizontalSpacing: 10, // TODO: Find a better place
 
     height: null // Use "flex-grow: 1" if no height has been specified
-}
-
+};
 
 function extractAttributes(row) {
     const attributes = Object.assign({}, row);
@@ -39,33 +43,30 @@ function extractAttributes(row) {
 }
 
 /**
- * @param {any[]} flatSamples 
+ * @param {any[]} flatSamples
  */
 function processSamples(flatSamples) {
-    return flatSamples 
-        .map(row => ({
-            id: row.sample,
-            displayName: row.displayName || row.sample,
-            attributes: extractAttributes(row)
-        }));
+    return flatSamples.map(row => ({
+        id: row.sample,
+        displayName: row.displayName || row.sample,
+        attributes: extractAttributes(row)
+    }));
 }
-
 
 /**
  * A track that displays one or more samples as sub-tracks.
- * 
+ *
  * @typedef {Object} Sample
  * @prop {string} id
  * @prop {string} displayName
  * @prop {Object[]} attributes Arbitrary sample specific attributes
  */
 export default class SampleTrack extends SimpleTrack {
-
     /**
-     * 
-     * @param {import("../../genomeSpy").default } genomeSpy 
-     * @param {object} config 
-     * @param {import("../../view/view").default} viewRoot 
+     *
+     * @param {import("../../genomeSpy").default } genomeSpy
+     * @param {object} config
+     * @param {import("../../view/view").default} viewRoot
      */
     constructor(genomeSpy, config, viewRoot) {
         super(genomeSpy, config, viewRoot);
@@ -76,32 +77,31 @@ export default class SampleTrack extends SimpleTrack {
 
         /**
          * Global transform for y axis (Samples)
-         * 
+         *
          * @type {?function(number):number}
          */
         this.yTransform = null;
     }
 
-
     /**
-     * 
-     * @param {Sample[]} samples 
+     *
+     * @param {Sample[]} samples
      */
     setSamples(samples) {
         // TODO: Support dynamic configuration
 
         /**
          * A map of sample objects
-         * 
+         *
          * @type {Map<string, Sample>}
          */
         this.samples = new Map(samples.map(sample => [sample.id, sample]));
 
         /**
          * A mapping that specifies the order of the samples.
-         * 
+         *
          * TODO: Implement "SampleManager" with ordering, filtering and unit tests
-         * 
+         *
          * @type {string[]}
          */
         this.sampleOrder = samples.map(s => s.id);
@@ -109,7 +109,7 @@ export default class SampleTrack extends SimpleTrack {
         /**
          * Keep track of sample set mutations.
          * TODO: Consider Redux
-         * 
+         *
          * @type {string[][]}
          */
         this.sampleOrderHistory = [[...this.sampleOrder]];
@@ -119,7 +119,7 @@ export default class SampleTrack extends SimpleTrack {
      * Returns the minimum width that accommodates the labels on the Y axis.
      * The axis area of sampleTrack contains sample labels and sample-specific
      * attributes.
-     * 
+     *
      * @returns {number} The width
      */
     getMinAxisWidth() {
@@ -135,30 +135,35 @@ export default class SampleTrack extends SimpleTrack {
     }
 
     /**
-     * @param {HTMLElement} trackContainer 
+     * @param {HTMLElement} trackContainer
      */
     async initialize(trackContainer) {
         await super.initialize(trackContainer);
 
         if (this.config.samples) {
-            const sampleDataSource = new DataSource(this.config.samples.data, this.genomeSpy.config.baseUrl);
-            this.setSamples(processSamples(await sampleDataSource.getUngroupedData()));
-
+            const sampleDataSource = new DataSource(
+                this.config.samples.data,
+                this.genomeSpy.config.baseUrl
+            );
+            this.setSamples(
+                processSamples(await sampleDataSource.getUngroupedData())
+            );
         } else {
             const resolution = this.viewRoot.getResolution("sample");
             if (resolution) {
-                this.setSamples(resolution.getDomain().map(s => ({
-                    id: s,
-                    displayName: s,
-                    attributes: []
-                })));
+                this.setSamples(
+                    resolution.getDomain().map(s => ({
+                        id: s,
+                        displayName: s,
+                        attributes: []
+                    }))
+                );
             }
         }
 
         if (!this.samples) {
             throw new Error("No samples defined!"); // TODO: How to fix?
         }
-        
 
         this.trackContainer.className = "sample-track";
 
@@ -168,11 +173,13 @@ export default class SampleTrack extends SimpleTrack {
         this.sampleScale.paddingInner = this.styles.paddingInner;
         this.sampleScale.paddingOuter = this.styles.paddingOuter;
 
-        this.viewportMouseTracker
-            .on("contextmenu", this.createContextMenu.bind(this))
+        this.viewportMouseTracker.on(
+            "contextmenu",
+            this.createContextMenu.bind(this)
+        );
 
         this.attributePanel.initialize();
-        this.initializeFisheye()
+        this.initializeFisheye();
 
         this.genomeSpy.on("layout", () => {
             this.attributePanel.renderLabels();
@@ -181,16 +188,14 @@ export default class SampleTrack extends SimpleTrack {
 
         // TODO: Reorganize:
         document.body.addEventListener("keydown", event => {
-            if (event.key >= '1' && event.key <= '9') {
-                const index = event.key.charCodeAt(0) - '1'.charCodeAt(0);
+            if (event.key >= "1" && event.key <= "9") {
+                const index = event.key.charCodeAt(0) - "1".charCodeAt(0);
                 this.sortSamples(s => Object.values(s.attributes)[index]);
-
             } else if (event.code == "Backspace") {
                 this.backtrackSamples();
             }
         });
     }
-
 
     /**
      * Initializes fisheye functionality.
@@ -208,19 +213,19 @@ export default class SampleTrack extends SimpleTrack {
         const focus = () => {
             this.fisheye.focus(clientPoint(this.glCanvas, lastMouseEvent)[1]);
             render();
-        }
+        };
 
         const moveListener = /** @param {MouseEvent} event */ event => {
             lastMouseEvent = event;
             if (this.fisheye) {
                 focus();
             }
-        }
+        };
 
         this.genomeSpy.container.addEventListener("mousemove", moveListener);
 
         const minWidth = 30;
-        const zero = 0.01
+        const zero = 0.01;
         let zoomFactor = zero;
 
         const closeFisheye = () => {
@@ -257,7 +262,6 @@ export default class SampleTrack extends SimpleTrack {
                     focus();
                 }
             });
-
         };
 
         // Ad hoc key binding. TODO: Make this more abstract
@@ -266,11 +270,9 @@ export default class SampleTrack extends SimpleTrack {
                 if (!persistentFisheye) {
                     openFisheye();
                     persistentFisheye = event.shiftKey;
-
                 } else if (event.shiftKey) {
                     closeFisheye();
                     persistentFisheye = false;
-
                 } else {
                     persistentFisheye = false;
                 }
@@ -278,20 +280,28 @@ export default class SampleTrack extends SimpleTrack {
         });
 
         document.body.addEventListener("keyup", event => {
-            if (event.code == "KeyE" && this.fisheye && !persistentFisheye && !event.shiftKey) {
+            if (
+                event.code == "KeyE" &&
+                this.fisheye &&
+                !persistentFisheye &&
+                !event.shiftKey
+            ) {
                 closeFisheye();
             }
         });
     }
 
     /**
-     * @param {number[]} point 
+     * @param {number[]} point
      */
     findSampleAt(point) {
         // If space between bands get too small, find closest to make opening
         // of the context menu easier
-        const findClosest = this.sampleScale.getRange().width() /
-            this.sampleScale.getDomain().length * this.sampleScale.paddingOuter < 2.5;
+        const findClosest =
+            (this.sampleScale.getRange().width() /
+                this.sampleScale.getDomain().length) *
+                this.sampleScale.paddingOuter <
+            2.5;
 
         const sampleId = this.sampleScale.invert(point[1], findClosest);
         return sampleId ? this.samples.get(sampleId) : null;
@@ -299,8 +309,8 @@ export default class SampleTrack extends SimpleTrack {
 
     /**
      * Returns the datum (actually the mark spec) at the specified point
-     * 
-     * @param {number[]} point 
+     *
+     * @param {number[]} point
      */
     findDatumAndMarkAt(point) {
         const [x, y] = point;
@@ -322,58 +332,62 @@ export default class SampleTrack extends SimpleTrack {
         }
     }
 
-
     /**
-     * 
-     * @param {object} datum 
-     * @param {MouseEvent} mouseEvent 
-     * @param {number[]} point 
+     *
+     * @param {object} datum
+     * @param {MouseEvent} mouseEvent
+     * @param {number[]} point
      */
     createContextMenu(datum, mouseEvent, point) {
-
         /** @type {import("../../contextMenu").MenuItem[]} */
         let items = [];
-        
+
         const scaledX = this.genomeSpy.rescaledX.invert(point[0]);
 
         for (const mark of getMarks(this.viewRoot)) {
             if (mark.properties && mark.properties.sorting) {
                 items.push({
-                    label: mark.unitView.spec.title || "- No title -", 
+                    label: mark.unitView.spec.title || "- No title -",
                     type: "header"
                 });
 
                 for (const field of mark.properties.sorting.fields) {
                     items.push({
                         label: `Sort by ${field}`,
-                        callback: () => this.sortSamplesByLocus(mark, scaledX, field)
+                        callback: () =>
+                            this.sortSamplesByLocus(mark, scaledX, field)
                     });
                 }
             }
         }
-    
+
         contextMenu({ items }, mouseEvent);
     }
 
     /**
-     * 
+     *
      * @param {import("../../marks/mark").default} mark
      * @param {number} pos locus in continuous domain
      * @param {string} attribute
      */
     sortSamplesByLocus(mark, pos, attribute) {
-        const getAttribute = d => d ? d[attribute] : undefined;
+        const getAttribute = d => (d ? d[attribute] : undefined);
 
-        const values = this.sampleOrder.map(id => getAttribute(mark.findDatumAt(id, pos)));
+        const values = this.sampleOrder.map(id =>
+            getAttribute(mark.findDatumAt(id, pos))
+        );
 
         const isValid = x => x != null && x === x;
 
         // nulls & undefineds break sorting
-        const sanitize = inferType(values) == "number" ?
-            (d => isValid(d) ? d : -Infinity) :
-            (d => isValid(d) ? d : "")
+        const sanitize =
+            inferType(values) == "number"
+                ? d => (isValid(d) ? d : -Infinity)
+                : d => (isValid(d) ? d : "");
 
-        const valuesBySample = new Map(zip(this.sampleOrder, values.map(sanitize)));
+        const valuesBySample = new Map(
+            zip(this.sampleOrder, values.map(sanitize))
+        );
 
         const accessor = sample => valuesBySample.get(sample.id);
 
@@ -381,82 +395,97 @@ export default class SampleTrack extends SimpleTrack {
     }
 
     /**
-     * 
-     * @param {function(Sample):number} attributeAccessor 
+     *
+     * @param {function(Sample):number} attributeAccessor
      */
     sortSamples(attributeAccessor) {
-        let sortedSampleIds = this.getSamplesSortedByAttribute(attributeAccessor, false);
+        let sortedSampleIds = this.getSamplesSortedByAttribute(
+            attributeAccessor,
+            false
+        );
 
         if (shallowArrayEquals(sortedSampleIds, this.sampleOrder)) {
-            sortedSampleIds = this.getSamplesSortedByAttribute(attributeAccessor, true);
+            sortedSampleIds = this.getSamplesSortedByAttribute(
+                attributeAccessor,
+                true
+            );
         }
 
         this.updateSamples(sortedSampleIds);
     }
 
-
     backtrackSamples() {
         if (this.sampleOrderHistory.length > 1) {
             this.sampleOrderHistory.pop();
 
-            const sampleIds = this.sampleOrderHistory[this.sampleOrderHistory.length - 1];
+            const sampleIds = this.sampleOrderHistory[
+                this.sampleOrderHistory.length - 1
+            ];
 
             const targetSampleScale = this.sampleScale.clone();
             targetSampleScale.domain(sampleIds);
 
-            this.animateSampleTransition(this.sampleScale, targetSampleScale, true)
-                .then(() => {
-                    this.sampleOrder = sampleIds;
-                    this.sampleScale = targetSampleScale;
-                    this.renderViewport();
-                    this.attributePanel.renderLabels();
-                });
-        }
-    }
-    
-    /**
-     * Updates the visible set of samples. Animates the transition.
-     *
-     * @param {string[]} sampleIds 
-     */
-    updateSamples(sampleIds) {
-
-        // Do nothing if new samples equals the old samples
-        if (shallowArrayEquals(sampleIds,
-            this.sampleOrderHistory[this.sampleOrderHistory.length - 1])) {
-            return;
-        }
-
-        // If new samples appear to reverse the last action, backtrack in history
-        if (this.sampleOrderHistory.length > 1 &&
-            shallowArrayEquals(sampleIds,
-            this.sampleOrderHistory[this.sampleOrderHistory.length - 2])) {
-            this.sampleOrderHistory.pop();
-
-        } else {
-            this.sampleOrderHistory.push(sampleIds);
-        }
-
-
-        const targetSampleScale = this.sampleScale.clone();
-        targetSampleScale.domain(sampleIds);
-
-        this.animateSampleTransition(this.sampleScale, targetSampleScale)
-            .then(() => {
+            this.animateSampleTransition(
+                this.sampleScale,
+                targetSampleScale,
+                true
+            ).then(() => {
                 this.sampleOrder = sampleIds;
                 this.sampleScale = targetSampleScale;
                 this.renderViewport();
                 this.attributePanel.renderLabels();
             });
+        }
     }
 
     /**
-     * @param {BandScale} from 
-     * @param {BandScale} to 
-     * @param {boolean} reverse 
+     * Updates the visible set of samples. Animates the transition.
+     *
+     * @param {string[]} sampleIds
+     */
+    updateSamples(sampleIds) {
+        // Do nothing if new samples equals the old samples
+        if (
+            shallowArrayEquals(
+                sampleIds,
+                this.sampleOrderHistory[this.sampleOrderHistory.length - 1]
+            )
+        ) {
+            return;
+        }
+
+        // If new samples appear to reverse the last action, backtrack in history
+        if (
+            this.sampleOrderHistory.length > 1 &&
+            shallowArrayEquals(
+                sampleIds,
+                this.sampleOrderHistory[this.sampleOrderHistory.length - 2]
+            )
+        ) {
+            this.sampleOrderHistory.pop();
+        } else {
+            this.sampleOrderHistory.push(sampleIds);
+        }
+
+        const targetSampleScale = this.sampleScale.clone();
+        targetSampleScale.domain(sampleIds);
+
+        this.animateSampleTransition(this.sampleScale, targetSampleScale).then(
+            () => {
+                this.sampleOrder = sampleIds;
+                this.sampleScale = targetSampleScale;
+                this.renderViewport();
+                this.attributePanel.renderLabels();
+            }
+        );
+    }
+
+    /**
+     * @param {BandScale} from
+     * @param {BandScale} to
+     * @param {boolean} reverse
      */
     animateSampleTransition(from, to, reverse = false) {
-
         from = this.addCollapsedBands(to, from);
         to = this.addCollapsedBands(from, to);
 
@@ -464,8 +493,12 @@ export default class SampleTrack extends SimpleTrack {
             [from, to] = [to, from];
         }
 
-        const yDelay = scaleLinear().domain([0, 0.4]).clamp(true);
-        const xDelay = scaleLinear().domain([0.15, 1]).clamp(true);
+        const yDelay = scaleLinear()
+            .domain([0, 0.4])
+            .clamp(true);
+        const xDelay = scaleLinear()
+            .domain([0.15, 1])
+            .clamp(true);
 
         const yEase = normalizedEase(easeInOutQuad);
         const xEase = normalizedEase(easeInOutSine);
@@ -473,7 +506,9 @@ export default class SampleTrack extends SimpleTrack {
         this.attributePanel.sampleMouseTracker.clear();
         this.viewportMouseTracker.clear();
 
-        getMarks(this.viewRoot).forEach(layer => layer.onBeforeSampleAnimation());
+        getMarks(this.viewRoot).forEach(layer =>
+            layer.onBeforeSampleAnimation()
+        );
 
         return transition({
             from: reverse ? 1 : 0,
@@ -485,7 +520,7 @@ export default class SampleTrack extends SimpleTrack {
                 //    .mix(to.scale(id), yEase(yDelay(value)));
 
                 //const easingFunction = value => yEase(yDelay(value))
-                
+
                 /** @type {RenderOptions} */
                 const options = {
                     leftScale: from,
@@ -497,12 +532,16 @@ export default class SampleTrack extends SimpleTrack {
                 this.renderViewport(options);
                 this.attributePanel.renderLabels(options);
             }
-        }).then(() => getMarks(this.viewRoot).forEach(layer => layer.onAfterSampleAnimation()));
+        }).then(() =>
+            getMarks(this.viewRoot).forEach(layer =>
+                layer.onAfterSampleAnimation()
+            )
+        );
     }
 
     /**
      * Adds missing keys to the target scale as collapsed bands
-     * 
+     *
      * @param {BandScale} source A scale that contains additional keys missing from the target
      * @param {BandScale} target The scale that will be supplemented with collapsed bands
      */
@@ -518,7 +557,6 @@ export default class SampleTrack extends SimpleTrack {
             const targetIndex = targetDomain.indexOf(key);
             if (targetIndex >= 0) {
                 lastInsertionPoint = targetIndex;
-
             } else {
                 lastInsertionPoint++;
                 targetDomain.splice(lastInsertionPoint, 0, key);
@@ -531,20 +569,19 @@ export default class SampleTrack extends SimpleTrack {
         return supplementedScale;
     }
 
-
     /**
-     * 
+     *
      * @param {function} attributeAccessor
      * @param {boolean} [descending]
-     * @returns {string[]} ids of sorted samples 
+     * @returns {string[]} ids of sorted samples
      */
     getSamplesSortedByAttribute(attributeAccessor, descending = false) {
-        const replaceNaN = x => (typeof x == "number" && isNaN(x)) ? -Infinity : x === null ? "" : x;
+        const replaceNaN = x =>
+            typeof x == "number" && isNaN(x) ? -Infinity : x === null ? "" : x;
 
         return [...this.sampleOrder].sort((a, b) => {
             let av = replaceNaN(attributeAccessor(this.samples.get(a)));
             let bv = replaceNaN(attributeAccessor(this.samples.get(b)));
-
 
             if (descending) {
                 [av, bv] = [bv, av];
@@ -560,28 +597,28 @@ export default class SampleTrack extends SimpleTrack {
         });
     }
 
-
     /**
-     * 
+     *
      * @typedef {Object} RenderOptions
      * @property {BandScale} leftScale
      * @property {BandScale} rightScale
      * @property {number} yTransitionProgress
      * @property {number} xTransitionProgress
-     * 
-     * @param {RenderOptions} [options] 
+     *
+     * @param {RenderOptions} [options]
      */
     renderViewport(options) {
         const gl = this.gl;
 
         // Normalize to [0, 1]
-        const normalize = scaleLinear()
-            .domain([0, gl.canvas.clientHeight]);
-        
-        const leftScale = (options && options.leftScale) || this.sampleScale
-        const rightScale = (options && options.rightScale) || this.sampleScale
-        const xTransitionProgress = (options && options.xTransitionProgress) || 0;
-        const yTransitionProgress = (options && options.yTransitionProgress) || 0;
+        const normalize = scaleLinear().domain([0, gl.canvas.clientHeight]);
+
+        const leftScale = (options && options.leftScale) || this.sampleScale;
+        const rightScale = (options && options.rightScale) || this.sampleScale;
+        const xTransitionProgress =
+            (options && options.xTransitionProgress) || 0;
+        const yTransitionProgress =
+            (options && options.yTransitionProgress) || 0;
 
         //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.clear(gl.COLOR_BUFFER_BIT);
@@ -593,12 +630,14 @@ export default class SampleTrack extends SimpleTrack {
         };
 
         const samples = leftScale.getDomain().map(sampleId => {
-            const bandLeft = leftScale.scale(sampleId)
+            const bandLeft = leftScale
+                .scale(sampleId)
                 .mix(rightScale.scale(sampleId), yTransitionProgress)
                 .transform(this.yTransform)
                 .transform(normalize);
 
-            const bandRight = leftScale.scale(sampleId)
+            const bandRight = leftScale
+                .scale(sampleId)
                 .transform(this.yTransform)
                 .transform(normalize);
 
@@ -606,13 +645,13 @@ export default class SampleTrack extends SimpleTrack {
                 sampleId,
                 uniforms: {
                     yPosLeft: [bandLeft.lower, bandLeft.width()],
-                    yPosRight: [bandRight.lower, bandRight.width()],
+                    yPosRight: [bandRight.lower, bandRight.width()]
                 }
             };
         });
 
         for (const mark of getMarks(this.viewRoot)) {
-            mark.render(samples, globalUniforms)
+            mark.render(samples, globalUniforms);
         }
     }
 }

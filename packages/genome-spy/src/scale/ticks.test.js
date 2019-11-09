@@ -1,23 +1,27 @@
 /*!
  * Adapted from vega-encode:
  * https://github.com/vega/vega/blob/master/packages/vega-encode/test/scale-test.js
- * 
+ *
  * Copyright (c) 2015-2018, University of Washington Interactive Data Lab
  * All rights reserved.
- * 
+ *
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
 /* eslint-disable */
 
-import { validTicks } from './ticks';
-import { timeInterval } from 'vega-scale';
+import { validTicks } from "./ticks";
+import { timeInterval } from "vega-scale";
 
-test('validTicks uses count correctly', function () {
+test("validTicks uses count correctly", function() {
     var data = [0, 1, 2, 3, 4, 5, 6, 7];
 
-    var identity = function (x) { return x; };
-    identity.range = function () { return [0, 10]; };
+    var identity = function(x) {
+        return x;
+    };
+    identity.range = function() {
+        return [0, 10];
+    };
 
     var t1 = validTicks(identity, data, 5);
     expect(t1).toEqual([0, 2, 4, 6]);
@@ -31,7 +35,7 @@ test('validTicks uses count correctly', function () {
     expect(t3).toEqual([0, 7]);
 
     // validTicks ignores interval function
-    var t4 = validTicks(identity, data, timeInterval('hour'));
+    var t4 = validTicks(identity, data, timeInterval("hour"));
     expect(t4).toEqual(data);
 
     // single tick should pass through

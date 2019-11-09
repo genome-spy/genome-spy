@@ -1,5 +1,4 @@
-
-import RectMark from './rectMark.js';
+import RectMark from "./rectMark.js";
 
 const defaultMarkProperties = {
     size: 1.0, // TODO: Provide through encoding
@@ -8,10 +7,10 @@ const defaultMarkProperties = {
 
 /** @type {import("../view/viewUtils").EncodingSpecs} */
 const defaultEncoding = {
-    x:  null,
+    x: null,
     x2: null,
-    y:  null,
-    y2: null 
+    y: null,
+    y2: null
 };
 
 const verticalSym = Symbol("Vertical");
@@ -21,12 +20,11 @@ const verticalSym = Symbol("Vertical");
  * a more straightforward configuration for rules.
  */
 export default class RuleMark extends RectMark {
-
     /**
      * @param {import("../view/unitView").default} unitView
      */
     constructor(unitView) {
-        super(unitView)
+        super(unitView);
 
         /** @type {Record<string, any>} */
         this.properties = {
@@ -39,18 +37,20 @@ export default class RuleMark extends RectMark {
 
         const props = this.properties;
 
-        Object.assign(this.properties, vertical ?
-            {
-                minWidth: props.size,
-                minHeight: props.minLength,
-                minOpacity: 1.0
-            } :
-            {
-                minWidth: props.minLength,
-                minHeight: props.size,
-                minOpacity: 1.0
-            }); 
-
+        Object.assign(
+            this.properties,
+            vertical
+                ? {
+                      minWidth: props.size,
+                      minHeight: props.minLength,
+                      minOpacity: 1.0
+                  }
+                : {
+                      minWidth: props.minLength,
+                      minHeight: props.size,
+                      minOpacity: 1.0
+                  }
+        );
     }
 
     getDefaultEncoding() {
@@ -69,34 +69,38 @@ export default class RuleMark extends RectMark {
         if (encoding.x && !encoding.y) {
             // Vertical rule
             vertical = true;
-            encoding.y =  { value: -Infinity };
-            encoding.y2 = { value:  Infinity };
+            encoding.y = { value: -Infinity };
+            encoding.y2 = { value: Infinity };
             encoding.x2 = encoding.x;
-
         } else if (encoding.y && !encoding.x) {
             // Horizontal rule
             vertical = false;
-            encoding.x =  { value: -Infinity };
-            encoding.x2 = { value:  Infinity };
+            encoding.x = { value: -Infinity };
+            encoding.x2 = { value: Infinity };
             encoding.y2 = encoding.y;
-
         } else if (encoding.x && encoding.y && encoding.y2) {
             // Limited vertical rule
             vertical = true;
             encoding.x2 = encoding.x;
-
         } else if (encoding.y && encoding.x && encoding.x2) {
             // Limited horizontal rule
             vertical = false;
             encoding.y2 = encoding.y;
-
-        } else if (encoding.y && encoding.x && !encoding.x2 && encoding.y.type == "quantitative" && !encoding.y2) {
+        } else if (
+            encoding.y &&
+            encoding.x &&
+            !encoding.x2 &&
+            encoding.y.type == "quantitative" &&
+            !encoding.y2
+        ) {
             vertical = true;
             encoding.x2 = encoding.x;
-            encoding.y2 = { constant: 0 }
-
+            encoding.y2 = { constant: 0 };
         } else {
-            throw new Error("Invalid x and y encodings for rule mark: " + JSON.stringify(encoding));
+            throw new Error(
+                "Invalid x and y encodings for rule mark: " +
+                    JSON.stringify(encoding)
+            );
         }
 
         encoding[verticalSym] = vertical;

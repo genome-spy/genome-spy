@@ -1,14 +1,14 @@
-import createFunction from '../utils/expression';
+import createFunction from "../utils/expression";
 
-import { field, constant } from 'vega-util';
+import { field, constant } from "vega-util";
 
 /**
  * @typedef {Object} AccessorMetadata
  * @prop {boolean} constant Accessor returns a constant value
  * @prop {string[]} fields The fields that the return value is based on (if any)
- * 
+ *
  * @typedef {(function(object):any) & AccessorMetadata} Accessor
- * 
+ *
  * @typedef {import("../view/viewUtils").EncodingSpec} EncodingSpec
  */
 export default class AccessorFactory {
@@ -24,14 +24,15 @@ export default class AccessorFactory {
                     accessor.constant = false;
                     accessor.fields = [encoding.field];
                     return accessor;
-
                 } catch (e) {
                     throw new Error(`Invalid field definition: ${e.message}`);
                 }
             }
         });
 
-        this.register(encoding => (encoding.expr ? createExpressionAccessor(encoding.expr) : undefined));
+        this.register(encoding =>
+            encoding.expr ? createExpressionAccessor(encoding.expr) : undefined
+        );
 
         this.register(encoding => {
             if (encoding.constant !== undefined) {
@@ -45,16 +46,16 @@ export default class AccessorFactory {
     }
 
     /**
-     * 
-     * @param {function(EncodingSpec):Accessor} creator 
+     *
+     * @param {function(EncodingSpec):Accessor} creator
      */
     register(creator) {
         this.accessorCreators.push(creator);
     }
 
     /**
-     * 
-     * @param {EncodingSpec} encoding 
+     *
+     * @param {EncodingSpec} encoding
      */
     createAccessor(encoding) {
         for (const creator of this.accessorCreators) {
@@ -66,12 +67,10 @@ export default class AccessorFactory {
     }
 }
 
-
 /**
  * @param {string} expr
  */
 function createExpressionAccessor(expr) {
-
     /** @type {Accessor} */
     const accessor = createFunction(expr);
     accessor.constant = accessor.fields.length == 0; // Not bulletproof, eh

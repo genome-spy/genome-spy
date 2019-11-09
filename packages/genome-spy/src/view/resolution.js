@@ -1,14 +1,12 @@
-import {
-    isString
-} from 'vega-util';
+import { isString } from "vega-util";
 
-import mergeObjects from '../utils/mergeObjects';
-import createScale from '../scale/scale';
+import mergeObjects from "../utils/mergeObjects";
+import createScale from "../scale/scale";
 
-import { SHAPES } from '../marks/pointMark'; // TODO: Fix silly dependency
+import { SHAPES } from "../marks/pointMark"; // TODO: Fix silly dependency
 
 /**
- * @typedef {import("../utils/domainArray").DomainArray} DomainArray 
+ * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  * @typedef {import("../utils/interval").default} Interval
  * @typedef { import("./unitView").default} UnitView
  */
@@ -21,14 +19,14 @@ export default class Resolution {
         this.channel = channel;
         /** @type {import("./unitView").default[]} */
         this.views = [];
-        this.scale = { }
+        this.scale = {};
         /** @type {string} */
         this.type = null;
     }
 
     /**
      * @param {string} channel
-     * @param {object} scaleConfig 
+     * @param {object} scaleConfig
      */
     static createExplicitResolution(channel, scaleConfig) {
         const r = new Resolution(channel);
@@ -39,7 +37,7 @@ export default class Resolution {
 
     /**
      * N.B. This is expected to be called in depth-first order
-     * 
+     *
      * @param {UnitView} view
      */
     pushUnitView(view) {
@@ -48,8 +46,9 @@ export default class Resolution {
             this.type = type;
         } else if (type !== this.type) {
             // TODO: Include a reference to the layer
-            throw new Error(`Can not use shared scale for different data types: ${this.type} vs. ${type}. Use "resolve: independent" for channel ${this.channel}`)
-            
+            throw new Error(
+                `Can not use shared scale for different data types: ${this.type} vs. ${type}. Use "resolve: independent" for channel ${this.channel}`
+            );
         }
 
         this.views.push(view);
@@ -58,24 +57,29 @@ export default class Resolution {
     }
 
     getAxisProps() {
-        const propArray = this.views
-            .map(view => this._getEncoding(view).axis);
-        
+        const propArray = this.views.map(view => this._getEncoding(view).axis);
+
         if (propArray.length > 0 && propArray.every(props => props === null)) {
             // No axis whatsoever is wanted
             return null;
         } else {
-            return /** @type { import("../spec/axis").Axis} */(mergeObjects(propArray.filter(props => props !== undefined), "axis", ["title"]));
-            
+            return /** @type { import("../spec/axis").Axis} */ (mergeObjects(
+                propArray.filter(props => props !== undefined),
+                "axis",
+                ["title"]
+            ));
         }
     }
 
     getScaleProps() {
-        const propArray = this.views
-            .map(view => this._getEncoding(view).scale);
-        
+        const propArray = this.views.map(view => this._getEncoding(view).scale);
+
         // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
-        return /** @type { import("../spec/scale").Scale} */(mergeObjects(propArray.filter(props => props !== undefined), "scale", ["domain"]));
+        return /** @type { import("../spec/scale").Scale} */ (mergeObjects(
+            propArray.filter(props => props !== undefined),
+            "scale",
+            ["domain"]
+        ));
     }
 
     getTitle() {
@@ -86,7 +90,10 @@ export default class Resolution {
             // Retain nulls as they indicate that no title should be shown
             return [
                 encodingSpec.axis === null ? null : undefined,
-                encodingSpec.axis !== null && typeof encodingSpec.axis === "object" ? encodingSpec.axis.title : undefined,
+                encodingSpec.axis !== null &&
+                typeof encodingSpec.axis === "object"
+                    ? encodingSpec.axis.title
+                    : undefined,
                 encodingSpec.title,
                 encodingSpec.field
             ]
@@ -94,12 +101,9 @@ export default class Resolution {
                 .shift();
         };
 
-        return [...new Set(
-            this.views
-                .map(computeTitle)
-                .filter(isString)
-        )]
-            .join(", ");
+        return [...new Set(this.views.map(computeTitle).filter(isString))].join(
+            ", "
+        );
     }
 
     /**
@@ -111,14 +115,16 @@ export default class Resolution {
             .filter(domain => !!domain);
 
         if (domains.length > 1) {
-            return domains
-                .reduce((acc, curr) => acc.extendAll(curr));
-
+            return domains.reduce((acc, curr) => acc.extendAll(curr));
         } else if (domains.length === 1) {
             return domains[0];
         }
 
-        throw new Error(`Cannot resolve domain! Channel: ${this.channel}, views: ${this.views.map(v => v.getPathString()).join(", ")}`);
+        throw new Error(
+            `Cannot resolve domain! Channel: ${
+                this.channel
+            }, views: ${this.views.map(v => v.getPathString()).join(", ")}`
+        );
     }
 
     getScale() {
@@ -146,25 +152,27 @@ export default class Resolution {
         }
 
         this._scale = createScale(props);
-        console.log(`Channel: ${this.channel}, scale type: ${this._scale.type}, props: ${JSON.stringify(props)}`);
+        console.log(
+            `Channel: ${this.channel}, scale type: ${
+                this._scale.type
+            }, props: ${JSON.stringify(props)}`
+        );
         return this._scale;
     }
 
     /**
-     * 
-     * @param {UnitView} view 
+     *
+     * @param {UnitView} view
      */
     _getEncoding(view) {
         return view.getEncoding()[this.channel];
     }
 }
 
-
-
 /**
- * 
- * @param {string} channel 
- * @param {string} dataType 
+ *
+ * @param {string} channel
+ * @param {string} dataType
  */
 function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
@@ -180,17 +188,18 @@ function getDefaultScaleType(channel, dataType) {
         sample: ["identity", null]
     };
 
-    return defaults[channel] ?
-        defaults[channel][dataType == "quantitative" ? 1 : 0] :
-        dataType == "quantitative" ? "linear" : "ordinal";
-
+    return defaults[channel]
+        ? defaults[channel][dataType == "quantitative" ? 1 : 0]
+        : dataType == "quantitative"
+        ? "linear"
+        : "ordinal";
 }
 
 /**
- * TODO: These actually depend on the mark, so this is clearly a wrong place 
- * 
- * @param {string} channel 
- * @param {string} dataType 
+ * TODO: These actually depend on the mark, so this is clearly a wrong place
+ *
+ * @param {string} channel
+ * @param {string} dataType
  */
 function getDefaultScaleProperties(channel, dataType) {
     const props = {};
@@ -199,20 +208,19 @@ function getDefaultScaleProperties(channel, dataType) {
         // TODO: Switch to true when all Y-axis labels can be drawn fully visible
         // However, nice should only be true when the domain has not been specified explicitly
         props.nice = false;
-
     } else if (channel == "color") {
         // TODO: Named ranges
-        props.scheme = dataType == "nominal" ? "tableau10" :
-            dataType == "ordinal" ? "blues" :
-                "viridis";
-
+        props.scheme =
+            dataType == "nominal"
+                ? "tableau10"
+                : dataType == "ordinal"
+                ? "blues"
+                : "viridis";
     } else if (channel == "shape") {
         // of point mark
         props.range = Object.keys(SHAPES);
-
-        
     } else if (channel == "size") {
-        props.range = [0, 400] // TODO: Configurable default
+        props.range = [0, 400]; // TODO: Configurable default
     }
 
     return props;
@@ -220,36 +228,31 @@ function getDefaultScaleProperties(channel, dataType) {
 
 /**
  * Properties that are always overriden
- * 
- * @param {string} channel 
+ *
+ * @param {string} channel
  */
 function getLockedScaleProperties(channel) {
-
     /** @type {Object.<string, any>} */
     const locked = {
         // TODO: x
         y: {
             range: [0, 1]
         }
-    }
+    };
 
     return locked[channel] || {};
 }
-
 
 /**
  * @param {import("./view").default} root
  */
 export function configureDefaultResolutions(root) {
     if (!root.resolutions.y) {
-        root.resolutions.y = Resolution.createExplicitResolution(
-            "y",
-            {
-                type: "band",
-                domain: [undefined],
-                range: [0, 1]
-            });
+        root.resolutions.y = Resolution.createExplicitResolution("y", {
+            type: "band",
+            domain: [undefined],
+            range: [0, 1]
+        });
         root.resolutions.y.getAxisProps = () => null;
     }
-
 }

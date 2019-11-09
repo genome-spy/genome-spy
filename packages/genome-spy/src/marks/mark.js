@@ -1,18 +1,18 @@
-import { group } from 'd3-array';
-import Interval from '../utils/interval';
-import createEncoders from '../encoder/encoder';
+import { group } from "d3-array";
+import Interval from "../utils/interval";
+import createEncoders from "../encoder/encoder";
 
 export default class Mark {
-
     /**
      * @param {import("../view/unitView").default} unitView
      */
     constructor(unitView) {
         this.unitView = unitView;
         /** @type {Record<string, any>} */
-        this.properties = typeof unitView.spec.mark == "object" ? unitView.spec.mark : {};
+        this.properties =
+            typeof unitView.spec.mark == "object" ? unitView.spec.mark : {};
     }
-    
+
     /**
      * @returns {import("../spec/view").EncodingConfigs}
      */
@@ -33,10 +33,14 @@ export default class Mark {
 
         for (const channel in configured) {
             if (typeof defaults[channel] !== "object") {
-                throw new Error(`Unsupported channel "${channel}" in ${this.getType()}'s encoding: ${JSON.stringify(configured)}`);
+                throw new Error(
+                    `Unsupported channel "${channel}" in ${this.getType()}'s encoding: ${JSON.stringify(
+                        configured
+                    )}`
+                );
             }
         }
-        
+
         return { ...defaults, ...configured };
     }
 
@@ -60,12 +64,11 @@ export default class Mark {
         // TODO: Optimize. Now inherited data is ungrouped in all children
         const ungrouped = data.ungroupAll().data;
 
-        const accessor = this.unitView.getAccessor("sample"); 
+        const accessor = this.unitView.getAccessor("sample");
         if (accessor) {
             // TODO: Optimize. Now inherited data is grouped by sample in all children
             /** @type {Map<string, object[]>} */
             this.dataBySample = group(ungrouped, accessor);
-
         } else {
             this.dataBySample = new Map([["default", ungrouped]]);
         }
@@ -80,12 +83,14 @@ export default class Mark {
             if (resolution) {
                 return resolution.getScale();
             }
-        }
+        };
 
         // TODO: Consider putting encoders to unitView
-        this.encoders = createEncoders(encoding, scaleSource, scale => this.unitView.getAccessor(scale));
+        this.encoders = createEncoders(encoding, scaleSource, scale =>
+            this.unitView.getAccessor(scale)
+        );
 
-        this.gl = this.getContext().track.gl; // TODO: FIXME FIXME FIXME FIXME FIXME FIXME 
+        this.gl = this.getContext().track.gl; // TODO: FIXME FIXME FIXME FIXME FIXME FIXME
     }
 
     /**
@@ -95,10 +100,9 @@ export default class Mark {
         return this.getContext().track.processShader(shaderCode);
     }
 
+    onBeforeSampleAnimation() {}
 
-    onBeforeSampleAnimation() { }
-
-    onAfterSampleAnimation() { }
+    onAfterSampleAnimation() {}
 
     /**
      * TODO: Abstract away!
@@ -117,27 +121,28 @@ export default class Mark {
 
     /**
      * Returns a resolved scale for the given channel
-     * 
-     * @param {string} channel 
+     *
+     * @param {string} channel
      */
     getScale(channel) {
-        const resolution = this.unitView.getResolution(channel)
+        const resolution = this.unitView.getResolution(channel);
         if (resolution) {
             return resolution.getScale();
         } else {
-            throw new Error(`Cannot find a resolved scale for channel "${channel}" at ${this.unitView.getPathString()} (${this.getType()})`);
+            throw new Error(
+                `Cannot find a resolved scale for channel "${channel}" at ${this.unitView.getPathString()} (${this.getType()})`
+            );
         }
     }
 
     /**
      * @param {object[]} samples
-     * @param {object} globalUniforms 
+     * @param {object} globalUniforms
      */
-    render(samples, globalUniforms) {
-    }
+    render(samples, globalUniforms) {}
 
     /**
-     * @param {string} sampleId 
+     * @param {string} sampleId
      * @param {number} x position on the range
      * @param {number} y position on the range
      * @param {import("../utils/interval").default} yBand the matched band on the band scale
@@ -146,4 +151,3 @@ export default class Mark {
         return null;
     }
 }
-

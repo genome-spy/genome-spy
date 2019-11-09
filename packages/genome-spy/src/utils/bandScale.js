@@ -10,9 +10,9 @@ import IntervalCollection from "./intervalCollection";
 /**
  * A scale that mimics d3's scaleBand, but with variable widths and other
  * bells and whistles.
- * 
+ *
  * This class is a messy hack. TODO: Improve
- * 
+ *
  * TODO: Collapsed bands
  * TODO: Reordering by dragging
  * TODO: Unit test
@@ -36,15 +36,17 @@ export default class BandScale {
         this._bands = null;
     }
 
-
     _buildCaches() {
         this._keyCache = new Map();
 
         const bands = [];
 
-        const totalRelativeWidth = this._relativeWidths.reduce((a, b) => a + b, 0) || 1;
+        const totalRelativeWidth =
+            this._relativeWidths.reduce((a, b) => a + b, 0) || 1;
 
-        const paddedRange = this._range.pad(-this.paddingOuter / 2 / totalRelativeWidth * this._range.width());
+        const paddedRange = this._range.pad(
+            (-this.paddingOuter / 2 / totalRelativeWidth) * this._range.width()
+        );
 
         const rangeWidth = paddedRange.width();
 
@@ -54,9 +56,10 @@ export default class BandScale {
             const key = this._keys[i];
 
             const lower = x;
-            const upper = x + this._relativeWidths[i] / totalRelativeWidth * rangeWidth;
+            const upper =
+                x + (this._relativeWidths[i] / totalRelativeWidth) * rangeWidth;
 
-            const padding = (upper - lower) * this.paddingInner / 2;
+            const padding = ((upper - lower) * this.paddingInner) / 2;
 
             const interval = new Interval(lower + padding, upper - padding);
 
@@ -82,8 +85,8 @@ export default class BandScale {
 
     /**
      * TODO: findClosest flag, which returns the closest band (if padding was hit)
-     * 
-     * @param {number} value 
+     *
+     * @param {number} value
      * @param {boolean} [closest] Return closest if no exact match was found
      */
     invert(value, closest = false) {
@@ -97,8 +100,8 @@ export default class BandScale {
 
     /**
      * TODO: Consider using Interval
-     * 
-     * @param {Interval | number[]} range 
+     *
+     * @param {Interval | number[]} range
      */
     range(range) {
         if (range instanceof Interval) {
@@ -133,9 +136,9 @@ export default class BandScale {
     }
 
     /*
-     * 
-     * @param {string[]} keys 
-     * @param {number} width 
+     *
+     * @param {string[]} keys
+     * @param {number} width
      */
     /*
     setWidths(keys, width) {
@@ -148,9 +151,10 @@ export default class BandScale {
     */
 
     getBandWidth() {
-        return this._range.width() / 
-            this._relativeWidths.reduce((a, b) => a + b, 0);
-
+        return (
+            this._range.width() /
+            this._relativeWidths.reduce((a, b) => a + b, 0)
+        );
     }
 
     /**
@@ -161,7 +165,7 @@ export default class BandScale {
         copy.paddingInner = this.paddingInner;
         copy.paddingOuter = this.paddingOuter;
         copy.domain(this._keys, this._relativeWidths);
-        copy.range(this._range)
+        copy.range(this._range);
 
         return copy;
     }

@@ -1,7 +1,6 @@
-
 export class Group {
     /**
-     * @param {string | number | boolean} key 
+     * @param {string | number | boolean} key
      */
     constructor(key) {
         this.key = key;
@@ -9,12 +8,11 @@ export class Group {
 
     /**
      * Clones the group hierarchy and applies the given transformer to each data array
-     * 
-     * @param {function(object[]):object[]} transformer 
-     * @returns {Group}   
+     *
+     * @param {function(object[]):object[]} transformer
+     * @returns {Group}
      */
-    map(transformer) { }
-
+    map(transformer) {}
 
     /**
      * @returns {Group}
@@ -29,13 +27,13 @@ export class Group {
         while (group instanceof GroupGroup) {
             group = group.ungroup();
         }
-        return /** @type {DataGroup} */(group);
+        return /** @type {DataGroup} */ (group);
     }
 }
 
 export class DataGroup extends Group {
     /**
-     * @param {string | number | boolean} key 
+     * @param {string | number | boolean} key
      * @param {object[]} data
      */
     constructor(key, data) {
@@ -57,7 +55,7 @@ export class DataGroup extends Group {
 
 export class GroupGroup extends Group {
     /**
-     * @param {string | number | boolean} key 
+     * @param {string | number | boolean} key
      * @param {Group[]} subgroups
      */
     constructor(key, subgroups) {
@@ -71,7 +69,10 @@ export class GroupGroup extends Group {
     }
 
     map(transformer) {
-        return new GroupGroup(this.key, this.subgroups.map(g => g.map(transformer)));
+        return new GroupGroup(
+            this.key,
+            this.subgroups.map(g => g.map(transformer))
+        );
     }
 
     /**
@@ -81,11 +82,17 @@ export class GroupGroup extends Group {
         if (this.hasDataChildren()) {
             // TODO: Option to add field based on the group key
             // TODO: Check that each group has equal fields!
-            const groups = /** @type {DataGroup[]} */(this.subgroups).map(g => g.data).flat();
+            const groups = /** @type {DataGroup[]} */ (this.subgroups)
+                .map(g => g.data)
+                .flat();
             return new DataGroup(this.key, groups);
-
         } else {
-            return new GroupGroup(this.key, /** @type {GroupGroup[]} */(this.subgroups).map(g => g.ungroup()));
+            return new GroupGroup(
+                this.key,
+                /** @type {GroupGroup[]} */ (this.subgroups).map(g =>
+                    g.ungroup()
+                )
+            );
         }
     }
 }

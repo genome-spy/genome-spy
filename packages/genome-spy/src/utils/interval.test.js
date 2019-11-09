@@ -73,7 +73,6 @@ test("Interpolate", () => {
     expect(interval.interpolate(0.0)).toBe(1);
     expect(interval.interpolate(0.5)).toBe(2);
     expect(interval.interpolate(1.0)).toBe(3);
-
 });
 
 test("Intersect", () => {
@@ -92,10 +91,18 @@ test("Span", () => {
     const interval = new Interval(1, 2);
     expect(interval.span(null)).toEqual(interval);
 
-    expect(new Interval(1, 2).span(new Interval(1, 2))).toEqual(new Interval(1, 2));
-    expect(new Interval(1, 2).span(new Interval(4, 5))).toEqual(new Interval(1, 5));
-    expect(new Interval(4, 5).span(new Interval(1, 2))).toEqual(new Interval(1, 5));
-    expect(new Interval(4, 5).span(new Interval(8, 8))).toEqual(new Interval(4, 8));
+    expect(new Interval(1, 2).span(new Interval(1, 2))).toEqual(
+        new Interval(1, 2)
+    );
+    expect(new Interval(1, 2).span(new Interval(4, 5))).toEqual(
+        new Interval(1, 5)
+    );
+    expect(new Interval(4, 5).span(new Interval(1, 2))).toEqual(
+        new Interval(1, 5)
+    );
+    expect(new Interval(4, 5).span(new Interval(8, 8))).toEqual(
+        new Interval(4, 8)
+    );
 
     expect(new Interval(1, 2).span(3)).toEqual(new Interval(1, 3));
     expect(new Interval(2, 3).span(1)).toEqual(new Interval(1, 3));

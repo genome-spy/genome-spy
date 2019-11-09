@@ -1,4 +1,3 @@
-
 var currentlyOpenMenuElement;
 
 /**
@@ -6,18 +5,17 @@ var currentlyOpenMenuElement;
  * @prop {string} [label]
  * @prop {function} [callback]
  * @prop {string} [type]
- * 
+ *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
  * @prop {Element} [menuContainer]
  */
 
 /**
- * @param {MenuOptions} options 
+ * @param {MenuOptions} options
  * @param {MouseEvent} mouseEvent
  */
 export default function contextMenu(options, mouseEvent) {
-
     // TODO: Suppress tooltips when context menu is open
 
     if (currentlyOpenMenuElement) {
@@ -26,7 +24,7 @@ export default function contextMenu(options, mouseEvent) {
     }
 
     const menuElement = document.createElement("div");
-    menuElement.className = "context-menu"
+    menuElement.className = "context-menu";
 
     const container = options.menuContainer || document.body;
 
@@ -36,12 +34,10 @@ export default function contextMenu(options, mouseEvent) {
         if (item.type == "divider") {
             itemElement = document.createElement("div");
             itemElement.classList.add("context-menu-divider");
-
         } else if (item.type == "header") {
             itemElement = document.createElement("div");
             itemElement.classList.add("context-menu-header");
             itemElement.innerText = item.label || "-";
-
         } else {
             itemElement = document.createElement(item.callback ? "a" : "div");
             itemElement.classList.add("context-menu-item");
@@ -54,13 +50,11 @@ export default function contextMenu(options, mouseEvent) {
                         menuElement.remove();
                         item.callback();
                     }
-                })
+                });
             }
-
         }
 
         menuElement.appendChild(itemElement);
-
     }
 
     menuElement.style.left = mouseEvent.clientX + "px";
@@ -71,23 +65,28 @@ export default function contextMenu(options, mouseEvent) {
 
     const rect = menuElement.getBoundingClientRect();
     if (rect.bottom > window.innerHeight) {
-        menuElement.style.top = (window.innerHeight - menuElement.offsetHeight - 10) + "px";
+        menuElement.style.top =
+            window.innerHeight - menuElement.offsetHeight - 10 + "px";
     }
     if (rect.right > window.innerWidth) {
-        menuElement.style.left = (window.innerWidth - menuElement.offsetWidth - 10) + "px";
+        menuElement.style.left =
+            window.innerWidth - menuElement.offsetWidth - 10 + "px";
     }
 
-    container.addEventListener(
-        "click",
-        () => menuElement.remove(),
-        { once: true });
-   
+    container.addEventListener("click", () => menuElement.remove(), {
+        once: true
+    });
+
     const openedAt = performance.now();
-    container.addEventListener("mouseup", () => {
-        if (performance.now() - openedAt > 500) {
-            menuElement.remove();
-        }
-    }, { once: true });
+    container.addEventListener(
+        "mouseup",
+        () => {
+            if (performance.now() - openedAt > 500) {
+                menuElement.remove();
+            }
+        },
+        { once: true }
+    );
 
     mouseEvent.preventDefault();
 }

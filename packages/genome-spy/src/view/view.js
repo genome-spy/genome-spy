@@ -1,18 +1,17 @@
-
-import { transformData } from '../data/dataMapper';
+import { transformData } from "../data/dataMapper";
 
 /**
  * @typedef { import("./viewUtils").ViewSpec } ViewSpec
  * @typedef { import("./viewUtils").EncodingConfig } EncodingConfig
- * @typedef { import("./viewUtils").ViewContext} ViewContext 
+ * @typedef { import("./viewUtils").ViewContext} ViewContext
  */
 export default class View {
     /**
-     * 
+     *
      * @param {ViewSpec} spec
-     * @param {ViewContext} context 
-     * @param {View} parent 
-     * @param {string} name 
+     * @param {ViewContext} context
+     * @param {View} parent
+     * @param {string} name
      */
     constructor(spec, context, parent, name) {
         this.context = context;
@@ -23,8 +22,7 @@ export default class View {
         this.children = [];
 
         /** @type {Object.<string, import("./resolution").default>}  Resolved channels. Supports only scales for now.. */
-        this.resolutions = {
-        }
+        this.resolutions = {};
     }
 
     getPathString() {
@@ -40,11 +38,11 @@ export default class View {
 
         return path.reverse().join("/");
     }
-    
+
     /**
      * Visits child views in depth-first order
-     * 
-     * @param {function(View):void} visitor 
+     *
+     * @param {function(View):void} visitor
      */
     visit(visitor) {
         try {
@@ -74,16 +72,20 @@ export default class View {
         return {
             ...pe,
             ...te
-        }
+        };
     }
 
     /**
-     * 
-     * @param {string} channel 
+     *
+     * @param {string} channel
      * @returns {import("./resolution").default}
      */
     getResolution(channel) {
-        return this.resolutions[channel] || (this.parent && this.parent.getResolution(channel)) || undefined;
+        return (
+            this.resolutions[channel] ||
+            (this.parent && this.parent.getResolution(channel)) ||
+            undefined
+        );
     }
 
     /**
@@ -100,12 +102,16 @@ export default class View {
             return this.parent.getData();
         }
 
-        throw new Error(`No data are available at ${this.getPathString()} or its parents.`);
+        throw new Error(
+            `No data are available at ${this.getPathString()} or its parents.`
+        );
     }
 
     async loadData() {
         if (this.spec.data) {
-            this.data = await this.context.getDataSource(this.spec.data).getData();
+            this.data = await this.context
+                .getDataSource(this.spec.data)
+                .getData();
         }
     }
 

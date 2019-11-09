@@ -1,15 +1,15 @@
-import RectMark from '../marks/rectMark';
-import PointMark from '../marks/pointMark';
-import RuleMark from '../marks/rule';
+import RectMark from "../marks/rectMark";
+import PointMark from "../marks/pointMark";
+import RuleMark from "../marks/rule";
 
-import ContainerView from './containerView';
-import Resolution from './resolution';
-import { isSecondaryChannel, secondaryChannels } from '../encoder/encoder';
-import createDomain from '../utils/domainArray';
+import ContainerView from "./containerView";
+import Resolution from "./resolution";
+import { isSecondaryChannel, secondaryChannels } from "../encoder/encoder";
+import createDomain from "../utils/domainArray";
 
 /**
- * @typedef {import("../utils/domainArray").DomainArray} DomainArray 
- * @typedef {import("../encoder/accessor").Accessor} Accessor 
+ * @typedef {import("../utils/domainArray").DomainArray} DomainArray
+ * @typedef {import("../encoder/accessor").Accessor} Accessor
  */
 
 /**
@@ -22,18 +22,17 @@ export const markTypes = {
     rule: RuleMark
 };
 
-export default class UnitView extends ContainerView { 
-
+export default class UnitView extends ContainerView {
     /**
-     * 
+     *
      * @param {import("../spec/view").UnitSpec} spec
-     * @param {import("./viewUtils").ViewContext} context 
-     * @param {import("./view").default} parent 
-     * @param {string} name 
+     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("./view").default} parent
+     * @param {string} name
      */
     constructor(spec, context, parent, name) {
-        super(spec, context, parent, name)
-        
+        super(spec, context, parent, name);
+
         this.spec = spec; // Set here again to keep types happy
 
         /**
@@ -52,14 +51,15 @@ export default class UnitView extends ContainerView {
         if (Mark) {
             /** @type {import("../marks/mark").default} */
             this.mark = new Mark(this);
-
         } else {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
     }
 
     getMarkType() {
-        return typeof this.spec.mark == "object" ? this.spec.mark.type : this.spec.mark;
+        return typeof this.spec.mark == "object"
+            ? this.spec.mark.type
+            : this.spec.mark;
     }
 
     /**
@@ -68,13 +68,13 @@ export default class UnitView extends ContainerView {
      */
     resolve() {
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
-        
+
         const encoding = this.getEncoding();
         // eslint-disable-next-line guard-for-in
         for (const channel in encoding) {
             if (isSecondaryChannel(channel)) {
                 // TODO: Secondary channels should be pulled up as "primarys".
-                // Example: The titles of both y and y2 should be shown on the y axis 
+                // Example: The titles of both y and y2 should be shown on the y axis
                 continue;
             }
 
@@ -85,7 +85,11 @@ export default class UnitView extends ContainerView {
 
             // eslint-disable-next-line consistent-this
             let view = this;
-            while (view.parent instanceof ContainerView && view.parent.getConfiguredOrDefaultResolution(channel) == "shared") {
+            while (
+                view.parent instanceof ContainerView &&
+                view.parent.getConfiguredOrDefaultResolution(channel) ==
+                    "shared"
+            ) {
                 // @ts-ignore
                 view = view.parent;
             }
@@ -99,8 +103,8 @@ export default class UnitView extends ContainerView {
     }
 
     /**
-     * 
-     * @param {string} channel 
+     *
+     * @param {string} channel
      */
     getResolution(channel) {
         /** @type {import("./view").default } */
@@ -115,8 +119,8 @@ export default class UnitView extends ContainerView {
     }
 
     /**
-     * 
-     * @param {string} channel 
+     *
+     * @param {string} channel
      */
     getAccessor(channel) {
         if (this._accessors.hasOwnProperty(channel)) {
@@ -125,33 +129,40 @@ export default class UnitView extends ContainerView {
 
         const encoding = this.mark.getEncoding(); // Mark provides encodings with defaults and possible modifications
         if (encoding && encoding[channel]) {
-            const accessor = this.context.accessorFactory.createAccessor(encoding[channel]);
+            const accessor = this.context.accessorFactory.createAccessor(
+                encoding[channel]
+            );
             this._accessors[channel] = accessor;
             return accessor;
-        }        
+        }
     }
 
     _getCoordinateSystemExtent() {
         const cs = this.context.coordinateSystem;
-        return cs && cs.getExtent() || undefined;
+        return (cs && cs.getExtent()) || undefined;
     }
 
     /**
      * Returns the domain of the specified channel of this domain/mark.
      * Either returns a configured domain or extracts it from the data.
-     * 
-     * @param {string} channel 
+     *
+     * @param {string} channel
      * @returns {DomainArray}
      */
     getDomain(channel) {
         if (channel === "x" && this._getCoordinateSystemExtent()) {
             // Skip unnecessary extent computation
             // However, if we want to initially zoom to the extent of the data, this needs to done differently
-            return createDomain("quantitative", this._getCoordinateSystemExtent().toArray());
+            return createDomain(
+                "quantitative",
+                this._getCoordinateSystemExtent().toArray()
+            );
         }
 
         if (isSecondaryChannel(channel)) {
-            throw new Error(`getDomain(${channel}), must only be called for primary channels!`);
+            throw new Error(
+                `getDomain(${channel}), must only be called for primary channels!`
+            );
         }
 
         const encodingSpec = this.getEncoding()[channel];
@@ -160,7 +171,8 @@ export default class UnitView extends ContainerView {
             throw new Error(`No data type for channel "${channel}"!`);
             // TODO: Support defaults
         }
-        const specDomain = encodingSpec && encodingSpec.scale && encodingSpec.scale.domain;
+        const specDomain =
+            encodingSpec && encodingSpec.scale && encodingSpec.scale.domain;
         if (specDomain) {
             return createDomain(type, specDomain);
         }
@@ -171,7 +183,9 @@ export default class UnitView extends ContainerView {
 
         let domain = this._extractDomain(channel, type);
         if (!domain) {
-            console.warn(`Cannot extract domain for channel "${channel}" on ${this.getPathString()}. You can specify it explicitly.`);
+            console.warn(
+                `Cannot extract domain for channel "${channel}" on ${this.getPathString()}. You can specify it explicitly.`
+            );
         }
 
         const secondaryChannel = secondaryChannels[channel];
@@ -187,8 +201,8 @@ export default class UnitView extends ContainerView {
 
     /**
      * Extracts and caches the domain from the data.
-     * 
-     * @param {string} channel 
+     *
+     * @param {string} channel
      * @param {string} type secondary channels have an implicit type based on the primary channel
      * @returns {DomainArray}
      */
@@ -203,7 +217,10 @@ export default class UnitView extends ContainerView {
         const encodingSpec = this.getEncoding()[channel];
 
         if (encodingSpec) {
-            const accessor = this.context.accessorFactory.createAccessor(encodingSpec, true);
+            const accessor = this.context.accessorFactory.createAccessor(
+                encodingSpec,
+                true
+            );
             if (accessor) {
                 domain = createDomain(type);
 

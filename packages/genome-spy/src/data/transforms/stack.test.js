@@ -1,5 +1,4 @@
-
-import stackTransform from './stack';
+import stackTransform from "./stack";
 
 const sampleData = [
     { group: "a", choice: "q", value: 1 },
@@ -23,7 +22,7 @@ const baseConf = {
 describe("Stack transform", () => {
     test("No field", () => {
         const conf = Object.assign({}, baseConf, {
-             field: undefined
+            field: undefined
         });
 
         expect(stackTransform(conf, sampleData)).toEqual([
@@ -31,7 +30,6 @@ describe("Stack transform", () => {
             { group: "b", choice: "x", value: 1, z0: 0, z1: 1 },
             { group: "b", choice: "y", value: 3, z0: 1, z1: 2 }
         ]);
-
     });
 
     test("Zero offset", () => {
@@ -44,7 +42,7 @@ describe("Stack transform", () => {
 
     test("Normalize offset", () => {
         const conf = Object.assign({}, baseConf, {
-             offset: "normalize"
+            offset: "normalize"
         });
 
         expect(stackTransform(conf, sampleData)).toEqual([
@@ -56,7 +54,7 @@ describe("Stack transform", () => {
 
     test("Center offset", () => {
         const conf = Object.assign({}, baseConf, {
-             offset: "center"
+            offset: "center"
         });
 
         expect(stackTransform(conf, sampleData)).toEqual([
@@ -78,5 +76,5 @@ describe("Stack transform", () => {
             { group: "b", choice: "y", value: 3, z0: 0, z1: 3 },
             { group: "b", choice: "x", value: 1, z0: 3, z1: 4 }
         ]);
-    })
+    });
 });

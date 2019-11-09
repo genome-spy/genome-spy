@@ -8,9 +8,9 @@ import { asArray } from "../../utils/arrayUtils";
  */
 
 /**
- * 
- * @param {FlattenDelimitedConfig} config 
- * @param {object[]} rows 
+ *
+ * @param {FlattenDelimitedConfig} config
+ * @param {object[]} rows
  */
 export default function flattenDelimitedTransform(config, rows) {
     const newRows = [];
@@ -22,7 +22,9 @@ export default function flattenDelimitedTransform(config, rows) {
     const as = asArray(config.as || config.field);
 
     if (fields.length !== separators.length || fields.length !== as.length) {
-        throw new Error(`Lengths of "separator" (${separators.length}), "fields" (${fields.length}), and "as" (${as.length}) do not match!`)
+        throw new Error(
+            `Lengths of "separator" (${separators.length}), "fields" (${fields.length}), and "as" (${as.length}) do not match!`
+        );
     }
 
     if (!fields.length) {
@@ -51,6 +53,9 @@ export default function flattenDelimitedTransform(config, rows) {
 function validateSplit(splitFields, row) {
     const splitLengths = splitFields.map(f => f.length);
     if (!splitLengths.every(x => x == splitLengths[0])) {
-        throw new Error("Mismatching number of elements in the fields to be split: " + JSON.stringify(row));
+        throw new Error(
+            "Mismatching number of elements in the fields to be split: " +
+                JSON.stringify(row)
+        );
     }
 }

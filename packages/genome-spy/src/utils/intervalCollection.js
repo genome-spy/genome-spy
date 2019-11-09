@@ -6,7 +6,7 @@
  * A collection of non-overlapping intervals.
  * Currently implemented as an ordered array.
  * TODO: Use a binary tree
- * 
+ *
  * @class
  * @template T
  */
@@ -25,18 +25,22 @@ export default class IntervalCollection {
      * @param {T} object
      */
     _findInsertionPoint(object) {
-
         const interval = this.accessor(object);
 
         // TODO: Use binary search
         let i = 0;
-        while (i < this.intervals.length && interval.lower >= this.accessor(this.intervals[i]).upper) {
+        while (
+            i < this.intervals.length &&
+            interval.lower >= this.accessor(this.intervals[i]).upper
+        ) {
             i++;
         }
 
-        if (i < this.intervals.length && this.accessor(this.intervals[i]).lower < interval.upper) {
+        if (
+            i < this.intervals.length &&
+            this.accessor(this.intervals[i]).lower < interval.upper
+        ) {
             return -1;
-
         } else {
             return i;
         }
@@ -44,7 +48,7 @@ export default class IntervalCollection {
 
     /**
      * Adds an interval to the collection. Throws an exception if there was no room.
-     * 
+     *
      * @param {T} object
      */
     add(object) {
@@ -58,8 +62,8 @@ export default class IntervalCollection {
 
     /**
      * Adds an interval if there is room for it. Returns true on success.
-     * 
-     * @param {T} object 
+     *
+     * @param {T} object
      */
     addIfRoom(object) {
         const i = this._findInsertionPoint(object);
@@ -74,7 +78,7 @@ export default class IntervalCollection {
     /**
      * Returns the interval or object that encloses the given number.
      * TODO: Consider returning an array (to be compatible with IntervalTree)
-     * 
+     *
      * @param {number} value the value to find
      * @param {boolean} [closest] Return closest if no exact match was found
      * @returns a matching interval or object. Null if nothing was found.
@@ -86,18 +90,24 @@ export default class IntervalCollection {
 
         // TODO: Use binary search
         let i = 0;
-        while (i < this.intervals.length && value >= this.accessor(this.intervals[i]).upper) {
+        while (
+            i < this.intervals.length &&
+            value >= this.accessor(this.intervals[i]).upper
+        ) {
             i++;
         }
 
-        const next = i < this.intervals.length ? this.accessor(this.intervals[i]) : null;
+        const next =
+            i < this.intervals.length ? this.accessor(this.intervals[i]) : null;
 
         if (next && next.contains(value)) {
             return this.intervals[i];
-
         } else if (closest) {
-            const nextDistance = next ? (next.lower - value) : Infinity;
-            const prevDistance = i > 0 ? value - this.accessor(this.intervals[i - 1]).upper : Infinity;
+            const nextDistance = next ? next.lower - value : Infinity;
+            const prevDistance =
+                i > 0
+                    ? value - this.accessor(this.intervals[i - 1]).upper
+                    : Infinity;
             return this.intervals[nextDistance < prevDistance ? i : i - 1];
         }
 
@@ -107,8 +117,8 @@ export default class IntervalCollection {
     /**
      * Returns true if one or more intervals in the collection overlaps
      * with the given interval.
-     * 
-     * @param {T} object 
+     *
+     * @param {T} object
      */
     overlaps(object) {
         return this._findInsertionPoint(object) < 0;
@@ -121,5 +131,4 @@ export default class IntervalCollection {
     toArray() {
         return [].concat(this.intervals);
     }
-
 }

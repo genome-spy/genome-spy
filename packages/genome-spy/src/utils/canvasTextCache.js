@@ -1,13 +1,13 @@
 /**
  * Cache for text rendering
- * 
+ *
  * TODO: Allow specifying a list of font sizes that should be cached
  */
 export default class CanvasTextCache {
     /**
-     * 
-     * @param {number} fontSize 
-     * @param {string} fontFamily 
+     *
+     * @param {number} fontSize
+     * @param {string} fontFamily
      */
     constructor(fontSize, fontFamily) {
         this.fontSize = fontSize;
@@ -23,12 +23,12 @@ export default class CanvasTextCache {
 
         this.measureContext = document.createElement("canvas").getContext("2d");
         this.measureContext.font = `${this.fontSize}px ${this.fontFamily}`;
-        this.measureContext.textBaseline = 'middle';
+        this.measureContext.textBaseline = "middle";
     }
-    
+
     /**
-     * 
-     * @param {string} text 
+     *
+     * @param {string} text
      */
     _getText(text) {
         let canvas = this.cache.get(text);
@@ -38,10 +38,10 @@ export default class CanvasTextCache {
             const width = this.measureContext.measureText(text).width;
             canvas.height = Math.ceil(this._getTextHeight() * this._dpr);
             canvas.width = Math.ceil(width * this._dpr);
-            
+
             ctx.scale(this._dpr, this._dpr);
             ctx.font = `${this.fontSize}px ${this.fontFamily}`;
-            ctx.textBaseline = 'middle';
+            ctx.textBaseline = "middle";
             ctx.fillText(text, 0, Math.round(this._getTextHeight() / 2));
 
             this.cache.set(text, canvas);
@@ -55,28 +55,32 @@ export default class CanvasTextCache {
     }
 
     /**
-     * 
+     *
      * @param {CanvasRenderingContext2D} targetCtx
-     * @param {string} text 
-     * @param {number} x 
-     * @param {number} y 
+     * @param {string} text
+     * @param {number} x
+     * @param {number} y
      * @param {?number} fontSize
      */
     fillText(targetCtx, text, x, y, fontSize = null) {
-        const scaleFactor = (fontSize ? (fontSize / this.fontSize) : 1) / this._dpr;
+        const scaleFactor =
+            (fontSize ? fontSize / this.fontSize : 1) / this._dpr;
 
         const textCanvas = this._getText(text);
         const targetHeight = textCanvas.height * scaleFactor;
         const targetWidth = textCanvas.width * scaleFactor;
 
-        targetCtx.drawImage(textCanvas,
-            x, Math.round(y - targetHeight / 2),
-            targetWidth, targetHeight);
+        targetCtx.drawImage(
+            textCanvas,
+            x,
+            Math.round(y - targetHeight / 2),
+            targetWidth,
+            targetHeight
+        );
     }
 
     clearCache() {
         this.cache = new Map();
         this._dpr = window.devicePixelRatio || 1;
     }
-
 }

@@ -22,7 +22,7 @@
 
 /**
  * Calculate WebGL 64 bit float
- * 
+ *
  * @param {number} a the input float number
  * @param {number[]} [out] the output array. If not supplied, a new array is created.
  * @param {number} [startIndex] the index in the output array to fill from. Default 0.
@@ -37,7 +37,7 @@ export function fp64ify(a, out = [], startIndex = 0) {
 
 /**
  * Calculate the low part of a WebGL 64 bit float
- * 
+ *
  * @param {number} a the input float number
  * @returns {number} the lower 32 bit of the number
  */
@@ -45,19 +45,18 @@ export function fp64LowPart(a) {
     return a - Math.fround(a);
 }
 
-
 export function getPlatformShaderDefines(gl) {
     const debugInfo = getContextInfo(gl);
 
     switch (debugInfo.gpuVendor.toLowerCase()) {
-        case 'nvidia':
+        case "nvidia":
             return `\
   #define NVIDIA_GPU
   // Nvidia optimizes away the calculation necessary for emulated fp64
   #define LUMA_FP64_CODE_ELIMINATION_WORKAROUND 1
   `;
 
-        case 'intel':
+        case "intel":
             return `\
   #define INTEL_GPU
   // Intel optimizes away the calculation necessary for emulated fp64
@@ -68,7 +67,7 @@ export function getPlatformShaderDefines(gl) {
   #define LUMA_FP64_HIGH_BITS_OVERFLOW_WORKAROUND 1
   `;
 
-        case 'amd':
+        case "amd":
             // AMD Does not eliminate fp64 code
             return `\
   #define AMD_GPU
@@ -90,16 +89,19 @@ export function getPlatformShaderDefines(gl) {
     }
 }
 
-
 const GL_VENDOR = 0x1f00;
 const GL_RENDERER = 0x1f01;
 const GL_VERSION = 0x1f02;
 const GL_SHADING_LANGUAGE_VERSION = 0x8b8c;
 
 export function getContextInfo(gl) {
-    const info = gl.getExtension('WEBGL_debug_renderer_info');
-    const vendor = gl.getParameter((info && info.UNMASKED_VENDOR_WEBGL) || GL_VENDOR);
-    const renderer = gl.getParameter((info && info.UNMASKED_RENDERER_WEBGL) || GL_RENDERER);
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    const vendor = gl.getParameter(
+        (info && info.UNMASKED_VENDOR_WEBGL) || GL_VENDOR
+    );
+    const renderer = gl.getParameter(
+        (info && info.UNMASKED_RENDERER_WEBGL) || GL_RENDERER
+    );
     const gpuVendor = identifyGPUVendor(vendor, renderer);
     const gpuInfo = {
         gpuVendor,
@@ -113,10 +115,10 @@ export function getContextInfo(gl) {
 
 function identifyGPUVendor(vendor, renderer) {
     if (vendor.match(/NVIDIA/i) || renderer.match(/NVIDIA/i)) {
-        return 'NVIDIA';
+        return "NVIDIA";
     }
     if (vendor.match(/INTEL/i) || renderer.match(/INTEL/i)) {
-        return 'INTEL';
+        return "INTEL";
     }
     if (
         vendor.match(/AMD/i) ||
@@ -124,7 +126,7 @@ function identifyGPUVendor(vendor, renderer) {
         vendor.match(/ATI/i) ||
         renderer.match(/ATI/i)
     ) {
-        return 'AMD';
+        return "AMD";
     }
-    return 'UNKNOWN GPU';
+    return "UNKNOWN GPU";
 }

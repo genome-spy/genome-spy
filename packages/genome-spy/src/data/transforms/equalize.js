@@ -1,7 +1,7 @@
 // See: https://observablehq.com/@tuner/histogram-equalization
 
-import { field } from 'vega-util';
-import { bisectRight } from 'd3-array';
+import { field } from "vega-util";
+import { bisectRight } from "d3-array";
 
 /**
  * @typedef {Object} EqualizeConfig
@@ -10,16 +10,19 @@ import { bisectRight } from 'd3-array';
  * @prop {string} [as] Defaults to field
  */
 
- /**
-  * 
-  * @param {EqualizeConfig} equalizeConfig 
-  * @param {object[]} rows 
-  */
+/**
+ *
+ * @param {EqualizeConfig} equalizeConfig
+ * @param {object[]} rows
+ */
 export default function equalizeTransform(equalizeConfig, rows) {
     const accessor = field(equalizeConfig.field);
     const as = equalizeConfig.as || equalizeConfig.field;
 
-    const equalizer = createEqualizer(rows.map(accessor), equalizeConfig.buckets || 50);
+    const equalizer = createEqualizer(
+        rows.map(accessor),
+        equalizeConfig.buckets || 50
+    );
 
     return rows.map(row => ({
         ...row,
@@ -28,14 +31,19 @@ export default function equalizeTransform(equalizeConfig, rows) {
 }
 
 function computeBucketBoundaries(values, bucketCount) {
-    const sortedValues = [...values.filter(x => typeof x == "number" && !isNaN(x))].sort((a, b) => a - b);
+    const sortedValues = [
+        ...values.filter(x => typeof x == "number" && !isNaN(x))
+    ].sort((a, b) => a - b);
     const boundaries = [];
     for (let i = 0; i <= bucketCount; i++) {
-        boundaries.push(sortedValues[Math.floor((sortedValues.length - 1) * i / bucketCount)]);
+        boundaries.push(
+            sortedValues[
+                Math.floor(((sortedValues.length - 1) * i) / bucketCount)
+            ]
+        );
     }
     return boundaries;
 }
-
 
 function createEqualizer(sampleData, bucketCount) {
     const buckets = computeBucketBoundaries(sampleData, bucketCount);

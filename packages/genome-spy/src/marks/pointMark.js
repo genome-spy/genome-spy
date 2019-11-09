@@ -1,13 +1,12 @@
-import fromEntries from 'fromentries';
-import * as twgl from 'twgl-base.js';
-import mapsort from 'mapsort';
-import { extent, bisector } from 'd3-array';
-import { PointVertexBuilder } from '../gl/dataToVertices';
-import VERTEX_SHADER from '../gl/point.vertex.glsl';
-import FRAGMENT_SHADER from '../gl/point.fragment.glsl';
+import fromEntries from "fromentries";
+import * as twgl from "twgl-base.js";
+import mapsort from "mapsort";
+import { extent, bisector } from "d3-array";
+import { PointVertexBuilder } from "../gl/dataToVertices";
+import VERTEX_SHADER from "../gl/point.vertex.glsl";
+import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
 
-import Mark from './mark';
-
+import Mark from "./mark";
 
 const defaultMarkProperties = {
     xOffset: 0,
@@ -24,30 +23,32 @@ const defaultMarkProperties = {
 
 /** @type {import("../view/viewUtils").EncodingSpecs} */
 const defaultEncoding = {
-    x:                { value: 0 },
-    y:                { value: 0.5 },
-    color:            { value: "#1f77b4" },
-    opacity:          { value: 1.0 },
-    size:             { value: 100.0 },
-    zoomThreshold:    { value: 1.0 },
-    shape:            { value: "circle" },
-    strokeWidth:      { value: 0.7 },
+    x: { value: 0 },
+    y: { value: 0.5 },
+    color: { value: "#1f77b4" },
+    opacity: { value: 1.0 },
+    size: { value: 100.0 },
+    zoomThreshold: { value: 1.0 },
+    shape: { value: "circle" },
+    strokeWidth: { value: 0.7 },
     gradientStrength: { value: 0.0 }
 };
 
 // TODO: Configurable !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 const fractionToShow = 0.02;
 
-export const SHAPES = fromEntries([
-    "circle",
-    "square",
-    "triangle-up",
-    "cross",
-    "diamond",
-    "triangle-down",
-    "triangle-right",
-    "triangle-left"
-].map((shape, i) => [shape, i]));
+export const SHAPES = fromEntries(
+    [
+        "circle",
+        "square",
+        "triangle-up",
+        "cross",
+        "diamond",
+        "triangle-down",
+        "triangle-right",
+        "triangle-left"
+    ].map((shape, i) => [shape, i])
+);
 
 export default class PointMark extends Mark {
     /**
@@ -67,7 +68,6 @@ export default class PointMark extends Mark {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
     }
 
-
     initializeData() {
         super.initializeData();
 
@@ -76,13 +76,16 @@ export default class PointMark extends Mark {
         if (!accessor) {
             throw new Error("x channel is undefined!");
         }
-        
+
         // Sort each point of each sample for binary search
         /** @type {Map<string, object[]>} */
-        this.dataBySample = new Map([...this.dataBySample.entries()].map(e =>
-            [e[0], mapsort(e[1], accessor, (a, b) => a - b)]));
+        this.dataBySample = new Map(
+            [...this.dataBySample.entries()].map(e => [
+                e[0],
+                mapsort(e[1], accessor, (a, b) => a - b)
+            ])
+        );
     }
-
 
     initializeGraphics() {
         super.initializeGraphics();
@@ -96,10 +99,15 @@ export default class PointMark extends Mark {
             this.encoders.y = d => ye(d) + offset;
         }
 
-        this.programInfo = twgl.createProgramInfo(gl,
-            [ VERTEX_SHADER, FRAGMENT_SHADER ].map(s => this.processShader(s)));
+        this.programInfo = twgl.createProgramInfo(
+            gl,
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s))
+        );
 
-        const vertexCount = this.dataBySample.size === 1 ? [...this.dataBySample.values()][0].length : undefined; // TODO: Sum all samples
+        const vertexCount =
+            this.dataBySample.size === 1
+                ? [...this.dataBySample.values()][0].length
+                : undefined; // TODO: Sum all samples
 
         const builder = new PointVertexBuilder(this.encoders, vertexCount);
 
@@ -109,13 +117,22 @@ export default class PointMark extends Mark {
         const vertexData = builder.toArrays();
 
         this.rangeMap = vertexData.rangeMap;
-        this.bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays);
+        this.bufferInfo = twgl.createBufferInfoFromArrays(
+            this.gl,
+            vertexData.arrays
+        );
     }
 
     _getGeometricScaleFactor() {
         const zoomLevel = Math.pow(2, this.properties.geometricZoomBound || 0);
 
-        return Math.pow(Math.min(1, this.getContext().genomeSpy.getExpZoomLevel() / zoomLevel), 1 / 3);
+        return Math.pow(
+            Math.min(
+                1,
+                this.getContext().genomeSpy.getExpZoomLevel() / zoomLevel
+            ),
+            1 / 3
+        );
     }
 
     /**
@@ -134,8 +151,8 @@ export default class PointMark extends Mark {
     }
 
     /**
-     * @param {object[]} samples 
-     * @param {object} globalUniforms 
+     * @param {object[]} samples
+     * @param {object} globalUniforms
      */
     render(samples, globalUniforms) {
         const gl = this.gl;
@@ -147,8 +164,8 @@ export default class PointMark extends Mark {
             ...globalUniforms,
             uYTranslate: 0,
             uYScale: 1,
-            uXOffset: this.properties.xOffset / gl.drawingBufferWidth * dpr,
-            uYOffset: this.properties.yOffset / gl.drawingBufferHeight * dpr,
+            uXOffset: (this.properties.xOffset / gl.drawingBufferWidth) * dpr,
+            uYOffset: (this.properties.yOffset / gl.drawingBufferHeight) * dpr,
             uViewportHeight: gl.drawingBufferHeight,
             uDevicePixelRatio: dpr,
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
@@ -176,14 +193,20 @@ export default class PointMark extends Mark {
 
                 if (length) {
                     twgl.setUniforms(this.programInfo, sampleData.uniforms);
-                    twgl.drawBufferInfo(gl, this.bufferInfo, gl.POINTS, length, range.offset + lower);
+                    twgl.drawBufferInfo(
+                        gl,
+                        this.bufferInfo,
+                        gl.POINTS,
+                        length,
+                        range.offset + lower
+                    );
                 }
             }
         }
     }
 
     /**
-     * @param {string} sampleId 
+     * @param {string} sampleId
      * @param {number} x position on the viewport
      * @param {number} y position on the viewport
      * @param {import("../utils/interval").default} yBand the matched band on the band scale
@@ -194,34 +217,44 @@ export default class PointMark extends Mark {
             return null;
         }
 
-        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(this.encoders);
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
+            .encoders);
 
         x -= this.properties.xOffset;
         y += this.properties.yOffset;
 
         // TODO: This unmaintainable mess should really be replaced with picking
         const maxPointDiameter = Math.sqrt(this._getMaxPointSize());
-        const factor = Math.max(
-            this.properties.minAbsolutePointDiameter,
-            Math.min(
-                yBand.width() * this.properties.maxRelativePointDiameter,
-                maxPointDiameter
-            )
-        ) / maxPointDiameter;
+        const factor =
+            Math.max(
+                this.properties.minAbsolutePointDiameter,
+                Math.min(
+                    yBand.width() * this.properties.maxRelativePointDiameter,
+                    maxPointDiameter
+                )
+            ) / maxPointDiameter;
 
         const sizeScaleFactor = this._getGeometricScaleFactor() * factor;
 
-        const distance = (x1, x2, y1, y2) => Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        const distance = (x1, x2, y1, y2) =>
+            Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 
         const xScale = this.getContext().track.genomeSpy.rescaledX;
 
         const bisect = bisector(e.x).left;
         // Use binary search to find the range that may contain the point
-        const begin = bisect(data, xScale.invert(x - maxPointDiameter / 2 * sizeScaleFactor));
-        const end = bisect(data, xScale.invert(x + maxPointDiameter / 2 * sizeScaleFactor));
+        const begin = bisect(
+            data,
+            xScale.invert(x - (maxPointDiameter / 2) * sizeScaleFactor)
+        );
+        const end = bisect(
+            data,
+            xScale.invert(x + (maxPointDiameter / 2) * sizeScaleFactor)
+        );
 
         const margin = 0.005; // TODO: Configurable
-        const threshold = this.getContext().genomeSpy.getExpZoomLevel() * fractionToShow;
+        const threshold =
+            this.getContext().genomeSpy.getExpZoomLevel() * fractionToShow;
         const thresholdWithMargin = threshold * (1 + margin);
 
         let lastMatch = null;
@@ -229,8 +262,13 @@ export default class PointMark extends Mark {
             const d = data[i];
             if (1 - e.zoomThreshold(d) < thresholdWithMargin) {
                 // TODO: Optimize by computing mouse y on the band scale
-                const dist = distance(x, xScale(e.x(d)), y, yBand.interpolate(1 - e.y(d)));
-                if (dist < sizeScaleFactor * Math.sqrt(e.size(d)) / 2) {
+                const dist = distance(
+                    x,
+                    xScale(e.x(d)),
+                    y,
+                    yBand.interpolate(1 - e.y(d))
+                );
+                if (dist < (sizeScaleFactor * Math.sqrt(e.size(d))) / 2) {
                     lastMatch = d;
                 }
             }
@@ -241,12 +279,10 @@ export default class PointMark extends Mark {
     }
 }
 
-
-
 /**
  * https://www.wikiwand.com/en/Smoothstep
- * 
- * @param {number} edge0 
+ *
+ * @param {number} edge0
  * @param {number} edge1
  * @param {number} x
  */
@@ -258,15 +294,13 @@ function smoothstep(edge0, edge1, x) {
 }
 
 /**
- * 
- * @param {number} x 
- * @param {number} lowerlimit 
- * @param {number} upperlimit 
+ *
+ * @param {number} x
+ * @param {number} lowerlimit
+ * @param {number} upperlimit
  */
 function clamp(x, lowerlimit, upperlimit) {
-    if (x < lowerlimit)
-        x = lowerlimit;
-    if (x > upperlimit)
-        x = upperlimit;
+    if (x < lowerlimit) x = lowerlimit;
+    if (x > upperlimit) x = upperlimit;
     return x;
 }

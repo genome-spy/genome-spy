@@ -6,22 +6,26 @@ const defaultEqTest = (a, b) => Object.is(a, b);
 
 /**
  * A tool for tracking mouse movement and handling tooltips etc...
- * 
+ *
  * @typedef {Object} ConstructorParams
  * @prop {HTMLElement} element element to observe
  * @prop {function} resolver function that resolves an object based on its coordinates
  * @prop {import("./tooltip").default} [tooltip] tooltip
  * @prop {function} [tooltipConverter] function that converts the object to html for tooltip
  * @prop {function} [eqTest] function that tests whether two objects are equal
- * 
+ *
  */
 export default class MouseTracker {
-
     /**
      * @param {ConstructorParams} params parameters
      */
-    constructor({ element, resolver, tooltip, tooltipConverter = defaultConverter, eqTest = defaultEqTest }) {
-        
+    constructor({
+        element,
+        resolver,
+        tooltip,
+        tooltipConverter = defaultConverter,
+        eqTest = defaultEqTest
+    }) {
         this.element = element;
         this.resolver = resolver;
         this.tooltip = tooltip;
@@ -36,8 +40,21 @@ export default class MouseTracker {
 
         this.currentObject = null;
 
-        for (let type of ["mousemove", "mouseleave", "wheel", "click", "mousedown", "mouseup", "contextmenu"]) {
-            element.addEventListener(type, event => this._handleMouseEvent(/** @type {MouseEvent} */(event)), false);
+        for (let type of [
+            "mousemove",
+            "mouseleave",
+            "wheel",
+            "click",
+            "mousedown",
+            "mouseup",
+            "contextmenu"
+        ]) {
+            element.addEventListener(
+                type,
+                event =>
+                    this._handleMouseEvent(/** @type {MouseEvent} */ (event)),
+                false
+            );
         }
 
         this.eventEmitter = new EventEmitter();
@@ -54,7 +71,7 @@ export default class MouseTracker {
     }
 
     /**
-     * @param {MouseEvent} event 
+     * @param {MouseEvent} event
      */
     _handleMouseEvent(event) {
         const point = clientPoint(this.element, event);
@@ -63,7 +80,15 @@ export default class MouseTracker {
 
         // TODO: Mousedown should record the current object and pass it to mouseup
 
-        if (["mousemove", "click", "mousedown", "mouseup", "contextmenu"].includes(event.type)) {
+        if (
+            [
+                "mousemove",
+                "click",
+                "mousedown",
+                "mouseup",
+                "contextmenu"
+            ].includes(event.type)
+        ) {
             resolvedObject = this.resolver(point);
         }
 
@@ -71,12 +96,15 @@ export default class MouseTracker {
             if (this.tooltip) {
                 this.tooltip.handleMouseMove(event);
             }
-
-        } else if (["click", "mousedown", "mouseup", "contextmenu"].includes(event.type)) {
+        } else if (
+            ["click", "mousedown", "mouseup", "contextmenu"].includes(
+                event.type
+            )
+        ) {
             if (resolvedObject) {
                 let type = event.type;
                 if (type == "click") {
-                    type = event.detail == 1 ? "click" : "dblclick"
+                    type = event.detail == 1 ? "click" : "dblclick";
                 }
 
                 this.eventEmitter.emit(type, resolvedObject, event, point);
@@ -89,17 +117,14 @@ export default class MouseTracker {
 
         if (resolvedObject && resolvedObject != this.currentObject) {
             this.eventEmitter.emit("mouseover", resolvedObject, event, point);
-
         } else if (resolvedObject && !this.currentObject) {
             this.eventEmitter.emit("mouseover", resolvedObject, event, point);
-
         } else if (!resolvedObject && this.currentObject) {
             this.eventEmitter.emit("mouseleave", event, point);
         }
 
         this.currentObject = resolvedObject;
     }
-
 
     _updateTooltip(obj) {
         if (!this.tooltip) {
@@ -115,13 +140,12 @@ export default class MouseTracker {
 
             if (obj) {
                 this.timeoutId = setTimeout(() => {
-                    this.tooltipConverter(obj)
-                        .then(content => {
-                            // Ensure that the resolved object is still current
-                            if (this.eqTest(obj, this.currentTooltipObject)) {
-                                this.tooltip.setContent(content)
-                            }
-                        });
+                    this.tooltipConverter(obj).then(content => {
+                        // Ensure that the resolved object is still current
+                        if (this.eqTest(obj, this.currentTooltipObject)) {
+                            this.tooltip.setContent(content);
+                        }
+                    });
                 }, this.tooltipDelay);
             }
 
@@ -129,5 +153,4 @@ export default class MouseTracker {
             this.currentTooltipObject = obj;
         }
     }
-
 }

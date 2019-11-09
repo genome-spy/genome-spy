@@ -1,12 +1,12 @@
 /**
  * Closed-Open interval [Lower, Upper)
- * 
+ *
  * TODO: Should enforce immutability
  */
 export default class Interval {
     /**
-     * @param {number} lower 
-     * @param {number} upper 
+     * @param {number} lower
+     * @param {number} upper
      */
     constructor(lower, upper) {
         if (typeof lower !== "number" || isNaN(lower)) {
@@ -16,7 +16,9 @@ export default class Interval {
             throw new Error(`Upper value "${upper}" is not a number!`);
         }
         if (upper < lower) {
-            throw new Error(`Upper value is less that lower value! Lower: ${lower}, upper: ${upper}`);
+            throw new Error(
+                `Upper value is less that lower value! Lower: ${lower}, upper: ${upper}`
+            );
         }
 
         this.lower = lower;
@@ -24,32 +26,38 @@ export default class Interval {
     }
 
     /**
-     * @param {number[]} array 
+     * @param {number[]} array
      */
     static fromArray(array) {
         return new Interval(array[0], array[1]);
     }
 
     /**
-     * @param {Interval} otherInterval 
+     * @param {Interval} otherInterval
      */
     equals(otherInterval) {
-        return otherInterval instanceof Interval &&
-            this.lower == otherInterval.lower && this.upper == otherInterval.upper;
+        return (
+            otherInterval instanceof Interval &&
+            this.lower == otherInterval.lower &&
+            this.upper == otherInterval.upper
+        );
     }
 
     /**
-     * @param {number} value 
+     * @param {number} value
      */
     contains(value) {
         return this.lower <= value && value < this.upper;
     }
 
     /**
-     * @param {Interval} otherInterval 
+     * @param {Interval} otherInterval
      */
     encloses(otherInterval) {
-        return this.lower <= otherInterval.lower && otherInterval.upper <= this.upper;
+        return (
+            this.lower <= otherInterval.lower &&
+            otherInterval.upper <= this.upper
+        );
     }
 
     // TODO: Empty intervals should be unambigious. Now empty may be "null" or lower = upper
@@ -67,15 +75,18 @@ export default class Interval {
     }
 
     /**
-     * @param {Interval} otherInterval 
+     * @param {Interval} otherInterval
      */
     connectedWith(otherInterval) {
-        return this.upper >= otherInterval.lower && otherInterval.upper >= this.lower;
+        return (
+            this.upper >= otherInterval.lower &&
+            otherInterval.upper >= this.lower
+        );
     }
 
     /**
      * Interpolates between lower and upper bounds
-     * 
+     *
      * @param {number} ratio between 0 and 1
      */
     interpolate(ratio) {
@@ -83,7 +94,7 @@ export default class Interval {
     }
 
     /**
-     * @param {Interval} otherInterval 
+     * @param {Interval} otherInterval
      */
     intersect(otherInterval) {
         if (!this.connectedWith(otherInterval)) {
@@ -102,7 +113,7 @@ export default class Interval {
     /**
      * Returns an Interval that encloses both this and the other Interval or value.
      * If the other interval is null, returns this interval.
-     * 
+     *
      * @param {Interval | number} other The other interval or value
      */
     span(other) {
@@ -120,7 +131,6 @@ export default class Interval {
                     Math.max(this.upper, other.upper)
                 );
             }
-
         } else {
             if (this.contains(other)) {
                 return this;
@@ -136,7 +146,7 @@ export default class Interval {
     /**
      * Returns a new Interval that has its lower and upper bounds
      * transformed using the given function.
-     * 
+     *
      * @param {function | null} scale A transform function or null
      */
     transform(scale) {
@@ -149,9 +159,9 @@ export default class Interval {
 
     /**
      * Returns an Interval that is a blend of this and the given interval.
-     * 
+     *
      * This is mainly intended for animated transitions between two intervals.
-     * 
+     *
      * @param {Interval} otherInterval The interval to blend with
      * @param {number} ratio The ratio of blending, [0, 1]. 0 = all this, 1 = all that
      */
@@ -165,8 +175,8 @@ export default class Interval {
 
     /**
      * Returns a new Interval with lower and upper padding of the given length
-     * 
-     * @param {number} length 
+     *
+     * @param {number} length
      */
     pad(length) {
         return new Interval(this.lower - length, this.upper + length);
@@ -177,14 +187,14 @@ export default class Interval {
     }
 
     /**
-     * @param {number} lower 
+     * @param {number} lower
      */
     withLower(lower) {
         return new Interval(lower, this.upper);
     }
 
     /**
-     * @param {number} upper 
+     * @param {number} upper
      */
     withUpper(upper) {
         return new Interval(this.lower, upper);

@@ -1,26 +1,25 @@
 /*!
  * Adapted from vega-encode:
  * https://github.com/vega/vega/blob/master/packages/vega-encode/test/scale-test.js
- * 
+ *
  * Copyright (c) 2015-2018, University of Washington Interactive Data Lab
  * All rights reserved.
- * 
+ *
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
 /* eslint-disable */
 
+import * as util from "vega-util";
+import * as vs from "vega-scale";
+import scale from "./scale";
 
-import * as util from 'vega-util';
-import * as vs from 'vega-scale';
-import scale from './scale';
-
-
-test('Scale respects domain configuration', function () {
-    var s, params = {
-        type: 'linear',
-        domain: [1, 9.5]
-    };
+test("Scale respects domain configuration", function() {
+    var s,
+        params = {
+            type: "linear",
+            domain: [1, 9.5]
+        };
 
     // test zero inclusion
     s = scale(params);
@@ -39,7 +38,9 @@ test('Scale respects domain configuration', function () {
     expect(s.domain()).toEqual([-1, 10]);
 
     // domain min overrides zero
-    s = scale(util.extend({ zero: true, domainMin: 0.5, domainMax: 10 }, params));
+    s = scale(
+        util.extend({ zero: true, domainMin: 0.5, domainMax: 10 }, params)
+    );
     expect(s.domain()).toEqual([0.5, 10]);
 
     // test domain mid
@@ -51,12 +52,12 @@ test('Scale respects domain configuration', function () {
     expect(s.domain()).toEqual([2, 11]);
 });
 
-test('Scale respects domain padding', function () {
+test("Scale respects domain padding", function() {
     var d;
 
     // test linear scale padding
     d = scale({
-        type: 'linear',
+        type: "linear",
         domain: [5, 95],
         range: [0, 100],
         padding: 5,
@@ -66,7 +67,7 @@ test('Scale respects domain padding', function () {
 
     // test log scale padding
     d = scale({
-        type: 'log',
+        type: "log",
         domain: [1, 10],
         range: [0, 60],
         padding: 20,
@@ -77,7 +78,7 @@ test('Scale respects domain padding', function () {
 
     // test sqrt scale padding
     d = scale({
-        type: 'sqrt',
+        type: "sqrt",
         domain: [2 * 2, 3 * 3],
         range: [0, 60],
         padding: 20,
@@ -88,7 +89,7 @@ test('Scale respects domain padding', function () {
 
     // test power scale padding
     d = scale({
-        type: 'pow',
+        type: "pow",
         exponent: 1 / 3,
         domain: [2 * 2 * 2, 3 * 3 * 3],
         range: [0, 60],
@@ -99,35 +100,37 @@ test('Scale respects domain padding', function () {
     expect(Math.abs(d[1] - 4 * 4 * 4) < 1e-8).toBeTruthy();
 });
 
-test('Ordinal scale respects domainImplicit', function () {
-    var s, params = {
-        type: 'ordinal',
-        domain: [],
-        range: ['a', 'b', 'c']
-    };
+test("Ordinal scale respects domainImplicit", function() {
+    var s,
+        params = {
+            type: "ordinal",
+            domain: [],
+            range: ["a", "b", "c"]
+        };
 
     s = scale(params);
-    expect(s('foo')).toBe(undefined);
-    expect(s('bar')).toBe(undefined);
-    expect(s('foo')).toBe(undefined);
+    expect(s("foo")).toBe(undefined);
+    expect(s("bar")).toBe(undefined);
+    expect(s("foo")).toBe(undefined);
 
     s = scale(util.extend({ domainImplicit: false }, params));
-    expect(s('foo')).toBe(undefined);
-    expect(s('bar')).toBe(undefined);
-    expect(s('foo')).toBe(undefined);
+    expect(s("foo")).toBe(undefined);
+    expect(s("bar")).toBe(undefined);
+    expect(s("foo")).toBe(undefined);
 
     s = scale(util.extend({ domainImplicit: true }, params));
-    expect(s('foo')).toBe('a');
-    expect(s('bar')).toBe('b');
-    expect(s('foo')).toBe('a');
+    expect(s("foo")).toBe("a");
+    expect(s("bar")).toBe("b");
+    expect(s("foo")).toBe("a");
 });
 
-test('Scale respects range configuration', function () {
-    var s, params = {
-        type: 'linear',
-        domain: [0, 10],
-        range: [0, 10]
-    };
+test("Scale respects range configuration", function() {
+    var s,
+        params = {
+            type: "linear",
+            domain: [0, 10],
+            range: [0, 10]
+        };
 
     // round
     s = scale(params);
@@ -141,8 +144,8 @@ test('Scale respects range configuration', function () {
 
     // rangeStep
     params = {
-        type: 'band',
-        domain: ['a', 'b', 'c'],
+        type: "band",
+        domain: ["a", "b", "c"],
         rangeStep: 20,
         padding: 0
     };
@@ -150,52 +153,61 @@ test('Scale respects range configuration', function () {
     expect(s.range()).toEqual([0, 60]);
     expect(s.bandwidth()).toBe(20);
 
-    s = expect(function () {
-        scale(util.extend({}, params, { type: 'linear' }));
+    s = expect(function() {
+        scale(util.extend({}, params, { type: "linear" }));
     }).toThrow();
 });
 
-test('Scale respects range color schemes', function () {
+test("Scale respects range color schemes", function() {
     var s, u, v;
 
     // performs scheme lookup
-    s = scale({ type: 'ordinal', scheme: 'category10' });
+    s = scale({ type: "ordinal", scheme: "category10" });
     expect(s.range().length).toBe(10);
 
     // throws on invalid scheme
-    expect(function () {
-        scale({ type: 'ordinal', scheme: 'foobarbaz' });
+    expect(function() {
+        scale({ type: "ordinal", scheme: "foobarbaz" });
     }).toThrow();
-    expect(function () {
-        scale({ type: 'sequential', scheme: 'foobarbaz' });
+    expect(function() {
+        scale({ type: "sequential", scheme: "foobarbaz" });
     }).toThrow();
 
     // handles interpolating schemes and extents
-    s = scale({ type: 'sequential', scheme: 'viridis' });
+    s = scale({ type: "sequential", scheme: "viridis" });
     u = s.interpolator();
-    expect(typeof u).toBe('function');
+    expect(typeof u).toBe("function");
 
-    s = scale({ type: 'sequential', scheme: 'viridis', schemeExtent: [0.2, 0.9] });
+    s = scale({
+        type: "sequential",
+        scheme: "viridis",
+        schemeExtent: [0.2, 0.9]
+    });
     v = s.interpolator();
-    expect(typeof v).toBe('function');
+    expect(typeof v).toBe("function");
     expect(v(0)).toBe(u(0.2));
     expect(v(1)).toBe(u(0.9));
 
-    s = scale({ type: 'sequential', scheme: 'viridis', schemeExtent: [0.2, 0.9], reverse: true });
+    s = scale({
+        type: "sequential",
+        scheme: "viridis",
+        schemeExtent: [0.2, 0.9],
+        reverse: true
+    });
     v = s.interpolator();
-    expect(typeof v).toBe('function');
+    expect(typeof v).toBe("function");
     expect(v(0)).toBe(u(0.9));
     expect(v(1)).toBe(u(0.2));
 
     // generate interpolator as needed
-    s = scale({ type: 'sequential', range: ['#000', '#f00'] });
+    s = scale({ type: "sequential", range: ["#000", "#f00"] });
     v = s.interpolator();
-    expect(typeof v).toBe('function');
-    expect(v(0)).toBe('rgb(0, 0, 0)');
-    expect(v(1)).toBe('rgb(255, 0, 0)');
+    expect(typeof v).toBe("function");
+    expect(v(0)).toBe("rgb(0, 0, 0)");
+    expect(v(1)).toBe("rgb(255, 0, 0)");
 
     // quantize to provided scheme count
-    s = scale({ type: 'quantize', scheme: 'viridis', schemeCount: 3 });
+    s = scale({ type: "quantize", scheme: "viridis", schemeCount: 3 });
     v = s.range();
     expect(v.length).toBe(3);
     expect(v[0]).toBe(u(1 / 4));
@@ -203,17 +215,17 @@ test('Scale respects range color schemes', function () {
     expect(v[2]).toBe(u(3 / 4));
 });
 
-test('Scale warns for zero in log domain', function () {
+test("Scale warns for zero in log domain", function() {
     function logScale(domain) {
         const logger = {
             count: 0,
             warn: function(msg) {
                 this.count++;
             }
-        }
+        };
 
-        return function () {
-            scale({ type: 'log', domain: domain }, logger);
+        return function() {
+            scale({ type: "log", domain: domain }, logger);
             if (logger.count) {
                 throw new Error();
             }
@@ -228,50 +240,80 @@ test('Scale warns for zero in log domain', function () {
     expect(logScale([-2, -1])).not.toThrow();
 });
 
-test('Scale infers scale key from type, domain, and range', function () {
+test("Scale infers scale key from type, domain, and range", function() {
     function key(params) {
         return scale(params).type;
     }
 
     // numeric domain scales should adapt
-    [vs.Linear, vs.Log, vs.Pow, vs.Sqrt, vs.Symlog].forEach(function (st) {
+    [vs.Linear, vs.Log, vs.Pow, vs.Sqrt, vs.Symlog].forEach(function(st) {
         expect(key({ type: st, domain: [0, 1], range: [0, 1] })).toBe(st);
-        expect(key({ type: st, domain: [0, 1], range: [true, false] })).toBe(st);
+        expect(key({ type: st, domain: [0, 1], range: [true, false] })).toBe(
+            st
+        );
 
         // direct color range specification
-        expect(key({ type: st, domain: [0, 1], range: ['blue', 'red'] })).toBe(`${vs.Sequential}-${st}`);
-        expect(key({ type: st, domain: [0, 1, 2], range: ['blue', 'red'] })).toBe(`${vs.Diverging}-${st}`);
-        expect(key({ type: st, domain: [0, 1, 2, 3], range: ['blue', 'red'] })).toBe(st);
+        expect(key({ type: st, domain: [0, 1], range: ["blue", "red"] })).toBe(
+            `${vs.Sequential}-${st}`
+        );
+        expect(
+            key({ type: st, domain: [0, 1, 2], range: ["blue", "red"] })
+        ).toBe(`${vs.Diverging}-${st}`);
+        expect(
+            key({ type: st, domain: [0, 1, 2, 3], range: ["blue", "red"] })
+        ).toBe(st);
 
         // color scheme range specification
-        expect(key({ type: st, domain: [0, 1], scheme: 'blues' })).toBe(`${vs.Sequential}-${st}`);
-        expect(key({ type: st, domain: [0, 1, 2], scheme: 'blues' })).toBe(`${vs.Diverging}-${st}`);
-        expect(key({ type: st, domain: [0, 1, 2, 3], scheme: 'blues' })).toBe(st);
+        expect(key({ type: st, domain: [0, 1], scheme: "blues" })).toBe(
+            `${vs.Sequential}-${st}`
+        );
+        expect(key({ type: st, domain: [0, 1, 2], scheme: "blues" })).toBe(
+            `${vs.Diverging}-${st}`
+        );
+        expect(key({ type: st, domain: [0, 1, 2, 3], scheme: "blues" })).toBe(
+            st
+        );
     });
 
     // temporal domain scales should not adapt
-    [vs.Time, vs.UTC].forEach(function (st) {
+    [vs.Time, vs.UTC].forEach(function(st) {
         const t0 = new Date(2010, 0, 1),
             t1 = new Date(2011, 0, 1),
             t2 = new Date(2012, 0, 1),
             t3 = new Date(2013, 0, 1);
 
         expect(key({ type: st, domain: [t0, t1], range: [0, 1] })).toBe(st);
-        expect(key({ type: st, domain: [t0, t1], range: [true, false] })).toBe(st);
+        expect(key({ type: st, domain: [t0, t1], range: [true, false] })).toBe(
+            st
+        );
 
         // direct color range specification
-        expect(key({ type: st, domain: [t0, t1], range: ['blue', 'red'] })).toBe(st);
-        expect(key({ type: st, domain: [t0, t1, t2], range: ['blue', 'red'] })).toBe(st);
-        expect(key({ type: st, domain: [t0, t1, t2, t3], range: ['blue', 'red'] })).toBe(st);
+        expect(
+            key({ type: st, domain: [t0, t1], range: ["blue", "red"] })
+        ).toBe(st);
+        expect(
+            key({ type: st, domain: [t0, t1, t2], range: ["blue", "red"] })
+        ).toBe(st);
+        expect(
+            key({ type: st, domain: [t0, t1, t2, t3], range: ["blue", "red"] })
+        ).toBe(st);
 
         // color scheme range specification
-        expect(key({ type: st, domain: [t0, t1], scheme: 'blues' })).toBe(st);
-        expect(key({ type: st, domain: [t0, t1, t2], scheme: 'blues' })).toBe(st);
-        expect(key({ type: st, domain: [t0, t1, t2, t3], scheme: 'blues' })).toBe(st);
+        expect(key({ type: st, domain: [t0, t1], scheme: "blues" })).toBe(st);
+        expect(key({ type: st, domain: [t0, t1, t2], scheme: "blues" })).toBe(
+            st
+        );
+        expect(
+            key({ type: st, domain: [t0, t1, t2, t3], scheme: "blues" })
+        ).toBe(st);
     });
 
     // sequential should work for backwards compatibility
     const st = vs.Sequential;
-    expect(key({ type: st, domain: [0, 1], range: ['blue', 'red'] })).toBe(`${st}-${vs.Linear}`);
-    expect(key({ type: st, domain: [0, 1], scheme: 'blues' })).toBe(`${st}-${vs.Linear}`);
+    expect(key({ type: st, domain: [0, 1], range: ["blue", "red"] })).toBe(
+        `${st}-${vs.Linear}`
+    );
+    expect(key({ type: st, domain: [0, 1], scheme: "blues" })).toBe(
+        `${st}-${vs.Linear}`
+    );
 });

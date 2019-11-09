@@ -1,9 +1,9 @@
-import * as twgl from 'twgl-base.js';
-import VERTEX_SHADER from '../gl/rect.vertex.glsl';
-import FRAGMENT_SHADER from '../gl/rect.fragment.glsl';
-import { RectVertexBuilder } from '../gl/dataToVertices';
+import * as twgl from "twgl-base.js";
+import VERTEX_SHADER from "../gl/rect.vertex.glsl";
+import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
+import { RectVertexBuilder } from "../gl/dataToVertices";
 
-import Mark from './mark';
+import Mark from "./mark";
 
 const defaultMarkProperties = {
     minWidth: 1.0,
@@ -18,12 +18,12 @@ const defaultMarkProperties = {
 
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
-    x:       null,
-    x2:      null,
-    y:       null,
-    y2:      null,
-    color:   { value: "#1f77b4" },
-    opacity: { value: 1.0 },
+    x: null,
+    x2: null,
+    y: null,
+    y2: null,
+    color: { value: "#1f77b4" },
+    opacity: { value: 1.0 }
 };
 
 export default class RectMark extends Mark {
@@ -31,7 +31,7 @@ export default class RectMark extends Mark {
      * @param {import("../view/unitView").default} unitView
      */
     constructor(unitView) {
-        super(unitView)
+        super(unitView);
 
         /** @type {Record<string, any>} */
         this.properties = {
@@ -40,7 +40,9 @@ export default class RectMark extends Mark {
         };
 
         // TODO: Check markProperties.rectMinOpacity
-        this.opaque = this.getEncoding().opacity.value >= 1.0 && this.properties.minOpacity >= 1.0;
+        this.opaque =
+            this.getEncoding().opacity.value >= 1.0 &&
+            this.properties.minOpacity >= 1.0;
     }
 
     getDefaultEncoding() {
@@ -56,9 +58,8 @@ export default class RectMark extends Mark {
             if (encoding.y.type == "quantitative" && !encoding.y2) {
                 encoding.y2 = {
                     constant: 0
-                }
+                };
             }
-
         } else {
             encoding.y = { value: 0 };
             encoding.y2 = { value: 1 };
@@ -70,12 +71,19 @@ export default class RectMark extends Mark {
     onBeforeSampleAnimation() {
         const interval = this.getContext().genomeSpy.getViewportDomain();
 
-        if (interval.width() < this.getContext().genomeSpy.getDomain().width() / this.properties.tesselationZoomThreshold) {
+        if (
+            interval.width() <
+            this.getContext()
+                .genomeSpy.getDomain()
+                .width() /
+                this.properties.tesselationZoomThreshold
+        ) {
             // TODO: Only bufferize the samples that are being animated
-            this._sampleBufferInfo = this._createSampleBufferInfo(interval,
-                interval.width() / this.properties.tesselationTiles);
-        }            
-
+            this._sampleBufferInfo = this._createSampleBufferInfo(
+                interval,
+                interval.width() / this.properties.tesselationTiles
+            );
+        }
     }
 
     onAfterSampleAnimation() {
@@ -83,7 +91,7 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * 
+     *
      * @param {import("../utils/interval").default} [interval]
      * @param {number} [tesselationThreshold]
      */
@@ -101,7 +109,10 @@ export default class RectMark extends Mark {
 
         return {
             rangeMap: vertexData.rangeMap,
-            bufferInfo: twgl.createBufferInfoFromArrays(this.gl, vertexData.arrays)
+            bufferInfo: twgl.createBufferInfoFromArrays(
+                this.gl,
+                vertexData.arrays
+            )
         };
     }
 
@@ -131,17 +142,23 @@ export default class RectMark extends Mark {
         // TODO: const domainWidth = this.unitContext.genomeSpy.getDomain().width();
         // But it requires that all data are first loaded in order to extract the domain
 
-        this.programInfo = twgl.createProgramInfo(gl,
-            [ VERTEX_SHADER, FRAGMENT_SHADER ].map(s => this.processShader(s)));
+        this.programInfo = twgl.createProgramInfo(
+            gl,
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s))
+        );
 
-        this._fullSampleBufferInfo = this._createSampleBufferInfo(null,
-            domainWidth / this.properties.tesselationZoomThreshold / this.properties.tesselationTiles);
+        this._fullSampleBufferInfo = this._createSampleBufferInfo(
+            null,
+            domainWidth /
+                this.properties.tesselationZoomThreshold /
+                this.properties.tesselationTiles
+        );
         this._sampleBufferInfo = this._fullSampleBufferInfo;
     }
 
     /**
-     * @param {object[]} samples 
-     * @param {object} globalUniforms 
+     * @param {object[]} samples
+     * @param {object} globalUniforms
      */
     render(samples, globalUniforms) {
         const gl = this.gl;
@@ -158,35 +175,47 @@ export default class RectMark extends Mark {
             ...globalUniforms,
             uYTranslate: 0,
             uYScale: 1,
-            uMinWidth: this.properties.minWidth / gl.drawingBufferWidth * dpr, // How many pixels
-            uMinHeight: this.properties.minHeight / gl.drawingBufferHeight * dpr, // How many pixels
+            uMinWidth: (this.properties.minWidth / gl.drawingBufferWidth) * dpr, // How many pixels
+            uMinHeight:
+                (this.properties.minHeight / gl.drawingBufferHeight) * dpr, // How many pixels
             uMinOpacity: this.properties.minOpacity,
-            uXOffset: this.properties.xOffset / gl.drawingBufferWidth * dpr,
-            uYOffset: this.properties.yOffset / gl.drawingBufferHeight * dpr,
+            uXOffset: (this.properties.xOffset / gl.drawingBufferWidth) * dpr,
+            uYOffset: (this.properties.yOffset / gl.drawingBufferHeight) * dpr
         });
 
-        twgl.setBuffersAndAttributes(gl, this.programInfo, this._sampleBufferInfo.bufferInfo);
+        twgl.setBuffersAndAttributes(
+            gl,
+            this.programInfo,
+            this._sampleBufferInfo.bufferInfo
+        );
 
         for (const sampleData of samples) {
-            const range = this._sampleBufferInfo.rangeMap.get(sampleData.sampleId);
+            const range = this._sampleBufferInfo.rangeMap.get(
+                sampleData.sampleId
+            );
             if (range) {
                 twgl.setUniforms(this.programInfo, sampleData.uniforms);
                 // TODO: draw only the part that intersects with the viewport
                 // Could use: http://lin-ear-th-inking.blogspot.com/2007/06/packed-1-dimensional-r-tree.html
-                twgl.drawBufferInfo(gl, this._sampleBufferInfo, gl.TRIANGLE_STRIP, range.count, range.offset);
+                twgl.drawBufferInfo(
+                    gl,
+                    this._sampleBufferInfo,
+                    gl.TRIANGLE_STRIP,
+                    range.count,
+                    range.offset
+                );
             }
         }
     }
 
-
     /**
-     * @param {string} sampleId 
+     * @param {string} sampleId
      * @param {number} x position on the viewport
      * @param {number} y position on the viewport
      * @param {import("../utils/interval").default} yBand the matched band on the band scale
      */
     findDatum(sampleId, x, y, yBand) {
-        const data = this.dataBySample.get(sampleId || "default");
+        const data = this.dataBySample.get(sampleId || "default");
 
         const gl = this.getContext().track.gl;
         const dpr = window.devicePixelRatio;
@@ -195,39 +224,65 @@ export default class RectMark extends Mark {
         y += this.properties.yOffset;
 
         if (data) {
-            const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */(this.encoders);
+            const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
+                .encoders);
 
-            const unitMinWidth = this.properties.minWidth / gl.drawingBufferWidth * dpr;
-            const halfMinWidth = unitMinWidth * this.getContext().genomeSpy.getViewportDomain().width() / 2;
+            const unitMinWidth =
+                (this.properties.minWidth / gl.drawingBufferWidth) * dpr;
+            const halfMinWidth =
+                (unitMinWidth *
+                    this.getContext()
+                        .genomeSpy.getViewportDomain()
+                        .width()) /
+                2;
 
-            const unitMinHeight = this.properties.minHeight / gl.drawingBufferHeight * dpr;
+            const unitMinHeight =
+                (this.properties.minHeight / gl.drawingBufferHeight) * dpr;
             const halfMinHeight = unitMinHeight / 2; // TODO: take yBand into account
 
             const scaledX = this.getContext().genomeSpy.rescaledX.invert(x);
 
             const scaledY = 1 - (y - yBand.lower) / yBand.width();
 
-            const matchX = this.properties.minWidth ?
-                d => {
-                    const halfWidth = Math.max((e.x2(d) - e.x(d)) / 2, halfMinWidth);
-                    const centre = (e.x(d) + e.x2(d)) / 2;
+            const matchX = this.properties.minWidth
+                ? d => {
+                      const halfWidth = Math.max(
+                          (e.x2(d) - e.x(d)) / 2,
+                          halfMinWidth
+                      );
+                      const centre = (e.x(d) + e.x2(d)) / 2;
 
-                    return scaledX >= centre - halfWidth && scaledX < centre + halfWidth;
-                } :
-                d => {
-                    return (scaledX >= e.x(d) && scaledX < e.x2(d)) || (scaledX >= e.x2(d) && scaledX < e.x(x));
-                };
+                      return (
+                          scaledX >= centre - halfWidth &&
+                          scaledX < centre + halfWidth
+                      );
+                  }
+                : d => {
+                      return (
+                          (scaledX >= e.x(d) && scaledX < e.x2(d)) ||
+                          (scaledX >= e.x2(d) && scaledX < e.x(x))
+                      );
+                  };
 
-            const matchY = this.properties.minHeight ? 
-                d => {
-                    const halfHeight = Math.max(Math.abs((e.y2(d) - e.y(d))) / 2, halfMinHeight);
-                    const centre = (e.y(d) + e.y2(d)) / 2;
+            const matchY = this.properties.minHeight
+                ? d => {
+                      const halfHeight = Math.max(
+                          Math.abs(e.y2(d) - e.y(d)) / 2,
+                          halfMinHeight
+                      );
+                      const centre = (e.y(d) + e.y2(d)) / 2;
 
-                    return scaledY >= centre - halfHeight && scaledY < centre + halfHeight;
-                } :
-                d => {
-                    return (scaledY >= e.y(d) && scaledY < e.y2(d)) || (scaledY >= e.y2(d) && scaledY < e.y(d))
-                };
+                      return (
+                          scaledY >= centre - halfHeight &&
+                          scaledY < centre + halfHeight
+                      );
+                  }
+                : d => {
+                      return (
+                          (scaledY >= e.y(d) && scaledY < e.y2(d)) ||
+                          (scaledY >= e.y2(d) && scaledY < e.y(d))
+                      );
+                  };
 
             // The current search "algorithm" is the grand old linear search. However, it does not scale to
             // very large data sets.
@@ -246,9 +301,9 @@ export default class RectMark extends Mark {
     /**
      * Finds a datum that overlaps the given value on domain.
      * The result is unspecified if multiple datums are found.
-     * 
+     *
      * TODO: Rename the other findDatum to findSpec
-     * 
+     *
      * @param {string} sampleId
      * @param {number} x position on the x domain
      * @returns {object}
@@ -273,5 +328,4 @@ export default class RectMark extends Mark {
             categorical: null
         };
     }
-
 }

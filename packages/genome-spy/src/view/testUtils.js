@@ -4,17 +4,17 @@
  */
 
 import { createView, resolveScales, initializeData } from "./viewUtils";
-import DataSource from '../data/dataSource';
+import DataSource from "../data/dataSource";
 import AccessorFactory from "../encoder/accessor";
 
 /**
- * 
- * @param {import("./viewUtils").ViewSpec} spec 
+ *
+ * @param {import("./viewUtils").ViewSpec} spec
  * @param {import("./viewUtils").ViewContext} [context]
  */
 export function create(spec, context) {
     const c = {
-        ...context || {},
+        ...(context || {}),
         /** @param {object} config */
         getDataSource: config => new DataSource(config, "."),
         accessorFactory: new AccessorFactory()
@@ -24,8 +24,8 @@ export function create(spec, context) {
 }
 
 /**
- * 
- * @param {import("./viewUtils").ViewSpec} spec 
+ *
+ * @param {import("./viewUtils").ViewSpec} spec
  * @param {import("./viewUtils").ViewContext} [context]
  */
 export async function createAndInitialize(spec, context) {

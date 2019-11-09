@@ -1,33 +1,32 @@
-import * as twgl from 'twgl-base.js';
+import * as twgl from "twgl-base.js";
 
-import { scaleLinear } from 'd3-scale';
-import { bisector } from 'd3-array';
-import { tsvParseRows } from 'd3-dsv';
+import { scaleLinear } from "d3-scale";
+import { bisector } from "d3-array";
+import { tsvParseRows } from "d3-dsv";
 
-import { Matrix4 } from 'math.gl';
-import TinyQueue from 'tinyqueue';
+import { Matrix4 } from "math.gl";
+import TinyQueue from "tinyqueue";
 
-import WebGlTrack from './webGlTrack';
+import WebGlTrack from "./webGlTrack";
 import Interval from "../utils/interval";
 import IntervalCollection from "../utils/intervalCollection";
 
-import geneVertexShader from '../gl/gene.vertex.glsl';
-import geneFragmentShader from '../gl/gene.fragment.glsl';
-import exonVertexShader from '../gl/exon.vertex.glsl';
-import rectangleFragmentShader from '../gl/rect.fragment.glsl';
+import geneVertexShader from "../gl/gene.vertex.glsl";
+import geneFragmentShader from "../gl/gene.fragment.glsl";
+import exonVertexShader from "../gl/exon.vertex.glsl";
+import rectangleFragmentShader from "../gl/rect.fragment.glsl";
 
-import { fp64ify } from '../gl/includes/fp64-utils';
+import { fp64ify } from "../gl/includes/fp64-utils";
 
 import * as entrez from "../fetchers/entrez";
 import * as html from "../utils/html";
 import MouseTracker from "../mouseTracker";
 import contextMenu from "../contextMenu";
-import Genome from '../genome/genome';
+import Genome from "../genome/genome";
 
 // TODO: Implement gene track by using the grammar. Needs plenty of grammar improvements, though.
 
-const STREAM_DRAW = 0x88E0;
-
+const STREAM_DRAW = 0x88e0;
 
 const defaultConfig = {
     geneFullVisibilityThreshold: 30 * 1000000, // In base pairs
@@ -44,7 +43,6 @@ const defaultConfig = {
     fontFamily: "sans-serif"
 };
 
-
 export default class GeneTrack extends WebGlTrack {
     constructor(genomeSpy, config) {
         super(genomeSpy, config);
@@ -53,16 +51,18 @@ export default class GeneTrack extends WebGlTrack {
 
         // TODO: Replace 40 with something sensible
         /** @type {IntervalCollection[]} keeps track of gene symbols on the screen */
-        this.symbolsOnLanes = [...Array(40).keys()].map(i => new IntervalCollection(symbol => symbol.screenInterval));
+        this.symbolsOnLanes = [...Array(40).keys()].map(
+            i => new IntervalCollection(symbol => symbol.screenInterval)
+        );
 
         this.bodyOpacityScale = scaleLinear()
             .range([0, 1])
             .domain([
-                this.styles.geneFullVisibilityThreshold * this.styles.geneFadeGradientFactor,
+                this.styles.geneFullVisibilityThreshold *
+                    this.styles.geneFadeGradientFactor,
                 this.styles.geneFullVisibilityThreshold
             ])
             .clamp(true);
-
     }
 
     setGenes(genes) {
@@ -74,17 +74,22 @@ export default class GeneTrack extends WebGlTrack {
         const n = 300; // An arbitrary limit
         const topGenes = topK(this.genes, n, (a, b) => b.score - a.score);
         const scoreLimit = topGenes[topGenes.length - 1].score;
-        this.overviewGenes = this.genes.filter(gene => gene.score >= scoreLimit);
+        this.overviewGenes = this.genes.filter(
+            gene => gene.score >= scoreLimit
+        );
     }
 
     /**
-     * @param {HTMLElement} trackContainer 
+     * @param {HTMLElement} trackContainer
      */
     async initialize(trackContainer) {
         await super.initialize(trackContainer);
 
         this.trackContainer.className = "gene-track";
-        this.trackContainer.style.height = (this.styles.lanes * (this.styles.laneHeight + this.styles.laneSpacing)) + "px";
+        this.trackContainer.style.height =
+            this.styles.lanes *
+                (this.styles.laneHeight + this.styles.laneSpacing) +
+            "px";
         this.trackContainer.style.marginTop = `${this.styles.laneSpacing}px`;
 
         /** @type {Genome} */
@@ -94,15 +99,19 @@ export default class GeneTrack extends WebGlTrack {
         }
 
         const url = `${genome.baseUrl}/${genome.name}/refSef_genes_scored_compressed.${genome.name}.txt`;
-        this.setGenes(parseCompressedRefseqGeneTsv(
-            genome.chromMapper,
-            await fetch(url, { credentials: 'same-origin' })
-                .then(res => {
+        this.setGenes(
+            parseCompressedRefseqGeneTsv(
+                genome.chromMapper,
+                await fetch(url, { credentials: "same-origin" }).then(res => {
                     if (res.ok) {
                         return res.text();
                     }
-                    throw new Error(`Could not load gene annotations: ${url} \nReason: ${res.status} ${res.statusText}`);
-                })));
+                    throw new Error(
+                        `Could not load gene annotations: ${url} \nReason: ${res.status} ${res.statusText}`
+                    );
+                })
+            )
+        );
 
         this.initializeWebGL();
 
@@ -124,11 +133,23 @@ export default class GeneTrack extends WebGlTrack {
             element: this.symbolCanvas,
             resolver: this.findGeneAt.bind(this),
             tooltip: this.genomeSpy.tooltip,
-            tooltipConverter: gene => new Promise(resolve => entrez.fetchGeneSummary(gene.symbol)
-                .then(summary => resolve(this.entrezSummary2Html(summary)))),
+            tooltipConverter: gene =>
+                new Promise(resolve =>
+                    entrez
+                        .fetchGeneSummary(gene.symbol)
+                        .then(summary =>
+                            resolve(this.entrezSummary2Html(summary))
+                        )
+                )
         })
-            .on("dblclick", gene => this.genomeSpy.zoomTo(gene.interval.pad(gene.interval.width() * 0.25)))
-            .on("contextmenu", (gene, mouseEvent) => contextMenu({ items: createContextMenuItems(gene) }, mouseEvent))
+            .on("dblclick", gene =>
+                this.genomeSpy.zoomTo(
+                    gene.interval.pad(gene.interval.width() * 0.25)
+                )
+            )
+            .on("contextmenu", (gene, mouseEvent) =>
+                contextMenu({ items: createContextMenuItems(gene) }, mouseEvent)
+            );
 
         this.genomeSpy.on("zoom", () => {
             this.render();
@@ -146,10 +167,18 @@ export default class GeneTrack extends WebGlTrack {
         super.initializeWebGL();
         this.gl.enable(this.gl.BLEND);
 
-        this.geneProgramInfo = twgl.createProgramInfo(this.gl,
-            [ geneVertexShader, geneFragmentShader ].map(shader => this.processShader(shader)));
-        this.exonProgramInfo = twgl.createProgramInfo(this.gl,
-            [ exonVertexShader, rectangleFragmentShader ].map(shader => this.processShader(shader)));
+        this.geneProgramInfo = twgl.createProgramInfo(
+            this.gl,
+            [geneVertexShader, geneFragmentShader].map(shader =>
+                this.processShader(shader)
+            )
+        );
+        this.exonProgramInfo = twgl.createProgramInfo(
+            this.gl,
+            [exonVertexShader, rectangleFragmentShader].map(shader =>
+                this.processShader(shader)
+            )
+        );
     }
 
     entrezSummary2Html(summary) {
@@ -181,7 +210,11 @@ export default class GeneTrack extends WebGlTrack {
         // Include some pixels above and below the symbol
         const margin = 0.3;
 
-        if (laneNumber < 0 || Math.abs(laneNumber * laneTotal - y) > this.styles.fontSize * (1 + margin) / 2) {
+        if (
+            laneNumber < 0 ||
+            Math.abs(laneNumber * laneTotal - y) >
+                (this.styles.fontSize * (1 + margin)) / 2
+        ) {
             return null;
         }
 
@@ -212,28 +245,33 @@ export default class GeneTrack extends WebGlTrack {
 
         this.visibleClusters = clusters;
 
-        const createBufferInfo = (vertices) =>
-            twgl.createBufferInfoFromArrays(
-                this.gl,
-                vertices.arrays,
-                { numElements: vertices.numElements });
+        const createBufferInfo = vertices =>
+            twgl.createBufferInfoFromArrays(this.gl, vertices.arrays, {
+                numElements: vertices.numElements
+            });
 
         entering.forEach(cluster => {
             this.exonBufferInfoMap.set(
                 cluster.id,
-                createBufferInfo(exonsToVertices(
-                    cluster.genes,
-                    this.styles.laneHeight,
-                    this.styles.laneSpacing
-                )));
+                createBufferInfo(
+                    exonsToVertices(
+                        cluster.genes,
+                        this.styles.laneHeight,
+                        this.styles.laneSpacing
+                    )
+                )
+            );
 
             this.geneBufferInfoMap.set(
                 cluster.id,
-                createBufferInfo(genesToVertices(
-                    cluster.genes,
-                    this.styles.laneHeight,
-                    this.styles.laneSpacing
-                )));
+                createBufferInfo(
+                    genesToVertices(
+                        cluster.genes,
+                        this.styles.laneHeight,
+                        this.styles.laneSpacing
+                    )
+                )
+            );
         });
 
         exiting.forEach(cluster => {
@@ -242,13 +280,13 @@ export default class GeneTrack extends WebGlTrack {
         });
     }
 
-
     render() {
         const gl = this.gl;
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        const bodyOpacity =
-            this.glCanvas.style.opacity = this.bodyOpacityScale(this.genomeSpy.getViewportDomain().width());
+        const bodyOpacity = (this.glCanvas.style.opacity = this.bodyOpacityScale(
+            this.genomeSpy.getViewportDomain().width()
+        ));
 
         if (bodyOpacity) {
             this.updateVisibleClusters();
@@ -264,8 +302,11 @@ export default class GeneTrack extends WebGlTrack {
         const scale = this.genomeSpy.getZoomedScale();
         const visibleInterval = this.genomeSpy.getViewportDomain();
 
-        const genes = this.genomeSpy.getExpZoomLevel() > this.overviewGenes.length / this.styles.maxSymbolsToShow
-            ? this.genes : this.overviewGenes;
+        const genes =
+            this.genomeSpy.getExpZoomLevel() >
+            this.overviewGenes.length / this.styles.maxSymbolsToShow
+                ? this.genes
+                : this.overviewGenes;
 
         const bisec = bisector(gene => gene.interval.lower);
 
@@ -273,11 +314,18 @@ export default class GeneTrack extends WebGlTrack {
             .slice(
                 bisec.right(genes, visibleInterval.lower - 500000),
                 bisec.left(genes, visibleInterval.upper + 1000000) // TODO: Visible interval
-            ).filter(gene => visibleInterval.connectedWith(gene.interval));
+            )
+            .filter(gene => visibleInterval.connectedWith(gene.interval));
 
-        const topGenes = topK(visibleGenes, this.styles.maxSymbolsToShow, (a, b) => b.score - a.score);
+        const topGenes = topK(
+            visibleGenes,
+            this.styles.maxSymbolsToShow,
+            (a, b) => b.score - a.score
+        );
 
-        const arrowOpacity = this.bodyOpacityScale(this.genomeSpy.getViewportDomain().width());
+        const arrowOpacity = this.bodyOpacityScale(
+            this.genomeSpy.getViewportDomain().width()
+        );
 
         const ctx = this.get2d(this.symbolCanvas);
         ctx.textBaseline = "middle";
@@ -305,19 +353,27 @@ export default class GeneTrack extends WebGlTrack {
 
             const halfWidth = width / 2 + 5;
             const bounds = new Interval(x - halfWidth, x + halfWidth);
-            if (!this.symbolsOnLanes[gene.lane].addIfRoom({ screenInterval: bounds, gene: gene })) {
+            if (
+                !this.symbolsOnLanes[gene.lane].addIfRoom({
+                    screenInterval: bounds,
+                    gene: gene
+                })
+            ) {
                 continue;
             }
 
-            const y = gene.lane * (this.styles.laneHeight + this.styles.laneSpacing) + yOffset;
+            const y =
+                gene.lane * (this.styles.laneHeight + this.styles.laneSpacing) +
+                yOffset;
 
             if (arrowOpacity) {
                 ctx.globalAlpha = arrowOpacity;
 
-                ctx.font = `${this.styles.fontSize * 0.6}px ${this.styles.fontFamily}`;
-                if (gene.strand == '-') {
+                ctx.font = `${this.styles.fontSize * 0.6}px ${
+                    this.styles.fontFamily
+                }`;
+                if (gene.strand == "-") {
                     ctx.fillText("\u25c0", x - width / 2 - 4, y);
-
                 } else {
                     ctx.fillText("\u25b6", x + width / 2 + 4, y);
                 }
@@ -330,9 +386,7 @@ export default class GeneTrack extends WebGlTrack {
             ctx.strokeText(text, x, y);
             ctx.fillText(text, x, y);
         }
-
     }
-
 
     renderGenes() {
         const gl = this.gl;
@@ -344,11 +398,8 @@ export default class GeneTrack extends WebGlTrack {
         };
 
         // TODO: Get rid of the matrix
-        const view = new Matrix4()
-            .scale([this.gl.canvas.clientWidth, 1, 1]);
+        const view = new Matrix4().scale([this.gl.canvas.clientWidth, 1, 1]);
         const uTMatrix = this.viewportProjection.clone().multiplyRight(view);
-
-        
 
         gl.useProgram(this.geneProgramInfo.program);
         twgl.setUniforms(this.geneProgramInfo, {
@@ -363,11 +414,10 @@ export default class GeneTrack extends WebGlTrack {
             twgl.drawBufferInfo(gl, bufferInfo);
         });
 
-
         gl.useProgram(this.exonProgramInfo.program);
         twgl.setUniforms(this.exonProgramInfo, {
             ...uniforms,
-            uTMatrix,
+            uTMatrix
         });
 
         this.visibleClusters.forEach(cluster => {
@@ -376,7 +426,6 @@ export default class GeneTrack extends WebGlTrack {
             twgl.drawBufferInfo(gl, bufferInfo);
         });
     }
-
 
     search(string) {
         string = string.toUpperCase();
@@ -390,7 +439,6 @@ export default class GeneTrack extends WebGlTrack {
 
             // Add some padding around the gene
             return interval.pad(interval.width() * 0.25);
-
         } else {
             return null;
         }
@@ -405,10 +453,7 @@ export default class GeneTrack extends WebGlTrack {
     }
 }
 
-
-
 function createExonIntervals(gene) {
-
     // TODO: Consider doing this in a web worker to prevent transient drop in FPS
 
     // These implementations should be benchmarked...
@@ -438,7 +483,7 @@ function createExonIntervals(gene) {
 
     let cumulativePos = gene.interval.lower;
 
-    for (let i = 0; i < steps.length;) {
+    for (let i = 0; i < steps.length; ) {
         cumulativePos += parseInt(steps[i++], 10);
         const lower = cumulativePos;
         cumulativePos += parseInt(steps[i++], 10);
@@ -450,13 +495,11 @@ function createExonIntervals(gene) {
     return exons;
 }
 
-
 function exonsToVertices(genes, laneHeight, laneSpacing) {
-
     /* TODO: Consider using flat shading:
      * https://www.khronos.org/opengl/wiki/Type_Qualifier_(GLSL)#Interpolation_qualifiers
      * https://stackoverflow.com/a/40101324/1547896
-     * 
+     *
      * Gene body and exons could be rendered in one pass by alternating between
      * exons and introns
      */
@@ -484,9 +527,18 @@ function exonsToVertices(genes, laneHeight, laneSpacing) {
             const top = gene.lane * (laneHeight + laneSpacing);
             const bottom = top + laneHeight;
 
-            x.set([].concat(begin, end, begin, end, begin, end), i * VERTICES_PER_RECTANGLE * 2);
-            y.set([bottom, bottom, top, top, top, bottom], i * VERTICES_PER_RECTANGLE);
-            widths.set([-width, width, -width, width, -width, width], i * VERTICES_PER_RECTANGLE);
+            x.set(
+                [].concat(begin, end, begin, end, begin, end),
+                i * VERTICES_PER_RECTANGLE * 2
+            );
+            y.set(
+                [bottom, bottom, top, top, top, bottom],
+                i * VERTICES_PER_RECTANGLE
+            );
+            widths.set(
+                [-width, width, -width, width, -width, width],
+                i * VERTICES_PER_RECTANGLE
+            );
 
             i++;
         });
@@ -502,7 +554,6 @@ function exonsToVertices(genes, laneHeight, laneSpacing) {
         numElements: totalExonCount * VERTICES_PER_RECTANGLE
     };
 }
-
 
 function genesToVertices(genes, laneHeight, laneSpacing) {
     const VERTICES_PER_RECTANGLE = 6;
@@ -520,21 +571,29 @@ function genesToVertices(genes, laneHeight, laneSpacing) {
         const topEdge = 0.0;
         const bottomEdge = 1.0;
 
-        x.set([].concat(begin, end, begin, end, begin, end), i * VERTICES_PER_RECTANGLE * 2);
-        y.set([bottom, bottom, top, top, top, bottom], i * VERTICES_PER_RECTANGLE);
-        yEdge.set([bottomEdge, bottomEdge, topEdge, topEdge, topEdge, bottomEdge], i * VERTICES_PER_RECTANGLE);
+        x.set(
+            [].concat(begin, end, begin, end, begin, end),
+            i * VERTICES_PER_RECTANGLE * 2
+        );
+        y.set(
+            [bottom, bottom, top, top, top, bottom],
+            i * VERTICES_PER_RECTANGLE
+        );
+        yEdge.set(
+            [bottomEdge, bottomEdge, topEdge, topEdge, topEdge, bottomEdge],
+            i * VERTICES_PER_RECTANGLE
+        );
     });
 
     return {
         arrays: {
             x: { data: x, numComponents: 2, drawType: STREAM_DRAW },
             y: { data: y, numComponents: 1, drawType: STREAM_DRAW },
-            yEdge: { data: yEdge, numComponents: 1, drawType: STREAM_DRAW },
+            yEdge: { data: yEdge, numComponents: 1, drawType: STREAM_DRAW }
         },
         numElements: genes.length * VERTICES_PER_RECTANGLE
     };
 }
-
 
 export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
     const chromNames = new Set(cm.chromosomes().map(chrom => chrom.name));
@@ -544,7 +603,6 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
     const genes = tsvParseRows(geneTsv)
         .filter(row => chromNames.has(row[1]))
         .map(row => {
-
             const start = parseInt(row[2], 10);
             const end = start + parseInt(row[3], 10);
 
@@ -565,15 +623,14 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
             };
         });
 
-
     // Find a free lane for each gene.
     genes.sort((a, b) => a.interval.lower - b.interval.lower);
 
     const lanes = [];
 
     const preference = {
-        '-': 0,
-        '+': 1
+        "-": 0,
+        "+": 1
     };
 
     const isOccupied = (laneIdx, pos) => lanes[laneIdx] && lanes[laneIdx] > pos;
@@ -594,7 +651,6 @@ export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
     return genes;
 }
 
-
 function detectGeneClusters(genes) {
     // For overview purposes we create a union of overlapping transcripts
     // and merge adjacent segments that are close enough to each other
@@ -609,8 +665,11 @@ function detectGeneClusters(genes) {
 
     let genesInBlock = [];
 
-    genes.map(g => ({ pos: g.interval.lower, start: true, gene: g }))
-        .concat(genes.map(g => ({ pos: g.interval.upper, start: false, gene: g })))
+    genes
+        .map(g => ({ pos: g.interval.lower, start: true, gene: g }))
+        .concat(
+            genes.map(g => ({ pos: g.interval.upper, start: false, gene: g }))
+        )
         .sort((a, b) => a.pos - b.pos)
         .forEach(edge => {
             if (edge.start) {
@@ -630,7 +689,6 @@ function detectGeneClusters(genes) {
                         leftEdge = edge.pos;
                         index++;
                     }
-
                 }
                 genesInBlock.push(edge.gene);
                 concurrentCount++;
@@ -640,7 +698,6 @@ function detectGeneClusters(genes) {
                 concurrentCount--;
                 previousEnd = edge.pos;
             }
-
         });
 
     if (leftEdge) {
@@ -654,10 +711,9 @@ function detectGeneClusters(genes) {
     return union;
 }
 
-
 /**
- * 
- * @param {*} gene 
+ *
+ * @param {*} gene
  * @returns {import("../contextMenu").MenuItem[]}
  */
 function createContextMenuItems(gene) {
@@ -677,27 +733,36 @@ function createContextMenuItems(gene) {
         },
         {
             label: "NCBI Gene",
-            callback: () => window.open(`https://www.ncbi.nlm.nih.gov/gene?cmd=search&term=${symbol}%5Bsym%5D`)
+            callback: () =>
+                window.open(
+                    `https://www.ncbi.nlm.nih.gov/gene?cmd=search&term=${symbol}%5Bsym%5D`
+                )
         },
         {
             label: "GeneCards",
-            callback: () => window.open(`https://www.genecards.org/Search/Symbol?queryString=${symbol}`)
+            callback: () =>
+                window.open(
+                    `https://www.genecards.org/Search/Symbol?queryString=${symbol}`
+                )
         },
         {
             label: "OMIM",
-            callback: () => window.open(`https://www.omim.org/search/?index=entry&start=1&limit=10&sort=score+desc%2C+prefix_sort+desc&search=approved_gene_symbol%3A${symbol}`)
-        },
+            callback: () =>
+                window.open(
+                    `https://www.omim.org/search/?index=entry&start=1&limit=10&sort=score+desc%2C+prefix_sort+desc&search=approved_gene_symbol%3A${symbol}`
+                )
+        }
     ];
 }
 
 /**
  * Finds the top K
- * 
+ *
  * Based on ideas at https://lemire.me/blog/2017/06/21/top-speed-for-top-k-queries/
- * 
+ *
  * @param {any[]} data
- * @param {number} k 
- * @param {function(any, any):number} compare 
+ * @param {number} k
+ * @param {function(any, any):number} compare
  */
 function topK(data, k, compare) {
     const negCompare = (a, b) => compare(b, a);

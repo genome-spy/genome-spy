@@ -1,13 +1,9 @@
-import UnitView from './unitView';
-import LayerView from './layerView';
+import UnitView from "./unitView";
+import LayerView from "./layerView";
 
-import {
-    create, createAndInitialize
-} from './testUtils'
-import {
-    toRegularArray as r
-} from '../utils/domainArray';
-import Interval from '../utils/interval';
+import { create, createAndInitialize } from "./testUtils";
+import { toRegularArray as r } from "../utils/domainArray";
+import Interval from "../utils/interval";
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", () => {
@@ -25,21 +21,20 @@ describe("Trivial creations and initializations", () => {
             mark: "point",
             encoding: {
                 x: { field: "data" },
-                y: { field: "data" },
+                y: { field: "data" }
             }
         };
-        
+
         expect(createAndInitialize(spec)).resolves.toBeInstanceOf(UnitView);
     });
 });
-
 
 describe("Test domain handling", () => {
     const dataSpec = {
         values: [
             { a: 1, b: 3 },
             { a: 2, b: 4 },
-            { a: 3, b: 5 },
+            { a: 3, b: 5 }
         ]
     };
 
@@ -62,7 +57,6 @@ describe("Test domain handling", () => {
         return createAndInitialize(spec).then(view =>
             expect(r(view.getDomain("y"))).toEqual([0, 1000])
         );
-
     });
 
     test("Includes a constant in the domain", () => {
@@ -78,7 +72,6 @@ describe("Test domain handling", () => {
         return createAndInitialize(spec).then(view =>
             expect(r(view.getDomain("x"))).toEqual([123, 123])
         );
-
     });
 
     test("Extracts domain from the data", () => {
@@ -100,12 +93,11 @@ describe("Test domain handling", () => {
         return createAndInitialize(spec).then(view =>
             expect(r(view.getDomain("y"))).toEqual([1, 3])
         );
-
     });
 
     test("Extracts domain from the data when a secondary channel is being used", () => {
         const spec = {
-            data: dataSpec, 
+            data: dataSpec,
             mark: "rect",
             encoding: {
                 x: { field: "a" },
@@ -130,7 +122,7 @@ describe("Test domain handling", () => {
             mark: "point",
             encoding: {
                 x: { field: "data", type: "quantitative" },
-                y: { field: "data", type: "quantitative" },
+                y: { field: "data", type: "quantitative" }
             }
         };
 
@@ -144,7 +136,5 @@ describe("Test domain handling", () => {
             expect(r(view.getDomain("x"))).toEqual([0, 2]);
             expect(r(view.getDomain("y"))).toEqual([1, 1]);
         });
-
     });
-
 });

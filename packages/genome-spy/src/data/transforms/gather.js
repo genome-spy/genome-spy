@@ -4,13 +4,11 @@
 
 // See: https://vega.github.io/vega/docs/transforms/fold/
 
-
 /**
  * @param {GatherConfig} gatherConfig
  * @param {Object[]} rows Data parsed with d3.dsv
  */
 export function gather(gatherConfig, rows) {
-    
     const columnRegex = new RegExp(gatherConfig.columnRegex);
 
     const keys = Object.keys(rows[0]);
@@ -25,10 +23,10 @@ export function gather(gatherConfig, rows) {
         const sampleId = columnRegex.exec(sampleColumn)[1];
 
         const datums = rows.map(row => ({
-            // TODO: Multiple fields 
+            // TODO: Multiple fields
             [gatherConfig.asValue]: row[sampleColumn]
         }));
-        
+
         gatheredFields.set(sampleId, datums);
     }
 
@@ -65,10 +63,10 @@ export default function gatherTransform(gatherConfig, rows) {
             tidyRows.push({
                 [gatherConfig.asKey || "sample"]: sampleId,
                 ...strippedRows[i],
-                ...gatheredRowsOfSample[i],
+                ...gatheredRowsOfSample[i]
             });
         }
     }
-    
+
     return tidyRows;
 }

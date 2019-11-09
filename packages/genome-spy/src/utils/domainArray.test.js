@@ -1,9 +1,9 @@
 import createDomain, {
-    toRegularArray as r, PiecewiseDomain
-} from './domainArray';
+    toRegularArray as r,
+    PiecewiseDomain
+} from "./domainArray";
 
 describe("Build quantitative domains", () => {
-
     test("Empty domain", () => {
         const b = createDomain("quantitative");
         expect(r(b)).toEqual([]);
@@ -55,10 +55,18 @@ describe("Build ordinal domains", () => {
 
 describe("Build piecewise domains", () => {
     test("Creates a piecewise domain", () => {
-        expect(createDomain("quantitative", [1])).toBeInstanceOf(PiecewiseDomain);
-        expect(createDomain("quantitative", [1, 2, 3])).toBeInstanceOf(PiecewiseDomain);
-        expect(createDomain("quantitative", [1, 2, 3, 4])).toBeInstanceOf(PiecewiseDomain);
-        expect(createDomain("quantitative", [3, 2, 1])).toBeInstanceOf(PiecewiseDomain);
+        expect(createDomain("quantitative", [1])).toBeInstanceOf(
+            PiecewiseDomain
+        );
+        expect(createDomain("quantitative", [1, 2, 3])).toBeInstanceOf(
+            PiecewiseDomain
+        );
+        expect(createDomain("quantitative", [1, 2, 3, 4])).toBeInstanceOf(
+            PiecewiseDomain
+        );
+        expect(createDomain("quantitative", [3, 2, 1])).toBeInstanceOf(
+            PiecewiseDomain
+        );
         expect(r(createDomain("quantitative", [3, 2, 1]))).toEqual([3, 2, 1]);
     });
 
@@ -71,29 +79,34 @@ describe("Build piecewise domains", () => {
     });
 
     test("Throws on mutation attempts", () => {
-        expect(() => createDomain("quantitative", [1, 2, 3]).extend(4)).toThrow();
+        expect(() =>
+            createDomain("quantitative", [1, 2, 3]).extend(4)
+        ).toThrow();
     });
 
     test("Does not throw when extending with existing value", () => {
-        expect(r(createDomain("quantitative", [1, 2, 3]).extend(2))).toEqual([1, 2, 3]);
-    })
-
+        expect(r(createDomain("quantitative", [1, 2, 3]).extend(2))).toEqual([
+            1,
+            2,
+            3
+        ]);
+    });
 });
 
 describe("Annotations", () => {
-    test("Quantitative domain is annotated",
-        () => expect(createDomain("quantitative").type).toEqual("quantitative"));
+    test("Quantitative domain is annotated", () =>
+        expect(createDomain("quantitative").type).toEqual("quantitative"));
 
-    test("Ordinal domain is annotated",
-        () => expect(createDomain("ordinal").type).toEqual("ordinal"));
+    test("Ordinal domain is annotated", () =>
+        expect(createDomain("ordinal").type).toEqual("ordinal"));
 
-    test("Nominal domain is annotated",
-        () => expect(createDomain("nominal").type).toEqual("nominal"));
-    
+    test("Nominal domain is annotated", () =>
+        expect(createDomain("nominal").type).toEqual("nominal"));
 });
 
 describe("Other stuff", () => {
-    test("Throws on extending by other type of domain array", () => 
-        expect(() => createDomain("quantitative").extendAll(createDomain("nominal")))
-            .toThrow());
-})
+    test("Throws on extending by other type of domain array", () =>
+        expect(() =>
+            createDomain("quantitative").extendAll(createDomain("nominal"))
+        ).toThrow());
+});

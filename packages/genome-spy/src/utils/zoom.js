@@ -1,4 +1,4 @@
-import clientPoint from './point';
+import clientPoint from "./point";
 
 export class Zoom {
     constructor(listener) {
@@ -14,8 +14,8 @@ export class Zoom {
 
     /**
      * Adds mouse/touch listeners for zoom
-     * 
-     * @param {object} element 
+     *
+     * @param {object} element
      * @param {function(number[]):(number[]|undefined)} [wheelSnapHandler]
      */
     attachZoomEvents(element, wheelSnapHandler) {
@@ -23,12 +23,14 @@ export class Zoom {
             element.addEventListener(
                 type,
                 e => {
-                    const point = wheelSnapHandler ?
-                        wheelSnapHandler(clientPoint(element, e)) : 
-                        clientPoint(element, e);
-                    this.handleMouseEvent(e, point, element)
+                    const point = wheelSnapHandler
+                        ? wheelSnapHandler(clientPoint(element, e))
+                        : clientPoint(element, e);
+                    this.handleMouseEvent(e, point, element);
                 },
-                false));
+                false
+            )
+        );
     }
 
     zoomTo(transform) {
@@ -37,7 +39,6 @@ export class Zoom {
     }
 
     handleMouseEvent(event, point, element) {
-
         // TODO: Handle window resizes. Record previous clientWidth and adjust k and x accordingly.
 
         const mouseX = point[0];
@@ -46,13 +47,18 @@ export class Zoom {
         function constrainX(transform) {
             return new Transform(
                 transform.k,
-                Math.min(0, Math.max(transform.x, -(transform.k - 1) * element.clientWidth))
+                Math.min(
+                    0,
+                    Math.max(
+                        transform.x,
+                        -(transform.k - 1) * element.clientWidth
+                    )
+                )
             );
         }
 
         if (event.type == "dragstart") {
             return false;
-
         } else if (event.type == "wheel") {
             event.stopPropagation();
             event.preventDefault();
@@ -60,12 +66,14 @@ export class Zoom {
             const wheelMultiplier = -(event.deltaMode ? 120 : 1);
 
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-                this.transform = constrainX(new Transform(
-                    this.transform.k,
-                    this.transform.x + event.deltaX * wheelMultiplier));
+                this.transform = constrainX(
+                    new Transform(
+                        this.transform.k,
+                        this.transform.x + event.deltaX * wheelMultiplier
+                    )
+                );
 
                 this.listener(this.transform);
-
             } else {
                 // https://medium.com/@auchenberg/detecting-multi-touch-trackpad-gestures-in-javascript-a2505babb10e
                 // TODO: Safari gestures
@@ -74,7 +82,13 @@ export class Zoom {
                 const callback = delta => {
                     let kFactor = Math.pow(2, delta);
 
-                    const k = Math.max(Math.min(this.transform.k * kFactor, this.scaleExtent[1]), this.scaleExtent[0]);
+                    const k = Math.max(
+                        Math.min(
+                            this.transform.k * kFactor,
+                            this.scaleExtent[1]
+                        ),
+                        this.scaleExtent[0]
+                    );
 
                     kFactor = k / this.transform.k;
 
@@ -82,25 +96,31 @@ export class Zoom {
 
                     this.transform = constrainX(new Transform(k, x));
                     this.listener(this.transform);
-                }
+                };
 
-                const momentum = event.deltaY * wheelMultiplier / divisor;
-                this.zoomInertia.setMomentum(Math.min(Math.abs(momentum), 0.6) * Math.sign(momentum), callback);
+                const momentum = (event.deltaY * wheelMultiplier) / divisor;
+                this.zoomInertia.setMomentum(
+                    Math.min(Math.abs(momentum), 0.6) * Math.sign(momentum),
+                    callback
+                );
             }
-
-
         } else if (event.type == "mousedown" && event.button == 0) {
             const referenceTransform = this.transform;
 
             this.zoomInertia.cancel();
             event.preventDefault();
 
-            const onMousemove = function (moveEvent) {
-                this.transform = constrainX(new Transform(this.transform.k, referenceTransform.x + moveEvent.clientX - event.clientX));
+            const onMousemove = function(moveEvent) {
+                this.transform = constrainX(
+                    new Transform(
+                        this.transform.k,
+                        referenceTransform.x + moveEvent.clientX - event.clientX
+                    )
+                );
                 this.listener(this.transform);
             }.bind(this);
 
-            const onMouseup = function (upEvent) {
+            const onMouseup = function(upEvent) {
                 document.removeEventListener("mousemove", onMousemove);
                 document.removeEventListener("mouseup", onMouseup);
             };
@@ -108,7 +128,6 @@ export class Zoom {
             document.addEventListener("mouseup", onMouseup, false);
             document.addEventListener("mousemove", onMousemove, false);
         }
-
     }
 }
 
@@ -135,14 +154,18 @@ export class Transform {
     }
 
     rescale(x) {
-        return x.copy().domain(x.range().map(this.invert, this).map(x.invert, x));
+        return x.copy().domain(
+            x
+                .range()
+                .map(this.invert, this)
+                .map(x.invert, x)
+        );
     }
 
     toString() {
         return `translate(${this.x}) scale(${this.k})`;
     }
 }
-
 
 /**
  * Creates some inertia, mainly for zooming with a mechanical mouse wheel
@@ -172,9 +195,10 @@ class Inertia {
     setMomentum(value, callback) {
         if (value * this.momentum < 0) {
             this.momentum = 0;
-
         } else if (this.momentum == 0) {
-            value = Math.min(Math.abs(value), this.maxInitialMomentum) * Math.sign(value);
+            value =
+                Math.min(Math.abs(value), this.maxInitialMomentum) *
+                Math.sign(value);
         }
 
         this.momentum = value;
@@ -186,10 +210,10 @@ class Inertia {
     }
 
     animate(timestamp) {
-        const timeDelta = (timestamp - this.timestamp) || 0;
+        const timeDelta = timestamp - this.timestamp || 0;
         this.timestamp = timestamp;
 
-        const damp = Math.pow(1 - this.damping, timeDelta / 1000)
+        const damp = Math.pow(1 - this.damping, timeDelta / 1000);
         this.momentum *= damp;
 
         this.callback(this.momentum);
