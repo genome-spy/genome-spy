@@ -1,11 +1,12 @@
 {
-	"baseUrl": "src",
-	"compilerOptions": {
-		"allowJs": true,
-		"checkJs": true,
-		"noEmit": true,
-		"target": "esnext",
-		"strict": false,
-		"noImplicitAny": true
-	}
+    "baseUrl": "src",
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": true,
+        "noEmit": true,
+        "target": "esnext",
+        "strict": false,
+        "noImplicitAny": true,
+        "moduleResolution": "node"
+    }
 }
