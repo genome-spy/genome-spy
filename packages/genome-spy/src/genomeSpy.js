@@ -38,12 +38,12 @@ const trackTypes = {
 };
 
 /**
- * @typedef {import("spec/view").UnitSpec} UnitSpec
- * @typedef {import("spec/view").ViewSpec} ViewSpec
- * @typedef {import("spec/view").ImportSpec} ImportSpec
- * @typedef {import("spec/view").TrackSpec} TrackSpec
- * @typedef {import("spec/view").RootSpec} RootSpec
- * @typedef {import("spec/view").RootConfig} RootConfig
+ * @typedef {import("./spec/view").UnitSpec} UnitSpec
+ * @typedef {import("./spec/view").ViewSpec} ViewSpec
+ * @typedef {import("./spec/view").ImportSpec} ImportSpec
+ * @typedef {import("./spec/view").TrackSpec} TrackSpec
+ * @typedef {import("./spec/view").RootSpec} RootSpec
+ * @typedef {import("./spec/view").RootConfig} RootConfig
  */
 
 /**
@@ -367,7 +367,7 @@ export default class GenomeSpy {
             }
             await this.coordinateSystem.initialize(this);
 
-            /** @type {import("view/viewUtils").ViewContext} */
+            /** @type {import("./view/viewUtils").ViewContext} */
             const baseContext = {
                 coordinateSystem: this.coordinateSystem,
                 accessorFactory: this.accessorFactory,
@@ -445,9 +445,9 @@ function wrapInTrack(rootSpec) {
 }
 
 /**
- * @param {import("spec/view").ViewSpec | import("spec/view").ImportSpec} spec
+ * @param {import("./spec/view").ViewSpec | import("./spec/view").ImportSpec} spec
  * @param {GenomeSpy} genomeSpy
- * @param {import("view/viewUtils").ViewContext} baseContext
+ * @param {import("./view/viewUtils").ViewContext} baseContext
  */
 async function createTrack(spec, genomeSpy, baseContext) {
     // TODO: Exctract a spec preprocessing phase
@@ -495,7 +495,7 @@ async function createTrack(spec, genomeSpy, baseContext) {
     if (isViewSpec(spec)) {
         // We first create a view and then figure out if it needs faceting (SampleTrack)
 
-        /** @type {import("view/viewUtils").ViewContext} */
+        /** @type {import("./view/viewUtils").ViewContext} */
         const context = {
             ...baseContext,
             // Hack for imported tracks, as their baseUrl needs to be updated
