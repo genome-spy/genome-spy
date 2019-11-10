@@ -28,7 +28,7 @@ export interface EncodingConfig {
     constant?: Scalar;
     scale?: Scale;
     axis?: Axis;
-    title?: string
+    title?: string;
 }
 
 export type EncodingConfigs = Record<string, EncodingConfig>;
@@ -40,6 +40,7 @@ export interface ViewSpecBase {
     encoding?: Record<string, EncodingConfig>;
     title?: string;
     description?: string;
+    baseUrl?: string;
 }
 
 export interface LayerSpec extends ViewSpecBase {
@@ -56,24 +57,23 @@ export interface UnitSpec extends ViewSpecBase {
 export type ViewSpec = UnitSpec | LayerSpec;
 
 export interface ImportConfig {
-    name?: string,
-    url?: string,
-    params?: object
+    name?: string;
+    url?: string;
+    params?: object;
 }
 
 export interface ImportSpec {
-    import: ImportConfig
+    import: ImportConfig;
 }
 
 export interface TrackSpec {
-    tracks?: (ViewSpec | ImportSpec)[]
+    tracks?: (ViewSpec | ImportSpec)[];
+    baseUrl?: string;
 }
 
-
 export interface RootConfig {
-    genome?: GenomeConfig,
-    baseUrl?: string
+    genome?: GenomeConfig;
+    baseUrl?: string;
 }
 
 export type RootSpec = (ViewSpec | TrackSpec) & RootConfig;
-

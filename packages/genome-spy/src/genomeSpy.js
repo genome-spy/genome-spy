@@ -2,6 +2,7 @@ import "array-flat-polyfill";
 
 import { scaleLinear } from "d3-scale";
 import { interpolateZoom } from "d3-interpolate";
+import { loader as vegaLoader } from "vega-loader";
 
 import EventEmitter from "eventemitter3";
 import Interval from "./utils/interval";
@@ -383,11 +384,11 @@ export default class GenomeSpy {
             // If the top-level object is a view spec, wrap it in a track spec
             const rootWithTracks = wrapInTrack(this.config);
 
+            await processImports(rootWithTracks);
+
             // Create the tracks and their view hierarchies
-            this.tracks = await Promise.all(
-                rootWithTracks.tracks.map(spec =>
-                    createTrack(spec, this, baseContext)
-                )
+            this.tracks = rootWithTracks.tracks.map(spec =>
+                createTrack(spec, this, baseContext)
             );
 
             // Create container and initialize the the tracks, i.e. load the data and create WebGL buffers
@@ -438,10 +439,63 @@ function wrapInTrack(rootSpec) {
         return rootSpec;
     } else {
         throw new Error(
-            "The config root has no tracks nor views: " +
-                JSON.stringify(rootSpec)
+            "The config root has no tracks nor views. It must contain one of: 'tracks', 'mark', or 'layer'."
         );
     }
+}
+
+/**
+ * @param {import("./spec/view").ImportSpec} spec
+ * @param {string} baseUrl
+ */
+async function importExternalTrack(spec, baseUrl) {
+    if (!spec.import.url) {
+        throw new Error(
+            "Cannot import, not an external track: " + JSON.stringify(spec)
+        );
+    }
+
+    const loader = vegaLoader({ baseURL: baseUrl });
+    const url = spec.import.url;
+
+    const importedSpec = JSON.parse(
+        await loader.load(url).catch(e => {
+            throw new Error(
+                `Could not load imported track spec: ${url} \nReason: ${e.message}`
+            );
+        })
+    );
+
+    // TODO: BaseUrl should be updated for the imported view
+    if (isViewSpec(importedSpec)) {
+        importedSpec.baseUrl = (await loader.sanitize(url)).href.match(
+            /^.*\//
+        )[0];
+        return importedSpec;
+    } else {
+        // TODO: Support nested TrackViews (i.e., grouped tracks)
+        throw new Error(
+            `The imported spec "${url}" is not a view spec: ${JSON.stringify(
+                spec
+            )}`
+        );
+    }
+}
+
+/**
+ * @param {import("./spec/view").TrackSpec} trackSpec
+ */
+async function processImports(trackSpec) {
+    // eslint-disable-next-line require-atomic-updates
+    trackSpec.tracks = await Promise.all(
+        trackSpec.tracks.map(spec => {
+            if (isImportSpec(spec) && spec.import.url) {
+                return importExternalTrack(spec, trackSpec.baseUrl);
+            } else {
+                return spec;
+            }
+        })
+    );
 }
 
 /**
@@ -449,9 +503,7 @@ function wrapInTrack(rootSpec) {
  * @param {GenomeSpy} genomeSpy
  * @param {import("./view/viewUtils").ViewContext} baseContext
  */
-async function createTrack(spec, genomeSpy, baseContext) {
-    // TODO: Exctract a spec preprocessing phase
-
+function createTrack(spec, genomeSpy, baseContext) {
     if (isImportSpec(spec)) {
         if (spec.import.name) {
             if (!trackTypes[spec.import.name]) {
@@ -459,36 +511,6 @@ async function createTrack(spec, genomeSpy, baseContext) {
             }
             // Currently, all named imports are custom, hardcoded tracks
             return new trackTypes[spec.import.name](genomeSpy, spec);
-        } else if (spec.import.url) {
-            // Replace the current spec with an imported one
-
-            const absolute = /^(http(s)?)?:\/\//.test(spec.import.url);
-            const url = absolute
-                ? spec.import.url
-                : genomeSpy.config.baseUrl + "/" + spec.import.url;
-
-            const importedSpec = await fetch(url, {
-                credentials: "same-origin"
-            }).then(res => {
-                if (res.ok) {
-                    return res.json();
-                }
-                throw new Error(
-                    `Could not load imported track spec: ${url} \nReason: ${res.status} ${res.statusText}`
-                );
-            });
-
-            // TODO: BaseUrl should be updated for the imported view
-            if (isViewSpec(importedSpec)) {
-                spec = importedSpec;
-                spec.baseUrl = url.match(/^.*\//)[0];
-            } else {
-                throw new Error(
-                    `The imported spec "${url}" is not a view spec: ${JSON.stringify(
-                        spec
-                    )}`
-                );
-            }
         }
     }
 
@@ -502,7 +524,7 @@ async function createTrack(spec, genomeSpy, baseContext) {
             getDataSource: config =>
                 new DataSource(
                     config,
-                    spec.baseUrl || genomeSpy.config.baseUrl,
+                    spec.baseUrl || genomeSpy.config.baseUrl, // TODO: REFACTOR
                     genomeSpy.getNamedData.bind(genomeSpy)
                 )
         };
