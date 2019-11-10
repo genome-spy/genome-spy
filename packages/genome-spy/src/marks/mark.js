@@ -18,7 +18,6 @@ export default class Mark {
      */
     getDefaultEncoding() {
         return {
-            shape: { value: "circle" },
             sample: null
         };
     }
