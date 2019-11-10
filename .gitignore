@@ -20,3 +20,5 @@ build/
 dist/
 /coverage/
 /site/
+
+lerna-debug.log
