@@ -1,5 +1,5 @@
 import fromEntries from "fromentries";
-import * as twgl from "twgl-base.js";
+import * as twgl from "twgl.js";
 import mapsort from "mapsort";
 import { extent, bisector } from "d3-array";
 import { PointVertexBuilder } from "../gl/dataToVertices";

@@ -45,7 +45,7 @@
         "mapsort": "^1.0.2",
         "math.gl": "^2.3.3",
         "tinyqueue": "^2.0.3",
-        "twgl-base.js": "^4.12.1",
+        "twgl.js": "^4.13.1",
         "vega-expression": "^2.6.2",
         "vega-loader": "^4.1.2",
         "vega-scale": "^4.1.3",

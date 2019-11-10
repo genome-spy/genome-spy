@@ -1,4 +1,4 @@
-import * as twgl from "twgl-base.js";
+import * as twgl from "twgl.js";
 import { scaleOrdinal } from "d3-scale";
 import { color, hsl } from "d3-color";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";

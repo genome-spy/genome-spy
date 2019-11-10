@@ -1,4 +1,4 @@
-import * as twgl from "twgl-base.js";
+import * as twgl from "twgl.js";
 import { Matrix4 } from "math.gl";
 import { getPlatformShaderDefines, fp64ify } from "../gl/includes/fp64-utils";
 import Track from "./track";

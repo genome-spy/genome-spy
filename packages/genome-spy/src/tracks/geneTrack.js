@@ -1,4 +1,4 @@
-import * as twgl from "twgl-base.js";
+import * as twgl from "twgl.js";
 
 import { scaleLinear } from "d3-scale";
 import { bisector } from "d3-array";

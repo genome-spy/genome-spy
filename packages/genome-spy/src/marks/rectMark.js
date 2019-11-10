@@ -1,4 +1,4 @@
-import * as twgl from "twgl-base.js";
+import * as twgl from "twgl.js";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices";
