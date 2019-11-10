@@ -35,7 +35,7 @@
     "scripts": {
         "bootstrap": "lerna bootstrap",
         "builddocs": "mkdir -p docs/app && cp packages/genome-spy-doc-embed/dist/* docs/app/ && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && mkdocs build",
-        "test": "lerna run test --stream",
+        "test": "jest",
         "start": "lerna run start --scope=genome-spy --stream",
         "pretty-quick": "pretty-quick"
     },
@@ -43,5 +43,10 @@
         "genome-spy": "file:packages/genome-spy",
         "genome-spy-doc-embed": "file:packages/genome-spy-doc-embed",
         "genome-spy-playground": "file:packages/genome-spy-playground"
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "pretty-quick --staged"
+        }
     }
 }
