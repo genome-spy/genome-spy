@@ -8,7 +8,7 @@ import Interval from "./utils/interval";
 import { Zoom, Transform } from "./utils/zoom";
 import "./styles/genome-spy.scss";
 import Tooltip from "./tooltip";
-import transition, { easeLinear } from "./utils/transition";
+import transition from "./utils/transition";
 
 import Genome from "./genome/genome";
 

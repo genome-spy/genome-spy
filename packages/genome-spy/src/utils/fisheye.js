@@ -4,11 +4,11 @@
  * https://github.com/d3/d3-plugins/blob/master/fisheye/
  */
 export default function() {
-    let radius = 200,
-        distortion = 2,
-        k0 = 1,
-        k1 = 1,
-        focus = 0;
+    let radius = 200;
+    let distortion = 2;
+    let k0 = 1,
+        k1 = 1;
+    let focus = 0;
 
     /**
      *

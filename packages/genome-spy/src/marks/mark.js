@@ -100,9 +100,13 @@ export default class Mark {
         return this.getContext().track.processShader(shaderCode);
     }
 
-    onBeforeSampleAnimation() {}
+    onBeforeSampleAnimation() {
+        // override
+    }
 
-    onAfterSampleAnimation() {}
+    onAfterSampleAnimation() {
+        // override
+    }
 
     /**
      * TODO: Abstract away!
@@ -139,7 +143,9 @@ export default class Mark {
      * @param {object[]} samples
      * @param {object} globalUniforms
      */
-    render(samples, globalUniforms) {}
+    render(samples, globalUniforms) {
+        // override
+    }
 
     /**
      * @param {string} sampleId
