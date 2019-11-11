@@ -4,6 +4,8 @@ import LayerView from "./layerView";
 import { create, createAndInitialize } from "./testUtils";
 import { toRegularArray as r } from "../utils/domainArray";
 import Interval from "../utils/interval";
+import TracksView from "./tracksView";
+import PointMark from "../marks/pointMark";
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", () => {
@@ -15,13 +17,31 @@ describe("Trivial creations and initializations", () => {
         expect(create({ layer: [] })).toBeInstanceOf(LayerView);
     });
 
+    test("Parses a more comples spec", () => {
+        const view = create({
+            tracks: [
+                {
+                    layer: [{ mark: "point" }, { mark: "rect" }]
+                },
+                { mark: "rect" }
+            ]
+        });
+
+        expect(view).toBeInstanceOf(TracksView);
+        expect(view.children[0]).toBeInstanceOf(LayerView);
+        expect(view.children[0].children[0]).toBeInstanceOf(UnitView);
+        expect(view.children[0].children[0].mark).toBeInstanceOf(PointMark);
+        expect(view.children[1]).toBeInstanceOf(UnitView);
+        expect(view.children[2]).toBeUndefined();
+    });
+
     test("Parses and initializes a trivial spec", () => {
         const spec = {
             data: { values: [1] },
             mark: "point",
             encoding: {
-                x: { field: "data" },
-                y: { field: "data" }
+                x: { field: "data", type: "quantitative" },
+                y: { field: "data", type: "quantitative" }
             }
         };
 
@@ -43,13 +63,11 @@ describe("Test domain handling", () => {
             data: dataSpec,
             mark: "point",
             encoding: {
-                x: { field: "a" },
+                x: { field: "a", type: "quantitative" },
                 y: {
                     field: "a",
                     type: "quantitative",
-                    scale: {
-                        domain: [0, 1000]
-                    }
+                    scale: { domain: [0, 1000] }
                 }
             }
         };
@@ -65,7 +83,7 @@ describe("Test domain handling", () => {
             mark: "point",
             encoding: {
                 x: { constant: 123, type: "quantitative" },
-                y: { field: "a" }
+                y: { field: "a", type: "quantitative" }
             }
         };
 
@@ -79,14 +97,8 @@ describe("Test domain handling", () => {
             data: dataSpec,
             mark: "point",
             encoding: {
-                x: {
-                    field: "a",
-                    type: "quantitative"
-                },
-                y: {
-                    field: "a",
-                    type: "quantitative"
-                }
+                x: { field: "a", type: "quantitative" },
+                y: { field: "a", type: "quantitative" }
             }
         };
 
@@ -100,14 +112,9 @@ describe("Test domain handling", () => {
             data: dataSpec,
             mark: "rect",
             encoding: {
-                x: { field: "a" },
-                y: {
-                    field: "a",
-                    type: "quantitative"
-                },
-                y2: {
-                    field: "b"
-                }
+                x: { field: "a", type: "quantitative" },
+                y: { field: "a", type: "quantitative" },
+                y2: { field: "b", type: "quantitative" }
             }
         };
 

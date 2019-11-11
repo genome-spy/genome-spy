@@ -1,6 +1,7 @@
 import UnitView from "./unitView";
 import LayerView from "./layerView";
 import { configureDefaultResolutions } from "./resolution";
+import TracksView from "./tracksView";
 
 /**
  * @typedef {Object} ViewContext
@@ -14,10 +15,11 @@ import { configureDefaultResolutions } from "./resolution";
 /**
  * @typedef {import("../spec/view").MarkConfig} MarkConfig
  * @typedef {import("../spec/view").EncodingConfig} EncodingConfig
+ * @typedef {import("../spec/view").ContainerSpec} ContainerSpec
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
  * @typedef {import("../spec/view").UnitSpec} UnitSpec
- * @typedef {import("../spec/view").TrackSpec} TrackSpec
+ * @typedef {import("../spec/view").TracksSpec} TracksSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
  * @typedef {import("../spec/view").ImportConfig} ImportConfig
  * @typedef {import("./view").default} View
@@ -53,9 +55,9 @@ export function isViewSpec(spec) {
 /**
  *
  * @param {object} spec
- * @returns {spec is TrackSpec}
+ * @returns {spec is TracksSpec}
  */
-export function isTrackSpec(spec) {
+export function isTracksSpec(spec) {
     return Array.isArray(spec.tracks);
 }
 
@@ -79,14 +81,18 @@ export function isImportSpec(spec) {
 
 /**
  *
- * @param {ViewSpec} spec
+ * @param {ViewSpec | ImportSpec} spec
  * @returns {typeof View}
  */
 export function getViewClass(spec) {
-    if (isUnitSpec(spec)) {
+    if (isImportSpec(spec)) {
+        throw new Error("todo");
+    } else if (isUnitSpec(spec)) {
         return UnitView;
     } else if (isLayerSpec(spec)) {
         return LayerView;
+    } else if (isTracksSpec(spec)) {
+        return TracksView;
     } else {
         throw new Error(
             "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)

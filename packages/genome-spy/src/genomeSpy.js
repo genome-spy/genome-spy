@@ -24,7 +24,7 @@ import {
     isViewSpec,
     createView,
     resolveScales,
-    isTrackSpec,
+    isTracksSpec,
     isImportSpec
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
@@ -42,7 +42,7 @@ const trackTypes = {
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
  * @typedef {import("./spec/view").ViewSpec} ViewSpec
  * @typedef {import("./spec/view").ImportSpec} ImportSpec
- * @typedef {import("./spec/view").TrackSpec} TrackSpec
+ * @typedef {import("./spec/view").TracksSpec} TrackSpec
  * @typedef {import("./spec/view").RootSpec} RootSpec
  * @typedef {import("./spec/view").RootConfig} RootConfig
  */
@@ -435,7 +435,7 @@ function wrapInTrack(rootSpec) {
         const trackSpec = /** @type {TrackSpec} */ (rootSpec);
         trackSpec.tracks = [rootSpec];
         return trackSpec;
-    } else if (isTrackSpec(rootSpec)) {
+    } else if (isTracksSpec(rootSpec)) {
         return rootSpec;
     } else {
         throw new Error(
@@ -483,7 +483,7 @@ async function importExternalTrack(spec, baseUrl) {
 }
 
 /**
- * @param {import("./spec/view").TrackSpec} trackSpec
+ * @param {import("./spec/view").TracksSpec} trackSpec
  */
 async function processImports(trackSpec) {
     // eslint-disable-next-line require-atomic-updates

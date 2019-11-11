@@ -6,13 +6,15 @@ import View from "./view";
 export default class ContainerView extends View {
     /**
      *
-     * @param {import("./view").ViewSpec} spec
+     * @param {import("./viewUtils").ContainerSpec} spec
      * @param {import("./view").ViewContext} context
      * @param {import("./view").default} parent
      * @param {string} name
      */
     constructor(spec, context, parent, name) {
         super(spec, context, parent, name);
+
+        this.spec = spec;
     }
 
     /**

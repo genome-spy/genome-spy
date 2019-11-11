@@ -44,17 +44,20 @@ export interface ViewSpecBase {
 }
 
 export interface LayerSpec extends ViewSpecBase {
-    layer: ViewSpec[];
-    resolve?: object;
+    layer: (LayerSpec | UnitSpec)[];
 }
 
-export type ContainerSpec = LayerSpec;
+export type ContainerSpec = (LayerSpec | TracksSpec) & {
+    resolve?: {
+        scale: Record<string, "independent" | "shared">;
+    };
+};
 
 export interface UnitSpec extends ViewSpecBase {
     mark: string | MarkConfig;
 }
 
-export type ViewSpec = UnitSpec | LayerSpec;
+export type ViewSpec = UnitSpec | LayerSpec | TracksSpec;
 
 export interface ImportConfig {
     name?: string;
@@ -66,9 +69,8 @@ export interface ImportSpec {
     import: ImportConfig;
 }
 
-export interface TrackSpec {
+export interface TracksSpec extends ViewSpecBase {
     tracks?: (ViewSpec | ImportSpec)[];
-    baseUrl?: string;
 }
 
 export interface RootConfig {
@@ -76,4 +78,4 @@ export interface RootConfig {
     baseUrl?: string;
 }
 
-export type RootSpec = (ViewSpec | TrackSpec) & RootConfig;
+export type RootSpec = (ViewSpec | TracksSpec) & RootConfig;

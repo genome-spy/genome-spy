@@ -42,7 +42,7 @@ export default class View {
     /**
      * Visits child views in depth-first order
      *
-     * @param {function(View):void} visitor
+     * @param {(function(View):void) & { afterChildren?: function}} visitor
      */
     visit(visitor) {
         try {
