@@ -1,7 +1,7 @@
 # Stack
 
-* computes stacked layout
-* For example, stacked bar chart
+- computes stacked layout
+- For example, stacked bar chart
 
 ## Parameters
 
@@ -11,12 +11,12 @@ SCHEMA StackConfig
 
 ```json
 {
-    "type": "stack",
-    "groupby": ["chrom", "startpos"],
-    "sort": {
-        "field": "Role in Cancer"
-    },
-    "offset": "normalize"
+  "type": "stack",
+  "groupby": ["chrom", "startpos"],
+  "sort": {
+    "field": "Role in Cancer"
+  },
+  "offset": "normalize"
 }
 ```
 

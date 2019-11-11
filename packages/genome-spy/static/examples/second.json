@@ -1,79 +1,70 @@
 {
-    "layer": [
+  "description": "Lollipop plot example",
+  "layer": [
+    {
+      "name": "Baseline",
+      "data": { "values": [0] },
+      "mark": "rule",
+      "encoding": {
+        "y": { "field": "data", "type": "quantitative", "axis": null },
+        "color": { "value": "lightgray" }
+      }
+    },
+    {
+      "name": "Arrows",
+
+      "data": {
+        "sequence": {
+          "start": 0,
+          "stop": 6.284,
+          "step": 0.39269908169,
+          "as": "x"
+        }
+      },
+
+      "transform": [
+        { "type": "formula", "expr": "sin(datum.x)", "as": "sin(x)" }
+      ],
+
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": {
+          "field": "sin(x)",
+          "type": "quantitative",
+          "scale": { "padding": 0.1 }
+        },
+        "color": { "field": "sin(x)", "type": "quantitative" }
+      },
+
+      "layer": [
         {
-            "data": { "values": [ 0 ]},
-            "mark": "rule",
-            "encoding": {
-                "y": {
-                    "field": "data",
-                    "type": "quantitative",
-                    "axis": null
-                },
-                "color": {
-                    "value": "lightgray"
-                }
-            }
+          "name": "Arrow shafts",
+
+          "mark": {
+            "type": "rule",
+            "size": 3.0
+          }
         },
         {
-            "data": {
-                "sequence": {
-                    "start": 0,
-                    "stop": 6.284,
-                    "step": 0.39269908169,
-                    "as": "x"
-                }
+          "name": "Arrowheads",
+
+          "mark": "point",
+
+          "encoding": {
+            "shape": {
+              "field": "sin(x)",
+              "type": "quantitative",
+              "scale": {
+                "type": "threshold",
+                "domain": [-0.01, 0.01],
+                "range": ["triangle-down", "diamond", "triangle-up"]
+              }
             },
-
-            "transform": [{
-                "type": "formula",
-                "expr": "sin(datum.x)",
-                "as": "sin(x)"
-            }],
-
-            "encoding": {
-                "x": { "field": "x", "type": "quantitative" },
-                "y": {
-                    "field": "sin(x)",
-                    "type": "quantitative",
-                    "scale": {
-                        "type": "sqrt",
-                        "padding": 0.1
-                    }
-                },
-                "color": {
-                    "field": "sin(x)",
-                    "type": "quantitative"
-                }
-            },
-
-            "layer": [
-                {
-                    "mark": {
-                        "type": "rule",
-                        "size": 3.0
-                    }
-                },
-                {
-                    "mark": "point",
-                    "encoding": {
-                        "shape": {
-                            "field": "sin(x)",
-                            "type": "quantitative",
-                            "scale": {
-                                "type": "threshold",
-                                "domain": [-0.01, 0.01],
-                                "range": ["triangle-down", "diamond", "triangle-up"]
-                            }
-                        },
-                        "strokeWidth": {
-                            "value": 0
-                        },
-                        "size": {
-                            "value": 500
-                        }
-                    }
-                }
-            ]
+            "size": { "value": 500 },
+            "strokeWidth": { "value": 0 }
+          }
         }
-    ]
+      ]
+    }
+  ]
 }

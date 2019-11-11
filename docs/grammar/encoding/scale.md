@@ -16,5 +16,6 @@ support binning.
 TODO: More specific differences, some examples
 
 !!! note "Relation to Vega scales"
+
     In fact, GenomeSpy uses [Vega scales](https://vega.github.io/vega/docs/scales/),
     which are based on [d3-scale](https://github.com/d3/d3-scale).

@@ -10,13 +10,13 @@ point mutations at genomic loci.
 
 ```json
 {
-    "data": { "url": "../../../data/examples/sincos.csv" },
-    "mark": "point",
-    "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "sin", "type": "quantitative" },
-        "size": { "field": "x", "type": "quantitative" }
-    }
+  "data": { "url": "../../../data/examples/sincos.csv" },
+  "mark": "point",
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" },
+    "size": { "field": "x", "type": "quantitative" }
+  }
 }
 ```
 
@@ -30,16 +30,16 @@ In addition to standard [position](../encoding/index.md) channels and
 channels:
 
 `size`
-:   Type: Number
+: Type: Number
 
     The area of the point in pixels. In practice, the area is less because
     the shapes do not fill their rectangular container. Example: the diameter
     of a circle with the size of `100` is 10 (sqrt(100)) pixels.
-    
+
     **Default value:** `100`
 
 `shape`
-:   Type: String
+: Type: String
 
     One of `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`,
     `"triangle-down"`, `"triangle-right"`, or `"triangle-left"`.
@@ -47,7 +47,7 @@ channels:
     **Default value:** `"circle"`
 
 `gradientStrength`
-:   Type: Number
+: Type: Number
 
     Gradient strength controls the amount of the gradient eye-candy effect.
     Valid values are between `0` and `1`.
@@ -57,7 +57,7 @@ channels:
 ## Properties
 
 `geometricZoomBound`
-:   Type: Number
+: Type: Number
 
     Enables [geometric zooming](#geometric-zoom).
     The value is the base two logarithmic zoom level where the maximum point
@@ -66,7 +66,7 @@ channels:
     **Default value:** `0`
 
 `maxRelativePointDiameter`
-:   Type: Number
+: Type: Number
 
     When a faceted visualization (Sample Track) has tens or hundreds of subgroups,
     the individual views may be smaller than the diameter of the point marks.
@@ -77,7 +77,7 @@ channels:
     **Default value:** `0.8`
 
 `minAbsolutePointDiameter`
-:   Type: Number
+: Type: Number
 
     The `minAbsolutePointDiameter` property works in concert with `maxRelativePointDiameter`.
     The property specifies in pixels the absolute lower limit of the diameter of
@@ -85,12 +85,11 @@ channels:
 
     **Default value:** `0.0`
 
-
 ## Examples
 
 ### Plenty of points
 
-The example below demonstrates how the points can be varied by using
+The example below demonstrates how points can be varied by using
 `shape`, `color`, `size`, `strokeWidth`, and `gradientStrength` channels.
 
 <div class="embed-example">
@@ -99,26 +98,42 @@ The example below demonstrates how the points can be varied by using
 
 ```json
 {
-    "data": {
-        "sequence": { "start": 0, "stop": 200, "as": "z" }
+  "data": {
+    "sequence": { "start": 0, "stop": 200, "as": "z" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "datum.z % 10", "as": "y" },
+    { "type": "formula", "expr": "floor(datum.z / 10)", "as": "x" }
+  ],
+
+  "mark": "point",
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "nominal" },
+    "shape": { "field": "x", "type": "nominal" },
+    "color": {
+      "expr": "datum.x + datum.y",
+      "type": "quantitative",
+      "scale": { "scheme": "sinebow" }
     },
-
-    "transform": [
-        { "type": "formula", "expr": "datum.z % 10", "as": "y" },
-        { "type": "formula", "expr": "floor(datum.z / 10)", "as": "x" }
-    ],
-
-    "mark": "point",
-
-    "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "y", "type": "nominal" },
-        "shape": { "field": "x", "type": "nominal" },
-        "color": { "expr": "datum.x + datum.y", "type": "quantitative", "scale": { "scheme": "sinebow" } },
-        "size": { "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))", "type": "quantitative", "scale": { "range": [0, 700]} },
-        "strokeWidth": { "field": "y", "type": "quantitative", "scale": { "range": [0, 4] } },
-        "gradientStrength": { "field": "x", "type": "quantitative", "scale": { "range": [0, 1] } }
+    "size": {
+      "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))",
+      "type": "quantitative",
+      "scale": { "range": [0, 700] }
+    },
+    "strokeWidth": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "range": [0, 4] }
+    },
+    "gradientStrength": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "range": [0, 1] }
     }
+  }
 }
 ```
 
@@ -154,27 +169,27 @@ about 1500X zoom.
 
 ```json
 {
-    "data": {
-        "sequence": { "start": 0, "stop": 200000, "as": "x" }
-    },
-    "transform": [
-        { "type": "formula", "expr": "random() * 0.682", "as": "u" },
-        {
-            "type": "formula",
-            "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618 + sin(datum.x / 10000)",
-            "as": "y"
-        }
-    ],
-    "mark": {
-        "type": "point",
-        "geometricZoomBound": 10.5
-    },
-    "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "y", "type": "quantitative" },
-        "size": { "value": 200 },
-        "opacity": { "value": 0.6 }
+  "data": {
+    "sequence": { "start": 0, "stop": 200000, "as": "x" }
+  },
+  "transform": [
+    { "type": "formula", "expr": "random() * 0.682", "as": "u" },
+    {
+      "type": "formula",
+      "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618 + sin(datum.x / 10000)",
+      "as": "y"
     }
+  ],
+  "mark": {
+    "type": "point",
+    "geometricZoomBound": 10.5
+  },
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" },
+    "size": { "value": 200 },
+    "opacity": { "value": 0.6 }
+  }
 }
 ```
 
@@ -182,6 +197,7 @@ about 1500X zoom.
 </div>
 
 !!! tip
+
     You can use geometric zoom to improve rendering performance. Smaller points
     are faster to render than large points.
 

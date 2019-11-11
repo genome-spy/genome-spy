@@ -28,7 +28,6 @@ TODO
 }
 ```
 
-
 ## Position channels
 
 TODO

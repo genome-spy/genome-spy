@@ -290,7 +290,7 @@ codeMirror = CodeMirror.fromTextArea(
         gutters: ["CodeMirror-lint-markers"],
         lint: true,
         matchBrackets: true,
-        indentUnit: 4,
+        indentUnit: 2,
         indentWithTabs: false
         //keyMap: "vim"
     }

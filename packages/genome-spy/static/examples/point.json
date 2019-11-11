@@ -1,67 +1,38 @@
 {
-    "data": {
-        "sequence": {
-            "start": 0,
-            "stop": 200,
-            "as": "z"
-        }
+  "data": {
+    "sequence": { "start": 0, "stop": 200, "as": "z" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "datum.z % 10", "as": "y" },
+    { "type": "formula", "expr": "floor(datum.z / 10)", "as": "x" }
+  ],
+
+  "mark": "point",
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "nominal" },
+    "shape": { "field": "x", "type": "nominal" },
+    "color": {
+      "expr": "datum.x + datum.y",
+      "type": "quantitative",
+      "scale": { "scheme": "sinebow" }
     },
-
-    "transform": [
-        {
-            "type": "formula",
-            "expr": "datum.z % 10",
-            "as": "y"
-        },
-        {
-            "type": "formula",
-            "expr": "floor(datum.z / 10)",
-            "as": "x"
-        }
-    ],
-
-    "mark": "point",
-
-    "encoding": {
-        "x":  {
-            "field": "x",
-            "type": "quantitative"
-        },
-        "y": {
-            "field": "y",
-            "type": "nominal"
-        },
-        "shape": {
-            "field": "x",
-            "type": "nominal"
-        },
-        "color": {
-            "expr": "datum.x + datum.y",
-            "type": "quantitative",
-            "scale": {
-                "scheme": "sinebow"
-            }
-        },
-        "size": {
-            "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))",
-            "type": "quantitative",
-            "scale": {
-                "range": [0, 4000]
-            }
-        },
-        "strokeWidth": {
-            "field": "y",
-            "type": "quantitative",
-            "scale": {
-                "range": [0, 4]
-            }
-        },
-        "gradientStrength": {
-            "field": "x",
-            "type": "quantitative",
-            "scale": {
-                "range": [0, 1]
-            }
-        }
+    "size": {
+      "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))",
+      "type": "quantitative",
+      "scale": { "range": [0, 4000] }
+    },
+    "strokeWidth": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "range": [0, 4] }
+    },
+    "gradientStrength": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "range": [0, 1] }
     }
+  }
 }

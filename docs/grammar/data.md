@@ -1,9 +1,7 @@
----
-title: Data Input
----
+# Data Input
 
-GenomeSpy inputs tabular data as *CSV*, *TSV*, or *JSON* files. Currently,
-common bioinformatic data formats such as *BED* or *BigWig* are not directly
+GenomeSpy inputs tabular data as _CSV_, _TSV_, or _JSON_ files. Currently,
+common bioinformatic data formats such as _BED_ or _BigWig_ are not directly
 supported. They must be first converted into one of the tabular formats above.
 
 GenomeSpy can load data from external files or use inline data. You
@@ -17,11 +15,11 @@ are often tab-delimited and the format must be specified explicitly.
 
 ```json
 {
-    "data": {
-        "url": "fileWithTabs.csv",
-        "format": { "type": "tsv" }
-    },
-    ...
+  "data": {
+    "url": "fileWithTabs.csv",
+    "format": { "type": "tsv" }
+  },
+  ...
 }
 ```
 
@@ -30,6 +28,7 @@ is identical to Vega-Lite's
 [data](https://vega.github.io/vega-lite/docs/data.html) property.
 
 !!! warning "Type inference"
+
     GenomeSpy uses
     [vega-loader](https://github.com/vega/vega/tree/master/packages/vega-loader)
     to parse tabular data and infer its data types. Vega-loader is sometimes

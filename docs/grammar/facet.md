@@ -1,4 +1,3 @@
-
 # Faceting Multiple Samples
 
 Faceting repeats the view specification for subgroups of the data, e.g., for
@@ -11,17 +10,16 @@ denoting the subgroup:
 
 ```json
 {
+  ...,
+  "encoding": {
     ...,
-    "encoding": {
-        ...,
-        "sample": {
-            "field": "sampleId",
-            "type": "nominal"
-        }
+    "sample": {
+      "field": "sampleId",
+      "type": "nominal"
     }
+  }
 }
 ```
-
 
 !!! note "Subtle differences"
 
@@ -30,7 +28,7 @@ denoting the subgroup:
     each subset is displayed as a row. However, in GenomeSpy, a special
     type of track gathers the sample identifiers from the view hierarchy
     and creates an own subtrack for each sample. The behavior is more flexible
-    since it allows for creating multiple layers, each with a different 
+    since it allows for creating multiple layers, each with a different
     dataset. Thus, a faceted view can display multidimensional data,
     for instance, copy numbers and point mutations of multiple samples at the
     same time.
@@ -45,32 +43,43 @@ are displayed as subtracks.
 
 ```json
 {
-    "data": {
-        "values": [
-            { "sample": "A", "x": 1 }, { "sample": "A", "x": 2 }, { "sample": "A", "x": 5 }, { "sample": "A", "x": 3 },
-            { "sample": "B", "x": 8 }, { "sample": "B", "x": 6 }, { "sample": "B", "x": 9 }, { "sample": "B", "x": 3 },
-            { "sample": "C", "x": 9 }, { "sample": "C", "x": 2 }, { "sample": "C", "x": 3 }, { "sample": "C", "x": 5 }
-        ]
-    },
+  "data": {
+    "values": [
+      { "sample": "A", "x": 1 },
+      { "sample": "A", "x": 2 },
+      { "sample": "A", "x": 5 },
+      { "sample": "A", "x": 3 },
+      { "sample": "B", "x": 8 },
+      { "sample": "B", "x": 6 },
+      { "sample": "B", "x": 9 },
+      { "sample": "B", "x": 3 },
+      { "sample": "C", "x": 9 },
+      { "sample": "C", "x": 2 },
+      { "sample": "C", "x": 3 },
+      { "sample": "C", "x": 5 }
+    ]
+  },
 
-    "transform": [{
-        "type": "stack",
-        "field": "x",
-        "groupby": ["sample"],
-        "offset": "normalize",
-        "as": ["from", "to"]
-    }],
-
-    "mark": "rect",
-
-    "encoding": {
-        "sample": { "field": "sample", "type": "nominal" },
-        "y": { "value": 0 },
-        "y2": { "value": 1 },
-        "x": { "field": "from", "type": "quantitative" },
-        "x2": { "field": "to" },
-        "color": { "field": "x", "type": "nominal" }
+  "transform": [
+    {
+      "type": "stack",
+      "field": "x",
+      "groupby": ["sample"],
+      "offset": "normalize",
+      "as": ["from", "to"]
     }
+  ],
+
+  "mark": "rect",
+
+  "encoding": {
+    "sample": { "field": "sample", "type": "nominal" },
+    "y": { "value": 0 },
+    "y2": { "value": 1 },
+    "x": { "field": "from", "type": "quantitative" },
+    "x2": { "field": "to" },
+    "color": { "field": "x", "type": "nominal" }
+  }
 }
 ```
 
@@ -78,18 +87,18 @@ are displayed as subtracks.
 </div>
 
 !!! warning "Y axis ticks"
+
     The Y axis ticks are not available on Sample tracks at the moment.
     Will be fixed at a later time.
 
 !!! note "But we have Band scale?"
+
     Superficially similar results can be achieved by using [Band scale](encoding/scale.md)
-    on the `y` channel. However, you can not adjust the intra-band 
+    on the `y` channel. However, you can not adjust the intra-band
     y-position, as the `y` channel is already reserved for assigning
     a band for a datum. On the other hand, with Band scale, the
     graphical marks can span multiple bands. You could, for example,
     draw lines between the bands.
-
-
 
 ## Explicit sample identifiers and attributes
 
@@ -109,24 +118,24 @@ explicitly:
 
 ```json
 {
-    "samples": {
-        "data": { "url": "samples.tsv" },
-        "attributes": {
-            "RIN_Qual": {
-                "type": "ordinal",
-                "scale": {
-                    "domain": [ "<5UQ", "5-7UQ", "5-7R", ">7R", ">7Q" ],
-                    "scheme": "orangered"
-                }
-            },
-            ...
+  "samples": {
+    "data": { "url": "samples.tsv" },
+    "attributes": {
+      "RIN_Qual": {
+        "type": "ordinal",
+        "scale": {
+          "domain": [ "<5UQ", "5-7UQ", "5-7R", ">7R", ">7Q" ],
+          "scheme": "orangered"
         }
-    },
-    "encoding": {
-        "sample": { "field": "sampleId", "type": "nominal" }
-        ...
-    },
+      },
+      ...
+    }
+  },
+  "encoding": {
+    "sample": { "field": "sampleId", "type": "nominal" }
     ...
+  },
+  ...
 }
 ```
 
@@ -149,9 +158,9 @@ TODO: A link to a visualization
 
 TODO:
 
-* How to sort
-  * Screenshot of the context-menu
-* How to specify
+- How to sort
+  - Screenshot of the context-menu
+- How to specify
 
 ## Filtering samples
 
@@ -162,19 +171,19 @@ button:
 ![Sample context-menu](../img/sample-context-menu.png)
 
 Retain first sample of each
-:   Your data may have, for example, multiple samples from each patient.
-    However, you might want to study only the "best" or "worst" samples
-    from each patient and compare them with each other. This action
-    groups the samples by the chosen attribute and drops all but the topmost
-    sample of each group. Thus, you can first sort the samples by an attribute
-    that ranks them and then retain only the top ranked
-    samples.
+: Your data may have, for example, multiple samples from each patient.
+However, you might want to study only the "best" or "worst" samples
+from each patient and compare them with each other. This action
+groups the samples by the chosen attribute and drops all but the topmost
+sample of each group. Thus, you can first sort the samples by an attribute
+that ranks them and then retain only the top ranked
+samples.
 
 Retain
-:   TODO
+: TODO
 
 Remove
-:   TODO
+: TODO
 
 GenomeSpy maintains a history of the visible samples and their orders. To
 return to the previous state, click the backtrack (TODO: picture) button or
@@ -198,41 +207,41 @@ it in the example below:
 
 ```json
 {
-    "data": {
-        "sequence": {
-            "start": 0,
-            "stop": 1000
-        }
-    },
-
-    "transform": [
-        {
-            "type": "formula",
-            "expr": "'sample-' + floor(random() * 100)",
-            "as": "sample"
-        },
-        {
-            "type": "formula",
-            "expr": "floor(random() * 20)",
-            "as": "x"
-        },
-        {
-            "type": "stack",
-            "field": "x",
-            "groupby": ["sample"],
-            "offset": "normalize",
-            "sort": { "field": "x" }
-        }
-    ],
-
-    "mark": "rect",
-
-    "encoding": {
-        "sample": { "field": "sample", "type": "nominal" },
-        "x": { "field": "y0", "type": "quantitative" },
-        "x2": { "field": "y1", "type": "quantitative" },
-        "color": { "field": "x", "type": "quantitative" }
+  "data": {
+    "sequence": {
+      "start": 0,
+      "stop": 1000
     }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "'sample-' + floor(random() * 100)",
+      "as": "sample"
+    },
+    {
+      "type": "formula",
+      "expr": "floor(random() * 20)",
+      "as": "x"
+    },
+    {
+      "type": "stack",
+      "field": "x",
+      "groupby": ["sample"],
+      "offset": "normalize",
+      "sort": { "field": "x" }
+    }
+  ],
+
+  "mark": "rect",
+
+  "encoding": {
+    "sample": { "field": "sample", "type": "nominal" },
+    "x": { "field": "y0", "type": "quantitative" },
+    "x2": { "field": "y1", "type": "quantitative" },
+    "color": { "field": "x", "type": "quantitative" }
+  }
 }
 ```
 

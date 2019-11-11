@@ -1,6 +1,4 @@
----
-title: A Grammar of Graphics
----
+# A Grammar of Graphics
 
 The visualization grammar of GenomeSpy is a subset and a dialect of
 [Vega-Lite](https://vega.github.io/vega-lite/). However, the goals of
@@ -11,31 +9,16 @@ data transformations. GenomeSpy tries to faithfully follow Vega-Lite's
 grammar where practical. Thus, this documentation has many references to
 its documentation.
 
-## View Specification
+## TODO:
 
-## Data input
+### View Specification
 
-[Data Input](data.md)
+### Encoding
 
-## Transforms
+### Scales
 
-[Transforms](transform/index.md)
+### Guides (axes)
 
-## Encoding
+### Expression
 
-## Marks
-
-## Scales
-
-## Guides (axes)
-
-## View composition
-
-### Layer
-
-    * Resolve
-
-## Expression
-
-TODO
 Subset of https://github.com/vega/vega/tree/master/packages/vega-expression

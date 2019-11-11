@@ -21,10 +21,10 @@ Given the following data:
 
 ```json
 {
-    "type": "gather",
-    "columnRegex": [ "^(.*)\\.AF$" ],
-    "asValue": [ "VAF" ],
-    "asKey": "sample"
+  "type": "gather",
+  "columnRegex": ["^(.*)\\.AF$"],
+  "asValue": ["VAF"],
+  "asKey": "sample"
 }
 ```
 

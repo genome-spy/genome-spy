@@ -26,16 +26,16 @@ This example specifies a single track:
 
 ```json
 {
-    "tracks": [
-        {
-            "data": { "url": "../../data/examples/sincos.csv" },
-            "mark": "point",
-            "encoding": {
-                "x": { "field": "x", "type": "quantitative" },
-                "y": { "field": "sin", "type": "quantitative" }
-            }
-        }
-    ]
+  "tracks": [
+    {
+      "data": { "url": "../../data/examples/sincos.csv" },
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "sin", "type": "quantitative" }
+      }
+    }
+  ]
 }
 ```
 
@@ -48,12 +48,12 @@ specified more succinctly:
 
 ```json
 {
-    "data": { "url": "../../data/examples/sincos.csv" },
-    "mark": "point",
-    "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "sin", "type": "quantitative" }
-    }
+  "data": { "url": "../../data/examples/sincos.csv" },
+  "mark": "point",
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
+  }
 }
 ```
 
@@ -77,11 +77,11 @@ Usage:
 
 ```json
 {
+  ...,
+  "tracks": [
     ...,
-    "tracks": [
-        ...,
-        { "import": { "name": "cytobands" } }
-    ]
+    { "import": { "name": "cytobands" } }
+  ]
 }
 ```
 
@@ -100,15 +100,14 @@ Usage:
 
 ```json
 {
+  ...,
+  "tracks": [
     ...,
-    "tracks": [
-        ...,
-        { "import": { "url": "includes/annotations.json" } },
-        { "import": { "url": "https://genomespy.app/tracks/cosmic/census_hg38.json" } }
-    ]
+    { "import": { "url": "includes/annotations.json" } },
+    { "import": { "url": "https://genomespy.app/tracks/cosmic/census_hg38.json" } }
+  ]
 }
 ```
-
 
 ## Special genomic tracks
 
@@ -151,6 +150,7 @@ opens a context-menu that provides shortcuts to certain databases for further
 information about the gene.
 
 !!! note "How the scoring is actually done"
+
     * Follow https://docs.higlass.io/data_preparation.html#gene-annotation-tracks
     * Use `utils/compressGeneAnnotations.py` to compress the data.
     * TODO: then what?
@@ -158,23 +158,30 @@ information about the gene.
 ### Example
 
 This example displays cytobands, gene annotations, and genomic coordinates
-using the `hg38` genome assembly. It also import a COSMIC Cancer Gene Census
-track from *genomespy.app* website.
+using the `hg38` genome assembly. It also import a COSMIC [Cancer Gene
+Census](https://cancer.sanger.ac.uk/census) track from _genomespy.app_
+website.
 
 <div class="embed-example">
     <div class="embed-container" style="height: 140px"></div>
     <div class="embed-spec">
+
 ```json
 {
-    "genome": { "name": "hg38" },
-    "tracks": [
-        { "import": { "name": "cytobands" } },
-        { "import": { "name": "geneAnnotation" } },
-        { "import": { "url": "https://genomespy.app/tracks/cosmic/census_hg38.json" } },
-        { "import": { "name": "genomeAxis" } }
-    ]
+  "genome": { "name": "hg38" },
+  "tracks": [
+    { "import": { "name": "cytobands" } },
+    { "import": { "name": "geneAnnotation" } },
+    {
+      "import": {
+        "url": "https://genomespy.app/tracks/cosmic/census_hg38.json"
+      }
+    },
+    { "import": { "name": "genomeAxis" } }
+  ]
 }
 ```
+
     </div>
 
 </div>

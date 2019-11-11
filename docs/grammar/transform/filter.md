@@ -10,8 +10,8 @@ SCHEMA FilterConfig
 
 ```json
 {
-    "type": "filter",
-    "expr": "datum.p <= 0.05"
+  "type": "filter",
+  "expr": "datum.p <= 0.05"
 }
 ```
 
