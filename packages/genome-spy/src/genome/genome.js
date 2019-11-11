@@ -1,5 +1,6 @@
 import { format as d3format } from "d3-format";
 import { tsvParseRows } from "d3-dsv";
+import { loader } from "vega-loader";
 import { chromMapper } from "./chromMapper";
 import CoordinateSystem from "../coordinateSystem";
 import Interval from "../utils/interval";
@@ -43,19 +44,16 @@ export default class Genome extends CoordinateSystem {
             this.baseUrl = defaultBaseUrl;
         }
 
-        const url = `${this.baseUrl}/${this.config.name}/${this.name}.chrom.sizes`;
-        this.chromSizes = await fetch(url, { credentials: "same-origin" })
-            .then(res => {
-                if (res.ok) {
-                    return res.text();
-                }
-                throw new Error(
-                    `Could not load chrom sizes: ${url} \nReason: ${res.status} ${res.statusText}`
-                );
-            })
-            .then(parseChromSizes);
-
-        this.chromMapper = chromMapper(this.chromSizes);
+        try {
+            this.chromSizes = parseChromSizes(
+                await loader({ baseURL: this.baseUrl }).load(
+                    `${this.config.name}/${this.name}.chrom.sizes`
+                )
+            );
+            this.chromMapper = chromMapper(this.chromSizes);
+        } catch (e) {
+            throw new Error(`Could not load chrom sizes: ${e.message}`);
+        }
 
         genomeSpy.accessorFactory.register(encoding => {
             if (encoding.chrom && encoding.pos) {

@@ -1,6 +1,7 @@
 import * as twgl from "twgl.js";
 import { scaleOrdinal } from "d3-scale";
 import { color, hsl } from "d3-color";
+import { loader } from "vega-loader";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { segmentsToVertices } from "../gl/dataToVertices";
@@ -76,13 +77,19 @@ function computePaddings(band) {
  * A track that displays cytobands
  */
 export default class CytobandTrack extends WebGlTrack {
+    /**
+     *
+     * @param {import("../genomeSpy").default} genomeSpy
+     * @param {*} config
+     */
     constructor(genomeSpy, config) {
         super(genomeSpy, config);
 
         this.styles = defaultStyles;
 
-        this.genome = genomeSpy.coordinateSystem;
-        if (!(this.genome instanceof Genome)) {
+        if (genomeSpy.coordinateSystem instanceof Genome) {
+            this.genome = genomeSpy.coordinateSystem;
+        } else {
             throw new Error("The coordinate system is not genomic!");
         }
     }
@@ -96,23 +103,19 @@ export default class CytobandTrack extends WebGlTrack {
         this.trackContainer.className = "cytoband-track";
         this.trackContainer.style.height = "21px";
 
-        const url = `${this.genome.baseUrl}/${this.genome.name}/cytoBand.${this.genome.name}.txt`;
-
-        const cytobands = parseUcscCytobands(
-            await fetch(url, { credentials: "same-origin" }).then(res => {
-                if (res.ok) {
-                    return res.text();
-                }
-                throw new Error(
-                    `Could not load cytobands: ${url} \nReason: ${res.status} ${res.statusText}`
-                );
-            })
-        );
-
-        this.mappedCytobands = mapUcscCytobands(
-            this.genome.chromMapper,
-            cytobands
-        );
+        try {
+            this.mappedCytobands = mapUcscCytobands(
+                this.genome.chromMapper,
+                parseUcscCytobands(
+                    await loader({ baseURL: this.genome.baseUrl }).load(
+                        `${this.genome.name}/cytoBand.${this.genome.name}.txt`
+                    )
+                )
+            );
+        } catch (e) {
+            console.error(e);
+            throw new Error(`Could not load chrom sizes: ${e.message}`);
+        }
 
         this.initializeWebGL();
 

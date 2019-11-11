@@ -1,4 +1,4 @@
-import { read } from "vega-loader";
+import { loader as vegaLoader, read } from "vega-loader";
 import { range as d3range } from "d3-array";
 import { DataGroup, GroupGroup, Group } from "./group";
 
@@ -36,7 +36,7 @@ export default class DataSource {
     /**
      * @returns {Promise<object[]>}
      */
-    async getUngroupedData() {
+    getUngroupedData() {
         return this.getData().then(g => g.ungroupAll().data);
     }
 
@@ -133,32 +133,23 @@ export default class DataSource {
     /**
      *
      * @param {string} url May be relative
-     * @returns {Promise<DataGroup>}
      */
     async _fetchAndRead(url) {
-        return fetch(this._addBaseUrl(url), { credentials: "same-origin" })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(
-                        `Cannot load ${response.url}: ${response.status} ${response.statusText}`
-                    );
-                }
-                return response.text();
-            })
-            .then(
-                text =>
-                    new DataGroup(
-                        url,
-                        read(
-                            text,
-                            this._getFormat(this._extractTypeFromUrl(url))
-                        )
-                    )
-            )
-            .catch(reason => {
-                console.error(reason);
-                throw new Error(`Cannot fetch data file: ${url}`);
-            });
+        let text;
+        try {
+            text = await vegaLoader({ baseURL: this.baseUrl }).load(url);
+        } catch (e) {
+            throw new Error(`Cannot fetch: ${url}: ${e.message}`);
+        }
+
+        try {
+            return new DataGroup(
+                url,
+                read(text, this._getFormat(this._extractTypeFromUrl(url)))
+            );
+        } catch (e) {
+            throw new Error(`Cannot parse: ${url}: ${e.message}`);
+        }
     }
 
     /**
@@ -185,18 +176,6 @@ export default class DataSource {
             throw new Error(
                 "url is neither a string nor an array: " + JSON.stringify(url)
             );
-        }
-    }
-
-    _addBaseUrl(url) {
-        if (/^http(s):\/\//.test(url)) {
-            return url;
-        } else {
-            if (!this.baseUrl) {
-                throw new Error("No baseUrl defined!");
-            }
-
-            return this.baseUrl + url;
         }
     }
 }
