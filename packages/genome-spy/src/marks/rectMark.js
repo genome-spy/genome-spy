@@ -224,7 +224,7 @@ export default class RectMark extends Mark {
     findDatum(sampleId, x, y, yBand) {
         const data = this.dataBySample.get(sampleId || "default");
 
-        const gl = this.getContext().track.gl;
+        const gl = this.gl;
         const dpr = window.devicePixelRatio;
 
         x -= this.properties.xOffset;

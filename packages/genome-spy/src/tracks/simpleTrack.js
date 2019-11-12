@@ -56,13 +56,13 @@ export default class SimpleTrack extends WebGlTrack {
      *
      * @param {import("./../genomeSpy").default } genomeSpy
      * @param {object} config
-     * @param {import("../view/view").default} viewRoot
+     * @param {import("../view/view").default} view
      */
-    constructor(genomeSpy, config, viewRoot) {
+    constructor(genomeSpy, config, view) {
         super(genomeSpy, config);
 
         this.styles = Object.assign({}, defaultStyles, config.styles);
-        this.viewRoot = viewRoot;
+        this.view = view;
     }
 
     /**
@@ -123,7 +123,7 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     initializeGraphics() {
-        this.viewRoot.visit(view => {
+        this.view.visit(view => {
             if (view instanceof UnitView) {
                 view.mark.initializeGraphics(this.gl);
             }
@@ -162,8 +162,18 @@ export default class SimpleTrack extends WebGlTrack {
         }
     }
 
+    _getViewRoot() {
+        let root = this.view;
+        while (root.parent) {
+            root = root.parent;
+        }
+        return root;
+    }
+
     getXDomain() {
-        return this.viewRoot.resolutions["x"].getScale().domain();
+        return this._getViewRoot()
+            .resolutions["x"].getScale()
+            .domain();
     }
 
     /**
@@ -181,7 +191,7 @@ export default class SimpleTrack extends WebGlTrack {
 
         const bandInterval = new Interval(0, this.glCanvas.clientHeight);
 
-        for (const mark of getMarks(this.viewRoot).reverse()) {
+        for (const mark of getMarks(this.view).reverse()) {
             if (mark.properties.tooltip !== null) {
                 const datum = mark.findDatum(undefined, x, y, bandInterval);
                 if (datum) {
@@ -275,7 +285,7 @@ export default class SimpleTrack extends WebGlTrack {
             }
         ];
 
-        for (const mark of getMarks(this.viewRoot)) {
+        for (const mark of getMarks(this.view)) {
             mark.render(samples, globalUniforms);
         }
     }
@@ -389,7 +399,7 @@ export default class SimpleTrack extends WebGlTrack {
 
         const ctx = this.get2d(this.leftCanvas);
 
-        const resolutions = getFlattenedViews(this.viewRoot)
+        const resolutions = getFlattenedViews(this.view)
             .map(view => view.resolutions["y"])
             .filter(resolution => resolution);
 

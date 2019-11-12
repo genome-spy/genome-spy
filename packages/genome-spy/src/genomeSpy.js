@@ -30,6 +30,7 @@ import {
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
+import TracksView from "./view/tracksView";
 
 /**
  * @type {Record<String, typeof import("./tracks/track").default>}
@@ -131,21 +132,10 @@ export default class GenomeSpy {
      * @return {Interval} the domain
      */
     getDomain() {
-        // TODO: Compute from data when no hard extent is present
+        // TODO: Adjust the resolved domain in initialization phase -> simpler design
         let extent = this.coordinateSystem.getExtent();
         if (!extent) {
-            /** @type {import("./utils/domainArray").DomainArray} */
-            let domain;
-            for (const track of this.tracks) {
-                if (domain) {
-                    const trackDomain = track.getXDomain();
-                    if (trackDomain) {
-                        domain.extendAll(trackDomain);
-                    }
-                } else {
-                    domain = track.getXDomain();
-                }
-            }
+            let domain = this.viewRoot.resolutions["x"].getDomain();
 
             try {
                 return Interval.fromArray(domain);
@@ -384,18 +374,20 @@ export default class GenomeSpy {
             };
 
             // If the top-level object is a view spec, wrap it in a track spec
-            const rootSpec = wrapInTracks(this.config);
+            //const rootSpec = wrapInTracks(this.config);
+            /** @type {import("./spec/view").TracksSpec & RootConfig} */
+            const rootSpec = this.config;
 
             // Import external tracks
-            await processImports(rootSpec);
+            //await processImports(rootSpec);
 
-            const viewRoot = createView(rootSpec, baseContext); // TODO: TRACK !!!!!!!!!!!!!!!!!!!!!!!!!!!
+            this.viewRoot = createView(rootSpec, baseContext); // TODO: TRACK !!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-            resolveScales(viewRoot);
+            resolveScales(this.viewRoot);
 
-            initializeData(viewRoot);
+            await initializeData(this.viewRoot);
 
-            viewRoot.visit(view => {
+            this.viewRoot.visit(view => {
                 if (view instanceof UnitView) {
                     view.mark.initializeEncoders();
                 }
@@ -405,16 +397,16 @@ export default class GenomeSpy {
             this.tracks = [];
 
             /** @type {import("./spec/view").ViewSpecBase[]} */
-            viewRoot.visit(view => {
+            this.viewRoot.visit(view => {
                 if (
-                    view instanceof UnitView &&
-                    !(view.parent instanceof UnitView)
+                    !(view instanceof TracksView) &&
+                    (view.parent instanceof TracksView || view.parent == null)
                 ) {
                     const Track = view.resolutions["sample"]
                         ? SampleTrack
                         : SimpleTrack;
 
-                    const track = new Track(this, view);
+                    const track = new Track(this, view.spec, view);
 
                     this.tracks.push(track);
                 }
@@ -441,7 +433,7 @@ export default class GenomeSpy {
             this._resized();
         } catch (reason) {
             const message = `${
-                reason.view ? `At ${reason.view.getPathString()}: ` : ""
+                reason.view ? `At "${reason.view.getPathString()}": ` : ""
             }${reason.toString()}`;
             console.error(message);
             console.error(reason.stack);
