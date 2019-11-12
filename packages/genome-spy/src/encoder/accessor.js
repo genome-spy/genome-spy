@@ -1,6 +1,6 @@
 import createFunction from "../utils/expression";
 
-import { field, constant } from "vega-util";
+import { field, accessorFields, constant } from "vega-util";
 
 /**
  * @typedef {Object} AccessorMetadata
@@ -22,7 +22,7 @@ export default class AccessorFactory {
                     /** @type {Accessor} */
                     const accessor = field(encoding.field);
                     accessor.constant = false;
-                    accessor.fields = [encoding.field];
+                    accessor.fields = accessorFields(accessor);
                     return accessor;
                 } catch (e) {
                     throw new Error(`Invalid field definition: ${e.message}`);

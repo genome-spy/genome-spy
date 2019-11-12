@@ -1,6 +1,7 @@
 import { format as d3format } from "d3-format";
 import { tsvParseRows } from "d3-dsv";
 import { loader } from "vega-loader";
+import { field, accessorFields } from "vega-util";
 import { chromMapper } from "./chromMapper";
 import CoordinateSystem from "../coordinateSystem";
 import Interval from "../utils/interval";
@@ -59,14 +60,18 @@ export default class Genome extends CoordinateSystem {
             if (encoding.chrom && encoding.pos) {
                 const offset =
                     typeof encoding.offset == "number" ? encoding.offset : 0;
-                const chrom = encoding.chrom;
-                const pos = encoding.pos;
+                const chromField = field(encoding.chrom);
+                const posField = field(encoding.pos);
 
                 /** @type {import("../encoder/accessor").Accessor} */
                 const accessor = d =>
-                    this.chromMapper.toContinuous(d[chrom], d[pos]) + offset;
+                    this.chromMapper.toContinuous(chromField(d), posField(d)) +
+                    offset;
                 accessor.constant = false;
-                accessor.fields = [chrom, pos];
+                accessor.fields = [
+                    accessorFields(chromField),
+                    accessorFields(posField)
+                ].flat();
                 return accessor;
             }
         });
