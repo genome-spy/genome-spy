@@ -5,7 +5,7 @@ const af = new AccessorFactory();
 const datum = {
     a: 1,
     b: 2,
-    c: 3
+    "x.c": 3
 };
 
 test("Creates a field accessor", () => {
@@ -16,10 +16,10 @@ test("Creates a field accessor", () => {
 });
 
 test("Creates an expression accessor", () => {
-    const a = af.createAccessor({ expr: "datum.b + datum.c" });
+    const a = af.createAccessor({ expr: `datum.b + datum['x\.c']` });
     expect(a(datum)).toEqual(5);
     expect(a.constant).toBeFalsy();
-    expect(a.fields.sort()).toEqual(["b", "c"].sort());
+    expect(a.fields.sort()).toEqual(["b", "x.c"].sort());
 });
 
 test("Creates a constant accessor", () => {

@@ -95,7 +95,7 @@ export default class Resolution {
                     ? encodingSpec.axis.title
                     : undefined,
                 encodingSpec.title,
-                encodingSpec.field
+                encodingSpec.field // TODO: Use accessor.fields instead of encoding.field
             ]
                 .filter(title => title !== undefined)
                 .shift();
