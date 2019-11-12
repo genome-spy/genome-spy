@@ -114,6 +114,7 @@ export default class Resolution {
      */
     setDomain(domain) {
         this._explicitDomain = domain;
+        this._scale = undefined;
     }
 
     /**

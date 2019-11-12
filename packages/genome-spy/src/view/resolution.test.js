@@ -1,5 +1,8 @@
 import { createAndInitialize } from "./testUtils";
-import { toRegularArray as r } from "../utils/domainArray";
+import createDomain, {
+    toRegularArray as r,
+    QuantitativeDomain
+} from "../utils/domainArray";
 
 const spec = {
     data: { values: [] },
@@ -83,6 +86,26 @@ describe("Defaults", () => {
 
         expect(scale.type).toBe("band");
         expect(scale.domain()).toStrictEqual([undefined]);
+    });
+});
+
+describe("Miscellaneous", () => {
+    test("The domain of a resolution can be overridden", async () => {
+        const view = await createAndInitialize({
+            data: { values: [1] },
+            mark: "point",
+            encoding: {
+                x: { field: "data", type: "quantitative" }
+            }
+        });
+
+        let r = view.getResolution("x");
+        expect([...r.getDomain()]).toEqual([1, 1]);
+        expect(r.getScale().domain()).toEqual([1, 1]);
+
+        r.setDomain(createDomain("quantitative", [0, 2]));
+        expect([...r.getDomain()]).toEqual([0, 2]);
+        expect(r.getScale().domain()).toEqual([0, 2]);
     });
 });
 
