@@ -106,6 +106,8 @@ export class RectVertexBuilder {
     addBatch(key, data) {
         const offset = this.variableBuilder.vertexCount;
 
+        const fpa = [0, 0]; // optimize fp64ify
+
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
             .encoders);
         const [lower, upper] = this.visibleRange;
@@ -138,7 +140,7 @@ export class RectVertexBuilder {
 
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
             this.variableBuilder.updateFromDatum(d);
-            this.updateX(fp64ify(x));
+            this.updateX(fp64ify(x, fpa));
             this.updateWidth(-width);
             this.updateY(y);
             this.updateHeight(height);
@@ -168,7 +170,7 @@ export class RectVertexBuilder {
                     ? -Infinity
                     : Infinity;
 
-                this.updateX(fp64ify(tx));
+                this.updateX(fp64ify(tx, fpa));
                 this.updateY(y);
                 this.updateHeight(height);
                 this.variableBuilder.pushAll();
@@ -179,7 +181,7 @@ export class RectVertexBuilder {
 
             // Duplicate the last vertex to produce a degenerate triangle between the segments
             this.variableBuilder.updateFromDatum(d);
-            this.updateX(fp64ify(x2));
+            this.updateX(fp64ify(x2, fpa));
             this.updateWidth(width);
             this.updateHeight(-height);
             this.updateY(y2);
@@ -220,9 +222,11 @@ export class PointVertexBuilder {
 
         const c2f = createCachingColor2floatArray();
 
+        const fpa = [0, 0]; // optimize fp64ify
+
         /** @type {Object.<string, import("./arraybuilder").Converter>} */
         const converters = {
-            x: { f: d => fp64ify(e.x(d)), numComponents: 2 },
+            x: { f: d => fp64ify(e.x(d), fpa), numComponents: 2 },
             y: { f: e.y, numComponents: 1 },
             size: { f: e.size, numComponents: 1 },
             color: { f: d => c2f(e.color(d)), numComponents: 3 },
@@ -315,12 +319,15 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
     const colors = [];
     const opacities = [];
 
+    const fpab = [0, 0]; // optimize fp64ify
+    const fpae = [0, 0]; // optimize fp64ify
+
     // TODO: This is a bit slow and should be profiled more carefully
 
     for (let s of segments) {
         // Emulate 64bit floats using two 32bit floats
-        const begin = fp64ify(s.interval.lower);
-        const end = fp64ify(s.interval.upper);
+        const begin = fp64ify(s.interval.lower, fpab);
+        const end = fp64ify(s.interval.upper, fpae);
 
         const topLeft = 0.0 + (s.paddingTopLeft || s.paddingTop || 0);
         const topRight = 0.0 + (s.paddingTopRight || s.paddingTop || 0);
@@ -351,7 +358,7 @@ export function segmentsToVertices(segments, tesselationThreshold = 8000000) {
             const r = i / tileCount;
             // Interpolate X & Y
             // TODO: Computation could be optimized a bit. Width is computed repetedly, etc..
-            const iX = fp64ify(s.interval.lower + s.interval.width() * r);
+            const iX = fp64ify(s.interval.lower + s.interval.width() * r, fpab);
             const iBottom = bottomLeft + (bottomRight - bottomLeft) * r;
             const iTop = topLeft + (topRight - topLeft) * r;
             x.push(...iX, ...iX);
