@@ -119,15 +119,13 @@ export default class SimpleTrack extends WebGlTrack {
             return point;
         });
 
-        await initializeData(this.viewRoot);
-
         this.initializeGraphics();
     }
 
     initializeGraphics() {
         this.viewRoot.visit(view => {
             if (view instanceof UnitView) {
-                view.mark.initializeGraphics();
+                view.mark.initializeGraphics(this.gl);
             }
         });
     }

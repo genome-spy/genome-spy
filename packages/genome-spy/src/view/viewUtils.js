@@ -5,7 +5,6 @@ import TracksView from "./tracksView";
 
 /**
  * @typedef {Object} ViewContext
- * @prop {import("../tracks/simpleTrack").default} [track]
  * @prop {import("../genomeSpy").default} genomeSpy TODO: Break genomeSpy dependency
  * @prop {function(import("../spec/data").Data):import("../data/dataSource").default} getDataSource
  * @prop {import("../encoder/accessor").default} accessorFactory
@@ -22,6 +21,8 @@ import TracksView from "./tracksView";
  * @typedef {import("../spec/view").TracksSpec} TracksSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
  * @typedef {import("../spec/view").ImportConfig} ImportConfig
+ * @typedef {import("../spec/view").RootSpec} RootSpec
+ * @typedef {import("../spec/view").RootConfig} RootConfig
  * @typedef {import("./view").default} View
  */
 
@@ -86,7 +87,7 @@ export function isImportSpec(spec) {
  */
 export function getViewClass(spec) {
     if (isImportSpec(spec)) {
-        throw new Error("todo");
+        throw new Error("todo: VoidView");
     } else if (isUnitSpec(spec)) {
         return UnitView;
     } else if (isLayerSpec(spec)) {
@@ -164,4 +165,24 @@ export async function initializeData(root) {
             view.mark.initializeData();
         }
     });
+}
+
+/**
+ *
+ * @param {RootSpec} rootSpec
+ * @returns {TracksSpec & RootConfig}
+ */
+export function wrapInTracks(rootSpec) {
+    // Ensure that we have at least one track
+    if (isViewSpec(rootSpec)) {
+        return {
+            tracks: [rootSpec]
+        };
+    } else if (isTracksSpec(rootSpec)) {
+        return rootSpec;
+    } else {
+        throw new Error(
+            "The config root has no tracks nor views. It must contain one of: 'tracks', 'mark', or 'layer'."
+        );
+    }
 }

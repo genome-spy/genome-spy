@@ -1,4 +1,5 @@
 import { group } from "d3-array";
+import { getPlatformShaderDefines } from "../gl/includes/fp64-utils";
 import Interval from "../utils/interval";
 import createEncoders from "../encoder/encoder";
 
@@ -73,7 +74,7 @@ export default class Mark {
         }
     }
 
-    initializeGraphics() {
+    initializeEncoders() {
         const encoding = this.getEncoding();
 
         /** @type {function(string):function} */
@@ -88,15 +89,23 @@ export default class Mark {
         this.encoders = createEncoders(encoding, scaleSource, scale =>
             this.unitView.getAccessor(scale)
         );
+    }
 
-        this.gl = this.getContext().track.gl; // TODO: FIXME FIXME FIXME FIXME FIXME FIXME
+    /**
+     *
+     * @param {WebGLRenderingContext} gl
+     */
+    initializeGraphics(gl) {
+        // override
+        this.gl = gl;
+        this._shaderDefines = getPlatformShaderDefines(gl);
     }
 
     /**
      * @param {string} shaderCode
      */
     processShader(shaderCode) {
-        return this.getContext().track.processShader(shaderCode);
+        return this._shaderDefines + "\n" + shaderCode;
     }
 
     onBeforeSampleAnimation() {

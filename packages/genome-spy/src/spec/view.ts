@@ -78,4 +78,4 @@ export interface RootConfig {
     baseUrl?: string;
 }
 
-export type RootSpec = (ViewSpec | TracksSpec) & RootConfig;
+export type RootSpec = ViewSpec & RootConfig;

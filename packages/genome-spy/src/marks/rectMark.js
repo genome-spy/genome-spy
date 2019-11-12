@@ -116,9 +116,8 @@ export default class RectMark extends Mark {
         };
     }
 
-    initializeGraphics() {
-        super.initializeGraphics();
-        const gl = this.gl;
+    initializeEncoders() {
+        super.initializeEncoders();
 
         // A hack to support band & point scales
         const yScale = this.getScale("y");
@@ -135,6 +134,14 @@ export default class RectMark extends Mark {
                 this.encoders.y2 = this.encoders.y;
             }
         }
+    }
+
+    /**
+     *
+     * @param {WebGLRenderingContext} gl
+     */
+    initializeGraphics(gl) {
+        super.initializeGraphics(gl);
 
         const xDomain = this.getXDomain();
         const domainWidth = xDomain ? xDomain.width() : Infinity;

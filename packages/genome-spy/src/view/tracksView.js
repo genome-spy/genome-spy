@@ -22,4 +22,8 @@ export default class TracksView extends ContainerView {
             return new View(childSpec, context, this, "tracks" + i);
         });
     }
+
+    getDefaultResolution(channel) {
+        return "independent";
+    }
 }

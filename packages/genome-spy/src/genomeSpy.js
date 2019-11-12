@@ -24,10 +24,12 @@ import {
     isViewSpec,
     createView,
     resolveScales,
-    isTracksSpec,
-    isImportSpec
+    isImportSpec,
+    wrapInTracks,
+    initializeData
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
+import UnitView from "./view/unitView";
 
 /**
  * @type {Record<String, typeof import("./tracks/track").default>}
@@ -382,14 +384,41 @@ export default class GenomeSpy {
             };
 
             // If the top-level object is a view spec, wrap it in a track spec
-            const rootWithTracks = wrapInTrack(this.config);
+            const rootSpec = wrapInTracks(this.config);
 
-            await processImports(rootWithTracks);
+            // Import external tracks
+            await processImports(rootSpec);
 
-            // Create the tracks and their view hierarchies
-            this.tracks = rootWithTracks.tracks.map(spec =>
-                createTrack(spec, this, baseContext)
-            );
+            const viewRoot = createView(rootSpec, baseContext); // TODO: TRACK !!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+            resolveScales(viewRoot);
+
+            initializeData(viewRoot);
+
+            viewRoot.visit(view => {
+                if (view instanceof UnitView) {
+                    view.mark.initializeEncoders();
+                }
+            });
+
+            /** @type {import("./tracks/track").default[]} */
+            this.tracks = [];
+
+            /** @type {import("./spec/view").ViewSpecBase[]} */
+            viewRoot.visit(view => {
+                if (
+                    view instanceof UnitView &&
+                    !(view.parent instanceof UnitView)
+                ) {
+                    const Track = view.resolutions["sample"]
+                        ? SampleTrack
+                        : SimpleTrack;
+
+                    const track = new Track(this, view);
+
+                    this.tracks.push(track);
+                }
+            });
 
             // Create container and initialize the the tracks, i.e. load the data and create WebGL buffers
             await Promise.all(
@@ -420,27 +449,6 @@ export default class GenomeSpy {
         } finally {
             this.container.classList.remove("loading");
         }
-    }
-}
-
-/**
- *
- * @param {RootSpec} rootSpec
- * @returns {TrackSpec}
- */
-function wrapInTrack(rootSpec) {
-    // Ensure that we have at least one track
-    if (isViewSpec(rootSpec)) {
-        // TODO: Clean extra properties
-        const trackSpec = /** @type {TrackSpec} */ (rootSpec);
-        trackSpec.tracks = [rootSpec];
-        return trackSpec;
-    } else if (isTracksSpec(rootSpec)) {
-        return rootSpec;
-    } else {
-        throw new Error(
-            "The config root has no tracks nor views. It must contain one of: 'tracks', 'mark', or 'layer'."
-        );
     }
 }
 
