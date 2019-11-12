@@ -23,7 +23,10 @@ export default class TracksView extends ContainerView {
         });
     }
 
+    /**
+     * @param {string} channel
+     */
     getDefaultResolution(channel) {
-        return "independent";
+        return channel == "x" ? "shared" : "independent";
     }
 }

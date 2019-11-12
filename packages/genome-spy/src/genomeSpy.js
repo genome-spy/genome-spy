@@ -32,6 +32,7 @@ import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
 import TracksView from "./view/tracksView";
 import ImportView from "./view/importView";
+import createDomain from "./utils/domainArray";
 
 /**
  * @type {Record<String, typeof import("./tracks/track").default>}
@@ -133,19 +134,12 @@ export default class GenomeSpy {
      * @return {Interval} the domain
      */
     getDomain() {
-        // TODO: Adjust the resolved domain in initialization phase -> simpler design
-        let extent = this.coordinateSystem.getExtent();
-        if (!extent) {
-            let domain = this.viewRoot.resolutions["x"].getDomain();
-
-            try {
-                return Interval.fromArray(domain);
-            } catch (e) {
-                throw new Error("Cannot extract domain for the x axis");
-            }
+        let domain = this.viewRoot.resolutions["x"].getDomain();
+        if (domain) {
+            return Interval.fromArray(domain);
         }
 
-        return extent || new Interval(0, 1);
+        return new Interval(0, 1);
     }
 
     /**
@@ -382,10 +376,23 @@ export default class GenomeSpy {
                 await processImports(rootSpec);
             }
 
+            // Create the view hierarchy
             this.viewRoot = createView(rootSpec, context);
 
+            // Resolve scales, i.e., if possible, pull them towards the root
             resolveScales(this.viewRoot);
 
+            // If the coordinate system has a hard extent, use it
+            if (this.coordinateSystem.getExtent()) {
+                this.viewRoot.resolutions["x"].setDomain(
+                    createDomain(
+                        "quantitative",
+                        this.coordinateSystem.getExtent().toArray()
+                    )
+                );
+            }
+
+            // Load an transform all data
             await initializeData(this.viewRoot);
 
             this.viewRoot.visit(view => {
@@ -394,34 +401,7 @@ export default class GenomeSpy {
                 }
             });
 
-            // TODO: Extract function for track creation
-            /** @type {import("./tracks/track").default[]} */
-            this.tracks = [];
-
-            /** @type {import("./spec/view").ViewSpecBase[]} */
-            this.viewRoot.visit(view => {
-                if (view instanceof ImportView) {
-                    const name = view.spec.import.name;
-                    if (name) {
-                        if (!trackTypes[name]) {
-                            throw new Error(`Unknown track name: ${name}`);
-                        }
-                        // Currently, all named imports are custom, hardcoded tracks
-                        this.tracks.push(new trackTypes[name](this, view.spec));
-                    }
-                } else if (
-                    !(view instanceof TracksView) &&
-                    (view.parent instanceof TracksView || view.parent == null)
-                ) {
-                    const Track = view.resolutions["sample"]
-                        ? SampleTrack
-                        : SimpleTrack;
-
-                    const track = new Track(this, view.spec, view);
-
-                    this.tracks.push(track);
-                }
-            });
+            this._createTracks();
 
             // Create container and initialize the the tracks, i.e. load the data and create WebGL buffers
             await Promise.all(
@@ -453,6 +433,39 @@ export default class GenomeSpy {
             this.container.classList.remove("loading");
         }
     }
+
+    /**
+     * Creates the track instances
+     */
+    _createTracks() {
+        /** @type {import("./tracks/track").default[]} */
+        this.tracks = [];
+
+        /** @type {import("./spec/view").ViewSpecBase[]} */
+        this.viewRoot.visit(view => {
+            if (view instanceof ImportView) {
+                const name = view.spec.import.name;
+                if (name) {
+                    if (!trackTypes[name]) {
+                        throw new Error(`Unknown track name: ${name}`);
+                    }
+                    // Currently, all named imports are custom, hardcoded tracks
+                    this.tracks.push(new trackTypes[name](this, view.spec));
+                }
+            } else if (
+                !(view instanceof TracksView) &&
+                (view.parent instanceof TracksView || view.parent == null)
+            ) {
+                const Track = view.resolutions["sample"]
+                    ? SampleTrack
+                    : SimpleTrack;
+
+                const track = new Track(this, view.spec, view);
+
+                this.tracks.push(track);
+            }
+        });
+    }
 }
 
 /**
@@ -477,7 +490,6 @@ async function importExternalTrack(spec, baseUrl) {
         })
     );
 
-    // TODO: BaseUrl should be updated for the imported view
     if (isViewSpec(importedSpec)) {
         importedSpec.baseUrl = (await loader.sanitize(url)).href.match(
             /^.*\//

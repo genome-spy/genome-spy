@@ -151,15 +151,6 @@ export default class UnitView extends View {
      * @returns {DomainArray}
      */
     getDomain(channel) {
-        if (channel === "x" && this._getCoordinateSystemExtent()) {
-            // Skip unnecessary extent computation
-            // However, if we want to initially zoom to the extent of the data, this needs to done differently
-            return createDomain(
-                "quantitative",
-                this._getCoordinateSystemExtent().toArray()
-            );
-        }
-
         if (isSecondaryChannel(channel)) {
             throw new Error(
                 `getDomain(${channel}), must only be called for primary channels!`

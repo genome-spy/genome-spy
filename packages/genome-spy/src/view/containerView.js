@@ -28,6 +28,9 @@ export default class ContainerView extends View {
         );
     }
 
+    /**
+     * @param {string} channel
+     */
     getDefaultResolution(channel) {
         return "shared";
     }

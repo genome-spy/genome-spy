@@ -51,7 +51,7 @@ export function isLayerSpec(spec) {
  * @returns {spec is ViewSpec}
  */
 export function isViewSpec(spec) {
-    return isUnitSpec(spec) || isLayerSpec(spec);
+    return isUnitSpec(spec) || isLayerSpec(spec) || isTracksSpec(spec);
 }
 
 /**
@@ -109,7 +109,12 @@ export function getViewClass(spec) {
  */
 export function createView(spec, context) {
     const ViewClass = getViewClass(spec);
-    return /** @type {View} */ (new ViewClass(spec, context, null, "root"));
+    return /** @type {View} */ (new ViewClass(
+        spec,
+        context,
+        null,
+        spec.name || "root"
+    ));
 }
 
 /**

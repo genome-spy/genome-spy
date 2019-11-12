@@ -107,9 +107,25 @@ export default class Resolution {
     }
 
     /**
+     * Set an explicit domain that overrides all other configurations and
+     * computed domains
+     *
+     * @param {DomainArray} domain
+     */
+    setDomain(domain) {
+        this._explicitDomain = domain;
+    }
+
+    /**
+     * Unions the domains of all participating views
+     *
      * @return { DomainArray }
      */
     getDomain() {
+        if (this._explicitDomain) {
+            return this._explicitDomain;
+        }
+
         const domains = this.views
             .map(view => view.getDomain(this.channel))
             .filter(domain => !!domain);
