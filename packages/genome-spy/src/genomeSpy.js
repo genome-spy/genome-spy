@@ -25,12 +25,13 @@ import {
     createView,
     resolveScales,
     isImportSpec,
-    wrapInTracks,
-    initializeData
+    initializeData,
+    isTracksSpec
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
 import TracksView from "./view/tracksView";
+import ImportView from "./view/importView";
 
 /**
  * @type {Record<String, typeof import("./tracks/track").default>}
@@ -361,27 +362,27 @@ export default class GenomeSpy {
             await this.coordinateSystem.initialize(this);
 
             /** @type {import("./view/viewUtils").ViewContext} */
-            const baseContext = {
+            const context = {
                 coordinateSystem: this.coordinateSystem,
                 accessorFactory: this.accessorFactory,
                 genomeSpy: this, // TODO: An interface instead of a GenomeSpy
-                getDataSource: config =>
+                getDataSource: (config, baseUrl) =>
                     new DataSource(
                         config,
-                        this.config.baseUrl,
+                        baseUrl,
                         this.getNamedData.bind(this)
                     )
             };
 
-            // If the top-level object is a view spec, wrap it in a track spec
-            //const rootSpec = wrapInTracks(this.config);
             /** @type {import("./spec/view").TracksSpec & RootConfig} */
             const rootSpec = this.config;
 
             // Import external tracks
-            //await processImports(rootSpec);
+            if (isTracksSpec(rootSpec)) {
+                await processImports(rootSpec);
+            }
 
-            this.viewRoot = createView(rootSpec, baseContext); // TODO: TRACK !!!!!!!!!!!!!!!!!!!!!!!!!!!
+            this.viewRoot = createView(rootSpec, context);
 
             resolveScales(this.viewRoot);
 
@@ -393,12 +394,22 @@ export default class GenomeSpy {
                 }
             });
 
+            // TODO: Extract function for track creation
             /** @type {import("./tracks/track").default[]} */
             this.tracks = [];
 
             /** @type {import("./spec/view").ViewSpecBase[]} */
             this.viewRoot.visit(view => {
-                if (
+                if (view instanceof ImportView) {
+                    const name = view.spec.import.name;
+                    if (name) {
+                        if (!trackTypes[name]) {
+                            throw new Error(`Unknown track name: ${name}`);
+                        }
+                        // Currently, all named imports are custom, hardcoded tracks
+                        this.tracks.push(new trackTypes[name](this, view.spec));
+                    }
+                } else if (
                     !(view instanceof TracksView) &&
                     (view.parent instanceof TracksView || view.parent == null)
                 ) {
@@ -486,6 +497,8 @@ async function importExternalTrack(spec, baseUrl) {
  * @param {import("./spec/view").TracksSpec} trackSpec
  */
 async function processImports(trackSpec) {
+    // TODO: Process nested TracksViews too
+
     // eslint-disable-next-line require-atomic-updates
     trackSpec.tracks = await Promise.all(
         trackSpec.tracks.map(spec => {
@@ -495,54 +508,6 @@ async function processImports(trackSpec) {
                 return spec;
             }
         })
-    );
-}
-
-/**
- * @param {import("./spec/view").ViewSpec | import("./spec/view").ImportSpec} spec
- * @param {GenomeSpy} genomeSpy
- * @param {import("./view/viewUtils").ViewContext} baseContext
- */
-function createTrack(spec, genomeSpy, baseContext) {
-    if (isImportSpec(spec)) {
-        if (spec.import.name) {
-            if (!trackTypes[spec.import.name]) {
-                throw new Error(`Unknown track name: ${spec.import.name}`);
-            }
-            // Currently, all named imports are custom, hardcoded tracks
-            return new trackTypes[spec.import.name](genomeSpy, spec);
-        }
-    }
-
-    if (isViewSpec(spec)) {
-        // We first create a view and then figure out if it needs faceting (SampleTrack)
-
-        /** @type {import("./view/viewUtils").ViewContext} */
-        const context = {
-            ...baseContext,
-            // Hack for imported tracks, as their baseUrl needs to be updated
-            getDataSource: config =>
-                new DataSource(
-                    config,
-                    spec.baseUrl || genomeSpy.config.baseUrl, // TODO: REFACTOR
-                    genomeSpy.getNamedData.bind(genomeSpy)
-                )
-        };
-
-        const viewRoot = createView(spec, context);
-        resolveScales(viewRoot);
-        const Track = viewRoot.resolutions["sample"]
-            ? SampleTrack
-            : SimpleTrack;
-
-        const track = new Track(genomeSpy, spec, viewRoot);
-        context.track = track;
-
-        return track;
-    }
-
-    throw new Error(
-        "Can't figure out which track to create: " + JSON.stringify(spec)
     );
 }
 

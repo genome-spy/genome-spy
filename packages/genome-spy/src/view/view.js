@@ -88,6 +88,18 @@ export default class View {
         );
     }
 
+    getBaseUrl() {
+        /** @type {View} */
+        // eslint-disable-next-line consistent-this
+        let view = this;
+        while (view) {
+            if (view.spec.baseUrl) {
+                return view.spec.baseUrl;
+            }
+            view = view.parent;
+        }
+    }
+
     /**
      * @returns {import("../data/group").Group}
      */
@@ -110,7 +122,7 @@ export default class View {
     async loadData() {
         if (this.spec.data) {
             this.data = await this.context
-                .getDataSource(this.spec.data)
+                .getDataSource(this.spec.data, this.getBaseUrl())
                 .getData();
         }
     }
