@@ -400,7 +400,7 @@ export default class SimpleTrack extends WebGlTrack {
         const ctx = this.get2d(this.leftCanvas);
 
         const resolutions = getFlattenedViews(this.view)
-            .map(view => view.getResolution("y"))
+            .map(view => view.resolutions["y"])
             .filter(resolution => resolution);
 
         let pos = 0;
