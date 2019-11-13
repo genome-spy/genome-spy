@@ -149,7 +149,7 @@ export default class SampleTrack extends SimpleTrack {
                 processSamples(await sampleDataSource.getUngroupedData())
             );
         } else {
-            const resolution = this.viewRoot.getResolution("sample");
+            const resolution = this.view.getResolution("sample");
             if (resolution) {
                 this.setSamples(
                     resolution.getDomain().map(s => ({
@@ -322,7 +322,7 @@ export default class SampleTrack extends SimpleTrack {
 
         const bandInterval = this.sampleScale.scale(sampleId);
 
-        for (const mark of getMarks(this.viewRoot).reverse()) {
+        for (const mark of getMarks(this.view).reverse()) {
             if (mark.properties.tooltip !== null) {
                 const datum = mark.findDatum(sampleId, x, y, bandInterval);
                 if (datum) {
@@ -344,7 +344,7 @@ export default class SampleTrack extends SimpleTrack {
 
         const scaledX = this.genomeSpy.rescaledX.invert(point[0]);
 
-        for (const mark of getMarks(this.viewRoot)) {
+        for (const mark of getMarks(this.view)) {
             if (mark.properties && mark.properties.sorting) {
                 items.push({
                     label: mark.unitView.spec.title || "- No title -",
@@ -506,9 +506,7 @@ export default class SampleTrack extends SimpleTrack {
         this.attributePanel.sampleMouseTracker.clear();
         this.viewportMouseTracker.clear();
 
-        getMarks(this.viewRoot).forEach(layer =>
-            layer.onBeforeSampleAnimation()
-        );
+        getMarks(this.view).forEach(layer => layer.onBeforeSampleAnimation());
 
         return transition({
             from: reverse ? 1 : 0,
@@ -533,9 +531,7 @@ export default class SampleTrack extends SimpleTrack {
                 this.attributePanel.renderLabels(options);
             }
         }).then(() =>
-            getMarks(this.viewRoot).forEach(layer =>
-                layer.onAfterSampleAnimation()
-            )
+            getMarks(this.view).forEach(layer => layer.onAfterSampleAnimation())
         );
     }
 
@@ -650,7 +646,7 @@ export default class SampleTrack extends SimpleTrack {
             };
         });
 
-        for (const mark of getMarks(this.viewRoot)) {
+        for (const mark of getMarks(this.view)) {
             mark.render(samples, globalUniforms);
         }
     }

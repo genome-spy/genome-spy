@@ -87,17 +87,24 @@ export default class PointMark extends Mark {
         );
     }
 
-    initializeGraphics() {
-        super.initializeGraphics();
-        const gl = this.gl;
-
-        // A hack to support band scales
+    initializeEncoders() {
+        super.initializeEncoders();
         const yScale = this.getScale("y");
         if (yScale.bandwidth) {
             const offset = yScale.bandwidth() / 2;
             const ye = this.encoders.y;
             this.encoders.y = d => ye(d) + offset;
         }
+    }
+
+    /**
+     *
+     * @param {WebGLRenderingContext} gl
+     */
+    initializeGraphics(gl) {
+        super.initializeGraphics(gl);
+
+        // A hack to support band scales
 
         this.programInfo = twgl.createProgramInfo(
             gl,
@@ -239,7 +246,7 @@ export default class PointMark extends Mark {
         const distance = (x1, x2, y1, y2) =>
             Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 
-        const xScale = this.getContext().track.genomeSpy.rescaledX;
+        const xScale = this.getContext().genomeSpy.rescaledX;
 
         const bisect = bisector(e.x).left;
         // Use binary search to find the range that may contain the point

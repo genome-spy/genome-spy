@@ -6,13 +6,33 @@ import View from "./view";
 export default class ContainerView extends View {
     /**
      *
-     * @param {import("./view").ViewSpec} spec
+     * @param {import("./viewUtils").ContainerSpec} spec
      * @param {import("./view").ViewContext} context
      * @param {import("./view").default} parent
      * @param {string} name
      */
     constructor(spec, context, parent, name) {
         super(spec, context, parent, name);
+
+        this.spec = spec;
+    }
+
+    /**
+     * @param {string} channel
+     */
+    getConfiguredResolution(channel) {
+        return (
+            this.spec.resolve &&
+            this.spec.resolve.scale &&
+            this.spec.resolve.scale[channel]
+        );
+    }
+
+    /**
+     * @param {string} channel
+     */
+    getDefaultResolution(channel) {
+        return "shared";
     }
 
     /**
@@ -20,10 +40,8 @@ export default class ContainerView extends View {
      */
     getConfiguredOrDefaultResolution(channel) {
         return (
-            (this.spec.resolve &&
-                this.spec.resolve.scale &&
-                this.spec.resolve.scale[channel]) ||
-            "shared"
+            this.getConfiguredResolution(channel) ||
+            this.getDefaultResolution(channel)
         );
     }
 }

@@ -24,10 +24,15 @@ import {
     isViewSpec,
     createView,
     resolveScales,
-    isTrackSpec,
-    isImportSpec
+    isImportSpec,
+    initializeData,
+    isConcatSpec
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
+import UnitView from "./view/unitView";
+import ConcatView from "./view/concatView";
+import ImportView from "./view/importView";
+import createDomain from "./utils/domainArray";
 
 /**
  * @type {Record<String, typeof import("./tracks/track").default>}
@@ -42,7 +47,7 @@ const trackTypes = {
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
  * @typedef {import("./spec/view").ViewSpec} ViewSpec
  * @typedef {import("./spec/view").ImportSpec} ImportSpec
- * @typedef {import("./spec/view").TrackSpec} TrackSpec
+ * @typedef {import("./spec/view").ConcatSpec} TrackSpec
  * @typedef {import("./spec/view").RootSpec} RootSpec
  * @typedef {import("./spec/view").RootConfig} RootConfig
  */
@@ -129,30 +134,12 @@ export default class GenomeSpy {
      * @return {Interval} the domain
      */
     getDomain() {
-        // TODO: Compute from data when no hard extent is present
-        let extent = this.coordinateSystem.getExtent();
-        if (!extent) {
-            /** @type {import("./utils/domainArray").DomainArray} */
-            let domain;
-            for (const track of this.tracks) {
-                if (domain) {
-                    const trackDomain = track.getXDomain();
-                    if (trackDomain) {
-                        domain.extendAll(trackDomain);
-                    }
-                } else {
-                    domain = track.getXDomain();
-                }
-            }
-
-            try {
-                return Interval.fromArray(domain);
-            } catch (e) {
-                throw new Error("Cannot extract domain for the x axis");
-            }
+        let domain = this.viewRoot.resolutions["x"].getDomain();
+        if (domain) {
+            return Interval.fromArray(domain);
         }
 
-        return extent || new Interval(0, 1);
+        return new Interval(0, 1);
     }
 
     /**
@@ -369,27 +356,54 @@ export default class GenomeSpy {
             await this.coordinateSystem.initialize(this);
 
             /** @type {import("./view/viewUtils").ViewContext} */
-            const baseContext = {
+            const context = {
                 coordinateSystem: this.coordinateSystem,
                 accessorFactory: this.accessorFactory,
                 genomeSpy: this, // TODO: An interface instead of a GenomeSpy
-                getDataSource: config =>
+                getDataSource: (config, baseUrl) =>
                     new DataSource(
                         config,
-                        this.config.baseUrl,
+                        baseUrl,
                         this.getNamedData.bind(this)
                     )
             };
 
-            // If the top-level object is a view spec, wrap it in a track spec
-            const rootWithTracks = wrapInTrack(this.config);
+            /** @type {import("./spec/view").ConcatSpec & RootConfig} */
+            const rootSpec = this.config;
 
-            await processImports(rootWithTracks);
+            // Import external tracks
+            if (isConcatSpec(rootSpec)) {
+                await processImports(rootSpec);
+            }
 
-            // Create the tracks and their view hierarchies
-            this.tracks = rootWithTracks.tracks.map(spec =>
-                createTrack(spec, this, baseContext)
-            );
+            // Create the view hierarchy
+            this.viewRoot = createView(rootSpec, context);
+
+            // Resolve scales, i.e., if possible, pull them towards the root
+            resolveScales(this.viewRoot);
+
+            // If the coordinate system has a hard extent, use it
+            if (this.coordinateSystem.getExtent()) {
+                this.viewRoot
+                    .getResolution("x")
+                    .setDomain(
+                        createDomain(
+                            "quantitative",
+                            this.coordinateSystem.getExtent().toArray()
+                        )
+                    );
+            }
+
+            // Load an transform all data
+            await initializeData(this.viewRoot);
+
+            this.viewRoot.visit(view => {
+                if (view instanceof UnitView) {
+                    view.mark.initializeEncoders();
+                }
+            });
+
+            this._createTracks();
 
             // Create container and initialize the the tracks, i.e. load the data and create WebGL buffers
             await Promise.all(
@@ -412,7 +426,7 @@ export default class GenomeSpy {
             this._resized();
         } catch (reason) {
             const message = `${
-                reason.view ? `At ${reason.view.getPathString()}: ` : ""
+                reason.view ? `At "${reason.view.getPathString()}": ` : ""
             }${reason.toString()}`;
             console.error(message);
             console.error(reason.stack);
@@ -421,26 +435,38 @@ export default class GenomeSpy {
             this.container.classList.remove("loading");
         }
     }
-}
 
-/**
- *
- * @param {RootSpec} rootSpec
- * @returns {TrackSpec}
- */
-function wrapInTrack(rootSpec) {
-    // Ensure that we have at least one track
-    if (isViewSpec(rootSpec)) {
-        // TODO: Clean extra properties
-        const trackSpec = /** @type {TrackSpec} */ (rootSpec);
-        trackSpec.tracks = [rootSpec];
-        return trackSpec;
-    } else if (isTrackSpec(rootSpec)) {
-        return rootSpec;
-    } else {
-        throw new Error(
-            "The config root has no tracks nor views. It must contain one of: 'tracks', 'mark', or 'layer'."
-        );
+    /**
+     * Creates the track instances
+     */
+    _createTracks() {
+        /** @type {import("./tracks/track").default[]} */
+        this.tracks = [];
+
+        /** @type {import("./spec/view").ViewSpecBase[]} */
+        this.viewRoot.visit(view => {
+            if (view instanceof ImportView) {
+                const name = view.spec.import.name;
+                if (name) {
+                    if (!trackTypes[name]) {
+                        throw new Error(`Unknown track name: ${name}`);
+                    }
+                    // Currently, all named imports are custom, hardcoded tracks
+                    this.tracks.push(new trackTypes[name](this, view.spec));
+                }
+            } else if (
+                !(view instanceof ConcatView) &&
+                (view.parent instanceof ConcatView || view.parent == null)
+            ) {
+                const Track = view.getResolution("sample")
+                    ? SampleTrack
+                    : SimpleTrack;
+
+                const track = new Track(this, view.spec, view);
+
+                this.tracks.push(track);
+            }
+        });
     }
 }
 
@@ -466,7 +492,6 @@ async function importExternalTrack(spec, baseUrl) {
         })
     );
 
-    // TODO: BaseUrl should be updated for the imported view
     if (isViewSpec(importedSpec)) {
         importedSpec.baseUrl = (await loader.sanitize(url)).href.match(
             /^.*\//
@@ -483,66 +508,20 @@ async function importExternalTrack(spec, baseUrl) {
 }
 
 /**
- * @param {import("./spec/view").TrackSpec} trackSpec
+ * @param {import("./spec/view").ConcatSpec} trackSpec
  */
 async function processImports(trackSpec) {
+    // TODO: Process nested TracksViews too
+
     // eslint-disable-next-line require-atomic-updates
-    trackSpec.tracks = await Promise.all(
-        trackSpec.tracks.map(spec => {
+    trackSpec.concat = await Promise.all(
+        trackSpec.concat.map(spec => {
             if (isImportSpec(spec) && spec.import.url) {
                 return importExternalTrack(spec, trackSpec.baseUrl);
             } else {
                 return spec;
             }
         })
-    );
-}
-
-/**
- * @param {import("./spec/view").ViewSpec | import("./spec/view").ImportSpec} spec
- * @param {GenomeSpy} genomeSpy
- * @param {import("./view/viewUtils").ViewContext} baseContext
- */
-function createTrack(spec, genomeSpy, baseContext) {
-    if (isImportSpec(spec)) {
-        if (spec.import.name) {
-            if (!trackTypes[spec.import.name]) {
-                throw new Error(`Unknown track name: ${spec.import.name}`);
-            }
-            // Currently, all named imports are custom, hardcoded tracks
-            return new trackTypes[spec.import.name](genomeSpy, spec);
-        }
-    }
-
-    if (isViewSpec(spec)) {
-        // We first create a view and then figure out if it needs faceting (SampleTrack)
-
-        /** @type {import("./view/viewUtils").ViewContext} */
-        const context = {
-            ...baseContext,
-            // Hack for imported tracks, as their baseUrl needs to be updated
-            getDataSource: config =>
-                new DataSource(
-                    config,
-                    spec.baseUrl || genomeSpy.config.baseUrl, // TODO: REFACTOR
-                    genomeSpy.getNamedData.bind(genomeSpy)
-                )
-        };
-
-        const viewRoot = createView(spec, context);
-        resolveScales(viewRoot);
-        const Track = viewRoot.resolutions["sample"]
-            ? SampleTrack
-            : SimpleTrack;
-
-        const track = new Track(genomeSpy, spec, viewRoot);
-        context.track = track;
-
-        return track;
-    }
-
-    throw new Error(
-        "Can't figure out which track to create: " + JSON.stringify(spec)
     );
 }
 

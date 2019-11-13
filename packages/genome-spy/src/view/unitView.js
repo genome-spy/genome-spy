@@ -2,6 +2,7 @@ import RectMark from "../marks/rectMark";
 import PointMark from "../marks/pointMark";
 import RuleMark from "../marks/rule";
 
+import View from "./view";
 import ContainerView from "./containerView";
 import Resolution from "./resolution";
 import { isSecondaryChannel, secondaryChannels } from "../encoder/encoder";
@@ -22,7 +23,7 @@ export const markTypes = {
     rule: RuleMark
 };
 
-export default class UnitView extends ContainerView {
+export default class UnitView extends View {
     /**
      *
      * @param {import("../spec/view").UnitSpec} spec
@@ -144,21 +145,12 @@ export default class UnitView extends ContainerView {
 
     /**
      * Returns the domain of the specified channel of this domain/mark.
-     * Either returns a configured domain or extracts it from the data.
+     * Either returns the configured domain or extracts it from the data.
      *
      * @param {string} channel
      * @returns {DomainArray}
      */
     getDomain(channel) {
-        if (channel === "x" && this._getCoordinateSystemExtent()) {
-            // Skip unnecessary extent computation
-            // However, if we want to initially zoom to the extent of the data, this needs to done differently
-            return createDomain(
-                "quantitative",
-                this._getCoordinateSystemExtent().toArray()
-            );
-        }
-
         if (isSecondaryChannel(channel)) {
             throw new Error(
                 `getDomain(${channel}), must only be called for primary channels!`
@@ -212,14 +204,15 @@ export default class UnitView extends ContainerView {
         }
 
         let domain;
-        const data = this.getData().ungroupAll().data; // TODO: getter for flattened data
+
+        // TODO: an iterator for flattened data
+        const data = this.getData().ungroupAll().data;
 
         const encodingSpec = this.getEncoding()[channel];
 
         if (encodingSpec) {
             const accessor = this.context.accessorFactory.createAccessor(
-                encodingSpec,
-                true
+                encodingSpec
             );
             if (accessor) {
                 domain = createDomain(type);

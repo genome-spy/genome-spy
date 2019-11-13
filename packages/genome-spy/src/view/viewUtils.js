@@ -1,12 +1,13 @@
+import ImportView from "./importView";
 import UnitView from "./unitView";
 import LayerView from "./layerView";
 import { configureDefaultResolutions } from "./resolution";
+import ConcatView from "./concatView";
 
 /**
  * @typedef {Object} ViewContext
- * @prop {import("../tracks/simpleTrack").default} [track]
  * @prop {import("../genomeSpy").default} genomeSpy TODO: Break genomeSpy dependency
- * @prop {function(import("../spec/data").Data):import("../data/dataSource").default} getDataSource
+ * @prop {function(import("../spec/data").Data, string):import("../data/dataSource").default} getDataSource
  * @prop {import("../encoder/accessor").default} accessorFactory
  * @prop {import("../coordinateSystem").default} coordinateSystem
  */
@@ -14,12 +15,15 @@ import { configureDefaultResolutions } from "./resolution";
 /**
  * @typedef {import("../spec/view").MarkConfig} MarkConfig
  * @typedef {import("../spec/view").EncodingConfig} EncodingConfig
+ * @typedef {import("../spec/view").ContainerSpec} ContainerSpec
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
  * @typedef {import("../spec/view").UnitSpec} UnitSpec
- * @typedef {import("../spec/view").TrackSpec} TrackSpec
+ * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
  * @typedef {import("../spec/view").ImportConfig} ImportConfig
+ * @typedef {import("../spec/view").RootSpec} RootSpec
+ * @typedef {import("../spec/view").RootConfig} RootConfig
  * @typedef {import("./view").default} View
  */
 
@@ -43,20 +47,20 @@ export function isLayerSpec(spec) {
 
 /**
  *
- * @param {object} spec
+ * @param {ViewSpec} spec
  * @returns {spec is ViewSpec}
  */
 export function isViewSpec(spec) {
-    return isUnitSpec(spec) || isLayerSpec(spec);
+    return isUnitSpec(spec) || isLayerSpec(spec) || isConcatSpec(spec);
 }
 
 /**
  *
- * @param {object} spec
- * @returns {spec is TrackSpec}
+ * @param {ViewSpec} spec
+ * @returns {spec is ConcatSpec}
  */
-export function isTrackSpec(spec) {
-    return Array.isArray(spec.tracks);
+export function isConcatSpec(spec) {
+    return Array.isArray(spec.concat);
 }
 
 /**
@@ -79,14 +83,18 @@ export function isImportSpec(spec) {
 
 /**
  *
- * @param {ViewSpec} spec
+ * @param {ViewSpec | ImportSpec} spec
  * @returns {typeof View}
  */
 export function getViewClass(spec) {
-    if (isUnitSpec(spec)) {
+    if (isImportSpec(spec)) {
+        return ImportView;
+    } else if (isUnitSpec(spec)) {
         return UnitView;
     } else if (isLayerSpec(spec)) {
         return LayerView;
+    } else if (isConcatSpec(spec)) {
+        return ConcatView;
     } else {
         throw new Error(
             "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)
@@ -101,7 +109,12 @@ export function getViewClass(spec) {
  */
 export function createView(spec, context) {
     const ViewClass = getViewClass(spec);
-    return /** @type {View} */ (new ViewClass(spec, context, null, "root"));
+    return /** @type {View} */ (new ViewClass(
+        spec,
+        context,
+        null,
+        spec.name || "root"
+    ));
 }
 
 /**

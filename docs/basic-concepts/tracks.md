@@ -1,5 +1,11 @@
 # Tracks
 
+**OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED**
+
+`tracks` was just replaced with [`concat`](../grammar/concat.md).
+
+XXX
+
 GenomeSpy resembles genome browsers such as
 [IGV](http://software.broadinstitute.org/software/igv/) or
 [JBrowse](https://jbrowse.org) in the sense that it has a horizontally
@@ -13,7 +19,7 @@ grammar](../grammar/index.md). Tracks can be shared and
 All the tracks share their `x` channel, i.e. the horizontal scale and axis
 (see [coordinate systems](./coordinate-system.md)).
 
-To specify a view with one or multiple tracks, define a `tracks` array
+To specify a view with one or multiple tracks, define a `concat` array
 in the root configuration object.
 
 ## Example
@@ -26,7 +32,7 @@ This example specifies a single track:
 
 ```json
 {
-  "tracks": [
+  "concat": [
     {
       "data": { "url": "../../data/examples/sincos.csv" },
       "mark": "point",
@@ -78,7 +84,7 @@ Usage:
 ```json
 {
   ...,
-  "tracks": [
+  "concat": [
     ...,
     { "import": { "name": "cytobands" } }
   ]
@@ -101,7 +107,7 @@ Usage:
 ```json
 {
   ...,
-  "tracks": [
+  "concat": [
     ...,
     { "import": { "url": "includes/annotations.json" } },
     { "import": { "url": "https://genomespy.app/tracks/cosmic/census_hg38.json" } }
@@ -169,7 +175,7 @@ website.
 ```json
 {
   "genome": { "name": "hg38" },
-  "tracks": [
+  "concat": [
     { "import": { "name": "cytobands" } },
     { "import": { "name": "geneAnnotation" } },
     {

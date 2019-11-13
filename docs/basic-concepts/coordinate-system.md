@@ -15,14 +15,14 @@ Encode the value of the field `foo` as a position on the horizontal axis:
 
 ```json
 {
-    ...,
-    "encoding": {
-        "x": {
-            "field": "foo",
-            "type": "quantitative"
-        },
-        ...
-    }
+  ...,
+  "encoding": {
+    "x": {
+      "field": "foo",
+      "type": "quantitative"
+    },
+    ...
+  }
 }
 ```
 
@@ -37,10 +37,10 @@ root level configuration object:
 
 ```json
 {
-    "genome": {
-        "name": "hg38"
-    },
-    "tracks": [ ... ]
+  "genome": {
+    "name": "hg38"
+  },
+  ...
 }
 ```
 
@@ -53,16 +53,16 @@ conveniently:
 
 ```json
 {
-    ...,
-    "encoding": {
-        "x": {
-            "chrom": "Chr",
-            "pos": "Pos",
-            "offset": -1.0,
-            "type": "quantitative"
-        },
-        ...
-    }
+  ...,
+  "encoding": {
+    "x": {
+      "chrom": "Chr",
+      "pos": "Pos",
+      "offset": -1.0,
+      "type": "quantitative"
+    },
+    ...
+  }
 }
 ```
 
