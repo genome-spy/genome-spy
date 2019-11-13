@@ -26,11 +26,11 @@ import {
     resolveScales,
     isImportSpec,
     initializeData,
-    isTracksSpec
+    isConcatSpec
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
-import TracksView from "./view/tracksView";
+import ConcatView from "./view/concatView";
 import ImportView from "./view/importView";
 import createDomain from "./utils/domainArray";
 
@@ -47,7 +47,7 @@ const trackTypes = {
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
  * @typedef {import("./spec/view").ViewSpec} ViewSpec
  * @typedef {import("./spec/view").ImportSpec} ImportSpec
- * @typedef {import("./spec/view").TracksSpec} TrackSpec
+ * @typedef {import("./spec/view").ConcatSpec} TrackSpec
  * @typedef {import("./spec/view").RootSpec} RootSpec
  * @typedef {import("./spec/view").RootConfig} RootConfig
  */
@@ -368,11 +368,11 @@ export default class GenomeSpy {
                     )
             };
 
-            /** @type {import("./spec/view").TracksSpec & RootConfig} */
+            /** @type {import("./spec/view").ConcatSpec & RootConfig} */
             const rootSpec = this.config;
 
             // Import external tracks
-            if (isTracksSpec(rootSpec)) {
+            if (isConcatSpec(rootSpec)) {
                 await processImports(rootSpec);
             }
 
@@ -384,12 +384,14 @@ export default class GenomeSpy {
 
             // If the coordinate system has a hard extent, use it
             if (this.coordinateSystem.getExtent()) {
-                this.viewRoot.resolutions["x"].setDomain(
-                    createDomain(
-                        "quantitative",
-                        this.coordinateSystem.getExtent().toArray()
-                    )
-                );
+                this.viewRoot
+                    .getResolution("x")
+                    .setDomain(
+                        createDomain(
+                            "quantitative",
+                            this.coordinateSystem.getExtent().toArray()
+                        )
+                    );
             }
 
             // Load an transform all data
@@ -453,10 +455,10 @@ export default class GenomeSpy {
                     this.tracks.push(new trackTypes[name](this, view.spec));
                 }
             } else if (
-                !(view instanceof TracksView) &&
-                (view.parent instanceof TracksView || view.parent == null)
+                !(view instanceof ConcatView) &&
+                (view.parent instanceof ConcatView || view.parent == null)
             ) {
-                const Track = view.resolutions["sample"]
+                const Track = view.getResolution("sample")
                     ? SampleTrack
                     : SimpleTrack;
 
@@ -506,14 +508,14 @@ async function importExternalTrack(spec, baseUrl) {
 }
 
 /**
- * @param {import("./spec/view").TracksSpec} trackSpec
+ * @param {import("./spec/view").ConcatSpec} trackSpec
  */
 async function processImports(trackSpec) {
     // TODO: Process nested TracksViews too
 
     // eslint-disable-next-line require-atomic-updates
-    trackSpec.tracks = await Promise.all(
-        trackSpec.tracks.map(spec => {
+    trackSpec.concat = await Promise.all(
+        trackSpec.concat.map(spec => {
             if (isImportSpec(spec) && spec.import.url) {
                 return importExternalTrack(spec, trackSpec.baseUrl);
             } else {

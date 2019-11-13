@@ -2,7 +2,7 @@ import ImportView from "./importView";
 import UnitView from "./unitView";
 import LayerView from "./layerView";
 import { configureDefaultResolutions } from "./resolution";
-import TracksView from "./tracksView";
+import ConcatView from "./concatView";
 
 /**
  * @typedef {Object} ViewContext
@@ -19,7 +19,7 @@ import TracksView from "./tracksView";
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
  * @typedef {import("../spec/view").UnitSpec} UnitSpec
- * @typedef {import("../spec/view").TracksSpec} TracksSpec
+ * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
  * @typedef {import("../spec/view").ImportConfig} ImportConfig
  * @typedef {import("../spec/view").RootSpec} RootSpec
@@ -47,20 +47,20 @@ export function isLayerSpec(spec) {
 
 /**
  *
- * @param {object} spec
+ * @param {ViewSpec} spec
  * @returns {spec is ViewSpec}
  */
 export function isViewSpec(spec) {
-    return isUnitSpec(spec) || isLayerSpec(spec) || isTracksSpec(spec);
+    return isUnitSpec(spec) || isLayerSpec(spec) || isConcatSpec(spec);
 }
 
 /**
  *
- * @param {object} spec
- * @returns {spec is TracksSpec}
+ * @param {ViewSpec} spec
+ * @returns {spec is ConcatSpec}
  */
-export function isTracksSpec(spec) {
-    return Array.isArray(spec.tracks);
+export function isConcatSpec(spec) {
+    return Array.isArray(spec.concat);
 }
 
 /**
@@ -93,8 +93,8 @@ export function getViewClass(spec) {
         return UnitView;
     } else if (isLayerSpec(spec)) {
         return LayerView;
-    } else if (isTracksSpec(spec)) {
-        return TracksView;
+    } else if (isConcatSpec(spec)) {
+        return ConcatView;
     } else {
         throw new Error(
             "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)

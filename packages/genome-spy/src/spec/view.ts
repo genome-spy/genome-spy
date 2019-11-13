@@ -47,7 +47,7 @@ export interface LayerSpec extends ViewSpecBase {
     layer: (LayerSpec | UnitSpec)[];
 }
 
-export type ContainerSpec = (LayerSpec | TracksSpec) & {
+export type ContainerSpec = (LayerSpec | ConcatSpec) & {
     resolve?: {
         scale: Record<string, "independent" | "shared">;
     };
@@ -57,7 +57,7 @@ export interface UnitSpec extends ViewSpecBase {
     mark: string | MarkConfig;
 }
 
-export type ViewSpec = UnitSpec | LayerSpec | TracksSpec;
+export type ViewSpec = UnitSpec | LayerSpec | ConcatSpec;
 
 export interface ImportConfig {
     name?: string;
@@ -69,8 +69,8 @@ export interface ImportSpec {
     import: ImportConfig;
 }
 
-export interface TracksSpec extends ViewSpecBase {
-    tracks?: (ViewSpec | ImportSpec)[];
+export interface ConcatSpec extends ViewSpecBase {
+    concat?: (ViewSpec | ImportSpec)[];
 }
 
 export interface RootConfig {
