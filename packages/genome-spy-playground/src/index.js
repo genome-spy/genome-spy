@@ -240,7 +240,7 @@ const fileTemplate = () => html`
                 `
         )}
         <li class=${currentTab === undefined ? "selected" : ""}>
-            <a href="#" @click=${changeTab}>Add new file</a>
+            <a href="#" @click=${changeTab}>Add new files</a>
         </li>
         <li style="flex-grow: 1"></li>
     </ul>
@@ -255,8 +255,44 @@ const fileTemplate = () => html`
         )}
 
         <div class=${currentTab === undefined ? "selected" : ""}>
-            <form>
-                <input type="file" id="fileInput" @change=${handleFiles} />
+            <form class="upload-form">
+                <input
+                    type="file"
+                    multiple
+                    accept=".csv,.tsv,.txt,.json"
+                    id="fileInput"
+                    @change=${handleFiles}
+                    style="display:none"
+                />
+                <div id="upload-button-wrapper">
+                    <button
+                        class="btn"
+                        @click=${e => {
+                            document.getElementById("fileInput").click();
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }}
+                    >
+                        Choose files
+                    </button>
+                </div>
+
+                <p>
+                    The added file becomes a named datasource, which can be
+                    accessed as follows:
+                </p>
+
+                <pre>
+"data": {
+    "name": "filename.csv"
+}
+</pre
+                >
+
+                <p>
+                    N.B. All data processing takes place in your web browser.
+                    Nothing is uploaded anywhere.
+                </p>
             </form>
         </div>
     </div>
