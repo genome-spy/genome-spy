@@ -151,6 +151,15 @@ body {
         > :not(:first-child) {
             margin-left: 0.5em;
         }
+
+        &:active {
+            box-shadow: inset 0 3px 3px rgba(0, 0, 0, 0.1);
+
+            > * {
+                position: relative;
+                top: 1px;
+            }
+        }
     }
 
     a {
@@ -255,8 +264,10 @@ $ui-color: white;
 $ui-bg-color: #548fcc;
 
 .btn {
+    $padding: 8px;
+
     background-color: $ui-bg-color;
-    padding: 0.5em 1em;
+    padding: $padding 1em;
     color: $ui-color;
     border: 0;
     border-radius: 3px;
@@ -267,8 +278,16 @@ $ui-bg-color: #548fcc;
         background-color: lighten($ui-bg-color, 3%);
     }
 
+    $active-shadow: 0 0 4px #00aaff;
+
     &:focus {
         outline: none;
-        box-shadow: 0 0 3px blue;
+        box-shadow: $active-shadow;
+    }
+
+    &:active {
+        padding-top: $padding + 1px;
+        padding-bottom: $padding - 1px;
+        box-shadow: $active-shadow, inset 0 3px 3px rgba(0, 0, 0, 0.2);
     }
 }
