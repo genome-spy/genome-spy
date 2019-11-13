@@ -2,7 +2,7 @@
 
 **OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED**
 
-`tracks` was just replaced with `concat`.
+`tracks` was just replaced with [`concat`](../grammar/concat.md).
 
 XXX
 
