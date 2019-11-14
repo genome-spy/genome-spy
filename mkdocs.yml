@@ -1,16 +1,16 @@
-site_name: GenomeSpy
+site_name: GenomeSpy Docs
 theme: material
 markdown_extensions:
-  - markdown.extensions.def_list
-  - pymdownx.magiclink
-  - codehilite
-  - admonition
-  - toc:
-      permalink: true
-  - genomespy_extension
+    - markdown.extensions.def_list
+    - pymdownx.magiclink
+    - codehilite
+    - admonition
+    - toc:
+          permalink: true
+    - genomespy_extension
 extra_javascript:
-  - app/main.js
+    - app/main.js
 extra_css:
-  - app/main.css
-  - stylesheets/extra.css
+    - app/main.css
+    - stylesheets/extra.css
 repo_url: https://github.com/tuner/genome-spy

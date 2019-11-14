@@ -11,7 +11,7 @@ can also use generators to generate data on the fly and modify them using
 The `data` property of the view specification describes a data source. The
 following example loads a tab-delimited file. By default, the format is
 inferred from the file extension. However, in bioinformatics, `.csv` files
-are often tab-delimited and the format must be specified explicitly.
+are often tab-delimited and the _TSV_ format must be specified explicitly.
 
 ```json
 {
@@ -32,7 +32,7 @@ is identical to Vega-Lite's
     GenomeSpy uses
     [vega-loader](https://github.com/vega/vega/tree/master/packages/vega-loader)
     to parse tabular data and infer its data types. Vega-loader is sometimes
-    very eager to infer text as dates. In such cases, the field types need to
+    very eager to interpret the text as a date. In such cases, the field types need to
     be specified explicitly. On the other hand, explicit type specification also
     has a significant positive effect on parsing performance.
 

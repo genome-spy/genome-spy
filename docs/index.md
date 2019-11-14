@@ -8,8 +8,8 @@ GenomeSpy is able to provide fluid interactions and smooth animations for
 datasets as large as a few million data points.
 
 To facilitate data exploration and comparison of multiple samples, GenomeSpy
-supports faceted visualizations and allows the user to filter and sort samples
-interactively.
+supports [faceted](grammar/facet.md) visualizations and allows the user to
+filter and sort samples interactively.
 
 # Example
 

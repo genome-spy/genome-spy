@@ -28,7 +28,7 @@ Usage:
 }
 ```
 
-### Importing from an URL
+### Importing from a URL
 
 You can also import views from relative or absolute URLs. Relative URLs
 are imported with respect to the current TODO: [baseUrl](TODO!).

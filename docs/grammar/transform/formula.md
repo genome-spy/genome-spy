@@ -1,6 +1,7 @@
 # Formula
 
-The formula transform calculates and adds a new field to the data.
+The formula transform uses an [expression](../expressions.md) to calculate
+and add a new field to the data.
 
 ## Parameters
 

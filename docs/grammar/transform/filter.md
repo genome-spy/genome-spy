@@ -1,6 +1,6 @@
 # Filter
 
-The filter transform removes rows based on a predicate expression.
+The filter transform removes rows based on a predicate [expression](../expressions.md).
 
 ## Parameters
 

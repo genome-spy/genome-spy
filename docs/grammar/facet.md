@@ -27,7 +27,7 @@ denoting the subgroup:
     channel](https://vega.github.io/vega-lite/docs/facet.html) of Vega-Lite –
     each subset is displayed as a row. However, in GenomeSpy, a special
     type of track gathers the sample identifiers from the view hierarchy
-    and creates an own subtrack for each sample. The behavior is more flexible
+    and creates an own virtual subtrack for each sample. The behavior is more flexible
     since it allows for creating multiple layers, each with a different
     dataset. Thus, a faceted view can display multidimensional data,
     for instance, copy numbers and point mutations of multiple samples at the

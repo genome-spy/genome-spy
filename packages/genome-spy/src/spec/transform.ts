@@ -1,4 +1,3 @@
-
 export interface TransformConfigBase {
     /** The type of the transform to be applied */
     type: string;
@@ -7,7 +6,7 @@ export interface TransformConfigBase {
 export interface FilterConfig extends TransformConfigBase {
     type: "filter";
 
-    /** An expression string */
+    /** An expression string. The row is removed if the expression evaluates to false. */
     expr: string;
 }
 
@@ -22,19 +21,18 @@ export interface FormulaConfig extends TransformConfigBase {
 
     /**
      * Modify the rows in place (a temporary hack). Will be removed.
-     * 
+     *
      * **Default:** `false`
      */
     inplace?: boolean;
 }
-
 
 export interface RegexExtractConfig extends TransformConfigBase {
     type: "regexExtract";
 
     /**
      * A valid JavaScript regular expression with at least one group. For example: `"^Sample(\\d+)$"`.
-     * 
+     *
      * Read more at: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
      **/
     regex: string;
@@ -51,12 +49,11 @@ export interface RegexExtractConfig extends TransformConfigBase {
 
     /**
      * Do not complain about invalid input. Just skip it and leave the new fields undefined on the affected datum.
-     * 
+     *
      * **Default:** `false`
      **/
     skipInvalidInput?: boolean;
 }
-
 
 export interface GatherConfig extends TransformConfigBase {
     type: "gather";
@@ -111,7 +108,7 @@ export interface StackConfig extends TransformConfigBase {
 
     /**
      * Fields to write the stacked values.
-     * 
+     *
      * **Default:** `["y0", "y1"]`
      */
     as: string[];
@@ -132,7 +129,7 @@ export interface FlattenDelimitedConfig extends TransformConfigBase {
 
     /**
      * The output field name(s) for the flattened field.
-     * 
+     *
      * **Default:** the input fields.
      */
     as?: string[] | string;
@@ -153,12 +150,10 @@ export interface UngroupConfig extends TransformConfigBase {
 }
 
 export type TransformConfig =
-    UngroupConfig |
-    FlattenDelimitedConfig |
-    FormulaConfig |
-    GatherConfig |
-    RegexExtractConfig |
-    SimpleFilterConfig |
-    StackConfig;
-
-    
+    | UngroupConfig
+    | FlattenDelimitedConfig
+    | FormulaConfig
+    | GatherConfig
+    | RegexExtractConfig
+    | SimpleFilterConfig
+    | StackConfig;
