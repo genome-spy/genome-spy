@@ -78,21 +78,21 @@ configuration](coordinate-system.md#genomic-coordinates) provides them.
 
 Name: `geneAnnotation`
 
-Gene track displays RefSeq gene annotations. As it is impractical to show all
-20 000 gene symbols at the same time, gene track uses score-based
-prioritization to display only the most popular genes of the currently
-visible region. For profound discussion on the popularity metric, read more
-in "[The most popular genes in the human
+Gene track displays [RefSeq gene](https://www.ncbi.nlm.nih.gov/refseq/rsg/)
+annotations. As it is impractical to show all 20 000 gene symbols at the same
+time, gene track uses score-based prioritization to display only the most
+popular genes of the currently visible region. For profound discussion on the
+popularity metric, read more in "[The most popular genes in the human
 genome](https://www.nature.com/articles/d41586-017-07291-9)" in Nature.
 
 To save some precious screen estate, the isoforms of the genes in the
-provided annotation are unioned. Thus, only one "super isoform" of each gene
-is shown (there are a few exceptions, though).
+provided annotation are unioned. Thus, each gene is displayed as a single
+"super isoform" (there are a few exceptions, though).
 
-Hovering the gene symbols with mouse fetches gene summary information from RefSeq
-and displays it in a tooltip. Clicking the right mouse button on a gene symbol
-opens a context-menu that provides shortcuts to certain databases for further
-information about the gene.
+Hovering the gene symbols with the mouse pointer fetches gene summary
+information from RefSeq and displays it in a tooltip. Clicking the right
+mouse button on a gene symbol opens a context-menu that provides shortcuts to
+certain databases for further information about the gene.
 
 !!! note "How the scoring is actually done"
 

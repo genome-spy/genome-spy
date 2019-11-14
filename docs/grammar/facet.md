@@ -25,13 +25,13 @@ denoting the subgroup:
 
     The `sample` channel of GenomeSpy is analogous to the [row
     channel](https://vega.github.io/vega-lite/docs/facet.html) of Vega-Lite –
-    each subset is displayed as a row. However, in GenomeSpy, a special
-    type of track gathers the sample identifiers from the view hierarchy
-    and creates an own virtual subtrack for each sample. The behavior is more flexible
-    since it allows for creating multiple layers, each with a different
-    dataset. Thus, a faceted view can display multidimensional data,
-    for instance, copy numbers and point mutations of multiple samples at the
-    same time.
+    each subset is displayed as a row. However, in GenomeSpy, a special type
+    of track gathers the sample identifiers from the view hierarchy and
+    creates an own virtual subtrack for each sample. The behavior is more
+    flexible since it allows for creating multiple layers, each with a
+    different dataset. Thus, a faceted view can display multidimensional
+    data, for instance, copy numbers and point mutations of multiple samples
+    at the same time.
 
 The example below displays a faceted visualization. The subgroups, A, B, and C,
 are displayed as subtracks.
@@ -74,8 +74,7 @@ are displayed as subtracks.
 
   "encoding": {
     "sample": { "field": "sample", "type": "nominal" },
-    "y": { "value": 0 },
-    "y2": { "value": 1 },
+    "y": { "expr": "1 / datum.x + 0.5", "type": "quantitative" },
     "x": { "field": "from", "type": "quantitative" },
     "x2": { "field": "to" },
     "color": { "field": "x", "type": "nominal" }
@@ -88,7 +87,7 @@ are displayed as subtracks.
 
 !!! warning "Y axis ticks"
 
-    The Y axis ticks are not available on Sample tracks at the moment.
+    The Y axis ticks are not available on faceted views at the moment.
     Will be fixed at a later time.
 
 !!! note "But we have Band scale?"

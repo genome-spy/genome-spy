@@ -34,14 +34,14 @@ datum['A very *special* name!'] > 100
 
 ## Conditional operators
 
-Ternary operator:
+[Ternary](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Conditional_Operator) operator:
 
 <!-- prettier-ignore -->
 ```javascript
 datum.foo < 5 ? 'small' : 'large'
 ```
 
-And the equivalent `if` construct:
+And an equivalent `if` construct:
 
 <!-- prettier-ignore -->
 ```javascript

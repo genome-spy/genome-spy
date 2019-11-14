@@ -14,3 +14,35 @@ extra_css:
     - app/main.css
     - stylesheets/extra.css
 repo_url: https://github.com/tuner/genome-spy
+
+nav:
+    - Introduction: "index.md"
+    - Getting Started: "getting-started.md"
+    - Grammar:
+          - Grammar of Graphics: "grammar/index.md"
+          - Data Input: "grammar/data.md"
+          - Transform:
+                - Data Transformation: "grammar/transform/index.md"
+                - Filter: "grammar/transform/filter.md"
+                - Formula: "grammar/transform/formula.md"
+                - Stack: "grammar/transform/stack.md"
+                - Gather: "grammar/transform/gather.md"
+                - RegexExtract: "grammar/transform/regex-extract.md"
+                - FlattenDelimited: "grammar/transform/flatten-delimited.md"
+                - Ungroup: "grammar/transform/ungroup.md"
+          - Graphical Marks:
+                - Point: "grammar/mark/point.md"
+                - Rect: "grammar/mark/rect.md"
+                - Rule: "grammar/mark/rule.md"
+          - View Composition:
+                - Composing Visualizations: "grammar/composition.md"
+                - Concat: "grammar/concat.md"
+                - Layer: "grammar/layer.md"
+                - Faceting Multiple Samples: "grammar/facet.md"
+          - Scales: "grammar/scale.md"
+          - Importing Views: "grammar/import.md"
+          - Expressions: "grammar/expressions.md"
+
+    - Working with Genomic Data: "genomic-data.md"
+    - JavaScript API: "api.md"
+    - License: "license.md"
