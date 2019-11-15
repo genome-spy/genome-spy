@@ -58,7 +58,7 @@ Read more about coordinates at the [UCSC Genome Browser Blog](http://genome.ucsc
 
 GenomeSpy provides three tracks, that are intended to be used with genomic
 data. To add any of these tracks to your view specification, use the
-[import](#TODO) directive.
+[import](grammar/import.md) directive.
 
 ### Genome axis track
 
