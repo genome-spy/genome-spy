@@ -18,6 +18,7 @@
     "codemirror": "^5.49.2",
     "genome-spy": "^0.0.1",
     "jsonlint-mod": "^1.7.5",
-    "lit-html": "^1.1.2"
+    "lit-html": "^1.1.2",
+    "vega-loader": "^4.1.3"
   }
 }
