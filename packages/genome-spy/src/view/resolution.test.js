@@ -89,10 +89,10 @@ describe("Defaults", () => {
     });
 });
 
-describe("Miscellaneous", () => {
+describe("Domain handling", () => {
     test("The domain of a resolution can be overridden", async () => {
         const view = await createAndInitialize({
-            data: { values: [1] },
+            data: { values: [-1, 1] },
             mark: "point",
             encoding: {
                 x: { field: "data", type: "quantitative" }
@@ -100,12 +100,88 @@ describe("Miscellaneous", () => {
         });
 
         let r = view.getResolution("x");
-        expect([...r.getDomain()]).toEqual([1, 1]);
-        expect(r.getScale().domain()).toEqual([1, 1]);
+        expect([...r.getDomain()]).toEqual([-1, 1]);
+        expect(r.getScale().domain()).toEqual([-1, 1]);
 
         r.setDomain(createDomain("quantitative", [0, 2]));
         expect([...r.getDomain()]).toEqual([0, 2]);
         expect(r.getScale().domain()).toEqual([0, 2]);
+    });
+
+    test("Channels with quantitative fields include zero in their scale domain by default", async () => {
+        const view = await createAndInitialize({
+            data: { values: [2, 3] },
+            mark: "point",
+            encoding: {
+                x: { field: "data", type: "quantitative" },
+                y: { field: "data", type: "quantitative" }
+            }
+        });
+
+        const d = /** @param {string} channel*/ channel =>
+            view
+                .getResolution(channel)
+                .getScale()
+                .domain();
+
+        expect(d("x")).toEqual([0, 3]);
+        expect(d("y")).toEqual([0, 3]);
+    });
+
+    test("Channels with quantitative fields do not include zero in their scale domain if the domain has been defined explicitly", async () => {
+        const view = await createAndInitialize({
+            data: { values: [2, 3] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "data",
+                    type: "quantitative",
+                    scale: { domain: [1, 4] }
+                },
+                y: {
+                    field: "data",
+                    type: "quantitative",
+                    scale: { domain: [1, 4] }
+                }
+            }
+        });
+
+        const d = /** @param {string} channel*/ channel =>
+            view
+                .getResolution(channel)
+                .getScale()
+                .domain();
+
+        expect(d("x")).toEqual([1, 4]);
+        expect(d("x")).toEqual([1, 4]);
+    });
+
+    test("Channels with quantitative fields do not include zero in their scale domain if zero is explicitly false", async () => {
+        const view = await createAndInitialize({
+            data: { values: [2, 3] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "data",
+                    type: "quantitative",
+                    scale: { zero: false }
+                },
+                y: {
+                    field: "data",
+                    type: "quantitative",
+                    scale: { zero: false }
+                }
+            }
+        });
+
+        const d = /** @param {string} channel*/ channel =>
+            view
+                .getResolution(channel)
+                .getScale()
+                .domain();
+
+        expect(d("x")).toEqual([2, 3]);
+        expect(d("y")).toEqual([2, 3]);
     });
 });
 

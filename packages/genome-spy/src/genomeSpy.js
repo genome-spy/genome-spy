@@ -417,7 +417,12 @@ export default class GenomeSpy {
             );
 
             // TODO: Support other scales too
-            this.xScale = scaleLinear().domain(this.getDomain().toArray());
+            this.xScale = scaleLinear().domain(
+                this.viewRoot
+                    .getResolution("x")
+                    .getScale()
+                    .domain()
+            );
 
             // Zoomed scale
             this.rescaledX = this.xScale;

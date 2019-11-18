@@ -71,6 +71,21 @@ export default class Resolution {
         }
     }
 
+    /**
+     * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
+     */
+    isDomainDefined() {
+        if (this._explicitDomain) {
+            return true;
+        }
+
+        for (const view of this.views) {
+            const scale = this._getEncoding(view).scale;
+            return scale && Array.isArray(scale.domain);
+        }
+        return false;
+    }
+
     getScaleProps() {
         const propArray = this.views.map(view => this._getEncoding(view).scale);
 
@@ -157,7 +172,7 @@ export default class Resolution {
 
         const props = {
             type: getDefaultScaleType(this.channel, domain.type),
-            ...getDefaultScaleProperties(this.channel, domain.type),
+            ...this._getDefaultScaleProperties(domain.type),
             ...this.getScaleProps(),
             domain,
             ...getLockedScaleProperties(this.channel)
@@ -169,11 +184,6 @@ export default class Resolution {
         }
 
         this._scale = createScale(props);
-        console.log(
-            `Channel: ${this.channel}, scale type: ${
-                this._scale.type
-            }, props: ${JSON.stringify(props)}`
-        );
         return this._scale;
     }
 
@@ -183,6 +193,46 @@ export default class Resolution {
      */
     _getEncoding(view) {
         return view.getEncoding()[this.channel];
+    }
+
+    /**
+     * TODO: These actually depend on the mark, so this is clearly a wrong place
+     *
+     * @param {string} dataType
+     */
+    _getDefaultScaleProperties(dataType) {
+        const channel = this.channel;
+        const props = {};
+
+        if (this.isDomainDefined()) {
+            props.zero = false;
+        }
+
+        if (channel == "x" && !this.isDomainDefined()) {
+            // A hack. Currently x uses "identity" scale, which needs explicit setting for zero
+            props.zero = true;
+        }
+
+        if (channel == "y" || channel == "x") {
+            // TODO: Switch to true when all Y-axis labels can be drawn fully visible
+            // However, nice should only be true when the domain has not been specified explicitly
+            props.nice = false;
+        } else if (channel == "color") {
+            // TODO: Named ranges
+            props.scheme =
+                dataType == "nominal"
+                    ? "tableau10"
+                    : dataType == "ordinal"
+                    ? "blues"
+                    : "viridis";
+        } else if (channel == "shape") {
+            // of point mark
+            props.range = Object.keys(SHAPES);
+        } else if (channel == "size") {
+            props.range = [0, 400]; // TODO: Configurable default
+        }
+
+        return props;
     }
 }
 
@@ -210,37 +260,6 @@ function getDefaultScaleType(channel, dataType) {
         : dataType == "quantitative"
         ? "linear"
         : "ordinal";
-}
-
-/**
- * TODO: These actually depend on the mark, so this is clearly a wrong place
- *
- * @param {string} channel
- * @param {string} dataType
- */
-function getDefaultScaleProperties(channel, dataType) {
-    const props = {};
-
-    if (channel == "y" || channel == "x") {
-        // TODO: Switch to true when all Y-axis labels can be drawn fully visible
-        // However, nice should only be true when the domain has not been specified explicitly
-        props.nice = false;
-    } else if (channel == "color") {
-        // TODO: Named ranges
-        props.scheme =
-            dataType == "nominal"
-                ? "tableau10"
-                : dataType == "ordinal"
-                ? "blues"
-                : "viridis";
-    } else if (channel == "shape") {
-        // of point mark
-        props.range = Object.keys(SHAPES);
-    } else if (channel == "size") {
-        props.range = [0, 400]; // TODO: Configurable default
-    }
-
-    return props;
 }
 
 /**
