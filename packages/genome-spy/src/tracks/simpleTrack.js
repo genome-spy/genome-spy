@@ -4,52 +4,16 @@ import WebGlTrack from "./webGlTrack";
 import MouseTracker from "../mouseTracker";
 import * as html from "../utils/html";
 import PointMark from "../marks/pointMark";
-import { validTicks, tickValues, tickFormat, tickCount } from "../scale/ticks";
-import { getFlattenedViews, getMarks, initializeData } from "../view/viewUtils";
+import { getFlattenedViews, getMarks } from "../view/viewUtils";
 import UnitView from "../view/unitView";
+import { createAxisLayout } from "../utils/axis";
 
 const defaultStyles = {
     height: null
 };
 
-// Based on: https://vega.github.io/vega-lite/docs/axis.html
-/** @type { import("../spec/axis").Axis} */
-const defaultAxisProps = {
-    /** @type {number[] | string[] | boolean[]} */
-    values: null,
-
-    minExtent: 30, // TODO
-    maxExtent: Infinity, // TODO
-    offset: 0,
-
-    domain: true,
-    domainWidth: 1,
-    domainColor: "gray",
-
-    ticks: true,
-    tickSize: 6,
-    tickWidth: 1,
-    tickColor: "gray",
-
-    /** @type {number} */
-    tickCount: null,
-    /** @type {number} */
-    tickMinStep: null,
-
-    labels: true,
-    labelPadding: 4,
-    labelFont: "sans-serif",
-    labelFontSize: 10,
-    labelLimit: 180, // TODO
-    labelColor: "black",
-    /** @type { string } */
-    format: null,
-
-    titleColor: "black",
-    titleFont: "sans-serif",
-    titleFontSize: 10,
-    titlePadding: 5
-};
+/** Padding between multiple axes: TODO: Configurable */
+const axisPadding = 10;
 
 export default class SimpleTrack extends WebGlTrack {
     /**
@@ -291,9 +255,11 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     getMinAxisWidth() {
-        return this.getYAxisLayouts()
-            .map(layout => layout.offsets.title)
-            .reduce((a, b) => Math.max(a, b), 0);
+        const layouts = this.getYAxisLayouts();
+        return (
+            layouts.map(layout => layout.width).reduce((a, b) => a + b, 0) +
+            (layouts.length - 1) * axisPadding
+        );
     }
 
     renderYAxis() {
@@ -308,7 +274,7 @@ export default class SimpleTrack extends WebGlTrack {
             // --- Domain line ---
 
             if (props.domain) {
-                const truncated = true;
+                const truncated = false;
 
                 const domain = truncated ? axisLayout.ticks : scale.domain();
 
@@ -385,6 +351,8 @@ export default class SimpleTrack extends WebGlTrack {
 
                 ctx.restore();
             }
+
+            ctx.translate(-axisLayout.width - axisPadding, 0);
         }
     }
 
@@ -392,112 +360,18 @@ export default class SimpleTrack extends WebGlTrack {
      * Computes layout and tick labels for the axes
      */
     getYAxisLayouts() {
-        /** Padding between multiple axes: TODO: Configurable */
-        const axisPadding = 10;
-
         const axisLength = this.trackContainer.clientHeight;
 
         const ctx = this.get2d(this.leftCanvas);
+        const measureWidth = /** @param {string} label*/ label =>
+            ctx.measureText(label).width;
 
         const resolutions = getFlattenedViews(this.view)
             .map(view => view.resolutions["y"])
             .filter(resolution => resolution);
 
-        let pos = 0;
-
-        const axisLayouts = [];
-
-        for (const resolution of resolutions) {
-            const scale = resolution.getScale();
-
-            const resolutionAxisProps = resolution.getAxisProps();
-            if (resolutionAxisProps === null) {
-                continue;
-            }
-
-            /** @type { import("../spec/axis").Axis} */
-            const props = {
-                ...defaultAxisProps,
-                ...resolutionAxisProps
-            };
-
-            const axisLayout = {
-                offsets: {
-                    domain: 0,
-                    ticks: 0,
-                    labels: 0,
-                    title: 0
-                },
-                /** @type {any[]} */
-                ticks: [],
-                /** @type {any[]} */
-                tickLabels: [],
-                /** @type {string} */
-                title: undefined,
-                scale: scale.copy().range([axisLength, 0]),
-                props: props
-            };
-            axisLayouts.push(axisLayout);
-
-            pos += props.offset;
-            axisLayout.offsets.domain = pos;
-
-            // Slightly decrease the tick density as the height increases
-            let count =
-                props.tickCount ||
-                Math.round(
-                    axisLength /
-                        Math.exp(axisLength / 800) /
-                        props.labelFontSize /
-                        1.7
-                );
-
-            count = tickCount(scale, count, props.tickMinStep);
-
-            /** @type {array} */
-            axisLayout.ticks = props.values
-                ? validTicks(scale, props.values, count)
-                : tickValues(scale, count);
-
-            // --- Ticks ---
-
-            if (props.ticks) {
-                pos += props.tickSize;
-                axisLayout.offsets.ticks = pos;
-            }
-
-            // --- Labels ---
-
-            if (props.labels) {
-                pos += props.labelPadding;
-                axisLayout.offsets.labels = pos;
-
-                // TODO:
-                // const maxAbs = d3max(scale.domain(), x => Math.abs(x));
-                // scale.tickFormat(axisLayout.ticks.length, props.format || (maxAbs < 0.001 || maxAbs > 100000 ? "s" : undefined)) :
-
-                const format = tickFormat(scale, count, props.format);
-
-                axisLayout.tickLabels = axisLayout.ticks.map(format);
-
-                pos += axisLayout.tickLabels
-                    .map(label => ctx.measureText(label).width)
-                    .reduce((a, b) => Math.max(a, b), 0);
-            }
-
-            // --- Title ---
-
-            axisLayout.title = resolution.getTitle();
-
-            if (axisLayout.title) {
-                pos += props.titlePadding;
-                pos += props.titleFontSize;
-                axisLayout.offsets.title = pos;
-            }
-
-            pos += axisPadding;
-        }
-
-        return axisLayouts;
+        return resolutions
+            .map(r => createAxisLayout(r, axisLength, measureWidth))
+            .filter(l => !!l);
     }
 }

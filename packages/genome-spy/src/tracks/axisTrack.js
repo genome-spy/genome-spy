@@ -1,33 +1,18 @@
-import { tickStep } from "d3-array";
-import { format as d3format } from "d3-format";
-import { rgb, color } from "d3-color";
-
 import Track from "./track";
+import { getFlattenedViews } from "../view/viewUtils";
 import Interval from "../utils/interval";
-import clientPoint from "../utils/point";
-import Genome from "../genome/genome";
-
-const defaultStyles = {
-    fontSize: 12,
-    fontFamily: "sans-serif",
-
-    chromColor: "black",
-    locusColor: "#a8a8a8"
-};
+import { createAxisLayout } from "../utils/axis";
+import { scale as vegaScale } from "vega-scale";
 
 /**
  * A track that displays ticks
  */
 export default class AxisTrack extends Track {
+    /**
+     * @param {import("../genomeSpy").default} genomeSpy
+     */
     constructor(genomeSpy, config) {
         super(genomeSpy, config);
-
-        this.styles = defaultStyles;
-
-        this.genome = genomeSpy.coordinateSystem;
-        if (!(this.genome instanceof Genome)) {
-            throw new Error("The coordinate system is not genomic!");
-        }
     }
 
     /**
@@ -36,7 +21,7 @@ export default class AxisTrack extends Track {
     async initialize(trackContainer) {
         await super.initialize(trackContainer);
 
-        this.height = Math.ceil(this.styles.fontSize * 1.5);
+        this.height = Math.ceil(40);
 
         this.trackContainer.className = "axis-track";
         this.trackContainer.style.height = `${this.height}px`;
@@ -54,26 +39,6 @@ export default class AxisTrack extends Track {
         );
 
         this.genomeSpy.zoom.attachZoomEvents(this.tickCanvas);
-
-        const cm = this.genome.chromMapper;
-        this.chromosomes = cm.chromosomes();
-
-        const ctx = this.get2d(this.tickCanvas);
-        ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
-
-        this._chromLabelWidths = this.chromosomes.map(
-            chrom => ctx.measureText(chrom.name).width
-        );
-
-        this.tickCanvas.addEventListener("dblclick", event =>
-            this.genomeSpy.zoomTo(
-                cm.toChromosomal(
-                    this.genomeSpy
-                        .getZoomedScale()
-                        .invert(clientPoint(this.tickCanvas, event)[0])
-                ).chromosome.continuousInterval
-            )
-        );
     }
 
     resizeCanvases(layout) {
@@ -82,136 +47,35 @@ export default class AxisTrack extends Track {
     }
 
     renderTicks() {
-        const chromLabelMarginLeft = 5;
-        const chromLabelMarginRight = 3;
-        const chromLabelMarginTotal =
-            chromLabelMarginLeft + chromLabelMarginRight;
-
-        const scale = this.genomeSpy.getZoomedScale();
-        const cm = this.genome.chromMapper;
-
         const ctx = this.get2d(this.tickCanvas);
 
         // TODO: Consider moving to Track base class
-        const viewportInterval = Interval.fromArray(scale.range());
-        const domainInterval = Interval.fromArray(scale.domain());
+        //const viewportInterval = Interval.fromArray(scale.range());
+        //const domainInterval = Interval.fromArray(scale.domain());
 
-        const locusTickFormat =
-            domainInterval.width() > 5e7 ? d3format(".3s") : d3format(",");
+        const measureWidth = /** @param {string} label*/ label =>
+            ctx.measureText(label).width;
 
-        const maxRawLocusLabelWidth = ctx.measureText(locusTickFormat(1.23e8))
-            .width;
+        const axisLength = this.tickCanvas.clientWidth;
+        const axisWidth = this.tickCanvas.clientHeight;
 
-        const y = Math.round(this.tickCanvas.clientHeight * 1);
-        ctx.textBaseline = "bottom";
-        ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
+        const scale = vegaScale("linear")()
+            .domain(this.genomeSpy.getZoomedScale().domain())
+            .range([0, axisLength]);
 
-        const renderLocusTicks = (
-            interval,
-            chromLabelWidth,
-            visibleInterval = null,
-            gradientOffset = 0
-        ) => {
-            const maxLocusLabelWidth =
-                maxRawLocusLabelWidth + chromLabelWidth / 2;
-            const maxTickCount = Math.min(
-                20,
-                Math.floor(
-                    this._layout.viewport.width() / maxLocusLabelWidth / 2.0
+        const axisLayout = getFlattenedViews(this.genomeSpy.viewRoot)
+            .map(view => view.resolutions["x"])
+            .filter(resolution => resolution)
+            .map(r =>
+                createAxisLayout(
+                    r,
+                    axisLength,
+                    measureWidth,
+                    "horizontal",
+                    scale
                 )
-            );
-            const step = tickStep(
-                domainInterval.lower,
-                domainInterval.upper,
-                maxTickCount
-            );
-
-            // Need to accommodate least n ticks before any are shown
-            if (interval.width() < 2.5 * step) return;
-
-            if (visibleInterval == null) {
-                visibleInterval = interval;
-            }
-
-            if (visibleInterval.lower == interval.lower) {
-                // Add one to skip the zeroth tick
-                visibleInterval = visibleInterval.withLower(
-                    visibleInterval.lower + 1
-                );
-            }
-
-            visibleInterval = visibleInterval
-                .intersect(
-                    // Upper bound to the right edge of the viewport
-                    new Interval(
-                        -Infinity,
-                        scale.invert(
-                            this.tickCanvas.clientWidth + maxLocusLabelWidth
-                        )
-                    )
-                )
-                .intersect(
-                    // Uppert bound so that the last tick does not overlap with the next chromosome label
-                    // TODO: A pretty gradient
-                    new Interval(
-                        -Infinity,
-                        interval.upper -
-                            scale.invert(maxLocusLabelWidth / 2) +
-                            scale.invert(0)
-                    )
-                );
-
-            // An empty interval? Skip.
-            if (visibleInterval == null) return;
-
-            if (gradientOffset > 0) {
-                const withOpacity = opacity => {
-                    const newColor = rgb(color(this.styles.locusColor));
-                    newColor.opacity = opacity;
-                    return newColor;
-                };
-
-                // TODO: Performance optimization: Only use gradient for the leftmost locus tick
-                const locusTickGradient = ctx.createLinearGradient(
-                    gradientOffset,
-                    0,
-                    gradientOffset + 30,
-                    0
-                );
-                locusTickGradient.addColorStop(0, withOpacity(0));
-                locusTickGradient.addColorStop(0.5, withOpacity(0.3));
-                locusTickGradient.addColorStop(1, withOpacity(1));
-                ctx.fillStyle = locusTickGradient;
-            } else {
-                ctx.fillStyle = this.styles.locusColor;
-            }
-
-            ctx.textAlign = "center";
-
-            // Put the tick in the middle of the locus/base
-            const offset = 0.5;
-
-            // GenomeSpy uses the same coordinate logic as USCS GenomeBrowser_
-            // "1-start, fully-closed" = coordinates positioned within the web-based UCSC Genome Browser.
-            // "0-start, half-open" = coordinates stored in database tables.
-            const labelValueOffset = 1;
-
-            for (
-                let locus =
-                    Math.ceil((visibleInterval.lower - interval.lower) / step) *
-                        step +
-                    offset -
-                    labelValueOffset;
-                locus + interval.lower < visibleInterval.upper;
-                locus += step
-            ) {
-                const x = scale(locus + interval.lower) - 0.5;
-
-                const text = locusTickFormat(locus - offset + labelValueOffset);
-                ctx.fillRect(x, 0, 1, 3);
-                ctx.fillText(text, x, y);
-            }
-        };
+            )
+            .find(l => !!l);
 
         ctx.clearRect(
             0,
@@ -220,64 +84,74 @@ export default class AxisTrack extends Track {
             this.tickCanvas.clientHeight
         );
 
-        this.chromosomes.forEach((chrom, i) => {
-            const screenInterval = chrom.continuousInterval.transform(scale);
+        const props = axisLayout.props;
 
-            if (viewportInterval.contains(screenInterval.lower)) {
-                ctx.fillStyle = this.styles.chromColor;
-                ctx.fillRect(
-                    screenInterval.lower - 0.5,
-                    0,
-                    1,
-                    this.tickCanvas.clientHeight / 1
-                );
+        // --- Domain line ---
 
-                if (
-                    screenInterval.width() >
-                    this._chromLabelWidths[i] + chromLabelMarginTotal
-                ) {
-                    // TODO: Some cool clipping and masking instead of just hiding
-                    ctx.textAlign = "left";
-                    ctx.fillText(
-                        chrom.name,
-                        screenInterval.lower - 0.5 + chromLabelMarginLeft,
-                        y
-                    );
-                }
+        if (props.domain) {
+            const truncated = false;
 
-                renderLocusTicks(
-                    chrom.continuousInterval,
-                    this._chromLabelWidths[i]
-                );
-            }
-        });
+            const domain = truncated ? axisLayout.ticks : scale.domain();
 
-        // Handle the leftmost chromosome
-        if (domainInterval.lower > 0) {
-            const chrom = cm.toChromosomal(domainInterval.lower).chromosome;
-            const chromInterval = chrom.continuousInterval.transform(scale);
-            const labelWidth = this._chromLabelWidths[chrom.index];
-
-            const x = Math.min(
-                chromInterval.upper - labelWidth - chromLabelMarginRight,
-                chromLabelMarginLeft
+            ctx.fillStyle = props.domainColor;
+            ctx.fillRect(
+                scale(domain[0]) - props.tickWidth / 2,
+                axisLayout.offsets.domain,
+                Math.abs(scale(domain[0]) - scale(domain[domain.length - 1])) +
+                    props.tickWidth +
+                    (scale.bandwidth ? scale.bandwidth() : 0),
+                props.domainWidth
             );
+        }
 
-            ctx.fillStyle = this.styles.chromColor;
-            ctx.textAlign = "left";
-            ctx.fillText(chrom.name, x, y);
+        // --- Ticks ---
 
-            const a = scale.invert(x);
-            const b = chrom.continuousInterval.upper;
+        const tickOffset = ((scale.bandwidth && scale.bandwidth()) || 0) / 2;
 
-            if (a < b) {
-                renderLocusTicks(
-                    chrom.continuousInterval,
-                    labelWidth,
-                    new Interval(a, b),
-                    labelWidth + chromLabelMarginLeft
+        if (props.ticks) {
+            for (const tick of axisLayout.ticks) {
+                const x = scale(tick) + tickOffset;
+                ctx.fillStyle = props.tickColor;
+                ctx.fillRect(
+                    x - props.tickWidth / 2,
+                    axisLayout.offsets.ticks - props.tickSize,
+                    props.tickWidth,
+                    props.tickSize
                 );
             }
+        }
+
+        // --- Labels ---
+
+        if (props.labels) {
+            ctx.font = `${props.labelFont} ${props.labelFontSize}px`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "top";
+
+            for (let i = 0; i < axisLayout.ticks.length; i++) {
+                const tick = axisLayout.ticks[i];
+                const label = axisLayout.tickLabels[i];
+
+                const x = scale(tick) + tickOffset;
+                ctx.fillStyle = props.labelColor;
+                ctx.fillText(label, x, axisLayout.offsets.labels);
+            }
+        }
+
+        // --- Title ---
+
+        if (axisLayout.title) {
+            ctx.fillStyle = props.titleColor;
+
+            ctx.font = `${props.titleFont} ${props.titleFontSize}px`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom";
+
+            ctx.fillText(
+                axisLayout.title,
+                axisLength / 2,
+                axisLayout.offsets.title
+            );
         }
     }
 }

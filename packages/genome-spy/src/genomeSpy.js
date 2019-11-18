@@ -13,8 +13,9 @@ import transition from "./utils/transition";
 
 import Genome from "./genome/genome";
 
-import SampleTrack from "./tracks/sampleTrack/sampleTrack";
 import AxisTrack from "./tracks/axisTrack";
+import SampleTrack from "./tracks/sampleTrack/sampleTrack";
+import GenomeAxisTrack from "./tracks/genomeAxisTrack";
 import CytobandTrack from "./tracks/cytobandTrack";
 import GeneTrack from "./tracks/geneTrack";
 import SimpleTrack from "./tracks/simpleTrack";
@@ -38,8 +39,9 @@ import createDomain from "./utils/domainArray";
  * @type {Record<String, typeof import("./tracks/track").default>}
  */
 const trackTypes = {
+    axis: AxisTrack,
     cytobands: CytobandTrack,
-    genomeAxis: AxisTrack,
+    genomeAxis: GenomeAxisTrack,
     geneAnnotation: GeneTrack
 };
 
