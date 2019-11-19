@@ -40,13 +40,18 @@ export default class View {
     }
 
     /**
-     * Visits child views in depth-first order
+     * Visits child views in depth-first order. Terminates the search and returns
+     * the value if the visitor returns a defined value.
      *
-     * @param {(function(View):void) & { afterChildren?: function}} visitor
+     * @param {(function(View):any) & { afterChildren?: function}} visitor
+     * @returns {any}
      */
     visit(visitor) {
         try {
-            visitor(this);
+            const result = visitor(this);
+            if (result !== undefined) {
+                return result;
+            }
         } catch (e) {
             // Augment the extension with the view
             e.view = this;
@@ -54,7 +59,10 @@ export default class View {
         }
 
         for (const viewUnit of this.children) {
-            viewUnit.visit(visitor);
+            const result = viewUnit.visit(visitor);
+            if (result !== undefined) {
+                return result;
+            }
         }
 
         if (visitor.afterChildren) {
