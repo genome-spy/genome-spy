@@ -27,7 +27,8 @@ import {
     resolveScales,
     isImportSpec,
     initializeData,
-    isConcatSpec
+    isConcatSpec,
+    addAxisView
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
@@ -379,10 +380,15 @@ export default class GenomeSpy {
             }
 
             // Create the view hierarchy
+            /** @type {import("./view/view").default} */
             this.viewRoot = createView(rootSpec, context);
 
             // Resolve scales, i.e., if possible, pull them towards the root
             resolveScales(this.viewRoot);
+
+            if (this.coordinateSystem instanceof RealCoordinateSystem) {
+                this.viewRoot = addAxisView(this.viewRoot);
+            }
 
             // If the coordinate system has a hard extent, use it
             if (this.coordinateSystem.getExtent()) {

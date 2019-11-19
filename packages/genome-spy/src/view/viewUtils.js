@@ -133,7 +133,9 @@ export function getMarks(root) {
 export function getFlattenedViews(root) {
     /** @type {View[]} */
     const views = [];
-    root.visit(view => views.push(view));
+    root.visit(view => {
+        views.push(view);
+    });
     return views;
 }
 
@@ -149,6 +151,41 @@ export function resolveScales(root) {
 
     // Actually configures some hacky scales
     configureDefaultResolutions(root);
+}
+
+/**
+ *
+ * @param {View} view
+ */
+export function addAxisView(view) {
+    // TODO: Don't add axis if one already exists
+    const xResolution = view.resolutions["x"];
+    if (xResolution.getAxisProps()) {
+        if (view instanceof ConcatView) {
+            view.children.push(
+                createView({ import: { name: "axis" } }, view.context)
+            );
+            return view;
+        } else {
+            // Create a new view root, which will have the the original view
+            // and the new axis view as its children
+            const newRoot = createView(
+                {
+                    name: "implicit_root",
+                    concat: [{ import: { name: "axis" } }]
+                },
+                view.context
+            );
+            newRoot.children.unshift(view);
+            view.parent = newRoot;
+            // Pull resolution to the new root
+            newRoot.resolutions["x"] = view.resolutions["x"];
+            delete view.resolutions["x"];
+            return newRoot;
+        }
+    } else {
+        return view;
+    }
 }
 
 /**
