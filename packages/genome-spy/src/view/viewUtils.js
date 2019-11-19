@@ -160,7 +160,7 @@ export function resolveScales(root) {
 export function addAxisView(view) {
     // TODO: Don't add axis if one already exists
     const xResolution = view.resolutions["x"];
-    if (xResolution.getAxisProps()) {
+    if (xResolution && xResolution.getAxisProps()) {
         if (view instanceof ConcatView) {
             view.children.push(
                 createView({ import: { name: "axis" } }, view.context)
