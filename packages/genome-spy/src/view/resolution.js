@@ -278,17 +278,3 @@ function getLockedScaleProperties(channel) {
 
     return locked[channel] || {};
 }
-
-/**
- * @param {import("./view").default} root
- */
-export function configureDefaultResolutions(root) {
-    if (!root.resolutions.y) {
-        root.resolutions.y = Resolution.createExplicitResolution("y", {
-            type: "band",
-            domain: [undefined],
-            range: [0, 1]
-        });
-        root.resolutions.y.getAxisProps = () => null;
-    }
-}

@@ -89,8 +89,8 @@ export default class PointMark extends Mark {
 
     initializeEncoders() {
         super.initializeEncoders();
-        const yScale = this.getScale("y");
-        if (yScale.bandwidth) {
+        const yScale = this.getScale("y", true);
+        if (yScale && yScale.bandwidth) {
             const offset = yScale.bandwidth() / 2;
             const ye = this.encoders.y;
             this.encoders.y = d => ye(d) + offset;

@@ -135,12 +135,13 @@ export default class Mark {
      * Returns a resolved scale for the given channel
      *
      * @param {string} channel
+     * @param {boolean} acceptMissing Don't throw on missing scale
      */
-    getScale(channel) {
+    getScale(channel, acceptMissing = false) {
         const resolution = this.unitView.getResolution(channel);
         if (resolution) {
             return resolution.getScale();
-        } else {
+        } else if (!acceptMissing) {
             throw new Error(
                 `Cannot find a resolved scale for channel "${channel}" at ${this.unitView.getPathString()} (${this.getType()})`
             );

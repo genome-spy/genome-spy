@@ -75,20 +75,6 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
     });
 });
 
-describe("Defaults", () => {
-    test("Y channel has trivial band scale as default", async () => {
-        const view = await createAndInitialize({
-            data: { values: [] },
-            layer: []
-        });
-
-        const scale = view.getResolution("y").getScale();
-
-        expect(scale.type).toBe("band");
-        expect(scale.domain()).toStrictEqual([undefined]);
-    });
-});
-
 describe("Domain handling", () => {
     test("The domain of a resolution can be overridden", async () => {
         const view = await createAndInitialize({

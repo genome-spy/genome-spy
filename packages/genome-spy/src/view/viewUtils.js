@@ -1,7 +1,6 @@
 import ImportView from "./importView";
 import UnitView from "./unitView";
 import LayerView from "./layerView";
-import { configureDefaultResolutions } from "./resolution";
 import ConcatView from "./concatView";
 
 /**
@@ -148,9 +147,6 @@ export function resolveScales(root) {
             view.resolve();
         }
     });
-
-    // Actually configures some hacky scales
-    configureDefaultResolutions(root);
 }
 
 /**

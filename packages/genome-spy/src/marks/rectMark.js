@@ -120,18 +120,20 @@ export default class RectMark extends Mark {
         super.initializeEncoders();
 
         // A hack to support band & point scales
-        const yScale = this.getScale("y");
-        const encoding = this.getEncoding();
-        if (yScale.bandwidth) {
-            let bandwidth = yScale.bandwidth();
-            if (!encoding.y2) {
-                // TODO: Supply invert etc..
-                this.encoders.y2 = d => this.encoders.y(d) + bandwidth;
-            } else if (Object.is(encoding.y, encoding.y2)) {
-                bandwidth /= 2;
-                const ye = this.encoders.y;
-                this.encoders.y = d => ye(d) + bandwidth;
-                this.encoders.y2 = this.encoders.y;
+        const yScale = this.getScale("y", true);
+        if (yScale) {
+            const encoding = this.getEncoding();
+            if (yScale.bandwidth) {
+                let bandwidth = yScale.bandwidth();
+                if (!encoding.y2) {
+                    // TODO: Supply invert etc..
+                    this.encoders.y2 = d => this.encoders.y(d) + bandwidth;
+                } else if (Object.is(encoding.y, encoding.y2)) {
+                    bandwidth /= 2;
+                    const ye = this.encoders.y;
+                    this.encoders.y = d => ye(d) + bandwidth;
+                    this.encoders.y2 = this.encoders.y;
+                }
             }
         }
     }
