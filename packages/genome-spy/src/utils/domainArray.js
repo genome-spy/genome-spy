@@ -52,7 +52,7 @@ export class QuantitativeDomain extends DomainArray {
      * @returns {DomainArray}
      */
     extend(value) {
-        if (value === null || value === undefined) {
+        if (value === null || value === undefined || Number.isNaN(value)) {
             return this;
         }
 
@@ -91,7 +91,7 @@ export class OrdinalDomain extends DomainArray {
      * @returns {DomainArray}
      */
     extend(value) {
-        if (value === null || value === undefined) {
+        if (value === null || value === undefined || Number.isNaN(value)) {
             return this;
         }
 

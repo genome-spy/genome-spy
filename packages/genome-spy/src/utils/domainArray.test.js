@@ -15,6 +15,7 @@ describe("Build quantitative domains", () => {
         b.extend(1);
         b.extend(null);
         b.extend(undefined);
+        b.extend(NaN);
         b.extend(5);
         b.extend(4);
         expect(r(b)).toEqual([1, 5]);
@@ -22,7 +23,7 @@ describe("Build quantitative domains", () => {
 
     test("Extends with an iterable", () => {
         const b = createDomain("quantitative");
-        b.extendAll([2, 1, null, undefined, 5, 4]);
+        b.extendAll([2, 1, null, undefined, NaN, 5, 4]);
         expect(r(b)).toEqual([1, 5]);
     });
 
@@ -48,6 +49,7 @@ describe("Build ordinal domains", () => {
         b.extend("b");
         b.extend(null);
         b.extend(undefined);
+        b.extend(NaN);
         b.extend("d");
         expect(r(b)).toEqual(["a", "b", "c", "d"]);
     });
