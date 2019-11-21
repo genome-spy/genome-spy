@@ -138,7 +138,7 @@ export default class Resolution {
      *
      * @return { DomainArray }
      */
-    getDomain() {
+    getDataDomain() {
         if (this._explicitDomain) {
             return this._explicitDomain;
         }
@@ -160,12 +160,21 @@ export default class Resolution {
         );
     }
 
+    /**
+     * Returns the domain of the scale
+     *
+     * @return { any[] }
+     */
+    getDomain() {
+        return this.getScale().domain();
+    }
+
     getScale() {
         if (this._scale) {
             return this._scale;
         }
 
-        const domain = this.getDomain();
+        const domain = this.getDataDomain();
 
         if (!domain) {
             return;

@@ -37,15 +37,13 @@ const spec = {
 describe("Scales resolve with with non-trivial hierarchy", () => {
     test("Scales (domains) are shared and merged by default on layers", () => {
         return createAndInitialize(spec).then(view => {
-            expect(r(view.getResolution("y").getDomain())).toEqual([1, 5]);
-            expect(r(view.children[0].getResolution("y").getDomain())).toEqual([
-                1,
-                5
-            ]);
-            expect(r(view.children[1].getResolution("y").getDomain())).toEqual([
-                1,
-                5
-            ]);
+            expect(r(view.getResolution("y").getDataDomain())).toEqual([1, 5]);
+            expect(
+                r(view.children[0].getResolution("y").getDataDomain())
+            ).toEqual([1, 5]);
+            expect(
+                r(view.children[1].getResolution("y").getDataDomain())
+            ).toEqual([1, 5]);
         });
     });
 
@@ -57,14 +55,12 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
 
         return createAndInitialize(independentSpec).then(view => {
             // TODO: expect(view.getResolution("x")).toBeUndefined();
-            expect(r(view.children[0].getResolution("y").getDomain())).toEqual([
-                1,
-                2
-            ]);
-            expect(r(view.children[1].getResolution("y").getDomain())).toEqual([
-                4,
-                5
-            ]);
+            expect(
+                r(view.children[0].getResolution("y").getDataDomain())
+            ).toEqual([1, 2]);
+            expect(
+                r(view.children[1].getResolution("y").getDataDomain())
+            ).toEqual([4, 5]);
         });
     });
 
@@ -86,11 +82,11 @@ describe("Domain handling", () => {
         });
 
         let r = view.getResolution("x");
-        expect([...r.getDomain()]).toEqual([-1, 1]);
+        expect([...r.getDataDomain()]).toEqual([-1, 1]);
         expect(r.getScale().domain()).toEqual([-1, 1]);
 
         r.setDomain(createDomain("quantitative", [0, 2]));
-        expect([...r.getDomain()]).toEqual([0, 2]);
+        expect([...r.getDataDomain()]).toEqual([0, 2]);
         expect(r.getScale().domain()).toEqual([0, 2]);
     });
 

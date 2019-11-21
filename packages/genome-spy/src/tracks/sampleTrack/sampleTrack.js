@@ -152,7 +152,7 @@ export default class SampleTrack extends SimpleTrack {
             const resolution = this.view.getResolution("sample");
             if (resolution) {
                 this.setSamples(
-                    resolution.getDomain().map(s => ({
+                    resolution.getDataDomain().map(s => ({
                         id: s,
                         displayName: s,
                         attributes: []
