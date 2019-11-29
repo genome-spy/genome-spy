@@ -24,6 +24,7 @@
   "scripts": {
     "start": "webpack-dev-server --progress --hot --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js",
+    "buildSinglePage": "webpack --config webpack.singlepage.prod.js",
     "buildSchema": "ts-json-schema-generator -p src/spec/transform.ts > dist/genome-spy-schema.json"
   },
   "dependencies": {
