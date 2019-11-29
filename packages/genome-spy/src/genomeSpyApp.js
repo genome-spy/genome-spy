@@ -113,7 +113,8 @@ export default class GenomeSpyApp {
             if (event.keyCode == 13) {
                 event.preventDefault();
 
-                this.search(this.searchInput.value)
+                this.genomeSpy
+                    .search(this.searchInput.value)
                     .then(() => {
                         this.searchInput.focus();
                         this.searchInput.select();
