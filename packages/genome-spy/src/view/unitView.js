@@ -205,8 +205,7 @@ export default class UnitView extends View {
 
         let domain;
 
-        // TODO: an iterator for flattened data
-        const data = this.getData().ungroupAll().data;
+        const data = this.getData();
 
         const encodingSpec = this.getEncoding()[channel];
 
@@ -220,7 +219,7 @@ export default class UnitView extends View {
                 if (accessor.constant) {
                     domain.extend(accessor({}));
                 } else {
-                    for (const datum of data) {
+                    for (const datum of data.flatData()) {
                         domain.extend(accessor(datum));
                     }
                 }

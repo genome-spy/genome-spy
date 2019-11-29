@@ -61,16 +61,13 @@ export default class Mark {
             throw new Error("Can not initialize mark, no data available!");
         }
 
-        // TODO: Optimize. Now inherited data is ungrouped in all children
-        const ungrouped = data.ungroupAll().data;
-
         const accessor = this.unitView.getAccessor("sample");
         if (accessor) {
             // TODO: Optimize. Now inherited data is grouped by sample in all children
             /** @type {Map<string, object[]>} */
-            this.dataBySample = group(ungrouped, accessor);
+            this.dataBySample = group(data.flatData(), accessor);
         } else {
-            this.dataBySample = new Map([["default", ungrouped]]);
+            this.dataBySample = new Map([["default", data.ungroupAll().data]]);
         }
     }
 

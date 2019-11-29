@@ -29,6 +29,47 @@ export class Group {
         }
         return /** @type {DataGroup} */ (group);
     }
+
+    /**
+     * Returns an iterable that yields flattened data
+     */
+    flatData() {
+        const flattened = this._collectDataGroups();
+
+        let gi = 0;
+        let arr = flattened[gi].data;
+
+        let ai = 0;
+
+        return {
+            [Symbol.iterator]() {
+                return this;
+            },
+            next() {
+                if (arr && ai < arr.length) {
+                    return { value: arr[ai++] };
+                }
+
+                gi++;
+
+                if (gi < flattened.length) {
+                    arr = flattened[gi].data;
+                    ai = 0;
+
+                    return this.next();
+                } else {
+                    return { done: true };
+                }
+            }
+        };
+    }
+
+    /**
+     * @returns {DataGroup[]}
+     */
+    _collectDataGroups() {
+        throw new Error("Abstract");
+    }
 }
 
 export class DataGroup extends Group {
@@ -50,6 +91,10 @@ export class DataGroup extends Group {
      */
     ungroup() {
         throw new Error("Trying to ungroup a DataGroup!");
+    }
+
+    _collectDataGroups() {
+        return [this];
     }
 }
 
@@ -94,5 +139,9 @@ export class GroupGroup extends Group {
                 )
             );
         }
+    }
+
+    _collectDataGroups() {
+        return this.subgroups.map(g => g._collectDataGroups()).flat();
     }
 }
