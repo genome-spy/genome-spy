@@ -41,6 +41,13 @@ export interface ViewSpecBase {
     title?: string;
     description?: string;
     baseUrl?: string;
+
+    /**
+     * Background color of the plotting area. The property has effect only on
+     * the immediate non-concat children of concat views or in the single root view.
+     * In practice, the property can be used to define background colors for "tracks".
+     */
+    plotBackground?: string;
 }
 
 export interface LayerSpec extends ViewSpecBase {

@@ -1,4 +1,5 @@
 import * as twgl from "twgl.js";
+import { rgb } from "d3-color";
 import { Matrix4 } from "math.gl";
 import { getPlatformShaderDefines, fp64ify } from "../gl/includes/fp64-utils";
 import Track from "./track";
@@ -26,7 +27,9 @@ export default class WebGlTrack extends Track {
 
         this.gl = gl;
 
-        gl.clearColor(1, 1, 1, 1);
+        const bg = rgb(this.config.plotBackground || "white");
+
+        gl.clearColor(bg.r / 255, bg.g / 255, bg.b / 255, 1);
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
         this._shaderDefines = getPlatformShaderDefines(gl);
