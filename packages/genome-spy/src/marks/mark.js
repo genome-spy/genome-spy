@@ -31,15 +31,19 @@ export default class Mark {
         const defaults = this.getDefaultEncoding();
         const configured = this.unitView.getEncoding();
 
+        /*
+        // TODO: Figure out a way to log a warning only once. After that, enable this check:
         for (const channel in configured) {
             if (typeof defaults[channel] !== "object") {
-                throw new Error(
+                // TODO: Only warn if the channel was not inherited
+                console.warn(
                     `Unsupported channel "${channel}" in ${this.getType()}'s encoding: ${JSON.stringify(
                         configured
                     )}`
                 );
             }
         }
+        */
 
         return { ...defaults, ...configured };
     }
