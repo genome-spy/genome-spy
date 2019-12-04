@@ -47,6 +47,7 @@ nav:
           - Genomic Coordinates: "genomic-data/genomic-coordinates.md"
           - Tracks: "genomic-data/tracks.md"
           - Examples:
+                - SEG file: "genomic-data/examples/seg-file.md"
                 - ASCAT: "genomic-data/examples/ascat.md"
     - JavaScript API: "api.md"
     - License: "license.md"
