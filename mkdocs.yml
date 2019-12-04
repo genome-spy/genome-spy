@@ -43,6 +43,10 @@ nav:
           - Importing Views: "grammar/import.md"
           - Expressions: "grammar/expressions.md"
 
-    - Working with Genomic Data: "genomic-data.md"
+    - Working with Genomic Data:
+          - Genomic Coordinates: "genomic-data/genomic-coordinates.md"
+          - Tracks: "genomic-data/tracks.md"
+          - Examples:
+                - ASCAT: "genomic-data/examples/ascat.md"
     - JavaScript API: "api.md"
     - License: "license.md"
