@@ -6,9 +6,55 @@ TODO: About data, it's from https://software.broadinstitute.org/software/igv/SEG
 
 ## A simple example
 
-TODO
+TODO: Explanation
+
+<div class="embed-example">
+    <div class="embed-container" style="height: 100px"></div>
+    <div class="embed-spec">
+
+```json
+{
+  "genome": { "name": "hg19" },
+
+  "baseUrl": "../../../data",
+
+  "concat": [
+    { "import": { "name": "cytobands" } },
+
+    {
+      "data": {
+        "url": "example.seg",
+        "format": { "type": "tsv" }
+      },
+
+      "mark": "rect",
+
+      "encoding": {
+        "x": { "chrom": "chrom", "pos": "loc\\.start", "type": "quantitative" },
+        "x2": { "chrom": "chrom", "pos": "loc\\.end" },
+        "y": { "field": "\\'ID", "type": "nominal" },
+        "color": {
+          "field": "seg\\.mean",
+          "type": "quantitative",
+          "scale": {
+            "domain": [-1.5, 1.5],
+            "range": ["blue", "white", "red"]
+          }
+        }
+      }
+    },
+
+    { "import": { "name": "genomeAxis" } }
+  ]
+}
+```
+
+  </div>
+</div>
 
 ## An advanced example: emphasizing focal segments
+
+TODO: Explanation
 
 <div class="embed-example hidden-spec">
 <div class="embed-container" style="height: 350px"></div>
@@ -63,15 +109,14 @@ TODO
               "pos": "loc\\.start",
               "type": "quantitative"
             },
-            "x2": { "chrom": "chrom", "pos": "loc\\.end" },
-            "y2": { "constant": 0 }
+            "x2": { "chrom": "chrom", "pos": "loc\\.end" }
           }
         },
         {
           "transform": [
             {
               "type": "filter",
-              "expr": "datum['loc.end'] - datum['loc.start'] < 5000"
+              "expr": "datum['loc.end'] - datum['loc.start'] < 8000"
             },
             {
               "type": "formula",
