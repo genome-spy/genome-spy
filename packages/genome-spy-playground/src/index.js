@@ -326,8 +326,12 @@ codeMirror = CodeMirror.fromTextArea(
         gutters: ["CodeMirror-lint-markers"],
         lint: true,
         matchBrackets: true,
+        tabSize: 2,
         indentUnit: 2,
-        indentWithTabs: false
+        indentWithTabs: false,
+        extraKeys: {
+            Tab: cm => cm.execCommand("insertSoftTab")
+        }
         //keyMap: "vim"
     }
 );
