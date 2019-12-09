@@ -298,12 +298,12 @@ export default class CytobandTrack extends WebGlTrack {
         // TODO: Consider moving to Track base class
         const visibleDomain = Interval.fromArray(scale.domain());
 
-        this.genome.chromMapper.chromosomes().forEach((chrom, i) => {
-            if (
-                i > 0 &&
-                visibleDomain.contains(chrom.continuousInterval.lower)
-            ) {
-                const x = scale(chrom.continuousInterval.lower);
+        const cm = this.genome.chromMapper;
+
+        cm.getChromosomes().forEach((chrom, i) => {
+            const continuousInterval = chrom.continuousInterval;
+            if (i > 0 && visibleDomain.contains(continuousInterval.lower)) {
+                const x = scale(continuousInterval.lower);
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, this.viewportDimensions.height);

@@ -42,7 +42,7 @@ LogR and BAF data.
           "mark": "rule",
           "data": { "name": "chromSizes" },
           "encoding": {
-            "x": { "chrom": "chrom", "pos": "size", "type": "quantitative" },
+            "x": { "chrom": "name", "pos": "size", "type": "quantitative" },
             "color": { "value": "#d8d8d8" }
           }
         },
@@ -108,7 +108,7 @@ LogR and BAF data.
           "mark": "rule",
           "data": { "name": "chromSizes" },
           "encoding": {
-            "x": { "chrom": "chrom", "pos": "size", "type": "quantitative" },
+            "x": { "chrom": "name", "pos": "size", "type": "quantitative" },
             "color": { "value": "#d8d8d8" }
           }
         },
@@ -165,7 +165,7 @@ LogR and BAF data.
           "mark": "rule",
           "data": { "name": "chromSizes" },
           "encoding": {
-            "x": { "chrom": "chrom", "pos": "size", "type": "quantitative" },
+            "x": { "chrom": "name", "pos": "size", "type": "quantitative" },
             "color": { "value": "#d8d8d8" }
           }
         },

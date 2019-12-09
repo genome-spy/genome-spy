@@ -1,122 +1,130 @@
 import { bisect } from "d3-array";
-
 import Interval from "../utils/interval";
 
 /**
- * @param {Map<string, number>} chromSizes
- * @constructor
+ * @typedef {object} Chromosome
+ * @prop {string} name
+ * @prop {number} size
+ *
+ * @typedef {object} ChromosomeAnnotation
+ * @prop {number} index 0-based index
+ * @prop {number} number 1-based index
+ * @prop {number} continuousStart zero-based start, inclusive
+ * @prop {number} continuousEnd zero-based end, exclusive
+ * @prop {Interval} continuousInterval
+ * @prop {boolean} odd true if odd chrom number
  */
-export function chromMapper(chromSizes) {
-    // TODO: Generalize and support other organisms beside human
-    const chromNames = [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21,
-        22,
-        "X",
-        "Y"
-    ].map(v => "chr" + v);
 
-    const cumReduction = chromNames.reduce(
-        (r, v) => {
-            r.a.push(r.soFar);
-            r.m[v] = r.soFar;
-            r.soFar += chromSizes.get(v);
-            return r;
-        },
-        { soFar: 0, m: {}, a: [] }
-    );
+/**
+ * Blaa
+ */
+export default class ChromMapper {
+    /**
+     *
+     * @param {Chromosome[]} chromosomes
+     */
+    constructor(chromosomes) {
+        this.chromosomes = /** @type {(Chromosome & ChromosomeAnnotation)[]} */ ([
+            ...chromosomes
+        ]);
 
-    const cumulativeChromMap = cumReduction.m;
-    const cumulativeChromArray = cumReduction.a;
-    const extent = new Interval(0, cumReduction.soFar);
+        /** @type {number[]} */
+        this.startByIndex = [0];
 
-    // Add an imaginary extra chromosome to simplify calculations
-    cumulativeChromArray.push(extent.width());
+        /** @type {Map<string, number>} */
+        this.startByName = new Map();
 
-    const chromosomes = chromNames.map((chrom, i) => ({
-        index: i,
-        name: chrom,
-        continuousInterval: new Interval(
-            cumulativeChromArray[i],
-            cumulativeChromArray[i + 1]
-        )
-    }));
+        /** @type {Map<string, Chromosome & ChromosomeAnnotation>} */
+        this.chromosomesByName = new Map();
+
+        let pos = 0;
+        for (let i = 0; i < this.chromosomes.length; i++) {
+            const chrom = this.chromosomes[i];
+
+            this.startByIndex.push(pos);
+            this.startByName.set(chrom.name, pos);
+
+            chrom.continuousStart = pos;
+            chrom.continuousEnd = pos + chrom.size;
+            chrom.continuousInterval = new Interval(pos, pos + chrom.size);
+            chrom.index = i;
+            chrom.number = i + 1;
+            // eslint-disable-next-line no-bitwise
+            chrom.odd = !!(chrom.number & 1);
+
+            this.chromosomesByName.set(chrom.name, chrom);
+
+            pos += chrom.size;
+        }
+
+        this.totalSize = pos;
+    }
 
     /**
-     * Prepend a "chr" prefix if it is missing.
+     * Returns a chromosomal locus in the continuous domain
+     *
+     * @param {string | number} chrom A number or name with or without a "chr" prefix. Examples: 23, chrX, X
+     * @param {number} pos zero-based cordinate
      */
-    function prefix(chrom) {
-        if (typeof chrom == "string") {
-            return chrom.startsWith("chr") ? chrom : "chr" + chrom;
-        } else if (typeof chrom == "number") {
-            return "chr" + chrom;
+    toContinuous(chrom, pos) {
+        pos = +pos;
+
+        /** @type {number} */
+        let offset;
+
+        if (typeof chrom === "number") {
+            if (chrom > 0 && chrom <= this.startByIndex.length) {
+                offset = this.startByIndex[chrom];
+            }
+        } else {
+            offset = this.startByName.get(chrom);
+            if (offset === undefined) {
+                offset = this.startByName.get("chr" + chrom);
+            }
+        }
+
+        if (offset !== undefined) {
+            return offset + pos;
         }
     }
 
-    return {
-        extent: function() {
-            return extent;
-        },
+    /**
+     *
+     * @param {number} continuousPos
+     */
+    toChromosomal(continuousPos) {
+        if (continuousPos >= this.totalSize) {
+            return; // TODO: Consider displaying a warning
+        }
 
-        /**
-         * Returns a chromosomal locus in continuous domain
-         *
-         * @param {string} chromName
-         * @param {number} locus
-         */
-        toContinuous: function(chromName, locus) {
-            locus = +locus;
-            return cumulativeChromMap[prefix(chromName)] + locus;
-        },
-
-        /**
-         * Returns a chromosomal segment as an Interval in continuous domain
-         *
-         * @param {string} chromName
-         * @param {number} start
-         * @param {number} end
-         */
-        segmentToContinuous: function(chromName, start, end) {
-            const offset = cumulativeChromMap[prefix(chromName)];
-            return new Interval(offset + start, offset + end);
-        },
-
-        /**
-         *
-         * @param {number} continuousLocus
-         */
-        toChromosomal: function(continuousLocus) {
-            if (!extent.contains(continuousLocus)) return null; // TODO: Consider displaying a warning
-
-            const i = bisect(cumulativeChromArray, continuousLocus) - 1;
+        const i = bisect(this.startByIndex, continuousPos) - 1;
+        if (i > 0 && i <= this.chromosomes.length) {
             return {
-                chromosome: chromosomes[i],
-                locus: continuousLocus - cumulativeChromArray[i]
+                chromosome: this.chromosomes[i - 1].name,
+                pos: continuousPos - this.startByIndex[i]
             };
-        },
+        }
+    }
 
-        /**
-         * Returns linear coordinates and chromosome names
-         */
-        chromosomes: () => chromosomes
-    };
+    /**
+     * @param {string} chrom
+     * @param {number} start
+     * @param {number} end
+     */
+    segmentToContinuous(chrom, start, end) {
+        const offset = this.startByName.get(chrom);
+        return new Interval(offset + start, offset + end);
+    }
+
+    getChromosomes() {
+        return this.chromosomes;
+    }
+
+    /**
+     *
+     * @param {string} name
+     */
+    getChromosome(name) {
+        return this.chromosomesByName.get(name);
+    }
 }

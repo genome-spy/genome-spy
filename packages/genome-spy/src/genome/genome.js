@@ -2,7 +2,7 @@ import { format as d3format } from "d3-format";
 import { tsvParseRows } from "d3-dsv";
 import { loader } from "vega-loader";
 import { field, accessorFields } from "vega-util";
-import { chromMapper } from "./chromMapper";
+import ChromMapper from "./chromMapper";
 import CoordinateSystem from "../coordinateSystem";
 import Interval from "../utils/interval";
 
@@ -51,7 +51,7 @@ export default class Genome extends CoordinateSystem {
                     `${this.config.name}/${this.name}.chrom.sizes`
                 )
             );
-            this.chromMapper = chromMapper(this.chromSizes);
+            this.chromMapper = new ChromMapper(this.chromSizes);
         } catch (e) {
             throw new Error(`Could not load chrom sizes: ${e.message}`);
         }
@@ -76,13 +76,9 @@ export default class Genome extends CoordinateSystem {
             }
         });
 
-        const namedData = [...this.chromSizes.entries()].map(e => ({
-            chrom: e[0],
-            size: e[1]
-        }));
         genomeSpy.registerNamedDataProvider(name => {
             if (name == "chromSizes") {
-                return namedData;
+                return this.chromMapper.getChromosomes();
             }
         });
     }
@@ -105,14 +101,12 @@ export default class Genome extends CoordinateSystem {
         const end = this.chromMapper.toChromosomal(interval.upper - 1);
 
         return (
-            begin.chromosome.name +
+            begin.chromosome +
             ":" +
-            this.numberFormat(Math.floor(begin.locus + 1)) +
+            this.numberFormat(Math.floor(begin.pos + 1)) +
             "-" +
-            (begin.chromosome != end.chromosome
-                ? end.chromosome.name + ":"
-                : "") +
-            this.numberFormat(Math.ceil(end.locus + 1))
+            (begin.chromosome != end.chromosome ? end.chromosome + ":" : "") +
+            this.numberFormat(Math.ceil(end.pos + 1))
         );
     }
 
@@ -149,17 +143,19 @@ export default class Genome extends CoordinateSystem {
      * @returns {import("../utils/interval").default}
      */
     getExtent() {
-        return this.chromMapper.extent();
+        return new Interval(0, this.chromMapper.totalSize);
     }
 }
 
+/**
+ *
+ * @param {string} chromSizesData
+ */
 export function parseChromSizes(chromSizesData) {
     // TODO: Support other organisms too
-    return new Map(
-        tsvParseRows(chromSizesData)
-            .filter(row => /^chr[0-9XY]{1,2}$/.test(row[0]))
-            .map(([chrom, size]) => [chrom, parseInt(size)])
-    );
+    return tsvParseRows(chromSizesData)
+        .filter(row => /^chr[0-9XY]{1,2}$/.test(row[0]))
+        .map(([name, size]) => ({ name, size: parseInt(size) }));
 }
 
 /**

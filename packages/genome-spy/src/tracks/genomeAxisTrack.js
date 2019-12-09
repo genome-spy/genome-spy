@@ -24,8 +24,10 @@ export default class GenomeAxisTrack extends Track {
 
         this.styles = defaultStyles;
 
-        this.genome = genomeSpy.coordinateSystem;
-        if (!(this.genome instanceof Genome)) {
+        if (genomeSpy.coordinateSystem instanceof Genome) {
+            /** @type {Genome} */
+            this.genome = genomeSpy.coordinateSystem;
+        } else {
             throw new Error("The coordinate system is not genomic!");
         }
     }
@@ -56,7 +58,7 @@ export default class GenomeAxisTrack extends Track {
         this.genomeSpy.zoom.attachZoomEvents(this.tickCanvas);
 
         const cm = this.genome.chromMapper;
-        this.chromosomes = cm.chromosomes();
+        this.chromosomes = cm.getChromosomes();
 
         const ctx = this.get2d(this.tickCanvas);
         ctx.font = `${this.styles.fontSize}px ${this.styles.fontFamily}`;
@@ -67,11 +69,13 @@ export default class GenomeAxisTrack extends Track {
 
         this.tickCanvas.addEventListener("dblclick", event =>
             this.genomeSpy.zoomTo(
-                cm.toChromosomal(
-                    this.genomeSpy
-                        .getZoomedScale()
-                        .invert(clientPoint(this.tickCanvas, event)[0])
-                ).chromosome.continuousInterval
+                cm.getChromosome(
+                    cm.toChromosomal(
+                        this.genomeSpy
+                            .getZoomedScale()
+                            .invert(clientPoint(this.tickCanvas, event)[0])
+                    ).chromosome
+                ).continuousInterval
             )
         );
     }
@@ -221,7 +225,9 @@ export default class GenomeAxisTrack extends Track {
         );
 
         this.chromosomes.forEach((chrom, i) => {
-            const screenInterval = chrom.continuousInterval.transform(scale);
+            const screenInterval = cm
+                .getChromosome(chrom.name)
+                .continuousInterval.transform(scale);
 
             if (viewportInterval.contains(screenInterval.lower)) {
                 ctx.fillStyle = this.styles.chromColor;
@@ -246,7 +252,7 @@ export default class GenomeAxisTrack extends Track {
                 }
 
                 renderLocusTicks(
-                    chrom.continuousInterval,
+                    cm.getChromosome(chrom.name).continuousInterval,
                     this._chromLabelWidths[i]
                 );
             }
@@ -254,7 +260,9 @@ export default class GenomeAxisTrack extends Track {
 
         // Handle the leftmost chromosome
         if (domainInterval.lower > 0) {
-            const chrom = cm.toChromosomal(domainInterval.lower).chromosome;
+            const chrom = cm.getChromosome(
+                cm.toChromosomal(domainInterval.lower).chromosome
+            );
             const chromInterval = chrom.continuousInterval.transform(scale);
             const labelWidth = this._chromLabelWidths[chrom.index];
 

@@ -596,7 +596,7 @@ function genesToVertices(genes, laneHeight, laneSpacing) {
 }
 
 export function parseCompressedRefseqGeneTsv(cm, geneTsv) {
-    const chromNames = new Set(cm.chromosomes().map(chrom => chrom.name));
+    const chromNames = new Set(cm.getChromosomes().map(chrom => chrom.name));
 
     let hack = 0; // A hack. Ensure a unique score for each gene.
 
