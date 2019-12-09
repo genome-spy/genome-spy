@@ -58,6 +58,11 @@ export default class ChromMapper {
         }
 
         this.totalSize = pos;
+
+        // Cache previous chromosome lookup. It's faster than accessing the map.
+        /** @type {string | number} */
+        this._lastChrom = undefined;
+        this._lastOffset = 0;
     }
 
     /**
@@ -72,15 +77,21 @@ export default class ChromMapper {
         /** @type {number} */
         let offset;
 
-        if (typeof chrom === "number") {
-            if (chrom > 0 && chrom <= this.startByIndex.length) {
-                offset = this.startByIndex[chrom];
-            }
+        if (chrom === this._lastChrom) {
+            offset = this._lastOffset;
         } else {
-            offset = this.startByName.get(chrom);
-            if (offset === undefined) {
-                offset = this.startByName.get("chr" + chrom);
+            if (typeof chrom === "number") {
+                if (chrom > 0 && chrom <= this.startByIndex.length) {
+                    offset = this.startByIndex[chrom];
+                }
+            } else {
+                offset = this.startByName.get(chrom);
+                if (offset === undefined) {
+                    offset = this.startByName.get("chr" + chrom);
+                }
             }
+            this._lastChrom = chrom;
+            this._lastOffset = offset;
         }
 
         if (offset !== undefined) {

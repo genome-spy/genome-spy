@@ -1,6 +1,5 @@
 import fromEntries from "fromentries";
 import * as twgl from "twgl.js";
-import mapsort from "mapsort";
 import { extent, bisector } from "d3-array";
 import { PointVertexBuilder } from "../gl/dataToVertices";
 import VERTEX_SHADER from "../gl/point.vertex.glsl";
@@ -78,13 +77,9 @@ export default class PointMark extends Mark {
         }
 
         // Sort each point of each sample for binary search
-        /** @type {Map<string, object[]>} */
-        this.dataBySample = new Map(
-            [...this.dataBySample.entries()].map(e => [
-                e[0],
-                mapsort(e[1], accessor, (a, b) => a - b)
-            ])
-        );
+        for (const arr of this.dataBySample.values()) {
+            arr.sort((a, b) => accessor(a) - accessor(b));
+        }
     }
 
     initializeEncoders() {
