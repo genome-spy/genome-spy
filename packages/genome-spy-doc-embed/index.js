@@ -1,22 +1,22 @@
-
 import { GenomeSpy } from "genome-spy";
 
 /**
- * 
- * @param {string} url 
+ *
+ * @param {string} url
  */
 async function fetchConf(url) {
-    const conf = await fetch(url, { credentials: 'same-origin' })
-        .then(res => {
-            if (res.ok) {
-                return res.json();
-            }
-            throw new Error(`Could not load configuration: ${conf} \nReason: ${res.status} ${res.statusText}`);
-        });
+    const conf = await fetch(url, { credentials: "same-origin" }).then(res => {
+        if (res.ok) {
+            return res.json();
+        }
+        throw new Error(
+            `Could not load configuration: ${conf} \nReason: ${res.status} ${res.statusText}`
+        );
+    });
 
     if (!conf.baseUrl) {
         const m = url.match(/^.*\//);
-        conf.baseUrl = m && m[0] || "./";
+        conf.baseUrl = (m && m[0]) || "./";
     }
 
     return conf;
@@ -27,14 +27,20 @@ async function fetchConf(url) {
  * @param {object | string} conf configuriation object or url to json configuration
  */
 async function embed(container, conf) {
+    const baseUrl = document
+        .querySelector("meta[name='base_url']")
+        .getAttribute("content");
+    if (!baseUrl) {
+        console.error(`No <meta name="base_url" ...> found!`);
+        return;
+    }
+
+    const dataBaseUrl = `${baseUrl}/data/`;
 
     try {
-        conf.baseUrl = conf.baseUrl || "./";
-
-        console.log(conf);
+        conf.baseUrl = conf.baseUrl || dataBaseUrl;
         const app = new GenomeSpy(container, conf);
         await app.launch();
-
     } catch (e) {
         const pre = document.createElement("pre");
         pre.innerText = e.toString();
@@ -43,13 +49,17 @@ async function embed(container, conf) {
 }
 
 async function initialize(exampleElement) {
-    const htmlElement = /** @type {HTMLElement} */(exampleElement);
-    const container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
+    const htmlElement = /** @type {HTMLElement} */ (exampleElement);
+    const container = /** @type {HTMLElement} */ (htmlElement.querySelector(
+        ".embed-container"
+    ));
     const url = htmlElement.dataset.url;
 
     try {
         if (url) {
-            let container = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-container"));
+            let container = /** @type {HTMLElement} */ (htmlElement.querySelector(
+                ".embed-container"
+            ));
             if (!container) {
                 container = document.createElement("div");
                 container.className = "embed-container";
@@ -57,10 +67,11 @@ async function initialize(exampleElement) {
             }
 
             const conf = await fetchConf(url);
-            embed(container, conf)
-
+            embed(container, conf);
         } else {
-            const spec = /** @type {HTMLElement} */(htmlElement.querySelector(".embed-spec"));
+            const spec = /** @type {HTMLElement} */ (htmlElement.querySelector(
+                ".embed-spec"
+            ));
 
             if (spec && container) {
                 embed(container, JSON.parse(spec.textContent));
@@ -71,9 +82,8 @@ async function initialize(exampleElement) {
         container.innerText = e.message;
     }
 }
-    
-document.addEventListener("DOMContentLoaded", () => {
 
+document.addEventListener("DOMContentLoaded", () => {
     const examples = document.querySelectorAll(".embed-example");
 
     let observer = new IntersectionObserver(entries => {
@@ -99,5 +109,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
         observer.observe(example);
     });
-
 });

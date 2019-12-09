@@ -16,8 +16,6 @@ LogR and BAF data.
     "name": "hg19"
   },
 
-  "baseUrl": "../../../data",
-
   "data": { "url": "ascat_segments_S96.tsv" },
 
   "encoding": {

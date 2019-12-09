@@ -16,8 +16,6 @@ TODO: Explanation
 {
   "genome": { "name": "hg19" },
 
-  "baseUrl": "../../../data",
-
   "concat": [
     { "import": { "name": "cytobands" } },
 
@@ -66,8 +64,6 @@ TODO: Explanation
   "genome": {
     "name": "hg19"
   },
-
-  "baseUrl": "../../../data",
 
   "concat": [
     {

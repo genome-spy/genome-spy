@@ -14,7 +14,7 @@ accessible web server.
 
 GenomeSpy provides a few built-in tracks, mainly to support genomic data
 exploration. They must be imported by a name. Read more at [genome
-tracks](../genomic-data.md#genome-tracks).
+tracks](../genomic-data/tracks.md).
 
 Usage:
 
