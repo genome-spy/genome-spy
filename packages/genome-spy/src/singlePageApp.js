@@ -5,14 +5,19 @@ const defaultConf = "config.json";
 
 const urlParams = new URLSearchParams(window.location.search);
 
-initWithConfiguration(urlParams.get("conf") || defaultConf);
+initWithConfiguration(
+    urlParams.get("conf") || defaultConf,
+    urlParams.get("baseUrl")
+);
 
 /**
  * @param {object | string} conf configuriation object or url to json configuration
+ * @param {string} baseUrl
  */
-async function initWithConfiguration(conf) {
+async function initWithConfiguration(conf, baseUrl) {
     try {
         if (typeof conf == "string") {
+            // conf is a URL
             const url = conf;
 
             try {
@@ -26,6 +31,14 @@ async function initWithConfiguration(conf) {
             if (!conf.baseUrl) {
                 const m = url.match(/^.*\//);
                 conf.baseUrl = (m && m[0]) || "./";
+            }
+
+            if (baseUrl) {
+                if (isAbsoluteUrl(baseUrl)) {
+                    conf.baseUrl = baseUrl;
+                } else {
+                    conf.baseUrl = `${conf.baseUrl}/${baseUrl}`;
+                }
             }
         } else if (typeof conf === "object") {
             conf.baseUrl = conf.baseUrl || "";
@@ -42,4 +55,12 @@ async function initWithConfiguration(conf) {
         pre.innerText = e.toString();
         document.body.appendChild(pre);
     }
+}
+
+/**
+ *
+ * @param {string} url
+ */
+function isAbsoluteUrl(url) {
+    return /^(http|https)?:\/\//.test(url);
 }
