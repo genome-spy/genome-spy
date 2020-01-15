@@ -52,7 +52,7 @@ float scaleDown(float bandHeight) {
     float factor = bandHeight * uMaxRelativePointDiameter / uDevicePixelRatio;
 
     // Points should not be visible on zero-height bands. Using smoothstep to hide them.
-    float minimum = smoothstep(0.0, 1.5, bandHeight) * uMinAbsolutePointDiameter / uDevicePixelRatio;
+    float minimum = smoothstep(0.0, 0.5, bandHeight) * uMinAbsolutePointDiameter / uDevicePixelRatio;
 
     return max(minimum, min(maxPointDiameter, factor)) / maxPointDiameter;
 }
