@@ -10,7 +10,8 @@ import transition, {
     easeLinear,
     normalizedEase,
     easeInOutQuad,
-    easeInOutSine
+    easeInOutSine,
+    easeInQuad
 } from "../../utils/transition";
 import clientPoint from "../../utils/point";
 import AttributePanel from "./attributePanel";
@@ -129,8 +130,6 @@ export default class SampleTrack extends SimpleTrack {
     resizeCanvases(layout) {
         super.resizeCanvases(layout);
 
-        const trackHeight = this.trackContainer.clientHeight;
-        this.sampleScale.range([0, trackHeight]);
         this.attributePanel.resizeCanvases(layout.axis);
     }
 
@@ -179,6 +178,7 @@ export default class SampleTrack extends SimpleTrack {
         );
 
         this.attributePanel.initialize();
+        this.initializePeek();
         this.initializeFisheye();
 
         this.genomeSpy.on("layout", () => {
@@ -197,6 +197,100 @@ export default class SampleTrack extends SimpleTrack {
         });
     }
 
+    // TODO: Unify shortcut key handling!
+
+    initializePeek() {
+        let persistentPeek = false;
+
+        /** @type {MouseEvent} */
+        let lastMouseEvent = null;
+
+        const minWidth = 30;
+        const zero = 1;
+        let zoomFactor = zero;
+
+        const render = () => {
+            this.renderViewport();
+            this.attributePanel.renderLabels();
+        };
+
+        const closePeek = () => {
+            transition({
+                duration: 100,
+                from: zoomFactor,
+                to: zero,
+                onUpdate: /** @param {number} value */ value => {
+                    zoomFactor = value;
+                    render();
+                }
+            }).then(() => {
+                this.yTransform = undefined;
+                this.peek = null;
+                render();
+            });
+        };
+
+        const openPeek = () => {
+            const mouseY =
+                clientPoint(this.glCanvas, lastMouseEvent)[1] /
+                this.trackContainer.clientHeight;
+
+            this.yTransform = y => (y - mouseY) * zoomFactor + mouseY;
+
+            this.peek = true;
+
+            transition({
+                duration: 230,
+                from: zero,
+                to: Math.max(
+                    1,
+                    minWidth /
+                        this.trackContainer.clientHeight /
+                        this.sampleScale.getBandWidth()
+                ),
+                easingFunction: easeInQuad,
+                onUpdate: /** @param {number} value */ value => {
+                    zoomFactor = value;
+                    render();
+                }
+            });
+        };
+
+        const moveListener = /** @param {MouseEvent} event */ event => {
+            lastMouseEvent = event;
+            if (this.fisheye) {
+                focus();
+            }
+        };
+
+        this.genomeSpy.container.addEventListener("mousemove", moveListener);
+        // Ad hoc key binding. TODO: Make this more abstract
+        document.body.addEventListener("keydown", event => {
+            if (!event.repeat && event.code == "KeyZ") {
+                if (!persistentPeek) {
+                    openPeek();
+                    persistentPeek = event.shiftKey;
+                } else if (event.shiftKey) {
+                    closePeek();
+                    persistentPeek = false;
+                } else {
+                    persistentPeek = false;
+                }
+            }
+        });
+
+        document.body.addEventListener("keyup", event => {
+            if (
+                event.code == "KeyZ" &&
+                this.peek &&
+                !persistentPeek &&
+                !event.shiftKey
+            ) {
+                closePeek();
+            }
+        });
+    }
+
     /**
      * Initializes fisheye functionality.
      */
@@ -211,7 +305,10 @@ export default class SampleTrack extends SimpleTrack {
         };
 
         const focus = () => {
-            this.fisheye.focus(clientPoint(this.glCanvas, lastMouseEvent)[1]);
+            this.fisheye.focus(
+                clientPoint(this.glCanvas, lastMouseEvent)[1] /
+                    this.glCanvas.clientHeight
+            );
             render();
         };
 
@@ -224,7 +321,7 @@ export default class SampleTrack extends SimpleTrack {
 
         this.genomeSpy.container.addEventListener("mousemove", moveListener);
 
-        const minWidth = 30;
+        const minWidth = 35;
         const zero = 0.01;
         let zoomFactor = zero;
 
@@ -247,14 +344,19 @@ export default class SampleTrack extends SimpleTrack {
 
         const openFisheye = () => {
             this.fisheye = fisheye();
-            this.fisheye.radius(150);
+            this.fisheye.radius(150 / this.glCanvas.clientHeight);
 
             this.yTransform = this.fisheye;
 
             transition({
                 duration: 150,
                 from: zero,
-                to: Math.max(1, minWidth / this.sampleScale.getBandWidth()),
+                to: Math.max(
+                    1,
+                    minWidth /
+                        this.sampleScale.getBandWidth() /
+                        this.glCanvas.clientHeight
+                ),
                 //easingFunction: easeOutElastic,
                 onUpdate: /** @param {number} value */ value => {
                     this.fisheye.distortion(value);
@@ -298,12 +400,14 @@ export default class SampleTrack extends SimpleTrack {
         // If space between bands get too small, find closest to make opening
         // of the context menu easier
         const findClosest =
-            (this.sampleScale.getRange().width() /
-                this.sampleScale.getDomain().length) *
+            (this.glCanvas.clientHeight / this.sampleScale.getDomain().length) *
                 this.sampleScale.paddingOuter <
             2.5;
 
-        const sampleId = this.sampleScale.invert(point[1], findClosest);
+        const sampleId = this.sampleScale.invert(
+            point[1] / this.glCanvas.clientHeight,
+            findClosest
+        );
         return sampleId ? this.samples.get(sampleId) : null;
     }
 
@@ -315,7 +419,9 @@ export default class SampleTrack extends SimpleTrack {
     findDatumAndMarkAt(point) {
         const [x, y] = point;
 
-        const sampleId = this.sampleScale.invert(y);
+        const sampleId = this.sampleScale.invert(
+            y / this.glCanvas.clientHeight
+        );
         if (!sampleId) {
             return null;
         }
@@ -324,7 +430,12 @@ export default class SampleTrack extends SimpleTrack {
 
         for (const mark of getMarks(this.view).reverse()) {
             if (mark.properties.tooltip !== null) {
-                const datum = mark.findDatum(sampleId, x, y, bandInterval);
+                const datum = mark.findDatum(
+                    sampleId,
+                    x,
+                    y,
+                    bandInterval.transform(y => y * this.glCanvas.clientHeight)
+                );
                 if (datum) {
                     return { datum, mark };
                 }
@@ -606,8 +717,7 @@ export default class SampleTrack extends SimpleTrack {
     renderViewport(options) {
         const gl = this.gl;
 
-        // Normalize to [0, 1]
-        const normalize = scaleLinear().domain([0, gl.canvas.clientHeight]);
+        const normalize = /** @param {number} x */ x => x;
 
         const leftScale = (options && options.leftScale) || this.sampleScale;
         const rightScale = (options && options.rightScale) || this.sampleScale;
@@ -625,26 +735,39 @@ export default class SampleTrack extends SimpleTrack {
             zoomLevel: this.genomeSpy.getExpZoomLevel()
         };
 
-        const samples = leftScale.getDomain().map(sampleId => {
-            const bandLeft = leftScale
-                .scale(sampleId)
-                .mix(rightScale.scale(sampleId), yTransitionProgress)
-                .transform(this.yTransform)
-                .transform(normalize);
+        const samples = leftScale
+            .getDomain()
+            .map(sampleId => {
+                const bandLeft = leftScale
+                    .scale(sampleId)
+                    .mix(rightScale.scale(sampleId), yTransitionProgress)
+                    .transform(this.yTransform)
+                    .transform(normalize);
 
-            const bandRight = leftScale
-                .scale(sampleId)
-                .transform(this.yTransform)
-                .transform(normalize);
+                const bandRight = leftScale
+                    .scale(sampleId)
+                    .transform(this.yTransform)
+                    .transform(normalize);
 
-            return {
-                sampleId,
-                uniforms: {
-                    yPosLeft: [bandLeft.lower, bandLeft.width()],
-                    yPosRight: [bandRight.lower, bandRight.width()]
-                }
-            };
-        });
+                return {
+                    sampleId,
+                    uniforms: {
+                        yPosLeft: [bandLeft.lower, bandLeft.width()],
+                        yPosRight: [bandRight.lower, bandRight.width()]
+                    }
+                };
+            })
+            .filter(
+                sample =>
+                    (sample.uniforms.yPosLeft[0] <= 1 &&
+                        sample.uniforms.yPosLeft[0] +
+                            sample.uniforms.yPosLeft[1] >=
+                            0) ||
+                    (sample.uniforms.yPosRight[0] <= 1 &&
+                        sample.uniforms.yPosRight[0] +
+                            sample.uniforms.yPosRight[1] >=
+                            0)
+            );
 
         for (const mark of getMarks(this.view)) {
             mark.render(samples, globalUniforms);
