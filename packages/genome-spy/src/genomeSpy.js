@@ -90,6 +90,8 @@ export default class GenomeSpy {
 
         /** @type {(function(string):object[])[]} */
         this.namedDataProviders = [];
+
+        this.viewportTransform = new Transform();
     }
 
     on(...args) {
@@ -119,10 +121,63 @@ export default class GenomeSpy {
     }
 
     /**
+     *
      * @param {Transform} transform
      */
-    _zoomed(transform) {
-        this.rescaledX = transform.rescale(this.xScale);
+    _constrainX(transform) {
+        return new Transform(
+            transform.k,
+            Math.min(
+                0,
+                Math.max(
+                    transform.x,
+                    -(transform.k - 1) * this.layout.viewport.width()
+                )
+            )
+        );
+    }
+
+    /**
+     * @param {import("./utils/zoom.js").ZoomEvent} zoomEvent
+     */
+    _zoomed(zoomEvent) {
+        if (zoomEvent.deltaY) {
+            let kFactor = Math.pow(2, zoomEvent.deltaY);
+
+            const k = Math.max(
+                Math.min(
+                    this.viewportTransform.k * kFactor,
+                    this.scaleExtent[1]
+                ),
+                this.scaleExtent[0]
+            );
+
+            kFactor = k / this.viewportTransform.k;
+
+            const x =
+                (this.viewportTransform.x - zoomEvent.mouseX) * kFactor +
+                zoomEvent.mouseX;
+
+            this._zoomWithTransform(this._constrainX(new Transform(k, x)));
+        } else {
+            this._zoomWithTransform(
+                this._constrainX(
+                    new Transform(
+                        this.viewportTransform.k,
+                        this.viewportTransform.x + zoomEvent.deltaX
+                    )
+                )
+            );
+        }
+    }
+
+    /**
+     *
+     * @param {Transform} transform
+     */
+    _zoomWithTransform(transform) {
+        this.viewportTransform = transform;
+        this.rescaledX = this.viewportTransform.rescale(this.xScale);
         this.eventEmitter.emit("zoom", this.getViewportDomain());
     }
 
@@ -217,7 +272,7 @@ export default class GenomeSpy {
             onUpdate: value => {
                 const i = interpolate(value);
                 const interval = new Interval(i[0] - i[2] / 2, i[0] + i[2] / 2);
-                this.zoom.zoomTo(intervalToTransform(interval));
+                this._zoomWithTransform(intervalToTransform(interval));
             }
         });
     }
@@ -272,7 +327,7 @@ export default class GenomeSpy {
             viewport: new Interval(aw, aw + viewportWidth)
         };
 
-        this.zoom.scaleExtent = [
+        this.scaleExtent = [
             1,
             this.coordinateSystem.getExtent()
                 ? this.getDomain().width() / this.maxUnitZoom

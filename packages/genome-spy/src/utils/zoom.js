@@ -1,10 +1,21 @@
 import clientPoint from "./point";
 
+/**
+ * @typedef {Object} ZoomEvent
+ * @property {number} mouseX
+ * @property {number} mouseY
+ * @property {number} deltaX
+ * @property {number} deltaY
+ * @property {MouseEvent} mouseEvent
+ */
+
 export class Zoom {
+    /**
+     *
+     * @param {function(ZoomEvent):void} listener
+     */
     constructor(listener) {
-        this.scaleExtent = [0, Infinity];
         this.listener = listener;
-        this.transform = new Transform();
 
         this.mouseDown = false;
         this.lastPoint = null;
@@ -22,6 +33,7 @@ export class Zoom {
         ["mousedown", "wheel", "dragstart"].forEach(type =>
             element.addEventListener(
                 type,
+                /** @param {MouseEvent} e */
                 e => {
                     const point = wheelSnapHandler
                         ? wheelSnapHandler(clientPoint(element, e))
@@ -33,69 +45,46 @@ export class Zoom {
         );
     }
 
-    zoomTo(transform) {
-        this.transform = transform;
-        this.listener(this.transform);
-    }
-
+    /**
+     *
+     * @param {MouseEvent} event
+     * @param {*} point
+     * @param {HTMLElement} element
+     */
     handleMouseEvent(event, point, element) {
         // TODO: Handle window resizes. Record previous clientWidth and adjust k and x accordingly.
 
         const mouseX = point[0];
         const mouseY = point[1];
 
-        function constrainX(transform) {
-            return new Transform(
-                transform.k,
-                Math.min(
-                    0,
-                    Math.max(
-                        transform.x,
-                        -(transform.k - 1) * element.clientWidth
-                    )
-                )
-            );
-        }
+        /** @type {ZoomEvent} */
+        const zoomEvent = {
+            mouseX,
+            mouseY,
+            deltaX: 0,
+            deltaY: 0,
+            mouseEvent: event
+        };
 
         if (event.type == "dragstart") {
             return false;
-        } else if (event.type == "wheel") {
+        } else if (isWheelEvent(event)) {
             event.stopPropagation();
             event.preventDefault();
 
             const wheelMultiplier = -(event.deltaMode ? 120 : 1);
 
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-                this.transform = constrainX(
-                    new Transform(
-                        this.transform.k,
-                        this.transform.x + event.deltaX * wheelMultiplier
-                    )
-                );
-
-                this.listener(this.transform);
+                zoomEvent.deltaX = event.deltaX * wheelMultiplier;
+                this.listener(zoomEvent);
             } else {
                 // https://medium.com/@auchenberg/detecting-multi-touch-trackpad-gestures-in-javascript-a2505babb10e
                 // TODO: Safari gestures
                 const divisor = event.ctrlKey ? 100 : 500;
 
-                const callback = delta => {
-                    let kFactor = Math.pow(2, delta);
-
-                    const k = Math.max(
-                        Math.min(
-                            this.transform.k * kFactor,
-                            this.scaleExtent[1]
-                        ),
-                        this.scaleExtent[0]
-                    );
-
-                    kFactor = k / this.transform.k;
-
-                    const x = (this.transform.x - mouseX) * kFactor + mouseX;
-
-                    this.transform = constrainX(new Transform(k, x));
-                    this.listener(this.transform);
+                const callback = /** @param {number} deltaY */ deltaY => {
+                    zoomEvent.deltaY = deltaY;
+                    this.listener(zoomEvent);
                 };
 
                 const momentum = (event.deltaY * wheelMultiplier) / divisor;
@@ -105,22 +94,19 @@ export class Zoom {
                 );
             }
         } else if (event.type == "mousedown" && event.button == 0) {
-            const referenceTransform = this.transform;
-
             this.zoomInertia.cancel();
             event.preventDefault();
 
-            const onMousemove = function(moveEvent) {
-                this.transform = constrainX(
-                    new Transform(
-                        this.transform.k,
-                        referenceTransform.x + moveEvent.clientX - event.clientX
-                    )
-                );
-                this.listener(this.transform);
-            }.bind(this);
+            let prevMouseEvent = event;
 
-            const onMouseup = function(upEvent) {
+            const onMousemove = /** @param {MouseEvent} moveEvent */ moveEvent => {
+                zoomEvent.deltaX = moveEvent.clientX - prevMouseEvent.clientX;
+                prevMouseEvent = moveEvent;
+
+                this.listener(zoomEvent);
+            };
+
+            const onMouseup = /** @param {MouseEvent} upEvent */ upEvent => {
                 document.removeEventListener("mousemove", onMousemove);
                 document.removeEventListener("mouseup", onMouseup);
             };
@@ -136,9 +122,13 @@ export class Zoom {
  * https://github.com/d3/d3-zoom/ Copyright 2010-2016 Mike Bostock
  */
 export class Transform {
-    constructor(k, x) {
-        this.k = k || 1;
-        this.x = x || 0;
+    /**
+     * @param {number} k
+     * @param {number} x
+     */
+    constructor(k = 1, x = 0) {
+        this.k = k;
+        this.x = x;
     }
 
     scale(k) {
@@ -223,4 +213,13 @@ class Inertia {
             this.clear();
         }
     }
+}
+
+/**
+ *
+ * @param {MouseEvent} mouseEvent
+ * @returns {mouseEvent is WheelEvent}
+ */
+function isWheelEvent(mouseEvent) {
+    return mouseEvent.type == "wheel";
 }
