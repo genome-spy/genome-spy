@@ -1,4 +1,4 @@
-import { scaleLinear } from "d3-scale";
+import { scaleLinear, scaleIdentity } from "d3-scale";
 import { zip } from "d3-array";
 import { inferType } from "vega-loader";
 
@@ -80,8 +80,9 @@ export default class SampleTrack extends SimpleTrack {
          * Global transform for y axis (Samples)
          *
          * @type {?function(number):number}
+         * @property {function(number):number} invert
          */
-        this.yTransform = null;
+        this.yTransform = scaleIdentity();
     }
 
     /**
@@ -243,7 +244,7 @@ export default class SampleTrack extends SimpleTrack {
                     render();
                 }
             }).then(() => {
-                this.yTransform = undefined;
+                this.yTransform = scaleIdentity();
                 this.peek = null;
                 render();
             });
@@ -255,6 +256,8 @@ export default class SampleTrack extends SimpleTrack {
                 this.trackContainer.clientHeight;
 
             this.yTransform = y => (y - origin) * zoomFactor + origin;
+            this.yTransform.invert = x =>
+                (origin * (zoomFactor - 1) + x) / zoomFactor;
 
             this.peek = true;
 
@@ -358,7 +361,7 @@ export default class SampleTrack extends SimpleTrack {
                 }
             }).then(() => {
                 this.fisheye = undefined;
-                this.yTransform = undefined;
+                this.yTransform = scaleIdentity();
                 render();
             });
         };
@@ -368,6 +371,7 @@ export default class SampleTrack extends SimpleTrack {
             this.fisheye.radius(150 / this.glCanvas.clientHeight);
 
             this.yTransform = this.fisheye;
+            this.yTransform.invert = /** @param {number} x */ x => x;
 
             transition({
                 duration: 150,
@@ -426,7 +430,7 @@ export default class SampleTrack extends SimpleTrack {
             2.5;
 
         const sampleId = this.sampleScale.invert(
-            point[1] / this.glCanvas.clientHeight,
+            this.yTransform.invert(point[1] / this.glCanvas.clientHeight),
             findClosest
         );
         return sampleId ? this.samples.get(sampleId) : null;
@@ -441,8 +445,9 @@ export default class SampleTrack extends SimpleTrack {
         const [x, y] = point;
 
         const sampleId = this.sampleScale.invert(
-            y / this.glCanvas.clientHeight
+            this.yTransform.invert(y / this.glCanvas.clientHeight)
         );
+
         if (!sampleId) {
             return null;
         }
@@ -455,7 +460,9 @@ export default class SampleTrack extends SimpleTrack {
                     sampleId,
                     x,
                     y,
-                    bandInterval.transform(y => y * this.glCanvas.clientHeight)
+                    bandInterval
+                        .transform(this.yTransform)
+                        .transform(y => y * this.glCanvas.clientHeight)
                 );
                 if (datum) {
                     return { datum, mark };
