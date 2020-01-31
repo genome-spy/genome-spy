@@ -1,6 +1,9 @@
 $basic-spacing: 10px;
 
 .genome-spy {
+    display: flex;
+    flex-direction: column;
+
     position: relative;
 
     .loading-message {
@@ -22,7 +25,7 @@ $basic-spacing: 10px;
     }
 
     .track-stack {
-        height: 100%;
+        flex-grow: 1;
         width: 100%;
         display: flex;
         flex-direction: column;
