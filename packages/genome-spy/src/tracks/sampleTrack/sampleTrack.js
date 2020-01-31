@@ -212,6 +212,14 @@ export default class SampleTrack extends SimpleTrack {
 
         let origin = 0;
 
+        const State = {
+            CLOSED: 0,
+            TRANSITIONING: 1,
+            OPEN: 2
+        };
+
+        let state = State.CLOSED;
+
         const zoomListener = /** @param {import("../../utils/zoom").ZoomEvent} zoomEvent */ zoomEvent => {
             if (zoomEvent.deltaY && !zoomEvent.isPinching()) {
                 const scrollFactor =
@@ -233,6 +241,11 @@ export default class SampleTrack extends SimpleTrack {
         };
 
         const closePeek = () => {
+            if (state != State.OPEN) {
+                return;
+            }
+            state = State.TRANSITIONING;
+
             this.genomeSpy.zoom.popListener();
 
             transition({
@@ -244,13 +257,18 @@ export default class SampleTrack extends SimpleTrack {
                     render();
                 }
             }).then(() => {
+                state = State.CLOSED;
                 this.yTransform = scaleIdentity();
-                this.peek = null;
                 render();
             });
         };
 
         const openPeek = () => {
+            if (state != State.CLOSED) {
+                return;
+            }
+            state = State.TRANSITIONING;
+
             origin =
                 clientPoint(this.glCanvas, lastMouseEvent)[1] /
                 this.trackContainer.clientHeight;
@@ -258,8 +276,6 @@ export default class SampleTrack extends SimpleTrack {
             this.yTransform = y => (y - origin) * zoomFactor + origin;
             this.yTransform.invert = x =>
                 (origin * (zoomFactor - 1) + x) / zoomFactor;
-
-            this.peek = true;
 
             this.genomeSpy.zoom.pushListener(zoomListener);
 
@@ -277,6 +293,8 @@ export default class SampleTrack extends SimpleTrack {
                     zoomFactor = value;
                     render();
                 }
+            }).then(() => {
+                state = State.OPEN;
             });
         };
 
@@ -304,12 +322,7 @@ export default class SampleTrack extends SimpleTrack {
         });
 
         document.body.addEventListener("keyup", event => {
-            if (
-                event.code == "KeyZ" &&
-                this.peek &&
-                !persistentPeek &&
-                !event.shiftKey
-            ) {
+            if (event.code == "KeyZ" && !persistentPeek && !event.shiftKey) {
                 closePeek();
             }
         });
