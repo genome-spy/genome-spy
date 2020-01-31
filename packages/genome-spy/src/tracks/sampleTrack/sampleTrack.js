@@ -212,18 +212,18 @@ export default class SampleTrack extends SimpleTrack {
         let origin = 0;
 
         const zoomListener = /** @param {import("../../utils/zoom").ZoomEvent} zoomEvent */ zoomEvent => {
-            const h = this.trackContainer.clientHeight;
-            //const scrollFactor = h - h / zoomFactor;
-            const scrollFactor = h * zoomFactor;
+            if (zoomEvent.deltaY) {
+                const scrollFactor =
+                    this.trackContainer.clientHeight * zoomFactor;
 
-            console.log(`scrollFactor: ${scrollFactor}`);
-            console.log(`deltaY: ${zoomEvent.deltaY}`);
+                origin = Math.max(
+                    0,
+                    Math.min(1, origin - zoomEvent.deltaY / scrollFactor)
+                );
 
-            origin = Math.max(
-                0,
-                Math.min(1, origin - zoomEvent.deltaY / scrollFactor)
-            );
-            render();
+                render();
+                zoomEvent.stop();
+            }
         };
 
         const render = () => {

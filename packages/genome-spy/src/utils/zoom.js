@@ -1,14 +1,21 @@
 import clientPoint from "./point";
 import { peek } from "vega-util";
 
-/**
- * @typedef {Object} ZoomEvent
- * @property {number} mouseX
- * @property {number} mouseY
- * @property {number} deltaX
- * @property {number} deltaY
- * @property {MouseEvent} mouseEvent
- */
+export class ZoomEvent {
+    constructor() {
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.deltaX = 0;
+        this.deltaY = 0;
+        this.stopped = false;
+        /** @type {MouseEvent} */
+        this.mouseEvent = undefined;
+    }
+
+    stop() {
+        this.stopped = true;
+    }
+}
 
 export class Zoom {
     /**
@@ -29,7 +36,13 @@ export class Zoom {
      * @param {ZoomEvent} zoomEvent
      */
     _dispatch(zoomEvent) {
-        peek(this.listeners)(zoomEvent);
+        for (
+            let i = this.listeners.length - 1;
+            i >= 0 && !zoomEvent.stopped;
+            i--
+        ) {
+            this.listeners[i](zoomEvent);
+        }
     }
 
     /**
@@ -84,14 +97,10 @@ export class Zoom {
         const mouseX = point[0];
         const mouseY = point[1];
 
-        /** @type {ZoomEvent} */
-        const zoomEvent = {
-            mouseX,
-            mouseY,
-            deltaX: 0,
-            deltaY: 0,
-            mouseEvent: event
-        };
+        const zoomEvent = new ZoomEvent();
+        zoomEvent.mouseX = mouseX;
+        zoomEvent.mouseY = mouseY;
+        zoomEvent.mouseEvent = event;
 
         if (event.type == "dragstart") {
             return false;
@@ -111,6 +120,7 @@ export class Zoom {
 
                 const callback = /** @param {number} deltaY */ deltaY => {
                     zoomEvent.deltaY = deltaY;
+                    zoomEvent.stopped = false; // Recycling the event
                     this._dispatch(zoomEvent);
                 };
 
