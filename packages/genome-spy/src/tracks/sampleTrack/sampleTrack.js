@@ -222,8 +222,7 @@ export default class SampleTrack extends SimpleTrack {
 
         const zoomListener = /** @param {import("../../utils/zoom").ZoomEvent} zoomEvent */ zoomEvent => {
             if (zoomEvent.deltaY && !zoomEvent.isPinching()) {
-                const scrollFactor =
-                    this.trackContainer.clientHeight * zoomFactor;
+                const scrollFactor = this.getHeight() * zoomFactor;
 
                 origin = Math.max(
                     0,
@@ -271,7 +270,7 @@ export default class SampleTrack extends SimpleTrack {
 
             origin =
                 clientPoint(this.glCanvas, lastMouseEvent)[1] /
-                this.trackContainer.clientHeight;
+                this.getHeight();
 
             this.yTransform = y => (y - origin) * zoomFactor + origin;
             this.yTransform.invert = x =>
@@ -285,7 +284,7 @@ export default class SampleTrack extends SimpleTrack {
                 to: Math.max(
                     1,
                     minWidth /
-                        this.trackContainer.clientHeight /
+                        this.getHeight() /
                         this.sampleScale.getBandWidth()
                 ),
                 easingFunction: easeInQuad,
@@ -343,8 +342,7 @@ export default class SampleTrack extends SimpleTrack {
 
         const focus = () => {
             this.fisheye.focus(
-                clientPoint(this.glCanvas, lastMouseEvent)[1] /
-                    this.glCanvas.clientHeight
+                clientPoint(this.glCanvas, lastMouseEvent)[1] / this.getHeight()
             );
             render();
         };
@@ -381,7 +379,7 @@ export default class SampleTrack extends SimpleTrack {
 
         const openFisheye = () => {
             this.fisheye = fisheye();
-            this.fisheye.radius(150 / this.glCanvas.clientHeight);
+            this.fisheye.radius(150 / this.getHeight());
 
             this.yTransform = this.fisheye;
             this.yTransform.invert = /** @param {number} x */ x => x;
@@ -393,7 +391,7 @@ export default class SampleTrack extends SimpleTrack {
                     1,
                     minWidth /
                         this.sampleScale.getBandWidth() /
-                        this.glCanvas.clientHeight
+                        this.getHeight()
                 ),
                 //easingFunction: easeOutElastic,
                 onUpdate: /** @param {number} value */ value => {
@@ -438,12 +436,12 @@ export default class SampleTrack extends SimpleTrack {
         // If space between bands get too small, find closest to make opening
         // of the context menu easier
         const findClosest =
-            (this.glCanvas.clientHeight / this.sampleScale.getDomain().length) *
+            (this.getHeight() / this.sampleScale.getDomain().length) *
                 this.sampleScale.paddingOuter <
             2.5;
 
         const sampleId = this.sampleScale.invert(
-            this.yTransform.invert(point[1] / this.glCanvas.clientHeight),
+            this.yTransform.invert(point[1] / this.getHeight()),
             findClosest
         );
         return sampleId ? this.samples.get(sampleId) : null;
@@ -458,7 +456,7 @@ export default class SampleTrack extends SimpleTrack {
         const [x, y] = point;
 
         const sampleId = this.sampleScale.invert(
-            this.yTransform.invert(y / this.glCanvas.clientHeight)
+            this.yTransform.invert(y / this.getHeight())
         );
 
         if (!sampleId) {
@@ -475,7 +473,7 @@ export default class SampleTrack extends SimpleTrack {
                     y,
                     bandInterval
                         .transform(this.yTransform)
-                        .transform(y => y * this.glCanvas.clientHeight)
+                        .transform(y => y * this.getHeight())
                 );
                 if (datum) {
                     return { datum, mark };

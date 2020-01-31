@@ -39,6 +39,10 @@ export default class Track {
         return undefined;
     }
 
+    getHeight() {
+        return this.trackContainer.clientHeight;
+    }
+
     createCanvas() {
         const canvas = document.createElement("canvas");
         canvas.style.position = "absolute";
@@ -50,12 +54,10 @@ export default class Track {
      *
      * @param {HTMLCanvasElement} canvas
      * @param {Interval} interval
-     * @param {number} [trackHeight]
+     * @param {number} [height]
      */
-    adjustCanvas(canvas, interval, trackHeight) {
+    adjustCanvas(canvas, interval, height) {
         const r = window.devicePixelRatio || 1;
-
-        const height = trackHeight || this.trackContainer.clientHeight;
 
         const px = x => `${x}px`;
         canvas.style.left = px(interval.lower);
@@ -63,7 +65,7 @@ export default class Track {
         canvas.style.height = px(height);
 
         canvas.width = interval.width() * r;
-        canvas.height = height * r;
+        canvas.height = (height || this.getHeight()) * r;
     }
 
     /**

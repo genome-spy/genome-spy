@@ -314,7 +314,7 @@ export default class AttributePanel {
      * @param {Interval} axisInterval
      */
     resizeCanvases(axisInterval) {
-        const trackHeight = this.sampleTrack.trackContainer.clientHeight;
+        const trackHeight = this.sampleTrack.getHeight();
 
         this.sampleTrack.adjustCanvas(
             this.labelCanvas,

@@ -97,9 +97,7 @@ export default class SimpleTrack extends WebGlTrack {
     resizeCanvases(layout) {
         this.adjustCanvas(this.glCanvas, layout.viewport);
         this.adjustGl();
-
-        const trackHeight = this.trackContainer.clientHeight;
-        this.adjustCanvas(this.leftCanvas, layout.axis, trackHeight);
+        this.adjustCanvas(this.leftCanvas, layout.axis);
     }
 
     /**
@@ -153,7 +151,7 @@ export default class SimpleTrack extends WebGlTrack {
     findDatumAndMarkAt(point) {
         const [x, y] = point;
 
-        const bandInterval = new Interval(0, this.glCanvas.clientHeight);
+        const bandInterval = new Interval(0, this.getHeight());
 
         for (const mark of getMarks(this.view).reverse()) {
             if (mark.properties.tooltip !== null) {
@@ -263,7 +261,7 @@ export default class SimpleTrack extends WebGlTrack {
     }
 
     renderYAxis() {
-        const axisLength = this.trackContainer.clientHeight;
+        const axisLength = this.getHeight();
         const axisWidth = this.leftCanvas.clientWidth;
         const ctx = this.get2d(this.leftCanvas);
 
@@ -360,7 +358,7 @@ export default class SimpleTrack extends WebGlTrack {
      * Computes layout and tick labels for the axes
      */
     getYAxisLayouts() {
-        const axisLength = this.trackContainer.clientHeight;
+        const axisLength = this.getHeight();
 
         const ctx = this.get2d(this.leftCanvas);
         const measureWidth = /** @param {string} label*/ label =>

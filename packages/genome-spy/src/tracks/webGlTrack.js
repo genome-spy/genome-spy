@@ -46,7 +46,7 @@ export default class WebGlTrack extends Track {
         const gl = this.gl;
 
         gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
-        gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio;
+        gl.canvas.height = this.getHeight() * window.devicePixelRatio;
 
         gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
@@ -54,7 +54,7 @@ export default class WebGlTrack extends Track {
             new Matrix4().ortho({
                 left: 0,
                 right: gl.canvas.clientWidth,
-                bottom: gl.canvas.clientHeight,
+                bottom: this.getHeight() || 1,
                 top: 0,
                 near: 0,
                 far: 500
