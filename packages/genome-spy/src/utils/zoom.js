@@ -15,6 +15,10 @@ export class ZoomEvent {
     stop() {
         this.stopped = true;
     }
+
+    isPinching() {
+        return this.mouseEvent && this.mouseEvent.ctrlKey;
+    }
 }
 
 export class Zoom {

@@ -212,7 +212,7 @@ export default class SampleTrack extends SimpleTrack {
         let origin = 0;
 
         const zoomListener = /** @param {import("../../utils/zoom").ZoomEvent} zoomEvent */ zoomEvent => {
-            if (zoomEvent.deltaY) {
+            if (zoomEvent.deltaY && !zoomEvent.isPinching()) {
                 const scrollFactor =
                     this.trackContainer.clientHeight * zoomFactor;
 
