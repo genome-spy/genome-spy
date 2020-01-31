@@ -142,7 +142,7 @@ export default class GenomeSpy {
      */
     _zoomed(zoomEvent) {
         if (zoomEvent.deltaY) {
-            let kFactor = Math.pow(2, zoomEvent.deltaY);
+            let kFactor = Math.pow(2, zoomEvent.deltaY / 500);
 
             const k = Math.max(
                 Math.min(

@@ -1,4 +1,5 @@
 import clientPoint from "./point";
+import { peek } from "vega-util";
 
 /**
  * @typedef {Object} ZoomEvent
@@ -15,12 +16,38 @@ export class Zoom {
      * @param {function(ZoomEvent):void} listener
      */
     constructor(listener) {
-        this.listener = listener;
+        this.listeners = [listener];
 
         this.mouseDown = false;
         this.lastPoint = null;
 
         this.zoomInertia = new Inertia();
+    }
+
+    /**
+     *
+     * @param {ZoomEvent} zoomEvent
+     */
+    _dispatch(zoomEvent) {
+        peek(this.listeners)(zoomEvent);
+    }
+
+    /**
+     *
+     * @param {function(ZoomEvent):void} listener
+     */
+    pushListener(listener) {
+        this.listeners.push(listener);
+        return this.listeners[this.listeners.length - 2];
+    }
+
+    popListener() {
+        if (this.listeners.length > 1) {
+            this.zoomInertia.cancel();
+            return this.listeners.pop();
+        } else {
+            throw new Error("Cannot pop the initial listener!");
+        }
     }
 
     /**
@@ -76,20 +103,19 @@ export class Zoom {
 
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
                 zoomEvent.deltaX = event.deltaX * wheelMultiplier;
-                this.listener(zoomEvent);
+                this._dispatch(zoomEvent);
             } else {
                 // https://medium.com/@auchenberg/detecting-multi-touch-trackpad-gestures-in-javascript-a2505babb10e
                 // TODO: Safari gestures
-                const divisor = event.ctrlKey ? 100 : 500;
+                const pinchMultiplier = event.ctrlKey ? 5 : 1;
 
                 const callback = /** @param {number} deltaY */ deltaY => {
                     zoomEvent.deltaY = deltaY;
-                    this.listener(zoomEvent);
+                    this._dispatch(zoomEvent);
                 };
 
-                const momentum = (event.deltaY * wheelMultiplier) / divisor;
                 this.zoomInertia.setMomentum(
-                    Math.min(Math.abs(momentum), 0.6) * Math.sign(momentum),
+                    event.deltaY * wheelMultiplier * pinchMultiplier,
                     callback
                 );
             }
@@ -103,7 +129,7 @@ export class Zoom {
                 zoomEvent.deltaX = moveEvent.clientX - prevMouseEvent.clientX;
                 prevMouseEvent = moveEvent;
 
-                this.listener(zoomEvent);
+                this._dispatch(zoomEvent);
             };
 
             const onMouseup = /** @param {MouseEvent} upEvent */ upEvent => {
@@ -163,8 +189,8 @@ export class Transform {
 class Inertia {
     constructor() {
         this.damping = 0.99999;
-        this.maxInitialMomentum = 0.05; // TODO: Proper acceleration
-        this.lowerLimit = 0.001; // When to stop updating
+        this.maxInitialMomentum = 200; // TODO: Proper acceleration
+        this.lowerLimit = 0.2; // When to stop updating
         this.clear();
     }
 
@@ -182,6 +208,11 @@ class Inertia {
         }
     }
 
+    /**
+     *
+     * @param {number} value
+     * @param {function(number):void} callback
+     */
     setMomentum(value, callback) {
         if (value * this.momentum < 0) {
             this.momentum = 0;
@@ -199,6 +230,10 @@ class Inertia {
         }
     }
 
+    /**
+     *
+     * @param {number} [timestamp]
+     */
     animate(timestamp) {
         const timeDelta = timestamp - this.timestamp || 0;
         this.timestamp = timestamp;

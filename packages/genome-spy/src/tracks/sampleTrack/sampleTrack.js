@@ -209,12 +209,31 @@ export default class SampleTrack extends SimpleTrack {
         const zero = 1;
         let zoomFactor = zero;
 
+        let origin = 0;
+
+        const zoomListener = /** @param {import("../../utils/zoom").ZoomEvent} zoomEvent */ zoomEvent => {
+            const h = this.trackContainer.clientHeight;
+            //const scrollFactor = h - h / zoomFactor;
+            const scrollFactor = h * zoomFactor;
+
+            console.log(`scrollFactor: ${scrollFactor}`);
+            console.log(`deltaY: ${zoomEvent.deltaY}`);
+
+            origin = Math.max(
+                0,
+                Math.min(1, origin - zoomEvent.deltaY / scrollFactor)
+            );
+            render();
+        };
+
         const render = () => {
             this.renderViewport();
             this.attributePanel.renderLabels();
         };
 
         const closePeek = () => {
+            this.genomeSpy.zoom.popListener();
+
             transition({
                 duration: 100,
                 from: zoomFactor,
@@ -231,13 +250,15 @@ export default class SampleTrack extends SimpleTrack {
         };
 
         const openPeek = () => {
-            const mouseY =
+            origin =
                 clientPoint(this.glCanvas, lastMouseEvent)[1] /
                 this.trackContainer.clientHeight;
 
-            this.yTransform = y => (y - mouseY) * zoomFactor + mouseY;
+            this.yTransform = y => (y - origin) * zoomFactor + origin;
 
             this.peek = true;
+
+            this.genomeSpy.zoom.pushListener(zoomListener);
 
             transition({
                 duration: 230,
