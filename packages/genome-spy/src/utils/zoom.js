@@ -1,5 +1,6 @@
 import clientPoint from "./point";
-import { peek } from "vega-util";
+
+import { lerp } from "vega-util";
 
 export class ZoomEvent {
     constructor() {
@@ -202,13 +203,17 @@ export class Transform {
  */
 class Inertia {
     constructor() {
-        this.damping = 0.99999;
-        this.maxInitialMomentum = 200; // TODO: Proper acceleration
-        this.lowerLimit = 0.2; // When to stop updating
+        this.damping = 10e-5;
+        this.acceleration = 0.3;
+        /** Use acceleration if the momentum step is greater than X */
+        this.accelerationThreshold = 100;
+        this.maxMomentum = 50;
+        this.lowerLimit = 0.5; // When to stop updating
         this.clear();
     }
 
     clear() {
+        /** @type {number} */
         this.momentum = 0;
         this.timestamp = null;
         this.loop = null;
@@ -229,14 +234,13 @@ class Inertia {
      */
     setMomentum(value, callback) {
         if (value * this.momentum < 0) {
-            this.momentum = 0;
-        } else if (this.momentum == 0) {
-            value =
-                Math.min(Math.abs(value), this.maxInitialMomentum) *
-                Math.sign(value);
+            this.momentum = 0; // Stop if the direction changes
+        } else if (Math.abs(value) > this.accelerationThreshold) {
+            this.momentum = lerp([this.momentum, value], this.acceleration);
+        } else {
+            this.momentum = value;
         }
 
-        this.momentum = value;
         this.callback = callback;
 
         if (!this.loop) {
@@ -252,10 +256,10 @@ class Inertia {
         const timeDelta = timestamp - this.timestamp || 0;
         this.timestamp = timestamp;
 
-        const damp = Math.pow(1 - this.damping, timeDelta / 1000);
+        const damp = Math.pow(this.damping, timeDelta / 1000);
         this.momentum *= damp;
 
-        this.callback(this.momentum);
+        this.callback(this.momentum); // TODO: This is actually a delta, should take elapsed time into account
         if (Math.abs(this.momentum) > this.lowerLimit) {
             this.loop = window.requestAnimationFrame(this.animate.bind(this));
         } else {
@@ -271,4 +275,14 @@ class Inertia {
  */
 function isWheelEvent(mouseEvent) {
     return mouseEvent.type == "wheel";
+}
+
+/**
+ *
+ * @param {number} x
+ * @param {number} min
+ * @param {number} max
+ */
+function clamp(x, min, max) {
+    return Math.min(max, Math.max(min, x));
 }
