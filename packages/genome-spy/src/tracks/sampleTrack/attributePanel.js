@@ -48,6 +48,7 @@ export default class AttributePanel {
             this.styles.fontFamily
         );
 
+        /** @type {number} */
         this._dpr = window.devicePixelRatio;
     }
 
@@ -373,10 +374,16 @@ export default class AttributePanel {
         const ctx = this.sampleTrack.get2d(this.labelCanvas);
         ctx.clearRect(0, 0, this.labelCanvas.width, this.labelCanvas.height);
 
+        // TODO: Use matchMedia(): https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio
         if (window.devicePixelRatio != this._dpr) {
             this._dpr = window.devicePixelRatio;
             this.textCache.clearCache();
         }
+
+        const toPixels = /** @param {number} x */ x =>
+            x * this.labelCanvas.clientHeight;
+
+        const windowInterval = new Interval(0, 1).transform(toPixels);
 
         leftScale.getDomain().forEach(sampleId => {
             const sample = this.sampleTrack.samples.get(sampleId);
@@ -385,9 +392,10 @@ export default class AttributePanel {
             const band = leftScale
                 .scale(sampleId)
                 .mix(rightScale.scale(sampleId), yTransitionProgress)
-                .transform(this.sampleTrack.yTransform);
+                .transform(this.sampleTrack.yTransform)
+                .transform(toPixels);
 
-            if (band.width() > 0) {
+            if (band.width() > 0 && windowInterval.connectedWith(band)) {
                 const fontSize = Math.min(
                     this.sampleTrack.styles.fontSize,
                     band.width()

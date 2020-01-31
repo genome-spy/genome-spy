@@ -1,15 +1,71 @@
 import clientPoint from "./point";
 
+import { lerp } from "vega-util";
+
+export class ZoomEvent {
+    constructor() {
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.deltaX = 0;
+        this.deltaY = 0;
+        this.stopped = false;
+        /** @type {MouseEvent} */
+        this.mouseEvent = undefined;
+    }
+
+    stop() {
+        this.stopped = true;
+    }
+
+    isPinching() {
+        return this.mouseEvent && this.mouseEvent.ctrlKey;
+    }
+}
+
 export class Zoom {
+    /**
+     *
+     * @param {function(ZoomEvent):void} listener
+     */
     constructor(listener) {
-        this.scaleExtent = [0, Infinity];
-        this.listener = listener;
-        this.transform = new Transform();
+        this.listeners = [listener];
 
         this.mouseDown = false;
         this.lastPoint = null;
 
         this.zoomInertia = new Inertia();
+    }
+
+    /**
+     *
+     * @param {ZoomEvent} zoomEvent
+     */
+    _dispatch(zoomEvent) {
+        for (
+            let i = this.listeners.length - 1;
+            i >= 0 && !zoomEvent.stopped;
+            i--
+        ) {
+            this.listeners[i](zoomEvent);
+        }
+    }
+
+    /**
+     *
+     * @param {function(ZoomEvent):void} listener
+     */
+    pushListener(listener) {
+        this.listeners.push(listener);
+        return this.listeners[this.listeners.length - 2];
+    }
+
+    popListener() {
+        if (this.listeners.length > 1) {
+            this.zoomInertia.cancel();
+            return this.listeners.pop();
+        } else {
+            throw new Error("Cannot pop the initial listener!");
+        }
     }
 
     /**
@@ -22,6 +78,7 @@ export class Zoom {
         ["mousedown", "wheel", "dragstart"].forEach(type =>
             element.addEventListener(
                 type,
+                /** @param {MouseEvent} e */
                 e => {
                     const point = wheelSnapHandler
                         ? wheelSnapHandler(clientPoint(element, e))
@@ -33,94 +90,64 @@ export class Zoom {
         );
     }
 
-    zoomTo(transform) {
-        this.transform = transform;
-        this.listener(this.transform);
-    }
-
+    /**
+     *
+     * @param {MouseEvent} event
+     * @param {*} point
+     * @param {HTMLElement} element
+     */
     handleMouseEvent(event, point, element) {
         // TODO: Handle window resizes. Record previous clientWidth and adjust k and x accordingly.
 
         const mouseX = point[0];
         const mouseY = point[1];
 
-        function constrainX(transform) {
-            return new Transform(
-                transform.k,
-                Math.min(
-                    0,
-                    Math.max(
-                        transform.x,
-                        -(transform.k - 1) * element.clientWidth
-                    )
-                )
-            );
-        }
+        const zoomEvent = new ZoomEvent();
+        zoomEvent.mouseX = mouseX;
+        zoomEvent.mouseY = mouseY;
+        zoomEvent.mouseEvent = event;
 
         if (event.type == "dragstart") {
             return false;
-        } else if (event.type == "wheel") {
+        } else if (isWheelEvent(event)) {
             event.stopPropagation();
             event.preventDefault();
 
             const wheelMultiplier = -(event.deltaMode ? 120 : 1);
 
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-                this.transform = constrainX(
-                    new Transform(
-                        this.transform.k,
-                        this.transform.x + event.deltaX * wheelMultiplier
-                    )
-                );
-
-                this.listener(this.transform);
+                zoomEvent.deltaX = event.deltaX * wheelMultiplier;
+                this._dispatch(zoomEvent);
             } else {
                 // https://medium.com/@auchenberg/detecting-multi-touch-trackpad-gestures-in-javascript-a2505babb10e
                 // TODO: Safari gestures
-                const divisor = event.ctrlKey ? 100 : 500;
+                const pinchMultiplier = event.ctrlKey ? 5 : 1;
 
-                const callback = delta => {
-                    let kFactor = Math.pow(2, delta);
-
-                    const k = Math.max(
-                        Math.min(
-                            this.transform.k * kFactor,
-                            this.scaleExtent[1]
-                        ),
-                        this.scaleExtent[0]
-                    );
-
-                    kFactor = k / this.transform.k;
-
-                    const x = (this.transform.x - mouseX) * kFactor + mouseX;
-
-                    this.transform = constrainX(new Transform(k, x));
-                    this.listener(this.transform);
+                const callback = /** @param {number} deltaY */ deltaY => {
+                    zoomEvent.deltaY = deltaY;
+                    zoomEvent.stopped = false; // Recycling the event
+                    this._dispatch(zoomEvent);
                 };
 
-                const momentum = (event.deltaY * wheelMultiplier) / divisor;
                 this.zoomInertia.setMomentum(
-                    Math.min(Math.abs(momentum), 0.6) * Math.sign(momentum),
+                    event.deltaY * wheelMultiplier * pinchMultiplier,
                     callback
                 );
             }
         } else if (event.type == "mousedown" && event.button == 0) {
-            const referenceTransform = this.transform;
-
             this.zoomInertia.cancel();
             event.preventDefault();
 
-            const onMousemove = function(moveEvent) {
-                this.transform = constrainX(
-                    new Transform(
-                        this.transform.k,
-                        referenceTransform.x + moveEvent.clientX - event.clientX
-                    )
-                );
-                this.listener(this.transform);
-            }.bind(this);
+            let prevMouseEvent = event;
 
-            const onMouseup = function(upEvent) {
+            const onMousemove = /** @param {MouseEvent} moveEvent */ moveEvent => {
+                zoomEvent.deltaX = moveEvent.clientX - prevMouseEvent.clientX;
+                prevMouseEvent = moveEvent;
+
+                this._dispatch(zoomEvent);
+            };
+
+            const onMouseup = /** @param {MouseEvent} upEvent */ upEvent => {
                 document.removeEventListener("mousemove", onMousemove);
                 document.removeEventListener("mouseup", onMouseup);
             };
@@ -136,9 +163,13 @@ export class Zoom {
  * https://github.com/d3/d3-zoom/ Copyright 2010-2016 Mike Bostock
  */
 export class Transform {
-    constructor(k, x) {
-        this.k = k || 1;
-        this.x = x || 0;
+    /**
+     * @param {number} k
+     * @param {number} x
+     */
+    constructor(k = 1, x = 0) {
+        this.k = k;
+        this.x = x;
     }
 
     scale(k) {
@@ -172,13 +203,17 @@ export class Transform {
  */
 class Inertia {
     constructor() {
-        this.damping = 0.99999;
-        this.maxInitialMomentum = 0.05; // TODO: Proper acceleration
-        this.lowerLimit = 0.001; // When to stop updating
+        this.damping = 10e-5;
+        this.acceleration = 0.3;
+        /** Use acceleration if the momentum step is greater than X */
+        this.accelerationThreshold = 100;
+        this.maxMomentum = 50;
+        this.lowerLimit = 0.5; // When to stop updating
         this.clear();
     }
 
     clear() {
+        /** @type {number} */
         this.momentum = 0;
         this.timestamp = null;
         this.loop = null;
@@ -192,16 +227,20 @@ class Inertia {
         }
     }
 
+    /**
+     *
+     * @param {number} value
+     * @param {function(number):void} callback
+     */
     setMomentum(value, callback) {
         if (value * this.momentum < 0) {
-            this.momentum = 0;
-        } else if (this.momentum == 0) {
-            value =
-                Math.min(Math.abs(value), this.maxInitialMomentum) *
-                Math.sign(value);
+            this.momentum = 0; // Stop if the direction changes
+        } else if (Math.abs(value) > this.accelerationThreshold) {
+            this.momentum = lerp([this.momentum, value], this.acceleration);
+        } else {
+            this.momentum = value;
         }
 
-        this.momentum = value;
         this.callback = callback;
 
         if (!this.loop) {
@@ -209,18 +248,41 @@ class Inertia {
         }
     }
 
+    /**
+     *
+     * @param {number} [timestamp]
+     */
     animate(timestamp) {
         const timeDelta = timestamp - this.timestamp || 0;
         this.timestamp = timestamp;
 
-        const damp = Math.pow(1 - this.damping, timeDelta / 1000);
+        const damp = Math.pow(this.damping, timeDelta / 1000);
         this.momentum *= damp;
 
-        this.callback(this.momentum);
+        this.callback(this.momentum); // TODO: This is actually a delta, should take elapsed time into account
         if (Math.abs(this.momentum) > this.lowerLimit) {
             this.loop = window.requestAnimationFrame(this.animate.bind(this));
         } else {
             this.clear();
         }
     }
+}
+
+/**
+ *
+ * @param {MouseEvent} mouseEvent
+ * @returns {mouseEvent is WheelEvent}
+ */
+function isWheelEvent(mouseEvent) {
+    return mouseEvent.type == "wheel";
+}
+
+/**
+ *
+ * @param {number} x
+ * @param {number} min
+ * @param {number} max
+ */
+function clamp(x, min, max) {
+    return Math.min(max, Math.max(min, x));
 }
