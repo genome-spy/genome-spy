@@ -9,6 +9,7 @@ export class ZoomEvent {
         this.deltaX = 0;
         this.deltaY = 0;
         this.stopped = false;
+        this.gesturing = false;
         /** @type {MouseEvent} */
         this.mouseEvent = undefined;
     }
@@ -18,7 +19,7 @@ export class ZoomEvent {
     }
 
     isPinching() {
-        return this.mouseEvent && this.mouseEvent.ctrlKey;
+        return this.gesturing || (this.mouseEvent && this.mouseEvent.ctrlKey);
     }
 }
 
@@ -75,7 +76,7 @@ export class Zoom {
      * @param {function(number[]):(number[]|undefined)} [wheelSnapHandler]
      */
     attachZoomEvents(element, wheelSnapHandler) {
-        ["mousedown", "wheel", "dragstart"].forEach(type =>
+        ["mousedown", "wheel", "dragstart", "gesturechange"].forEach(type =>
             element.addEventListener(
                 type,
                 /** @param {MouseEvent} e */
@@ -83,11 +84,28 @@ export class Zoom {
                     const point = wheelSnapHandler
                         ? wheelSnapHandler(clientPoint(element, e))
                         : clientPoint(element, e);
-                    this.handleMouseEvent(e, point, element);
+                    this._handleMouseEvent(e, point, element);
                 },
                 false
             )
         );
+
+        // For safari
+        ["gesturestart", "gesturechange", "gestureend"].forEach(type =>
+            element.addEventListener(
+                type,
+                /** @param {Event} e */
+                e => {
+                    const point = wheelSnapHandler
+                        ? wheelSnapHandler(clientPoint(element, e))
+                        : clientPoint(element, e);
+                    this._handleGestureEvent(e, point, element);
+                },
+                false
+            )
+        );
+
+        // TODO: Touch events
     }
 
     /**
@@ -96,9 +114,7 @@ export class Zoom {
      * @param {*} point
      * @param {HTMLElement} element
      */
-    handleMouseEvent(event, point, element) {
-        // TODO: Handle window resizes. Record previous clientWidth and adjust k and x accordingly.
-
+    _handleMouseEvent(event, point, element) {
         const mouseX = point[0];
         const mouseY = point[1];
 
@@ -154,6 +170,33 @@ export class Zoom {
 
             document.addEventListener("mouseup", onMouseup, false);
             document.addEventListener("mousemove", onMousemove, false);
+        }
+    }
+
+    /**
+     *
+     * @param {Event} event
+     * @param {*} point
+     * @param {HTMLElement} element
+     */
+    _handleGestureEvent(event, point, element) {
+        const zoomEvent = new ZoomEvent();
+        zoomEvent.mouseX = point[0];
+        zoomEvent.mouseY = point[1];
+        zoomEvent.gesturing = true;
+
+        event.preventDefault();
+
+        let prevValue = 0;
+
+        if (event.type == "gesturestart") {
+            prevValue = 0;
+        } else if (event.type == "gesturechange") {
+            // TODO: Zooming is not smooth. Figure out why.
+            const value = Math.log2(event.scale);
+            zoomEvent.deltaY = (value - prevValue) * 10;
+            prevValue = value;
+            this._dispatch(zoomEvent);
         }
     }
 }
