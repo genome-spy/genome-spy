@@ -381,7 +381,7 @@ export default class AttributePanel {
         }
 
         const toPixels = /** @param {number} x */ x =>
-            x * this.labelCanvas.clientHeight * this._dpr;
+            x * this.labelCanvas.clientHeight;
 
         const windowInterval = new Interval(0, 1).transform(toPixels);
 
