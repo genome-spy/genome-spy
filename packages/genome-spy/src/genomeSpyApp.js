@@ -1,39 +1,16 @@
 import GenomeSpy from "./genomeSpy";
 import "./styles/genome-spy-app.scss";
+import { html, render } from "lit-html";
+import { unsafeHTML } from "lit-html/directives/unsafe-html.js";
 
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faUndo } from "@fortawesome/free-solid-svg-icons";
-
-function createAppDom() {
-    const body = document.body;
-    body.style.margin = 0;
-    body.style.padding = 0;
-
-    body.innerHTML = `
-<div class="genome-spy-app">
-    <nav class="toolbar">
-        <div class="title">
-            GenomeSpy
-        </div>
-        <div class="search">
-            <input type="text" class="search-input" />
-            <div class="search-help"></div>
-        </div>
-    </nav>
-
-    <div class="genome-spy-container">
-    </div>
-</div>
-`;
-
-    return body.getElementsByClassName("genome-spy-app")[0];
-}
-
-const rangeSearchHelp = `<p>Focus to a specific range. Examples:</p>
-    <ul>
-        <li>chr8:21,445,873-24,623,697</li>
-        <li>chr4:166,014,727-chr15:23,731,397</li>
-    </ul>`;
+import {
+    faUndo,
+    faFish,
+    faArrowsAltV,
+    faInfoCircle,
+    faQuestionCircle
+} from "@fortawesome/free-solid-svg-icons";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -48,84 +25,177 @@ export default class GenomeSpyApp {
     constructor(config) {
         this.config = config;
 
-        // TODO: Have to figure out how the pieces should really be glued together
-        const appContainer = createAppDom();
-        this.appContainer = appContainer;
+        this.appContainer = document.body;
+        this.appContainer.style.margin = "0";
+        this.appContainer.style.padding = "0";
 
+        const self = this;
+
+        function getSearchHelp() {
+            return html`
+                <div class="search-help" @click=${onSearchHelpClicked}>
+                    <p>Focus to a specific range. Examples:</p>
+                    <ul>
+                        <!-- TODO: Display only when using a genomic coordinate system-->
+                        <li>chr8:21,445,873-24,623,697</li>
+                        <li>chr4:166,014,727-chr15:23,731,397</li>
+                    </ul>
+
+                    ${unsafeHTML(
+                        (self.genomeSpy
+                            ? self.genomeSpy.tracks.map(t => t.searchHelp())
+                            : []
+                        ).join("")
+                    )}
+                </div>
+            `;
+        }
+
+        function getToolButtons() {
+            return html`
+                <button
+                    class="tool-btn backtrack-samples"
+                    title="Backtrack samples (⌫)"
+                    @click=${onBacktrackClicked}
+                >
+                    ${icon(faUndo).node[0]}
+                </button>
+
+                <button
+                    class="tool-btn"
+                    title="Fisheye (E)"
+                    @click=${() => alert("TODO")}
+                >
+                    ${icon(faFish).node[0]}
+                </button>
+
+                <button
+                    class="tool-btn"
+                    title="Peek (Z)"
+                    @click=${() => alert("TODO")}
+                >
+                    ${icon(faArrowsAltV).node[0]}
+                </button>
+
+                <button
+                    class="tool-btn"
+                    title="Info"
+                    @click=${() => alert("TODO")}
+                >
+                    ${icon(faInfoCircle).node[0]}
+                </button>
+
+                <span class="spacer"></span>
+
+                <button
+                    class="tool-btn"
+                    title="Help"
+                    @click=${() => alert("TODO")}
+                >
+                    ${icon(faQuestionCircle).node[0]}
+                </button>
+            `;
+        }
+
+        function getToolbar() {
+            return html`
+                <nav class="toolbar">
+                    <div class="title">
+                        GenomeSpy
+                    </div>
+                    <div class="search">
+                        <input
+                            type="text"
+                            class="search-input"
+                            value=${self.getIntervalString()}
+                            @keydown=${onSearchKeyDown}
+                            @focus=${onSearchFocused}
+                        />
+                        ${getSearchHelp()}
+                    </div>
+                    ${getToolButtons()}
+                </nav>
+            `;
+        }
+
+        function getAppBody() {
+            return html`
+                <div class="genome-spy-app">
+                    ${getToolbar()}
+                    <div class="genome-spy-container"></div>
+                </div>
+            `;
+        }
+
+        /** @param {string} className */
         const elem = className =>
-            /** @type {HTMLElement} */ (appContainer.getElementsByClassName(
+            /** @type {HTMLElement} */ (this.appContainer.getElementsByClassName(
                 className
             )[0]);
 
-        // TODO: Use WebComponents, for example: https://lit-element.polymer-project.org/
-
-        /** @type {HTMLInputElement} */
-        this.toolbar = elem("toolbar");
-
-        /** @type {HTMLInputElement} */
-        this.searchInput = elem("search-input");
-
-        /** @type {HTMLElement} */
-        this.searchHelp = elem("search-help");
-
-        // TODO: Create a component or something for the search field
-
-        this.searchHelp.addEventListener("transitionend", event => {
-            if (!this.searchHelp.classList.contains("visible")) {
-                this.searchHelp.style.visibility = "hidden";
+        /**
+         *
+         * @param {MouseEvent} event
+         */
+        function onSearchHelpClicked(event) {
+            const element = /** @type {HTMLElement} */ (event.target);
+            if (element.tagName == "LI") {
+                doExampleSearch(element.innerText);
             }
-        });
+        }
 
-        this.searchInput.addEventListener("focus", event => {
-            // TODO: Remove duplicate helps in case of duplicate tracks
-            this.searchHelp.innerHTML = [
-                rangeSearchHelp,
-                ...this.genomeSpy.tracks.map(t => t.searchHelp())
-            ].join("");
+        /** @param {FocusEvent} event */
+        function onSearchFocused(event) {
+            const searchInput = /** @type {HTMLInputElement} */ (event.target);
+            searchInput.select();
 
-            this.searchHelp.querySelectorAll("li").forEach(elem =>
-                elem.addEventListener("click", event => {
-                    const term = event.target.innerText;
-                    typeSlowly(term, this.searchInput).then(() => {
-                        this.searchInput.blur();
-                        this.genomeSpy.search(term);
-                    });
-                })
-            );
+            // TODO: Fix, position the help nicely just below the toolbar etc
+            //searchHelp.style.width = searchInput.offsetWidth + "px";
+            //searchHelp.style.top = toolbar.offsetHeight + "px";
+        }
 
-            this.searchInput.select();
-
-            this.searchHelp.style.width = this.searchInput.offsetWidth + "px";
-            this.searchHelp.style.top = this.toolbar.offsetHeight + "px";
-
-            this.searchHelp.classList.add("visible");
-            this.searchHelp.style.visibility = "visible";
-        });
-
-        this.searchInput.addEventListener("blur", event => {
-            this.searchHelp.classList.remove("visible");
-            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(
-                this.genomeSpy.getViewportDomain()
-            );
-        });
-
-        this.searchInput.addEventListener("keydown", event => {
+        /**
+         *
+         * @param {KeyboardEvent} event
+         */
+        function onSearchKeyDown(event) {
+            const searchInput = /** @type {HTMLInputElement} */ (event.target);
             if (event.keyCode == 13) {
                 event.preventDefault();
 
-                this.genomeSpy
-                    .search(this.searchInput.value)
+                self.genomeSpy
+                    .search(searchInput.value)
                     .then(() => {
-                        this.searchInput.focus();
-                        this.searchInput.select();
+                        searchInput.focus();
+                        searchInput.select();
                     })
                     .catch(reason => alert(reason));
             } else if (event.keyCode == 27) {
-                this.searchInput.blur();
+                searchInput.blur();
             } else {
                 event.stopPropagation();
             }
-        });
+        }
+
+        /**
+         *
+         * @param {string} term
+         */
+        function doExampleSearch(term) {
+            const searchInput = /** @type {HTMLInputElement} */ (elem(
+                "search-input"
+            ));
+            typeSlowly(term, searchInput).then(() => {
+                searchInput.blur();
+                self.genomeSpy.search(term);
+            });
+        }
+
+        this._renderTemplate = () => {
+            render(getAppBody(), self.appContainer);
+        };
+
+        this._renderTemplate();
 
         // TODO: Implement a centralized shortcut handler
         document.addEventListener("keydown", event => {
@@ -134,30 +204,32 @@ export default class GenomeSpyApp {
                 !(event.metaKey || event.altKey || event.ctrlKey)
             ) {
                 event.preventDefault();
-                this.searchInput.focus();
+                elem("search-input").focus();
             }
         });
 
         elem("genome-spy-container").addEventListener("click", event => {
-            this.searchInput.blur();
+            elem("search-input").blur();
         });
 
-        // The following adds a dependency to specific kinds of tracks.
-        // Maybe the tracks should be given means to add buttons to applications...
-        if (true) {
-            // TODO: only show when a SampleTrack is present
-            const backButton = document.createElement("button");
-            backButton.classList.add("tool-btn");
-            backButton.classList.add("backtrack-samples");
-            backButton.title = "Backtrack samples (⌫)";
-            backButton.appendChild(icon(faUndo).node[0]);
-            backButton.addEventListener("click", () =>
-                this.genomeSpy.tracks
-                    .filter(track => track.backtrackSamples)[0]
-                    .backtrackSamples()
-            ); // Ugh, hack
+        function onBacktrackClicked() {
+            // TODO: Move to GenomeSpy
+            self.genomeSpy.tracks
+                // Ugh, hack
+                .filter(track => track.backtrackSamples)[0]
+                .backtrackSamples();
+        }
+    }
 
-            this.toolbar.appendChild(backButton);
+    getIntervalString() {
+        const genomeSpy = this.genomeSpy;
+        if (genomeSpy) {
+            // TODO: Consider moving to GenomeSpy
+            return genomeSpy.coordinateSystem.formatInterval(
+                genomeSpy.getViewportDomain().intersect(genomeSpy.getDomain())
+            );
+        } else {
+            return "";
         }
     }
 
@@ -171,16 +243,18 @@ export default class GenomeSpyApp {
             elem("genome-spy-container"),
             this.config
         );
-        this.genomeSpy.on("zoom", domain => {
-            this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(
-                domain.intersect(this.genomeSpy.getDomain())
-            );
+
+        this.genomeSpy.on("zoom", () => {
+            // Could just call _renderTemplate here, but this is very likely more efficient
+            /** @type {HTMLInputElement} */ (elem(
+                "search-input"
+            )).value = this.getIntervalString();
         });
 
         await this.genomeSpy.launch();
-        this.searchInput.value = this.genomeSpy.coordinateSystem.formatInterval(
-            this.genomeSpy.getViewportDomain()
-        );
+
+        // Update the UI now that GenomeSpy is initialized
+        this._renderTemplate();
     }
 
     /**
