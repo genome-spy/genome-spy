@@ -97,12 +97,21 @@ export default class GenomeSpyApp {
                     ${icon(faInfoCircle).node[0]}
                 </button>
 
+                ${self.genomeSpy && self.genomeSpy.config.title
+                    ? html`
+                          <span class="vis-title"
+                              >${self.genomeSpy.config.title}</span
+                          >
+                      `
+                    : ""}
+
                 <span class="spacer"></span>
 
                 <button
                     class="tool-btn"
                     title="Help"
-                    @click=${() => alert("TODO")}
+                    @click=${() =>
+                        window.open("https://genomespy.app/docs/", "_blank")}
                 >
                     ${icon(faQuestionCircle).node[0]}
                 </button>
