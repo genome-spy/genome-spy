@@ -18,14 +18,16 @@ import {
 export default class GenomeSpyApp {
     /**
      *
+     * @param {HTMLElement} appContainerElement
      * @param {Object} config
      */
-    constructor(config) {
+    constructor(appContainerElement, config) {
         this.config = config;
 
-        this.appContainer = document.body;
+        this.appContainer = appContainerElement;
         this.appContainer.style.margin = "0";
         this.appContainer.style.padding = "0";
+        this.appContainer.style.position = "relative";
 
         const self = this;
 

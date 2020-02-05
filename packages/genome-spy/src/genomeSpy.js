@@ -516,6 +516,8 @@ export default class GenomeSpy {
 
             // Initiate layout calculation and render the tracks
             this._resized();
+
+            return this;
         } catch (reason) {
             const message = `${
                 reason.view ? `At "${reason.view.getPathString()}": ` : ""
