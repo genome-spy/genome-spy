@@ -14,8 +14,6 @@ import {
 
 /**
  * A simple wrapper for the GenomeSpy component.
- * Eventually this will be replaced or will transform
- * into a React or Vue based application.
  */
 export default class GenomeSpyApp {
     /**
@@ -52,30 +50,44 @@ export default class GenomeSpyApp {
         }
 
         function getToolButtons() {
+            const sampleTrackButtons =
+                self.genomeSpy && self.genomeSpy._getSampleTracks().length > 0
+                    ? html`
+                          <button
+                              class="tool-btn backtrack-samples"
+                              title="Backtrack samples (B)"
+                              ?disabled=${!self.genomeSpy.isSomethingToBacktrack()}
+                              @click=${onBacktrackClicked}
+                          >
+                              ${icon(faUndo).node[0]}
+                          </button>
+
+                          <button
+                              class="tool-btn"
+                              title="Fisheye (E)"
+                              @click=${() =>
+                                  self.genomeSpy
+                                      ._getSampleTracks()[0]
+                                      .toggleFisheye()}
+                          >
+                              ${icon(faFish).node[0]}
+                          </button>
+
+                          <button
+                              class="tool-btn"
+                              title="Peek (Z)"
+                              @click=${() =>
+                                  self.genomeSpy
+                                      ._getSampleTracks()[0]
+                                      .togglePeek()}
+                          >
+                              ${icon(faArrowsAltV).node[0]}
+                          </button>
+                      `
+                    : "";
+
             return html`
-                <button
-                    class="tool-btn backtrack-samples"
-                    title="Backtrack samples (⌫)"
-                    @click=${onBacktrackClicked}
-                >
-                    ${icon(faUndo).node[0]}
-                </button>
-
-                <button
-                    class="tool-btn"
-                    title="Fisheye (E)"
-                    @click=${() => alert("TODO")}
-                >
-                    ${icon(faFish).node[0]}
-                </button>
-
-                <button
-                    class="tool-btn"
-                    title="Peek (Z)"
-                    @click=${() => alert("TODO")}
-                >
-                    ${icon(faArrowsAltV).node[0]}
-                </button>
+                ${sampleTrackButtons}
 
                 <button
                     class="tool-btn"
@@ -107,7 +119,9 @@ export default class GenomeSpyApp {
                         <input
                             type="text"
                             class="search-input"
-                            value=${self.getIntervalString()}
+                            value=${self.genomeSpy
+                                ? self.genomeSpy.getViewportDomainString()
+                                : ""}
                             @keydown=${onSearchKeyDown}
                             @focus=${onSearchFocused}
                         />
@@ -199,12 +213,18 @@ export default class GenomeSpyApp {
 
         // TODO: Implement a centralized shortcut handler
         document.addEventListener("keydown", event => {
-            if (
-                event.key == "f" &&
-                !(event.metaKey || event.altKey || event.ctrlKey)
-            ) {
-                event.preventDefault();
-                elem("search-input").focus();
+            switch (event.code) {
+                case "KeyF":
+                    if (!(event.metaKey || event.altKey || event.ctrlKey)) {
+                        event.preventDefault();
+                        elem("search-input").focus();
+                    }
+                    break;
+                case "Backspace":
+                case "KeyB":
+                    self.genomeSpy.backtrackSamples();
+                    break;
+                default:
             }
         });
 
@@ -213,23 +233,7 @@ export default class GenomeSpyApp {
         });
 
         function onBacktrackClicked() {
-            // TODO: Move to GenomeSpy
-            self.genomeSpy.tracks
-                // Ugh, hack
-                .filter(track => track.backtrackSamples)[0]
-                .backtrackSamples();
-        }
-    }
-
-    getIntervalString() {
-        const genomeSpy = this.genomeSpy;
-        if (genomeSpy) {
-            // TODO: Consider moving to GenomeSpy
-            return genomeSpy.coordinateSystem.formatInterval(
-                genomeSpy.getViewportDomain().intersect(genomeSpy.getDomain())
-            );
-        } else {
-            return "";
+            self.genomeSpy.backtrackSamples();
         }
     }
 
@@ -248,7 +252,12 @@ export default class GenomeSpyApp {
             // Could just call _renderTemplate here, but this is very likely more efficient
             /** @type {HTMLInputElement} */ (elem(
                 "search-input"
-            )).value = this.getIntervalString();
+            )).value = this.genomeSpy.getViewportDomainString();
+        });
+
+        this.genomeSpy.on("samplesupdated", () => {
+            // Updated backtrack button
+            this._renderTemplate();
         });
 
         await this.genomeSpy.launch();

@@ -209,6 +209,12 @@ export default class GenomeSpy {
         return Interval.fromArray(this.rescaledX.domain());
     }
 
+    getViewportDomainString() {
+        return this.coordinateSystem.formatInterval(
+            this.getViewportDomain().intersect(this.getDomain())
+        );
+    }
+
     getZoomedScale() {
         return this.rescaledX.copy();
     }
@@ -286,8 +292,6 @@ export default class GenomeSpy {
      * @returns A promise
      */
     search(string) {
-        // TODO: Consider moving this function to GenomeSpy
-
         const domainFinder = {
             search: string => this.coordinateSystem.parseInterval(string)
         };
@@ -305,6 +309,29 @@ export default class GenomeSpy {
                 reject(`No matches found for "${string}"`);
             }
         });
+    }
+
+    _getSampleTracks() {
+        return /** @type {SampleTrack[]} */ (this.tracks.filter(
+            t => t instanceof SampleTrack
+        ));
+    }
+
+    /**
+     * Backtracks in sample filtering and ordering
+     */
+    backtrackSamples() {
+        // TODO: Handle multiple SampleTracks somehow
+        const sampleTrack = this._getSampleTracks()[0];
+        if (sampleTrack) {
+            sampleTrack.backtrackSamples();
+        }
+    }
+
+    isSomethingToBacktrack() {
+        // TODO: Extract history handling into a class or something
+        const sampleTrack = this._getSampleTracks()[0];
+        return sampleTrack && sampleTrack.sampleOrderHistory.length > 1;
     }
 
     _resized() {

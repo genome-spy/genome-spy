@@ -186,19 +186,12 @@ export default class SampleTrack extends SimpleTrack {
             this.attributePanel.renderLabels();
             this.attributePanel.renderAttributeLabels();
         });
-
-        // TODO: Reorganize:
-        document.body.addEventListener("keydown", event => {
-            if (event.key >= "1" && event.key <= "9") {
-                const index = event.key.charCodeAt(0) - "1".charCodeAt(0);
-                this.sortSamples(s => Object.values(s.attributes)[index]);
-            } else if (event.code == "Backspace") {
-                this.backtrackSamples();
-            }
-        });
     }
 
-    // TODO: Unify shortcut key handling!
+    // TODO:
+    //  * Create a ase class for both peek and fisheye
+    //  * Ensure that peek and fisheye are mutually exclusive
+    //  * Integrate better with GenomeSpyApp's toolbar
 
     initializePeek() {
         let persistentPeek = false;
@@ -272,6 +265,10 @@ export default class SampleTrack extends SimpleTrack {
                 clientPoint(this.glCanvas, lastMouseEvent)[1] /
                 this.getHeight();
 
+            if (origin < 0 || origin > 1) {
+                origin = 0.5;
+            }
+
             this.yTransform = y => (y - origin) * zoomFactor + origin;
             this.yTransform.invert = x =>
                 (origin * (zoomFactor - 1) + x) / zoomFactor;
@@ -325,6 +322,18 @@ export default class SampleTrack extends SimpleTrack {
                 closePeek();
             }
         });
+
+        this.togglePeek = () => {
+            switch (state) {
+                case State.CLOSED:
+                    openPeek();
+                    break;
+                case State.OPEN:
+                    closePeek();
+                    break;
+                default:
+            }
+        };
     }
 
     /**
@@ -427,6 +436,14 @@ export default class SampleTrack extends SimpleTrack {
                 closeFisheye();
             }
         });
+
+        this.toggleFisheye = () => {
+            if (this.fisheye) {
+                closeFisheye();
+            } else {
+                openFisheye();
+            }
+        };
     }
 
     /**
@@ -575,6 +592,8 @@ export default class SampleTrack extends SimpleTrack {
             const targetSampleScale = this.sampleScale.clone();
             targetSampleScale.domain(sampleIds);
 
+            this.genomeSpy.eventEmitter.emit("samplesupdated");
+
             this.animateSampleTransition(
                 this.sampleScale,
                 targetSampleScale,
@@ -616,6 +635,8 @@ export default class SampleTrack extends SimpleTrack {
         } else {
             this.sampleOrderHistory.push(sampleIds);
         }
+
+        this.genomeSpy.eventEmitter.emit("samplesupdated");
 
         const targetSampleScale = this.sampleScale.clone();
         targetSampleScale.domain(sampleIds);

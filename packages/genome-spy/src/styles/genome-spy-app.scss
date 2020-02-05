@@ -13,6 +13,7 @@ $basic-spacing: 10px;
 
     .toolbar {
         $background: #6c82ab;
+        $foreground: white;
 
         height: 38px;
 
@@ -31,7 +32,7 @@ $basic-spacing: 10px;
         }
 
         .title {
-            color: white;
+            color: $foreground;
             font-size: 18px;
             font-weight: normal;
             text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
@@ -39,10 +40,10 @@ $basic-spacing: 10px;
 
         .search-input {
             background-color: darken($background, 5%);
-            color: white;
+            color: $foreground;
             border: 1px solid darken($background, 10%);
             font-size: 14px;
-            width: 300px;
+            width: 260px;
             padding: 3px 6px;
 
             position: relative;
@@ -99,7 +100,7 @@ $basic-spacing: 10px;
                 lighten($color, 3%),
                 darken($color, 3%)
             );
-            color: white;
+            color: $foreground;
             height: 26px;
             width: 30px;
             border: 1px solid darken($color, 10%);
@@ -113,7 +114,7 @@ $basic-spacing: 10px;
             justify-content: center;
 
             > svg {
-                transform: scale(1.2);
+                transform: scale(1.25);
             }
 
             &:active {
@@ -123,6 +124,12 @@ $basic-spacing: 10px;
                     position: relative;
                     top: 1px;
                 }
+            }
+
+            &:disabled {
+                background-color: $background;
+
+                color: mix($background, $foreground, 50%);
             }
         }
     }
