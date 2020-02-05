@@ -291,24 +291,21 @@ export default class GenomeSpy {
      * @param {string} string the search string
      * @returns A promise
      */
-    search(string) {
+    async search(string) {
         const domainFinder = {
             search: string => this.coordinateSystem.parseInterval(string)
         };
 
         // Search tracks
-        const interval = [domainFinder]
-            .concat(this.tracks)
+        const interval = [domainFinder, ...this.tracks]
             .map(t => t.search(string))
             .find(i => i);
 
-        return new Promise((resolve, reject) => {
-            if (interval) {
-                this.zoomTo(interval).then(() => resolve());
-            } else {
-                reject(`No matches found for "${string}"`);
-            }
-        });
+        if (interval) {
+            await this.zoomTo(interval);
+        } else {
+            throw `No matches found for "${string}"`;
+        }
     }
 
     _getSampleTracks() {
