@@ -28,7 +28,7 @@ import "codemirror/theme/neo.css";
 import "./playground.scss";
 import "./codemirror-theme.scss";
 
-import { GenomeSpy } from "genome-spy";
+import { embed } from "genome-spy";
 
 window.jsonlint = JsonLint;
 
@@ -72,7 +72,7 @@ function getNamedData(name) {
     }
 }
 
-function update(force = false) {
+async function update(force = false) {
     const value = codeMirror.getValue();
     window.localStorage.setItem(STORAGE_KEY, value);
 
@@ -91,12 +91,15 @@ function update(force = false) {
             genomeSpy.destroy();
         }
 
-        genomeSpy = new GenomeSpy(
+        // TODO: Fix possible race condition
+        genomeSpy = await embed(
             document.querySelector("#genome-spy-pane"),
-            parsedSpec
+            parsedSpec,
+            {
+                bare: true,
+                namedDataProvider: getNamedData
+            }
         );
-        genomeSpy.registerNamedDataProvider(getNamedData);
-        genomeSpy.launch();
     } catch (e) {
         console.log(e);
     }

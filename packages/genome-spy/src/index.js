@@ -6,81 +6,14 @@ import GenomeSpyApp from "./genomeSpyApp.js";
 
 export { default as Interval } from "./utils/interval.js";
 
-/**
- *
- */
-export function singlePageApp() {
-    const defaultConf = "config.json";
-
-    const urlParams = new URLSearchParams(window.location.search);
-
-    initWithConfiguration(
-        urlParams.get("conf") || defaultConf,
-        urlParams.get("baseUrl")
-    );
-
-    /**
-     * @param {object | string} conf configuriation object or url to json configuration
-     * @param {string} baseUrl
-     */
-    async function initWithConfiguration(conf, baseUrl) {
-        try {
-            if (isString(conf)) {
-                // conf is a URL
-                const url = conf;
-
-                try {
-                    conf = JSON.parse(await vegaLoader().load(url));
-                } catch (e) {
-                    throw new Error(
-                        `Could not load or parse configuration: ${url}, reason: ${e.message}`
-                    );
-                }
-
-                if (!conf.baseUrl) {
-                    const m = url.match(/^.*\//);
-                    conf.baseUrl = (m && m[0]) || "./";
-                }
-
-                if (baseUrl) {
-                    if (isAbsoluteUrl(baseUrl)) {
-                        conf.baseUrl = baseUrl;
-                    } else {
-                        conf.baseUrl = `${conf.baseUrl}/${baseUrl}`;
-                    }
-                }
-            } else if (isObject(conf)) {
-                conf.baseUrl = conf.baseUrl || "";
-            } else {
-                throw new Error(
-                    "Invalid configuration, not a URL or json object!"
-                );
-            }
-
-            return embed(document.body, conf);
-        } catch (e) {
-            console.log(e);
-
-            const pre = document.createElement("pre");
-            pre.innerText = e.toString();
-            document.body.appendChild(pre);
-        }
-    }
-
-    /**
-     *
-     * @param {string} url
-     */
-    function isAbsoluteUrl(url) {
-        return /^(http|https)?:\/\//.test(url);
-    }
-}
+export { GenomeSpy, GenomeSpyApp };
 
 /**
+ * Embeds GenomeSpy into the DOM
  *
- * @param {HTMLElement | string} el
- * @param {object} spec
- * @param {object} [opt]
+ * @param {HTMLElement | string} el HTMLElement or a query selector
+ * @param {object | string} spec a spec object or an url to a json spec
+ * @param {object} [opt] options
  */
 export async function embed(el, spec, opt = {}) {
     /** @type {HTMLElement} */
@@ -97,11 +30,68 @@ export async function embed(el, spec, opt = {}) {
         throw new Error(`Invalid element: ${el}`);
     }
 
-    if (opt.bare) {
-        const genomeSpy = new GenomeSpy(element, spec);
-        return genomeSpy.launch();
-    } else {
-        const app = new GenomeSpyApp(element, spec);
-        return app.launch();
+    try {
+        const specObject = isObject(spec) ? spec : await loadSpec(spec);
+
+        specObject.baseUrl = specObject.baseUrl || "";
+
+        if (opt.bare) {
+            const genomeSpy = new GenomeSpy(element, specObject);
+            applyOptions(genomeSpy, opt);
+            await genomeSpy.launch();
+            return genomeSpy;
+        } else {
+            const app = new GenomeSpyApp(element, specObject);
+            applyOptions(app.genomeSpy, opt);
+            await app.launch();
+            return app.genomeSpy;
+        }
+    } catch (e) {
+        element.innerText = e.toString();
+        console.error(e);
     }
+}
+
+/**
+ *
+ * @param {import("./genomeSpy").default} genomeSpy
+ * @param {object} opt
+ */
+function applyOptions(genomeSpy, opt) {
+    if (opt.namedDataProvider) {
+        genomeSpy.registerNamedDataProvider(opt.namedDataProvider);
+    }
+}
+
+/**
+ * Loads the spec from the given url and sets the baseUrl if it is not
+ * defined in the spec.
+ *
+ * @param {string} url
+ */
+export async function loadSpec(url) {
+    let spec;
+
+    try {
+        spec = JSON.parse(await vegaLoader().load(url));
+    } catch (e) {
+        throw new Error(
+            `Could not load or parse configuration: ${url}, reason: ${e.message}`
+        );
+    }
+
+    if (!spec.baseUrl) {
+        const m = url.match(/^.*\//);
+        spec.baseUrl = (m && m[0]) || "./";
+    }
+
+    return spec;
+}
+
+/**
+ *
+ * @param {string} url
+ */
+function isAbsoluteUrl(url) {
+    return /^(http|https)?:\/\//.test(url);
 }

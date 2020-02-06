@@ -25,9 +25,12 @@ export default class GenomeSpyApp {
         this.config = config;
 
         this.appContainer = appContainerElement;
-        this.appContainer.style.margin = "0";
-        this.appContainer.style.padding = "0";
-        this.appContainer.style.position = "relative";
+        if (this.appContainer == document.body) {
+            this.appContainer.style.margin = "0";
+            this.appContainer.style.padding = "0";
+        } else {
+            this.appContainer.style.position = "relative";
+        }
 
         const self = this;
 
@@ -246,18 +249,18 @@ export default class GenomeSpyApp {
         function onBacktrackClicked() {
             self.genomeSpy.backtrackSamples();
         }
-    }
-
-    async launch() {
-        const elem = className =>
-            /** @type {HTMLElement} */ (this.appContainer.getElementsByClassName(
-                className
-            )[0]);
 
         this.genomeSpy = new GenomeSpy(
             elem("genome-spy-container"),
             this.config
         );
+    }
+
+    async launch() {
+        const elem = /** @param {string} className */ className =>
+            /** @type {HTMLElement} */ (this.appContainer.getElementsByClassName(
+                className
+            )[0]);
 
         this.genomeSpy.on("zoom", () => {
             // Could just call _renderTemplate here, but this is very likely more efficient

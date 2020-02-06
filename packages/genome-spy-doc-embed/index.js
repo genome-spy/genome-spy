@@ -1,4 +1,4 @@
-import { GenomeSpy } from "genome-spy";
+import { embed } from "genome-spy";
 
 /**
  *
@@ -26,7 +26,7 @@ async function fetchConf(url) {
  * @param {HTMLElement} container
  * @param {object | string} conf configuriation object or url to json configuration
  */
-async function embed(container, conf) {
+async function embedToDoc(container, conf) {
     const baseUrl = document
         .querySelector("meta[name='base_url']")
         .getAttribute("content");
@@ -39,8 +39,7 @@ async function embed(container, conf) {
 
     try {
         conf.baseUrl = conf.baseUrl || dataBaseUrl;
-        const app = new GenomeSpy(container, conf);
-        await app.launch();
+        await embed(container, conf, { bare: true });
     } catch (e) {
         const pre = document.createElement("pre");
         pre.innerText = e.toString();
@@ -67,14 +66,14 @@ async function initialize(exampleElement) {
             }
 
             const conf = await fetchConf(url);
-            embed(container, conf);
+            embedToDoc(container, conf);
         } else {
             const spec = /** @type {HTMLElement} */ (htmlElement.querySelector(
                 ".embed-spec"
             ));
 
             if (spec && container) {
-                embed(container, JSON.parse(spec.textContent));
+                embedToDoc(container, JSON.parse(spec.textContent));
             }
         }
     } catch (e) {
