@@ -10,7 +10,7 @@ The `concat` operator allows for building visualizations with multiple tracks.
 
 ```json
 {
-  "data": { "url": "../../data/examples/sincos.csv" },
+  "data": { "url": "sincos.csv" },
 
   "concat": [
     {
