@@ -4,9 +4,9 @@
 
 The easiest way to try out GenomeSpy is the Playground app, which allows you
 to experiment with different visualization specifications directly in the web
-browser. You can load data from publicly accessible web servers or from your
-own computer. The app is still rudimentary and does not support saving or
-sharing the visualizations.
+browser. You can load data from publicly accessible web servers or your
+computer. The app is still rudimentary and does not support saving or sharing
+the visualizations.
 
 <a href="https://genomespy.app/playground/" target="_blank">Go to the Playground</a>
 
@@ -35,7 +35,7 @@ Read more at https://docs.python.org/3/library/http.server.html
 ### HTML template
 
 The templates below load GenomeSpy from a content delivery network. Because
-the specification schema and the JavaScript API are not yet 100% stable it is
+the specification schema and the JavaScript API are not yet 100% stable, it is
 recommended to use a specific release.
 
 #### Load the spec from a file

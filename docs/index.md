@@ -16,3 +16,10 @@ filter and sort samples interactively.
 TODO: A simple example with some sensible data, preferably genomic data.
 
 <div class="embed-example" data-url="data/examples/sampletrack.json" style="height: 300px"></div>
+
+# About
+
+GenomeSpy is developed by [Kari Lavikka](https://twitter.com/KariLavikka) in
+[The Systems Biology of Drug Resistance in Cancer
+group](https://www.helsinki.fi/en/researchgroups/systems-biology-of-drug-resistance-in-cancer)
+at the [University of Helsinki](https://helsinki.fi/).

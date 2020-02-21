@@ -14,7 +14,7 @@ TODO: Explanation
 
 ```json
 {
-  "genome": { "name": "hg19" },
+  "genome": { "name": "hg18" },
 
   "concat": [
     { "import": { "name": "cytobands" } },
@@ -62,7 +62,7 @@ TODO: Explanation
 ```json
 {
   "genome": {
-    "name": "hg19"
+    "name": "hg18"
   },
 
   "concat": [
