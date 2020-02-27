@@ -19,7 +19,7 @@ export default class Genome extends CoordinateSystem {
         super();
         this.config = config;
 
-        if (typeof this.config.name !== "string") {
+        if (!this.config.contigs && typeof this.config.name !== "string") {
             throw new Error(
                 "No name has been defined for the genome assembly!"
             );
@@ -45,16 +45,21 @@ export default class Genome extends CoordinateSystem {
             this.baseUrl = defaultBaseUrl;
         }
 
-        try {
-            this.chromSizes = parseChromSizes(
-                await loader({ baseURL: this.baseUrl }).load(
-                    `${this.config.name}/${this.name}.chrom.sizes`
-                )
-            );
-            this.chromMapper = new ChromMapper(this.chromSizes);
-        } catch (e) {
-            throw new Error(`Could not load chrom sizes: ${e.message}`);
+        if (this.config.contigs) {
+            // TODO: Sanity check for contig config
+            this.chromSizes = this.config.contigs;
+        } else {
+            try {
+                this.chromSizes = parseChromSizes(
+                    await loader({ baseURL: this.baseUrl }).load(
+                        `${this.config.name}/${this.name}.chrom.sizes`
+                    )
+                );
+            } catch (e) {
+                throw new Error(`Could not load chrom sizes: ${e.message}`);
+            }
         }
+        this.chromMapper = new ChromMapper(this.chromSizes);
 
         genomeSpy.accessorFactory.register(encoding => {
             if (encoding.chrom && encoding.pos) {
