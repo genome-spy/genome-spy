@@ -510,7 +510,9 @@ export default class AttributePanel {
         return `
         <div class="sample-track-sample-tooltip">
             <div class="title">
-                <strong>${html.escapeHtml(sample.id)}</strong>
+                <strong>${html.escapeHtml(
+                    sample.displayName || sample.id
+                )}</strong>
             </div>
 
             ${table}
