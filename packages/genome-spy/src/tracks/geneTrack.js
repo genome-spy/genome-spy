@@ -766,6 +766,7 @@ function createContextMenuItems(gene) {
  */
 function topK(data, k, compare) {
     const negCompare = (a, b) => compare(b, a);
+    // TODO: Consider https://github.com/luciopaiva/heapify
     const queue = new TinyQueue([], negCompare);
 
     let i;
