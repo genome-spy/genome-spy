@@ -210,6 +210,10 @@ export default class GenomeSpy {
     }
 
     getViewportDomainString() {
+        if (!this.rescaledX) {
+            return "";
+        }
+
         return this.coordinateSystem.formatInterval(
             this.getViewportDomain().intersect(this.getDomain())
         );

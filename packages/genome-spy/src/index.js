@@ -30,26 +30,30 @@ export async function embed(el, spec, opt = {}) {
         throw new Error(`Invalid element: ${el}`);
     }
 
+    /** @type {GenomeSpy} */
+    let genomeSpy;
+
     try {
         const specObject = isObject(spec) ? spec : await loadSpec(spec);
 
         specObject.baseUrl = specObject.baseUrl || "";
 
         if (opt.bare) {
-            const genomeSpy = new GenomeSpy(element, specObject);
+            genomeSpy = new GenomeSpy(element, specObject);
             applyOptions(genomeSpy, opt);
             await genomeSpy.launch();
-            return genomeSpy;
         } else {
             const app = new GenomeSpyApp(element, specObject);
-            applyOptions(app.genomeSpy, opt);
+            genomeSpy = app.genomeSpy;
+            applyOptions(genomeSpy, opt);
             await app.launch();
-            return app.genomeSpy;
         }
     } catch (e) {
         element.innerText = e.toString();
         console.error(e);
     }
+
+    return genomeSpy;
 }
 
 /**
