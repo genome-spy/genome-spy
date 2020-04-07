@@ -23,7 +23,7 @@ test("Creates an expression accessor", () => {
 });
 
 test("Creates a constant accessor", () => {
-    const a = af.createAccessor({ constant: 0 });
+    const a = af.createAccessor({ datum: 0 });
     expect(a(datum)).toEqual(0);
     expect(a.constant).toBeTruthy();
     expect(a.fields).toEqual([]);

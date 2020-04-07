@@ -57,7 +57,7 @@ export default class RectMark extends Mark {
         if (encoding.y) {
             if (encoding.y.type == "quantitative" && !encoding.y2) {
                 encoding.y2 = {
-                    constant: 0
+                    datum: 0
                 };
             }
         } else {

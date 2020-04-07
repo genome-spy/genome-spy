@@ -14,7 +14,7 @@
 
   "encoding": {
     "x": { "field": "MarketCap", "type": "quantitative" },
-    "x2": { "constant": 0 },
+    "x2": { "datum": 0 },
     "y": {
       "field": "Name",
       "type": "nominal",

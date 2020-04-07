@@ -82,7 +82,7 @@ describe("Test domain handling", () => {
             data: dataSpec,
             mark: "point",
             encoding: {
-                x: { constant: 123, type: "quantitative" },
+                x: { datum: 123, type: "quantitative" },
                 y: { field: "a", type: "quantitative" }
             }
         };

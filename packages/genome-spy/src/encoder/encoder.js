@@ -13,23 +13,23 @@ import fromEntries from "fromentries";
 /**
  * Creates an object that contains encoders for every channel of a mark
  *
- * @param {import("../view/viewUtils").EncodingSpecs} encodingSpecs
+ * @param {Record.<string, import("../view/viewUtils").EncodingConfig>} encodingConfigs
  * @param {function(string):function} scaleSource
  * @param {function(string):(import("./accessor").Accessor)} accessorSource
  * @returns {Object.<string, Encoder>}
  */
 export default function createEncoders(
-    encodingSpecs,
+    encodingConfigs,
     scaleSource,
     accessorSource
 ) {
     return fromEntries(
-        Object.keys(encodingSpecs)
-            .filter(channel => encodingSpecs[channel] !== null)
+        Object.keys(encodingConfigs)
+            .filter(channel => encodingConfigs[channel] !== null)
             .map(channel => [
                 channel,
                 createEncoder(
-                    encodingSpecs[channel],
+                    encodingConfigs[channel],
                     scaleSource(primaryChannel(channel)),
                     accessorSource(channel),
                     channel
@@ -40,24 +40,24 @@ export default function createEncoders(
 
 /**
  *
- * @param {import("../view/viewUtils").EncodingSpec} encodingSpec
- * @param {function} scaleSource
+ * @param {import("../view/viewUtils").EncodingConfig} encodingConfig
+ * @param {function} scale
  * @param {import("./accessor").Accessor} accessor
- * @param {string} accessor
+ * @param {string} channel
  * @returns {Encoder}
  */
-function createEncoder(encodingSpec, scale, accessor, channel) {
+function createEncoder(encodingConfig, scale, accessor, channel) {
     /** @type {Encoder} */
     let encoder;
 
-    if (encodingSpec.value !== undefined) {
-        encoder = /** @type {Encoder} */ (datum => encodingSpec.value);
+    if (encodingConfig.value !== undefined) {
+        encoder = /** @type {Encoder} */ (datum => encodingConfig.value);
         encoder.constant = true;
         encoder.accessor = null;
     } else if (accessor) {
         if (!scale) {
             throw new Error(
-                `Missing scale! "${channel}": ${JSON.stringify(encodingSpec)}`
+                `Missing scale! "${channel}": ${JSON.stringify(encodingConfig)}`
             );
         }
 
@@ -68,8 +68,8 @@ function createEncoder(encodingSpec, scale, accessor, channel) {
         encoder.accessor = accessor;
     } else {
         throw new Error(
-            `Missing value or accessor (field, expr, constant) on channel "${channel}": ${JSON.stringify(
-                encodingSpec
+            `Missing value or accessor (field, expr, datum) on channel "${channel}": ${JSON.stringify(
+                encodingConfig
             )}`
         );
     }
@@ -79,7 +79,7 @@ function createEncoder(encodingSpec, scale, accessor, channel) {
         : value => {
               throw new Error(
                   "No scale available, cannot invert: " +
-                      JSON.stringify(encodingSpec)
+                      JSON.stringify(encodingConfig)
               );
           };
 

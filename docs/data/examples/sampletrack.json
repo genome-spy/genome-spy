@@ -29,8 +29,8 @@
 
   "encoding": {
     "sample": { "field": "sample", "type": "nominal" },
-    "y": { "constant": 0, "type": "quantitative" },
-    "y2": { "constant": 1 },
+    "y": { "datum": 0, "type": "quantitative" },
+    "y2": { "datum": 1 },
     "x": { "field": "y0", "type": "quantitative" },
     "x2": { "field": "y1", "type": "quantitative" },
     "color": { "field": "x", "type": "nominal" }

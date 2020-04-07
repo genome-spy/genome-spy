@@ -9,11 +9,11 @@ import { field, accessorFields, constant } from "vega-util";
  *
  * @typedef {(function(object):any) & AccessorMetadata} Accessor
  *
- * @typedef {import("../view/viewUtils").EncodingSpec} EncodingSpec
+ * @typedef {import("../view/viewUtils").EncodingConfig} EncodingConfig
  */
 export default class AccessorFactory {
     constructor() {
-        /** @type {(function(EncodingSpec):Accessor)[]} */
+        /** @type {(function(EncodingConfig):Accessor)[]} */
         this.accessorCreators = [];
 
         this.register(encoding => {
@@ -35,9 +35,9 @@ export default class AccessorFactory {
         );
 
         this.register(encoding => {
-            if (encoding.constant !== undefined) {
+            if (encoding.datum !== undefined) {
                 /** @type {Accessor} */
-                const accessor = constant(encoding.constant);
+                const accessor = constant(encoding.datum);
                 accessor.constant = true; // Can be optimized downstream
                 accessor.fields = [];
                 return accessor;
@@ -47,7 +47,7 @@ export default class AccessorFactory {
 
     /**
      *
-     * @param {function(EncodingSpec):Accessor} creator
+     * @param {function(EncodingConfig):Accessor} creator
      */
     register(creator) {
         this.accessorCreators.push(creator);
@@ -55,7 +55,7 @@ export default class AccessorFactory {
 
     /**
      *
-     * @param {EncodingSpec} encoding
+     * @param {EncodingConfig} encoding
      */
     createAccessor(encoding) {
         for (const creator of this.accessorCreators) {

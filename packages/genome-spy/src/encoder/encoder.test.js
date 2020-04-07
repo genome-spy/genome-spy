@@ -4,12 +4,12 @@ import { scaleLinear } from "d3-scale";
 import createEncoders from "./encoder";
 
 describe("Encoder", () => {
-    /** @type {import("../view/viewUtils").EncodingSpecs} */
+    /** @type {Record.<string, import("../view/viewUtils").EncodingConfig>} */
     const encodingSpecs = {
         x: { value: 0 },
         y: { field: "a" },
         y2: { field: "b" },
-        z: { constant: 2 },
+        z: { datum: 2 },
         size: { value: 5 }
     };
 

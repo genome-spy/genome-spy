@@ -95,7 +95,7 @@ export default class RuleMark extends RectMark {
         ) {
             vertical = true;
             encoding.x2 = encoding.x;
-            encoding.y2 = { constant: 0 };
+            encoding.y2 = { datum: 0 };
         } else {
             throw new Error(
                 "Invalid x and y encodings for rule mark: " +

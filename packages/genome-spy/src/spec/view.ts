@@ -25,7 +25,8 @@ export interface EncodingConfig {
     expr?: string;
 
     /** A constant value on the data domain */
-    constant?: Scalar;
+    datum?: Scalar;
+
     scale?: Scale;
     axis?: Axis;
     title?: string;
