@@ -1,11 +1,14 @@
 # Transforms
 
 Transforms allow for modifying the data before it is displayed on screen.
-They may filter (subset) the data, add or remove fields, or add new rows.
+They may filter or derive data, adding or removing fields or rows.
 
 TODO: More about the data flow etc...
 
 ## Example
+
+The following example uses the [`filter`](filter.md) transform to retain
+only the rows that match the predicate [expression](../expressions.md).
 
 ```json
 {

@@ -1,12 +1,27 @@
 # Visualizing a SEG file
 
-TODO: Intro
+These examples visualize segmented data with two different visual encodings.
 
-TODO: About data, it's from https://software.broadinstitute.org/software/igv/SEG
+The example data consists of segmentations for two samples. Each segment has a
+chromosome, intra-chromosomal start and end coordinates, and two quantitative
+values:
+
+| 'ID                  | chrom | loc.start | loc.end  | num.mark | seg.mean |
+| -------------------- | ----- | --------- | -------- | -------- | -------- |
+| GenomeWideSNP_416532 | 1     | 51598     | 76187    | 14       | -0.7116  |
+| GenomeWideSNP_416532 | 1     | 76204     | 16022502 | 8510     | -0.029   |
+| GenomeWideSNP_416532 | 1     | 16026084  | 16026512 | 6        | -2.0424  |
+| GenomeWideSNP_416532 | 1     | 16026788  | 17063449 | 424      | -0.1024  |
+| ...                  | ...   | ...       | ...      | ...      | ...      |
+
+Data source: https://software.broadinstitute.org/software/igv/SEG
 
 ## A simple example
 
-TODO: Explanation
+The following example uses a conventional heatmap
+([`rect`](../../grammar/rect.md) mark) to display the segments. The color
+scale has been configured to match the [Integrative Genomics
+Viewer](http://software.broadinstitute.org/software/igv/home).
 
 <div class="embed-example">
     <div class="embed-container" style="height: 100px"></div>
@@ -52,7 +67,15 @@ TODO: Explanation
 
 ## An advanced example: emphasizing focal segments
 
-TODO: Explanation
+The data contains focal segments that are short and barely visible. Although
+zooming reveals them, finding them all requires a lot of effort. The
+following example uses an alternative visual encoding for the data,
+emphasizing the focal segments.
+
+The quantitative value is encoded as position (height) instead of color.
+Focal segments are extracted from the data using the
+[`filter`](../../grammar/transform/filter.md) transform and displayed using
+[`point`](../../grammar/mark/point.md) mark.
 
 <div class="embed-example hidden-spec">
 <div class="embed-container" style="height: 350px"></div>

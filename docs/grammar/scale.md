@@ -9,9 +9,8 @@ always be optimal, and you can configure them by yourself.
 
 GenomeSpy replicates the majority of the [scale types of
 Vega-Lite](https://vega.github.io/vega-lite/docs/scale.html). Thus, for the
-most parts, its documentation applies to GenomeSpy. However, `bin-linear` and
-`bin-ordinal` scales are not supported, as GenomeSpy does not currently
-support binning.
+most parts, its documentation applies to GenomeSpy. However, `quantile`,
+`bin-linear`, and `bin-ordinal` scales are not currently supported.
 
 TODO: More specific differences, some examples
 

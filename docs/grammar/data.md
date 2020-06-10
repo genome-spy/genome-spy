@@ -32,7 +32,7 @@ is identical to Vega-Lite's
     GenomeSpy uses
     [vega-loader](https://github.com/vega/vega/tree/master/packages/vega-loader)
     to parse tabular data and infer its data types. Vega-loader is sometimes
-    very eager to interpret the text as a date. In such cases, the field types need to
+    overly eager to interpret the text as a date. In such cases, the field types need to
     be specified explicitly. On the other hand, explicit type specification also
     has a significant positive effect on parsing performance.
 
