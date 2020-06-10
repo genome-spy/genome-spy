@@ -38,7 +38,7 @@ channel is unioned by default.
 {
   "layer": [
     {
-      "data": { "url": "../../data/cnv_chr19_raw.tsv" },
+      "data": { "url": "../data/cnv_chr19_raw.tsv" },
       "title": "Single probe",
 
       "mark": {
@@ -56,7 +56,7 @@ channel is unioned by default.
     },
     {
       "data": {
-        "url": "../../data/cnv_chr19_segs.tsv"
+        "url": "../data/cnv_chr19_segs.tsv"
       },
       "title": "Segment mean",
       "mark": {
@@ -98,7 +98,7 @@ no sense with these data.
   },
   "layer": [
     {
-      "data": { "url": "../../data/cnv_chr19_raw.tsv" },
+      "data": { "url": "../data/cnv_chr19_raw.tsv" },
       "title": "Single probe",
 
       "mark": {
@@ -115,7 +115,7 @@ no sense with these data.
       }
     },
     {
-      "data": { "url": "../../data/cnv_chr19_segs.tsv" },
+      "data": { "url": "../data/cnv_chr19_segs.tsv" },
       "title": "Segment mean",
 
       "mark": {
