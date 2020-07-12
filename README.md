@@ -1,10 +1,10 @@
 # GenomeSpy
 
-GenomeSpy is a genome browser with WebGL and a grammar of graphics
+GenomeSpy is a genome visualization tool with a grammar of graphics and WebGL-powered fluid interactions.
 
-Documentation will be written as the project matures.
+The application is still work in progress. Documentation and examples can be found at https://genomespy.app/
 
-## Legal stuff etc.
+# Legal stuff etc.
 
 Copyright (c) 2020 Kari Lavikka. See [LICENSE](LICENSE) for details.
 
