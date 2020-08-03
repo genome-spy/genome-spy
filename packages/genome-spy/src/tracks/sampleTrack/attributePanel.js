@@ -2,6 +2,7 @@ import { format as d3format } from "d3-format";
 import { scaleBand } from "d3-scale";
 import { quantile, range } from "d3-array";
 import { inferType } from "vega-loader";
+import { isNumber } from "vega-util";
 import * as vs from "vega-scale";
 
 import formatObject from "../../utils/formatObject";
@@ -302,6 +303,12 @@ export default class AttributePanel {
                 .unknown(-1);
 
             accessor = s => lookup(s.attributes[attribute]);
+        } else if (/^(sequential|diverging)/.test(scale.type)) {
+            // Sort nominal values in descending order by default
+            accessor = s => {
+                const v = s.attributes[attribute];
+                return isNumber(v) ? -v : v;
+            };
         } else {
             accessor = s => s.attributes[attribute];
         }

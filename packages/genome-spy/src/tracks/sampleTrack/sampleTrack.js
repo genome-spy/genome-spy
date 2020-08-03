@@ -547,9 +547,10 @@ export default class SampleTrack extends SimpleTrack {
         const isValid = x => x != null && x === x;
 
         // nulls & undefineds break sorting
+        // TODO: Harmonize this with attributePanel's sortByAttribute()
         const sanitize =
             inferType(values) == "number"
-                ? d => (isValid(d) ? d : -Infinity)
+                ? d => (isValid(d) ? -d : -Infinity) // Descending by default
                 : d => (isValid(d) ? d : "");
 
         const valuesBySample = new Map(
