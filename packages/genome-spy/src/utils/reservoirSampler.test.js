@@ -19,7 +19,7 @@ test("ReservoirSampler produces roughly uniform distributions", () => {
             sampler.ingest(i);
         }
 
-        for (const a of sampler.getSamples()) {
+        for (const a of sampler.getSample()) {
             freqs[a] = freqs[a] + 1;
         }
     }

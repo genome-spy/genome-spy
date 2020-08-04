@@ -231,7 +231,7 @@ export class PointVertexBuilder {
             size: { f: e.size, numComponents: 1 },
             color: { f: d => c2f(e.color(d)), numComponents: 3 },
             opacity: { f: e.opacity, numComponents: 1 },
-            zoomThreshold: { f: e.zoomThreshold, numComponents: 1 },
+            semanticScore: { f: e.semanticScore, numComponents: 1 },
             shape: { f: d => SHAPES[e.shape(d)] || 0, numComponents: 1 },
             strokeWidth: { f: e.strokeWidth, numComponents: 1 },
             gradientStrength: { f: e.gradientStrength, numComponents: 1 }

@@ -5,10 +5,8 @@ import simpleFilter from "./simpleFilter";
 import filter from "./filter";
 import flattenDelimited from "./flattenDelimited";
 import stack from "./stack";
-import equalize from "./equalize";
 
 const transforms = {
-    equalize,
     filter,
     flattenDelimited,
     formula,

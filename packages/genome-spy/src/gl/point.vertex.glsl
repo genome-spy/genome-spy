@@ -9,7 +9,7 @@ attribute lowp float opacity;
 attribute float size; // Diameter or width/height
 attribute lowp float shape;
 attribute lowp float strokeWidth;
-attribute float zoomThreshold;
+attribute float semanticScore;
 attribute lowp float gradientStrength;
 
 uniform float uViewportHeight;
@@ -27,7 +27,7 @@ uniform float uScaleFactor;
 uniform float uMaxPointSize;
 
 uniform float zoomLevel;
-uniform float fractionToShow;
+uniform float uSemanticThreshold;
 
 varying float vSize;
 varying lowp vec4 vColor;
@@ -37,8 +37,9 @@ varying lowp float vGradientStrength;
 
 
 float computeThresholdFactor() {
-    float margin = zoomLevel * 0.005;
-    return 1.0 - smoothstep(zoomThreshold, zoomThreshold + margin, 1.0 - zoomLevel * fractionToShow);
+    //float margin = zoomLevel * 0.005;
+    //return 1.0 - smoothstep(zoomThreshold, zoomThreshold + margin, 1.0 - zoomLevel * fractionToShow);
+    return semanticScore >= uSemanticThreshold ? 1.0 : 0.0;
 }
 
 /**
@@ -59,6 +60,13 @@ float scaleDown(float bandHeight) {
 
 void main(void) {
 
+    float thresholdFactor = computeThresholdFactor();
+    if (thresholdFactor <= 0.0) {
+        gl_PointSize = 0.0;
+        // Exit early. MAY prevent some unnecessary calculations.
+        return;
+    }
+
     float normalizedX = normalizeX();
 
     vec2 translated = transit(normalizedX, (1.0 - normalizeY()));
@@ -68,8 +76,6 @@ void main(void) {
     vec2 ndc = vec2(normalizedX, 1.0 - translatedY) * 2.0 - 1.0;
 
     gl_Position = vec4(ndc, 0.0, 1.0);
-
-    float thresholdFactor = computeThresholdFactor();
 
     vSize = sqrt(size) *
         uScaleFactor *

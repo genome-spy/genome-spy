@@ -15,7 +15,7 @@ export default class ReservoirSampler {
         this.ingester = this.initialIngester;
     }
 
-    getSamples() {
+    getSample() {
         return this.reservoir;
     }
 

@@ -262,7 +262,8 @@ function getDefaultScaleType(channel, dataType) {
         opacity: ["point", "linear"],
         color: ["ordinal", "linear"],
         shape: ["ordinal", null],
-        sample: ["identity", null]
+        sample: ["identity", null],
+        semanticScore: [null, "identity"]
     };
 
     return defaults[channel]
