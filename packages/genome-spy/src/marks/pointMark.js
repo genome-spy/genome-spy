@@ -1,11 +1,12 @@
 import fromEntries from "fromentries";
 import * as twgl from "twgl.js";
-import { extent, bisector } from "d3-array";
+import { bisector, quantileSorted } from "d3-array";
 import { PointVertexBuilder } from "../gl/dataToVertices";
 import VERTEX_SHADER from "../gl/point.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
 
 import Mark from "./mark";
+import ReservoirSampler from "../utils/reservoirSampler";
 
 const defaultMarkProperties = {
     xOffset: 0,
@@ -17,7 +18,7 @@ const defaultMarkProperties = {
     maxRelativePointDiameter: 0.8,
     minAbsolutePointDiameter: 0,
 
-    geometricZoomBound: 0
+    semanticZoomFraction: 0.02
 };
 
 /** @type {import("../view/viewUtils").EncodingSpecs} */
@@ -27,7 +28,7 @@ const defaultEncoding = {
     color: { value: "#1f77b4" },
     opacity: { value: 1.0 },
     size: { value: 100.0 },
-    zoomThreshold: { value: 1.0 },
+    semanticScore: { value: 0.0 }, // TODO: Should be datum instead of value. But needs fixing.
     shape: { value: "circle" },
     strokeWidth: { value: 0.7 },
     gradientStrength: { value: 0.0 }
@@ -70,15 +71,29 @@ export default class PointMark extends Mark {
     initializeData() {
         super.initializeData();
 
-        const accessor = this.unitView.getAccessor("x");
-
-        if (!accessor) {
+        const xAccessor = this.unitView.getAccessor("x");
+        if (!xAccessor) {
             throw new Error("x channel is undefined!");
         }
 
         // Sort each point of each sample for binary search
         for (const arr of this.dataBySample.values()) {
-            arr.sort((a, b) => accessor(a) - accessor(b));
+            arr.sort((a, b) => xAccessor(a) - xAccessor(b));
+        }
+
+        // Semantic zooming is currently solely a feature of point mark.
+        // Build a sorted sample that allows for computing p-quantiles
+        const semanticScoreAccessor = this.unitView.getAccessor(
+            "semanticScore"
+        );
+        if (semanticScoreAccessor) {
+            const sampler = new ReservoirSampler(3000); // n chosen using Stetson-Harrison
+            for (const d of this.unitView.getData().flatData()) {
+                // TODO: Throw on missing scores
+                sampler.ingest(semanticScoreAccessor(d));
+            }
+            this.sampledSemanticScores = Float32Array.from(sampler.getSample());
+            this.sampledSemanticScores.sort((a, b) => a - b);
         }
     }
 
@@ -152,6 +167,27 @@ export default class PointMark extends Mark {
         }
     }
 
+    getSemanticThreshold() {
+        if (this.sampledSemanticScores) {
+            const p = Math.max(
+                0,
+                1 -
+                    this.properties.semanticZoomFraction *
+                        this.getContext().genomeSpy.getExpZoomLevel()
+            );
+            if (p <= 0) {
+                // The sampled scores may be missing the min/max values
+                return -Infinity;
+            } else if (p >= 1) {
+                return Infinity;
+            } else {
+                return quantileSorted(this.sampledSemanticScores, p);
+            }
+        } else {
+            return -1;
+        }
+    }
+
     /**
      * @param {object[]} samples
      * @param {object} globalUniforms
@@ -174,7 +210,7 @@ export default class PointMark extends Mark {
             uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),
             uScaleFactor: this._getGeometricScaleFactor(),
-            fractionToShow: fractionToShow // TODO: Configurable
+            uSemanticThreshold: this.getSemanticThreshold()
         });
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
@@ -254,15 +290,12 @@ export default class PointMark extends Mark {
             xScale.invert(x + (maxPointDiameter / 2) * sizeScaleFactor)
         );
 
-        const margin = 0.005; // TODO: Configurable
-        const threshold =
-            this.getContext().genomeSpy.getExpZoomLevel() * fractionToShow;
-        const thresholdWithMargin = threshold * (1 + margin);
+        const semanticThreshold = this.getSemanticThreshold();
 
         let lastMatch = null;
         for (let i = begin; i < end; i++) {
             const d = data[i];
-            if (1 - e.zoomThreshold(d) < thresholdWithMargin) {
+            if (e.semanticScore(d) > semanticThreshold) {
                 // TODO: Optimize by computing mouse y on the band scale
                 const dist = distance(
                     x,

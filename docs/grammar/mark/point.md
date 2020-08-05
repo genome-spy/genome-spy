@@ -147,8 +147,8 @@ specific diameter on the screen. Thus, closely located points tend to overlap
 each other. Decreasing the point size reduces the probability of overlap, but
 in a zoomed-in view, the plot may become overly sparse.
 
-Point mark provides two specific zooming behaviors that adjust the point size
-and visibility based on the zoom level.
+To control overplotting, the point mark provides two zooming behaviors that
+adjust the point size and visibility based on the zoom level.
 
 ### Geometric zoom
 
@@ -203,4 +203,66 @@ about 1500X zoom.
 
 ### Semantic zoom
 
-TODO
+The score-based semantic zoom adjusts the point visibility by coupling a
+score threshold to current zoom level. The `semanticScore` channel enables
+the semantic zoom and specifies the score field. The `semanticZoomFraction`
+property controls the fraction of data items to show in the fully zoomed-out
+view, i.e., it specifies the threshold score. The fraction is scaled as the
+viewport is zoomed. Thus, if the data is distributed roughly uniformly along
+the zoomed axis, roughly constant number of points are visible at all zoom
+levels. The score can be arbitrarily distributed, as the threshold is
+computed using _p_-quantiles.
+
+The example below has 200 000 semi-randomly generated points with a score.
+The scores are sampled from an exponential distribution. As the view is
+zoomed in, new points appear. Their number in the viewport stays
+approximately constant until the lowest possible score has been reached.
+
+<div class="embed-example">
+<div class="embed-container" style="height: 300px"></div>
+<div class="embed-spec">
+
+```json
+{
+  "data": {
+    "sequence": { "start": 0, "stop": 200000, "as": "x" }
+  },
+  "transform": [
+    { "type": "formula", "expr": "random() * 0.682", "as": "u" },
+    {
+      "type": "formula",
+      "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618",
+      "as": "y"
+    },
+    {
+      "type": "formula",
+      "expr": "-log(random())",
+      "as": "score"
+    }
+  ],
+  "mark": {
+    "type": "point",
+    "semanticZoomFraction": 0.002
+  },
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" },
+    "color": {
+      "field": "score",
+      "type": "quantitative",
+      "scale": { "scheme": "bluegreen" }
+    },
+    "semanticScore": { "field": "score", "type": "quantitative" },
+    "size": { "value": 100 }
+  }
+}
+```
+
+</div>
+</div>
+
+!!! tip
+
+    The score-based semantic zoom is great for filtering point mutations and
+    indels that are scored using [CADD](https://cadd.gs.washington.edu/),
+    for example.
