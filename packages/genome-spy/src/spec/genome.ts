@@ -16,5 +16,8 @@ export interface GenomeConfig {
      */
     baseUrl?: string;
 
+    /**
+     * As an alternative for chromSizes, the contigs can be provided inline.
+     */
     contigs?: Contig[];
 }

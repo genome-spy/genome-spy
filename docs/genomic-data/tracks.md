@@ -41,8 +41,10 @@ certain databases for further information about the gene.
 !!! note "How the scoring is actually done"
 
     * Follow https://docs.higlass.io/data_preparation.html#gene-annotation-tracks
-    * Use `utils/compressGeneAnnotations.py` to compress the data.
-    * TODO: then what?
+    * Use [`utils/compressGeneAnnotations.py`](https://github.com/tuner/genome-spy/blob/master/utils/compressGeneAnnotations.py)
+      to compress the `geneAnnotations.bed` file.
+    * Save the file as `refSeq_genes_scored_compressed.GENOME_NAME.txt` and
+      place it in the [genome directory](genomic-coordinates.md#custom-genomes).
 
 ## Example
 

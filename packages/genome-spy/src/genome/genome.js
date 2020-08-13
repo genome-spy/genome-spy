@@ -123,7 +123,7 @@ export default class Genome extends CoordinateSystem {
     parseInterval(str) {
         // TODO: consider changing [0-9XY] to support other species besides humans
         const matches = str.match(
-            /^(chr[0-9XY]+):([0-9,]+)-(?:(chr[0-9XY]+):)?([0-9,]+)$/
+            /^(chr[0-9A-Z]+):([0-9,]+)-(?:(chr[0-9A-Z]+):)?([0-9,]+)$/
         );
 
         if (matches) {
@@ -159,7 +159,7 @@ export default class Genome extends CoordinateSystem {
 export function parseChromSizes(chromSizesData) {
     // TODO: Support other organisms too
     return tsvParseRows(chromSizesData)
-        .filter(row => /^chr[0-9XY]{1,2}$/.test(row[0]))
+        .filter(row => /^chr[0-9A-Z]+$/.test(row[0]))
         .map(([name, size]) => ({ name, size: parseInt(size) }));
 }
 
@@ -175,7 +175,7 @@ export function parseUcscCytobands(cytobandData) {
     return (
         tsvParseRows(cytobandData)
             // TODO: Support other organisms too
-            .filter(b => /^chr[0-9XY]{1,2}$/.test(b[0]))
+            .filter(b => /^chr[0-9A-Z]+$/.test(b[0]))
             .map(row => ({
                 chrom: row[0],
                 chromStart: +row[1],

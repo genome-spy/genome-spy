@@ -7,7 +7,7 @@
 # Original RefSeqGene format:
 # https://genome.ucsc.edu/FAQ/FAQformat.html#format1
 #
-# GenomeSpy uses scores to prioritizes gene symbols shown on the gene track.
+# GenomeSpy uses scores to prioritize gene symbols shown on the gene track.
 # A method described on HiGlass' website assigns each gene a score based
 # on its citation count. The produced geneAnnotations.bed file can be
 # compressed using this script.
