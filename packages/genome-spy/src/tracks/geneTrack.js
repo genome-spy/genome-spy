@@ -659,7 +659,7 @@ function detectGeneClusters(genes) {
 
     let concurrentCount = 0;
     let union = [];
-    let leftEdge = null;
+    let leftEdge = null; // the left edge of the merged cluster
     let previousEnd = 0;
     let index = 0;
 
@@ -678,7 +678,10 @@ function detectGeneClusters(genes) {
                         leftEdge = edge.pos;
                     }
 
-                    if (edge.pos - previousEnd > mergeDistance) {
+                    if (
+                        previousEnd > 0 &&
+                        edge.pos - previousEnd > mergeDistance
+                    ) {
                         union.push({
                             id: index,
                             genes: genesInBlock,
