@@ -18,6 +18,7 @@ export default class WebGlTrack extends Track {
         this.glCanvas = this.createCanvas();
 
         const gl = twgl.getContext(this.glCanvas);
+        twgl.addExtensionsToContext(gl);
 
         if (!gl) {
             throw new Error(

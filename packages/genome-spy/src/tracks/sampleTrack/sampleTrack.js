@@ -792,6 +792,7 @@ export default class SampleTrack extends SimpleTrack {
 
         const globalUniforms = {
             ...this.getDomainUniforms(),
+            uViewportSize: [gl.drawingBufferWidth, gl.drawingBufferHeight],
             transitionOffset: xTransitionProgress,
             zoomLevel: this.genomeSpy.getExpZoomLevel()
         };

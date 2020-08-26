@@ -4,12 +4,11 @@ uniform highp float uYTranslate;
 
 uniform float uYOffset;
 
-attribute highp float y;
 
 /**
  * Does viewport (track) transformation and returns the Y coordinate on normalized [0, 1] scale
  */
-float normalizeY() {
+float normalizeY(float y) {
     // https://stackoverflow.com/a/47543127
     const float FLT_MAX =  3.402823466e+38;
 

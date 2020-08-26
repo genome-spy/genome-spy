@@ -290,6 +290,96 @@ export class PointVertexBuilder {
     }
 }
 
+export class ConnectionVertexBuilder {
+    /**
+     * TODO: Create a base class or something. This is now almost identical to PointVertexBuilder
+     *
+     * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
+     * @param {number} [size] Number of points if known, uses TypedArray
+     */
+    constructor(encoders, size) {
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (encoders);
+
+        const c2f = createCachingColor2floatArray();
+        const c2f2 = createCachingColor2floatArray();
+
+        const fpa = [0, 0]; // optimize fp64ify
+        const fpa2 = [0, 0]; // optimize fp64ify
+
+        /** @type {Object.<string, import("./arraybuilder").Converter>} */
+        const converters = {
+            x: { f: d => fp64ify(e.x(d), fpa), numComponents: 2 },
+            x2: { f: d => fp64ify(e.x2(d), fpa2), numComponents: 2 },
+            y: { f: e.y, numComponents: 1 },
+            y2: { f: e.y2, numComponents: 1 },
+            size: { f: e.size, numComponents: 1 },
+            size2: { f: e.size2, numComponents: 1 },
+            height: { f: e.height, numComponents: 1 },
+            color: { f: d => c2f(e.color(d)), numComponents: 3 },
+            color2: { f: d => c2f2(e.color2(d)), numComponents: 3 },
+            opacity: { f: e.opacity, numComponents: 1 }
+        };
+
+        const constants = Object.entries(encoders)
+            .filter(e => e[1].constant)
+            .map(e => e[0]);
+        const variables = Object.entries(encoders)
+            .filter(e => !e[1].constant)
+            .map(e => e[0]);
+
+        this.variableBuilder = ArrayBuilder.create(converters, variables, size);
+        this.constantBuilder = ArrayBuilder.create(converters, constants);
+
+        this.constantBuilder.updateFromDatum({});
+        this.constantBuilder.pushAll();
+
+        this.index = 0;
+        this.rangeMap = new Map();
+    }
+
+    /**
+     *
+     * @param {String} key
+     * @param {object[]} points
+     */
+    addBatch(key, points) {
+        const offset = this.index;
+
+        for (const p of points) {
+            this.variableBuilder.pushFromDatum(p);
+            this.index++;
+        }
+
+        const count = this.index - offset;
+        if (count) {
+            this.rangeMap.set(key, {
+                offset,
+                count
+                // TODO: Add some indices that allow rendering just a range
+            });
+        }
+    }
+
+    toArrays() {
+        const arrays = this.variableBuilder.arrays;
+
+        // Prepare for instanced rendering
+        for (let a of Object.values(arrays)) {
+            a.divisor = 1;
+        }
+
+        return {
+            arrays: {
+                ...arrays,
+                ...this.constantBuilder.toValues()
+            },
+            vertexCount: this.index,
+            drawMode: glConst.POINTS,
+            rangeMap: this.rangeMap
+        };
+    }
+}
+
 /**
  * @typedef {Object} SegmentSpec Describes how a segment should be visualized
  * @prop {Interval} interval

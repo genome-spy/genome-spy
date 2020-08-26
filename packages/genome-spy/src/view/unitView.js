@@ -1,6 +1,7 @@
 import RectMark from "../marks/rectMark";
 import PointMark from "../marks/pointMark";
 import RuleMark from "../marks/rule";
+import ConnectionMark from "../marks/connection";
 
 import View from "./view";
 import ContainerView from "./containerView";
@@ -20,7 +21,8 @@ import createDomain from "../utils/domainArray";
 export const markTypes = {
     point: PointMark,
     rect: RectMark,
-    rule: RuleMark
+    rule: RuleMark,
+    connection: ConnectionMark
 };
 
 export default class UnitView extends View {

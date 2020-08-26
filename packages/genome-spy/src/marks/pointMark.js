@@ -204,7 +204,6 @@ export default class PointMark extends Mark {
             uYScale: 1,
             uXOffset: (this.properties.xOffset / gl.drawingBufferWidth) * dpr,
             uYOffset: (this.properties.yOffset / gl.drawingBufferHeight) * dpr,
-            uViewportHeight: gl.drawingBufferHeight,
             uDevicePixelRatio: dpr,
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
             uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,

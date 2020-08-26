@@ -87,8 +87,8 @@ export default class Mark {
         };
 
         // TODO: Consider putting encoders to unitView
-        this.encoders = createEncoders(encoding, scaleSource, scale =>
-            this.unitView.getAccessor(scale)
+        this.encoders = createEncoders(encoding, scaleSource, channel =>
+            this.unitView.getAccessor(channel)
         );
     }
 

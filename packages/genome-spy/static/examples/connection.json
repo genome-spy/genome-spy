@@ -1,0 +1,29 @@
+{
+  "data": {
+    "sequence": { "start": 0, "stop": 100, "as": "z" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "random() * 1000", "as": "x" },
+    { "type": "formula", "expr": "random() * 1000 + 200", "as": "x2" }
+  ],
+
+  "mark": "connection",
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "x2": { "field": "x2" },
+    "height": {
+      "expr": "abs(datum.x2 - datum.x)",
+      "type": "quantitative",
+      "scale": {
+        "range": [0.001, 1.3]
+      }
+    },
+    "opacity": { "value": 0.3 },
+    "color": { "value": "black" },
+    "color2": { "value": "red" },
+    "size": { "value": 1 },
+    "size2": { "value": 7 }
+  }
+}

@@ -5,6 +5,11 @@ precision mediump float;
 @import ./includes/minWidth;
 @import ./includes/sampleTransition;
 
+/**
+ * X coordinate of the vertex as fp64 (emulated 64bit floating point)
+ */
+attribute highp vec2 x;
+attribute highp float y;
 attribute vec3 color;
 attribute lowp float opacity;
 
@@ -33,8 +38,8 @@ float applyMinHeight(float normalizedY) {
 }
 
 void main(void) {
-    float normalizedX = normalizeX();
-    float normalizedY = normalizeY();
+    float normalizedX = normalizeX(x);
+    float normalizedY = normalizeY(y);
     
     float opa = opacity * applyMinWidth(normalizedX);
 

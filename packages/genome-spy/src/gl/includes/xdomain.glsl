@@ -7,10 +7,6 @@
  */
 const float precisionThreshold = 1.0 / (1024.0 * 1024.0 * 8.0);
 
-/**
- * X coordinate of the vertex as fp64 (emulated 64bit floating point)
- */
-attribute highp vec2 x;
 
 uniform highp vec2 uXScale;
 uniform highp vec2 uXTranslate;
@@ -24,7 +20,7 @@ uniform float uXOffset;
  * Does viewport transformation and returns the X coordinate on a normalized [0, 1] scale
  */
 
-float normalizeX() {
+float normalizeX(vec2 x) {
     // https://stackoverflow.com/a/47543127
     const float FLT_MAX =  3.402823466e+38;
 
