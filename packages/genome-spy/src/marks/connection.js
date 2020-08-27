@@ -5,9 +5,9 @@ import { ConnectionVertexBuilder } from "../gl/dataToVertices";
 
 import Mark from "./mark";
 
-const stripSegments = 151;
-
-const defaultMarkProperties = {};
+const defaultMarkProperties = {
+    segments: 101 // Performance is affected more by the fill rate
+};
 
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
@@ -101,7 +101,7 @@ export default class ConnectionMark extends Mark {
         }
 
         vertexData.arrays.strip = {
-            data: createStrip(stripSegments),
+            data: createStrip(this.properties.segments),
             numComponents: 2
         };
 
@@ -139,7 +139,7 @@ export default class ConnectionMark extends Mark {
                     gl,
                     this.bufferInfo,
                     gl.TRIANGLE_STRIP,
-                    (stripSegments + 1) * 2, // TODO: Replace magic number (number of vertices)
+                    (this.properties.segments + 1) * 2, // TODO: Replace magic number (number of vertices)
                     0,
                     range.count
                 );

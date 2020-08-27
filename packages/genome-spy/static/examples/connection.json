@@ -1,6 +1,6 @@
 {
   "data": {
-    "sequence": { "start": 0, "stop": 100, "as": "z" }
+    "sequence": { "start": 0, "stop": 1200, "as": "z" }
   },
 
   "transform": [
@@ -8,7 +8,10 @@
     { "type": "formula", "expr": "random() * 1000 + 200", "as": "x2" }
   ],
 
-  "mark": "connection",
+  "mark": {
+    "type": "connection",
+    "segments": 101
+  },
 
   "encoding": {
     "x": { "field": "x", "type": "quantitative" },
