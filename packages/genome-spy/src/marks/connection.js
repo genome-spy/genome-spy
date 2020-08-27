@@ -34,6 +34,8 @@ export default class ConnectionMark extends Mark {
             ...defaultMarkProperties,
             ...this.properties
         };
+
+        this.opaque = this.getEncoding().opacity.value >= 1.0;
     }
 
     getDefaultEncoding() {
@@ -120,7 +122,12 @@ export default class ConnectionMark extends Mark {
         const gl = this.gl;
         const dpr = window.devicePixelRatio;
 
-        gl.enable(gl.BLEND);
+        if (this.opaque) {
+            gl.disable(gl.BLEND);
+        } else {
+            gl.enable(gl.BLEND);
+        }
+
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
