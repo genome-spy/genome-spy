@@ -91,17 +91,6 @@ export default class ConnectionMark extends Mark {
         }
         const vertexData = builder.toArrays();
 
-        function createStrip(/** @type number */ segments) {
-            let i = 0;
-            const coords = [];
-
-            for (; i <= segments; i++) {
-                coords.push(i / segments, 0.5);
-                coords.push(i / segments, -0.5);
-            }
-            return coords;
-        }
-
         vertexData.arrays.strip = {
             data: createStrip(this.properties.segments),
             numComponents: 2
@@ -132,8 +121,7 @@ export default class ConnectionMark extends Mark {
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
             uYTranslate: 0,
-            uYScale: 1,
-            uDevicePixelRatio: dpr
+            uYScale: 1
         });
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
@@ -175,4 +163,15 @@ export default class ConnectionMark extends Mark {
     findDatumAt(sampleId, x) {}
 
     getRangeAggregates() {}
+}
+
+function createStrip(/** @type number */ segments) {
+    let i = 0;
+    const coords = [];
+
+    for (; i <= segments; i++) {
+        coords.push(i / segments, 0.5);
+        coords.push(i / segments, -0.5);
+    }
+    return coords;
 }

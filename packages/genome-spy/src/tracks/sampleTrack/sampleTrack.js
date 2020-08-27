@@ -792,9 +792,12 @@ export default class SampleTrack extends SimpleTrack {
 
         const globalUniforms = {
             ...this.getDomainUniforms(),
+            uDevicePixelRatio: window.devicePixelRatio,
             uViewportSize: [gl.drawingBufferWidth, gl.drawingBufferHeight],
-            transitionOffset: xTransitionProgress,
-            zoomLevel: this.genomeSpy.getExpZoomLevel()
+            zoomLevel: this.genomeSpy.getExpZoomLevel(),
+            uYTranslate: 0,
+            uYScale: 1,
+            transitionOffset: xTransitionProgress
         };
 
         const samples = leftScale

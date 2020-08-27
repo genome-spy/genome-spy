@@ -234,8 +234,11 @@ export default class SimpleTrack extends WebGlTrack {
 
         const globalUniforms = {
             ...this.getDomainUniforms(),
+            uDevicePixelRatio: window.devicePixelRatio,
             uViewportSize: [gl.drawingBufferWidth, gl.drawingBufferHeight],
-            zoomLevel: this.genomeSpy.getExpZoomLevel()
+            zoomLevel: this.genomeSpy.getExpZoomLevel(),
+            uYTranslate: 0,
+            uYScale: 1
         };
 
         const samples = [
