@@ -307,7 +307,7 @@ export class ConnectionVertexBuilder {
         const fpa2 = [0, 0]; // optimize fp64ify
 
         /** @type {Object.<string, import("./arraybuilder").Converter>} */
-        const converters = {
+        this._converters = {
             x: { f: d => fp64ify(e.x(d), fpa), numComponents: 2 },
             x2: { f: d => fp64ify(e.x2(d), fpa2), numComponents: 2 },
             y: { f: e.y, numComponents: 1 },
@@ -327,8 +327,12 @@ export class ConnectionVertexBuilder {
             .filter(e => !e[1].constant)
             .map(e => e[0]);
 
-        this.variableBuilder = ArrayBuilder.create(converters, variables, size);
-        this.constantBuilder = ArrayBuilder.create(converters, constants);
+        this.variableBuilder = ArrayBuilder.create(
+            this._converters,
+            variables,
+            size
+        );
+        this.constantBuilder = ArrayBuilder.create(this._converters, constants);
 
         this.constantBuilder.updateFromDatum({});
         this.constantBuilder.pushAll();
@@ -375,7 +379,13 @@ export class ConnectionVertexBuilder {
             },
             vertexCount: this.index,
             drawMode: glConst.POINTS,
-            rangeMap: this.rangeMap
+            rangeMap: this.rangeMap,
+            componentNumbers: Object.fromEntries(
+                Object.entries(this._converters).map(e => [
+                    e[0],
+                    e[1].numComponents
+                ])
+            )
         };
     }
 }

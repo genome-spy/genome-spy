@@ -35,6 +35,7 @@ void main(void) {
     float hY;
 
     if (nY == nY2) {
+        // Let's create an arc
         if (uBandwidth == 0.0) {
             // Move the control points so that the unit-height connection produces a unit-height arc
             float stretch = 1.0 / 0.75; // TODO: Apply to height outside the shader
@@ -48,6 +49,7 @@ void main(void) {
         }
 
     } else {
+        // Not an arc, a curve instead!
         if (nY < nY2) {
             nY += uBandwidth;
         } else if (nY2 < nY) {
@@ -62,7 +64,7 @@ void main(void) {
     vec2 p3 = vec2(nX2, hY);
     vec2 p4 = vec2(nX2, nY2);
 
-    // Segments are shorter near the endpoints to make tightly bent curves smoother
+    // Let's make segments shorter near the endpoints to make the tightly bent attachment points smoother
     float t = smoothstep(0.0, 1.0, strip.x);
 
     // https://stackoverflow.com/a/31317254/1547896
@@ -81,16 +83,21 @@ void main(void) {
         p = C1*t*t*t + C2*t*t + C3*t + C4;
     }
 
+    // Faceting and transitions
+    p.y = transit(p.x, p.y)[0];
+
     vec2 tangent = normalize(3.0 * C1*t*t + 2.0*C2*t + C3);
     vec2 normal = vec2(-tangent.y, tangent.x);
 
     // Extrude
+    // TODO: Scale stroke width as the transition progresses, fix the aspect ratio of faceted strokes
     p += strip.y * normal * mix(size, size2, t) / uViewportSize * uDevicePixelRatio;
 
-
+    // TODO: coordinates are upside down and broken in the facet view
     vec2 ndc = p * 2.0 - 1.0;
 
     gl_Position = vec4(ndc, 0.0, 1.0);
+
     // Yuck, RGB interpolation in gamma space! TODO: linear space: https://unlimited3d.wordpress.com/2020/01/08/srgb-color-space-in-opengl/
     vColor = vec4(mix(color, color2, t) * opacity, opacity);
 }
