@@ -19,6 +19,7 @@ const defaultEncoding = {
     size: { value: 1.0 },
     size2: null,
     color: { value: "black" },
+    color2: null,
     opacity: { value: 1.0 }
 };
 
