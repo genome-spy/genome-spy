@@ -4,6 +4,7 @@ import fromEntries from "fromentries";
  * @typedef {Object} EncoderMetadata
  * @prop {boolean} constant
  * @prop {function} invert
+ * @prop {function} [scale]
  * @prop {import("./accessor").Accessor} accessor
  *
  * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder
@@ -66,6 +67,7 @@ function createEncoder(encodingConfig, scale, accessor, channel) {
         encoder = /** @type {Encoder} datum*/ datum => scale(accessor(datum));
         encoder.constant = /** @type {boolean} */ (!!accessor.constant);
         encoder.accessor = accessor;
+        encoder.scale = scale;
     } else {
         throw new Error(
             `Missing value or accessor (field, expr, datum) on channel "${channel}": ${JSON.stringify(
@@ -89,7 +91,9 @@ function createEncoder(encodingConfig, scale, accessor, channel) {
 /** @type {Object.<string, string>} */
 export const secondaryChannels = {
     x: "x2",
-    y: "y2"
+    y: "y2",
+    size: "size2",
+    color: "color2"
 };
 
 /**

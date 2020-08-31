@@ -109,7 +109,6 @@ export default class ConnectionMark extends Mark {
      */
     render(samples, globalUniforms) {
         const gl = this.gl;
-        const dpr = window.devicePixelRatio;
 
         if (this.opaque) {
             gl.disable(gl.BLEND);
@@ -117,11 +116,15 @@ export default class ConnectionMark extends Mark {
             gl.enable(gl.BLEND);
         }
 
+        const getBandwidth = scale =>
+            scale && scale.type == "band" ? scale.bandwidth() : 0;
+
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
             uYTranslate: 0,
-            uYScale: 1
+            uYScale: 1,
+            uBandwidth: getBandwidth(this.encoders.y.scale)
         });
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);

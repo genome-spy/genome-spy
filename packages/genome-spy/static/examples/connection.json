@@ -1,6 +1,6 @@
 {
   "data": {
-    "sequence": { "start": 0, "stop": 1200, "as": "z" }
+    "sequence": { "start": 0, "stop": 100, "as": "z" }
   },
 
   "transform": [
@@ -14,6 +14,8 @@
   },
 
   "encoding": {
+    "y": { "value": 0 },
+    "y2": { "value": 0 },
     "x": { "field": "x", "type": "quantitative" },
     "x2": { "field": "x2" },
     "height": {
