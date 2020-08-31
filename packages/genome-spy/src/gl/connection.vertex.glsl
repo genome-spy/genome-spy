@@ -26,6 +26,7 @@ attribute float size2;
 varying vec4 vColor;
 
 void main(void) {
+
     float nX = normalizeX(x);
     float nX2 = normalizeX(x2);
     float nY = normalizeY(y);
@@ -35,7 +36,10 @@ void main(void) {
 
     if (nY == nY2) {
         if (uBandwidth == 0.0) {
-            hY = height * zoomLevel + max(nY, nY2);
+            // Move the control points so that the unit-height connection produces a unit-height arc
+            float stretch = 1.0 / 0.75; // TODO: Apply to height outside the shader
+
+            hY = height * stretch * zoomLevel + max(nY, nY2);
         } else {
             // Move above the band
             nY += uBandwidth;
