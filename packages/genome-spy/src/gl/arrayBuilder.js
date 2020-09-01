@@ -37,7 +37,7 @@ export default class ArrayBuilder {
     constructor(size) {
         this.size = size;
 
-        /** @type {Object.<string, {data: number[] | Float32Array, numComponents: number}>} */
+        /** @type {Object.<string, {data: number[] | Float32Array, numComponents: number, divisor: ?number}>} */
         this.arrays = {};
 
         /** @type {function[]} */

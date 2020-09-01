@@ -200,12 +200,8 @@ export default class PointMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYTranslate: 0,
-            uYScale: 1,
             uXOffset: (this.properties.xOffset / gl.drawingBufferWidth) * dpr,
             uYOffset: (this.properties.yOffset / gl.drawingBufferHeight) * dpr,
-            uViewportHeight: gl.drawingBufferHeight,
-            uDevicePixelRatio: dpr,
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
             uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),

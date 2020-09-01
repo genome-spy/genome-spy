@@ -4,6 +4,12 @@ precision mediump float;
 @import ./includes/ydomain;
 @import ./includes/sampleTransition;
 
+/**
+ * X coordinate of the vertex as fp64 (emulated 64bit floating point)
+ */
+attribute highp vec2 x;
+attribute highp float y;
+
 attribute lowp vec3 color;
 attribute lowp float opacity;
 attribute float size; // Diameter or width/height
@@ -12,7 +18,7 @@ attribute lowp float strokeWidth;
 attribute float semanticScore;
 attribute lowp float gradientStrength;
 
-uniform float uViewportHeight;
+uniform vec2 uViewportSize;
 uniform lowp float uDevicePixelRatio;
 
 /** Maximum size of the largest point as the fraction of the height of the (faceted) view */
@@ -67,9 +73,9 @@ void main(void) {
         return;
     }
 
-    float normalizedX = normalizeX();
+    float normalizedX = normalizeX(x);
 
-    vec2 translated = transit(normalizedX, (1.0 - normalizeY()));
+    vec2 translated = transit(normalizedX, (1.0 - normalizeY(y)));
     float translatedY = translated[0];
     float height = translated[1];
 
@@ -79,7 +85,7 @@ void main(void) {
 
     vSize = sqrt(size) *
         uScaleFactor *
-        scaleDown(height * uViewportHeight) *
+        scaleDown(height * uViewportSize.y) *
         thresholdFactor *
         uDevicePixelRatio;
 

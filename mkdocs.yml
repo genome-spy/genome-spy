@@ -36,6 +36,7 @@ nav:
                 - Point: "grammar/mark/point.md"
                 - Rect: "grammar/mark/rect.md"
                 - Rule: "grammar/mark/rule.md"
+                - Connection: "grammar/mark/connection.md"
           - View Composition:
                 - Composing Visualizations: "grammar/composition.md"
                 - Concat: "grammar/concat.md"
