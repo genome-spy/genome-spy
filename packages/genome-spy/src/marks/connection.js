@@ -49,6 +49,13 @@ export default class ConnectionMark extends Mark {
     getEncoding() {
         const encoding = super.getEncoding();
 
+        if (!encoding.x) {
+            throw new Error(
+                "The x channel has not been defined: " +
+                    JSON.stringify(encoding)
+            );
+        }
+
         if (!encoding.size2) {
             encoding.size2 = encoding.size;
         }
