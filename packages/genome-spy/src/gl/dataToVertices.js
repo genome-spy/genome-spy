@@ -463,10 +463,12 @@ export class TextVertexBuilder {
      *
      * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
      * @param {import("../fonts/types").FontMetadata} metadata
+     * @param {object} properties
      */
-    constructor(encoders, metadata /* TODO: vertexCount */) {
+    constructor(encoders, metadata, properties) {
         this.encoders = encoders;
         this.metadata = metadata;
+        this.properties = properties;
 
         const e = encoders;
 
@@ -521,64 +523,102 @@ export class TextVertexBuilder {
             this.metadata.chars.map(e => [e.id, e])
         );
 
+        const align = this.properties.align || "left";
+
         const base = this.metadata.common.base;
         const scale = this.metadata.common.scaleH; // Assume square textures
 
+        const getChar = /** @param {number} charCode */ charCode =>
+            chars[charCode] || chars[63];
+
+        // Font metrics are not available in the bmfont metadata. Have to calculate...
+        const sdfPadding = 5;
+        const xHeight = getChar("x".charCodeAt(0)).height - sdfPadding * 2;
+        const capHeight = getChar("X".charCodeAt(0)).height - sdfPadding * 2;
+
+        let baseline = -sdfPadding;
+        switch (this.properties.baseline) {
+            case "top":
+                baseline += capHeight;
+                break;
+            case "middle":
+                baseline += capHeight / 2;
+                break;
+            case "bottom":
+            default:
+            // alphabetic
+        }
+
         for (const d of data) {
             const str = "" + this.encoders.text.accessor(d);
+            if (str.length == 0) continue;
 
             this.variableBuilder.updateFromDatum(d);
 
-            let x = 0;
+            let textWidth = 0;
             for (let i = 0; i < str.length; i++) {
-                const charCode = str.charCodeAt(i);
-                const c = chars[charCode] || chars[63];
+                textWidth += getChar(str.charCodeAt(i)).xadvance;
+            }
+            textWidth /= base;
+
+            let x =
+                align == "right"
+                    ? -textWidth
+                    : align == "center"
+                    ? -textWidth / 2
+                    : 0;
+
+            const firstChar = getChar(str.charCodeAt(0));
+            x -= (firstChar.width - firstChar.xadvance) / base / 2; // TODO: Fix, this is a bit off..
+
+            for (let i = 0; i < str.length; i++) {
+                const c = getChar(str.charCodeAt(i));
 
                 const tx = c.x;
                 const ty = c.y;
                 const advance = c.xadvance / base;
 
-                if (charCode == 32) {
+                if (c.id == 32) {
                     x += advance;
                     continue;
                 }
 
                 // TODO: Simplify
                 const height = c.height / base;
-                const baseLine = (c.height + c.yoffset) / base;
+                const bottom = -(c.height + c.yoffset + baseline) / base;
 
                 this.updateCX(x);
-                this.updateCY(height - baseLine);
+                this.updateCY(bottom + height);
                 this.updateTX(tx / scale);
                 this.updateTY(ty / scale);
                 this.variableBuilder.pushAll();
 
                 this.updateCX(x + c.width / base);
-                this.updateCY(height - baseLine);
+                this.updateCY(bottom + height);
                 this.updateTX((tx + c.width) / scale);
                 this.updateTY(ty / scale);
                 this.variableBuilder.pushAll();
 
                 this.updateCX(x);
-                this.updateCY(0 - baseLine);
+                this.updateCY(bottom);
                 this.updateTX(tx / scale);
                 this.updateTY((ty + c.height) / scale);
                 this.variableBuilder.pushAll();
 
                 this.updateCX(x + c.width / base);
-                this.updateCY(height - baseLine);
+                this.updateCY(bottom + height);
                 this.updateTX((tx + c.width) / scale);
                 this.updateTY(ty / scale);
                 this.variableBuilder.pushAll();
 
                 this.updateCX(x);
-                this.updateCY(0 - baseLine);
+                this.updateCY(bottom);
                 this.updateTX(tx / scale);
                 this.updateTY((ty + c.height) / scale);
                 this.variableBuilder.pushAll();
 
                 this.updateCX(x + c.width / base);
-                this.updateCY(0 - baseLine);
+                this.updateCY(bottom);
                 this.updateTX((tx + c.width) / scale);
                 this.updateTY((ty + c.height) / scale);
                 this.variableBuilder.pushAll();

@@ -7,7 +7,12 @@ import fontMetadata from "../fonts/Lato-Regular.json";
 
 import Mark from "./mark";
 
-const defaultMarkProperties = {};
+const defaultMarkProperties = {
+    align: "left",
+    baseline: "alphabetic",
+    dx: 0,
+    dy: 0
+};
 
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
@@ -77,7 +82,11 @@ export default class TextMark extends Mark {
             min: gl.LINEAR
         }); // TODO: handle Callback
 
-        const builder = new TextVertexBuilder(this.encoders, fontMetadata);
+        const builder = new TextVertexBuilder(
+            this.encoders,
+            fontMetadata,
+            this.properties
+        );
 
         for (const [sample, connections] of this.dataBySample.entries()) {
             builder.addBatch(sample, connections);
@@ -106,11 +115,12 @@ export default class TextMark extends Mark {
             uYTranslate: 0,
             uYScale: 1,
             uTexture: this.fontTexture,
+            uD: [this.properties.dx, -this.properties.dy],
             uSdfNumerator:
-                /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata
+                /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
                     .common.base *
                 window.devicePixelRatio *
-                0.1) // TODO: Ensure that this makes sense. Now chosen by trial & error
+                0.1 // TODO: Ensure that this makes sense. Now chosen by trial & error
         });
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);

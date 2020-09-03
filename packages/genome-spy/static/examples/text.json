@@ -1,24 +1,34 @@
 {
   "data": {
-    "values": [8, 9, 10, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 96]
+    "values": [7, 8, 9, 10, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 84, 96]
   },
   "transform": [
-    { "type": "formula", "expr": "'Lorem ipsum ' + datum.data", "as": "text" }
+    {
+      "type": "formula",
+      "expr": "'xZ Lorem ipsum ' + datum.data",
+      "as": "text"
+    }
   ],
   "encoding": {
     "x": {
-      "datum": "10",
+      "field": "data",
       "type": "quantitative",
-      "scale": { "domain": [0, 100] }
+      "scale": { "domain": [0, 200] }
     },
     "y": {
       "field": "data",
       "type": "quantitative"
-    }
+    },
+    "size": { "value": 100 }
   },
   "layer": [
+    { "mark": "point" },
     {
-      "mark": "text",
+      "mark": {
+        "type": "text",
+        "align": "left",
+        "baseline": "alphabetic"
+      },
       "encoding": {
         "text": {
           "field": "text",
@@ -32,7 +42,6 @@
           }
         }
       }
-    },
-    { "mark": "point" }
+    }
   ]
 }

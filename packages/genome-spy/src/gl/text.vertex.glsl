@@ -8,6 +8,8 @@ uniform vec2 uViewportSize;
 uniform lowp float uDevicePixelRatio;
 uniform float uSdfNumerator;
 
+uniform vec2 uD; // dx & dy
+
 /**
  * X coordinate of the vertex as fp64 (emulated 64bit floating point)
  */
@@ -26,7 +28,6 @@ attribute vec3 color;
 attribute lowp float opacity;
 attribute float size;
 
-
 varying vec4 vColor;
 varying vec2 vTexCoord;
 varying float vSlope;
@@ -37,7 +38,7 @@ void main(void) {
     
     float translatedY = transit(normalizedX, normalizedY)[0];
 
-    vec2 ndc = (vec2(normalizedX, translatedY) + vec2(cx, cy) * size * uDevicePixelRatio / uViewportSize) * 2.0 - 1.0;
+    vec2 ndc = (vec2(normalizedX, translatedY) + (vec2(cx, cy) * size + uD) * uDevicePixelRatio / uViewportSize) * 2.0 - 1.0;
 
     vSlope = max(1.0, size / uSdfNumerator);
 
