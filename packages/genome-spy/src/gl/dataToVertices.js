@@ -458,6 +458,158 @@ export class ConnectionVertexBuilder {
     }
 }
 
+export class TextVertexBuilder {
+    /**
+     *
+     * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
+     * @param {import("../fonts/types").FontMetadata} metadata
+     */
+    constructor(encoders, metadata /* TODO: vertexCount */) {
+        this.encoders = encoders;
+        this.metadata = metadata;
+
+        const e = encoders;
+
+        /** @type {Object.<string, import("./arraybuilder").Converter>} */
+        const converters = {
+            x: { f: d => fp64ify(e.x(d)), numComponents: 2 },
+            y: { f: e.y, numComponents: 1 },
+            color: { f: d => color2floatArray(e.color(d)), numComponents: 3 },
+            opacity: { f: e.opacity, numComponents: 1 },
+            size: { f: e.size, numComponents: 1 }
+        };
+
+        const constants = Object.entries(encoders)
+            .filter(e => e[1].constant)
+            .map(e => e[0]);
+        const variables = Object.entries(encoders)
+            .filter(e => !e[1].constant)
+            .map(e => e[0]);
+
+        this.variableBuilder = ArrayBuilder.create(converters, variables);
+
+        // TODO: Store these as vec2
+        this.updateCX = this.variableBuilder.createUpdater("cx", 1);
+        this.updateCY = this.variableBuilder.createUpdater("cy", 1);
+
+        // Texture
+        this.updateTX = this.variableBuilder.createUpdater("tx", 1);
+        this.updateTY = this.variableBuilder.createUpdater("ty", 1);
+
+        /*
+        // TODO: Optimization: width/height could be constants when minWidth/minHeight are zero
+        this.updateWidth = this.variableBuilder.createUpdater("width", 1);
+        this.updateHeight = this.variableBuilder.createUpdater("height", 1);
+        */
+
+        this.constantBuilder = ArrayBuilder.create(converters, constants);
+        this.constantBuilder.updateFromDatum({});
+        this.constantBuilder.pushAll();
+
+        this.rangeMap = new Map();
+    }
+
+    /**
+     *
+     * @param {String} key
+     * @param {object[]} data
+     */
+    addBatch(key, data) {
+        const offset = this.variableBuilder.vertexCount;
+
+        const chars = Object.fromEntries(
+            this.metadata.chars.map(e => [e.id, e])
+        );
+
+        const base = this.metadata.common.base;
+        const scale = this.metadata.common.scaleH; // Assume square textures
+
+        for (const d of data) {
+            const str = "" + this.encoders.text.accessor(d);
+
+            this.variableBuilder.updateFromDatum(d);
+
+            let x = 0;
+            for (let i = 0; i < str.length; i++) {
+                const charCode = str.charCodeAt(i);
+                const c = chars[charCode] || chars[63];
+
+                const tx = c.x;
+                const ty = c.y;
+                const advance = c.xadvance / base;
+
+                if (charCode == 32) {
+                    x += advance;
+                    continue;
+                }
+
+                // TODO: Simplify
+                const height = c.height / base;
+                const baseLine = (c.height + c.yoffset) / base;
+
+                this.updateCX(x);
+                this.updateCY(height - baseLine);
+                this.updateTX(tx / scale);
+                this.updateTY(ty / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x + c.width / base);
+                this.updateCY(height - baseLine);
+                this.updateTX((tx + c.width) / scale);
+                this.updateTY(ty / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x);
+                this.updateCY(0 - baseLine);
+                this.updateTX(tx / scale);
+                this.updateTY((ty + c.height) / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x + c.width / base);
+                this.updateCY(height - baseLine);
+                this.updateTX((tx + c.width) / scale);
+                this.updateTY(ty / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x);
+                this.updateCY(0 - baseLine);
+                this.updateTX(tx / scale);
+                this.updateTY((ty + c.height) / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x + c.width / base);
+                this.updateCY(0 - baseLine);
+                this.updateTX((tx + c.width) / scale);
+                this.updateTY((ty + c.height) / scale);
+                this.variableBuilder.pushAll();
+
+                x += advance;
+            }
+        }
+
+        const count = this.variableBuilder.vertexCount - offset;
+        if (count) {
+            this.rangeMap.set(key, {
+                offset,
+                count
+                // TODO: Add some indices that allow rendering just a range
+            });
+        }
+    }
+
+    toArrays() {
+        return {
+            arrays: {
+                ...this.variableBuilder.arrays,
+                ...this.constantBuilder.toValues()
+            },
+            vertexCount: this.variableBuilder.vertexCount,
+            drawMode: glConst.TRIANGLES,
+            rangeMap: this.rangeMap
+        };
+    }
+}
+
 /**
  * @typedef {Object} SegmentSpec Describes how a segment should be visualized
  * @prop {Interval} interval

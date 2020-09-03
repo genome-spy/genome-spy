@@ -8,7 +8,7 @@ module.exports = {
     moduleFileExtensions: ["js", "mjs"],
 
     moduleNameMapper: {
-        "\\.glsl$": "<rootDir>/__mocks__/fileMock.js"
+        "\\.(glsl|png|json)$": "<rootDir>/__mocks__/fileMock.js"
     },
 
     // All imported modules in your tests should be mocked automatically

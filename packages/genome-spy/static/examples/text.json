@@ -1,0 +1,38 @@
+{
+  "data": {
+    "values": [8, 9, 10, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 96]
+  },
+  "transform": [
+    { "type": "formula", "expr": "'Lorem ipsum ' + datum.data", "as": "text" }
+  ],
+  "encoding": {
+    "x": {
+      "datum": "10",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100] }
+    },
+    "y": {
+      "field": "data",
+      "type": "quantitative"
+    }
+  },
+  "layer": [
+    {
+      "mark": "text",
+      "encoding": {
+        "text": {
+          "field": "text",
+          "type": "nominal"
+        },
+        "size": {
+          "field": "data",
+          "type": "quantitative",
+          "scale": {
+            "type": "identity"
+          }
+        }
+      }
+    },
+    { "mark": "point" }
+  ]
+}

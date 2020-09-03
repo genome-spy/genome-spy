@@ -2,6 +2,7 @@ import RectMark from "../marks/rectMark";
 import PointMark from "../marks/pointMark";
 import RuleMark from "../marks/rule";
 import ConnectionMark from "../marks/connection";
+import TextMark from "../marks/text";
 
 import View from "./view";
 import ContainerView from "./containerView";
@@ -22,7 +23,8 @@ export const markTypes = {
     point: PointMark,
     rect: RectMark,
     rule: RuleMark,
-    connection: ConnectionMark
+    connection: ConnectionMark,
+    text: TextMark
 };
 
 export default class UnitView extends View {
