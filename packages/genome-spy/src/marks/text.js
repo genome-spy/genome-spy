@@ -17,7 +17,7 @@ const defaultMarkProperties = {
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
     x: null,
-    y: { value: 0.0 },
+    y: { value: 0.5 },
     size: { value: 11.0 },
     color: { value: "black" },
     opacity: { value: 1.0 }

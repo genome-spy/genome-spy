@@ -16,5 +16,5 @@ void main() {
 
     float sigDist = 1.0 -  median(c.r, c.g, c.b);
     float opa = clamp((sigDist - 0.5) * vSlope + 0.5, 0.0, 1.0);
-    gl_FragColor = vec4(vColor.rgb, vColor.a * opa);
+    gl_FragColor = vColor * opa;
 }
