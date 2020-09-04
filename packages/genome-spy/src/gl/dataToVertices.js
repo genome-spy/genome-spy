@@ -481,6 +481,10 @@ export class TextVertexBuilder {
             size: { f: e.size, numComponents: 1 }
         };
 
+        if (encoders.x2) {
+            converters.x2 = { f: d => fp64ify(e.x2(d)), numComponents: 2 };
+        }
+
         const constants = Object.entries(encoders)
             .filter(e => e[1].constant)
             .map(e => e[0]);
@@ -498,11 +502,7 @@ export class TextVertexBuilder {
         this.updateTX = this.variableBuilder.createUpdater("tx", 1);
         this.updateTY = this.variableBuilder.createUpdater("ty", 1);
 
-        /*
-        // TODO: Optimization: width/height could be constants when minWidth/minHeight are zero
         this.updateWidth = this.variableBuilder.createUpdater("width", 1);
-        this.updateHeight = this.variableBuilder.createUpdater("height", 1);
-        */
 
         this.constantBuilder = ArrayBuilder.create(converters, constants);
         this.constantBuilder.updateFromDatum({});
@@ -560,6 +560,8 @@ export class TextVertexBuilder {
                 textWidth += getChar(str.charCodeAt(i)).xadvance;
             }
             textWidth /= base;
+
+            this.updateWidth(textWidth); // TODO: Check if one letter space should be reduced
 
             let x =
                 align == "right"

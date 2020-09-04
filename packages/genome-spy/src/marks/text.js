@@ -23,6 +23,13 @@ const defaultEncoding = {
     opacity: { value: 1.0 }
 };
 
+/** For GLSL uniforms */
+const alignments = {
+    left: -1,
+    center: 0,
+    right: 1
+};
+
 /**
  * Renders text using SDF fonts
  *
@@ -72,6 +79,12 @@ export default class TextMark extends Mark {
     initializeGraphics(gl) {
         super.initializeGraphics(gl);
 
+        const encoding = this.getEncoding();
+
+        if (encoding.x2) {
+            this._shaderDefines += "#define X2_ENABLED\n";
+        }
+
         this.programInfo = twgl.createProgramInfo(
             gl,
             [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s))
@@ -116,6 +129,8 @@ export default class TextMark extends Mark {
             uYScale: 1,
             uTexture: this.fontTexture,
             uD: [this.properties.dx, -this.properties.dy],
+            uPaddingX: 4.0,
+            uAlign: alignments[this.properties.align],
             uSdfNumerator:
                 /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
                     .common.base *
