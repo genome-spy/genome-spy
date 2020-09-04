@@ -34,7 +34,15 @@ Rect mark displays each data item as a rectangle.
 ## Channels
 
 Rect mark supports the standard [position](../encoding/index.md) channels and
-`color` and `opacity` channels.
+`color` and `opacity` channels and the following:
+
+`squeeze`
+: Type: String
+
+    Squeezes a side of the rectangle turning it into a triangle. Valid
+    choices: `none` (default), `top`, `right`, `bottom`, `left`.
+
+    **Default value:** `none`
 
 ## Properties
 

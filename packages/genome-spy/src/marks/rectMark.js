@@ -1,3 +1,4 @@
+import fromEntries from "fromentries";
 import * as twgl from "twgl.js";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
@@ -23,8 +24,13 @@ const defaultEncoding = {
     y: null,
     y2: null,
     color: { value: "#1f77b4" },
-    opacity: { value: 1.0 }
+    opacity: { value: 1.0 },
+    squeeze: { value: "none" } // choices: none, top, right, bottom, left
 };
+
+export const SQUEEZE = fromEntries(
+    ["none", "top", "right", "bottom", "left"].map((squeeze, i) => [squeeze, i])
+);
 
 export default class RectMark extends Mark {
     /**

@@ -98,6 +98,7 @@ export class RectVertexBuilder {
         this.rangeMap = new Map();
     }
 
+    /* eslint-disable complexity */
     /**
      *
      * @param {string} key
@@ -140,52 +141,69 @@ export class RectVertexBuilder {
 
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
             this.variableBuilder.updateFromDatum(d);
-            this.updateX(fp64ify(x, fpa));
-            this.updateWidth(-width);
-            this.updateY(y);
-            this.updateHeight(height);
-            this.variableBuilder.pushAll();
 
-            // Tesselate segments
-            const tileCount =
-                width < Infinity
-                    ? Math.ceil(width / this.tesselationThreshold)
-                    : 1;
-            for (let i = 0; i <= tileCount; i++) {
-                const frac = i / tileCount;
-
-                let w = 0;
-                if (i == 0) {
-                    w = -width;
-                } else if (i >= tileCount) {
-                    w = width;
-                }
-
-                this.updateWidth(w);
-
-                // Note: Infinity is used for horizontal and vertical rule marks that have unspecified start/end coords
-                const tx = isFinite(width)
-                    ? x + width * frac
-                    : i == 0
-                    ? -Infinity
-                    : Infinity;
-
-                this.updateX(fp64ify(tx, fpa));
+            const squeeze = /** @type {string} */ (e.squeeze(d));
+            if (squeeze != "none") {
+                const c = this._squeeze(squeeze, x, x2, y, y2);
+                this.updateX(fp64ify(c.ax, fpa));
+                this.updateY(c.ay);
+                this.variableBuilder.pushAll();
+                this.variableBuilder.pushAll();
+                this.updateX(fp64ify(c.bx, fpa));
+                this.updateY(c.by);
+                this.variableBuilder.pushAll();
+                this.updateX(fp64ify(c.cx, fpa));
+                this.updateY(c.cy);
+                this.variableBuilder.pushAll();
+                this.variableBuilder.pushAll();
+            } else {
+                this.updateX(fp64ify(x, fpa));
+                this.updateWidth(-width);
                 this.updateY(y);
                 this.updateHeight(height);
                 this.variableBuilder.pushAll();
-                this.updateY(y2);
+
+                // Tesselate segments
+                const tileCount =
+                    width < Infinity
+                        ? Math.ceil(width / this.tesselationThreshold)
+                        : 1;
+                for (let i = 0; i <= tileCount; i++) {
+                    const frac = i / tileCount;
+
+                    let w = 0;
+                    if (i == 0) {
+                        w = -width;
+                    } else if (i >= tileCount) {
+                        w = width;
+                    }
+
+                    this.updateWidth(w);
+
+                    // Note: Infinity is used for horizontal and vertical rule marks that have unspecified start/end coords
+                    const tx = isFinite(width)
+                        ? x + width * frac
+                        : i == 0
+                        ? -Infinity
+                        : Infinity;
+
+                    this.updateX(fp64ify(tx, fpa));
+                    this.updateY(y);
+                    this.updateHeight(height);
+                    this.variableBuilder.pushAll();
+                    this.updateY(y2);
+                    this.updateHeight(-height);
+                    this.variableBuilder.pushAll();
+                }
+
+                // Duplicate the last vertex to produce a degenerate triangle between the segments
+                this.variableBuilder.updateFromDatum(d);
+                this.updateX(fp64ify(x2, fpa));
+                this.updateWidth(width);
                 this.updateHeight(-height);
+                this.updateY(y2);
                 this.variableBuilder.pushAll();
             }
-
-            // Duplicate the last vertex to produce a degenerate triangle between the segments
-            this.variableBuilder.updateFromDatum(d);
-            this.updateX(fp64ify(x2, fpa));
-            this.updateWidth(width);
-            this.updateHeight(-height);
-            this.updateY(y2);
-            this.variableBuilder.pushAll();
         }
 
         const count = this.variableBuilder.vertexCount - offset;
@@ -195,6 +213,56 @@ export class RectVertexBuilder {
                 count
                 // TODO: Add some indices that allow rendering just a range
             });
+        }
+    }
+
+    /**
+     *
+     * @param {string} squeeze
+     * @param {number} x
+     * @param {number} x2
+     * @param {number} y
+     * @param {number} y2
+     */
+    _squeeze(squeeze, x, x2, y, y2) {
+        switch (squeeze) {
+            case "bottom":
+                return {
+                    ax: x,
+                    ay: y2,
+                    bx: (x + x2) / 2,
+                    by: y,
+                    cx: x2,
+                    cy: y2
+                };
+            case "top":
+                return {
+                    ax: x,
+                    ay: y,
+                    bx: x2,
+                    by: y,
+                    cx: (x + x2) / 2,
+                    cy: y2
+                };
+            case "left":
+                return {
+                    ax: x,
+                    ay: (y + y2) / 2,
+                    bx: x2,
+                    by: y,
+                    cx: x2,
+                    cy: y2
+                };
+            case "right":
+                return {
+                    ax: x,
+                    ay: y,
+                    bx: x2,
+                    by: (y + y2) / 2,
+                    cx: x,
+                    cy: y2
+                };
+            default:
         }
     }
 

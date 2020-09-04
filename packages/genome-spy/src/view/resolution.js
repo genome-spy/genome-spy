@@ -4,6 +4,7 @@ import mergeObjects from "../utils/mergeObjects";
 import createScale from "../scale/scale";
 
 import { SHAPES } from "../marks/pointMark"; // TODO: Fix silly dependency
+import { SQUEEZE } from "../marks/rectMark"; // TODO: Fix silly dependency
 
 /**
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
@@ -238,6 +239,9 @@ export default class Resolution {
         } else if (channel == "shape") {
             // of point mark
             props.range = Object.keys(SHAPES);
+        } else if (channel == "squeeze") {
+            // of rect mark
+            props.range = Object.keys(SQUEEZE);
         } else if (channel == "size") {
             props.range = [0, 400]; // TODO: Configurable default
         }
@@ -262,6 +266,7 @@ function getDefaultScaleType(channel, dataType) {
         opacity: ["point", "linear"],
         color: ["ordinal", "linear"],
         shape: ["ordinal", null],
+        squeeze: ["ordinal", null],
         sample: ["identity", null],
         semanticScore: [null, "identity"]
     };
