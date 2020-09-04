@@ -143,7 +143,7 @@ export class RectVertexBuilder {
             this.variableBuilder.updateFromDatum(d);
 
             const squeeze = /** @type {string} */ (e.squeeze(d));
-            if (squeeze != "none") {
+            if (squeeze && squeeze != "none") {
                 const c = this._squeeze(squeeze, x, x2, y, y2);
                 this.updateX(fp64ify(c.ax, fpa));
                 this.updateY(c.ay);
