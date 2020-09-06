@@ -639,8 +639,6 @@ export class TextVertexBuilder {
 
                 x += advance;
             }
-
-            console.log(`${str} ${this.variableBuilder.vertexCount}`);
         }
 
         const count = this.variableBuilder.vertexCount - offset;
