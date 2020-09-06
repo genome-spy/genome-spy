@@ -1,3 +1,4 @@
+import { isString } from "vega-util";
 import * as twgl from "twgl.js";
 import VERTEX_SHADER from "../gl/text.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/text.fragment.glsl";
@@ -96,11 +97,17 @@ export default class TextMark extends Mark {
             min: gl.LINEAR
         }); // TODO: handle Callback
 
+        // Count the total number of characters to that we can pre-allocate a typed array
         const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
         let charCount = 0;
         for (const data of this.dataBySample.values()) {
             for (const d of data) {
-                const str = accessor(d);
+                const value = accessor(d);
+                const str = isString(value)
+                    ? value
+                    : value === null
+                    ? ""
+                    : "" + value;
                 charCount += (str && str.length) || 0;
             }
         }

@@ -557,7 +557,12 @@ export class TextVertexBuilder {
         const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
 
         for (const d of data) {
-            const str = "" + accessor(d);
+            const value = accessor(d);
+            const str = isString(value)
+                ? value
+                : value === null
+                ? ""
+                : "" + value;
             if (str.length == 0) continue;
 
             this.variableBuilder.updateFromDatum(d);
@@ -634,6 +639,8 @@ export class TextVertexBuilder {
 
                 x += advance;
             }
+
+            console.log(`${str} ${this.variableBuilder.vertexCount}`);
         }
 
         const count = this.variableBuilder.vertexCount - offset;
