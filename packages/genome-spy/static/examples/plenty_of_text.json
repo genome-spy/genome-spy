@@ -1,0 +1,49 @@
+{
+  "data": {
+    "sequence": { "start": 0, "stop": 10000 }
+  },
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "floor(random() * 10000)",
+      "as": "x"
+    },
+    {
+      "type": "formula",
+      "expr": "floor(random() * 1000)",
+      "as": "y"
+    },
+    {
+      "type": "formula",
+      "expr": "'' + datum.x + 'x' + datum.y",
+      "as": "text"
+    }
+  ],
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative"
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative"
+    },
+    "text": {
+      "field": "text",
+      "type": "ordinal"
+    },
+    "size": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": {
+        "range": [6, 20]
+      }
+    }
+  },
+
+  "mark": {
+    "type": "text",
+    "align": "left",
+    "baseline": "alphabetic"
+  }
+}

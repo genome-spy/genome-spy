@@ -464,8 +464,9 @@ export class TextVertexBuilder {
      * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
      * @param {import("../fonts/types").FontMetadata} metadata
      * @param {object} properties
+     * @param {number} [size]
      */
-    constructor(encoders, metadata, properties) {
+    constructor(encoders, metadata, properties, size) {
         this.encoders = encoders;
         this.metadata = metadata;
         this.properties = properties;
@@ -492,7 +493,11 @@ export class TextVertexBuilder {
             .filter(e => !e[1].constant)
             .map(e => e[0]);
 
-        this.variableBuilder = ArrayBuilder.create(converters, variables);
+        this.variableBuilder = ArrayBuilder.create(
+            converters,
+            variables,
+            size * 6
+        );
 
         // TODO: Store these as vec2
         this.updateCX = this.variableBuilder.createUpdater("cx", 1);
@@ -549,8 +554,10 @@ export class TextVertexBuilder {
             // alphabetic
         }
 
+        const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
+
         for (const d of data) {
-            const str = "" + this.encoders.text.accessor(d);
+            const str = "" + accessor(d);
             if (str.length == 0) continue;
 
             this.variableBuilder.updateFromDatum(d);

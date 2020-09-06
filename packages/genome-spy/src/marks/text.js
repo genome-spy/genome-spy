@@ -18,6 +18,7 @@ const defaultMarkProperties = {
 const defaultEncoding = {
     x: null,
     y: { value: 0.5 },
+    text: { value: "" },
     size: { value: 11.0 },
     color: { value: "black" },
     opacity: { value: 1.0 }
@@ -95,14 +96,24 @@ export default class TextMark extends Mark {
             min: gl.LINEAR
         }); // TODO: handle Callback
 
+        const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
+        let charCount = 0;
+        for (const data of this.dataBySample.values()) {
+            for (const d of data) {
+                const str = accessor(d);
+                charCount += (str && str.length) || 0;
+            }
+        }
+
         const builder = new TextVertexBuilder(
             this.encoders,
             fontMetadata,
-            this.properties
+            this.properties,
+            charCount
         );
 
-        for (const [sample, connections] of this.dataBySample.entries()) {
-            builder.addBatch(sample, connections);
+        for (const [sample, texts] of this.dataBySample.entries()) {
+            builder.addBatch(sample, texts);
         }
         const vertexData = builder.toArrays();
 
