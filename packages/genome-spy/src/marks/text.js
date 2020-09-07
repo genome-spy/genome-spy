@@ -74,6 +74,18 @@ export default class TextMark extends Mark {
         return encoding;
     }
 
+    initializeEncoders() {
+        // TODO: Move this hack elsewhere. This is now copypaste from pointmark.
+        super.initializeEncoders();
+        const yScale = this.getScale("y", true);
+        if (yScale && yScale.bandwidth) {
+            const offset = yScale.bandwidth() / 2;
+            const ye = this.encoders.y;
+            this.encoders.y = d => ye(d) + offset;
+            // TODO: Set default baseline
+        }
+    }
+
     /**
      *
      * @param {WebGLRenderingContext} gl
