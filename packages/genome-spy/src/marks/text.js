@@ -163,9 +163,8 @@ export default class TextMark extends Mark {
             uAlign: alignments[this.properties.align],
             uSdfNumerator:
                 /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
-                    .common.base *
-                window.devicePixelRatio *
-                0.1 // TODO: Ensure that this makes sense. Now chosen by trial & error
+                    .common.base /
+                (window.devicePixelRatio / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
         });
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);

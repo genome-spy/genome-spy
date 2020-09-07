@@ -1,6 +1,6 @@
 {
   "data": {
-    "values": [7, 8, 9, 10, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 84, 96]
+    "values": [7, 8, 9, 10, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 84]
   },
   "transform": [
     {
@@ -17,11 +17,27 @@
     },
     "y": {
       "field": "data",
-      "type": "quantitative"
+      "type": "quantitative",
+      "scale": { "domain": [3, 100] }
     },
     "size": { "value": 100 }
   },
   "layer": [
+    {
+      "data": { "values": ["GenomeSpy"] },
+      "mark": {
+        "type": "text",
+        "align": "center",
+        "baseline": "middle"
+      },
+      "encoding": {
+        "x": { "datum": 100, "type": "quantitative" },
+        "y": { "value": 0.5 },
+        "text": { "field": "data", "type": "nominal" },
+        "size": { "value": 600 },
+        "color": { "value": "#f0f0f0" }
+      }
+    },
     { "mark": "point" },
     {
       "mark": {
