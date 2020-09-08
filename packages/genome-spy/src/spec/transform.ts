@@ -163,11 +163,15 @@ export interface PileupConfig extends TransformConfigBase {
 export interface CoverageConfig extends TransformConfigBase {
     type: "coverage";
 
+    chrom?: string;
+
     start: string;
 
     end: string;
 
     as?: string;
+
+    asChrom?: string;
 
     asStart?: string;
 

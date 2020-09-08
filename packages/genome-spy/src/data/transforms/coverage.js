@@ -19,10 +19,28 @@ export default function coverageTransform(coverageConfig, rows) {
     const asCoverage = coverageConfig.as || "coverage";
     const asStart = coverageConfig.asStart || coverageConfig.start;
     const asEnd = coverageConfig.asEnd || coverageConfig.end;
-    // TODO: chrom
+    const asChrom = coverageConfig.asChrom || coverageConfig.chrom;
 
-    /** @type {Record<string, number>} used for merging adjacent segment */
+    /** @type {Record<string, number|string>} used for merging adjacent segment */
     let bufferedSegment;
+
+    /** @type {string} */
+    let prevChrom;
+
+    /** @type {string} */
+    let chrom;
+
+    /** @type {Record<string, number|string>[]} */
+    const coverageSegments = [];
+
+    // TODO: Whattabout cumulative error when float weights are used?
+    let coverage = 0;
+
+    /** @type {number} */
+    let prevEdge;
+
+    // End pos as priority, weight as value
+    const ends = new Heapify(maxDepth, [], [], Float32Array, Float64Array);
 
     /**
      * @param {number} start
@@ -51,20 +69,27 @@ export default function coverageTransform(coverageConfig, rows) {
                 [asEnd]: end,
                 [asCoverage]: coverage
             };
+            if (chrom) {
+                bufferedSegment[asChrom] = chrom;
+            }
         }
     }
 
-    /** @type {Record<string, number>[]} */
-    const coverageSegments = [];
+    function flushQueue() {
+        // Flush queue
+        while (ends.size) {
+            const edge = ends.peekPriority();
+            pushSegment(prevEdge, edge, coverage);
+            prevEdge = edge;
+            coverage -= ends.pop();
+        }
+        prevEdge = undefined;
 
-    // TODO: Whattabout cumulative error when float weights are used?
-    let coverage = 0;
-
-    /** @type {number} */
-    let prevEdge;
-
-    // End pos as priority, weight as value
-    const ends = new Heapify(maxDepth, [], [], Float32Array, Float64Array);
+        if (bufferedSegment) {
+            coverageSegments.push(bufferedSegment);
+            bufferedSegment = undefined;
+        }
+    }
 
     for (const row of rows) {
         while (ends.size && ends.peekPriority() < row[coverageConfig.start]) {
@@ -72,6 +97,15 @@ export default function coverageTransform(coverageConfig, rows) {
             pushSegment(prevEdge, edge, coverage);
             prevEdge = edge;
             coverage -= ends.pop();
+        }
+
+        if (asChrom) {
+            let newChrom = row[coverageConfig.chrom];
+            if (newChrom != prevChrom) {
+                flushQueue();
+                chrom = newChrom;
+                prevChrom = chrom;
+            }
         }
 
         const edge = row[coverageConfig.start];
@@ -86,17 +120,7 @@ export default function coverageTransform(coverageConfig, rows) {
         ends.push(weight, row[coverageConfig.end]);
     }
 
-    // Flush queue
-    while (ends.size) {
-        const edge = ends.peekPriority();
-        pushSegment(prevEdge, edge, coverage);
-        prevEdge = edge;
-        coverage -= ends.pop();
-    }
-
-    if (bufferedSegment) {
-        coverageSegments.push(bufferedSegment);
-    }
+    flushQueue();
 
     return coverageSegments;
 }
