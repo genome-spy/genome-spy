@@ -21,6 +21,11 @@ export default function coverageTransform(coverageConfig, rows) {
     const asEnd = coverageConfig.asEnd || coverageConfig.end;
     const asChrom = coverageConfig.asChrom || coverageConfig.chrom;
 
+    /** @type {function(Record<string, number>):number} */
+    const getWeight = coverageConfig.weight
+        ? d => d[coverageConfig.weight]
+        : d => 1;
+
     /** @type {Record<string, number|string>} used for merging adjacent segment */
     let bufferedSegment;
 
@@ -114,7 +119,7 @@ export default function coverageTransform(coverageConfig, rows) {
         }
         prevEdge = edge;
 
-        const weight = 1;
+        const weight = getWeight(row);
         coverage += weight;
 
         ends.push(weight, row[coverageConfig.end]);

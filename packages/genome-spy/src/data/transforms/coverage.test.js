@@ -72,3 +72,38 @@ test("Coverage transform handles chromosomes", () => {
 
     expect(coverageTransform(coverageConfig, reads)).toEqual(coverageSegments);
 });
+
+test("Coverage transform handles weights", () => {
+    const reads = [
+        [0, 4, 1],
+        [1, 3, 2],
+        [2, 6, 3]
+    ].map(d => ({
+        start: d[0],
+        end: d[1],
+        weight: d[2]
+    }));
+
+    const coverageSegments = [
+        [0, 1, 1],
+        [1, 2, 3],
+        [2, 3, 6],
+        [3, 4, 4],
+        [4, 6, 3]
+    ].map(d => ({
+        start: d[0],
+        end: d[1],
+        coverage: d[2]
+    }));
+
+    /** @type {CoverageConfig} */
+    const coverageConfig = {
+        type: "coverage",
+        chrom: "chrom",
+        start: "start",
+        end: "end",
+        weight: "weight"
+    };
+
+    expect(coverageTransform(coverageConfig, reads)).toEqual(coverageSegments);
+});

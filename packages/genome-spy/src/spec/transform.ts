@@ -176,6 +176,8 @@ export interface CoverageConfig extends TransformConfigBase {
 
     end: string;
 
+    weight?: string;
+
     as?: string;
 
     asChrom?: string;
