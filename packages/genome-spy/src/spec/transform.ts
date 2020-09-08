@@ -158,6 +158,13 @@ export interface PileupConfig extends TransformConfigBase {
      * **Default:** `"lane"`.
      */
     as?: string;
+
+    /**
+     * Spacing between adjacent elements on the same lane.
+     *
+     * **Default:** `1`.
+     */
+    spacing?: number;
 }
 
 export interface CoverageConfig extends TransformConfigBase {

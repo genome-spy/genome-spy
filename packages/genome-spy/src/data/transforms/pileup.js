@@ -1,4 +1,5 @@
 import Heapify from "heapify";
+import { isNumber } from "vega-util";
 
 const maxDepth = 65536;
 
@@ -16,11 +17,12 @@ export default function pileupTransform(pileupConfig, rows) {
     const freeLanes = new Heapify(maxDepth, [], [], Uint16Array, Uint16Array);
 
     const laneField = pileupConfig.as || "lane";
+    const spacing = isNumber(pileupConfig.spacing) ? pileupConfig.spacing : 1;
 
     let maxLane = 0;
 
     for (const row of rows) {
-        while (ends.size && ends.peekPriority() < row[pileupConfig.start]) {
+        while (ends.size && ends.peekPriority() <= row[pileupConfig.start]) {
             const freeLane = ends.pop();
             freeLanes.push(freeLane, freeLane);
         }
@@ -32,7 +34,7 @@ export default function pileupTransform(pileupConfig, rows) {
 
         row[laneField] = lane;
 
-        ends.push(lane, row[pileupConfig.end]);
+        ends.push(lane, row[pileupConfig.end] + spacing);
     }
 
     return rows;
