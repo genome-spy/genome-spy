@@ -152,7 +152,28 @@ export interface PileupConfig extends TransformConfigBase {
 
     end: string;
 
-    lane: string;
+    /**
+     * The output field name for the computed lane.
+     *
+     * **Default:** `"lane"`.
+     */
+    as?: string;
+}
+
+export interface CoverageConfig extends TransformConfigBase {
+    type: "pileup";
+
+    start: string;
+
+    end: string;
+
+    as?: string;
+
+    asStart?: string;
+
+    asEnd?: string;
+
+    // TODO: Chrom
 }
 
 export interface UngroupConfig extends TransformConfigBase {

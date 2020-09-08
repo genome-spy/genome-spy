@@ -1,3 +1,4 @@
+import coverage from "./coverage";
 import formula from "./formula";
 import gather from "./gather";
 import regexExtract from "./regexExtract";
@@ -8,6 +9,7 @@ import stack from "./stack";
 import pileup from "./pileup";
 
 const transforms = {
+    coverage,
     filter,
     flattenDelimited,
     formula,
