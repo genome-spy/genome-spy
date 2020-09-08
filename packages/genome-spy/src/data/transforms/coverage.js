@@ -40,7 +40,7 @@ export default function coverageTransform(coverageConfig, rows) {
                 // Extend it
                 bufferedSegment[asEnd] = end;
                 extended = true;
-            } else {
+            } else if (bufferedSegment[asCoverage] > 0) {
                 coverageSegments.push(bufferedSegment);
             }
         }
