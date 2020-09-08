@@ -20,6 +20,7 @@ export default function coverageTransform(coverageConfig, rows) {
     const asStart = coverageConfig.asStart || coverageConfig.start;
     const asEnd = coverageConfig.asEnd || coverageConfig.end;
     const asChrom = coverageConfig.asChrom || coverageConfig.chrom;
+    // TODO: vega-util field
 
     /** @type {function(Record<string, number>):number} */
     const getWeight = coverageConfig.weight
@@ -63,7 +64,7 @@ export default function coverageTransform(coverageConfig, rows) {
                 // Extend it
                 bufferedSegment[asEnd] = end;
                 extended = true;
-            } else if (bufferedSegment[asCoverage] > 0) {
+            } else if (bufferedSegment[asCoverage] != 0) {
                 coverageSegments.push(bufferedSegment);
             }
         }

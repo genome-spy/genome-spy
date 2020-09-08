@@ -17,6 +17,7 @@ export default function pileupTransform(pileupConfig, rows) {
     const freeLanes = new Heapify(maxDepth, [], [], Uint16Array, Uint16Array);
 
     const laneField = pileupConfig.as || "lane";
+    // TODO: vega-util field
     const spacing = isNumber(pileupConfig.spacing) ? pileupConfig.spacing : 1;
 
     let maxLane = 0;

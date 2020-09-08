@@ -77,7 +77,8 @@ test("Coverage transform handles weights", () => {
     const reads = [
         [0, 4, 1],
         [1, 3, 2],
-        [2, 6, 3]
+        [2, 6, 3],
+        [8, 10, -1]
     ].map(d => ({
         start: d[0],
         end: d[1],
@@ -89,7 +90,8 @@ test("Coverage transform handles weights", () => {
         [1, 2, 3],
         [2, 3, 6],
         [3, 4, 4],
-        [4, 6, 3]
+        [4, 6, 3],
+        [8, 10, -1]
     ].map(d => ({
         start: d[0],
         end: d[1],
