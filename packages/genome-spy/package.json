@@ -44,6 +44,7 @@
     "d3-scale": "^3.2.1",
     "eventemitter3": "^4.0.4",
     "fromentries": "^1.2.1",
+    "heapify": "^0.3.0",
     "lit-html": "^1.2.1",
     "mapsort": "^1.0.3",
     "math.gl": "^2.3.3",

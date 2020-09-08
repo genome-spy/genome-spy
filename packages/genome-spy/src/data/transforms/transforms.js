@@ -5,12 +5,14 @@ import simpleFilter from "./simpleFilter";
 import filter from "./filter";
 import flattenDelimited from "./flattenDelimited";
 import stack from "./stack";
+import pileup from "./pileup";
 
 const transforms = {
     filter,
     flattenDelimited,
     formula,
     gather,
+    pileup,
     regexExtract,
     simpleFilter,
     stack

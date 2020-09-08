@@ -1,0 +1,37 @@
+{
+  "data": {
+    "sequence": {
+      "start": 1,
+      "stop": 100000,
+      "as": "start"
+    }
+  },
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "datum.start + ceil(random() * 200)",
+      "as": "end"
+    },
+    { "type": "pileup", "start": "start", "end": "end", "lane": "lane" }
+  ],
+  "mark": "rect",
+  "encoding": {
+    "x": { "field": "start", "type": "quantitative" },
+    "x2": { "field": "end" },
+    "y": {
+      "field": "lane",
+      "type": "ordinal",
+      "scale": {
+        "type": "band",
+        "padding": 0.2,
+        "reverse": true
+      },
+      "axis": null
+    },
+    "color": {
+      "expr": "datum.end - datum.start",
+      "type": "quantitative",
+      "scale": { "scheme": "spectral" }
+    }
+  }
+}

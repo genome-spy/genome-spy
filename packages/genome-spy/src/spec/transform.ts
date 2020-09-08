@@ -145,6 +145,16 @@ export interface SimpleFilterConfig extends TransformConfigBase {
     value: number | string | boolean;
 }
 
+export interface PileupConfig extends TransformConfigBase {
+    type: "pileup";
+
+    start: string;
+
+    end: string;
+
+    lane: string;
+}
+
 export interface UngroupConfig extends TransformConfigBase {
     type: "ungroup";
 }
@@ -156,4 +166,5 @@ export type TransformConfig =
     | GatherConfig
     | RegexExtractConfig
     | SimpleFilterConfig
-    | StackConfig;
+    | StackConfig
+    | PileupConfig;
