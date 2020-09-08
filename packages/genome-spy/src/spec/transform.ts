@@ -161,7 +161,7 @@ export interface PileupConfig extends TransformConfigBase {
 }
 
 export interface CoverageConfig extends TransformConfigBase {
-    type: "pileup";
+    type: "coverage";
 
     start: string;
 

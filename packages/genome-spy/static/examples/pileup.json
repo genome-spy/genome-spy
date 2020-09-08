@@ -2,20 +2,20 @@
   "data": {
     "sequence": {
       "start": 1,
-      "stop": 30000,
+      "stop": 20000,
       "as": "start"
     }
   },
   "transform": [
     {
       "type": "formula",
-      "expr": "datum.start + ceil(random() * 400)",
+      "expr": "datum.start + ceil(random() * 100)",
       "as": "end"
     }
   ],
   "concat": [
     {
-      "styles": { "height": 200 },
+      "styles": { "height": 100 },
       "transform": [
         {
           "type": "coverage",

@@ -7,30 +7,51 @@ const maxDepth = 65536;
  */
 
 /**
+ * Computes coverage for sorted segments
+ *
+ * TODO: Binned coverage
+ * TODO: Weighted coverage
  *
  * @param {CoverageConfig} coverageConfig
  * @param {Record<string, any>[]} rows
  */
-export default function pileupTransform(coverageConfig, rows) {
+export default function coverageTransform(coverageConfig, rows) {
     const asCoverage = coverageConfig.as || "coverage";
     const asStart = coverageConfig.asStart || coverageConfig.start;
     const asEnd = coverageConfig.asEnd || coverageConfig.end;
     // TODO: chrom
 
+    /** @type {Record<string, number>} used for merging adjacent segment */
+    let bufferedSegment;
+
     /**
-     *
      * @param {number} start
      * @param {number} end
      * @param {number} coverage
-     * @param {number} atStart
      */
-    function toSegment(start, end, coverage, atStart) {
-        return {
-            [asStart]: start,
-            [asEnd]: end,
-            [asCoverage]: coverage,
-            atStart
-        };
+    function pushSegment(start, end, coverage) {
+        if (start == end) {
+            return;
+        }
+
+        let extended = false;
+        if (bufferedSegment) {
+            if (bufferedSegment[asCoverage] === coverage) {
+                // Extend it
+                bufferedSegment[asEnd] = end;
+                extended = true;
+            } else {
+                coverageSegments.push(bufferedSegment);
+            }
+        }
+
+        if (!extended) {
+            bufferedSegment = {
+                [asStart]: start,
+                [asEnd]: end,
+                [asCoverage]: coverage
+            };
+        }
     }
 
     /** @type {Record<string, number>[]} */
@@ -46,21 +67,16 @@ export default function pileupTransform(coverageConfig, rows) {
     const ends = new Heapify(maxDepth, [], [], Float32Array, Float64Array);
 
     for (const row of rows) {
-        // TODO: Optimization: don't introduce extra segments if several segments have the same start pos
         while (ends.size && ends.peekPriority() < row[coverageConfig.start]) {
             const edge = ends.peekPriority();
-            if (edge > prevEdge) {
-                coverageSegments.push(toSegment(prevEdge, edge, coverage, 0));
-            }
+            pushSegment(prevEdge, edge, coverage);
             prevEdge = edge;
             coverage -= ends.pop();
         }
 
-        // TODO: Optimization: don't break if adjacent segments have equal coverages
-        // TODO: Optimization: don't introduce extra segments if several segments have the same end pos
         const edge = row[coverageConfig.start];
         if (prevEdge !== undefined) {
-            coverageSegments.push(toSegment(prevEdge, edge, coverage, 1));
+            pushSegment(prevEdge, edge, coverage);
         }
         prevEdge = edge;
 
@@ -70,20 +86,17 @@ export default function pileupTransform(coverageConfig, rows) {
         ends.push(weight, row[coverageConfig.end]);
     }
 
-    // Flush
+    // Flush queue
     while (ends.size) {
         const edge = ends.peekPriority();
-        if (edge > prevEdge) {
-            coverageSegments.push(toSegment(prevEdge, edge, coverage, 0));
-        }
+        pushSegment(prevEdge, edge, coverage);
         prevEdge = edge;
         coverage -= ends.pop();
     }
 
-    // TODO: Optimizations:
-    // Merge segments that have relative coverage difference less than X
-    // Merge segments so that minimum segment length is Y
+    if (bufferedSegment) {
+        coverageSegments.push(bufferedSegment);
+    }
 
-    console.log(coverageSegments);
     return coverageSegments;
 }
