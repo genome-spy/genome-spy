@@ -15,21 +15,22 @@ export default function pileupTransform(pileupConfig, rows) {
     const ends = new Heapify(maxDepth, [], [], Uint16Array, Float64Array);
     const freeLanes = new Heapify(maxDepth, [], [], Uint16Array, Uint16Array);
 
-    const laneField = pileupConfig.lane || "lane";
+    const laneField = pileupConfig.as || "lane";
 
     let maxLane = 0;
 
     for (const row of rows) {
-        let lane = freeLanes.pop();
-        if (lane === undefined) {
-            lane = maxLane++;
-        }
-        row[laneField] = lane;
-
         while (ends.size && ends.peekPriority() < row[pileupConfig.start]) {
             const freeLane = ends.pop();
             freeLanes.push(freeLane, freeLane);
         }
+
+        let lane = freeLanes.pop();
+        if (lane === undefined) {
+            lane = maxLane++;
+        }
+
+        row[laneField] = lane;
 
         ends.push(lane, row[pileupConfig.end]);
     }
