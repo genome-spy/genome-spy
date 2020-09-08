@@ -189,6 +189,15 @@ export interface CoverageConfig extends TransformConfigBase {
     // TODO: Chrom
 }
 
+export interface SortConfig extends TransformConfigBase {
+    type: "sort";
+
+    /**
+     * The sort order.
+     */
+    sort: CompareConfig;
+}
+
 export interface UngroupConfig extends TransformConfigBase {
     type: "ungroup";
 }
