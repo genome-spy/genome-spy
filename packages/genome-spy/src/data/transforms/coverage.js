@@ -1,4 +1,5 @@
 import Heapify from "heapify";
+import { field as vuField } from "vega-util";
 
 const maxDepth = 65536;
 
@@ -20,11 +21,16 @@ export default function coverageTransform(coverageConfig, rows) {
     const asStart = coverageConfig.asStart || coverageConfig.start;
     const asEnd = coverageConfig.asEnd || coverageConfig.end;
     const asChrom = coverageConfig.asChrom || coverageConfig.chrom;
-    // TODO: vega-util field
 
-    /** @type {function(Record<string, number>):number} */
-    const getWeight = coverageConfig.weight
-        ? d => d[coverageConfig.weight]
+    const startAccessor = vuField(coverageConfig.start);
+    const endAccessor = vuField(coverageConfig.end);
+    /** @type {function(any):string} */
+    const chromAccessor = coverageConfig.chrom
+        ? vuField(coverageConfig.chrom)
+        : d => undefined;
+    /** @type {function(any):number} */
+    const weightAccessor = coverageConfig.weight
+        ? vuField(coverageConfig.weight)
         : d => 1;
 
     /** @type {Record<string, number|string>} used for merging adjacent segment */
@@ -98,7 +104,7 @@ export default function coverageTransform(coverageConfig, rows) {
     }
 
     for (const row of rows) {
-        while (ends.size && ends.peekPriority() < row[coverageConfig.start]) {
+        while (ends.size && ends.peekPriority() < startAccessor(row)) {
             const edge = ends.peekPriority();
             pushSegment(prevEdge, edge, coverage);
             prevEdge = edge;
@@ -106,7 +112,7 @@ export default function coverageTransform(coverageConfig, rows) {
         }
 
         if (asChrom) {
-            let newChrom = row[coverageConfig.chrom];
+            let newChrom = chromAccessor(row);
             if (newChrom != prevChrom) {
                 flushQueue();
                 chrom = newChrom;
@@ -114,16 +120,16 @@ export default function coverageTransform(coverageConfig, rows) {
             }
         }
 
-        const edge = row[coverageConfig.start];
+        const edge = startAccessor(row);
         if (prevEdge !== undefined) {
             pushSegment(prevEdge, edge, coverage);
         }
         prevEdge = edge;
 
-        const weight = getWeight(row);
+        const weight = weightAccessor(row);
         coverage += weight;
 
-        ends.push(weight, row[coverageConfig.end]);
+        ends.push(weight, endAccessor(row));
     }
 
     flushQueue();
