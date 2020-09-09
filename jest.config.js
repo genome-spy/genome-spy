@@ -2,6 +2,11 @@
 // https://jestjs.io/docs/en/configuration.html
 
 module.exports = {
+    transform: {
+        "^.+\\.(mjs|js)$": "babel-jest"
+    },
+    moduleFileExtensions: ["js", "mjs"],
+
     moduleNameMapper: {
         "\\.glsl$": "<rootDir>/__mocks__/fileMock.js"
     },
@@ -128,7 +133,7 @@ module.exports = {
     // snapshotSerializers: [],
 
     // The test environment that will be used for testing
-    testEnvironment: "node"
+    testEnvironment: "node",
 
     // Options that will be passed to the testEnvironment
     // testEnvironmentOptions: {},
@@ -166,9 +171,7 @@ module.exports = {
     // transform: null,
 
     // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
-    // transformIgnorePatterns: [
-    //   "/node_modules/"
-    // ],
+    transformIgnorePatterns: ["/node_modules/(?!(heapify)/)"]
 
     // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
     // unmockedModulePathPatterns: undefined,
