@@ -148,8 +148,14 @@ export interface SimpleFilterConfig extends TransformConfigBase {
 export interface PileupConfig extends TransformConfigBase {
     type: "pileup";
 
+    /**
+     * The field representing the start coordinate of the segment (inclusive).
+     */
     start: string;
 
+    /**
+     * The field representing the end coordinate of the segment (exclusive).
+     */
     end: string;
 
     /**
@@ -160,7 +166,7 @@ export interface PileupConfig extends TransformConfigBase {
     as?: string;
 
     /**
-     * Spacing between adjacent elements on the same lane.
+     * The spacing between adjacent segments on the same lane in coordinate units.
      *
      * **Default:** `1`.
      */
@@ -170,23 +176,52 @@ export interface PileupConfig extends TransformConfigBase {
 export interface CoverageConfig extends TransformConfigBase {
     type: "coverage";
 
+    /**
+     * An optional chromosome field that is passed through.
+     */
     chrom?: string;
 
+    /**
+     * The field representing the start coordinate of the segment (inclusive).
+     */
     start: string;
 
+    /**
+     * The field representing the end coordinate of the segment (exclusive).
+     */
     end: string;
 
+    /**
+     * A field representing an optional weight for the segment. Can be used with
+     * copy ratios, for example.
+     */
     weight?: string;
 
+    /**
+     * The output field for the computed coverage.
+     */
     as?: string;
 
+    /**
+     * The output field for the chromosome.
+     *
+     * **Default:** Same as `chrom`
+     */
     asChrom?: string;
 
+    /**
+     * The output field for the start coordinate.
+     *
+     * **Default:** Same as `start`
+     */
     asStart?: string;
 
+    /**
+     * The output field for the end coordinate.
+     *
+     * **Default:** Same as `end`
+     */
     asEnd?: string;
-
-    // TODO: Chrom
 }
 
 export interface SortConfig extends TransformConfigBase {
