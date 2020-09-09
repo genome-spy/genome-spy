@@ -6,6 +6,7 @@ import fromEntries from "fromentries";
  * @prop {function} invert
  * @prop {function} [scale]
  * @prop {import("./accessor").Accessor} accessor
+ * @prop {import("../view/viewUtils").EncodingConfig} encodingConfig
  *
  * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder
  * @typedef {(function(object):number) & EncoderMetadata} NumberEncoder
@@ -84,6 +85,9 @@ function createEncoder(encodingConfig, scale, accessor, channel) {
                       JSON.stringify(encodingConfig)
               );
           };
+
+    // Just to provide a convenient access to the config
+    encoder.encodingConfig = encodingConfig;
 
     return encoder;
 }

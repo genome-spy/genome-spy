@@ -30,6 +30,7 @@ export interface EncodingConfig {
     scale?: Scale;
     axis?: Axis;
     title?: string;
+    format?: string;
 }
 
 export type EncodingConfigs = Record<string, EncodingConfig>;

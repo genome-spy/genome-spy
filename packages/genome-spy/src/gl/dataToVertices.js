@@ -1,4 +1,5 @@
 import { color as d3color } from "d3-color";
+import { format } from "d3-format";
 import { fastmap, isString } from "vega-util";
 import { fp64ify } from "./includes/fp64-utils";
 import Interval from "../utils/interval";
@@ -486,6 +487,11 @@ export class TextVertexBuilder {
             converters.x2 = { f: d => fp64ify(e.x2(d)), numComponents: 2 };
         }
 
+        /** @type {function(any):any} */
+        this.numberFormat = e.text.encodingConfig.format
+            ? format(e.text.encodingConfig.format)
+            : d => d;
+
         const constants = Object.entries(encoders)
             .filter(e => e[1].constant)
             .map(e => e[0]);
@@ -557,7 +563,7 @@ export class TextVertexBuilder {
         const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
 
         for (const d of data) {
-            const value = accessor(d);
+            const value = this.numberFormat(accessor(d));
             const str = isString(value)
                 ? value
                 : value === null

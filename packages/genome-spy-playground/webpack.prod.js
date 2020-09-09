@@ -38,6 +38,10 @@ module.exports = {
             {
                 test: /\.(txt|[ct]sv)$/,
                 use: "raw-loader"
+            },
+            {
+                test: /\.png$/,
+                use: "url-loader"
             }
         ]
     }

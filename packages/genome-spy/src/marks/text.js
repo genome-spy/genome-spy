@@ -1,4 +1,5 @@
 import { isString } from "vega-util";
+import { format } from "d3-format";
 import * as twgl from "twgl.js";
 import VERTEX_SHADER from "../gl/text.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/text.fragment.glsl";
@@ -112,9 +113,14 @@ export default class TextMark extends Mark {
         // Count the total number of characters to that we can pre-allocate a typed array
         const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
         let charCount = 0;
+        /** @type {function(any):any} */
+        const numberFormat = encoding.text.format
+            ? format(encoding.text.format)
+            : d => d;
         for (const data of this.dataBySample.values()) {
             for (const d of data) {
-                const value = accessor(d);
+                // TODO: Optimization: don't format twice (calculation and actual encoding)
+                const value = numberFormat(accessor(d));
                 const str = isString(value)
                     ? value
                     : value === null
