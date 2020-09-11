@@ -148,8 +148,8 @@ export default class RectMark extends Mark {
      *
      * @param {WebGLRenderingContext} gl
      */
-    initializeGraphics(gl) {
-        super.initializeGraphics(gl);
+    async initializeGraphics(gl) {
+        await super.initializeGraphics(gl);
 
         const xDomain = this.getXDomain();
         const domainWidth = xDomain ? xDomain.width() : Infinity;

@@ -1,4 +1,5 @@
 import { color as d3color } from "d3-color";
+import { format } from "d3-format";
 import { fastmap, isString } from "vega-util";
 import { fp64ify } from "./includes/fp64-utils";
 import Interval from "../utils/interval";
@@ -454,6 +455,217 @@ export class ConnectionVertexBuilder {
                     e[1].numComponents
                 ])
             )
+        };
+    }
+}
+
+export class TextVertexBuilder {
+    /**
+     *
+     * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
+     * @param {import("../fonts/types").FontMetadata} metadata
+     * @param {object} properties
+     * @param {number} [size]
+     */
+    constructor(encoders, metadata, properties, size) {
+        this.encoders = encoders;
+        this.metadata = metadata;
+        this.properties = properties;
+
+        const e = encoders;
+
+        /** @type {Object.<string, import("./arraybuilder").Converter>} */
+        const converters = {
+            x: { f: d => fp64ify(e.x(d)), numComponents: 2 },
+            y: { f: e.y, numComponents: 1 },
+            color: { f: d => color2floatArray(e.color(d)), numComponents: 3 },
+            opacity: { f: e.opacity, numComponents: 1 },
+            size: { f: e.size, numComponents: 1 }
+        };
+
+        if (encoders.x2) {
+            converters.x2 = { f: d => fp64ify(e.x2(d)), numComponents: 2 };
+        }
+
+        /** @type {function(any):any} */
+        this.numberFormat = e.text.encodingConfig.format
+            ? format(e.text.encodingConfig.format)
+            : d => d;
+
+        const constants = Object.entries(encoders)
+            .filter(e => e[1].constant)
+            .map(e => e[0]);
+        const variables = Object.entries(encoders)
+            .filter(e => !e[1].constant)
+            .map(e => e[0]);
+
+        this.variableBuilder = ArrayBuilder.create(
+            converters,
+            variables,
+            size * 6
+        );
+
+        // TODO: Store these as vec2
+        this.updateCX = this.variableBuilder.createUpdater("cx", 1);
+        this.updateCY = this.variableBuilder.createUpdater("cy", 1);
+
+        // Texture
+        this.updateTX = this.variableBuilder.createUpdater("tx", 1);
+        this.updateTY = this.variableBuilder.createUpdater("ty", 1);
+
+        this.updateWidth = this.variableBuilder.createUpdater("width", 1);
+
+        this.constantBuilder = ArrayBuilder.create(converters, constants);
+        this.constantBuilder.updateFromDatum({});
+        this.constantBuilder.pushAll();
+
+        this.rangeMap = new Map();
+    }
+
+    /**
+     *
+     * @param {String} key
+     * @param {object[]} data
+     */
+    addBatch(key, data) {
+        const offset = this.variableBuilder.vertexCount;
+
+        const chars = Object.fromEntries(
+            this.metadata.chars.map(e => [e.id, e])
+        );
+
+        const align = this.properties.align || "left";
+
+        const base = this.metadata.common.base;
+        const scale = this.metadata.common.scaleH; // Assume square textures
+
+        const getChar = /** @param {number} charCode */ charCode =>
+            chars[charCode] || chars[63];
+
+        // Font metrics are not available in the bmfont metadata. Have to calculate...
+        const sdfPadding = 5;
+        const xHeight = getChar("x".charCodeAt(0)).height - sdfPadding * 2;
+        const capHeight = getChar("X".charCodeAt(0)).height - sdfPadding * 2;
+
+        let baseline = -sdfPadding;
+        switch (this.properties.baseline) {
+            case "top":
+                baseline += capHeight;
+                break;
+            case "middle":
+                baseline += capHeight / 2;
+                break;
+            case "bottom":
+            default:
+            // alphabetic
+        }
+
+        const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
+
+        for (const d of data) {
+            const value = this.numberFormat(accessor(d));
+            const str = isString(value)
+                ? value
+                : value === null
+                ? ""
+                : "" + value;
+            if (str.length == 0) continue;
+
+            this.variableBuilder.updateFromDatum(d);
+
+            let textWidth = 0;
+            for (let i = 0; i < str.length; i++) {
+                textWidth += getChar(str.charCodeAt(i)).xadvance;
+            }
+            textWidth /= base;
+
+            this.updateWidth(textWidth); // TODO: Check if one letter space should be reduced
+
+            let x =
+                align == "right"
+                    ? -textWidth
+                    : align == "center"
+                    ? -textWidth / 2
+                    : 0;
+
+            const firstChar = getChar(str.charCodeAt(0));
+            x -= (firstChar.width - firstChar.xadvance) / base / 2; // TODO: Fix, this is a bit off..
+
+            for (let i = 0; i < str.length; i++) {
+                const c = getChar(str.charCodeAt(i));
+
+                const tx = c.x;
+                const ty = c.y;
+                const advance = c.xadvance / base;
+
+                if (c.id == 32) {
+                    x += advance;
+                    continue;
+                }
+
+                // TODO: Simplify
+                const height = c.height / base;
+                const bottom = -(c.height + c.yoffset + baseline) / base;
+
+                this.updateCX(x);
+                this.updateCY(bottom + height);
+                this.updateTX(tx / scale);
+                this.updateTY(ty / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x + c.width / base);
+                this.updateCY(bottom + height);
+                this.updateTX((tx + c.width) / scale);
+                this.updateTY(ty / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x);
+                this.updateCY(bottom);
+                this.updateTX(tx / scale);
+                this.updateTY((ty + c.height) / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x + c.width / base);
+                this.updateCY(bottom + height);
+                this.updateTX((tx + c.width) / scale);
+                this.updateTY(ty / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x);
+                this.updateCY(bottom);
+                this.updateTX(tx / scale);
+                this.updateTY((ty + c.height) / scale);
+                this.variableBuilder.pushAll();
+
+                this.updateCX(x + c.width / base);
+                this.updateCY(bottom);
+                this.updateTX((tx + c.width) / scale);
+                this.updateTY((ty + c.height) / scale);
+                this.variableBuilder.pushAll();
+
+                x += advance;
+            }
+        }
+
+        const count = this.variableBuilder.vertexCount - offset;
+        if (count) {
+            this.rangeMap.set(key, {
+                offset,
+                count
+                // TODO: Add some indices that allow rendering just a range
+            });
+        }
+    }
+
+    toArrays() {
+        return {
+            arrays: {
+                ...this.variableBuilder.arrays,
+                ...this.constantBuilder.toValues()
+            },
+            vertexCount: this.variableBuilder.vertexCount,
+            drawMode: glConst.TRIANGLES,
+            rangeMap: this.rangeMap
         };
     }
 }

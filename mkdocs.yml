@@ -39,6 +39,7 @@ nav:
                 - Point: "grammar/mark/point.md"
                 - Rect: "grammar/mark/rect.md"
                 - Rule: "grammar/mark/rule.md"
+                - Text: "grammar/mark/text.md"
                 - Connection: "grammar/mark/connection.md"
           - View Composition:
                 - Composing Visualizations: "grammar/composition.md"
