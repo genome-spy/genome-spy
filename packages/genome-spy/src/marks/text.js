@@ -91,8 +91,8 @@ export default class TextMark extends Mark {
      *
      * @param {WebGLRenderingContext} gl
      */
-    initializeGraphics(gl) {
-        super.initializeGraphics(gl);
+    async initializeGraphics(gl) {
+        await super.initializeGraphics(gl);
 
         const encoding = this.getEncoding();
 
@@ -105,10 +105,22 @@ export default class TextMark extends Mark {
             [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s))
         );
 
-        this.fontTexture = twgl.createTexture(gl, {
-            src: fontUrl,
-            min: gl.LINEAR
-        }); // TODO: handle Callback
+        const textureReadyPromise = new Promise((resolve, reject) => {
+            this.fontTexture = twgl.createTexture(
+                gl,
+                {
+                    src: fontUrl,
+                    min: gl.LINEAR
+                },
+                (err, texture, source) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                }
+            );
+        });
 
         // Count the total number of characters to that we can pre-allocate a typed array
         const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
@@ -147,6 +159,8 @@ export default class TextMark extends Mark {
             this.gl,
             vertexData.arrays
         );
+
+        await textureReadyPromise;
     }
 
     /**

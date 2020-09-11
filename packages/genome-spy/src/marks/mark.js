@@ -96,7 +96,7 @@ export default class Mark {
      *
      * @param {WebGLRenderingContext} gl
      */
-    initializeGraphics(gl) {
+    async initializeGraphics(gl) {
         // override
         this.gl = gl;
         this._shaderDefines = getPlatformShaderDefines(gl);

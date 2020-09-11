@@ -83,15 +83,18 @@ export default class SimpleTrack extends WebGlTrack {
             return point;
         });
 
-        this.initializeGraphics();
+        await this.initializeGraphics();
     }
 
-    initializeGraphics() {
+    async initializeGraphics() {
+        /** @type {Promise<void>[]} */
+        const promises = [];
         this.view.visit(view => {
             if (view instanceof UnitView) {
-                view.mark.initializeGraphics(this.gl);
+                promises.push(view.mark.initializeGraphics(this.gl));
             }
         });
+        await Promise.all(promises);
     }
 
     resizeCanvases(layout) {

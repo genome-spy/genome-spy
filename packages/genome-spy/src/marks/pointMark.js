@@ -111,8 +111,8 @@ export default class PointMark extends Mark {
      *
      * @param {WebGLRenderingContext} gl
      */
-    initializeGraphics(gl) {
-        super.initializeGraphics(gl);
+    async initializeGraphics(gl) {
+        await super.initializeGraphics(gl);
 
         // A hack to support band scales
 
