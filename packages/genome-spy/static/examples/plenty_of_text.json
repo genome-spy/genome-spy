@@ -17,6 +17,11 @@
       "type": "formula",
       "expr": "'' + datum.x + 'x' + datum.y",
       "as": "text"
+    },
+    {
+      "type": "formula",
+      "expr": "pow(40, random())",
+      "as": "size"
     }
   ],
   "encoding": {
@@ -33,17 +38,24 @@
       "type": "ordinal"
     },
     "size": {
-      "field": "y",
+      "field": "size",
       "type": "quantitative",
       "scale": {
-        "range": [6, 20]
+        "range": [5, 200]
+      }
+    },
+    "opacity": {
+      "field": "size",
+      "type": "quantitative",
+      "scale": {
+        "range": [1, 0]
       }
     }
   },
 
   "mark": {
     "type": "text",
-    "align": "left",
-    "baseline": "alphabetic"
+    "align": "center",
+    "baseline": "middle"
   }
 }
