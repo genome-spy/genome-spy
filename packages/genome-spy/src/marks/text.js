@@ -165,7 +165,7 @@ export default class TextMark extends Mark {
             uYScale: 1,
             uTexture: this.fontTexture,
             uD: [this.properties.dx, -this.properties.dy],
-            uPaddingX: 4.0,
+            uPaddingX: 4.0, // TODO: Configurable
             uAlign: alignments[this.properties.align],
             uSdfNumerator:
                 /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
