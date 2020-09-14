@@ -1,9 +1,5 @@
 
-uniform highp float uYScale;
-uniform highp float uYTranslate;
-
 uniform float uYOffset;
-
 
 /**
  * Does viewport (track) transformation and returns the Y coordinate on normalized [0, 1] scale
@@ -17,6 +13,6 @@ float normalizeY(float y) {
     } else if (y >= FLT_MAX) {
         return 1.0;
     } else {
-        return y * uYScale + uYTranslate + uYOffset;
+        return y + uYOffset;
     }
 }

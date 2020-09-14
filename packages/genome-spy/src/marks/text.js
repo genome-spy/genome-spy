@@ -175,8 +175,6 @@ export default class TextMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYTranslate: 0,
-            uYScale: 1,
             uTexture: this.fontTexture,
             uD: [this.properties.dx, -this.properties.dy],
             uPaddingX: 4.0, // TODO: Configurable

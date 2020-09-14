@@ -28,7 +28,7 @@ varying vec4 vColor;
 
 float applyMinHeight(float normalizedY) {
     if (height != 0.0) {
-        float normalizedHeight = height * uYScale * yPosLeft[1]; // TODO: Fix: Broken inside transition!
+        float normalizedHeight = height * yPosLeft[1]; // TODO: Fix: Broken inside transition!
         if (abs(normalizedHeight) < uMinHeight) {
             normalizedY += (uMinHeight * sign(height) - normalizedHeight) / 2.0;
         }
@@ -43,11 +43,11 @@ void main(void) {
     
     float opa = opacity * applyMinWidth(normalizedX);
 
-    float translatedY = transit(normalizedX, 1.0 - normalizedY)[0];
+    float translatedY = transit(normalizedX, normalizedY)[0];
 
     translatedY = applyMinHeight(translatedY);
 
-    vec2 ndc = vec2(normalizedX, 1.0 - translatedY) * 2.0 - 1.0;
+    vec2 ndc = vec2(normalizedX, translatedY) * 2.0 - 1.0;
 
     gl_Position = vec4(ndc, 0.0, 1.0);
     vColor = vec4(color * opa, opa);

@@ -795,8 +795,6 @@ export default class SampleTrack extends SimpleTrack {
             uDevicePixelRatio: window.devicePixelRatio,
             uViewportSize: [gl.drawingBufferWidth, gl.drawingBufferHeight],
             zoomLevel: this.genomeSpy.getExpZoomLevel(),
-            uYTranslate: 0,
-            uYScale: 1,
             transitionOffset: xTransitionProgress
         };
 
@@ -817,8 +815,8 @@ export default class SampleTrack extends SimpleTrack {
                 return {
                     sampleId,
                     uniforms: {
-                        yPosLeft: [bandLeft.lower, bandLeft.width()],
-                        yPosRight: [bandRight.lower, bandRight.width()]
+                        yPosLeft: [1 - bandLeft.upper, bandLeft.width()],
+                        yPosRight: [1 - bandRight.upper, bandRight.width()]
                     }
                 };
             })

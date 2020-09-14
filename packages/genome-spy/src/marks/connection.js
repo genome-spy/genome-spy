@@ -132,8 +132,6 @@ export default class ConnectionMark extends Mark {
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
             ...globalUniforms,
-            uYTranslate: 0,
-            uYScale: 1,
             uBandwidth: getBandwidth(this.encoders.y.scale)
         });
 

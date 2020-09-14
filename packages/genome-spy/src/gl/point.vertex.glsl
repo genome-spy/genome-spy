@@ -75,11 +75,11 @@ void main(void) {
 
     float normalizedX = normalizeX(x);
 
-    vec2 translated = transit(normalizedX, (1.0 - normalizeY(y)));
+    vec2 translated = transit(normalizedX, normalizeY(y));
     float translatedY = translated[0];
     float height = translated[1];
 
-    vec2 ndc = vec2(normalizedX, 1.0 - translatedY) * 2.0 - 1.0;
+    vec2 ndc = vec2(normalizedX, translatedY) * 2.0 - 1.0;
 
     gl_Position = vec4(ndc, 0.0, 1.0);
 

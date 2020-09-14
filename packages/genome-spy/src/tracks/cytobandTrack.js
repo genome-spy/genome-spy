@@ -191,9 +191,7 @@ export default class CytobandTrack extends WebGlTrack {
         twgl.setUniforms(this.programInfo, {
             // TODO: Move to base class / abstraction
             yPosLeft: [0, 1],
-            yPosRight: [0, 1],
-            uYTranslate: 0,
-            uYScale: 1
+            yPosRight: [0, 1]
         });
     }
 
