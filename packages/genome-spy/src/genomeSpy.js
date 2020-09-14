@@ -36,6 +36,9 @@ import ConcatView from "./view/concatView";
 import ImportView from "./view/importView";
 import createDomain from "./utils/domainArray";
 
+import { tickStep } from "d3-array";
+import { format as d3format } from "d3-format";
+
 /**
  * @type {Record<String, typeof import("./tracks/track").default>}
  */
@@ -220,7 +223,7 @@ export default class GenomeSpy {
     }
 
     getZoomedScale() {
-        return this.rescaledX.copy();
+        return this.rescaledX ? this.rescaledX.copy() : undefined;
     }
 
     getAxisWidth() {
@@ -436,6 +439,13 @@ export default class GenomeSpy {
         try {
             if (this.config.genome) {
                 this.coordinateSystem = new Genome(this.config.genome);
+
+                // TODO: Hierarchy of data providers, i.e. limit visibility to a subtree
+                this.registerNamedDataProvider(name => {
+                    if (name == "genomeAxisTicks") {
+                        return this._generateTicks();
+                    }
+                });
             } else {
                 this.coordinateSystem = new RealCoordinateSystem();
             }
@@ -565,6 +575,74 @@ export default class GenomeSpy {
                 this.tracks.push(track);
             }
         });
+    }
+
+    // TODO: Find a proper place
+    _generateTicks() {
+        // TODO: Extract from spec
+        const fontSize = 12;
+
+        // GenomeSpy uses the same coordinate logic as USCS GenomeBrowser_
+        // "1-start, fully-closed" = coordinates positioned within the web-based UCSC Genome Browser.
+        // "0-start, half-open" = coordinates stored in database tables.
+        const labelValueOffset = 1;
+
+        const getViewWidth = () => this.layout.viewport.width();
+
+        /////////////
+
+        const scale = this.getZoomedScale();
+        if (!scale) {
+            return [];
+        }
+
+        const cm = /** @type {Genome} */ (this.coordinateSystem).chromMapper;
+
+        // TODO: Consider moving to Track base class
+        const viewportInterval = Interval.fromArray(scale.range());
+        const domainInterval = Interval.fromArray(scale.domain());
+
+        const locusTickFormat =
+            domainInterval.width() > 5e7 ? d3format(".3s") : d3format(",");
+
+        // A really crude approximation. TODO: Provide some font metrics through the text mark
+        const maxLocusLabelWidth = fontSize * 0.6 * "123,000,000".length;
+        const maxChromLabelWidth = fontSize * 0.6 * "chr99".length;
+
+        const maxTickCount = Math.min(
+            20,
+            Math.floor(getViewWidth() / maxLocusLabelWidth / 2.0)
+        );
+
+        const step = tickStep(
+            domainInterval.lower,
+            domainInterval.upper,
+            maxTickCount
+        );
+
+        const minChrom = cm.getChromosome(
+            cm.toChromosomal(domainInterval.lower).chromosome
+        );
+        const maxChrom = cm.getChromosome(
+            cm.toChromosomal(domainInterval.upper).chromosome
+        );
+
+        const ticks = [];
+
+        for (let i = minChrom.index; i <= maxChrom.index; i++) {
+            const chrom = cm.getChromosomes()[i];
+            //const lower = Math.max(minChrom.continuousStart, domainInterval.lower);
+
+            for (let pos = step; pos < chrom.size; pos += step) {
+                ticks.push({
+                    chrom: chrom.name,
+                    pos: pos + chrom.continuousStart,
+                    text: locusTickFormat(pos + labelValueOffset)
+                });
+            }
+        }
+
+        return ticks;
     }
 }
 
