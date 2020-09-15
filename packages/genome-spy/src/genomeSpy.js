@@ -32,7 +32,7 @@ import {
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
-import ConcatView from "./view/concatView";
+import VConcatView from "./view/vConcatView";
 import ImportView from "./view/importView";
 import createDomain from "./utils/domainArray";
 
@@ -563,8 +563,8 @@ export default class GenomeSpy {
                     this.tracks.push(new trackTypes[name](this, view.spec));
                 }
             } else if (
-                !(view instanceof ConcatView) &&
-                (view.parent instanceof ConcatView || view.parent == null)
+                !(view instanceof VConcatView) &&
+                (view.parent instanceof VConcatView || view.parent == null)
             ) {
                 const Track = view.getResolution("sample")
                     ? SampleTrack

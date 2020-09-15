@@ -5,7 +5,7 @@ import ContainerView from "./containerView";
  *
  * @typedef {import("./view").default} View
  */
-export default class ConcatView extends ContainerView {
+export default class VConcatView extends ContainerView {
     /**
      *
      * @param {import("./viewUtils").ConcatSpec} spec
@@ -19,7 +19,7 @@ export default class ConcatView extends ContainerView {
         /** @type { View[] } */
         this.children = (spec.concat || []).map((childSpec, i) => {
             const View = getViewClass(childSpec);
-            return new View(childSpec, context, this, "concat" + i);
+            return new View(childSpec, context, this, "vconcat" + i);
         });
     }
 

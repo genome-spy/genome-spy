@@ -4,7 +4,7 @@ import LayerView from "./layerView";
 import { create, createAndInitialize } from "./testUtils";
 import { toRegularArray as r } from "../utils/domainArray";
 import Interval from "../utils/interval";
-import ConcatView from "./concatView";
+import VConcatView from "./vConcatView";
 import PointMark from "../marks/pointMark";
 
 describe("Trivial creations and initializations", () => {
@@ -27,7 +27,7 @@ describe("Trivial creations and initializations", () => {
             ]
         });
 
-        expect(view).toBeInstanceOf(ConcatView);
+        expect(view).toBeInstanceOf(VConcatView);
         expect(view.children[0]).toBeInstanceOf(LayerView);
         expect(view.children[0].children[0]).toBeInstanceOf(UnitView);
         expect(view.children[0].children[0].mark).toBeInstanceOf(PointMark);
