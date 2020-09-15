@@ -1,7 +1,9 @@
+import { isObject, isString, isArray } from "vega-util";
+
 import ImportView from "./importView";
 import UnitView from "./unitView";
 import LayerView from "./layerView";
-import ConcatView from "./concatView";
+import VConcatView from "./vConcatView";
 
 /**
  * @typedef {Object} ViewContext
@@ -32,7 +34,7 @@ import ConcatView from "./concatView";
  * @returns {spec is UnitSpec}
  */
 export function isUnitSpec(spec) {
-    return typeof spec.mark === "string" || typeof spec.mark === "object";
+    return isString(spec.mark) || isObject(spec.mark);
 }
 
 /**
@@ -41,7 +43,7 @@ export function isUnitSpec(spec) {
  * @returns {spec is LayerSpec}
  */
 export function isLayerSpec(spec) {
-    return typeof spec.layer === "object";
+    return isObject(spec.layer);
 }
 
 /**
@@ -59,7 +61,7 @@ export function isViewSpec(spec) {
  * @returns {spec is ConcatSpec}
  */
 export function isConcatSpec(spec) {
-    return Array.isArray(spec.concat);
+    return isArray(spec.concat);
 }
 
 /**
@@ -93,7 +95,7 @@ export function getViewClass(spec) {
     } else if (isLayerSpec(spec)) {
         return LayerView;
     } else if (isConcatSpec(spec)) {
-        return ConcatView;
+        return VConcatView;
     } else {
         throw new Error(
             "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)
@@ -157,7 +159,7 @@ export function addAxisView(view) {
     // TODO: Don't add axis if one already exists
     const xResolution = view.resolutions["x"];
     if (xResolution && xResolution.getAxisProps()) {
-        if (view instanceof ConcatView) {
+        if (view instanceof VConcatView) {
             view.children.push(
                 createView({ import: { name: "axis" } }, view.context)
             );
@@ -165,13 +167,13 @@ export function addAxisView(view) {
         } else {
             // Create a new view root, which will have the the original view
             // and the new axis view as its children
-            const newRoot = createView(
+            const newRoot = /** @type {import("./containerView").default} */ (createView(
                 {
                     name: "implicit_root",
                     concat: [{ import: { name: "axis" } }]
                 },
                 view.context
-            );
+            ));
             newRoot.children.unshift(view);
             view.parent = newRoot;
             // Pull resolution to the new root
