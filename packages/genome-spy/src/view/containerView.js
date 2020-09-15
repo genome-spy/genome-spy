@@ -15,6 +15,33 @@ export default class ContainerView extends View {
         super(spec, context, parent, name);
 
         this.spec = spec;
+        /** @type { View[] } */
+        this.children = [];
+    }
+
+    /**
+     * Visits child views in depth-first order. Terminates the search and returns
+     * the value if the visitor returns a defined value.
+     *
+     * @param {(function(View):any) & { afterChildren?: function}} visitor
+     * @returns {any}
+     */
+    visit(visitor) {
+        const result = super.visit(visitor);
+        if (result !== undefined) {
+            return result;
+        }
+
+        for (const view of this.children) {
+            const result = view.visit(visitor);
+            if (result !== undefined) {
+                return result;
+            }
+        }
+
+        if (visitor.afterChildren) {
+            visitor.afterChildren(this);
+        }
     }
 
     /**

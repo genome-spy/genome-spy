@@ -18,8 +18,6 @@ export default class View {
         this.parent = parent;
         this.name = spec.name || name;
         this.spec = spec;
-        /** @type { View[] } */
-        this.children = [];
 
         /** @type {Object.<string, import("./resolution").default>}  Resolved channels. Supports only scales for now.. */
         this.resolutions = {};
@@ -56,17 +54,6 @@ export default class View {
             // Augment the extension with the view
             e.view = this;
             throw e;
-        }
-
-        for (const viewUnit of this.children) {
-            const result = viewUnit.visit(visitor);
-            if (result !== undefined) {
-                return result;
-            }
-        }
-
-        if (visitor.afterChildren) {
-            visitor.afterChildren(this);
         }
     }
 
