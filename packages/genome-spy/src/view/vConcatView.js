@@ -24,6 +24,15 @@ export default class VConcatView extends ContainerView {
     }
 
     /**
+     * @returns {IterableIterator<View>}
+     */
+    *[Symbol.iterator]() {
+        for (const child of this.children) {
+            yield child;
+        }
+    }
+
+    /**
      * @param {string} channel
      */
     getDefaultResolution(channel) {

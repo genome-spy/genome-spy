@@ -27,7 +27,7 @@ import {
     resolveScales,
     isImportSpec,
     initializeData,
-    isConcatSpec,
+    isVConcatSpec,
     addAxisView
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
@@ -468,7 +468,7 @@ export default class GenomeSpy {
             const rootSpec = this.config;
 
             // Import external tracks
-            if (isConcatSpec(rootSpec)) {
+            if (isVConcatSpec(rootSpec)) {
                 await processImports(rootSpec);
             }
 

@@ -1,0 +1,39 @@
+{
+  "data": {
+    "url": "sincos.csv"
+  },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative"
+    }
+  },
+
+  "table": [
+    {
+      "main": {
+        "mark": "point",
+
+        "encoding": {
+          "y": {
+            "field": "sin",
+            "type": "quantitative"
+          }
+        }
+      }
+    },
+    {
+      "main": {
+        "mark": "point",
+
+        "encoding": {
+          "y": {
+            "field": "cos",
+            "type": "quantitative"
+          }
+        }
+      }
+    }
+  ]
+}

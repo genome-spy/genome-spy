@@ -1,9 +1,11 @@
 import { isObject, isString, isArray } from "vega-util";
 
 import ImportView from "./importView";
-import UnitView from "./unitView";
 import LayerView from "./layerView";
+import UnitView from "./unitView";
 import VConcatView from "./vConcatView";
+import TableView from "./tableView";
+import TableRowView from "./tableRowView";
 
 /**
  * @typedef {Object} ViewContext
@@ -20,13 +22,25 @@ import VConcatView from "./vConcatView";
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
  * @typedef {import("../spec/view").UnitSpec} UnitSpec
- * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
+ * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
+ * @typedef {import("../spec/view").HConcatSpec} HConcatSpec
+ * @typedef {import("../spec/view").TableSpec} TableSpec
+ * @typedef {import("../spec/view").TableRowSpec} TableRowSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
  * @typedef {import("../spec/view").ImportConfig} ImportConfig
  * @typedef {import("../spec/view").RootSpec} RootSpec
  * @typedef {import("../spec/view").RootConfig} RootConfig
  * @typedef {import("./view").default} View
  */
+
+const viewTypes = [
+    { prop: "import", guard: isImportSpec, viewClass: ImportView },
+    { prop: "layer", guard: isLayerSpec, viewClass: LayerView },
+    { prop: "mark", guard: isUnitSpec, viewClass: UnitView },
+    { prop: "vconcat", guard: isVConcatSpec, viewClass: VConcatView },
+    { prop: "table", guard: isTableSpec, viewClass: TableView },
+    { prop: "main", guard: isTableRowSpec, viewClass: TableRowView }
+];
 
 /**
  *
@@ -52,16 +66,45 @@ export function isLayerSpec(spec) {
  * @returns {spec is ViewSpec}
  */
 export function isViewSpec(spec) {
-    return isUnitSpec(spec) || isLayerSpec(spec) || isConcatSpec(spec);
+    const matches = viewTypes
+        .map(v => (v.guard(spec) ? v.prop : undefined))
+        .filter(prop => isString(prop));
+
+    if (matches.length > 1) {
+        // TODO: test
+        throw new Error(
+            "Ambiguous spec, multiple properties: " + matches.join(", ")
+        );
+    }
+
+    return matches.length == 1;
 }
 
 /**
  *
  * @param {ViewSpec} spec
- * @returns {spec is ConcatSpec}
+ * @returns {spec is VConcatSpec}
  */
-export function isConcatSpec(spec) {
+export function isVConcatSpec(spec) {
     return isArray(spec.concat);
+}
+
+/**
+ *
+ * @param {ViewSpec} spec
+ * @returns {spec is TableSpec}
+ */
+export function isTableSpec(spec) {
+    return isArray(spec.table);
+}
+
+/**
+ *
+ * @param {ViewSpec} spec
+ * @returns {spec is TableRowSpec}
+ */
+export function isTableRowSpec(spec) {
+    return !!spec.main;
 }
 
 /**
@@ -88,19 +131,19 @@ export function isImportSpec(spec) {
  * @returns {typeof View}
  */
 export function getViewClass(spec) {
-    if (isImportSpec(spec)) {
-        return ImportView;
-    } else if (isUnitSpec(spec)) {
-        return UnitView;
-    } else if (isLayerSpec(spec)) {
+    if (isLayerSpec(spec)) {
+        // WTF hack! Something int the loop below deletes LayerView in Jest tests !?
         return LayerView;
-    } else if (isConcatSpec(spec)) {
-        return VConcatView;
-    } else {
-        throw new Error(
-            "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)
-        );
     }
+
+    for (const viewType of viewTypes) {
+        if (viewType.guard(spec)) {
+            return viewType.viewClass;
+        }
+    }
+    throw new Error(
+        "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)
+    );
 }
 
 /**

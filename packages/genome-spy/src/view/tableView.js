@@ -1,10 +1,12 @@
 import { getViewClass } from "./viewUtils";
 import ContainerView from "./containerView";
+import TableRowView from "./tableRowView";
 
 /**
+ *
  * @typedef {import("./view").default} View
  */
-export default class LayerView extends ContainerView {
+export default class TableView extends ContainerView {
     /**
      *
      * @param {import("./viewUtils").LayerSpec} spec
@@ -15,19 +17,14 @@ export default class LayerView extends ContainerView {
     constructor(spec, context, parent, name) {
         super(spec, context, parent, name);
 
-        /** @type { View[] } */
-        this.children = (spec.layer || []).map((childSpec, i) => {
-            const View = getViewClass(childSpec);
-            return new View(childSpec, context, this, `layer${i}`);
-        });
+        /** @type {TableRowView[]} */
+        this.rows = [];
     }
 
     /**
-     * @returns {IterableIterator<View>}
+     * @param {string} channel
      */
-    *[Symbol.iterator]() {
-        for (const child of this.children) {
-            yield child;
-        }
+    getDefaultResolution(channel) {
+        return channel == "y" ? "shared" : "independent";
     }
 }

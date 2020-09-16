@@ -15,8 +15,13 @@ export default class ContainerView extends View {
         super(spec, context, parent, name);
 
         this.spec = spec;
-        /** @type { View[] } */
-        this.children = [];
+    }
+
+    /**
+     * @returns {IterableIterator<View>}
+     */
+    *[Symbol.iterator]() {
+        // abstract
     }
 
     /**
@@ -32,7 +37,7 @@ export default class ContainerView extends View {
             return result;
         }
 
-        for (const view of this.children) {
+        for (const view of this) {
             const result = view.visit(visitor);
             if (result !== undefined) {
                 return result;

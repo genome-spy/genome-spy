@@ -1,0 +1,38 @@
+{
+  "table": [
+    {
+      "left": {
+        "hconcat": [
+          {
+            "import": "y-axis"
+          }
+        ]
+      },
+
+      "main": {
+        "comment": "Publishes tick data sources and creates axis views",
+        "data": {
+          "url": "sincos.csv"
+        },
+
+        "mark": "point",
+
+        "encoding": {
+          "x": {
+            "field": "x",
+            "type": "quantitative"
+          },
+          "y": {
+            "field": "sin",
+            "type": "quantitative"
+          }
+        }
+      }
+    },
+    {
+      "main": {
+        "import": "x-axis"
+      }
+    }
+  ]
+}

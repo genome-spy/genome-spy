@@ -52,11 +52,27 @@ export interface ViewSpecBase {
     plotBackground?: string;
 }
 
+export interface TableRowSpec extends ViewSpecBase {
+    center: ViewSpec;
+    left?: ViewSpec;
+    right?: ViewSpec;
+}
+
+export interface TableSpec extends ViewSpecBase {
+    table: TableRowSpec[];
+}
+
 export interface LayerSpec extends ViewSpecBase {
     layer: (LayerSpec | UnitSpec)[];
 }
 
-export type ContainerSpec = (LayerSpec | ConcatSpec) & {
+export type ContainerSpec = (
+    | LayerSpec
+    | VConcatSpec
+    | HConcatSpec
+    | TableSpec
+    | TableRowSpec
+) & {
     resolve?: {
         scale: Record<string, "independent" | "shared">;
     };
@@ -66,7 +82,13 @@ export interface UnitSpec extends ViewSpecBase {
     mark: string | MarkConfig;
 }
 
-export type ViewSpec = UnitSpec | LayerSpec | ConcatSpec;
+export type ViewSpec =
+    | UnitSpec
+    | LayerSpec
+    | VConcatSpec
+    | HConcatSpec
+    | TableSpec
+    | TableRowSpec;
 
 export interface ImportConfig {
     name?: string;
@@ -78,8 +100,13 @@ export interface ImportSpec {
     import: ImportConfig;
 }
 
-export interface ConcatSpec extends ViewSpecBase {
+export interface VConcatSpec extends ViewSpecBase {
+    // TODO: vconcat
     concat?: (ViewSpec | ImportSpec)[];
+}
+
+export interface HConcatSpec extends ViewSpecBase {
+    hconcat?: (ViewSpec | ImportSpec)[];
 }
 
 export interface RootConfig {
