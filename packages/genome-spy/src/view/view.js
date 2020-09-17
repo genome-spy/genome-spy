@@ -1,9 +1,11 @@
 import { transformData } from "../data/dataMapper";
+import { parseSizeDef } from "../utils/flexLayout";
 
 /**
  * @typedef { import("./viewUtils").ViewSpec } ViewSpec
  * @typedef { import("./viewUtils").EncodingConfig } EncodingConfig
  * @typedef { import("./viewUtils").ViewContext} ViewContext
+ * @typedef { import("../utils/flexLayout").SizeDef} SizeDef
  */
 export default class View {
     /**
@@ -19,8 +21,19 @@ export default class View {
         this.name = spec.name || name;
         this.spec = spec;
 
+        /** @type {SizeDef} TODO: Replace with size (width & height) */
+        this._height = undefined;
+
         /** @type {Object.<string, import("./resolution").default>}  Resolved channels. Supports only scales for now.. */
         this.resolutions = {};
+    }
+
+    getHeight() {
+        return (
+            this._height ||
+            (this.spec.height && parseSizeDef(this.spec.height)) ||
+            parseSizeDef(1)
+        );
     }
 
     getPathString() {

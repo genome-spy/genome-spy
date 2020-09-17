@@ -3,6 +3,7 @@ import { Scale } from "./scale";
 import { Axis } from "./axis";
 import { TransformConfig } from "./transform";
 import { GenomeConfig } from "../genome/genome";
+import { SizeDef } from "../utils/flexLayout";
 
 export type Scalar = string | number | boolean;
 
@@ -37,6 +38,7 @@ export type EncodingConfigs = Record<string, EncodingConfig>;
 
 export interface ViewSpecBase {
     name?: string;
+    height?: SizeDef | number | string;
     data?: Data;
     transform?: TransformConfig[];
     encoding?: Record<string, EncodingConfig>;

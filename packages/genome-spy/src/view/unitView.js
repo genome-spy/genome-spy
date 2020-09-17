@@ -11,6 +11,7 @@ import { isSecondaryChannel, secondaryChannels } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 
 /**
+ * @typedef {import("./layerView").default} LayerView
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  * @typedef {import("../encoder/accessor").Accessor} Accessor
  */
@@ -42,13 +43,13 @@ export default class UnitView extends View {
 
         /**
          * Cache for extracted domains
-         * @type {Object.<string, DomainArray>}
+         * @type {Record<string, DomainArray>}
          */
         this._dataDomains = {};
 
         /**
          * Cache for accessors
-         * @type {Object.<string, Accessor>}
+         * @type {Record<string, Accessor>}
          */
         this._accessors = {};
 
@@ -59,6 +60,16 @@ export default class UnitView extends View {
         } else {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
+
+        /**
+         * @type {Record<string, LayerView>}
+         */
+        this._axisViews = {
+            top: undefined,
+            right: undefined,
+            bottom: undefined,
+            left: undefined
+        };
     }
 
     getMarkType() {
