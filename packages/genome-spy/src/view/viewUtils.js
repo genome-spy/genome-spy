@@ -13,6 +13,7 @@ import TableRowView from "./tableRowView";
  * @prop {function(import("../spec/data").Data, string):import("../data/dataSource").default} getDataSource
  * @prop {import("../encoder/accessor").default} accessorFactory
  * @prop {import("../coordinateSystem").default} coordinateSystem
+ * @prop {import("../gl/webGLHelper").default} glHelper
  */
 
 /**

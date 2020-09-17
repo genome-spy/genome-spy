@@ -9,6 +9,7 @@ import ContainerView from "./containerView";
 import Resolution from "./resolution";
 import { isSecondaryChannel, secondaryChannels } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
+import { parseSizeDef } from "../utils/flexLayout";
 
 /**
  * @typedef {import("./layerView").default} LayerView
@@ -28,12 +29,15 @@ export const markTypes = {
     text: TextMark
 };
 
+/**
+ * @typedef {import("../utils/flexLayout").SizeDef} SizeDef
+ */
 export default class UnitView extends View {
     /**
      *
      * @param {import("../spec/view").UnitSpec} spec
      * @param {import("./viewUtils").ViewContext} context
-     * @param {import("./view").default} parent
+     * @param {import("./containerView").default} parent
      * @param {string} name
      */
     constructor(spec, context, parent, name) {

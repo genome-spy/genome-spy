@@ -1,5 +1,5 @@
 import { group } from "d3-array";
-import { getPlatformShaderDefines } from "../gl/includes/fp64-utils";
+import { fp64ify } from "../gl/includes/fp64-utils";
 import Interval from "../utils/interval";
 import createEncoders from "../encoder/encoder";
 
@@ -92,21 +92,8 @@ export default class Mark {
         );
     }
 
-    /**
-     *
-     * @param {WebGLRenderingContext} gl
-     */
-    async initializeGraphics(gl) {
-        // override
-        this.gl = gl;
-        this._shaderDefines = getPlatformShaderDefines(gl);
-    }
-
-    /**
-     * @param {string} shaderCode
-     */
-    processShader(shaderCode) {
-        return this._shaderDefines + "\n" + shaderCode;
+    async initializeGraphics() {
+        //override
     }
 
     onBeforeSampleAnimation() {
@@ -155,6 +142,28 @@ export default class Mark {
      */
     render(samples, globalUniforms) {
         // override
+    }
+
+    getDomainUniforms() {
+        const domain = this.getContext().genomeSpy.getViewportDomain();
+
+        return {
+            uXScale: fp64ify(1.0 / domain.width()),
+            uXTranslate: fp64ify(-domain.lower / domain.width()),
+            ONE: 1.0
+        };
+    }
+
+    getGlobalUniforms() {
+        const gl = this.getContext().glHelper.gl;
+
+        return {
+            ...this.getDomainUniforms(),
+            uDevicePixelRatio: window.devicePixelRatio,
+            // TODO: Replace with view size
+            uViewportSize: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+            zoomLevel: this.getContext().genomeSpy.getExpZoomLevel()
+        };
     }
 
     /**

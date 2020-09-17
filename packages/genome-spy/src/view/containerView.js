@@ -8,7 +8,7 @@ export default class ContainerView extends View {
      *
      * @param {import("./viewUtils").ContainerSpec} spec
      * @param {import("./view").ViewContext} context
-     * @param {import("./view").default} parent
+     * @param {ContainerView} parent
      * @param {string} name
      */
     constructor(spec, context, parent, name) {
@@ -18,10 +18,20 @@ export default class ContainerView extends View {
     }
 
     /**
+     *
+     * @param {import("./view").default} view
+     * @returns {import("../utils/flexLayout").LocSize}
+     */
+    getChildCoords(view) {
+        // Should be overridden
+        return this.getCoords();
+    }
+
+    /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
-        // abstract
+        // override
     }
 
     /**

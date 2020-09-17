@@ -4,6 +4,10 @@ import { isNumber } from "vega-util";
  * @typedef {object} SizeDef Size definition inspired by CSS flexbox
  * @prop {number} [px] Size in pixels
  * @prop {number} [grow] Share of remaining space
+ *
+ * @typedef {object} LocSize One-dimensional location and size
+ * @prop {number} location
+ * @prop {number} size
  */
 
 /**
@@ -22,27 +26,20 @@ export default class FlexLayout {
      *
      * @param {(any & Iterable<I>)} container
      * @param {function(I):SizeDef} itemSizeAccessor
-     * @param {function():SizeDef} containerSizeAccessor
      */
-    constructor(container, itemSizeAccessor, containerSizeAccessor) {
+    constructor(container, itemSizeAccessor) {
         this._container = container;
         this._itemSizeAccessor = itemSizeAccessor;
-        this._containerSizeAccessor = containerSizeAccessor;
-    }
-
-    _getContainerSizePixels() {
-        const size = this._containerSizeAccessor();
-        if (isNumber(size.px)) {
-            return size.px;
-        }
-        throw new Error("Container must have absolute size!"); // TODO: Compute
     }
 
     /**
+     * Returns the coordinate and size of the item in pixels.
      *
      * @param {I} item
+     * @param {number} containerSize in pixels
+     * @returns {LocSize}
      */
-    getPixelSize(item) {
+    getPixelCoords(item, containerSize) {
         let totalPx = 0;
         let totalGrow = 0;
         for (const child of this._container) {
@@ -51,10 +48,7 @@ export default class FlexLayout {
             totalGrow += z(size.grow);
         }
 
-        const remainingSpace = Math.max(
-            0,
-            this._getContainerSizePixels() - totalPx
-        );
+        const remainingSpace = Math.max(0, containerSize - totalPx);
 
         let x = 0;
         for (const child of this._container) {
@@ -64,23 +58,13 @@ export default class FlexLayout {
                 (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
 
             if (child === item) {
-                return [x, x + advance];
+                return { location: x, size: advance };
             }
 
             x += advance;
         }
 
         throw new Error("Not a child!");
-    }
-
-    /**
-     *
-     * @param {I} item
-     */
-    getNormalizedSize(item) {
-        return this.getPixelSize(item).map(
-            x => x / this._getContainerSizePixels()
-        );
     }
 
     /**

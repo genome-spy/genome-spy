@@ -3,16 +3,15 @@ import ContainerView from "./containerView";
 import FlexLayout, { parseSizeDef } from "../utils/flexLayout";
 
 /**
- *
  * @typedef {import("./view").default} View
- * @typedef { import("../utils/flexLayout").SizeDef} SizingSpec
+ * @typedef { import("../utils/flexLayout").SizeDef} SizeDef
  */
 export default class VConcatView extends ContainerView {
     /**
      *
      * @param {import("./viewUtils").VConcatSpec} spec
      * @param {import("./viewUtils").ViewContext} context
-     * @param {View} parent
+     * @param {import("./containerView").default} parent
      * @param {string} name
      */
     constructor(spec, context, parent, name) {
@@ -24,23 +23,39 @@ export default class VConcatView extends ContainerView {
             return new View(childSpec, context, this, "vconcat" + i);
         });
 
-        this.flexLayout = new FlexLayout(
-            this,
-            item => item.getSize(),
-            () => this.getHeight()
-        );
+        this.flexLayout = new FlexLayout(this, item => item.getHeight());
+    }
+
+    getMinHeight() {
+        const sizeDef = this.spec.height && parseSizeDef(this.spec.height);
+        return sizeDef && sizeDef.px
+            ? sizeDef.px
+            : this.flexLayout.getMinimumSize();
+    }
+
+    getHeight() {
+        const sizeDef = this.spec.height && parseSizeDef(this.spec.height);
+        return sizeDef || { px: this.flexLayout.getMinimumSize() };
     }
 
     /**
-     * @returns {import("../utils/flexLayout").SizeDef}
+     *
+     * @param {import("./view").default} view
+     * @returns {import("../utils/flexLayout").LocSize}
      */
-    getHeight() {
-        return (
-            this._height ||
-            (this.spec.height && parseSizeDef(this.spec.height)) || {
-                px: this.flexLayout.getMinimumSize()
-            }
+    getChildCoords(view) {
+        // Should be overridden
+        const childCoords = this.flexLayout.getPixelCoords(
+            view,
+            this.getCoords().size
         );
+        if (childCoords) {
+            return {
+                location: this.getCoords().location + childCoords.location,
+                size: childCoords.size
+            };
+        }
+        throw new Error("Unknown child!");
     }
 
     /**

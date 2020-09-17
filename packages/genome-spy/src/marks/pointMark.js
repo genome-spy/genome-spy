@@ -35,7 +35,6 @@ const defaultEncoding = {
 };
 
 // TODO: Configurable !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-const fractionToShow = 0.02;
 
 export const SHAPES = fromEntries(
     [
@@ -107,18 +106,17 @@ export default class PointMark extends Mark {
         }
     }
 
-    /**
-     *
-     * @param {WebGLRenderingContext} gl
-     */
-    async initializeGraphics(gl) {
-        await super.initializeGraphics(gl);
+    async initializeGraphics() {
+        await super.initializeGraphics();
+
+        const glHelper = this.getContext().glHelper;
+        const gl = glHelper.gl;
 
         // A hack to support band scales
 
         this.programInfo = twgl.createProgramInfo(
             gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s))
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => glHelper.processShader(s))
         );
 
         const vertexCount =
@@ -135,7 +133,7 @@ export default class PointMark extends Mark {
 
         this.rangeMap = vertexData.rangeMap;
         this.bufferInfo = twgl.createBufferInfoFromArrays(
-            this.gl,
+            gl,
             vertexData.arrays
         );
     }
@@ -190,16 +188,30 @@ export default class PointMark extends Mark {
 
     /**
      * @param {object[]} samples
-     * @param {object} globalUniforms
      */
-    render(samples, globalUniforms) {
-        const gl = this.gl;
+    render(samples) {
+        if (!samples) {
+            // TODO: Move somewhere
+            samples = [
+                {
+                    sampleId: "default",
+                    uniforms: {
+                        yPosLeft: [0, 1],
+                        yPosRight: [0, 1]
+                    }
+                }
+            ];
+        }
+
+        console.log(this.unitView.getCoords());
+
+        const gl = this.getContext().glHelper.gl;
         const dpr = window.devicePixelRatio;
 
         gl.enable(gl.BLEND);
         gl.useProgram(this.programInfo.program);
         twgl.setUniforms(this.programInfo, {
-            ...globalUniforms,
+            ...this.getGlobalUniforms(),
             uXOffset: (this.properties.xOffset / gl.drawingBufferWidth) * dpr,
             uYOffset: (this.properties.yOffset / gl.drawingBufferHeight) * dpr,
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,

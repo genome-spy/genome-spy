@@ -12,7 +12,7 @@ export default class View {
      *
      * @param {ViewSpec} spec
      * @param {ViewContext} context
-     * @param {View} parent
+     * @param {import("./containerView").default} parent
      * @param {string} name
      */
     constructor(spec, context, parent, name) {
@@ -21,21 +21,45 @@ export default class View {
         this.name = spec.name || name;
         this.spec = spec;
 
-        /** @type {SizeDef} TODO: Replace with size (width & height) */
-        this._height = undefined;
+        /* @type {SizeDef} TODO: Replace with size (width & height) */
+        //this._height = undefined;
 
         /** @type {Object.<string, import("./resolution").default>}  Resolved channels. Supports only scales for now.. */
         this.resolutions = {};
     }
 
     /**
+     * Returns the minimum height (in pixels) for this view, either the minimum size that
+     * accommodates all the children or a specified absolute (pixel) size.
+     *
+     * @return {number}
+     */
+    getMinHeight() {
+        return (this.spec.height && parseSizeDef(this.spec.height).px) || 0;
+    }
+
+    /**
+     * Returns the configured height if present. Otherwise a computed or default
+     * height is returned.
+     *
      * @returns {import("../utils/flexLayout").SizeDef}
      */
     getHeight() {
         return (
-            this._height ||
             (this.spec.height && parseSizeDef(this.spec.height)) || { grow: 1 }
         );
+    }
+
+    /**
+     * @returns {import("../utils/flexLayout").LocSize}
+     */
+    getCoords() {
+        if (this.parent) {
+            return this.parent.getChildCoords(this);
+        } else {
+            // At root
+            return { location: 0, size: this.getHeight().px || 0 };
+        }
     }
 
     getPathString() {

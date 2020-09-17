@@ -38,7 +38,7 @@ import createDomain from "./utils/domainArray";
 
 import { tickStep } from "d3-array";
 import { format as d3format } from "d3-format";
-import WebGLContext from "./gl/webGLContext";
+import WebGLHelper from "./gl/webGLHelper";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -357,7 +357,14 @@ export default class GenomeSpy {
     */
 
     _prepareContainer() {
-        this.webGLContext = new WebGLContext(this.container);
+        this._glHelper = new WebGLHelper(this.container);
+        this._glHelper.addEventListener("repaint", () => {
+            // TODO: fix
+            this.viewRoot._height = {
+                px: this._glHelper.getNominalCanvasSize().height
+            };
+            this.renderAll();
+        });
 
         this.loadingMessageElement = document.createElement("div");
         this.loadingMessageElement.className = "loading-message";
@@ -457,16 +464,19 @@ export default class GenomeSpy {
                         config,
                         baseUrl,
                         this.getNamedData.bind(this)
-                    )
+                    ),
+                glHelper: this._glHelper
             };
 
             /** @type {import("./spec/view").ConcatSpec & RootConfig} */
             const rootSpec = this.config;
 
             // Import external tracks
+            /*
             if (isVConcatSpec(rootSpec)) {
                 await processImports(rootSpec);
             }
+            */
 
             // Create the view hierarchy
             /** @type {import("./view/view").default} */
@@ -517,6 +527,17 @@ export default class GenomeSpy {
             );
             */
 
+            {
+                /** @type {Promise<void>[]} */
+                const promises = [];
+                this.viewRoot.visit(view => {
+                    if (view instanceof UnitView) {
+                        promises.push(view.mark.initializeGraphics());
+                    }
+                });
+                await Promise.all(promises);
+            }
+
             // TODO: Support other scales too
             this.xScale = scaleLinear().domain(
                 this.viewRoot
@@ -531,6 +552,8 @@ export default class GenomeSpy {
             // Initiate layout calculation and render the tracks
             //this._resized();
 
+            this.renderAll();
+
             return this;
         } catch (reason) {
             const message = `${
@@ -542,6 +565,14 @@ export default class GenomeSpy {
         } finally {
             this.container.classList.remove("loading");
         }
+    }
+
+    renderAll() {
+        this.viewRoot.visit(view => {
+            if (view instanceof UnitView) {
+                view.mark.render(undefined);
+            }
+        });
     }
 
     // TODO: Find a proper place

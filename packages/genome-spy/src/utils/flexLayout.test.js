@@ -10,42 +10,63 @@ test("parseSize", () => {
 
 test("Absolute sizes", () => {
     const items = [10, 30, 20].map(x => ({ px: x }));
-    const layout = new FlexLayout(
-        items,
-        x => x,
-        () => ({ px: 100 })
-    );
+    const containerSize = 100;
+    const layout = new FlexLayout(items, x => x);
 
-    expect(layout.getPixelSize(items[0])).toEqual([0, 10]);
-    expect(layout.getPixelSize(items[1])).toEqual([10, 40]);
-    expect(layout.getPixelSize(items[2])).toEqual([40, 60]);
+    expect(layout.getPixelCoords(items[0], containerSize)).toEqual({
+        location: 0,
+        size: 10
+    });
+    expect(layout.getPixelCoords(items[1], containerSize)).toEqual({
+        location: 10,
+        size: 30
+    });
+    expect(layout.getPixelCoords(items[2], containerSize)).toEqual({
+        location: 40,
+        size: 20
+    });
 });
 
 test("Growing sizes", () => {
     const items = [10, 20, 70].map(x => ({ grow: x }));
-    const layout = new FlexLayout(
-        items,
-        x => x,
-        () => ({ px: 200 })
-    );
+    const containerSize = 200;
+    const layout = new FlexLayout(items, x => x);
 
-    expect(layout.getPixelSize(items[0])).toEqual([0, 20]);
-    expect(layout.getPixelSize(items[1])).toEqual([20, 60]);
-    expect(layout.getPixelSize(items[2])).toEqual([60, 200]);
+    expect(layout.getPixelCoords(items[0], containerSize)).toEqual({
+        location: 0,
+        size: 20
+    });
+    expect(layout.getPixelCoords(items[1], containerSize)).toEqual({
+        location: 20,
+        size: 40
+    });
+    expect(layout.getPixelCoords(items[2], containerSize)).toEqual({
+        location: 60,
+        size: 140
+    });
 });
 
 test("Mixed absolute and relative sizes", () => {
     const items = [{ px: 100 }, { grow: 1 }, { grow: 9 }, { px: 200 }];
-    const layout = new FlexLayout(
-        items,
-        x => x,
-        () => ({ px: 1100 })
-    );
+    const containerSize = 1100;
+    const layout = new FlexLayout(items, x => x);
 
-    expect(layout.getPixelSize(items[0])).toEqual([0, 100]);
-    expect(layout.getPixelSize(items[1])).toEqual([100, 180]);
-    expect(layout.getPixelSize(items[2])).toEqual([180, 900]);
-    expect(layout.getPixelSize(items[3])).toEqual([900, 1100]);
+    expect(layout.getPixelCoords(items[0], containerSize)).toEqual({
+        location: 0,
+        size: 100
+    });
+    expect(layout.getPixelCoords(items[1], containerSize)).toEqual({
+        location: 100,
+        size: 80
+    });
+    expect(layout.getPixelCoords(items[2], containerSize)).toEqual({
+        location: 180,
+        size: 720
+    });
+    expect(layout.getPixelCoords(items[3], containerSize)).toEqual({
+        location: 900,
+        size: 200
+    });
 });
 
 test("Sizes having both absolute and growing components", () => {
@@ -55,54 +76,61 @@ test("Sizes having both absolute and growing components", () => {
         { px: 3, grow: 2 },
         { px: 4, grow: 1 }
     ];
-    const layout = new FlexLayout(
-        items,
-        x => x,
-        () => ({ px: 16 })
-    );
+    const containerSize = 16;
+    const layout = new FlexLayout(items, x => x);
 
-    expect(layout.getPixelSize(items[0])).toEqual([0, 1]);
-    expect(layout.getPixelSize(items[1])).toEqual([1, 3]);
-    expect(layout.getPixelSize(items[2])).toEqual([3, 10]);
-    expect(layout.getPixelSize(items[3])).toEqual([10, 16]);
+    expect(layout.getPixelCoords(items[0], containerSize)).toEqual({
+        location: 0,
+        size: 1
+    });
+    expect(layout.getPixelCoords(items[1], containerSize)).toEqual({
+        location: 1,
+        size: 2
+    });
+    expect(layout.getPixelCoords(items[2], containerSize)).toEqual({
+        location: 3,
+        size: 7
+    });
+    expect(layout.getPixelCoords(items[3], containerSize)).toEqual({
+        location: 10,
+        size: 6
+    });
 });
 
-test("Normalized calculations", () => {
-    const items = [10, 30, 20].map(x => ({ px: x }));
-    const layout = new FlexLayout(
-        items,
-        x => x,
-        () => ({ px: 100 })
-    );
+test("Zero sizes return zero coords", () => {
+    const items = [{ grow: 0 }, { grow: 0 }];
+    const layout = new FlexLayout(items, x => x);
 
-    expect(layout.getNormalizedSize(items[0])).toEqual([0, 0.1]);
-    expect(layout.getNormalizedSize(items[1])).toEqual([0.1, 0.4]);
-    expect(layout.getNormalizedSize(items[2])).toEqual([0.4, 0.6]);
+    expect(layout.getPixelCoords(items[0], 0)).toEqual({
+        location: 0,
+        size: 0
+    });
+    expect(layout.getPixelCoords(items[1], 0)).toEqual({
+        location: 0,
+        size: 0
+    });
+
+    expect(layout.getPixelCoords(items[0], 1)).toEqual({
+        location: 0,
+        size: 0
+    });
+    expect(layout.getPixelCoords(items[1], 1)).toEqual({
+        location: 0,
+        size: 0
+    });
 });
 
 test("getMinimumSize", () => {
     const items = [{ px: 100 }, { grow: 1 }, { grow: 9 }, { px: 200 }];
-    const layout = new FlexLayout(
-        items,
-        x => x,
-        () => ({ px: 1100 })
-    );
+    const layout = new FlexLayout(items, x => x);
 
     expect(layout.getMinimumSize()).toEqual(300);
 });
 
 test("isStretching", () => {
-    const layout = new FlexLayout(
-        [{ grow: 1 }],
-        x => x,
-        () => ({ px: 100 })
-    );
+    const layout = new FlexLayout([{ grow: 1 }], x => x);
     expect(layout.isStretching()).toBeTruthy();
 
-    const layout2 = new FlexLayout(
-        [{ px: 1 }],
-        x => x,
-        () => ({ px: 100 })
-    );
+    const layout2 = new FlexLayout([{ px: 1 }], x => x);
     expect(layout2.isStretching()).toBeFalsy();
 });
