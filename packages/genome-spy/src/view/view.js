@@ -28,11 +28,13 @@ export default class View {
         this.resolutions = {};
     }
 
+    /**
+     * @returns {import("../utils/flexLayout").SizeDef}
+     */
     getHeight() {
         return (
             this._height ||
-            (this.spec.height && parseSizeDef(this.spec.height)) ||
-            parseSizeDef(1)
+            (this.spec.height && parseSizeDef(this.spec.height)) || { grow: 1 }
         );
     }
 
@@ -143,4 +145,6 @@ export default class View {
             this.data = transformData(this.spec.transform, this.getData());
         }
     }
+
+    render(context) {}
 }

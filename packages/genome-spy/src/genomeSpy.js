@@ -38,22 +38,13 @@ import createDomain from "./utils/domainArray";
 
 import { tickStep } from "d3-array";
 import { format as d3format } from "d3-format";
-
-/**
- * @type {Record<String, typeof import("./tracks/track").default>}
- */
-const trackTypes = {
-    axis: AxisTrack,
-    cytobands: CytobandTrack,
-    genomeAxis: GenomeAxisTrack,
-    geneAnnotation: GeneTrack
-};
+import WebGLContext from "./gl/webGLContext";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
  * @typedef {import("./spec/view").ViewSpec} ViewSpec
  * @typedef {import("./spec/view").ImportSpec} ImportSpec
- * @typedef {import("./spec/view").ConcatSpec} TrackSpec
+ * @typedef {import("./spec/view").VConcatSpec} TrackSpec
  * @typedef {import("./spec/view").RootSpec} RootSpec
  * @typedef {import("./spec/view").RootConfig} RootConfig
  */
@@ -80,13 +71,7 @@ export default class GenomeSpy {
         // TODO: Move to CoordinateSystem
         this.maxUnitZoom = 30;
 
-        /** @type {import("./tracks/Track").default[]} */
-        this.tracks = [];
-
         this.accessorFactory = new AccessorFactory();
-
-        /** @type {number} */
-        this._dpr = window.devicePixelRatio;
 
         /** @type {import("./coordinateSystem").default} */
         this.coordinateSystem = null;
@@ -316,9 +301,10 @@ export default class GenomeSpy {
     }
 
     _getSampleTracks() {
-        return /** @type {SampleTrack[]} */ (this.tracks.filter(
-            t => t instanceof SampleTrack
-        ));
+        return [];
+        // return /** @type {SampleTrack[]} */ (this.tracks.filter(
+        //     t => t instanceof SampleTrack
+        // ));
     }
 
     /**
@@ -338,6 +324,7 @@ export default class GenomeSpy {
         return sampleTrack && sampleTrack.sampleOrderHistory.length > 1;
     }
 
+    /*
     _resized() {
         const cs = window.getComputedStyle(this.container, null);
         const width =
@@ -367,13 +354,17 @@ export default class GenomeSpy {
 
         this.eventEmitter.emit("layout", this.layout);
     }
+    */
 
     _prepareContainer() {
+        this.webGLContext = new WebGLContext(this.container);
+
         this.loadingMessageElement = document.createElement("div");
         this.loadingMessageElement.className = "loading-message";
         this.loadingMessageElement.innerHTML = `<div class="message">Loading...</div>`;
         this.container.appendChild(this.loadingMessageElement);
 
+        /*
         this._listeners = [
             {
                 target: window,
@@ -403,12 +394,15 @@ export default class GenomeSpy {
         for (const e of this._listeners) {
             e.target.addEventListener(e.type, e.listener);
         }
+        */
 
+        /*
         const trackStack = document.createElement("div");
         trackStack.classList.add("track-stack");
 
         this.container.appendChild(trackStack);
         this.trackStack = trackStack;
+        */
 
         this.tooltip = new Tooltip(this.container);
 
@@ -420,9 +414,11 @@ export default class GenomeSpy {
      * Unregisters all listeners, removes all created dom elements, removes all css classes from the container
      */
     destroy() {
+        /*
         for (const e of this._listeners) {
             e.target.removeEventListener(e.type, e.listener);
         }
+        */
 
         while (this.container.firstChild) {
             this.container.firstChild.remove();
@@ -479,9 +475,11 @@ export default class GenomeSpy {
             // Resolve scales, i.e., if possible, pull them towards the root
             resolveScales(this.viewRoot);
 
+            /*
             if (this.coordinateSystem instanceof RealCoordinateSystem) {
                 this.viewRoot = addAxisView(this.viewRoot);
             }
+            */
 
             // If the coordinate system has a hard extent, use it
             if (this.coordinateSystem.getExtent()) {
@@ -504,9 +502,10 @@ export default class GenomeSpy {
                 }
             });
 
-            this._createTracks();
+            //this._createTracks();
 
             // Create container and initialize the the tracks, i.e. load the data and create WebGL buffers
+            /*
             await Promise.all(
                 this.tracks.map(track => {
                     const trackContainer = document.createElement("div");
@@ -516,6 +515,7 @@ export default class GenomeSpy {
                     return track.initialize(trackContainer);
                 })
             );
+            */
 
             // TODO: Support other scales too
             this.xScale = scaleLinear().domain(
@@ -529,7 +529,7 @@ export default class GenomeSpy {
             this.rescaledX = this.xScale;
 
             // Initiate layout calculation and render the tracks
-            this._resized();
+            //this._resized();
 
             return this;
         } catch (reason) {
@@ -542,39 +542,6 @@ export default class GenomeSpy {
         } finally {
             this.container.classList.remove("loading");
         }
-    }
-
-    /**
-     * Creates the track instances
-     */
-    _createTracks() {
-        /** @type {import("./tracks/track").default[]} */
-        this.tracks = [];
-
-        /** @type {import("./spec/view").ViewSpecBase[]} */
-        this.viewRoot.visit(view => {
-            if (view instanceof ImportView) {
-                const name = view.spec.import.name;
-                if (name) {
-                    if (!trackTypes[name]) {
-                        throw new Error(`Unknown track name: ${name}`);
-                    }
-                    // Currently, all named imports are custom, hardcoded tracks
-                    this.tracks.push(new trackTypes[name](this, view.spec));
-                }
-            } else if (
-                !(view instanceof VConcatView) &&
-                (view.parent instanceof VConcatView || view.parent == null)
-            ) {
-                const Track = view.getResolution("sample")
-                    ? SampleTrack
-                    : SimpleTrack;
-
-                const track = new Track(this, view.spec, view);
-
-                this.tracks.push(track);
-            }
-        });
     }
 
     // TODO: Find a proper place

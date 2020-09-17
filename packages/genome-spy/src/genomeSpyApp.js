@@ -44,12 +44,12 @@ export default class GenomeSpyApp {
                         <li>chr4:166,014,727-chr15:23,731,397</li>
                     </ul>
 
-                    ${unsafeHTML(
+                    ${/*unsafeHTML(
                         (self.genomeSpy
                             ? self.genomeSpy.tracks.map(t => t.searchHelp())
                             : []
                         ).join("")
-                    )}
+                        )*/ ""}
                 </div>
             `;
         }

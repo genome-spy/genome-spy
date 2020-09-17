@@ -1,4 +1,4 @@
-import { isNumber, isObject } from "vega-util";
+import { isNumber } from "vega-util";
 
 /**
  * @typedef {object} SizeDef Size definition inspired by CSS flexbox
@@ -12,6 +12,8 @@ import { isNumber, isObject } from "vega-util";
  * remaining space.
  *
  * Read more at https://css-tricks.com/flex-grow-is-weird/
+ *
+ * TODO: Add some memoization to calculations
  *
  * @template I item
  */
