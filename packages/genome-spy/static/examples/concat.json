@@ -1,5 +1,5 @@
 {
-  "height": 500,
+  "height": { "grow": 1 },
   "data": {
     "url": "sincos.csv"
   },
@@ -23,7 +23,7 @@
     {
       "concat": [
         {
-          "height": { "px": 100 },
+          "height": { "px": 80 },
           "mark": "point",
           "encoding": {
             "y": {
@@ -33,7 +33,7 @@
           }
         },
         {
-          "height": { "px": 100 },
+          "height": { "px": 80 },
           "mark": "point",
           "encoding": {
             "y": {

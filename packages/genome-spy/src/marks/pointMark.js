@@ -203,10 +203,20 @@ export default class PointMark extends Mark {
             ];
         }
 
-        console.log(this.unitView.getCoords());
-
-        const gl = this.getContext().glHelper.gl;
         const dpr = window.devicePixelRatio;
+        const glHelper = this.getContext().glHelper;
+        const gl = glHelper.gl;
+
+        // TODO: Move to unitView or something
+        const locSize = this.unitView.getCoords();
+        const nominalSize = glHelper.getNominalCanvasSize();
+
+        gl.viewport(
+            0,
+            (nominalSize.height - locSize.location - locSize.size) * dpr,
+            gl.drawingBufferWidth,
+            locSize.size * dpr
+        );
 
         gl.enable(gl.BLEND);
         gl.useProgram(this.programInfo.program);

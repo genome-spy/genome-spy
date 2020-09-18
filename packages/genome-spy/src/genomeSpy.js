@@ -39,6 +39,7 @@ import createDomain from "./utils/domainArray";
 import { tickStep } from "d3-array";
 import { format as d3format } from "d3-format";
 import WebGLHelper from "./gl/webGLHelper";
+import { parseSizeDef } from "./utils/flexLayout";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -359,10 +360,6 @@ export default class GenomeSpy {
     _prepareContainer() {
         this._glHelper = new WebGLHelper(this.container);
         this._glHelper.addEventListener("repaint", () => {
-            // TODO: fix
-            this.viewRoot._height = {
-                px: this._glHelper.getNominalCanvasSize().height
-            };
             this.renderAll();
         });
 

@@ -58,26 +58,38 @@ export default class WebGLHelper {
     }
 
     adjustGl() {
-        const size = this.getNominalCanvasSize();
+        const nominalSize = this.getNominalCanvasSize();
+        this.canvas.style.width = `${nominalSize.width}px`;
+        this.canvas.style.height = `${nominalSize.height}px`;
 
-        this.canvas.width = size.width * window.devicePixelRatio;
-        this.canvas.height = size.height * window.devicePixelRatio;
-        this.canvas.style.width = `${size.width}px`;
-        this.canvas.style.height = `${size.height}px`;
-
-        this.gl.viewport(
-            0,
-            0,
-            this.gl.drawingBufferWidth,
-            this.gl.drawingBufferHeight
-        );
+        const physicalSize = this.getPhysicalCanvasSize(nominalSize);
+        this.canvas.width = physicalSize.width;
+        this.canvas.height = physicalSize.height;
     }
 
     destroy() {
         this.canvas.remove();
     }
 
+    /**
+     * Returns the canvas size in true display pixels
+     *
+     * @param {{ width: number, height: number }} [nominalSize]
+     */
+    getPhysicalCanvasSize(nominalSize) {
+        nominalSize = nominalSize || this.getNominalCanvasSize();
+        return {
+            width: nominalSize.width * window.devicePixelRatio,
+            height: nominalSize.height * window.devicePixelRatio
+        };
+    }
+
+    /**
+     * Returns the canvas size in nominal pixels (without devicePixelRatio correction)
+     */
     getNominalCanvasSize() {
+        // TODO: Size should never be smaller than the minimum content size!
+
         const cs = window.getComputedStyle(this._container, null);
         const width =
             this._container.clientWidth -

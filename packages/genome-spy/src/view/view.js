@@ -46,6 +46,7 @@ export default class View {
      */
     getHeight() {
         return (
+            // TODO: reconsider the default
             (this.spec.height && parseSizeDef(this.spec.height)) || { grow: 1 }
         );
     }
@@ -58,7 +59,12 @@ export default class View {
             return this.parent.getChildCoords(this);
         } else {
             // At root
-            return { location: 0, size: this.getHeight().px || 0 };
+            const size =
+                this.spec.height && parseSizeDef(this.spec.height).grow
+                    ? this.context.glHelper.getNominalCanvasSize().height
+                    : this.getHeight().px;
+
+            return { location: 0, size: size || 0 };
         }
     }
 
