@@ -102,6 +102,8 @@ export default class RectMark extends Mark {
      * @param {number} [tesselationThreshold]
      */
     _createSampleBufferInfo(interval, tesselationThreshold) {
+        const gl = this.getContext().glHelper.gl;
+
         // TODO: Disable tesselation on SimpleTrack - no need for it
         const builder = new RectVertexBuilder(this.encoders, {
             tesselationThreshold,
@@ -115,10 +117,7 @@ export default class RectMark extends Mark {
 
         return {
             rangeMap: vertexData.rangeMap,
-            bufferInfo: twgl.createBufferInfoFromArrays(
-                this.gl,
-                vertexData.arrays
-            )
+            bufferInfo: twgl.createBufferInfoFromArrays(gl, vertexData.arrays)
         };
     }
 
@@ -148,8 +147,11 @@ export default class RectMark extends Mark {
      *
      * @param {WebGLRenderingContext} gl
      */
-    async initializeGraphics(gl) {
-        await super.initializeGraphics(gl);
+    async initializeGraphics() {
+        await super.initializeGraphics();
+
+        const glHelper = this.getContext().glHelper;
+        const gl = glHelper.gl;
 
         const xDomain = this.getXDomain();
         const domainWidth = xDomain ? xDomain.width() : Infinity;
@@ -159,7 +161,7 @@ export default class RectMark extends Mark {
 
         this.programInfo = twgl.createProgramInfo(
             gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s))
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => glHelper.processShader(s))
         );
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(
@@ -173,11 +175,11 @@ export default class RectMark extends Mark {
 
     /**
      * @param {object[]} samples
-     * @param {object} globalUniforms
      */
-    render(samples, globalUniforms) {
-        const gl = this.gl;
+    render(samples) {
         const dpr = window.devicePixelRatio;
+        const glHelper = this.getContext().glHelper;
+        const gl = glHelper.gl;
 
         if (this.opaque) {
             gl.disable(gl.BLEND);
@@ -186,8 +188,10 @@ export default class RectMark extends Mark {
         }
 
         gl.useProgram(this.programInfo.program);
+        this.setViewport(this.programInfo);
+
         twgl.setUniforms(this.programInfo, {
-            ...globalUniforms,
+            ...this.getGlobalUniforms(),
             uMinWidth: (this.properties.minWidth / gl.drawingBufferWidth) * dpr, // How many pixels
             uMinHeight:
                 (this.properties.minHeight / gl.drawingBufferHeight) * dpr, // How many pixels

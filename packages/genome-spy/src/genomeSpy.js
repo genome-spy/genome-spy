@@ -565,9 +565,19 @@ export default class GenomeSpy {
     }
 
     renderAll() {
+        const samples = [
+            {
+                sampleId: "default",
+                uniforms: {
+                    yPosLeft: [0, 1],
+                    yPosRight: [0, 1]
+                }
+            }
+        ];
+
         this.viewRoot.visit(view => {
             if (view instanceof UnitView) {
-                view.mark.render(undefined);
+                view.mark.render(samples);
             }
         });
     }

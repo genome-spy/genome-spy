@@ -5,6 +5,7 @@ test("parseSize", () => {
     expect(parseSizeDef({ px: 20, grow: 2 })).toEqual({ px: 20, grow: 2 });
     expect(parseSizeDef(undefined)).toEqual({ px: 0, grow: 1 });
     expect(parseSizeDef(null)).toEqual({ px: 0, grow: 1 });
+    expect(parseSizeDef("container")).toEqual({ px: 0, grow: 1 });
     expect(() => parseSizeDef({})).toThrow();
 });
 

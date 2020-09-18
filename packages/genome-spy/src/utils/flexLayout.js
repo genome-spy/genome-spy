@@ -113,7 +113,7 @@ export function isSizeDef(spec) {
 
 /**
  *
- * @param {number | SizeDef} size
+ * @param {"container" | number | SizeDef} size
  * @returns {SizeDef}
  */
 export function parseSizeDef(size) {
@@ -121,6 +121,9 @@ export function parseSizeDef(size) {
         return size;
     } else if (isNumber(size)) {
         return { px: size, grow: 0 };
+    } else if (size === "container") {
+        // https://vega.github.io/vega-lite/docs/size.html#specifying-responsive-width-and-height
+        return { px: 0, grow: 1 };
     } else if (!size) {
         return { px: 0, grow: 1 };
     }

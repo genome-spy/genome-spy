@@ -1,5 +1,6 @@
 import { group } from "d3-array";
 import { fp64ify } from "../gl/includes/fp64-utils";
+import * as twgl from "twgl.js";
 import Interval from "../utils/interval";
 import createEncoders from "../encoder/encoder";
 
@@ -160,10 +161,37 @@ export default class Mark {
         return {
             ...this.getDomainUniforms(),
             uDevicePixelRatio: window.devicePixelRatio,
-            // TODO: Replace with view size
-            uViewportSize: [gl.drawingBufferWidth, gl.drawingBufferHeight],
             zoomLevel: this.getContext().genomeSpy.getExpZoomLevel()
         };
+    }
+
+    /**
+     * Sets viewport, clipping, and uniforms related to scaling and translation
+     *
+     * @param {twgl.ProgramInfo} programInfo
+     */
+    setViewport(programInfo) {
+        const dpr = window.devicePixelRatio;
+        const glHelper = this.getContext().glHelper;
+        const gl = glHelper.gl;
+
+        const locSize = this.unitView.getCoords();
+        const nominalSize = glHelper.getNominalCanvasSize();
+
+        const width = gl.drawingBufferWidth; // dpr
+        const height = locSize.size;
+
+        gl.viewport(
+            0,
+            (nominalSize.height - locSize.location - height) * dpr,
+            gl.drawingBufferWidth,
+            locSize.size * dpr
+        );
+
+        twgl.setUniforms(programInfo, {
+            uDevicePixelRatio: window.devicePixelRatio,
+            uViewportSize: [gl.drawingBufferWidth, height * dpr]
+        });
     }
 
     /**

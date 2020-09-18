@@ -52,9 +52,14 @@ export default class WebGLHelper {
 
     /**
      * @param {string} shaderCode
+     * @param {string[]} [extraHeaders]
      */
-    processShader(shaderCode) {
-        return this._shaderDefines + "\n" + shaderCode;
+    processShader(shaderCode, extraHeaders) {
+        return [
+            ...(extraHeaders || []),
+            this._shaderDefines || "",
+            shaderCode
+        ].join("\n\n");
     }
 
     adjustGl() {

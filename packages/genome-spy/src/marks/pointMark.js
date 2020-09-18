@@ -190,36 +190,15 @@ export default class PointMark extends Mark {
      * @param {object[]} samples
      */
     render(samples) {
-        if (!samples) {
-            // TODO: Move somewhere
-            samples = [
-                {
-                    sampleId: "default",
-                    uniforms: {
-                        yPosLeft: [0, 1],
-                        yPosRight: [0, 1]
-                    }
-                }
-            ];
-        }
-
         const dpr = window.devicePixelRatio;
         const glHelper = this.getContext().glHelper;
         const gl = glHelper.gl;
 
-        // TODO: Move to unitView or something
-        const locSize = this.unitView.getCoords();
-        const nominalSize = glHelper.getNominalCanvasSize();
-
-        gl.viewport(
-            0,
-            (nominalSize.height - locSize.location - locSize.size) * dpr,
-            gl.drawingBufferWidth,
-            locSize.size * dpr
-        );
-
         gl.enable(gl.BLEND);
+
         gl.useProgram(this.programInfo.program);
+        this.setViewport(this.programInfo);
+
         twgl.setUniforms(this.programInfo, {
             ...this.getGlobalUniforms(),
             uXOffset: (this.properties.xOffset / gl.drawingBufferWidth) * dpr,

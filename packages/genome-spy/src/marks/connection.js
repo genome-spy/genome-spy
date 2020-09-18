@@ -75,16 +75,15 @@ export default class ConnectionMark extends Mark {
         super.initializeEncoders();
     }
 
-    /**
-     *
-     * @param {WebGLRenderingContext} gl
-     */
-    async initializeGraphics(gl) {
-        await super.initializeGraphics(gl);
+    async initializeGraphics() {
+        await super.initializeGraphics();
+
+        const glHelper = this.getContext().glHelper;
+        const gl = glHelper.gl;
 
         this.programInfo = twgl.createProgramInfo(
             gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s))
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => glHelper.processShader(s))
         );
 
         const vertexCount =
@@ -108,17 +107,17 @@ export default class ConnectionMark extends Mark {
 
         this.rangeMap = vertexData.rangeMap;
         this.bufferInfo = twgl.createBufferInfoFromArrays(
-            this.gl,
+            gl,
             vertexData.arrays
         );
     }
 
     /**
      * @param {object[]} samples
-     * @param {object} globalUniforms
      */
-    render(samples, globalUniforms) {
-        const gl = this.gl;
+    render(samples) {
+        const glHelper = this.getContext().glHelper;
+        const gl = glHelper.gl;
 
         if (this.opaque) {
             gl.disable(gl.BLEND);
@@ -130,8 +129,9 @@ export default class ConnectionMark extends Mark {
             scale && scale.type == "band" ? scale.bandwidth() : 0;
 
         gl.useProgram(this.programInfo.program);
+        this.setViewport(this.programInfo);
         twgl.setUniforms(this.programInfo, {
-            ...globalUniforms,
+            ...this.getGlobalUniforms(),
             uBandwidth: getBandwidth(this.encoders.y.scale)
         });
 

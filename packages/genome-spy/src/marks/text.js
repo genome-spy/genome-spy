@@ -91,18 +91,21 @@ export default class TextMark extends Mark {
      *
      * @param {WebGLRenderingContext} gl
      */
-    async initializeGraphics(gl) {
-        await super.initializeGraphics(gl);
+    async initializeGraphics() {
+        await super.initializeGraphics();
+
+        const glHelper = this.getContext().glHelper;
+        const gl = glHelper.gl;
 
         const encoding = this.getEncoding();
 
-        if (encoding.x2) {
-            this._shaderDefines += "#define X2_ENABLED\n";
-        }
+        const defines = encoding.x2 ? ["#define X2_ENABLED"] : [];
 
         this.programInfo = twgl.createProgramInfo(
             gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => this.processShader(s))
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s =>
+                glHelper.processShader(s, defines)
+            )
         );
 
         const textureReadyPromise = new Promise((resolve, reject) => {
@@ -156,7 +159,7 @@ export default class TextMark extends Mark {
 
         this.rangeMap = vertexData.rangeMap;
         this.bufferInfo = twgl.createBufferInfoFromArrays(
-            this.gl,
+            gl,
             vertexData.arrays
         );
 
@@ -168,13 +171,17 @@ export default class TextMark extends Mark {
      * @param {object} globalUniforms
      */
     render(samples, globalUniforms) {
-        const gl = this.gl;
+        const dpr = window.devicePixelRatio;
+        const glHelper = this.getContext().glHelper;
+        const gl = glHelper.gl;
 
         gl.enable(gl.BLEND);
 
         gl.useProgram(this.programInfo.program);
+        this.setViewport(this.programInfo);
+
         twgl.setUniforms(this.programInfo, {
-            ...globalUniforms,
+            ...this.getGlobalUniforms(),
             uTexture: this.fontTexture,
             uD: [this.properties.dx, -this.properties.dy],
             uPaddingX: 4.0, // TODO: Configurable
@@ -182,7 +189,7 @@ export default class TextMark extends Mark {
             uSdfNumerator:
                 /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
                     .common.base /
-                (window.devicePixelRatio / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
+                (dpr / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
         });
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
