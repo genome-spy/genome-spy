@@ -19,6 +19,8 @@ const defaultAxisProps = {
     tickWidth: 1,
     tickColor: "gray",
 
+    // TODO: tickBand
+
     /** @type {number} */
     tickCount: null,
     /** @type {number} */
