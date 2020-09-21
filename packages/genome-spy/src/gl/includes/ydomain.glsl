@@ -13,6 +13,6 @@ float normalizeY(float y) {
     } else if (y >= FLT_MAX) {
         return 1.0;
     } else {
-        return y + uYOffset;
+        return y - uYOffset / uViewportSize.y;
     }
 }

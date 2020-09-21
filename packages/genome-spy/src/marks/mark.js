@@ -176,21 +176,34 @@ export default class Mark {
         const gl = glHelper.gl;
 
         const locSize = this.unitView.getCoords();
-        const nominalSize = glHelper.getNominalCanvasSize();
+        const logicalSize = glHelper.getLogicalCanvasSize();
 
-        const width = gl.drawingBufferWidth; // dpr
+        const width = gl.drawingBufferWidth / dpr;
         const height = locSize.size;
 
-        gl.viewport(
+        const clip = true;
+
+        const physicalGlCoords = [
             0,
-            (nominalSize.height - locSize.location - height) * dpr,
-            gl.drawingBufferWidth,
+            (logicalSize.height - locSize.location - height) * dpr,
+            width * dpr,
             locSize.size * dpr
-        );
+        ];
+
+        // @ts-ignore
+        gl.viewport(...physicalGlCoords);
+
+        if (clip) {
+            // @ts-ignore
+            gl.scissor(...physicalGlCoords);
+            gl.enable(gl.SCISSOR_TEST);
+        } else {
+            gl.disable(gl.SCISSOR_TEST);
+        }
 
         twgl.setUniforms(programInfo, {
             uDevicePixelRatio: window.devicePixelRatio,
-            uViewportSize: [gl.drawingBufferWidth, height * dpr]
+            uViewportSize: [width, height]
         });
     }
 

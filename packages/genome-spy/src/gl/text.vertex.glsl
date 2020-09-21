@@ -1,10 +1,11 @@
 precision mediump float;
 
+uniform vec2 uViewportSize;
+
 @import ./includes/xdomain;
 @import ./includes/ydomain;
 @import ./includes/sampleTransition;
 
-uniform vec2 uViewportSize;
 uniform lowp float uDevicePixelRatio;
 uniform float uSdfNumerator;
 
@@ -45,8 +46,8 @@ void main(void) {
     float normalizedX2 = normalizeX(x2);
 
     float normalizedSpan = normalizedX2 - normalizedX;
-    float normalizedPadding = uPaddingX / uViewportSize.x * uDevicePixelRatio;
-    float paddedNormalizedWidth = width * size / uViewportSize.x * uDevicePixelRatio + 2.0 * normalizedPadding;
+    float normalizedPadding = uPaddingX / uViewportSize.x;
+    float paddedNormalizedWidth = width * size / uViewportSize.x + 2.0 * normalizedPadding;
 
     bool outside = normalizedX > 1.0 || normalizedX2 < 0.0;
     bool doesntFit = normalizedSpan < paddedNormalizedWidth;
@@ -94,7 +95,7 @@ void main(void) {
     float normalizedY = normalizeY(y);
     float translatedY = transit(normalizedX, normalizedY)[0];
 
-    vec2 ndc = (vec2(normalizedX, translatedY) + (vec2(cx, cy) * size + uD) * uDevicePixelRatio / uViewportSize) * 2.0 - 1.0;
+    vec2 ndc = (vec2(normalizedX, translatedY) + (vec2(cx, cy) * size + uD) / uViewportSize) * 2.0 - 1.0;
 
     // Controls antialiasing of the SDF
     vSlope = max(1.0, size / uSdfNumerator);

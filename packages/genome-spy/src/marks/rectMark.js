@@ -177,7 +177,6 @@ export default class RectMark extends Mark {
      * @param {object[]} samples
      */
     render(samples) {
-        const dpr = window.devicePixelRatio;
         const glHelper = this.getContext().glHelper;
         const gl = glHelper.gl;
 
@@ -192,12 +191,11 @@ export default class RectMark extends Mark {
 
         twgl.setUniforms(this.programInfo, {
             ...this.getGlobalUniforms(),
-            uMinWidth: (this.properties.minWidth / gl.drawingBufferWidth) * dpr, // How many pixels
-            uMinHeight:
-                (this.properties.minHeight / gl.drawingBufferHeight) * dpr, // How many pixels
+            uMinWidth: this.properties.minWidth,
+            uMinHeight: this.properties.minHeight, // How many pixels
             uMinOpacity: this.properties.minOpacity,
-            uXOffset: (this.properties.xOffset / gl.drawingBufferWidth) * dpr,
-            uYOffset: (this.properties.yOffset / gl.drawingBufferHeight) * dpr
+            uXOffset: this.properties.xOffset,
+            uYOffset: this.properties.yOffset
         });
 
         twgl.setBuffersAndAttributes(

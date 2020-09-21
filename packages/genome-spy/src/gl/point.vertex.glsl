@@ -1,5 +1,7 @@
 precision mediump float;
 
+uniform vec2 uViewportSize;
+
 @import ./includes/xdomain;
 @import ./includes/ydomain;
 @import ./includes/sampleTransition;
@@ -18,7 +20,6 @@ attribute lowp float strokeWidth;
 attribute float semanticScore;
 attribute lowp float gradientStrength;
 
-uniform vec2 uViewportSize;
 uniform lowp float uDevicePixelRatio;
 
 /** Maximum size of the largest point as the fraction of the height of the (faceted) view */

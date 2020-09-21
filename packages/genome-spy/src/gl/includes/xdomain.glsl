@@ -43,5 +43,5 @@ float normalizeX(vec2 x) {
         normalizedX = x.x * uXScale.x + uXTranslate.x;
     }
 
-    return normalizedX + uXOffset;
+    return normalizedX + uXOffset / uViewportSize.x;
 }

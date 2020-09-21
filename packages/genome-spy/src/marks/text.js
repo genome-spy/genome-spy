@@ -168,9 +168,8 @@ export default class TextMark extends Mark {
 
     /**
      * @param {object[]} samples
-     * @param {object} globalUniforms
      */
-    render(samples, globalUniforms) {
+    render(samples) {
         const dpr = window.devicePixelRatio;
         const glHelper = this.getContext().glHelper;
         const gl = glHelper.gl;

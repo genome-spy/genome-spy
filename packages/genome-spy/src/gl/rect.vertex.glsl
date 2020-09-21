@@ -1,5 +1,7 @@
 precision mediump float;
 
+uniform vec2 uViewportSize;
+
 @import ./includes/xdomain;
 @import ./includes/ydomain;
 @import ./includes/minWidth;
@@ -20,17 +22,18 @@ attribute lowp float opacity;
  */
 attribute float height;
 
+
 /** Minimum height of the displayed rectangle in normalized [0, 1] coordinates */
 uniform float uMinHeight;
 
 varying vec4 vColor;
 
-
 float applyMinHeight(float normalizedY) {
     if (height != 0.0) {
         float normalizedHeight = height * yPosLeft[1]; // TODO: Fix: Broken inside transition!
-        if (abs(normalizedHeight) < uMinHeight) {
-            normalizedY += (uMinHeight * sign(height) - normalizedHeight) / 2.0;
+        float minHeight = uMinHeight / uViewportSize.y;
+        if (abs(normalizedHeight) < minHeight) {
+            normalizedY += (minHeight * sign(height) - normalizedHeight) / 2.0;
         }
     }
 

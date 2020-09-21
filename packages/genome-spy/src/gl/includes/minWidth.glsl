@@ -19,9 +19,10 @@ float applyMinWidth(inout float normalizedX) {
 
     if (width != 0.0) {
         float normalizedWidth = width * uXScale.x;
-        if (abs(normalizedWidth) < uMinWidth) {
+        float minWidth = uMinWidth / uViewportSize.x;
+        if (abs(normalizedWidth) < minWidth) {
             // The rectangle is too narrow, stretch it to make it more visible
-            normalizedX += (uMinWidth * sign(width) - normalizedWidth) / 2.0;
+            normalizedX += (minWidth * sign(width) - normalizedWidth) / 2.0;
             opacity = max(abs(normalizedWidth) / uMinWidth, uMinOpacity);
         }
     }

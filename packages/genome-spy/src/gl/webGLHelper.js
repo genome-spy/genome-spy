@@ -27,7 +27,7 @@ export default class WebGLHelper {
         }
 
         // TODO: Configurable
-        gl.clearColor(1, 1, 1, 1);
+        gl.clearColor(1, 1, 1, 0);
         // TODO: view background: https://vega.github.io/vega-lite/docs/spec.html#view-background
 
         // Always use pre-multiplied alpha
@@ -63,11 +63,11 @@ export default class WebGLHelper {
     }
 
     adjustGl() {
-        const nominalSize = this.getNominalCanvasSize();
-        this.canvas.style.width = `${nominalSize.width}px`;
-        this.canvas.style.height = `${nominalSize.height}px`;
+        const logicalSize = this.getLogicalCanvasSize();
+        this.canvas.style.width = `${logicalSize.width}px`;
+        this.canvas.style.height = `${logicalSize.height}px`;
 
-        const physicalSize = this.getPhysicalCanvasSize(nominalSize);
+        const physicalSize = this.getPhysicalCanvasSize(logicalSize);
         this.canvas.width = physicalSize.width;
         this.canvas.height = physicalSize.height;
     }
@@ -82,7 +82,7 @@ export default class WebGLHelper {
      * @param {{ width: number, height: number }} [nominalSize]
      */
     getPhysicalCanvasSize(nominalSize) {
-        nominalSize = nominalSize || this.getNominalCanvasSize();
+        nominalSize = nominalSize || this.getLogicalCanvasSize();
         return {
             width: nominalSize.width * window.devicePixelRatio,
             height: nominalSize.height * window.devicePixelRatio
@@ -92,7 +92,7 @@ export default class WebGLHelper {
     /**
      * Returns the canvas size in nominal pixels (without devicePixelRatio correction)
      */
-    getNominalCanvasSize() {
+    getLogicalCanvasSize() {
         // TODO: Size should never be smaller than the minimum content size!
 
         const cs = window.getComputedStyle(this._container, null);

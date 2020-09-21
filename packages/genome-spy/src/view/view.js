@@ -59,7 +59,7 @@ export default class View {
             return this.parent.getChildCoords(this);
         } else {
             // At root
-            const canvasSize = this.context.glHelper.getNominalCanvasSize()
+            const canvasSize = this.context.glHelper.getLogicalCanvasSize()
                 .height;
             const size =
                 this.spec.height && parseSizeDef(this.spec.height).grow
