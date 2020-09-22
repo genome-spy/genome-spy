@@ -35,6 +35,16 @@ export default class ContainerView extends View {
     }
 
     /**
+     * Replaces a child view with another one. Does not set any references.
+     *
+     * @param {import("./view").default} child
+     * @param {import("./view").default} replacement
+     */
+    replaceChild(child, replacement) {
+        throw new Error("Not implemented");
+    }
+
+    /**
      * Visits child views in depth-first order. Terminates the search and returns
      * the value if the visitor returns a defined value.
      *
@@ -50,7 +60,7 @@ export default class ContainerView extends View {
         if (result !== VISIT_SKIP) {
             for (const view of this) {
                 const result = view.visit(visitor);
-                if (result !== undefined) {
+                if (result === VISIT_STOP) {
                     return result;
                 }
             }

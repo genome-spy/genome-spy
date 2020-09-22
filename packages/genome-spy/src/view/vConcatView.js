@@ -61,6 +61,19 @@ export default class VConcatView extends ContainerView {
     }
 
     /**
+     * @param {import("./view").default} child
+     * @param {import("./view").default} replacement
+     */
+    replaceChild(child, replacement) {
+        const i = this.children.indexOf(child);
+        if (i >= 0) {
+            this.children[i] = replacement;
+        } else {
+            throw new Error("Not my child view!");
+        }
+    }
+
+    /**
      * @param {string} channel
      */
     getDefaultResolution(channel) {

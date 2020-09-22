@@ -207,11 +207,7 @@ export function addAxisWrappers(root) {
 
     // TODO: only wrap views that actually request axes
     root.visit(view => {
-        if (
-            (view instanceof LayerView &&
-                !(view.parent instanceof LayerView)) ||
-            (view instanceof UnitView && !(view.parent instanceof LayerView))
-        ) {
+        if (view instanceof LayerView || view instanceof UnitView) {
             const originalParent = view.parent;
             const axisWrapperView = new AxisWrapperView(
                 view.context,
@@ -220,8 +216,15 @@ export function addAxisWrappers(root) {
             view.parent = axisWrapperView;
             axisWrapperView.child = view;
 
+            if (originalParent) {
+                originalParent.replaceChild(view, axisWrapperView);
+            }
+
             axisWrapperView.resolutions = view.resolutions;
+            axisWrapperView.name = view.name;
+
             view.resolutions = {};
+            view.name = "axisWrapped_" + view.name;
 
             if (view === root) {
                 newRoot = axisWrapperView;
