@@ -6,6 +6,8 @@ import UnitView from "./unitView";
 import VConcatView from "./vConcatView";
 import TableView from "./tableView";
 import TableRowView from "./tableRowView";
+import AxisWrapperView from "./axisWrapperView";
+import { VISIT_SKIP } from "./view";
 
 /**
  * @typedef {Object} ViewContext
@@ -173,6 +175,8 @@ export function getMarks(root) {
 }
 
 /**
+ * Returns the nodes of the view hierarchy in depth-first order.
+ *
  * @param {View} root
  */
 export function getFlattenedViews(root) {
@@ -196,45 +200,47 @@ export function resolveScales(root) {
 }
 
 /**
- *
- * @param {View} view
+ * @param {View} root
  */
-export function addAxisView(view) {
-    // TODO: Don't add axis if one already exists
-    const xResolution = view.resolutions["x"];
-    if (xResolution && xResolution.getAxisProps()) {
-        if (view instanceof VConcatView) {
-            view.children.push(
-                createView({ import: { name: "axis" } }, view.context)
+export function addAxisWrappers(root) {
+    let newRoot = root; // If the root is wrapped...
+
+    // TODO: only wrap views that actually request axes
+    root.visit(view => {
+        if (
+            (view instanceof LayerView &&
+                !(view.parent instanceof LayerView)) ||
+            (view instanceof UnitView && !(view.parent instanceof LayerView))
+        ) {
+            const originalParent = view.parent;
+            const axisWrapperView = new AxisWrapperView(
+                view.context,
+                originalParent
             );
-            return view;
-        } else {
-            // Create a new view root, which will have the the original view
-            // and the new axis view as its children
-            const newRoot = /** @type {import("./containerView").default} */ (createView(
-                {
-                    name: "implicit_root",
-                    concat: [{ import: { name: "axis" } }]
-                },
-                view.context
-            ));
-            newRoot.children.unshift(view);
-            view.parent = newRoot;
-            // Pull resolution to the new root
-            newRoot.resolutions["x"] = view.resolutions["x"];
-            delete view.resolutions["x"];
-            return newRoot;
+            view.parent = axisWrapperView;
+            axisWrapperView.child = view;
+
+            axisWrapperView.resolutions = view.resolutions;
+            view.resolutions = {};
+
+            if (view === root) {
+                newRoot = axisWrapperView;
+            }
+
+            axisWrapperView.initialize();
+
+            return VISIT_SKIP;
         }
-    } else {
-        return view;
-    }
+    });
+
+    return newRoot;
 }
 
 /**
  * @param {View} root
  */
 export async function initializeData(root) {
-    /** @type {Promise[]} */
+    /** @type {Promise<void>[]} */
     const promises = [];
 
     root.visit(view => {

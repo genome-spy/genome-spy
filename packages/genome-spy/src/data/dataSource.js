@@ -43,13 +43,16 @@ export default class DataSource {
     /**
      * @returns {Promise<Group>}
      */
+    // eslint-disable-next-line require-await
     async getData() {
         if (this.config.values) {
             return this._getImmediateData();
         } else if (this.config.sequence) {
             return this._getSequence();
         } else if (this.config.url) {
-            return await this._fetchAndReadAll();
+            return this._fetchAndReadAll();
+        } else if (this.config.dynamicSource) {
+            return this._getDynamicData();
         } else if (this.config.name) {
             const data = this.namedDataProvider(this.config.name);
             if (data) {
@@ -59,7 +62,7 @@ export default class DataSource {
             }
         } else {
             throw new Error(
-                'No "url", "values", "sequence", or "name" defined in data configuration!'
+                'No "url", "values", "sequence", "name", or "dynamicSource" defined in data configuration!'
             );
         }
     }
@@ -83,6 +86,13 @@ export default class DataSource {
     _extractTypeFromUrl(url) {
         const match = url.match(/\.(csv|tsv|json)/);
         return match ? match[1] : null;
+    }
+
+    async _getDynamicData() {
+        return new DataGroup(
+            "data",
+            await /** @type {import("../spec/data").DynamicData} */ (this.config).dynamicSource()
+        );
     }
 
     _getImmediateData() {

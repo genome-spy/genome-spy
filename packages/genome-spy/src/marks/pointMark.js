@@ -109,15 +109,16 @@ export default class PointMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        const glHelper = this.getContext().glHelper;
-        const gl = glHelper.gl;
-
-        // A hack to support band scales
-
         this.programInfo = twgl.createProgramInfo(
-            gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => glHelper.processShader(s))
+            this.gl,
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s =>
+                this.glHelper.processShader(s)
+            )
         );
+    }
+
+    async updateGraphicsData() {
+        this.deleteGraphicsData();
 
         const vertexCount =
             this.dataBySample.size === 1
@@ -133,8 +134,9 @@ export default class PointMark extends Mark {
 
         this.rangeMap = vertexData.rangeMap;
         this.bufferInfo = twgl.createBufferInfoFromArrays(
-            gl,
-            vertexData.arrays
+            this.gl,
+            vertexData.arrays,
+            { numElements: vertexData.vertexCount }
         );
     }
 
@@ -190,9 +192,9 @@ export default class PointMark extends Mark {
      * @param {object[]} samples
      */
     render(samples) {
-        const dpr = window.devicePixelRatio;
-        const glHelper = this.getContext().glHelper;
-        const gl = glHelper.gl;
+        super.render(samples);
+
+        const gl = this.gl;
 
         gl.enable(gl.BLEND);
 
@@ -201,8 +203,8 @@ export default class PointMark extends Mark {
 
         twgl.setUniforms(this.programInfo, {
             ...this.getGlobalUniforms(),
-            uXOffset: (this.properties.xOffset / gl.drawingBufferWidth) * dpr,
-            uYOffset: (this.properties.yOffset / gl.drawingBufferHeight) * dpr,
+            uXOffset: this.properties.xOffset,
+            uYOffset: this.properties.yOffset,
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
             uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),

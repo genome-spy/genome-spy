@@ -117,7 +117,9 @@ export default class RectMark extends Mark {
 
         return {
             rangeMap: vertexData.rangeMap,
-            bufferInfo: twgl.createBufferInfoFromArrays(gl, vertexData.arrays)
+            bufferInfo: twgl.createBufferInfoFromArrays(gl, vertexData.arrays, {
+                numElements: vertexData.vertexCount
+            })
         };
     }
 
@@ -143,26 +145,25 @@ export default class RectMark extends Mark {
         }
     }
 
-    /**
-     *
-     * @param {WebGLRenderingContext} gl
-     */
     async initializeGraphics() {
         await super.initializeGraphics();
-
-        const glHelper = this.getContext().glHelper;
-        const gl = glHelper.gl;
-
-        const xDomain = this.getXDomain();
-        const domainWidth = xDomain ? xDomain.width() : Infinity;
 
         // TODO: const domainWidth = this.unitContext.genomeSpy.getDomain().width();
         // But it requires that all data are first loaded in order to extract the domain
 
         this.programInfo = twgl.createProgramInfo(
-            gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => glHelper.processShader(s))
+            this.gl,
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s =>
+                this.glHelper.processShader(s)
+            )
         );
+    }
+
+    async updateGraphicsData() {
+        this.deleteGraphicsData();
+
+        const xDomain = this.getXDomain();
+        const domainWidth = xDomain ? xDomain.width() : Infinity;
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(
             null,
@@ -177,8 +178,9 @@ export default class RectMark extends Mark {
      * @param {object[]} samples
      */
     render(samples) {
-        const glHelper = this.getContext().glHelper;
-        const gl = glHelper.gl;
+        super.render(samples);
+
+        const gl = this.gl;
 
         if (this.opaque) {
             gl.disable(gl.BLEND);

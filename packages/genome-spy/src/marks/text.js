@@ -87,10 +87,6 @@ export default class TextMark extends Mark {
         }
     }
 
-    /**
-     *
-     * @param {WebGLRenderingContext} gl
-     */
     async initializeGraphics() {
         await super.initializeGraphics();
 
@@ -108,7 +104,7 @@ export default class TextMark extends Mark {
             )
         );
 
-        const textureReadyPromise = new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             this.fontTexture = twgl.createTexture(
                 gl,
                 {
@@ -124,6 +120,13 @@ export default class TextMark extends Mark {
                 }
             );
         });
+    }
+
+    async updateGraphicsData() {
+        this.deleteGraphicsData();
+
+        const gl = this.gl;
+        const encoding = this.getEncoding();
 
         // Count the total number of characters to that we can pre-allocate a typed array
         const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
@@ -160,19 +163,19 @@ export default class TextMark extends Mark {
         this.rangeMap = vertexData.rangeMap;
         this.bufferInfo = twgl.createBufferInfoFromArrays(
             gl,
-            vertexData.arrays
+            vertexData.arrays,
+            { numElements: vertexData.vertexCount }
         );
-
-        await textureReadyPromise;
     }
 
     /**
      * @param {object[]} samples
      */
     render(samples) {
+        super.render(samples);
+
         const dpr = window.devicePixelRatio;
-        const glHelper = this.getContext().glHelper;
-        const gl = glHelper.gl;
+        const gl = this.gl;
 
         gl.enable(gl.BLEND);
 

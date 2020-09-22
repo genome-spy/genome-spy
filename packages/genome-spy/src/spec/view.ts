@@ -11,12 +11,19 @@ export type FieldName = string;
 
 export interface MarkConfig {
     type: string;
+    align?: string;
+    baseline?: string;
+    dx?: number;
+    dy?: number;
+    xOffset?: number;
+    yOffset?: number;
     tooltip?: object;
     sorting?: object;
 }
 
+// TODO: Create an interface for values (they don't have type or anything else)
 export interface EncodingConfig {
-    type: string;
+    type?: string;
     field?: FieldName;
 
     /** A constant value in the context of the range */
@@ -50,6 +57,7 @@ export interface ViewSpecBase {
      * Background color of the plotting area. The property has effect only on
      * the immediate non-concat children of concat views or in the single root view.
      * In practice, the property can be used to define background colors for "tracks".
+     * TODO: Use view background instead: https://vega.github.io/vega-lite/docs/spec.html#view-background
      */
     plotBackground?: string;
 }

@@ -1,4 +1,4 @@
-import View from "./view";
+import View, { VISIT_STOP, VISIT_SKIP } from "./view";
 
 /**
  * Compositor view represents a non-leaf node in the view hierarchy.
@@ -38,24 +38,26 @@ export default class ContainerView extends View {
      * Visits child views in depth-first order. Terminates the search and returns
      * the value if the visitor returns a defined value.
      *
-     * @param {(function(View):any) & { afterChildren?: function}} visitor
+     * @param {(function(View):("VISIT_SKIP"|"VISIT_STOP"|void)) & { afterChildren?: function}} visitor
      * @returns {any}
      */
     visit(visitor) {
         const result = super.visit(visitor);
-        if (result !== undefined) {
+        if (result === VISIT_STOP) {
             return result;
         }
 
-        for (const view of this) {
-            const result = view.visit(visitor);
-            if (result !== undefined) {
-                return result;
+        if (result !== VISIT_SKIP) {
+            for (const view of this) {
+                const result = view.visit(visitor);
+                if (result !== undefined) {
+                    return result;
+                }
             }
-        }
 
-        if (visitor.afterChildren) {
-            visitor.afterChildren(this);
+            if (visitor.afterChildren) {
+                visitor.afterChildren(this);
+            }
         }
     }
 

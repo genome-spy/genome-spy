@@ -13,22 +13,18 @@ import transition from "./utils/transition";
 
 import Genome from "./genome/genome";
 
-import AxisTrack from "./tracks/axisTrack";
-import SampleTrack from "./tracks/sampleTrack/sampleTrack";
-import GenomeAxisTrack from "./tracks/genomeAxisTrack";
-import CytobandTrack from "./tracks/cytobandTrack";
-import GeneTrack from "./tracks/geneTrack";
-import SimpleTrack from "./tracks/simpleTrack";
 import RealCoordinateSystem from "./realCoordinateSystem";
 import AccessorFactory from "./encoder/accessor";
 import {
+    getFlattenedViews,
     isViewSpec,
     createView,
     resolveScales,
     isImportSpec,
     initializeData,
     isVConcatSpec,
-    addAxisView
+    addAxisView,
+    addAxisWrappers
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
@@ -39,7 +35,7 @@ import createDomain from "./utils/domainArray";
 import { tickStep } from "d3-array";
 import { format as d3format } from "d3-format";
 import WebGLHelper from "./gl/webGLHelper";
-import { parseSizeDef } from "./utils/flexLayout";
+import AxisWrapperView from "./view/axisWrapperView";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -170,6 +166,14 @@ export default class GenomeSpy {
         this.eventEmitter.emit("zoom", this.getViewportDomain());
     }
 
+    getXResolution() {
+        // TODO: Proper search. More complex hierarchies may be used later on...
+        return (this.viewRoot instanceof AxisWrapperView
+            ? this.viewRoot.child
+            : this.viewRoot
+        ).getResolution("x");
+    }
+
     /**
      * Returns the hard domain of the coordinate system if it is specified.
      * Otherwise returns the shared domain of the data.
@@ -181,7 +185,7 @@ export default class GenomeSpy {
      * @return {Interval} the domain
      */
     getDomain() {
-        let domain = this.viewRoot.resolutions["x"].getDomain();
+        let domain = this.getXResolution().getDomain();
         if (domain) {
             return Interval.fromArray(domain);
         }
@@ -482,11 +486,16 @@ export default class GenomeSpy {
             // Resolve scales, i.e., if possible, pull them towards the root
             resolveScales(this.viewRoot);
 
-            /*
-            if (this.coordinateSystem instanceof RealCoordinateSystem) {
-                this.viewRoot = addAxisView(this.viewRoot);
-            }
-            */
+            // Wrap unit or layer views that need axes
+            this.viewRoot = addAxisWrappers(this.viewRoot);
+
+            /** @type {UnitView[]} */
+            const unitViews = [];
+            this.viewRoot.visit(view => {
+                if (view instanceof UnitView) {
+                    unitViews.push(view);
+                }
+            });
 
             // If the coordinate system has a hard extent, use it
             if (this.coordinateSystem.getExtent()) {
@@ -500,45 +509,24 @@ export default class GenomeSpy {
                     );
             }
 
-            // Load an transform all data
+            const graphicsInitialized = Promise.all(
+                unitViews.map(view => view.mark.initializeGraphics())
+            );
+
+            // Load and transform all data
             await initializeData(this.viewRoot);
 
-            this.viewRoot.visit(view => {
-                if (view instanceof UnitView) {
-                    view.mark.initializeEncoders();
-                }
-            });
+            unitViews.forEach(view => view.mark.initializeEncoders());
 
-            //this._createTracks();
-
-            // Create container and initialize the the tracks, i.e. load the data and create WebGL buffers
-            /*
-            await Promise.all(
-                this.tracks.map(track => {
-                    const trackContainer = document.createElement("div");
-                    trackContainer.className = "genome-spy-track";
-                    this.trackStack.appendChild(trackContainer);
-
-                    return track.initialize(trackContainer);
-                })
+            const graphicsDataUpdated = Promise.all(
+                unitViews.map(view => view.mark.updateGraphicsData())
             );
-            */
 
-            {
-                /** @type {Promise<void>[]} */
-                const promises = [];
-                this.viewRoot.visit(view => {
-                    if (view instanceof UnitView) {
-                        promises.push(view.mark.initializeGraphics());
-                    }
-                });
-                await Promise.all(promises);
-            }
+            await Promise.all([graphicsInitialized, graphicsDataUpdated]);
 
             // TODO: Support other scales too
             this.xScale = scaleLinear().domain(
-                this.viewRoot
-                    .getResolution("x")
+                this.getXResolution()
                     .getScale()
                     .domain()
             );

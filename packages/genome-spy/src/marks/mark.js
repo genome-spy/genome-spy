@@ -13,6 +13,9 @@ export default class Mark {
         /** @type {Record<string, any>} */
         this.properties =
             typeof unitView.spec.mark == "object" ? unitView.spec.mark : {};
+
+        /** @type {twgl.BufferInfo} WebGL buffers */
+        this.bufferInfo = undefined;
     }
 
     /**
@@ -80,12 +83,7 @@ export default class Mark {
         const encoding = this.getEncoding();
 
         /** @type {function(string):function} */
-        const scaleSource = channel => {
-            const resolution = this.unitView.getResolution(channel);
-            if (resolution) {
-                return resolution.getScale();
-            }
-        };
+        const scaleSource = channel => this.getScale(channel, true);
 
         // TODO: Consider putting encoders to unitView
         this.encoders = createEncoders(encoding, scaleSource, channel =>
@@ -93,8 +91,43 @@ export default class Mark {
         );
     }
 
+    /**
+     * Initialize shaders etc.
+     */
     async initializeGraphics() {
         //override
+    }
+
+    /**
+     * Update WebGL buffers from the data
+     */
+    async updateGraphicsData() {
+        // override
+    }
+
+    /**
+     * Delete WebGL buffers etc.
+     */
+    deleteGraphicsData() {
+        if (this.bufferInfo) {
+            Object.values(this.bufferInfo.attribs).forEach(attribInfo =>
+                this.gl.deleteBuffer(attribInfo.buffer)
+            );
+            if (this.bufferInfo.indices) {
+                this.gl.deleteBuffer(this.bufferInfo.indices);
+            }
+            this.bufferInfo = undefined;
+        }
+    }
+
+    /** Convenience method */
+    get glHelper() {
+        return this.getContext().glHelper;
+    }
+
+    /** Convenience method */
+    get gl() {
+        return this.glHelper.gl;
     }
 
     onBeforeSampleAnimation() {
@@ -132,16 +165,15 @@ export default class Mark {
             return resolution.getScale();
         } else if (!acceptMissing) {
             throw new Error(
-                `Cannot find a resolved scale for channel "${channel}" at ${this.unitView.getPathString()} (${this.getType()})`
+                `Cannot find a resolved scale for channel "${channel}" at ${this.unitView.getPathString()} (mark: ${this.getType()})`
             );
         }
     }
 
     /**
      * @param {object[]} samples
-     * @param {object} globalUniforms
      */
-    render(samples, globalUniforms) {
+    render(samples) {
         // override
     }
 
@@ -156,8 +188,6 @@ export default class Mark {
     }
 
     getGlobalUniforms() {
-        const gl = this.getContext().glHelper.gl;
-
         return {
             ...this.getDomainUniforms(),
             uDevicePixelRatio: window.devicePixelRatio,
@@ -172,11 +202,10 @@ export default class Mark {
      */
     setViewport(programInfo) {
         const dpr = window.devicePixelRatio;
-        const glHelper = this.getContext().glHelper;
-        const gl = glHelper.gl;
+        const gl = this.gl;
 
         const locSize = this.unitView.getCoords();
-        const logicalSize = glHelper.getLogicalCanvasSize();
+        const logicalSize = this.glHelper.getLogicalCanvasSize();
 
         const width = gl.drawingBufferWidth / dpr;
         const height = locSize.size;

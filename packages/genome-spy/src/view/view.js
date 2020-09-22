@@ -1,6 +1,11 @@
 import { transformData } from "../data/dataMapper";
 import { parseSizeDef } from "../utils/flexLayout";
 
+/** Skip children */
+export const VISIT_SKIP = "VISIT_SKIP";
+/** Stop further visits */
+export const VISIT_STOP = "VISIT_STOP";
+
 /**
  * @typedef { import("./viewUtils").ViewSpec } ViewSpec
  * @typedef { import("./viewUtils").EncodingConfig } EncodingConfig
@@ -29,16 +34,6 @@ export default class View {
     }
 
     /**
-     * Returns the minimum height (in pixels) for this view, either the minimum size that
-     * accommodates all the children or a specified absolute (pixel) size.
-     *
-     * @return {number}
-     */
-    getMinHeight() {
-        return (this.spec.height && parseSizeDef(this.spec.height).px) || 0;
-    }
-
-    /**
      * Returns the configured height if present. Otherwise a computed or default
      * height is returned.
      *
@@ -52,10 +47,13 @@ export default class View {
     }
 
     /**
+     * Returns the coordinates of the view in pixels. The Y coordinate grows from top to bottom.
+     *
      * @returns {import("../utils/flexLayout").LocSize}
      */
     getCoords() {
         if (this.parent) {
+            // Parent computes the coordinates of their children
             return this.parent.getChildCoords(this);
         } else {
             // At root
@@ -71,34 +69,39 @@ export default class View {
     }
 
     getPathString() {
-        /** @type {string[]} */
-        const path = [];
-        /** @type {import("./view").default} */
+        return this.getAncestors()
+            .map(v => v.name)
+            .reverse()
+            .join("/");
+    }
+
+    getAncestors() {
+        /** @type {View[]} */
+        const views = [];
         // eslint-disable-next-line consistent-this
-        let view = this;
+        let view = /** @type {View} */ (this);
         do {
-            path.push(view.name);
+            views.push(view);
             view = view.parent;
         } while (view);
-
-        return path.reverse().join("/");
+        return views;
     }
 
     /**
      * Visits child views in depth-first order. Terminates the search and returns
      * the value if the visitor returns a defined value.
      *
-     * @param {(function(View):any) & { afterChildren?: function}} visitor
+     * @param {(function(View):("VISIT_SKIP"|"VISIT_STOP"|void)) & { afterChildren?: function}} visitor
      * @returns {any}
      */
     visit(visitor) {
         try {
             const result = visitor(this);
-            if (result !== undefined) {
+            if (result !== VISIT_STOP) {
                 return result;
             }
         } catch (e) {
-            // Augment the extension with the view
+            // Augment the exception with the view
             e.view = this;
             throw e;
         }
@@ -156,9 +159,7 @@ export default class View {
             return this.parent.getData();
         }
 
-        throw new Error(
-            `No data are available at ${this.getPathString()} or its parents.`
-        );
+        throw new Error(`No data are available!`);
     }
 
     async loadData() {
@@ -177,6 +178,4 @@ export default class View {
             this.data = transformData(this.spec.transform, this.getData());
         }
     }
-
-    render(context) {}
 }

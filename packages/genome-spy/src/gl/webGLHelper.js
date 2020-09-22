@@ -27,7 +27,7 @@ export default class WebGLHelper {
         }
 
         // TODO: Configurable
-        gl.clearColor(1, 1, 1, 0);
+        gl.clearColor(1, 1, 1, 1);
         // TODO: view background: https://vega.github.io/vega-lite/docs/spec.html#view-background
 
         // Always use pre-multiplied alpha
@@ -79,18 +79,18 @@ export default class WebGLHelper {
     /**
      * Returns the canvas size in true display pixels
      *
-     * @param {{ width: number, height: number }} [nominalSize]
+     * @param {{ width: number, height: number }} [logicalSize]
      */
-    getPhysicalCanvasSize(nominalSize) {
-        nominalSize = nominalSize || this.getLogicalCanvasSize();
+    getPhysicalCanvasSize(logicalSize) {
+        logicalSize = logicalSize || this.getLogicalCanvasSize();
         return {
-            width: nominalSize.width * window.devicePixelRatio,
-            height: nominalSize.height * window.devicePixelRatio
+            width: logicalSize.width * window.devicePixelRatio,
+            height: logicalSize.height * window.devicePixelRatio
         };
     }
 
     /**
-     * Returns the canvas size in nominal pixels (without devicePixelRatio correction)
+     * Returns the canvas size in logical pixels (without devicePixelRatio correction)
      */
     getLogicalCanvasSize() {
         // TODO: Size should never be smaller than the minimum content size!

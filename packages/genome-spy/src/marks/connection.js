@@ -78,13 +78,16 @@ export default class ConnectionMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        const glHelper = this.getContext().glHelper;
-        const gl = glHelper.gl;
-
         this.programInfo = twgl.createProgramInfo(
-            gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s => glHelper.processShader(s))
+            this.gl,
+            [VERTEX_SHADER, FRAGMENT_SHADER].map(s =>
+                this.glHelper.processShader(s)
+            )
         );
+    }
+
+    async updateGraphicsData() {
+        this.deleteGraphicsData();
 
         const vertexCount =
             this.dataBySample.size === 1
@@ -107,8 +110,9 @@ export default class ConnectionMark extends Mark {
 
         this.rangeMap = vertexData.rangeMap;
         this.bufferInfo = twgl.createBufferInfoFromArrays(
-            gl,
-            vertexData.arrays
+            this.gl,
+            vertexData.arrays,
+            { numElements: vertexData.vertexCount }
         );
     }
 
@@ -116,8 +120,9 @@ export default class ConnectionMark extends Mark {
      * @param {object[]} samples
      */
     render(samples) {
-        const glHelper = this.getContext().glHelper;
-        const gl = glHelper.gl;
+        super.render(samples);
+
+        const gl = this.gl;
 
         if (this.opaque) {
             gl.disable(gl.BLEND);

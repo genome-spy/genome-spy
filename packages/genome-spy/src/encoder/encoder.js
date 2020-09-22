@@ -57,7 +57,8 @@ function createEncoder(encodingConfig, scale, accessor, channel) {
         encoder.constant = true;
         encoder.accessor = null;
     } else if (accessor) {
-        if (!scale) {
+        if (!scale && channel != "text") {
+            // TODO: Define somewhere channels that don't use a scale
             throw new Error(
                 `Missing scale! "${channel}": ${JSON.stringify(encodingConfig)}`
             );

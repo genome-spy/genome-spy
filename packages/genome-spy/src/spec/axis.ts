@@ -1,15 +1,23 @@
 /*!
  * Adapted from
- * https://github.com/vega/vega/commits/master/packages/vega-typings/types/spec/axis.d.ts
- * 
+ * https://github.com/vega/vega/blob/master/packages/vega-typings/types/spec/axis.d.ts
+ *
  * Copyright (c) 2015-2018, University of Washington Interactive Data Lab
  * All rights reserved.
- * 
+ *
  * BSD-3-Clause License: https://github.com/vega/vega/blob/master/LICENSE
  */
 
+export type AxisOrient = "top" | "bottom" | "left" | "right";
 
 export interface Axis extends BaseAxis {
+    /**
+     * The orientation of the axis. One of `"top"`, `"bottom"`, `"left"` or `"right"`. The orientation can be used to further specialize the axis type (e.g., a y axis oriented for the right edge of the chart).
+     *
+     * __Default value:__ `"bottom"` for x-axes and `"left"` for y-axes.
+     */
+    orient?: AxisOrient;
+
     /**
      * The format specifier pattern for axis labels.
      * Must be a legal [d3-format](https://github.com/d3/d3-format#locale_format) specifier.
@@ -44,7 +52,6 @@ export interface Axis extends BaseAxis {
     values?: any[];
 }
 
-
 export interface BaseAxis<
     N = number,
     NS = number,
@@ -54,7 +61,7 @@ export interface BaseAxis<
     C = string,
     FW = string,
     FS = string
-    > {
+> {
     /**
      * The minimum extent in pixels that axis ticks and labels should use. This determines a minimum offset value for axis titles.
      *

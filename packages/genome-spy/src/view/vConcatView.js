@@ -26,13 +26,6 @@ export default class VConcatView extends ContainerView {
         this.flexLayout = new FlexLayout(this, item => item.getHeight());
     }
 
-    getMinHeight() {
-        const sizeDef = this.spec.height && parseSizeDef(this.spec.height);
-        return sizeDef && sizeDef.px
-            ? sizeDef.px
-            : this.flexLayout.getMinimumSize();
-    }
-
     getHeight() {
         const sizeDef = this.spec.height && parseSizeDef(this.spec.height);
         return sizeDef || { px: this.flexLayout.getMinimumSize() };
@@ -73,6 +66,4 @@ export default class VConcatView extends ContainerView {
     getDefaultResolution(channel) {
         return channel == "x" ? "shared" : "independent";
     }
-
-    render(context) {}
 }
