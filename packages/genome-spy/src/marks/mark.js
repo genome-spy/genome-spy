@@ -204,20 +204,17 @@ export default class Mark {
         const dpr = window.devicePixelRatio;
         const gl = this.gl;
 
-        const locSize = this.unitView.getCoords();
+        const coords = this.unitView.getCoords();
         const logicalSize = this.glHelper.getLogicalCanvasSize();
-
-        const width = gl.drawingBufferWidth / dpr;
-        const height = locSize.size;
 
         const clip = true;
 
         const physicalGlCoords = [
-            0,
-            (logicalSize.height - locSize.location - height) * dpr,
-            width * dpr,
-            locSize.size * dpr
-        ];
+            coords.x,
+            logicalSize.height - coords.y2,
+            coords.width,
+            coords.height
+        ].map(x => x * dpr);
 
         // @ts-ignore
         gl.viewport(...physicalGlCoords);
@@ -232,7 +229,7 @@ export default class Mark {
 
         twgl.setUniforms(programInfo, {
             uDevicePixelRatio: window.devicePixelRatio,
-            uViewportSize: [width, height]
+            uViewportSize: [coords.width, coords.height]
         });
     }
 

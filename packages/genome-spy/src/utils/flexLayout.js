@@ -93,6 +93,18 @@ export default class FlexLayout {
     }
 }
 
+export class FlexDimensions {
+    /**
+     *
+     * @param {SizeDef} width
+     * @param {SizeDef} height
+     */
+    constructor(width, height) {
+        this.width = width;
+        this.height = height;
+    }
+}
+
 /**
  * Converts undefined/null to zero
  *

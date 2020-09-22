@@ -20,7 +20,7 @@ export default class ContainerView extends View {
     /**
      *
      * @param {import("./view").default} view
-     * @returns {import("../utils/flexLayout").LocSize}
+     * @returns {import("./rectangle").default}
      */
     getChildCoords(view) {
         // Should be overridden

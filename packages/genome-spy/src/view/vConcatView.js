@@ -1,6 +1,7 @@
 import { getViewClass } from "./viewUtils";
 import ContainerView from "./containerView";
-import FlexLayout, { parseSizeDef } from "../utils/flexLayout";
+import FlexLayout, { parseSizeDef, FlexDimensions } from "../utils/flexLayout";
+import Rectangle from "./rectangle";
 
 /**
  * @typedef {import("./view").default} View
@@ -23,30 +24,41 @@ export default class VConcatView extends ContainerView {
             return new View(childSpec, context, this, "vconcat" + i);
         });
 
-        this.flexLayout = new FlexLayout(this, item => item.getHeight());
+        this.flexLayout = new FlexLayout(
+            this,
+            /** @param {View} view */ item => item.getSize().height
+        );
     }
 
-    getHeight() {
-        const sizeDef = this.spec.height && parseSizeDef(this.spec.height);
-        return sizeDef || { px: this.flexLayout.getMinimumSize() };
+    getSize() {
+        const height = this.spec.height && parseSizeDef(this.spec.height);
+        const width = this.spec.width && parseSizeDef(this.spec.width);
+
+        return new FlexDimensions(
+            { grow: 1 },
+            height || { px: this.flexLayout.getMinimumSize() }
+        );
     }
 
     /**
      *
      * @param {import("./view").default} view
-     * @returns {import("../utils/flexLayout").LocSize}
+     * @returns {Rectangle}
      */
     getChildCoords(view) {
         // Should be overridden
-        const childCoords = this.flexLayout.getPixelCoords(
+        const flexCoords = this.flexLayout.getPixelCoords(
             view,
-            this.getCoords().size
+            this.getCoords().height
         );
-        if (childCoords) {
-            return {
-                location: this.getCoords().location + childCoords.location,
-                size: childCoords.size
-            };
+        if (flexCoords) {
+            const coords = this.getCoords();
+            return new Rectangle(
+                coords.x,
+                coords.y + flexCoords.location,
+                coords.width,
+                flexCoords.size
+            );
         }
         throw new Error("Unknown child!");
     }

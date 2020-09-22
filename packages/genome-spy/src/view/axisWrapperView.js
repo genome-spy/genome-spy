@@ -96,11 +96,9 @@ export default class AxisWrapperView extends ContainerView {
      */
     _getAxisSize(slot) {
         const dimension = slot2channel(slot) === "y" ? "width" : "height";
-        if (dimension == "height") {
-            return this.axisViews[slot]
-                ? this.axisViews[slot].getHeight().px
-                : 0;
-        }
+        return this.axisViews[slot]
+            ? this.axisViews[slot].getSize()[dimension].px
+            : 0;
     }
 
     getPadding() {
@@ -112,16 +110,22 @@ export default class AxisWrapperView extends ContainerView {
         );
     }
 
-    getHeight() {
-        const sizeDef = super.getHeight();
+    getSize() {
+        const size = super.getSize();
 
-        // TODO: Add axis if needed
-        if (sizeDef.px) {
-            // TODO: should be also added to sizes without an absolute component (the axis should always be shown)
-            sizeDef.px += this.getPadding().top;
+        // TODO: pixels should be also added to sizes without an absolute component (the axis should always be shown)
+
+        const pad = this.getPadding();
+
+        if (size.width.px) {
+            size.width.px += pad.left + pad.right;
         }
 
-        return sizeDef;
+        if (size.height.px) {
+            size.height.px += pad.top + pad.bottom;
+        }
+
+        return size;
     }
 
     /**
@@ -132,13 +136,13 @@ export default class AxisWrapperView extends ContainerView {
 
         if (view === this.child) {
             const coords = this.getCoords();
-            coords.location += padding.top;
-            coords.size -= padding.top + padding.bottom;
+            coords.y += padding.top;
+            coords.height -= padding.top + padding.bottom;
             return coords;
         } else if (view === this.axisViews.bottom) {
             const axisCoords = this.child.getCoords();
-            axisCoords.location += axisCoords.size;
-            axisCoords.size = padding.bottom;
+            axisCoords.y += axisCoords.height;
+            axisCoords.height = padding.bottom;
             return axisCoords;
         } else {
             throw new Error("TODO");
@@ -231,7 +235,7 @@ export default class AxisWrapperView extends ContainerView {
 
         return new LayerView(
             createAxis(
-                { ...defaultAxisProps, ...axisProps, extent: 50 },
+                { ...defaultAxisProps, ...axisProps, extent: 20 },
                 tickGenerator
             ),
             this.context,
@@ -327,8 +331,8 @@ function createDomain(axisProps) {
         encoding: {
             color: { value: axisProps.domainColor },
             y: { value: 1 },
-            x: { value: 0 },
-            x2: { value: 6.183 }
+            x: { value: -Infinity },
+            x2: { value: Infinity }
         }
     };
 }

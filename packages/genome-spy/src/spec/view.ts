@@ -46,6 +46,7 @@ export type EncodingConfigs = Record<string, EncodingConfig>;
 export interface ViewSpecBase {
     name?: string;
     height?: SizeDef | number;
+    width?: SizeDef | number;
     data?: Data;
     transform?: TransformConfig[];
     encoding?: Record<string, EncodingConfig>;

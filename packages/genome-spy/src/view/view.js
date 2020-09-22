@@ -1,5 +1,6 @@
 import { transformData } from "../data/dataMapper";
-import { parseSizeDef } from "../utils/flexLayout";
+import { parseSizeDef, FlexDimensions } from "../utils/flexLayout";
+import Rectangle from "./rectangle";
 
 /** Skip children */
 export const VISIT_SKIP = "VISIT_SKIP";
@@ -37,11 +38,12 @@ export default class View {
      * Returns the configured height if present. Otherwise a computed or default
      * height is returned.
      *
-     * @returns {import("../utils/flexLayout").SizeDef}
+     * @returns {FlexDimensions}
      */
-    getHeight() {
-        return (
-            // TODO: reconsider the default
+    getSize() {
+        // TODO: reconsider the default
+        return new FlexDimensions(
+            (this.spec.width && parseSizeDef(this.spec.width)) || { grow: 1 },
             (this.spec.height && parseSizeDef(this.spec.height)) || { grow: 1 }
         );
     }
@@ -49,7 +51,7 @@ export default class View {
     /**
      * Returns the coordinates of the view in pixels. The Y coordinate grows from top to bottom.
      *
-     * @returns {import("../utils/flexLayout").LocSize}
+     * @returns {import("./rectangle").default}
      */
     getCoords() {
         if (this.parent) {
@@ -57,14 +59,20 @@ export default class View {
             return this.parent.getChildCoords(this);
         } else {
             // At root
-            const canvasSize = this.context.glHelper.getLogicalCanvasSize()
-                .height;
-            const size =
-                this.spec.height && parseSizeDef(this.spec.height).grow
-                    ? canvasSize
-                    : this.getHeight().px;
+            const canvasSize = this.context.glHelper.getLogicalCanvasSize();
 
-            return { location: 0, size: size || canvasSize };
+            /** @param {"width" | "height"} c */
+            const getComponent = c =>
+                (this.spec[c] && parseSizeDef(this.spec[c]).grow
+                    ? canvasSize[c]
+                    : this.getSize()[c].px) || canvasSize[c];
+
+            return new Rectangle(
+                0,
+                0,
+                getComponent("width"),
+                getComponent("height")
+            );
         }
     }
 
