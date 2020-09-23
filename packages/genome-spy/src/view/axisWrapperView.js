@@ -86,7 +86,7 @@ export default class AxisWrapperView extends ContainerView {
      * TODO: Perhaps views need a common initialization method?
      */
     initialize() {
-        Object.entries(CHANNEL_SLOTS).map(([channel, slots]) =>
+        Object.entries(CHANNEL_SLOTS).forEach(([channel, slots]) =>
             this._initializeAxes(channel, slots)
         );
 
@@ -195,7 +195,6 @@ export default class AxisWrapperView extends ContainerView {
      * @param {AxisOrient[]} slots
      */
     _initializeAxes(channel, slots) {
-        // TODO: Fix! Currently this finds only shared scales/axes.
         const resolutions = this._getResolutionParticipants()
             .map(view => view.resolutions[channel])
             .filter(resolution => resolution);
@@ -253,7 +252,6 @@ export default class AxisWrapperView extends ContainerView {
             try {
                 // getScale only works after data have been loaded.
                 const scale = resolution.getScale();
-                //return generateTicks(axisProps, scale, this.getCoords().size);
                 return generateTicks(
                     axisProps,
                     scale,
@@ -328,10 +326,10 @@ const defaultAxisProps = {
  */
 function generateTicks(axisProps, scale, axisLength) {
     /** @type {PositionalChannel} */
-    const mainAxis = "x";
+    const mainChannel = slot2channel(axisProps.orient);
 
     let count =
-        axisProps.tickCount || mainAxis == "y"
+        axisProps.tickCount || mainChannel == "y"
             ? // Slightly decrease the tick density as the height increases
               Math.round(
                   axisLength /

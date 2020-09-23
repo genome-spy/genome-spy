@@ -1,5 +1,4 @@
 {
-  "height": "container",
   "data": {
     "sequence": {
       "start": 1,
@@ -30,7 +29,7 @@
         "minOpacity": 1
       },
       "encoding": {
-        "x": { "field": "start", "type": "quantitative" },
+        "x": { "field": "start", "type": "quantitative", "axis": null },
         "x2": { "field": "end" },
         "y": { "field": "coverage", "type": "quantitative" }
       }
