@@ -2,14 +2,33 @@ import { validTicks, tickValues, tickFormat, tickCount } from "../scale/ticks";
 import ContainerView from "./containerView";
 import { getFlattenedViews, initializeData } from "./viewUtils";
 import LayerView from "./layerView";
-import { parseSizeDef } from "../utils/flexLayout";
 import UnitView from "./unitView";
 
-/** @type {Record<string, AxisOrient[]>} */
+/**
+ * TODO: Move these somewhere for common use
+ * @typedef {"x" | "y"} PositionalChannel
+ * @typedef {"width" | "height"} GeometricDimension
+ */
+
+/** @type {Record<PositionalChannel, AxisOrient[]>} */
 const CHANNEL_SLOTS = {
     x: ["bottom", "top"],
     y: ["left", "right"]
 };
+
+/** @type {Record<PositionalChannel, GeometricDimension>} */
+const CHANNEL_DIMENSIONS = {
+    x: "width",
+    y: "height"
+};
+
+/**
+ * @param {PositionalChannel} channel
+ * @returns {PositionalChannel}
+ */
+function getPerpendicularChannel(channel) {
+    return channel == "x" ? "y" : "x";
+}
 
 /**
  * @param {AxisOrient} slot
@@ -17,10 +36,17 @@ const CHANNEL_SLOTS = {
 function slot2channel(slot) {
     for (const [channel, slots] of Object.entries(CHANNEL_SLOTS)) {
         if (slots.includes(slot)) {
-            return channel;
+            return /** @type {PositionalChannel} */ (channel);
         }
     }
     throw new Error("Invalid slot: " + slot);
+}
+
+/**
+ * @param {AxisOrient} slot
+ */
+function slot2dimension(slot) {
+    return CHANNEL_DIMENSIONS[slot2channel(slot)];
 }
 
 /**
@@ -95,7 +121,8 @@ export default class AxisWrapperView extends ContainerView {
      * @param {AxisOrient} slot
      */
     _getAxisSize(slot) {
-        const dimension = slot2channel(slot) === "y" ? "width" : "height";
+        const dimension =
+            CHANNEL_DIMENSIONS[getPerpendicularChannel(slot2channel(slot))];
         return this.axisViews[slot]
             ? this.axisViews[slot].getSize()[dimension].px
             : 0;
@@ -112,19 +139,9 @@ export default class AxisWrapperView extends ContainerView {
 
     getSize() {
         const size = super.getSize();
-
-        // TODO: pixels should be also added to sizes without an absolute component (the axis should always be shown)
-
         const pad = this.getPadding();
-
-        if (size.width.px) {
-            size.width.px += pad.left + pad.right;
-        }
-
-        if (size.height.px) {
-            size.height.px += pad.top + pad.bottom;
-        }
-
+        size.width.px = (size.width.px || 0) + pad.left + pad.right;
+        size.height.px = (size.height.px || 0) + pad.top + pad.bottom;
         return size;
     }
 
@@ -139,13 +156,25 @@ export default class AxisWrapperView extends ContainerView {
             coords.y += padding.top;
             coords.height -= padding.top + padding.bottom;
             return coords;
-        } else if (view === this.axisViews.bottom) {
-            const axisCoords = this.child.getCoords();
-            axisCoords.y += axisCoords.height;
-            axisCoords.height = padding.bottom;
-            return axisCoords;
         } else {
-            throw new Error("TODO");
+            const axisCoords = this.child.getCoords();
+            // TODO: Don't use paddings here because padding could eventually contain some extra.
+            if (view === this.axisViews.bottom) {
+                axisCoords.y += axisCoords.height;
+                axisCoords.height = padding.bottom;
+            } else if (view === this.axisViews.top) {
+                axisCoords.y -= padding.top;
+                axisCoords.height = padding.top;
+            } else if (view === this.axisViews.left) {
+                axisCoords.x -= padding.left;
+                axisCoords.width = padding.left;
+            } else if (view === this.axisViews.right) {
+                axisCoords.x += axisCoords.width;
+                axisCoords.width = padding.right;
+            } else {
+                throw new Error("Not my child view!");
+            }
+            return axisCoords;
         }
     }
 
@@ -224,7 +253,10 @@ export default class AxisWrapperView extends ContainerView {
                 return generateTicks(
                     axisProps,
                     scale,
-                    document.getElementsByTagName("body")[0].clientWidth
+                    // TODO: A method for getting view's content rectangle
+                    this.getChildCoords(this.child)[
+                        CHANNEL_DIMENSIONS[slot2channel(axisProps.orient)]
+                    ]
                 );
             } catch (e) {
                 // Scale not available
@@ -235,7 +267,7 @@ export default class AxisWrapperView extends ContainerView {
 
         return new LayerView(
             createAxis(
-                { ...defaultAxisProps, ...axisProps, extent: 20 },
+                { ...defaultAxisProps, ...axisProps, extent: 20 }, // TODO: Compute extent
                 tickGenerator
             ),
             this.context,
@@ -291,10 +323,11 @@ const defaultAxisProps = {
  * @param {number} axisLength Length of axis in pixels
  */
 function generateTicks(axisProps, scale, axisLength) {
-    const orientation = "horizontal";
+    /** @type {PositionalChannel} */
+    const mainAxis = "x";
 
     let count =
-        axisProps.tickCount || orientation == "vertical"
+        axisProps.tickCount || mainAxis == "y"
             ? // Slightly decrease the tick density as the height increases
               Math.round(
                   axisLength /

@@ -24,6 +24,8 @@ export default class VConcatView extends ContainerView {
             return new View(childSpec, context, this, "vconcat" + i);
         });
 
+        this.mainAxis = spec.hconcat ? "x" : "y";
+
         this.flexLayout = new FlexLayout(
             this,
             /** @param {View} view */ item => item.getSize().height
@@ -89,6 +91,7 @@ export default class VConcatView extends ContainerView {
      * @param {string} channel
      */
     getDefaultResolution(channel) {
+        // TODO: Default to shared only when working with genomic coordinates
         return channel == "x" ? "shared" : "independent";
     }
 }
