@@ -7,8 +7,8 @@ import Padding from "../utils/layout/padding";
 
 /**
  * TODO: Move these somewhere for common use
- * @typedef {"x" | "y"} PositionalChannel
- * @typedef {"width" | "height"} GeometricDimension
+ * @typedef {import("../spec/view").PositionalChannel} PositionalChannel
+ * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
  */
 
 /** @type {Record<PositionalChannel, AxisOrient[]>} */

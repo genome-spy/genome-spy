@@ -104,6 +104,7 @@ export default class TextMark extends Mark {
             )
         );
 
+        // TODO: Share the texture with other text mark instances
         return new Promise((resolve, reject) => {
             this.fontTexture = twgl.createTexture(
                 gl,

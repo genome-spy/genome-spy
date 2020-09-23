@@ -41,6 +41,7 @@ export default class View {
      * @returns {FlexDimensions}
      */
     getSize() {
+        // TODO: Memoize
         // TODO: reconsider the default
         return new FlexDimensions(
             (this.spec.width && parseSizeDef(this.spec.width)) || { grow: 1 },
@@ -54,6 +55,7 @@ export default class View {
      * @returns {import("../utils/layout/rectangle").default}
      */
     getCoords() {
+        // TODO: Memoize
         if (this.parent) {
             // Parent computes the coordinates of their children
             return this.parent.getChildCoords(this);

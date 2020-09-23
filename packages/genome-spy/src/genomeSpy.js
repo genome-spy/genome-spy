@@ -22,13 +22,10 @@ import {
     resolveScales,
     isImportSpec,
     initializeData,
-    isVConcatSpec,
-    addAxisView,
     addAxisWrappers
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
-import VConcatView from "./view/vConcatView";
 import ImportView from "./view/importView";
 import createDomain from "./utils/domainArray";
 
@@ -509,6 +506,7 @@ export default class GenomeSpy {
                     );
             }
 
+            // Compile shaders, handle textures, etc.
             const graphicsInitialized = Promise.all(
                 unitViews.map(view => view.mark.initializeGraphics())
             );

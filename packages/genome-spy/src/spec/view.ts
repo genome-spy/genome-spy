@@ -9,6 +9,11 @@ export type Scalar = string | number | boolean;
 
 export type FieldName = string;
 
+export type PositionalChannel = "x" | "y";
+
+// TODO: Perhaps this should be in "utils"
+export type GeometricDimension = "width" | "height";
+
 export interface MarkConfig {
     type: string;
     align?: string;
@@ -29,7 +34,7 @@ export interface EncodingConfig {
     /** A constant value in the context of the range */
     value?: Scalar;
 
-    /** An expression. Properties of the data can be accessed throught the `datum` object. */
+    /** An expression. Properties of the data can be accessed through the `datum` object. */
     expr?: string;
 
     /** A constant value on the data domain */
@@ -81,6 +86,7 @@ export type ContainerSpec = (
     | LayerSpec
     | VConcatSpec
     | HConcatSpec
+    | ConcatSpec
     | TableSpec
     | TableRowSpec
 ) & {
@@ -98,6 +104,7 @@ export type ViewSpec =
     | LayerSpec
     | VConcatSpec
     | HConcatSpec
+    | ConcatSpec
     | TableSpec
     | TableRowSpec;
 
@@ -112,12 +119,15 @@ export interface ImportSpec {
 }
 
 export interface VConcatSpec extends ViewSpecBase {
-    // TODO: vconcat
-    concat?: (ViewSpec | ImportSpec)[];
+    vconcat: (ViewSpec | ImportSpec)[];
 }
 
 export interface HConcatSpec extends ViewSpecBase {
-    hconcat?: (ViewSpec | ImportSpec)[];
+    hconcat: (ViewSpec | ImportSpec)[];
+}
+
+export interface ConcatSpec extends ViewSpecBase {
+    concat: (ViewSpec | ImportSpec)[];
 }
 
 export interface RootConfig {

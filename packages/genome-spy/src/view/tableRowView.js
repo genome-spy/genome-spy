@@ -1,6 +1,5 @@
 import { getViewClass } from "./viewUtils";
 import ContainerView from "./containerView";
-import HConcatView from "./hConcatView";
 
 /**
  *
@@ -13,10 +12,10 @@ export default class TableRowView extends ContainerView {
         /** @type {View} */
         this.center = undefined;
 
-        /** @type {HConcatView} */
+        /** @type {ContainerView} */
         this.left = undefined;
 
-        /** @type {HConcatView} */
+        /** @type {ContainerView} */
         this.right = undefined;
     }
 

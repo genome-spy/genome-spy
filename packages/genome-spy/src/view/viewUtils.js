@@ -3,7 +3,7 @@ import { isObject, isString, isArray } from "vega-util";
 import ImportView from "./importView";
 import LayerView from "./layerView";
 import UnitView from "./unitView";
-import VConcatView from "./vConcatView";
+import ConcatView from "./concatView";
 import TableView from "./tableView";
 import TableRowView from "./tableRowView";
 import AxisWrapperView from "./axisWrapperView";
@@ -27,6 +27,8 @@ import { VISIT_SKIP } from "./view";
  * @typedef {import("../spec/view").UnitSpec} UnitSpec
  * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
  * @typedef {import("../spec/view").HConcatSpec} HConcatSpec
+ * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
+ * @typedef {VConcatSpec | HConcatSpec | ConcatSpec} AnyConcatSpec
  * @typedef {import("../spec/view").TableSpec} TableSpec
  * @typedef {import("../spec/view").TableRowSpec} TableRowSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
@@ -40,7 +42,9 @@ const viewTypes = [
     { prop: "import", guard: isImportSpec, viewClass: ImportView },
     { prop: "layer", guard: isLayerSpec, viewClass: LayerView },
     { prop: "mark", guard: isUnitSpec, viewClass: UnitView },
-    { prop: "vconcat", guard: isVConcatSpec, viewClass: VConcatView },
+    { prop: "vconcat", guard: isVConcatSpec, viewClass: ConcatView },
+    { prop: "hconcat", guard: isHConcatSpec, viewClass: ConcatView },
+    { prop: "concat", guard: isConcatSpec, viewClass: ConcatView },
     { prop: "table", guard: isTableSpec, viewClass: TableView },
     { prop: "main", guard: isTableRowSpec, viewClass: TableRowView }
 ];
@@ -89,6 +93,24 @@ export function isViewSpec(spec) {
  * @returns {spec is VConcatSpec}
  */
 export function isVConcatSpec(spec) {
+    return isArray(spec.vconcat);
+}
+
+/**
+ *
+ * @param {ViewSpec} spec
+ * @returns {spec is HConcatSpec}
+ */
+export function isHConcatSpec(spec) {
+    return isArray(spec.hconcat);
+}
+
+/**
+ *
+ * @param {ViewSpec} spec
+ * @returns {spec is ConcatSpec}
+ */
+export function isConcatSpec(spec) {
     return isArray(spec.concat);
 }
 
