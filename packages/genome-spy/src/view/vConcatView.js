@@ -1,11 +1,14 @@
 import { getViewClass } from "./viewUtils";
 import ContainerView from "./containerView";
-import FlexLayout, { parseSizeDef, FlexDimensions } from "../utils/flexLayout";
-import Rectangle from "./rectangle";
+import FlexLayout, {
+    parseSizeDef,
+    FlexDimensions
+} from "../utils/layout/flexLayout";
+import Rectangle from "../utils/layout/rectangle";
 
 /**
  * @typedef {import("./view").default} View
- * @typedef { import("../utils/flexLayout").SizeDef} SizeDef
+ * @typedef { import("../utils/layout/flexLayout").SizeDef} SizeDef
  */
 export default class VConcatView extends ContainerView {
     /**
@@ -54,15 +57,11 @@ export default class VConcatView extends ContainerView {
             this.getCoords().height
         );
         if (flexCoords) {
-            const coords = this.getCoords();
-            return new Rectangle(
-                coords.x,
-                coords.y + flexCoords.location,
-                coords.width,
-                flexCoords.size
-            );
+            return this.getCoords()
+                .translate(0, flexCoords.location)
+                .modify({ height: flexCoords.size });
         }
-        throw new Error("Unknown child!");
+        throw new Error("Not my child view!");
     }
 
     /**

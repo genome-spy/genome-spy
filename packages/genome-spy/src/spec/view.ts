@@ -3,7 +3,7 @@ import { Scale } from "./scale";
 import { Axis } from "./axis";
 import { TransformConfig } from "./transform";
 import { GenomeConfig } from "../genome/genome";
-import { SizeDef } from "../utils/flexLayout";
+import { SizeDef } from "../utils/layout/flexLayout";
 
 export type Scalar = string | number | boolean;
 

@@ -3,6 +3,7 @@ import ContainerView from "./containerView";
 import { getFlattenedViews, initializeData } from "./viewUtils";
 import LayerView from "./layerView";
 import UnitView from "./unitView";
+import Padding from "../utils/layout/padding";
 
 /**
  * TODO: Move these somewhere for common use
@@ -129,19 +130,22 @@ export default class AxisWrapperView extends ContainerView {
     }
 
     getPadding() {
-        return Object.fromEntries(
-            Object.keys(this.axisViews).map(slot => [
-                slot,
-                this._getAxisSize(slot)
-            ])
-        );
+        /** @type {Record<AxisOrient, number>} */
+        // @ts-ignore
+        const paddings = {};
+        for (const slot of /** @type {AxisOrient[]} */ (Object.keys(
+            this.axisViews
+        ))) {
+            paddings[slot] = this._getAxisSize(slot);
+        }
+        return new Padding(paddings);
     }
 
     getSize() {
         const size = super.getSize();
-        const pad = this.getPadding();
-        size.width.px = (size.width.px || 0) + pad.left + pad.right;
-        size.height.px = (size.height.px || 0) + pad.top + pad.bottom;
+        const padding = this.getPadding();
+        size.width.px = (size.width.px || 0) + padding.width;
+        size.height.px = (size.height.px || 0) + padding.height;
         return size;
     }
 
@@ -152,29 +156,29 @@ export default class AxisWrapperView extends ContainerView {
         const padding = this.getPadding();
 
         if (view === this.child) {
-            const coords = this.getCoords();
-            coords.y += padding.top;
-            coords.height -= padding.top + padding.bottom;
-            return coords;
+            return this.getCoords().shrink(padding);
         } else {
-            const axisCoords = this.child.getCoords();
             // TODO: Don't use paddings here because padding could eventually contain some extra.
+            const childCoords = this.child.getCoords();
             if (view === this.axisViews.bottom) {
-                axisCoords.y += axisCoords.height;
-                axisCoords.height = padding.bottom;
+                return childCoords
+                    .translate(0, childCoords.height)
+                    .modify({ height: padding.bottom });
             } else if (view === this.axisViews.top) {
-                axisCoords.y -= padding.top;
-                axisCoords.height = padding.top;
+                return childCoords
+                    .translate(0, -padding.top)
+                    .modify({ height: padding.top });
             } else if (view === this.axisViews.left) {
-                axisCoords.x -= padding.left;
-                axisCoords.width = padding.left;
+                return childCoords
+                    .translate(-padding.left, 0)
+                    .modify({ width: padding.left });
             } else if (view === this.axisViews.right) {
-                axisCoords.x += axisCoords.width;
-                axisCoords.width = padding.right;
+                return childCoords
+                    .translate(childCoords.width, 0)
+                    .modify({ width: padding.right });
             } else {
                 throw new Error("Not my child view!");
             }
-            return axisCoords;
         }
     }
 

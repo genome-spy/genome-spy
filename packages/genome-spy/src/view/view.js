@@ -1,6 +1,6 @@
 import { transformData } from "../data/dataMapper";
-import { parseSizeDef, FlexDimensions } from "../utils/flexLayout";
-import Rectangle from "./rectangle";
+import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
+import Rectangle from "../utils/layout/rectangle";
 
 /** Skip children */
 export const VISIT_SKIP = "VISIT_SKIP";
@@ -11,7 +11,7 @@ export const VISIT_STOP = "VISIT_STOP";
  * @typedef { import("./viewUtils").ViewSpec } ViewSpec
  * @typedef { import("./viewUtils").EncodingConfig } EncodingConfig
  * @typedef { import("./viewUtils").ViewContext} ViewContext
- * @typedef { import("../utils/flexLayout").SizeDef} SizeDef
+ * @typedef { import("../utils/layout/flexLayout").SizeDef} SizeDef
  */
 export default class View {
     /**
@@ -51,7 +51,7 @@ export default class View {
     /**
      * Returns the coordinates of the view in pixels. The Y coordinate grows from top to bottom.
      *
-     * @returns {import("./rectangle").default}
+     * @returns {import("../utils/layout/rectangle").default}
      */
     getCoords() {
         if (this.parent) {

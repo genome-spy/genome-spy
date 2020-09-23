@@ -20,7 +20,7 @@ export default class ContainerView extends View {
     /**
      *
      * @param {import("./view").default} view
-     * @returns {import("./rectangle").default}
+     * @returns {import("../utils/layout/rectangle").default}
      */
     getChildCoords(view) {
         // Should be overridden
