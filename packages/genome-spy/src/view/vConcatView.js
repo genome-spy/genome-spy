@@ -21,13 +21,13 @@ export default class VConcatView extends ContainerView {
     constructor(spec, context, parent, name) {
         super(spec, context, parent, name);
 
+        this.mainAxis = spec.hconcat ? "x" : "y";
+
         /** @type { View[] } */
         this.children = (spec.concat || []).map((childSpec, i) => {
             const View = getViewClass(childSpec);
             return new View(childSpec, context, this, "vconcat" + i);
         });
-
-        this.mainAxis = spec.hconcat ? "x" : "y";
 
         this.flexLayout = new FlexLayout(
             this,
