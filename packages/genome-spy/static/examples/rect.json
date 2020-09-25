@@ -9,25 +9,19 @@
 
   "layer": [
     {
-      "mark": {
-        "type": "rect",
-        "minWidth": 200,
-        "minHeight": 200
-      },
+      "mark": "rect",
 
       "encoding": {
         "x": {
           "field": "x",
           "type": "quantitative",
-          "scale": { "domain": [0, 1] },
-          "axis": null
+          "scale": { "domain": [0, 1] }
         },
         "x2": { "field": "x2" },
         "y": {
           "field": "x",
           "type": "quantitative",
-          "scale": { "domain": [0, 1] },
-          "axis": null
+          "scale": { "domain": [0, 1] }
         },
         "squeeze": {
           "field": "z",
@@ -46,7 +40,7 @@
           "mark": "rule",
 
           "encoding": {
-            "x": { "field": "z", "type": "quantitative", "axis": null },
+            "x": { "field": "z", "type": "quantitative" },
             "color": { "value": "darkgray" }
           }
         },
@@ -54,7 +48,7 @@
           "mark": "rule",
 
           "encoding": {
-            "y": { "field": "z", "type": "quantitative", "axis": null },
+            "y": { "field": "z", "type": "quantitative" },
             "color": { "value": "darkgray" }
           }
         }

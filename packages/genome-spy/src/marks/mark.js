@@ -111,7 +111,6 @@ export default class Mark {
         /** @type {function(string):function} */
         const scaleSource = channel => this.getScale(channel, true);
 
-        // TODO: Consider putting encoders to unitView
         this.encoders = createEncoders(encoding, scaleSource, channel =>
             this.unitView.getAccessor(channel)
         );
@@ -155,7 +154,10 @@ export default class Mark {
                 } else {
                     return generateScaleGlsl(
                         attr,
-                        this.unitView.getResolution(attr).getScale()
+                        this.unitView.getResolution(attr).getScale(),
+                        "datum" in e[attr]
+                            ? /** @type {number} */ (e[attr].datum)
+                            : undefined // TODO: fp64
                     );
                 }
             })
@@ -253,7 +255,7 @@ export default class Mark {
 
         /** @type {Record<string, number | number[]>} */
         const uniforms = {};
-        for (const channel of ["x", "y"]) {
+        for (const channel of ["x", "y", "size"]) {
             const resolution = this.unitView.getResolution(channel);
             if (resolution) {
                 uniforms[DOMAIN_PREFIX + channel] = resolution.getDomain();

@@ -80,10 +80,6 @@ export default class ConnectionMark extends Mark {
         return encoding;
     }
 
-    initializeEncoders() {
-        super.initializeEncoders();
-    }
-
     async initializeGraphics() {
         await super.initializeGraphics();
 

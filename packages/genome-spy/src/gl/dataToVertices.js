@@ -294,6 +294,124 @@ export class RectVertexBuilder {
     }
 }
 
+export class RuleVertexBuilder {
+    /**
+     *
+     * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
+     * @param {Object} object
+     * @param {number} [object.tesselationThreshold]
+     *     If the rule is wider than the threshold, tesselate it into pieces
+     * @param {number[]} [object.visibleRange]
+     */
+    constructor(
+        encoders,
+        {
+            tesselationThreshold = Infinity,
+            visibleRange = [-Infinity, Infinity]
+        }
+    ) {
+        this.encoders = encoders;
+        this.visibleRange = visibleRange;
+
+        const e = encoders;
+
+        this.tesselationThreshold = tesselationThreshold || Infinity;
+
+        /** @type {Object.<string, import("./arraybuilder").Converter>} */
+        const converters = {
+            color: { f: d => color2floatArray(e.color(d)), numComponents: 3 },
+            opacity: { f: e.opacity, numComponents: 1 }
+        };
+
+        for (const channel of ["x", "y", "x2", "y2", "size"]) {
+            if (e[channel] && !e[channel].constant) {
+                converters[channel] = {
+                    f: e[channel].accessor,
+                    numComponents: 1,
+                    raw: true
+                };
+            }
+        }
+
+        const constants = Object.entries(encoders)
+            .filter(e => e[1].constant)
+            .map(e => e[0]);
+        const variables = Object.entries(encoders)
+            .filter(e => !e[1].constant)
+            .map(e => e[0]);
+
+        this.variableBuilder = ArrayBuilder.create(converters, variables);
+
+        this.updateSide = this.variableBuilder.createUpdater("side", 1);
+        this.updatePos = this.variableBuilder.createUpdater("pos", 1);
+
+        this.constantBuilder = ArrayBuilder.create(converters, constants);
+        this.constantBuilder.updateFromDatum({});
+        this.constantBuilder.pushAll();
+
+        this.rangeMap = new Map();
+    }
+
+    /* eslint-disable complexity */
+    /**
+     *
+     * @param {string} key
+     * @param {object} data
+     */
+    addBatch(key, data) {
+        const offset = this.variableBuilder.vertexCount;
+
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
+            .encoders);
+        const [lower, upper] = this.visibleRange; // TODO
+
+        for (const d of data) {
+            // Start a new rule. Duplicate the first vertex to produce degenerate triangles
+            this.variableBuilder.updateFromDatum(d);
+            this.updateSide(-0.5);
+            this.updatePos(0);
+            this.variableBuilder.pushAll();
+
+            // Tesselate segments
+            const tileCount = 1;
+            //    width < Infinity
+            //        ? Math.ceil(width / this.tesselationThreshold)
+            //        : 1;
+            for (let i = 0; i <= tileCount; i++) {
+                this.updatePos(i / tileCount);
+                this.updateSide(-0.5);
+                this.variableBuilder.pushAll();
+                this.updateSide(0.5);
+                this.variableBuilder.pushAll();
+            }
+
+            // Duplicate the last vertex to produce a degenerate triangle between the rules
+            this.variableBuilder.pushAll();
+        }
+
+        const count = this.variableBuilder.vertexCount - offset;
+        if (count) {
+            this.rangeMap.set(key, {
+                offset,
+                count
+                // TODO: Add some indices that allow rendering just a range
+            });
+        }
+    }
+
+    toArrays() {
+        return {
+            arrays: {
+                ...this.variableBuilder.arrays,
+                ...this.constantBuilder.toValues()
+            },
+            vertexCount: this.variableBuilder.vertexCount,
+            drawMode: glConst.TRIANGLE_STRIP,
+            rangeMap: this.rangeMap
+        };
+    }
+}
+
 export class PointVertexBuilder {
     /**
      *

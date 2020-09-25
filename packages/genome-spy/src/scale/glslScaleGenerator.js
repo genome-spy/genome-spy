@@ -14,21 +14,14 @@ const FLT_MAX = 3.402823466e38;
  * @param {number | number[]} value
  */
 export function generateValueGlsl(channel, value) {
-    const size = Array.isArray(value) ? value.length : 1;
-    if (size < 1 || size > 4) {
-        throw new Error("Invalid size: " + size);
-    }
+    const vec = vectorize(value);
 
-    const valueString = Array.isArray(value)
-        ? value.map(toDecimal).join(", ")
-        : toDecimal(value);
-
-    const type = size == 1 ? "float" : `vec${size}`;
-
+    // These could also be passed as uniforms because GPU drivers often handle
+    // uniforms as constants and recompile the shader to eliminate dead code etc.
     return `
-${type} ${SCALED_FUNCTION_PREFIX}${channel}() {
+${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
     // Constant value
-    return ${type == "float" ? valueString : `${type}(${valueString})`};
+    return ${vec};
 }`;
 }
 
@@ -36,8 +29,9 @@ ${type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  *
  * @param {string} channel
  * @param {any} scale
+ * @param {number | number[]} [datum] A constant value (in domain), replaces an attribute
  */
-export function generateScaleGlsl(channel, scale) {
+export function generateScaleGlsl(channel, scale, datum) {
     const primary = primaryChannel(channel);
     const attributeName = ATTRIBUTE_PREFIX + channel;
     const domainName = DOMAIN_PREFIX + primary;
@@ -63,7 +57,9 @@ float ${SCALE_FUNCTION_PREFIX}${channel}(float value) {
 }
 
 float ${SCALED_FUNCTION_PREFIX}${channel}() {
-    return ${SCALE_FUNCTION_PREFIX}${channel}(${attributeName});
+    return ${SCALE_FUNCTION_PREFIX}${channel}(${
+        datum !== undefined ? vectorize(datum) : attributeName
+    });
 }`;
 }
 
@@ -74,9 +70,9 @@ float ${SCALED_FUNCTION_PREFIX}${channel}() {
  */
 function toDecimal(number) {
     if (number == Infinity) {
-        return FLT_MAX;
+        return "" + FLT_MAX;
     } else if (number == -Infinity) {
-        return -FLT_MAX;
+        return "" + -FLT_MAX;
     } else {
         let str = `${number}`;
         if (/^\d+$/.test(str)) {
@@ -84,4 +80,33 @@ function toDecimal(number) {
         }
         return str;
     }
+}
+
+/**
+ * Turns a number or number array to float or vec[234] string.
+ *
+ * @param {number | number[]} value
+ * @returns {string & { type: string, numComponents: number }}
+ */
+function vectorize(value) {
+    if (typeof value == "number") {
+        value = [value];
+    }
+    const numComponents = value.length;
+    if (numComponents < 1 || numComponents > 4) {
+        throw new Error("Invalid number of components: " + numComponents);
+    }
+
+    let type;
+    let str;
+
+    if (numComponents > 1) {
+        type = `vec${numComponents}`;
+        str = `${type}(${value.map(toDecimal).join(", ")})`;
+    } else {
+        type = "float";
+        str = toDecimal(value[0]);
+    }
+
+    return Object.assign(str, { type, numComponents });
 }
