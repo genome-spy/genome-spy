@@ -37,7 +37,10 @@
 
       "layer": [
         {
-          "mark": "rule",
+          "mark": {
+            "type": "rule",
+            "strokeDash": [3, 3]
+          },
 
           "encoding": {
             "x": { "field": "z", "type": "quantitative" },
@@ -45,7 +48,10 @@
           }
         },
         {
-          "mark": "rule",
+          "mark": {
+            "type": "rule",
+            "strokeDash": [1, 5, 3, 5]
+          },
 
           "encoding": {
             "y": { "field": "z", "type": "quantitative" },

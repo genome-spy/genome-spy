@@ -7,7 +7,8 @@ import { RuleVertexBuilder } from "../gl/dataToVertices";
 const defaultMarkProperties = {
     minLength: 0.0,
     /** @type {number[]} */
-    strokeDash: null
+    strokeDash: null,
+    strokeDashOffset: 0
     // TODO: offsetX, offsetY
 };
 
@@ -39,6 +40,7 @@ export default class RuleMark extends Mark {
             ...this.properties
         };
 
+        this.dashTextureSize = 0;
         this.opaque = this.getEncoding().opacity.value >= 1.0;
     }
 
@@ -103,6 +105,21 @@ export default class RuleMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
+        if (this.properties.strokeDash) {
+            const gl = this.gl;
+            const textureData = createDashTextureArray(
+                this.properties.strokeDash
+            );
+            this.dashTexture = twgl.createTexture(gl, {
+                mag: gl.LINEAR,
+                min: gl.LINEAR,
+                format: gl.LUMINANCE,
+                src: textureData,
+                height: 1
+            });
+            this.dashTextureSize = textureData.length; // Not needed with WebGL2
+        }
+
         this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
@@ -132,15 +149,23 @@ export default class RuleMark extends Mark {
 
         const gl = this.gl;
 
-        if (this.opaque) {
+        if (this.opaque && !this.dashTexture) {
             gl.disable(gl.BLEND);
         } else {
             gl.enable(gl.BLEND);
         }
 
         twgl.setUniforms(this.programInfo, {
-            uMinLength: this.properties.minLength
+            uMinLength: this.properties.minLength,
+            uDashTextureSize: this.dashTextureSize
         });
+
+        if (this.dashTexture) {
+            twgl.setUniforms(this.programInfo, {
+                uDashTexture: this.dashTexture,
+                uStrokeDashOffset: this.properties.strokeDashOffset
+            });
+        }
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
@@ -160,4 +185,36 @@ export default class RuleMark extends Mark {
             }
         }
     }
+}
+
+/**
+ *
+ * @param {number[]} pattern
+ */
+function createDashTextureArray(pattern) {
+    if (
+        pattern.length == 0 ||
+        pattern.length % 2 ||
+        pattern.findIndex(s => Math.round(s) != s || s < 1 || s > 1000) >= 0
+    ) {
+        throw new Error(
+            "Invalid stroke dash pattern: " + JSON.stringify(pattern)
+        );
+    }
+
+    const len = pattern.reduce((a, b) => a + b);
+
+    const texture = new Uint8Array(len);
+
+    let state = true;
+    let i = 0;
+    for (let segment of pattern) {
+        while (segment) {
+            texture[i++] = (state && 255) || 0;
+            segment--;
+        }
+        state = !state;
+    }
+
+    return texture;
 }
