@@ -18,7 +18,7 @@ const defaultMarkProperties = {
 
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
-    x: null,
+    x: { value: 0.5 },
     y: { value: 0.5 },
     text: { value: "" },
     size: { value: 11.0 },
@@ -52,6 +52,14 @@ export default class TextMark extends Mark {
         this.properties = {
             ...defaultMarkProperties,
             ...this.properties
+        };
+    }
+
+    getRawAttributes() {
+        return {
+            x: {},
+            x2: {},
+            y: {}
         };
     }
 
@@ -90,22 +98,10 @@ export default class TextMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        const glHelper = this.getContext().glHelper;
-        const gl = glHelper.gl;
-
-        const encoding = this.getEncoding();
-
-        const defines = encoding.x2 ? ["#define X2_ENABLED"] : [];
-
-        this.programInfo = twgl.createProgramInfo(
-            gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s =>
-                glHelper.processShader(s, defines)
-            )
-        );
+        const gl = this.gl;
 
         // TODO: Share the texture with other text mark instances
-        return new Promise((resolve, reject) => {
+        const texturePromise = new Promise((resolve, reject) => {
             this.fontTexture = twgl.createTexture(
                 gl,
                 {
@@ -121,6 +117,13 @@ export default class TextMark extends Mark {
                 }
             );
         });
+
+        const encoding = this.getEncoding();
+        const defines = encoding.x2 ? ["#define X2_ENABLED"] : [];
+
+        this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER, defines);
+
+        return texturePromise;
     }
 
     async updateGraphicsData() {
@@ -180,11 +183,7 @@ export default class TextMark extends Mark {
 
         gl.enable(gl.BLEND);
 
-        gl.useProgram(this.programInfo.program);
-        this.setViewport(this.programInfo);
-
         twgl.setUniforms(this.programInfo, {
-            ...this.getGlobalUniforms(),
             uTexture: this.fontTexture,
             uD: [this.properties.dx, -this.properties.dy],
             uPaddingX: 4.0, // TODO: Configurable

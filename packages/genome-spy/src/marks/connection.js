@@ -39,6 +39,15 @@ export default class ConnectionMark extends Mark {
         this.opaque = this.getEncoding().opacity.value >= 1.0;
     }
 
+    getRawAttributes() {
+        return {
+            x: {},
+            x2: {},
+            y: {},
+            y2: {}
+        };
+    }
+
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
     }
@@ -78,12 +87,7 @@ export default class ConnectionMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        this.programInfo = twgl.createProgramInfo(
-            this.gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s =>
-                this.glHelper.processShader(s)
-            )
-        );
+        this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
     async updateGraphicsData() {
@@ -133,10 +137,7 @@ export default class ConnectionMark extends Mark {
         const getBandwidth = scale =>
             scale && scale.type == "band" ? scale.bandwidth() : 0;
 
-        gl.useProgram(this.programInfo.program);
-        this.setViewport(this.programInfo);
         twgl.setUniforms(this.programInfo, {
-            ...this.getGlobalUniforms(),
             uBandwidth: getBandwidth(this.encoders.y.scale)
         });
 
@@ -202,8 +203,6 @@ export default class ConnectionMark extends Mark {
      * @returns {object}
      */
     findDatumAt(sampleId, x) {}
-
-    getRangeAggregates() {}
 }
 
 function createStrip(/** @type number */ segments) {

@@ -2,17 +2,12 @@ precision mediump float;
 
 uniform vec2 uViewportSize;
 
-@import ./includes/xdomain;
-@import ./includes/ydomain;
-@import ./includes/minWidth;
+@import ./includes/scales;
 @import ./includes/sampleTransition;
 
-/**
- * X coordinate of the vertex as fp64 (emulated 64bit floating point)
- */
-attribute highp vec2 x;
-attribute highp float y;
-attribute vec3 color;
+#pragma SCALES_HERE
+
+attribute lowp vec3 color;
 attribute lowp float opacity;
 
 /**
@@ -21,37 +16,45 @@ attribute lowp float opacity;
  * Negative if the top vertex, positive if the bottom vertex.
  */
 attribute float height;
+attribute float width;
 
+/** Minimum size (width, height) of the displayed rectangle in pixels */
+uniform vec2 uMinSize;
 
-/** Minimum height of the displayed rectangle in normalized [0, 1] coordinates */
-uniform float uMinHeight;
+/** Minimum opacity for the size size clamping */
+uniform float uMinOpacity;
+
 
 varying vec4 vColor;
 
-float applyMinHeight(float normalizedY) {
-    if (height != 0.0) {
-        float normalizedHeight = height * yPosLeft[1]; // TODO: Fix: Broken inside transition!
-        float minHeight = uMinHeight / uViewportSize.y;
-        if (abs(normalizedHeight) < minHeight) {
-            normalizedY += (minHeight * sign(height) - normalizedHeight) / 2.0;
-        }
+/**
+ * Clamps the minimumSize and returns an opacity that reflects the amount of clamping.
+ */
+float clampMinSize(inout float pos, float size, float minSize) {
+    if (abs(size) < minSize) {
+        pos += (minSize * sign(size) - size) / 2.0;
+        return abs(size) / minSize;
     }
 
-    return normalizedY;
+    return 1.0;
 }
 
 void main(void) {
-    float normalizedX = normalizeX(x);
-    float normalizedY = normalizeY(y);
+    float x = getScaled_x();
+    float y = getScaled_y();
     
-    float opa = opacity * applyMinWidth(normalizedX);
+    //float translatedY = transit(x, y)[0];
 
-    float translatedY = transit(normalizedX, normalizedY)[0];
+    float sampleHeight = yPosLeft[1]; // TODO: The right side should be taken into account too
 
-    translatedY = applyMinHeight(translatedY);
+    vec2 normalizedMinSize = uMinSize / uViewportSize;
 
-    vec2 ndc = vec2(normalizedX, translatedY) * 2.0 - 1.0;
+    float opa = opacity * max(uMinOpacity, 
+        clampMinSize(x, scale_x(attr_x + width) - x, normalizedMinSize.x) *
+        clampMinSize(y, (scale_y(attr_y + height) - y) * sampleHeight, normalizedMinSize.y));
 
-    gl_Position = vec4(ndc, 0.0, 1.0);
+    gl_Position = unitToNdc(x, y);
+
     vColor = vec4(color * opa, opa);
+
 }

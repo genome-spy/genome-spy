@@ -1,9 +1,11 @@
 import fromEntries from "fromentries";
+import { ATTRIBUTE_PREFIX } from "../scale/glslScaleGenerator";
 
 /**
  * @typedef {Object} Converter
  * @prop {function(object)} f
  * @prop {number} [numComponents]
+ * @prop {boolean} [raw]
  *
  */
 export default class ArrayBuilder {
@@ -19,11 +21,11 @@ export default class ArrayBuilder {
 
         Object.entries(converters)
             .filter(entry => attributes.includes(entry[0]))
-            .forEach(entry =>
+            .forEach(([attribute, props]) =>
                 builder.addConverter(
-                    entry[0],
-                    entry[1].numComponents || 1,
-                    entry[1].f
+                    !props.raw ? attribute : ATTRIBUTE_PREFIX + attribute,
+                    props.numComponents || 1,
+                    props.f
                 )
             );
 
@@ -57,6 +59,9 @@ export default class ArrayBuilder {
      */
     addConverter(attributeName, numComponents, converter) {
         const updater = this.createUpdater(attributeName, numComponents);
+        if (!converter) {
+            throw new Error("OMG");
+        }
         this.converters.push(d => updater(converter(d)));
     }
 

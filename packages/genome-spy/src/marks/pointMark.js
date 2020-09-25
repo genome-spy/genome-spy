@@ -23,7 +23,7 @@ const defaultMarkProperties = {
 
 /** @type {import("../view/viewUtils").EncodingSpecs} */
 const defaultEncoding = {
-    x: { value: 0 },
+    x: { value: 0.5 },
     y: { value: 0.5 },
     color: { value: "#1f77b4" },
     opacity: { value: 1.0 },
@@ -63,6 +63,13 @@ export default class PointMark extends Mark {
         };
     }
 
+    getRawAttributes() {
+        return {
+            x: {},
+            y: {}
+        };
+    }
+
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
     }
@@ -71,13 +78,12 @@ export default class PointMark extends Mark {
         super.initializeData();
 
         const xAccessor = this.unitView.getAccessor("x");
-        if (!xAccessor) {
-            throw new Error("x channel is undefined!");
-        }
-
-        // Sort each point of each sample for binary search
-        for (const arr of this.dataBySample.values()) {
-            arr.sort((a, b) => xAccessor(a) - xAccessor(b));
+        if (xAccessor) {
+            // Sort each point of each sample for binary search
+            // TODO: Support pre-sorted data
+            for (const arr of this.dataBySample.values()) {
+                arr.sort((a, b) => xAccessor(a) - xAccessor(b));
+            }
         }
 
         // Semantic zooming is currently solely a feature of point mark.
@@ -108,13 +114,7 @@ export default class PointMark extends Mark {
 
     async initializeGraphics() {
         await super.initializeGraphics();
-
-        this.programInfo = twgl.createProgramInfo(
-            this.gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s =>
-                this.glHelper.processShader(s)
-            )
-        );
+        this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
     async updateGraphicsData() {
@@ -198,11 +198,7 @@ export default class PointMark extends Mark {
 
         gl.enable(gl.BLEND);
 
-        gl.useProgram(this.programInfo.program);
-        this.setViewport(this.programInfo);
-
         twgl.setUniforms(this.programInfo, {
-            ...this.getGlobalUniforms(),
             uXOffset: this.properties.xOffset,
             uYOffset: this.properties.yOffset,
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
@@ -214,19 +210,25 @@ export default class PointMark extends Mark {
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
+        /*
         const bisect = bisector(this.encoders.x.accessor).left;
         const visibleDomain = this.getContext().genomeSpy.getViewportDomain();
         // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
         const paddedDomain = visibleDomain.pad(visibleDomain.width() * 0.01);
+        */
 
         for (const sampleData of samples) {
             const range = this.rangeMap.get(sampleData.sampleId);
             if (range) {
                 // Render only points that reside inside the viewport
+                /*
                 const specs = this.dataBySample.get(sampleData.sampleId);
                 const lower = bisect(specs, paddedDomain.lower);
                 const upper = bisect(specs, paddedDomain.upper);
                 const length = upper - lower;
+                */
+                const length = range.count;
+                const lower = 0;
 
                 if (length) {
                     twgl.setUniforms(this.programInfo, sampleData.uniforms);

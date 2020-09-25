@@ -7,8 +7,8 @@ import { RectVertexBuilder } from "../gl/dataToVertices";
 import Mark from "./mark";
 
 const defaultMarkProperties = {
-    minWidth: 1.0,
-    minHeight: 0.0,
+    minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
+    minHeight: 0.5,
     minOpacity: 0.0,
     xOffset: 0.0,
     yOffset: 0.0,
@@ -49,6 +49,13 @@ export default class RectMark extends Mark {
         this.opaque =
             this.getEncoding().opacity.value >= 1.0 &&
             this.properties.minOpacity >= 1.0;
+    }
+
+    getRawAttributes() {
+        return {
+            x: { complexGeometry: true },
+            y: { complexGeometry: true }
+        };
     }
 
     getDefaultEncoding() {
@@ -102,8 +109,6 @@ export default class RectMark extends Mark {
      * @param {number} [tesselationThreshold]
      */
     _createSampleBufferInfo(interval, tesselationThreshold) {
-        const gl = this.getContext().glHelper.gl;
-
         // TODO: Disable tesselation on SimpleTrack - no need for it
         const builder = new RectVertexBuilder(this.encoders, {
             tesselationThreshold,
@@ -117,9 +122,13 @@ export default class RectMark extends Mark {
 
         return {
             rangeMap: vertexData.rangeMap,
-            bufferInfo: twgl.createBufferInfoFromArrays(gl, vertexData.arrays, {
-                numElements: vertexData.vertexCount
-            })
+            bufferInfo: twgl.createBufferInfoFromArrays(
+                this.gl,
+                vertexData.arrays,
+                {
+                    numElements: vertexData.vertexCount
+                }
+            )
         };
     }
 
@@ -148,15 +157,7 @@ export default class RectMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        // TODO: const domainWidth = this.unitContext.genomeSpy.getDomain().width();
-        // But it requires that all data are first loaded in order to extract the domain
-
-        this.programInfo = twgl.createProgramInfo(
-            this.gl,
-            [VERTEX_SHADER, FRAGMENT_SHADER].map(s =>
-                this.glHelper.processShader(s)
-            )
-        );
+        this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
     async updateGraphicsData() {
@@ -188,13 +189,8 @@ export default class RectMark extends Mark {
             gl.enable(gl.BLEND);
         }
 
-        gl.useProgram(this.programInfo.program);
-        this.setViewport(this.programInfo);
-
         twgl.setUniforms(this.programInfo, {
-            ...this.getGlobalUniforms(),
-            uMinWidth: this.properties.minWidth,
-            uMinHeight: this.properties.minHeight, // How many pixels
+            uMinSize: [this.properties.minWidth, this.properties.minHeight], // in pixels
             uMinOpacity: this.properties.minOpacity,
             uXOffset: this.properties.xOffset,
             uYOffset: this.properties.yOffset

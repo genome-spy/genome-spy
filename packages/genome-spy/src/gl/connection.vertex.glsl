@@ -1,10 +1,12 @@
 precision mediump float;
 
-@import ./includes/xdomain;
-@import ./includes/ydomain;
+uniform vec2 uViewportSize;
+
+@import ./includes/scales;
 @import ./includes/sampleTransition;
 
-uniform vec2 uViewportSize;
+#pragma SCALES_HERE
+
 uniform lowp float uDevicePixelRatio;
 uniform float zoomLevel; // TODO: u prefix
 
@@ -12,10 +14,6 @@ uniform float uBandwidth;
 
 attribute vec2 strip;
 
-attribute highp vec2 x;
-attribute highp vec2 x2;
-attribute float y;
-attribute float y2;
 attribute float height;
 attribute lowp vec3 color;
 attribute lowp vec3 color2;
@@ -27,42 +25,42 @@ varying vec4 vColor;
 
 void main(void) {
 
-    float nX = normalizeX(x);
-    float nX2 = normalizeX(x2);
-    float nY = normalizeY(y);
-    float nY2 = normalizeY(y2);
+    float x = getScaled_x();
+    float x2 = getScaled_x2();
+    float y = getScaled_y();
+    float y2 = getScaled_y2();
     
     float hY;
 
-    if (nY == nY2) {
+    if (y == y2) {
         // Let's create an arc
         if (uBandwidth == 0.0) {
             // Move the control points so that the unit-height connection produces a unit-height arc
             float stretch = 1.0 / 0.75; // TODO: Apply to height outside the shader
 
-            hY = height * stretch * zoomLevel + max(nY, nY2);
+            hY = height * stretch * zoomLevel + max(y, y2);
         } else {
             // Move above the band
-            nY += uBandwidth;
-            nY2 = nY;
-            hY = nY + uBandwidth * 0.4; // TODO: breaks when outer padding is zero or something very small
+            y += uBandwidth;
+            y2 = y;
+            hY = y + uBandwidth * 0.4; // TODO: breaks when outer padding is zero or something very small
         }
 
     } else {
         // Not an arc, a curve instead!
-        if (nY < nY2) {
-            nY += uBandwidth;
-        } else if (nY2 < nY) {
-            nY2 += uBandwidth;
+        if (y < y2) {
+            y += uBandwidth;
+        } else if (y2 < y) {
+            y2 += uBandwidth;
         }
 
-        hY = (nY + nY2) / 2.0;
+        hY = (y + y2) / 2.0;
     }
 
-    vec2 p1 = vec2(nX, nY);
-    vec2 p2 = vec2(nX, hY);
-    vec2 p3 = vec2(nX2, hY);
-    vec2 p4 = vec2(nX2, nY2);
+    vec2 p1 = vec2(x, y);
+    vec2 p2 = vec2(x, hY);
+    vec2 p3 = vec2(x2, hY);
+    vec2 p4 = vec2(x2, y2);
 
     // Let's make segments shorter near the endpoints to make the tightly bent attachment points smoother
     float t = smoothstep(0.0, 1.0, strip.x);
@@ -90,13 +88,10 @@ void main(void) {
     vec2 normal = normalize(vec2(-tangent.y, tangent.x) / uViewportSize);
 
     // Extrude
-    // TODO: Scale stroke width as the transition progresses, fix the aspect ratio of faceted strokes
-    p += strip.y * normal * mix(size, size2, t) / uViewportSize * uDevicePixelRatio;
+    // TODO: Scale the stroke width as the transition progresses, fix the aspect ratio of faceted strokes
+    p += strip.y * normal * mix(size, size2, t) / uViewportSize;
 
-    // TODO: coordinates are upside down and broken in the facet view
-    vec2 ndc = p * 2.0 - 1.0;
-
-    gl_Position = vec4(ndc, 0.0, 1.0);
+    gl_Position = unitToNdc(p);
 
     // Yuck, RGB interpolation in gamma space! TODO: linear space: https://unlimited3d.wordpress.com/2020/01/08/srgb-color-space-in-opengl/
     vColor = vec4(mix(color, color2, t) * opacity, opacity);

@@ -269,7 +269,7 @@ export default class AxisWrapperView extends ContainerView {
 
         return new LayerView(
             createAxis(
-                { ...defaultAxisProps, ...axisProps, extent: 20 }, // TODO: Compute extent
+                { ...defaultAxisProps, ...axisProps, extent: 35 }, // TODO: Compute extent
                 tickGenerator
             ),
             this.context,
@@ -365,9 +365,7 @@ function createDomain(axisProps) {
         },
         encoding: {
             color: { value: axisProps.domainColor },
-            y: { value: 1 },
-            x: { value: -Infinity },
-            x2: { value: Infinity }
+            y: { value: 1 }
         }
     };
 }
@@ -439,7 +437,7 @@ function createTitle(axisProps) {
         encoding: {
             text: { value: axisProps.title },
             color: { value: axisProps.titleColor },
-            x: { value: 3.141 },
+            x: { value: 0.5 },
             y: { value: 0 }
         }
     };

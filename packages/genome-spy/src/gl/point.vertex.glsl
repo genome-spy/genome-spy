@@ -2,15 +2,11 @@ precision mediump float;
 
 uniform vec2 uViewportSize;
 
-@import ./includes/xdomain;
-@import ./includes/ydomain;
+@import ./includes/scales;
 @import ./includes/sampleTransition;
 
-/**
- * X coordinate of the vertex as fp64 (emulated 64bit floating point)
- */
-attribute highp vec2 x;
-attribute highp float y;
+#pragma SCALES_HERE
+
 
 attribute lowp vec3 color;
 attribute lowp float opacity;
@@ -74,19 +70,19 @@ void main(void) {
         return;
     }
 
-    float normalizedX = normalizeX(x);
+    // TODO: offset
+    float x = getScaled_x();
+    float y = getScaled_y();
 
-    vec2 translated = transit(normalizedX, normalizeY(y));
+    vec2 translated = transit(x, y);
     float translatedY = translated[0];
     float height = translated[1];
 
-    vec2 ndc = vec2(normalizedX, translatedY) * 2.0 - 1.0;
-
-    gl_Position = vec4(ndc, 0.0, 1.0);
+    gl_Position = unitToNdc(x, translatedY);
 
     vSize = sqrt(size) *
         uScaleFactor *
-        scaleDown(height * uViewportSize.y) *
+        scaleDown(height * uViewportSize.y) * // TODO: Only scaleDown when we have multiple samples...
         thresholdFactor *
         uDevicePixelRatio;
 

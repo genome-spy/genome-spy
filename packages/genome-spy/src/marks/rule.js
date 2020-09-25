@@ -69,14 +69,14 @@ export default class RuleMark extends RectMark {
         if (encoding.x && !encoding.y) {
             // Vertical rule
             vertical = true;
-            encoding.y = { value: -Infinity };
-            encoding.y2 = { value: Infinity };
+            encoding.y = { value: 0 };
+            encoding.y2 = { value: 1 };
             encoding.x2 = encoding.x;
         } else if (encoding.y && !encoding.x) {
             // Horizontal rule
             vertical = false;
-            encoding.x = { value: -Infinity };
-            encoding.x2 = { value: Infinity };
+            encoding.x = { value: 0 };
+            encoding.x2 = { value: 1 };
             encoding.y2 = encoding.y;
         } else if (encoding.x && encoding.y && encoding.y2) {
             // Limited vertical rule

@@ -223,6 +223,7 @@ export default class GenomeSpy {
      * Returns the current zoom level. [0, 1]
      */
     getLinearZoomLevel() {
+        return 0;
         const extent = this.coordinateSystem.getExtent();
         if (extent) {
             // TODO: Get extent from the data
@@ -238,6 +239,7 @@ export default class GenomeSpy {
      * Returns the current zoom level, [1, Infinity)
      */
     getExpZoomLevel() {
+        return 1;
         // TODO: Get from zoom object
         const b = this.getDomain().width();
         const y = this.getViewportDomain().width();
@@ -506,13 +508,14 @@ export default class GenomeSpy {
                     );
             }
 
+            // Load and transform all data
+            await initializeData(this.viewRoot);
+
             // Compile shaders, handle textures, etc.
+            // TODO: Move above initializeData. However, scales need domains before they can be created...
             const graphicsInitialized = Promise.all(
                 unitViews.map(view => view.mark.initializeGraphics())
             );
-
-            // Load and transform all data
-            await initializeData(this.viewRoot);
 
             unitViews.forEach(view => view.mark.initializeEncoders());
 
@@ -522,6 +525,7 @@ export default class GenomeSpy {
 
             await Promise.all([graphicsInitialized, graphicsDataUpdated]);
 
+            /*
             // TODO: Support other scales too
             this.xScale = scaleLinear().domain(
                 this.getXResolution()
@@ -531,6 +535,7 @@ export default class GenomeSpy {
 
             // Zoomed scale
             this.rescaledX = this.xScale;
+            */
 
             // Initiate layout calculation and render the tracks
             //this._resized();

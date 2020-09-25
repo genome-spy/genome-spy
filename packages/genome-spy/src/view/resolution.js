@@ -219,11 +219,6 @@ export default class Resolution {
             props.zero = false;
         }
 
-        if (channel == "x" && !this.isDomainDefined()) {
-            // A hack. Currently x uses "identity" scale, which needs explicit setting for zero
-            props.zero = true;
-        }
-
         if (channel == "y" || channel == "x") {
             // TODO: Switch to true when all Y-axis labels can be drawn fully visible
             // However, nice should only be true when the domain has not been specified explicitly
@@ -260,7 +255,7 @@ function getDefaultScaleType(channel, dataType) {
 
     /** @type {Object.<string, string[]>} [nominal/ordinal, quantitative]*/
     const defaults = {
-        x: [null, "identity"],
+        x: ["band", "linear"],
         y: ["band", "linear"],
         size: ["point", "linear"],
         opacity: ["point", "linear"],

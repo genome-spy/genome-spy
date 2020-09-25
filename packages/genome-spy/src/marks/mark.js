@@ -3,6 +3,11 @@ import { fp64ify } from "../gl/includes/fp64-utils";
 import * as twgl from "twgl.js";
 import Interval from "../utils/interval";
 import createEncoders from "../encoder/encoder";
+import { DOMAIN_PREFIX } from "../scale/glslScaleGenerator";
+import {
+    generateValueGlsl,
+    generateScaleGlsl
+} from "../scale/glslScaleGenerator";
 
 export default class Mark {
     /**
@@ -16,6 +21,27 @@ export default class Mark {
 
         /** @type {twgl.BufferInfo} WebGL buffers */
         this.bufferInfo = undefined;
+
+        /** @type {twgl.ProgramInfo} WebGL buffers */
+        this.programInfo = undefined;
+    }
+
+    /**
+     * Returns attributes that are uploaded to the GPU as raw data.
+     *
+     * Note: attributes and channels do not necessarily match.
+     * For example, rectangles have x, y, x2, and y2 channels but only x and y as attributes.
+     *
+     * @typedef {Object} RawChannelProps
+     * @prop {boolean} [complexGeometry] The mark consists of multiple vertices that are rendered
+     *      without instancing. Thus, constant values must be provided as attributes. Default: false
+     * @prop {boolean} [fp64] Use emulated 64bit floats.
+     *
+     * @returns {Record<string, RawChannelProps>}
+     */
+    getRawAttributes() {
+        // override
+        throw new Error("Not implemented!");
     }
 
     /**
@@ -106,6 +132,52 @@ export default class Mark {
     }
 
     /**
+     *
+     * @param {string} vertexShader
+     * @param {string} fragmentShader
+     * @param {string[]} [extraHeaders]
+     */
+    createShaders(vertexShader, fragmentShader, extraHeaders = []) {
+        const e = this.getEncoding();
+        const attributes = this.getRawAttributes();
+        const glsl = Object.keys(attributes)
+            .filter(attr => attr in e)
+            .map(attr => {
+                if ("value" in e[attr]) {
+                    if (!attributes[attr].complexGeometry) {
+                        return generateValueGlsl(
+                            attr,
+                            /** @type {number} */ (e[attr].value)
+                        );
+                    } else {
+                        return generateScaleGlsl(attr, { type: "identity" });
+                    }
+                } else {
+                    return generateScaleGlsl(
+                        attr,
+                        this.unitView.getResolution(attr).getScale()
+                    );
+                }
+            })
+            .join("\n");
+
+        const vertexShaderWithScales = /** @type {string} */ (vertexShader).replace(
+            "#pragma SCALES_HERE",
+            glsl
+        );
+
+        console.log("---------------------------" + this.getType());
+        console.log(vertexShaderWithScales);
+
+        this.programInfo = twgl.createProgramInfo(
+            this.gl,
+            [vertexShaderWithScales, fragmentShader].map(s =>
+                this.glHelper.processShader(s, extraHeaders)
+            )
+        );
+    }
+
+    /**
      * Delete WebGL buffers etc.
      */
     deleteGraphicsData() {
@@ -175,21 +247,26 @@ export default class Mark {
      */
     render(samples) {
         // override
-    }
 
-    getDomainUniforms() {
-        const domain = this.getContext().genomeSpy.getViewportDomain();
+        this.gl.useProgram(this.programInfo.program);
+        this.setViewport(this.programInfo);
 
-        return {
-            uXScale: fp64ify(1.0 / domain.width()),
-            uXTranslate: fp64ify(-domain.lower / domain.width()),
-            ONE: 1.0
-        };
+        /** @type {Record<string, number | number[]>} */
+        const uniforms = {};
+        for (const channel of ["x", "y"]) {
+            const resolution = this.unitView.getResolution(channel);
+            if (resolution) {
+                uniforms[DOMAIN_PREFIX + channel] = resolution.getDomain();
+            }
+        }
+
+        twgl.setUniforms(this.programInfo, this.getGlobalUniforms());
+        twgl.setUniforms(this.programInfo, uniforms);
     }
 
     getGlobalUniforms() {
         return {
-            ...this.getDomainUniforms(),
+            ONE: 1.0,
             uDevicePixelRatio: window.devicePixelRatio,
             zoomLevel: this.getContext().genomeSpy.getExpZoomLevel()
         };

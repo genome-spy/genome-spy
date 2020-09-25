@@ -1,10 +1,11 @@
 import { color as d3color } from "d3-color";
 import { format } from "d3-format";
-import { fastmap, isString } from "vega-util";
+import { fastmap, isString, accessor } from "vega-util";
 import { fp64ify } from "./includes/fp64-utils";
 import Interval from "../utils/interval";
 import { SHAPES } from "../marks/pointMark"; // Circular dependency, TODO: Fix
 import ArrayBuilder from "./arrayBuilder";
+import { ATTRIBUTE_PREFIX } from "../scale/glslScaleGenerator";
 
 /*
  * TODO: Optimize constant values: compile them dynamically into vertex shader
@@ -51,10 +52,10 @@ function createCachingColor2floatArray() {
 export class RectVertexBuilder {
     /**
      *
-     * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
+     * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
      * @param {Object} object
      * @param {number} [object.tesselationThreshold]
-     *     If the rect is narrower than the threshold, tesselate it into pieces
+     *     If the rect is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
      */
     constructor(
@@ -86,8 +87,15 @@ export class RectVertexBuilder {
 
         this.variableBuilder = ArrayBuilder.create(converters, variables);
 
-        this.updateX = this.variableBuilder.createUpdater("x", 2);
-        this.updateY = this.variableBuilder.createUpdater("y", 1);
+        this.updateX = this.variableBuilder.createUpdater(
+            ATTRIBUTE_PREFIX + "x",
+            1
+        );
+        this.updateY = this.variableBuilder.createUpdater(
+            ATTRIBUTE_PREFIX + "y",
+            1
+        );
+
         // TODO: Optimization: width/height could be constants when minWidth/minHeight are zero
         this.updateWidth = this.variableBuilder.createUpdater("width", 1);
         this.updateHeight = this.variableBuilder.createUpdater("height", 1);
@@ -108,15 +116,20 @@ export class RectVertexBuilder {
     addBatch(key, data) {
         const offset = this.variableBuilder.vertexCount;
 
-        const fpa = [0, 0]; // optimize fp64ify
-
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
             .encoders);
         const [lower, upper] = this.visibleRange;
 
+        /** @returns {function(any):number} */
+        const a = encoder => (encoder.constant ? encoder : encoder.accessor);
+        const xAccessor = a(e.x);
+        const x2Accessor = a(e.x2);
+        const yAccessor = a(e.y);
+        const y2Accessor = a(e.y2);
+
         for (const d of data) {
-            let x = e.x(d),
-                x2 = e.x2(d);
+            let x = xAccessor(d),
+                x2 = x2Accessor(d);
 
             if (x > x2) {
                 [x, x2] = [x2, x];
@@ -130,45 +143,46 @@ export class RectVertexBuilder {
             if (x < lower) x = lower;
             if (x2 > upper) x2 = upper;
 
-            let y = e.y(d),
-                y2 = e.y2(d);
+            let y = yAccessor(d),
+                y2 = y2Accessor(d);
 
             if (y > y2) {
                 [y, y2] = [y2, y];
             }
 
-            const width = x2 - x || Math.pow(0.1, 20); // A hack to allow minWidth for zero-height rects.
-            const height = y2 - y || Math.pow(0.1, 20); // TODO: Fix the hack
+            const width = x2 - x;
+            const height = y2 - y;
 
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
             this.variableBuilder.updateFromDatum(d);
 
             const squeeze = /** @type {string} */ (e.squeeze(d));
             if (squeeze && squeeze != "none") {
+                // TODO: Fix minWidth/minHeight. It's totally broken.
                 const c = this._squeeze(squeeze, x, x2, y, y2);
-                this.updateX(fp64ify(c.ax, fpa));
+                this.updateX(c.ax);
                 this.updateY(c.ay);
                 this.variableBuilder.pushAll();
                 this.variableBuilder.pushAll();
-                this.updateX(fp64ify(c.bx, fpa));
+                this.updateX(c.bx);
                 this.updateY(c.by);
                 this.variableBuilder.pushAll();
-                this.updateX(fp64ify(c.cx, fpa));
+                this.updateX(c.cx);
                 this.updateY(c.cy);
                 this.variableBuilder.pushAll();
                 this.variableBuilder.pushAll();
             } else {
-                this.updateX(fp64ify(x, fpa));
+                this.updateX(x);
                 this.updateWidth(-width);
                 this.updateY(y);
-                this.updateHeight(height);
+                this.updateHeight(-height);
                 this.variableBuilder.pushAll();
 
                 // Tesselate segments
-                const tileCount =
-                    width < Infinity
-                        ? Math.ceil(width / this.tesselationThreshold)
-                        : 1;
+                const tileCount = 1;
+                //    width < Infinity
+                //        ? Math.ceil(width / this.tesselationThreshold)
+                //        : 1;
                 for (let i = 0; i <= tileCount; i++) {
                     const frac = i / tileCount;
 
@@ -188,20 +202,20 @@ export class RectVertexBuilder {
                         ? -Infinity
                         : Infinity;
 
-                    this.updateX(fp64ify(tx, fpa));
+                    this.updateX(tx);
                     this.updateY(y);
-                    this.updateHeight(height);
+                    this.updateHeight(-height);
                     this.variableBuilder.pushAll();
                     this.updateY(y2);
-                    this.updateHeight(-height);
+                    this.updateHeight(height);
                     this.variableBuilder.pushAll();
                 }
 
                 // Duplicate the last vertex to produce a degenerate triangle between the segments
                 this.variableBuilder.updateFromDatum(d);
-                this.updateX(fp64ify(x2, fpa));
+                this.updateX(x2);
                 this.updateWidth(width);
-                this.updateHeight(-height);
+                this.updateHeight(height);
                 this.updateY(y2);
                 this.variableBuilder.pushAll();
             }
@@ -283,7 +297,7 @@ export class RectVertexBuilder {
 export class PointVertexBuilder {
     /**
      *
-     * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
+     * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
      * @param {number} [size] Number of points if known, uses TypedArray
      */
     constructor(encoders, size) {
@@ -291,12 +305,9 @@ export class PointVertexBuilder {
 
         const c2f = createCachingColor2floatArray();
 
-        const fpa = [0, 0]; // optimize fp64ify
-
         /** @type {Object.<string, import("./arraybuilder").Converter>} */
         const converters = {
-            x: { f: d => fp64ify(e.x(d), fpa), numComponents: 2 },
-            y: { f: e.y, numComponents: 1 },
+            //x: { f: d => fp64ify(e.x(d), fpa), numComponents: 2 },
             size: { f: e.size, numComponents: 1 },
             color: { f: d => c2f(e.color(d)), numComponents: 3 },
             opacity: { f: e.opacity, numComponents: 1 },
@@ -305,6 +316,16 @@ export class PointVertexBuilder {
             strokeWidth: { f: e.strokeWidth, numComponents: 1 },
             gradientStrength: { f: e.gradientStrength, numComponents: 1 }
         };
+
+        for (const channel of ["x", "y", "x2"]) {
+            if (e[channel] && !e[channel].constant) {
+                converters[channel] = {
+                    f: e[channel].accessor,
+                    numComponents: 1,
+                    raw: true
+                };
+            }
+        }
 
         const constants = Object.entries(encoders)
             .filter(e => e[1].constant)
@@ -372,15 +393,8 @@ export class ConnectionVertexBuilder {
         const c2f = createCachingColor2floatArray();
         const c2f2 = createCachingColor2floatArray();
 
-        const fpa = [0, 0]; // optimize fp64ify
-        const fpa2 = [0, 0]; // optimize fp64ify
-
         /** @type {Object.<string, import("./arraybuilder").Converter>} */
         this._converters = {
-            x: { f: d => fp64ify(e.x(d), fpa), numComponents: 2 },
-            x2: { f: d => fp64ify(e.x2(d), fpa2), numComponents: 2 },
-            y: { f: e.y, numComponents: 1 },
-            y2: { f: e.y2, numComponents: 1 },
             size: { f: e.size, numComponents: 1 },
             size2: { f: e.size2, numComponents: 1 },
             height: { f: e.height, numComponents: 1 },
@@ -388,6 +402,16 @@ export class ConnectionVertexBuilder {
             color2: { f: d => c2f2(e.color2(d)), numComponents: 3 },
             opacity: { f: e.opacity, numComponents: 1 }
         };
+
+        for (const channel of ["x", "y", "x2", "y2"]) {
+            if (e[channel] && !e[channel].constant) {
+                this._converters[channel] = {
+                    f: e[channel].accessor,
+                    numComponents: 1,
+                    raw: true
+                };
+            }
+        }
 
         const constants = Object.entries(encoders)
             .filter(e => e[1].constant)
@@ -476,15 +500,19 @@ export class TextVertexBuilder {
 
         /** @type {Object.<string, import("./arraybuilder").Converter>} */
         const converters = {
-            x: { f: d => fp64ify(e.x(d)), numComponents: 2 },
-            y: { f: e.y, numComponents: 1 },
             color: { f: d => color2floatArray(e.color(d)), numComponents: 3 },
             opacity: { f: e.opacity, numComponents: 1 },
             size: { f: e.size, numComponents: 1 }
         };
 
-        if (encoders.x2) {
-            converters.x2 = { f: d => fp64ify(e.x2(d)), numComponents: 2 };
+        for (const channel of ["x", "y", "x2"]) {
+            if (e[channel] && !e[channel].constant) {
+                converters[channel] = {
+                    f: e[channel].accessor,
+                    numComponents: 1,
+                    raw: true
+                };
+            }
         }
 
         /** @type {function(any):any} */

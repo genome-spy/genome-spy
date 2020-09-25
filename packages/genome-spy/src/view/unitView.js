@@ -7,7 +7,11 @@ import TextMark from "../marks/text";
 import View from "./view";
 import ContainerView from "./containerView";
 import Resolution from "./resolution";
-import { isSecondaryChannel, secondaryChannels } from "../encoder/encoder";
+import {
+    isSecondaryChannel,
+    secondaryChannels,
+    primaryChannel
+} from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 import { parseSizeDef } from "../utils/layout/flexLayout";
 
@@ -127,6 +131,8 @@ export default class UnitView extends View {
      * @param {string} channel
      */
     getResolution(channel) {
+        channel = primaryChannel(channel);
+
         /** @type {import("./view").default } */
         // eslint-disable-next-line consistent-this
         let view = this;
