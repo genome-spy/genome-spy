@@ -5,13 +5,16 @@
  */
 export default class Padding {
     /**
-     * @param {Record<Side, number>} paddings
+     * @param {number} top
+     * @param {number} right
+     * @param {number} bottom
+     * @param {number} left
      */
-    constructor(paddings) {
-        this.top = paddings.top || 0;
-        this.right = paddings.right || 0;
-        this.bottom = paddings.bottom || 0;
-        this.left = paddings.left || 0;
+    constructor(top, right, bottom, left) {
+        /** @readonly */ this.top = top || 0;
+        /** @readonly */ this.right = right || 0;
+        /** @readonly */ this.bottom = bottom || 0;
+        /** @readonly */ this.left = left || 0;
     }
 
     /**
@@ -28,8 +31,53 @@ export default class Padding {
         return this.top + this.bottom;
     }
 
-    clone() {
-        return new Padding(this);
+    /**
+     * @param {number} amount In pixels
+     */
+    expand(amount) {
+        if (amount <= 0) {
+            return this;
+        }
+
+        return new Padding(
+            this.top + amount,
+            this.right + amount,
+            this.bottom + amount,
+            this.left + amount
+        );
+    }
+
+    /**
+     *
+     * @param {any} config
+     */
+    static createFromConfig(config) {
+        if (typeof config == "number") {
+            return this.createUniformPadding(config);
+        } else if (config) {
+            return this.createFromRecord(config);
+        } else {
+            return zeroPadding;
+        }
+    }
+
+    /**
+     * @param {Record<Side, number>} paddings
+     */
+    static createFromRecord(paddings) {
+        return new Padding(
+            paddings.top,
+            paddings.right,
+            paddings.bottom,
+            paddings.left
+        );
+    }
+
+    /**
+     * Returns a zeroed padding.
+     */
+    static zero() {
+        return zeroPadding;
     }
 
     /**
@@ -37,11 +85,8 @@ export default class Padding {
      * @param {number} value
      */
     static createUniformPadding(value) {
-        return new Padding({
-            top: value,
-            right: value,
-            bottom: value,
-            left: value
-        });
+        return new Padding(value, value, value, value);
     }
 }
+
+const zeroPadding = Padding.createUniformPadding(0);

@@ -25,7 +25,7 @@ test("translate", () => {
 
 test("expand", () => {
     const r = new Rectangle(1, 2, 3, 4).expand(
-        new Padding({ top: 2, right: 3, bottom: 4, left: 5 })
+        Padding.createFromRecord({ top: 2, right: 3, bottom: 4, left: 5 })
     );
 
     expect(r.x).toEqual(-4);

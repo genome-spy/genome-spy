@@ -37,16 +37,19 @@ export default class FlexLayout {
      *
      * @param {I} item
      * @param {number} containerSize in pixels
+     * @param {number} spacing space between items in pixels
      * @returns {LocSize}
      */
-    getPixelCoords(item, containerSize) {
+    getPixelCoords(item, containerSize, spacing = 0) {
         let totalPx = 0;
         let totalGrow = 0;
+
         for (const child of this._container) {
             const size = this._itemSizeAccessor(child);
-            totalPx += z(size.px);
+            totalPx += z(size.px) + spacing;
             totalGrow += z(size.grow);
         }
+        totalPx -= spacing;
 
         const remainingSpace = Math.max(0, containerSize - totalPx);
 
@@ -61,7 +64,7 @@ export default class FlexLayout {
                 return { location: x, size: advance };
             }
 
-            x += advance;
+            x += advance + spacing;
         }
 
         throw new Error("Not a child!");
@@ -69,14 +72,16 @@ export default class FlexLayout {
 
     /**
      * Returns the minimum size (the sum of pixels sizes)
+     *
+     * @param {number} [spacing]
      */
-    getMinimumSize() {
+    getMinimumSize(spacing = 0) {
         let minimumSize = 0;
         for (const child of this._container) {
             const size = this._itemSizeAccessor(child);
-            minimumSize += z(size.px);
+            minimumSize += z(size.px) + spacing;
         }
-        return minimumSize;
+        return Math.max(0, minimumSize - spacing);
     }
 
     /**
@@ -100,8 +105,21 @@ export class FlexDimensions {
      * @param {SizeDef} height
      */
     constructor(width, height) {
+        // TODO: Consider making immutable
         this.width = width;
         this.height = height;
+    }
+
+    /**
+     * Adds padding to absolute (px) dimensions
+     *
+     * @param {import("./padding").default} padding
+     */
+    addPadding(padding) {
+        this.width.px = (this.width.px || 0) + padding.width;
+        this.height.px = (this.height.px || 0) + padding.height;
+
+        return this;
     }
 }
 

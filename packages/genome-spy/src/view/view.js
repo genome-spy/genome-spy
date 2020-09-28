@@ -1,6 +1,7 @@
 import { transformData } from "../data/dataMapper";
 import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
+import Padding from "../utils/layout/padding";
 
 /** Skip children */
 export const VISIT_SKIP = "VISIT_SKIP";
@@ -34,6 +35,10 @@ export default class View {
         this.resolutions = {};
     }
 
+    getPadding() {
+        return Padding.createFromConfig(this.spec.padding);
+    }
+
     /**
      * Returns the configured height if present. Otherwise a computed or default
      * height is returned.
@@ -46,7 +51,7 @@ export default class View {
         return new FlexDimensions(
             (this.spec.width && parseSizeDef(this.spec.width)) || { grow: 1 },
             (this.spec.height && parseSizeDef(this.spec.height)) || { grow: 1 }
-        );
+        ).addPadding(this.getPadding());
     }
 
     /**
@@ -58,7 +63,7 @@ export default class View {
         // TODO: Memoize
         if (this.parent) {
             // Parent computes the coordinates of their children
-            return this.parent.getChildCoords(this);
+            return this.parent.getChildCoords(this).shrink(this.getPadding());
         } else {
             // At root
             const canvasSize = this.context.glHelper.getLogicalCanvasSize();
@@ -74,7 +79,7 @@ export default class View {
                 0,
                 getComponent("width"),
                 getComponent("height")
-            );
+            ).shrink(this.getPadding());
         }
     }
 

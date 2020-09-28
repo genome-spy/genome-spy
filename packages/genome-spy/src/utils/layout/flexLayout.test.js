@@ -28,6 +28,26 @@ test("Absolute sizes", () => {
     });
 });
 
+test("Absolute sizes with spacing", () => {
+    const items = [10, 30, 20].map(x => ({ px: x }));
+    const containerSize = 100;
+    const spacing = 10;
+    const layout = new FlexLayout(items, x => x);
+
+    expect(layout.getPixelCoords(items[0], containerSize, spacing)).toEqual({
+        location: 0,
+        size: 10
+    });
+    expect(layout.getPixelCoords(items[1], containerSize, spacing)).toEqual({
+        location: 20,
+        size: 30
+    });
+    expect(layout.getPixelCoords(items[2], containerSize, spacing)).toEqual({
+        location: 60,
+        size: 20
+    });
+});
+
 test("Growing sizes", () => {
     const items = [10, 20, 70].map(x => ({ grow: x }));
     const containerSize = 200;
@@ -43,6 +63,26 @@ test("Growing sizes", () => {
     });
     expect(layout.getPixelCoords(items[2], containerSize)).toEqual({
         location: 60,
+        size: 140
+    });
+});
+
+test("Growing sizes with spacing", () => {
+    const items = [10, 20, 70].map(x => ({ grow: x }));
+    const containerSize = 220;
+    const spacing = 10;
+    const layout = new FlexLayout(items, x => x);
+
+    expect(layout.getPixelCoords(items[0], containerSize, spacing)).toEqual({
+        location: 0,
+        size: 20
+    });
+    expect(layout.getPixelCoords(items[1], containerSize, spacing)).toEqual({
+        location: 30,
+        size: 40
+    });
+    expect(layout.getPixelCoords(items[2], containerSize, spacing)).toEqual({
+        location: 80,
         size: 140
     });
 });
@@ -126,6 +166,8 @@ test("getMinimumSize", () => {
     const layout = new FlexLayout(items, x => x);
 
     expect(layout.getMinimumSize()).toEqual(300);
+
+    expect(layout.getMinimumSize(10)).toEqual(330);
 });
 
 test("isStretching", () => {

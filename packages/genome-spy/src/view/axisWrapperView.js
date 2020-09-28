@@ -143,7 +143,7 @@ export default class AxisWrapperView extends ContainerView {
             : 0;
     }
 
-    getPadding() {
+    getAxisExtents() {
         /** @type {Record<AxisOrient, number>} */
         // @ts-ignore
         const paddings = {};
@@ -157,7 +157,7 @@ export default class AxisWrapperView extends ContainerView {
 
     getSize() {
         const size = super.getSize();
-        const padding = this.getPadding();
+        const padding = this.getAxisExtents();
         size.width.px = (size.width.px || 0) + padding.width;
         size.height.px = (size.height.px || 0) + padding.height;
         return size;
@@ -167,7 +167,7 @@ export default class AxisWrapperView extends ContainerView {
      * @param { import("./layerView").default | import("./unitView").default} view
      */
     getChildCoords(view) {
-        const padding = this.getPadding();
+        const padding = this.getAxisExtents();
 
         if (view === this.child) {
             return this.getCoords().shrink(padding);

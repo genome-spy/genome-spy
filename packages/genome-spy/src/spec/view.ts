@@ -52,8 +52,12 @@ export type EncodingConfigs = Record<string, EncodingConfig>;
 
 export interface ViewSpecBase {
     name?: string;
+
     height?: SizeDef | number | "container";
     width?: SizeDef | number | "container";
+    /** Padding in pixels. Default: 0 */
+    padding?: number;
+
     data?: Data;
     transform?: TransformConfig[];
     encoding?: Record<string, EncodingConfig>;
@@ -120,15 +124,19 @@ export interface ImportSpec {
     import: ImportConfig;
 }
 
-export interface VConcatSpec extends ViewSpecBase {
+export interface ConcatBase extends ViewSpecBase {
+    spacing?: number;
+}
+
+export interface VConcatSpec extends ConcatBase {
     vconcat: (ViewSpec | ImportSpec)[];
 }
 
-export interface HConcatSpec extends ViewSpecBase {
+export interface HConcatSpec extends ConcatBase {
     hconcat: (ViewSpec | ImportSpec)[];
 }
 
-export interface ConcatSpec extends ViewSpecBase {
+export interface ConcatSpec extends ConcatBase {
     concat: (ViewSpec | ImportSpec)[];
 }
 

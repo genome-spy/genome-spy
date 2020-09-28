@@ -22,6 +22,12 @@ export default class ConcatView extends ContainerView {
     constructor(spec, context, parent, name) {
         super(spec, context, parent, name);
 
+        this.spec = spec;
+
+        if (!("spacing" in this.spec)) {
+            this.spec.spacing = 10; // TODO: Provide a global configuration (theme!)
+        }
+
         /** @type {import("../spec/view").GeometricDimension } */
         this.mainDimension = isHConcatSpec(spec) ? "width" : "height";
         /** @type {import("../spec/view").GeometricDimension } */
@@ -50,7 +56,7 @@ export default class ConcatView extends ContainerView {
         /** @type {SizeDef} */
         const mainSizeDef = (this.spec[this.mainDimension] &&
             parseSizeDef(this.spec[this.mainDimension])) || {
-            px: this.flexLayout.getMinimumSize()
+            px: this.flexLayout.getMinimumSize(this.spec.spacing || 0)
         };
 
         const secondarySizeDef = (this.spec[this.secondaryDimension] &&
@@ -69,11 +75,13 @@ export default class ConcatView extends ContainerView {
         // Should be overridden
         const flexCoords = this.flexLayout.getPixelCoords(
             view,
-            this.getCoords()[this.mainDimension]
+            this.getCoords()[this.mainDimension],
+            this.spec.spacing || 0
         );
         if (flexCoords) {
             return this.getCoords()
                 .translate(
+                    // @ts-ignore
                     ...(this.mainDimension == "height"
                         ? [0, flexCoords.location]
                         : [flexCoords.location, 0])

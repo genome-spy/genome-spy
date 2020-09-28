@@ -42,6 +42,10 @@ export async function embed(el, spec, opt = {}) {
             specObject.width = "container";
         }
 
+        if (!("padding" in specObject)) {
+            specObject.padding = 10;
+        }
+
         if (opt.bare) {
             // Not sure if clientHeight is a reliable indicator that the container has a non-zero height.
             if (!("height" in specObject) && element.clientHeight) {
