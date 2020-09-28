@@ -38,6 +38,10 @@ export async function embed(el, spec, opt = {}) {
 
         specObject.baseUrl = specObject.baseUrl || "";
 
+        if (!("width" in specObject)) {
+            specObject.width = "container";
+        }
+
         if (opt.bare) {
             // Not sure if clientHeight is a reliable indicator that the container has a non-zero height.
             if (!("height" in specObject) && element.clientHeight) {

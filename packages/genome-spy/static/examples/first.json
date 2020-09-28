@@ -10,7 +10,8 @@
     },
     "y": {
       "field": "sin",
-      "type": "quantitative"
+      "type": "quantitative",
+      "axis": {}
     }
   }
 }

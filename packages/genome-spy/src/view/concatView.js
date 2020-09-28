@@ -110,6 +110,7 @@ export default class ConcatView extends ContainerView {
      */
     getDefaultResolution(channel) {
         // TODO: Default to shared only when working with genomic coordinates
-        return channel == "x" ? "shared" : "independent";
+        //return channel == "x" ? "shared" : "independent";
+        return "independent";
     }
 }

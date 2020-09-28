@@ -168,9 +168,6 @@ export default class Mark {
             glsl
         );
 
-        console.log("---------------------------" + this.getType());
-        console.log(vertexShaderWithScales);
-
         this.programInfo = twgl.createProgramInfo(
             this.gl,
             [vertexShaderWithScales, fragmentShader].map(s =>

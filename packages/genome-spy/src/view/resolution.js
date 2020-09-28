@@ -220,9 +220,8 @@ export default class Resolution {
         }
 
         if (channel == "y" || channel == "x") {
-            // TODO: Switch to true when all Y-axis labels can be drawn fully visible
-            // However, nice should only be true when the domain has not been specified explicitly
-            props.nice = false;
+            // TODO: nice should only be true when the domain has not been specified explicitly
+            props.nice = !this.isDomainDefined();
         } else if (channel == "color") {
             // TODO: Named ranges
             props.scheme =

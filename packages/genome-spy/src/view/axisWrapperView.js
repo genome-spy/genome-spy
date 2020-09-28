@@ -4,6 +4,7 @@ import { getFlattenedViews, initializeData } from "./viewUtils";
 import LayerView from "./layerView";
 import UnitView from "./unitView";
 import Padding from "../utils/layout/padding";
+import { isNumber } from "vega-util";
 
 /**
  * TODO: Move these somewhere for common use
@@ -214,7 +215,7 @@ export default class AxisWrapperView extends ContainerView {
                     );
                 }
                 this.axisViews[axisProps.orient] = this._createAxisView(
-                    axisProps,
+                    { ...axisProps, title: r.getTitle() },
                     r
                 );
             }
@@ -229,7 +230,7 @@ export default class AxisWrapperView extends ContainerView {
                     if (!this.axisViews[slot]) {
                         axisProps.orient = /** @type {AxisOrient} */ (slot);
                         this.axisViews[slot] = this._createAxisView(
-                            axisProps,
+                            { ...axisProps, title: r.getTitle() },
                             r
                         );
                         // eslint-disable-next-line no-labels
@@ -248,12 +249,15 @@ export default class AxisWrapperView extends ContainerView {
      * @param {import("./resolution").default} resolution
      */
     _createAxisView(axisProps, resolution) {
+        // TODO: Compute extent
+        const fullAxisProps = { ...defaultAxisProps, ...axisProps };
+
         const tickGenerator = () => {
             try {
                 // getScale only works after data have been loaded.
                 const scale = resolution.getScale();
                 return generateTicks(
-                    axisProps,
+                    fullAxisProps,
                     scale,
                     // TODO: A method for getting view's content rectangle
                     this.getChildCoords(this.child)[
@@ -268,15 +272,45 @@ export default class AxisWrapperView extends ContainerView {
         };
 
         return new LayerView(
-            createAxis(
-                { ...defaultAxisProps, ...axisProps, extent: 35 }, // TODO: Compute extent
-                tickGenerator
-            ),
+            createAxis(fullAxisProps, tickGenerator),
             this.context,
             this,
             `axis_${axisProps.orient}`
         );
     }
+}
+
+/**
+ * @param {Axis} axisProps
+ */
+function getExtent(axisProps) {
+    const mainChannel = slot2channel(axisProps.orient);
+
+    /** @type {number} */
+    let extent = ((axisProps.ticks && axisProps.tickSize) || 0);
+
+    if (axisProps.labels) {
+        extent += axisProps.labelPadding;
+        if (mainChannel == "x") {
+            extent += axisProps.labelFontSize;
+        } else {
+            extent += 30; // TODO: Measure label lengths!
+        }
+    }
+    if (axisProps.title) {
+        if (mainChannel == "x") {
+            extent += axisProps.titlePadding + axisProps.titleFontSize;
+        } else {
+            console.log("y axis title is not yet supported!");
+        }
+    }
+
+    extent = Math.min(
+        axisProps.maxExtent || Infinity,
+        Math.max(axisProps.minExtent || 0, extent)
+    );
+
+    return extent;
 }
 
 // Based on: https://vega.github.io/vega-lite/docs/axis.html
@@ -285,18 +319,23 @@ const defaultAxisProps = {
     /** @type {number[] | string[] | boolean[]} */
     values: null,
 
-    minExtent: 30, // TODO
-    maxExtent: Infinity, // TODO
-    offset: 0,
+    minExtent: 30,
+    maxExtent: Infinity,
+    offset: 0, // TODO: Implement
 
     domain: true,
     domainWidth: 1,
     domainColor: "gray",
+    /** @type {number[]} */
+    domainDash: null,
+    domainDashOffset: 0,
 
     ticks: true,
     tickSize: 6,
     tickWidth: 1,
     tickColor: "gray",
+    /** @type {number[]} */
+    tickDash: null,
 
     // TODO: tickBand
 
@@ -317,6 +356,8 @@ const defaultAxisProps = {
     titleFont: "sans-serif",
     titleFontSize: 10,
     titlePadding: 5
+
+    // TODO: titleX, titleY, titleAngle, titleAlign, etc
 };
 
 /**
@@ -325,19 +366,27 @@ const defaultAxisProps = {
  * @param {number} axisLength Length of axis in pixels
  */
 function generateTicks(axisProps, scale, axisLength) {
-    /** @type {PositionalChannel} */
-    const mainChannel = slot2channel(axisProps.orient);
+    /**
+     * @param {number} edge0
+     * @param {number} edge1
+     * @param {number} x
+     */
+    const smoothstep = (edge0, edge1, x) => {
+        x = (x - edge0) / (edge1 - edge0);
+        x = Math.max(0, Math.min(1, x));
+        return x * x * (3 - 2 * x);
+    };
 
-    let count =
-        axisProps.tickCount || mainChannel == "y"
-            ? // Slightly decrease the tick density as the height increases
-              Math.round(
-                  axisLength /
-                      Math.exp(axisLength / 800) /
-                      axisProps.labelFontSize /
-                      1.7
-              )
-            : Math.round(axisLength / 80); // TODO: Make dynamic
+    /**
+     * Make ticks more dense in small plots
+     *
+     * @param {number} length
+     */
+    const tickSpacing = length => 25 + 60 * smoothstep(100, 700, length);
+
+    let count = isNumber(axisProps.tickCount)
+        ? axisProps.tickCount
+        : Math.round(axisLength / tickSpacing(axisLength));
 
     count = tickCount(scale, count, axisProps.tickMinStep);
 
@@ -351,121 +400,133 @@ function generateTicks(axisProps, scale, axisLength) {
 }
 
 /**
- * @param {AugmentedAxis} axisProps
- * @returns {import("../spec/view").UnitSpec}
- */
-function createDomain(axisProps) {
-    return {
-        name: "domain",
-        data: { values: [0] },
-        mark: {
-            type: "rule",
-            yOffset: axisProps.offset,
-            size: axisProps.domainWidth
-        },
-        encoding: {
-            color: { value: axisProps.domainColor },
-            y: { value: 1 }
-        }
-    };
-}
-
-/**
- * @param {AugmentedAxis} axisProps
- * @returns {LayerSpec}
- */
-function createTicksAndLabels(axisProps) {
-    const createLabels = () => ({
-        name: "labels",
-        mark: {
-            type: "text",
-            align: "center",
-            baseline: "top",
-            dy: axisProps.tickSize + axisProps.labelPadding
-        },
-        encoding: {
-            text: { field: "label", type: "quantitative" },
-            y: { value: 1 },
-            size: { value: axisProps.labelFontSize },
-            color: { value: axisProps.labelColor }
-        }
-    });
-
-    const createTicks = () => ({
-        name: "ticks",
-        mark: "rule",
-        encoding: {
-            y: { value: 1.0 },
-            y2: { value: 1.0 - axisProps.tickSize / axisProps.extent },
-            color: { value: axisProps.tickColor }
-        }
-    });
-
-    /** @type {LayerSpec} */
-    const spec = {
-        name: "ticks_and_labels",
-        encoding: {
-            x: { field: "value", type: "quantitative" }
-        },
-        layer: []
-    };
-
-    if (axisProps.ticks) {
-        spec.layer.push(createTicks());
-    }
-
-    if (axisProps.labels) {
-        spec.layer.push(createLabels());
-    }
-
-    return spec;
-}
-
-/**
- * @param {AugmentedAxis} axisProps
- * @returns {import("../spec/view").UnitSpec}
- */
-function createTitle(axisProps) {
-    return {
-        name: "title",
-        data: { values: [0] },
-        mark: {
-            type: "text",
-            align: "center",
-            dy: -2
-        },
-        encoding: {
-            text: { value: axisProps.title },
-            color: { value: axisProps.titleColor },
-            x: { value: 0.5 },
-            y: { value: 0 }
-        }
-    };
-}
-
-/**
- * @param {AugmentedAxis} axisProps
+ * @param {Axis} axisProps
  * @param {import("../spec/data").DynamicDataset} tickProvider
  * @returns {LayerSpec}
  */
 export function createAxis(axisProps, tickProvider) {
     // TODO: Ensure that no channels except the positional ones are shared
 
+    const ap = { ...axisProps, extent: getExtent(axisProps) };
+
+    const main = slot2channel(ap.orient);
+    const secondary = getPerpendicularChannel(main);
+
+    const offsetDirection =
+        ap.orient == "bottom" || ap.orient == "right" ? 1 : -1;
+
+    const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
+
+    const createDomain = () => ({
+        name: "domain",
+        data: { values: [0] },
+        mark: {
+            type: "rule",
+            yOffset: ap.offset,
+            strokeDash: ap.domainDash
+        },
+        encoding: {
+            color: { value: ap.domainColor },
+            [secondary]: { value: anchor },
+            size: { value: ap.domainWidth }
+        }
+    });
+
+    const createLabels = () => ({
+        name: "labels",
+        mark: {
+            type: "text",
+            align:
+                main == "x" ? "center" : ap.orient == "left" ? "right" : "left",
+            baseline:
+                main == "y"
+                    ? "middle"
+                    : ap.orient == "bottom"
+                    ? "top"
+                    : "alphabetic",
+            ["d" + secondary]: (ap.tickSize + ap.labelPadding) * offsetDirection
+        },
+        encoding: {
+            text: { field: "label", type: "quantitative" },
+            [secondary]: { value: anchor },
+            size: { value: ap.labelFontSize },
+            color: { value: ap.labelColor }
+        }
+    });
+
+    const createTicks = () => ({
+        name: "ticks",
+        mark: {
+            type: "rule",
+            strokeDash: ap.tickDash
+        },
+        encoding: {
+            [secondary]: { value: anchor },
+            [secondary + "2"]: {
+                value: anchor - (ap.tickSize / ap.extent) * (anchor ? 1 : -1)
+            },
+            color: { value: ap.tickColor },
+            size: { value: ap.tickWidth }
+        }
+    });
+
+    const createTitle = () => ({
+        name: "title",
+        data: { values: [0] },
+        mark: {
+            type: "text",
+            align: "center",
+            baseline: ap.orient == "bottom" ? "bottom" : "top",
+            dy: -2 * offsetDirection // Not necessary after clipping can be disabled
+        },
+        encoding: {
+            text: { value: ap.title },
+            color: { value: ap.titleColor },
+            [main]: { value: 0.5 },
+            [secondary]: { value: 1 - anchor }
+        }
+    });
+
+    const createTicksAndLabels = () => {
+        /** @type {LayerSpec} */
+        const spec = {
+            name: "ticks_and_labels",
+            encoding: {
+                [main]: { field: "value", type: "quantitative" }
+            },
+            layer: []
+        };
+
+        if (ap.ticks) {
+            spec.layer.push(createTicks());
+        }
+
+        if (ap.labels) {
+            spec.layer.push(createLabels());
+        }
+
+        return spec;
+    };
+
     /** @type {LayerSpec} */
     const axisSpec = {
-        height: axisProps.extent,
+        [CHANNEL_DIMENSIONS[getPerpendicularChannel(slot2channel(ap.orient))]]:
+            ap.extent,
         data: { dynamicSource: tickProvider },
         layer: []
     };
 
-    if (axisProps.domain) {
-        axisSpec.layer.push(createDomain(axisProps));
+    if (ap.domain) {
+        axisSpec.layer.push(createDomain());
     }
 
-    axisSpec.layer.push(createTicksAndLabels(axisProps));
+    if (ap.ticks || ap.labels) {
+        axisSpec.layer.push(createTicksAndLabels());
+    }
 
-    if (axisProps.title) {
-        axisSpec.layer.push(createTitle(axisProps));
+    if (ap.title && main == "x") {
+        // TODO: Implement rotated text to support "y" axis
+        axisSpec.layer.push(createTitle());
     }
 
     return axisSpec;

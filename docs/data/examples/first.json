@@ -1,10 +1,10 @@
 {
-    "data": { "url": "sincos.csv" },
+  "data": { "url": "sincos.csv" },
 
-    "mark": "point",
+  "mark": "point",
 
-    "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "sin", "type": "quantitative" }
-    }
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
+  }
 }

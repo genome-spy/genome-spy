@@ -316,16 +316,13 @@ export default class PointMark extends Mark {
 }
 
 /**
- * https://www.wikiwand.com/en/Smoothstep
- *
  * @param {number} edge0
  * @param {number} edge1
  * @param {number} x
  */
 function smoothstep(edge0, edge1, x) {
-    // Scale, bias and saturate x to 0..1 range
-    x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
-    // Evaluate polynomial
+    x = (x - edge0) / (edge1 - edge0);
+    x = Math.max(0, Math.min(1, x));
     return x * x * (3 - 2 * x);
 }
 
