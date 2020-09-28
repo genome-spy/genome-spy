@@ -118,10 +118,12 @@ export default class View {
     }
 
     /**
+     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
+     *      selectively breaking the inheritance.
      * @return {Object.<string, EncodingConfig>}
      */
-    getEncoding() {
-        const pe = this.parent ? this.parent.getEncoding() : {};
+    getEncoding(whoIsAsking) {
+        const pe = this.parent ? this.parent.getEncoding(this) : {};
         const te = this.spec.encoding || {};
 
         return {

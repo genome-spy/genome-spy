@@ -108,6 +108,19 @@ export default class AxisWrapperView extends ContainerView {
     }
 
     /**
+     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
+     *      selectively breaking the inheritance.
+     */
+    getEncoding(whoIsAsking) {
+        if (Object.values(this.axisViews).find(view => whoIsAsking === view)) {
+            // Prevent the axis views from inheriting any encodings
+            return {};
+        }
+
+        return super.getEncoding();
+    }
+
+    /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
@@ -139,7 +152,7 @@ export default class AxisWrapperView extends ContainerView {
         ))) {
             paddings[slot] = this._getAxisSize(slot);
         }
-        return new Padding(paddings);
+        return Padding.createFromRecord(paddings);
     }
 
     getSize() {

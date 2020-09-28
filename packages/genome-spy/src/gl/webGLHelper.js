@@ -77,9 +77,9 @@ export default class WebGLHelper {
         const process = (shaderCode, includes) =>
             [
                 PRECISION,
+                this._shaderDefines || "",
                 ...(extraHeaders || []),
                 ...includes,
-                this._shaderDefines || "",
                 shaderCode
             ].join("\n\n");
 
