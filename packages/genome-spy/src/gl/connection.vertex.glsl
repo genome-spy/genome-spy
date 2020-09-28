@@ -1,13 +1,5 @@
-precision mediump float;
-
-uniform vec2 uViewportSize;
-
-@import ./includes/scales;
-@import ./includes/sampleTransition;
-
 #pragma SCALES_HERE
 
-uniform lowp float uDevicePixelRatio;
 uniform float zoomLevel; // TODO: u prefix
 
 uniform float uBandwidth;

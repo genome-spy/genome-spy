@@ -7,11 +7,14 @@ import { RectVertexBuilder } from "../gl/dataToVertices";
 import Mark from "./mark";
 
 const defaultMarkProperties = {
+    clip: true,
+
+    xOffset: 0.0,
+    yOffset: 0.0,
+
     minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
     minHeight: 0.5,
     minOpacity: 0.0,
-    xOffset: 0.0,
-    yOffset: 0.0,
 
     tesselationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
     tesselationTiles: 35

@@ -10,6 +10,8 @@ import fontMetadata from "../fonts/Lato-Regular.json";
 import Mark from "./mark";
 
 const defaultMarkProperties = {
+    clip: true,
+
     align: "left",
     baseline: "alphabetic",
     dx: 0,

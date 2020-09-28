@@ -1,9 +1,5 @@
-precision mediump float;
-
 const lowp vec3 white = vec3(1.0);
 const lowp vec3 black = vec3(0.0);
-
-uniform lowp float uDevicePixelRatio;
 
 varying lowp vec4 vColor;
 varying float vSize;
@@ -122,12 +118,12 @@ void main() {
     // Stuble radial gradient
     lowp vec3 fillColor = mix(vColor.rgb, white, -dist * vGradientStrength);
 
-    // Could use fwidth here, but GL_OES_standard_derivatives is not always available
     float pixelWidth = 2.0 / vSize;
 
     if (vStrokeWidth > 0.0) {
         float strokeWidth = vStrokeWidth * uDevicePixelRatio * pixelWidth; // TODO: Move computation to vertex shader
 
+        // TODO: Replace smoothsteps with clamp
         lowp float strokeFraction = smoothstep(-strokeWidth, -strokeWidth - pixelWidth, dist);
         lowp float alpha = smoothstep(0., -pixelWidth, dist) * vColor.a;
 

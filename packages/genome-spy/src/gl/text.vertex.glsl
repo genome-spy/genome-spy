@@ -1,13 +1,5 @@
-precision mediump float;
-
-uniform vec2 uViewportSize;
-
-@import ./includes/scales;
-@import ./includes/sampleTransition;
-
 #pragma SCALES_HERE
 
-uniform float uDevicePixelRatio;
 uniform float uSdfNumerator;
 
 uniform vec2 uD; // dx & dy

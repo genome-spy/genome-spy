@@ -422,7 +422,7 @@ export function createAxis(axisProps, tickProvider) {
         data: { values: [0] },
         mark: {
             type: "rule",
-            yOffset: ap.offset,
+            clip: false,
             strokeDash: ap.domainDash
         },
         encoding: {
@@ -436,6 +436,7 @@ export function createAxis(axisProps, tickProvider) {
         name: "labels",
         mark: {
             type: "text",
+            clip: false,
             align:
                 main == "x" ? "center" : ap.orient == "left" ? "right" : "left",
             baseline:
@@ -458,6 +459,7 @@ export function createAxis(axisProps, tickProvider) {
         name: "ticks",
         mark: {
             type: "rule",
+            clip: false,
             strokeDash: ap.tickDash
         },
         encoding: {
@@ -475,6 +477,7 @@ export function createAxis(axisProps, tickProvider) {
         data: { values: [0] },
         mark: {
             type: "text",
+            clip: false,
             align: "center",
             baseline: ap.orient == "bottom" ? "bottom" : "top",
             dy: -2 * offsetDirection // Not necessary after clipping can be disabled

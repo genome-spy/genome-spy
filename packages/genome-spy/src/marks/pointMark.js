@@ -9,6 +9,8 @@ import Mark from "./mark";
 import ReservoirSampler from "../utils/reservoirSampler";
 
 const defaultMarkProperties = {
+    clip: true,
+
     xOffset: 0,
     yOffset: 0,
 

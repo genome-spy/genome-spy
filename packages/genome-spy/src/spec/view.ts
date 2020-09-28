@@ -16,6 +16,8 @@ export type GeometricDimension = "width" | "height";
 
 export interface MarkConfig {
     type: string;
+    /** Whether the mark should be clipped to the UnitView's rectangle.  */
+    clip?: boolean;
     align?: string;
     baseline?: string;
     dx?: number;

@@ -1,5 +1,8 @@
 import * as twgl from "twgl.js";
 import { getPlatformShaderDefines } from "./includes/fp64-utils";
+import GLSL_COMMON from "./includes/common.glsl";
+import GLSL_SCALES from "./includes/scales.glsl";
+import GLSL_SAMPLE_TRANSITION from "./includes/sampleTransition.glsl";
 
 export default class WebGLHelper {
     /**
@@ -51,15 +54,39 @@ export default class WebGLHelper {
     }
 
     /**
-     * @param {string} shaderCode
+     * @param {string} vertexCode
+     * @param {string} fragmentCode
      * @param {string[]} [extraHeaders]
      */
-    processShader(shaderCode, extraHeaders) {
+    processShader(vertexCode, fragmentCode, extraHeaders) {
+        const vertexIncludes = [
+            GLSL_COMMON,
+            GLSL_SCALES,
+            GLSL_SAMPLE_TRANSITION
+            // TODO: fp64 if required
+        ];
+
+        const fragmentIncludes = [GLSL_COMMON];
+
+        const PRECISION = "precision mediump float;";
+
+        /**
+         * @param {string} shaderCode
+         * @param {string[]} includes
+         */
+        const process = (shaderCode, includes) =>
+            [
+                PRECISION,
+                ...(extraHeaders || []),
+                ...includes,
+                this._shaderDefines || "",
+                shaderCode
+            ].join("\n\n");
+
         return [
-            ...(extraHeaders || []),
-            this._shaderDefines || "",
-            shaderCode
-        ].join("\n\n");
+            process(vertexCode, vertexIncludes),
+            process(fragmentCode, fragmentIncludes)
+        ];
     }
 
     adjustGl() {

@@ -1,12 +1,6 @@
 precision mediump float;
 
-uniform vec2 uViewportSize;
-
-@import ./includes/scales;
-@import ./includes/sampleTransition;
-
 #pragma SCALES_HERE
-
 
 attribute lowp vec3 color;
 attribute lowp float opacity;
@@ -16,7 +10,6 @@ attribute lowp float strokeWidth;
 attribute float semanticScore;
 attribute lowp float gradientStrength;
 
-uniform lowp float uDevicePixelRatio;
 
 /** Maximum size of the largest point as the fraction of the height of the (faceted) view */
 uniform lowp float uMaxRelativePointDiameter;

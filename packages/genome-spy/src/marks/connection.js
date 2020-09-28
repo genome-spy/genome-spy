@@ -6,6 +6,8 @@ import { ConnectionVertexBuilder } from "../gl/dataToVertices";
 import Mark from "./mark";
 
 const defaultMarkProperties = {
+    clip: true,
+
     segments: 101 // Performance is affected more by the fill rate, i.e. number of pixels
 };
 

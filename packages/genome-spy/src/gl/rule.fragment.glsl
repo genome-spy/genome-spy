@@ -1,9 +1,6 @@
-precision mediump float;
-
 uniform sampler2D uDashTexture;
 uniform float uDashTextureSize;
 uniform float uStrokeDashOffset;
-uniform float uDevicePixelRatio;
 
 varying vec4 vColor;
 varying float vPixelPos;

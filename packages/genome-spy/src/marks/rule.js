@@ -5,6 +5,8 @@ import FRAGMENT_SHADER from "../gl/rule.fragment.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices";
 
 const defaultMarkProperties = {
+    clip: true,
+
     minLength: 0.0,
     /** @type {number[]} */
     strokeDash: null,

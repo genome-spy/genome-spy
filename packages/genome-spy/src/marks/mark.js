@@ -170,8 +170,10 @@ export default class Mark {
 
         this.programInfo = twgl.createProgramInfo(
             this.gl,
-            [vertexShaderWithScales, fragmentShader].map(s =>
-                this.glHelper.processShader(s, extraHeaders)
+            this.glHelper.processShader(
+                vertexShaderWithScales,
+                fragmentShader,
+                extraHeaders
             )
         );
     }
@@ -274,6 +276,8 @@ export default class Mark {
     /**
      * Sets viewport, clipping, and uniforms related to scaling and translation
      *
+     * TODO: Viewport should be handled at the view level
+     *
      * @param {twgl.ProgramInfo} programInfo
      */
     setViewport(programInfo) {
@@ -283,8 +287,6 @@ export default class Mark {
         const coords = this.unitView.getCoords();
         const logicalSize = this.glHelper.getLogicalCanvasSize();
 
-        const clip = true;
-
         const physicalGlCoords = [
             coords.x,
             logicalSize.height - coords.y2,
@@ -293,14 +295,40 @@ export default class Mark {
         ].map(x => x * dpr);
 
         // @ts-ignore
-        gl.viewport(...physicalGlCoords);
 
-        if (clip) {
+        if (this.properties.clip) {
+            // @ts-ignore
+            gl.viewport(...physicalGlCoords);
             // @ts-ignore
             gl.scissor(...physicalGlCoords);
             gl.enable(gl.SCISSOR_TEST);
+
+            twgl.setUniforms(programInfo, {
+                uViewOffset: [0, 0],
+                uViewScale: [1, 1]
+            });
         } else {
+            // Viewport comprises of the full canvas
+            gl.viewport(
+                0,
+                0,
+                logicalSize.width * dpr,
+                logicalSize.height * dpr
+            );
             gl.disable(gl.SCISSOR_TEST);
+
+            // Offset and scale all drawing to the view rectangle
+            twgl.setUniforms(programInfo, {
+                uViewOffset: [
+                    coords.x / logicalSize.width,
+                    (logicalSize.height - coords.y - coords.height) /
+                        logicalSize.height
+                ],
+                uViewScale: [
+                    coords.width / logicalSize.width,
+                    coords.height / logicalSize.height
+                ]
+            });
         }
 
         twgl.setUniforms(programInfo, {
