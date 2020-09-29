@@ -362,7 +362,7 @@ export default class GenomeSpy {
 
     _prepareContainer() {
         this._glHelper = new WebGLHelper(this.container);
-        this._glHelper.addEventListener("repaint", () => {
+        this._glHelper.addEventListener("render", () => {
             this.renderAll();
         });
 
@@ -518,12 +518,9 @@ export default class GenomeSpy {
             );
 
             unitViews.forEach(view => view.mark.initializeEncoders());
+            unitViews.forEach(view => view.mark.updateGraphicsData());
 
-            const graphicsDataUpdated = Promise.all(
-                unitViews.map(view => view.mark.updateGraphicsData())
-            );
-
-            await Promise.all([graphicsInitialized, graphicsDataUpdated]);
+            await graphicsInitialized;
 
             /*
             // TODO: Support other scales too
@@ -540,7 +537,7 @@ export default class GenomeSpy {
             // Initiate layout calculation and render the tracks
             //this._resized();
 
-            this.renderAll();
+            this._glHelper.render();
 
             return this;
         } catch (reason) {

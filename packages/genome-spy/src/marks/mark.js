@@ -126,7 +126,7 @@ export default class Mark {
     /**
      * Update WebGL buffers from the data
      */
-    async updateGraphicsData() {
+    updateGraphicsData() {
         // override
     }
 

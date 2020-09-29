@@ -163,7 +163,7 @@ export default class RectMark extends Mark {
         this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
-    async updateGraphicsData() {
+    updateGraphicsData() {
         this.deleteGraphicsData();
 
         const xDomain = this.getXDomain();

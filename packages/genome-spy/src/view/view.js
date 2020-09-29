@@ -2,6 +2,7 @@ import { transformData } from "../data/dataMapper";
 import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
+import { DataGroup } from "../data/group";
 
 /** Skip children */
 export const VISIT_SKIP = "VISIT_SKIP";
@@ -106,8 +107,11 @@ export default class View {
      * Visits child views in depth-first order. Terminates the search and returns
      * the value if the visitor returns a defined value.
      *
-     * @param {(function(View):("VISIT_SKIP"|"VISIT_STOP"|void)) & { afterChildren?: function}} visitor
+     * @param {(function(View):(VISIT_SKIP|VISIT_STOP|void)) & { afterChildren?: function}} visitor
      * @returns {any}
+     *
+     * @typedef {"VISIT_SKIP"} VISIT_SKIP Don't visit children of the current node
+     * @typedef {"VISIT_STOP"} VISIT_STOP Stop further visits
      */
     visit(visitor) {
         try {
@@ -177,6 +181,32 @@ export default class View {
         }
 
         throw new Error(`No data are available!`);
+    }
+
+    /**
+     * Updates data of this node synchronously, propagates it to children
+     * and updates all marks.
+     *
+     * Currently used for updating axes. A more robust solution is needed
+     * for true dynamic data loading.
+     *
+     * @param {any[]} data
+     */
+    updateData(data) {
+        this.data = new DataGroup("immediate", data);
+
+        this.visit(node => {
+            if (node.spec.data && node !== this) {
+                return VISIT_SKIP;
+            }
+            node.transformData();
+            if (node.mark) {
+                // instanceof complains about circular reference >:(
+                node.mark.initializeData();
+                node.mark.updateGraphicsData();
+            }
+            // TODO: Update cached domain extents
+        });
     }
 
     async loadData() {

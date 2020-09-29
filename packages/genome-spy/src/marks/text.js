@@ -128,7 +128,7 @@ export default class TextMark extends Mark {
         return texturePromise;
     }
 
-    async updateGraphicsData() {
+    updateGraphicsData() {
         this.deleteGraphicsData();
 
         const gl = this.gl;

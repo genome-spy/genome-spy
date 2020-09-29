@@ -119,7 +119,7 @@ export default class PointMark extends Mark {
         this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
-    async updateGraphicsData() {
+    updateGraphicsData() {
         this.deleteGraphicsData();
 
         const vertexCount =

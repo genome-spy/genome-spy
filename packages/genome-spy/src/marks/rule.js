@@ -125,7 +125,7 @@ export default class RuleMark extends Mark {
         this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
-    async updateGraphicsData() {
+    updateGraphicsData() {
         this.deleteGraphicsData();
 
         const builder = new RuleVertexBuilder(this.encoders, {});

@@ -68,16 +68,6 @@ export default class UnitView extends View {
         } else {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
-
-        /**
-         * @type {Record<string, LayerView>}
-         */
-        this._axisViews = {
-            top: undefined,
-            right: undefined,
-            bottom: undefined,
-            left: undefined
-        };
     }
 
     getMarkType() {
@@ -193,10 +183,6 @@ export default class UnitView extends View {
         if (specDomain) {
             return createDomain(type, specDomain);
         }
-
-        // Note: encoding should be always present. Rules are an exception, though.
-        // A horizontal rule has implicit encoding for x channel and an infinite domain.
-        // The same applies to vertical rules. It's hacky and may need some fixing.
 
         let domain = this._extractDomain(channel, type);
         if (!domain) {

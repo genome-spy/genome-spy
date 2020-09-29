@@ -1,8 +1,7 @@
 import { validTicks, tickValues, tickFormat, tickCount } from "../scale/ticks";
 import ContainerView from "./containerView";
-import { getFlattenedViews, initializeData } from "./viewUtils";
+import { getFlattenedViews } from "./viewUtils";
 import LayerView from "./layerView";
-import UnitView from "./unitView";
 import Padding from "../utils/layout/padding";
 import { isNumber } from "vega-util";
 
@@ -79,6 +78,14 @@ export default class AxisWrapperView extends ContainerView {
             bottom: undefined,
             left: undefined
         };
+
+        /** @type {Record<AxisOrient, Axis>} */
+        this.axisProps = {
+            top: undefined,
+            right: undefined,
+            bottom: undefined,
+            left: undefined
+        };
     }
 
     /**
@@ -91,20 +98,10 @@ export default class AxisWrapperView extends ContainerView {
             this._initializeAxes(channel, slots)
         );
 
-        // Hack
-        this.context.glHelper.addEventListener("repaint", () => {
-            for (const view of Object.values(this.axisViews)) {
-                if (view) {
-                    initializeData(view).then(() => {
-                        view.visit(view => {
-                            if (view instanceof UnitView) {
-                                view.mark.updateGraphicsData();
-                            }
-                        });
-                    });
-                }
-            }
-        });
+        // TODO: Minor optimization: only call on resize/layout or scale adjustment
+        this.context.glHelper.addEventListener("beforerender", () =>
+            this._updateAxisData()
+        );
     }
 
     /**
@@ -130,6 +127,26 @@ export default class AxisWrapperView extends ContainerView {
             }
         }
         yield this.child;
+    }
+
+    _updateAxisData() {
+        for (const [slot, view] of Object.entries(this.axisViews)) {
+            if (view) {
+                const channel = slot2channel(/** @type {AxisOrient} */ (slot));
+                const scale = this.getResolution(channel).getScale();
+                const oldTicks = (view.data && [...view.data.flatData()]) || [];
+                const newTicks = generateTicks(
+                    this.axisProps[slot],
+                    scale,
+                    this.getChildCoords(view)[CHANNEL_DIMENSIONS[channel]],
+                    oldTicks
+                );
+
+                if (newTicks !== oldTicks) {
+                    view.updateData(newTicks);
+                }
+            }
+        }
     }
 
     /**
@@ -227,10 +244,10 @@ export default class AxisWrapperView extends ContainerView {
                         `The slot for ${axisProps.orient} axis is already reserved!`
                     );
                 }
-                this.axisViews[axisProps.orient] = this._createAxisView(
-                    { ...axisProps, title: r.getTitle() },
-                    r
-                );
+                this.axisViews[axisProps.orient] = this._createAxisView({
+                    ...axisProps,
+                    title: r.getTitle()
+                });
             }
         }
 
@@ -242,10 +259,10 @@ export default class AxisWrapperView extends ContainerView {
                 for (const slot of slots) {
                     if (!this.axisViews[slot]) {
                         axisProps.orient = /** @type {AxisOrient} */ (slot);
-                        this.axisViews[slot] = this._createAxisView(
-                            { ...axisProps, title: r.getTitle() },
-                            r
-                        );
+                        this.axisViews[slot] = this._createAxisView({
+                            ...axisProps,
+                            title: r.getTitle()
+                        });
                         // eslint-disable-next-line no-labels
                         continue resolutionLoop;
                     }
@@ -259,33 +276,16 @@ export default class AxisWrapperView extends ContainerView {
 
     /**
      * @param {Axis} axisProps
-     * @param {import("./resolution").default} resolution
      */
-    _createAxisView(axisProps, resolution) {
+    _createAxisView(axisProps) {
         // TODO: Compute extent
         const fullAxisProps = { ...defaultAxisProps, ...axisProps };
 
-        const tickGenerator = () => {
-            try {
-                // getScale only works after data have been loaded.
-                const scale = resolution.getScale();
-                return generateTicks(
-                    fullAxisProps,
-                    scale,
-                    // TODO: A method for getting view's content rectangle
-                    this.getChildCoords(this.child)[
-                        CHANNEL_DIMENSIONS[slot2channel(axisProps.orient)]
-                    ]
-                );
-            } catch (e) {
-                // Scale not available
-                // TODO: A cleaner solution, something like "isDataAndScaleReady".
-            }
-            return [];
-        };
+        // Stored for tick generator
+        this.axisProps[axisProps.orient] = fullAxisProps;
 
         return new LayerView(
-            createAxis(fullAxisProps, tickGenerator),
+            createAxis(fullAxisProps),
             this.context,
             this,
             `axis_${axisProps.orient}`
@@ -377,19 +377,14 @@ const defaultAxisProps = {
  * @param {Axis} axisProps
  * @param {any} scale
  * @param {number} axisLength Length of axis in pixels
+ * @param {TickDatum[]} [oldTicks] Reuse the old data if the tick values equal
+ * @returns {TickDatum[]}
+ *
+ * @typedef {object} TickDatum
+ * @prop {number} value
+ * @prop {string} label
  */
-function generateTicks(axisProps, scale, axisLength) {
-    /**
-     * @param {number} edge0
-     * @param {number} edge1
-     * @param {number} x
-     */
-    const smoothstep = (edge0, edge1, x) => {
-        x = (x - edge0) / (edge1 - edge0);
-        x = Math.max(0, Math.min(1, x));
-        return x * x * (3 - 2 * x);
-    };
-
+function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
     /**
      * Make ticks more dense in small plots
      *
@@ -407,17 +402,28 @@ function generateTicks(axisProps, scale, axisLength) {
         ? validTicks(scale, axisProps.values, count)
         : tickValues(scale, count);
 
-    const format = tickFormat(scale, count, axisProps.format);
+    let equal = true;
+    for (let i = 0; i < values.length; i++) {
+        if (!oldTicks[i] || values[i] !== oldTicks[i].value) {
+            equal = false;
+            break;
+        }
+    }
 
-    return values.map(x => ({ value: x, label: format(x) }));
+    if (equal) {
+        return oldTicks;
+    } else {
+        const format = tickFormat(scale, count, axisProps.format);
+
+        return values.map(x => ({ value: x, label: format(x) }));
+    }
 }
 
 /**
  * @param {Axis} axisProps
- * @param {import("../spec/data").DynamicDataset} tickProvider
  * @returns {LayerSpec}
  */
-export function createAxis(axisProps, tickProvider) {
+export function createAxis(axisProps) {
     // TODO: Ensure that no channels except the positional ones are shared
 
     const ap = { ...axisProps, extent: getExtent(axisProps) };
@@ -528,7 +534,7 @@ export function createAxis(axisProps, tickProvider) {
     const axisSpec = {
         [CHANNEL_DIMENSIONS[getPerpendicularChannel(slot2channel(ap.orient))]]:
             ap.extent,
-        data: { dynamicSource: tickProvider },
+        data: { values: [] },
         layer: []
     };
 
@@ -546,4 +552,15 @@ export function createAxis(axisProps, tickProvider) {
     }
 
     return axisSpec;
+}
+
+/**
+ * @param {number} edge0
+ * @param {number} edge1
+ * @param {number} x
+ */
+function smoothstep(edge0, edge1, x) {
+    x = (x - edge0) / (edge1 - edge0);
+    x = Math.max(0, Math.min(1, x));
+    return x * x * (3 - 2 * x);
 }
