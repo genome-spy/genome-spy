@@ -362,6 +362,12 @@ export default class GenomeSpy {
 
     _prepareContainer() {
         this._glHelper = new WebGLHelper(this.container);
+        this._glHelper.addEventListener("beforerender", () => {
+            // TODO: implement broadcast method
+            this.viewRoot.visit(view =>
+                view.handleBroadcast({ type: "LAYOUT" })
+            );
+        });
         this._glHelper.addEventListener("render", () => {
             this.renderAll();
         });

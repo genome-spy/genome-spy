@@ -47,7 +47,6 @@ export default class View {
      * @returns {FlexDimensions}
      */
     getSize() {
-        // TODO: Memoize
         // TODO: reconsider the default
         return new FlexDimensions(
             (this.spec.width && parseSizeDef(this.spec.width)) || { grow: 1 },
@@ -61,10 +60,15 @@ export default class View {
      * @returns {import("../utils/layout/rectangle").default}
      */
     getCoords() {
-        // TODO: Memoize
+        if (this._coords) {
+            return this._coords;
+        }
+
         if (this.parent) {
             // Parent computes the coordinates of their children
-            return this.parent.getChildCoords(this).shrink(this.getPadding());
+            this._coords = this.parent
+                .getChildCoords(this)
+                .shrink(this.getPadding());
         } else {
             // At root
             const canvasSize = this.context.glHelper.getLogicalCanvasSize();
@@ -75,13 +79,15 @@ export default class View {
                     ? canvasSize[c]
                     : this.getSize()[c].px) || canvasSize[c];
 
-            return new Rectangle(
+            this._coords = new Rectangle(
                 0,
                 0,
                 getComponent("width"),
                 getComponent("height")
             ).shrink(this.getPadding());
         }
+
+        return this._coords;
     }
 
     getPathString() {
@@ -101,6 +107,26 @@ export default class View {
             view = view.parent;
         } while (view);
         return views;
+    }
+
+    /**
+     * Handles a broadcast message that is intended for the whole view hierarchy.
+     *
+     * @param {BroadcastMessage} message
+     *
+     * @typedef {object} BroadcastMessage
+     * @prop {string} type Broadcast type
+     * @prop {any} [payload] Anything
+     */
+    handleBroadcast(message) {
+        // TODO: message types should be constants
+        switch (message.type) {
+            case "LAYOUT":
+                this._coords = undefined;
+                this._size = undefined;
+                break;
+            default:
+        }
     }
 
     /**
