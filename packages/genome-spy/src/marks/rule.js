@@ -60,6 +60,7 @@ export default class RuleMark extends Mark {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
     }
 
+    // eslint-disable-next-line complexity
     getEncoding() {
         const encoding = {
             ...this.getDefaultEncoding(),
@@ -85,15 +86,16 @@ export default class RuleMark extends Mark {
         } else if (encoding.y && encoding.x && encoding.x2) {
             // Limited horizontal rule
             encoding.y2 = encoding.y;
-        } else if (
-            encoding.y &&
-            encoding.x &&
-            !encoding.x2 &&
-            encoding.y.type == "quantitative" &&
-            !encoding.y2
-        ) {
-            encoding.x2 = encoding.x;
-            encoding.y2 = { datum: 0 };
+        } else if (encoding.y && encoding.x) {
+            if (!encoding.x2 && encoding.y.type == "quantitative") {
+                encoding.x2 = encoding.x;
+                encoding.y2 = { datum: 0 };
+            } else if (!encoding.y2 && encoding.x.type == "quantitative") {
+                encoding.y2 = encoding.y;
+                encoding.x2 = { datum: 0 };
+            } else {
+                throw new Error("A bug!"); // Should be unreachable
+            }
         } else {
             throw new Error(
                 "Invalid x and y encodings for rule mark: " +
