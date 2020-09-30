@@ -442,9 +442,10 @@ export class PointVertexBuilder {
         };
 
         for (const channel of ["x", "y", "x2"]) {
-            if (e[channel] && !e[channel].constant) {
+            const ce = encoders[channel];
+            if (ce && ce.scale) {
                 converters[channel] = {
-                    f: e[channel].accessor,
+                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
                     numComponents: 1,
                     raw: true
                 };
@@ -528,9 +529,10 @@ export class ConnectionVertexBuilder {
         };
 
         for (const channel of ["x", "y", "x2", "y2"]) {
-            if (e[channel] && !e[channel].constant) {
+            const ce = encoders[channel];
+            if (ce && ce.scale) {
                 this._converters[channel] = {
-                    f: e[channel].accessor,
+                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
                     numComponents: 1,
                     raw: true
                 };

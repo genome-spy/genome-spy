@@ -466,6 +466,7 @@ export function createAxis(axisProps) {
             ["d" + secondary]: (ap.tickSize + ap.labelPadding) * offsetDirection
         },
         encoding: {
+            [main]: { field: "value", type: "quantitative" },
             text: { field: "label", type: "quantitative" },
             [secondary]: { value: anchor },
             size: { value: ap.labelFontSize },

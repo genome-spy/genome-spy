@@ -12,8 +12,8 @@ import Mark from "./mark";
 const defaultMarkProperties = {
     clip: true,
 
-    align: "left",
-    baseline: "alphabetic",
+    align: "center",
+    baseline: "middle",
     dx: 0,
     dy: 0
 };
@@ -67,37 +67,6 @@ export default class TextMark extends Mark {
 
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
-    }
-
-    /**
-     * @returns {import("../spec/view").EncodingConfigs}
-     */
-    getEncoding() {
-        const encoding = super.getEncoding();
-
-        if (!encoding.x) {
-            throw new Error(
-                "The x channel has not been defined: " +
-                    JSON.stringify(encoding)
-            );
-        }
-
-        return encoding;
-    }
-
-    initializeEncoders() {
-        // TODO: Move this hack elsewhere. This is now copypaste from pointmark.
-        super.initializeEncoders();
-        if (!("value" in this.getEncoding().y)) {
-            // TODO: isConstantEncoding or something
-            const yScale = this.getScale("y", true);
-            if (yScale && yScale.bandwidth) {
-                const offset = yScale.bandwidth() / 2;
-                const ye = this.encoders.y;
-                this.encoders.y = ye.applyMetadata(d => ye(d) + offset);
-                // TODO: Set default baseline
-            }
-        }
     }
 
     async initializeGraphics() {

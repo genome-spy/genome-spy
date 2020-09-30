@@ -11,8 +11,8 @@
   "mark": "point",
 
   "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "y": { "field": "y", "type": "nominal" },
+    "x": { "field": "x", "type": "ordinal" },
+    "y": { "field": "y", "type": "ordinal" },
     "shape": { "field": "x", "type": "nominal" },
     "color": {
       "expr": "datum.x + datum.y",

@@ -1,4 +1,5 @@
 import { isString } from "vega-util";
+import { isDiscrete } from "vega-scale";
 
 import mergeObjects from "../utils/mergeObjects";
 import createScale from "../scale/scale";
@@ -11,7 +12,6 @@ import { SQUEEZE } from "../marks/rectMark"; // TODO: Fix silly dependency
  * @typedef {import("../utils/interval").default} Interval
  * @typedef { import("./unitView").default} UnitView
  */
-
 export default class Resolution {
     /**
      * @param {string} channel
@@ -169,7 +169,7 @@ export default class Resolution {
     }
 
     /**
-     * @returns {import("../encoder/encoder").Scale}
+     * @returns {import("../encoder/encoder").VegaScale}
      */
     getScale() {
         if (this._scale) {
@@ -190,6 +190,11 @@ export default class Resolution {
             ...getLockedScaleProperties(this.channel)
         };
 
+        // Swap discrete y axis
+        if (this.channel == "y" && isDiscrete(props.type)) {
+            props.range = [props.range[1], props.range[0]];
+        }
+
         // A hack to remove ambigious color configs. TODO: Something more formal
         if (Array.isArray(props.range)) {
             delete props.scheme;
@@ -208,7 +213,8 @@ export default class Resolution {
     }
 
     /**
-     * TODO: These actually depend on the mark, so this is clearly a wrong place
+     * TODO: These actually depend on the mark, so this is clearly a wrong place.
+     * And besides, these should be configurable (themeable)
      *
      * @param {string} dataType
      */
@@ -260,7 +266,7 @@ function getDefaultScaleType(channel, dataType) {
         size: ["point", "linear"],
         opacity: ["point", "linear"],
         color: ["ordinal", "linear"],
-        shape: ["ordinal", null],
+        shape: ["ordinal", null], // TODO: Perhaps some discretizing quantitative scale?
         squeeze: ["ordinal", null],
         sample: ["identity", null],
         semanticScore: [null, "identity"],
@@ -282,10 +288,8 @@ function getDefaultScaleType(channel, dataType) {
 function getLockedScaleProperties(channel) {
     /** @type {Object.<string, any>} */
     const locked = {
-        // TODO: x
-        y: {
-            range: [0, 1]
-        }
+        x: { range: [0, 1] },
+        y: { range: [0, 1] }
     };
 
     return locked[channel] || {};

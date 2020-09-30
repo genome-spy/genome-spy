@@ -23,7 +23,7 @@ const defaultMarkProperties = {
     semanticZoomFraction: 0.02
 };
 
-/** @type {import("../view/viewUtils").EncodingSpecs} */
+/** @type {Record<string, import("../view/viewUtils").EncodingConfig>} */
 const defaultEncoding = {
     x: { value: 0.5 },
     y: { value: 0.5 },
@@ -35,8 +35,6 @@ const defaultEncoding = {
     strokeWidth: { value: 0.7 },
     gradientStrength: { value: 0.0 }
 };
-
-// TODO: Configurable !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 export const SHAPES = fromEntries(
     [
@@ -104,16 +102,6 @@ export default class PointMark extends Mark {
         }
     }
 
-    initializeEncoders() {
-        super.initializeEncoders();
-        const yScale = this.getScale("y", true);
-        if (yScale && yScale.bandwidth) {
-            const offset = yScale.bandwidth() / 2;
-            const ye = this.encoders.y;
-            this.encoders.y = d => ye(d) + offset;
-        }
-    }
-
     async initializeGraphics() {
         await super.initializeGraphics();
         this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
@@ -160,12 +148,9 @@ export default class PointMark extends Mark {
     _getMaxPointSize() {
         const e = this.encoders.size;
         if (e.constant) {
-            return e();
+            return e(null);
         } else {
-            // TODO: encoder should provide an access to the scale
-            return this.getScale("size")
-                .range()
-                .reduce((a, b) => Math.max(a, b));
+            return e.scale.range().reduce((a, b) => Math.max(a, b));
         }
     }
 

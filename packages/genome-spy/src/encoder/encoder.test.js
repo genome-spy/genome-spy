@@ -1,30 +1,44 @@
 import AccessorFactory from "./accessor";
-import { scaleLinear } from "d3-scale";
+import { scale as vegaScale } from "vega-scale";
 
-import createEncoders from "./encoder";
+import { createEncoder } from "./encoder";
 
 describe("Encoder", () => {
-    /** @type {Record.<string, import("../view/viewUtils").EncodingConfig>} */
+    /** @type {Record<string, import("../view/viewUtils").EncodingConfig>} */
     const encodingSpecs = {
         x: { value: 0 },
         y: { field: "a" },
-        y2: { field: "b" },
         z: { datum: 2 },
         size: { value: 5 }
     };
 
+    const scaleLinear = vegaScale("linear");
+
+    /** @type {Record<string, import("./encoder").VegaScale>} */
     const scales = {
         y: scaleLinear().domain([0, 10]),
         z: scaleLinear().domain([0, 20])
     };
 
-    const scaleSource = channel => scales[channel];
-
     const accessorFactory = new AccessorFactory();
-    const accesorSource = channel =>
-        accessorFactory.createAccessor(encodingSpecs[channel]);
 
-    const encoders = createEncoders(encodingSpecs, scaleSource, accesorSource);
+    /** @param {Record<string, import("../view/viewUtils").EncodingConfig>} encodingConfigs */
+    function createEncoders(encodingConfigs) {
+        /** @type {Record<string, import("./encoder").Encoder>} */
+        const encoders = {};
+        for (const [channel, encodingConfig] of Object.entries(
+            encodingConfigs
+        )) {
+            encoders[channel] = createEncoder(
+                encodingConfig,
+                scales[channel],
+                accessorFactory.createAccessor(encodingSpecs[channel]),
+                channel,
+                x => x // TODO: Test modifiers
+            );
+        }
+        return encoders;
+    }
 
     const datum = {
         a: 5,
@@ -33,9 +47,9 @@ describe("Encoder", () => {
     };
 
     test("Throws on a broken spec", () =>
-        expect(() =>
-            createEncoders({ x: {} }, x => null, accesorSource)
-        ).toThrow());
+        expect(() => createEncoders({ x: {} })).toThrow());
+
+    const encoders = createEncoders(encodingSpecs);
 
     test("The encoder object contains all channels", () =>
         expect(
@@ -52,8 +66,10 @@ describe("Encoder", () => {
     test("Accesses a field and uses a scale", () =>
         expect(encoders.y(datum)).toBeCloseTo(0.5));
 
+    /*
     test("Accesses a field on a secondary channel and uses the scale from the primary", () =>
         expect(encoders.y2(datum)).toBeCloseTo(0.6));
+        */
 
     test("Constant encoder is annotated", () => {
         expect(encoders.y.constant).toBeFalsy();
@@ -68,5 +84,9 @@ describe("Encoder", () => {
         expect(() => encoders.size.invert(123)).toThrow();
     });
 
-    test.todo("Test access to accessor");
+    test("Accessors are provided", () => {
+        expect(encoders.y.accessor).toBeDefined();
+        expect(encoders.z.accessor).toBeDefined();
+        expect(encoders.x.accessor).toBeUndefined();
+    });
 });

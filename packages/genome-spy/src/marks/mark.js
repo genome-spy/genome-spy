@@ -19,6 +19,9 @@ export default class Mark {
         this.properties =
             typeof unitView.spec.mark == "object" ? unitView.spec.mark : {};
 
+        /** @type {Record<string, import("../encoder/encoder").Encoder>} */
+        this.encoders = undefined;
+
         /** @type {twgl.BufferInfo} WebGL buffers */
         this.bufferInfo = undefined;
 
@@ -105,15 +108,13 @@ export default class Mark {
         }
     }
 
+    /**
+     * Initialize encoders that encode fields of the data (or constants) to
+     * the ranges of the visual channels.
+     */
     initializeEncoders() {
-        const encoding = this.getEncoding();
-
-        /** @param {string} channel */
-        const scaleSource = channel => this.getScale(channel, true);
-
-        this.encoders = createEncoders(encoding, scaleSource, channel =>
-            this.unitView.getAccessor(channel)
-        );
+        this.encoders = createEncoders(this);
+        // TODO: Validate that all required channels are covered with encoders
     }
 
     /**
@@ -168,7 +169,7 @@ export default class Mark {
             glsl
         );
 
-        console.log(glsl);
+        //console.log(glsl);
         this.programInfo = twgl.createProgramInfo(
             this.gl,
             this.glHelper.processShader(
@@ -210,23 +211,6 @@ export default class Mark {
 
     onAfterSampleAnimation() {
         // override
-    }
-
-    /**
-     * Returns a resolved scale for the given channel
-     *
-     * @param {string} channel
-     * @param {boolean} acceptMissing Don't throw on missing scale
-     */
-    getScale(channel, acceptMissing = false) {
-        const resolution = this.unitView.getResolution(channel);
-        if (resolution) {
-            return resolution.getScale();
-        } else if (!acceptMissing) {
-            throw new Error(
-                `Cannot find a resolved scale for channel "${channel}" at ${this.unitView.getPathString()} (mark: ${this.getType()})`
-            );
-        }
     }
 
     /**

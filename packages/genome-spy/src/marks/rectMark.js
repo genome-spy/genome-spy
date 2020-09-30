@@ -3,6 +3,7 @@ import * as twgl from "twgl.js";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices";
+import createEncoders, { secondaryChannel } from "../encoder/encoder";
 
 import Mark from "./mark";
 
@@ -70,16 +71,40 @@ export default class RectMark extends Mark {
      */
     getEncoding() {
         const encoding = super.getEncoding();
-        if (encoding.y) {
-            if (encoding.y.type == "quantitative" && !encoding.y2) {
-                encoding.y2 = {
-                    datum: 0
-                };
+
+        /** @param {string} channel */
+        function fixPositional(channel) {
+            const secondary = secondaryChannel(channel);
+            if (encoding[channel]) {
+                if (!encoding[secondary]) {
+                    if (encoding[channel].type == "quantitative") {
+                        // Bar plot, anchor the other end to zero
+                        encoding[secondary] = {
+                            datum: 0
+                        };
+                    } else {
+                        // Must make copies because the definition may be shared with other views/marks
+                        encoding[channel] = { ...encoding[channel] };
+                        encoding[secondary] = { ...encoding[channel] };
+                        // Fill the bands (bar plot / heatmap)
+                        encoding[channel].band = 0;
+                        encoding[secondary].band = 1;
+                        // Vega-Lite interprets the band property differently on rectangular marks, btw.
+                    }
+                }
+            } else if (encoding[secondary]) {
+                throw new Error(
+                    `Only secondary channel ${secondary} has been specified!`
+                );
+            } else {
+                // Nothing specified, fill the whole viewport
+                encoding[channel] = { value: 0 };
+                encoding[secondary] = { value: 1 };
             }
-        } else {
-            encoding.y = { value: 0 };
-            encoding.y2 = { value: 1 };
         }
+
+        fixPositional("x");
+        fixPositional("y");
 
         return encoding;
     }
@@ -133,29 +158,6 @@ export default class RectMark extends Mark {
                 }
             )
         };
-    }
-
-    initializeEncoders() {
-        super.initializeEncoders();
-
-        // A hack to support band & point scales
-        const yScale = this.getScale("y", true);
-        if (yScale) {
-            const encoding = this.getEncoding();
-            if (yScale.bandwidth) {
-                let bandwidth = yScale.bandwidth();
-                if (!encoding.y2) {
-                    // TODO: Supply invert etc..
-                    this.encoders.y2 = d => this.encoders.y(d) + bandwidth;
-                    this.encoders.y2.scale = this.encoders.y.scale;
-                } else if (Object.is(encoding.y, encoding.y2)) {
-                    bandwidth /= 2;
-                    const ye = this.encoders.y;
-                    this.encoders.y = d => ye(d) + bandwidth;
-                    this.encoders.y2 = this.encoders.y;
-                }
-            }
-        }
     }
 
     async initializeGraphics() {

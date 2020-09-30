@@ -42,6 +42,9 @@ export interface EncodingConfig {
     /** A constant value on the data domain */
     datum?: Scalar;
 
+    /** Offset within a band of a band scale, [0, 1] */
+    band?: number;
+
     scale?: Scale;
     axis?: Axis;
     title?: string;

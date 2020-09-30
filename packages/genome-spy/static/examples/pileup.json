@@ -53,8 +53,7 @@
           "type": "ordinal",
           "scale": {
             "type": "band",
-            "padding": 0.2,
-            "reverse": true
+            "padding": 0.2
           },
           "axis": null
         },
