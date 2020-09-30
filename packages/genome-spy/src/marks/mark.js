@@ -108,7 +108,7 @@ export default class Mark {
     initializeEncoders() {
         const encoding = this.getEncoding();
 
-        /** @type {function(string):function} */
+        /** @param {string} channel */
         const scaleSource = channel => this.getScale(channel, true);
 
         this.encoders = createEncoders(encoding, scaleSource, channel =>
@@ -168,6 +168,7 @@ export default class Mark {
             glsl
         );
 
+        console.log(glsl);
         this.programInfo = twgl.createProgramInfo(
             this.gl,
             this.glHelper.processShader(
@@ -212,21 +213,6 @@ export default class Mark {
     }
 
     /**
-     * TODO: Abstract away!
-     */
-    getYDomain() {
-        // TODO: Get rid of the Interval
-        return Interval.fromArray(this.getScale("y").domain());
-    }
-
-    /**
-     * TODO: Abstract away!
-     */
-    getXDomain() {
-        return this.getContext().genomeSpy.getDomain();
-    }
-
-    /**
      * Returns a resolved scale for the given channel
      *
      * @param {string} channel
@@ -257,7 +243,11 @@ export default class Mark {
         for (const channel of ["x", "y", "size"]) {
             const resolution = this.unitView.getResolution(channel);
             if (resolution) {
-                uniforms[DOMAIN_PREFIX + channel] = resolution.getDomain();
+                uniforms[DOMAIN_PREFIX + channel] = ["band", "point"].includes(
+                    resolution.getScale().type
+                )
+                    ? [0, 1]
+                    : resolution.getDomain();
             }
         }
 

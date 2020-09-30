@@ -88,12 +88,15 @@ export default class TextMark extends Mark {
     initializeEncoders() {
         // TODO: Move this hack elsewhere. This is now copypaste from pointmark.
         super.initializeEncoders();
-        const yScale = this.getScale("y", true);
-        if (yScale && yScale.bandwidth) {
-            const offset = yScale.bandwidth() / 2;
-            const ye = this.encoders.y;
-            this.encoders.y = d => ye(d) + offset;
-            // TODO: Set default baseline
+        if (!("value" in this.getEncoding().y)) {
+            // TODO: isConstantEncoding or something
+            const yScale = this.getScale("y", true);
+            if (yScale && yScale.bandwidth) {
+                const offset = yScale.bandwidth() / 2;
+                const ye = this.encoders.y;
+                this.encoders.y = ye.applyMetadata(d => ye(d) + offset);
+                // TODO: Set default baseline
+            }
         }
     }
 

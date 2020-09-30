@@ -402,15 +402,14 @@ function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
         ? validTicks(scale, axisProps.values, count)
         : tickValues(scale, count);
 
-    let equal = true;
-    for (let i = 0; i < values.length; i++) {
-        if (!oldTicks[i] || values[i] !== oldTicks[i].value) {
-            equal = false;
-            break;
-        }
-    }
-
-    if (equal) {
+    if (
+        equalArrayContents(
+            values,
+            oldTicks,
+            v => v,
+            d => d.value
+        )
+    ) {
         return oldTicks;
     } else {
         const format = tickFormat(scale, count, axisProps.format);
@@ -563,4 +562,26 @@ function smoothstep(edge0, edge1, x) {
     x = (x - edge0) / (edge1 - edge0);
     x = Math.max(0, Math.min(1, x));
     return x * x * (3 - 2 * x);
+}
+
+/**
+ *
+ * @param {A[]} a
+ * @param {B[]} b
+ * @param {function(A):T} aAccessor
+ * @param {function(B):T} bAccessor
+ * @template A, B, T
+ */
+function equalArrayContents(a, b, aAccessor, bAccessor) {
+    if (a.length != b.length) {
+        return false;
+    }
+
+    for (let i = 0; i < a.length; i++) {
+        if (aAccessor(a[i]) != bAccessor(b[i])) {
+            return false;
+        }
+    }
+
+    return true;
 }

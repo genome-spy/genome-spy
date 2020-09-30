@@ -1,4 +1,5 @@
 import { primaryChannel } from "../encoder/encoder";
+import { isContinuous } from "vega-scale";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
@@ -41,16 +42,23 @@ export function generateScaleGlsl(channel, scale, datum) {
         case "linear":
             functionCall = `scaleLinear(value, ${domainName})`;
             break;
+        case "band":
+        case "point":
         case "identity":
-            functionCall = attributeName;
+            functionCall = "value";
             break;
         default:
             throw new Error("Unsupported scale type: " + scale.type);
     }
 
+    const domainUniform =
+        isContinuous(scale.type) && channel == primary
+            ? `uniform vec2 ${domainName};`
+            : "";
+
     return `
+${domainUniform}
 attribute highp float ${attributeName};
-${channel == primary ? `uniform vec2 ${domainName};` : ""}
 
 float ${SCALE_FUNCTION_PREFIX}${channel}(float value) {
     return ${functionCall};

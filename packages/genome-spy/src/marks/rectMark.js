@@ -147,6 +147,7 @@ export default class RectMark extends Mark {
                 if (!encoding.y2) {
                     // TODO: Supply invert etc..
                     this.encoders.y2 = d => this.encoders.y(d) + bandwidth;
+                    this.encoders.y2.scale = this.encoders.y.scale;
                 } else if (Object.is(encoding.y, encoding.y2)) {
                     bandwidth /= 2;
                     const ye = this.encoders.y;
@@ -166,7 +167,7 @@ export default class RectMark extends Mark {
     updateGraphicsData() {
         this.deleteGraphicsData();
 
-        const xDomain = this.getXDomain();
+        const xDomain = undefined; //this.getXDomain();
         const domainWidth = xDomain ? xDomain.width() : Infinity;
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(

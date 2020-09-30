@@ -4,12 +4,39 @@ import fromEntries from "fromentries";
  * @typedef {Object} EncoderMetadata
  * @prop {boolean} constant
  * @prop {function} invert
- * @prop {function} [scale]
+ * @prop {Scale} [scale]
  * @prop {import("./accessor").Accessor} accessor
  * @prop {import("../view/viewUtils").EncodingConfig} encodingConfig
+ * @prop {function(function):void} applyMetadata Copies metadata to the target function
  *
  * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder
  * @typedef {(function(object):number) & EncoderMetadata} NumberEncoder
+ *
+ * @typedef {Object} ScaleAccessories
+ * @prop {string} type
+ * @prop {function():any[] | function():void} domain
+ * @prop {any} range
+ * @prop {function} invert 
+ * 
+ * @typedef {
+    import("d3-scale").ScaleContinuousNumeric<any, any> |
+    import("d3-scale").ScaleLinear<any, any> |
+    import("d3-scale").ScalePower<any, any> |
+    import("d3-scale").ScaleLogarithmic<any, any> |
+    import("d3-scale").ScaleSymLog<any, any> |
+    import("d3-scale").ScaleIdentity |
+    import("d3-scale").ScaleTime<any, any> |
+    import("d3-scale").ScaleSequential<any> |
+    import("d3-scale").ScaleDiverging<any> | 
+    import("d3-scale").ScaleQuantize<any> |
+    import("d3-scale").ScaleQuantile<any> |
+    import("d3-scale").ScaleThreshold<any, any> |
+    import("d3-scale").ScaleOrdinal<any, any> |
+    import("d3-scale").ScaleBand<any> |
+    import("d3-scale").ScalePoint<any>
+   } D3Scale
+ * 
+ * @typedef {D3Scale & ScaleAccessories} Scale
  */
 
 /**
@@ -43,7 +70,7 @@ export default function createEncoders(
 /**
  *
  * @param {import("../view/viewUtils").EncodingConfig} encodingConfig
- * @param {function} scale
+ * @param {Scale} scale
  * @param {import("./accessor").Accessor} accessor
  * @param {string} channel
  * @returns {Encoder}
@@ -89,6 +116,16 @@ function createEncoder(encodingConfig, scale, accessor, channel) {
 
     // Just to provide a convenient access to the config
     encoder.encodingConfig = encodingConfig;
+
+    /** @param {Encoder} target */
+    encoder.applyMetadata = target => {
+        for (const prop in encoder) {
+            if (encoder.hasOwnProperty(prop)) {
+                target[prop] = encoder[prop];
+            }
+        }
+        return target;
+    };
 
     return encoder;
 }

@@ -163,13 +163,14 @@ export default class Resolution {
 
     /**
      * Returns the domain of the scale
-     *
-     * @return { any[] }
      */
     getDomain() {
         return this.getScale().domain();
     }
 
+    /**
+     * @returns {import("../encoder/encoder").Scale}
+     */
     getScale() {
         if (this._scale) {
             return this._scale;

@@ -1,6 +1,7 @@
 import { color as d3color } from "d3-color";
 import { format } from "d3-format";
 import { fastmap, isString, accessor } from "vega-util";
+import { isContinuous } from "vega-scale";
 import { fp64ify } from "./includes/fp64-utils";
 import Interval from "../utils/interval";
 import { SHAPES } from "../marks/pointMark"; // Circular dependency, TODO: Fix
@@ -97,6 +98,7 @@ export class RectVertexBuilder {
         );
 
         // TODO: Optimization: width/height could be constants when minWidth/minHeight are zero
+        // ... or in case of band scale etc.
         this.updateWidth = this.variableBuilder.createUpdater("width", 1);
         this.updateHeight = this.variableBuilder.createUpdater("height", 1);
 
@@ -121,7 +123,10 @@ export class RectVertexBuilder {
         const [lower, upper] = this.visibleRange;
 
         /** @returns {function(any):number} */
-        const a = encoder => (encoder.constant ? encoder : encoder.accessor);
+        const a = encoder =>
+            encoder.constant || !isContinuous(encoder.scale.type)
+                ? encoder
+                : encoder.accessor;
         const xAccessor = a(e.x);
         const x2Accessor = a(e.x2);
         const yAccessor = a(e.y);
@@ -324,9 +329,10 @@ export class RuleVertexBuilder {
         };
 
         for (const channel of ["x", "y", "x2", "y2", "size"]) {
-            if (e[channel] && !e[channel].constant) {
+            const ce = encoders[channel];
+            if (ce && ce.scale) {
                 converters[channel] = {
-                    f: e[channel].accessor,
+                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
                     numComponents: 1,
                     raw: true
                 };
@@ -624,9 +630,10 @@ export class TextVertexBuilder {
         };
 
         for (const channel of ["x", "y", "x2"]) {
-            if (e[channel] && !e[channel].constant) {
+            const ce = encoders[channel];
+            if (ce && ce.scale) {
                 converters[channel] = {
-                    f: e[channel].accessor,
+                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
                     numComponents: 1,
                     raw: true
                 };
