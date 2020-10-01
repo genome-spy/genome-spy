@@ -27,7 +27,7 @@ const defaultEncoding = {
     x2: null,
     y: null,
     y2: null,
-    color: { value: "#1f77b4" },
+    color: { value: "#4c78a8" }, // TODO: Configurable/theme
     opacity: { value: 1.0 },
     squeeze: { value: "none" } // choices: none, top, right, bottom, left
 };
