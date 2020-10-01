@@ -92,4 +92,17 @@ export default class Rectangle {
     containsPoint(x, y) {
         return x >= this.x && x < this.x2 && y >= this.y && y < this.y2;
     }
+
+    /**
+     * Normalizes a point with respect to this rectangle
+     *
+     * @param {number} x
+     * @param {number} y
+     */
+    normalizePoint(x, y) {
+        return {
+            x: (x - this.x) / this.width,
+            y: (y - this.y) / this.height
+        };
+    }
 }

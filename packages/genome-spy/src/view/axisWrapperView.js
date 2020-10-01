@@ -3,7 +3,7 @@ import ContainerView from "./containerView";
 import { getFlattenedViews } from "./viewUtils";
 import LayerView from "./layerView";
 import Padding from "../utils/layout/padding";
-import { isNumber } from "vega-util";
+import { isNumber, zoomLinear } from "vega-util";
 
 /**
  * TODO: Move these somewhere for common use
@@ -51,7 +51,7 @@ function slot2dimension(slot) {
 }
 
 /**
- * A view that wraps a unit or layer view and takes care of the axes.
+ * An internal view that wraps a unit or layer view and takes care of the axes.
  *
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
  * @typedef {import("./view").default} View
@@ -86,6 +86,22 @@ export default class AxisWrapperView extends ContainerView {
             bottom: undefined,
             left: undefined
         };
+
+        this._addBroadcastHandler("zoom", message => {
+            const zoomEvent =
+                /** @type {import("../utils/zoom").ZoomEvent} */ (message.payload);
+
+            if (
+                this.getCoords().containsPoint(
+                    zoomEvent.mouseX,
+                    zoomEvent.mouseY
+                )
+            ) {
+                this._handleZoom(zoomEvent);
+            }
+        });
+
+        this._addBroadcastHandler("layout", () => this._updateAxisData());
     }
 
     /**
@@ -96,11 +112,6 @@ export default class AxisWrapperView extends ContainerView {
     initialize() {
         Object.entries(CHANNEL_SLOTS).forEach(([channel, slots]) =>
             this._initializeAxes(channel, slots)
-        );
-
-        // TODO: Minor optimization: only call on resize/layout or scale adjustment
-        this.context.glHelper.addEventListener("beforerender", () =>
-            this._updateAxisData()
         );
     }
 
@@ -184,29 +195,28 @@ export default class AxisWrapperView extends ContainerView {
      * @param { import("./layerView").default | import("./unitView").default} view
      */
     getChildCoords(view) {
-        const padding = this.getAxisExtents();
+        const extents = this.getAxisExtents();
 
         if (view === this.child) {
-            return this.getCoords().shrink(padding);
+            return this.getCoords().shrink(extents);
         } else {
-            // TODO: Don't use paddings here because padding could eventually contain some extra.
             const childCoords = this.child.getCoords();
             if (view === this.axisViews.bottom) {
                 return childCoords
                     .translate(0, childCoords.height)
-                    .modify({ height: padding.bottom });
+                    .modify({ height: extents.bottom });
             } else if (view === this.axisViews.top) {
                 return childCoords
-                    .translate(0, -padding.top)
-                    .modify({ height: padding.top });
+                    .translate(0, -extents.top)
+                    .modify({ height: extents.top });
             } else if (view === this.axisViews.left) {
                 return childCoords
-                    .translate(-padding.left, 0)
-                    .modify({ width: padding.left });
+                    .translate(-extents.left, 0)
+                    .modify({ width: extents.left });
             } else if (view === this.axisViews.right) {
                 return childCoords
                     .translate(childCoords.width, 0)
-                    .modify({ width: padding.right });
+                    .modify({ width: extents.right });
             } else {
                 throw new Error("Not my child view!");
             }
@@ -290,6 +300,81 @@ export default class AxisWrapperView extends ContainerView {
             this,
             `axis_${axisProps.orient}`
         );
+    }
+
+    /**
+     *
+     * @param {import("../utils/zoom").ZoomEvent} zoomEvent
+     */
+    _handleZoom(zoomEvent) {
+        /** @type {Record<string, Set<import("./resolution").default>>} */
+        const resolutions = {
+            x: new Set(),
+            y: new Set()
+        };
+
+        // Find all resolutions (scales) that are candidates for zooming
+        this.child.visit(v => {
+            for (const [channel, resolutionSet] of Object.entries(
+                resolutions
+            )) {
+                const resolution = v.getResolution(channel);
+                if (resolution && resolution.isZoomable()) {
+                    resolutionSet.add(resolution);
+                }
+            }
+        });
+
+        /** @type {Set<AxisWrapperView>}} Views that may require axis updates */
+        const affectedViews = new Set();
+
+        for (const [channel, resolutionSet] of Object.entries(resolutions)) {
+            if (resolutionSet.size <= 0) {
+                continue;
+            }
+
+            const coords = this.getChildCoords(this.child);
+            const p = coords.normalizePoint(zoomEvent.mouseX, zoomEvent.mouseY);
+            const tp = coords.normalizePoint(
+                zoomEvent.mouseX + zoomEvent.deltaX,
+                zoomEvent.mouseY + zoomEvent.deltaY
+            );
+
+            const delta = {
+                x: tp.x - p.x,
+                y: tp.y - p.y
+            };
+
+            for (const resolution of resolutionSet) {
+                resolution.zoom(
+                    2 ** (-zoomEvent.deltaY / 200),
+                    channel == "y"
+                        ? 1 - p[/** @type {"x"|"y"} */ (channel)]
+                        : p[/** @type {"x"|"y"} */ (channel)],
+                    channel == "x" ? delta.x : 0
+                );
+
+                resolution.views.forEach(view =>
+                    affectedViews.add(findClosestAxisWrapper(view))
+                );
+            }
+        }
+
+        affectedViews.forEach(view => view._updateAxisData());
+
+        this.context.genomeSpy.renderAll(); // TODO: context.requestRender() or something
+
+        /** @param {View} view */
+        function findClosestAxisWrapper(view) {
+            do {
+                if (view instanceof AxisWrapperView) {
+                    return view;
+                }
+                view = view.parent;
+            } while (view);
+
+            throw new Error("Bug: cannot find AxisWrapperView");
+        }
     }
 }
 

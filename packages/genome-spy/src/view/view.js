@@ -14,6 +14,10 @@ export const VISIT_STOP = "VISIT_STOP";
  * @typedef { import("./viewUtils").EncodingConfig } EncodingConfig
  * @typedef { import("./viewUtils").ViewContext} ViewContext
  * @typedef { import("../utils/layout/flexLayout").SizeDef} SizeDef
+ *
+ * @typedef {object} BroadcastMessage
+ * @prop {string} type Broadcast type
+ * @prop {any} [payload] Anything
  */
 export default class View {
     /**
@@ -29,11 +33,16 @@ export default class View {
         this.name = spec.name || name;
         this.spec = spec;
 
-        /* @type {SizeDef} TODO: Replace with size (width & height) */
-        //this._height = undefined;
-
         /** @type {Object.<string, import("./resolution").default>}  Resolved channels. Supports only scales for now.. */
         this.resolutions = {};
+
+        /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
+        this._broadcastHandlers = {};
+
+        this._addBroadcastHandler("layout", () => {
+            // Clear memoized coordinates
+            this._coords = undefined;
+        });
     }
 
     getPadding() {
@@ -113,20 +122,26 @@ export default class View {
      * Handles a broadcast message that is intended for the whole view hierarchy.
      *
      * @param {BroadcastMessage} message
-     *
-     * @typedef {object} BroadcastMessage
-     * @prop {string} type Broadcast type
-     * @prop {any} [payload] Anything
      */
     handleBroadcast(message) {
         // TODO: message types should be constants
-        switch (message.type) {
-            case "LAYOUT":
-                this._coords = undefined;
-                this._size = undefined;
-                break;
-            default:
+        for (const handler of this._broadcastHandlers[message.type] || []) {
+            handler(message);
         }
+    }
+
+    /**
+     *
+     * @param {string} type
+     * @param {function(BroadcastMessage):void} handler
+     */
+    _addBroadcastHandler(type, handler) {
+        let handlers = this._broadcastHandlers[type];
+        if (!handlers) {
+            handlers = [];
+            this._broadcastHandlers[type] = handlers;
+        }
+        handlers.push(handler);
     }
 
     /**

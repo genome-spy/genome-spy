@@ -33,6 +33,7 @@ import { tickStep } from "d3-array";
 import { format as d3format } from "d3-format";
 import WebGLHelper from "./gl/webGLHelper";
 import AxisWrapperView from "./view/axisWrapperView";
+import MouseTracker2 from "./mouseTracker2";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -60,8 +61,6 @@ export default class GenomeSpy {
 
         this.eventEmitter = new EventEmitter();
 
-        this.zoom = new Zoom(this._zoomed.bind(this));
-
         // TODO: Move to CoordinateSystem
         this.maxUnitZoom = 30;
 
@@ -72,8 +71,6 @@ export default class GenomeSpy {
 
         /** @type {(function(string):object[])[]} */
         this.namedDataProviders = [];
-
-        this.viewportTransform = new Transform();
     }
 
     on(...args) {
@@ -100,67 +97,6 @@ export default class GenomeSpy {
                 return data;
             }
         }
-    }
-
-    /**
-     *
-     * @param {Transform} transform
-     */
-    _constrainX(transform) {
-        return new Transform(
-            transform.k,
-            Math.min(
-                0,
-                Math.max(
-                    transform.x,
-                    -(transform.k - 1) * this.layout.viewport.width()
-                )
-            )
-        );
-    }
-
-    /**
-     * @param {import("./utils/zoom.js").ZoomEvent} zoomEvent
-     */
-    _zoomed(zoomEvent) {
-        if (zoomEvent.deltaY) {
-            let kFactor = Math.pow(2, zoomEvent.deltaY / 500);
-
-            const k = Math.max(
-                Math.min(
-                    this.viewportTransform.k * kFactor,
-                    this.scaleExtent[1]
-                ),
-                this.scaleExtent[0]
-            );
-
-            kFactor = k / this.viewportTransform.k;
-
-            const x =
-                (this.viewportTransform.x - zoomEvent.mouseX) * kFactor +
-                zoomEvent.mouseX;
-
-            this._zoomWithTransform(this._constrainX(new Transform(k, x)));
-        } else {
-            this._zoomWithTransform(
-                this._constrainX(
-                    new Transform(
-                        this.viewportTransform.k,
-                        this.viewportTransform.x + zoomEvent.deltaX
-                    )
-                )
-            );
-        }
-    }
-
-    /**
-     *
-     * @param {Transform} transform
-     */
-    _zoomWithTransform(transform) {
-        this.viewportTransform = transform;
-        this.rescaledX = this.viewportTransform.rescale(this.xScale);
-        this.eventEmitter.emit("zoom", this.getViewportDomain());
     }
 
     getXResolution() {
@@ -190,15 +126,6 @@ export default class GenomeSpy {
         return new Interval(0, 1);
     }
 
-    /**
-     * Returns the portion of the domain that is currently visible in the viewport
-     *
-     * @return {Interval} the domain
-     */
-    getViewportDomain() {
-        return Interval.fromArray(this.rescaledX.domain());
-    }
-
     getViewportDomainString() {
         if (!this.rescaledX) {
             return "";
@@ -207,16 +134,6 @@ export default class GenomeSpy {
         return this.coordinateSystem.formatInterval(
             this.getViewportDomain().intersect(this.getDomain())
         );
-    }
-
-    getZoomedScale() {
-        return this.rescaledX ? this.rescaledX.copy() : undefined;
-    }
-
-    getAxisWidth() {
-        return this.tracks
-            .map(track => track.getMinAxisWidth())
-            .reduce((a, b) => Math.max(a, b), 0);
     }
 
     /**
@@ -304,11 +221,9 @@ export default class GenomeSpy {
         }
     }
 
+    /** @deprecated */
     _getSampleTracks() {
         return [];
-        // return /** @type {SampleTrack[]} */ (this.tracks.filter(
-        //     t => t instanceof SampleTrack
-        // ));
     }
 
     /**
@@ -328,46 +243,22 @@ export default class GenomeSpy {
         return sampleTrack && sampleTrack.sampleOrderHistory.length > 1;
     }
 
-    /*
-    _resized() {
-        const cs = window.getComputedStyle(this.container, null);
-        const width =
-            this.container.clientWidth -
-            parseFloat(cs.paddingLeft) -
-            parseFloat(cs.paddingRight);
-
-        const aw = Math.ceil(this.getAxisWidth());
-        const viewportWidth = width - aw;
-
-        this.xScale.range([0, viewportWidth]);
-        this.rescaledX.range([0, viewportWidth]);
-
-        // The layout only deals with horizontal coordinates. The tracks take care of their height.
-        // TODO: Implement LayoutBuilder
-        this.layout = {
-            axis: new Interval(0, aw),
-            viewport: new Interval(aw, aw + viewportWidth)
-        };
-
-        this.scaleExtent = [
-            1,
-            this.coordinateSystem.getExtent()
-                ? this.getDomain().width() / this.maxUnitZoom
-                : Infinity
-        ];
-
-        this.eventEmitter.emit("layout", this.layout);
+    /**
+     * Broadcast a message to all views
+     *
+     * @param {string} type
+     * @param {any} [payload]
+     */
+    broadcast(type, payload) {
+        const message = { type, payload };
+        this.viewRoot.visit(view => view.handleBroadcast(message));
     }
-    */
 
     _prepareContainer() {
         this._glHelper = new WebGLHelper(this.container);
-        this._glHelper.addEventListener("beforerender", () => {
-            // TODO: implement broadcast method
-            this.viewRoot.visit(view =>
-                view.handleBroadcast({ type: "LAYOUT" })
-            );
-        });
+        this._glHelper.addEventListener("beforerender", () =>
+            this.broadcast("layout")
+        );
         this._glHelper.addEventListener("render", () => {
             this.renderAll();
         });
@@ -377,50 +268,17 @@ export default class GenomeSpy {
         this.loadingMessageElement.innerHTML = `<div class="message">Loading...</div>`;
         this.container.appendChild(this.loadingMessageElement);
 
-        /*
-        this._listeners = [
-            {
-                target: window,
-                type: "resize",
-                listener: this._resized.bind(this)
-            },
-            {
-                target: window,
-                type: "mousemove",
-                listener: () => {
-                    if (window.devicePixelRatio != this._dpr) {
-                        this._dpr = window.devicePixelRatio;
-                        this._resized();
-                    }
-                }
-            },
-            // Eat all context menu events that have not been caught by any track.
-            // Prevents annoying browser default context menues from opening when
-            // the user did not quite hit the target.
-            {
-                target: this.container,
-                type: "contextmenu",
-                listener: event => event.preventDefault()
-            }
-        ];
-
-        for (const e of this._listeners) {
-            e.target.addEventListener(e.type, e.listener);
-        }
-        */
-
-        /*
-        const trackStack = document.createElement("div");
-        trackStack.classList.add("track-stack");
-
-        this.container.appendChild(trackStack);
-        this.trackStack = trackStack;
-        */
-
         this.tooltip = new Tooltip(this.container);
 
         this.container.classList.add("genome-spy");
         this.container.classList.add("loading");
+
+        this.loadingMessageElement
+            .querySelector(".message")
+            .addEventListener("transitionend", () => {
+                /** @type {HTMLElement} */ (this.loadingMessageElement).style.display =
+                    "none";
+            });
     }
 
     /**
@@ -433,12 +291,10 @@ export default class GenomeSpy {
         }
         */
 
-        while (this.container.firstChild) {
-            this.container.firstChild.remove();
-        }
-
         this.container.classList.remove("genome-spy");
         this.container.classList.remove("loading");
+
+        throw new Error("destroy() not properly implemented");
     }
 
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
@@ -526,22 +382,10 @@ export default class GenomeSpy {
             unitViews.forEach(view => view.mark.initializeEncoders());
             unitViews.forEach(view => view.mark.updateGraphicsData());
 
+            this.zoom = new Zoom(e => this.broadcast("zoom", e));
+            this.zoom.attachZoomEvents(this._glHelper.canvas);
+
             await graphicsInitialized;
-
-            /*
-            // TODO: Support other scales too
-            this.xScale = scaleLinear().domain(
-                this.getXResolution()
-                    .getScale()
-                    .domain()
-            );
-
-            // Zoomed scale
-            this.rescaledX = this.xScale;
-            */
-
-            // Initiate layout calculation and render the tracks
-            //this._resized();
 
             this._glHelper.render();
 

@@ -65,3 +65,11 @@ test("containsPoint", () => {
     // Exclusive corner
     expect(r.containsPoint(4, 6)).toBeFalsy();
 });
+
+test("normalizePoint", () => {
+    const r = new Rectangle(1, 2, 6, 4);
+
+    expect(r.normalizePoint(1, 2)).toEqual({ x: 0, y: 0 });
+    expect(r.normalizePoint(7, 2)).toEqual({ x: 1, y: 0 });
+    expect(r.normalizePoint(4, 4)).toEqual({ x: 0.5, y: 0.5 });
+});

@@ -1,5 +1,11 @@
-import { isString } from "vega-util";
-import { isDiscrete } from "vega-scale";
+import {
+    isString,
+    isNumber,
+    panLinear,
+    zoomLinear,
+    clampRange
+} from "vega-util";
+import { isDiscrete, isContinuous } from "vega-scale";
 
 import mergeObjects from "../utils/mergeObjects";
 import createScale from "../scale/scale";
@@ -8,6 +14,9 @@ import { SHAPES } from "../marks/pointMark"; // TODO: Fix silly dependency
 import { SQUEEZE } from "../marks/rectMark"; // TODO: Fix silly dependency
 
 /**
+ * Resolution takes care of merging domains and scales from multiple views.
+ * This class also provides some utility methods for zooming the scales etc..
+ *
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  * @typedef {import("../utils/interval").default} Interval
  * @typedef { import("./unitView").default} UnitView
@@ -18,7 +27,7 @@ export default class Resolution {
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {import("./unitView").default[]} */
+        /** @type {import("./unitView").default[]} The involved views */
         this.views = [];
         this.scale = {};
         /** @type {string} */
@@ -50,6 +59,7 @@ export default class Resolution {
             throw new Error(
                 `Can not use shared scale for different data types: ${this.type} vs. ${type}. Use "resolve: independent" for channel ${this.channel}`
             );
+            // Actually, point scale could be changed into band scale
         }
 
         this.views.push(view);
@@ -201,7 +211,63 @@ export default class Resolution {
         }
 
         this._scale = createScale(props);
+
+        // Can be used as zoom extent
+        this._originalDomain = [...this._scale.domain()];
+
         return this._scale;
+    }
+
+    isZoomable() {
+        //return isContinuous(this.getScale().type);
+        if (this.channel != "x" && this.channel != "y") {
+            return false;
+        }
+
+        if (this.getScale().type != "linear") {
+            return false;
+        }
+
+        const props = this.getScaleProps();
+        if ("zoom" in props && !props.zoom) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     *
+     * @param {number} scaleFactor
+     * @param {number} scaleAnchor
+     * @param {number} pan
+     * @returns {boolean} true if the scale was zoomed
+     */
+    zoom(scaleFactor, scaleAnchor, pan) {
+        if (!this.isZoomable()) {
+            return false;
+        }
+
+        const scale = this.getScale();
+        const oldDomain = scale.domain();
+        let newDomain = [...oldDomain];
+
+        // TODO: log, pow, symlog, ...
+        newDomain = panLinear(newDomain, pan || 0);
+        newDomain = zoomLinear(
+            newDomain,
+            scale.invert(scaleAnchor),
+            scaleFactor
+        );
+
+        newDomain = clampRange(newDomain, ...this._originalDomain);
+
+        if ([0, 1].some(i => newDomain[i] != oldDomain[i])) {
+            scale.domain(newDomain);
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -227,7 +293,6 @@ export default class Resolution {
         }
 
         if (channel == "y" || channel == "x") {
-            // TODO: nice should only be true when the domain has not been specified explicitly
             props.nice = !this.isDomainDefined();
         } else if (channel == "color") {
             // TODO: Named ranges
