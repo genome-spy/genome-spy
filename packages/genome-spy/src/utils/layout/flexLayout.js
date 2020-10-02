@@ -61,7 +61,7 @@ export default class FlexLayout {
                 (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
 
             if (child === item) {
-                return { location: x, size: advance };
+                return { location: Math.round(x), size: Math.round(advance) };
             }
 
             x += advance + spacing;

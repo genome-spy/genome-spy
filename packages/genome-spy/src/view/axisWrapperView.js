@@ -132,12 +132,12 @@ export default class AxisWrapperView extends ContainerView {
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
+        yield this.child;
         for (const view of Object.values(this.axisViews)) {
             if (view) {
                 yield view;
             }
         }
-        yield this.child;
     }
 
     _updateAxisData() {
@@ -200,26 +200,31 @@ export default class AxisWrapperView extends ContainerView {
         if (view === this.child) {
             return this.getCoords().shrink(extents);
         } else {
-            const childCoords = this.child.getCoords();
+            let childCoords = this.child.getCoords();
             if (view === this.axisViews.bottom) {
-                return childCoords
+                childCoords = childCoords
                     .translate(0, childCoords.height)
                     .modify({ height: extents.bottom });
             } else if (view === this.axisViews.top) {
-                return childCoords
+                childCoords = childCoords
                     .translate(0, -extents.top)
                     .modify({ height: extents.top });
             } else if (view === this.axisViews.left) {
-                return childCoords
+                childCoords = childCoords
                     .translate(-extents.left, 0)
                     .modify({ width: extents.left });
             } else if (view === this.axisViews.right) {
-                return childCoords
+                childCoords = childCoords
                     .translate(childCoords.width, 0)
                     .modify({ width: extents.right });
             } else {
                 throw new Error("Not my child view!");
             }
+
+            // Align domain lines to center of pixels. TODO: Configurable
+            childCoords = childCoords.translate(0.5, 0.5);
+
+            return childCoords;
         }
     }
 
