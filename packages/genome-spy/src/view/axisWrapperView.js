@@ -3,7 +3,7 @@ import ContainerView from "./containerView";
 import { getFlattenedViews } from "./viewUtils";
 import LayerView from "./layerView";
 import Padding from "../utils/layout/padding";
-import { isNumber, zoomLinear } from "vega-util";
+import { isNumber, zoomLinear, inrange } from "vega-util";
 
 /**
  * TODO: Move these somewhere for common use
@@ -467,7 +467,7 @@ const defaultAxisProps = {
  * @param {Axis} axisProps
  * @param {any} scale
  * @param {number} axisLength Length of axis in pixels
- * @param {TickDatum[]} [oldTicks] Reuse the old data if the tick values equal
+ * @param {TickDatum[]} [oldTicks] Reuse the old data if the tick values are identical
  * @returns {TickDatum[]}
  *
  * @typedef {object} TickDatum
@@ -490,7 +490,9 @@ function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
 
     const values = axisProps.values
         ? validTicks(scale, axisProps.values, count)
-        : tickValues(scale, count);
+        : tickValues(scale, count).filter(x =>
+              inrange(scale(x), [0, 1], true, true)
+          );
 
     if (
         equalArrayContents(
