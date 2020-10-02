@@ -240,10 +240,16 @@ export default class Mark {
     }
 
     getGlobalUniforms() {
+        /** @param {string} channel */
+        const getZoomLevel = channel => {
+            // TODO: Replace this with optional chaining (?.) when webpack can handle it
+            const resolution = this.unitView.getResolution(channel);
+            return resolution ? resolution.getZoomLevel() : 0;
+        };
+
         return {
             ONE: 1.0,
-            uDevicePixelRatio: window.devicePixelRatio,
-            zoomLevel: this.getContext().genomeSpy.getExpZoomLevel()
+            uDevicePixelRatio: window.devicePixelRatio
         };
     }
 

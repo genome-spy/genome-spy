@@ -22,7 +22,7 @@ uniform float uScaleFactor;
 /** The size of the largest point in the data */
 uniform float uMaxPointSize;
 
-uniform float zoomLevel;
+uniform float uZoomLevel;
 uniform float uSemanticThreshold;
 
 varying float vSize;

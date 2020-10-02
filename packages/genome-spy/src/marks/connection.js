@@ -136,7 +136,8 @@ export default class ConnectionMark extends Mark {
             scale && scale.type == "band" ? scale.bandwidth() : 0;
 
         twgl.setUniforms(this.programInfo, {
-            uBandwidth: getBandwidth(this.encoders.y.scale)
+            uBandwidth: getBandwidth(this.encoders.y.scale),
+            uZoomLevel: this.unitView.getZoomLevel()
         });
 
         // TODO: Vertical clipping in faceted view

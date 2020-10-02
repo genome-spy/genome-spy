@@ -1,6 +1,7 @@
 import fromEntries from "fromentries";
 import * as twgl from "twgl.js";
 import { bisector, quantileSorted } from "d3-array";
+import { zoomLinear } from "vega-util";
 import { PointVertexBuilder } from "../gl/dataToVertices";
 import VERTEX_SHADER from "../gl/point.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
@@ -134,11 +135,9 @@ export default class PointMark extends Mark {
         const zoomLevel = Math.pow(2, this.properties.geometricZoomBound || 0);
 
         return Math.pow(
-            Math.min(
-                1,
-                this.getContext().genomeSpy.getExpZoomLevel() / zoomLevel
-            ),
+            Math.min(1, this.unitView.getZoomLevel() / zoomLevel),
             1 / 3
+            // note: 1/3 appears to yield perceptually more uniform result than 1/2. I don't know why!
         );
     }
 
@@ -197,25 +196,35 @@ export default class PointMark extends Mark {
 
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
-        /*
-        const bisect = bisector(this.encoders.x.accessor).left;
-        const visibleDomain = this.getContext().genomeSpy.getViewportDomain();
-        // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
-        const paddedDomain = visibleDomain.pad(visibleDomain.width() * 0.01);
-        */
+        /** @type {function(any[]):number[]} */
+        let findIndices;
+
+        const xEncoder = this.encoders.x;
+        if (!xEncoder.constant) {
+            // Only render the points that are located within the viewport
+            const bisect = bisector(xEncoder.accessor).left;
+            const visibleDomain = this.unitView
+                .getResolution("x")
+                .getScale()
+                .domain();
+
+            // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
+            const paddedDomain = zoomLinear(visibleDomain, null, 1.01);
+
+            findIndices = data => [
+                bisect(data, paddedDomain[0]),
+                bisect(data, paddedDomain[paddedDomain.length - 1])
+            ];
+        }
 
         for (const sampleData of samples) {
             const range = this.rangeMap.get(sampleData.sampleId);
             if (range) {
-                // Render only points that reside inside the viewport
-                /*
-                const specs = this.dataBySample.get(sampleData.sampleId);
-                const lower = bisect(specs, paddedDomain.lower);
-                const upper = bisect(specs, paddedDomain.upper);
+                const [lower, upper] = findIndices
+                    ? findIndices(this.dataBySample.get(sampleData.sampleId))
+                    : [0, range.count];
+
                 const length = upper - lower;
-                */
-                const length = range.count;
-                const lower = 0;
 
                 if (length) {
                     twgl.setUniforms(this.programInfo, sampleData.uniforms);

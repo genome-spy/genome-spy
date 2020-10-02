@@ -3,7 +3,8 @@ import {
     isNumber,
     panLinear,
     zoomLinear,
-    clampRange
+    clampRange,
+    span
 } from "vega-util";
 import { isDiscrete, isContinuous } from "vega-scale";
 
@@ -268,6 +269,23 @@ export default class Resolution {
         }
 
         return false;
+    }
+
+    /**
+     * Returns the zoom level with respect to the reference domain span (the original domain).
+     *
+     * TODO: This is highly specific to positional channels. Figure out a better place for this
+     * and other zoom-related stuff.
+     */
+    getZoomLevel() {
+        const scale = this.getScale();
+
+        // TODO: Support log, pow, etc...
+        if (scale.type == "linear") {
+            return span(this._originalDomain) / span(scale.domain());
+        }
+
+        return 1.0;
     }
 
     /**
