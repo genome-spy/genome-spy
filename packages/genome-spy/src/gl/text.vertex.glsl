@@ -3,6 +3,7 @@
 uniform float uSdfNumerator;
 
 uniform vec2 uD; // dx & dy
+uniform float uAngle;
 
 attribute vec3 color;
 attribute lowp float opacity;
@@ -84,7 +85,13 @@ void main(void) {
     float y = getScaled_y();
     float translatedY = transit(x, y)[0];
 
-    gl_Position = unitToNdc(vec2(x, translatedY) + (vec2(cx, cy) * size + uD) / uViewportSize);
+    float sinTheta = sin(uAngle);
+    float cosTheta = cos(uAngle);
+    mat2 rotation = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
+
+    vec2 pos = rotation * (vec2(cx, cy) * size + uD);
+
+    gl_Position = unitToNdc(vec2(x, translatedY) + pos / uViewportSize);
 
     // Controls antialiasing of the SDF
     vSlope = max(1.0, size / uSdfNumerator);

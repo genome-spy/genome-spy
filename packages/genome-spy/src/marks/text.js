@@ -15,7 +15,8 @@ const defaultMarkProperties = {
     align: "center",
     baseline: "middle",
     dx: 0,
-    dy: 0
+    dy: 0,
+    angle: 0
 };
 
 /** @type {import("../spec/view").EncodingConfigs} */
@@ -162,6 +163,7 @@ export default class TextMark extends Mark {
             uD: [this.properties.dx, -this.properties.dy],
             uPaddingX: 4.0, // TODO: Configurable
             uAlign: alignments[this.properties.align],
+            uAngle: (-this.properties.angle / 180) * Math.PI,
             uSdfNumerator:
                 /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
                     .common.base /

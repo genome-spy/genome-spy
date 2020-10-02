@@ -401,11 +401,7 @@ function getExtent(axisProps) {
         }
     }
     if (axisProps.title) {
-        if (mainChannel == "x") {
-            extent += axisProps.titlePadding + axisProps.titleFontSize;
-        } else {
-            console.log("y axis title is not yet supported!");
-        }
+        extent += axisProps.titlePadding + axisProps.titleFontSize;
     }
 
     extent = Math.min(
@@ -458,7 +454,7 @@ const defaultAxisProps = {
     titleColor: "black",
     titleFont: "sans-serif",
     titleFontSize: 10,
-    titlePadding: 5
+    titlePadding: 3
 
     // TODO: titleX, titleY, titleAngle, titleAlign, etc
 };
@@ -591,7 +587,9 @@ export function createAxis(axisProps) {
             clip: false,
             align: "center",
             baseline: ap.orient == "bottom" ? "bottom" : "top",
-            dy: -2 * offsetDirection // Not necessary after clipping can be disabled
+            angle: [0, 90, 0, -90][
+                ["top", "right", "bottom", "left"].indexOf(ap.orient)
+            ]
         },
         encoding: {
             text: { value: ap.title },
@@ -638,8 +636,7 @@ export function createAxis(axisProps) {
         axisSpec.layer.push(createTicksAndLabels());
     }
 
-    if (ap.title && main == "x") {
-        // TODO: Implement rotated text to support "y" axis
+    if (ap.title) {
         axisSpec.layer.push(createTitle());
     }
 
