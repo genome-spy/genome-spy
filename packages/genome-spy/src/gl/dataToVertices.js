@@ -622,6 +622,10 @@ export class TextVertexBuilder {
         this.metadata = metadata;
         this.properties = properties;
 
+        this.chars = Object.fromEntries(
+            this.metadata.chars.map(e => [e.id, e])
+        );
+
         const e = encoders;
 
         /** @type {Object.<string, import("./arraybuilder").Converter>} */
@@ -685,17 +689,13 @@ export class TextVertexBuilder {
     addBatch(key, data) {
         const offset = this.variableBuilder.vertexCount;
 
-        const chars = Object.fromEntries(
-            this.metadata.chars.map(e => [e.id, e])
-        );
-
         const align = this.properties.align || "left";
 
         const base = this.metadata.common.base;
         const scale = this.metadata.common.scaleH; // Assume square textures
 
         const getChar = /** @param {number} charCode */ charCode =>
-            chars[charCode] || chars[63];
+            this.chars[charCode] || this.chars[63];
 
         // Font metrics are not available in the bmfont metadata. Have to calculate...
         const sdfPadding = 5;
