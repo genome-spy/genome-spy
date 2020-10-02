@@ -34,7 +34,8 @@ export class Zoom {
         this.mouseDown = false;
         this.lastPoint = null;
 
-        this.zoomInertia = new Inertia();
+        // Disabled for now. Seems to cause intermittent duplicate renders per frame.
+        this.zoomInertia = new Inertia(true);
     }
 
     /**
@@ -245,7 +246,11 @@ export class Transform {
  * Creates some inertia, mainly for zooming with a mechanical mouse wheel
  */
 class Inertia {
-    constructor() {
+    /**
+     * @param {boolean} [disabled] Just call the callback directly
+     */
+    constructor(disabled) {
+        this.disabled = !!disabled;
         this.damping = 10e-5;
         this.acceleration = 0.3;
         /** Use acceleration if the momentum step is greater than X */
@@ -276,6 +281,11 @@ class Inertia {
      * @param {function(number):void} callback
      */
     setMomentum(value, callback) {
+        if (this.disabled) {
+            callback(value);
+            return;
+        }
+
         if (value * this.momentum < 0) {
             this.momentum = 0; // Stop if the direction changes
         } else if (Math.abs(value) > this.accelerationThreshold) {
