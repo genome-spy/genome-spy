@@ -81,10 +81,13 @@ export class VertexBuilder {
         for (const channel of ["x", "y", "x2", "y2", "size"]) {
             const ce = encoders[channel];
             if (ce && ce.scale) {
+                // TODO: nominal/ordinal that are numeric should go raw as well
+                const f = isContinuous(ce.scale.type) ? ce.accessor : ce;
+                const fp64 = ce.scale.fp64;
+                const double = new Float32Array(2);
                 this.converters[channel] = {
-                    // TODO: nominal/ordinal that are numeric should go raw as well
-                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
-                    numComponents: 1,
+                    f: fp64 ? d => fp64ify(f(d), double) : f,
+                    numComponents: fp64 ? 2 : 1,
                     raw: true
                 };
             }

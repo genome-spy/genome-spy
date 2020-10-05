@@ -15,6 +15,10 @@ import {
  * @prop {string} sampleId
  * @prop {Record<string, any>} uniforms
  *
+ * @typedef {Object} RawChannelProps
+ * @prop {boolean} [complexGeometry] The mark consists of multiple vertices that are rendered
+ *      without instancing. Thus, constant values must be provided as attributes. Default: false
+ *
  */
 export default class Mark {
     /**
@@ -40,10 +44,6 @@ export default class Mark {
      *
      * Note: attributes and channels do not necessarily match.
      * For example, rectangles have x, y, x2, and y2 channels but only x and y as attributes.
-     *
-     * @typedef {Object} RawChannelProps
-     * @prop {boolean} [complexGeometry] The mark consists of multiple vertices that are rendered
-     *      without instancing. Thus, constant values must be provided as attributes. Default: false
      *
      * @returns {Record<string, RawChannelProps>}
      */
@@ -184,9 +184,14 @@ export default class Mark {
                     return generateScaleGlsl(
                         attr,
                         this.unitView.getResolution(attr).getScale(),
-                        "datum" in e[attr]
-                            ? /** @type {number} */ (+e[attr].datum)
-                            : undefined // TODO: fp64
+                        {
+                            ...("datum" in e[attr]
+                                ? {
+                                      datum: /** @type {number} */ (+e[attr]
+                                          .datum)
+                                  }
+                                : {})
+                        }
                     );
                 }
             })
@@ -249,6 +254,7 @@ export default class Mark {
 
         const gl = this.gl;
         const props = this.getProperties();
+        const encoding = this.getEncoding();
 
         gl.useProgram(this.programInfo.program);
         this.setViewport(this.programInfo);
@@ -258,11 +264,16 @@ export default class Mark {
         for (const channel of ["x", "y", "size"]) {
             const resolution = this.unitView.getResolution(channel);
             if (resolution) {
-                uniforms[DOMAIN_PREFIX + channel] = ["band", "point"].includes(
+                const domain = ["band", "point"].includes(
                     resolution.getScale().type
                 )
                     ? [0, 1]
                     : resolution.getDomain();
+
+                uniforms[DOMAIN_PREFIX + channel] = resolution.getScaleProps()
+                    .fp64
+                    ? domain.map(x => fp64ify(x)).flat()
+                    : domain;
             }
         }
 

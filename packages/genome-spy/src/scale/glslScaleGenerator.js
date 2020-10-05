@@ -1,5 +1,6 @@
 import { primaryChannel } from "../encoder/encoder";
 import { isContinuous } from "vega-scale";
+import { fp64ify } from "../gl/includes/fp64-utils";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
@@ -31,23 +32,30 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  *
  * @param {string} channel
  * @param {any} scale
- * @param {number | number[]} [datum] A constant value (in domain), replaces an attribute
+ * @param {object} extra
+ * @param {number} [extra.datum] A constant value (in domain), replaces an attribute
  */
-export function generateScaleGlsl(channel, scale, datum) {
+export function generateScaleGlsl(channel, scale, { datum } = {}) {
     const primary = primaryChannel(channel);
     const attributeName = ATTRIBUTE_PREFIX + channel;
     const domainName = DOMAIN_PREFIX + primary;
     const rangeName = RANGE_PREFIX + primary;
 
+    const fp64 = scale.fp64;
+    const fp64Suffix = fp64 ? "Fp64" : "";
+    const attributeType = fp64 ? "vec2" : "float";
+
     let functionCall;
     switch (scale.type) {
         case "linear":
-            functionCall = `scaleLinear(value, ${domainName}, ${rangeName})`;
+            functionCall = `scaleLinear${fp64Suffix}(value, ${domainName}, ${rangeName})`;
             break;
         case "band":
         case "point":
-        case "identity":
             functionCall = "value";
+            break;
+        case "identity":
+            functionCall = `scaleIdentity${fp64Suffix}(value)`;
             break;
         default:
             throw new Error("Unsupported scale type: " + scale.type);
@@ -55,11 +63,13 @@ export function generateScaleGlsl(channel, scale, datum) {
 
     const domainDef =
         isContinuous(scale.type) && channel == primary
-            ? `uniform vec2 ${domainName};`
+            ? `uniform ${fp64 ? "vec4" : "vec2"} ${domainName};`
             : "";
 
     const range = vectorize(scale.range());
 
+    // Range needs no runtime adjustment. Thus, pass it as a constant that the
+    // GLSL compiler can optimize away in the case of unit ranges.
     const rangeDef =
         channel == primary
             ? `const ${range.type} ${rangeName} = ${range};`
@@ -67,18 +77,21 @@ export function generateScaleGlsl(channel, scale, datum) {
 
     return `
 #define ${channel}_DEFINED
+${fp64 ? `#define ${channel}_FP64` : ""}
 
 ${domainDef}
 ${rangeDef}
-attribute highp float ${attributeName};
+attribute highp ${attributeType} ${attributeName};
 
-float ${SCALE_FUNCTION_PREFIX}${channel}(float value) {
+float ${SCALE_FUNCTION_PREFIX}${channel}(${attributeType} value) {
     return ${functionCall};
 }
 
 float ${SCALED_FUNCTION_PREFIX}${channel}() {
     return ${SCALE_FUNCTION_PREFIX}${channel}(${
-        datum !== undefined ? vectorize(datum) : attributeName
+        datum !== undefined
+            ? vectorize(fp64 ? fp64ify(datum) : datum)
+            : attributeName
     });
 }`;
 }

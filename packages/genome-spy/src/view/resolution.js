@@ -213,6 +213,9 @@ export default class Resolution {
 
         this._scale = createScale(props);
 
+        // Tag the scale. N.B. the tag is lost upon scale.clone().
+        this._scale.fp64 = !!props.fp64;
+
         // Can be used as zoom extent
         this._originalDomain = [...this._scale.domain()];
 

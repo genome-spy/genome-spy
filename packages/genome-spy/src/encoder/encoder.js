@@ -12,6 +12,10 @@ import { isNumber } from "vega-util";
  * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder
  * @typedef {(function(object):number) & EncoderMetadata} NumberEncoder
  *
+ * @typedef {object} ScaleMetadata
+ * @prop {string} type Scale type
+ * @prop {boolean} fp64 Whether to use emulated 64 bit floating point in WebGL
+ * 
  * @typedef {(
     import("d3-scale").ScaleContinuousNumeric<any, any> |
     import("d3-scale").ScaleLinear<any, any> |
@@ -30,7 +34,7 @@ import { isNumber } from "vega-util";
     import("d3-scale").ScalePoint<any>
     )} D3Scale
  * 
- * @typedef {D3Scale & { type: string }} VegaScale
+ * @typedef {D3Scale & ScaleMetadata} VegaScale
  */
 
 /**

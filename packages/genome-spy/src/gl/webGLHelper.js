@@ -1,7 +1,9 @@
 import * as twgl from "twgl.js";
 import { getPlatformShaderDefines } from "./includes/fp64-utils";
+import FP64 from "./includes/fp64-arithmetic.glsl";
 import GLSL_COMMON from "./includes/common.glsl";
 import GLSL_SCALES from "./includes/scales.glsl";
+import GLSL_SCALES_FP64 from "./includes/scales_fp64.glsl";
 import GLSL_SAMPLE_TRANSITION from "./includes/sampleTransition.glsl";
 
 export default class WebGLHelper {
@@ -68,8 +70,12 @@ export default class WebGLHelper {
             GLSL_COMMON,
             GLSL_SCALES,
             GLSL_SAMPLE_TRANSITION
-            // TODO: fp64 if required
         ];
+
+        if (/[Ff]p64/.test(vertexCode)) {
+            vertexIncludes.push(FP64);
+            vertexIncludes.push(GLSL_SCALES_FP64);
+        }
 
         const fragmentIncludes = [GLSL_COMMON];
 

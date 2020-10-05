@@ -49,6 +49,9 @@ export interface EncodingConfig {
     axis?: Axis;
     title?: string;
     format?: string;
+
+    /** Use emulated 64 bit floating points to increase GPU rendering precision */
+    fp64?: boolean;
 }
 
 export type EncodingConfigs = Record<string, EncodingConfig>;
