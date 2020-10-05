@@ -1,4 +1,4 @@
-// Adapted from luma.gl - https://github.com/uber/luma.gl
+// Adapted from luma.gl - https://github.com/visgl/luma.gl
 
 // Copyright (c) 2015 - 2017 Uber Technologies, Inc.
 //
