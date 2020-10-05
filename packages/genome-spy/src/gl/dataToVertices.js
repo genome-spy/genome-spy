@@ -54,8 +54,110 @@ function createCachingColor2floatArray() {
  * @typedef {object} RangeEntry Represents a location of a vertex subset
  * @prop {number} offset in vertices
  * @prop {number} count in vertices
+ *
+ * @typedef {import("./arraybuilder").Converter} Converter
  */
-export class RectVertexBuilder {
+export class VertexBuilder {
+    /**
+     *
+     * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
+     * @param {Record<string, Converter>} [converters]
+     * @param {number} [size] Number of points if known, uses TypedArray
+     */
+    constructor(encoders, converters = {}, size = undefined) {
+        this.encoders = encoders;
+        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (encoders);
+
+        const c2f = createCachingColor2floatArray();
+
+        /** @type {Record<string, Converter>} */
+        this.converters = {
+            color: { f: d => c2f(e.color(d)), numComponents: 3 },
+            opacity: { f: e.opacity, numComponents: 1 },
+            ...converters
+        };
+
+        // Raw converters
+        for (const channel of ["x", "y", "x2", "y2", "size"]) {
+            const ce = encoders[channel];
+            if (ce && ce.scale) {
+                this.converters[channel] = {
+                    // TODO: nominal/ordinal that are numeric should go raw as well
+                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
+                    numComponents: 1,
+                    raw: true
+                };
+            }
+        }
+
+        const constants = Object.entries(encoders)
+            .filter(e => e[1].constant)
+            .map(e => e[0]);
+        const variables = Object.entries(encoders)
+            .filter(e => !e[1].constant)
+            .map(e => e[0]);
+
+        this.variableBuilder = ArrayBuilder.create(
+            this.converters,
+            variables,
+            size
+        );
+        this.constantBuilder = ArrayBuilder.create(this.converters, constants);
+
+        // Update all constants with an empty datum
+        this.constantBuilder.updateFromDatum({});
+        this.constantBuilder.pushAll();
+
+        /** Vertex index */
+        this.index = 0;
+
+        /** @type {Map<string, RangeEntry>} keep track of sample locations within the vertex array */
+        this.rangeMap = new Map();
+    }
+
+    /**
+     *
+     * @param {String} key
+     * @param {object[]} points
+     */
+    addBatch(key, points) {
+        const offset = this.index;
+
+        for (const p of points) {
+            this.variableBuilder.pushFromDatum(p);
+            this.index++;
+        }
+
+        const count = this.index - offset;
+        if (count) {
+            this.rangeMap.set(key, {
+                offset,
+                count
+                // TODO: Add some indices that allow rendering just a range
+            });
+        }
+    }
+
+    toArrays() {
+        return {
+            arrays: {
+                ...this.variableBuilder.arrays,
+                ...this.constantBuilder.toValues()
+            },
+            vertexCount: this.index,
+            rangeMap: this.rangeMap,
+            // TODO: better name for "componentNumbers"
+            componentNumbers: Object.fromEntries(
+                Object.entries(this.converters).map(e => [
+                    e[0],
+                    e[1].numComponents
+                ])
+            )
+        };
+    }
+}
+
+export class RectVertexBuilder extends VertexBuilder {
     /**
      *
      * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
@@ -71,28 +173,18 @@ export class RectVertexBuilder {
             visibleRange = [-Infinity, Infinity]
         }
     ) {
-        this.encoders = encoders;
-        this.visibleRange = visibleRange;
+        super(encoders, {
+            x: undefined,
+            y: undefined,
+            x2: undefined,
+            y2: undefined
+        });
 
-        const e = encoders;
+        this.visibleRange = visibleRange;
 
         this.tesselationThreshold = tesselationThreshold || Infinity;
 
-        /** @type {Object.<string, import("./arraybuilder").Converter>} */
-        const converters = {
-            color: { f: d => color2floatArray(e.color(d)), numComponents: 3 },
-            opacity: { f: e.opacity, numComponents: 1 }
-        };
-
-        const constants = Object.entries(encoders)
-            .filter(e => e[1].constant)
-            .map(e => e[0]);
-        const variables = Object.entries(encoders)
-            .filter(e => !e[1].constant)
-            .map(e => e[0]);
-
-        this.variableBuilder = ArrayBuilder.create(converters, variables);
-
+        // TODO: The following does not support constant "values"
         this.updateX = this.variableBuilder.createUpdater(
             ATTRIBUTE_PREFIX + "x",
             1
@@ -106,13 +198,6 @@ export class RectVertexBuilder {
         // ... or in case of band scale etc.
         this.updateWidth = this.variableBuilder.createUpdater("width", 1);
         this.updateHeight = this.variableBuilder.createUpdater("height", 1);
-
-        this.constantBuilder = ArrayBuilder.create(converters, constants);
-        this.constantBuilder.updateFromDatum({});
-        this.constantBuilder.pushAll();
-
-        /** @type {Map<string, RangeEntry>} */
-        this.rangeMap = new Map();
     }
 
     /* eslint-disable complexity */
@@ -128,7 +213,9 @@ export class RectVertexBuilder {
             .encoders);
         const [lower, upper] = this.visibleRange;
 
-        /** @returns {function(any):number} */
+        /**
+         * @param {import("../encoder/encoder").Encoder} encoder
+         */
         const a = encoder =>
             encoder.constant || !isContinuous(encoder.scale.type)
                 ? encoder
@@ -151,6 +238,7 @@ export class RectVertexBuilder {
                 continue;
             }
 
+            // Truncate to prevent tesselation of parts that are outside the viewport
             if (x < lower) x = lower;
             if (x2 > upper) x2 = upper;
 
@@ -167,7 +255,7 @@ export class RectVertexBuilder {
             // Start a new segment. Duplicate the first vertex to produce degenerate triangles
             this.variableBuilder.updateFromDatum(d);
 
-            const squeeze = /** @type {string} */ (e.squeeze(d));
+            const squeeze = /** @type {string} */ (this.encoders.squeeze(d));
             if (squeeze && squeeze != "none") {
                 // TODO: Fix minWidth/minHeight. It's totally broken.
                 const c = this._squeeze(squeeze, x, x2, y, y2);
@@ -291,21 +379,9 @@ export class RectVertexBuilder {
             default:
         }
     }
-
-    toArrays() {
-        return {
-            arrays: {
-                ...this.variableBuilder.arrays,
-                ...this.constantBuilder.toValues()
-            },
-            vertexCount: this.variableBuilder.vertexCount,
-            drawMode: glConst.TRIANGLE_STRIP,
-            rangeMap: this.rangeMap
-        };
-    }
 }
 
-export class RuleVertexBuilder {
+export class RuleVertexBuilder extends VertexBuilder {
     /**
      *
      * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
@@ -321,48 +397,14 @@ export class RuleVertexBuilder {
             visibleRange = [-Infinity, Infinity]
         }
     ) {
-        this.encoders = encoders;
-        this.visibleRange = visibleRange;
+        super(encoders, {});
 
-        const e = encoders;
+        this.visibleRange = visibleRange;
 
         this.tesselationThreshold = tesselationThreshold || Infinity;
 
-        /** @type {Object.<string, import("./arraybuilder").Converter>} */
-        const converters = {
-            color: { f: d => color2floatArray(e.color(d)), numComponents: 3 },
-            opacity: { f: e.opacity, numComponents: 1 }
-        };
-
-        for (const channel of ["x", "y", "x2", "y2", "size"]) {
-            const ce = encoders[channel];
-            if (ce && ce.scale) {
-                converters[channel] = {
-                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
-                    numComponents: 1,
-                    raw: true
-                };
-            }
-        }
-
-        const constants = Object.entries(encoders)
-            .filter(e => e[1].constant)
-            .map(e => e[0]);
-        const variables = Object.entries(encoders)
-            .filter(e => !e[1].constant)
-            .map(e => e[0]);
-
-        this.variableBuilder = ArrayBuilder.create(converters, variables);
-
         this.updateSide = this.variableBuilder.createUpdater("side", 1);
         this.updatePos = this.variableBuilder.createUpdater("pos", 1);
-
-        this.constantBuilder = ArrayBuilder.create(converters, constants);
-        this.constantBuilder.updateFromDatum({});
-        this.constantBuilder.pushAll();
-
-        /** @type {Map<string, RangeEntry>} */
-        this.rangeMap = new Map();
     }
 
     /* eslint-disable complexity */
@@ -411,185 +453,57 @@ export class RuleVertexBuilder {
             });
         }
     }
-
-    toArrays() {
-        return {
-            arrays: {
-                ...this.variableBuilder.arrays,
-                ...this.constantBuilder.toValues()
-            },
-            vertexCount: this.variableBuilder.vertexCount,
-            drawMode: glConst.TRIANGLE_STRIP,
-            rangeMap: this.rangeMap
-        };
-    }
 }
 
-export class PointVertexBuilder {
+export class PointVertexBuilder extends VertexBuilder {
     /**
      *
      * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
      * @param {number} [size] Number of points if known, uses TypedArray
      */
     constructor(encoders, size) {
-        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (encoders);
-
-        const c2f = createCachingColor2floatArray();
-
-        /** @type {Object.<string, import("./arraybuilder").Converter>} */
-        const converters = {
-            //x: { f: d => fp64ify(e.x(d), fpa), numComponents: 2 },
-            size: { f: e.size, numComponents: 1 },
-            color: { f: d => c2f(e.color(d)), numComponents: 3 },
-            opacity: { f: e.opacity, numComponents: 1 },
-            semanticScore: { f: e.semanticScore, numComponents: 1 },
-            shape: { f: d => SHAPES[e.shape(d)] || 0, numComponents: 1 },
-            strokeWidth: { f: e.strokeWidth, numComponents: 1 },
-            gradientStrength: { f: e.gradientStrength, numComponents: 1 }
-        };
-
-        for (const channel of ["x", "y", "x2"]) {
-            const ce = encoders[channel];
-            if (ce && ce.scale) {
-                converters[channel] = {
-                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
-                    numComponents: 1,
-                    raw: true
-                };
-            }
-        }
-
-        const constants = Object.entries(encoders)
-            .filter(e => e[1].constant)
-            .map(e => e[0]);
-        const variables = Object.entries(encoders)
-            .filter(e => !e[1].constant)
-            .map(e => e[0]);
-
-        this.variableBuilder = ArrayBuilder.create(converters, variables, size);
-        this.constantBuilder = ArrayBuilder.create(converters, constants);
-
-        this.constantBuilder.updateFromDatum({});
-        this.constantBuilder.pushAll();
-
-        this.index = 0;
-        /** @type {Map<string, RangeEntry>} */
-        this.rangeMap = new Map();
-    }
-
-    /**
-     *
-     * @param {String} key
-     * @param {object[]} points
-     */
-    addBatch(key, points) {
-        const offset = this.index;
-
-        for (const p of points) {
-            this.variableBuilder.pushFromDatum(p);
-            this.index++;
-        }
-
-        const count = this.index - offset;
-        if (count) {
-            this.rangeMap.set(key, {
-                offset,
-                count
-                // TODO: Add some indices that allow rendering just a range
-            });
-        }
-    }
-
-    toArrays() {
-        return {
-            arrays: {
-                ...this.variableBuilder.arrays,
-                ...this.constantBuilder.toValues()
+        super(
+            encoders,
+            {
+                semanticScore: {
+                    f: encoders.semanticScore,
+                    numComponents: 1
+                },
+                shape: {
+                    // TODO: Optimization: Reconfigure the scale to have the shape indices as the range
+                    f: d => SHAPES[encoders.shape(d)] || 0,
+                    numComponents: 1
+                },
+                strokeWidth: {
+                    f: encoders.strokeWidth,
+                    numComponents: 1
+                },
+                gradientStrength: {
+                    f: encoders.gradientStrength,
+                    numComponents: 1
+                }
             },
-            vertexCount: this.index,
-            drawMode: glConst.POINTS,
-            rangeMap: this.rangeMap
-        };
+            size
+        );
     }
 }
 
-export class ConnectionVertexBuilder {
+export class ConnectionVertexBuilder extends VertexBuilder {
     /**
-     * TODO: Create a base class or something. This is now almost identical to PointVertexBuilder
-     *
      * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
      * @param {number} [size] Number of points if known, uses TypedArray
      */
     constructor(encoders, size) {
-        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (encoders);
-
-        const c2f = createCachingColor2floatArray();
         const c2f2 = createCachingColor2floatArray();
-
-        /** @type {Object.<string, import("./arraybuilder").Converter>} */
-        this._converters = {
-            size: { f: e.size, numComponents: 1 },
-            size2: { f: e.size2, numComponents: 1 },
-            height: { f: e.height, numComponents: 1 },
-            color: { f: d => c2f(e.color(d)), numComponents: 3 },
-            color2: { f: d => c2f2(e.color2(d)), numComponents: 3 },
-            opacity: { f: e.opacity, numComponents: 1 }
-        };
-
-        for (const channel of ["x", "y", "x2", "y2"]) {
-            const ce = encoders[channel];
-            if (ce && ce.scale) {
-                this._converters[channel] = {
-                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
-                    numComponents: 1,
-                    raw: true
-                };
-            }
-        }
-
-        const constants = Object.entries(encoders)
-            .filter(e => e[1].constant)
-            .map(e => e[0]);
-        const variables = Object.entries(encoders)
-            .filter(e => !e[1].constant)
-            .map(e => e[0]);
-
-        this.variableBuilder = ArrayBuilder.create(
-            this._converters,
-            variables,
+        super(
+            encoders,
+            {
+                size2: { f: encoders.size2, numComponents: 1 },
+                height: { f: encoders.height, numComponents: 1 },
+                color2: { f: d => c2f2(encoders.color2(d)), numComponents: 3 }
+            },
             size
         );
-        this.constantBuilder = ArrayBuilder.create(this._converters, constants);
-
-        this.constantBuilder.updateFromDatum({});
-        this.constantBuilder.pushAll();
-
-        this.index = 0;
-        /** @type {Map<string, RangeEntry>} */
-        this.rangeMap = new Map();
-    }
-
-    /**
-     *
-     * @param {String} key
-     * @param {object[]} points
-     */
-    addBatch(key, points) {
-        const offset = this.index;
-
-        for (const p of points) {
-            this.variableBuilder.pushFromDatum(p);
-            this.index++;
-        }
-
-        const count = this.index - offset;
-        if (count) {
-            this.rangeMap.set(key, {
-                offset,
-                count
-                // TODO: Add some indices that allow rendering just a range
-            });
-        }
     }
 
     toArrays() {
@@ -600,34 +514,27 @@ export class ConnectionVertexBuilder {
             a.divisor = 1;
         }
 
-        return {
-            arrays: {
-                ...arrays,
-                ...this.constantBuilder.toValues()
-            },
-            vertexCount: this.index,
-            drawMode: glConst.POINTS,
-            rangeMap: this.rangeMap,
-            componentNumbers: Object.fromEntries(
-                Object.entries(this._converters).map(e => [
-                    e[0],
-                    e[1].numComponents
-                ])
-            )
-        };
+        return super.toArrays();
     }
 }
 
-export class TextVertexBuilder {
+export class TextVertexBuilder extends VertexBuilder {
     /**
      *
      * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
      * @param {import("../fonts/types").FontMetadata} metadata
-     * @param {object} properties
+     * @param {Record<string, any>} properties
      * @param {number} [size]
      */
     constructor(encoders, metadata, properties, size) {
-        this.encoders = encoders;
+        super(
+            encoders,
+            {
+                //size: { f: encoders.size, numComponents: 1 }
+            },
+            size * 6 // six vertices per quad (character)
+        );
+
         this.metadata = metadata;
         this.properties = properties;
 
@@ -637,41 +544,10 @@ export class TextVertexBuilder {
 
         const e = encoders;
 
-        /** @type {Object.<string, import("./arraybuilder").Converter>} */
-        const converters = {
-            color: { f: d => color2floatArray(e.color(d)), numComponents: 3 },
-            opacity: { f: e.opacity, numComponents: 1 },
-            size: { f: e.size, numComponents: 1 }
-        };
-
-        for (const channel of ["x", "y", "x2"]) {
-            const ce = encoders[channel];
-            if (ce && ce.scale) {
-                converters[channel] = {
-                    f: isContinuous(ce.scale.type) ? ce.accessor : ce,
-                    numComponents: 1,
-                    raw: true
-                };
-            }
-        }
-
         /** @type {function(any):any} */
         this.numberFormat = e.text.encodingConfig.format
             ? format(e.text.encodingConfig.format)
             : d => d;
-
-        const constants = Object.entries(encoders)
-            .filter(e => e[1].constant)
-            .map(e => e[0]);
-        const variables = Object.entries(encoders)
-            .filter(e => !e[1].constant)
-            .map(e => e[0]);
-
-        this.variableBuilder = ArrayBuilder.create(
-            converters,
-            variables,
-            size * 6
-        );
 
         // TODO: Store these as vec2
         this.updateCX = this.variableBuilder.createUpdater("cx", 1);
@@ -682,13 +558,6 @@ export class TextVertexBuilder {
         this.updateTY = this.variableBuilder.createUpdater("ty", 1);
 
         this.updateWidth = this.variableBuilder.createUpdater("width", 1);
-
-        this.constantBuilder = ArrayBuilder.create(converters, constants);
-        this.constantBuilder.updateFromDatum({});
-        this.constantBuilder.pushAll();
-
-        /** @type {Map<string, RangeEntry>} */
-        this.rangeMap = new Map();
     }
 
     /**
@@ -708,7 +577,7 @@ export class TextVertexBuilder {
             this.chars[charCode] || this.chars[63];
 
         // Font metrics are not available in the bmfont metadata. Have to calculate...
-        const sdfPadding = 5;
+        const sdfPadding = 5; // Not sure if this is same with all all fonts...
         const xHeight = getChar("x".charCodeAt(0)).height - sdfPadding * 2;
         const capHeight = getChar("X".charCodeAt(0)).height - sdfPadding * 2;
 
@@ -820,18 +689,6 @@ export class TextVertexBuilder {
                 // TODO: Add some indices that allow rendering just a range
             });
         }
-    }
-
-    toArrays() {
-        return {
-            arrays: {
-                ...this.variableBuilder.arrays,
-                ...this.constantBuilder.toValues()
-            },
-            vertexCount: this.variableBuilder.vertexCount,
-            drawMode: glConst.TRIANGLES,
-            rangeMap: this.rangeMap
-        };
     }
 }
 

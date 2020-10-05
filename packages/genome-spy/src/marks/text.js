@@ -46,7 +46,8 @@ export default class TextMark extends Mark {
         return {
             x: {},
             x2: {},
-            y: {}
+            y: {},
+            size: {}
         };
     }
 
@@ -88,10 +89,7 @@ export default class TextMark extends Mark {
             );
         });
 
-        const encoding = this.getEncoding();
-        const defines = encoding.x2 ? ["#define X2_ENABLED"] : [];
-
-        this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER, defines);
+        this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
 
         return texturePromise;
     }

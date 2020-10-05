@@ -4,7 +4,7 @@ precision mediump float;
 
 attribute lowp vec3 color;
 attribute lowp float opacity;
-attribute float size; // Diameter or width/height
+attribute float size; 
 attribute lowp float shape;
 attribute lowp float strokeWidth;
 attribute float semanticScore;
@@ -63,7 +63,7 @@ void main(void) {
         return;
     }
 
-    // TODO: offset
+    float size = getScaled_size();
     float x = getScaled_x();
     float y = getScaled_y();
 

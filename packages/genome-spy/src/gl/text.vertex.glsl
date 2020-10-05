@@ -7,7 +7,6 @@ uniform float uAngle;
 
 attribute vec3 color;
 attribute lowp float opacity;
-attribute float size;
 
 // TODO: Store as vec2
 attribute float cx;
@@ -20,7 +19,7 @@ attribute lowp float ty;
 // Width of the text (all letters)
 attribute float width;
 
-#ifdef X2_ENABLED
+#ifdef x2_DEFINED
 uniform float uPaddingX;
 uniform float uAlign; // -1, 0, 1 = left, center, right
 #endif
@@ -30,9 +29,10 @@ varying vec2 vTexCoord;
 varying float vSlope;
 
 void main(void) {
+    float size = getScaled_size();
     float x = getScaled_x();
 
-#ifdef X2_ENABLED
+#ifdef x2_DEFINED
     float x2 = getScaled_x2();
 
     float normalizedSpan = x2 - x;

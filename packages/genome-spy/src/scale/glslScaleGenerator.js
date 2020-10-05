@@ -3,6 +3,7 @@ import { isContinuous } from "vega-scale";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
+export const RANGE_PREFIX = "range_";
 export const SCALE_FUNCTION_PREFIX = "scale_";
 export const SCALED_FUNCTION_PREFIX = "getScaled_";
 
@@ -36,11 +37,12 @@ export function generateScaleGlsl(channel, scale, datum) {
     const primary = primaryChannel(channel);
     const attributeName = ATTRIBUTE_PREFIX + channel;
     const domainName = DOMAIN_PREFIX + primary;
+    const rangeName = RANGE_PREFIX + primary;
 
     let functionCall;
     switch (scale.type) {
         case "linear":
-            functionCall = `scaleLinear(value, ${domainName})`;
+            functionCall = `scaleLinear(value, ${domainName}, ${rangeName})`;
             break;
         case "band":
         case "point":
@@ -51,13 +53,23 @@ export function generateScaleGlsl(channel, scale, datum) {
             throw new Error("Unsupported scale type: " + scale.type);
     }
 
-    const domainUniform =
+    const domainDef =
         isContinuous(scale.type) && channel == primary
             ? `uniform vec2 ${domainName};`
             : "";
 
+    const range = vectorize(scale.range());
+
+    const rangeDef =
+        channel == primary
+            ? `const ${range.type} ${rangeName} = ${range};`
+            : "";
+
     return `
-${domainUniform}
+#define ${channel}_DEFINED
+
+${domainDef}
+${rangeDef}
 attribute highp float ${attributeName};
 
 float ${SCALE_FUNCTION_PREFIX}${channel}(float value) {

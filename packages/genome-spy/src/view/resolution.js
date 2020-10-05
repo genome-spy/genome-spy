@@ -327,7 +327,7 @@ export default class Resolution {
             // of rect mark
             props.range = Object.keys(SQUEEZE);
         } else if (channel == "size") {
-            props.range = [0, 400]; // TODO: Configurable default
+            props.range = [0, 400]; // TODO: Configurable default. This is currently optimized for points.
         }
 
         return props;

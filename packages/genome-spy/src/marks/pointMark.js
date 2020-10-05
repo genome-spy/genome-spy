@@ -46,7 +46,8 @@ export default class PointMark extends Mark {
     getRawAttributes() {
         return {
             x: {},
-            y: {}
+            y: {},
+            size: {}
         };
     }
 
@@ -103,10 +104,9 @@ export default class PointMark extends Mark {
     updateGraphicsData() {
         this.deleteGraphicsData();
 
-        const vertexCount =
-            this.dataBySample.size === 1
-                ? [...this.dataBySample.values()][0].length
-                : undefined; // TODO: Sum all samples
+        const vertexCount = [...this.dataBySample.values()]
+            .map(arr => arr.length)
+            .reduce((a, c) => a + c, 0);
 
         const builder = new PointVertexBuilder(this.encoders, vertexCount);
 

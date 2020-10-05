@@ -185,7 +185,7 @@ export default class Mark {
                         attr,
                         this.unitView.getResolution(attr).getScale(),
                         "datum" in e[attr]
-                            ? /** @type {number} */ (e[attr].datum)
+                            ? /** @type {number} */ (+e[attr].datum)
                             : undefined // TODO: fp64
                     );
                 }

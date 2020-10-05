@@ -60,7 +60,7 @@ export default class ArrayBuilder {
     addConverter(attributeName, numComponents, converter) {
         const updater = this.createUpdater(attributeName, numComponents);
         if (!converter) {
-            throw new Error("OMG " + attributeName);
+            throw new Error("Bug: no converter for " + attributeName + "!");
         }
         this.converters.push(d => updater(converter(d)));
     }
