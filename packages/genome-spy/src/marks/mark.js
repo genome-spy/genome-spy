@@ -22,9 +22,6 @@ export default class Mark {
      */
     constructor(unitView) {
         this.unitView = unitView;
-        /** @type {Record<string, any>} */
-        this.properties =
-            typeof unitView.spec.mark == "object" ? unitView.spec.mark : {};
 
         /** @type {Record<string, import("../encoder/encoder").Encoder>} */
         this.encoders = undefined;
@@ -65,6 +62,18 @@ export default class Mark {
     }
 
     /**
+     * @returns {Record<string, any>}
+     */
+    getDefaultProperties() {
+        // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
+        return {
+            clip: true,
+            xOffset: 0,
+            yOffset: 0
+        };
+    }
+
+    /**
      * Returns the encoding spec supplemented with mark's default encodings
      * @returns {import("../spec/view").EncodingConfigs}
      */
@@ -87,6 +96,18 @@ export default class Mark {
         */
 
         return { ...defaults, ...configured };
+    }
+
+    /**
+     * @returns {Record<string, any>}
+     */
+    getProperties() {
+        return {
+            ...this.getDefaultProperties(),
+            ...(typeof this.unitView.spec.mark == "object"
+                ? this.unitView.spec.mark
+                : {})
+        };
     }
 
     getContext() {
@@ -227,6 +248,7 @@ export default class Mark {
         // override
 
         const gl = this.gl;
+        const props = this.getProperties();
 
         gl.useProgram(this.programInfo.program);
         this.setViewport(this.programInfo);
@@ -247,8 +269,8 @@ export default class Mark {
         twgl.setUniforms(this.programInfo, this.getGlobalUniforms());
         twgl.setUniforms(this.programInfo, uniforms);
         twgl.setUniforms(this.programInfo, {
-            uXOffset: this.properties.xOffset || 0,
-            uYOffset: this.properties.yOffset || 0
+            uXOffset: props.xOffset || 0,
+            uYOffset: props.yOffset || 0
         });
 
         if (this.opaque) {
@@ -282,6 +304,7 @@ export default class Mark {
     setViewport(programInfo) {
         const dpr = window.devicePixelRatio;
         const gl = this.gl;
+        const props = this.getProperties();
 
         const coords = this.unitView.getCoords();
         const logicalSize = this.glHelper.getLogicalCanvasSize();
@@ -295,7 +318,7 @@ export default class Mark {
 
         // @ts-ignore
 
-        if (this.properties.clip) {
+        if (props.clip) {
             // @ts-ignore
             gl.viewport(...physicalGlCoords);
             // @ts-ignore

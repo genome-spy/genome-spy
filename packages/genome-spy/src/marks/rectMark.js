@@ -7,20 +7,6 @@ import createEncoders, { secondaryChannel } from "../encoder/encoder";
 
 import Mark from "./mark";
 
-const defaultMarkProperties = {
-    clip: true,
-
-    xOffset: 0.0,
-    yOffset: 0.0,
-
-    minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
-    minHeight: 0.5,
-    minOpacity: 0.0,
-
-    tesselationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
-    tesselationTiles: 35
-};
-
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
     x: null,
@@ -42,17 +28,6 @@ export default class RectMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
-
-        /** @type {Record<string, any>} */
-        this.properties = {
-            ...defaultMarkProperties,
-            ...this.properties
-        };
-
-        // TODO: Check markProperties.rectMinOpacity
-        this.opaque =
-            this.getEncoding().opacity.value >= 1.0 &&
-            this.properties.minOpacity >= 1.0;
     }
 
     getRawAttributes() {
@@ -64,6 +39,18 @@ export default class RectMark extends Mark {
 
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    }
+
+    getDefaultProperties() {
+        return {
+            ...super.getDefaultProperties(),
+            minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
+            minHeight: 0.5,
+            minOpacity: 0.0,
+
+            tesselationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
+            tesselationTiles: 35
+        };
     }
 
     /**
@@ -111,18 +98,19 @@ export default class RectMark extends Mark {
 
     onBeforeSampleAnimation() {
         const interval = this.getContext().genomeSpy.getViewportDomain();
+        const props = this.getProperties();
 
         if (
             interval.width() <
             this.getContext()
                 .genomeSpy.getDomain()
                 .width() /
-                this.properties.tesselationZoomThreshold
+                props.tesselationZoomThreshold
         ) {
             // TODO: Only bufferize the samples that are being animated
             this._sampleBufferInfo = this._createSampleBufferInfo(
                 interval,
-                interval.width() / this.properties.tesselationTiles
+                interval.width() / props.tesselationTiles
             );
         }
     }
@@ -169,14 +157,15 @@ export default class RectMark extends Mark {
     updateGraphicsData() {
         this.deleteGraphicsData();
 
+        const props = this.getProperties();
         const xDomain = undefined; //this.getXDomain();
         const domainWidth = xDomain ? xDomain.width() : Infinity;
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(
             null,
             domainWidth /
-                this.properties.tesselationZoomThreshold /
-                this.properties.tesselationTiles
+                props.tesselationZoomThreshold /
+                props.tesselationTiles
         );
         this._sampleBufferInfo = this._fullSampleBufferInfo;
     }
@@ -188,10 +177,11 @@ export default class RectMark extends Mark {
         super.render(samples);
 
         const gl = this.gl;
+        const props = this.getProperties();
 
         twgl.setUniforms(this.programInfo, {
-            uMinSize: [this.properties.minWidth, this.properties.minHeight], // in pixels
-            uMinOpacity: this.properties.minOpacity
+            uMinSize: [props.minWidth, props.minHeight], // in pixels
+            uMinOpacity: props.minOpacity
         });
 
         twgl.setBuffersAndAttributes(

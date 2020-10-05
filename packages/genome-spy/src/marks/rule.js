@@ -4,16 +4,6 @@ import VERTEX_SHADER from "../gl/rule.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rule.fragment.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices";
 
-const defaultMarkProperties = {
-    clip: true,
-
-    minLength: 0.0,
-    /** @type {number[]} */
-    strokeDash: null,
-    strokeDashOffset: 0
-    // TODO: offsetX, offsetY
-};
-
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
     x: null,
@@ -36,12 +26,6 @@ export default class RuleMark extends Mark {
     constructor(unitView) {
         super(unitView);
 
-        /** @type {Record<string, any>} */
-        this.properties = {
-            ...defaultMarkProperties,
-            ...this.properties
-        };
-
         this.dashTextureSize = 0;
     }
 
@@ -57,6 +41,17 @@ export default class RuleMark extends Mark {
 
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    }
+
+    getDefaultProperties() {
+        return {
+            ...super.getDefaultProperties(),
+            minLength: 0.0,
+            /** @type {number[]} */
+            strokeDash: null,
+            strokeDashOffset: 0
+            // TODO: offsetX, offsetY
+        };
     }
 
     // eslint-disable-next-line complexity
@@ -108,11 +103,11 @@ export default class RuleMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        if (this.properties.strokeDash) {
+        const props = this.getProperties();
+
+        if (props.strokeDash) {
             const gl = this.gl;
-            const textureData = createDashTextureArray(
-                this.properties.strokeDash
-            );
+            const textureData = createDashTextureArray(props.strokeDash);
             this.dashTexture = twgl.createTexture(gl, {
                 mag: gl.LINEAR,
                 min: gl.LINEAR,
@@ -151,16 +146,17 @@ export default class RuleMark extends Mark {
         super.render(samples);
 
         const gl = this.gl;
+        const props = this.getProperties();
 
         twgl.setUniforms(this.programInfo, {
-            uMinLength: this.properties.minLength,
+            uMinLength: props.minLength,
             uDashTextureSize: this.dashTextureSize
         });
 
         if (this.dashTexture) {
             twgl.setUniforms(this.programInfo, {
                 uDashTexture: this.dashTexture,
-                uStrokeDashOffset: this.properties.strokeDashOffset
+                uStrokeDashOffset: props.strokeDashOffset
             });
         }
 

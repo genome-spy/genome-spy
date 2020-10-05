@@ -5,12 +5,6 @@ import { ConnectionVertexBuilder } from "../gl/dataToVertices";
 
 import Mark from "./mark";
 
-const defaultMarkProperties = {
-    clip: true,
-
-    segments: 101 // Performance is affected more by the fill rate, i.e. number of pixels
-};
-
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
     x: null,
@@ -31,14 +25,6 @@ export default class ConnectionMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
-
-        /** @type {Record<string, any>} */
-        this.properties = {
-            ...defaultMarkProperties,
-            ...this.properties
-        };
-
-        this.opaque = this.getEncoding().opacity.value >= 1.0;
     }
 
     getRawAttributes() {
@@ -52,6 +38,14 @@ export default class ConnectionMark extends Mark {
 
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    }
+
+    getDefaultProperties() {
+        return {
+            ...super.getDefaultProperties(),
+
+            segments: 101 // Performance is affected more by the fill rate, i.e. number of pixels
+        };
     }
 
     /**
@@ -106,7 +100,7 @@ export default class ConnectionMark extends Mark {
         this._componentNumbers = vertexData.componentNumbers; // TODO: Better place/name/etc
 
         vertexData.arrays.strip = {
-            data: createStrip(this.properties.segments),
+            data: createStrip(this.getProperties().segments),
             numComponents: 2
         };
 
@@ -125,6 +119,7 @@ export default class ConnectionMark extends Mark {
         super.render(samples);
 
         const gl = this.gl;
+        const props = this.getProperties();
 
         const getBandwidth = scale =>
             scale && scale.type == "band" ? scale.bandwidth() : 0;
@@ -169,7 +164,7 @@ export default class ConnectionMark extends Mark {
                     gl,
                     this.bufferInfo,
                     gl.TRIANGLE_STRIP,
-                    (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
+                    (props.segments + 1) * 2, // number of vertices in a triangle strip
                     0,
                     range.count
                 );

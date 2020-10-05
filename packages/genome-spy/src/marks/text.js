@@ -9,16 +9,6 @@ import fontMetadata from "../fonts/Lato-Regular.json";
 
 import Mark from "./mark";
 
-const defaultMarkProperties = {
-    clip: true,
-
-    align: "center",
-    baseline: "middle",
-    dx: 0,
-    dy: 0,
-    angle: 0
-};
-
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
     x: { value: 0.5 },
@@ -50,12 +40,6 @@ export default class TextMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
-
-        /** @type {Record<string, any>} */
-        this.properties = {
-            ...defaultMarkProperties,
-            ...this.properties
-        };
     }
 
     getRawAttributes() {
@@ -68,6 +52,17 @@ export default class TextMark extends Mark {
 
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    }
+
+    getDefaultProperties() {
+        return {
+            ...super.getDefaultProperties(),
+            align: "center",
+            baseline: "middle",
+            dx: 0,
+            dy: 0,
+            angle: 0
+        };
     }
 
     async initializeGraphics() {
@@ -130,7 +125,7 @@ export default class TextMark extends Mark {
         const builder = new TextVertexBuilder(
             this.encoders,
             fontMetadata,
-            this.properties,
+            this.getProperties(),
             charCount
         );
 
@@ -155,13 +150,14 @@ export default class TextMark extends Mark {
 
         const dpr = window.devicePixelRatio;
         const gl = this.gl;
+        const props = this.getProperties();
 
         twgl.setUniforms(this.programInfo, {
             uTexture: this.fontTexture,
-            uD: [this.properties.dx, -this.properties.dy],
+            uD: [props.dx, -props.dy],
             uPaddingX: 4.0, // TODO: Configurable
-            uAlign: alignments[this.properties.align],
-            uAngle: (-this.properties.angle / 180) * Math.PI,
+            uAlign: alignments[props.align],
+            uAngle: (-props.angle / 180) * Math.PI,
             uSdfNumerator:
                 /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
                     .common.base /

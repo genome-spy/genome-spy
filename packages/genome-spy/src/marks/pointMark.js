@@ -9,21 +9,6 @@ import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
 import Mark from "./mark";
 import ReservoirSampler from "../utils/reservoirSampler";
 
-const defaultMarkProperties = {
-    clip: true,
-
-    xOffset: 0,
-    yOffset: 0,
-
-    /** TODO: Implement */
-    relativeSizing: false,
-
-    maxRelativePointDiameter: 0.8,
-    minAbsolutePointDiameter: 0,
-
-    semanticZoomFraction: 0.02
-};
-
 /** @type {Record<string, import("../view/viewUtils").EncodingConfig>} */
 const defaultEncoding = {
     x: { value: 0.5 },
@@ -56,12 +41,6 @@ export default class PointMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
-
-        /** @type {Record<string, any>} */
-        this.properties = {
-            ...defaultMarkProperties,
-            ...this.properties
-        };
     }
 
     getRawAttributes() {
@@ -73,6 +52,19 @@ export default class PointMark extends Mark {
 
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    }
+
+    getDefaultProperties() {
+        return {
+            ...super.getDefaultProperties(),
+            /** TODO: Implement */
+            relativeSizing: false,
+
+            maxRelativePointDiameter: 0.8,
+            minAbsolutePointDiameter: 0,
+
+            semanticZoomFraction: 0.02
+        };
     }
 
     initializeData() {
@@ -132,7 +124,10 @@ export default class PointMark extends Mark {
     }
 
     _getGeometricScaleFactor() {
-        const zoomLevel = Math.pow(2, this.properties.geometricZoomBound || 0);
+        const zoomLevel = Math.pow(
+            2,
+            this.getProperties().geometricZoomBound || 0
+        );
 
         return Math.pow(
             Math.min(1, this.unitView.getZoomLevel() / zoomLevel),
@@ -158,7 +153,7 @@ export default class PointMark extends Mark {
             const p = Math.max(
                 0,
                 1 -
-                    this.properties.semanticZoomFraction *
+                    this.getProperties().semanticZoomFraction *
                         this.getContext().genomeSpy.getExpZoomLevel()
             );
             if (p <= 0) {
@@ -181,10 +176,11 @@ export default class PointMark extends Mark {
         super.render(samples);
 
         const gl = this.gl;
+        const props = this.getProperties();
 
         twgl.setUniforms(this.programInfo, {
-            uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
-            uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
+            uMaxRelativePointDiameter: props.maxRelativePointDiameter,
+            uMinAbsolutePointDiameter: props.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),
             uScaleFactor: this._getGeometricScaleFactor(),
             uSemanticThreshold: this.getSemanticThreshold()
