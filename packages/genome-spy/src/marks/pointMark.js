@@ -182,8 +182,6 @@ export default class PointMark extends Mark {
 
         const gl = this.gl;
 
-        gl.enable(gl.BLEND);
-
         twgl.setUniforms(this.programInfo, {
             uXOffset: this.properties.xOffset,
             uYOffset: this.properties.yOffset,

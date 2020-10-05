@@ -50,6 +50,11 @@ function createCachingColor2floatArray() {
     };
 }
 
+/**
+ * @typedef {object} RangeEntry Represents a location of a vertex subset
+ * @prop {number} offset in vertices
+ * @prop {number} count in vertices
+ */
 export class RectVertexBuilder {
     /**
      *
@@ -106,6 +111,7 @@ export class RectVertexBuilder {
         this.constantBuilder.updateFromDatum({});
         this.constantBuilder.pushAll();
 
+        /** @type {Map<string, RangeEntry>} */
         this.rangeMap = new Map();
     }
 
@@ -355,6 +361,7 @@ export class RuleVertexBuilder {
         this.constantBuilder.updateFromDatum({});
         this.constantBuilder.pushAll();
 
+        /** @type {Map<string, RangeEntry>} */
         this.rangeMap = new Map();
     }
 
@@ -466,6 +473,7 @@ export class PointVertexBuilder {
         this.constantBuilder.pushAll();
 
         this.index = 0;
+        /** @type {Map<string, RangeEntry>} */
         this.rangeMap = new Map();
     }
 
@@ -557,6 +565,7 @@ export class ConnectionVertexBuilder {
         this.constantBuilder.pushAll();
 
         this.index = 0;
+        /** @type {Map<string, RangeEntry>} */
         this.rangeMap = new Map();
     }
 
@@ -678,6 +687,7 @@ export class TextVertexBuilder {
         this.constantBuilder.updateFromDatum({});
         this.constantBuilder.pushAll();
 
+        /** @type {Map<string, RangeEntry>} */
         this.rangeMap = new Map();
     }
 

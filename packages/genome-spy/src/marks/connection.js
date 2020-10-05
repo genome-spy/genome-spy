@@ -126,12 +126,6 @@ export default class ConnectionMark extends Mark {
 
         const gl = this.gl;
 
-        if (this.opaque) {
-            gl.disable(gl.BLEND);
-        } else {
-            gl.enable(gl.BLEND);
-        }
-
         const getBandwidth = scale =>
             scale && scale.type == "band" ? scale.bandwidth() : 0;
 

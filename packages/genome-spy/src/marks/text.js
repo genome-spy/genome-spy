@@ -156,8 +156,6 @@ export default class TextMark extends Mark {
         const dpr = window.devicePixelRatio;
         const gl = this.gl;
 
-        gl.enable(gl.BLEND);
-
         twgl.setUniforms(this.programInfo, {
             uTexture: this.fontTexture,
             uD: [this.properties.dx, -this.properties.dy],

@@ -43,7 +43,6 @@ export default class RuleMark extends Mark {
         };
 
         this.dashTextureSize = 0;
-        this.opaque = this.getEncoding().opacity.value >= 1.0;
     }
 
     getRawAttributes() {
@@ -152,12 +151,6 @@ export default class RuleMark extends Mark {
         super.render(samples);
 
         const gl = this.gl;
-
-        if (this.opaque && !this.dashTexture) {
-            gl.disable(gl.BLEND);
-        } else {
-            gl.enable(gl.BLEND);
-        }
 
         twgl.setUniforms(this.programInfo, {
             uMinLength: this.properties.minLength,

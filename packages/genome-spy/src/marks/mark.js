@@ -27,6 +27,8 @@ export default class Mark {
 
         /** @type {twgl.ProgramInfo} WebGL buffers */
         this.programInfo = undefined;
+
+        this.opaque = false;
     }
 
     /**
@@ -38,7 +40,6 @@ export default class Mark {
      * @typedef {Object} RawChannelProps
      * @prop {boolean} [complexGeometry] The mark consists of multiple vertices that are rendered
      *      without instancing. Thus, constant values must be provided as attributes. Default: false
-     * @prop {boolean} [fp64] Use emulated 64bit floats.
      *
      * @returns {Record<string, RawChannelProps>}
      */
@@ -114,7 +115,6 @@ export default class Mark {
      */
     initializeEncoders() {
         this.encoders = createEncoders(this);
-        // TODO: Validate that all required channels are covered with encoders
     }
 
     /**
@@ -219,7 +219,9 @@ export default class Mark {
     render(samples) {
         // override
 
-        this.gl.useProgram(this.programInfo.program);
+        const gl = this.gl;
+
+        gl.useProgram(this.programInfo.program);
         this.setViewport(this.programInfo);
 
         /** @type {Record<string, number | number[]>} */
@@ -237,6 +239,12 @@ export default class Mark {
 
         twgl.setUniforms(this.programInfo, this.getGlobalUniforms());
         twgl.setUniforms(this.programInfo, uniforms);
+
+        if (this.opaque) {
+            gl.disable(gl.BLEND);
+        } else {
+            gl.enable(gl.BLEND);
+        }
     }
 
     getGlobalUniforms() {

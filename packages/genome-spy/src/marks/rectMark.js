@@ -189,12 +189,6 @@ export default class RectMark extends Mark {
 
         const gl = this.gl;
 
-        if (this.opaque) {
-            gl.disable(gl.BLEND);
-        } else {
-            gl.enable(gl.BLEND);
-        }
-
         twgl.setUniforms(this.programInfo, {
             uMinSize: [this.properties.minWidth, this.properties.minHeight], // in pixels
             uMinOpacity: this.properties.minOpacity,
