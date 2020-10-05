@@ -182,7 +182,7 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @param {object[]} samples
+     * @param {import("./mark").SampleToRender[]} samples
      */
     render(samples) {
         super.render(samples);
@@ -191,9 +191,7 @@ export default class RectMark extends Mark {
 
         twgl.setUniforms(this.programInfo, {
             uMinSize: [this.properties.minWidth, this.properties.minHeight], // in pixels
-            uMinOpacity: this.properties.minOpacity,
-            uXOffset: this.properties.xOffset,
-            uYOffset: this.properties.yOffset
+            uMinOpacity: this.properties.minOpacity
         });
 
         twgl.setBuffersAndAttributes(

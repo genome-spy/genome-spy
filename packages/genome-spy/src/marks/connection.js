@@ -119,7 +119,7 @@ export default class ConnectionMark extends Mark {
     }
 
     /**
-     * @param {object[]} samples
+     * @param {import("./mark").SampleToRender[]} samples
      */
     render(samples) {
         super.render(samples);

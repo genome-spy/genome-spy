@@ -145,7 +145,7 @@ export default class RuleMark extends Mark {
     }
 
     /**
-     * @param {object[]} samples
+     * @param {import("./mark").SampleToRender[]} samples
      */
     render(samples) {
         super.render(samples);

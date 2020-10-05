@@ -175,7 +175,7 @@ export default class PointMark extends Mark {
     }
 
     /**
-     * @param {object[]} samples
+     * @param {import("./mark").SampleToRender[]} samples
      */
     render(samples) {
         super.render(samples);
@@ -183,8 +183,6 @@ export default class PointMark extends Mark {
         const gl = this.gl;
 
         twgl.setUniforms(this.programInfo, {
-            uXOffset: this.properties.xOffset,
-            uYOffset: this.properties.yOffset,
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
             uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),

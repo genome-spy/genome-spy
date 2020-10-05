@@ -9,6 +9,13 @@ import {
     generateScaleGlsl
 } from "../scale/glslScaleGenerator";
 
+/**
+ *
+ * @typedef {object} SampleToRender
+ * @prop {string} sampleId
+ * @prop {Record<string, any>} uniforms
+ *
+ */
 export default class Mark {
     /**
      * @param {import("../view/unitView").default} unitView
@@ -214,7 +221,7 @@ export default class Mark {
     }
 
     /**
-     * @param {object[]} samples
+     * @param {SampleToRender[]} samples
      */
     render(samples) {
         // override
@@ -239,6 +246,10 @@ export default class Mark {
 
         twgl.setUniforms(this.programInfo, this.getGlobalUniforms());
         twgl.setUniforms(this.programInfo, uniforms);
+        twgl.setUniforms(this.programInfo, {
+            uXOffset: this.properties.xOffset || 0,
+            uYOffset: this.properties.yOffset || 0
+        });
 
         if (this.opaque) {
             gl.disable(gl.BLEND);
