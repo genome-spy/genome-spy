@@ -47,7 +47,8 @@ export default class PointMark extends Mark {
         return {
             x: {},
             y: {},
-            size: {}
+            size: {},
+            opacity: {}
         };
     }
 

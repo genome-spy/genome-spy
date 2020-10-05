@@ -254,24 +254,21 @@ export default class Mark {
 
         const gl = this.gl;
         const props = this.getProperties();
-        const encoding = this.getEncoding();
 
         gl.useProgram(this.programInfo.program);
         this.setViewport(this.programInfo);
 
         /** @type {Record<string, number | number[]>} */
         const uniforms = {};
-        for (const channel of ["x", "y", "size"]) {
+        for (const channel of Object.keys(this.getRawAttributes())) {
             const resolution = this.unitView.getResolution(channel);
             if (resolution) {
-                const domain = ["band", "point"].includes(
-                    resolution.getScale().type
-                )
+                const scale = resolution.getScale();
+                const domain = ["band", "point"].includes(scale.type)
                     ? [0, 1]
                     : resolution.getDomain();
 
-                uniforms[DOMAIN_PREFIX + channel] = resolution.getScaleProps()
-                    .fp64
+                uniforms[DOMAIN_PREFIX + channel] = scale.fp64
                     ? domain.map(x => fp64ify(x)).flat()
                     : domain;
             }

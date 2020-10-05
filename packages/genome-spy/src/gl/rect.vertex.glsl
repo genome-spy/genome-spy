@@ -2,7 +2,6 @@
 #pragma SCALES_HERE
 
 attribute lowp vec3 color;
-attribute lowp float opacity;
 
 /**
  * Height of the rectangle.
@@ -43,7 +42,7 @@ void main(void) {
 
     vec2 normalizedMinSize = uMinSize / uViewportSize;
 
-    float opa = opacity * max(uMinOpacity, 
+    float opa = getScaled_opacity() * max(uMinOpacity, 
         clampMinSize(x, scale_x(attr_x + width) - x, normalizedMinSize.x) *
         clampMinSize(y, (scale_y(attr_y + height) - y) * sampleHeight, normalizedMinSize.y));
 

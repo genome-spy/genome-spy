@@ -33,7 +33,8 @@ export default class RectMark extends Mark {
     getRawAttributes() {
         return {
             x: { complexGeometry: true },
-            y: { complexGeometry: true }
+            y: { complexGeometry: true },
+            opacity: {}
         };
     }
 

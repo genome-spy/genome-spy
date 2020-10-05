@@ -6,7 +6,6 @@ uniform vec2 uD; // dx & dy
 uniform float uAngle;
 
 attribute vec3 color;
-attribute lowp float opacity;
 
 // TODO: Store as vec2
 attribute float cx;
@@ -29,6 +28,7 @@ varying vec2 vTexCoord;
 varying float vSlope;
 
 void main(void) {
+    float opacity = getScaled_opacity();
     float size = getScaled_size();
     float x = getScaled_x();
 

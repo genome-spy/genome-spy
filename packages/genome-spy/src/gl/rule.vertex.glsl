@@ -1,7 +1,6 @@
 #pragma SCALES_HERE
 
 attribute lowp vec3 color;
-attribute lowp float opacity;
 
 /** Position along the rule */
 attribute float pos;
@@ -22,6 +21,7 @@ varying float vPixelPos;
 void main(void) {
     // Stroke width in pixels
     float size = getScaled_size();
+    float opacity = getScaled_opacity();
 
     vec2 a = vec2(getScaled_x(), getScaled_y());
     vec2 b = vec2(getScaled_x2(), getScaled_y2());

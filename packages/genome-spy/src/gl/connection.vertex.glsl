@@ -9,7 +9,6 @@ attribute vec2 strip;
 attribute float height;
 attribute lowp vec3 color;
 attribute lowp vec3 color2;
-attribute lowp float opacity;
 attribute float size;
 attribute float size2;
 
@@ -17,6 +16,7 @@ varying vec4 vColor;
 
 void main(void) {
 
+    float opacity = getScaled_opacity();
     float x = getScaled_x();
     float x2 = getScaled_x2();
     float y = getScaled_y();

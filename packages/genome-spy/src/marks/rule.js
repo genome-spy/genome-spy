@@ -35,7 +35,8 @@ export default class RuleMark extends Mark {
             x2: {},
             y: {},
             y2: {},
-            size: {}
+            size: {},
+            opacity: {}
         };
     }
 

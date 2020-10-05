@@ -73,12 +73,11 @@ export class VertexBuilder {
         /** @type {Record<string, Converter>} */
         this.converters = {
             color: { f: d => c2f(e.color(d)), numComponents: 3 },
-            opacity: { f: e.opacity, numComponents: 1 },
             ...converters
         };
 
         // Raw converters
-        for (const channel of ["x", "y", "x2", "y2", "size"]) {
+        for (const channel of ["x", "y", "x2", "y2", "size", "opacity"]) {
             const ce = encoders[channel];
             if (ce && ce.scale) {
                 // TODO: nominal/ordinal that are numeric should go raw as well

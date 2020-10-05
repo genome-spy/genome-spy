@@ -47,7 +47,8 @@ export default class TextMark extends Mark {
             x: {},
             x2: {},
             y: {},
-            size: {}
+            size: {},
+            opacity: {}
         };
     }
 

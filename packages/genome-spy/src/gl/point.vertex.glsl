@@ -3,8 +3,6 @@ precision mediump float;
 #pragma SCALES_HERE
 
 attribute lowp vec3 color;
-attribute lowp float opacity;
-attribute float size; 
 attribute lowp float shape;
 attribute lowp float strokeWidth;
 attribute float semanticScore;
@@ -81,20 +79,19 @@ void main(void) {
 
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.
-    float opa;
+    float opacity = getScaled_opacity();
     const float sizeLimit = 2.0;
     if (vSize < sizeLimit) {
         // We do some "cheap" gamma correction here. It breaks on dark background, though.
         // First we take a square of the size and then apply "gamma" of 1.5.
-        opa = opacity * pow(vSize / sizeLimit, 2.5);
+        opacity *= pow(vSize / sizeLimit, 2.5);
         vSize = sizeLimit;
-    } else {
-        opa = opacity;
     }
+    opacity *= thresholdFactor;
 
     gl_PointSize = vSize;
 
-    vColor = vec4(color, opa * thresholdFactor);
+    vColor = vec4(color, opacity); // Premultiplied in fragment shader
     vShape = shape;
     vStrokeWidth = strokeWidth;
     vGradientStrength = gradientStrength;

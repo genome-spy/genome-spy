@@ -32,7 +32,8 @@ export default class ConnectionMark extends Mark {
             x: {},
             x2: {},
             y: {},
-            y2: {}
+            y2: {},
+            opacity: {}
         };
     }
 
