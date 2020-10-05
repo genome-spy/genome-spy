@@ -316,14 +316,4 @@ export default class Mark {
             uViewportSize: [coords.width, coords.height]
         });
     }
-
-    /**
-     * @param {string} sampleId
-     * @param {number} x position on the range
-     * @param {number} y position on the range
-     * @param {import("../utils/interval").default} yBand the matched band on the band scale
-     */
-    findDatum(sampleId, x, y, yBand) {
-        return null;
-    }
 }

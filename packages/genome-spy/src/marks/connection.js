@@ -182,26 +182,6 @@ export default class ConnectionMark extends Mark {
             }
         }
     }
-
-    /**
-     * @param {string} sampleId
-     * @param {number} x position on the viewport
-     * @param {number} y position on the viewport
-     * @param {import("../utils/interval").default} yBand the matched band on the band scale
-     */
-    findDatum(sampleId, x, y, yBand) {}
-
-    /**
-     * Finds a datum that overlaps the given value on domain.
-     * The result is unspecified if multiple datums are found.
-     *
-     * TODO: Rename the other findDatum to findSpec
-     *
-     * @param {string} sampleId
-     * @param {number} x position on the x domain
-     * @returns {object}
-     */
-    findDatumAt(sampleId, x) {}
 }
 
 function createStrip(/** @type number */ segments) {
