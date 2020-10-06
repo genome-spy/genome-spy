@@ -4,10 +4,6 @@ precision mediump float;
 
 attribute lowp vec3 color;
 attribute lowp float shape;
-attribute lowp float strokeWidth;
-attribute float semanticScore;
-attribute lowp float gradientStrength;
-
 
 /** Maximum size of the largest point as the fraction of the height of the (faceted) view */
 uniform lowp float uMaxRelativePointDiameter;
@@ -33,7 +29,7 @@ varying lowp float vGradientStrength;
 float computeThresholdFactor() {
     //float margin = zoomLevel * 0.005;
     //return 1.0 - smoothstep(zoomThreshold, zoomThreshold + margin, 1.0 - zoomLevel * fractionToShow);
-    return semanticScore >= uSemanticThreshold ? 1.0 : 0.0;
+    return getScaled_semanticScore() >= uSemanticThreshold ? 1.0 : 0.0;
 }
 
 /**
@@ -93,6 +89,6 @@ void main(void) {
 
     vColor = vec4(color, opacity); // Premultiplied in fragment shader
     vShape = shape;
-    vStrokeWidth = strokeWidth;
-    vGradientStrength = gradientStrength;
+    vStrokeWidth = getScaled_strokeWidth();
+    vGradientStrength = getScaled_gradientStrength();
 }

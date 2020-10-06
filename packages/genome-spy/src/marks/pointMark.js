@@ -52,8 +52,8 @@ export default class PointMark extends Mark {
             opacity: { raw: true },
             semanticScore: { raw: true },
             shape: {},
-            strokeWidth: {},
-            gradientStrength: {}
+            strokeWidth: { raw: true },
+            gradientStrength: { raw: true }
         };
     }
 
