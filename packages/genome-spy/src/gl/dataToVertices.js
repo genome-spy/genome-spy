@@ -1,6 +1,7 @@
 import { color as d3color } from "d3-color";
 import { format } from "d3-format";
 import { fastmap, isString, accessor } from "vega-util";
+import { primaryChannel } from "../encoder/encoder";
 import { isContinuous } from "vega-scale";
 import { fp64ify } from "./includes/fp64-utils";
 import Interval from "../utils/interval";
@@ -56,15 +57,25 @@ function createCachingColor2floatArray() {
  * @prop {number} count in vertices
  *
  * @typedef {import("./arraybuilder").Converter} Converter
+ * @typedef {import("../encoder/encoder").Encoder} Encoder
+ * @typedef {import("../marks/mark").RawChannelProps} RawChannelProps
  */
 export class VertexBuilder {
     /**
      *
-     * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
+     * @param {Record<string, Encoder>} encoders
      * @param {Record<string, Converter>} [converters]
-     * @param {number} [size] Number of points if known, uses TypedArray
+     * @param {number} [size] If the number of data items is known, a
+     *      preallocated TypedArray is used
+     * @param {Record<string, RawChannelProps>} [attributes] If not defined,
+     *      assume that channels map one-to-one to attributes
      */
-    constructor(encoders, converters = {}, size = undefined) {
+    constructor(
+        encoders,
+        converters = {},
+        size = undefined,
+        attributes = undefined
+    ) {
         this.encoders = encoders;
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (encoders);
 
@@ -76,28 +87,67 @@ export class VertexBuilder {
             ...converters
         };
 
-        // Raw converters
+        // Here's some complexity because of constants. They can be collapsed into a single
+        // element in the WebGL buffers - expect in the case of complex geometries (rect mark)
+        // where different channels map to different vertices.
+
+        // Raw converters, TODO: compute attributes from "attributes"
         for (const channel of ["x", "y", "x2", "y2", "size", "opacity"]) {
             const ce = encoders[channel];
-            if (ce && ce.scale) {
-                // TODO: nominal/ordinal that are numeric should go raw as well
-                const f = isContinuous(ce.scale.type) ? ce.accessor : ce;
-                const fp64 = ce.scale.fp64;
-                const double = new Float32Array(2);
-                this.converters[channel] = {
-                    f: fp64 ? d => fp64ify(f(d), double) : f,
-                    numComponents: fp64 ? 2 : 1,
-                    raw: true
-                };
+            if (ce) {
+                if (ce.scale) {
+                    // TODO: nominal/ordinal that are numeric should go raw as well
+                    const f = isContinuous(ce.scale.type) ? ce.accessor : ce;
+                    const fp64 = ce.scale.fp64;
+                    const double = new Float32Array(2);
+                    this.converters[channel] = {
+                        f: fp64 ? d => fp64ify(f(d), double) : f,
+                        numComponents: fp64 ? 2 : 1,
+                        raw: true
+                    };
+                } else {
+                    // No scale, it's a "value".
+                    this.converters[channel] = {
+                        f: ce,
+                        numComponents: 1,
+                        raw: true
+                    };
+                }
             }
         }
 
-        const constants = Object.entries(encoders)
-            .filter(e => e[1].constant)
-            .map(e => e[0]);
-        const variables = Object.entries(encoders)
-            .filter(e => !e[1].constant)
-            .map(e => e[0]);
+        /**
+         * Is the channel complex, i.e. resulting multiple vertices for a single datum
+         * @param {string} channel
+         */
+        const isComplexChannel = channel => {
+            channel = primaryChannel(channel);
+            return (
+                attributes &&
+                attributes[channel] &&
+                attributes[channel].complexGeometry
+            );
+        };
+
+        /** @param {function(string, Encoder):boolean} encodingPredicate */
+        const getAttributes = encodingPredicate =>
+            Object.entries(encoders)
+                // .filter( ([channel, encoder]) => !attributes || attributes[channel]) // TODO: Filter channels that don't map to attributes
+                .filter(([channel, encoder]) =>
+                    encodingPredicate(channel, encoder)
+                )
+                .map(([channel, encoding]) => channel);
+
+        /** @type {function(string, Encoder):boolean} */
+        const isConstant = (channel, encoder) =>
+            encoder.constant && !isComplexChannel(channel);
+
+        const constants = getAttributes((channel, encoder) =>
+            isConstant(channel, encoder)
+        );
+        const variables = getAttributes(
+            (channel, encoder) => !isConstant(channel, encoder)
+        );
 
         this.variableBuilder = ArrayBuilder.create(
             this.converters,
@@ -164,6 +214,7 @@ export class RectVertexBuilder extends VertexBuilder {
      *
      * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
      * @param {Object} object
+     * @param {Record<string, RawChannelProps>} [object.attributes]
      * @param {number} [object.tesselationThreshold]
      *     If the rect is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
@@ -171,16 +222,22 @@ export class RectVertexBuilder extends VertexBuilder {
     constructor(
         encoders,
         {
+            attributes = undefined,
             tesselationThreshold = Infinity,
             visibleRange = [-Infinity, Infinity]
         }
     ) {
-        super(encoders, {
-            x: undefined,
-            y: undefined,
-            x2: undefined,
-            y2: undefined
-        });
+        super(
+            encoders,
+            {
+                x: undefined,
+                y: undefined,
+                x2: undefined,
+                y2: undefined
+            },
+            undefined,
+            attributes
+        );
 
         this.visibleRange = visibleRange;
 

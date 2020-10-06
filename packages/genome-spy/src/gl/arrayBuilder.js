@@ -21,13 +21,16 @@ export default class ArrayBuilder {
 
         Object.entries(converters)
             .filter(entry => attributes.includes(entry[0]))
-            .forEach(([attribute, props]) =>
-                builder.addConverter(
+            .forEach(([attribute, props]) => {
+                if (!props) {
+                    throw new Error("Bug!");
+                }
+                return builder.addConverter(
                     !props.raw ? attribute : ATTRIBUTE_PREFIX + attribute,
                     props.numComponents || 1,
                     props.f
-                )
-            );
+                );
+            });
 
         return builder;
     }

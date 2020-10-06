@@ -66,12 +66,12 @@ export function generateScaleGlsl(channel, scale, { datum } = {}) {
             ? `uniform ${fp64 ? "vec4" : "vec2"} ${domainName};`
             : "";
 
-    const range = vectorize(scale.range());
+    const range = scale.range ? vectorize(scale.range()) : undefined;
 
     // Range needs no runtime adjustment. Thus, pass it as a constant that the
     // GLSL compiler can optimize away in the case of unit ranges.
     const rangeDef =
-        channel == primary
+        range && channel == primary
             ? `const ${range.type} ${rangeName} = ${range};`
             : "";
 

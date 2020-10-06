@@ -247,7 +247,7 @@ export default class UnitView extends View {
         const getZoomLevel = channel => {
             // TODO: Replace this with optional chaining (?.) when webpack can handle it
             const resolution = this.getResolution(channel);
-            return resolution ? resolution.getZoomLevel() : 0;
+            return resolution ? resolution.getZoomLevel() : 1.0;
         };
 
         return ["x", "y"].map(getZoomLevel).reduce((a, c) => a * c, 1);

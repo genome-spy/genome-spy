@@ -193,7 +193,7 @@ export default class PointMark extends Mark {
         let findIndices;
 
         const xEncoder = this.encoders.x;
-        if (!xEncoder.constant) {
+        if (xEncoder && !xEncoder.constant) {
             // Only render the points that are located within the viewport
             const bisect = bisector(xEncoder.accessor).left;
             const visibleDomain = this.unitView

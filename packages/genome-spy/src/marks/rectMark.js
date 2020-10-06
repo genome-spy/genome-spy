@@ -91,6 +91,8 @@ export default class RectMark extends Mark {
             }
         }
 
+        // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
+
         fixPositional("x");
         fixPositional("y");
 
@@ -128,6 +130,7 @@ export default class RectMark extends Mark {
     _createSampleBufferInfo(interval, tesselationThreshold) {
         // TODO: Disable tesselation on SimpleTrack - no need for it
         const builder = new RectVertexBuilder(this.encoders, {
+            attributes: this.getRawAttributes(),
             tesselationThreshold,
             visibleRange: interval ? interval.toArray() : undefined
         });
