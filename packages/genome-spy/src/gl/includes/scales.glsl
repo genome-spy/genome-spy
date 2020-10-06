@@ -2,6 +2,8 @@ float scaleIdentity(float value) {
     return value;
 }
 
+// TODO: Clamp
+
 float scaleLinear(float value, vec2 domain, vec2 range) {
     float domainSpan = domain[1] - domain[0];
     float rangeSpan = range[1] - range[0];

@@ -302,13 +302,12 @@ export default class Mark {
         // override
 
         const gl = this.gl;
-        const props = this.getProperties();
 
         gl.useProgram(this.programInfo.program);
         this.setViewport(this.programInfo);
 
         /** @type {Record<string, number | number[]>} */
-        const uniforms = {};
+        const domainUniforms = {};
         for (const channel of Object.keys(this.getAttributes())) {
             const resolution = this.unitView.getResolution(channel);
             if (resolution) {
@@ -317,18 +316,14 @@ export default class Mark {
                     ? [0, 1]
                     : resolution.getDomain();
 
-                uniforms[DOMAIN_PREFIX + channel] = scale.fp64
+                domainUniforms[DOMAIN_PREFIX + channel] = scale.fp64
                     ? domain.map(x => fp64ify(x)).flat()
                     : domain;
             }
         }
 
         twgl.setUniforms(this.programInfo, this.getGlobalUniforms());
-        twgl.setUniforms(this.programInfo, uniforms);
-        twgl.setUniforms(this.programInfo, {
-            uXOffset: props.xOffset || 0,
-            uYOffset: props.yOffset || 0
-        });
+        twgl.setUniforms(this.programInfo, domainUniforms);
 
         if (this.opaque) {
             gl.disable(gl.BLEND);
@@ -338,13 +333,6 @@ export default class Mark {
     }
 
     getGlobalUniforms() {
-        /** @param {string} channel */
-        const getZoomLevel = channel => {
-            // TODO: Replace this with optional chaining (?.) when webpack can handle it
-            const resolution = this.unitView.getResolution(channel);
-            return resolution ? resolution.getZoomLevel() : 0;
-        };
-
         return {
             ONE: 1.0,
             uDevicePixelRatio: window.devicePixelRatio
@@ -375,6 +363,10 @@ export default class Mark {
 
         // @ts-ignore
 
+        // Note: we also handle xOffset/yOffset mark properties here
+        const xOffset = props.xOffset || 0;
+        const yOffset = -props.yOffset || 0;
+
         if (props.clip) {
             // @ts-ignore
             gl.viewport(...physicalGlCoords);
@@ -383,7 +375,7 @@ export default class Mark {
             gl.enable(gl.SCISSOR_TEST);
 
             twgl.setUniforms(programInfo, {
-                uViewOffset: [0, 0],
+                uViewOffset: [xOffset / coords.width, -yOffset / coords.height],
                 uViewScale: [1, 1]
             });
         } else {
@@ -399,8 +391,8 @@ export default class Mark {
             // Offset and scale all drawing to the view rectangle
             twgl.setUniforms(programInfo, {
                 uViewOffset: [
-                    coords.x / logicalSize.width,
-                    (logicalSize.height - coords.y - coords.height) /
+                    (coords.x + xOffset) / logicalSize.width,
+                    (logicalSize.height - coords.y - yOffset - coords.height) /
                         logicalSize.height
                 ],
                 uViewScale: [

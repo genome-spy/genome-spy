@@ -84,7 +84,16 @@ ${rangeDef}
 attribute highp ${attributeType} ${attributeName};
 
 float ${SCALE_FUNCTION_PREFIX}${channel}(${attributeType} value) {
-    return ${functionCall};
+    float scaled = ${functionCall};
+    ${
+        scale.clamp && scale.clamp()
+            ? `scaled = clamp(scaled, ${scale
+                  .range()
+                  .map(toDecimal)
+                  .join(", ")});`
+            : ""
+    }
+    return scaled;
 }
 
 float ${SCALED_FUNCTION_PREFIX}${channel}() {
