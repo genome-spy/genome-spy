@@ -31,7 +31,7 @@ export default class Mark {
         /** @type {Record<string, import("../encoder/encoder").Encoder>} */
         this.encoders = undefined;
 
-        /** @type {twgl.BufferInfo} WebGL buffers */
+        /** @type {twgl.BufferInfo & { allocatedVertices?: number }} WebGL buffers */
         this.bufferInfo = undefined;
 
         /** @type {twgl.ProgramInfo} WebGL buffers */
@@ -70,7 +70,14 @@ export default class Mark {
         return {
             clip: true,
             xOffset: 0,
-            yOffset: 0
+            yOffset: 0,
+
+            /**
+             * Minimum size for WebGL buffers (number of data items).
+             * Allows for using bufferSubData to update graphics.
+             * This property is intended for internal usage.
+             */
+            minBufferSize: 0
         };
     }
 
@@ -219,6 +226,13 @@ export default class Mark {
      */
     deleteGraphicsData() {
         if (this.bufferInfo) {
+            const gl = this.gl;
+            // A hack to prevent WebGL: INVALID_OPERATION: drawArrays: no buffer is bound to enabled attribute
+            // TODO: Consider using bufferSubData or DYNAMIC_DRAW etc...
+            for (let i = 0; i < 8; i++) {
+                gl.disableVertexAttribArray(i);
+            }
+
             Object.values(this.bufferInfo.attribs).forEach(attribInfo =>
                 this.gl.deleteBuffer(attribInfo.buffer)
             );
@@ -226,6 +240,40 @@ export default class Mark {
                 this.gl.deleteBuffer(this.bufferInfo.indices);
             }
             this.bufferInfo = undefined;
+        }
+    }
+
+    /**
+     *
+     * @param {any} vertexData TODO: Extract type from VertexBuilder
+     */
+    updateBufferInfo(vertexData) {
+        if (
+            this.bufferInfo &&
+            vertexData.vertexCount <= this.bufferInfo.allocatedVertices
+        ) {
+            for (const [attribute, attributeData] of Object.entries(
+                vertexData.arrays
+            )) {
+                // Skip constants
+                if (attributeData.data) {
+                    // TODO: Check that all attributes and numComponents match
+                    twgl.setAttribInfoBufferFromArray(
+                        this.gl,
+                        this.bufferInfo.attribs[attribute],
+                        attributeData.data,
+                        0
+                    );
+                }
+            }
+        } else {
+            this.deleteGraphicsData();
+            this.bufferInfo = twgl.createBufferInfoFromArrays(
+                this.gl,
+                vertexData.arrays,
+                { numElements: vertexData.vertexCount }
+            );
+            this.bufferInfo.allocatedVertices = vertexData.allocatedVertices;
         }
     }
 

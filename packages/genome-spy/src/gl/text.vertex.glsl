@@ -15,10 +15,11 @@ attribute float cy;
 attribute lowp float tx;
 attribute lowp float ty;
 
+
+#ifdef x2_DEFINED
 // Width of the text (all letters)
 attribute float width;
 
-#ifdef x2_DEFINED
 uniform float uPaddingX;
 uniform float uAlign; // -1, 0, 1 = left, center, right
 #endif

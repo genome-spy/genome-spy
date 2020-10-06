@@ -67,11 +67,18 @@ export class VertexBuilder {
      * @param {Record<string, Encoder>} object.encoders
      * @param {Record<string, Converter>} [object.converters]
      * @param {Record<string, AttributeProps>} [object.attributes]
-     * @param {number} [object.size] If the number of data items is known, a
+     * @param {number} [object.numVertices] If the number of data items is known, a
      *      preallocated TypedArray is used
      */
-    constructor({ encoders, converters = {}, size = undefined, attributes }) {
+    constructor({
+        encoders,
+        converters = {},
+        numVertices = undefined,
+        attributes
+    }) {
         this.encoders = encoders;
+        this.allocatedVertices = numVertices;
+
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (encoders);
 
         const c2f = createCachingColor2floatArray();
@@ -149,7 +156,7 @@ export class VertexBuilder {
         this.variableBuilder = ArrayBuilder.create(
             this.converters,
             variables,
-            size
+            numVertices
         );
         this.constantBuilder = ArrayBuilder.create(this.converters, constants);
 
@@ -189,11 +196,15 @@ export class VertexBuilder {
 
     toArrays() {
         return {
+            /** @type {Record<string, {data: number[] | Float32Array, numComponents: number, divisor?: number}>} */
             arrays: {
                 ...this.variableBuilder.arrays,
                 ...this.constantBuilder.toValues()
             },
+            /** Number of vertices used */
             vertexCount: this.variableBuilder.vertexCount,
+            /** Number of vertices allocated in buffers */
+            allocatedVertices: this.allocatedVertices,
             rangeMap: this.rangeMap,
             // TODO: better name for "componentNumbers"
             componentNumbers: Object.fromEntries(
@@ -443,17 +454,21 @@ export class RuleVertexBuilder extends VertexBuilder {
      * @param {number} [object.tesselationThreshold]
      *     If the rule is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
+     * @param {number} [object.numItems] Number of data items
      */
     constructor({
         encoders,
         attributes,
         tesselationThreshold = Infinity,
-        visibleRange = [-Infinity, Infinity]
+        visibleRange = [-Infinity, Infinity],
+        numItems
     }) {
         super({
             encoders,
             converters: {},
-            attributes
+            attributes,
+            numVertices:
+                tesselationThreshold == Infinity ? numItems * 6 : undefined
         });
 
         this.visibleRange = visibleRange;
@@ -518,9 +533,9 @@ export class PointVertexBuilder extends VertexBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {Record<string, AttributeProps>} object.attributes
-     * @param {number} [object.size] Number of points if known, uses TypedArray
+     * @param {number} [object.numItems] Number of points if known, uses TypedArray
      */
-    constructor({ encoders, attributes, size = undefined }) {
+    constructor({ encoders, attributes, numItems = undefined }) {
         super({
             encoders,
             converters: {
@@ -543,7 +558,7 @@ export class PointVertexBuilder extends VertexBuilder {
                 }
             },
             attributes,
-            size
+            numVertices: numItems
         });
     }
 }
@@ -553,9 +568,9 @@ export class ConnectionVertexBuilder extends VertexBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {Record<string, AttributeProps>} object.attributes
-     * @param {number} [object.size] Number of points if known, uses TypedArray
+     * @param {number} [object.numItems ] Number of points if known, uses TypedArray
      */
-    constructor({ encoders, attributes, size = undefined }) {
+    constructor({ encoders, attributes, numItems = undefined }) {
         const c2f2 = createCachingColor2floatArray();
         super({
             encoders,
@@ -565,7 +580,7 @@ export class ConnectionVertexBuilder extends VertexBuilder {
                 color2: { f: d => c2f2(encoders.color2(d)), numComponents: 3 }
             },
             attributes,
-            size
+            numVertices: numItems
         });
     }
 
@@ -589,19 +604,19 @@ export class TextVertexBuilder extends VertexBuilder {
      * @param {Record<string, AttributeProps>} object.attributes
      * @param {import("../fonts/types").FontMetadata} object.metadata
      * @param {Record<string, any>} object.properties
-     * @param {number} [object.size]
+     * @param {number} [object.numCharacters] number of characters
      */
     constructor({
         encoders,
         attributes,
         metadata,
         properties,
-        size = undefined
+        numCharacters = undefined
     }) {
         super({
             encoders,
             attributes,
-            size: size * 6 // six vertices per quad (character)
+            numVertices: numCharacters * 6 // six vertices per quad (character)
         });
 
         this.metadata = metadata;

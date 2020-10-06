@@ -124,24 +124,26 @@ export default class RuleMark extends Mark {
     }
 
     updateGraphicsData() {
-        this.deleteGraphicsData();
+        const itemCount = [...this.dataBySample.values()]
+            .map(arr => arr.length)
+            .reduce((a, c) => a + c, 0);
 
         const builder = new RuleVertexBuilder({
             encoders: this.encoders,
-            attributes: this.getAttributes()
+            attributes: this.getAttributes(),
+            numItems: Math.max(
+                itemCount,
+                this.getProperties().minBufferSize || 0
+            )
         });
 
         for (const [sample, d] of this.dataBySample.entries()) {
             builder.addBatch(sample, d);
         }
         const vertexData = builder.toArrays();
-
         this.rangeMap = vertexData.rangeMap;
-        this.bufferInfo = twgl.createBufferInfoFromArrays(
-            this.gl,
-            vertexData.arrays,
-            { numElements: vertexData.vertexCount }
-        );
+
+        this.updateBufferInfo(vertexData);
     }
 
     /**

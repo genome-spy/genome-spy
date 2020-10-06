@@ -85,17 +85,14 @@ export default class ConnectionMark extends Mark {
     }
 
     updateGraphicsData() {
-        this.deleteGraphicsData();
-
-        const vertexCount =
-            this.dataBySample.size === 1
-                ? [...this.dataBySample.values()][0].length
-                : undefined; // TODO: Sum all samples
+        const itemCount = [...this.dataBySample.values()]
+            .map(arr => arr.length)
+            .reduce((a, c) => a + c, 0);
 
         const builder = new ConnectionVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            size: vertexCount
+            numItems: itemCount
         });
 
         for (const [sample, connections] of this.dataBySample.entries()) {
@@ -111,11 +108,8 @@ export default class ConnectionMark extends Mark {
         };
 
         this.rangeMap = vertexData.rangeMap;
-        this.bufferInfo = twgl.createBufferInfoFromArrays(
-            this.gl,
-            vertexData.arrays,
-            { numElements: vertexData.vertexCount }
-        );
+
+        this.updateBufferInfo(vertexData);
     }
 
     /**

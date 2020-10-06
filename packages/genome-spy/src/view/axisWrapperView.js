@@ -551,7 +551,9 @@ export function createAxis(axisProps) {
                     : ap.orient == "bottom"
                     ? "top"
                     : "alphabetic",
-            ["d" + secondary]: (ap.tickSize + ap.labelPadding) * offsetDirection
+            ["d" + secondary]:
+                (ap.tickSize + ap.labelPadding) * offsetDirection,
+            minBufferSize: 1500
         },
         encoding: {
             [main]: { field: "value", type: "quantitative" },
@@ -567,7 +569,8 @@ export function createAxis(axisProps) {
         mark: {
             type: "rule",
             clip: false,
-            strokeDash: ap.tickDash
+            strokeDash: ap.tickDash,
+            minBufferSize: 300
         },
         encoding: {
             [secondary]: { value: anchor },

@@ -108,29 +108,25 @@ export default class PointMark extends Mark {
     }
 
     updateGraphicsData() {
-        this.deleteGraphicsData();
-
-        const vertexCount = [...this.dataBySample.values()]
+        const itemCount = [...this.dataBySample.values()]
             .map(arr => arr.length)
             .reduce((a, c) => a + c, 0);
 
         const builder = new PointVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            size: vertexCount
+            numItems: Math.min(
+                itemCount,
+                this.getProperties().minBufferSize || 0
+            )
         });
 
         for (const [sample, points] of this.dataBySample.entries()) {
             builder.addBatch(sample, points);
         }
         const vertexData = builder.toArrays();
-
         this.rangeMap = vertexData.rangeMap;
-        this.bufferInfo = twgl.createBufferInfoFromArrays(
-            this.gl,
-            vertexData.arrays,
-            { numElements: vertexData.vertexCount }
-        );
+        this.updateBufferInfo(vertexData);
     }
 
     _getGeometricScaleFactor() {

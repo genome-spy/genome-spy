@@ -98,9 +98,6 @@ export default class TextMark extends Mark {
     }
 
     updateGraphicsData() {
-        this.deleteGraphicsData();
-
-        const gl = this.gl;
         const encoding = this.getEncoding();
 
         // Count the total number of characters to that we can pre-allocate a typed array
@@ -128,20 +125,19 @@ export default class TextMark extends Mark {
             attributes: this.getAttributes(),
             properties: this.getProperties(),
             metadata: fontMetadata,
-            size: charCount
+            numCharacters: Math.max(
+                charCount,
+                this.getProperties().minBufferSize || 0
+            )
         });
 
         for (const [sample, texts] of this.dataBySample.entries()) {
             builder.addBatch(sample, texts);
         }
         const vertexData = builder.toArrays();
-
         this.rangeMap = vertexData.rangeMap;
-        this.bufferInfo = twgl.createBufferInfoFromArrays(
-            gl,
-            vertexData.arrays,
-            { numElements: vertexData.vertexCount }
-        );
+
+        this.updateBufferInfo(vertexData);
     }
 
     /**
