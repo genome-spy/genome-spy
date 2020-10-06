@@ -29,14 +29,15 @@ export default class RuleMark extends Mark {
         this.dashTextureSize = 0;
     }
 
-    getRawAttributes() {
+    getAttributes() {
         return {
-            x: {},
-            x2: {},
-            y: {},
-            y2: {},
-            size: {},
-            opacity: {}
+            x: { raw: true },
+            x2: { raw: true },
+            y: { raw: true },
+            y2: { raw: true },
+            size: { raw: true },
+            color: {},
+            opacity: { raw: true }
         };
     }
 
@@ -125,7 +126,10 @@ export default class RuleMark extends Mark {
     updateGraphicsData() {
         this.deleteGraphicsData();
 
-        const builder = new RuleVertexBuilder(this.encoders, {});
+        const builder = new RuleVertexBuilder({
+            encoders: this.encoders,
+            attributes: this.getAttributes()
+        });
 
         for (const [sample, d] of this.dataBySample.entries()) {
             builder.addBatch(sample, d);

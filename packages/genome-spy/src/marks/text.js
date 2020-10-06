@@ -13,6 +13,7 @@ import Mark from "./mark";
 const defaultEncoding = {
     x: { value: 0.5 },
     y: { value: 0.5 },
+    x2: undefined,
     text: { value: "" },
     size: { value: 11.0 },
     color: { value: "black" },
@@ -42,13 +43,14 @@ export default class TextMark extends Mark {
         super(unitView);
     }
 
-    getRawAttributes() {
+    getAttributes() {
         return {
-            x: {},
-            x2: {},
-            y: {},
-            size: {},
-            opacity: {}
+            x: { raw: true },
+            x2: { raw: true },
+            y: { raw: true },
+            color: {},
+            size: { raw: true },
+            opacity: { raw: true }
         };
     }
 
@@ -121,12 +123,13 @@ export default class TextMark extends Mark {
             }
         }
 
-        const builder = new TextVertexBuilder(
-            this.encoders,
-            fontMetadata,
-            this.getProperties(),
-            charCount
-        );
+        const builder = new TextVertexBuilder({
+            encoders: this.encoders,
+            attributes: this.getAttributes(),
+            properties: this.getProperties(),
+            metadata: fontMetadata,
+            size: charCount
+        });
 
         for (const [sample, texts] of this.dataBySample.entries()) {
             builder.addBatch(sample, texts);

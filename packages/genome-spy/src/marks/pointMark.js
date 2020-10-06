@@ -43,12 +43,17 @@ export default class PointMark extends Mark {
         super(unitView);
     }
 
-    getRawAttributes() {
+    getAttributes() {
         return {
-            x: {},
-            y: {},
-            size: {},
-            opacity: {}
+            x: { raw: true },
+            y: { raw: true },
+            size: { raw: true },
+            color: {},
+            opacity: { raw: true },
+            semanticScore: { raw: true },
+            shape: {},
+            strokeWidth: {},
+            gradientStrength: {}
         };
     }
 
@@ -109,7 +114,11 @@ export default class PointMark extends Mark {
             .map(arr => arr.length)
             .reduce((a, c) => a + c, 0);
 
-        const builder = new PointVertexBuilder(this.encoders, vertexCount);
+        const builder = new PointVertexBuilder({
+            encoders: this.encoders,
+            attributes: this.getAttributes(),
+            size: vertexCount
+        });
 
         for (const [sample, points] of this.dataBySample.entries()) {
             builder.addBatch(sample, points);

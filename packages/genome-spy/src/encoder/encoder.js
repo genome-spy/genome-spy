@@ -57,7 +57,7 @@ export default function createEncoders(mark, encodingConfigs) {
     }
 
     for (const [channel, encodingConfig] of Object.entries(encodingConfigs)) {
-        if (encodingConfig === null) {
+        if (!encodingConfig) {
             continue;
         }
 

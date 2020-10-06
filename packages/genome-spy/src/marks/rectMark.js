@@ -30,11 +30,12 @@ export default class RectMark extends Mark {
         super(unitView);
     }
 
-    getRawAttributes() {
+    getAttributes() {
         return {
-            x: { complexGeometry: true },
-            y: { complexGeometry: true },
-            opacity: {}
+            x: { raw: true, complexGeometry: true },
+            y: { raw: true, complexGeometry: true },
+            color: {},
+            opacity: { raw: true }
         };
     }
 
@@ -129,8 +130,9 @@ export default class RectMark extends Mark {
      */
     _createSampleBufferInfo(interval, tesselationThreshold) {
         // TODO: Disable tesselation on SimpleTrack - no need for it
-        const builder = new RectVertexBuilder(this.encoders, {
-            attributes: this.getRawAttributes(),
+        const builder = new RectVertexBuilder({
+            encoders: this.encoders,
+            attributes: this.getAttributes(),
             tesselationThreshold,
             visibleRange: interval ? interval.toArray() : undefined
         });

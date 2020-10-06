@@ -15,10 +15,11 @@ import {
  * @prop {string} sampleId
  * @prop {Record<string, any>} uniforms
  *
- * @typedef {Object} RawChannelProps
+ * @typedef {Object} AttributeProps
  * @prop {boolean} [complexGeometry] The mark consists of multiple vertices that are rendered
  *      without instancing. Thus, constant values must be provided as attributes. Default: false
- *
+ * @prop {boolean} [raw] Data is uploaded to the GPU memory as is, i.e., not scale transformed.
+ *      Default: false
  */
 export default class Mark {
     /**
@@ -40,14 +41,14 @@ export default class Mark {
     }
 
     /**
-     * Returns attributes that are uploaded to the GPU as raw data.
+     * Returns attribute info for WebGL attributes that match visual channels.
      *
      * Note: attributes and channels do not necessarily match.
      * For example, rectangles have x, y, x2, and y2 channels but only x and y as attributes.
      *
-     * @returns {Record<string, RawChannelProps>}
+     * @returns {Record<string, AttributeProps>}
      */
-    getRawAttributes() {
+    getAttributes() {
         // override
         throw new Error("Not implemented!");
     }
@@ -167,9 +168,9 @@ export default class Mark {
      */
     createShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const e = this.getEncoding();
-        const attributes = this.getRawAttributes();
+        const attributes = this.getAttributes();
         const glsl = Object.keys(attributes)
-            .filter(attr => attr in e)
+            .filter(attr => attributes[attr].raw && e[attr])
             .map(attr => {
                 if ("value" in e[attr]) {
                     if (!attributes[attr].complexGeometry) {
@@ -260,7 +261,7 @@ export default class Mark {
 
         /** @type {Record<string, number | number[]>} */
         const uniforms = {};
-        for (const channel of Object.keys(this.getRawAttributes())) {
+        for (const channel of Object.keys(this.getAttributes())) {
             const resolution = this.unitView.getResolution(channel);
             if (resolution) {
                 const scale = resolution.getScale();

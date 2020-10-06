@@ -58,24 +58,19 @@ function createCachingColor2floatArray() {
  *
  * @typedef {import("./arraybuilder").Converter} Converter
  * @typedef {import("../encoder/encoder").Encoder} Encoder
- * @typedef {import("../marks/mark").RawChannelProps} RawChannelProps
+ * @typedef {import("../marks/mark").AttributeProps} AttributeProps
  */
 export class VertexBuilder {
     /**
      *
-     * @param {Record<string, Encoder>} encoders
-     * @param {Record<string, Converter>} [converters]
-     * @param {number} [size] If the number of data items is known, a
+     * @param {object} object
+     * @param {Record<string, Encoder>} object.encoders
+     * @param {Record<string, Converter>} [object.converters]
+     * @param {Record<string, AttributeProps>} [object.attributes]
+     * @param {number} [object.size] If the number of data items is known, a
      *      preallocated TypedArray is used
-     * @param {Record<string, RawChannelProps>} [attributes] If not defined,
-     *      assume that channels map one-to-one to attributes
      */
-    constructor(
-        encoders,
-        converters = {},
-        size = undefined,
-        attributes = undefined
-    ) {
+    constructor({ encoders, converters = {}, size = undefined, attributes }) {
         this.encoders = encoders;
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (encoders);
 
@@ -91,8 +86,11 @@ export class VertexBuilder {
         // element in the WebGL buffers - expect in the case of complex geometries (rect mark)
         // where different channels map to different vertices.
 
-        // Raw converters, TODO: compute attributes from "attributes"
-        for (const channel of ["x", "y", "x2", "y2", "size", "opacity"]) {
+        const rawChannels = Object.entries(attributes)
+            .filter(([channel, attributeProps]) => attributeProps.raw)
+            .map(([channel, attributeProps]) => channel);
+
+        for (const channel of rawChannels) {
             const ce = encoders[channel];
             if (ce) {
                 if (ce.scale) {
@@ -122,17 +120,13 @@ export class VertexBuilder {
          */
         const isComplexChannel = channel => {
             channel = primaryChannel(channel);
-            return (
-                attributes &&
-                attributes[channel] &&
-                attributes[channel].complexGeometry
-            );
+            return attributes[channel] && attributes[channel].complexGeometry;
         };
 
         /** @param {function(string, Encoder):boolean} encodingPredicate */
         const getAttributes = encodingPredicate =>
             Object.entries(encoders)
-                // .filter( ([channel, encoder]) => !attributes || attributes[channel]) // TODO: Filter channels that don't map to attributes
+                .filter(([channel, encoder]) => attributes[channel])
                 .filter(([channel, encoder]) =>
                     encodingPredicate(channel, encoder)
                 )
@@ -142,9 +136,12 @@ export class VertexBuilder {
         const isConstant = (channel, encoder) =>
             encoder.constant && !isComplexChannel(channel);
 
-        const constants = getAttributes((channel, encoder) =>
-            isConstant(channel, encoder)
+        // Raw constants are included in the generated glsl code and thus skipped here
+        const constants = getAttributes(
+            (channel, encoder) =>
+                isConstant(channel, encoder) && !attributes[channel].raw
         );
+
         const variables = getAttributes(
             (channel, encoder) => !isConstant(channel, encoder)
         );
@@ -196,13 +193,13 @@ export class VertexBuilder {
                 ...this.variableBuilder.arrays,
                 ...this.constantBuilder.toValues()
             },
-            vertexCount: this.index,
+            vertexCount: this.variableBuilder.vertexCount,
             rangeMap: this.rangeMap,
             // TODO: better name for "componentNumbers"
             componentNumbers: Object.fromEntries(
                 Object.entries(this.converters).map(e => [
                     e[0],
-                    e[1].numComponents
+                    (e[1] && e[1].numComponents) || undefined // TODO: Check
                 ])
             )
         };
@@ -212,32 +209,29 @@ export class VertexBuilder {
 export class RectVertexBuilder extends VertexBuilder {
     /**
      *
-     * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
      * @param {Object} object
-     * @param {Record<string, RawChannelProps>} [object.attributes]
+     * @param {Record<string, Encoder>} object.encoders
+     * @param {Record<string, AttributeProps>} object.attributes
      * @param {number} [object.tesselationThreshold]
      *     If the rect is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
      */
-    constructor(
+    constructor({
         encoders,
-        {
-            attributes = undefined,
-            tesselationThreshold = Infinity,
-            visibleRange = [-Infinity, Infinity]
-        }
-    ) {
-        super(
+        attributes,
+        tesselationThreshold = Infinity,
+        visibleRange = [-Infinity, Infinity]
+    }) {
+        super({
             encoders,
-            {
+            converters: {
                 x: undefined,
                 y: undefined,
                 x2: undefined,
                 y2: undefined
             },
-            undefined,
             attributes
-        );
+        });
 
         this.visibleRange = visibleRange;
 
@@ -443,20 +437,24 @@ export class RectVertexBuilder extends VertexBuilder {
 export class RuleVertexBuilder extends VertexBuilder {
     /**
      *
-     * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
      * @param {Object} object
+     * @param {Record<string, Encoder>} object.encoders
+     * @param {Record<string, AttributeProps>} object.attributes
      * @param {number} [object.tesselationThreshold]
      *     If the rule is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
      */
-    constructor(
+    constructor({
         encoders,
-        {
-            tesselationThreshold = Infinity,
-            visibleRange = [-Infinity, Infinity]
-        }
-    ) {
-        super(encoders, {});
+        attributes,
+        tesselationThreshold = Infinity,
+        visibleRange = [-Infinity, Infinity]
+    }) {
+        super({
+            encoders,
+            converters: {},
+            attributes
+        });
 
         this.visibleRange = visibleRange;
 
@@ -517,13 +515,15 @@ export class RuleVertexBuilder extends VertexBuilder {
 export class PointVertexBuilder extends VertexBuilder {
     /**
      *
-     * @param {Record<string, import("../encoder/encoder").Encoder>} encoders
-     * @param {number} [size] Number of points if known, uses TypedArray
+     * @param {object} object
+     * @param {Record<string, Encoder>} object.encoders
+     * @param {Record<string, AttributeProps>} object.attributes
+     * @param {number} [object.size] Number of points if known, uses TypedArray
      */
-    constructor(encoders, size) {
-        super(
+    constructor({ encoders, attributes, size = undefined }) {
+        super({
             encoders,
-            {
+            converters: {
                 semanticScore: {
                     f: encoders.semanticScore,
                     numComponents: 1
@@ -542,27 +542,31 @@ export class PointVertexBuilder extends VertexBuilder {
                     numComponents: 1
                 }
             },
+            attributes,
             size
-        );
+        });
     }
 }
 
 export class ConnectionVertexBuilder extends VertexBuilder {
     /**
-     * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
-     * @param {number} [size] Number of points if known, uses TypedArray
+     * @param {object} object
+     * @param {Record<string, Encoder>} object.encoders
+     * @param {Record<string, AttributeProps>} object.attributes
+     * @param {number} [object.size] Number of points if known, uses TypedArray
      */
-    constructor(encoders, size) {
+    constructor({ encoders, attributes, size = undefined }) {
         const c2f2 = createCachingColor2floatArray();
-        super(
+        super({
             encoders,
-            {
+            converters: {
                 size2: { f: encoders.size2, numComponents: 1 },
                 height: { f: encoders.height, numComponents: 1 },
                 color2: { f: d => c2f2(encoders.color2(d)), numComponents: 3 }
             },
+            attributes,
             size
-        );
+        });
     }
 
     toArrays() {
@@ -580,19 +584,25 @@ export class ConnectionVertexBuilder extends VertexBuilder {
 export class TextVertexBuilder extends VertexBuilder {
     /**
      *
-     * @param {Object.<string, import("../encoder/encoder").Encoder>} encoders
-     * @param {import("../fonts/types").FontMetadata} metadata
-     * @param {Record<string, any>} properties
-     * @param {number} [size]
+     * @param {object} object
+     * @param {Record<string, Encoder>} object.encoders
+     * @param {Record<string, AttributeProps>} object.attributes
+     * @param {import("../fonts/types").FontMetadata} object.metadata
+     * @param {Record<string, any>} object.properties
+     * @param {number} [object.size]
      */
-    constructor(encoders, metadata, properties, size) {
-        super(
+    constructor({
+        encoders,
+        attributes,
+        metadata,
+        properties,
+        size = undefined
+    }) {
+        super({
             encoders,
-            {
-                //size: { f: encoders.size, numComponents: 1 }
-            },
-            size * 6 // six vertices per quad (character)
-        );
+            attributes,
+            size: size * 6 // six vertices per quad (character)
+        });
 
         this.metadata = metadata;
         this.properties = properties;

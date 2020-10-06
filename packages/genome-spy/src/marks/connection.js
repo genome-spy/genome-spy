@@ -27,13 +27,14 @@ export default class ConnectionMark extends Mark {
         super(unitView);
     }
 
-    getRawAttributes() {
+    getAttributes() {
         return {
-            x: {},
-            x2: {},
-            y: {},
-            y2: {},
-            opacity: {}
+            x: { raw: true },
+            x2: { raw: true },
+            y: { raw: true },
+            y2: { raw: true },
+            color: {},
+            opacity: { raw: true }
         };
     }
 
@@ -83,7 +84,7 @@ export default class ConnectionMark extends Mark {
         this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
-    async updateGraphicsData() {
+    updateGraphicsData() {
         this.deleteGraphicsData();
 
         const vertexCount =
@@ -91,7 +92,11 @@ export default class ConnectionMark extends Mark {
                 ? [...this.dataBySample.values()][0].length
                 : undefined; // TODO: Sum all samples
 
-        const builder = new ConnectionVertexBuilder(this.encoders, vertexCount);
+        const builder = new ConnectionVertexBuilder({
+            encoders: this.encoders,
+            attributes: this.getAttributes(),
+            size: vertexCount
+        });
 
         for (const [sample, connections] of this.dataBySample.entries()) {
             builder.addBatch(sample, connections);
