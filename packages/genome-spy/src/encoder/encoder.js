@@ -190,7 +190,11 @@ function createModifier(scale, encodingConfig, channel, markType) {
     return x => x;
 }
 
-/** @type {Object.<string, string>} */
+/**
+ * Map primary channels to secondarys
+ *
+ * @type {Record<string, string>}
+ */
 export const secondaryChannels = {
     x: "x2",
     y: "y2",
@@ -199,38 +203,44 @@ export const secondaryChannels = {
 };
 
 /**
+ * Map secondary channels to primaries
+ *
+ * @type {Record<string, string>}
+ */
+export const primaryChannels = Object.fromEntries(
+    Object.entries(secondaryChannels).map(entry => [entry[1], entry[0]])
+);
+
+/**
  *
  * @param {string} channel
  */
 export function isSecondaryChannel(channel) {
-    return Object.values(secondaryChannels).includes(channel);
+    return channel in primaryChannels;
 }
 
 /**
+ * Return the matching secondary channel or throws if one does not exist.
  *
- * @param {string} channel
+ * @param {string} primaryChannel
  */
-export function secondaryChannel(channel) {
-    const secondary = secondaryChannels[channel];
+export function secondaryChannel(primaryChannel) {
+    const secondary = secondaryChannels[primaryChannel];
     if (secondary) {
         return secondary;
     } else {
-        throw new Error(`${channel} has no secondary channel!`);
+        throw new Error(`${primaryChannel} has no secondary channel!`);
     }
 }
 
 /**
+ * Finds the primary channel for the provided channel, which may be
+ * the primary or secondary.
  *
  * @param {string} maybeSecondary
  */
 export function primaryChannel(maybeSecondary) {
-    for (const entry of Object.entries(secondaryChannels)) {
-        if (entry[1] === maybeSecondary) {
-            return entry[0];
-        }
-    }
-
-    return maybeSecondary;
+    return primaryChannels[maybeSecondary] || maybeSecondary;
 }
 
 /**
