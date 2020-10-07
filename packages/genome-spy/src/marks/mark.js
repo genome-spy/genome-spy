@@ -112,7 +112,7 @@ export default class Mark {
     /**
      * @returns {Record<string, any>}
      */
-    getProperties() {
+    get properties() {
         if (this._cachedProperties) {
             return this._cachedProperties;
         }
@@ -358,7 +358,7 @@ export default class Mark {
     setViewport(programInfo) {
         const dpr = window.devicePixelRatio;
         const gl = this.gl;
-        const props = this.getProperties();
+        const props = this.properties;
 
         const coords = this.unitView.getCoords();
         const logicalSize = this.glHelper.getLogicalCanvasSize();

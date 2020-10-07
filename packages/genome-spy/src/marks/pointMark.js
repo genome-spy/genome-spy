@@ -115,10 +115,7 @@ export default class PointMark extends Mark {
         const builder = new PointVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            numItems: Math.min(
-                itemCount,
-                this.getProperties().minBufferSize || 0
-            )
+            numItems: Math.min(itemCount, this.properties.minBufferSize || 0)
         });
 
         for (const [sample, points] of this.dataBySample.entries()) {
@@ -130,10 +127,7 @@ export default class PointMark extends Mark {
     }
 
     _getGeometricScaleFactor() {
-        const zoomLevel = Math.pow(
-            2,
-            this.getProperties().geometricZoomBound || 0
-        );
+        const zoomLevel = Math.pow(2, this.properties.geometricZoomBound || 0);
 
         return Math.pow(
             Math.min(1, this.unitView.getZoomLevel() / zoomLevel),
@@ -159,7 +153,7 @@ export default class PointMark extends Mark {
             const p = Math.max(
                 0,
                 1 -
-                    this.getProperties().semanticZoomFraction *
+                    this.properties.semanticZoomFraction *
                         this.getContext().genomeSpy.getExpZoomLevel()
             );
             if (p <= 0) {
@@ -182,11 +176,10 @@ export default class PointMark extends Mark {
         super.render(samples);
 
         const gl = this.gl;
-        const props = this.getProperties();
 
         twgl.setUniforms(this.programInfo, {
-            uMaxRelativePointDiameter: props.maxRelativePointDiameter,
-            uMinAbsolutePointDiameter: props.minAbsolutePointDiameter,
+            uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
+            uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),
             uScaleFactor: this._getGeometricScaleFactor(),
             uSemanticThreshold: this.getSemanticThreshold()

@@ -103,7 +103,7 @@ export default class ConnectionMark extends Mark {
         this._componentNumbers = vertexData.componentNumbers; // TODO: Better place/name/etc
 
         vertexData.arrays.strip = {
-            data: createStrip(this.getProperties().segments),
+            data: createStrip(this.properties.segments),
             numComponents: 2
         };
 
@@ -119,7 +119,6 @@ export default class ConnectionMark extends Mark {
         super.render(samples);
 
         const gl = this.gl;
-        const props = this.getProperties();
 
         const getBandwidth = scale =>
             scale && scale.type == "band" ? scale.bandwidth() : 0;
@@ -164,7 +163,7 @@ export default class ConnectionMark extends Mark {
                     gl,
                     this.bufferInfo,
                     gl.TRIANGLE_STRIP,
-                    (props.segments + 1) * 2, // number of vertices in a triangle strip
+                    (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
                     0,
                     range.count
                 );

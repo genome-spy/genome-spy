@@ -123,11 +123,11 @@ export default class TextMark extends Mark {
         const builder = new TextVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            properties: this.getProperties(),
+            properties: this.properties,
             metadata: fontMetadata,
             numCharacters: Math.max(
                 charCount,
-                this.getProperties().minBufferSize || 0
+                this.properties.minBufferSize || 0
             )
         });
 
@@ -148,7 +148,7 @@ export default class TextMark extends Mark {
 
         const dpr = window.devicePixelRatio;
         const gl = this.gl;
-        const props = this.getProperties();
+        const props = this.properties;
 
         twgl.setUniforms(this.programInfo, {
             uTexture: this.fontTexture,

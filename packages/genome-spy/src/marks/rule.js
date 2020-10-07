@@ -105,11 +105,11 @@ export default class RuleMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        const props = this.getProperties();
-
-        if (props.strokeDash) {
+        if (this.properties.strokeDash) {
             const gl = this.gl;
-            const textureData = createDashTextureArray(props.strokeDash);
+            const textureData = createDashTextureArray(
+                this.properties.strokeDash
+            );
             this.dashTexture = twgl.createTexture(gl, {
                 mag: gl.LINEAR,
                 min: gl.LINEAR,
@@ -131,10 +131,7 @@ export default class RuleMark extends Mark {
         const builder = new RuleVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            numItems: Math.max(
-                itemCount,
-                this.getProperties().minBufferSize || 0
-            )
+            numItems: Math.max(itemCount, this.properties.minBufferSize || 0)
         });
 
         for (const [sample, d] of this.dataBySample.entries()) {
@@ -153,17 +150,16 @@ export default class RuleMark extends Mark {
         super.render(samples);
 
         const gl = this.gl;
-        const props = this.getProperties();
 
         twgl.setUniforms(this.programInfo, {
-            uMinLength: props.minLength,
+            uMinLength: this.properties.minLength,
             uDashTextureSize: this.dashTextureSize
         });
 
         if (this.dashTexture) {
             twgl.setUniforms(this.programInfo, {
                 uDashTexture: this.dashTexture,
-                uStrokeDashOffset: props.strokeDashOffset
+                uStrokeDashOffset: this.properties.strokeDashOffset
             });
         }
 

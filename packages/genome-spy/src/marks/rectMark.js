@@ -102,19 +102,18 @@ export default class RectMark extends Mark {
 
     onBeforeSampleAnimation() {
         const interval = this.getContext().genomeSpy.getViewportDomain();
-        const props = this.getProperties();
 
         if (
             interval.width() <
             this.getContext()
                 .genomeSpy.getDomain()
                 .width() /
-                props.tesselationZoomThreshold
+                this.properties.tesselationZoomThreshold
         ) {
             // TODO: Only bufferize the samples that are being animated
             this._sampleBufferInfo = this._createSampleBufferInfo(
                 interval,
-                interval.width() / props.tesselationTiles
+                interval.width() / this.properties.tesselationTiles
             );
         }
     }
@@ -163,15 +162,14 @@ export default class RectMark extends Mark {
     updateGraphicsData() {
         this.deleteGraphicsData();
 
-        const props = this.getProperties();
         const xDomain = undefined; //this.getXDomain();
         const domainWidth = xDomain ? xDomain.width() : Infinity;
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(
             null,
             domainWidth /
-                props.tesselationZoomThreshold /
-                props.tesselationTiles
+                this.properties.tesselationZoomThreshold /
+                this.properties.tesselationTiles
         );
         this._sampleBufferInfo = this._fullSampleBufferInfo;
     }
@@ -183,7 +181,7 @@ export default class RectMark extends Mark {
         super.render(samples);
 
         const gl = this.gl;
-        const props = this.getProperties();
+        const props = this.properties;
 
         twgl.setUniforms(this.programInfo, {
             uMinSize: [props.minWidth, props.minHeight], // in pixels
