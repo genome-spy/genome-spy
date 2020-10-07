@@ -46,6 +46,7 @@ export default class WebGLHelper {
         this.adjustGl();
 
         const resizeObserver = new ResizeObserver(entries => {
+            this._logicalCanvasSize = undefined;
             this.adjustGl();
             this.render();
         });
@@ -133,6 +134,10 @@ export default class WebGLHelper {
     getLogicalCanvasSize() {
         // TODO: Size should never be smaller than the minimum content size!
 
+        if (this._logicalCanvasSize) {
+            return this._logicalCanvasSize;
+        }
+
         const cs = window.getComputedStyle(this._container, null);
         const width =
             this._container.clientWidth -
@@ -144,7 +149,8 @@ export default class WebGLHelper {
             parseFloat(cs.paddingTop) -
             parseFloat(cs.paddingBottom);
 
-        return { width, height };
+        this._logicalCanvasSize = { width, height };
+        return this._logicalCanvasSize;
     }
 
     /**
