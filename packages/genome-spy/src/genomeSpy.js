@@ -359,7 +359,7 @@ export default class GenomeSpy {
             });
 
             // If the coordinate system has a hard extent, use it
-            if (false && this.coordinateSystem.getExtent()) {
+            if (this.coordinateSystem.getExtent()) {
                 this.viewRoot
                     .getResolution("x")
                     .setDomain(
