@@ -71,7 +71,7 @@ export default class Resolution {
     getAxisProps() {
         const propArray = this.views.map(view => this._getEncoding(view).axis);
 
-        if (propArray.length > 0 && propArray.every(props => props === null)) {
+        if (propArray.length > 0 && propArray.some(props => props === null)) {
             // No axis whatsoever is wanted
             return null;
         } else {
