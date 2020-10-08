@@ -21,11 +21,12 @@ export function generateValueGlsl(channel, value) {
 
     // These could also be passed as uniforms because GPU drivers often handle
     // uniforms as constants and recompile the shader to eliminate dead code etc.
-    return `
+    let glsl = `
 ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
     // Constant value
     return ${vec};
 }`;
+    return glsl;
 }
 
 /**
@@ -35,6 +36,7 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  * @param {object} extra
  * @param {number} [extra.datum] A constant value (in domain), replaces an attribute
  */
+// eslint-disable-next-line complexity
 export function generateScaleGlsl(channel, scale, { datum } = {}) {
     const primary = primaryChannel(channel);
     const attributeName = ATTRIBUTE_PREFIX + channel;
@@ -47,6 +49,7 @@ export function generateScaleGlsl(channel, scale, { datum } = {}) {
 
     let functionCall;
     switch (scale.type) {
+        case "locus":
         case "linear":
             functionCall = `scaleLinear${fp64Suffix}(value, ${domainName}, ${rangeName})`;
             break;

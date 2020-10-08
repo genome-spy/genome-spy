@@ -228,7 +228,7 @@ export default class Resolution {
             return false;
         }
 
-        if (this.getScale().type != "linear") {
+        if (!["linear", "locus"].includes(this.getScale().type)) {
             return false;
         }
 
@@ -344,6 +344,17 @@ export default class Resolution {
  */
 function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
+
+    if (dataType == "locus") {
+        if ("xy".includes(channel)) {
+            return "locus";
+        } else {
+            // TODO: Also explicitly set scales should be validated
+            throw new Error(
+                `${channel} does not support locus data type. Only positional channels do.`
+            );
+        }
+    }
 
     /** @type {Object.<string, string[]>} [nominal/ordinal, quantitative]*/
     const defaults = {

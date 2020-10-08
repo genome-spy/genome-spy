@@ -154,6 +154,7 @@ export class PiecewiseDomain extends DomainArray {
  */
 const domainTypes = {
     quantitative: QuantitativeDomain,
+    locus: QuantitativeDomain,
     nominal: NominalDomain,
     ordinal: OrdinalDomain
 };

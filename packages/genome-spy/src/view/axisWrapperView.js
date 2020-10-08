@@ -487,6 +487,7 @@ function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
     const values = axisProps.values
         ? validTicks(scale, axisProps.values, count)
         : tickValues(scale, count).filter(x =>
+              // TODO: Fix locus scale
               inrange(scale(x), [0, 1], true, true)
           );
 

@@ -1,6 +1,7 @@
 import "array-flat-polyfill";
 
-import { scaleLinear } from "d3-scale";
+import scaleLocus from "./genome/scaleLocus";
+import { scale as vegaScale } from "vega-scale";
 import { interpolateZoom } from "d3-interpolate";
 import { loader as vegaLoader } from "vega-loader";
 
@@ -302,6 +303,10 @@ export default class GenomeSpy {
         this._prepareContainer();
 
         try {
+            // Register scaleLocus to Vega-Scale.
+            // The Locus scale is not actually continuous but its domain can be adjusted in continuous manner.
+            vegaScale("locus", scaleLocus, ["continuous"]);
+
             if (this.config.genome) {
                 this.coordinateSystem = new Genome(this.config.genome);
 

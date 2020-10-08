@@ -102,7 +102,9 @@ export class VertexBuilder {
             if (ce) {
                 if (ce.scale) {
                     // TODO: nominal/ordinal that are numeric should go raw as well
-                    const f = isContinuous(ce.scale.type) ? ce.accessor : ce;
+                    const f = isContinuous(ce.scale.type)
+                        ? ce.accessorWithModifier
+                        : ce;
                     const fp64 = ce.scale.fp64;
                     const double = new Float32Array(2);
                     this.converters[channel] = {
@@ -283,7 +285,7 @@ export class RectVertexBuilder extends VertexBuilder {
         const a = encoder =>
             encoder.constant || !isContinuous(encoder.scale.type)
                 ? encoder
-                : encoder.accessor;
+                : encoder.accessorWithModifier;
         const xAccessor = a(e.x);
         const x2Accessor = a(e.x2);
         const yAccessor = a(e.y);
