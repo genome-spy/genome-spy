@@ -281,11 +281,8 @@ export default class Resolution {
      * and other zoom-related stuff.
      */
     getZoomLevel() {
-        const scale = this.getScale();
-
-        // TODO: Support log, pow, etc...
-        if (scale.type == "linear") {
-            return span(this._originalDomain) / span(scale.domain());
+        if (this.isZoomable()) {
+            return span(this._originalDomain) / span(this.getScale().domain());
         }
 
         return 1.0;
