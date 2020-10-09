@@ -776,7 +776,5 @@ export function createGenomeAxis(axisProps) {
         axisSpec.layer.push(chromLayerSpec);
     }
 
-    console.log(axisSpec);
-
     return axisSpec;
 }
