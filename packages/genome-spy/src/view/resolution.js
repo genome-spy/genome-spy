@@ -31,7 +31,7 @@ export default class Resolution {
         /** @type {import("./unitView").default[]} The involved views */
         this.views = [];
         this.scale = {};
-        /** @type {string} */
+        /** @type {string} Data type (quantitative, nominal, etc...) */
         this.type = null;
     }
 

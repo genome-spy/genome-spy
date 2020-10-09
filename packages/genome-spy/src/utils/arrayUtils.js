@@ -1,10 +1,18 @@
 /**
  *
- * @param {any[]} a
- * @param {any[]} b
+ * @param {A[]} a
+ * @param {B[]} b
+ * @param {function(A):T} [aAccessor]
+ * @param {function(B):T} [bAccessor]
+ * @template A, B, T
  */
-export function shallowArrayEquals(a, b) {
-    return a.length == b.length && a.every((s, i) => b[i] == s);
+export function shallowArrayEquals(a, b, aAccessor, bAccessor) {
+    aAccessor = aAccessor || (x => x);
+    bAccessor = bAccessor || (x => x);
+    return (
+        a.length == b.length &&
+        a.every((s, i) => aAccessor(b[i]) === bAccessor(s))
+    );
 }
 
 /**

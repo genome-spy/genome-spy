@@ -1,3 +1,20 @@
+export interface GenomeAxis extends Axis {
+    chromTicks?: boolean;
+    chromTickSize?: number;
+    chromTickWidth?: number;
+    chromTickColor?: string;
+    chromTickDash?: number[];
+    chromTickDashOffset?: number;
+
+    chromLabels?: boolean;
+    chromLabelFontSize?: number;
+    chromLabelFontWeight?: string;
+    chromLabelColor?: string;
+    chromLabelPadding?: number;
+    chromLabelAlign?: string;
+    // TODO: chromLabelPerpendicularPadding
+}
+
 /*!
  * Adapted from
  * https://github.com/vega/vega/blob/master/packages/vega-typings/types/spec/axis.d.ts

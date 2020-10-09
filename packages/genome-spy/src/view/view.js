@@ -208,6 +208,21 @@ export default class View {
     }
 
     /**
+     * @returns {boolean}
+     */
+    isDataAvailable() {
+        if (this.data) {
+            return true;
+        }
+
+        if (this.parent) {
+            return this.parent.isDataAvailable();
+        }
+
+        return false;
+    }
+
+    /**
      * @returns {import("../data/group").Group}
      */
     getData() {

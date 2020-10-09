@@ -72,6 +72,18 @@ export default class ContainerView extends View {
     }
 
     /**
+     *
+     * @param {string} name
+     */
+    findChildByName(name) {
+        for (const child of this) {
+            if (child.spec.name && child.spec.name === name) {
+                return child;
+            }
+        }
+    }
+
+    /**
      * @param {string} channel
      */
     getConfiguredResolution(channel) {
