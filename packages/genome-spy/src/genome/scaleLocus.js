@@ -1,14 +1,11 @@
-import {
-    ticks as d3ticks,
-    tickStep,
-    extent,
-    range as sequence
-} from "d3-array";
+import { ticks as d3ticks, tickStep, extent } from "d3-array";
 import { format as d3format } from "d3-format";
 
 /**
  * Creates a "locus" scale, which works similarly to band scale but the domain
  * consists of integer indexes.
+ *
+ * @typedef {import("./chromMapper").default} ChromMapper
  */
 export default function scaleLocus() {
     let domain = [0, 1];
@@ -18,7 +15,10 @@ export default function scaleLocus() {
     let rangeSpan = 1;
 
     /** The number of the first element. This affects the generated ticks and their labels. */
-    let numberingOffset = 1; // TOOD: Configurable
+    let numberingOffset = 1;
+
+    /** @type {ChromMapper} */
+    let cm; // TODO: Consider assimilating ChromMapper into scaleLocus
 
     /**
      *
@@ -79,6 +79,19 @@ export default function scaleLocus() {
         }
     };
 
+    /**
+     *
+     * @param {ChromMapper} [_]
+     */
+    scale.chromMapper = function(_) {
+        if (arguments.length) {
+            cm = _;
+            return scale;
+        } else {
+            return cm;
+        }
+    };
+
     // TODO: Mutation
     scale.align = () => 0.5;
 
@@ -90,10 +103,48 @@ export default function scaleLocus() {
      * @param {number} count
      * @returns {number[]}
      */
-    scale.ticks = count =>
-        d3ticks(domain[0], domain[1], Math.min(count, Math.ceil(domainSpan)))
+    function simpleTicks(count) {
+        return d3ticks(
+            domain[0],
+            domain[1],
+            Math.min(count, Math.ceil(domainSpan))
+        )
             .filter(Number.isInteger)
             .map(x => x - numberingOffset);
+    }
+
+    /**
+     * @param {number} count
+     * @returns {number[]}
+     */
+    function intraChromosomalTicks(count) {
+        const [minChrom, maxChrom] = [
+            domain[0],
+            Math.min(domain[1], cm.totalSize - 1)
+        ].map(x => cm.getChromosome(cm.toChromosomal(x).chromosome));
+
+        const step = tickStep(domain[0], domain[1], count);
+
+        const ticks = [];
+
+        for (let i = minChrom.index; i <= maxChrom.index; i++) {
+            const chrom = cm.getChromosomes()[i];
+
+            const limit = chrom.size - step / 4;
+            for (let pos = step; pos < limit; pos += step) {
+                ticks.push(chrom.continuousStart + pos - numberingOffset);
+            }
+        }
+
+        return ticks;
+    }
+
+    /**
+     * @param {number} count
+     * @returns {number[]}
+     */
+    scale.ticks = count =>
+        cm ? intraChromosomalTicks(count) : simpleTicks(count);
 
     /**
      *
@@ -116,14 +167,24 @@ export default function scaleLocus() {
         // TODO: max absolute value should be taken into account too. 2.00M vs 200M
         const numberFormat = step < 100000 ? d3format(",") : d3format(".3s");
 
-        return /** @param {number} x */ x => numberFormat(x + numberingOffset);
+        /** @type {function(number):number} */
+        const fixer = cm
+            ? x =>
+                  x -
+                  cm.getChromosome(cm.toChromosomal(x).chromosome)
+                      .continuousStart
+            : x => x;
+
+        return /** @param {number} x */ x =>
+            numberFormat(fixer(x) + numberingOffset);
     };
 
     scale.copy = () =>
         scaleLocus()
             .domain(domain)
             .range(range)
-            .numberingOffset(numberingOffset);
+            .numberingOffset(numberingOffset)
+            .chromMapper(chromMapper);
 
     return scale;
 }

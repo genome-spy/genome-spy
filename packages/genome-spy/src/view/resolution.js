@@ -212,6 +212,9 @@ export default class Resolution {
         }
 
         this._scale = createScale(props);
+        if (this._scale.type == "locus") {
+            this._configureGenome();
+        }
 
         // Tag the scale. N.B. the tag is lost upon scale.clone().
         this._scale.fp64 = !!props.fp64;
@@ -331,6 +334,15 @@ export default class Resolution {
         }
 
         return props;
+    }
+
+    _configureGenome() {
+        // Aargh what a hack
+        const cm = /** @type {import("../genome/genome").default}*/ (this
+            .views[0].context.genomeSpy.coordinateSystem).chromMapper;
+        /** @type {import("../genome/scaleLocus").default} */ (this._scale).chromMapper(
+            cm
+        );
     }
 }
 
