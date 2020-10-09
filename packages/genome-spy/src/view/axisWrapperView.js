@@ -383,8 +383,8 @@ export default class AxisWrapperView extends ContainerView {
                 resolution.zoom(
                     2 ** (-zoomEvent.deltaY / 200),
                     channel == "y"
-                        ? 1 - p[/** @type {"x"|"y"} */ (channel)]
-                        : p[/** @type {"x"|"y"} */ (channel)],
+                        ? 1 - p[/** @type {PositionalChannel} */ (channel)]
+                        : p[/** @type {PositionalChannel} */ (channel)],
                     channel == "x" ? delta.x : 0
                 );
 
@@ -692,7 +692,7 @@ const defaultGenomeAxisProps = {
     chromLabelFontWeight: "normal",
     chromLabelColor: "black",
     chromLabelAlign: "left",
-    chromLabelPadding: 7
+    chromLabelPadding: 8
 };
 
 /**
