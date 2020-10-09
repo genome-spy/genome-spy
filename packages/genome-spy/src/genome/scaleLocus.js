@@ -123,16 +123,20 @@ export default function scaleLocus() {
             Math.min(domain[1], cm.totalSize - 1)
         ].map(x => cm.getChromosome(cm.toChromosomal(x).chromosome));
 
-        const step = tickStep(domain[0], domain[1], count);
+        const step = Math.max(1, tickStep(domain[0], domain[1], count));
 
         const ticks = [];
 
         for (let i = minChrom.index; i <= maxChrom.index; i++) {
             const chrom = cm.getChromosomes()[i];
 
-            const limit = chrom.size - step / 4;
-            for (let pos = step; pos < limit; pos += step) {
-                ticks.push(chrom.continuousStart + pos - numberingOffset);
+            const from = Math.max(
+                chrom.continuousStart + step,
+                domain[0] - ((domain[0] - chrom.continuousStart) % step)
+            );
+            const to = Math.min(chrom.continuousEnd - step / 4, domain[1] + 1);
+            for (let pos = from; pos <= to; pos += step) {
+                ticks.push(pos - numberingOffset);
             }
         }
 
@@ -187,4 +191,13 @@ export default function scaleLocus() {
             .chromMapper(chromMapper);
 
     return scale;
+}
+
+/**
+ *
+ * @param {number} x
+ * @param {number} binSize
+ */
+function binStart(x, binSize) {
+    return Math.floor(x / binSize) * binSize;
 }
