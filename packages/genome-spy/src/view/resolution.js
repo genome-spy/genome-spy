@@ -13,6 +13,7 @@ import createScale from "../scale/scale";
 
 import { SHAPES } from "../marks/pointMark"; // TODO: Fix silly dependency
 import { SQUEEZE } from "../marks/rectMark"; // TODO: Fix silly dependency
+import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
  * Resolution takes care of merging domains and scales from multiple views.
@@ -69,18 +70,25 @@ export default class Resolution {
     }
 
     getAxisProps() {
-        const propArray = this.views.map(view => this._getEncoding(view).axis);
+        return getCachedOrCall(this, "axisProps", () => {
+            const propArray = this.views.map(
+                view => this._getEncoding(view).axis
+            );
 
-        if (propArray.length > 0 && propArray.some(props => props === null)) {
-            // No axis whatsoever is wanted
-            return null;
-        } else {
-            return /** @type { import("../spec/axis").Axis} */ (mergeObjects(
-                propArray.filter(props => props !== undefined),
-                "axis",
-                ["title"]
-            ));
-        }
+            if (
+                propArray.length > 0 &&
+                propArray.some(props => props === null)
+            ) {
+                // No axis whatsoever is wanted
+                return null;
+            } else {
+                return /** @type { import("../spec/axis").Axis} */ (mergeObjects(
+                    propArray.filter(props => props !== undefined),
+                    "axis",
+                    ["title"]
+                ));
+            }
+        });
     }
 
     /**
@@ -99,14 +107,18 @@ export default class Resolution {
     }
 
     getScaleProps() {
-        const propArray = this.views.map(view => this._getEncoding(view).scale);
+        return getCachedOrCall(this, "scaleProps", () => {
+            const propArray = this.views.map(
+                view => this._getEncoding(view).scale
+            );
 
-        // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
-        return /** @type { import("../spec/scale").Scale} */ (mergeObjects(
-            propArray.filter(props => props !== undefined),
-            "scale",
-            ["domain"]
-        ));
+            // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
+            return /** @type { import("../spec/scale").Scale} */ (mergeObjects(
+                propArray.filter(props => props !== undefined),
+                "scale",
+                ["domain"]
+            ));
+        });
     }
 
     getTitle() {

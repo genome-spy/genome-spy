@@ -8,6 +8,7 @@ import {
     generateValueGlsl,
     generateScaleGlsl
 } from "../scale/glslScaleGenerator";
+import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
  *
@@ -118,18 +119,14 @@ export default class Mark {
      * @returns {Record<string, any>}
      */
     get properties() {
-        if (this._cachedProperties) {
-            return this._cachedProperties;
-        }
-
-        this._cachedProperties = {
-            ...this.getDefaultProperties(),
-            ...(typeof this.unitView.spec.mark == "object"
-                ? this.unitView.spec.mark
-                : {})
-        };
-
-        return this._cachedProperties;
+        return getCachedOrCall(this, "properties", () => {
+            return {
+                ...this.getDefaultProperties(),
+                ...(typeof this.unitView.spec.mark == "object"
+                    ? this.unitView.spec.mark
+                    : {})
+            };
+        });
     }
 
     getContext() {
