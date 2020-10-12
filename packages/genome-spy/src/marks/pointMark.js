@@ -154,7 +154,7 @@ export default class PointMark extends Mark {
                 0,
                 1 -
                     this.properties.semanticZoomFraction *
-                        this.getContext().genomeSpy.getExpZoomLevel()
+                        this.unitView.getZoomLevel()
             );
             if (p <= 0) {
                 // The sampled scores may be missing the min/max values
