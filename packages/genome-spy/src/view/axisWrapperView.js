@@ -394,6 +394,7 @@ export default class AxisWrapperView extends ContainerView {
             }
         }
 
+        // TODO: Optimization: pass the updated channels to updateAxisData
         affectedViews.forEach(view => view._updateAxisData());
 
         this.context.genomeSpy.renderAll(); // TODO: context.requestRender() or something

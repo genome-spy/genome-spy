@@ -11,7 +11,7 @@ export function shallowArrayEquals(a, b, aAccessor, bAccessor) {
     bAccessor = bAccessor || (x => x);
     return (
         a.length == b.length &&
-        a.every((s, i) => aAccessor(b[i]) === bAccessor(s))
+        a.every((s, i) => aAccessor(a[i]) === bAccessor(b[i]))
     );
 }
 
