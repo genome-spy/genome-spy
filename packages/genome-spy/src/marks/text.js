@@ -65,7 +65,18 @@ export default class TextMark extends Mark {
             baseline: "middle",
             dx: 0,
             dy: 0,
-            angle: 0
+            angle: 0,
+
+            /** @type {number[]} Order: top, right, bottom, left */
+            viewportEdgeFadeWidth: [0, 0, 0, 0],
+
+            /** @type {number[]} Order: top, right, bottom, left */
+            viewportEdgeFadeDistance: [
+                -Infinity,
+                -Infinity,
+                -Infinity,
+                -Infinity
+            ]
         };
     }
 
@@ -156,6 +167,10 @@ export default class TextMark extends Mark {
             uPaddingX: 4.0, // TODO: Configurable
             uAlign: alignments[props.align],
             uAngle: (-props.angle / 180) * Math.PI,
+            uViewportEdgeFadeWidth: props.viewportEdgeFadeWidth,
+            uViewportEdgeFadeDistance: props.viewportEdgeFadeDistance.map(d =>
+                d === undefined ? -Infinity : d
+            ),
             uSdfNumerator:
                 /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
                     .common.base /

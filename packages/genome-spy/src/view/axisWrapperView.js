@@ -740,7 +740,10 @@ export function createGenomeAxis(axisProps) {
                     : ap.orient == "bottom"
                     ? "top"
                     : "alphabetic",
-            ["d" + secondary]: ap.chromLabelPadding * offsetDirection
+            ["d" + secondary]: ap.chromLabelPadding * offsetDirection,
+            clip: false,
+            viewportEdgeFadeWidth: [0, 20, 0, 20],
+            viewportEdgeFadeDistance: [undefined, -10, undefined, -20]
         },
         encoding: {
             [main + "2"]: { field: "continuousEnd", type: "locus" },
@@ -772,6 +775,22 @@ export function createGenomeAxis(axisProps) {
 
         if (axisProps.chromLabels) {
             chromLayerSpec.layer.push(createLabels());
+
+            axisSpec.layer
+                .filter(view => view.name == "ticks_and_labels")
+                .forEach(view =>
+                    view.layer
+                        .filter(view => view.name == "labels")
+                        .forEach(view => {
+                            view.mark.viewportEdgeFadeWidth = [0, 0, 0, 30];
+                            view.mark.viewportEdgeFadeDistance = [
+                                undefined,
+                                undefined,
+                                undefined,
+                                40
+                            ];
+                        })
+                );
         }
 
         axisSpec.layer.push(chromLayerSpec);

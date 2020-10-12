@@ -15,6 +15,9 @@ attribute float cy;
 attribute lowp float tx;
 attribute lowp float ty;
 
+uniform vec4 uViewportEdgeFadeWidth;
+uniform vec4 uViewportEdgeFadeDistance;
+    
 
 #ifdef x2_DEFINED
 // Width of the text (all letters)
@@ -27,6 +30,16 @@ uniform float uAlign; // -1, 0, 1 = left, center, right
 varying vec4 vColor;
 varying vec2 vTexCoord;
 varying float vSlope;
+varying float vEdgeFadeOpacity;
+
+
+float minValue(vec4 v) {
+    return min(min(v.x, v.y), min(v.z, v.w));
+}
+
+float maxValue(vec4 v) {
+    return max(max(v.x, v.y), max(v.z, v.w));
+}
 
 void main(void) {
     float opacity = getScaled_opacity();
@@ -90,9 +103,13 @@ void main(void) {
     float cosTheta = cos(uAngle);
     mat2 rotation = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
 
-    vec2 pos = rotation * (vec2(cx, cy) * size + uD);
+    // Position of vertices in relation to the text origo
+    vec2 charPos = rotation * (vec2(cx, cy) * size + uD);
 
-    gl_Position = unitToNdc(vec2(x, translatedY) + pos / uViewportSize);
+    // Position inside the unit viewport
+    vec2 unitPos = vec2(x, translatedY) + charPos / uViewportSize;
+
+    gl_Position = unitToNdc(unitPos);
 
     // Controls antialiasing of the SDF
     vSlope = max(1.0, size / uSdfNumerator);
@@ -100,4 +117,16 @@ void main(void) {
     vColor = vec4(color * opacity, opacity);
 
     vTexCoord = vec2(tx, ty);
+
+    // Edge fading. The implementation is simplistic and fails with primitives that
+    // span the whole viewport. However, it works just fine with reasonable font sizes.
+    // x: top, y: right, z: bottom, w: left
+    if (maxValue(uViewportEdgeFadeDistance) > -pow(10.0, 10.0)) { // -Infinity would be nice
+        vEdgeFadeOpacity = minValue(
+            ((vec4(1.0, 1.0, 0.0, 0.0) + vec4(-1.0, -1.0, 1.0, 1.0) * unitPos.yxyx) *
+                uViewportSize.yxyx - uViewportEdgeFadeDistance) / uViewportEdgeFadeWidth);
+    } else {
+        vEdgeFadeOpacity = 1.0;
+    }
+
 }
