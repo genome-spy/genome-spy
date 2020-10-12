@@ -221,7 +221,7 @@ export default class PointMark extends Mark {
                     twgl.setUniforms(this.programInfo, sampleData.uniforms);
                     twgl.drawBufferInfo(
                         gl,
-                        this.bufferInfo,
+                        this.vertexArrayInfo,
                         gl.POINTS,
                         length,
                         range.offset + lower
@@ -229,5 +229,6 @@ export default class PointMark extends Mark {
                 }
             }
         }
+        this.gl.bindVertexArray(null);
     }
 }

@@ -172,6 +172,8 @@ export default class RectMark extends Mark {
                 this.properties.tesselationTiles
         );
         this._sampleBufferInfo = this._fullSampleBufferInfo;
+
+        this.bufferInfo = this._fullSampleBufferInfo.bufferInfo;
     }
 
     /**
@@ -204,12 +206,13 @@ export default class RectMark extends Mark {
                 // Could use: http://lin-ear-th-inking.blogspot.com/2007/06/packed-1-dimensional-r-tree.html
                 twgl.drawBufferInfo(
                     gl,
-                    this._sampleBufferInfo,
+                    this.bufferInfo,
                     gl.TRIANGLE_STRIP,
                     range.count,
                     range.offset
                 );
             }
         }
+        this.gl.bindVertexArray(null);
     }
 }

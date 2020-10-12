@@ -22,12 +22,19 @@ export default class WebGLHelper {
 
         container.appendChild(canvas);
 
+        /** @type {WebGL2RenderingContext} */
         const gl = twgl.getContext(canvas);
         twgl.addExtensionsToContext(gl);
 
         if (!gl) {
             throw new Error(
                 "Unable to initialize WebGL. Your browser or machine may not support it."
+            );
+        }
+
+        if (!twgl.isWebGL2(gl)) {
+            throw new Error(
+                "Your web browser does not support WebGL 2.0. Chrome, Firefox, and Safari Tech Preview should work."
             );
         }
 

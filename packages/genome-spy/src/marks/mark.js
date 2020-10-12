@@ -31,11 +31,16 @@ export default class Mark {
         /** @type {Record<string, import("../encoder/encoder").Encoder>} */
         this.encoders = undefined;
 
+        // TODO: Consolidate the following webgl stuff into a single object
+
         /** @type {twgl.BufferInfo & { allocatedVertices?: number }} WebGL buffers */
         this.bufferInfo = undefined;
 
         /** @type {twgl.ProgramInfo} WebGL buffers */
         this.programInfo = undefined;
+
+        /** @type {twgl.VertexArrayInfo} WebGL buffers */
+        this.vertexArrayInfo = undefined;
 
         this.opaque = false;
     }
@@ -283,6 +288,7 @@ export default class Mark {
                 { numElements: vertexData.vertexCount }
             );
             this.bufferInfo.allocatedVertices = vertexData.allocatedVertices;
+            this.vertexArrayInfo = undefined;
         }
     }
 
@@ -311,6 +317,18 @@ export default class Mark {
         // override
 
         const gl = this.gl;
+
+        if (!this.bufferInfo) {
+            return;
+        }
+
+        if (!this.vertexArrayInfo) {
+            this.vertexArrayInfo = twgl.createVertexArrayInfo(
+                this.gl,
+                this.programInfo,
+                this.bufferInfo
+            );
+        }
 
         gl.useProgram(this.programInfo.program);
         this.setViewport(this.programInfo);

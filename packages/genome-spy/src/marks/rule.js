@@ -172,7 +172,7 @@ export default class RuleMark extends Mark {
                     twgl.setUniforms(this.programInfo, sampleData.uniforms);
                     twgl.drawBufferInfo(
                         gl,
-                        this.bufferInfo,
+                        this.vertexArrayInfo,
                         gl.TRIANGLE_STRIP,
                         range.count,
                         range.offset
@@ -180,6 +180,7 @@ export default class RuleMark extends Mark {
                 }
             }
         }
+        this.gl.bindVertexArray(null);
     }
 }
 
