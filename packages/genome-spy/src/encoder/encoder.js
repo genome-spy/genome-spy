@@ -2,7 +2,8 @@ import { isNumber } from "vega-util";
 
 /**
  * @typedef {Object} EncoderMetadata
- * @prop {boolean} constant
+ * @prop {boolean} constant True if the accessor returns the same value for all objects
+ * @prop {boolean} constantValue True the encoder returns a "value" without a scale
  * @prop {function} invert
  * @prop {VegaScale} [scale]
  * @prop {import("./accessor").Accessor} accessor
@@ -122,6 +123,7 @@ export function createEncoder(
     if (isValueEncoding(encodingConfig)) {
         encoder = /** @type {Encoder} */ (datum => encodingConfig.value);
         encoder.constant = true;
+        encoder.constantValue = true;
         encoder.accessor = undefined;
         encoder.accessorWithModifier = undefined;
     } else if (accessor) {
@@ -130,7 +132,7 @@ export function createEncoder(
             encoder = /** @type {Encoder} */ (datum => undefined);
             encoder.accessor = accessor;
             encoder.accessorWithModifier = accessor;
-            encoder.constant = /** @type {boolean} */ (!!accessor.constant);
+            encoder.constant = accessor.constant;
         } else {
             if (!scale) {
                 throw new Error(
@@ -147,7 +149,8 @@ export function createEncoder(
                 definedPostScaleModifier(
                     scale(definedPreScaleModifier(accessor(datum)))
                 ));
-            encoder.constant = /** @type {boolean} */ (!!accessor.constant);
+
+            encoder.constant = accessor.constant;
             encoder.accessor = accessor;
             encoder.accessorWithModifier = preScaleModifier
                 ? x => preScaleModifier(accessor(x))
@@ -180,7 +183,7 @@ export function createEncoder(
     /** @param {Encoder} target */
     encoder.applyMetadata = target => {
         for (const prop in encoder) {
-            if (encoder.hasOwnProperty(prop)) {
+            if (prop in encoder) {
                 target[prop] = encoder[prop];
             }
         }
@@ -196,7 +199,7 @@ export function createEncoder(
  * @param {import("../view/view").EncodingConfig} encodingConfig
  */
 function isValueEncoding(encodingConfig) {
-    return encodingConfig.value !== undefined;
+    return "value" in encodingConfig;
 }
 
 /**

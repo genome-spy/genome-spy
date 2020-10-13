@@ -1,0 +1,27 @@
+{
+  "data": {
+    "sequence": { "start": 0, "stop": 50, "as": "x" }
+  },
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "sin((datum.x - 25) / 2) + (datum.x - 25) / 15",
+      "as": "y"
+    }
+  ],
+  "mark": "rect",
+  "encoding": {
+    "x": { "field": "x", "type": "locus" },
+    "y": { "field": "y", "type": "quantitative" },
+    "y2": { "datum": 0 },
+    "colorr": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": {
+        "type": "threshold",
+        "domain": [0],
+        "range": ["#ed553b", "#20639b"]
+      }
+    }
+  }
+}

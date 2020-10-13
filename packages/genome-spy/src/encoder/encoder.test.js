@@ -77,6 +77,12 @@ describe("Encoder", () => {
         expect(encoders.size.constant).toBeTruthy();
     });
 
+    test("Constant value encoder is annotated", () => {
+        expect(encoders.y.constantValue).toBeFalsy();
+        expect(encoders.z.constantValue).toBeFalsy();
+        expect(encoders.size.constantValue).toBeTruthy();
+    });
+
     test("Inverts a value", () => {
         expect(encoders.y.invert(0.5)).toBeCloseTo(5);
         expect(encoders.z.invert(0.5)).toBeCloseTo(10);

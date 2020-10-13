@@ -4,7 +4,7 @@ import { field, accessorFields, constant } from "vega-util";
 
 /**
  * @typedef {Object} AccessorMetadata
- * @prop {boolean} constant Accessor returns a constant value
+ * @prop {boolean} constant True if the accessor returns the same value for all objects
  * @prop {string[]} fields The fields that the return value is based on (if any)
  *
  * @typedef {(function(object):any) & AccessorMetadata} Accessor
@@ -35,7 +35,7 @@ export default class AccessorFactory {
         );
 
         this.register(encoding => {
-            if (encoding.datum !== undefined) {
+            if ("datum" in encoding) {
                 /** @type {Accessor} */
                 const accessor = constant(encoding.datum);
                 accessor.constant = true; // Can be optimized downstream

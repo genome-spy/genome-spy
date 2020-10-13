@@ -283,7 +283,7 @@ export class RectVertexBuilder extends VertexBuilder {
          * @param {import("../encoder/encoder").Encoder} encoder
          */
         const a = encoder =>
-            encoder.constant || !isContinuous(encoder.scale.type)
+            encoder.constantValue || !isContinuous(encoder.scale.type)
                 ? encoder
                 : encoder.accessorWithModifier;
         const xAccessor = a(e.x);
