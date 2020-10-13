@@ -246,11 +246,13 @@ export function addAxisWrappers(root) {
             axisWrapperView.name = view.name;
             axisWrapperView.spec.height = view.spec.height;
             axisWrapperView.spec.width = view.spec.width;
+            axisWrapperView.spec.padding = view.spec.padding;
 
             view.resolutions = {};
             view.name = "axisWrapped_" + view.name;
             view.spec.height = "container";
             view.spec.width = "container";
+            view.spec.padding = undefined;
 
             if (view === root) {
                 newRoot = axisWrapperView;
