@@ -1,20 +1,20 @@
 {
   "data": {
-    "sequence": { "start": 0, "stop": 50, "as": "x" }
+    "sequence": { "start": 0, "stop": 100, "as": "x" }
   },
   "transform": [
     {
       "type": "formula",
-      "expr": "sin((datum.x - 25) / 2) + (datum.x - 25) / 15",
+      "expr": "sin((datum.x - 50) / 4) + (datum.x - 50) / 30",
       "as": "y"
     }
   ],
   "mark": "rect",
   "encoding": {
-    "x": { "field": "x", "type": "locus" },
+    "x": { "field": "x", "type": "locus", "band": 0.9 },
     "y": { "field": "y", "type": "quantitative" },
     "y2": { "datum": 0 },
-    "colorr": {
+    "color": {
       "field": "y",
       "type": "quantitative",
       "scale": {

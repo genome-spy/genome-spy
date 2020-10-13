@@ -75,10 +75,14 @@ export default class RectMark extends Mark {
                         // Must make copies because the definition may be shared with other views/marks
                         encoding[channel] = { ...encoding[channel] };
                         encoding[secondary] = { ...encoding[channel] };
+
                         // Fill the bands (bar plot / heatmap)
-                        encoding[channel].band = 0;
-                        encoding[secondary].band = 1;
-                        // Vega-Lite interprets the band property differently on rectangular marks, btw.
+                        // We are following the Vega-Lite convention:
+                        // the band property works differently on rectangular marks, i.e., it adjusts the band coverage.
+                        const adjustment =
+                            (1 - (encoding[channel].band || 1)) / 2;
+                        encoding[channel].band = 0 + adjustment;
+                        encoding[secondary].band = 1 - adjustment;
                     }
                 }
             } else if (encoding[secondary]) {
