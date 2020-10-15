@@ -51,8 +51,8 @@ export default class RuleMark extends Mark {
             minLength: 0.0,
             /** @type {number[]} */
             strokeDash: null,
-            strokeDashOffset: 0
-            // TODO: offsetX, offsetY
+            strokeDashOffset: 0,
+            strokeCap: "butt"
         };
     }
 
@@ -153,7 +153,10 @@ export default class RuleMark extends Mark {
 
         twgl.setUniforms(this.programInfo, {
             uMinLength: this.properties.minLength,
-            uDashTextureSize: this.dashTextureSize
+            uDashTextureSize: this.dashTextureSize,
+            uStrokeCap: ["butt", "square", "round"].indexOf(
+                this.properties.strokeCap
+            )
         });
 
         if (this.dashTexture) {

@@ -1,62 +1,94 @@
 #pragma SCALES_HERE
 
+// Line caps
+const int BUTT = 0;
+const int SQUARE = 1;
+const int ROUND = 2;
+
 attribute lowp vec3 color;
 
 /** Position along the rule */
 attribute float pos;
 
-/** Which side: -0.5 or 0.5 */
+/** Which side of the stroke: -0.5 or 0.5 */
 attribute float side;
 
 /** Minimum rule length in pixels */
 uniform float uMinLength;
 
 uniform float uDashTextureSize;
+uniform float uStrokeCap;
 
 varying vec4 vColor;
 
-/** The distance from the beginning of the rule in pixels */
-varying float vPixelPos;
+/** Stroke width */
+varying float vSize;
+/** The distance from the line center to the direction of normal in pixels */
+varying float vNormalLengthInPixels;
+
+/** Distances from the line endings. Used for rendering the round caps and dashes */
+varying highp vec2 vPosInPixels;
+
 
 void main(void) {
+    float pixelSize = 1.0 / uDevicePixelRatio;
+
     // Stroke width in pixels
     float size = getScaled_size();
     float opacity = getScaled_opacity();
 
+    // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively
+    if (size < pixelSize) {
+        opacity *= size / pixelSize;
+        size = pixelSize;
+    }
+
     vec2 a = vec2(getScaled_x(), getScaled_y());
     vec2 b = vec2(getScaled_x2(), getScaled_y2());
+
+    int lineCap = int(uStrokeCap);
 
     //float translatedY = transit(x, y)[0];
 
     vec2 tangent = b - a;
 
-    vec2 elongation = vec2(0.0);
-    vec2 normalizedElongation = vec2(0.0);
-
-    // Apply minimum length by moving the vertices at both ends of the rule
-    if (uMinLength > 0.0 && (pos == 0.0 || pos == 1.0)) {
+    float offset = 0.0;
+    float relativeDiff = 0.0;
+    if (uMinLength > 0.0 || lineCap != BUTT) {
         float len = length(tangent * uViewportSize);
+
+        // Elongate to reach the minimum length.
         // The length difference in pixels
-        float diff = uMinLength - len;
-        if (diff > 0.0) {
-            // Elongation vector in pixels
-            elongation = normalize(tangent) * diff * (pos - 0.5);
-            // Next line works incorrectly with diagonal rules. TODO: Figure out what's the problem.
-            normalizedElongation = elongation / uViewportSize;
+        float diff = max(0.0, uMinLength - len);
+
+        // Add line caps
+        if (lineCap != BUTT) {
+            diff += size;
         }
+
+        relativeDiff = diff / len;
+        offset = relativeDiff * (pos - 0.5);
     }
 
-    vec2 p = a + tangent * pos + normalizedElongation;
+    // Apply caps and minimum length by spreading the vertices along the tangent
+    vec2 p = pos < 1.0
+        ? a + tangent * (pos + offset)
+        : b + tangent * offset;
+
+    // Add an extra pixel to stroke width to accommodate edge antialiasing
+    float aaPadding = pixelSize;
 
     // Extrude
     vec2 normal = normalize(vec2(-tangent.y, tangent.x) / uViewportSize);
-    p += normal * side * size / uViewportSize;
+    p += normal * side * (size + aaPadding) / uViewportSize;
 
     gl_Position = unitToNdc(p);
 
     vColor = vec4(color * opacity, opacity);
+    vSize = size;
+    vNormalLengthInPixels = side * (size + aaPadding);
 
-    if (uDashTextureSize > 0.0) {
-        vPixelPos = length(tangent * pos * uViewportSize) + length(elongation) * (pos == 0.0 ? -1.0 : 1.0);
-    }
+    // TODO: Here's a precision problem that breaks round caps when zoomed in enough
+    vPosInPixels = vec2(pos, (1.0 - pos)) * (1.0 + relativeDiff) * length(tangent * uViewportSize) -
+        vec2(lineCap != BUTT ? size / 2.0 : 0.0);
 }
