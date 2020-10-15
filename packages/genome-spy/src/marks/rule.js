@@ -111,8 +111,8 @@ export default class RuleMark extends Mark {
                 this.properties.strokeDash
             );
             this.dashTexture = twgl.createTexture(gl, {
-                mag: gl.LINEAR,
-                min: gl.LINEAR,
+                mag: gl.NEAREST,
+                min: gl.NEAREST,
                 format: gl.LUMINANCE,
                 src: textureData,
                 height: 1

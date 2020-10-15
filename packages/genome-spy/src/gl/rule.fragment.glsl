@@ -35,10 +35,9 @@ void main(void) {
         float floored = floor(pos);
       
         // Do antialiasing
-        // TODO: Fix crispness of segment boundaries. They are slighly blurry now.
         opacity *= mix(
-            texture2D(uDashTexture, vec2(floored / dpr / uDashTextureSize, 0)).r,
-            texture2D(uDashTexture, vec2((floored + 1.0) / dpr / uDashTextureSize, 0)).r,
+            texture2D(uDashTexture, vec2((floored + 0.5) / dpr / uDashTextureSize, 0)).r,
+            texture2D(uDashTexture, vec2((floored + 1.5) / dpr / uDashTextureSize, 0)).r,
             clamp((pos - floored), 0.0, 1.0));
     }
 
