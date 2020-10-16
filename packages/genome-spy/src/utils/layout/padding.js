@@ -49,6 +49,19 @@ export default class Padding {
 
     /**
      *
+     * @param {Padding} padding padding to add
+     */
+    add(padding) {
+        return new Padding(
+            this.top + padding.top,
+            this.right + padding.right,
+            this.bottom + padding.bottom,
+            this.left + padding.left
+        );
+    }
+
+    /**
+     *
      * @param {any} config
      */
     static createFromConfig(config) {

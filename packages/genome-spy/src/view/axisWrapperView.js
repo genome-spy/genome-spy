@@ -207,7 +207,7 @@ export default class AxisWrapperView extends ContainerView {
             : 0;
     }
 
-    getAxisExtents() {
+    _getAxisExtents() {
         /** @type {Record<AxisOrient, number>} */
         // @ts-ignore
         const paddings = {};
@@ -219,9 +219,20 @@ export default class AxisWrapperView extends ContainerView {
         return Padding.createFromRecord(paddings);
     }
 
+    _getAxisOffsets() {
+        return Padding.createFromRecord(
+            Object.fromEntries(
+                Object.entries(this.axisProps).map(([slot, props]) => [
+                    slot,
+                    props ? props.offset : 0
+                ])
+            )
+        );
+    }
+
     getSize() {
         const size = super.getSize();
-        const padding = this.getAxisExtents();
+        const padding = this._getAxisExtents().add(this._getAxisOffsets());
         size.width.px = (size.width.px || 0) + padding.width;
         size.height.px = (size.height.px || 0) + padding.height;
         return size;
@@ -233,8 +244,8 @@ export default class AxisWrapperView extends ContainerView {
     render(coords) {
         coords = coords.shrink(this.getPadding());
 
-        const extents = this.getAxisExtents();
-        const childCoords = coords.shrink(extents);
+        const extents = this._getAxisExtents();
+        const childCoords = coords.shrink(extents.add(this._getAxisOffsets()));
 
         // As a hacky side effect, store the computed coordinates for interaction
         this._coords = coords;
@@ -249,28 +260,30 @@ export default class AxisWrapperView extends ContainerView {
                 continue;
             }
 
+            const props = this.axisProps[slot];
+
             if (slot == "bottom") {
                 view.render(
                     childCoords
-                        .translate(0, childCoords.height)
+                        .translate(0, childCoords.height + props.offset)
                         .modify({ height: extents.bottom })
                 );
             } else if (slot == "top") {
                 view.render(
                     childCoords
-                        .translate(0, -extents.top)
+                        .translate(0, -extents.top - props.offset)
                         .modify({ height: extents.top })
                 );
             } else if (slot == "left") {
                 view.render(
                     childCoords
-                        .translate(-extents.left, 0)
+                        .translate(-extents.left - props.offset, 0)
                         .modify({ width: extents.left })
                 );
             } else if (slot == "right") {
                 view.render(
                     childCoords
-                        .translate(childCoords.width, 0)
+                        .translate(childCoords.width + props.offset, 0)
                         .modify({ width: extents.right })
                 );
             }
@@ -398,7 +411,7 @@ export default class AxisWrapperView extends ContainerView {
                 continue;
             }
 
-            const coords = this._coords;
+            const coords = this._childCoords;
             const p = coords.normalizePoint(zoomEvent.mouseX, zoomEvent.mouseY);
             const tp = coords.normalizePoint(
                 zoomEvent.mouseX + zoomEvent.deltaX,
