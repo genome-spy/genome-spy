@@ -63,42 +63,6 @@ export default class View {
         ).addPadding(this.getPadding());
     }
 
-    /**
-     * Returns the coordinates of the view in pixels. The Y coordinate grows from top to bottom.
-     *
-     * @returns {import("../utils/layout/rectangle").default}
-     */
-    getCoords() {
-        if (this._coords) {
-            return this._coords;
-        }
-
-        if (this.parent) {
-            // Parent computes the coordinates of their children
-            this._coords = this.parent
-                .getChildCoords(this)
-                .shrink(this.getPadding());
-        } else {
-            // At root
-            const canvasSize = this.context.glHelper.getLogicalCanvasSize();
-
-            /** @param {"width" | "height"} c */
-            const getComponent = c =>
-                (this.spec[c] && parseSizeDef(this.spec[c]).grow
-                    ? canvasSize[c]
-                    : this.getSize()[c].px) || canvasSize[c];
-
-            this._coords = new Rectangle(
-                0,
-                0,
-                getComponent("width"),
-                getComponent("height")
-            ).shrink(this.getPadding());
-        }
-
-        return this._coords;
-    }
-
     getPathString() {
         return this.getAncestors()
             .map(v => v.name)
@@ -165,6 +129,17 @@ export default class View {
             e.view = this;
             throw e;
         }
+    }
+
+    /**
+     * Recursively traverses the view hierarchy, computes the view coordinates,
+     * and coordinates the mark rendering.
+     *
+     * @param {Rectangle} coords The coordinate rectangle that the parent computed
+     *      for the child that is being visited.
+     */
+    render(coords) {
+        // override
     }
 
     /**

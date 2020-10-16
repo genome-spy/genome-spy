@@ -308,9 +308,10 @@ export default class Mark {
     }
 
     /**
+     * @param {import("../utils/layout/rectangle").default} coords
      * @param {SampleToRender[]} samples
      */
-    render(samples) {
+    render(coords, samples) {
         // override
 
         const gl = this.gl;
@@ -328,7 +329,7 @@ export default class Mark {
         }
 
         gl.useProgram(this.programInfo.program);
-        this.setViewport(this.programInfo);
+        this.setViewport(coords);
 
         /** @type {Record<string, number | number[]>} */
         const domainUniforms = {};
@@ -368,14 +369,13 @@ export default class Mark {
      *
      * TODO: Viewport should be handled at the view level
      *
-     * @param {twgl.ProgramInfo} programInfo
+     * @param {import("../utils/layout/rectangle").default} coords
      */
-    setViewport(programInfo) {
+    setViewport(coords) {
         const dpr = window.devicePixelRatio;
         const gl = this.gl;
         const props = this.properties;
 
-        const coords = this.unitView.getCoords();
         const logicalSize = this.glHelper.getLogicalCanvasSize();
 
         const physicalGlCoords = [
@@ -398,7 +398,7 @@ export default class Mark {
             gl.scissor(...physicalGlCoords);
             gl.enable(gl.SCISSOR_TEST);
 
-            twgl.setUniforms(programInfo, {
+            twgl.setUniforms(this.programInfo, {
                 uViewOffset: [xOffset / coords.width, -yOffset / coords.height],
                 uViewScale: [1, 1]
             });
@@ -413,7 +413,7 @@ export default class Mark {
             gl.disable(gl.SCISSOR_TEST);
 
             // Offset and scale all drawing to the view rectangle
-            twgl.setUniforms(programInfo, {
+            twgl.setUniforms(this.programInfo, {
                 uViewOffset: [
                     (coords.x + xOffset) / logicalSize.width,
                     (logicalSize.height - coords.y - yOffset - coords.height) /
@@ -426,8 +426,8 @@ export default class Mark {
             });
         }
 
-        twgl.setUniforms(programInfo, {
-            uDevicePixelRatio: window.devicePixelRatio,
+        twgl.setUniforms(this.programInfo, {
+            uDevicePixelRatio: dpr,
             uViewportSize: [coords.width, coords.height]
         });
     }

@@ -30,4 +30,15 @@ export default class LayerView extends ContainerView {
             yield child;
         }
     }
+
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     */
+    render(coords) {
+        coords = coords.shrink(this.getPadding());
+
+        for (const child of this.children) {
+            child.render(coords);
+        }
+    }
 }

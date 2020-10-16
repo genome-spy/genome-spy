@@ -31,6 +31,8 @@ import createDomain from "./utils/domainArray";
 import WebGLHelper from "./gl/webGLHelper";
 import AxisWrapperView from "./view/axisWrapperView";
 import MouseTracker2 from "./mouseTracker2";
+import { parseSizeDef } from "./utils/layout/flexLayout";
+import Rectangle from "./utils/layout/rectangle";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -297,21 +299,18 @@ export default class GenomeSpy {
     }
 
     renderAll() {
-        const samples = [
-            {
-                sampleId: "default",
-                uniforms: {
-                    yPosLeft: [0, 1],
-                    yPosRight: [0, 1]
-                }
-            }
-        ];
+        const canvasSize = this._glHelper.getLogicalCanvasSize();
+        const root = this.viewRoot;
 
-        this.viewRoot.visit(view => {
-            if (view instanceof UnitView) {
-                view.mark.render(samples);
-            }
-        });
+        /** @param {"width" | "height"} c */
+        const getComponent = c =>
+            (root.spec[c] && parseSizeDef(root.spec[c]).grow
+                ? canvasSize[c]
+                : root.getSize()[c].px) || canvasSize[c];
+
+        root.render(
+            new Rectangle(0, 0, getComponent("width"), getComponent("height"))
+        );
     }
 }
 

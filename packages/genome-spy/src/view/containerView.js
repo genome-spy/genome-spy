@@ -18,16 +18,6 @@ export default class ContainerView extends View {
     }
 
     /**
-     *
-     * @param {import("./view").default} view
-     * @returns {import("../utils/layout/rectangle").default}
-     */
-    getChildCoords(view) {
-        // Should be overridden
-        return this.getCoords();
-    }
-
-    /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {

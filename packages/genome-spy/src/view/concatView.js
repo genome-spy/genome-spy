@@ -68,18 +68,20 @@ export default class ConcatView extends ContainerView {
     }
 
     /**
-     *
-     * @param {import("./view").default} view
+     * @param {import("../utils/layout/rectangle").default} coords
      */
-    getChildCoords(view) {
-        // Should be overridden
-        const flexCoords = this.flexLayout.getPixelCoords(
-            view,
-            this.getCoords()[this.mainDimension],
-            this.spec.spacing || 0
-        );
-        if (flexCoords) {
-            return this.getCoords()
+    render(coords) {
+        coords = coords.shrink(this.getPadding());
+
+        for (const view of this.children) {
+            // TODO: getPixelCoords is O(n^2), thus, optimize!
+            // For instance, a "map" method that converts an array of views to an array of coords
+            const flexCoords = this.flexLayout.getPixelCoords(
+                view,
+                coords[this.mainDimension],
+                this.spec.spacing || 0
+            );
+            const childCoords = coords
                 .translate(
                     // @ts-ignore
                     ...(this.mainDimension == "height"
@@ -87,8 +89,9 @@ export default class ConcatView extends ContainerView {
                         : [flexCoords.location, 0])
                 )
                 .modify({ [this.mainDimension]: flexCoords.size });
+
+            view.render(childCoords);
         }
-        throw new Error("Not my child view!");
     }
 
     /**

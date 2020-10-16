@@ -181,10 +181,11 @@ export default class RectMark extends Mark {
     }
 
     /**
+     * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./mark").SampleToRender[]} samples
      */
-    render(samples) {
-        super.render(samples);
+    render(coords, samples) {
+        super.render(coords, samples);
 
         const gl = this.gl;
         const props = this.properties;

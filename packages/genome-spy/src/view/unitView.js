@@ -70,6 +70,25 @@ export default class UnitView extends View {
         }
     }
 
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     */
+    render(coords) {
+        coords = coords.shrink(this.getPadding());
+
+        const samples = [
+            {
+                sampleId: "default",
+                uniforms: {
+                    yPosLeft: [0, 1],
+                    yPosRight: [0, 1]
+                }
+            }
+        ];
+
+        this.mark.render(coords, samples);
+    }
+
     getMarkType() {
         return typeof this.spec.mark == "object"
             ? this.spec.mark.type

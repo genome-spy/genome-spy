@@ -113,10 +113,11 @@ export default class ConnectionMark extends Mark {
     }
 
     /**
+     * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./mark").SampleToRender[]} samples
      */
-    render(samples) {
-        super.render(samples);
+    render(coords, samples) {
+        super.render(coords, samples);
 
         const gl = this.gl;
 

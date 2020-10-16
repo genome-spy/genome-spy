@@ -152,10 +152,11 @@ export default class TextMark extends Mark {
     }
 
     /**
+     * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./mark").SampleToRender[]} samples
      */
-    render(samples) {
-        super.render(samples);
+    render(coords, samples) {
+        super.render(coords, samples);
 
         const dpr = window.devicePixelRatio;
         const gl = this.gl;

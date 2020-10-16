@@ -21,6 +21,13 @@ const CHANNEL_SLOTS = {
     y: ["left", "right"]
 };
 
+/** @type {Record<AxisOrient, PositionalChannel>} */
+const SLOT_CHANNELS = Object.fromEntries(
+    Object.entries(CHANNEL_SLOTS)
+        .map(([channel, slots]) => slots.map(slot => [slot, channel]))
+        .flat(1)
+);
+
 /** @type {Record<PositionalChannel, GeometricDimension>} */
 const CHANNEL_DIMENSIONS = {
     x: "width",
@@ -39,12 +46,7 @@ function getPerpendicularChannel(channel) {
  * @param {AxisOrient} slot
  */
 function slot2channel(slot) {
-    for (const [channel, slots] of Object.entries(CHANNEL_SLOTS)) {
-        if (slots.includes(slot)) {
-            return /** @type {PositionalChannel} */ (channel);
-        }
-    }
-    throw new Error("Invalid slot: " + slot);
+    return SLOT_CHANNELS[slot];
 }
 
 /**
@@ -92,21 +94,22 @@ export default class AxisWrapperView extends ContainerView {
             left: undefined
         };
 
+        /** @type {Set<PositionalChannel>} */
+        this._requestedAxisUpdates = new Set();
+
         this._addBroadcastHandler("zoom", message => {
             const zoomEvent =
                 /** @type {import("../utils/zoom").ZoomEvent} */ (message.payload);
 
             if (
-                this.getCoords().containsPoint(
-                    zoomEvent.mouseX,
-                    zoomEvent.mouseY
-                )
+                this._coords &&
+                this._coords.containsPoint(zoomEvent.mouseX, zoomEvent.mouseY)
             ) {
                 this._handleZoom(zoomEvent);
             }
         });
 
-        this._addBroadcastHandler("layout", () => this._updateAxisData());
+        this._addBroadcastHandler("layout", () => this.requestAxisUpdate());
     }
 
     /**
@@ -145,16 +148,32 @@ export default class AxisWrapperView extends ContainerView {
         }
     }
 
+    /**
+     * Sets a channel "dirty", signaling that new ticks should be computed
+     * for the associated axes.
+     *
+     * @param {PositionalChannel} [channel] Affected channel. If undefined, all
+     *      channels are considered dirty.
+     */
+    requestAxisUpdate(channel) {
+        if (channel) {
+            this._requestedAxisUpdates.add(channel);
+        } else {
+            this._requestedAxisUpdates.add("x");
+            this._requestedAxisUpdates.add("y");
+        }
+    }
+
     _updateAxisData() {
         for (const [slot, view] of Object.entries(this.axisViews)) {
-            if (view) {
+            if (view && this._requestedAxisUpdates.has(slot2channel(slot))) {
                 const channel = slot2channel(/** @type {AxisOrient} */ (slot));
                 const scale = this.getResolution(channel).getScale();
                 const oldTicks = (view.data && [...view.data.flatData()]) || [];
                 const newTicks = generateTicks(
                     this.axisProps[slot],
                     scale,
-                    this.getChildCoords(view)[CHANNEL_DIMENSIONS[channel]],
+                    this._childCoords[CHANNEL_DIMENSIONS[channel]],
                     oldTicks
                 );
 
@@ -173,6 +192,8 @@ export default class AxisWrapperView extends ContainerView {
                 }
             }
         }
+
+        this._requestedAxisUpdates.clear();
     }
 
     /**
@@ -207,39 +228,52 @@ export default class AxisWrapperView extends ContainerView {
     }
 
     /**
-     * @param { import("./layerView").default | import("./unitView").default} view
+     * @param {import("../utils/layout/rectangle").default} coords
      */
-    getChildCoords(view) {
-        const extents = this.getAxisExtents();
+    render(coords) {
+        coords = coords.shrink(this.getPadding());
 
-        if (view === this.child) {
-            return this.getCoords().shrink(extents);
-        } else {
-            let childCoords = this.child.getCoords();
-            if (view === this.axisViews.bottom) {
-                childCoords = childCoords
-                    .translate(0, childCoords.height)
-                    .modify({ height: extents.bottom });
-            } else if (view === this.axisViews.top) {
-                childCoords = childCoords
-                    .translate(0, -extents.top)
-                    .modify({ height: extents.top });
-            } else if (view === this.axisViews.left) {
-                childCoords = childCoords
-                    .translate(-extents.left, 0)
-                    .modify({ width: extents.left });
-            } else if (view === this.axisViews.right) {
-                childCoords = childCoords
-                    .translate(childCoords.width, 0)
-                    .modify({ width: extents.right });
-            } else {
-                throw new Error("Not my child view!");
+        const extents = this.getAxisExtents();
+        const childCoords = coords.shrink(extents);
+
+        // As a hacky side effect, store the computed coordinates for interaction
+        this._coords = coords;
+        this._childCoords = childCoords;
+
+        this.child.render(childCoords);
+
+        this._updateAxisData();
+
+        for (const [slot, view] of Object.entries(this.axisViews)) {
+            if (!view) {
+                continue;
             }
 
-            // Align domain lines to center of pixels. TODO: Configurable
-            childCoords = childCoords.translate(0.5, 0.5);
-
-            return childCoords;
+            if (slot == "bottom") {
+                view.render(
+                    childCoords
+                        .translate(0, childCoords.height)
+                        .modify({ height: extents.bottom })
+                );
+            } else if (slot == "top") {
+                view.render(
+                    childCoords
+                        .translate(0, -extents.top)
+                        .modify({ height: extents.top })
+                );
+            } else if (slot == "left") {
+                view.render(
+                    childCoords
+                        .translate(-extents.left, 0)
+                        .modify({ width: extents.left })
+                );
+            } else if (slot == "right") {
+                view.render(
+                    childCoords
+                        .translate(childCoords.width, 0)
+                        .modify({ width: extents.right })
+                );
+            }
         }
     }
 
@@ -359,15 +393,12 @@ export default class AxisWrapperView extends ContainerView {
             }
         });
 
-        /** @type {Set<AxisWrapperView>}} Views that may require axis updates */
-        const affectedViews = new Set();
-
         for (const [channel, resolutionSet] of Object.entries(resolutions)) {
             if (resolutionSet.size <= 0) {
                 continue;
             }
 
-            const coords = this.getChildCoords(this.child);
+            const coords = this._coords;
             const p = coords.normalizePoint(zoomEvent.mouseX, zoomEvent.mouseY);
             const tp = coords.normalizePoint(
                 zoomEvent.mouseX + zoomEvent.deltaX,
@@ -389,13 +420,10 @@ export default class AxisWrapperView extends ContainerView {
                 );
 
                 resolution.views.forEach(view =>
-                    affectedViews.add(findClosestAxisWrapper(view))
+                    findClosestAxisWrapper(view).requestAxisUpdate(channel)
                 );
             }
         }
-
-        // TODO: Optimization: pass the updated channels to updateAxisData
-        affectedViews.forEach(view => view._updateAxisData());
 
         this.context.genomeSpy.renderAll(); // TODO: context.requestRender() or something
 
