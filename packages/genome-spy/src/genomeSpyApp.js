@@ -56,7 +56,9 @@ export default class GenomeSpyApp {
 
         function getToolButtons() {
             const sampleTrackButtons =
-                self.genomeSpy && self.genomeSpy._getSampleTracks().length > 0
+                false &&
+                self.genomeSpy &&
+                self.genomeSpy._getSampleTracks().length > 0
                     ? html`
                           <button
                               class="tool-btn backtrack-samples"

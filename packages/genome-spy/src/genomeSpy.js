@@ -1,5 +1,3 @@
-import "array-flat-polyfill";
-
 import scaleLocus from "./genome/scaleLocus";
 import { scale as vegaScale } from "vega-scale";
 import { interpolateZoom } from "d3-interpolate";
@@ -30,8 +28,6 @@ import UnitView from "./view/unitView";
 import ImportView from "./view/importView";
 import createDomain from "./utils/domainArray";
 
-import { tickStep } from "d3-array";
-import { format as d3format } from "d3-format";
 import WebGLHelper from "./gl/webGLHelper";
 import AxisWrapperView from "./view/axisWrapperView";
 import MouseTracker2 from "./mouseTracker2";
@@ -138,113 +134,6 @@ export default class GenomeSpy {
     }
 
     /**
-     * Returns the current zoom level. [0, 1]
-     */
-    getLinearZoomLevel() {
-        return 0;
-        const extent = this.coordinateSystem.getExtent();
-        if (extent) {
-            // TODO: Get extent from the data
-            const b = extent.width();
-            const y = this.getViewportDomain().width();
-            const a = this.maxUnitZoom;
-
-            return Math.log2(b / y) / Math.log2(b / a);
-        }
-    }
-
-    /**
-     * Returns the current zoom level, [1, Infinity)
-     */
-    getExpZoomLevel() {
-        return 1;
-        // TODO: Get from zoom object
-        const b = this.getDomain().width();
-        const y = this.getViewportDomain().width();
-
-        return b / y;
-    }
-
-    /**
-     *
-     * @param {Interval} target
-     */
-    zoomTo(target) {
-        const x = this.xScale;
-        const source = this.getViewportDomain();
-
-        const intervalToTransform = interval =>
-            new Transform()
-                .scale(
-                    this.layout.viewport.width() /
-                        (x(interval.upper) - x(interval.lower))
-                )
-                .translate(-x(interval.lower));
-
-        const interpolate = interpolateZoom(
-            [source.centre(), 0, source.width()],
-            [target.centre(), 0, target.width()]
-        );
-
-        return transition({
-            duration: 300 + interpolate.duration * 0.07,
-            //easingFunction: easeLinear,
-            onUpdate: value => {
-                const i = interpolate(value);
-                const interval = new Interval(i[0] - i[2] / 2, i[0] + i[2] / 2);
-                this._zoomWithTransform(intervalToTransform(interval));
-            }
-        });
-    }
-
-    /**
-     * Performs a search and zooms into the first matching interval.
-     * Returns a promise that resolves when the search and the transition to the
-     * matching interval are complete.
-     *
-     * @param {string} string the search string
-     * @returns A promise
-     */
-    async search(string) {
-        const domainFinder = {
-            search: string => this.coordinateSystem.parseInterval(string)
-        };
-
-        // Search tracks
-        const interval = [domainFinder, ...this.tracks]
-            .map(t => t.search(string))
-            .find(i => i);
-
-        if (interval) {
-            await this.zoomTo(interval);
-        } else {
-            throw `No matches found for "${string}"`;
-        }
-    }
-
-    /** @deprecated */
-    _getSampleTracks() {
-        return [];
-    }
-
-    /**
-     * Backtracks in sample filtering and ordering
-     */
-    backtrackSamples() {
-        // TODO: Handle multiple SampleTracks somehow
-        const sampleTrack = this._getSampleTracks()[0];
-        if (sampleTrack) {
-            sampleTrack.backtrackSamples();
-        }
-    }
-
-    isSomethingToBacktrack() {
-        // TODO: Extract history handling into a class or something
-        const sampleTrack = this._getSampleTracks()[0];
-        return sampleTrack && sampleTrack.sampleOrderHistory.length > 1;
-    }
-
-    /**
      * Broadcast a message to all views
      *
      * @param {string} type
@@ -304,7 +193,7 @@ export default class GenomeSpy {
 
         try {
             // Register scaleLocus to Vega-Scale.
-            // The Locus scale is not actually continuous but its domain can be adjusted in continuous manner.
+            // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
             vegaScale("locus", scaleLocus, ["continuous"]);
 
             if (this.config.genome) {
@@ -423,74 +312,6 @@ export default class GenomeSpy {
                 view.mark.render(samples);
             }
         });
-    }
-
-    // TODO: Find a proper place
-    _generateTicks() {
-        // TODO: Extract from spec
-        const fontSize = 12;
-
-        // GenomeSpy uses the same coordinate logic as USCS GenomeBrowser_
-        // "1-start, fully-closed" = coordinates positioned within the web-based UCSC Genome Browser.
-        // "0-start, half-open" = coordinates stored in database tables.
-        const labelValueOffset = 1;
-
-        const getViewWidth = () => this.layout.viewport.width();
-
-        /////////////
-
-        const scale = this.getZoomedScale();
-        if (!scale) {
-            return [];
-        }
-
-        const cm = /** @type {Genome} */ (this.coordinateSystem).chromMapper;
-
-        // TODO: Consider moving to Track base class
-        const viewportInterval = Interval.fromArray(scale.range());
-        const domainInterval = Interval.fromArray(scale.domain());
-
-        const locusTickFormat =
-            domainInterval.width() > 5e7 ? d3format(".3s") : d3format(",");
-
-        // A really crude approximation. TODO: Provide some font metrics through the text mark
-        const maxLocusLabelWidth = fontSize * 0.6 * "123,000,000".length;
-        const maxChromLabelWidth = fontSize * 0.6 * "chr99".length;
-
-        const maxTickCount = Math.min(
-            20,
-            Math.floor(getViewWidth() / maxLocusLabelWidth / 2.0)
-        );
-
-        const step = tickStep(
-            domainInterval.lower,
-            domainInterval.upper,
-            maxTickCount
-        );
-
-        const minChrom = cm.getChromosome(
-            cm.toChromosomal(domainInterval.lower).chromosome
-        );
-        const maxChrom = cm.getChromosome(
-            cm.toChromosomal(domainInterval.upper).chromosome
-        );
-
-        const ticks = [];
-
-        for (let i = minChrom.index; i <= maxChrom.index; i++) {
-            const chrom = cm.getChromosomes()[i];
-            //const lower = Math.max(minChrom.continuousStart, domainInterval.lower);
-
-            for (let pos = step; pos < chrom.size; pos += step) {
-                ticks.push({
-                    chrom: chrom.name,
-                    pos: pos + chrom.continuousStart,
-                    text: locusTickFormat(pos + labelValueOffset)
-                });
-            }
-        }
-
-        return ticks;
     }
 }
 
