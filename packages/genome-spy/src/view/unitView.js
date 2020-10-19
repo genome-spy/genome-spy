@@ -76,6 +76,10 @@ export default class UnitView extends View {
     render(coords) {
         coords = coords.shrink(this.getPadding());
 
+        // Translate by half a pixel to place vertical / horizontal
+        // rules inside pixels, not between pixels.
+        coords = coords.translate(0.5, 0.5);
+
         const samples = [
             {
                 sampleId: "default",

@@ -392,14 +392,25 @@ export default class Mark {
         const yOffset = -props.yOffset || 0;
 
         if (props.clip) {
+            // Because glViewport accepts only integers, we subtract the rounding
+            // errors from xyOffsets to guarantee that graphics in clipped
+            // and non-clipped viewports align correctly
+            const flooredCoords = physicalGlCoords.map(x => Math.floor(x));
+            const [xError, yError] = physicalGlCoords.map(
+                (x, i) => x - flooredCoords[i]
+            );
+
             // @ts-ignore
-            gl.viewport(...physicalGlCoords);
+            gl.viewport(...flooredCoords);
             // @ts-ignore
-            gl.scissor(...physicalGlCoords);
+            gl.scissor(...flooredCoords);
             gl.enable(gl.SCISSOR_TEST);
 
             twgl.setUniforms(this.programInfo, {
-                uViewOffset: [xOffset / coords.width, -yOffset / coords.height],
+                uViewOffset: [
+                    (xOffset + xError) / coords.width,
+                    -(yOffset - yError) / coords.height
+                ],
                 uViewScale: [1, 1]
             });
         } else {
