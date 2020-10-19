@@ -14,6 +14,7 @@ import {
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 import { parseSizeDef } from "../utils/layout/flexLayout";
+import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
  * @typedef {import("./layerView").default} LayerView
@@ -48,18 +49,6 @@ export default class UnitView extends View {
         super(spec, context, parent, name);
 
         this.spec = spec; // Set here again to keep types happy
-
-        /**
-         * Cache for extracted domains
-         * @type {Record<string, DomainArray>}
-         */
-        this._dataDomains = {};
-
-        /**
-         * Cache for accessors
-         * @type {Record<string, Accessor>}
-         */
-        this._accessors = {};
 
         const Mark = markTypes[this.getMarkType()];
         if (Mark) {
@@ -162,18 +151,14 @@ export default class UnitView extends View {
      * @param {string} channel
      */
     getAccessor(channel) {
-        if (this._accessors.hasOwnProperty(channel)) {
-            return this._accessors[channel];
-        }
-
-        const encoding = this.mark.getEncoding(); // Mark provides encodings with defaults and possible modifications
-        if (encoding && encoding[channel]) {
-            const accessor = this.context.accessorFactory.createAccessor(
-                encoding[channel]
-            );
-            this._accessors[channel] = accessor;
-            return accessor;
-        }
+        return getCachedOrCall(this, "accessor-" + channel, () => {
+            const encoding = this.mark.getEncoding(); // Mark provides encodings with defaults and possible modifications
+            if (encoding && encoding[channel]) {
+                return this.context.accessorFactory.createAccessor(
+                    encoding[channel]
+                );
+            }
+        });
     }
 
     _getCoordinateSystemExtent() {
@@ -233,36 +218,31 @@ export default class UnitView extends View {
      * @returns {DomainArray}
      */
     _extractDomain(channel, type) {
-        if (this._dataDomains[channel]) {
-            return this._dataDomains[channel];
-        }
+        return getCachedOrCall(this, "dataDomain-" + channel, () => {
+            let domain;
 
-        let domain;
+            const data = this.getData();
 
-        const data = this.getData();
+            const encodingSpec = this.getEncoding()[channel];
 
-        const encodingSpec = this.getEncoding()[channel];
+            if (encodingSpec) {
+                const accessor = this.context.accessorFactory.createAccessor(
+                    encodingSpec
+                );
+                if (accessor) {
+                    domain = createDomain(type);
 
-        if (encodingSpec) {
-            const accessor = this.context.accessorFactory.createAccessor(
-                encodingSpec
-            );
-            if (accessor) {
-                domain = createDomain(type);
-
-                if (accessor.constant) {
-                    domain.extend(accessor({}));
-                } else {
-                    for (const datum of data.flatData()) {
-                        domain.extend(accessor(datum));
+                    if (accessor.constant) {
+                        domain.extend(accessor({}));
+                    } else {
+                        for (const datum of data.flatData()) {
+                            domain.extend(accessor(datum));
+                        }
                     }
                 }
             }
-        }
-
-        this._dataDomains[channel] = domain;
-
-        return domain;
+            return domain;
+        });
     }
 
     getZoomLevel() {
