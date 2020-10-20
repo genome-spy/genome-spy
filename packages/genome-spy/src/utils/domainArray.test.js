@@ -27,6 +27,23 @@ describe("Build quantitative domains", () => {
         expect(r(b)).toEqual([1, 5]);
     });
 
+    test("Extends with an iterable and an accessor", () => {
+        const b = createDomain("quantitative");
+        b.extendAllWithAccessor(
+            [
+                { x: 2 },
+                { x: 1 },
+                { x: null },
+                { x: undefined },
+                { x: NaN },
+                { x: 5 },
+                { x: 4 }
+            ],
+            d => d.x
+        );
+        expect(r(b)).toEqual([1, 5]);
+    });
+
     test("Coerces to number", () => {
         const b = createDomain("quantitative");
         expect(r(b.extend("123"))).toEqual([123, 123]);

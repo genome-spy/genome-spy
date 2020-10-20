@@ -2,6 +2,7 @@ import { isObject, isString, isArray } from "vega-util";
 
 import ImportView from "./importView";
 import LayerView from "./layerView";
+import FacetView from "./facetView";
 import UnitView from "./unitView";
 import ConcatView from "./concatView";
 import TableView from "./tableView";
@@ -24,6 +25,7 @@ import { VISIT_SKIP } from "./view";
  * @typedef {import("../spec/view").ContainerSpec} ContainerSpec
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
+ * @typedef {import("../spec/view").FacetSpec} FacetSpec
  * @typedef {import("../spec/view").UnitSpec} UnitSpec
  * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
  * @typedef {import("../spec/view").HConcatSpec} HConcatSpec
@@ -36,11 +38,15 @@ import { VISIT_SKIP } from "./view";
  * @typedef {import("../spec/view").RootSpec} RootSpec
  * @typedef {import("../spec/view").RootConfig} RootConfig
  * @typedef {import("./view").default} View
+ *
+ * @typedef {import("../spec/view").FacetFieldDef} FacetFieldDef
+ * @typedef {import("../spec/view").FacetMapping} FacetMapping
  */
 
 const viewTypes = [
     { prop: "import", guard: isImportSpec, viewClass: ImportView },
     { prop: "layer", guard: isLayerSpec, viewClass: LayerView },
+    { prop: "facet", guard: isFacetSpec, viewClass: FacetView },
     { prop: "mark", guard: isUnitSpec, viewClass: UnitView },
     { prop: "vconcat", guard: isVConcatSpec, viewClass: ConcatView },
     { prop: "hconcat", guard: isHConcatSpec, viewClass: ConcatView },
@@ -65,6 +71,33 @@ export function isUnitSpec(spec) {
  */
 export function isLayerSpec(spec) {
     return isObject(spec.layer);
+}
+
+/**
+ *
+ * @param {ViewSpec} spec
+ * @returns {spec is LayerSpec}
+ */
+export function isFacetSpec(spec) {
+    return isObject(spec.facet) && isObject(spec.spec);
+}
+
+/**
+ *
+ * @param {FacetFieldDef | FacetMapping} spec
+ * @returns {spec is FacetFieldDef}
+ */
+export function isFacetFieldDef(spec) {
+    return isString(spec.field);
+}
+
+/**
+ *
+ * @param {FacetFieldDef | FacetMapping} spec
+ * @returns {spec is FacetMapping}
+ */
+export function isFacetMapping(spec) {
+    return isObject(spec.row) || isObject(spec.column);
 }
 
 /**

@@ -54,6 +54,17 @@ export interface EncodingConfig {
     fp64?: boolean;
 }
 
+export interface FacetFieldDef {
+    field: string;
+    type: string;
+    spacing?: number;
+}
+
+export interface FacetMapping {
+    column?: FacetFieldDef;
+    row?: FacetFieldDef;
+}
+
 export type EncodingConfigs = Record<string, EncodingConfig>;
 
 export interface ViewSpecBase {
@@ -94,8 +105,16 @@ export interface LayerSpec extends ViewSpecBase {
     layer: (LayerSpec | UnitSpec)[];
 }
 
+export interface FacetSpec extends ViewSpecBase {
+    facet: FacetFieldDef | FacetMapping;
+    spec: LayerSpec | UnitSpec;
+    columns?: number;
+    spacing?: number;
+}
+
 export type ContainerSpec = (
     | LayerSpec
+    | FacetSpec
     | VConcatSpec
     | HConcatSpec
     | ConcatSpec

@@ -9,7 +9,7 @@ export default class LayerView extends ContainerView {
      *
      * @param {import("./viewUtils").LayerSpec} spec
      * @param {import("./viewUtils").ViewContext} context
-     * @param {View} parent
+     * @param {ContainerView} parent
      * @param {string} name
      */
     constructor(spec, context, parent, name) {

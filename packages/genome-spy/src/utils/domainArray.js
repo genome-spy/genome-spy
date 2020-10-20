@@ -38,6 +38,20 @@ export class DomainArray /** @type {Array<scalar>} */ extends Array {
 
         return this;
     }
+
+    /**
+     * @param {Iterable<T>} values
+     * @param {function(T):scalar} [accessor]
+     * @returns {DomainArray}
+     * @template T
+     */
+    extendAllWithAccessor(values, accessor) {
+        for (const value of values) {
+            this.extend(accessor(value));
+        }
+
+        return this;
+    }
 }
 
 export class QuantitativeDomain extends DomainArray {
