@@ -299,6 +299,9 @@ export default class GenomeSpy {
     }
 
     renderAll() {
+        const gl = this._glHelper.gl;
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
         const canvasSize = this._glHelper.getLogicalCanvasSize();
         const root = this.viewRoot;
 
