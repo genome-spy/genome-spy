@@ -1,6 +1,13 @@
 import { isNumber } from "vega-util";
 
 /**
+ *
+ * Layout calculation inspired by flexbox. The elements may have an
+ * absolute size (in pixels) and a growth component for filling the
+ * remaining space.
+ *
+ * Read more at https://css-tricks.com/flex-grow-is-weird/
+ *
  * @typedef {object} SizeDef Size definition inspired by CSS flexbox
  * @prop {number} [px] Size in pixels
  * @prop {number} [grow] Share of remaining space
@@ -8,94 +15,68 @@ import { isNumber } from "vega-util";
  * @typedef {object} LocSize One-dimensional location and size
  * @prop {number} location
  * @prop {number} size
+ *
+ * @typedef {object} FlexOptions
+ * @prop {number} spacing space between items in pixels
+ *
+ * @param {SizeDef[]} items
+ * @param {number} containerSize in pixels
+ * @param {FlexOptions} [options]
+ * @returns {LocSize[]}
  */
+export function mapToPixelCoords(
+    items,
+    containerSize,
+    { spacing } = { spacing: 0 }
+) {
+    let totalPx = 0;
+    let totalGrow = 0;
+
+    for (const size of items) {
+        totalPx += z(size.px) + spacing;
+        totalGrow += z(size.grow);
+    }
+    totalPx -= spacing;
+
+    const remainingSpace = Math.max(0, containerSize - totalPx);
+
+    /** @type {LocSize[]} */
+    const results = [];
+
+    let x = 0;
+    for (const size of items) {
+        const advance =
+            z(size.px) +
+            (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
+
+        results.push({ location: Math.round(x), size: Math.round(advance) });
+
+        x += advance + spacing;
+    }
+
+    return results;
+}
 
 /**
- * Layout calculation inspired by flexbox. The elements may have an
- * absolute size (in pixels) and a growth component for filling the
- * remaining space.
+ * Returns the minimum size  (the sum of pixels sizes) for the flex items
  *
- * Read more at https://css-tricks.com/flex-grow-is-weird/
- *
- * TODO: Add some memoization to calculations
- *
- * @template I item
+ * @param {SizeDef[]} items
+ * @param {FlexOptions} [options]
  */
-export default class FlexLayout {
-    /**
-     *
-     * @param {(any & Iterable<I>)} container
-     * @param {function(I):SizeDef} itemSizeAccessor
-     */
-    constructor(container, itemSizeAccessor) {
-        this._container = container;
-        this._itemSizeAccessor = itemSizeAccessor;
+export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
+    let minimumSize = 0;
+    for (const size of items) {
+        minimumSize += z(size.px) + spacing;
     }
+    return Math.max(0, minimumSize - spacing);
+}
 
-    /**
-     * Returns the coordinate and size of the item in pixels.
-     *
-     * @param {I} item
-     * @param {number} containerSize in pixels
-     * @param {number} spacing space between items in pixels
-     * @returns {LocSize}
-     */
-    getPixelCoords(item, containerSize, spacing = 0) {
-        let totalPx = 0;
-        let totalGrow = 0;
-
-        for (const child of this._container) {
-            const size = this._itemSizeAccessor(child);
-            totalPx += z(size.px) + spacing;
-            totalGrow += z(size.grow);
-        }
-        totalPx -= spacing;
-
-        const remainingSpace = Math.max(0, containerSize - totalPx);
-
-        let x = 0;
-        for (const child of this._container) {
-            const size = this._itemSizeAccessor(child);
-            const advance =
-                z(size.px) +
-                (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
-
-            if (child === item) {
-                return { location: Math.round(x), size: Math.round(advance) };
-            }
-
-            x += advance + spacing;
-        }
-
-        throw new Error("Not a child!");
-    }
-
-    /**
-     * Returns the minimum size (the sum of pixels sizes)
-     *
-     * @param {number} [spacing]
-     */
-    getMinimumSize(spacing = 0) {
-        let minimumSize = 0;
-        for (const child of this._container) {
-            const size = this._itemSizeAccessor(child);
-            minimumSize += z(size.px) + spacing;
-        }
-        return Math.max(0, minimumSize - spacing);
-    }
-
-    /**
-     * Returns true if relative (stretching) elements are present
-     */
-    isStretching() {
-        for (const child of this._container) {
-            const size = this._itemSizeAccessor(child);
-            if (size.grow) {
-                return true;
-            }
-        }
-        return false;
-    }
+/**
+ * Returns true if relative (stretching) elements are present
+ * @param {SizeDef[]} items
+ */
+export function isStretching(items) {
+    return items.some(size => size.grow);
 }
 
 export class FlexDimensions {

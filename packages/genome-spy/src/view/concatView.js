@@ -1,6 +1,8 @@
 import { getViewClass, isHConcatSpec, isVConcatSpec } from "./viewUtils";
 import ContainerView from "./containerView";
-import FlexLayout, {
+import {
+    mapToPixelCoords,
+    getMinimumSize,
     parseSizeDef,
     FlexDimensions
 } from "../utils/layout/flexLayout";
@@ -45,18 +47,19 @@ export default class ConcatView extends ContainerView {
             const View = getViewClass(childSpec);
             return new View(childSpec, context, this, "concat" + i);
         });
+    }
 
-        this.flexLayout = new FlexLayout(
-            this,
-            /** @param {View} view */ item => item.getSize()[this.mainDimension]
-        );
+    _getFlexSizeDefs() {
+        return this.children.map(view => view.getSize()[this.mainDimension]);
     }
 
     getSize() {
         /** @type {SizeDef} */
         const mainSizeDef = (this.spec[this.mainDimension] &&
             parseSizeDef(this.spec[this.mainDimension])) || {
-            px: this.flexLayout.getMinimumSize(this.spec.spacing || 0)
+            px: getMinimumSize(this._getFlexSizeDefs(), {
+                spacing: this.spec.spacing
+            })
         };
 
         const secondarySizeDef = (this.spec[this.secondaryDimension] &&
@@ -73,14 +76,16 @@ export default class ConcatView extends ContainerView {
     render(coords) {
         coords = coords.shrink(this.getPadding());
 
-        for (const view of this.children) {
-            // TODO: getPixelCoords is O(n^2), thus, optimize!
-            // For instance, a "map" method that converts an array of views to an array of coords
-            const flexCoords = this.flexLayout.getPixelCoords(
-                view,
-                coords[this.mainDimension],
-                this.spec.spacing || 0
-            );
+        const mappedCoords = mapToPixelCoords(
+            this._getFlexSizeDefs(),
+            coords[this.mainDimension],
+            { spacing: this.spec.spacing }
+        );
+
+        for (let i = 0; i < this.children.length; i++) {
+            const flexCoords = mappedCoords[i];
+            const view = this.children[i];
+
             const childCoords = coords
                 .translate(
                     // @ts-ignore
