@@ -142,6 +142,9 @@ export default class FacetView extends ContainerView {
                 accessor
             );
 
+            // TODO: Configurable sorting
+            factors.sort();
+
             this._facetDimensions[channel] = {
                 accessor,
                 factors,
