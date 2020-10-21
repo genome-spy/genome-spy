@@ -1,7 +1,7 @@
 import { getViewClass, isFacetFieldDef, isFacetMapping } from "./viewUtils";
 import ContainerView from "./containerView";
 import { getCachedOrCall } from "../utils/propertyCacher";
-import { range, cross } from "d3-array";
+import { range, cross, group } from "d3-array";
 import { mapToPixelCoords } from "../utils/layout/flexLayout";
 import { OrdinalDomain } from "../utils/domainArray";
 import Rectangle from "../utils/layout/rectangle";
@@ -264,9 +264,12 @@ export default class FacetView extends ContainerView {
         const nRows = rowFlexCoords.length;
         const nCols = columnFlexCoords.length;
 
-        // TODO: Minimize the number of WebGL state changes by optimizing rendering
-        // order: Instead of drawing one facet view at a time, draw all instances
-        // of a specific mark at a time.
+        if (deferBuffer) {
+            console.warn("deferBuffer is already defined!");
+        }
+
+        // Collect rendering requests so that their order can be optimized
+        deferBuffer = [];
 
         const facetIds = this.getFacetGroups();
 
@@ -285,6 +288,27 @@ export default class FacetView extends ContainerView {
                     facetIds[i],
                     deferBuffer
                 );
+            }
+        }
+
+        this._renderDeferred(deferBuffer);
+    }
+
+    /**
+     * Renders marks in an optimized order, minimizing the number of WebGL state
+     * changes.
+     *
+     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
+     */
+    _renderDeferred(deferBuffer) {
+        const requestByMark = group(deferBuffer, request => request.mark);
+
+        for (const mark of requestByMark.keys()) {
+            // Change program, set common uniforms (mark properties, shared domains)
+            mark.prepareRender();
+            for (const request of requestByMark.get(mark)) {
+                // Render each facet
+                mark.render(request.coords, request.facetId);
             }
         }
     }
