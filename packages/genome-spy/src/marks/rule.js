@@ -170,30 +170,28 @@ export default class RuleMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").FacetToRender[]} samples
+     * @param {any} facetId
      */
-    render(coords, samples) {
-        super.render(coords, samples);
+    render(coords, facetId) {
+        super.render(coords, facetId);
 
         const gl = this.gl;
 
-        for (const sampleData of samples) {
-            const range = this.rangeMap.get(sampleData.facetId);
-            if (range) {
-                if (range.count) {
-                    twgl.setUniforms(this.programInfo, sampleData.uniforms);
-                    twgl.drawBufferInfo(
-                        gl,
-                        this.vertexArrayInfo,
-                        gl.TRIANGLE_STRIP,
-                        range.count,
-                        range.offset
-                    );
-                }
+        const range = this.rangeMap.get(facetId);
+        if (range) {
+            if (range.count) {
+                //twgl.setUniforms(this.programInfo, sampleData.uniforms);
+                twgl.drawBufferInfo(
+                    gl,
+                    this.vertexArrayInfo,
+                    gl.TRIANGLE_STRIP,
+                    range.count,
+                    range.offset
+                );
             }
         }
-        this.gl.bindVertexArray(null);
     }
+    //this.gl.bindVertexArray(null);
 }
 
 /**

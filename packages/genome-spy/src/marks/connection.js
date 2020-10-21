@@ -128,53 +128,42 @@ export default class ConnectionMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").FacetToRender[]} samples
+     * @param {any} facetId
      */
-    render(coords, samples) {
-        super.render(coords, samples);
+    render(coords, facetId) {
+        super.render(coords, facetId);
 
         const gl = this.gl;
 
         // TODO: Vertical clipping in faceted view
 
-        for (const sampleData of samples) {
-            const range = this.rangeMap.get(sampleData.facetId);
-            if (range) {
-                // We are using instanced drawing here.
-                // However, WebGL does not provide glDrawElementsInstancedBaseInstance and thus,
-                // we have to hack with offsets in vertexAttribPointer
-                // TODO: Use VAOs to reduce WebGL calls
-                for (const attribInfoObject of Object.entries(
-                    this.bufferInfo.attribs
-                )) {
-                    const [attribute, attribInfo] = attribInfoObject;
-                    if (
-                        attribInfo.buffer &&
-                        this._componentNumbers[attribute]
-                    ) {
-                        attribInfo.offset =
-                            range.offset *
-                            this._componentNumbers[attribute] *
-                            4; // gl.FLOAT in bytes
-                    }
+        const range = this.rangeMap.get(facetId);
+        if (range) {
+            // We are using instanced drawing here.
+            // However, WebGL does not provide glDrawElementsInstancedBaseInstance and thus,
+            // we have to hack with offsets in vertexAttribPointer
+            // TODO: Use VAOs to reduce WebGL calls
+            for (const attribInfoObject of Object.entries(
+                this.bufferInfo.attribs
+            )) {
+                const [attribute, attribInfo] = attribInfoObject;
+                if (attribInfo.buffer && this._componentNumbers[attribute]) {
+                    attribInfo.offset =
+                        range.offset * this._componentNumbers[attribute] * 4; // gl.FLOAT in bytes
                 }
-                twgl.setBuffersAndAttributes(
-                    gl,
-                    this.programInfo,
-                    this.bufferInfo
-                );
-
-                twgl.setUniforms(this.programInfo, sampleData.uniforms);
-
-                twgl.drawBufferInfo(
-                    gl,
-                    this.bufferInfo,
-                    gl.TRIANGLE_STRIP,
-                    (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
-                    0,
-                    range.count
-                );
             }
+            twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+
+            //twgl.setUniforms(this.programInfo, sampleData.uniforms);
+
+            twgl.drawBufferInfo(
+                gl,
+                this.bufferInfo,
+                gl.TRIANGLE_STRIP,
+                (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
+                0,
+                range.count
+            );
         }
     }
 }

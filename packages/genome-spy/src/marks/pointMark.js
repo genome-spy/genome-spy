@@ -185,23 +185,10 @@ export default class PointMark extends Mark {
             this.programInfo,
             this.bufferInfo
         );
-    }
 
-    /**
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").FacetToRender[]} samples
-     */
-    render(coords, samples) {
-        super.render(coords, samples);
-
-        const gl = this.gl;
-
-        /** @type {function(any[]):number[]} */
-        let findIndices;
-
+        // Setup bisector that allows for searching the points that reside within the viewport.
         const xEncoder = this.encoders.x;
         if (xEncoder && !xEncoder.constant) {
-            // Only render the points that are located within the viewport
             const bisect = bisector(xEncoder.accessor).left;
             const visibleDomain = this.unitView
                 .getResolution("x")
@@ -211,33 +198,43 @@ export default class PointMark extends Mark {
             // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
             const paddedDomain = zoomLinear(visibleDomain, null, 1.01);
 
-            findIndices = data => [
+            /** @param {any[]} data */
+            this._findIndices = data => [
                 bisect(data, paddedDomain[0]),
                 bisect(data, paddedDomain[paddedDomain.length - 1])
             ];
         }
+    }
 
-        for (const sampleData of samples) {
-            const range = this.rangeMap.get(sampleData.facetId);
-            if (range) {
-                const [lower, upper] = findIndices
-                    ? findIndices(this.dataByFacet.get(sampleData.facetId))
-                    : [0, range.count];
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {any} facetId
+     */
+    render(coords, facetId) {
+        super.render(coords, facetId);
 
-                const length = upper - lower;
+        const gl = this.gl;
 
-                if (length) {
-                    twgl.setUniforms(this.programInfo, sampleData.uniforms);
-                    twgl.drawBufferInfo(
-                        gl,
-                        this.vertexArrayInfo,
-                        gl.POINTS,
-                        length,
-                        range.offset + lower
-                    );
-                }
+        const range = this.rangeMap.get(facetId);
+        if (range) {
+            const [lower, upper] = this._findIndices
+                ? this._findIndices(this.dataByFacet.get(facetId))
+                : [0, range.count];
+
+            const length = upper - lower;
+
+            if (length) {
+                //twgl.setUniforms(this.programInfo, sampleData.uniforms);
+                twgl.drawBufferInfo(
+                    gl,
+                    this.vertexArrayInfo,
+                    gl.POINTS,
+                    length,
+                    range.offset + lower
+                );
             }
         }
-        this.gl.bindVertexArray(null);
+
+        //this.gl.bindVertexArray(null);
     }
 }

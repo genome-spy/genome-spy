@@ -199,30 +199,26 @@ export default class RectMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").FacetToRender[]} samples
+     * @param {any} facetId
      */
-    render(coords, samples) {
-        super.render(coords, samples);
+    render(coords, facetId) {
+        super.render(coords, facetId);
 
         const gl = this.gl;
 
-        for (const sampleData of samples) {
-            const range = this._sampleBufferInfo.rangeMap.get(
-                sampleData.facetId
+        const range = this._sampleBufferInfo.rangeMap.get(facetId);
+        if (range) {
+            //twgl.setUniforms(this.programInfo, sampleData.uniforms);
+            // TODO: draw only the part that intersects with the viewport
+            // Could use: http://lin-ear-th-inking.blogspot.com/2007/06/packed-1-dimensional-r-tree.html
+            twgl.drawBufferInfo(
+                gl,
+                this.bufferInfo,
+                gl.TRIANGLE_STRIP,
+                range.count,
+                range.offset
             );
-            if (range) {
-                twgl.setUniforms(this.programInfo, sampleData.uniforms);
-                // TODO: draw only the part that intersects with the viewport
-                // Could use: http://lin-ear-th-inking.blogspot.com/2007/06/packed-1-dimensional-r-tree.html
-                twgl.drawBufferInfo(
-                    gl,
-                    this.bufferInfo,
-                    gl.TRIANGLE_STRIP,
-                    range.count,
-                    range.offset
-                );
-            }
         }
-        this.gl.bindVertexArray(null);
+        //this.gl.bindVertexArray(null);
     }
 }

@@ -359,13 +359,19 @@ export default class Mark {
         } else {
             gl.enable(gl.BLEND);
         }
+
+        // Temp hack:
+        twgl.setUniforms(this.programInfo, {
+            yPosLeft: [0, 1],
+            yPosRight: [0, 1]
+        });
     }
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {FacetToRender[]} samples
+     * @param {any} facetId
      */
-    render(coords, samples) {
+    render(coords, facetId) {
         // override
 
         this.setViewport(coords);
