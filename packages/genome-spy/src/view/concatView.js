@@ -79,7 +79,10 @@ export default class ConcatView extends ContainerView {
         const mappedCoords = mapToPixelCoords(
             this._getFlexSizeDefs(),
             coords[this.mainDimension],
-            { spacing: this.spec.spacing }
+            {
+                spacing: this.spec.spacing,
+                devicePixelRatio: window.devicePixelRatio
+            }
         );
 
         for (let i = 0; i < this.children.length; i++) {

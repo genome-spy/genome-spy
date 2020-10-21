@@ -215,7 +215,8 @@ export default class FacetView extends ContainerView {
                         dimension ? dimension.facetFieldDef.spacing : undefined,
                         this.spec.spacing,
                         DEFAULT_SPACING
-                    )
+                    ),
+                    devicePixelRatio: window.devicePixelRatio
                 }
             );
         };

@@ -17,7 +17,8 @@ import { isNumber } from "vega-util";
  * @prop {number} size
  *
  * @typedef {object} FlexOptions
- * @prop {number} spacing space between items in pixels
+ * @prop {number} [spacing] space between items in pixels
+ * @prop {number} [devicePixelRatio] allows for snapping to "retina" pixels
  *
  * @param {SizeDef[]} items
  * @param {number} containerSize in pixels
@@ -27,8 +28,11 @@ import { isNumber } from "vega-util";
 export function mapToPixelCoords(
     items,
     containerSize,
-    { spacing } = { spacing: 0 }
+    { spacing, devicePixelRatio } = {}
 ) {
+    spacing = spacing || 0;
+    devicePixelRatio = devicePixelRatio || 1;
+
     let totalPx = 0;
     let totalGrow = 0;
 
@@ -40,6 +44,9 @@ export function mapToPixelCoords(
 
     const remainingSpace = Math.max(0, containerSize - totalPx);
 
+    /** @param {number} x */
+    const round = x => Math.round(x * devicePixelRatio) / devicePixelRatio;
+
     /** @type {LocSize[]} */
     const results = [];
 
@@ -49,7 +56,7 @@ export function mapToPixelCoords(
             z(size.px) +
             (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
 
-        results.push({ location: Math.round(x), size: Math.round(advance) });
+        results.push({ location: round(x), size: round(advance) });
 
         x += advance + spacing;
     }
