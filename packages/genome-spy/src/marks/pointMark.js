@@ -81,7 +81,7 @@ export default class PointMark extends Mark {
         if (xAccessor) {
             // Sort each point of each sample for binary search
             // TODO: Support pre-sorted data
-            for (const arr of this.dataBySample.values()) {
+            for (const arr of this.dataByFacet.values()) {
                 arr.sort((a, b) => xAccessor(a) - xAccessor(b));
             }
         }
@@ -108,7 +108,7 @@ export default class PointMark extends Mark {
     }
 
     updateGraphicsData() {
-        const itemCount = [...this.dataBySample.values()]
+        const itemCount = [...this.dataByFacet.values()]
             .map(arr => arr.length)
             .reduce((a, c) => a + c, 0);
 
@@ -118,7 +118,7 @@ export default class PointMark extends Mark {
             numItems: Math.min(itemCount, this.properties.minBufferSize || 0)
         });
 
-        for (const [sample, points] of this.dataBySample.entries()) {
+        for (const [sample, points] of this.dataByFacet.entries()) {
             builder.addBatch(sample, points);
         }
         const vertexData = builder.toArrays();
@@ -171,7 +171,7 @@ export default class PointMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").SampleToRender[]} samples
+     * @param {import("./mark").FacetToRender[]} samples
      */
     render(coords, samples) {
         super.render(coords, samples);
@@ -210,10 +210,10 @@ export default class PointMark extends Mark {
         }
 
         for (const sampleData of samples) {
-            const range = this.rangeMap.get(sampleData.sampleId);
+            const range = this.rangeMap.get(sampleData.facetId);
             if (range) {
                 const [lower, upper] = findIndices
-                    ? findIndices(this.dataBySample.get(sampleData.sampleId))
+                    ? findIndices(this.dataByFacet.get(sampleData.facetId))
                     : [0, range.count];
 
                 const length = upper - lower;

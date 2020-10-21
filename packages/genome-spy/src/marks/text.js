@@ -118,7 +118,7 @@ export default class TextMark extends Mark {
         const numberFormat = encoding.text.format
             ? format(encoding.text.format)
             : d => d;
-        for (const data of this.dataBySample.values()) {
+        for (const data of this.dataByFacet.values()) {
             for (const d of data) {
                 // TODO: Optimization: don't format twice (calculation and actual encoding)
                 const value = numberFormat(accessor(d));
@@ -142,7 +142,7 @@ export default class TextMark extends Mark {
             )
         });
 
-        for (const [sample, texts] of this.dataBySample.entries()) {
+        for (const [sample, texts] of this.dataByFacet.entries()) {
             builder.addBatch(sample, texts);
         }
         const vertexData = builder.toArrays();
@@ -153,7 +153,7 @@ export default class TextMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").SampleToRender[]} samples
+     * @param {import("./mark").FacetToRender[]} samples
      */
     render(coords, samples) {
         super.render(coords, samples);
@@ -181,7 +181,7 @@ export default class TextMark extends Mark {
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
         for (const sampleData of samples) {
-            const range = this.rangeMap.get(sampleData.sampleId);
+            const range = this.rangeMap.get(sampleData.facetId);
             if (range) {
                 twgl.setUniforms(this.programInfo, sampleData.uniforms);
                 twgl.drawBufferInfo(

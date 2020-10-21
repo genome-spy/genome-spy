@@ -15,6 +15,7 @@ import {
 import createDomain from "../utils/domainArray";
 import { parseSizeDef } from "../utils/layout/flexLayout";
 import { getCachedOrCall } from "../utils/propertyCacher";
+import FacetView from "./facetView";
 
 /**
  * @typedef {import("./layerView").default} LayerView
@@ -61,8 +62,9 @@ export default class UnitView extends View {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
+     * @param {any} [facetId]
      */
-    render(coords) {
+    render(coords, facetId) {
         coords = coords.shrink(this.getPadding());
 
         // Translate by half a pixel to place vertical / horizontal
@@ -71,7 +73,7 @@ export default class UnitView extends View {
 
         const samples = [
             {
-                sampleId: "default",
+                facetId: undefined,
                 uniforms: {
                     yPosLeft: [0, 1],
                     yPosRight: [0, 1]
@@ -79,7 +81,7 @@ export default class UnitView extends View {
             }
         ];
 
-        this.mark.render(coords, samples);
+        this.mark.render(coords, facetId ? [{ facetId }] : samples);
     }
 
     getMarkType() {
@@ -159,6 +161,26 @@ export default class UnitView extends View {
                 );
             }
         });
+    }
+
+    /**
+     * Returns an accessor that returns a (composite) key for partitioning the data
+     */
+    getFacetAccessor() {
+        const sampleAccessor = this.getAccessor("sample");
+        if (sampleAccessor) {
+            return sampleAccessor;
+        }
+
+        // Find a FacetView
+        /** @type {ContainerView} */
+        let view = this;
+        do {
+            if (view instanceof FacetView) {
+                return view.getFacetAccessor();
+            }
+            view = view.parent;
+        } while (view);
     }
 
     _getCoordinateSystemExtent() {

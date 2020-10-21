@@ -140,7 +140,7 @@ export default class RectMark extends Mark {
             visibleRange: interval ? interval.toArray() : undefined
         });
 
-        for (const [sample, data] of this.dataBySample.entries()) {
+        for (const [sample, data] of this.dataByFacet.entries()) {
             builder.addBatch(sample, data);
         }
         const vertexData = builder.toArrays();
@@ -182,7 +182,7 @@ export default class RectMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").SampleToRender[]} samples
+     * @param {import("./mark").FacetToRender[]} samples
      */
     render(coords, samples) {
         super.render(coords, samples);
@@ -203,7 +203,7 @@ export default class RectMark extends Mark {
 
         for (const sampleData of samples) {
             const range = this._sampleBufferInfo.rangeMap.get(
-                sampleData.sampleId
+                sampleData.facetId
             );
             if (range) {
                 twgl.setUniforms(this.programInfo, sampleData.uniforms);

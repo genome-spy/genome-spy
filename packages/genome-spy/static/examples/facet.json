@@ -5,8 +5,6 @@
   "facet": { "field": "Series" },
   "columns": 2,
   "spec": {
-    "width": 200,
-    "height": 200,
     "mark": "point",
     "encoding": {
       "x": {

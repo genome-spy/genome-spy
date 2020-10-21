@@ -85,7 +85,7 @@ export default class ConnectionMark extends Mark {
     }
 
     updateGraphicsData() {
-        const itemCount = [...this.dataBySample.values()]
+        const itemCount = [...this.dataByFacet.values()]
             .map(arr => arr.length)
             .reduce((a, c) => a + c, 0);
 
@@ -95,7 +95,7 @@ export default class ConnectionMark extends Mark {
             numItems: itemCount
         });
 
-        for (const [sample, connections] of this.dataBySample.entries()) {
+        for (const [sample, connections] of this.dataByFacet.entries()) {
             builder.addBatch(sample, connections);
         }
         const vertexData = builder.toArrays();
@@ -114,7 +114,7 @@ export default class ConnectionMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").SampleToRender[]} samples
+     * @param {import("./mark").FacetToRender[]} samples
      */
     render(coords, samples) {
         super.render(coords, samples);
@@ -132,7 +132,7 @@ export default class ConnectionMark extends Mark {
         // TODO: Vertical clipping in faceted view
 
         for (const sampleData of samples) {
-            const range = this.rangeMap.get(sampleData.sampleId);
+            const range = this.rangeMap.get(sampleData.facetId);
             if (range) {
                 // We are using instanced drawing here.
                 // However, WebGL does not provide glDrawElementsInstancedBaseInstance and thus,

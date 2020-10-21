@@ -124,7 +124,7 @@ export default class RuleMark extends Mark {
     }
 
     updateGraphicsData() {
-        const itemCount = [...this.dataBySample.values()]
+        const itemCount = [...this.dataByFacet.values()]
             .map(arr => arr.length)
             .reduce((a, c) => a + c, 0);
 
@@ -134,7 +134,7 @@ export default class RuleMark extends Mark {
             numItems: Math.max(itemCount, this.properties.minBufferSize || 0)
         });
 
-        for (const [sample, d] of this.dataBySample.entries()) {
+        for (const [sample, d] of this.dataByFacet.entries()) {
             builder.addBatch(sample, d);
         }
         const vertexData = builder.toArrays();
@@ -145,7 +145,7 @@ export default class RuleMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").SampleToRender[]} samples
+     * @param {import("./mark").FacetToRender[]} samples
      */
     render(coords, samples) {
         super.render(coords, samples);
@@ -170,7 +170,7 @@ export default class RuleMark extends Mark {
         twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
         for (const sampleData of samples) {
-            const range = this.rangeMap.get(sampleData.sampleId);
+            const range = this.rangeMap.get(sampleData.facetId);
             if (range) {
                 if (range.count) {
                     twgl.setUniforms(this.programInfo, sampleData.uniforms);

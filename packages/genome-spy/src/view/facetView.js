@@ -6,6 +6,7 @@ import { mapToPixelCoords } from "../utils/layout/flexLayout";
 import { OrdinalDomain } from "../utils/domainArray";
 import Rectangle from "../utils/layout/rectangle";
 import coalesce from "../utils/coalesce";
+import { field as vegaField } from "vega-util";
 
 const DEFAULT_SPACING = 20;
 
@@ -149,15 +150,41 @@ export default class FacetView extends ContainerView {
         }
     }
 
+    /**
+     * Returns an accessor that returns a (composite) key for partitioning the data
+     */
+    getFacetAccessor() {
+        const { column, row } = this._facetDimensions;
+
+        if (column && row) {
+            const columnField = vegaField(column.facetFieldDef.field);
+            const rowField = vegaField(row.facetFieldDef.field);
+            return /** @param {object} d */ d =>
+                columnField(d) + "," + rowField(d);
+        } else if (column) {
+            return vegaField(column.facetFieldDef.field);
+        } else if (row) {
+            return vegaField(row.facetFieldDef.field);
+        } else {
+            throw new Error("updateFacets() must be called first!");
+        }
+    }
+
     getFacetGroups() {
         const { column, row } = this._facetDimensions;
 
         if (column && row) {
-            return cross(column.factors, row.factors, (a, b) => a + "," + b);
+            return cross(
+                column.factors,
+                row.factors,
+                (col, row) => col + "," + row
+            );
         } else if (column) {
             return column.factors;
         } else if (row) {
             return row.factors;
+        } else {
+            throw new Error("updateFacets() must be called first!");
         }
     }
 

@@ -12,8 +12,8 @@ import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
  *
- * @typedef {object} SampleToRender
- * @prop {string} sampleId
+ * @typedef {object} FacetToRender
+ * @prop {any} facetId
  * @prop {Record<string, any>} uniforms
  *
  * @typedef {Object} AttributeProps
@@ -146,13 +146,14 @@ export default class Mark {
             throw new Error("Can not initialize mark, no data available!");
         }
 
-        const accessor = this.unitView.getAccessor("sample");
+        const accessor = this.unitView.getFacetAccessor();
         if (accessor) {
-            // TODO: Optimize. Now inherited data is grouped by sample in all children
+            // TODO: Optimize. Now inherited data is faceted in all children.
+            // Faceting should be moved to Views
             /** @type {Map<string, object[]>} */
-            this.dataBySample = group(data.flatData(), accessor);
+            this.dataByFacet = group(data.flatData(), accessor);
         } else {
-            this.dataBySample = new Map([["default", data.ungroupAll().data]]);
+            this.dataByFacet = new Map([[undefined, data.ungroupAll().data]]);
         }
     }
 
@@ -309,7 +310,7 @@ export default class Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {SampleToRender[]} samples
+     * @param {FacetToRender[]} samples
      */
     render(coords, samples) {
         // override
