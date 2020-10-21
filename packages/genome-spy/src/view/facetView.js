@@ -244,8 +244,12 @@ export default class FacetView extends ContainerView {
             );
         } else {
             n =
-                (this._facetDimensions.column.factors.length || 1) *
-                (this._facetDimensions.row.factors.length || 1);
+                ((this._facetDimensions.column &&
+                    this._facetDimensions.column.factors.length) ||
+                    1) *
+                ((this._facetDimensions.row &&
+                    this._facetDimensions.row.factors.length) ||
+                    1);
 
             columnFlexCoords = computeFlexCoords(
                 this._facetDimensions.column,
@@ -265,7 +269,7 @@ export default class FacetView extends ContainerView {
 
         for (let y = 0; y < nRows; y++) {
             for (let x = 0; x < nCols; x++) {
-                const i = x + y * nCols;
+                const i = y + x * nRows;
                 if (i >= n) break;
 
                 this.child.render(

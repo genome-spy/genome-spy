@@ -165,22 +165,17 @@ export default class UnitView extends View {
 
     /**
      * Returns an accessor that returns a (composite) key for partitioning the data
+     *
+     * @param {View} [whoIsAsking]
+     * @returns {function(object):any}
      */
-    getFacetAccessor() {
+    getFacetAccessor(whoIsAsking) {
         const sampleAccessor = this.getAccessor("sample");
         if (sampleAccessor) {
             return sampleAccessor;
         }
 
-        // Find a FacetView
-        /** @type {ContainerView} */
-        let view = this;
-        do {
-            if (view instanceof FacetView) {
-                return view.getFacetAccessor();
-            }
-            view = view.parent;
-        } while (view);
+        return super.getFacetAccessor(this);
     }
 
     _getCoordinateSystemExtent() {

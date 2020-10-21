@@ -137,6 +137,22 @@ export default class AxisWrapperView extends ContainerView {
     }
 
     /**
+     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
+     *      selectively breaking the inheritance.
+     * @return {function(object):any}
+     */
+    getFacetAccessor(whoIsAsking) {
+        if (whoIsAsking != this.child) {
+            // Axes have no facets
+            return;
+        }
+
+        if (this.parent) {
+            return this.parent.getFacetAccessor(this);
+        }
+    }
+
+    /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {

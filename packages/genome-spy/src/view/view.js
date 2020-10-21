@@ -166,6 +166,17 @@ export default class View {
     }
 
     /**
+     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
+     *      selectively breaking the inheritance.
+     * @return {function(object):any}
+     */
+    getFacetAccessor(whoIsAsking) {
+        if (this.parent) {
+            return this.parent.getFacetAccessor(this);
+        }
+    }
+
+    /**
      *
      * @param {string} channel
      * @returns {import("./resolution").default}
