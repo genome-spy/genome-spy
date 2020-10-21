@@ -81,6 +81,7 @@ export default class UnitView extends View {
             }
         ];
 
+        this.mark.prepareRender();
         this.mark.render(coords, facetId ? [{ facetId }] : samples);
     }
 

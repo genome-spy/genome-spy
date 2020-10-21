@@ -180,14 +180,9 @@ export default class RectMark extends Mark {
         this.bufferInfo = this._fullSampleBufferInfo.bufferInfo;
     }
 
-    /**
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").FacetToRender[]} samples
-     */
-    render(coords, samples) {
-        super.render(coords, samples);
+    prepareRender() {
+        super.prepareRender();
 
-        const gl = this.gl;
         const props = this.properties;
 
         twgl.setUniforms(this.programInfo, {
@@ -196,10 +191,20 @@ export default class RectMark extends Mark {
         });
 
         twgl.setBuffersAndAttributes(
-            gl,
+            this.gl,
             this.programInfo,
             this._sampleBufferInfo.bufferInfo
         );
+    }
+
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {import("./mark").FacetToRender[]} samples
+     */
+    render(coords, samples) {
+        super.render(coords, samples);
+
+        const gl = this.gl;
 
         for (const sampleData of samples) {
             const range = this._sampleBufferInfo.rangeMap.get(

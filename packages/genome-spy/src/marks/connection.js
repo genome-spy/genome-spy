@@ -112,14 +112,10 @@ export default class ConnectionMark extends Mark {
         this.updateBufferInfo(vertexData);
     }
 
-    /**
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").FacetToRender[]} samples
-     */
-    render(coords, samples) {
-        super.render(coords, samples);
+    prepareRender() {
+        this.gl.bindVertexArray(null);
 
-        const gl = this.gl;
+        super.prepareRender();
 
         const getBandwidth = scale =>
             scale && scale.type == "band" ? scale.bandwidth() : 0;
@@ -128,6 +124,16 @@ export default class ConnectionMark extends Mark {
             uBandwidth: getBandwidth(this.encoders.y.scale),
             uZoomLevel: this.unitView.getZoomLevel()
         });
+    }
+
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {import("./mark").FacetToRender[]} samples
+     */
+    render(coords, samples) {
+        super.render(coords, samples);
+
+        const gl = this.gl;
 
         // TODO: Vertical clipping in faceted view
 

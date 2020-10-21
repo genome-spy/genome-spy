@@ -169,14 +169,8 @@ export default class PointMark extends Mark {
         }
     }
 
-    /**
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").FacetToRender[]} samples
-     */
-    render(coords, samples) {
-        super.render(coords, samples);
-
-        const gl = this.gl;
+    prepareRender() {
+        super.prepareRender();
 
         twgl.setUniforms(this.programInfo, {
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
@@ -186,7 +180,21 @@ export default class PointMark extends Mark {
             uSemanticThreshold: this.getSemanticThreshold()
         });
 
-        twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+        twgl.setBuffersAndAttributes(
+            this.gl,
+            this.programInfo,
+            this.bufferInfo
+        );
+    }
+
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {import("./mark").FacetToRender[]} samples
+     */
+    render(coords, samples) {
+        super.render(coords, samples);
+
+        const gl = this.gl;
 
         /** @type {function(any[]):number[]} */
         let findIndices;

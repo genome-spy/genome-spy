@@ -151,15 +151,10 @@ export default class TextMark extends Mark {
         this.updateBufferInfo(vertexData);
     }
 
-    /**
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").FacetToRender[]} samples
-     */
-    render(coords, samples) {
-        super.render(coords, samples);
+    prepareRender() {
+        super.prepareRender();
 
         const dpr = window.devicePixelRatio;
-        const gl = this.gl;
         const props = this.properties;
 
         twgl.setUniforms(this.programInfo, {
@@ -178,7 +173,21 @@ export default class TextMark extends Mark {
                 (dpr / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
         });
 
-        twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+        twgl.setBuffersAndAttributes(
+            this.gl,
+            this.programInfo,
+            this.bufferInfo
+        );
+    }
+
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {import("./mark").FacetToRender[]} samples
+     */
+    render(coords, samples) {
+        super.render(coords, samples);
+
+        const gl = this.gl;
 
         for (const sampleData of samples) {
             const range = this.rangeMap.get(sampleData.facetId);

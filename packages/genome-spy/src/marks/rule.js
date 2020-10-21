@@ -143,14 +143,8 @@ export default class RuleMark extends Mark {
         this.updateBufferInfo(vertexData);
     }
 
-    /**
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./mark").FacetToRender[]} samples
-     */
-    render(coords, samples) {
-        super.render(coords, samples);
-
-        const gl = this.gl;
+    prepareRender() {
+        super.prepareRender();
 
         twgl.setUniforms(this.programInfo, {
             uMinLength: this.properties.minLength,
@@ -167,7 +161,21 @@ export default class RuleMark extends Mark {
             });
         }
 
-        twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+        twgl.setBuffersAndAttributes(
+            this.gl,
+            this.programInfo,
+            this.bufferInfo
+        );
+    }
+
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {import("./mark").FacetToRender[]} samples
+     */
+    render(coords, samples) {
+        super.render(coords, samples);
+
+        const gl = this.gl;
 
         for (const sampleData of samples) {
             const range = this.rangeMap.get(sampleData.facetId);

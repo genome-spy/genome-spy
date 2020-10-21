@@ -309,12 +309,12 @@ export default class Mark {
     }
 
     /**
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {FacetToRender[]} samples
+     * Configures the WebGL state for rendering the mark instances.
+     * A separate preparation stage allows for efficient rendering of faceted
+     * views, i.e., multiple views share the uniforms (such as mark properties
+     * and scales) and buffers.
      */
-    render(coords, samples) {
-        // override
-
+    prepareRender() {
         const gl = this.gl;
 
         if (!this.bufferInfo) {
@@ -330,7 +330,6 @@ export default class Mark {
         }
 
         gl.useProgram(this.programInfo.program);
-        this.setViewport(coords);
 
         /** @type {Record<string, number | number[]>} */
         const domainUniforms = {};
@@ -348,8 +347,12 @@ export default class Mark {
             }
         }
 
-        twgl.setUniforms(this.programInfo, this.getGlobalUniforms());
         twgl.setUniforms(this.programInfo, domainUniforms);
+
+        twgl.setUniforms(this.programInfo, {
+            ONE: 1.0, // a hack needed by emulated 64 bit floats
+            uDevicePixelRatio: window.devicePixelRatio
+        });
 
         if (this.opaque) {
             gl.disable(gl.BLEND);
@@ -358,11 +361,14 @@ export default class Mark {
         }
     }
 
-    getGlobalUniforms() {
-        return {
-            ONE: 1.0,
-            uDevicePixelRatio: window.devicePixelRatio
-        };
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {FacetToRender[]} samples
+     */
+    render(coords, samples) {
+        // override
+
+        this.setViewport(coords);
     }
 
     /**
@@ -392,6 +398,9 @@ export default class Mark {
         const xOffset = props.xOffset || 0;
         const yOffset = -props.yOffset || 0;
 
+        /** @type {object} */
+        let uniforms;
+
         if (props.clip) {
             // Because glViewport accepts only integers, we subtract the rounding
             // errors from xyOffsets to guarantee that graphics in clipped
@@ -407,13 +416,13 @@ export default class Mark {
             gl.scissor(...flooredCoords);
             gl.enable(gl.SCISSOR_TEST);
 
-            twgl.setUniforms(this.programInfo, {
+            uniforms = {
                 uViewOffset: [
                     (xOffset + xError) / coords.width,
                     -(yOffset - yError) / coords.height
                 ],
                 uViewScale: [1, 1]
-            });
+            };
         } else {
             // Viewport comprises of the full canvas
             gl.viewport(
@@ -425,7 +434,7 @@ export default class Mark {
             gl.disable(gl.SCISSOR_TEST);
 
             // Offset and scale all drawing to the view rectangle
-            twgl.setUniforms(this.programInfo, {
+            uniforms = {
                 uViewOffset: [
                     (coords.x + xOffset) / logicalSize.width,
                     (logicalSize.height - coords.y - yOffset - coords.height) /
@@ -435,11 +444,12 @@ export default class Mark {
                     coords.width / logicalSize.width,
                     coords.height / logicalSize.height
                 ]
-            });
+            };
         }
 
+        // TODO: Optimization: Use uniform buffer object
         twgl.setUniforms(this.programInfo, {
-            uDevicePixelRatio: dpr,
+            ...uniforms,
             uViewportSize: [coords.width, coords.height]
         });
     }
