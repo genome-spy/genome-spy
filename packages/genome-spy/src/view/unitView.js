@@ -63,26 +63,25 @@ export default class UnitView extends View {
     /**
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {any} [facetId]
+     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, facetId) {
+    render(coords, facetId, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
         // Translate by half a pixel to place vertical / horizontal
         // rules inside pixels, not between pixels.
         coords = coords.translate(0.5, 0.5);
 
-        const samples = [
-            {
-                facetId: undefined,
-                uniforms: {
-                    yPosLeft: [0, 1],
-                    yPosRight: [0, 1]
-                }
-            }
-        ];
-
-        this.mark.prepareRender();
-        this.mark.render(coords, facetId);
+        if (deferBuffer) {
+            deferBuffer.push({
+                mark: this.mark,
+                coords,
+                facetId
+            });
+        } else {
+            this.mark.prepareRender();
+            this.mark.render(coords, facetId);
+        }
     }
 
     getMarkType() {

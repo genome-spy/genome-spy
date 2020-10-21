@@ -12,7 +12,7 @@ import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
  *
- * @typedef {object} FacetToRender
+ * @typedef {object} RenderingOptions
  * @prop {any} facetId
  * @prop {Record<string, any>} uniforms
  *

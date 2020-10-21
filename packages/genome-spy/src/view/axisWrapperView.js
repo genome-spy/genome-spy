@@ -240,8 +240,10 @@ export default class AxisWrapperView extends ContainerView {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
+     * @param {any} [facetId]
+     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords) {
+    render(coords, facetId, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
         const extents = this._getAxisExtents();
@@ -251,7 +253,7 @@ export default class AxisWrapperView extends ContainerView {
         this._coords = coords;
         this._childCoords = childCoords;
 
-        this.child.render(childCoords);
+        this.child.render(childCoords, facetId, deferBuffer);
 
         this._updateAxisData();
 
@@ -262,31 +264,29 @@ export default class AxisWrapperView extends ContainerView {
 
             const props = this.axisProps[slot];
 
+            /** @type {import("../utils/layout/rectangle").default} */
+            let axisCoords;
+
             if (slot == "bottom") {
-                view.render(
-                    childCoords
-                        .translate(0, childCoords.height + props.offset)
-                        .modify({ height: extents.bottom })
-                );
+                axisCoords = childCoords
+                    .translate(0, childCoords.height + props.offset)
+                    .modify({ height: extents.bottom });
             } else if (slot == "top") {
-                view.render(
-                    childCoords
-                        .translate(0, -extents.top - props.offset)
-                        .modify({ height: extents.top })
-                );
+                axisCoords = childCoords
+                    .translate(0, -extents.top - props.offset)
+                    .modify({ height: extents.top });
             } else if (slot == "left") {
-                view.render(
-                    childCoords
-                        .translate(-extents.left - props.offset, 0)
-                        .modify({ width: extents.left })
-                );
+                axisCoords = childCoords
+                    .translate(-extents.left - props.offset, 0)
+                    .modify({ width: extents.left });
             } else if (slot == "right") {
-                view.render(
-                    childCoords
-                        .translate(childCoords.width + props.offset, 0)
-                        .modify({ width: extents.right })
-                );
+                axisCoords = childCoords
+                    .translate(childCoords.width + props.offset, 0)
+                    .modify({ width: extents.right });
             }
+
+            // Axes have no faceted data, thus, pass undefined facetId
+            view.render(axisCoords, undefined, deferBuffer);
         }
     }
 

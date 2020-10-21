@@ -190,8 +190,10 @@ export default class FacetView extends ContainerView {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
+     * @param {any} [facetId]
+     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords) {
+    render(coords, facetId, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
         const childSize = this.child.getSize();
@@ -259,6 +261,8 @@ export default class FacetView extends ContainerView {
         // order: Instead of drawing one facet view at a time, draw all instances
         // of a specific mark at a time.
 
+        const facetIds = this.getFacetGroups();
+
         for (let y = 0; y < nRows; y++) {
             for (let x = 0; x < nCols; x++) {
                 const i = x + y * nCols;
@@ -270,7 +274,9 @@ export default class FacetView extends ContainerView {
                         rowFlexCoords[y].location,
                         columnFlexCoords[x].size,
                         rowFlexCoords[y].size
-                    ).translate(this.getPadding().left, this.getPadding().top)
+                    ).translate(this.getPadding().left, this.getPadding().top),
+                    facetIds[i],
+                    deferBuffer
                 );
             }
         }

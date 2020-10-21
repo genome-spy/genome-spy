@@ -18,6 +18,12 @@ export const VISIT_STOP = "VISIT_STOP";
  * @typedef {object} BroadcastMessage
  * @prop {string} type Broadcast type
  * @prop {any} [payload] Anything
+ *
+ * @typedef {object} DeferredRenderingRequest Allows for collecting marks for
+ *      optimized rendering order.
+ * @prop {import("../marks/mark").default} mark
+ * @prop {Rectangle} coords
+ * @prop {any} [facetId]
  */
 export default class View {
     /**
@@ -137,8 +143,10 @@ export default class View {
      *
      * @param {Rectangle} coords The coordinate rectangle that the parent computed
      *      for the child that is being visited.
+     * @param {any} [facetId]
+     * @param {DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords) {
+    render(coords, facetId, deferBuffer) {
         // override
     }
 

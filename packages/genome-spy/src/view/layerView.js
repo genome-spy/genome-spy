@@ -33,12 +33,14 @@ export default class LayerView extends ContainerView {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
+     * @param {any} [facetId]
+     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords) {
+    render(coords, facetId, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
         for (const child of this.children) {
-            child.render(coords);
+            child.render(coords, facetId, deferBuffer);
         }
     }
 }
