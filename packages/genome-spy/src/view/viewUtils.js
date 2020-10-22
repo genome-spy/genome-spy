@@ -260,11 +260,15 @@ export function resolveScales(root) {
 export function addAxisWrappers(root) {
     let newRoot = root; // If the root is wrapped...
 
+    /** @param {EncodingConfig} encodingConfig */
+    const hasDomain = encodingConfig =>
+        encodingConfig && !("value" in encodingConfig);
+
     // TODO: only wrap views that actually request axes
     root.visit(view => {
         if (view instanceof LayerView || view instanceof UnitView) {
             const encoding = view.getEncoding();
-            if (!encoding.x && !encoding.y) {
+            if (!hasDomain(encoding.x) && !hasDomain(encoding.y)) {
                 // Don't wrap views that have no positional channels
                 // TODO: However, in future, views with borders or backgrounds should be wrapped always
                 return;

@@ -1,18 +1,59 @@
 import { getViewClass, isFacetFieldDef, isFacetMapping } from "./viewUtils";
 import ContainerView from "./containerView";
+import UnitView from "./unitView";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import { range, cross, group } from "d3-array";
 import { mapToPixelCoords } from "../utils/layout/flexLayout";
 import { OrdinalDomain } from "../utils/domainArray";
 import Rectangle from "../utils/layout/rectangle";
 import coalesce from "../utils/coalesce";
-import { field as vegaField } from "vega-util";
+import { field as vegaField, isNumber } from "vega-util";
+import AxisWrapperView from "./axisWrapperView";
+import Padding from "../utils/layout/padding";
 
 const DEFAULT_SPACING = 20;
 
 /**
+ * @typedef {"column" | "row"} FacetChannel
+ * @type {FacetChannel[]}
+ */
+const FACET_CHANNELS = ["column", "row"];
+
+/**
+ * @type {Record<FacetChannel, FacetChannel>}
+ */
+const PERPENDICULAR_FACET_CHANNELS = {
+    column: "row",
+    row: "column"
+};
+
+// https://vega.github.io/vega-lite/docs/header.html#labels
+// TODO: Configurable
+const headerConfig = {
+    labelFontSize: 12,
+    labelColor: "black"
+};
+
+/** @type {Record<FacetChannel, any>} */
+const headerConfigs = {
+    column: {
+        ...headerConfig,
+        labelAngle: 0
+    },
+    row: {
+        ...headerConfig,
+        labelAngle: -90
+    }
+};
+
+/**
  * Implements (a subset of) the Vega-Lite's Facet-operator:
  * https://vega.github.io/vega-lite/docs/facet.html
+ *
+ * TODO:
+ *  - Facet channel titles
+ *  - Suppress redundant axes
+ *  - Make this thing configurable
  *
  * @typedef {import("./view").default} View
  * @typedef {import("./unitView").default} UnitView
@@ -21,6 +62,7 @@ const DEFAULT_SPACING = 20;
  * @typedef {import("./viewUtils").FacetFieldDef} FacetFieldDef
  * @typedef {import("./viewUtils").FacetMapping} FacetMapping
  * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
+ * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
  *
  * @typedef {object} FacetDimension Stuff for working with facet dimensions
  * @prop {function} accessor
@@ -50,7 +92,23 @@ export default class FacetView extends ContainerView {
         ));
 
         /**
-         * @type {Record<"column" | "row", FacetDimension>} */
+         * Faceted views for displaying the facet labels
+         *
+         * @type {Record<FacetChannel, UnitView>}
+         */
+        this._labelViews = Object.fromEntries(
+            FACET_CHANNELS.map(channel => [
+                channel,
+                new UnitView(
+                    createLabelViewSpec(headerConfigs[channel]),
+                    this.context,
+                    this,
+                    `facetLabel-${channel}`
+                )
+            ])
+        );
+
+        /**  @type {Record<FacetChannel, FacetDimension>} */
         this._facetDimensions = { column: undefined, row: undefined };
     }
 
@@ -59,6 +117,9 @@ export default class FacetView extends ContainerView {
      */
     *[Symbol.iterator]() {
         yield this.child;
+        for (const view of Object.values(this._labelViews)) {
+            yield view;
+        }
     }
 
     /**
@@ -124,10 +185,7 @@ export default class FacetView extends ContainerView {
             );
         }
 
-        for (const channel of /** @type {("column" | "row")[]} */ ([
-            "column",
-            "row"
-        ])) {
+        for (const channel of FACET_CHANNELS) {
             const facetFieldDef = facetMapping[channel];
             if (!facetFieldDef) {
                 continue;
@@ -153,13 +211,31 @@ export default class FacetView extends ContainerView {
         }
     }
 
+    updateLabels() {
+        for (const channel of FACET_CHANNELS) {
+            const facetDimension = this._facetDimensions[channel];
+            this._labelViews[channel].updateData(
+                facetDimension
+                    ? facetDimension.factors.map(d => ({ data: d }))
+                    : []
+            );
+        }
+    }
+
     /**
      * Returns an accessor that returns a (composite) key for partitioning the data
+     *
+     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
+     *      selectively breaking the inheritance.
+     * @return {function(object):any}
      */
-    getFacetAccessor() {
+    getFacetAccessor(whoIsAsking) {
         const { column, row } = this._facetDimensions;
 
-        if (column && row) {
+        if (Object.values(this._labelViews).includes(whoIsAsking)) {
+            // Label views are faceted by the facet labels
+            return vegaField("data");
+        } else if (column && row) {
             const columnField = vegaField(column.facetFieldDef.field);
             const rowField = vegaField(row.facetFieldDef.field);
             return /** @param {object} d */ d =>
@@ -191,6 +267,11 @@ export default class FacetView extends ContainerView {
         }
     }
 
+    getSize() {
+        // TODO: IMPLEMENT!
+        return super.getSize();
+    }
+
     /**
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {any} [facetId]
@@ -199,70 +280,113 @@ export default class FacetView extends ContainerView {
     render(coords, facetId, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
+        // Size of the view that is being repeated for all the facets
         const childSize = this.child.getSize();
 
+        // Fugly hack. TODO: Figure out a systematic phase for doing this
+        if (!this._labelsUpdated) {
+            this.updateLabels();
+            this._labelsUpdated = true;
+        }
+
+        // TODO: Validate. Columns is not compatible with row channel
+        const wrap = this.spec.columns && this._facetDimensions.column;
+
+        // We use two flexLayouts to create a grid for the facets.
+        // Stride and offset control how the cells in the grid are allocated
+        // for the facets and the intervening facet labels.
+        const xStride = 1;
+        const xOffset = wrap ? 0 : this._facetDimensions.row ? 1 : 0;
+        const yStride = wrap ? 2 : 1;
+        const yOffset = this._facetDimensions.column ? 1 : 0;
+
         /**
-         * @param {FacetDimension} dimension
-         * @param {"column" | "row"} direction
-         * @param {number} [explicitItemCount]
+         * @param {SizeDef} childSize
+         * @param {number} count
+         * @param {number} stride
+         * @param {number} offset
          */
-        const computeFlexCoords = (dimension, direction, explicitItemCount) => {
-            const orient = direction == "column" ? "width" : "height";
+        const calculateCellSizes = (childSize, count, stride, offset) => {
+            // TODO: take the channel into account
+            const labelSize = { px: headerConfig.labelFontSize };
+
+            /** @type {SizeDef[]} */
+            const cellSizes = [];
+
+            for (let i = 0; i < offset; i++) {
+                cellSizes.push(labelSize);
+            }
+
+            for (let i = 0; i < count; i++) {
+                for (let j = 1; j < stride; j++) {
+                    cellSizes.push(labelSize);
+                }
+                cellSizes.push(childSize);
+            }
+
+            return cellSizes;
+        };
+
+        /**
+         *
+         * @param {FacetChannel} channel
+         * @param {number} count Number of factors
+         */
+        const computeFlexCoords = (channel, count) => {
+            const dimension = this._facetDimensions[channel];
+
+            const spacing = coalesce(
+                dimension ? dimension.facetFieldDef.spacing : undefined,
+                this.spec.spacing,
+                DEFAULT_SPACING
+            );
+
+            const cellSizes =
+                channel == "column"
+                    ? calculateCellSizes(
+                          childSize.width,
+                          count,
+                          xStride,
+                          xOffset
+                      )
+                    : calculateCellSizes(
+                          childSize.height,
+                          count,
+                          yStride,
+                          wrap ? 0 : yOffset
+                      );
+
             return mapToPixelCoords(
-                range(
-                    0,
-                    explicitItemCount ||
-                        (dimension ? dimension.factors.length : 1)
-                ).map(i => childSize[orient]),
-                coords[orient],
+                cellSizes,
+                coords[channel == "column" ? "width" : "height"],
                 {
-                    spacing: coalesce(
-                        dimension ? dimension.facetFieldDef.spacing : undefined,
-                        this.spec.spacing,
-                        DEFAULT_SPACING
-                    ),
+                    spacing,
                     devicePixelRatio: window.devicePixelRatio
                 }
             );
         };
 
-        /** @type {LocSize[]} */ let columnFlexCoords;
-        /** @type {LocSize[]} */ let rowFlexCoords;
+        let nCols = 0;
+        let nRows = 0;
         let n = 0;
 
-        if (this.spec.columns && this._facetDimensions.column) {
+        if (wrap) {
             // Wrapping layout
             n = this._facetDimensions.column.factors.length;
-            const columns = this.spec.columns;
-
-            columnFlexCoords = computeFlexCoords(
-                this._facetDimensions.column,
-                "column",
-                columns
-            );
-            rowFlexCoords = computeFlexCoords(
-                this._facetDimensions.row,
-                "row",
-                Math.ceil(n / columns)
-            );
+            nCols = this.spec.columns;
+            nRows = Math.ceil(n / nCols);
         } else {
-            n =
-                ((this._facetDimensions.column &&
-                    this._facetDimensions.column.factors.length) ||
-                    1) *
-                ((this._facetDimensions.row &&
-                    this._facetDimensions.row.factors.length) ||
-                    1);
+            /** @param {FacetDimension} facetDimension */
+            const getCount = facetDimension =>
+                facetDimension ? facetDimension.factors.length : 1;
 
-            columnFlexCoords = computeFlexCoords(
-                this._facetDimensions.column,
-                "column"
-            );
-            rowFlexCoords = computeFlexCoords(this._facetDimensions.row, "row");
+            nCols = getCount(this._facetDimensions.column);
+            nRows = getCount(this._facetDimensions.row);
+            n = nCols * nRows;
         }
 
-        const nRows = rowFlexCoords.length;
-        const nCols = columnFlexCoords.length;
+        const columnFlexCoords = computeFlexCoords("column", nCols);
+        const rowFlexCoords = computeFlexCoords("row", nRows);
 
         if (deferBuffer) {
             console.warn("deferBuffer is already defined!");
@@ -271,23 +395,71 @@ export default class FacetView extends ContainerView {
         // Collect rendering requests so that their order can be optimized
         deferBuffer = [];
 
+        const axisSizes =
+            this.child instanceof AxisWrapperView
+                ? this.child.getAxisSizes()
+                : Padding.createUniformPadding(0);
+
         const facetIds = this.getFacetGroups();
 
-        for (let y = 0; y < nRows; y++) {
-            for (let x = 0; x < nCols; x++) {
-                const i = y + x * nRows;
+        // Render column labels
+        if (this._facetDimensions.column) {
+            const factors = this._facetDimensions.column.factors;
+            for (let x = 0; x < factors.length; x++) {
+                // Take wrapping labels into account
+                const xCell = columnFlexCoords[(x % nCols) * xStride + xOffset];
+                const yCell = rowFlexCoords[Math.floor(x / nCols) * yStride];
+                this._labelViews.column.render(
+                    new Rectangle(
+                        xCell.location + axisSizes.left,
+                        yCell.location,
+                        xCell.size - axisSizes.width,
+                        yCell.size
+                    ).translateBy(coords),
+                    factors[x],
+                    deferBuffer
+                );
+            }
+        }
+
+        // Render row labels
+        if (this._facetDimensions.row) {
+            const factors = this._facetDimensions.row.factors;
+            for (let y = 0; y < factors.length; y++) {
+                const xCell = columnFlexCoords[0];
+                const yCell = rowFlexCoords[y * yStride + yOffset];
+                this._labelViews.row.render(
+                    new Rectangle(
+                        xCell.location,
+                        yCell.location + axisSizes.top,
+                        xCell.size,
+                        yCell.size - axisSizes.height
+                    ).translateBy(coords),
+                    factors[y],
+                    deferBuffer
+                );
+            }
+        }
+
+        // Render facets
+        let i = 0;
+        for (let x = 0; x < nCols; x++) {
+            for (let y = 0; y < nRows; y++) {
                 if (i >= n) break;
 
+                const xCell = columnFlexCoords[x * xStride + xOffset];
+                const yCell = rowFlexCoords[y * yStride + yOffset];
                 this.child.render(
                     new Rectangle(
-                        columnFlexCoords[x].location,
-                        rowFlexCoords[y].location,
-                        columnFlexCoords[x].size,
-                        rowFlexCoords[y].size
-                    ).translate(this.getPadding().left, this.getPadding().top),
+                        xCell.location,
+                        yCell.location,
+                        xCell.size,
+                        yCell.size
+                    ).translateBy(coords),
                     facetIds[i],
                     deferBuffer
                 );
+                i++;
             }
         }
 
@@ -312,4 +484,30 @@ export default class FacetView extends ContainerView {
             }
         }
     }
+}
+
+/**
+ *
+ */
+function createLabelViewSpec(headerConfig) {
+    // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
+
+    /** @type {import("./viewUtils").UnitSpec} */
+    const titleView = {
+        data: {
+            values: []
+        },
+        mark: {
+            type: "text",
+            clip: false,
+            angle: headerConfig.labelAngle
+        },
+        encoding: {
+            text: { field: "data", type: "nominal" },
+            size: { value: headerConfig.labelFontSize },
+            color: { value: headerConfig.labelColor }
+        }
+    };
+
+    return titleView;
 }

@@ -248,10 +248,21 @@ export default class AxisWrapperView extends ContainerView {
 
     getSize() {
         const size = super.getSize();
-        const padding = this._getAxisExtents().add(this._getAxisOffsets());
+        const padding = this.getAxisSizes();
         size.width.px = (size.width.px || 0) + padding.width;
         size.height.px = (size.height.px || 0) + padding.height;
         return size;
+    }
+
+    /**
+     * Returns the amount of extra space the axes need on the plot edges.
+     * The calculation takes axis offsets into account.
+     *
+     * @returns {Padding}
+     */
+    getAxisSizes() {
+        // TODO: Clamp negative sizes (if axes are positioned entirely onto the plots)
+        return this._getAxisExtents().add(this._getAxisOffsets());
     }
 
     /**
