@@ -263,6 +263,13 @@ export function addAxisWrappers(root) {
     // TODO: only wrap views that actually request axes
     root.visit(view => {
         if (view instanceof LayerView || view instanceof UnitView) {
+            const encoding = view.getEncoding();
+            if (!encoding.x && !encoding.y) {
+                // Don't wrap views that have no positional channels
+                // TODO: However, in future, views with borders or backgrounds should be wrapped always
+                return;
+            }
+
             const originalParent = view.parent;
             const axisWrapperView = new AxisWrapperView(
                 view.context,
