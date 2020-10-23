@@ -58,8 +58,6 @@ export default class GenomeSpy {
         /** Root level configuration object */
         this.config = config;
 
-        this.eventEmitter = new EventEmitter();
-
         // TODO: Move to CoordinateSystem
         this.maxUnitZoom = 30;
 
@@ -74,7 +72,7 @@ export default class GenomeSpy {
 
     on(...args) {
         // TODO: A mixin or multiple inheritance would be nice
-        this.eventEmitter.on(...args);
+        //this.eventEmitter.on(...args);
     }
 
     /**

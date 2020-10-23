@@ -1,4 +1,3 @@
-import fromEntries from "fromentries";
 import * as twgl from "twgl.js";
 import { bisector, quantileSorted } from "d3-array";
 import { zoomLinear } from "vega-util";
@@ -22,7 +21,7 @@ const defaultEncoding = {
     gradientStrength: { value: 0.0 }
 };
 
-export const SHAPES = fromEntries(
+export const SHAPES = Object.fromEntries(
     [
         "circle",
         "square",
