@@ -1,13 +1,12 @@
 import { getViewClass, isFacetFieldDef, isFacetMapping } from "./viewUtils";
 import ContainerView from "./containerView";
 import UnitView from "./unitView";
-import { getCachedOrCall } from "../utils/propertyCacher";
-import { range, cross, group } from "d3-array";
+import { cross, group } from "d3-array";
 import { mapToPixelCoords } from "../utils/layout/flexLayout";
 import { OrdinalDomain } from "../utils/domainArray";
 import Rectangle from "../utils/layout/rectangle";
 import coalesce from "../utils/coalesce";
-import { field as vegaField, isNumber } from "vega-util";
+import { field as vegaField } from "vega-util";
 import AxisWrapperView from "./axisWrapperView";
 import Padding from "../utils/layout/padding";
 
@@ -56,9 +55,7 @@ const headerConfigs = {
  *  - Make this thing configurable
  *
  * @typedef {import("./view").default} View
- * @typedef {import("./unitView").default} UnitView
  * @typedef {import("./layerView").default} LayerView
- * @typedef {import("./axisWrapperView").default} AxisWrapperView
  * @typedef {import("./viewUtils").FacetFieldDef} FacetFieldDef
  * @typedef {import("./viewUtils").FacetMapping} FacetMapping
  * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
