@@ -574,13 +574,15 @@ const defaultAxisProps = {
     /** @type {number[]} */
     domainDash: null,
     domainDashOffset: 0,
+    domainCap: "square", // Make 1px caps crisp
 
     ticks: true,
-    tickSize: 6,
+    tickSize: 5,
     tickWidth: 1,
     tickColor: "gray",
     /** @type {number[]} */
     tickDash: null,
+    tickCap: "square", // Make 1px caps crisp
 
     // TODO: tickBand
 
@@ -628,7 +630,8 @@ export function createAxis(axisProps) {
         mark: {
             type: "rule",
             clip: false,
-            strokeDash: ap.domainDash
+            strokeDash: ap.domainDash,
+            strokeCap: ap.domainCap
         },
         encoding: {
             color: { value: ap.domainColor },
@@ -669,6 +672,7 @@ export function createAxis(axisProps) {
             type: "rule",
             clip: false,
             strokeDash: ap.tickDash,
+            strokeCap: ap.tickCap,
             minBufferSize: 300
         },
         encoding: {
@@ -750,7 +754,7 @@ const defaultGenomeAxisProps = {
     ...defaultAxisProps,
 
     chromTicks: true,
-    chromTickSize: 19,
+    chromTickSize: 18,
     chromTickWidth: 1,
     chromTickColor: "#989898",
     chromTickDash: [4, 2],
@@ -761,7 +765,7 @@ const defaultGenomeAxisProps = {
     chromLabelFontWeight: "normal",
     chromLabelColor: "black",
     chromLabelAlign: "left",
-    chromLabelPadding: 8
+    chromLabelPadding: 7
 };
 
 /**
