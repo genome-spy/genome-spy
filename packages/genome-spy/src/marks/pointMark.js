@@ -207,23 +207,23 @@ export default class PointMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {any} facetId
+     * @param {import("./Mark").MarkRenderingOptions} options
      */
-    render(coords, facetId) {
-        super.render(coords, facetId);
+    render(coords, options) {
+        super.render(coords, options);
 
         const gl = this.gl;
 
-        const range = this.rangeMap.get(facetId);
+        const range = this.rangeMap.get(options.facetId);
         if (range) {
             const [lower, upper] = this._findIndices
-                ? this._findIndices(this.dataByFacet.get(facetId))
+                ? this._findIndices(this.dataByFacet.get(options.facetId))
                 : [0, range.count];
 
             const length = upper - lower;
 
             if (length) {
-                //twgl.setUniforms(this.programInfo, sampleData.uniforms);
+                this.prepareFacetRender(coords, options);
                 twgl.drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,

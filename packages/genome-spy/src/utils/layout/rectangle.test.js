@@ -9,6 +9,13 @@ test("Rectangle creation", () => {
     expect(r.height).toEqual(4);
 });
 
+test("equals", () => {
+    const r = new Rectangle(1, 2, 3, 4);
+    expect(r.equals(r)).toBeTruthy();
+    expect(r.equals(new Rectangle(1, 2, 3, 4))).toBeTruthy();
+    expect(r.equals(undefined)).toBeFalsy();
+});
+
 test("x2 and y2 calculation", () => {
     const r = new Rectangle(1, 2, 3, 4);
     expect(r.x2).toEqual(4);

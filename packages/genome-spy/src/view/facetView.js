@@ -1,7 +1,7 @@
 import { getViewClass, isFacetFieldDef, isFacetMapping } from "./viewUtils";
 import ContainerView from "./containerView";
 import UnitView from "./unitView";
-import { cross, group } from "d3-array";
+import { cross } from "d3-array";
 import { mapToPixelCoords } from "../utils/layout/flexLayout";
 import { OrdinalDomain } from "../utils/domainArray";
 import Rectangle from "../utils/layout/rectangle";
@@ -271,10 +271,10 @@ export default class FacetView extends ContainerView {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {any} [facetId]
+     * @param {import("./view").RenderingOptions} [options]
      * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, facetId, deferBuffer) {
+    render(coords, options = {}, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
         // Size of the view that is being repeated for all the facets
@@ -413,7 +413,7 @@ export default class FacetView extends ContainerView {
                         xCell.size - axisSizes.width,
                         yCell.size
                     ).translateBy(coords),
-                    factors[x],
+                    { ...options, facetId: factors[x] },
                     deferBuffer
                 );
             }
@@ -432,7 +432,7 @@ export default class FacetView extends ContainerView {
                         xCell.size,
                         yCell.size - axisSizes.height
                     ).translateBy(coords),
-                    factors[y],
+                    { ...options, facetId: factors[y] },
                     deferBuffer
                 );
             }
@@ -453,7 +453,7 @@ export default class FacetView extends ContainerView {
                         xCell.size,
                         yCell.size
                     ).translateBy(coords),
-                    facetIds[i],
+                    { ...options, facetId: facetIds[i] },
                     deferBuffer
                 );
                 i++;
@@ -461,25 +461,6 @@ export default class FacetView extends ContainerView {
         }
 
         this._renderDeferred(deferBuffer);
-    }
-
-    /**
-     * Renders marks in an optimized order, minimizing the number of WebGL state
-     * changes.
-     *
-     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
-     */
-    _renderDeferred(deferBuffer) {
-        const requestByMark = group(deferBuffer, request => request.mark);
-
-        for (const mark of requestByMark.keys()) {
-            // Change program, set common uniforms (mark properties, shared domains)
-            mark.prepareRender();
-            for (const request of requestByMark.get(mark)) {
-                // Render each facet
-                mark.render(request.coords, request.facetId);
-            }
-        }
     }
 }
 

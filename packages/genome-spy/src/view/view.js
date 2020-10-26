@@ -1,3 +1,4 @@
+import { group } from "d3-array";
 import { transformData } from "../data/dataMapper";
 import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
@@ -23,7 +24,19 @@ export const VISIT_STOP = "VISIT_STOP";
  *      optimized rendering order.
  * @prop {import("../marks/mark").default} mark
  * @prop {Rectangle} coords
- * @prop {any} [facetId]
+ * @prop {RenderingOptions} options
+ *
+ * @typedef {object} SampleFacetRenderingOptions Describes the location of
+ *      a sample facet. Left is the primary pos, right is for transitioning
+ *      between two sets of samples.
+ * @prop {number} pos Position on unit scale
+ * @prop {number} height Height on unit scale
+ * @prop {number} [targetPos] Target position (during transition)
+ * @prop {number} [targetHeight] Target height (during transition)
+ *
+ * @typedef {object} RenderingOptions
+ * @prop {any} [facetId] Which facet to render (if faceting is being used)
+ * @prop {SampleFacetRenderingOptions} [sampleFacetRenderingOptions]
  */
 export default class View {
     /**
@@ -143,11 +156,40 @@ export default class View {
      *
      * @param {Rectangle} coords The coordinate rectangle that the parent computed
      *      for the child that is being visited.
-     * @param {any} [facetId]
+     * @param {import("./view").RenderingOptions} [options]
      * @param {DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, facetId, deferBuffer) {
+    render(coords, options = {}, deferBuffer) {
         // override
+    }
+
+    /**
+     * Renders marks in an optimized order, minimizing the number of WebGL state
+     * changes.
+     *
+     * TODO: This could be a static method. Find a proper place.
+     *
+     * @param {import("../view/view").DeferredRenderingRequest[]} [deferBuffer]
+     */
+    _renderDeferred(deferBuffer) {
+        const requestByMark = group(deferBuffer, request => request.mark);
+
+        for (const mark of requestByMark.keys()) {
+            // Change program, set common uniforms (mark properties, shared domains)
+            mark.prepareRender();
+
+            /** @type {import("../utils/layout/rectangle").default} */
+            let previousCoords;
+            for (const request of requestByMark.get(mark)) {
+                // Render each facet
+                const patchedOptions = {
+                    ...request.options,
+                    skipViewportSetup: request.coords.equals(previousCoords)
+                };
+                mark.render(request.coords, patchedOptions);
+                previousCoords = request.coords;
+            }
+        }
     }
 
     /**

@@ -18,12 +18,7 @@ import { getCachedOrCall } from "../utils/propertyCacher";
 import FacetView from "./facetView";
 
 /**
- * @typedef {import("./layerView").default} LayerView
- * @typedef {import("../utils/domainArray").DomainArray} DomainArray
- * @typedef {import("../encoder/accessor").Accessor} Accessor
- */
-
-/**
+ *
  * @type {Object.<string, typeof import("../marks/mark").default>}
  * TODO: Find a proper place, make extendible
  */
@@ -36,7 +31,11 @@ export const markTypes = {
 };
 
 /**
+ * @typedef {import("./layerView").default} LayerView
+ * @typedef {import("../utils/domainArray").DomainArray} DomainArray
+ * @typedef {import("../encoder/accessor").Accessor} Accessor
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
+ *
  */
 export default class UnitView extends View {
     /**
@@ -62,10 +61,10 @@ export default class UnitView extends View {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {any} [facetId]
+     * @param {import("./view").RenderingOptions} [options]
      * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, facetId, deferBuffer) {
+    render(coords, options = {}, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
         // Translate by half a pixel to place vertical / horizontal
@@ -76,11 +75,11 @@ export default class UnitView extends View {
             deferBuffer.push({
                 mark: this.mark,
                 coords,
-                facetId
+                options
             });
         } else {
             this.mark.prepareRender();
-            this.mark.render(coords, facetId);
+            this.mark.render(coords, options);
         }
     }
 

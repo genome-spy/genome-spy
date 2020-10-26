@@ -267,10 +267,10 @@ export default class AxisWrapperView extends ContainerView {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {any} [facetId]
+     * @param {import("./view").RenderingOptions} [options]
      * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, facetId, deferBuffer) {
+    render(coords, options = {}, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
         const extents = this._getAxisExtents();
@@ -280,7 +280,7 @@ export default class AxisWrapperView extends ContainerView {
         this._coords = coords;
         this._childCoords = childCoords;
 
-        this.child.render(childCoords, facetId, deferBuffer);
+        this.child.render(childCoords, options, deferBuffer);
 
         this._updateAxisData();
 

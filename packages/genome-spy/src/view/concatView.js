@@ -72,10 +72,10 @@ export default class ConcatView extends ContainerView {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {any} [facetId]
+     * @param {import("./view").RenderingOptions} [options]
      * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, facetId, deferBuffer) {
+    render(coords, options = {}, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
         const mappedCoords = mapToPixelCoords(
@@ -100,7 +100,7 @@ export default class ConcatView extends ContainerView {
                 )
                 .modify({ [this.mainDimension]: flexCoords.size });
 
-            view.render(childCoords, facetId, deferBuffer);
+            view.render(childCoords, options, deferBuffer);
         }
     }
 

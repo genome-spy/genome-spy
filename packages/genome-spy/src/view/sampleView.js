@@ -68,35 +68,47 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {any} [facetId]
+     * @param {import("./view").RenderingOptions} [options]
      * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, facetId, deferBuffer) {
+    render(coords, options = {}, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
         const sampleIds = this.getResolution("sample").getDataDomain();
 
         const locations = mapToPixelCoords(
             sampleIds.map(d => ({ grow: 1 })),
-            coords.height,
+            1.0, // Unit coords, not pixels coords
             {
                 spacing: 0,
                 devicePixelRatio: null
             }
         );
 
+        if (deferBuffer) {
+            console.warn("deferBuffer is already defined!");
+        }
+
+        // Collect rendering requests so that their order can be optimized
+        deferBuffer = [];
+
         for (let i = 0; i < sampleIds.length; i++) {
             const location = locations[i];
             this.child.render(
-                new Rectangle(
-                    0,
-                    location.location,
-                    coords.width,
-                    location.size
-                ).translateBy(coords),
-                sampleIds[i]
+                coords,
+                {
+                    ...options,
+                    sampleFacetRenderingOptions: {
+                        pos: location.location,
+                        height: location.size
+                    },
+                    facetId: sampleIds[i]
+                },
+                deferBuffer
             );
         }
+
+        this._renderDeferred(deferBuffer);
     }
 }
 

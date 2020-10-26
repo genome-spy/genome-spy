@@ -12,9 +12,11 @@ import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
  *
- * @typedef {object} RenderingOptions
- * @prop {any} facetId
- * @prop {Record<string, any>} uniforms
+ * @typedef {import("../view/view").RenderingOptions} RenderingOptions
+ * @typedef {object} _MarkRenderingOptions
+ * @prop {boolean} [skipViewportSetup] Don't configure viewport. Allows for
+ *      optimized faceted rendering
+ * @typedef {RenderingOptions & _MarkRenderingOptions} MarkRenderingOptions
  *
  * @typedef {Object} AttributeProps
  * @prop {boolean} [complexGeometry] The mark consists of multiple vertices that are rendered
@@ -367,13 +369,37 @@ export default class Mark {
     }
 
     /**
+     * Prepares rendering of a single facet. However, this must be called
+     * even when no faceting is being used, i.e., when there is only a single,
+     * undefined facet.
+     *
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {any} facetId
+     * @param {MarkRenderingOptions} options
      */
-    render(coords, facetId) {
-        // override
+    prepareFacetRender(coords, options) {
+        if (!options.skipViewportSetup) {
+            this.setViewport(coords);
+        }
 
-        this.setViewport(coords);
+        if (options.sampleFacetRenderingOptions) {
+            const opts = options.sampleFacetRenderingOptions;
+            twgl.setUniforms(this.programInfo, {
+                uSampleFacet: [
+                    opts.pos || 0.0,
+                    opts.height || 1.0,
+                    opts.targetPos || opts.pos || 0.0,
+                    opts.targetHeight || opts.height || 1.0
+                ]
+            });
+        }
+    }
+
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {MarkRenderingOptions} options
+     */
+    render(coords, options) {
+        // override
     }
 
     /**

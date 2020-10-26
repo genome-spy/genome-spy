@@ -8,7 +8,8 @@ uniform vec4 uSampleFacet;
 uniform float transitionOffset;
 
 bool isFacetedSamples() {
-    return false;
+    // TODO: Provide a constant for more agressive optimization
+    return uSampleFacet != vec4(0.0, 1.0, 0.0, 1.0);
 }
 
 bool isInTransit() {

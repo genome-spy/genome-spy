@@ -27,10 +27,33 @@ export default class Rectangle {
     }
 
     /**
+     * Returns true if the given rectangle is the same or equal rectangle.
+     *
+     * @param {Rectangle} rectangle
+     */
+    equals(rectangle) {
+        if (!rectangle) {
+            return false;
+        }
+
+        return (
+            this === rectangle ||
+            (this.x == rectangle.x &&
+                this.y == rectangle.y &&
+                this.width == rectangle.width &&
+                this.height == rectangle.height)
+        );
+    }
+
+    /**
      *
      * @param {Record<string, number>} param0
      */
     modify({ x, y, width, height }) {
+        if (!x && !y && !width && !height) {
+            return this;
+        }
+
         return new Rectangle(
             typeof x === "number" ? x : this.x,
             typeof y === "number" ? y : this.y,
@@ -45,6 +68,10 @@ export default class Rectangle {
      * @param {number} y
      */
     translate(x, y) {
+        if (x == 0 && y == 0) {
+            return this;
+        }
+
         return new Rectangle(this.x + x, this.y + y, this.width, this.height);
     }
 
@@ -67,6 +94,15 @@ export default class Rectangle {
      * @param {Padding} padding
      */
     expand(padding, direction = 1) {
+        if (
+            padding.left == 0 &&
+            padding.top == 0 &&
+            padding.right == 0 &&
+            padding.bottom == 0
+        ) {
+            return this;
+        }
+
         return new Rectangle(
             this.x - padding.left * direction,
             this.y - padding.top * direction,

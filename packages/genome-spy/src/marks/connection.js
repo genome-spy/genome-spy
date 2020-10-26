@@ -128,17 +128,17 @@ export default class ConnectionMark extends Mark {
 
     /**
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {any} facetId
+     * @param {import("./Mark").MarkRenderingOptions} options
      */
-    render(coords, facetId) {
-        super.render(coords, facetId);
+    render(coords, options) {
+        super.render(coords, options);
 
         const gl = this.gl;
 
         // TODO: Vertical clipping in faceted view
 
-        const range = this.rangeMap.get(facetId);
-        if (range) {
+        const range = this.rangeMap.get(options.facetId);
+        if (range && range.count) {
             // We are using instanced drawing here.
             // However, WebGL does not provide glDrawElementsInstancedBaseInstance and thus,
             // we have to hack with offsets in vertexAttribPointer
@@ -154,8 +154,7 @@ export default class ConnectionMark extends Mark {
             }
             twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
-            //twgl.setUniforms(this.programInfo, sampleData.uniforms);
-
+            this.prepareFacetRender(coords, options);
             twgl.drawBufferInfo(
                 gl,
                 this.bufferInfo,
