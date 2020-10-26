@@ -6,13 +6,13 @@ uniform float uBandwidth;
 
 attribute vec2 strip;
 
-attribute float height;
-attribute lowp vec3 color;
-attribute lowp vec3 color2;
-attribute float size;
-attribute float size2;
+in float height;
+in lowp vec3 color;
+in lowp vec3 color2;
+in float size;
+in float size2;
 
-varying vec4 vColor;
+out vec4 vColor;
 
 void main(void) {
 

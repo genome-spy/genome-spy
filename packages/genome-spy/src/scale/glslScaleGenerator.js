@@ -84,7 +84,7 @@ ${fp64 ? `#define ${channel}_FP64` : ""}
 
 ${domainDef}
 ${rangeDef}
-attribute highp ${attributeType} ${attributeName};
+in highp ${attributeType} ${attributeName};
 
 float ${SCALE_FUNCTION_PREFIX}${channel}(${attributeType} value) {
     float scaled = ${functionCall};

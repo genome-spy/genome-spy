@@ -8,10 +8,12 @@ uniform float uDashTextureSize;
 uniform float uStrokeDashOffset;
 uniform float uStrokeCap;
 
-varying vec4 vColor;
-varying float vSize;
-varying vec2 vPosInPixels;
-varying float vNormalLengthInPixels;
+in vec4 vColor;
+in float vSize;
+in vec2 vPosInPixels;
+in float vNormalLengthInPixels;
+
+out lowp vec4 fragColor;
 
 void main(void) {
     float dpr = uDevicePixelRatio;
@@ -36,10 +38,10 @@ void main(void) {
       
         // Do antialiasing
         opacity *= mix(
-            texture2D(uDashTexture, vec2((floored + 0.5) / dpr / uDashTextureSize, 0)).r,
-            texture2D(uDashTexture, vec2((floored + 1.5) / dpr / uDashTextureSize, 0)).r,
+            texture(uDashTexture, vec2((floored + 0.5) / dpr / uDashTextureSize, 0)).r,
+            texture(uDashTexture, vec2((floored + 1.5) / dpr / uDashTextureSize, 0)).r,
             clamp((pos - floored), 0.0, 1.0));
     }
 
-    gl_FragColor = vColor * opacity;
+    fragColor = vColor * opacity;
 }

@@ -87,6 +87,7 @@ export default class WebGLHelper {
 
         const fragmentIncludes = [GLSL_COMMON];
 
+        const VERSION = "#version 300 es";
         const PRECISION = "precision mediump float;";
 
         /**
@@ -95,6 +96,7 @@ export default class WebGLHelper {
          */
         const process = (shaderCode, includes) =>
             [
+                VERSION,
                 PRECISION,
                 this._shaderDefines || "",
                 ...(extraHeaders || []),

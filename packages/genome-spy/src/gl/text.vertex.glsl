@@ -5,15 +5,15 @@ uniform float uSdfNumerator;
 uniform vec2 uD; // dx & dy
 uniform float uAngle;
 
-attribute vec3 color;
+in vec3 color;
 
 // TODO: Store as vec2
-attribute float cx;
-attribute float cy;
+in float cx;
+in float cy;
 
 // TODO: Store as vec2
-attribute lowp float tx;
-attribute lowp float ty;
+in lowp float tx;
+in lowp float ty;
 
 uniform vec4 uViewportEdgeFadeWidth;
 uniform vec4 uViewportEdgeFadeDistance;
@@ -21,16 +21,16 @@ uniform vec4 uViewportEdgeFadeDistance;
 
 #ifdef x2_DEFINED
 // Width of the text (all letters)
-attribute float width;
+in float width;
 
 uniform float uPaddingX;
 uniform float uAlign; // -1, 0, 1 = left, center, right
 #endif
 
-varying vec4 vColor;
-varying vec2 vTexCoord;
-varying float vSlope;
-varying float vEdgeFadeOpacity;
+out vec4 vColor;
+out vec2 vTexCoord;
+out float vSlope;
+out float vEdgeFadeOpacity;
 
 
 float minValue(vec4 v) {
@@ -64,17 +64,17 @@ void main(void) {
     // Try to keep the text inside the span
     // TODO: Provide align as a const instead of an uniform
     if (uAlign == 0.0) {
-        float centroid = x + x2;
+        float centre = x + x2;
 
-        float leftOver = -(centroid - paddedNormalizedWidth);
-        float rightOver = (centroid + paddedNormalizedWidth) - 2.0;
+        float leftOver = -(centre- paddedNormalizedWidth);
+        float rightOver = (centre+ paddedNormalizedWidth) - 2.0;
 
         if (leftOver > 0.0) {
-            centroid += min(leftOver, normalizedSpan - paddedNormalizedWidth);
+            centre += min(leftOver, normalizedSpan - paddedNormalizedWidth);
         } else if (rightOver > 0.0) {
-            centroid -= min(rightOver, normalizedSpan - paddedNormalizedWidth);
+            centre -= min(rightOver, normalizedSpan - paddedNormalizedWidth);
         }
-        x = centroid / 2.0;
+        x = centre / 2.0;
 
     } else if (uAlign < 0.0) {
         float edge = x;

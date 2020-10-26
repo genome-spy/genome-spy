@@ -5,13 +5,13 @@ const int BUTT = 0;
 const int SQUARE = 1;
 const int ROUND = 2;
 
-attribute lowp vec3 color;
+in lowp vec3 color;
 
 /** Position along the rule */
-attribute float pos;
+in float pos;
 
 /** Which side of the stroke: -0.5 or 0.5 */
-attribute float side;
+in float side;
 
 /** Minimum rule length in pixels */
 uniform float uMinLength;
@@ -19,15 +19,15 @@ uniform float uMinLength;
 uniform float uDashTextureSize;
 uniform float uStrokeCap;
 
-varying vec4 vColor;
+out vec4 vColor;
 
 /** Stroke width */
-varying float vSize;
+out float vSize;
 /** The distance from the line center to the direction of normal in pixels */
-varying float vNormalLengthInPixels;
+out float vNormalLengthInPixels;
 
 /** Distances from the line endings. Used for rendering the round caps and dashes */
-varying highp vec2 vPosInPixels;
+out highp vec2 vPosInPixels;
 
 
 void main(void) {

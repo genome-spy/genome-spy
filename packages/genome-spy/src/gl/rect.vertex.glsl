@@ -1,15 +1,15 @@
 
 #pragma SCALES_HERE
 
-attribute lowp vec3 color;
+in lowp vec3 color;
 
 /**
  * Height of the rectangle.
  *
  * Negative if the top vertex, positive if the bottom vertex.
  */
-attribute float height;
-attribute float width;
+in float height;
+in float width;
 
 /** Minimum size (width, height) of the displayed rectangle in pixels */
 uniform vec2 uMinSize;
@@ -18,7 +18,7 @@ uniform vec2 uMinSize;
 uniform float uMinOpacity;
 
 
-varying vec4 vColor;
+out vec4 vColor;
 
 /**
  * Clamps the minimumSize and returns an opacity that reflects the amount of clamping.

@@ -2,8 +2,8 @@ precision mediump float;
 
 #pragma SCALES_HERE
 
-attribute lowp vec3 color;
-attribute lowp float shape;
+in lowp vec3 color;
+in lowp float shape;
 
 /** Maximum size of the largest point as the fraction of the height of the (faceted) view */
 uniform lowp float uMaxRelativePointDiameter;
@@ -19,11 +19,11 @@ uniform float uMaxPointSize;
 uniform float uZoomLevel;
 uniform float uSemanticThreshold;
 
-varying float vSize;
-varying lowp vec4 vColor;
-varying lowp float vShape;
-varying lowp float vStrokeWidth;
-varying lowp float vGradientStrength;
+out float vSize;
+out lowp vec4 vColor;
+out lowp float vShape;
+out lowp float vStrokeWidth;
+out lowp float vGradientStrength;
 
 
 float computeThresholdFactor() {

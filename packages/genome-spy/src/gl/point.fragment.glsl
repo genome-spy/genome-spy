@@ -1,11 +1,13 @@
 const lowp vec3 white = vec3(1.0);
 const lowp vec3 black = vec3(0.0);
 
-varying lowp vec4 vColor;
-varying float vSize;
-varying lowp float vShape;
-varying lowp float vStrokeWidth;
-varying lowp float vGradientStrength;
+in lowp vec4 vColor;
+in float vSize;
+in lowp float vShape;
+in lowp float vStrokeWidth;
+in lowp float vGradientStrength;
+
+out lowp vec4 fragColor;
 
 const float CIRCLE = 0.0;
 const float SQUARE = 1.0;
@@ -127,12 +129,12 @@ void main() {
         lowp float strokeFraction = smoothstep(-strokeWidth, -strokeWidth - pixelWidth, dist);
         lowp float alpha = smoothstep(0., -pixelWidth, dist) * vColor.a;
 
-        gl_FragColor = vec4(mix(strokeColor, fillColor, strokeFraction) * alpha, alpha);
+        fragColor = vec4(mix(strokeColor, fillColor, strokeFraction) * alpha, alpha);
 
     } else {
         lowp float alpha = smoothstep(0., -pixelWidth, dist) * vColor.a;
 
-        gl_FragColor = vec4(fillColor * alpha, alpha);
+        fragColor = vec4(fillColor * alpha, alpha);
     }
 }
 
