@@ -73,8 +73,7 @@ void main(void) {
         p = C1*t*t*t + C2*t*t + C3*t + C4;
     }
 
-    // Faceting and transitions
-    p.y = transit(p.x, p.y)[0];
+    p = applySampleFacet(p);
 
     vec2 tangent = 3.0 * C1*t*t + 2.0*C2*t + C3;
     vec2 normal = normalize(vec2(-tangent.y, tangent.x) / uViewportSize);

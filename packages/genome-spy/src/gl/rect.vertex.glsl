@@ -33,18 +33,20 @@ float clampMinSize(inout float pos, float size, float minSize) {
 }
 
 void main(void) {
-    float x = getScaled_x();
-    float y = getScaled_y();
+    vec2 pos = applySampleFacet(
+        vec2(getScaled_x(), getScaled_y())
+    );
     
-    //float translatedY = transit(x, y)[0];
+    float x = pos.x;
+    float y = pos.y;
 
-    float sampleHeight = yPosLeft[1]; // TODO: The right side should be taken into account too
+    float facetedHeight = height * getSampleFacetHeight(pos);
 
     vec2 normalizedMinSize = uMinSize / uViewportSize;
 
     float opa = getScaled_opacity() * max(uMinOpacity, 
         clampMinSize(x, scale_x(attr_x + width) - x, normalizedMinSize.x) *
-        clampMinSize(y, (scale_y(attr_y + height) - y) * sampleHeight, normalizedMinSize.y));
+        clampMinSize(y, scale_y(attr_y + facetedHeight) - y, normalizedMinSize.y));
 
     gl_Position = unitToNdc(x, y);
 

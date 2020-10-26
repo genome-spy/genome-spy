@@ -97,17 +97,19 @@ void main(void) {
 #endif
 
     float y = getScaled_y();
-    float translatedY = transit(x, y)[0];
+
+    // Position of the text origo 
+    vec2 pos = applySampleFacet(vec2(x, y));
 
     float sinTheta = sin(uAngle);
     float cosTheta = cos(uAngle);
-    mat2 rotation = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
+    mat2 rotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
 
-    // Position of vertices in relation to the text origo
-    vec2 charPos = rotation * (vec2(cx, cy) * size + uD);
+    // Position of the character vertex in relation to the text origo
+    vec2 charPos = rotationMatrix * (vec2(cx, cy) * size + uD);
 
-    // Position inside the unit viewport
-    vec2 unitPos = vec2(x, translatedY) + charPos / uViewportSize;
+    // Position of the character vertex inside the unit viewport
+    vec2 unitPos = pos + charPos / uViewportSize;
 
     gl_Position = unitToNdc(unitPos);
 

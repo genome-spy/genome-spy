@@ -26,51 +26,50 @@ out lowp float vStrokeWidth;
 out lowp float vGradientStrength;
 
 
-float computeThresholdFactor() {
-    //float margin = zoomLevel * 0.005;
-    //return 1.0 - smoothstep(zoomThreshold, zoomThreshold + margin, 1.0 - zoomLevel * fractionToShow);
+float computeSemanticThresholdFactor() {
+    // TODO: add smooth transition
     return getScaled_semanticScore() >= uSemanticThreshold ? 1.0 : 0.0;
 }
 
 /**
- * Computes a scaling factor for the points.
- * To some extent, this could be done in JavaScript and passed as uniform.
- * It would consume more cpu cycles, though.
+ * Computes a scaling factor for the points in a sample-faceted view.
  */
-float scaleDown(float bandHeight) {
+float getDownscaleFactor(vec2 pos) {
+    // TODO: Only scale down when we are faceting
+
+    float sampleFacetHeight = getSampleFacetHeight(pos);
     float maxPointDiameter = sqrt(uMaxPointSize);
+
     // TODO: Optimize: we first divide by DPR here and later multiply by it
-    float factor = bandHeight * uMaxRelativePointDiameter / uDevicePixelRatio;
+    float factor = sampleFacetHeight *
+        uViewportSize.y *
+        uMaxRelativePointDiameter /
+        uDevicePixelRatio;
 
     // Points should not be visible on zero-height bands. Using smoothstep to hide them.
-    float minimum = smoothstep(0.0, 0.5, bandHeight) * uMinAbsolutePointDiameter / uDevicePixelRatio;
+    float minimum = smoothstep(0.0, 0.5, sampleFacetHeight) * uMinAbsolutePointDiameter / uDevicePixelRatio;
 
     return max(minimum, min(maxPointDiameter, factor)) / maxPointDiameter;
 }
 
 void main(void) {
 
-    float thresholdFactor = computeThresholdFactor();
-    if (thresholdFactor <= 0.0) {
+    float semanticThresholdFactor = computeSemanticThresholdFactor();
+    if (semanticThresholdFactor <= 0.0) {
         gl_PointSize = 0.0;
         // Exit early. MAY prevent some unnecessary calculations.
         return;
     }
 
     float size = getScaled_size();
-    float x = getScaled_x();
-    float y = getScaled_y();
+    vec2 pos = vec2(getScaled_x(), getScaled_y());
 
-    vec2 translated = transit(x, y);
-    float translatedY = translated[0];
-    float height = translated[1];
-
-    gl_Position = unitToNdc(x, translatedY);
+    gl_Position = unitToNdc(applySampleFacet(pos));
 
     vSize = sqrt(size) *
         uScaleFactor *
-        scaleDown(height * uViewportSize.y) * // TODO: Only scaleDown when we have multiple samples...
-        thresholdFactor *
+        semanticThresholdFactor *
+        getDownscaleFactor(pos) *
         uDevicePixelRatio;
 
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
@@ -83,7 +82,7 @@ void main(void) {
         opacity *= pow(vSize / sizeLimit, 2.5);
         vSize = sizeLimit;
     }
-    opacity *= thresholdFactor;
+    opacity *= semanticThresholdFactor;
 
     gl_PointSize = vSize;
 

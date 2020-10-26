@@ -2,26 +2,40 @@
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
  * Top as the first element, height as the second element.
+ * TODO: Put everything in a vec4
  */
 uniform vec2 yPosLeft;
 uniform vec2 yPosRight;
 
 uniform float transitionOffset;
 
-vec2 transit(float normalizedX, float y) {
-    float top, height;
+bool isFacetedSamples() {
+    return false;
+}
 
-    if (yPosLeft == yPosRight) {
-        // Left and right are the same, no bending
-        top = yPosLeft[0];
-        height = yPosLeft[1];
+bool isInTransit() {
+    return yPosLeft != yPosRight;
+}
+
+vec2 applySampleFacet(vec2 pos) {
+    if (!isFacetedSamples()) {
+        return pos;
+
+    } else if (isInTransit()){
+        float fraction = smoothstep(0.0, 0.7 + transitionOffset, (pos.x - transitionOffset) * 2.0);
+        vec2 interpolated = mix(yPosLeft, yPosRight, fraction);
+
+        float top = interpolated[0];
+        float height = interpolated[1];
+
+        return vec2(pos.x, top + pos.y * height);
 
     } else {
-        float fraction = smoothstep(0.0, 0.7 + transitionOffset, (normalizedX - transitionOffset) * 2.0);
-        vec2 interpolated = mix(yPosLeft, yPosRight, fraction);
-        top = interpolated[0];
-        height = interpolated[1];
+        return vec2(pos.x, yPosLeft[0] + pos.y * yPosLeft[1]);
     }
+}
 
-    return vec2(top + y * height, height);
+float getSampleFacetHeight(vec2 pos) {
+    // TODO: implement
+    return 1.0;
 }

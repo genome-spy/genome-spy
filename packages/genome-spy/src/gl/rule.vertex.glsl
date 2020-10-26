@@ -43,8 +43,8 @@ void main(void) {
         size = pixelSize;
     }
 
-    vec2 a = vec2(getScaled_x(), getScaled_y());
-    vec2 b = vec2(getScaled_x2(), getScaled_y2());
+    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
+    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
 
     int lineCap = int(uStrokeCap);
 
