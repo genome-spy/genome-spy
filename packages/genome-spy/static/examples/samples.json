@@ -1,0 +1,43 @@
+{
+  "data": {
+    "values": [
+      { "sample": "A", "x": 1 },
+      { "sample": "A", "x": 2 },
+      { "sample": "A", "x": 5 },
+      { "sample": "A", "x": 3 },
+      { "sample": "B", "x": 8 },
+      { "sample": "B", "x": 6 },
+      { "sample": "B", "x": 9 },
+      { "sample": "B", "x": 3 },
+      { "sample": "C", "x": 9 },
+      { "sample": "C", "x": 2 },
+      { "sample": "C", "x": 3 },
+      { "sample": "C", "x": 5 }
+    ]
+  },
+
+  "transform": [
+    {
+      "type": "stack",
+      "field": "x",
+      "groupby": ["sample"],
+      "offset": "normalize",
+      "as": ["from", "to"]
+    }
+  ],
+
+  "facet": {
+    "row": { "field": "sample" }
+  },
+
+  "spec": {
+    "mark": "rect",
+
+    "encoding": {
+      "y": { "expr": "1 / datum.x + 0.5", "type": "quantitative" },
+      "x": { "field": "from", "type": "quantitative" },
+      "x2": { "field": "to" },
+      "color": { "field": "x", "type": "nominal" }
+    }
+  }
+}

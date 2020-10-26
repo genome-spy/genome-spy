@@ -3,6 +3,7 @@ import { isObject, isString, isArray } from "vega-util";
 import ImportView from "./importView";
 import LayerView from "./layerView";
 import FacetView from "./facetView";
+import SampleView from "./sampleView";
 import UnitView from "./unitView";
 import ConcatView from "./concatView";
 import TableView from "./tableView";
@@ -26,6 +27,7 @@ import { VISIT_SKIP } from "./view";
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
  * @typedef {import("../spec/view").FacetSpec} FacetSpec
+ * @typedef {import("../spec/view").SampleSpec} SampleSpec
  * @typedef {import("../spec/view").UnitSpec} UnitSpec
  * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
  * @typedef {import("../spec/view").HConcatSpec} HConcatSpec
@@ -47,6 +49,7 @@ const viewTypes = [
     { prop: "import", guard: isImportSpec, viewClass: ImportView },
     { prop: "layer", guard: isLayerSpec, viewClass: LayerView },
     { prop: "facet", guard: isFacetSpec, viewClass: FacetView },
+    { prop: "sample", guard: isSampleSpec, viewClass: SampleView },
     { prop: "mark", guard: isUnitSpec, viewClass: UnitView },
     { prop: "vconcat", guard: isVConcatSpec, viewClass: ConcatView },
     { prop: "hconcat", guard: isHConcatSpec, viewClass: ConcatView },
@@ -61,7 +64,7 @@ const viewTypes = [
  * @returns {spec is UnitSpec}
  */
 export function isUnitSpec(spec) {
-    return isString(spec.mark) || isObject(spec.mark);
+    return "mark" in spec && (isString(spec.mark) || isObject(spec.mark));
 }
 
 /**
@@ -70,7 +73,7 @@ export function isUnitSpec(spec) {
  * @returns {spec is LayerSpec}
  */
 export function isLayerSpec(spec) {
-    return isObject(spec.layer);
+    return "layer" in spec && isObject(spec.layer);
 }
 
 /**
@@ -79,7 +82,26 @@ export function isLayerSpec(spec) {
  * @returns {spec is LayerSpec}
  */
 export function isFacetSpec(spec) {
-    return isObject(spec.facet) && isObject(spec.spec);
+    return (
+        "facet" in spec &&
+        isObject(spec.facet) &&
+        "spec" in spec &&
+        isObject(spec.spec)
+    );
+}
+
+/**
+ *
+ * @param {ViewSpec} spec
+ * @returns {spec is SampleSpec}
+ */
+export function isSampleSpec(spec) {
+    return (
+        "samples" in spec &&
+        isObject(spec.samples) &&
+        "spec" in spec &&
+        isObject(spec.spec)
+    );
 }
 
 /**
@@ -88,7 +110,7 @@ export function isFacetSpec(spec) {
  * @returns {spec is FacetFieldDef}
  */
 export function isFacetFieldDef(spec) {
-    return isString(spec.field);
+    return "field" in spec && isString(spec.field);
 }
 
 /**
@@ -97,7 +119,10 @@ export function isFacetFieldDef(spec) {
  * @returns {spec is FacetMapping}
  */
 export function isFacetMapping(spec) {
-    return isObject(spec.row) || isObject(spec.column);
+    return (
+        ("row" in spec && isObject(spec.row)) ||
+        ("column" in spec && isObject(spec.column))
+    );
 }
 
 /**
@@ -126,7 +151,7 @@ export function isViewSpec(spec) {
  * @returns {spec is VConcatSpec}
  */
 export function isVConcatSpec(spec) {
-    return isArray(spec.vconcat);
+    return "vconcat" in spec && isArray(spec.vconcat);
 }
 
 /**
@@ -135,7 +160,7 @@ export function isVConcatSpec(spec) {
  * @returns {spec is HConcatSpec}
  */
 export function isHConcatSpec(spec) {
-    return isArray(spec.hconcat);
+    return "hconcat" in spec && isArray(spec.hconcat);
 }
 
 /**
@@ -144,7 +169,7 @@ export function isHConcatSpec(spec) {
  * @returns {spec is ConcatSpec}
  */
 export function isConcatSpec(spec) {
-    return isArray(spec.concat);
+    return "concat" in spec && isArray(spec.concat);
 }
 
 /**
@@ -171,7 +196,7 @@ export function isTableRowSpec(spec) {
  * @returns {config is ImportConfig}
  */
 export function isImportConfig(config) {
-    return config.name || config.url;
+    return "name" in config || "url" in config;
 }
 
 /**
@@ -180,7 +205,7 @@ export function isImportConfig(config) {
  * @returns {spec is ImportSpec}
  */
 export function isImportSpec(spec) {
-    return !!spec.import;
+    return "import" in spec;
 }
 
 /**
@@ -264,14 +289,19 @@ export function addAxisWrappers(root) {
     const hasDomain = encodingConfig =>
         encodingConfig && !("value" in encodingConfig);
 
-    // TODO: only wrap views that actually request axes
     root.visit(view => {
         if (view instanceof LayerView || view instanceof UnitView) {
             const encoding = view.getEncoding();
-            if (!hasDomain(encoding.x) && !hasDomain(encoding.y)) {
+            if (
+                view instanceof UnitView &&
+                !hasDomain(encoding.x) &&
+                !hasDomain(encoding.y)
+            ) {
                 // Don't wrap views that have no positional channels
                 // TODO: However, in future, views with borders or backgrounds should be wrapped always
-                return;
+                // TODO: Also, views with "axis: null" need no wrapping.
+                // TODO: Handle LayerViews, they may have children with positional domains
+                return VISIT_SKIP;
             }
 
             const originalParent = view.parent;

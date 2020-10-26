@@ -386,7 +386,7 @@ function getDefaultScaleType(channel, dataType) {
         color: ["ordinal", "linear"],
         shape: ["ordinal", null], // TODO: Perhaps some discretizing quantitative scale?
         squeeze: ["ordinal", null],
-        sample: ["identity", null],
+        sample: ["identity", "identity"],
         semanticScore: [null, "identity"],
         text: ["identity", "identity"]
     };

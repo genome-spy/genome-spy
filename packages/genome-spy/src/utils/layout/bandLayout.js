@@ -1,5 +1,5 @@
-import Interval from "./interval";
-import IntervalCollection from "./intervalCollection";
+import Interval from "../interval";
+import IntervalCollection from "../intervalCollection";
 
 /**
  * @typedef {Object} Band
@@ -8,7 +8,7 @@ import IntervalCollection from "./intervalCollection";
  */
 
 /**
- * A scale that mimics d3's scaleBand, but with variable widths and other
+ * A layout that mimics d3's scaleBand, but with variable widths and other
  * bells and whistles.
  *
  * This class is a messy hack. TODO: Improve
@@ -17,23 +17,23 @@ import IntervalCollection from "./intervalCollection";
  * TODO: Reordering by dragging
  * TODO: Unit test
  */
-export default class BandScale {
+export default class BandLayout {
     constructor() {
-        this._range = new Interval(0, 1);
-        this.paddingInner = 0;
-        this.paddingOuter = 0;
+        // TODO: paddingOuter
 
-        /** @type {number[]} */
-        this._relativeWidths = [];
+        this._range = [0, 1];
 
-        /** @type {string[]} domain in a specific order */
-        this._keys = [];
+        /** @type {Map<any, number>} Supports collapsing bands */
+        this._relativeWidths = new Map();
 
-        /** @type {Map<string, Interval> | null} for domain to range */
-        this._keyCache = null;
+        /** @type {any[]} domain in a specific order */
+        this._domain = [];
 
-        /** @type {IntervalCollection<Band> | null} for range to domain */
-        this._bands = null;
+        //** @type {Map<string, Interval> | null} for domain to range */
+        //this._keyCache = null;
+
+        //** @type {IntervalCollection<Band> | null} for range to domain */
+        //this._bands = null;
     }
 
     _buildCaches() {
@@ -158,10 +158,10 @@ export default class BandScale {
     }
 
     /**
-     * @returns {BandScale}
+     * @returns {BandLayout}
      */
     clone() {
-        const copy = new BandScale();
+        const copy = new BandLayout();
         copy.paddingInner = this.paddingInner;
         copy.paddingOuter = this.paddingOuter;
         copy.domain(this._keys, this._relativeWidths);

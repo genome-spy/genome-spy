@@ -19,7 +19,7 @@ import { isNumber } from "vega-util";
  * @typedef {object} FlexOptions
  * @prop {number} [spacing] space between items in pixels
  * @prop {number} [devicePixelRatio] allows for snapping to "retina" pixels.
- *      `null` disables snapping altogether.
+ *      Default: `1`. `null` disables snapping altogether.
  *
  * @param {SizeDef[]} items
  * @param {number} containerSize in pixels

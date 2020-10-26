@@ -112,9 +112,15 @@ export interface FacetSpec extends ViewSpecBase {
     spacing?: number;
 }
 
+export interface SampleSpec extends ViewSpecBase {
+    samples: object;
+    spec: LayerSpec | UnitSpec;
+}
+
 export type ContainerSpec = (
     | LayerSpec
     | FacetSpec
+    | SampleSpec
     | VConcatSpec
     | HConcatSpec
     | ConcatSpec
@@ -133,6 +139,8 @@ export interface UnitSpec extends ViewSpecBase {
 export type ViewSpec =
     | UnitSpec
     | LayerSpec
+    | FacetSpec
+    | SampleSpec
     | VConcatSpec
     | HConcatSpec
     | ConcatSpec
