@@ -360,10 +360,9 @@ export default class Mark {
             gl.enable(gl.BLEND);
         }
 
-        // Temp hack:
         twgl.setUniforms(this.programInfo, {
-            yPosLeft: [0, 1],
-            yPosRight: [0, 1]
+            // left pos, left height, right pos, right height
+            uSampleFacet: [0, 1, 0, 1]
         });
     }
 
