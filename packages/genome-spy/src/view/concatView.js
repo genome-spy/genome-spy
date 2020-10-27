@@ -135,3 +135,53 @@ export default class ConcatView extends ContainerView {
         return "independent";
     }
 }
+
+function createLabelViewSpec() {
+    // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
+
+    /** @type {import("./viewUtils").UnitSpec} */
+    const titleView = {
+        data: {
+            values: []
+        },
+        mark: {
+            type: "text",
+            align: "left",
+            clip: false
+        },
+        encoding: {
+            x: { value: 0 },
+            x2: undefined,
+            y: { value: 0.5 },
+            text: { field: "displayName", type: "nominal" },
+            size: { value: 8 }
+
+            //size: { value: headerConfig.labelFontSize },
+            //color: { value: headerConfig.labelColor }
+        }
+    };
+
+    return titleView;
+}
+
+function createHeatmapViewSpec() {
+    /** @type {import("./viewUtils").UnitSpec} */
+    const metadataView = {};
+
+    return metadataView;
+}
+
+/**
+ *
+ * @param {LocSize[]} locations
+ */
+function locationsToTextureData(locations) {
+    // Create a RG32F texture
+    const arr = new Float32Array(locations.length * 2);
+    let i = 0;
+    for (const location of locations) {
+        arr[i++] = location.location;
+        arr[i++] = location.size;
+    }
+    return arr;
+}

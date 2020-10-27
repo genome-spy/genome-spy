@@ -182,6 +182,7 @@ export default class View {
             let previousCoords;
             for (const request of requestByMark.get(mark)) {
                 // Render each facet
+                // TODO: Building new single-use objects is slow. Consider something else.
                 const patchedOptions = {
                     ...request.options,
                     skipViewportSetup: request.coords.equals(previousCoords)
@@ -282,10 +283,14 @@ export default class View {
      * Currently used for updating axes. A more robust solution is needed
      * for true dynamic data loading.
      *
-     * @param {any[]} data
+     * @param {any[]} [data] New data. If not provided, processes inherited data.
      */
     updateData(data) {
-        this.data = new DataGroup("immediate", data);
+        if (data) {
+            this.data = new DataGroup("immediate", data);
+        } else {
+            this.data = undefined;
+        }
 
         this.visit(node => {
             if (node.spec.data && node !== this) {

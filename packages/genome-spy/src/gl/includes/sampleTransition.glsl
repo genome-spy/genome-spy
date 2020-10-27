@@ -5,7 +5,7 @@
  */
 uniform vec4 uSampleFacet;
 
-uniform float transitionOffset;
+uniform float uTransitionOffset;
 
 bool isFacetedSamples() {
     // TODO: Provide a constant for more agressive optimization
@@ -27,8 +27,8 @@ vec2 applySampleFacet(vec2 pos) {
         vec2 interpolated = left;
 
         if (isInTransit()) {
-            float fraction = smoothstep(0.0, 0.7 + transitionOffset, (pos.x - transitionOffset) * 2.0);
-            vec2 interpolated = mix(left, right, fraction);
+            float fraction = smoothstep(0.0, 0.7 + uTransitionOffset, (pos.x - uTransitionOffset) * 2.0);
+            interpolated = mix(left, right, fraction);
         }
 
         return vec2(pos.x, interpolated.x + pos.y * interpolated.y);

@@ -112,8 +112,12 @@ export interface FacetSpec extends ViewSpecBase {
     spacing?: number;
 }
 
+export interface SampleDef {
+    data?: Data;
+}
+
 export interface SampleSpec extends ViewSpecBase {
-    samples: object;
+    samples: SampleDef;
     spec: LayerSpec | UnitSpec;
 }
 

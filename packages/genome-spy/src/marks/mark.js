@@ -9,6 +9,7 @@ import {
     generateScaleGlsl
 } from "../scale/glslScaleGenerator";
 import { getCachedOrCall } from "../utils/propertyCacher";
+import coalesce from "../utils/coalesce";
 
 /**
  *
@@ -364,7 +365,8 @@ export default class Mark {
 
         twgl.setUniforms(this.programInfo, {
             // left pos, left height, right pos, right height
-            uSampleFacet: [0, 1, 0, 1]
+            uSampleFacet: [0, 1, 0, 1],
+            uTransitionOffset: 0.0
         });
     }
 
@@ -385,10 +387,10 @@ export default class Mark {
             const opts = options.sampleFacetRenderingOptions;
             twgl.setUniforms(this.programInfo, {
                 uSampleFacet: [
-                    opts.pos || 0.0,
-                    opts.height || 1.0,
-                    opts.targetPos || opts.pos || 0.0,
-                    opts.targetHeight || opts.height || 1.0
+                    coalesce(opts.pos, 0.0),
+                    coalesce(opts.height, 1.0),
+                    coalesce(opts.targetPos, opts.pos, 0.0),
+                    coalesce(opts.targetHeight, opts.height, 1.0)
                 ]
             });
         }
