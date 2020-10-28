@@ -32,15 +32,18 @@ export default class LayerView extends ContainerView {
     }
 
     /**
+     * @param {import("./viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
-     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, options = {}, deferBuffer) {
+    render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
+        context.pushView(this, coords);
 
         for (const child of this.children) {
-            child.render(coords, options, deferBuffer);
+            child.render(context, coords, options);
         }
+
+        context.popView(this);
     }
 }

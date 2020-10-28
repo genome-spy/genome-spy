@@ -1,9 +1,9 @@
-import { group } from "d3-array";
 import { transformData } from "../data/dataMapper";
 import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { DataGroup } from "../data/group";
+import ViewRenderingContext from "./viewRenderingContext";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -27,12 +27,6 @@ export const VISIT_STOP = "VISIT_STOP";
  * @typedef {object} BroadcastMessage
  * @prop {string} type Broadcast type
  * @prop {any} [payload] Anything
- *
- * @typedef {object} DeferredRenderingRequest Allows for collecting marks for
- *      optimized rendering order.
- * @prop {import("../marks/mark").default} mark
- * @prop {Rectangle} coords
- * @prop {RenderingOptions} options
  *
  * @typedef {object} SampleFacetRenderingOptions Describes the location of
  *      a sample facet. Left is the primary pos, right is for transitioning
@@ -162,42 +156,13 @@ export default class View {
      * Recursively traverses the view hierarchy, computes the view coordinates,
      * and coordinates the mark rendering.
      *
+     * @param {ViewRenderingContext} context
      * @param {Rectangle} coords The coordinate rectangle that the parent computed
      *      for the child that is being visited.
      * @param {import("./view").RenderingOptions} [options]
-     * @param {DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, options = {}, deferBuffer) {
+    render(context, coords, options = {}) {
         // override
-    }
-
-    /**
-     * Renders marks in an optimized order, minimizing the number of WebGL state
-     * changes.
-     *
-     * TODO: This could be a static method. Find a proper place.
-     *
-     * @param {import("../view/view").DeferredRenderingRequest[]} [deferBuffer]
-     */
-    _renderDeferred(deferBuffer) {
-        const requestByMark = group(deferBuffer, request => request.mark);
-
-        for (const mark of requestByMark.keys()) {
-            // Change program, set common uniforms (mark properties, shared domains)
-            mark.prepareRender();
-
-            /** @type {import("../utils/layout/rectangle").default} */
-            let previousCoords;
-            for (const request of requestByMark.get(mark)) {
-                // Render each facet
-                // TODO: Optimize perf: Object.assign is a bit slow for throwaway objects
-                const patchedOptions = Object.assign(request.options, {
-                    skipViewportSetup: request.coords.equals(previousCoords)
-                });
-                mark.render(request.coords, patchedOptions);
-                previousCoords = request.coords;
-            }
-        }
     }
 
     /**

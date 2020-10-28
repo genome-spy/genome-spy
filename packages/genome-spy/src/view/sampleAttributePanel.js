@@ -62,25 +62,25 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     * @param {import("./viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
-     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, options, deferBuffer) {
+    render(context, coords, options = {}) {
+        context.pushView(this, coords);
+
         for (const sampleLocation of this.parent.getSampleLocations()) {
-            super.render(
-                coords,
-                {
-                    ...options,
-                    sampleFacetRenderingOptions: {
-                        pos: sampleLocation.location.location,
-                        height: sampleLocation.location.size
-                    },
-                    facetId: sampleLocation.sampleId
+            super.render(context, coords, {
+                ...options,
+                sampleFacetRenderingOptions: {
+                    pos: sampleLocation.location.location,
+                    height: sampleLocation.location.size
                 },
-                deferBuffer
-            );
+                facetId: sampleLocation.sampleId
+            });
         }
+
+        context.popView(this);
     }
 
     setupAttributeViews() {

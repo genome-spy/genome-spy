@@ -60,27 +60,19 @@ export default class UnitView extends View {
     }
 
     /**
+     * @param {import("./viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
-     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, options = {}, deferBuffer) {
-        coords = coords.shrink(this.getPadding());
-
+    render(context, coords, options = {}) {
         // Translate by half a pixel to place vertical / horizontal
         // rules inside pixels, not between pixels.
         coords = coords.translate(0.5, 0.5);
+        coords = coords.shrink(this.getPadding());
 
-        if (deferBuffer) {
-            deferBuffer.push({
-                mark: this.mark,
-                coords,
-                options
-            });
-        } else {
-            this.mark.prepareRender();
-            this.mark.render(coords, options);
-        }
+        context.pushView(this, coords);
+        context.renderMark(this.mark, options);
+        context.popView(this);
     }
 
     getMarkType() {

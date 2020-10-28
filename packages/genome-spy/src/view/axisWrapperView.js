@@ -266,21 +266,20 @@ export default class AxisWrapperView extends ContainerView {
     }
 
     /**
+     * @param {import("./viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
-     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, options = {}, deferBuffer) {
+    render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
+        context.pushView(this);
 
         const extents = this._getAxisExtents();
         const childCoords = coords.shrink(extents.add(this._getAxisOffsets()));
 
-        // As a hacky side effect, store the computed coordinates for interaction
-        this._coords = coords;
         this._childCoords = childCoords;
 
-        this.child.render(childCoords, options, deferBuffer);
+        this.child.render(context, childCoords, options);
 
         this._updateAxisData();
 
@@ -313,8 +312,10 @@ export default class AxisWrapperView extends ContainerView {
             }
 
             // Axes have no faceted data, thus, pass undefined facetId
-            view.render(axisCoords, undefined, deferBuffer);
+            view.render(context, axisCoords);
         }
+
+        context.popView(this);
     }
 
     /**

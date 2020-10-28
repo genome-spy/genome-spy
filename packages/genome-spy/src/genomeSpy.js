@@ -33,6 +33,8 @@ import AxisWrapperView from "./view/axisWrapperView";
 import MouseTracker2 from "./mouseTracker2";
 import { parseSizeDef } from "./utils/layout/flexLayout";
 import Rectangle from "./utils/layout/rectangle";
+import ViewRenderingContext from "./view/viewRenderingContext";
+import DeferredViewRenderingContext from "./view/deferredViewRenderingContext";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -302,9 +304,12 @@ export default class GenomeSpy {
                 ? canvasSize[c]
                 : root.getSize()[c].px) || canvasSize[c];
 
+        const context = new DeferredViewRenderingContext();
         root.render(
+            context,
             new Rectangle(0, 0, getComponent("width"), getComponent("height"))
         );
+        context.renderDeferred();
     }
 }
 

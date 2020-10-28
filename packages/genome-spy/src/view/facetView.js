@@ -270,12 +270,13 @@ export default class FacetView extends ContainerView {
     }
 
     /**
+     * @param {import("./viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
-     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, options = {}, deferBuffer) {
+    render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
+        context.pushView(this, coords);
 
         // Size of the view that is being repeated for all the facets
         const childSize = this.child.getSize();
@@ -385,13 +386,6 @@ export default class FacetView extends ContainerView {
         const columnFlexCoords = computeFlexCoords("column", nCols);
         const rowFlexCoords = computeFlexCoords("row", nRows);
 
-        if (deferBuffer) {
-            console.warn("deferBuffer is already defined!");
-        }
-
-        // Collect rendering requests so that their order can be optimized
-        deferBuffer = [];
-
         const axisSizes =
             this.child instanceof AxisWrapperView
                 ? this.child.getAxisSizes()
@@ -407,14 +401,14 @@ export default class FacetView extends ContainerView {
                 const xCell = columnFlexCoords[(x % nCols) * xStride + xOffset];
                 const yCell = rowFlexCoords[Math.floor(x / nCols) * yStride];
                 this._labelViews.column.render(
+                    context,
                     new Rectangle(
                         xCell.location + axisSizes.left,
                         yCell.location,
                         xCell.size - axisSizes.width,
                         yCell.size
                     ).translateBy(coords),
-                    { ...options, facetId: factors[x] },
-                    deferBuffer
+                    { ...options, facetId: factors[x] }
                 );
             }
         }
@@ -426,14 +420,14 @@ export default class FacetView extends ContainerView {
                 const xCell = columnFlexCoords[0];
                 const yCell = rowFlexCoords[y * yStride + yOffset];
                 this._labelViews.row.render(
+                    context,
                     new Rectangle(
                         xCell.location,
                         yCell.location + axisSizes.top,
                         xCell.size,
                         yCell.size - axisSizes.height
                     ).translateBy(coords),
-                    { ...options, facetId: factors[y] },
-                    deferBuffer
+                    { ...options, facetId: factors[y] }
                 );
             }
         }
@@ -447,20 +441,20 @@ export default class FacetView extends ContainerView {
                 const xCell = columnFlexCoords[x * xStride + xOffset];
                 const yCell = rowFlexCoords[y * yStride + yOffset];
                 this.child.render(
+                    context,
                     new Rectangle(
                         xCell.location,
                         yCell.location,
                         xCell.size,
                         yCell.size
                     ).translateBy(coords),
-                    { ...options, facetId: facetIds[i] },
-                    deferBuffer
+                    { ...options, facetId: facetIds[i] }
                 );
                 i++;
             }
         }
 
-        this._renderDeferred(deferBuffer);
+        context.popView(this);
     }
 }
 

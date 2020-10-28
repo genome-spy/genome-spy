@@ -157,34 +157,31 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * @param {import("./viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
-     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    renderChild(coords, options, deferBuffer) {
+    renderChild(context, coords, options = {}) {
         for (const sampleLocation of this.getSampleLocations()) {
-            this.child.render(
-                coords,
-                {
-                    ...options,
-                    sampleFacetRenderingOptions: {
-                        pos: sampleLocation.location.location,
-                        height: sampleLocation.location.size
-                    },
-                    facetId: sampleLocation.sampleId
+            this.child.render(context, coords, {
+                ...options,
+                sampleFacetRenderingOptions: {
+                    pos: sampleLocation.location.location,
+                    height: sampleLocation.location.size
                 },
-                deferBuffer
-            );
+                facetId: sampleLocation.sampleId
+            });
         }
     }
 
     /**
+     * @param {import("./viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
-     * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
-    render(coords, options = {}, deferBuffer) {
+    render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
+        context.pushView(this, coords);
 
         const cols = mapToPixelCoords(
             [this.attributeView.getSize().width, { grow: 1 }],
@@ -199,21 +196,10 @@ export default class SampleView extends ContainerView {
                 width: location.size
             });
 
-        if (deferBuffer) {
-            console.warn("deferBuffer is already defined!");
-        }
+        this.attributeView.render(context, toColumnCoords(cols[0]), options);
+        this.renderChild(context, toColumnCoords(cols[1]), options);
 
-        // Collect rendering requests so that their order can be optimized
-        deferBuffer = [];
-
-        this.attributeView.render(
-            toColumnCoords(cols[0]),
-            options,
-            deferBuffer
-        );
-        this.renderChild(toColumnCoords(cols[1]), options, deferBuffer);
-
-        this._renderDeferred(deferBuffer);
+        context.popView(this);
     }
 }
 
