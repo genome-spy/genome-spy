@@ -114,7 +114,8 @@ export interface FacetSpec extends ViewSpecBase {
 
 export interface SampleAttributeDef {
     type: string;
-    scale?: Scale;
+    colorScale?: Scale;
+    barScale?: Scale;
     width?: number;
 }
 

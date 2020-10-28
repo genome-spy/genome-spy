@@ -152,7 +152,7 @@ export class SampleAttributePanel extends ConcatView {
                 }
             }
 
-            return createHeatmapSpec(attributeName, {
+            return createAttributeSpec(attributeName, {
                 ...(attributeDef || {}),
                 type: fieldType
             });
@@ -183,9 +183,9 @@ function locationsToTextureData(locations) {
  * @param {string} attributeName
  * @param {import("../spec/view").SampleAttributeDef} attributeDef
  */
-function createHeatmapSpec(attributeName, attributeDef) {
+function createAttributeSpec(attributeName, attributeDef) {
     /** @type {import("./viewUtils").UnitSpec} */
-    const heatmapView = {
+    const attributeSpec = {
         width: attributeDef.width || 10,
         mark: {
             type: "rect"
@@ -194,40 +194,28 @@ function createHeatmapSpec(attributeName, attributeDef) {
             color: {
                 field: `attributes["${attributeName}"]`,
                 type: attributeDef.type,
-                scale: attributeDef.scale
+                scale: attributeDef.colorScale
             }
         }
     };
 
-    return heatmapView;
-}
+    if (attributeDef.barScale && attributeDef.type == FieldType.QUANTITATIVE) {
+        attributeSpec.encoding.x = {
+            field: `attributes["${attributeName}"]`,
+            type: attributeDef.type,
+            scale: attributeDef.barScale,
+            axis: null
+        };
+    }
 
-function createBarSpec(field) {
-    /** @type {import("./viewUtils").UnitSpec} */
-    const heatmapView = {
-        width: 40,
-        mark: {
-            type: "rect"
-        },
-        encoding: {
-            x: {
-                field: `attributes.${field}`,
-                type: "quantitative",
-                axis: null,
-                scale: { reverse: true }
-            },
-            color: { field: `attributes.${field}`, type: "quantitative" }
-        }
-    };
-
-    return heatmapView;
+    return attributeSpec;
 }
 
 function createLabelViewSpec() {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
     /** @type {import("./viewUtils").UnitSpec} */
-    const titleView = {
+    const titleSpec = {
         name: "sampleLabel",
         width: 150,
         mark: {
@@ -246,5 +234,5 @@ function createLabelViewSpec() {
         }
     };
 
-    return titleView;
+    return titleSpec;
 }
