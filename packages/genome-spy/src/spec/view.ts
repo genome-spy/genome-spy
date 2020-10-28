@@ -112,8 +112,15 @@ export interface FacetSpec extends ViewSpecBase {
     spacing?: number;
 }
 
+export interface SampleAttributeDef {
+    type: string;
+    scale?: Scale;
+    width?: number;
+}
+
 export interface SampleDef {
     data?: Data;
+    attributes?: Record<string, SampleAttributeDef>;
 }
 
 export interface SampleSpec extends ViewSpecBase {

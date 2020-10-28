@@ -4,7 +4,7 @@ import UnitView from "./unitView";
 import { mapToPixelCoords } from "../utils/layout/flexLayout";
 import AxisWrapperView from "./axisWrapperView";
 import DataSource from "../data/dataSource";
-import { SampleAttributeView } from "./sampleAttributeView";
+import { SampleAttributePanel } from "./sampleAttributePanel";
 
 /**
  * Implements faceting of multiple samples. The samples are displayed
@@ -41,7 +41,7 @@ export default class SampleView extends ContainerView {
             `sample`
         ));
 
-        this.attributeView = new SampleAttributeView(this);
+        this.attributeView = new SampleAttributePanel(this);
     }
 
     /**
@@ -186,7 +186,11 @@ export default class SampleView extends ContainerView {
     render(coords, options = {}, deferBuffer) {
         coords = coords.shrink(this.getPadding());
 
-        const cols = mapToPixelCoords([{ px: 150 }, { grow: 1 }], coords.width);
+        const cols = mapToPixelCoords(
+            [this.attributeView.getSize().width, { grow: 1 }],
+            coords.width,
+            { spacing: 10 }
+        );
 
         /** @param {LocSize} location */
         const toColumnCoords = location =>

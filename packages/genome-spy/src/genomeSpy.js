@@ -227,13 +227,6 @@ export default class GenomeSpy {
             /** @type {import("./spec/view").ConcatSpec & RootConfig} */
             const rootSpec = this.config;
 
-            // Import external tracks
-            /*
-            if (isVConcatSpec(rootSpec)) {
-                await processImports(rootSpec);
-            }
-            */
-
             // Create the view hierarchy
             /** @type {import("./view/view").default} */
             this.viewRoot = createView(rootSpec, context);

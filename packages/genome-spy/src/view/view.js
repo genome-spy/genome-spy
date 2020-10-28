@@ -182,11 +182,10 @@ export default class View {
             let previousCoords;
             for (const request of requestByMark.get(mark)) {
                 // Render each facet
-                // TODO: Building new single-use objects is slow. Consider something else.
-                const patchedOptions = {
-                    ...request.options,
+                // TODO: Optimize perf: Object.assign is a bit slow for throwaway objects
+                const patchedOptions = Object.assign(request.options, {
                     skipViewportSetup: request.coords.equals(previousCoords)
-                };
+                });
                 mark.render(request.coords, patchedOptions);
                 previousCoords = request.coords;
             }

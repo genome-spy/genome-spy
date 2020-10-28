@@ -127,6 +127,25 @@ export default class ConcatView extends ContainerView {
     }
 
     /**
+     * Adds a child. Does NOT perform any initializations.
+     * Returns the newly added view instance.
+     *
+     * @param {import("./viewUtils").ViewSpec} viewSpec
+     */
+    addChild(viewSpec) {
+        // TODO: Move to containerView
+
+        // TODO: More robust solution. Will break in future when views can be removed
+        const i = this.children.length;
+
+        const View = getViewClass(viewSpec);
+        const view = new View(viewSpec, this.context, this, "concat" + i);
+        this.children.push(view);
+
+        return view;
+    }
+
+    /**
      * @param {string} channel
      */
     getDefaultResolution(channel) {
@@ -134,54 +153,4 @@ export default class ConcatView extends ContainerView {
         //return channel == "x" ? "shared" : "independent";
         return "independent";
     }
-}
-
-function createLabelViewSpec() {
-    // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
-
-    /** @type {import("./viewUtils").UnitSpec} */
-    const titleView = {
-        data: {
-            values: []
-        },
-        mark: {
-            type: "text",
-            align: "left",
-            clip: false
-        },
-        encoding: {
-            x: { value: 0 },
-            x2: undefined,
-            y: { value: 0.5 },
-            text: { field: "displayName", type: "nominal" },
-            size: { value: 8 }
-
-            //size: { value: headerConfig.labelFontSize },
-            //color: { value: headerConfig.labelColor }
-        }
-    };
-
-    return titleView;
-}
-
-function createHeatmapViewSpec() {
-    /** @type {import("./viewUtils").UnitSpec} */
-    const metadataView = {};
-
-    return metadataView;
-}
-
-/**
- *
- * @param {LocSize[]} locations
- */
-function locationsToTextureData(locations) {
-    // Create a RG32F texture
-    const arr = new Float32Array(locations.length * 2);
-    let i = 0;
-    for (const location of locations) {
-        arr[i++] = location.location;
-        arr[i++] = location.size;
-    }
-    return arr;
 }

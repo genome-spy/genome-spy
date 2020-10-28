@@ -23,7 +23,7 @@ const glConst = {
 
 function color2floatArray(color) {
     if (!color) {
-        return [1, 0, 1]; // Just an indicator of error
+        return [0.9, 0.9, 0.9]; // TODO: Configurable NA color
     } else if (isString(color)) {
         color = d3color(color);
     }
