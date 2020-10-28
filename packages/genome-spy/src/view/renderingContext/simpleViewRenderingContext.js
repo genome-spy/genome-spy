@@ -34,6 +34,7 @@ export default class SimpleViewRenderingContext {
      */
     renderMark(mark, options) {
         mark.prepareRender();
-        mark.render(this.coords, options);
+        mark.setViewport(this.coords);
+        mark.render(options);
     }
 }

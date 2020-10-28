@@ -206,11 +206,10 @@ export default class PointMark extends Mark {
     }
 
     /**
-     * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./Mark").MarkRenderingOptions} options
      */
-    render(coords, options) {
-        super.render(coords, options);
+    render(options) {
+        super.render(options);
 
         const gl = this.gl;
 
@@ -223,7 +222,7 @@ export default class PointMark extends Mark {
             const length = upper - lower;
 
             if (length) {
-                this.prepareSampleFacetRender(coords, options);
+                this.prepareSampleFacetRender(options);
                 twgl.drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,

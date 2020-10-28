@@ -181,17 +181,16 @@ export default class TextMark extends Mark {
     }
 
     /**
-     * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./Mark").MarkRenderingOptions} options
      */
-    render(coords, options) {
-        super.render(coords, options);
+    render(options) {
+        super.render(options);
 
         const gl = this.gl;
 
         const range = this.rangeMap.get(options.facetId);
         if (range && range.count) {
-            this.prepareSampleFacetRender(coords, options);
+            this.prepareSampleFacetRender(options);
             twgl.drawBufferInfo(
                 gl,
                 this.vertexArrayInfo,

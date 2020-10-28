@@ -127,11 +127,10 @@ export default class ConnectionMark extends Mark {
     }
 
     /**
-     * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./Mark").MarkRenderingOptions} options
      */
-    render(coords, options) {
-        super.render(coords, options);
+    render(options) {
+        super.render(options);
 
         const gl = this.gl;
 
@@ -154,7 +153,7 @@ export default class ConnectionMark extends Mark {
             }
             twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
-            this.prepareSampleFacetRender(coords, options);
+            this.prepareSampleFacetRender(options);
             twgl.drawBufferInfo(
                 gl,
                 this.bufferInfo,

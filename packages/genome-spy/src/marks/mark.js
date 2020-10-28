@@ -376,14 +376,9 @@ export default class Mark {
      * even when no faceting is being used, i.e., when there is only a single,
      * undefined facet.
      *
-     * @param {import("../utils/layout/rectangle").default} coords
      * @param {MarkRenderingOptions} options
      */
-    prepareSampleFacetRender(coords, options) {
-        if (!options.skipViewportSetup) {
-            this.setViewport(coords);
-        }
-
+    prepareSampleFacetRender(options) {
         if (options.sampleFacetRenderingOptions) {
             const opts = options.sampleFacetRenderingOptions;
             const pos = isNumber(opts.pos) ? opts.pos : 0.0;
@@ -407,10 +402,9 @@ export default class Mark {
     }
 
     /**
-     * @param {import("../utils/layout/rectangle").default} coords
      * @param {MarkRenderingOptions} options
      */
-    render(coords, options) {
+    render(options) {
         // override
     }
 

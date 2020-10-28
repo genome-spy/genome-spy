@@ -62,11 +62,10 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
             let previousCoords;
             for (const request of requestByMark.get(mark)) {
                 // Render each facet
-                // TODO: Optimize perf: Object.assign is a bit slow for throwaway objects
-                const patchedOptions = Object.assign(request.options, {
-                    skipViewportSetup: request.coords.equals(previousCoords)
-                });
-                mark.render(request.coords, patchedOptions);
+                if (!request.coords.equals(previousCoords)) {
+                    mark.setViewport(request.coords);
+                }
+                mark.render(request.options);
                 previousCoords = request.coords;
             }
         }
