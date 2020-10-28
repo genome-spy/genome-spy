@@ -5,6 +5,14 @@ import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { DataGroup } from "../data/group";
 
+// TODO: View classes have too many responsibilities. Come up with a way
+// to separate the concerns. However, most concerns are tightly tied to
+// the hierarchy, which makes the separation quite tricky.
+// For instance, all data processing could be encapsulated into a class
+// that is included in the views through composition rather than
+// inheritance.
+// Separation of concerns would also make the code more easily testable.
+
 /** Skip children */
 export const VISIT_SKIP = "VISIT_SKIP";
 /** Stop further visits */
