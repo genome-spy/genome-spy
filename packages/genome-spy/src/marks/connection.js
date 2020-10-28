@@ -154,7 +154,7 @@ export default class ConnectionMark extends Mark {
             }
             twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
-            this.prepareFacetRender(coords, options);
+            this.prepareSampleFacetRender(coords, options);
             twgl.drawBufferInfo(
                 gl,
                 this.bufferInfo,

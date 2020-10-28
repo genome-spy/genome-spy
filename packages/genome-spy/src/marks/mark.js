@@ -10,6 +10,7 @@ import {
 } from "../scale/glslScaleGenerator";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import coalesce from "../utils/coalesce";
+import { isNumber } from "vega-util";
 
 /**
  *
@@ -371,28 +372,37 @@ export default class Mark {
     }
 
     /**
-     * Prepares rendering of a single facet. However, this must be called
+     * Prepares rendering of a single sample facet. However, this must be called
      * even when no faceting is being used, i.e., when there is only a single,
      * undefined facet.
      *
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {MarkRenderingOptions} options
      */
-    prepareFacetRender(coords, options) {
+    prepareSampleFacetRender(coords, options) {
         if (!options.skipViewportSetup) {
             this.setViewport(coords);
         }
 
         if (options.sampleFacetRenderingOptions) {
             const opts = options.sampleFacetRenderingOptions;
-            twgl.setUniforms(this.programInfo, {
-                uSampleFacet: [
-                    coalesce(opts.pos, 0.0),
-                    coalesce(opts.height, 1.0),
-                    coalesce(opts.targetPos, opts.pos, 0.0),
-                    coalesce(opts.targetHeight, opts.height, 1.0)
-                ]
-            });
+            const pos = isNumber(opts.pos) ? opts.pos : 0.0;
+            const height = isNumber(opts.height) ? opts.height : 1.0;
+            const targetPos = isNumber(opts.targetPos) ? opts.targetPos : pos;
+            const targetHeight = isNumber(opts.targetHeight)
+                ? opts.targetHeight
+                : height;
+
+            // Use WebGL directly, because twgl uses gl.uniform4fv, which has an
+            // inferior performance. Based on profiling, this optimization gives
+            // a significant performance boost.
+            this.gl.uniform4f(
+                this.programInfo.uniformSetters.uSampleFacet.location,
+                pos,
+                height,
+                targetPos,
+                targetHeight
+            );
         }
     }
 

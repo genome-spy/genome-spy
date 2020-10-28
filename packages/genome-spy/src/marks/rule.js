@@ -179,7 +179,7 @@ export default class RuleMark extends Mark {
 
         const range = this.rangeMap.get(options.facetId);
         if (range && range.count) {
-            this.prepareFacetRender(coords, options);
+            this.prepareSampleFacetRender(coords, options);
             twgl.drawBufferInfo(
                 gl,
                 this.vertexArrayInfo,

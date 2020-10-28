@@ -207,7 +207,7 @@ export default class RectMark extends Mark {
 
         const range = this._sampleBufferInfo.rangeMap.get(options.facetId);
         if (range && range.count) {
-            this.prepareFacetRender(coords, options);
+            this.prepareSampleFacetRender(coords, options);
             // TODO: draw only the part that intersects with the viewport
             // Could use: http://lin-ear-th-inking.blogspot.com/2007/06/packed-1-dimensional-r-tree.html
             twgl.drawBufferInfo(

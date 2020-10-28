@@ -223,7 +223,7 @@ export default class PointMark extends Mark {
             const length = upper - lower;
 
             if (length) {
-                this.prepareFacetRender(coords, options);
+                this.prepareSampleFacetRender(coords, options);
                 twgl.drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,
