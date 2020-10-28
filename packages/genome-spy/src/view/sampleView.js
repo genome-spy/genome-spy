@@ -157,7 +157,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("./viewRenderingContext").default} context
+     * @param {import("./renderingContext/viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
      */
@@ -175,7 +175,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("./viewRenderingContext").default} context
+     * @param {import("./renderingContext/viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
      */

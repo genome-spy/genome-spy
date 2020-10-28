@@ -62,7 +62,7 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {import("./viewRenderingContext").default} context
+     * @param {import("./renderingContext/viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
      */

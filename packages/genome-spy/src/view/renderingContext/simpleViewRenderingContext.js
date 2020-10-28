@@ -1,9 +1,9 @@
 /**
- * @typedef {import("./view").default} View
+ * @typedef {import("../view").default} View
  */
-export default class ViewRenderingContext {
+export default class SimpleViewRenderingContext {
     constructor() {
-        /** @type {import("../utils/layout/rectangle").default} */
+        /** @type {import("../../utils/layout/rectangle").default} */
         this.coords = undefined;
     }
 
@@ -11,7 +11,7 @@ export default class ViewRenderingContext {
      * Must be called when a view's render() method is entered
      *
      * @param {View} view
-     * @param {import("../utils/layout/rectangle").default} coords View coordinates
+     * @param {import("../../utils/layout/rectangle").default} coords View coordinates
      *      inside the padding.
      */
     pushView(view, coords) {
@@ -29,8 +29,8 @@ export default class ViewRenderingContext {
 
     /**
      *
-     * @param {import("../marks/mark").default} mark
-     * @param {import("./view").RenderingOptions} options
+     * @param {import("../../marks/mark").default} mark
+     * @param {import("../view").RenderingOptions} options
      */
     renderMark(mark, options) {
         mark.prepareRender();

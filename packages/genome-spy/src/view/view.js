@@ -3,7 +3,6 @@ import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { DataGroup } from "../data/group";
-import ViewRenderingContext from "./viewRenderingContext";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -156,7 +155,7 @@ export default class View {
      * Recursively traverses the view hierarchy, computes the view coordinates,
      * and coordinates the mark rendering.
      *
-     * @param {ViewRenderingContext} context
+     * @param {import("./renderingContext/viewRenderingContext").default} context
      * @param {Rectangle} coords The coordinate rectangle that the parent computed
      *      for the child that is being visited.
      * @param {import("./view").RenderingOptions} [options]

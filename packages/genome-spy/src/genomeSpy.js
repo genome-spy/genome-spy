@@ -33,8 +33,7 @@ import AxisWrapperView from "./view/axisWrapperView";
 import MouseTracker2 from "./mouseTracker2";
 import { parseSizeDef } from "./utils/layout/flexLayout";
 import Rectangle from "./utils/layout/rectangle";
-import ViewRenderingContext from "./view/viewRenderingContext";
-import DeferredViewRenderingContext from "./view/deferredViewRenderingContext";
+import DeferredViewRenderingContext from "./view/renderingContext/deferredViewRenderingContext";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec

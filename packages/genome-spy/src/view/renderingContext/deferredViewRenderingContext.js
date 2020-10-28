@@ -6,9 +6,9 @@ import ViewRenderingContext from "./viewRenderingContext";
  *
  * @typedef {object} DeferredRenderingRequest Allows for collecting marks for
  *      optimized rendering order.
- * @prop {import("../marks/mark").default} mark
- * @prop {import("../utils/layout/rectangle").default} coords
- * @prop {import("./view").RenderingOptions} options
+ * @prop {import("../../marks/mark").default} mark
+ * @prop {import("../../utils/layout/rectangle").default} coords
+ * @prop {import("../view").RenderingOptions} options
  */
 export default class DeferredViewRenderingContext extends ViewRenderingContext {
     constructor() {
@@ -18,12 +18,26 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
          * @type {DeferredRenderingRequest[]}
          */
         this.buffer = [];
+
+        /** @type {import("../../utils/layout/rectangle").default} */
+        this.coords = undefined;
+    }
+
+    /**
+     * Must be called when a view's render() method is entered
+     *
+     * @param {import("../view").default} view
+     * @param {import("../../utils/layout/rectangle").default} coords View coordinates
+     *      inside the padding.
+     */
+    pushView(view, coords) {
+        this.coords = coords;
     }
 
     /**
      *
-     * @param {import("../marks/mark").default} mark
-     * @param {import("./view").RenderingOptions} options
+     * @param {import("../../marks/mark").default} mark
+     * @param {import("../view").RenderingOptions} options
      */
     renderMark(mark, options) {
         this.buffer.push({
@@ -44,7 +58,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
             // Change program, set common uniforms (mark properties, shared domains)
             mark.prepareRender();
 
-            /** @type {import("../utils/layout/rectangle").default} */
+            /** @type {import("../../utils/layout/rectangle").default} */
             let previousCoords;
             for (const request of requestByMark.get(mark)) {
                 // Render each facet
