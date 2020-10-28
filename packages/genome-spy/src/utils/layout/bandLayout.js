@@ -16,6 +16,8 @@ import IntervalCollection from "../intervalCollection";
  * TODO: Collapsed bands
  * TODO: Reordering by dragging
  * TODO: Unit test
+ *
+ * @deprecated
  */
 export default class BandLayout {
     constructor() {

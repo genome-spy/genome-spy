@@ -67,14 +67,6 @@ export class SampleAttributePanel extends ConcatView {
      * @param {import("./view").DeferredRenderingRequest[]} [deferBuffer]
      */
     render(coords, options, deferBuffer) {
-        // Fugly hack. TODO: Figure out a systematic phase for doing this
-        /*
-        if (!this._labelsUpdated) {
-            this.updateData();
-            this._labelsUpdated = true;
-        }
-        */
-
         for (const sampleLocation of this.parent.getSampleLocations()) {
             super.render(
                 coords,
@@ -98,10 +90,9 @@ export class SampleAttributePanel extends ConcatView {
 
         for (const view of addedChildViews) {
             if (view instanceof UnitView) {
+                // TODO: Move initialization to viewUtils
                 view.resolve();
-                //view.mark.initializeData();
                 view.mark.initializeEncoders();
-                //view.mark.updateGraphicsData();
                 view.updateData();
                 // Async:
                 view.mark.initializeGraphics();
