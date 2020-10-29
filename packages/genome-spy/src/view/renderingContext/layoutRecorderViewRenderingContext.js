@@ -51,10 +51,10 @@ export default class LayoutRecorderViewRenderingContext extends ViewRenderingCon
      */
     popView(view) {
         this.stack.pop();
+    }
 
-        if (this.stack.length <= 0) {
-            console.log(this.root);
-        }
+    getLayout() {
+        return this.root;
     }
 }
 
@@ -86,5 +86,23 @@ class ViewCoords {
         }
 
         this.children.push(viewCoords);
+    }
+
+    /**
+     * Broadcasts a message to views that include the given (x, y) point.
+     * This is mainly intended for mouse events.
+     *
+     * @param {number} x
+     * @param {number} y
+     * @param {import("../view").BroadcastMessage} message
+     */
+    broadcastMouseEvent(x, y, message) {
+        if (this.coords.containsPoint(x, y)) {
+            this.view.handleMouseEvent(this.coords, message);
+        }
+
+        for (const child of this.children) {
+            child.broadcastMouseEvent(x, y, message);
+        }
     }
 }

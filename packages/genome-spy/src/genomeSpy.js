@@ -272,7 +272,17 @@ export default class GenomeSpy {
             unitViews.forEach(view => view.mark.initializeEncoders());
             unitViews.forEach(view => view.mark.updateGraphicsData());
 
-            this.zoom = new Zoom(e => this.broadcast("zoom", e));
+            this.zoom = new Zoom(e => {
+                // TODO: Refactor mouse handling. Propagate raw events, mimic DOM.
+                // Zooms and other behaviors should be handled at view levels.
+                if (this.layout) {
+                    this.layout.broadcastMouseEvent(e.mouseX, e.mouseY, {
+                        type: "zoom",
+                        payload: e
+                    });
+                }
+            });
+
             this.zoom.attachZoomEvents(this._glHelper.canvas);
 
             await graphicsInitialized;
@@ -293,6 +303,7 @@ export default class GenomeSpy {
     }
 
     renderAll() {
+        // TODO: Move gl stuff to renderingContext
         const gl = this._glHelper.gl;
         gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -314,6 +325,8 @@ export default class GenomeSpy {
         );
 
         deferredContext.renderDeferred();
+
+        this.layout = layoutRecorder.getLayout();
     }
 }
 

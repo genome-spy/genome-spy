@@ -115,6 +115,17 @@ export default class View {
     }
 
     /**
+     * Handles a broadcast message that is intended for the whole view hierarchy.
+     *
+     * @param {import("../utils/layout/rectangle").default} coords Coordinates
+     *      of the receiving view
+     * @param {BroadcastMessage} message
+     */
+    handleMouseEvent(coords, message) {
+        // override
+    }
+
+    /**
      *
      * @param {string} type
      * @param {function(BroadcastMessage):void} handler

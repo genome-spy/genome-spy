@@ -97,18 +97,6 @@ export default class AxisWrapperView extends ContainerView {
         /** @type {Set<PositionalChannel>} */
         this._requestedAxisUpdates = new Set();
 
-        this._addBroadcastHandler("zoom", message => {
-            const zoomEvent =
-                /** @type {import("../utils/zoom").ZoomEvent} */ (message.payload);
-
-            if (
-                this._coords &&
-                this._coords.containsPoint(zoomEvent.mouseX, zoomEvent.mouseY)
-            ) {
-                this._handleZoom(zoomEvent);
-            }
-        });
-
         this._addBroadcastHandler("layout", () => this.requestAxisUpdate());
     }
 
@@ -412,10 +400,24 @@ export default class AxisWrapperView extends ContainerView {
     }
 
     /**
+     * @param {import("../utils/layout/rectangle").default} coords Coordinates
+     *      of the receiving view
+     * @param {BroadcastMessage} message
+     */
+    handleMouseEvent(coords, message) {
+        if (message.type == "zoom") {
+            const zoomEvent =
+                /** @type {import("../utils/zoom").ZoomEvent} */ (message.payload);
+            this._handleZoom(coords, zoomEvent);
+        }
+    }
+
+    /**
      *
+     * @param {import("../utils/layout/rectangle").default} coords Coordinates
      * @param {import("../utils/zoom").ZoomEvent} zoomEvent
      */
-    _handleZoom(zoomEvent) {
+    _handleZoom(coords, zoomEvent) {
         /** @type {Record<string, Set<import("./resolution").default>>} */
         const resolutions = {
             x: new Set(),
@@ -439,9 +441,16 @@ export default class AxisWrapperView extends ContainerView {
                 continue;
             }
 
-            const coords = this._childCoords;
-            const p = coords.normalizePoint(zoomEvent.mouseX, zoomEvent.mouseY);
-            const tp = coords.normalizePoint(
+            const extents = this._getAxisExtents();
+            const childCoords = coords.shrink(
+                extents.add(this._getAxisOffsets())
+            );
+
+            const p = childCoords.normalizePoint(
+                zoomEvent.mouseX,
+                zoomEvent.mouseY
+            );
+            const tp = childCoords.normalizePoint(
                 zoomEvent.mouseX + zoomEvent.deltaX,
                 zoomEvent.mouseY + zoomEvent.deltaY
             );
