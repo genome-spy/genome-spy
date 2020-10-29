@@ -64,7 +64,7 @@ export default class WebGLHelper {
     }
 
     render() {
-        this._emit("beforerender");
+        this._emit("resize");
         this._emit("render");
     }
 
@@ -163,7 +163,7 @@ export default class WebGLHelper {
     }
 
     /**
-     * @param {"render"|"beforerender"} eventType
+     * @param {"render"|"resize"} eventType
      * @param {function} listener
      */
     addEventListener(eventType, listener) {

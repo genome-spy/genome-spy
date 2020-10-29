@@ -52,15 +52,18 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      * changes.
      */
     renderDeferred() {
-        const requestByMark = group(this.buffer, request => request.mark);
+        if (!this.requestByMark) {
+            // Store for subsequent renderings
+            this.requestByMark = group(this.buffer, request => request.mark);
+        }
 
-        for (const mark of requestByMark.keys()) {
+        for (const mark of this.requestByMark.keys()) {
             // Change program, set common uniforms (mark properties, shared domains)
             mark.prepareRender();
 
             /** @type {import("../../utils/layout/rectangle").default} */
             let previousCoords;
-            for (const request of requestByMark.get(mark)) {
+            for (const request of this.requestByMark.get(mark)) {
                 // Render each facet
                 if (!request.coords.equals(previousCoords)) {
                     mark.setViewport(request.coords);

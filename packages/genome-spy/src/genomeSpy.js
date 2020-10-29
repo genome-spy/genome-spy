@@ -151,12 +151,8 @@ export default class GenomeSpy {
 
     _prepareContainer() {
         this._glHelper = new WebGLHelper(this.container);
-        this._glHelper.addEventListener("beforerender", () =>
-            this.broadcast("layout")
-        );
-        this._glHelper.addEventListener("render", () => {
-            this.renderAll();
-        });
+        this._glHelper.addEventListener("resize", () => this.computeLayout());
+        this._glHelper.addEventListener("render", () => this.renderAll());
 
         this.loadingMessageElement = document.createElement("div");
         this.loadingMessageElement.className = "loading-message";
@@ -291,9 +287,11 @@ export default class GenomeSpy {
 
             this.registerMouseEvents();
 
+            this.computeLayout();
+
             await graphicsInitialized;
 
-            this._glHelper.render();
+            this.renderAll();
 
             return this;
         } catch (reason) {
@@ -333,10 +331,8 @@ export default class GenomeSpy {
         canvas.addEventListener("dragstart", event => event.stopPropagation());
     }
 
-    renderAll() {
-        // TODO: Move gl stuff to renderingContext
-        const gl = this._glHelper.gl;
-        gl.clear(gl.COLOR_BUFFER_BIT);
+    computeLayout() {
+        this.broadcast("layout");
 
         const canvasSize = this._glHelper.getLogicalCanvasSize();
         const root = this.viewRoot;
@@ -347,17 +343,26 @@ export default class GenomeSpy {
                 ? canvasSize[c]
                 : root.getSize()[c].px) || canvasSize[c];
 
-        const deferredContext = new DeferredViewRenderingContext();
+        this.deferredContext = new DeferredViewRenderingContext();
         const layoutRecorder = new LayoutRecorderViewRenderingContext();
 
         root.render(
-            new CompositeViewRenderingContext(deferredContext, layoutRecorder),
+            new CompositeViewRenderingContext(
+                this.deferredContext,
+                layoutRecorder
+            ),
             new Rectangle(0, 0, getComponent("width"), getComponent("height"))
         );
 
-        deferredContext.renderDeferred();
-
         this.layout = layoutRecorder.getLayout();
+    }
+
+    renderAll() {
+        // TODO: Move gl stuff to renderingContext
+        const gl = this._glHelper.gl;
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        this.deferredContext.renderDeferred();
     }
 }
 
