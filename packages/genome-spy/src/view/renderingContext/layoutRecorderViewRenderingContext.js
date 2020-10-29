@@ -58,6 +58,10 @@ export default class LayoutRecorderViewRenderingContext extends ViewRenderingCon
     }
 }
 
+/**
+ * Represents coordinates of view instances. Faceted views objects may have
+ * been rendered at multiple locations.
+ */
 class ViewCoords {
     /**
      * @param {View} view
@@ -92,17 +96,30 @@ class ViewCoords {
      * Broadcasts a message to views that include the given (x, y) point.
      * This is mainly intended for mouse events.
      *
-     * @param {number} x
-     * @param {number} y
-     * @param {import("../view").BroadcastMessage} message
+     * @param {import("../../utils/interactionEvent").default} event
      */
-    broadcastMouseEvent(x, y, message) {
-        if (this.coords.containsPoint(x, y)) {
-            this.view.handleMouseEvent(this.coords, message);
-        }
+    dispatchInteractionEvent(event) {
+        if (this.coords.containsPoint(event.point.x, event.point.y)) {
+            this.view.handleInteractionEvent(this.coords, event, true);
+            if (event.stopped) {
+                return;
+            }
 
-        for (const child of this.children) {
-            child.broadcastMouseEvent(x, y, message);
+            if (this.children.length == 0) {
+                event.target = this.view;
+            } else {
+                for (const child of this.children) {
+                    child.dispatchInteractionEvent(event);
+                    if (event.target) {
+                        break;
+                    }
+                    if (event.stopped) {
+                        return;
+                    }
+                }
+            }
+
+            this.view.handleInteractionEvent(this.coords, event, false);
         }
     }
 }

@@ -3,6 +3,7 @@ import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { DataGroup } from "../data/group";
+import { getCachedOrCall } from "../utils/propertyCacher";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -76,10 +77,13 @@ export default class View {
      * @returns {FlexDimensions}
      */
     getSize() {
-        // TODO: reconsider the default
         return new FlexDimensions(
-            (this.spec.width && parseSizeDef(this.spec.width)) || { grow: 1 },
-            (this.spec.height && parseSizeDef(this.spec.height)) || { grow: 1 }
+            (this.spec.width && parseSizeDef(this.spec.width)) || {
+                grow: 1
+            },
+            (this.spec.height && parseSizeDef(this.spec.height)) || {
+                grow: 1
+            }
         ).addPadding(this.getPadding());
     }
 
@@ -115,17 +119,6 @@ export default class View {
     }
 
     /**
-     * Handles a broadcast message that is intended for the whole view hierarchy.
-     *
-     * @param {import("../utils/layout/rectangle").default} coords Coordinates
-     *      of the receiving view
-     * @param {BroadcastMessage} message
-     */
-    handleMouseEvent(coords, message) {
-        // override
-    }
-
-    /**
      *
      * @param {string} type
      * @param {function(BroadcastMessage):void} handler
@@ -137,6 +130,18 @@ export default class View {
             this._broadcastHandlers[type] = handlers;
         }
         handlers.push(handler);
+    }
+
+    /**
+     * Handles an interactionEvent
+     *
+     * @param {import("../utils/layout/rectangle").default} coords
+     *      Coordinates of the view
+     * @param {import("../utils/interactionEvent").default} event
+     * @param {boolean} capturing
+     */
+    handleInteractionEvent(coords, event, capturing) {
+        // override
     }
 
     /**

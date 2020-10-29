@@ -36,6 +36,8 @@ import Rectangle from "./utils/layout/rectangle";
 import DeferredViewRenderingContext from "./view/renderingContext/deferredViewRenderingContext";
 import LayoutRecorderViewRenderingContext from "./view/renderingContext/layoutRecorderViewRenderingContext";
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext";
+import InteractionEvent from "./utils/interactionEvent";
+import Point from "./utils/layout/point";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -272,6 +274,7 @@ export default class GenomeSpy {
             unitViews.forEach(view => view.mark.initializeEncoders());
             unitViews.forEach(view => view.mark.updateGraphicsData());
 
+            /*
             this.zoom = new Zoom(e => {
                 // TODO: Refactor mouse handling. Propagate raw events, mimic DOM.
                 // Zooms and other behaviors should be handled at view levels.
@@ -284,6 +287,9 @@ export default class GenomeSpy {
             });
 
             this.zoom.attachZoomEvents(this._glHelper.canvas);
+            */
+
+            this.registerMouseEvents();
 
             await graphicsInitialized;
 
@@ -300,6 +306,31 @@ export default class GenomeSpy {
         } finally {
             this.container.classList.remove("loading");
         }
+    }
+
+    registerMouseEvents() {
+        const canvas = this._glHelper.canvas;
+
+        ["mousedown", "wheel", "click", "mousemove", "gesturechange"].forEach(
+            type =>
+                canvas.addEventListener(type, event => {
+                    if (this.layout && event instanceof MouseEvent) {
+                        // Adapted from: https://github.com/d3/d3-selection/blob/master/src/point.js
+                        const rect = canvas.getBoundingClientRect();
+                        const point = new Point(
+                            event.clientX - rect.left - canvas.clientLeft,
+                            event.clientY - rect.top - canvas.clientTop
+                        );
+
+                        this.layout.dispatchInteractionEvent(
+                            new InteractionEvent(point, event)
+                        );
+                    }
+                })
+        );
+
+        // Prevent text selections etc while dragging
+        canvas.addEventListener("dragstart", event => event.stopPropagation());
     }
 
     renderAll() {

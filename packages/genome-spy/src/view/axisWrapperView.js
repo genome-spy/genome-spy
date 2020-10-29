@@ -66,6 +66,13 @@ function slot2dimension(slot) {
  * @typedef {import("../spec/axis").AxisOrient} AxisOrient
  *
  * @typedef {Axis & { extent: number }} AugmentedAxis
+ *
+ * @typedef {object} ZoomEvent
+ * @prop {number} x
+ * @prop {number} y
+ * @prop {number} xDelta
+ * @prop {number} yDelta
+ * @prop {number} zDelta
  */
 export default class AxisWrapperView extends ContainerView {
     /**
@@ -400,24 +407,83 @@ export default class AxisWrapperView extends ContainerView {
     }
 
     /**
-     * @param {import("../utils/layout/rectangle").default} coords Coordinates
-     *      of the receiving view
-     * @param {BroadcastMessage} message
+     * @param {import("../utils/layout/rectangle").default} coords
+     *      Coordinates of the view
+     * @param {import("../utils/interactionEvent").default} event
+     * @param {boolean} capturing
      */
-    handleMouseEvent(coords, message) {
-        if (message.type == "zoom") {
-            const zoomEvent =
-                /** @type {import("../utils/zoom").ZoomEvent} */ (message.payload);
-            this._handleZoom(coords, zoomEvent);
+    handleInteractionEvent(coords, event, capturing) {
+        // TODO: Allow for registering listeners
+
+        if (!capturing) {
+            return;
+        }
+
+        if (!this.isZoomable()) {
+            return;
+        }
+
+        // TODO: Extract a class or something
+
+        if (event.type == "wheel") {
+            event.uiEvent.preventDefault(); // TODO: Only if there was something to zoom
+
+            const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+            const wheelMultiplier = mouseEvent.deltaMode ? 120 : 1;
+
+            this.context.genomeSpy.renderAll(); // TODO: context.requestRender() or something
+            if (Math.abs(mouseEvent.deltaX) < Math.abs(mouseEvent.deltaY)) {
+                this._handleZoom(coords, {
+                    x: event.point.x,
+                    y: event.point.y,
+                    xDelta: 0,
+                    yDelta: 0,
+                    zDelta: (mouseEvent.deltaY * wheelMultiplier) / 300
+                });
+            } else {
+                this._handleZoom(coords, {
+                    x: event.point.x,
+                    y: event.point.y,
+                    xDelta: -mouseEvent.deltaX * wheelMultiplier,
+                    yDelta: 0,
+                    zDelta: 0
+                });
+            }
+        } else if (event.type == "mousedown" && event.uiEvent.button === 0) {
+            const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+            mouseEvent.preventDefault();
+
+            let prevMouseEvent = mouseEvent;
+
+            const onMousemove = /** @param {MouseEvent} moveEvent */ moveEvent => {
+                this._handleZoom(coords, {
+                    x: prevMouseEvent.clientX,
+                    y: prevMouseEvent.clientY,
+                    xDelta: moveEvent.clientX - prevMouseEvent.clientX,
+                    yDelta: moveEvent.clientY - prevMouseEvent.clientY,
+                    zDelta: 0
+                });
+
+                prevMouseEvent = moveEvent;
+            };
+
+            const onMouseup = /** @param {MouseEvent} upEvent */ upEvent => {
+                document.removeEventListener("mousemove", onMousemove);
+                document.removeEventListener("mouseup", onMouseup);
+            };
+
+            document.addEventListener("mouseup", onMouseup, false);
+            document.addEventListener("mousemove", onMousemove, false);
         }
     }
 
-    /**
-     *
-     * @param {import("../utils/layout/rectangle").default} coords Coordinates
-     * @param {import("../utils/zoom").ZoomEvent} zoomEvent
-     */
-    _handleZoom(coords, zoomEvent) {
+    isZoomable() {
+        return Object.values(this._getZoomableResolutions()).some(
+            set => set.size
+        );
+    }
+
+    _getZoomableResolutions() {
         /** @type {Record<string, Set<import("./resolution").default>>} */
         const resolutions = {
             x: new Set(),
@@ -436,7 +502,18 @@ export default class AxisWrapperView extends ContainerView {
             }
         });
 
-        for (const [channel, resolutionSet] of Object.entries(resolutions)) {
+        return resolutions;
+    }
+
+    /**
+     *
+     * @param {import("../utils/layout/rectangle").default} coords Coordinates
+     * @param {ZoomEvent} zoomEvent
+     */
+    _handleZoom(coords, zoomEvent) {
+        for (const [channel, resolutionSet] of Object.entries(
+            this._getZoomableResolutions()
+        )) {
             if (resolutionSet.size <= 0) {
                 continue;
             }
@@ -446,13 +523,10 @@ export default class AxisWrapperView extends ContainerView {
                 extents.add(this._getAxisOffsets())
             );
 
-            const p = childCoords.normalizePoint(
-                zoomEvent.mouseX,
-                zoomEvent.mouseY
-            );
+            const p = childCoords.normalizePoint(zoomEvent.x, zoomEvent.y);
             const tp = childCoords.normalizePoint(
-                zoomEvent.mouseX + zoomEvent.deltaX,
-                zoomEvent.mouseY + zoomEvent.deltaY
+                zoomEvent.x + zoomEvent.xDelta,
+                zoomEvent.y + zoomEvent.yDelta
             );
 
             const delta = {
@@ -462,11 +536,11 @@ export default class AxisWrapperView extends ContainerView {
 
             for (const resolution of resolutionSet) {
                 resolution.zoom(
-                    2 ** (-zoomEvent.deltaY / 200),
+                    2 ** zoomEvent.zDelta,
                     channel == "y"
                         ? 1 - p[/** @type {PositionalChannel} */ (channel)]
                         : p[/** @type {PositionalChannel} */ (channel)],
-                    channel == "x" ? delta.x : 0
+                    channel == "x" ? delta.x : -delta.y
                 );
 
                 resolution.views.forEach(view =>
