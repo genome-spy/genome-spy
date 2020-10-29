@@ -67,8 +67,6 @@ export class SampleAttributePanel extends ConcatView {
      * @param {import("./view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
-        context.pushView(this, coords);
-
         for (const sampleLocation of this.parent.getSampleLocations()) {
             super.render(context, coords, {
                 ...options,
@@ -79,8 +77,6 @@ export class SampleAttributePanel extends ConcatView {
                 facetId: sampleLocation.sampleId
             });
         }
-
-        context.popView(this);
     }
 
     setupAttributeViews() {

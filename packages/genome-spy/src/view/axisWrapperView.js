@@ -272,7 +272,7 @@ export default class AxisWrapperView extends ContainerView {
      */
     render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
-        context.pushView(this);
+        context.pushView(this, coords);
 
         const extents = this._getAxisExtents();
         const childCoords = coords.shrink(extents.add(this._getAxisOffsets()));
