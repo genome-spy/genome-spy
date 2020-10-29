@@ -41,3 +41,14 @@ export function asArray(obj) {
         return [];
     }
 }
+
+/**
+ * Returns the last element of an array.
+ * Like vega-util's peek but with stricter typings
+ *
+ * @param {T[]} arr
+ * @template T
+ */
+export function peek(arr) {
+    return arr[arr.length - 1];
+}

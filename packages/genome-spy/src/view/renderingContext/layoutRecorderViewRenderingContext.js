@@ -1,3 +1,4 @@
+import { peek } from "../../utils/arrayUtils";
 import ViewRenderingContext from "./viewRenderingContext";
 
 /**
@@ -86,12 +87,4 @@ class ViewCoords {
 
         this.children.push(viewCoords);
     }
-}
-
-/**
- * @param {T[]} arr
- * @template T
- */
-function peek(arr) {
-    return arr[arr.length - 1];
 }
