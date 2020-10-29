@@ -431,7 +431,6 @@ export default class AxisWrapperView extends ContainerView {
             const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
             const wheelMultiplier = mouseEvent.deltaMode ? 120 : 1;
 
-            this.context.genomeSpy.renderAll(); // TODO: context.requestRender() or something
             if (Math.abs(mouseEvent.deltaX) < Math.abs(mouseEvent.deltaY)) {
                 this._handleZoom(coords, {
                     x: event.point.x,
