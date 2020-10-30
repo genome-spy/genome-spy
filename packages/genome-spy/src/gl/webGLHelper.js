@@ -61,6 +61,8 @@ export default class WebGLHelper {
 
         // TODO: Observe devicePixelRatio
         // https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio#Monitoring_screen_resolution_or_zoom_level_changes
+
+        this.dpr = window.devicePixelRatio;
     }
 
     render() {

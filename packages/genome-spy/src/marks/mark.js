@@ -355,7 +355,7 @@ export default class Mark {
 
         twgl.setUniforms(this.programInfo, {
             ONE: 1.0, // a hack needed by emulated 64 bit floats
-            uDevicePixelRatio: window.devicePixelRatio
+            uDevicePixelRatio: this.glHelper.dpr
         });
 
         if (this.opaque) {
@@ -416,7 +416,7 @@ export default class Mark {
      * @param {import("../utils/layout/rectangle").default} coords
      */
     setViewport(coords) {
-        const dpr = window.devicePixelRatio;
+        const dpr = this.glHelper.dpr;
         const gl = this.gl;
         const props = this.properties;
 
@@ -485,8 +485,9 @@ export default class Mark {
         }
 
         // TODO: Optimization: Use uniform buffer object
+        twgl.setUniforms(this.programInfo, uniforms);
+
         twgl.setUniforms(this.programInfo, {
-            ...uniforms,
             uViewportSize: [coords.width, coords.height]
         });
     }
