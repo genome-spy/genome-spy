@@ -52,25 +52,38 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      * changes.
      */
     renderDeferred() {
-        if (!this.requestByMark) {
-            // Store for subsequent renderings
-            this.requestByMark = group(this.buffer, request => request.mark);
+        if (!this.pipeline) {
+            /**
+             * Store the operations as a linear pipeline for cheap subsequent rendering.
+             *
+             * @type {(function():void)[]}
+             */
+            this.pipeline = [];
+
+            const requestByMark = group(this.buffer, request => request.mark);
+
+            for (const [mark, requests] of requestByMark.entries()) {
+                // Change program, set common uniforms (mark properties, shared domains)
+                this.pipeline.push(() => mark.prepareRender());
+
+                /** @type {import("../../utils/layout/rectangle").default} */
+                let previousCoords;
+                for (const request of requests) {
+                    const coords = request.coords;
+                    const options = request.options;
+                    // Render each facet
+                    if (!coords.equals(previousCoords)) {
+                        this.pipeline.push(() => mark.setViewport(coords));
+                    }
+                    this.pipeline.push(() => mark.render(options));
+                    previousCoords = request.coords;
+                }
+            }
         }
 
-        for (const mark of this.requestByMark.keys()) {
-            // Change program, set common uniforms (mark properties, shared domains)
-            mark.prepareRender();
-
-            /** @type {import("../../utils/layout/rectangle").default} */
-            let previousCoords;
-            for (const request of this.requestByMark.get(mark)) {
-                // Render each facet
-                if (!request.coords.equals(previousCoords)) {
-                    mark.setViewport(request.coords);
-                }
-                mark.render(request.options);
-                previousCoords = request.coords;
-            }
+        // Execute the pipeline
+        for (const op of this.pipeline) {
+            op();
         }
     }
 }
