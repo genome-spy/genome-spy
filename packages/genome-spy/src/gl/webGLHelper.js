@@ -39,7 +39,7 @@ export default class WebGLHelper {
         }
 
         // TODO: Configurable
-        gl.clearColor(1, 1, 1, 1);
+        gl.clearColor(0, 0, 0, 0);
         // TODO: view background: https://vega.github.io/vega-lite/docs/spec.html#view-background
 
         // Always use pre-multiplied alpha
