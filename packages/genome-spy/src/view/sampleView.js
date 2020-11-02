@@ -5,7 +5,7 @@ import { mapToPixelCoords } from "../utils/layout/flexLayout";
 import AxisWrapperView from "./axisWrapperView";
 import DataSource from "../data/dataSource";
 import { SampleAttributePanel } from "./sampleAttributePanel";
-import SampleHandler from "../sampleHandler";
+import SampleHandler from "../sampleHandler/sampleHandler";
 
 /**
  * Implements faceting of multiple samples. The samples are displayed
@@ -105,7 +105,7 @@ export default class SampleView extends ContainerView {
     }
 
     getSampleLocations() {
-        const sampleIds = this.sampleHandler.sampleOrder;
+        const sampleIds = this.sampleHandler.getSampleIds();
 
         const locations = mapToPixelCoords(
             sampleIds.map(d => ({ grow: 1 })),

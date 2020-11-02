@@ -309,22 +309,28 @@ export default class GenomeSpy {
     registerMouseEvents() {
         const canvas = this._glHelper.canvas;
 
-        ["mousedown", "wheel", "click", "mousemove", "gesturechange"].forEach(
-            type =>
-                canvas.addEventListener(type, event => {
-                    if (this.layout && event instanceof MouseEvent) {
-                        // Adapted from: https://github.com/d3/d3-selection/blob/master/src/point.js
-                        const rect = canvas.getBoundingClientRect();
-                        const point = new Point(
-                            event.clientX - rect.left - canvas.clientLeft,
-                            event.clientY - rect.top - canvas.clientTop
-                        );
+        [
+            "mousedown",
+            "wheel",
+            "click",
+            "mousemove",
+            "gesturechange",
+            "contextmenu"
+        ].forEach(type =>
+            canvas.addEventListener(type, event => {
+                if (this.layout && event instanceof MouseEvent) {
+                    // Adapted from: https://github.com/d3/d3-selection/blob/master/src/point.js
+                    const rect = canvas.getBoundingClientRect();
+                    const point = new Point(
+                        event.clientX - rect.left - canvas.clientLeft,
+                        event.clientY - rect.top - canvas.clientTop
+                    );
 
-                        this.layout.dispatchInteractionEvent(
-                            new InteractionEvent(point, event)
-                        );
-                    }
-                })
+                    this.layout.dispatchInteractionEvent(
+                        new InteractionEvent(point, event)
+                    );
+                }
+            })
         );
 
         // Prevent text selections etc while dragging

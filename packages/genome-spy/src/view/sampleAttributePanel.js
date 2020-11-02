@@ -1,11 +1,13 @@
 import { field as vegaField } from "vega-util";
 import { inferType } from "vega-loader";
+import { format as d3format } from "d3-format";
 
 import { DataGroup } from "../data/group";
 import ConcatView from "./concatView";
 import UnitView from "./unitView";
 import { getCachedOrCall } from "../utils/propertyCacher";
-import { sortByAttribute } from "../sampleHandler";
+import * as Actions from "../sampleHandler/sampleHandlerActions";
+import contextMenu from "../contextMenu";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -17,6 +19,7 @@ const FieldType = {
 /**
  * This special-purpose class takes care of rendering sample labels and metadata.
  *
+ * @typedef {import("../sampleHandler/sampleHandler").Sample} Sample
  * @typedef {import("./view").default} View
  */
 export class SampleAttributePanel extends ConcatView {
@@ -45,7 +48,7 @@ export class SampleAttributePanel extends ConcatView {
         // SampleView maintains the sample data
         return new DataGroup(
             "sample attributes",
-            this.sampleHandler.sampleData
+            this.sampleHandler.allSamples
         );
     }
 
@@ -95,14 +98,9 @@ export class SampleAttributePanel extends ConcatView {
      */
     handleInteractionEvent(coords, event, capturing) {
         // TODO: Allow for registering listeners
-        if (!capturing && event.type == "click") {
-            const attribute = event.target.name.match(/attribute-(.*)/)[1];
-            this.sampleHandler.handleAction(sortByAttribute(attribute));
+        if (!capturing && event.type == "contextmenu") {
+            this.createContextMenu("123", event.target, event.uiEvent);
         }
-
-        // TODO: Abstract this stuff
-        this.context.genomeSpy.computeLayout();
-        this.context.genomeSpy.renderAll();
     }
 
     setupAttributeViews() {
@@ -136,7 +134,7 @@ export class SampleAttributePanel extends ConcatView {
 
     _getAttributeNames() {
         return getCachedOrCall(this, "attributeNames", () => {
-            const samples = this.sampleHandler.sampleData;
+            const samples = this.sampleHandler.allSamples;
 
             // Find all attributes
             const attributes = samples
@@ -154,7 +152,7 @@ export class SampleAttributePanel extends ConcatView {
      * Builds views for attributes
      */
     _createAttributeViewSpecs() {
-        const samples = this.sampleHandler.sampleData;
+        const samples = this.sampleHandler.allSamples;
 
         return this._getAttributeNames().map(attributeName => {
             const attributeDef = this._getAttributeDef(attributeName);
@@ -193,6 +191,148 @@ export class SampleAttributePanel extends ConcatView {
         return this.children[this._getAttributeNames().indexOf(attribute) + 1];
     }
 
+    /**
+     *
+     * @param {Sample} sample
+     * @param {View} view
+     * @param {MouseEvent} mouseEvent
+     */
+    createContextMenu(sample, view, mouseEvent) {
+        /** @type {import("../contextMenu").MenuItem[]} */
+        let items = [];
+
+        const attribute = getAttributeForView(view);
+        const attributeValue = 123;
+
+        if (!sample) {
+            mouseEvent.preventDefault();
+            return;
+        }
+
+        /** @param {any} action */
+        const submit = action => {
+            this.sampleHandler.handleAction(action);
+
+            // TODO: Abstract this stuff
+            this.context.genomeSpy.computeLayout();
+            this.context.genomeSpy.renderAll();
+        };
+
+        if (attribute) {
+            // TODO: Does not work with missing values
+            const nominal = false; //typeof attributeValue == "string";
+
+            items = items.concat([
+                {
+                    label: `Attribute: ${attribute}`,
+                    type: "header"
+                },
+                {
+                    label: "Sort by",
+                    callback: () => submit(Actions.sortByAttribute(attribute))
+                }
+            ]);
+
+            if (nominal) {
+                items.push({
+                    label: "Retain first sample of each",
+                    callback: () => submit(Actions.retainFirstOfEach(attribute))
+                });
+            }
+
+            if (nominal) {
+                items = items.concat([
+                    {
+                        type: "divider"
+                    },
+                    {
+                        label:
+                            attributeValue !== null
+                                ? `Samples with undefined ${attribute}`
+                                : `Samples with ${attribute} = ${attributeValue}`,
+                        type: "header"
+                    },
+                    {
+                        label: "Retain",
+                        callback: () => alert("TODO")
+                    },
+                    {
+                        label: "Remove",
+                        callback: () => alert("TODO")
+                    }
+                ]);
+            } else {
+                const numberFormat = d3format(".4");
+
+                items = items.concat([{ type: "divider" }]);
+
+                if (isDefined(attributeValue)) {
+                    items = items.concat([
+                        {
+                            label: `Remove ${attribute} less than ${numberFormat(
+                                attributeValue
+                            )}`,
+                            callback: () =>
+                                submit(
+                                    Actions.filterByQuantitativeAttribute(
+                                        attribute,
+                                        "gte",
+                                        attributeValue
+                                    )
+                                )
+                        },
+                        {
+                            label: `Remove ${attribute} greater than ${numberFormat(
+                                attributeValue
+                            )}`,
+                            callback: () =>
+                                submit(
+                                    Actions.filterByQuantitativeAttribute(
+                                        attribute,
+                                        "lte",
+                                        attributeValue
+                                    )
+                                )
+                        }
+                    ]);
+                } else {
+                    items = items.concat([
+                        {
+                            label: `Remove undefined ${attribute}`,
+                            callback: () =>
+                                submit(
+                                    Actions.filterByUndefinedAttribute(
+                                        attribute
+                                    )
+                                )
+                        }
+                    ]);
+                }
+            }
+        } else {
+            items = items.concat([
+                {
+                    label: "Sort by name",
+                    callback: () => submit(Actions.sortByName())
+                },
+                {
+                    label: `Sample: ${sample.displayName}`,
+                    type: "header"
+                },
+                {
+                    label: "Retain",
+                    callback: () => alert("TODO")
+                },
+                {
+                    label: "Remove",
+                    callback: () => alert("TODO")
+                }
+            ]);
+        }
+
+        contextMenu({ items }, mouseEvent);
+    }
+
     getDefaultResolution(channel) {
         return "independent";
     }
@@ -211,6 +351,13 @@ function locationsToTextureData(locations) {
         arr[i++] = location.size;
     }
     return arr;
+}
+
+/**
+ * @param {View} view
+ */
+function getAttributeForView(view) {
+    return view.name.match(/attribute-(.*)/)[1];
 }
 
 /**
@@ -273,4 +420,17 @@ function createLabelViewSpec() {
     };
 
     return titleSpec;
+}
+
+/**
+ *
+ * @param {any} value
+ */
+function isDefined(value) {
+    return (
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        !(typeof value == "number" && isNaN(value))
+    );
 }
