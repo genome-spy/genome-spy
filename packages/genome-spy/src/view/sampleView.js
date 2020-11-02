@@ -5,6 +5,7 @@ import { mapToPixelCoords } from "../utils/layout/flexLayout";
 import AxisWrapperView from "./axisWrapperView";
 import DataSource from "../data/dataSource";
 import { SampleAttributePanel } from "./sampleAttributePanel";
+import SampleHandler from "../sampleHandler";
 
 /**
  * Implements faceting of multiple samples. The samples are displayed
@@ -14,11 +15,6 @@ import { SampleAttributePanel } from "./sampleAttributePanel";
  * @typedef {import("./view").default} View
  * @typedef {import("./layerView").default} LayerView
  *
- * @typedef {Object} Sample
- * @prop {string} id
- * @prop {string} displayName
- * @prop {number} indexNumber For internal user, mainly for shaders
- * @prop {Object[]} attributes Arbitrary sample specific attributes
  */
 export default class SampleView extends ContainerView {
     /**
@@ -40,6 +36,8 @@ export default class SampleView extends ContainerView {
             this,
             `sample`
         ));
+
+        this.sampleHandler = new SampleHandler();
 
         this.attributeView = new SampleAttributePanel(this);
     }
@@ -72,7 +70,7 @@ export default class SampleView extends ContainerView {
                 this.spec.samples.data,
                 this.context.genomeSpy.config.baseUrl
             );
-            this.updateSamples(
+            this.sampleHandler.setSamples(
                 processSamples(await sampleDataSource.getUngroupedData())
             );
         }
@@ -90,7 +88,7 @@ export default class SampleView extends ContainerView {
         if (!this.spec.samples.data) {
             const resolution = this.getResolution("sample");
             if (resolution) {
-                this.updateSamples(
+                this.sampleHandler.setSamples(
                     resolution.getDataDomain().map((s, i) => ({
                         id: s,
                         displayName: s,
@@ -106,40 +104,8 @@ export default class SampleView extends ContainerView {
         }
     }
 
-    /**
-     *
-     * @param {Sample[]} samples
-     */
-    updateSamples(samples) {
-        this.sampleData = samples;
-
-        /**
-         * A map of sample objects
-         *
-         * @type {Map<string, Sample>}
-         */
-        this.samples = new Map(samples.map(sample => [sample.id, sample]));
-
-        /**
-         * A mapping that specifies the order of the samples.
-         *
-         * TODO: Implement "SampleManager" with ordering, filtering and unit tests
-         *
-         * @type {string[]}
-         */
-        this.sampleOrder = samples.map(s => s.id);
-
-        /**
-         * Keep track of sample set mutations.
-         * TODO: Consider Redux
-         *
-         * @type {string[][]}
-         */
-        this.sampleOrderHistory = [[...this.sampleOrder]];
-    }
-
     getSampleLocations() {
-        const sampleIds = this.sampleOrder;
+        const sampleIds = this.sampleHandler.sampleOrder;
 
         const locations = mapToPixelCoords(
             sampleIds.map(d => ({ grow: 1 })),

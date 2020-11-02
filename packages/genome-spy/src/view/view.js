@@ -59,11 +59,6 @@ export default class View {
 
         /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
         this._broadcastHandlers = {};
-
-        this._addBroadcastHandler("layout", () => {
-            // Clear memoized coordinates
-            this._coords = undefined;
-        });
     }
 
     getPadding() {

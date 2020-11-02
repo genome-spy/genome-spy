@@ -1,10 +1,11 @@
-import { field, field as vegaField, isNumber } from "vega-util";
+import { field as vegaField } from "vega-util";
 import { inferType } from "vega-loader";
 
 import { DataGroup } from "../data/group";
-import createDomain from "../utils/domainArray";
 import ConcatView from "./concatView";
 import UnitView from "./unitView";
+import { getCachedOrCall } from "../utils/propertyCacher";
+import { sortByAttribute } from "../sampleHandler";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -36,9 +37,16 @@ export class SampleAttributePanel extends ConcatView {
         this.parent = sampleView;
     }
 
+    get sampleHandler() {
+        return this.parent.sampleHandler;
+    }
+
     getData() {
         // SampleView maintains the sample data
-        return new DataGroup("sample attributes", this.parent.sampleData);
+        return new DataGroup(
+            "sample attributes",
+            this.sampleHandler.sampleData
+        );
     }
 
     transformData() {
@@ -79,8 +87,26 @@ export class SampleAttributePanel extends ConcatView {
         }
     }
 
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     *      Coordinates of the view
+     * @param {import("../utils/interactionEvent").default} event
+     * @param {boolean} capturing
+     */
+    handleInteractionEvent(coords, event, capturing) {
+        // TODO: Allow for registering listeners
+        if (!capturing && event.type == "click") {
+            const attribute = event.target.name.match(/attribute-(.*)/)[1];
+            this.sampleHandler.handleAction(sortByAttribute(attribute));
+        }
+
+        // TODO: Abstract this stuff
+        this.context.genomeSpy.computeLayout();
+        this.context.genomeSpy.renderAll();
+    }
+
     setupAttributeViews() {
-        const addedChildViews = this.createAttributeViewSpecs().map(spec =>
+        const addedChildViews = this._createAttributeViewSpecs().map(spec =>
             this.addChild(spec)
         );
 
@@ -108,18 +134,29 @@ export class SampleAttributePanel extends ConcatView {
         );
     }
 
+    _getAttributeNames() {
+        return getCachedOrCall(this, "attributeNames", () => {
+            const samples = this.sampleHandler.sampleData;
+
+            // Find all attributes
+            const attributes = samples
+                .flatMap(sample => Object.keys(sample.attributes))
+                .reduce(
+                    (set, key) => set.add(key),
+                    /** @type {Set<string>} */ (new Set())
+                );
+
+            return [...attributes];
+        });
+    }
+
     /**
      * Builds views for attributes
      */
-    createAttributeViewSpecs() {
-        const samples = [...this.getData().flatData()];
+    _createAttributeViewSpecs() {
+        const samples = this.sampleHandler.sampleData;
 
-        // Find all attributes
-        const attributeNames = samples
-            .flatMap(sample => Object.keys(sample.attributes))
-            .reduce((set, key) => set.add(key), new Set());
-
-        return [...attributeNames].map(attributeName => {
+        return this._getAttributeNames().map(attributeName => {
             const attributeDef = this._getAttributeDef(attributeName);
 
             // Ensure that attributes have a type
@@ -144,6 +181,16 @@ export class SampleAttributePanel extends ConcatView {
                 type: fieldType
             });
         });
+    }
+
+    /**
+     * Returns the view that displays the given attribute.
+     *
+     * @param {string} attribute
+     */
+    _findViewForAttribute(attribute) {
+        // This is a bit fragile.. +1 is for skipping the sample lable
+        return this.children[this._getAttributeNames().indexOf(attribute) + 1];
     }
 
     getDefaultResolution(channel) {
@@ -171,15 +218,19 @@ function locationsToTextureData(locations) {
  * @param {import("../spec/view").SampleAttributeDef} attributeDef
  */
 function createAttributeSpec(attributeName, attributeDef) {
+    const field = `attributes["${attributeName}"]`;
+
     /** @type {import("./viewUtils").UnitSpec} */
     const attributeSpec = {
+        name: `attribute-${attributeName}`,
         width: attributeDef.width || 10,
+        transform: [{ type: "filter", expr: `datum.${field} != null` }],
         mark: {
             type: "rect"
         },
         encoding: {
             color: {
-                field: `attributes["${attributeName}"]`,
+                field,
                 type: attributeDef.type,
                 scale: attributeDef.colorScale
             }
