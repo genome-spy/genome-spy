@@ -95,6 +95,12 @@ export default class SampleHandler {
         return flattenedHierarchy;
     }
 
+    getSampleGroups() {
+        return /** @type {SampleGroup[]} */ (this.getFlattenedGroupHierarchy().map(
+            path => peek(path)
+        ));
+    }
+
     /**
      *
      * @param {string} attributeName
@@ -112,107 +118,44 @@ export default class SampleHandler {
      * @param {any} action
      */
     dispatch(action) {
-        /** @type {string[]} */
-        let newSamples;
+        /** @type {function(string[]):string[]} What to do for each group */
+        let operation;
 
         const accessor = this.getAttributeAccessor(action.attribute);
+
         if (action.type == Actions.SORT_BY_NAME) {
-            newSamples = sort(
-                this.samples,
-                sampleId => this.sampleAccessor(sampleId).displayName,
-                false
-            );
+            operation = samples =>
+                sort(
+                    samples,
+                    sampleId => this.sampleAccessor(sampleId).displayName,
+                    false
+                );
         } else if (action.type == Actions.SORT_BY_ATTRIBUTE) {
-            newSamples = sort(this.samples, accessor, false);
+            operation = samples => sort(samples, accessor, false);
         } else if (action.type == Actions.RETAIN_FIRST_OF_EACH) {
-            newSamples = retainFirstOfEach(this.samples, accessor);
+            operation = samples => retainFirstOfEach(samples, accessor);
         } else if (action.type == Actions.FILTER_BY_QUANTITATIVE_ATTRIBUTE) {
-            newSamples = filterQuantitative(
-                this.samples,
-                accessor,
-                action.operator,
-                action.operand
-            );
+            operation = samples =>
+                filterQuantitative(
+                    samples,
+                    accessor,
+                    action.operator,
+                    action.operand
+                );
         } else if (action.type == Actions.FILTER_BY_NOMINAL_ATTRIBUTE) {
-            newSamples = filterNominal(
-                this.samples,
-                accessor,
-                action.action,
-                action.values
-            );
+            operation = samples =>
+                filterNominal(samples, accessor, action.action, action.values);
         } else if (action.type == Actions.FILTER_BY_UNDEFINED_ATTRIBUTE) {
-            newSamples = filterUndefined(this.samples, accessor);
+            operation = samples => filterUndefined(samples, accessor);
         } else {
             throw new Error("Unknown action: " + JSON.stringify(action));
         }
 
-        if (newSamples) {
-            this._updateSamples(newSamples);
+        if (operation) {
+            for (const sampleGroup of this.getSampleGroups()) {
+                sampleGroup.samples = operation(sampleGroup.samples);
+            }
         }
-    }
-
-    /*
-    backtrackSamples() {
-        if (this.sampleOrderHistory.length > 1) {
-            this.sampleOrderHistory.pop();
-
-            const sampleIds = this.sampleOrderHistory[
-                this.sampleOrderHistory.length - 1
-            ];
-
-            const targetSampleScale = this.sampleScale.clone();
-            targetSampleScale.domain(sampleIds);
-
-            this.genomeSpy.eventEmitter.emit("samplesupdated");
-
-            this.animateSampleTransition(
-                this.sampleScale,
-                targetSampleScale,
-                true
-            ).then(() => {
-                this.sampleOrder = sampleIds;
-                this.sampleScale = targetSampleScale;
-                this.renderViewport();
-                this.attributePanel.renderLabels();
-            });
-        }
-    }
-    */
-
-    /**
-     * Updates the visible set of samples. Animates the transition.
-     *
-     * @param {string[]} samples
-     */
-    _updateSamples(samples) {
-        /*
-        // Do nothing if new samples equals the old samples
-        if (
-            shallowArrayEquals(
-                sampleIds,
-                this.sampleOrderHistory[this.sampleOrderHistory.length - 1]
-            )
-        ) {
-            return;
-        }
-
-
-        // If new samples appear to reverse the last action, backtrack in history
-        if (
-            this.sampleOrderHistory.length > 1 &&
-            shallowArrayEquals(
-                sampleIds,
-                this.sampleOrderHistory[this.sampleOrderHistory.length - 2]
-            )
-        ) {
-            this.sampleOrderHistory.pop();
-        } else {
-            this.sampleOrderHistory.push(sampleIds);
-        }
-        */
-
-        //this.sampleOrder = peek(this.sampleOrderHistory);
-        this.samples = samples;
     }
 }
 
@@ -231,6 +174,7 @@ export function isSampleGroup(group) {
 export function isGroupGroup(group) {
     return "groups" in group;
 }
+
 // ------------- TODO: own file for the following --------
 
 /**

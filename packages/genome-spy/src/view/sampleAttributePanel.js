@@ -267,6 +267,12 @@ export class SampleAttributePanel extends ConcatView {
 
         if (nominal) {
             items.push({
+                label: "Group by",
+                callback: () =>
+                    dispatch(Actions.groupByNominalAttribute(attribute))
+            });
+
+            items.push({
                 label: "Retain first sample of each",
                 callback: () => dispatch(Actions.retainFirstOfEach(attribute))
             });
@@ -274,6 +280,7 @@ export class SampleAttributePanel extends ConcatView {
 
         if (nominal) {
             items.push({ type: "divider" });
+
             items.push({
                 label:
                     attributeValue === null
