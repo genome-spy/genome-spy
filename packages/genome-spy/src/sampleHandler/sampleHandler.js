@@ -15,6 +15,11 @@ import { peek, shallowArrayEquals } from "../utils/arrayUtils";
  * @prop {Record<string, any>} attributes Arbitrary sample specific attributes
  *
  * @typedef {"lt" | "lte" | "eq" | "gte" | "gt"} ComparisonOperatorType
+ *
+ * @typedef {import("./sampleState").State} State
+ * @typedef {import("./sampleState").Group} Group
+ * @typedef {import("./sampleState").SampleGroup} SampleGroup
+ * @typedef {import("./sampleState").GroupGroup} GroupGroup
  */
 export default class SampleHandler {
     constructor() {
@@ -22,7 +27,7 @@ export default class SampleHandler {
     }
 
     /**
-     * Sets the samples that we are working with
+     * Sets the samples that we are working with, resets the state.
      *
      * @param {Sample[]} samples
      */
@@ -34,13 +39,16 @@ export default class SampleHandler {
 
         /**
          * The state, i.e., currently visible samples that have been sorted/filtered
+         *
+         * @type {import("./sampleState").State}
          */
-        this.samples = samples.map(sample => sample.id);
-
-        /**
-         * Keep track of sample set mutations.
-         */
-        this.sampleOrderHistory = [this.samples];
+        this.state = {
+            groups: [],
+            rootGroup: {
+                name: "ROOT",
+                samples: samples.map(sample => sample.id)
+            }
+        };
 
         /** @param {string} sampleId */
         this.sampleAccessor = sampleId => this.sampleMap.get(sampleId);
@@ -50,11 +58,41 @@ export default class SampleHandler {
         return [...this.sampleMap.values()];
     }
 
-    /**
+    /*
      * Returns the visible sample ids in a specific order
-     */
+     *
     getSampleIds() {
         return this.samples;
+    }
+    */
+
+    /**
+     * Returns a flattened group hierarchy. The result is an array of flat
+     * flat hierarchies, i.e. each element is an array of groups and the
+     * last group of each array is a SampleGroup which contains the samples.
+     */
+    getFlattenedGroupHierarchy() {
+        /** @type {Group[]} */
+        const pathStack = [];
+
+        /** @type {Group[][]} */
+        const flattenedHierarchy = [];
+
+        /** @param {Group} group */
+        const recurse = group => {
+            pathStack.push(group);
+            if (isGroupGroup(group)) {
+                recurse(group);
+            } else {
+                flattenedHierarchy.push([...pathStack]);
+            }
+
+            pathStack.pop();
+        };
+
+        recurse(this.state.rootGroup);
+
+        return flattenedHierarchy;
     }
 
     /**
@@ -177,6 +215,23 @@ export default class SampleHandler {
         this.samples = samples;
     }
 }
+
+/**
+ * @param {Group} group
+ * @return {Group is SampleGroup}
+ */
+export function isSampleGroup(group) {
+    return "samples" in group;
+}
+
+/**
+ * @param {Group} group
+ * @return {Group is GroupGroup}
+ */
+export function isGroupGroup(group) {
+    return "groups" in group;
+}
+// ------------- TODO: own file for the following --------
 
 /**
  *

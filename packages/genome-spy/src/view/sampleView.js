@@ -6,6 +6,7 @@ import AxisWrapperView from "./axisWrapperView";
 import DataSource from "../data/dataSource";
 import { SampleAttributePanel } from "./sampleAttributePanel";
 import SampleHandler from "../sampleHandler/sampleHandler";
+import { peek } from "../utils/arrayUtils";
 
 /**
  * Implements faceting of multiple samples. The samples are displayed
@@ -105,7 +106,17 @@ export default class SampleView extends ContainerView {
     }
 
     getSampleLocations() {
-        const sampleIds = this.sampleHandler.getSampleIds();
+        const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
+        console.log("No of groups: " + flattened.length);
+
+        const sampleIds = flattened
+            .map(
+                group =>
+                    /** @type {import("../sampleHandler/sampleHandler").SampleGroup} */ (peek(
+                        group
+                    )).samples
+            )
+            .flat(1);
 
         const locations = mapToPixelCoords(
             sampleIds.map(d => ({ grow: 1 })),
