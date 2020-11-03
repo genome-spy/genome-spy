@@ -48,7 +48,7 @@ export class SampleAttributePanel extends ConcatView {
         // SampleView maintains the sample data
         return new DataGroup(
             "sample attributes",
-            this.sampleHandler.allSamples
+            this.sampleHandler.getAllSamples()
         );
     }
 
@@ -180,7 +180,7 @@ export class SampleAttributePanel extends ConcatView {
 
     _getAttributeNames() {
         return getCachedOrCall(this, "attributeNames", () => {
-            const samples = this.sampleHandler.allSamples;
+            const samples = this.sampleHandler.getAllSamples();
 
             // Find all attributes
             const attributes = samples
@@ -198,7 +198,7 @@ export class SampleAttributePanel extends ConcatView {
      * Builds views for attributes
      */
     _createAttributeViewSpecs() {
-        const samples = this.sampleHandler.allSamples;
+        const samples = this.sampleHandler.getAllSamples();
 
         return this._getAttributeNames().map(attributeName => {
             const attributeDef = this._getAttributeDef(attributeName);

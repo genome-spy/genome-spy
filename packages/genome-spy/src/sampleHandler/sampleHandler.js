@@ -27,8 +27,6 @@ export default class SampleHandler {
      * @param {Sample[]} samples
      */
     setSamples(samples) {
-        this.allSamples = samples;
-
         /**
          * A map of sample objects for fast lookup
          */
@@ -37,19 +35,38 @@ export default class SampleHandler {
         /**
          * The state, i.e., currently visible samples that have been sorted/filtered
          */
-        this.samples = [...this.allSamples];
+        this.samples = samples.map(sample => sample.id);
 
         /**
          * Keep track of sample set mutations.
          */
         this.sampleOrderHistory = [this.samples];
+
+        /** @param {string} sampleId */
+        this.sampleAccessor = sampleId => this.sampleMap.get(sampleId);
+    }
+
+    getAllSamples() {
+        return [...this.sampleMap.values()];
     }
 
     /**
      * Returns the visible sample ids in a specific order
      */
     getSampleIds() {
-        return this.samples.map(sample => sample.id);
+        return this.samples;
+    }
+
+    /**
+     *
+     * @param {string} attributeName
+     * @returns {function(string):any}
+     */
+    getAttributeAccessor(attributeName) {
+        /** @param {Sample} sample */
+        const attributeAccessor = sample => sample.attributes[attributeName];
+
+        return sampleId => attributeAccessor(this.sampleAccessor(sampleId));
     }
 
     /**
@@ -57,14 +74,14 @@ export default class SampleHandler {
      * @param {any} action
      */
     dispatch(action) {
-        /** @type {Sample[]} */
+        /** @type {string[]} */
         let newSamples;
 
-        const accessor = getAttributeAccessor(action.attribute);
+        const accessor = this.getAttributeAccessor(action.attribute);
         if (action.type == Actions.SORT_BY_NAME) {
             newSamples = sort(
                 this.samples,
-                sample => sample.displayName,
+                sampleId => this.sampleAccessor(sampleId).displayName,
                 false
             );
         } else if (action.type == Actions.SORT_BY_ATTRIBUTE) {
@@ -127,7 +144,7 @@ export default class SampleHandler {
     /**
      * Updates the visible set of samples. Animates the transition.
      *
-     * @param {Sample[]} samples
+     * @param {string[]} samples
      */
     _updateSamples(samples) {
         /*
@@ -159,17 +176,6 @@ export default class SampleHandler {
         //this.sampleOrder = peek(this.sampleOrderHistory);
         this.samples = samples;
     }
-}
-
-/**
- *
- * @param {string} attributeName
- */
-function getAttributeAccessor(attributeName) {
-    /** @param {Sample} sample */
-    const accessor = sample => sample.attributes[attributeName];
-
-    return accessor;
 }
 
 /**
