@@ -56,33 +56,37 @@ export default class SampleHandler {
      *
      * @param {any} action
      */
-    handleAction(action) {
+    dispatch(action) {
         /** @type {Sample[]} */
         let newSamples;
 
-        if (action.type == Actions.SORT_BY_ATTRIBUTE) {
+        const accessor = getAttributeAccessor(action.attribute);
+        if (action.type == Actions.SORT_BY_NAME) {
             newSamples = sort(
                 this.samples,
-                getAttributeAccessor(action.attribute),
+                sample => sample.displayName,
                 false
             );
+        } else if (action.type == Actions.SORT_BY_ATTRIBUTE) {
+            newSamples = sort(this.samples, accessor, false);
         } else if (action.type == Actions.RETAIN_FIRST_OF_EACH) {
-            newSamples = retainFirstOfEach(
-                this.samples,
-                getAttributeAccessor(action.attribute)
-            );
+            newSamples = retainFirstOfEach(this.samples, accessor);
         } else if (action.type == Actions.FILTER_BY_QUANTITATIVE_ATTRIBUTE) {
             newSamples = filterQuantitative(
                 this.samples,
-                getAttributeAccessor(action.attribute),
+                accessor,
                 action.operator,
                 action.operand
             );
-        } else if (action.type == Actions.FILTER_BY_UNDEFINED_ATTRIBUTE) {
-            newSamples = filterUndefined(
+        } else if (action.type == Actions.FILTER_BY_NOMINAL_ATTRIBUTE) {
+            newSamples = filterNominal(
                 this.samples,
-                getAttributeAccessor(action.attribute)
+                accessor,
+                action.action,
+                action.values
             );
+        } else if (action.type == Actions.FILTER_BY_UNDEFINED_ATTRIBUTE) {
+            newSamples = filterUndefined(this.samples, accessor);
         } else {
             throw new Error("Unknown action: " + JSON.stringify(action));
         }
@@ -170,13 +174,15 @@ function getAttributeAccessor(attributeName) {
 
 /**
  *
- * @param {Sample[]} samples
- * @param {function(any):any} accessor
+ * @param {T[]} samples
+ * @param {function(T):any} accessor
+ * @returns {T[]}
+ * @template T
  */
 function retainFirstOfEach(samples, accessor) {
     const included = new Set();
 
-    /** @param {string} key */
+    /** @param {any} key */
     const checkAndAdd = key => {
         const has = included.has(key);
         included.add(key);
@@ -189,11 +195,14 @@ function retainFirstOfEach(samples, accessor) {
 /**
  * TODO: Ordinal attributes
  *
- * @param {Sample[]} samples
- * @param {function(any):any} accessor
+ * @param {T[]} samples
+ * @param {function(T):any} accessor
  * @param {boolean} [descending]
+ * @returns {T[]}
+ * @template T
  */
 function sort(samples, accessor, descending = false) {
+    /** @type {function(any):any} */
     const replaceNaN = x =>
         typeof x == "number" && isNaN(x) ? -Infinity : x === null ? "" : x;
 
@@ -226,12 +235,12 @@ const COMPARISON_OPERATORS = {
 };
 
 /**
- * TODO: Ordinal attributes
- *
- * @param {Sample[]} samples
- * @param {function(any):any} accessor
+ * @param {T[]} samples
+ * @param {function(T):any} accessor
  * @param {ComparisonOperatorType} operator The comparison operator
  * @param {any} operand
+ * @returns {T[]}
+ * @template T
  */
 function filterQuantitative(samples, accessor, operator, operand) {
     const op = COMPARISON_OPERATORS[operator];
@@ -239,12 +248,34 @@ function filterQuantitative(samples, accessor, operator, operand) {
 }
 
 /**
- * TODO: Ordinal attributes
- *
- * @param {Sample[]} samples
- * @param {function(any):any} accessor
+ * @param {T[]} samples
+ * @param {function(T):any} accessor
+ * @param {"retain" | "remove"} action
+ * @param {any[]} values
+ * @returns {T[]}
+ * @template T
+ */
+function filterNominal(samples, accessor, action, values) {
+    const valueSet = new Set(values);
+
+    /** @type {function(any):boolean} */
+    const predicate = x => valueSet.has(x);
+
+    /** @type {function(boolean):boolean} */
+    const maybeNegatedPredicate =
+        action == "remove" ? x => !predicate(x) : predicate;
+
+    return samples.filter(sample => maybeNegatedPredicate(accessor(sample)));
+}
+
+/**
+ * @param {T[]} samples
+ * @param {function(T):any} accessor
+ * @returns {T[]}
+ * @template T
  */
 function filterUndefined(samples, accessor) {
+    /** @type {function(any):boolean} */
     const isValid = x => x !== undefined && x !== null;
     return samples.filter(sample => isValid(accessor(sample)));
 }

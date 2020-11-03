@@ -123,6 +123,21 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     *
+     * @param {number} pos Coordinate on unit scale
+     */
+    getSampleIdAt(pos) {
+        const match = this.getSampleLocations().find(
+            sl =>
+                pos >= sl.location.location &&
+                pos < sl.location.location + sl.location.size
+        );
+        if (match) {
+            return match.sampleId;
+        }
+    }
+
+    /**
      * @param {import("./renderingContext/viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]

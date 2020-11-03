@@ -99,7 +99,53 @@ export class SampleAttributePanel extends ConcatView {
     handleInteractionEvent(coords, event, capturing) {
         // TODO: Allow for registering listeners
         if (!capturing && event.type == "contextmenu") {
-            this.createContextMenu("123", event.target, event.uiEvent);
+            const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+
+            const sampleId = this.parent.getSampleIdAt(
+                1 - coords.normalizePoint(event.point.x, event.point.y).y
+            );
+
+            const sample = sampleId
+                ? this.sampleHandler.sampleMap.get(sampleId)
+                : undefined;
+
+            if (!sample) {
+                mouseEvent.preventDefault();
+                return;
+            }
+
+            /** @param {any} action */
+            const dispatch = action => {
+                this.sampleHandler.dispatch(action);
+
+                // TODO: Abstract this stuff
+                this.context.genomeSpy.computeLayout();
+                this.context.genomeSpy.renderAll();
+            };
+
+            const attribute = getAttributeInfoFromView(event.target);
+            if (attribute) {
+                const attributeValue = sample.attributes[attribute.name];
+
+                contextMenu(
+                    {
+                        items: this.generateAttributeContextMenu(
+                            attribute.name,
+                            attribute.type,
+                            attributeValue,
+                            dispatch
+                        )
+                    },
+                    mouseEvent
+                );
+            } else {
+                contextMenu(
+                    {
+                        items: this.generateSampleContextMenu(sample, dispatch)
+                    },
+                    mouseEvent
+                );
+            }
         }
     }
 
@@ -192,145 +238,140 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     * TODO: Move to a separate file
      *
-     * @param {Sample} sample
-     * @param {View} view
-     * @param {MouseEvent} mouseEvent
+     * @param {string} attribute
+     * @param {string} attributeType
+     * @param {any} attributeValue
+     * @param {function(object):void} dispatch
      */
-    createContextMenu(sample, view, mouseEvent) {
+    generateAttributeContextMenu(
+        attribute,
+        attributeType,
+        attributeValue,
+        dispatch
+    ) {
         /** @type {import("../contextMenu").MenuItem[]} */
-        let items = [];
+        let items = [
+            {
+                label: `Attribute: ${attribute}`,
+                type: "header"
+            },
+            {
+                label: "Sort by",
+                callback: () => dispatch(Actions.sortByAttribute(attribute))
+            }
+        ];
 
-        const attribute = getAttributeForView(view);
-        const attributeValue = 123;
+        const nominal = attributeType != "quantitative";
 
-        if (!sample) {
-            mouseEvent.preventDefault();
-            return;
+        if (nominal) {
+            items.push({
+                label: "Retain first sample of each",
+                callback: () => dispatch(Actions.retainFirstOfEach(attribute))
+            });
         }
 
-        /** @param {any} action */
-        const submit = action => {
-            this.sampleHandler.handleAction(action);
+        if (nominal) {
+            items.push({ type: "divider" });
+            items.push({
+                label:
+                    attributeValue === null
+                        ? `Samples with undefined ${attribute}`
+                        : `Samples with ${attribute} = ${attributeValue}`,
+                type: "header"
+            });
 
-            // TODO: Abstract this stuff
-            this.context.genomeSpy.computeLayout();
-            this.context.genomeSpy.renderAll();
-        };
+            items.push({
+                label: "Retain",
+                callback: () =>
+                    dispatch(
+                        Actions.filterByNominalAttribute(attribute, "retain", [
+                            attributeValue
+                        ])
+                    )
+            });
 
-        if (attribute) {
-            // TODO: Does not work with missing values
-            const nominal = false; //typeof attributeValue == "string";
+            items.push({
+                label: "Remove",
+                callback: () =>
+                    dispatch(
+                        Actions.filterByNominalAttribute(attribute, "remove", [
+                            attributeValue
+                        ])
+                    )
+            });
+        } else {
+            const numberFormat = d3format(".4");
 
-            items = items.concat([
-                {
-                    label: `Attribute: ${attribute}`,
-                    type: "header"
-                },
-                {
-                    label: "Sort by",
-                    callback: () => submit(Actions.sortByAttribute(attribute))
-                }
-            ]);
+            items.push({ type: "divider" });
 
-            if (nominal) {
+            if (isDefined(attributeValue)) {
                 items.push({
-                    label: "Retain first sample of each",
-                    callback: () => submit(Actions.retainFirstOfEach(attribute))
+                    label: `Remove ${attribute} less than ${numberFormat(
+                        attributeValue
+                    )}`,
+                    callback: () =>
+                        dispatch(
+                            Actions.filterByQuantitativeAttribute(
+                                attribute,
+                                "gte",
+                                attributeValue
+                            )
+                        )
+                });
+
+                items.push({
+                    label: `Remove ${attribute} greater than ${numberFormat(
+                        attributeValue
+                    )}`,
+                    callback: () =>
+                        dispatch(
+                            Actions.filterByQuantitativeAttribute(
+                                attribute,
+                                "lte",
+                                attributeValue
+                            )
+                        )
+                });
+            } else {
+                items.push({
+                    label: `Remove undefined ${attribute}`,
+                    callback: () =>
+                        dispatch(Actions.filterByUndefinedAttribute(attribute))
                 });
             }
-
-            if (nominal) {
-                items = items.concat([
-                    {
-                        type: "divider"
-                    },
-                    {
-                        label:
-                            attributeValue !== null
-                                ? `Samples with undefined ${attribute}`
-                                : `Samples with ${attribute} = ${attributeValue}`,
-                        type: "header"
-                    },
-                    {
-                        label: "Retain",
-                        callback: () => alert("TODO")
-                    },
-                    {
-                        label: "Remove",
-                        callback: () => alert("TODO")
-                    }
-                ]);
-            } else {
-                const numberFormat = d3format(".4");
-
-                items = items.concat([{ type: "divider" }]);
-
-                if (isDefined(attributeValue)) {
-                    items = items.concat([
-                        {
-                            label: `Remove ${attribute} less than ${numberFormat(
-                                attributeValue
-                            )}`,
-                            callback: () =>
-                                submit(
-                                    Actions.filterByQuantitativeAttribute(
-                                        attribute,
-                                        "gte",
-                                        attributeValue
-                                    )
-                                )
-                        },
-                        {
-                            label: `Remove ${attribute} greater than ${numberFormat(
-                                attributeValue
-                            )}`,
-                            callback: () =>
-                                submit(
-                                    Actions.filterByQuantitativeAttribute(
-                                        attribute,
-                                        "lte",
-                                        attributeValue
-                                    )
-                                )
-                        }
-                    ]);
-                } else {
-                    items = items.concat([
-                        {
-                            label: `Remove undefined ${attribute}`,
-                            callback: () =>
-                                submit(
-                                    Actions.filterByUndefinedAttribute(
-                                        attribute
-                                    )
-                                )
-                        }
-                    ]);
-                }
-            }
-        } else {
-            items = items.concat([
-                {
-                    label: "Sort by name",
-                    callback: () => submit(Actions.sortByName())
-                },
-                {
-                    label: `Sample: ${sample.displayName}`,
-                    type: "header"
-                },
-                {
-                    label: "Retain",
-                    callback: () => alert("TODO")
-                },
-                {
-                    label: "Remove",
-                    callback: () => alert("TODO")
-                }
-            ]);
         }
 
-        contextMenu({ items }, mouseEvent);
+        return items;
+    }
+
+    /**
+     * TODO: Move to a separate file
+     *
+     * @param {Sample} sample
+     * @param {function(object):void} dispatch
+     * @returns {import("../contextMenu").MenuItem[]}
+     */
+    generateSampleContextMenu(sample, dispatch) {
+        return [
+            {
+                label: "Sort by name",
+                callback: () => dispatch(Actions.sortByName())
+            },
+            {
+                label: `Sample: ${sample.displayName}`,
+                type: "header"
+            },
+            {
+                label: "Retain",
+                callback: () => alert("TODO")
+            },
+            {
+                label: "Remove",
+                callback: () => alert("TODO")
+            }
+        ];
     }
 
     getDefaultResolution(channel) {
@@ -356,8 +397,17 @@ function locationsToTextureData(locations) {
 /**
  * @param {View} view
  */
-function getAttributeForView(view) {
-    return view.name.match(/attribute-(.*)/)[1];
+function getAttributeInfoFromView(view) {
+    const nameMatch = view.name.match(/attribute-(.*)/);
+    if (nameMatch) {
+        // Foolhardily assume that color is always used for encoding.
+        const resolution = view.getResolution("color");
+        return {
+            name: nameMatch[1],
+            type: resolution.type,
+            scale: resolution.getScale()
+        };
+    }
 }
 
 /**
