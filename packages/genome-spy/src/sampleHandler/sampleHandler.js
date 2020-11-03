@@ -2,6 +2,7 @@ import mapSort from "mapsort";
 import * as Actions from "./sampleHandlerActions";
 
 import { peek, shallowArrayEquals } from "../utils/arrayUtils";
+import { group } from "d3-array";
 
 /**
  * This class handles sample sorting, filtering, grouping, etc.
@@ -82,7 +83,10 @@ export default class SampleHandler {
         const recurse = group => {
             pathStack.push(group);
             if (isGroupGroup(group)) {
-                recurse(group);
+                // WTF type guard not workin!
+                for (const child of group.groups) {
+                    recurse(child);
+                }
             } else {
                 flattenedHierarchy.push([...pathStack]);
             }
@@ -123,32 +127,50 @@ export default class SampleHandler {
 
         const accessor = this.getAttributeAccessor(action.attribute);
 
-        if (action.type == Actions.SORT_BY_NAME) {
-            operation = samples =>
-                sort(
-                    samples,
-                    sampleId => this.sampleAccessor(sampleId).displayName,
-                    false
-                );
-        } else if (action.type == Actions.SORT_BY_ATTRIBUTE) {
-            operation = samples => sort(samples, accessor, false);
-        } else if (action.type == Actions.RETAIN_FIRST_OF_EACH) {
-            operation = samples => retainFirstOfEach(samples, accessor);
-        } else if (action.type == Actions.FILTER_BY_QUANTITATIVE_ATTRIBUTE) {
-            operation = samples =>
-                filterQuantitative(
-                    samples,
-                    accessor,
-                    action.operator,
-                    action.operand
-                );
-        } else if (action.type == Actions.FILTER_BY_NOMINAL_ATTRIBUTE) {
-            operation = samples =>
-                filterNominal(samples, accessor, action.action, action.values);
-        } else if (action.type == Actions.FILTER_BY_UNDEFINED_ATTRIBUTE) {
-            operation = samples => filterUndefined(samples, accessor);
-        } else {
-            throw new Error("Unknown action: " + JSON.stringify(action));
+        switch (action.type) {
+            case Actions.SORT_BY_NAME:
+                operation = samples =>
+                    sort(
+                        samples,
+                        sampleId => this.sampleAccessor(sampleId).displayName,
+                        false
+                    );
+                break;
+            case Actions.SORT_BY_ATTRIBUTE:
+                operation = samples => sort(samples, accessor, false);
+                break;
+            case Actions.RETAIN_FIRST_OF_EACH:
+                operation = samples => retainFirstOfEach(samples, accessor);
+                break;
+            case Actions.FILTER_BY_QUANTITATIVE_ATTRIBUTE:
+                operation = samples =>
+                    filterQuantitative(
+                        samples,
+                        accessor,
+                        action.operator,
+                        action.operand
+                    );
+                break;
+            case Actions.FILTER_BY_NOMINAL_ATTRIBUTE:
+                operation = samples =>
+                    filterNominal(
+                        samples,
+                        accessor,
+                        action.action,
+                        action.values
+                    );
+                break;
+            case Actions.FILTER_BY_UNDEFINED_ATTRIBUTE:
+                operation = samples => filterUndefined(samples, accessor);
+                break;
+            case Actions.GROUP_BY_NOMINAL_ATTRIBUTE:
+                for (const sampleGroup of this.getSampleGroups()) {
+                    groupSamplesByNominalAttribute(sampleGroup, accessor);
+                }
+                this.state.groups.push({ name: action.attribute });
+                break;
+            default:
+                throw new Error("Unknown action: " + JSON.stringify(action));
         }
 
         if (operation) {
@@ -176,6 +198,28 @@ export function isGroupGroup(group) {
 }
 
 // ------------- TODO: own file for the following --------
+
+/**
+ *
+ * @param {SampleGroup} sampleGroup
+ * @param {function(any):any} accessor
+ */
+function groupSamplesByNominalAttribute(sampleGroup, accessor) {
+    const grouped = /** @type {Map<any, string[]>} */ (group(
+        sampleGroup.samples,
+        accessor
+    ));
+
+    // Transform SampleGroup into GroupGroup
+    const groupGroup = /** @type {GroupGroup} */ /** @type {unknown} */ (sampleGroup);
+
+    groupGroup.groups = [...grouped.entries()].map(([name, samples]) => ({
+        name: "" + name,
+        samples
+    }));
+
+    delete sampleGroup.samples;
+}
 
 /**
  *

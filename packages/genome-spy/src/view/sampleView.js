@@ -107,7 +107,6 @@ export default class SampleView extends ContainerView {
 
     getSampleLocations() {
         const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
-        console.log("No of groups: " + flattened.length);
 
         const sampleIds = flattened
             .map(
