@@ -106,30 +106,47 @@ export default class SampleView extends ContainerView {
     }
 
     getSampleLocations() {
+        const pxHeight = this._coords.height;
+
         const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
 
-        const sampleIds = flattened
-            .map(
-                group =>
-                    /** @type {import("../sampleHandler/sampleHandler").SampleGroup} */ (peek(
-                        group
-                    )).samples
-            )
-            .flat(1);
+        const sampleGroups = flattened.map(
+            group =>
+                /** @type {import("../sampleHandler/sampleHandler").SampleGroup} */ (peek(
+                    group
+                )).samples
+        );
 
-        const locations = mapToPixelCoords(
-            sampleIds.map(d => ({ grow: 1 })),
-            1.0, // Unit coords, not pixels coords
+        const groupLocations = mapToPixelCoords(
+            sampleGroups.map(group => ({ grow: group.length })),
+            pxHeight,
             {
-                spacing: 0,
-                devicePixelRatio: null
+                spacing: 5
             }
         );
 
-        return sampleIds.map((id, i) => ({
-            sampleId: id,
-            location: locations[i]
-        }));
+        /** @type {{ sampleId: string, location: LocSize }[]} */
+        const sampleLocations = [];
+
+        for (const [gi, samples] of sampleGroups.entries()) {
+            mapToPixelCoords(
+                samples.map(d => ({ grow: 1 })),
+                groupLocations[gi].size,
+                {
+                    offset: groupLocations[gi].location
+                }
+            ).forEach((location, i) => {
+                sampleLocations.push({
+                    sampleId: samples[i],
+                    location: {
+                        location: location.location / pxHeight,
+                        size: location.size / pxHeight
+                    }
+                });
+            });
+        }
+
+        return sampleLocations;
     }
 
     /**
@@ -173,6 +190,10 @@ export default class SampleView extends ContainerView {
     render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
         context.pushView(this, coords);
+
+        // Store coords for layout computations. Not pretty, but probably
+        // works because only a single instance of this view is rendered.
+        this._coords = coords;
 
         const cols = mapToPixelCoords(
             [this.attributeView.getSize().width, { grow: 1 }],
