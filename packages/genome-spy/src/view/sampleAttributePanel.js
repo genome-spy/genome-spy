@@ -254,6 +254,12 @@ export class SampleAttributePanel extends ConcatView {
         /** @type {import("../contextMenu").MenuItem[]} */
         let items = [
             {
+                // Temporarily here
+                label: "Undo",
+                callback: () => dispatch(Actions.undo())
+            },
+            { type: "divider" },
+            {
                 label: `Attribute: ${attribute}`,
                 type: "header"
             },

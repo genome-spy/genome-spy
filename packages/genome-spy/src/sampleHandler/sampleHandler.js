@@ -1,8 +1,9 @@
 import mapSort from "mapsort";
-import * as Actions from "./sampleHandlerActions";
-
-import { peek, shallowArrayEquals } from "../utils/arrayUtils";
 import { group } from "d3-array";
+import produce from "immer";
+
+import * as Actions from "./sampleHandlerActions";
+import { peek } from "../utils/arrayUtils";
 
 /**
  * This class handles sample sorting, filtering, grouping, etc.
@@ -41,7 +42,7 @@ export default class SampleHandler {
         /**
          * The state, i.e., currently visible samples that have been sorted/filtered
          *
-         * @type {import("./sampleState").State}
+         * @type {State}
          */
         this.state = {
             groups: [],
@@ -51,6 +52,14 @@ export default class SampleHandler {
             }
         };
 
+        /**
+         * TODO: Use immer's patches:
+         * https://techinscribed.com/implementing-undo-redo-functionality-in-redux-using-immer/
+         *
+         * @type {State[]}
+         */
+        this.stateHistory = [];
+
         /** @param {string} sampleId */
         this.sampleAccessor = sampleId => this.sampleMap.get(sampleId);
     }
@@ -59,20 +68,19 @@ export default class SampleHandler {
         return [...this.sampleMap.values()];
     }
 
-    /*
-     * Returns the visible sample ids in a specific order
-     *
-    getSampleIds() {
-        return this.samples;
-    }
-    */
-
     /**
      * Returns a flattened group hierarchy. The result is an array of flat
      * flat hierarchies, i.e. each element is an array of groups and the
      * last group of each array is a SampleGroup which contains the samples.
+     *
+     * @param {State} [state] State to use, defaults to the current state.
+     *      Use for mutations!
      */
-    getFlattenedGroupHierarchy() {
+    getFlattenedGroupHierarchy(state) {
+        if (!state) {
+            state = this.state;
+        }
+
         /** @type {Group[]} */
         const pathStack = [];
 
@@ -94,15 +102,20 @@ export default class SampleHandler {
             pathStack.pop();
         };
 
-        recurse(this.state.rootGroup);
+        recurse(state.rootGroup);
 
         return flattenedHierarchy;
     }
 
-    getSampleGroups() {
-        return /** @type {SampleGroup[]} */ (this.getFlattenedGroupHierarchy().map(
-            path => peek(path)
-        ));
+    /**
+     *
+     * @param {State} [state] State to use, defaults to the current state.
+     *      Use for mutations!
+     */
+    getSampleGroups(state) {
+        return /** @type {SampleGroup[]} */ (this.getFlattenedGroupHierarchy(
+            state
+        ).map(path => peek(path)));
     }
 
     /**
@@ -128,6 +141,11 @@ export default class SampleHandler {
         const accessor = this.getAttributeAccessor(action.attribute);
 
         switch (action.type) {
+            case Actions.UNDO:
+                if (this.stateHistory.length) {
+                    this.state = this.stateHistory.pop();
+                }
+                break;
             case Actions.SORT_BY_NAME:
                 operation = samples =>
                     sort(
@@ -164,19 +182,27 @@ export default class SampleHandler {
                 operation = samples => filterUndefined(samples, accessor);
                 break;
             case Actions.GROUP_BY_NOMINAL_ATTRIBUTE:
-                for (const sampleGroup of this.getSampleGroups()) {
-                    groupSamplesByNominalAttribute(sampleGroup, accessor);
-                }
-                this.state.groups.push({ name: action.attribute });
+                this.stateHistory.push(this.state);
+                this.state = produce(this.state, draftState => {
+                    for (const sampleGroup of this.getSampleGroups(
+                        draftState
+                    )) {
+                        groupSamplesByNominalAttribute(sampleGroup, accessor);
+                    }
+                    draftState.groups.push({ name: action.attribute });
+                });
                 break;
             default:
                 throw new Error("Unknown action: " + JSON.stringify(action));
         }
 
         if (operation) {
-            for (const sampleGroup of this.getSampleGroups()) {
-                sampleGroup.samples = operation(sampleGroup.samples);
-            }
+            this.stateHistory.push(this.state);
+            this.state = produce(this.state, draftState => {
+                for (const sampleGroup of this.getSampleGroups(draftState)) {
+                    sampleGroup.samples = operation(sampleGroup.samples);
+                }
+            });
         }
     }
 }

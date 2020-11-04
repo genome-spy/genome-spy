@@ -1,4 +1,6 @@
 // Redux-style actions
+export const UNDO = "UNDO";
+export const REDO = "REDO";
 export const SORT_BY_NAME = "SORT_BY_NAME";
 export const SORT_BY_ATTRIBUTE = "SORT_BY_ATTRIBUTE";
 export const SORT_BY_LOCUS = "SORT_BY_LOCUS";
@@ -10,6 +12,14 @@ export const FILTER_BY_UNDEFINED_ATTRIBUTE = "FILTER_BY_UNDEFINED_ATTRIBUTE";
 export const FILTER_BY_LOCUS = "REMOVE_BY_LOCUS";
 export const REMOVE_SAMPLE = "REMOVE_SAMPLE";
 export const GROUP_BY_NOMINAL_ATTRIBUTE = "GROUP_BY_NOMINAL_ATTRIBUTE";
+
+export function undo() {
+    return { type: UNDO };
+}
+
+export function redo() {
+    return { type: REDO };
+}
 
 export function sortByName() {
     return { type: SORT_BY_NAME };
