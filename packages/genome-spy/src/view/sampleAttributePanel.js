@@ -21,6 +21,7 @@ const FieldType = {
  *
  * @typedef {import("../sampleHandler/sampleHandler").Sample} Sample
  * @typedef {import("./view").default} View
+ *
  */
 export class SampleAttributePanel extends ConcatView {
     /**
@@ -38,6 +39,12 @@ export class SampleAttributePanel extends ConcatView {
         );
 
         this.parent = sampleView;
+
+        this.sampleHandler.addAttributeInfoSource(attribute =>
+            this.children
+                .map(getAttributeInfoFromView)
+                .find(info => info && info.name == attribute)
+        );
     }
 
     get sampleHandler() {
@@ -414,6 +421,7 @@ function locationsToTextureData(locations) {
 
 /**
  * @param {View} view
+ * @returns {import("../sampleHandler/sampleHandler").AttributeInfo}
  */
 function getAttributeInfoFromView(view) {
     const nameMatch = view.name.match(/attribute-(.*)/);

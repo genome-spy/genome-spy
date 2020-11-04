@@ -1,7 +1,6 @@
 import mapSort from "mapsort";
-import { group, quantileSorted } from "d3-array";
+import { group, quantileSorted, range } from "d3-array";
 import produce from "immer";
-import { quantiles } from "d3-array";
 
 import * as Actions from "./sampleHandlerActions";
 import { peek } from "../utils/arrayUtils";
@@ -24,10 +23,46 @@ import { isNumber } from "vega-util";
  * @typedef {import("./sampleState").Group} Group
  * @typedef {import("./sampleState").SampleGroup} SampleGroup
  * @typedef {import("./sampleState").GroupGroup} GroupGroup
+ *
+ * @typedef {object} AttributeInfo
+ * @prop {string} name
+ * @prop {string} type
+ * @prop {any} scale
+ *
+ * @typedef {(function(any):AttributeInfo)} AttributeInfoSource
  */
 export default class SampleHandler {
     constructor() {
+        /**
+         *
+         * @type {AttributeInfoSource[]} Function that
+         *      returns metadata about an attribute.
+         */
+        this.attributeInfoSources = [];
+
         this.setSamples([]);
+    }
+
+    /**
+     *
+     * @param {AttributeInfoSource} attributeInfoSource Function that
+     *      returns metadata about an attribute.
+     */
+    addAttributeInfoSource(attributeInfoSource) {
+        this.attributeInfoSources.push(attributeInfoSource);
+    }
+
+    /**
+     *
+     * @param {string} attribute
+     */
+    getAttributeInfo(attribute) {
+        for (const source of this.attributeInfoSources) {
+            const info = source(attribute);
+            if (info) {
+                return info;
+            }
+        }
     }
 
     /**
@@ -122,14 +157,54 @@ export default class SampleHandler {
 
     /**
      *
-     * @param {string} attributeName
+     * @param {string} attribute
      * @returns {function(string):any}
      */
-    getAttributeAccessor(attributeName) {
+    getAttributeAccessor(attribute) {
         /** @param {Sample} sample */
-        const attributeAccessor = sample => sample.attributes[attributeName];
+        const attributeAccessor = sample => sample.attributes[attribute];
 
         return sampleId => attributeAccessor(this.sampleAccessor(sampleId));
+    }
+
+    /**
+     * Wraps an accessor for comparison. Handles data with missing values
+     * and provides the correct order for ordinal data.
+     *
+     * @param {string} attribute
+     * @param {function(string):any} accessor
+     * @returns {function(string):any}
+     */
+    wrapAccessorForComparison(accessor, attribute) {
+        const attributeInfo = this.getAttributeInfo(attribute);
+        if (!attributeInfo) {
+            throw new Error("Unknown attribute: " + JSON.stringify(attribute));
+        }
+
+        /** @type {function(any):any} scale */
+        const createOrdinalLookup = scale =>
+            scale
+                .copy()
+                .range(range(0, scale.domain().length))
+                .unknown(-1);
+
+        /** @type {function(any):any} */
+        let wrapper;
+        switch (attributeInfo.type) {
+            case "quantitative":
+                wrapper = x => (isNumber(x) && !isNaN(x) ? x : -Infinity);
+                break;
+            case "ordinal":
+                // Use the (specified) domain for ordering
+                wrapper = createOrdinalLookup(attributeInfo.scale);
+                break;
+            case "nominal":
+                wrapper = x => x || "";
+                break;
+            default:
+        }
+
+        return sampleId => wrapper(accessor(sampleId));
     }
 
     /**
@@ -157,7 +232,15 @@ export default class SampleHandler {
                     );
                 break;
             case Actions.SORT_BY_ATTRIBUTE:
-                operation = samples => sort(samples, accessor, false);
+                operation = samples =>
+                    sort(
+                        samples,
+                        this.wrapAccessorForComparison(
+                            accessor,
+                            action.attribute
+                        ),
+                        false
+                    );
                 break;
             case Actions.RETAIN_FIRST_OF_EACH:
                 operation = samples => retainFirstOfEach(samples, accessor);
@@ -352,27 +435,19 @@ function retainFirstOfEach(samples, accessor) {
  * @template T
  */
 function sort(samples, accessor, descending = false) {
-    /** @type {function(any):any} */
-    const replaceNaN = x =>
-        typeof x == "number" && isNaN(x) ? -Infinity : x === null ? "" : x;
-
-    return mapSort(
-        samples,
-        sample => replaceNaN(accessor(sample)),
-        (av, bv) => {
-            if (descending) {
-                [av, bv] = [bv, av];
-            }
-
-            if (av < bv) {
-                return -1;
-            } else if (av > bv) {
-                return 1;
-            } else {
-                return 0;
-            }
+    return mapSort(samples, accessor, (av, bv) => {
+        if (descending) {
+            [av, bv] = [bv, av];
         }
-    );
+
+        if (av < bv) {
+            return -1;
+        } else if (av > bv) {
+            return 1;
+        } else {
+            return 0;
+        }
+    });
 }
 
 /** @type {Record<ComparisonOperatorType, function(any, any):boolean>} */
