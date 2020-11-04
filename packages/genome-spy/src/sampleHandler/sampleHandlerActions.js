@@ -12,6 +12,7 @@ export const FILTER_BY_UNDEFINED_ATTRIBUTE = "FILTER_BY_UNDEFINED_ATTRIBUTE";
 export const FILTER_BY_LOCUS = "REMOVE_BY_LOCUS";
 export const REMOVE_SAMPLE = "REMOVE_SAMPLE";
 export const GROUP_BY_NOMINAL_ATTRIBUTE = "GROUP_BY_NOMINAL_ATTRIBUTE";
+export const GROUP_BY_QUARTILES = "GROUP_BY_QUARTILES";
 
 export function undo() {
     return { type: UNDO };
@@ -85,6 +86,16 @@ export function filterByUndefinedAttribute(attribute) {
 export function groupByNominalAttribute(attribute) {
     return {
         type: GROUP_BY_NOMINAL_ATTRIBUTE,
+        attribute
+    };
+}
+
+/**
+ * @param {string} attribute
+ */
+export function groupByQuartiles(attribute) {
+    return {
+        type: GROUP_BY_QUARTILES,
         attribute
     };
 }

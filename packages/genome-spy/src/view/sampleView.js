@@ -110,12 +110,15 @@ export default class SampleView extends ContainerView {
 
         const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
 
-        const sampleGroups = flattened.map(
-            group =>
-                /** @type {import("../sampleHandler/sampleHandler").SampleGroup} */ (peek(
-                    group
-                )).samples
-        );
+        const sampleGroups = flattened
+            .map(
+                group =>
+                    /** @type {import("../sampleHandler/sampleHandler").SampleGroup} */ (peek(
+                        group
+                    )).samples
+            )
+            // Skip empty groups
+            .filter(samples => samples.length);
 
         const groupLocations = mapToPixelCoords(
             sampleGroups.map(group => ({ grow: group.length })),
@@ -129,8 +132,9 @@ export default class SampleView extends ContainerView {
         const sampleLocations = [];
 
         for (const [gi, samples] of sampleGroups.entries()) {
+            const sizeDef = { grow: 1 };
             mapToPixelCoords(
-                samples.map(d => ({ grow: 1 })),
+                samples.map(d => sizeDef),
                 groupLocations[gi].size,
                 {
                     offset: groupLocations[gi].location

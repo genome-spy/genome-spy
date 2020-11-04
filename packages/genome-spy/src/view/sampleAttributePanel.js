@@ -317,6 +317,11 @@ export class SampleAttributePanel extends ConcatView {
         } else {
             const numberFormat = d3format(".4");
 
+            items.push({
+                label: "Group by quartiles",
+                callback: () => dispatch(Actions.groupByQuartiles(attribute))
+            });
+
             items.push({ type: "divider" });
 
             if (isDefined(attributeValue)) {

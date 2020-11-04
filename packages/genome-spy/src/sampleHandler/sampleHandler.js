@@ -1,9 +1,11 @@
 import mapSort from "mapsort";
-import { group } from "d3-array";
+import { group, quantileSorted } from "d3-array";
 import produce from "immer";
+import { quantiles } from "d3-array";
 
 import * as Actions from "./sampleHandlerActions";
 import { peek } from "../utils/arrayUtils";
+import { isNumber } from "vega-util";
 
 /**
  * This class handles sample sorting, filtering, grouping, etc.
@@ -187,7 +189,18 @@ export default class SampleHandler {
                     for (const sampleGroup of this.getSampleGroups(
                         draftState
                     )) {
-                        groupSamplesByNominalAttribute(sampleGroup, accessor);
+                        groupSamplesByAccessor(sampleGroup, accessor);
+                    }
+                    draftState.groups.push({ name: action.attribute });
+                });
+                break;
+            case Actions.GROUP_BY_QUARTILES:
+                this.stateHistory.push(this.state);
+                this.state = produce(this.state, draftState => {
+                    for (const sampleGroup of this.getSampleGroups(
+                        draftState
+                    )) {
+                        groupSamplesByQuartiles(sampleGroup, accessor);
                     }
                     draftState.groups.push({ name: action.attribute });
                 });
@@ -230,7 +243,7 @@ export function isGroupGroup(group) {
  * @param {SampleGroup} sampleGroup
  * @param {function(any):any} accessor
  */
-function groupSamplesByNominalAttribute(sampleGroup, accessor) {
+function groupSamplesByAccessor(sampleGroup, accessor) {
     const grouped = /** @type {Map<any, string[]>} */ (group(
         sampleGroup.samples,
         accessor
@@ -246,6 +259,68 @@ function groupSamplesByNominalAttribute(sampleGroup, accessor) {
 
     delete sampleGroup.samples;
 }
+
+/**
+ *
+ * @param {SampleGroup} sampleGroup
+ * @param {function(any):any} accessor
+ */
+function groupSamplesByQuartiles(sampleGroup, accessor) {
+    const quartiles = extractQuantiles(sampleGroup.samples, accessor, [
+        0.25,
+        0.5,
+        0.75
+    ]);
+
+    groupSamplesByAccessor(
+        sampleGroup,
+        createQuantileAccessor(accessor, quartiles)
+    );
+}
+
+/**
+ * Returns an accessor that extracts a quantile-index (1-based) based
+ * on the given thresholds.
+ *
+ * @param {function(any):any} accessor
+ * @param {number[]} thresholds Must be in ascending order
+ */
+function createQuantileAccessor(accessor, thresholds) {
+    /** @param {any} datum */
+    const quantileAccessor = datum => {
+        const value = accessor(datum);
+        if (!isNumber(value) || isNaN(value)) {
+            return undefined;
+        }
+
+        for (let i = 0; i < thresholds.length; i++) {
+            // TODO: This cannot be correct...
+            if (value < thresholds[i]) {
+                return i;
+            }
+        }
+
+        return thresholds.length;
+    };
+
+    return quantileAccessor;
+}
+
+/**
+ * @param {T[]} samples
+ * @param {function(T):any} accessor
+ * @param {number[]} pValues
+ * @returns {number[]}
+ * @template T
+ */
+function extractQuantiles(samples, accessor, pValues) {
+    const values = samples.map(accessor).filter(x => isNumber(x) && !isNaN(x));
+    values.sort();
+
+    return pValues.map(p => quantileSorted(values, p));
+}
+
+// ------------- TODO: own file for the following --------
 
 /**
  *
