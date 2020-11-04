@@ -1,5 +1,5 @@
 import mapSort from "mapsort";
-import { group, quantileSorted, range } from "d3-array";
+import { group, quantileSorted, range, sort as d3sort } from "d3-array";
 import produce from "immer";
 
 import * as Actions from "./sampleHandlerActions";
@@ -397,8 +397,9 @@ function createQuantileAccessor(accessor, thresholds) {
  * @template T
  */
 function extractQuantiles(samples, accessor, pValues) {
-    const values = samples.map(accessor).filter(x => isNumber(x) && !isNaN(x));
-    values.sort();
+    const values = d3sort(
+        samples.map(accessor).filter(x => isNumber(x) && !isNaN(x))
+    );
 
     return pValues.map(p => quantileSorted(values, p));
 }
