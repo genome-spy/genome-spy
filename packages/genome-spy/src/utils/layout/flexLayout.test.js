@@ -96,6 +96,17 @@ test("Zero sizes return zero coords", () => {
     expect(mapped2[1]).toEqual({ location: 0, size: 0 });
 });
 
+test("Offset is added", () => {
+    const items = [10, 30, 20].map(x => ({ px: x }));
+    const containerSize = 100;
+
+    const mapped = mapToPixelCoords(items, containerSize, { offset: 5 });
+
+    expect(mapped[0]).toEqual({ location: 5, size: 10 });
+    expect(mapped[1]).toEqual({ location: 15, size: 30 });
+    expect(mapped[2]).toEqual({ location: 45, size: 20 });
+});
+
 test("getMinimumSize", () => {
     const items = [{ px: 100 }, { grow: 1 }, { grow: 9 }, { px: 200 }];
 
