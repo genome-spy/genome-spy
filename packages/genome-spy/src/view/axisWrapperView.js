@@ -105,6 +105,10 @@ export default class AxisWrapperView extends ContainerView {
         this._requestedAxisUpdates = new Set();
 
         this._addBroadcastHandler("layout", () => this.requestAxisUpdate());
+
+        ["mousedown", "wheel"].forEach(type =>
+            this.addEventListener(type, this.handleMouseEvent.bind(this))
+        );
     }
 
     /**
@@ -410,15 +414,8 @@ export default class AxisWrapperView extends ContainerView {
      * @param {import("../utils/layout/rectangle").default} coords
      *      Coordinates of the view
      * @param {import("../utils/interactionEvent").default} event
-     * @param {boolean} capturing
      */
-    handleInteractionEvent(coords, event, capturing) {
-        // TODO: Allow for registering listeners
-
-        if (!capturing) {
-            return;
-        }
-
+    handleMouseEvent(coords, event) {
         if (!this.isZoomable()) {
             return;
         }

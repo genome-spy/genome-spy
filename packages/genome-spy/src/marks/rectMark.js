@@ -219,4 +219,23 @@ export default class RectMark extends Mark {
         }
         //this.gl.bindVertexArray(null);
     }
+
+    /**
+     * Finds a datum that overlaps the given value on domain.
+     * The result is unspecified if multiple data are found.
+     *
+     * This is highly specific to SampleView and its sorting/filtering functionality.
+     *
+     * @param {string} facetId
+     * @param {number} x position on the x domain
+     * @returns {object}
+     */
+    findDatumAt(facetId, x) {
+        const e = this.encoders;
+        const data = this.dataByFacet.get(facetId);
+        if (data) {
+            // TODO: Binary search
+            return data.find(d => x >= e.x(d) && x < e.x2(d));
+        }
+    }
 }

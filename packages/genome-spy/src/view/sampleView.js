@@ -1,4 +1,9 @@
-import { getViewClass, isFacetFieldDef, isFacetMapping } from "./viewUtils";
+import {
+    findEncodedFields,
+    getViewClass,
+    isFacetFieldDef,
+    isFacetMapping
+} from "./viewUtils";
 import ContainerView from "./containerView";
 import UnitView from "./unitView";
 import { mapToPixelCoords } from "../utils/layout/flexLayout";
@@ -7,6 +12,7 @@ import DataSource from "../data/dataSource";
 import { SampleAttributePanel } from "./sampleAttributePanel";
 import SampleHandler from "../sampleHandler/sampleHandler";
 import { peek } from "../utils/arrayUtils";
+import contextMenu from "../contextMenu";
 
 /**
  * Implements faceting of multiple samples. The samples are displayed
@@ -41,6 +47,11 @@ export default class SampleView extends ContainerView {
         this.sampleHandler = new SampleHandler();
 
         this.attributeView = new SampleAttributePanel(this);
+
+        this.child.addEventListener(
+            "contextmenu",
+            this.handleContextMenu.bind(this)
+        );
     }
 
     /**
@@ -216,6 +227,55 @@ export default class SampleView extends ContainerView {
         this.renderChild(context, toColumnCoords(cols[1]), options);
 
         context.popView(this);
+    }
+
+    /**
+     * @param {import("../utils/layout/rectangle").default} coords
+     *      Coordinates of the view
+     * @param {import("../utils/interactionEvent").default} event
+     */
+    handleContextMenu(coords, event) {
+        // TODO: Allow for registering listeners
+        const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+
+        const normalizedX = coords.normalizePoint(event.point.x, event.point.y)
+            .x;
+        const domainX = this.getResolution("x")
+            .getScale()
+            .invert(normalizedX);
+
+        const fieldInfos = findEncodedFields(this.child).filter(
+            d => !["sample", "x", "x2"].includes(d.channel)
+        );
+
+        /** @type {import("../contextMenu").MenuItem[]} */
+        let items = [];
+
+        for (const fieldInfo of fieldInfos) {
+            items.push({
+                label: `${fieldInfo.field} (${fieldInfo.view.spec.title ||
+                    fieldInfo.view.spec.name})`,
+                type: "header"
+            });
+
+            items.push({
+                label: "Sort by",
+                callback: () => {
+                    alert(
+                        `TODO ... ${fieldInfo.view.getPathString()}, ${normalizedX}, ${domainX}`
+                    );
+                }
+            });
+        }
+
+        contextMenu({ items }, mouseEvent);
+    }
+
+    /**
+     * @param {string} channel
+     */
+    getDefaultResolution(channel) {
+        return channel == "x" ? "shared" : "independent";
     }
 }
 

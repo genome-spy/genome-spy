@@ -39,6 +39,11 @@ export const VISIT_STOP = "VISIT_STOP";
  * @typedef {object} RenderingOptions
  * @prop {any} [facetId] Which facet to render (if faceting is being used)
  * @prop {SampleFacetRenderingOptions} [sampleFacetRenderingOptions]
+ *
+ * @callback InteractionEventListener
+ * @param {import("../utils/layout/rectangle").default} coords
+ *      Coordinates of the view
+ * @param {import("../utils/interactionEvent").default} event
  */
 export default class View {
     /**
@@ -59,6 +64,11 @@ export default class View {
 
         /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
         this._broadcastHandlers = {};
+
+        /** @type {Record<string, InteractionEventListener[]>} */
+        this._capturingInteractionEventListeners = {};
+        /** @type {Record<string, InteractionEventListener[]>} */
+        this._nonCapturingInteractionEventListeners = {};
     }
 
     getPadding() {
@@ -136,7 +146,33 @@ export default class View {
      * @param {boolean} capturing
      */
     handleInteractionEvent(coords, event, capturing) {
-        // override
+        const listenersByType = capturing
+            ? this._capturingInteractionEventListeners
+            : this._nonCapturingInteractionEventListeners;
+        for (const listener of listenersByType[event.type] || []) {
+            listener(coords, event);
+        }
+    }
+
+    /**
+     * Add an "interaction" event listener that mimics DOM's event model inside
+     * the view hierarchy.
+     *
+     * @param {string} type
+     * @param {InteractionEventListener} listener
+     * @param {boolean} [useCapture]
+     */
+    addEventListener(type, listener, useCapture) {
+        const listenersByType = useCapture
+            ? this._capturingInteractionEventListeners
+            : this._nonCapturingInteractionEventListeners;
+        let listeners = listenersByType[type];
+        if (!listeners) {
+            listeners = [];
+            listenersByType[type] = listeners;
+        }
+
+        listeners.push(listener);
     }
 
     /**

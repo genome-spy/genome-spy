@@ -362,3 +362,26 @@ export async function initializeData(root) {
         }
     });
 }
+
+/**
+ *
+ * @param {View} view
+ */
+export function findEncodedFields(view) {
+    /** @type {{view: View, channel: string, field: string, type: string}[]} */
+    const fieldInfos = [];
+
+    view.visit(view => {
+        if (view instanceof UnitView) {
+            const encoding = view.getEncoding();
+            for (const [channel, def] of Object.entries(encoding)) {
+                const field = def.field;
+                if (field) {
+                    fieldInfos.push({ view, channel, field, type: def.type });
+                }
+            }
+        }
+    });
+
+    return fieldInfos;
+}

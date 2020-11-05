@@ -45,6 +45,8 @@ export class SampleAttributePanel extends ConcatView {
                 .map(getAttributeInfoFromView)
                 .find(info => info && info.name == attribute)
         );
+
+        this.addEventListener("contextmenu", this.handleContextMenu.bind(this));
     }
 
     get sampleHandler() {
@@ -101,58 +103,54 @@ export class SampleAttributePanel extends ConcatView {
      * @param {import("../utils/layout/rectangle").default} coords
      *      Coordinates of the view
      * @param {import("../utils/interactionEvent").default} event
-     * @param {boolean} capturing
      */
-    handleInteractionEvent(coords, event, capturing) {
-        // TODO: Allow for registering listeners
-        if (!capturing && event.type == "contextmenu") {
-            const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+    handleContextMenu(coords, event) {
+        const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
 
-            const sampleId = this.parent.getSampleIdAt(
-                1 - coords.normalizePoint(event.point.x, event.point.y).y
+        const sampleId = this.parent.getSampleIdAt(
+            1 - coords.normalizePoint(event.point.x, event.point.y).y
+        );
+
+        const sample = sampleId
+            ? this.sampleHandler.sampleMap.get(sampleId)
+            : undefined;
+
+        if (!sample) {
+            mouseEvent.preventDefault();
+            return;
+        }
+
+        /** @param {any} action */
+        const dispatch = action => {
+            this.sampleHandler.dispatch(action);
+
+            // TODO: Abstract this stuff
+            this.context.genomeSpy.computeLayout();
+            this.context.genomeSpy.renderAll();
+        };
+
+        const attribute = getAttributeInfoFromView(event.target);
+        if (attribute) {
+            const attributeValue = sample.attributes[attribute.name];
+
+            contextMenu(
+                {
+                    items: this.generateAttributeContextMenu(
+                        attribute.name,
+                        attribute.type,
+                        attributeValue,
+                        dispatch
+                    )
+                },
+                mouseEvent
             );
-
-            const sample = sampleId
-                ? this.sampleHandler.sampleMap.get(sampleId)
-                : undefined;
-
-            if (!sample) {
-                mouseEvent.preventDefault();
-                return;
-            }
-
-            /** @param {any} action */
-            const dispatch = action => {
-                this.sampleHandler.dispatch(action);
-
-                // TODO: Abstract this stuff
-                this.context.genomeSpy.computeLayout();
-                this.context.genomeSpy.renderAll();
-            };
-
-            const attribute = getAttributeInfoFromView(event.target);
-            if (attribute) {
-                const attributeValue = sample.attributes[attribute.name];
-
-                contextMenu(
-                    {
-                        items: this.generateAttributeContextMenu(
-                            attribute.name,
-                            attribute.type,
-                            attributeValue,
-                            dispatch
-                        )
-                    },
-                    mouseEvent
-                );
-            } else {
-                contextMenu(
-                    {
-                        items: this.generateSampleContextMenu(sample, dispatch)
-                    },
-                    mouseEvent
-                );
-            }
+        } else {
+            contextMenu(
+                {
+                    items: this.generateSampleContextMenu(sample, dispatch)
+                },
+                mouseEvent
+            );
         }
     }
 
