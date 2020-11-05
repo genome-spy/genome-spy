@@ -18,55 +18,61 @@ import {
  *
  * TODO: Consider employing Redux, Mobx, Trrack, ...
  *
- * @typedef {object} Sample
- * @prop {string} id
- * @prop {string} displayName
- * @prop {number} indexNumber For internal user, mainly for shaders
- * @prop {Record<string, any>} attributes Arbitrary sample specific attributes
- *
  * @typedef {import("./sampleState").State} State
  * @typedef {import("./sampleState").Group} Group
  * @typedef {import("./sampleState").SampleGroup} SampleGroup
  * @typedef {import("./sampleState").GroupGroup} GroupGroup
  *
+ * @typedef {object} AttributeIdentifier An identifier for an abstract attribute.
+ *      Allows for retrieving an accessor and information.
+ * @prop {string} type
+ * @prop {any} [specifier]
+ *
  * @typedef {object} AttributeInfo
  * @prop {string} name
- * @prop {string} type
+ * @prop {function(string):any} accessor A function that maps a sampleId to an attribute value
+ * @prop {string} type e.g., "quantitative"
  * @prop {any} scale
  *
- * @typedef {(function(any):AttributeInfo)} AttributeInfoSource
+ * @typedef {(function(AttributeIdentifier):AttributeInfo)} AttributeInfoSource
+ *
  */
 export default class SampleHandler {
     constructor() {
         /**
          *
-         * @type {AttributeInfoSource[]} Function that
-         *      returns metadata about an attribute.
+         * @type {Record<string, AttributeInfoSource>}
          */
-        this.attributeInfoSources = [];
+        this.attributeInfoSourcesByType = {};
 
         this.setSamples([]);
     }
 
     /**
      *
-     * @param {AttributeInfoSource} attributeInfoSource Function that
-     *      returns metadata about an attribute.
+     * @param {string} type
+     * @param {AttributeInfoSource} attributeInfoSource
      */
-    addAttributeInfoSource(attributeInfoSource) {
-        this.attributeInfoSources.push(attributeInfoSource);
+    addAttributeInfoSource(type, attributeInfoSource) {
+        this.attributeInfoSourcesByType[type] = attributeInfoSource;
     }
 
     /**
      *
-     * @param {string} attribute
+     * @param {AttributeIdentifier} attribute
      */
     getAttributeInfo(attribute) {
-        for (const source of this.attributeInfoSources) {
-            const info = source(attribute);
-            if (info) {
-                return info;
-            }
+        const source = this.attributeInfoSourcesByType[attribute.type];
+        if (!source) {
+            throw new Error(
+                "Cannot find attribute info source for: " +
+                    JSON.stringify(attribute)
+            );
+        }
+
+        const info = source(attribute);
+        if (info) {
+            return info;
         }
 
         throw new Error("Unknown attribute: " + JSON.stringify(attribute));
@@ -75,14 +81,9 @@ export default class SampleHandler {
     /**
      * Sets the samples that we are working with, resets the state.
      *
-     * @param {Sample[]} samples
+     * @param {string[]} samples
      */
     setSamples(samples) {
-        /**
-         * A map of sample objects for fast lookup
-         */
-        this.sampleMap = new Map(samples.map(sample => [sample.id, sample]));
-
         /**
          * The state, i.e., currently visible samples that have been sorted/filtered
          *
@@ -92,7 +93,7 @@ export default class SampleHandler {
             groups: [],
             rootGroup: {
                 name: "ROOT",
-                samples: samples.map(sample => sample.id)
+                samples
             }
         };
 
@@ -103,13 +104,6 @@ export default class SampleHandler {
          * @type {State[]}
          */
         this.stateHistory = [];
-
-        /** @param {string} sampleId */
-        this.sampleAccessor = sampleId => this.sampleMap.get(sampleId);
-    }
-
-    getAllSamples() {
-        return [...this.sampleMap.values()];
     }
 
     /**
@@ -164,25 +158,14 @@ export default class SampleHandler {
 
     /**
      *
-     * @param {string} attribute
-     * @returns {function(string):any}
-     */
-    getAttributeAccessor(attribute) {
-        /** @param {Sample} sample */
-        const attributeAccessor = sample => sample.attributes[attribute];
-
-        return sampleId => attributeAccessor(this.sampleAccessor(sampleId));
-    }
-
-    /**
-     *
      * @param {any} action
      */
     dispatch(action) {
         /** @type {function(string[]):string[]} What to do for each group */
         let operation;
 
-        const accessor = this.getAttributeAccessor(action.attribute);
+        const getAccessor = () =>
+            this.getAttributeInfo(action.attribute).accessor;
 
         switch (action.type) {
             case Actions.UNDO:
@@ -190,67 +173,60 @@ export default class SampleHandler {
                     this.state = this.stateHistory.pop();
                 }
                 break;
-            case Actions.SORT_BY_NAME:
-                operation = samples =>
-                    sort(
-                        samples,
-                        sampleId => this.sampleAccessor(sampleId).displayName,
-                        false
-                    );
-                break;
-            case Actions.SORT_BY_ATTRIBUTE:
+            case Actions.SORT_BY:
                 operation = samples =>
                     sort(
                         samples,
                         wrapAccessorForComparison(
-                            accessor,
+                            getAccessor(),
                             this.getAttributeInfo(action.attribute)
                         ),
                         false
                     );
                 break;
             case Actions.RETAIN_FIRST_OF_EACH:
-                operation = samples => retainFirstOfEach(samples, accessor);
+                operation = samples =>
+                    retainFirstOfEach(samples, getAccessor());
                 break;
-            case Actions.FILTER_BY_QUANTITATIVE_ATTRIBUTE:
+            case Actions.FILTER_BY_QUANTITATIVE:
                 operation = samples =>
                     filterQuantitative(
                         samples,
-                        accessor,
+                        getAccessor(),
                         action.operator,
                         action.operand
                     );
                 break;
-            case Actions.FILTER_BY_NOMINAL_ATTRIBUTE:
+            case Actions.FILTER_BY_NOMINAL:
                 operation = samples =>
                     filterNominal(
                         samples,
-                        accessor,
+                        getAccessor(),
                         action.action,
                         action.values
                     );
                 break;
-            case Actions.FILTER_BY_UNDEFINED_ATTRIBUTE:
-                operation = samples => filterUndefined(samples, accessor);
+            case Actions.REMOVE_UNDEFINED:
+                operation = samples => filterUndefined(samples, getAccessor());
                 break;
-            case Actions.GROUP_BY_NOMINAL_ATTRIBUTE:
+            case Actions.GROUP_BY_NOMINAL:
                 this.stateHistory.push(this.state);
                 this.state = produce(this.state, draftState => {
                     for (const sampleGroup of this.getSampleGroups(
                         draftState
                     )) {
-                        groupSamplesByAccessor(sampleGroup, accessor);
+                        groupSamplesByAccessor(sampleGroup, getAccessor());
                     }
                     draftState.groups.push({ name: action.attribute });
                 });
                 break;
-            case Actions.GROUP_BY_QUARTILES:
+            case Actions.GROUP_TO_QUARTILES:
                 this.stateHistory.push(this.state);
                 this.state = produce(this.state, draftState => {
                     for (const sampleGroup of this.getSampleGroups(
                         draftState
                     )) {
-                        groupSamplesByQuartiles(sampleGroup, accessor);
+                        groupSamplesByQuartiles(sampleGroup, getAccessor());
                     }
                     draftState.groups.push({ name: action.attribute });
                 });

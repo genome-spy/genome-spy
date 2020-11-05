@@ -22,6 +22,13 @@ import contextMenu from "../contextMenu";
  * @typedef {import("./view").default} View
  * @typedef {import("./layerView").default} LayerView
  *
+ * @typedef {object} Sample Sample metadata
+ * @prop {string} id
+ * @prop {string} displayName
+ * @prop {number} indexNumber For internal user, mainly for shaders
+ * @prop {Record<string, any>} attributes Arbitrary sample specific attributes
+ *
+ *
  */
 export default class SampleView extends ContainerView {
     /**
@@ -55,6 +62,24 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * @param {Sample[]} samples
+     */
+    _setSamples(samples) {
+        this._samples = samples;
+
+        this.sampleHandler.setSamples(samples.map(sample => sample.id));
+
+        this.sampleMap = new Map(samples.map(sample => [sample.id, sample]));
+
+        /** @param {string} sampleId */
+        this.sampleAccessor = sampleId => this.sampleMap.get(sampleId);
+    }
+
+    getAllSamples() {
+        return this._samples;
+    }
+
+    /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
@@ -82,7 +107,7 @@ export default class SampleView extends ContainerView {
                 this.spec.samples.data,
                 this.context.genomeSpy.config.baseUrl
             );
-            this.sampleHandler.setSamples(
+            this._setSamples(
                 processSamples(await sampleDataSource.getUngroupedData())
             );
         }
@@ -100,7 +125,7 @@ export default class SampleView extends ContainerView {
         if (!this.spec.samples.data) {
             const resolution = this.getResolution("sample");
             if (resolution) {
-                this.sampleHandler.setSamples(
+                this._setSamples(
                     resolution.getDataDomain().map((s, i) => ({
                         id: s,
                         displayName: s,

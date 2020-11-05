@@ -16,10 +16,13 @@ const FieldType = {
     QUANTITATIVE: "quantitative"
 };
 
+const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
+const SAMPLE_NAME = "SAMPLE_NAME";
+
 /**
  * This special-purpose class takes care of rendering sample labels and metadata.
  *
- * @typedef {import("../sampleHandler/sampleHandler").Sample} Sample
+ * @typedef {import("./sampleView").Sample} Sample
  * @typedef {import("./view").default} View
  *
  */
@@ -40,11 +43,20 @@ export class SampleAttributePanel extends ConcatView {
 
         this.parent = sampleView;
 
-        this.sampleHandler.addAttributeInfoSource(attribute =>
+        // TODO: Optimize the following
+        this.sampleHandler.addAttributeInfoSource(SAMPLE_ATTRIBUTE, attribute =>
             this.children
-                .map(getAttributeInfoFromView)
-                .find(info => info && info.name == attribute)
+                .map(this.getAttributeInfoFromView.bind(this))
+                .find(info => info && info.name == attribute.specifier)
         );
+
+        this.sampleHandler.addAttributeInfoSource(SAMPLE_NAME, attribute => ({
+            name: "displayName",
+            accessor: sampleId =>
+                this.parent.sampleAccessor(sampleId).displayName,
+            type: "nominal",
+            scale: undefined
+        }));
 
         this.addEventListener("contextmenu", this.handleContextMenu.bind(this));
     }
@@ -55,10 +67,7 @@ export class SampleAttributePanel extends ConcatView {
 
     getData() {
         // SampleView maintains the sample data
-        return new DataGroup(
-            "sample attributes",
-            this.sampleHandler.getAllSamples()
-        );
+        return new DataGroup("sample attributes", this.parent.getAllSamples());
     }
 
     transformData() {
@@ -112,7 +121,7 @@ export class SampleAttributePanel extends ConcatView {
         );
 
         const sample = sampleId
-            ? this.sampleHandler.sampleMap.get(sampleId)
+            ? this.parent.sampleMap.get(sampleId)
             : undefined;
 
         if (!sample) {
@@ -129,14 +138,14 @@ export class SampleAttributePanel extends ConcatView {
             this.context.genomeSpy.renderAll();
         };
 
-        const attribute = getAttributeInfoFromView(event.target);
+        const attribute = this.getAttributeInfoFromView(event.target);
         if (attribute) {
             const attributeValue = sample.attributes[attribute.name];
 
             contextMenu(
                 {
                     items: this.generateAttributeContextMenu(
-                        attribute.name,
+                        { type: SAMPLE_ATTRIBUTE, specifier: attribute.name },
                         attribute.type,
                         attributeValue,
                         dispatch
@@ -185,7 +194,7 @@ export class SampleAttributePanel extends ConcatView {
 
     _getAttributeNames() {
         return getCachedOrCall(this, "attributeNames", () => {
-            const samples = this.sampleHandler.getAllSamples();
+            const samples = this.parent.getAllSamples();
 
             // Find all attributes
             const attributes = samples
@@ -203,7 +212,7 @@ export class SampleAttributePanel extends ConcatView {
      * Builds views for attributes
      */
     _createAttributeViewSpecs() {
-        const samples = this.sampleHandler.getAllSamples();
+        const samples = this.parent.getAllSamples();
 
         return this._getAttributeNames().map(attributeName => {
             const attributeDef = this._getAttributeDef(attributeName);
@@ -243,9 +252,38 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     * @param {View} view
+     * @returns {import("../sampleHandler/sampleHandler").AttributeInfo}
+     */
+    getAttributeInfoFromView(view) {
+        const nameMatch = view.name.match(/attribute-(.*)/);
+        if (nameMatch) {
+            // Foolhardily assume that color is always used for encoding.
+            const resolution = view.getResolution("color");
+
+            const attribute = nameMatch[1];
+
+            const sampleAccessor = this.parent.sampleAccessor;
+
+            /** @param {string} sampleId */
+            const accessor = sampleId => {
+                const sample = sampleAccessor(sampleId);
+                return sample.attributes[attribute];
+            };
+
+            return {
+                name: attribute,
+                accessor,
+                type: resolution.type,
+                scale: resolution.getScale()
+            };
+        }
+    }
+
+    /**
      * TODO: Move to a separate file
      *
-     * @param {string} attribute
+     * @param {import("../sampleHandler/sampleHandler").AttributeIdentifier} attribute
      * @param {string} attributeType
      * @param {any} attributeValue
      * @param {function(object):void} dispatch
@@ -256,6 +294,8 @@ export class SampleAttributePanel extends ConcatView {
         attributeValue,
         dispatch
     ) {
+        const name = attribute.specifier;
+
         /** @type {import("../contextMenu").MenuItem[]} */
         let items = [
             {
@@ -265,12 +305,12 @@ export class SampleAttributePanel extends ConcatView {
             },
             { type: "divider" },
             {
-                label: `Attribute: ${attribute}`,
+                label: `Attribute: ${name}`,
                 type: "header"
             },
             {
                 label: "Sort by",
-                callback: () => dispatch(Actions.sortByAttribute(attribute))
+                callback: () => dispatch(Actions.sortBy(attribute))
             }
         ];
 
@@ -279,8 +319,7 @@ export class SampleAttributePanel extends ConcatView {
         if (nominal) {
             items.push({
                 label: "Group by",
-                callback: () =>
-                    dispatch(Actions.groupByNominalAttribute(attribute))
+                callback: () => dispatch(Actions.groupByNominal(attribute))
             });
 
             items.push({
@@ -295,8 +334,8 @@ export class SampleAttributePanel extends ConcatView {
             items.push({
                 label:
                     attributeValue === null
-                        ? `Samples with undefined ${attribute}`
-                        : `Samples with ${attribute} = ${attributeValue}`,
+                        ? `Samples with undefined ${name}`
+                        : `Samples with ${name} = ${attributeValue}`,
                 type: "header"
             });
 
@@ -304,7 +343,7 @@ export class SampleAttributePanel extends ConcatView {
                 label: "Retain",
                 callback: () =>
                     dispatch(
-                        Actions.filterByNominalAttribute(attribute, "retain", [
+                        Actions.filterByNominal(attribute, "retain", [
                             attributeValue
                         ])
                     )
@@ -314,7 +353,7 @@ export class SampleAttributePanel extends ConcatView {
                 label: "Remove",
                 callback: () =>
                     dispatch(
-                        Actions.filterByNominalAttribute(attribute, "remove", [
+                        Actions.filterByNominal(attribute, "remove", [
                             attributeValue
                         ])
                     )
@@ -324,19 +363,19 @@ export class SampleAttributePanel extends ConcatView {
 
             items.push({
                 label: "Group by quartiles",
-                callback: () => dispatch(Actions.groupByQuartiles(attribute))
+                callback: () => dispatch(Actions.groupToQuartiles(attribute))
             });
 
             items.push({ type: "divider" });
 
             if (isDefined(attributeValue)) {
                 items.push({
-                    label: `Remove ${attribute} less than ${numberFormat(
+                    label: `Remove ${name} less than ${numberFormat(
                         attributeValue
                     )}`,
                     callback: () =>
                         dispatch(
-                            Actions.filterByQuantitativeAttribute(
+                            Actions.filterByQuantitative(
                                 attribute,
                                 "gte",
                                 attributeValue
@@ -345,12 +384,12 @@ export class SampleAttributePanel extends ConcatView {
                 });
 
                 items.push({
-                    label: `Remove ${attribute} greater than ${numberFormat(
+                    label: `Remove ${name} greater than ${numberFormat(
                         attributeValue
                     )}`,
                     callback: () =>
                         dispatch(
-                            Actions.filterByQuantitativeAttribute(
+                            Actions.filterByQuantitative(
                                 attribute,
                                 "lte",
                                 attributeValue
@@ -359,9 +398,8 @@ export class SampleAttributePanel extends ConcatView {
                 });
             } else {
                 items.push({
-                    label: `Remove undefined ${attribute}`,
-                    callback: () =>
-                        dispatch(Actions.filterByUndefinedAttribute(attribute))
+                    label: `Remove undefined ${name}`,
+                    callback: () => dispatch(Actions.removeUndefined(attribute))
                 });
             }
         }
@@ -380,7 +418,7 @@ export class SampleAttributePanel extends ConcatView {
         return [
             {
                 label: "Sort by name",
-                callback: () => dispatch(Actions.sortByName())
+                callback: () => dispatch(Actions.sortBy({ type: SAMPLE_NAME }))
             },
             {
                 label: `Sample: ${sample.displayName}`,
@@ -415,23 +453,6 @@ function locationsToTextureData(locations) {
         arr[i++] = location.size;
     }
     return arr;
-}
-
-/**
- * @param {View} view
- * @returns {import("../sampleHandler/sampleHandler").AttributeInfo}
- */
-function getAttributeInfoFromView(view) {
-    const nameMatch = view.name.match(/attribute-(.*)/);
-    if (nameMatch) {
-        // Foolhardily assume that color is always used for encoding.
-        const resolution = view.getResolution("color");
-        return {
-            name: nameMatch[1],
-            type: resolution.type,
-            scale: resolution.getScale()
-        };
-    }
 }
 
 /**
