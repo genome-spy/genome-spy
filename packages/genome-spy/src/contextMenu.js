@@ -1,5 +1,16 @@
+import snarkdown from "snarkdown";
+import { escapeHtml } from "./utils/html";
+
+/**
+ *
+ * @param {string} text
+ */
+function markdown(text) {
+    return snarkdown(escapeHtml(text));
+}
+
 /** @type {HTMLElement} */
-var currentlyOpenMenuElement;
+let currentlyOpenMenuElement;
 
 /**
  * @typedef {Object} MenuItem
@@ -38,11 +49,11 @@ export default function contextMenu(options, mouseEvent) {
         } else if (item.type == "header") {
             itemElement = document.createElement("div");
             itemElement.classList.add("context-menu-header");
-            itemElement.innerText = item.label || "-";
+            itemElement.innerHTML = markdown(item.label) || "-";
         } else {
             itemElement = document.createElement(item.callback ? "a" : "div");
             itemElement.classList.add("context-menu-item");
-            itemElement.innerText = item.label || "-";
+            itemElement.innerHTML = markdown(item.label) || "-";
 
             if (item.callback) {
                 itemElement.addEventListener("mouseup", () => {

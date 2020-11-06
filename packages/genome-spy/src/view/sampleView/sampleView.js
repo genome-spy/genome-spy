@@ -1,9 +1,5 @@
-import {
-    findEncodedFields,
-    getViewClass,
-    isFacetFieldDef,
-    isFacetMapping
-} from "../viewUtils";
+import { span } from "vega-util";
+import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
 import { mapToPixelCoords } from "../../utils/layout/flexLayout";
 import DataSource from "../../data/dataSource";
@@ -12,7 +8,7 @@ import SampleHandler from "../../sampleHandler/sampleHandler";
 import { peek } from "../../utils/arrayUtils";
 import contextMenu from "../../contextMenu";
 import * as Actions from "../../sampleHandler/sampleHandlerActions";
-import { span } from "vega-util";
+import generateAttributeContextMenu from "./attributeContextMenu";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -319,13 +315,7 @@ export default class SampleView extends ContainerView {
         /** @type {import("../../contextMenu").MenuItem[]} */
         let items = [];
 
-        for (const fieldInfo of fieldInfos) {
-            items.push({
-                label: `${fieldInfo.field} (${fieldInfo.view.spec.title ||
-                    fieldInfo.view.spec.name})`,
-                type: "header"
-            });
-
+        for (const [i, fieldInfo] of fieldInfos.entries()) {
             let path = fieldInfo.view.getAncestors();
             // takeUntil would be aweseome
             path = path.slice(
@@ -344,15 +334,21 @@ export default class SampleView extends ContainerView {
             /** @type {import("../../sampleHandler/sampleHandler").AttributeIdentifier} */
             const attribute = { type: VALUE_AT_LOCUS, specifier };
 
-            items.push({
-                label: "Sort by",
-                callback: () => dispatch(Actions.sortBy(attribute))
-            });
+            if (i > 0) {
+                items.push({ type: "divider" });
+            }
 
-            items.push({
-                label: "Group by quartiles",
-                callback: () => dispatch(Actions.groupToQuartiles(attribute))
-            });
+            items.push(
+                ...generateAttributeContextMenu(
+                    `**${fieldInfo.field}** (${fieldInfo.view.spec.title ||
+                        fieldInfo.view.spec.name})`,
+                    fieldInfo.field,
+                    attribute,
+                    "quantitative", // TODO
+                    undefined, // TODO
+                    dispatch
+                )
+            );
         }
 
         contextMenu({ items }, mouseEvent);
