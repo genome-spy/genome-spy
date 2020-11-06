@@ -5,7 +5,6 @@ import {
     isFacetMapping
 } from "./viewUtils";
 import ContainerView from "./containerView";
-import UnitView from "./unitView";
 import { mapToPixelCoords } from "../utils/layout/flexLayout";
 import AxisWrapperView from "./axisWrapperView";
 import DataSource from "../data/dataSource";
@@ -13,6 +12,10 @@ import { SampleAttributePanel } from "./sampleAttributePanel";
 import SampleHandler from "../sampleHandler/sampleHandler";
 import { peek } from "../utils/arrayUtils";
 import contextMenu from "../contextMenu";
+import * as Actions from "../sampleHandler/sampleHandlerActions";
+import { span } from "vega-util";
+
+const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
 /**
  * Implements faceting of multiple samples. The samples are displayed
@@ -21,6 +24,7 @@ import contextMenu from "../contextMenu";
  * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
  * @typedef {import("./view").default} View
  * @typedef {import("./layerView").default} LayerView
+ * @typedef {import("./unitView").default} UnitView
  *
  * @typedef {object} Sample Sample metadata
  * @prop {string} id
@@ -28,6 +32,10 @@ import contextMenu from "../contextMenu";
  * @prop {number} indexNumber For internal user, mainly for shaders
  * @prop {Record<string, any>} attributes Arbitrary sample specific attributes
  *
+ * @typedef {object} LocusSpecifier
+ * @prop {string[]} path Path to the view
+ * @prop {string} field
+ * @prop {any} locus Locus in domain
  *
  */
 export default class SampleView extends ContainerView {
@@ -59,6 +67,28 @@ export default class SampleView extends ContainerView {
             "contextmenu",
             this.handleContextMenu.bind(this)
         );
+
+        this.sampleHandler.addAttributeInfoSource(VALUE_AT_LOCUS, attribute => {
+            const specifier =
+                /** @type {LocusSpecifier} */ (attribute.specifier);
+            const view = /** @type {UnitView} */ (this.findDescendantByPath(
+                specifier.path
+            ));
+
+            /** @param {string} sampleId */
+            const accessor = sampleId =>
+                view.mark.findDatumAt(sampleId, specifier.locus)[
+                    specifier.field
+                ];
+
+            return {
+                name: "attribute at locus", // TODO: What attribute, where?
+                accessor,
+                // TODO: Fix the following
+                type: "quantitative",
+                scale: undefined
+            };
+        });
     }
 
     /**
@@ -263,15 +293,29 @@ export default class SampleView extends ContainerView {
         // TODO: Allow for registering listeners
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
 
-        const normalizedX = coords.normalizePoint(event.point.x, event.point.y)
-            .x;
-        const domainX = this.getResolution("x")
-            .getScale()
-            .invert(normalizedX);
+        const normalizedXPos = coords.normalizePoint(
+            event.point.x,
+            event.point.y
+        ).x;
+        const xScale = this.getResolution("x").getScale();
+
+        // Terrible hack for handling chromosomal loci:
+        // TODO: Yet another layer of indirection to allow for passing and
+        // comparing complex values such as (chrom, pos) tuples.
+        const xOnRange = xScale.invert(normalizedXPos) / span(xScale.domain());
 
         const fieldInfos = findEncodedFields(this.child).filter(
             d => !["sample", "x", "x2"].includes(d.channel)
         );
+
+        /** @param {any} action */
+        const dispatch = action => {
+            this.sampleHandler.dispatch(action);
+
+            // TODO: Abstract this stuff
+            this.context.genomeSpy.computeLayout();
+            this.context.genomeSpy.renderAll();
+        };
 
         /** @type {import("../contextMenu").MenuItem[]} */
         let items = [];
@@ -283,13 +327,32 @@ export default class SampleView extends ContainerView {
                 type: "header"
             });
 
+            let path = fieldInfo.view.getAncestors();
+            // takeUntil would be aweseome
+            path = path.slice(
+                0,
+                path.findIndex(v => v === this)
+            );
+
+            /** @type {LocusSpecifier} */
+            const specifier = {
+                // TODO: Relative path
+                path: path.map(v => v.name).reverse(),
+                field: fieldInfo.field,
+                locus: xOnRange
+            };
+
+            /** @type {import("../sampleHandler/sampleHandler").AttributeIdentifier} */
+            const attribute = { type: VALUE_AT_LOCUS, specifier };
+
             items.push({
                 label: "Sort by",
-                callback: () => {
-                    alert(
-                        `TODO ... ${fieldInfo.view.getPathString()}, ${normalizedX}, ${domainX}`
-                    );
-                }
+                callback: () => dispatch(Actions.sortBy(attribute))
+            });
+
+            items.push({
+                label: "Group by quartiles",
+                callback: () => dispatch(Actions.groupToQuartiles(attribute))
             });
         }
 

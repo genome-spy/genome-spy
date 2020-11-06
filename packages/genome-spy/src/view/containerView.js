@@ -63,11 +63,28 @@ export default class ContainerView extends View {
 
     /**
      *
+     * @param {string[]} path An array of view names
+     * @returns {View}
+     */
+    findDescendantByPath(path) {
+        for (const child of this) {
+            if (child.name === path[0]) {
+                if (path.length == 1) {
+                    return child;
+                } else if (child instanceof ContainerView) {
+                    return child.findDescendantByPath(path.slice(1));
+                }
+            }
+        }
+    }
+
+    /**
+     *
      * @param {string} name
      */
     findChildByName(name) {
         for (const child of this) {
-            if (child.spec.name && child.spec.name === name) {
+            if (child.name === name) {
                 return child;
             }
         }

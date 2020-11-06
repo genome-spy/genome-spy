@@ -221,14 +221,14 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * Finds a datum that overlaps the given value on domain.
+     * Finds a datum that overlaps the given value on the x domain.
      * The result is unspecified if multiple data are found.
      *
      * This is highly specific to SampleView and its sorting/filtering functionality.
      *
      * @param {string} facetId
      * @param {number} x position on the x domain
-     * @returns {object}
+     * @returns {any}
      */
     findDatumAt(facetId, x) {
         const e = this.encoders;
