@@ -2,12 +2,12 @@ import { field as vegaField } from "vega-util";
 import { inferType } from "vega-loader";
 import { format as d3format } from "d3-format";
 
-import { DataGroup } from "../data/group";
-import ConcatView from "./concatView";
-import UnitView from "./unitView";
-import { getCachedOrCall } from "../utils/propertyCacher";
-import * as Actions from "../sampleHandler/sampleHandlerActions";
-import contextMenu from "../contextMenu";
+import { DataGroup } from "../../data/group";
+import ConcatView from "../concatView";
+import UnitView from "../unitView";
+import { getCachedOrCall } from "../../utils/propertyCacher";
+import * as Actions from "../../sampleHandler/sampleHandlerActions";
+import contextMenu from "../../contextMenu";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -23,7 +23,7 @@ const SAMPLE_NAME = "SAMPLE_NAME";
  * This special-purpose class takes care of rendering sample labels and metadata.
  *
  * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("./view").default} View
+ * @typedef {import("../view").default} View
  *
  */
 export class SampleAttributePanel extends ConcatView {
@@ -91,9 +91,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./view").RenderingOptions} [options]
+     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../utils/layout/rectangle").default} coords
+     * @param {import("../view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         for (const sampleLocation of this.parent.getSampleLocations()) {
@@ -109,9 +109,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {import("../../utils/layout/rectangle").default} coords
      *      Coordinates of the view
-     * @param {import("../utils/interactionEvent").default} event
+     * @param {import("../../utils/interactionEvent").default} event
      */
     handleContextMenu(coords, event) {
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
@@ -253,7 +253,7 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {View} view
-     * @returns {import("../sampleHandler/sampleHandler").AttributeInfo}
+     * @returns {import("../../sampleHandler/sampleHandler").AttributeInfo}
      */
     getAttributeInfoFromView(view) {
         const nameMatch = view.name.match(/attribute-(.*)/);
@@ -283,7 +283,7 @@ export class SampleAttributePanel extends ConcatView {
     /**
      * TODO: Move to a separate file
      *
-     * @param {import("../sampleHandler/sampleHandler").AttributeIdentifier} attribute
+     * @param {import("../../sampleHandler/sampleHandler").AttributeIdentifier} attribute
      * @param {string} attributeType
      * @param {any} attributeValue
      * @param {function(object):void} dispatch
@@ -296,7 +296,7 @@ export class SampleAttributePanel extends ConcatView {
     ) {
         const name = attribute.specifier;
 
-        /** @type {import("../contextMenu").MenuItem[]} */
+        /** @type {import("../../contextMenu").MenuItem[]} */
         let items = [
             {
                 // Temporarily here
@@ -412,7 +412,7 @@ export class SampleAttributePanel extends ConcatView {
      *
      * @param {Sample} sample
      * @param {function(object):void} dispatch
-     * @returns {import("../contextMenu").MenuItem[]}
+     * @returns {import("../../contextMenu").MenuItem[]}
      */
     generateSampleContextMenu(sample, dispatch) {
         return [
@@ -494,7 +494,7 @@ function createAttributeSpec(attributeName, attributeDef) {
 function createLabelViewSpec() {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
-    /** @type {import("./viewUtils").UnitSpec} */
+    /** @type {import("../viewUtils").UnitSpec} */
     const titleSpec = {
         name: "sampleLabel",
         width: 150,

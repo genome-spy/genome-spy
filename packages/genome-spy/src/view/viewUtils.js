@@ -3,7 +3,7 @@ import { isObject, isString, isArray } from "vega-util";
 import ImportView from "./importView";
 import LayerView from "./layerView";
 import FacetView from "./facetView";
-import SampleView from "./sampleView";
+import SampleView from "./sampleView/sampleView";
 import UnitView from "./unitView";
 import ConcatView from "./concatView";
 import TableView from "./tableView";

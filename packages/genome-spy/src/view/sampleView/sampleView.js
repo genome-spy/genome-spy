@@ -3,16 +3,15 @@ import {
     getViewClass,
     isFacetFieldDef,
     isFacetMapping
-} from "./viewUtils";
-import ContainerView from "./containerView";
-import { mapToPixelCoords } from "../utils/layout/flexLayout";
-import AxisWrapperView from "./axisWrapperView";
-import DataSource from "../data/dataSource";
+} from "../viewUtils";
+import ContainerView from "../containerView";
+import { mapToPixelCoords } from "../../utils/layout/flexLayout";
+import DataSource from "../../data/dataSource";
 import { SampleAttributePanel } from "./sampleAttributePanel";
-import SampleHandler from "../sampleHandler/sampleHandler";
-import { peek } from "../utils/arrayUtils";
-import contextMenu from "../contextMenu";
-import * as Actions from "../sampleHandler/sampleHandlerActions";
+import SampleHandler from "../../sampleHandler/sampleHandler";
+import { peek } from "../../utils/arrayUtils";
+import contextMenu from "../../contextMenu";
+import * as Actions from "../../sampleHandler/sampleHandlerActions";
 import { span } from "vega-util";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
@@ -21,10 +20,10 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
  *
- * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
- * @typedef {import("./view").default} View
- * @typedef {import("./layerView").default} LayerView
- * @typedef {import("./unitView").default} UnitView
+ * @typedef {import("../../utils/layout/flexLayout").LocSize} LocSize
+ * @typedef {import("../view").default} View
+ * @typedef {import("../layerView").default} LayerView
+ * @typedef {import("../unitView").default} UnitView
  *
  * @typedef {object} Sample Sample metadata
  * @prop {string} id
@@ -41,8 +40,8 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 export default class SampleView extends ContainerView {
     /**
      *
-     * @param {import("./viewUtils").SampleSpec} spec
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("../viewUtils").SampleSpec} spec
+     * @param {import("../viewUtils").ViewContext} context
      * @param {ContainerView} parent
      * @param {string} name
      */
@@ -118,8 +117,8 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("./view").default} child
-     * @param {import("./view").default} replacement
+     * @param {import("../view").default} child
+     * @param {import("../view").default} replacement
      */
     replaceChild(child, replacement) {
         if (child !== this.child) {
@@ -179,7 +178,7 @@ export default class SampleView extends ContainerView {
         const sampleGroups = flattened
             .map(
                 group =>
-                    /** @type {import("../sampleHandler/sampleHandler").SampleGroup} */ (peek(
+                    /** @type {import("../../sampleHandler/sampleHandler").SampleGroup} */ (peek(
                         group
                     )).samples
             )
@@ -235,9 +234,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./view").RenderingOptions} [options]
+     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../utils/layout/rectangle").default} coords
+     * @param {import("../view").RenderingOptions} [options]
      */
     renderChild(context, coords, options = {}) {
         for (const sampleLocation of this.getSampleLocations()) {
@@ -253,9 +252,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./view").RenderingOptions} [options]
+     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../utils/layout/rectangle").default} coords
+     * @param {import("../view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
@@ -285,9 +284,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {import("../../utils/layout/rectangle").default} coords
      *      Coordinates of the view
-     * @param {import("../utils/interactionEvent").default} event
+     * @param {import("../../utils/interactionEvent").default} event
      */
     handleContextMenu(coords, event) {
         // TODO: Allow for registering listeners
@@ -317,7 +316,7 @@ export default class SampleView extends ContainerView {
             this.context.genomeSpy.renderAll();
         };
 
-        /** @type {import("../contextMenu").MenuItem[]} */
+        /** @type {import("../../contextMenu").MenuItem[]} */
         let items = [];
 
         for (const fieldInfo of fieldInfos) {
@@ -342,7 +341,7 @@ export default class SampleView extends ContainerView {
                 locus: xOnRange
             };
 
-            /** @type {import("../sampleHandler/sampleHandler").AttributeIdentifier} */
+            /** @type {import("../../sampleHandler/sampleHandler").AttributeIdentifier} */
             const attribute = { type: VALUE_AT_LOCUS, specifier };
 
             items.push({
