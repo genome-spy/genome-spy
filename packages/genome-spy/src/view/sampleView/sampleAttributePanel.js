@@ -129,24 +129,10 @@ export class SampleAttributePanel extends ConcatView {
             return;
         }
 
-        /** @param {any} action */
-        const dispatch = action => {
-            this.sampleHandler.dispatch(action);
-
-            // TODO: Abstract this stuff
-            this.context.genomeSpy.computeLayout();
-            this.context.genomeSpy.renderAll();
-        };
+        const dispatch = this.sampleHandler.dispatch.bind(this.sampleHandler);
 
         /** @type {import("../../contextMenu").MenuItem[]} */
-        const items = [
-            {
-                // Temporarily here
-                label: "Undo",
-                callback: () => dispatch(Actions.undo())
-            },
-            { type: "divider" }
-        ];
+        const items = [];
 
         const attribute = this.getAttributeInfoFromView(event.target);
         if (attribute) {
@@ -190,11 +176,7 @@ export class SampleAttributePanel extends ConcatView {
      * @param {string} attributeName
      */
     _getAttributeDef(attributeName) {
-        return (
-            this.parent.spec.samples &&
-            this.parent.spec.samples.attributes &&
-            this.parent.spec.samples.attributes[attributeName]
-        );
+        return this.parent.spec.samples?.attributes?.[attributeName];
     }
 
     _getAttributeNames() {

@@ -23,6 +23,10 @@ import {
  * @typedef {import("./sampleState").SampleGroup} SampleGroup
  * @typedef {import("./sampleState").GroupGroup} GroupGroup
  *
+ * @typedef {object} ProvenanceNode
+ * @prop {State} state The full state
+ * @prop {any} action The action that changed the previous state to this state
+ *
  * @typedef {object} AttributeIdentifier An identifier for an abstract attribute.
  *      Allows for retrieving an accessor and information.
  * @prop {string} type
@@ -46,6 +50,9 @@ export default class SampleHandler {
         this.attributeInfoSourcesByType = {};
 
         this.setSamples([]);
+
+        /** @type {(function():void)[]} */
+        this.listeners = [];
     }
 
     /**
@@ -55,6 +62,20 @@ export default class SampleHandler {
      */
     addAttributeInfoSource(type, attributeInfoSource) {
         this.attributeInfoSourcesByType[type] = attributeInfoSource;
+    }
+
+    /**
+     *
+     * @param {function():void} listener
+     */
+    addListener(listener) {
+        this.listeners.push(listener);
+    }
+
+    _notifyListeners() {
+        for (const listener of this.listeners) {
+            listener();
+        }
     }
 
     /**
@@ -101,9 +122,9 @@ export default class SampleHandler {
          * TODO: Use immer's patches:
          * https://techinscribed.com/implementing-undo-redo-functionality-in-redux-using-immer/
          *
-         * @type {State[]}
+         * @type {ProvenanceNode[]}
          */
-        this.stateHistory = [];
+        this.provenance = [];
     }
 
     /**
@@ -156,6 +177,18 @@ export default class SampleHandler {
         ).map(path => peek(path)));
     }
 
+    isUndoable() {
+        return !!this.provenance.length;
+    }
+
+    undo() {
+        if (this.provenance.length) {
+            const node = this.provenance.pop();
+            this.state = node.state;
+        }
+        this._notifyListeners();
+    }
+
     /**
      *
      * @param {any} action
@@ -169,10 +202,8 @@ export default class SampleHandler {
 
         switch (action.type) {
             case Actions.UNDO:
-                if (this.stateHistory.length) {
-                    this.state = this.stateHistory.pop();
-                }
-                break;
+                this.undo();
+                return;
             case Actions.SORT_BY:
                 operation = samples =>
                     sort(
@@ -210,7 +241,7 @@ export default class SampleHandler {
                 operation = samples => filterUndefined(samples, getAccessor());
                 break;
             case Actions.GROUP_BY_NOMINAL:
-                this.stateHistory.push(this.state);
+                this.provenance.push({ state: this.state, action: action });
                 this.state = produce(this.state, draftState => {
                     for (const sampleGroup of this.getSampleGroups(
                         draftState
@@ -219,9 +250,10 @@ export default class SampleHandler {
                     }
                     draftState.groups.push({ name: action.attribute });
                 });
+                this._notifyListeners();
                 break;
             case Actions.GROUP_TO_QUARTILES:
-                this.stateHistory.push(this.state);
+                this.provenance.push({ state: this.state, action: action });
                 this.state = produce(this.state, draftState => {
                     for (const sampleGroup of this.getSampleGroups(
                         draftState
@@ -230,18 +262,20 @@ export default class SampleHandler {
                     }
                     draftState.groups.push({ name: action.attribute });
                 });
+                this._notifyListeners();
                 break;
             default:
                 throw new Error("Unknown action: " + JSON.stringify(action));
         }
 
         if (operation) {
-            this.stateHistory.push(this.state);
+            this.provenance.push({ state: this.state, action: action });
             this.state = produce(this.state, draftState => {
                 for (const sampleGroup of this.getSampleGroups(draftState)) {
                     sampleGroup.samples = operation(sampleGroup.samples);
                 }
             });
+            this._notifyListeners();
         }
     }
 }

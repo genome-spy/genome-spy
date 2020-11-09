@@ -11,6 +11,8 @@ import {
     faInfoCircle,
     faQuestionCircle
 } from "@fortawesome/free-solid-svg-icons";
+import { VISIT_STOP } from "./view/view";
+import SampleView from "./view/sampleView/sampleView";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -55,46 +57,23 @@ export default class GenomeSpyApp {
         }
 
         function getToolButtons() {
-            const sampleTrackButtons =
-                false &&
-                self.genomeSpy &&
-                self.genomeSpy._getSampleTracks().length > 0
-                    ? html`
-                          <button
-                              class="tool-btn backtrack-samples"
-                              title="Backtrack samples (B)"
-                              ?disabled=${!self.genomeSpy.isSomethingToBacktrack()}
-                              @click=${onBacktrackClicked}
-                          >
-                              ${icon(faUndo).node[0]}
-                          </button>
+            const sampleHandler = self.getSampleHandler();
 
-                          <button
-                              class="tool-btn"
-                              title="Fisheye (E)"
-                              @click=${() =>
-                                  self.genomeSpy
-                                      ._getSampleTracks()[0]
-                                      .toggleFisheye()}
-                          >
-                              ${icon(faFish).node[0]}
-                          </button>
-
-                          <button
-                              class="tool-btn"
-                              title="Peek (Z)"
-                              @click=${() =>
-                                  self.genomeSpy
-                                      ._getSampleTracks()[0]
-                                      .togglePeek()}
-                          >
-                              ${icon(faArrowsAltV).node[0]}
-                          </button>
-                      `
-                    : "";
+            const sampleButtons = sampleHandler
+                ? html`
+                      <button
+                          class="tool-btn backtrack-samples"
+                          title="Backtrack samples (B)"
+                          ?disabled=${!sampleHandler.isUndoable()}
+                          @click=${() => sampleHandler.undo()}
+                      >
+                          ${icon(faUndo).node[0]}
+                      </button>
+                  `
+                : "";
 
             return html`
-                ${sampleTrackButtons}
+                ${sampleButtons}
 
                 <button
                     class="tool-btn"
@@ -248,10 +227,6 @@ export default class GenomeSpyApp {
             elem("search-input").blur();
         });
 
-        function onBacktrackClicked() {
-            self.genomeSpy.backtrackSamples();
-        }
-
         this.genomeSpy = new GenomeSpy(
             elem("genome-spy-container"),
             this.config
@@ -271,12 +246,9 @@ export default class GenomeSpyApp {
             )).value = this.genomeSpy.getViewportDomainString();
         });
 
-        this.genomeSpy.on("samplesupdated", () => {
-            // Updated backtrack button
-            this._renderTemplate();
-        });
-
         await this.genomeSpy.launch();
+
+        this.getSampleHandler()?.addListener(() => this._renderTemplate());
 
         // Update the UI now that GenomeSpy is initialized
         this._renderTemplate();
@@ -291,6 +263,28 @@ export default class GenomeSpyApp {
         // TODO: Preserve viewport
         this.genomeSpy.destroy();
         await this.launch();
+    }
+
+    getSampleView() {
+        if (!this.genomeSpy?.viewRoot) {
+            return;
+        }
+
+        /** @type {import("./view/sampleView/sampleView").default} */
+        let sampleView;
+
+        this.genomeSpy.viewRoot.visit(view => {
+            if (view instanceof SampleView) {
+                sampleView = view;
+                return VISIT_STOP;
+            }
+        });
+
+        return sampleView;
+    }
+
+    getSampleHandler() {
+        return this.getSampleView()?.sampleHandler;
     }
 }
 

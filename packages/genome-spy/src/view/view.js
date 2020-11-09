@@ -176,8 +176,8 @@ export default class View {
     }
 
     /**
-     * Visits child views in depth-first order. Terminates the search and returns
-     * the value if the visitor returns a defined value.
+     * Visits child views in depth-first order. Visitor's return value
+     * controls the traversal.
      *
      * @param {(function(View):(VISIT_SKIP|VISIT_STOP|void)) & { afterChildren?: function}} visitor
      * @returns {any}

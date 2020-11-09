@@ -7,7 +7,6 @@ import { SampleAttributePanel } from "./sampleAttributePanel";
 import SampleHandler from "../../sampleHandler/sampleHandler";
 import { peek } from "../../utils/arrayUtils";
 import contextMenu from "../../contextMenu";
-import * as Actions from "../../sampleHandler/sampleHandlerActions";
 import generateAttributeContextMenu from "./attributeContextMenu";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
@@ -20,6 +19,7 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
  * @typedef {import("../view").default} View
  * @typedef {import("../layerView").default} LayerView
  * @typedef {import("../unitView").default} UnitView
+ * @typedef {import("../axisWrapperView").default} AxisWrapperView
  *
  * @typedef {object} Sample Sample metadata
  * @prop {string} id
@@ -55,6 +55,11 @@ export default class SampleView extends ContainerView {
         ));
 
         this.sampleHandler = new SampleHandler();
+
+        this.sampleHandler.addListener(() => {
+            this.context.genomeSpy.computeLayout();
+            this.context.genomeSpy.renderAll();
+        });
 
         this.attributeView = new SampleAttributePanel(this);
 
@@ -303,14 +308,7 @@ export default class SampleView extends ContainerView {
             d => !["sample", "x", "x2"].includes(d.channel)
         );
 
-        /** @param {any} action */
-        const dispatch = action => {
-            this.sampleHandler.dispatch(action);
-
-            // TODO: Abstract this stuff
-            this.context.genomeSpy.computeLayout();
-            this.context.genomeSpy.renderAll();
-        };
+        const dispatch = this.sampleHandler.dispatch.bind(this.sampleHandler);
 
         /** @type {import("../../contextMenu").MenuItem[]} */
         let items = [];
