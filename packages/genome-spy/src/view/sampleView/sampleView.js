@@ -77,7 +77,7 @@ export default class SampleView extends ContainerView {
 
             /** @param {string} sampleId */
             const accessor = sampleId =>
-                view.mark.findDatumAt(sampleId, specifier.locus)[
+                view.mark.findDatumAt(sampleId, specifier.locus)?.[
                     specifier.field
                 ];
 
