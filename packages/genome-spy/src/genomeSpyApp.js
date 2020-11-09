@@ -1,3 +1,5 @@
+import lzString from "lz-string";
+
 import GenomeSpy from "./genomeSpy";
 import "./styles/genome-spy-app.scss";
 import { html, render } from "lit-html";
@@ -269,12 +271,54 @@ export default class GenomeSpyApp {
 
         await this.genomeSpy.launch();
 
-        this.getSampleHandler()?.provenance.addListener(() =>
-            this._renderTemplate()
-        );
-
+        this._replayProvenanceFromUrl();
         // Update the UI now that GenomeSpy is initialized
         this._renderTemplate();
+
+        this.getSampleHandler()?.provenance.addListener(() => {
+            this._renderTemplate();
+            this._updateUrl();
+        });
+    }
+
+    /**
+     * Update provenance to url
+     */
+    _updateUrl() {
+        const history = this.getSampleHandler().provenance.getActionHistory();
+
+        let hash = "";
+        if (history.length) {
+            hash =
+                "#" +
+                lzString.compressToEncodedURIComponent(JSON.stringify(history));
+        }
+
+        window.history.replaceState(
+            undefined,
+            document.title,
+            window.location.pathname + window.location.search + hash
+        );
+    }
+
+    _replayProvenanceFromUrl() {
+        if (!this.getSampleHandler()) {
+            return;
+        }
+
+        const hash = window.location.hash;
+        if (hash && hash.length > 0) {
+            const history = JSON.parse(
+                lzString.decompressFromEncodedURIComponent(hash.substr(1))
+            );
+
+            if (Array.isArray(history)) {
+                for (const action of history) {
+                    // TODO: Suppress transitions while applying actions
+                    this.getSampleHandler().dispatch(action);
+                }
+            }
+        }
     }
 
     /**
