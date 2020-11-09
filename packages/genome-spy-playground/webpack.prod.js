@@ -8,10 +8,6 @@ module.exports = {
     mode: "production",
     devtool: "source-map",
 
-    entry: {
-        main: "./src/index.js"
-    },
-
     plugins: [
         new CleanWebpackPlugin(["dist"]),
         new HtmlWebpackPlugin({
@@ -21,10 +17,6 @@ module.exports = {
         new MiniCssExtractPlugin()
     ],
 
-    output: {
-        path: path.resolve(__dirname, "dist")
-    },
-
     module: {
         rules: [
             {
@@ -32,11 +24,7 @@ module.exports = {
                 use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"]
             },
             {
-                test: /\.glsl$/,
-                use: "webpack-glsl-loader"
-            },
-            {
-                test: /\.(txt|[ct]sv)$/,
+                test: /\.(txt|[ct]sv|glsl)$/,
                 use: "raw-loader"
             },
             {

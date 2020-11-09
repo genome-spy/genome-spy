@@ -13,15 +13,9 @@ module.exports = merge(common, {
     mode: "production",
     devtool: "source-map",
 
-    entry: {
-        index: "./src/index.js"
-    },
-
     output: {
-        filename: "[name].js",
         library: "genomeSpyEmbed",
-        libraryTarget: "umd",
-        path: path.resolve(__dirname, "dist")
+        libraryTarget: "umd"
     },
 
     plugins: [
