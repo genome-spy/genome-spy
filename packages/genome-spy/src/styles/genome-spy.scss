@@ -24,19 +24,8 @@ $basic-spacing: 10px;
         }
     }
 
-    .track-stack {
-        flex-grow: 1;
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-
-        transform: scale(1, 1);
-        opacity: 1;
-        transition: opacity 0.7s, transform 0.7s;
-    }
-
     &.loading {
-        .track-stack {
+        canvas {
             transform: scale(0.95, 0.95);
             opacity: 0;
         }
@@ -44,31 +33,6 @@ $basic-spacing: 10px;
         .loading-message .message {
             opacity: 1;
         }
-    }
-
-    .viewport-overlay {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-    }
-
-    .track {
-        position: relative;
-    }
-
-    .axis-track {
-        @extend .track;
-    }
-
-    .sample-track {
-        @extend .track;
-    }
-
-    .simple-track:not(:first-child) {
-        margin-top: 4px;
-    }
-
-    canvas {
     }
 
     .tooltip {
@@ -127,12 +91,6 @@ $basic-spacing: 10px;
     .gene-track-tooltip {
         .summary {
             font-size: 90%;
-        }
-    }
-
-    .sample-track-sample-tooltip table {
-        td.color {
-            width: 1px;
         }
     }
 
