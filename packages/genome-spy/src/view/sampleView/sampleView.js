@@ -56,7 +56,7 @@ export default class SampleView extends ContainerView {
 
         this.sampleHandler = new SampleHandler();
 
-        this.sampleHandler.addListener(() => {
+        this.sampleHandler.provenance.addListener(() => {
             this.context.genomeSpy.computeLayout();
             this.context.genomeSpy.renderAll();
         });

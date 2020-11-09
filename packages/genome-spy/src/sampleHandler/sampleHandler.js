@@ -12,6 +12,7 @@ import {
     filterUndefined,
     wrapAccessorForComparison
 } from "./operations";
+import Provenance from "./provenance";
 
 /**
  * This class handles sample sorting, filtering, grouping, etc.
@@ -22,10 +23,6 @@ import {
  * @typedef {import("./sampleState").Group} Group
  * @typedef {import("./sampleState").SampleGroup} SampleGroup
  * @typedef {import("./sampleState").GroupGroup} GroupGroup
- *
- * @typedef {object} ProvenanceNode
- * @prop {State} state The full state
- * @prop {any} action The action that changed the previous state to this state
  *
  * @typedef {object} AttributeIdentifier An identifier for an abstract attribute.
  *      Allows for retrieving an accessor and information.
@@ -49,10 +46,12 @@ export default class SampleHandler {
          */
         this.attributeInfoSourcesByType = {};
 
-        this.setSamples([]);
+        /** @type {Provenance<State>} */
+        this.provenance = new Provenance();
+    }
 
-        /** @type {(function():void)[]} */
-        this.listeners = [];
+    get state() {
+        return this.provenance.state;
     }
 
     /**
@@ -62,20 +61,6 @@ export default class SampleHandler {
      */
     addAttributeInfoSource(type, attributeInfoSource) {
         this.attributeInfoSourcesByType[type] = attributeInfoSource;
-    }
-
-    /**
-     *
-     * @param {function():void} listener
-     */
-    addListener(listener) {
-        this.listeners.push(listener);
-    }
-
-    _notifyListeners() {
-        for (const listener of this.listeners) {
-            listener();
-        }
     }
 
     /**
@@ -105,26 +90,13 @@ export default class SampleHandler {
      * @param {string[]} samples
      */
     setSamples(samples) {
-        /**
-         * The state, i.e., currently visible samples that have been sorted/filtered
-         *
-         * @type {State}
-         */
-        this.state = {
+        this.provenance.setInitialState({
             groups: [],
             rootGroup: {
                 name: "ROOT",
                 samples
             }
-        };
-
-        /**
-         * TODO: Use immer's patches:
-         * https://techinscribed.com/implementing-undo-redo-functionality-in-redux-using-immer/
-         *
-         * @type {ProvenanceNode[]}
-         */
-        this.provenance = [];
+        });
     }
 
     /**
@@ -177,18 +149,6 @@ export default class SampleHandler {
         ).map(path => peek(path)));
     }
 
-    isUndoable() {
-        return !!this.provenance.length;
-    }
-
-    undo() {
-        if (this.provenance.length) {
-            const node = this.provenance.pop();
-            this.state = node.state;
-        }
-        this._notifyListeners();
-    }
-
     /**
      *
      * @param {any} action
@@ -202,7 +162,7 @@ export default class SampleHandler {
 
         switch (action.type) {
             case Actions.UNDO:
-                this.undo();
+                this.provenance.undo();
                 return;
             case Actions.SORT_BY:
                 operation = samples =>
@@ -241,41 +201,42 @@ export default class SampleHandler {
                 operation = samples => filterUndefined(samples, getAccessor());
                 break;
             case Actions.GROUP_BY_NOMINAL:
-                this.provenance.push({ state: this.state, action: action });
-                this.state = produce(this.state, draftState => {
-                    for (const sampleGroup of this.getSampleGroups(
-                        draftState
-                    )) {
-                        groupSamplesByAccessor(sampleGroup, getAccessor());
-                    }
-                    draftState.groups.push({ name: action.attribute });
-                });
-                this._notifyListeners();
+                this.provenance.push(
+                    produce(this.state, draftState => {
+                        for (const sampleGroup of this.getSampleGroups(
+                            draftState
+                        )) {
+                            groupSamplesByAccessor(sampleGroup, getAccessor());
+                        }
+                        draftState.groups.push({ name: action.attribute });
+                    }),
+                    action
+                );
                 break;
             case Actions.GROUP_TO_QUARTILES:
-                this.provenance.push({ state: this.state, action: action });
-                this.state = produce(this.state, draftState => {
-                    for (const sampleGroup of this.getSampleGroups(
-                        draftState
-                    )) {
-                        groupSamplesByQuartiles(sampleGroup, getAccessor());
-                    }
-                    draftState.groups.push({ name: action.attribute });
-                });
-                this._notifyListeners();
+                this.provenance.push(
+                    produce(this.state, draftState => {
+                        for (const sampleGroup of this.getSampleGroups(
+                            draftState
+                        )) {
+                            groupSamplesByQuartiles(sampleGroup, getAccessor());
+                        }
+                        draftState.groups.push({ name: action.attribute });
+                    }),
+                    action
+                );
                 break;
             default:
                 throw new Error("Unknown action: " + JSON.stringify(action));
         }
 
         if (operation) {
-            this.provenance.push({ state: this.state, action: action });
-            this.state = produce(this.state, draftState => {
+            const newState = produce(this.state, draftState => {
                 for (const sampleGroup of this.getSampleGroups(draftState)) {
                     sampleGroup.samples = operation(sampleGroup.samples);
                 }
             });
-            this._notifyListeners();
+            this.provenance.push(newState, action);
         }
     }
 }

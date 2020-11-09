@@ -6,6 +6,8 @@ import { unsafeHTML } from "lit-html/directives/unsafe-html.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faUndo,
+    faRedo,
+    faBookmark,
     faFish,
     faArrowsAltV,
     faInfoCircle,
@@ -57,17 +59,36 @@ export default class GenomeSpyApp {
         }
 
         function getToolButtons() {
-            const sampleHandler = self.getSampleHandler();
+            const provenance = self.getSampleHandler()?.provenance;
 
-            const sampleButtons = sampleHandler
+            const sampleButtons = provenance
                 ? html`
                       <button
                           class="tool-btn backtrack-samples"
                           title="Backtrack samples (B)"
-                          ?disabled=${!sampleHandler.isUndoable()}
-                          @click=${() => sampleHandler.undo()}
+                          ?disabled=${!provenance.isUndoable()}
+                          @click=${() => provenance.undo()}
                       >
                           ${icon(faUndo).node[0]}
+                      </button>
+                      <button
+                          class="tool-btn"
+                          title="Redo"
+                          ?disabled=${!provenance.isRedoable()}
+                          @click=${() => provenance.redo()}
+                      >
+                          ${icon(faRedo).node[0]}
+                      </button>
+                      <button
+                          class="tool-btn"
+                          title="Bookmark"
+                          ?disabled=${provenance.isAtInitialState()}
+                          @click=${() =>
+                              console.log(
+                                  JSON.stringify(provenance.getActionHistory())
+                              )}
+                      >
+                          ${icon(faBookmark).node[0]}
                       </button>
                   `
                 : "";
@@ -248,7 +269,9 @@ export default class GenomeSpyApp {
 
         await this.genomeSpy.launch();
 
-        this.getSampleHandler()?.addListener(() => this._renderTemplate());
+        this.getSampleHandler()?.provenance.addListener(() =>
+            this._renderTemplate()
+        );
 
         // Update the UI now that GenomeSpy is initialized
         this._renderTemplate();
