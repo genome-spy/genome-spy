@@ -20,12 +20,12 @@ module.exports = {
     module: {
         rules: [
             {
-                test: /\.(s*)css$/,
-                use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"]
+                test: /\.(txt|[ct]sv|glsl)$/,
+                use: "raw-loader"
             },
             {
-                test: /\.glsl$/,
-                use: "webpack-glsl-loader"
+                test: /\.(s*)css$/,
+                use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"]
             },
             {
                 test: /\.png$/,

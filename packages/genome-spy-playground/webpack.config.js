@@ -1,18 +1,18 @@
-const merge = require('webpack-merge');
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
+const merge = require("webpack-merge");
+const path = require("path");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
-    mode: 'development',
-    devtool: 'inline-source-map',
-    
+    mode: "development",
+    devtool: "inline-source-map",
+
     entry: {
-        main: './src/index.js'
+        main: "./src/index.js"
     },
-    
+
     plugins: [
         new HtmlWebpackPlugin({
-            title: 'GenomeSpy Playground',
+            title: "GenomeSpy Playground"
         })
     ],
 
@@ -24,19 +24,11 @@ module.exports = {
         rules: [
             {
                 test: /\.(s*)css$/,
-                use: [
-                    'style-loader',
-                    'css-loader',
-                    'sass-loader'
-                ]
+                use: ["style-loader", "css-loader", "sass-loader"]
             },
             {
-                test: /\.glsl$/,
-                use: 'webpack-glsl-loader'
-            },
-            {
-                test: /\.(txt|[ct]sv)$/,
-                use: 'raw-loader'
+                test: /\.(txt|[ct]sv|glsl)$/,
+                use: "raw-loader"
             }
         ]
     }

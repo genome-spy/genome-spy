@@ -5,12 +5,8 @@ module.exports = {
     module: {
         rules: [
             {
-                test: /\.(txt|[ct]sv)$/,
+                test: /\.(txt|[ct]sv|glsl)$/,
                 use: "raw-loader"
-            },
-            {
-                test: /\.glsl$/,
-                use: "webpack-glsl-loader"
             },
             {
                 test: /\.png$/,
