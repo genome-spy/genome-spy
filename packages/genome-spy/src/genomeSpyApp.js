@@ -70,12 +70,12 @@ export default class GenomeSpyApp {
              * @param {number} index
              */
             const makeDropdownItem = (action, index) => html`
-                <a @click=${() => provenance.activateState(index)}
-                    ><li
-                        class=${index == provenance.currentNodeIndex
-                            ? "active"
-                            : ""}
-                    >
+                <a
+                    @click=${() => provenance.activateState(index)}
+                    class=${index == provenance.currentNodeIndex
+                        ? "active"
+                        : ""}
+                    ><li>
                         ${action ? JSON.stringify(action) : "Initial state"}
                     </li></a
                 >
@@ -87,11 +87,11 @@ export default class GenomeSpyApp {
                         class="tool-btn"
                         title="Provenance"
                         ?disabled=${provenance.isEmpty()}
-                        onclick="this.parentNode.classList.toggle('show')"
+                        @click=${toggleDropdown}
                     >
                         ${icon(faEllipsisH).node[0]}
                     </button>
-                    <div class="dropdown-menu">
+                    <div class="dropdown-menu context-menu">
                         <ol>
                             ${provenance
                                 .getFullActionHistory()
@@ -103,7 +103,7 @@ export default class GenomeSpyApp {
 
             const provenanceButtons = provenance
                 ? html`
-                      <div class="btn-group">
+                      <div class="btn-group" @click=${e => e.stopPropagation()}>
                           <button
                               class="tool-btn"
                               title="Backtrack samples (B)"
@@ -420,4 +420,30 @@ function typeSlowly(text, element) {
 
         next();
     });
+}
+
+/**
+ *
+ * @param {UIEvent} event
+ */
+function toggleDropdown(event) {
+    const target = /** @type {HTMLElement} */ (event.currentTarget);
+    const dropdown = /** @type {HTMLElement} */ (target.parentNode);
+
+    if (!dropdown.classList.contains("show")) {
+        event.stopPropagation();
+        dropdown.classList.add("show");
+        window.addEventListener(
+            "click",
+            e => {
+                if (dropdown.classList.contains("show")) {
+                    dropdown.classList.remove("show");
+                    e.preventDefault();
+                }
+            },
+            { once: true }
+        );
+    } else {
+        window.dispatchEvent(new MouseEvent("click"));
+    }
 }

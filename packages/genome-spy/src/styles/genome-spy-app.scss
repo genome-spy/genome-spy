@@ -171,10 +171,17 @@ $basic-spacing: 10px;
                 position: absolute;
                 top: 30px;
                 background-color: #f8f8f8;
-                padding: 10px;
 
                 // TODO: Same as in context menu
                 font-size: 13px;
+
+                padding: 7px;
+
+                ol,
+                ul {
+                    margin: 0;
+                    padding-left: 15px;
+                }
             }
 
             &.show .dropdown-menu {
@@ -183,11 +190,12 @@ $basic-spacing: 10px;
         }
 
         .provenance-dropdown {
-            li.active {
+            a.active {
                 background-color: #e0e0e0;
             }
 
             a {
+                display: block;
                 cursor: pointer;
             }
         }

@@ -167,8 +167,6 @@ $basic-spacing: 10px;
 
     box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
 
-    cursor: pointer;
-
     .context-menu-item,
     .context-menu-header {
         display: block;
@@ -178,6 +176,8 @@ $basic-spacing: 10px;
         line-height: 20px;
 
         font-family: sans-serif;
+
+        cursor: pointer;
     }
 
     .context-menu-header {
