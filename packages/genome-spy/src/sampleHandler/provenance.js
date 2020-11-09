@@ -92,9 +92,33 @@ export default class Provenance {
         return this.currentNodeIndex == 0;
     }
 
+    isEmpty() {
+        return this.nodes.length <= 1;
+    }
+
+    /**
+     *
+     * @param {number} index
+     */
+    activateState(index) {
+        if (index < 0 || index >= this.nodes.length) {
+            throw new Error("State node index out of bounds!");
+        }
+
+        this.currentNodeIndex = index;
+        this._notifyListeners();
+    }
+
+    /**
+     * Returns the history up to the current node
+     */
     getActionHistory() {
         return this.nodes
             .slice(1, this.currentNodeIndex + 1)
             .map(d => d.action);
+    }
+
+    getFullActionHistory() {
+        return this.nodes.map(d => d.action);
     }
 }

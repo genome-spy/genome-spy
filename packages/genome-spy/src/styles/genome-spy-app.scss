@@ -11,15 +11,18 @@ $basic-spacing: 10px;
 
     font-family: sans-serif;
 
+    .toolbar,
+    .toolbar > .btn-group {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
     .toolbar {
         $background: #6c82ab;
         $foreground: white;
 
         height: 38px;
-
-        display: flex;
-        flex-direction: row;
-        align-items: center;
 
         background-color: $background;
         box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
@@ -97,8 +100,10 @@ $basic-spacing: 10px;
             }
         }
 
-        > .tool-btn {
+        .tool-btn {
             padding: 0;
+
+            transition: color 0.15s;
 
             $color: lighten($background, 5%);
             background-color: $color;
@@ -144,6 +149,46 @@ $basic-spacing: 10px;
                 background-color: $background;
 
                 color: mix($background, $foreground, 50%);
+            }
+
+            &:focus {
+                outline: none;
+            }
+        }
+
+        .btn-group {
+            .tool-btn {
+                margin-left: 0;
+            }
+        }
+
+        .dropdown {
+            position: relative;
+
+            .dropdown-menu {
+                display: none;
+                z-index: 1;
+                position: absolute;
+                top: 30px;
+                background-color: #f8f8f8;
+                padding: 10px;
+
+                // TODO: Same as in context menu
+                font-size: 13px;
+            }
+
+            &.show .dropdown-menu {
+                display: block;
+            }
+        }
+
+        .provenance-dropdown {
+            li.active {
+                background-color: #e0e0e0;
+            }
+
+            a {
+                cursor: pointer;
             }
         }
     }

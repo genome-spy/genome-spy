@@ -9,6 +9,7 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faUndo,
     faRedo,
+    faEllipsisH,
     faBookmark,
     faFish,
     faArrowsAltV,
@@ -63,24 +64,65 @@ export default class GenomeSpyApp {
         function getToolButtons() {
             const provenance = self.getSampleHandler()?.provenance;
 
-            const sampleButtons = provenance
+            /**
+             *
+             * @param {any} action
+             * @param {number} index
+             */
+            const makeDropdownItem = (action, index) => html`
+                <a @click=${() => provenance.activateState(index)}
+                    ><li
+                        class=${index == provenance.currentNodeIndex
+                            ? "active"
+                            : ""}
+                    >
+                        ${action ? JSON.stringify(action) : "Initial state"}
+                    </li></a
+                >
+            `;
+
+            const provenanceDropdown = () => html`
+                <div class="dropdown provenance-dropdown">
+                    <button
+                        class="tool-btn"
+                        title="Provenance"
+                        ?disabled=${provenance.isEmpty()}
+                        onclick="this.parentNode.classList.toggle('show')"
+                    >
+                        ${icon(faEllipsisH).node[0]}
+                    </button>
+                    <div class="dropdown-menu">
+                        <ol>
+                            ${provenance
+                                .getFullActionHistory()
+                                .map(makeDropdownItem)}
+                        </ol>
+                    </div>
+                </div>
+            `;
+
+            const provenanceButtons = provenance
                 ? html`
-                      <button
-                          class="tool-btn backtrack-samples"
-                          title="Backtrack samples (B)"
-                          ?disabled=${!provenance.isUndoable()}
-                          @click=${() => provenance.undo()}
-                      >
-                          ${icon(faUndo).node[0]}
-                      </button>
-                      <button
-                          class="tool-btn"
-                          title="Redo"
-                          ?disabled=${!provenance.isRedoable()}
-                          @click=${() => provenance.redo()}
-                      >
-                          ${icon(faRedo).node[0]}
-                      </button>
+                      <div class="btn-group">
+                          <button
+                              class="tool-btn"
+                              title="Backtrack samples (B)"
+                              ?disabled=${!provenance.isUndoable()}
+                              @click=${() => provenance.undo()}
+                          >
+                              ${icon(faUndo).node[0]}
+                          </button>
+                          ${provenanceDropdown()}
+                          <button
+                              class="tool-btn"
+                              title="Redo"
+                              ?disabled=${!provenance.isRedoable()}
+                              @click=${() => provenance.redo()}
+                          >
+                              ${icon(faRedo).node[0]}
+                          </button>
+                      </div>
+
                       <button
                           class="tool-btn"
                           title="Bookmark"
@@ -96,7 +138,7 @@ export default class GenomeSpyApp {
                 : "";
 
             return html`
-                ${sampleButtons}
+                ${provenanceButtons}
 
                 <button
                     class="tool-btn"
