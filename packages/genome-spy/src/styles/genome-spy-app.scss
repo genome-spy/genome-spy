@@ -169,19 +169,12 @@ $basic-spacing: 10px;
                 display: none;
                 z-index: 1;
                 position: absolute;
-                top: 30px;
+                top: 35px;
+                width: max-content;
                 background-color: #f8f8f8;
 
                 // TODO: Same as in context menu
                 font-size: 13px;
-
-                padding: 7px;
-
-                ol,
-                ul {
-                    margin: 0;
-                    padding-left: 15px;
-                }
             }
 
             &.show .dropdown-menu {
@@ -190,13 +183,37 @@ $basic-spacing: 10px;
         }
 
         .provenance-dropdown {
+            $hPadding: 13px;
+
             a.active {
+                $tickSize: 5px;
+
                 background-color: #e0e0e0;
+                border-left: $tickSize solid #c0c0c0;
+                padding-left: $hPadding - $tickSize;
             }
 
             a {
                 display: block;
+                padding: 4px $hPadding;
                 cursor: pointer;
+            }
+
+            padding: 7px 0;
+
+            ol,
+            ul {
+                margin: 0;
+                padding-left: 0px;
+                list-style: none;
+            }
+
+            li {
+                padding: 0;
+            }
+
+            svg {
+                margin-right: 3px;
             }
         }
     }

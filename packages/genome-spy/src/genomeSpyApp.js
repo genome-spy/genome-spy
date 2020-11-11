@@ -3,7 +3,6 @@ import lzString from "lz-string";
 import GenomeSpy from "./genomeSpy";
 import "./styles/genome-spy-app.scss";
 import { html, render } from "lit-html";
-import { unsafeHTML } from "lit-html/directives/unsafe-html.js";
 
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -18,6 +17,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { VISIT_STOP } from "./view/view";
 import SampleView from "./view/sampleView/sampleView";
+import getProvenanceButtons from "./sampleHandler/provenanceToolbar";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -64,81 +64,8 @@ export default class GenomeSpyApp {
         function getToolButtons() {
             const provenance = self.getSampleHandler()?.provenance;
 
-            /**
-             *
-             * @param {any} action
-             * @param {number} index
-             */
-            const makeDropdownItem = (action, index) => html`
-                <a
-                    @click=${() => provenance.activateState(index)}
-                    class=${index == provenance.currentNodeIndex
-                        ? "active"
-                        : ""}
-                    ><li>
-                        ${action ? JSON.stringify(action) : "Initial state"}
-                    </li></a
-                >
-            `;
-
-            const provenanceDropdown = () => html`
-                <div class="dropdown provenance-dropdown">
-                    <button
-                        class="tool-btn"
-                        title="Provenance"
-                        ?disabled=${provenance.isEmpty()}
-                        @click=${toggleDropdown}
-                    >
-                        ${icon(faEllipsisH).node[0]}
-                    </button>
-                    <div class="dropdown-menu context-menu">
-                        <ol>
-                            ${provenance
-                                .getFullActionHistory()
-                                .map(makeDropdownItem)}
-                        </ol>
-                    </div>
-                </div>
-            `;
-
-            const provenanceButtons = provenance
-                ? html`
-                      <div class="btn-group" @click=${e => e.stopPropagation()}>
-                          <button
-                              class="tool-btn"
-                              title="Backtrack samples (B)"
-                              ?disabled=${!provenance.isUndoable()}
-                              @click=${() => provenance.undo()}
-                          >
-                              ${icon(faUndo).node[0]}
-                          </button>
-                          ${provenanceDropdown()}
-                          <button
-                              class="tool-btn"
-                              title="Redo"
-                              ?disabled=${!provenance.isRedoable()}
-                              @click=${() => provenance.redo()}
-                          >
-                              ${icon(faRedo).node[0]}
-                          </button>
-                      </div>
-
-                      <button
-                          class="tool-btn"
-                          title="Bookmark"
-                          ?disabled=${provenance.isAtInitialState()}
-                          @click=${() =>
-                              console.log(
-                                  JSON.stringify(provenance.getActionHistory())
-                              )}
-                      >
-                          ${icon(faBookmark).node[0]}
-                      </button>
-                  `
-                : "";
-
             return html`
-                ${provenanceButtons}
+                ${getProvenanceButtons(provenance)}
 
                 <button
                     class="tool-btn"
@@ -420,30 +347,4 @@ function typeSlowly(text, element) {
 
         next();
     });
-}
-
-/**
- *
- * @param {UIEvent} event
- */
-function toggleDropdown(event) {
-    const target = /** @type {HTMLElement} */ (event.currentTarget);
-    const dropdown = /** @type {HTMLElement} */ (target.parentNode);
-
-    if (!dropdown.classList.contains("show")) {
-        event.stopPropagation();
-        dropdown.classList.add("show");
-        window.addEventListener(
-            "click",
-            e => {
-                if (dropdown.classList.contains("show")) {
-                    dropdown.classList.remove("show");
-                    e.preventDefault();
-                }
-            },
-            { once: true }
-        );
-    } else {
-        window.dispatchEvent(new MouseEvent("click"));
-    }
 }

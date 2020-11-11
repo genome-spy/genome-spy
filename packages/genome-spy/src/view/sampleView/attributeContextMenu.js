@@ -1,123 +1,66 @@
-import { format as d3format } from "d3-format";
 import * as Actions from "../../sampleHandler/sampleHandlerActions";
 
 /**
- * @param {string} title Menu title
- * @param {string} attributeName Short, descriptive name for the attribute
+ * @param {string | import("lit-html").TemplateResult} title Menu title
  * @param {import("../../sampleHandler/sampleHandler").AttributeIdentifier} attribute
  * @param {string} attributeType
  * @param {any} attributeValue
  * @param {function(object):void} dispatch
+ * @param {import("../../sampleHandler/provenance").default<any>} provenance
  */
 export default function generateAttributeContextMenu(
     title,
-    attributeName,
     attribute,
     attributeType,
     attributeValue,
-    dispatch
+    dispatch,
+    provenance
 ) {
-    const name = attributeName;
-
     /** @type {import("../../contextMenu").MenuItem[]} */
     let items = [
         {
             label: title,
             type: "header"
-        },
-        {
-            label: "Sort by",
-            callback: () => dispatch(Actions.sortBy(attribute))
         }
     ];
 
-    const nominal = attributeType != "quantitative";
+    /**
+     * @param {import("../../sampleHandler/provenance").Action} action
+     * @returns {import("../../contextMenu").MenuItem}
+     */
+    const actionToItem = action => {
+        const info = provenance.getActionInfo(action);
+        return {
+            label: info.title,
+            icon: info.icon,
+            callback: () => dispatch(action)
+        };
+    };
 
-    if (nominal) {
-        items.push({
-            label: "Group by",
-            callback: () => dispatch(Actions.groupByNominal(attribute))
-        });
+    /**
+     * @param {import("../../sampleHandler/provenance").Action[]} actions
+     */
+    const addActions = (...actions) => items.push(...actions.map(actionToItem));
 
-        items.push({
-            label: "Retain first sample of each",
-            callback: () => dispatch(Actions.retainFirstOfEach(attribute))
-        });
-    }
+    addActions(Actions.sortBy(attribute));
 
-    if (nominal) {
-        //items.push({ type: "divider" });
-
-        items.push({
-            label:
-                attributeValue === null
-                    ? `Samples with undefined *${name}*`
-                    : `Samples with *${name}* = **${attributeValue}**`,
-            type: "header"
-        });
-
-        items.push({
-            label: "Retain",
-            callback: () =>
-                dispatch(
-                    Actions.filterByNominal(attribute, "retain", [
-                        attributeValue
-                    ])
-                )
-        });
-
-        items.push({
-            label: "Remove",
-            callback: () =>
-                dispatch(
-                    Actions.filterByNominal(attribute, "remove", [
-                        attributeValue
-                    ])
-                )
-        });
+    if (attributeType != "quantitative") {
+        addActions(
+            Actions.groupByNominal(attribute),
+            Actions.retainFirstOfEach(attribute),
+            Actions.filterByNominal(attribute, "retain", [attributeValue]),
+            Actions.filterByNominal(attribute, "remove", [attributeValue])
+        );
     } else {
-        const numberFormat = d3format(".4");
-
-        items.push({
-            label: "Group to quartiles",
-            callback: () => dispatch(Actions.groupToQuartiles(attribute))
-        });
-
-        //items.push({ type: "divider" });
+        addActions(Actions.groupToQuartiles(attribute));
 
         if (isDefined(attributeValue)) {
-            items.push({
-                label: `Remove *${name}* less than **${numberFormat(
-                    attributeValue
-                )}**`,
-                callback: () =>
-                    dispatch(
-                        Actions.filterByQuantitative(
-                            attribute,
-                            "gte",
-                            attributeValue
-                        )
-                    )
-            });
-
-            items.push({
-                label: `Remove *${name}* greater than **${numberFormat(
-                    attributeValue
-                )}**`,
-                callback: () =>
-                    dispatch(
-                        Actions.filterByQuantitative(
-                            attribute,
-                            "lte",
-                            attributeValue
-                        )
-                    )
-            });
+            addActions(
+                Actions.filterByQuantitative(attribute, "gte", attributeValue),
+                Actions.filterByQuantitative(attribute, "lte", attributeValue)
+            );
         } else {
-            items.push({
-                label: `Remove undefined *${name}*`,
-                callback: () => dispatch(Actions.removeUndefined(attribute))
-            });
+            addActions(Actions.removeUndefined(attribute));
         }
     }
 

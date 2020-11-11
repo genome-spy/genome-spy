@@ -1,3 +1,4 @@
+import { html } from "lit-html";
 import { field as vegaField } from "vega-util";
 import { inferType } from "vega-loader";
 
@@ -139,12 +140,14 @@ export class SampleAttributePanel extends ConcatView {
             const attributeValue = sample.attributes[attribute.name];
             items.push(
                 ...generateAttributeContextMenu(
-                    `Attribute: **${attribute.name}**`,
-                    attribute.name,
+                    html`
+                        Attribute: <strong>${attribute.name}</strong>
+                    `,
                     { type: SAMPLE_ATTRIBUTE, specifier: attribute.name },
                     attribute.type,
                     attributeValue,
-                    dispatch
+                    dispatch,
+                    this.sampleHandler.provenance
                 )
             );
         } else {

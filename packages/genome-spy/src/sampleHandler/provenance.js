@@ -1,7 +1,18 @@
 /**
+ * @typedef {object} Action
+ * @prop {string} type
+ * @prop {any} [payload]
+ *
+ * @typedef {object} ActionInfo
+ * @prop {string | import("lit-html").TemplateResult} title
+ * @prop {string} [attributeName]
+ * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
+ */
+
+/**
  * @typedef {object} ProvenanceNode
  * @prop {S} state The full state
- * @prop {any} [action] The action that changed the previous state to this state
+ * @prop {Action} [action] The action that changed the previous state to this state
  * @template S State
  */
 
@@ -37,6 +48,9 @@ export default class Provenance {
 
         /** @type {(function():void)[]} */
         this.listeners = [];
+
+        /** @type {(function(Action):ActionInfo)[]} */
+        this.actionInfoSources = [];
     }
 
     /**
@@ -45,6 +59,27 @@ export default class Provenance {
      */
     addListener(listener) {
         this.listeners.push(listener);
+    }
+
+    /**
+     *
+     * @param {function(Action):ActionInfo} source
+     */
+    addActionInfoSource(source) {
+        this.actionInfoSources.push(source);
+    }
+
+    /**
+     * @param {Action} action
+     * @returns {ActionInfo}
+     */
+    getActionInfo(action) {
+        for (const source of this.actionInfoSources) {
+            const info = source(action);
+            if (info) {
+                return info;
+            }
+        }
     }
 
     _notifyListeners() {
@@ -68,7 +103,7 @@ export default class Provenance {
 
     /**
      * @param {S} state The new state
-     * @param {any} action The action that led to the new state
+     * @param {Action} action The action that led to the new state
      */
     push(state, action) {
         if (this.isRedoable()) {

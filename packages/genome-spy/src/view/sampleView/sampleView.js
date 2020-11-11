@@ -1,3 +1,4 @@
+import { html } from "lit-html";
 import { span } from "vega-util";
 import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
@@ -338,13 +339,15 @@ export default class SampleView extends ContainerView {
 
             items.push(
                 ...generateAttributeContextMenu(
-                    `**${fieldInfo.field}** (${fieldInfo.view.spec.title ||
-                        fieldInfo.view.spec.name})`,
-                    fieldInfo.field,
+                    html`
+                        <strong>${fieldInfo.field}</strong> (${fieldInfo.view
+                            .spec.title || fieldInfo.view.spec.name})
+                    `,
                     attribute,
                     "quantitative", // TODO
                     undefined, // TODO
-                    dispatch
+                    dispatch,
+                    this.sampleHandler.provenance
                 )
             );
         }

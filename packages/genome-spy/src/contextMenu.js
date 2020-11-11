@@ -1,22 +1,15 @@
-import snarkdown from "snarkdown";
-import { escapeHtml } from "./utils/html";
-
-/**
- *
- * @param {string} text
- */
-function markdown(text) {
-    return snarkdown(escapeHtml(text));
-}
+import { html, render } from "lit-html";
+import { icon } from "@fortawesome/fontawesome-svg-core";
 
 /** @type {HTMLElement} */
 let currentlyOpenMenuElement;
 
 /**
  * @typedef {Object} MenuItem
- * @prop {string} [label]
+ * @prop {string | import("lit-html").TemplateResult} [label]
  * @prop {function} [callback]
  * @prop {string} [type]
+ * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
@@ -40,34 +33,47 @@ export default function contextMenu(options, mouseEvent) {
 
     const container = options.menuContainer || document.body;
 
-    for (let item of options.items) {
-        let itemElement;
-
-        if (item.type == "divider") {
-            itemElement = document.createElement("div");
-            itemElement.classList.add("context-menu-divider");
-        } else if (item.type == "header") {
-            itemElement = document.createElement("div");
-            itemElement.classList.add("context-menu-header");
-            itemElement.innerHTML = markdown(item.label) || "-";
-        } else {
-            itemElement = document.createElement(item.callback ? "a" : "div");
-            itemElement.classList.add("context-menu-item");
-            itemElement.innerHTML = markdown(item.label) || "-";
-
-            if (item.callback) {
-                itemElement.addEventListener("mouseup", () => {
-                    // Prevent accidental selection when the position of an overflowing menu has been adjusted
-                    if (performance.now() - openedAt > 200) {
-                        menuElement.remove();
-                        item.callback();
+    render(
+        options.items.map(item => {
+            switch (item.type) {
+                case "divider":
+                    return html`
+                        <div class="context-menu-divider"></div>
+                    `;
+                case "header":
+                    return html`
+                        <div class="context-menu-header">
+                            ${item.label || "-"}
+                        </div>
+                    `;
+                default:
+                    if (item.callback) {
+                        return html`
+                            <a
+                                class="context-menu-item"
+                                @mouseup=${() => {
+                                    // Prevent accidental selection when the position of an overflowing menu has been adjusted
+                                    if (performance.now() - openedAt > 200) {
+                                        menuElement.remove();
+                                        item.callback();
+                                    }
+                                }}
+                            >
+                                ${item.icon ? icon(item.icon).node[0] : ""}
+                                ${item.label}</a
+                            >
+                        `;
+                    } else {
+                        return html`
+                            <div class="context-menu-item">
+                                ${item.label || "-"}
+                            </div>
+                        `;
                     }
-                });
             }
-        }
-
-        menuElement.appendChild(itemElement);
-    }
+        }),
+        menuElement
+    );
 
     menuElement.style.left = mouseEvent.clientX + "px";
     menuElement.style.top = mouseEvent.clientY + "px";

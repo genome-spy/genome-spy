@@ -48,6 +48,10 @@ export default class SampleHandler {
 
         /** @type {Provenance<State>} */
         this.provenance = new Provenance();
+
+        this.provenance.addActionInfoSource(action =>
+            Actions.getActionInfo(action, this)
+        );
     }
 
     get state() {
