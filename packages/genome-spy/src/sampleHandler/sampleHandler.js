@@ -144,9 +144,11 @@ export default class SampleHandler {
      * @param {any} action
      */
     dispatch(action) {
+        const payload = action.payload;
+
         /** Returns an accessor to an abstract attribute. TODO: Memoize */
         const getAccessor = () =>
-            this.getAttributeInfo(action.attribute).accessor;
+            this.getAttributeInfo(action.payload.attribute).accessor;
 
         /**
          *
@@ -182,7 +184,7 @@ export default class SampleHandler {
                 for (const sampleGroup of getSampleGroups(draftState)) {
                     operation(sampleGroup);
                 }
-                draftState.groups.push({ name: action.attribute });
+                draftState.groups.push({ name: payload.attribute });
             });
             this.provenance.push(newState, action);
         };
@@ -197,7 +199,7 @@ export default class SampleHandler {
                         samples,
                         wrapAccessorForComparison(
                             getAccessor(),
-                            this.getAttributeInfo(action.attribute)
+                            this.getAttributeInfo(payload.attribute)
                         ),
                         false
                     )
@@ -213,8 +215,8 @@ export default class SampleHandler {
                     filterQuantitative(
                         samples,
                         getAccessor(),
-                        action.operator,
-                        action.operand
+                        payload.operator,
+                        payload.operand
                     )
                 );
                 break;
@@ -223,8 +225,8 @@ export default class SampleHandler {
                     filterNominal(
                         samples,
                         getAccessor(),
-                        action.action,
-                        action.values
+                        payload.action,
+                        payload.values
                     )
                 );
                 break;

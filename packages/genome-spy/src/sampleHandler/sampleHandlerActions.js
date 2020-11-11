@@ -3,17 +3,17 @@
  */
 
 // Redux-style actions
-export const UNDO = "UNDO";
-export const REDO = "REDO";
-export const SORT_BY_NAME = "SORT_BY_NAME";
-export const SORT_BY = "SORT_BY";
-export const RETAIN_FIRST_OF_EACH = "RETAIN_FIRST_OF_EACH";
-export const FILTER_BY_NOMINAL = "FILTER_BY_NOMINAL";
-export const FILTER_BY_QUANTITATIVE = "FILTER_BY_QUANTITATIVE";
-export const REMOVE_UNDEFINED = "REMOVE_UNDEFINED";
-export const REMOVE_BY_ID = "REMOVE_BY_ID";
-export const GROUP_BY_NOMINAL = "GROUP_BY_NOMINAL";
-export const GROUP_TO_QUARTILES = "GROUP_TO_QUARTILES";
+export const UNDO = "undo";
+export const REDO = "redo";
+export const SORT_BY_NAME = "sortByName";
+export const SORT_BY = "sortBy";
+export const RETAIN_FIRST_OF_EACH = "retainFirstOfEach";
+export const FILTER_BY_NOMINAL = "filterByNominal";
+export const FILTER_BY_QUANTITATIVE = "filterByQuantitative";
+export const REMOVE_UNDEFINED = "removeUndefined";
+export const REMOVE_BY_ID = "removeById";
+export const GROUP_BY_NOMINAL = "groupByNominal";
+export const GROUP_TO_QUARTILES = "groupToQuartiles";
 
 export function undo() {
     return { type: UNDO };
@@ -31,14 +31,14 @@ export function sortByName() {
  * @param {AttributeIdentifier} attribute
  */
 export function sortBy(attribute) {
-    return { type: SORT_BY, attribute };
+    return { type: SORT_BY, payload: { attribute } };
 }
 
 /**
  * @param {AttributeIdentifier} attribute
  */
 export function retainFirstOfEach(attribute) {
-    return { type: RETAIN_FIRST_OF_EACH, attribute };
+    return { type: RETAIN_FIRST_OF_EACH, payload: { attribute } };
 }
 
 /**
@@ -51,9 +51,11 @@ export function retainFirstOfEach(attribute) {
 export function filterByQuantitative(attribute, operator, operand) {
     return {
         type: FILTER_BY_QUANTITATIVE,
-        attribute,
-        operator,
-        operand
+        payload: {
+            attribute,
+            operator,
+            operand
+        }
     };
 }
 
@@ -65,9 +67,11 @@ export function filterByQuantitative(attribute, operator, operand) {
 export function filterByNominal(attribute, action, values) {
     return {
         type: FILTER_BY_NOMINAL,
-        attribute,
-        action,
-        values
+        payload: {
+            attribute,
+            action,
+            values
+        }
     };
 }
 
@@ -77,7 +81,7 @@ export function filterByNominal(attribute, action, values) {
 export function removeUndefined(attribute) {
     return {
         type: REMOVE_UNDEFINED,
-        attribute
+        payload: { attribute }
     };
 }
 
@@ -87,7 +91,7 @@ export function removeUndefined(attribute) {
 export function groupByNominal(attribute) {
     return {
         type: GROUP_BY_NOMINAL,
-        attribute
+        payload: { attribute }
     };
 }
 
@@ -97,6 +101,6 @@ export function groupByNominal(attribute) {
 export function groupToQuartiles(attribute) {
     return {
         type: GROUP_TO_QUARTILES,
-        attribute
+        payload: { attribute }
     };
 }
