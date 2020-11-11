@@ -1,9 +1,7 @@
-import { group, quantileSorted, range, sort as d3sort } from "d3-array";
 import produce from "immer";
 
 import * as Actions from "./sampleHandlerActions";
 import { peek } from "../utils/arrayUtils";
-import { isNumber } from "vega-util";
 import {
     sort,
     retainFirstOfEach,
@@ -11,13 +9,15 @@ import {
     filterNominal,
     filterUndefined,
     wrapAccessorForComparison
-} from "./operations";
+} from "./sampleOperations";
 import Provenance from "./provenance";
+import {
+    groupSamplesByAccessor,
+    groupSamplesByQuartiles
+} from "./groupOperations";
 
 /**
  * This class handles sample sorting, filtering, grouping, etc.
- *
- * TODO: Consider employing Redux, Mobx, Trrack, ...
  *
  * @typedef {import("./sampleState").State} State
  * @typedef {import("./sampleState").Group} Group
@@ -90,6 +90,7 @@ export default class SampleHandler {
      * @param {string[]} samples
      */
     setSamples(samples) {
+        // TODO: Apply through an action
         this.provenance.setInitialState({
             groups: [],
             rootGroup: {
@@ -100,7 +101,7 @@ export default class SampleHandler {
     }
 
     /**
-     * Returns a flattened group hierarchy. The result is an array of flat
+     * Returns a flattened group hierarchy. The result is an array of
      * flat hierarchies, i.e. each element is an array of groups and the
      * last group of each array is a SampleGroup which contains the samples.
      *
@@ -140,32 +141,58 @@ export default class SampleHandler {
 
     /**
      *
-     * @param {State} [state] State to use, defaults to the current state.
-     *      Use for mutations!
-     */
-    getSampleGroups(state) {
-        return /** @type {SampleGroup[]} */ (this.getFlattenedGroupHierarchy(
-            state
-        ).map(path => peek(path)));
-    }
-
-    /**
-     *
      * @param {any} action
      */
     dispatch(action) {
-        /** @type {function(string[]):string[]} What to do for each group */
-        let operation;
-
+        /** Returns an accessor to an abstract attribute. TODO: Memoize */
         const getAccessor = () =>
             this.getAttributeInfo(action.attribute).accessor;
+
+        /**
+         *
+         * @param {State} [state] State to use, defaults to the current state.
+         *      Use for mutations!
+         */
+        const getSampleGroups = state =>
+            /** @type {SampleGroup[]} */ (this.getFlattenedGroupHierarchy(
+                state
+            ).map(path => peek(path)));
+
+        /**
+         * Applies an operation to each group of samples.
+         * @param {function(string[]):string[]} operation What to do for each group.
+         *      Takes an array of sample ids and returns a new filtered and/or permuted array.
+         */
+        const applyToSamples = operation => {
+            const newState = produce(this.state, draftState => {
+                for (const sampleGroup of getSampleGroups(draftState)) {
+                    sampleGroup.samples = operation(sampleGroup.samples);
+                }
+            });
+            this.provenance.push(newState, action);
+        };
+
+        /**
+         * Applies an operation to all SampleGroups.
+         * @param {function(SampleGroup):void} operation What to do for each group.
+         *      Operations modify the groups in place
+         */
+        const applyToGroups = operation => {
+            const newState = produce(this.state, draftState => {
+                for (const sampleGroup of getSampleGroups(draftState)) {
+                    operation(sampleGroup);
+                }
+                draftState.groups.push({ name: action.attribute });
+            });
+            this.provenance.push(newState, action);
+        };
 
         switch (action.type) {
             case Actions.UNDO:
                 this.provenance.undo();
                 return;
             case Actions.SORT_BY:
-                operation = samples =>
+                applyToSamples(samples =>
                     sort(
                         samples,
                         wrapAccessorForComparison(
@@ -173,70 +200,51 @@ export default class SampleHandler {
                             this.getAttributeInfo(action.attribute)
                         ),
                         false
-                    );
+                    )
+                );
                 break;
             case Actions.RETAIN_FIRST_OF_EACH:
-                operation = samples =>
-                    retainFirstOfEach(samples, getAccessor());
+                applyToSamples(samples =>
+                    retainFirstOfEach(samples, getAccessor())
+                );
                 break;
             case Actions.FILTER_BY_QUANTITATIVE:
-                operation = samples =>
+                applyToSamples(samples =>
                     filterQuantitative(
                         samples,
                         getAccessor(),
                         action.operator,
                         action.operand
-                    );
+                    )
+                );
                 break;
             case Actions.FILTER_BY_NOMINAL:
-                operation = samples =>
+                applyToSamples(samples =>
                     filterNominal(
                         samples,
                         getAccessor(),
                         action.action,
                         action.values
-                    );
+                    )
+                );
                 break;
             case Actions.REMOVE_UNDEFINED:
-                operation = samples => filterUndefined(samples, getAccessor());
+                applyToSamples(samples =>
+                    filterUndefined(samples, getAccessor())
+                );
                 break;
             case Actions.GROUP_BY_NOMINAL:
-                this.provenance.push(
-                    produce(this.state, draftState => {
-                        for (const sampleGroup of this.getSampleGroups(
-                            draftState
-                        )) {
-                            groupSamplesByAccessor(sampleGroup, getAccessor());
-                        }
-                        draftState.groups.push({ name: action.attribute });
-                    }),
-                    action
+                applyToGroups(sampleGroup =>
+                    groupSamplesByAccessor(sampleGroup, getAccessor())
                 );
                 break;
             case Actions.GROUP_TO_QUARTILES:
-                this.provenance.push(
-                    produce(this.state, draftState => {
-                        for (const sampleGroup of this.getSampleGroups(
-                            draftState
-                        )) {
-                            groupSamplesByQuartiles(sampleGroup, getAccessor());
-                        }
-                        draftState.groups.push({ name: action.attribute });
-                    }),
-                    action
+                applyToGroups(sampleGroup =>
+                    groupSamplesByQuartiles(sampleGroup, getAccessor())
                 );
                 break;
             default:
                 throw new Error("Unknown action: " + JSON.stringify(action));
-        }
-
-        if (operation) {
-            const newState = produce(this.state, draftState => {
-                for (const sampleGroup of this.getSampleGroups(draftState)) {
-                    sampleGroup.samples = operation(sampleGroup.samples);
-                }
-            });
-            this.provenance.push(newState, action);
         }
     }
 }
@@ -255,89 +263,4 @@ export function isSampleGroup(group) {
  */
 export function isGroupGroup(group) {
     return "groups" in group;
-}
-
-// ------------- TODO: own file for the following --------
-
-/**
- *
- * @param {SampleGroup} sampleGroup
- * @param {function(any):any} accessor
- */
-function groupSamplesByAccessor(sampleGroup, accessor) {
-    const grouped = /** @type {Map<any, string[]>} */ (group(
-        sampleGroup.samples,
-        accessor
-    ));
-
-    // Transform SampleGroup into GroupGroup
-    const groupGroup = /** @type {GroupGroup} */ /** @type {unknown} */ (sampleGroup);
-
-    groupGroup.groups = [...grouped.entries()].map(([name, samples]) => ({
-        name: "" + name,
-        samples
-    }));
-
-    delete sampleGroup.samples;
-}
-
-/**
- *
- * @param {SampleGroup} sampleGroup
- * @param {function(any):any} accessor
- */
-function groupSamplesByQuartiles(sampleGroup, accessor) {
-    const quartiles = extractQuantiles(sampleGroup.samples, accessor, [
-        0.25,
-        0.5,
-        0.75
-    ]);
-
-    groupSamplesByAccessor(
-        sampleGroup,
-        createQuantileAccessor(accessor, quartiles)
-    );
-}
-
-/**
- * Returns an accessor that extracts a quantile-index (1-based) based
- * on the given thresholds.
- *
- * @param {function(any):any} accessor
- * @param {number[]} thresholds Must be in ascending order
- */
-function createQuantileAccessor(accessor, thresholds) {
-    /** @param {any} datum */
-    const quantileAccessor = datum => {
-        const value = accessor(datum);
-        if (!isNumber(value) || isNaN(value)) {
-            return undefined;
-        }
-
-        for (let i = 0; i < thresholds.length; i++) {
-            // TODO: This cannot be correct...
-            if (value < thresholds[i]) {
-                return i;
-            }
-        }
-
-        return thresholds.length;
-    };
-
-    return quantileAccessor;
-}
-
-/**
- * @param {T[]} samples
- * @param {function(T):any} accessor
- * @param {number[]} pValues
- * @returns {number[]}
- * @template T
- */
-function extractQuantiles(samples, accessor, pValues) {
-    const values = d3sort(
-        samples.map(accessor).filter(x => isNumber(x) && !isNaN(x))
-    );
-
-    return pValues.map(p => quantileSorted(values, p));
 }

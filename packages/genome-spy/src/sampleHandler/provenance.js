@@ -8,6 +8,23 @@
 /**
  * Handles provenance, undo/redo, etc..
  *
+ * This is somewhat inspired by:
+ *     Z. T. Cutler, K. Gadhave and A. Lex,
+ *     “Trrack: A Library for Provenance Tracking in Web-Based Visualizations”,
+ *     osf.io preprint. https://doi.org/10.31219/osf.io/wnctb.
+ * and
+ *     S. Gratzl, A. Lex, N. Gehlenborg, N. Cosgrove, and M. Streit
+ *     "From Visual Exploration to Storytelling and Back Again"
+ *     Eurographics Conference on Visualization (EuroVis) 2016
+ *     http://doi.wiley.com/10.1111/cgf.12925
+ *
+ * However, branching is not supported for now...
+ *
+ * We store both the actions and the full states. The states allow for
+ * efficient navigation in the provenance data structure. Because
+ * we use Immer, which uses structural sharing, the full states do not
+ * consume too much memory.
+ *
  * @template S State
  */
 export default class Provenance {
