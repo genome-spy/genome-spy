@@ -1,5 +1,5 @@
-import { html } from "lit-html";
 import { isNumber, span, error } from "vega-util";
+import { html } from "lit-html";
 import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
 import { mapToPixelCoords } from "../../utils/layout/flexLayout";
