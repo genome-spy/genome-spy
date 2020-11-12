@@ -40,6 +40,8 @@ const verboseOps = {
 };
 
 /**
+ * Describes an action for displaying it in menus or provenance tracking.
+ *
  * @param {Action} action
  * @param {import("./sampleHandler").default} sampleHandler
  * @returns {ActionInfo}
@@ -52,9 +54,14 @@ export function getActionInfo(action, sampleHandler) {
     const payload = action.payload;
     const attributeInfo = sampleHandler.getAttributeInfo(payload.attribute);
     const attributeName = attributeInfo?.name;
+    const attributeTitle =
+        attributeInfo?.title ||
+        html`
+            <em>${attributeName}</em>
+        `;
 
     const template = {
-        attributeName
+        attributeName // TODO: This may actually be unnecessary
     };
 
     switch (action.type) {
@@ -68,6 +75,9 @@ export function getActionInfo(action, sampleHandler) {
             return {
                 ...template,
                 title: "Sort by",
+                provenanceTitle: html`
+                    Sort by ${attributeTitle}
+                `,
                 icon: faSortAmountDown
             };
         case RETAIN_FIRST_OF_EACH:
@@ -77,51 +87,81 @@ export function getActionInfo(action, sampleHandler) {
                     Retain first sample of each unique
                     <em>${attributeName}</em>
                 `,
+                provenanceTitle: html`
+                    Retain first sample of each unique ${attributeTitle}
+                `,
+
                 icon: faFilter
             };
-        case FILTER_BY_NOMINAL:
+        case FILTER_BY_NOMINAL: {
+            /** @param {string | import("lit-html").TemplateResult} attr */
+            const makeTitle = attr => html`
+                ${payload.action == "remove" ? "Remove" : "Retain"} samples
+                having
+                ${payload.values[0] === undefined || payload.values[0] === null
+                    ? html`
+                          undefined ${attr}
+                      `
+                    : html`
+                          ${attr} =
+                          <strong>${payload.values[0]}</strong>
+                      `}
+            `;
+
             return {
                 ...template,
-                title: html`
-                    ${payload.action == "remove" ? "Remove" : "Retain"} samples
-                    with
-                    ${payload.values[0] === undefined
-                        ? html`
-                              undefined <em>${attributeName}</em>
-                          `
-                        : html`
-                              <em>${attributeName}</em> =
-                              <strong>${payload.values[0]}</strong>
-                          `}
-                `,
+                title: makeTitle(
+                    html`
+                        <em>${attributeName}</em>
+                    `
+                ),
+                provenanceTitle: makeTitle(attributeTitle),
                 icon: faFilter
             };
-        case FILTER_BY_QUANTITATIVE:
+        }
+        case FILTER_BY_QUANTITATIVE: {
+            /** @param {string | import("lit-html").TemplateResult} attr */
+            const makeTitle = attr => html`
+                Retain samples having ${attr} ${verboseOps[payload.operator]}
+                <strong>${attributeNumberFormat(payload.operand)}</strong>
+            `;
+
             return {
                 ...template,
-                title: html`
-                    Retain samples with
-                    <em>${attributeName}</em> ${verboseOps[payload.operator]}
-                    <strong>${attributeNumberFormat(payload.operand)}</strong>
-                `,
+                title: makeTitle(
+                    html`
+                        <em>${attributeName}</em>
+                    `
+                ),
+                provenanceTitle: makeTitle(attributeTitle),
                 icon: faFilter
             };
+        }
         case REMOVE_UNDEFINED:
             return {
                 ...template,
-                title: "Remove samples with missing attribute",
+                title: "Remove samples having missing attribute",
+                provenanceTitle: html`
+                    Remove samples having missing ${attributeTitle}
+                `,
                 icon: faFilter
             };
         case GROUP_BY_NOMINAL:
             return {
                 ...template,
                 title: "Group by",
+                provenanceTitle: html`
+                    Group by ${attributeTitle}
+                `,
                 icon: faObjectGroup
             };
         case GROUP_TO_QUARTILES:
             return {
                 ...template,
                 title: "Group to quartiles",
+                provenanceTitle: html`
+                    Group to quartiles by ${attributeTitle}
+                `,
                 icon: faObjectGroup
             };
         default:

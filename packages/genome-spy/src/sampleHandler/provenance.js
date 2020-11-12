@@ -4,7 +4,10 @@
  * @prop {any} [payload]
  *
  * @typedef {object} ActionInfo
- * @prop {string | import("lit-html").TemplateResult} title
+ * @prop {string | import("lit-html").TemplateResult} title A title shown in
+ *      context menus or provenance tracking
+ * @prop {string | import("lit-html").TemplateResult} [provenanceTitle] A title
+ *      shown in the provenance tracking, if defined. Replaces the normal title.
  * @prop {string} [attributeName]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  */

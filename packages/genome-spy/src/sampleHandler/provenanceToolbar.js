@@ -29,14 +29,8 @@ export default function getProvenanceButtons(provenance) {
                 @click=${() => provenance.activateState(index)}
                 class=${index == provenance.currentNodeIndex ? "active" : ""}
                 ><li>
-                    ${icon(info.icon || faCircle).node[0]} ${info.title}
-                    ${info.attributeName
-                        ? html`
-                              <span class="attribute"
-                                  >(${info.attributeName})</span
-                              >
-                          `
-                        : ""}
+                    ${icon(info.icon || faCircle).node[0]}
+                    ${info.provenanceTitle || info.title}
                 </li></a
             >
         `;

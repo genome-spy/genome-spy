@@ -29,7 +29,7 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
  * @prop {Record<string, any>} attributes Arbitrary sample specific attributes
  *
  * @typedef {object} LocusSpecifier
- * @prop {string[]} path Path to the view
+ * @prop {string[]} path Relative path to the view
  * @prop {string} field
  * @prop {any} locus Locus in domain
  *
@@ -83,7 +83,15 @@ export default class SampleView extends ContainerView {
                 ];
 
             return {
-                name: "attribute at locus", // TODO: What attribute, where?
+                name: specifier.field,
+                // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
+                title: html`
+                    <em>${specifier.field}</em>
+                    <span class="viewTitle"
+                        >(${view.spec.title || view.name})</span
+                    >
+                    at <span class="locus">${specifier.locus}</span>
+                `,
                 accessor,
                 // TODO: Fix the following
                 type: "quantitative",
