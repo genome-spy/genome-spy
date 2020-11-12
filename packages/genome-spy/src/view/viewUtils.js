@@ -1,13 +1,11 @@
 import { isObject, isString, isArray } from "vega-util";
 
+import UnitView from "./unitView";
 import ImportView from "./importView";
 import LayerView from "./layerView";
 import FacetView from "./facetView";
 import SampleView from "./sampleView/sampleView";
-import UnitView from "./unitView";
 import ConcatView from "./concatView";
-import TableView from "./tableView";
-import TableRowView from "./tableRowView";
 import AxisWrapperView from "./axisWrapperView";
 import { VISIT_SKIP } from "./view";
 
@@ -33,8 +31,6 @@ import { VISIT_SKIP } from "./view";
  * @typedef {import("../spec/view").HConcatSpec} HConcatSpec
  * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
  * @typedef {VConcatSpec | HConcatSpec | ConcatSpec} AnyConcatSpec
- * @typedef {import("../spec/view").TableSpec} TableSpec
- * @typedef {import("../spec/view").TableRowSpec} TableRowSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
  * @typedef {import("../spec/view").ImportConfig} ImportConfig
  * @typedef {import("../spec/view").RootSpec} RootSpec
@@ -53,9 +49,7 @@ const viewTypes = [
     { prop: "mark", guard: isUnitSpec, viewClass: UnitView },
     { prop: "vconcat", guard: isVConcatSpec, viewClass: ConcatView },
     { prop: "hconcat", guard: isHConcatSpec, viewClass: ConcatView },
-    { prop: "concat", guard: isConcatSpec, viewClass: ConcatView },
-    { prop: "table", guard: isTableSpec, viewClass: TableView },
-    { prop: "main", guard: isTableRowSpec, viewClass: TableRowView }
+    { prop: "concat", guard: isConcatSpec, viewClass: ConcatView }
 ];
 
 /**
@@ -174,24 +168,6 @@ export function isConcatSpec(spec) {
 
 /**
  *
- * @param {ViewSpec} spec
- * @returns {spec is TableSpec}
- */
-export function isTableSpec(spec) {
-    return isArray(spec.table);
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is TableRowSpec}
- */
-export function isTableRowSpec(spec) {
-    return !!spec.main;
-}
-
-/**
- *
  * @param {object} config
  * @returns {config is ImportConfig}
  */
@@ -214,11 +190,6 @@ export function isImportSpec(spec) {
  * @returns {typeof View}
  */
 export function getViewClass(spec) {
-    if (isLayerSpec(spec)) {
-        // WTF hack! Something int the loop below deletes LayerView in Jest tests !?
-        return LayerView;
-    }
-
     for (const viewType of viewTypes) {
         if (viewType.guard(spec)) {
             return viewType.viewClass;

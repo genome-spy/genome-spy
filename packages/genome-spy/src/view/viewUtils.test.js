@@ -7,8 +7,6 @@ test("isViewSpec", () => {
     expect(isViewSpec({ hconcat: [] })).toBeTruthy();
     expect(isViewSpec({ vconcat: [] })).toBeTruthy();
     expect(isViewSpec({ concat: [] })).toBeTruthy();
-    expect(isViewSpec({ table: [] })).toBeTruthy();
-    expect(isViewSpec({ main: {} })).toBeTruthy();
 
     expect(() => isViewSpec({ mark: "rect", layer: [] })).toThrow();
 });
