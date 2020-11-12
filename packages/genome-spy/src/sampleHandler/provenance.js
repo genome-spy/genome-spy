@@ -56,6 +56,10 @@ export default class Provenance {
         this.actionInfoSources = [];
     }
 
+    isInitialized() {
+        return !!this.nodes;
+    }
+
     /**
      *
      * @param {function():void} listener

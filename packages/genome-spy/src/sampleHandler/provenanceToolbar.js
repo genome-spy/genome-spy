@@ -13,7 +13,7 @@ import {
  * @param {import("./provenance").default<any>} provenance
  */
 export default function getProvenanceButtons(provenance) {
-    if (!provenance) {
+    if (!provenance || !provenance.isInitialized()) {
         return "";
     }
 

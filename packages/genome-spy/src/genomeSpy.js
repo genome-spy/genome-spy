@@ -247,6 +247,7 @@ export default class GenomeSpy {
             });
 
             // If the coordinate system has a hard extent, use it
+            // TODO: Should be set for each scale. Breaks on independent scales!!
             if (this.coordinateSystem.getExtent()) {
                 this.viewRoot
                     .getResolution("x")
