@@ -245,6 +245,11 @@ export default class AxisWrapperView extends ContainerView {
         );
     }
 
+    getEffectivePadding() {
+        // TODO: Handle negative axis extents
+        return this.getPadding().add(this._getAxisExtents());
+    }
+
     getSize() {
         const size = super.getSize();
         const padding = this.getAxisSizes();

@@ -103,3 +103,4 @@ export default class Padding {
 }
 
 const zeroPadding = Padding.createUniformPadding(0);
+Object.freeze(zeroPadding);

@@ -10,8 +10,12 @@ import { peek } from "../../utils/arrayUtils";
 import contextMenu from "../../contextMenu";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
+import Padding from "../../utils/layout/padding";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
+
+// Between views
+const SPACING = 10;
 
 /**
  * Implements faceting of multiple samples. The samples are displayed
@@ -115,6 +119,22 @@ export default class SampleView extends ContainerView {
                 scale: undefined
             };
         });
+    }
+
+    getEffectivePadding() {
+        const childEffPad = this.child.getEffectivePadding();
+
+        // TODO: Top / bottom axes
+        return this.getPadding().add(
+            new Padding(
+                0,
+                childEffPad.right,
+                0,
+                this.attributeView.getSize().width.px +
+                    SPACING +
+                    childEffPad.left
+            )
+        );
     }
 
     /**
@@ -294,7 +314,7 @@ export default class SampleView extends ContainerView {
         const cols = mapToPixelCoords(
             [this.attributeView.getSize().width, { grow: 1 }],
             coords.width,
-            { spacing: 10 }
+            { spacing: SPACING }
         );
 
         /** @param {LocSize} location */

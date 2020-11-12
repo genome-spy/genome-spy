@@ -6,6 +6,9 @@ import {
     parseSizeDef,
     FlexDimensions
 } from "../utils/layout/flexLayout";
+import Rectangle from "../utils/layout/rectangle";
+import Padding from "../utils/layout/padding";
+import { peek } from "../utils/arrayUtils";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -53,6 +56,44 @@ export default class ConcatView extends ContainerView {
         return this.children.map(view => view.getSize()[this.mainDimension]);
     }
 
+    _getEffectiveChildPaddings() {
+        return this.children
+            .map(view => view.getEffectivePadding())
+            .map(padding =>
+                this.mainDimension == "height"
+                    ? [padding.left, padding.right]
+                    : [padding.top, padding.bottom]
+            );
+    }
+
+    getEffectivePadding() {
+        if (!this.children.length) {
+            return this.getPadding();
+        }
+
+        // Max paddings along the secondary dimension
+        const maxPaddings = getMaxEffectivePaddings(
+            this._getEffectiveChildPaddings()
+        );
+
+        const effectiveChildPadding =
+            this.mainDimension == "height"
+                ? new Padding(
+                      this.children[0].getEffectivePadding().top,
+                      maxPaddings[1],
+                      peek(this.children).getEffectivePadding().bottom,
+                      maxPaddings[0]
+                  )
+                : new Padding(
+                      maxPaddings[0],
+                      this.children[0].getEffectivePadding().left,
+                      maxPaddings[1],
+                      peek(this.children).getEffectivePadding().right
+                  );
+
+        return this.getPadding().add(effectiveChildPadding);
+    }
+
     getSize() {
         /** @type {SizeDef} */
         const mainSizeDef = (this.spec[this.mainDimension] &&
@@ -84,22 +125,37 @@ export default class ConcatView extends ContainerView {
             coords[this.mainDimension],
             {
                 spacing: this.spec.spacing,
-                devicePixelRatio: window.devicePixelRatio
+                devicePixelRatio: this.context.glHelper.dpr
             }
         );
+
+        // Align the views.
+        const paddings = this._getEffectiveChildPaddings();
+        const maxPaddings = getMaxEffectivePaddings(paddings);
 
         for (let i = 0; i < this.children.length; i++) {
             const flexCoords = mappedCoords[i];
             const view = this.children[i];
 
-            const childCoords = coords
-                .translate(
-                    // @ts-ignore
-                    ...(this.mainDimension == "height"
-                        ? [0, flexCoords.location]
-                        : [flexCoords.location, 0])
-                )
-                .modify({ [this.mainDimension]: flexCoords.size });
+            const pa = maxPaddings[0] - paddings[i][0];
+            const pb = maxPaddings[1] - paddings[i][1];
+
+            const secondarySize = coords[this.secondaryDimension] - pa - pb;
+
+            const childCoords =
+                this.mainDimension == "height"
+                    ? new Rectangle(
+                          coords.x + pa,
+                          coords.y + flexCoords.location,
+                          secondarySize,
+                          flexCoords.size
+                      )
+                    : new Rectangle(
+                          coords.x + flexCoords.location,
+                          coords.y + pa,
+                          flexCoords.size,
+                          secondarySize
+                      );
 
             view.render(context, childCoords, options);
         }
@@ -156,4 +212,14 @@ export default class ConcatView extends ContainerView {
         //return channel == "x" ? "shared" : "independent";
         return "independent";
     }
+}
+
+/**
+ *
+ * @param {number[][]} paddings
+ */
+function getMaxEffectivePaddings(paddings) {
+    return [0, 1].map(i =>
+        paddings.map(p => p[i]).reduce((a, c) => Math.max(a, c), 0)
+    );
 }

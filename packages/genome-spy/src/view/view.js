@@ -76,6 +76,18 @@ export default class View {
     }
 
     /**
+     * Returns a computed, "effective" padding between the plot area and view's
+     * bounding box. The padding may include the configured padding, axes,
+     * peripheral views, etc.
+     *
+     * Effective padding allows for aligning views so that their content and
+     * axes line up properly.
+     */
+    getEffectivePadding() {
+        return this.getPadding();
+    }
+
+    /**
      * Returns the configured height if present. Otherwise a computed or default
      * height is returned.
      *
