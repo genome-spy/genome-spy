@@ -1,5 +1,5 @@
 import { html } from "lit-html";
-import { span } from "vega-util";
+import { isNumber, span, error } from "vega-util";
 import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
 import { mapToPixelCoords } from "../../utils/layout/flexLayout";
@@ -9,6 +9,7 @@ import SampleHandler from "../../sampleHandler/sampleHandler";
 import { peek } from "../../utils/arrayUtils";
 import contextMenu from "../../contextMenu";
 import generateAttributeContextMenu from "./attributeContextMenu";
+import { formatLocus } from "../../genome/locusFormat";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -21,6 +22,7 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
  * @typedef {import("../layerView").default} LayerView
  * @typedef {import("../unitView").default} UnitView
  * @typedef {import("../axisWrapperView").default} AxisWrapperView
+ * @typedef {import("../../genome/chromMapper").ChromosomalLocus} ChromosomalLocus
  *
  * @typedef {object} Sample Sample metadata
  * @prop {string} id
@@ -31,7 +33,7 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
  * @typedef {object} LocusSpecifier
  * @prop {string[]} path Relative path to the view
  * @prop {string} field
- * @prop {any} locus Locus in domain
+ * @prop {number | ChromosomalLocus} locus Locus on the domain
  *
  */
 export default class SampleView extends ContainerView {
@@ -76,9 +78,23 @@ export default class SampleView extends ContainerView {
                 specifier.path
             ));
 
+            const xScale = this.getResolution("x").getScale();
+            const numericLocus = isNumber(specifier.locus)
+                ? specifier.locus
+                : "chromMapper" in xScale
+                ? xScale
+                      .chromMapper()
+                      .toContinuous(
+                          specifier.locus.chromosome,
+                          specifier.locus.pos
+                      )
+                : error(
+                      "Encountered a complex locus but no ChromMapper is available!"
+                  );
+
             /** @param {string} sampleId */
             const accessor = sampleId =>
-                view.mark.findDatumAt(sampleId, specifier.locus)?.[
+                view.mark.findDatumAt(sampleId, numericLocus)?.[
                     specifier.field
                 ];
 
@@ -90,7 +106,8 @@ export default class SampleView extends ContainerView {
                     <span class="viewTitle"
                         >(${view.spec.title || view.name})</span
                     >
-                    at <span class="locus">${specifier.locus}</span>
+                    at
+                    <span class="locus">${locusToString(specifier.locus)}</span>
                 `,
                 accessor,
                 // TODO: Fix the following
@@ -308,10 +325,11 @@ export default class SampleView extends ContainerView {
         ).x;
         const xScale = this.getResolution("x").getScale();
 
-        // Terrible hack for handling chromosomal loci:
-        // TODO: Yet another layer of indirection to allow for passing and
-        // comparing complex values such as (chrom, pos) tuples.
-        const xOnRange = xScale.invert(normalizedXPos) / span(xScale.domain());
+        const invertedX = xScale.invert(normalizedXPos);
+        const serializedX =
+            "chromMapper" in xScale
+                ? xScale.chromMapper().toChromosomal(invertedX)
+                : invertedX;
 
         const fieldInfos = findEncodedFields(this.child).filter(
             d => !["sample", "x", "x2"].includes(d.channel)
@@ -320,7 +338,13 @@ export default class SampleView extends ContainerView {
         const dispatch = this.sampleHandler.dispatch.bind(this.sampleHandler);
 
         /** @type {import("../../contextMenu").MenuItem[]} */
-        let items = [];
+        let items = [
+            {
+                label: `Locus: ${locusToString(serializedX)}`,
+                type: "header"
+            },
+            { type: "divider" }
+        ];
 
         for (const [i, fieldInfo] of fieldInfos.entries()) {
             let path = fieldInfo.view.getAncestors();
@@ -335,7 +359,7 @@ export default class SampleView extends ContainerView {
                 // TODO: Relative path
                 path: path.map(v => v.name).reverse(),
                 field: fieldInfo.field,
-                locus: xOnRange
+                locus: serializedX
             };
 
             /** @type {import("../../sampleHandler/sampleHandler").AttributeIdentifier} */
@@ -369,6 +393,15 @@ export default class SampleView extends ContainerView {
     getDefaultResolution(channel) {
         return channel == "x" ? "shared" : "independent";
     }
+}
+
+/**
+ * @param {number | ChromosomalLocus} locus
+ */
+function locusToString(locus) {
+    return !isNumber(locus) && "chromosome" in locus
+        ? formatLocus(locus)
+        : "" + locus;
 }
 
 /**

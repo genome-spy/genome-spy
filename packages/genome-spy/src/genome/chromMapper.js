@@ -2,6 +2,10 @@ import { bisect } from "d3-array";
 import Interval from "../utils/interval";
 
 /**
+ * @typedef {object} ChromosomalLocus
+ * @prop {string} chromosome
+ * @prop {number} pos Zero-based index
+ *
  * @typedef {object} Chromosome
  * @prop {string} name
  * @prop {number} size
@@ -102,11 +106,14 @@ export default class ChromMapper {
     /**
      *
      * @param {number} continuousPos
+     * @returns {ChromosomalLocus}
      */
     toChromosomal(continuousPos) {
         if (continuousPos >= this.totalSize) {
             return; // TODO: Consider displaying a warning
         }
+
+        continuousPos = Math.floor(continuousPos);
 
         const i = bisect(this.startByIndex, continuousPos) - 1;
         if (i > 0 && i <= this.chromosomes.length) {

@@ -4,6 +4,7 @@ import { html } from "lit-html";
 import {
     faSortAmountDown,
     faFilter,
+    faMedal,
     faObjectGroup,
     faCircle
 } from "@fortawesome/free-solid-svg-icons";
@@ -91,7 +92,7 @@ export function getActionInfo(action, sampleHandler) {
                     Retain first sample of each unique ${attributeTitle}
                 `,
 
-                icon: faFilter
+                icon: faMedal
             };
         case FILTER_BY_NOMINAL: {
             /** @param {string | import("lit-html").TemplateResult} attr */

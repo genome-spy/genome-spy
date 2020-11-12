@@ -1,10 +1,10 @@
-import { format as d3format } from "d3-format";
 import { tsvParseRows } from "d3-dsv";
 import { loader } from "vega-loader";
 import { field, accessorFields } from "vega-util";
 import ChromMapper from "./chromMapper";
 import CoordinateSystem from "../coordinateSystem";
 import Interval from "../utils/interval";
+import { formatRange } from "./locusFormat";
 
 const defaultBaseUrl = "https://genomespy.app/data/genomes/";
 /**
@@ -24,8 +24,6 @@ export default class Genome extends CoordinateSystem {
                 "No name has been defined for the genome assembly!"
             );
         }
-
-        this.numberFormat = d3format(",d");
     }
 
     get name() {
@@ -104,15 +102,9 @@ export default class Genome extends CoordinateSystem {
         const begin = this.chromMapper.toChromosomal(interval.lower + 0.5);
         // Because of the open upper bound, one is first subtracted from the upper bound and later added back.
         const end = this.chromMapper.toChromosomal(interval.upper - 1);
+        end.pos += 1;
 
-        return (
-            begin.chromosome +
-            ":" +
-            this.numberFormat(Math.floor(begin.pos + 1)) +
-            "-" +
-            (begin.chromosome != end.chromosome ? end.chromosome + ":" : "") +
-            this.numberFormat(Math.ceil(end.pos + 1))
-        );
+        return formatRange(begin, end);
     }
 
     /**

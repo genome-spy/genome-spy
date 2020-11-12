@@ -233,9 +233,11 @@ export default class RectMark extends Mark {
     findDatumAt(facetId, x) {
         const e = this.encoders;
         const data = this.dataByFacet.get(facetId);
+        const a = e.x.accessor;
+        const a2 = e.x2.accessor;
         if (data) {
             // TODO: Binary search
-            return data.find(d => x >= e.x(d) && x < e.x2(d));
+            return data.find(d => x >= a(d) && x < a2(d));
         }
     }
 }
