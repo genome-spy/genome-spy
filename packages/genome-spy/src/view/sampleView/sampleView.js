@@ -11,6 +11,7 @@ import contextMenu from "../../contextMenu";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
 import Padding from "../../utils/layout/padding";
+import smoothstep from "../../utils/smoothstep";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -240,6 +241,9 @@ export default class SampleView extends ContainerView {
             }
         );
 
+        /** @param {number} size */
+        const getSamplePadding = size => size * 0.1 * smoothstep(10, 16, size);
+
         /** @type {{ sampleId: string, location: LocSize }[]} */
         const sampleLocations = [];
 
@@ -252,11 +256,12 @@ export default class SampleView extends ContainerView {
                     offset: groupLocations[gi].location
                 }
             ).forEach((location, i) => {
+                const padding = getSamplePadding(location.size) / pxHeight;
                 sampleLocations.push({
                     sampleId: samples[i],
                     location: {
-                        location: location.location / pxHeight,
-                        size: location.size / pxHeight
+                        location: location.location / pxHeight + padding,
+                        size: location.size / pxHeight - 2 * padding
                     }
                 });
             });
