@@ -4,11 +4,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
     mode: "development",
-    devtool: "inline-source-map",
-
-    entry: {
-        main: "./src/index.js"
-    },
+    devtool: "source-map",
 
     plugins: [
         new HtmlWebpackPlugin({
@@ -29,6 +25,10 @@ module.exports = {
             {
                 test: /\.(txt|[ct]sv|glsl)$/,
                 use: "raw-loader"
+            },
+            {
+                test: /\.png$/,
+                use: "url-loader"
             }
         ]
     }
