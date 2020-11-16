@@ -7,7 +7,7 @@ import { OrdinalDomain } from "../utils/domainArray";
 import Rectangle from "../utils/layout/rectangle";
 import coalesce from "../utils/coalesce";
 import { field as vegaField } from "vega-util";
-import AxisWrapperView from "./axisWrapperView";
+import DecoratorView from "./decoratorView";
 import Padding from "../utils/layout/padding";
 
 const DEFAULT_SPACING = 20;
@@ -81,7 +81,7 @@ export default class FacetView extends ContainerView {
         this.spec = spec;
 
         const View = getViewClass(spec.spec);
-        this.child = /** @type { UnitView | LayerView | AxisWrapperView } */ (new View(
+        this.child = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
             spec.spec,
             context,
             this,
@@ -128,7 +128,7 @@ export default class FacetView extends ContainerView {
             throw new Error("Not my child!");
         }
 
-        this.child = /** @type {UnitView | LayerView | AxisWrapperView} */ (replacement);
+        this.child = /** @type {UnitView | LayerView | DecoratorView} */ (replacement);
     }
 
     transformData() {
@@ -387,7 +387,7 @@ export default class FacetView extends ContainerView {
         const rowFlexCoords = computeFlexCoords("row", nRows);
 
         const axisSizes =
-            this.child instanceof AxisWrapperView
+            this.child instanceof DecoratorView
                 ? this.child.getAxisSizes()
                 : Padding.createUniformPadding(0);
 

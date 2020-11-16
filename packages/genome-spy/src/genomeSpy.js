@@ -20,7 +20,7 @@ import {
     resolveScales,
     isImportSpec,
     initializeData,
-    addAxisWrappers,
+    addDecorators,
     processImports
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
@@ -29,7 +29,7 @@ import ImportView from "./view/importView";
 import createDomain from "./utils/domainArray";
 
 import WebGLHelper from "./gl/webGLHelper";
-import AxisWrapperView from "./view/axisWrapperView";
+import DecoratorView from "./view/decoratorView";
 import MouseTracker2 from "./mouseTracker2";
 import { parseSizeDef } from "./utils/layout/flexLayout";
 import Rectangle from "./utils/layout/rectangle";
@@ -103,7 +103,7 @@ export default class GenomeSpy {
 
     getXResolution() {
         // TODO: Proper search. More complex hierarchies may be used later on...
-        return (this.viewRoot instanceof AxisWrapperView
+        return (this.viewRoot instanceof DecoratorView
             ? this.viewRoot.child
             : this.viewRoot
         ).getResolution("x");
@@ -239,7 +239,7 @@ export default class GenomeSpy {
             resolveScales(this.viewRoot);
 
             // Wrap unit or layer views that need axes
-            this.viewRoot = addAxisWrappers(this.viewRoot);
+            this.viewRoot = addDecorators(this.viewRoot);
 
             /** @type {UnitView[]} */
             const unitViews = [];

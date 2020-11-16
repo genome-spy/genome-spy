@@ -7,7 +7,7 @@ import LayerView from "./layerView";
 import FacetView from "./facetView";
 import SampleView from "./sampleView/sampleView";
 import ConcatView from "./concatView";
-import AxisWrapperView from "./axisWrapperView";
+import DecoratorView from "./decoratorView";
 import { VISIT_SKIP } from "./view";
 
 /**
@@ -254,7 +254,7 @@ export function resolveScales(root) {
 /**
  * @param {View} root
  */
-export function addAxisWrappers(root) {
+export function addDecorators(root) {
     let newRoot = root; // If the root is wrapped...
 
     /** @param {EncodingConfig} encodingConfig */
@@ -277,34 +277,31 @@ export function addAxisWrappers(root) {
             }
 
             const originalParent = view.parent;
-            const axisWrapperView = new AxisWrapperView(
-                view.context,
-                originalParent
-            );
-            view.parent = axisWrapperView;
-            axisWrapperView.child = view;
+            const decorator = new DecoratorView(view.context, originalParent);
+            view.parent = decorator;
+            decorator.child = view;
 
             if (originalParent) {
-                originalParent.replaceChild(view, axisWrapperView);
+                originalParent.replaceChild(view, decorator);
             }
 
-            axisWrapperView.resolutions = view.resolutions;
-            axisWrapperView.name = view.name;
-            axisWrapperView.spec.height = view.spec.height;
-            axisWrapperView.spec.width = view.spec.width;
-            axisWrapperView.spec.padding = view.spec.padding;
+            decorator.resolutions = view.resolutions;
+            decorator.name = view.name;
+            decorator.spec.height = view.spec.height;
+            decorator.spec.width = view.spec.width;
+            decorator.spec.padding = view.spec.padding;
 
             view.resolutions = {};
-            view.name = "axisWrapped_" + view.name;
+            view.name = "decorated_" + view.name;
             view.spec.height = "container";
             view.spec.width = "container";
             view.spec.padding = undefined;
 
             if (view === root) {
-                newRoot = axisWrapperView;
+                newRoot = decorator;
             }
 
-            axisWrapperView.initialize();
+            decorator.initialize();
 
             return VISIT_SKIP;
         }

@@ -74,13 +74,13 @@ function slot2dimension(slot) {
  * @prop {number} yDelta
  * @prop {number} zDelta
  */
-export default class AxisWrapperView extends ContainerView {
+export default class DecoratorView extends ContainerView {
     /**
      * @param {import("./viewUtils").ViewContext} context
      * @param {import("./containerView").default} parent
      */
     constructor(context, parent) {
-        super({}, context, parent, "axiswrapper");
+        super({}, context, parent, "decorator");
 
         /** @type { import("./layerView").default | import("./unitView").default } */
         this.child = undefined;
@@ -545,7 +545,7 @@ export default class AxisWrapperView extends ContainerView {
                 );
 
                 resolution.views.forEach(view =>
-                    findClosestAxisWrapper(view).requestAxisUpdate(channel)
+                    findClosestDecorator(view).requestAxisUpdate(channel)
                 );
             }
         }
@@ -553,15 +553,15 @@ export default class AxisWrapperView extends ContainerView {
         this.context.genomeSpy.renderAll(); // TODO: context.requestRender() or something
 
         /** @param {View} view */
-        function findClosestAxisWrapper(view) {
+        function findClosestDecorator(view) {
             do {
-                if (view instanceof AxisWrapperView) {
+                if (view instanceof DecoratorView) {
                     return view;
                 }
                 view = view.parent;
             } while (view);
 
-            throw new Error("Bug: cannot find AxisWrapperView");
+            throw new Error("Bug: cannot find DecoratorView");
         }
     }
 }

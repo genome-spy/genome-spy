@@ -26,7 +26,7 @@ const SPACING = 10;
  * @typedef {import("../view").default} View
  * @typedef {import("../layerView").default} LayerView
  * @typedef {import("../unitView").default} UnitView
- * @typedef {import("../axisWrapperView").default} AxisWrapperView
+ * @typedef {import("../decoratorView").default} DecoratorView
  * @typedef {import("../../genome/chromMapper").ChromosomalLocus} ChromosomalLocus
  *
  * @typedef {object} Sample Sample metadata
@@ -55,7 +55,7 @@ export default class SampleView extends ContainerView {
         this.spec = spec;
 
         const View = getViewClass(spec.spec);
-        this.child = /** @type { UnitView | LayerView | AxisWrapperView } */ (new View(
+        this.child = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
             spec.spec,
             context,
             this,
@@ -173,7 +173,7 @@ export default class SampleView extends ContainerView {
             throw new Error("Not my child!");
         }
 
-        this.child = /** @type {UnitView | LayerView | AxisWrapperView} */ (replacement);
+        this.child = /** @type {UnitView | LayerView | DecoratorView} */ (replacement);
     }
 
     async loadData() {
@@ -219,8 +219,20 @@ export default class SampleView extends ContainerView {
     }
 
     getSampleLocations() {
-        const pxHeight = this._coords.height;
+        return this._calculateSampleLocations(
+            this._coords.height,
+            this._coords.height,
+            0
+        );
+    }
 
+    /**
+     *
+     * @param {number} canvasHeight Height reserved for all the samples (in pixels)
+     * @param {number} viewportHeight Height of the viewport where the samples are shown (in pixels)
+     * @param {number} heightOffset Translation of the canvas inside the viewport (in pixels)
+     */
+    _calculateSampleLocations(canvasHeight, viewportHeight, heightOffset) {
         const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
 
         const sampleGroups = flattened
@@ -235,14 +247,12 @@ export default class SampleView extends ContainerView {
 
         const groupLocations = mapToPixelCoords(
             sampleGroups.map(group => ({ grow: group.length })),
-            pxHeight,
-            {
-                spacing: 5
-            }
+            canvasHeight,
+            { spacing: 5 }
         );
 
         /** @param {number} size */
-        const getSamplePadding = size => size * 0.1 * smoothstep(10, 16, size);
+        const getSamplePadding = size => size * 0.1 * smoothstep(15, 22, size);
 
         /** @type {{ sampleId: string, location: LocSize }[]} */
         const sampleLocations = [];
@@ -256,12 +266,15 @@ export default class SampleView extends ContainerView {
                     offset: groupLocations[gi].location
                 }
             ).forEach((location, i) => {
-                const padding = getSamplePadding(location.size) / pxHeight;
+                const padding = getSamplePadding(location.size) / canvasHeight;
                 sampleLocations.push({
                     sampleId: samples[i],
                     location: {
-                        location: location.location / pxHeight + padding,
-                        size: location.size / pxHeight - 2 * padding
+                        location:
+                            (location.location + heightOffset) /
+                                viewportHeight +
+                            padding,
+                        size: location.size / viewportHeight - 2 * padding
                     }
                 });
             });
