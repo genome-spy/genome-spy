@@ -274,21 +274,6 @@ export default class GenomeSpy {
             unitViews.forEach(view => view.mark.initializeEncoders());
             unitViews.forEach(view => view.mark.updateGraphicsData());
 
-            /*
-            this.zoom = new Zoom(e => {
-                // TODO: Refactor mouse handling. Propagate raw events, mimic DOM.
-                // Zooms and other behaviors should be handled at view levels.
-                if (this.layout) {
-                    this.layout.broadcastMouseEvent(e.mouseX, e.mouseY, {
-                        type: "zoom",
-                        payload: e
-                    });
-                }
-            });
-
-            this.zoom.attachZoomEvents(this._glHelper.canvas);
-            */
-
             this.registerMouseEvents();
 
             this.computeLayout();

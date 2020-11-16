@@ -34,6 +34,9 @@ export default class Resolution {
         this.scale = {};
         /** @type {string} Data type (quantitative, nominal, etc...) */
         this.type = null;
+
+        /** @type {Set<function():void>} Observers that are called when the scale domain is changed */
+        this.scaleObservers = new Set();
     }
 
     /**
@@ -45,6 +48,26 @@ export default class Resolution {
         r.scale = scaleConfig;
         r._scale = createScale(r.scale);
         return r;
+    }
+
+    /**
+     * Adds an observer that is called when the scale domain is changed,
+     * e.g., zoomed.
+     *
+     * @type {function():void} callback function
+     */
+    addScaleObserver(observer) {
+        this.scaleObservers.add(observer);
+    }
+
+    removeScaleObserver(observer) {
+        this.scaleObservers.delete(observer);
+    }
+
+    _notifyScaleObservers() {
+        for (const observer of this.scaleObservers.values()) {
+            observer();
+        }
     }
 
     /**
@@ -283,6 +306,7 @@ export default class Resolution {
 
         if ([0, 1].some(i => newDomain[i] != oldDomain[i])) {
             scale.domain(newDomain);
+            this._notifyScaleObservers();
             return true;
         }
 
