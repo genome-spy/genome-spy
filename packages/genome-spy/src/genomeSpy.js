@@ -1,7 +1,6 @@
 import scaleLocus from "./genome/scaleLocus";
 import { scale as vegaScale } from "vega-scale";
 import { interpolateZoom } from "d3-interpolate";
-import { loader as vegaLoader } from "vega-loader";
 
 import EventEmitter from "eventemitter3";
 import Interval from "./utils/interval";
@@ -21,7 +20,8 @@ import {
     resolveScales,
     isImportSpec,
     initializeData,
-    addAxisWrappers
+    addAxisWrappers,
+    processImports
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
@@ -232,6 +232,9 @@ export default class GenomeSpy {
             /** @type {import("./view/view").default} */
             this.viewRoot = createView(rootSpec, context);
 
+            // Replace placeholder ImportViews with actual views.
+            await processImports(this.viewRoot);
+
             // Resolve scales, i.e., if possible, pull them towards the root
             resolveScales(this.viewRoot);
 
@@ -371,61 +374,6 @@ export default class GenomeSpy {
 
         this.deferredContext.renderDeferred();
     }
-}
-
-/**
- * @param {import("./spec/view").ImportSpec} spec
- * @param {string} baseUrl
- */
-async function importExternalTrack(spec, baseUrl) {
-    if (!spec.import.url) {
-        throw new Error(
-            "Cannot import, not an external track: " + JSON.stringify(spec)
-        );
-    }
-
-    const loader = vegaLoader({ baseURL: baseUrl });
-    const url = spec.import.url;
-
-    const importedSpec = JSON.parse(
-        await loader.load(url).catch(e => {
-            throw new Error(
-                `Could not load imported track spec: ${url} \nReason: ${e.message}`
-            );
-        })
-    );
-
-    if (isViewSpec(importedSpec)) {
-        importedSpec.baseUrl = (await loader.sanitize(url)).href.match(
-            /^.*\//
-        )[0];
-        return importedSpec;
-    } else {
-        // TODO: Support nested TrackViews (i.e., grouped tracks)
-        throw new Error(
-            `The imported spec "${url}" is not a view spec: ${JSON.stringify(
-                spec
-            )}`
-        );
-    }
-}
-
-/**
- * @param {import("./spec/view").ConcatSpec} trackSpec
- */
-async function processImports(trackSpec) {
-    // TODO: Process nested TracksViews too
-
-    // eslint-disable-next-line require-atomic-updates
-    trackSpec.concat = await Promise.all(
-        trackSpec.concat.map(spec => {
-            if (isImportSpec(spec) && spec.import.url) {
-                return importExternalTrack(spec, trackSpec.baseUrl);
-            } else {
-                return spec;
-            }
-        })
-    );
 }
 
 /**

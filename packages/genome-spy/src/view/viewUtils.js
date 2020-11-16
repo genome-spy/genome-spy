@@ -1,4 +1,5 @@
 import { isObject, isString, isArray } from "vega-util";
+import { loader as vegaLoader } from "vega-loader";
 
 import UnitView from "./unitView";
 import ImportView from "./importView";
@@ -355,4 +356,75 @@ export function findEncodedFields(view) {
     });
 
     return fieldInfos;
+}
+
+/**
+ * @param {import("../spec/view").ImportSpec} spec
+ * @param {string} baseUrl
+ */
+async function loadExternalViewSpec(spec, baseUrl) {
+    if (!spec.import.url) {
+        throw new Error(
+            "Cannot import, not an import spec: " + JSON.stringify(spec)
+        );
+    }
+
+    const loader = vegaLoader({ baseURL: baseUrl });
+    const url = spec.import.url;
+
+    const importedSpec = JSON.parse(
+        await loader.load(url).catch(e => {
+            throw new Error(
+                `Could not load imported view spec: ${url} \nReason: ${e.message}`
+            );
+        })
+    );
+
+    if (isViewSpec(importedSpec)) {
+        importedSpec.baseUrl = (await loader.sanitize(url)).href.match(
+            /^.*\//
+        )[0];
+        return importedSpec;
+    } else {
+        throw new Error(
+            `The imported spec "${url}" is not a view spec: ${JSON.stringify(
+                spec
+            )}`
+        );
+    }
+}
+
+/**
+ * @param {import("./view").default} viewRoot
+ */
+export async function processImports(viewRoot) {
+    /** @type {ImportView[]} */
+    const importViews = [];
+
+    viewRoot.visit(view => {
+        if (view instanceof ImportView) {
+            importViews.push(view);
+            return VISIT_SKIP;
+        }
+    });
+
+    for (const view of importViews) {
+        // TODO: Parallelize using promises, don't use await
+        const loadedSpec = await loadExternalViewSpec(
+            view.spec,
+            view.getBaseUrl()
+        );
+
+        const View = getViewClass(loadedSpec);
+        const importedView = new View(
+            loadedSpec,
+            view.context,
+            view.parent,
+            view.name
+        ); // TODO: Let importSpec have a name
+        view.parent.replaceChild(view, importedView);
+
+        // Import recursively
+        await processImports(importedView);
+    }
 }
