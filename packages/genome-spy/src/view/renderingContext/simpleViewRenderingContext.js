@@ -1,8 +1,11 @@
+import ViewRenderingContext from "./viewRenderingContext";
+
 /**
  * @typedef {import("../view").default} View
  */
-export default class SimpleViewRenderingContext {
+export default class SimpleViewRenderingContext extends ViewRenderingContext {
     constructor() {
+        super();
         /** @type {import("../../utils/layout/rectangle").default} */
         this.coords = undefined;
     }
@@ -15,6 +18,7 @@ export default class SimpleViewRenderingContext {
      *      inside the padding.
      */
     pushView(view, coords) {
+        view.onBeforeRender();
         this.coords = coords;
     }
 

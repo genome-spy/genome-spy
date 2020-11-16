@@ -211,6 +211,14 @@ export default class View {
     }
 
     /**
+     * ViewRenderingContext calls this method at least once during each rendering
+     * pass.
+     */
+    onBeforeRender() {
+        //
+    }
+
+    /**
      * Recursively traverses the view hierarchy, computes the view coordinates,
      * and coordinates the mark rendering.
      *

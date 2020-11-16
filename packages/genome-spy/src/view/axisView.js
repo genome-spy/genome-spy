@@ -92,6 +92,11 @@ export default class AxisView extends LayerView {
         this._addBroadcastHandler("layout", () => {
             this.axisUpdateRequested = true;
         });
+
+        this.previousScaleDomain = [];
+
+        /** @type {number} */
+        this.axisLength = undefined;
     }
 
     getOrient() {
@@ -107,22 +112,25 @@ export default class AxisView extends LayerView {
         return getExtent(this.axisProps);
     }
 
-    /**
-     *
-     * @param {number} axisLength
-     */
-    _updateAxisData(axisLength) {
-        if (!this.axisUpdateRequested) {
-            return;
-        }
-
+    _updateAxisData() {
         const channel = orient2channel(this.axisProps.orient);
         const scale = this.getResolution(channel).getScale();
+        const currentScaleDomain = scale.domain();
+
+        if (
+            shallowArrayEquals(currentScaleDomain, this.previousScaleDomain) &&
+            !this.axisUpdateRequested
+        ) {
+            // TODO: Instead of scale comparison, register an observer to Resolution
+            return;
+        }
+        this.previousScaleDomain = currentScaleDomain;
+
         const oldTicks = (this.data && [...this.data.flatData()]) || [];
         const newTicks = generateTicks(
             this.axisProps,
             scale,
-            axisLength,
+            this.axisLength,
             oldTicks
         );
 
@@ -143,15 +151,20 @@ export default class AxisView extends LayerView {
         this.axisUpdateRequested = false;
     }
 
+    onBeforeRender() {
+        super.onBeforeRender();
+        this._updateAxisData();
+    }
+
     /**
      * @param {import("./renderingContext/viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("./view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
-        this._updateAxisData(
-            coords[CHANNEL_DIMENSIONS[orient2channel(this.getOrient())]]
-        );
+        this.axisLength =
+            coords[CHANNEL_DIMENSIONS[orient2channel(this.getOrient())]];
+
         super.render(context, coords, options);
     }
 }

@@ -31,6 +31,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      *      inside the padding.
      */
     pushView(view, coords) {
+        view.onBeforeRender();
         this.coords = coords;
 
         if (this._currentNode === this.svg) {

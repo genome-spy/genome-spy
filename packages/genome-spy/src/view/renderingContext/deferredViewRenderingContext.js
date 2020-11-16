@@ -21,6 +21,9 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
 
         /** @type {import("../../utils/layout/rectangle").default} */
         this.coords = undefined;
+
+        /** @type {(import("../view").default)[]} */
+        this.views = [];
     }
 
     /**
@@ -31,6 +34,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      *      inside the padding.
      */
     pushView(view, coords) {
+        this.views.push(view);
         this.coords = coords;
     }
 
@@ -79,6 +83,10 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
                     previousCoords = request.coords;
                 }
             }
+        }
+
+        for (const view of this.views) {
+            view.onBeforeRender();
         }
 
         // Execute the pipeline
