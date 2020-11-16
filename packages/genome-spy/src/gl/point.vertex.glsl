@@ -35,19 +35,19 @@ float computeSemanticThresholdFactor() {
  * Computes a scaling factor for the points in a sample-faceted view.
  */
 float getDownscaleFactor(vec2 pos) {
-    // TODO: Only scale down when we are faceting
+    if (!isFacetedSamples()) {
+        return 1.0;
+    }
 
     float sampleFacetHeight = getSampleFacetHeight(pos);
     float maxPointDiameter = sqrt(uMaxPointSize);
 
-    // TODO: Optimize: we first divide by DPR here and later multiply by it
     float factor = sampleFacetHeight *
         uViewportSize.y *
-        uMaxRelativePointDiameter /
-        uDevicePixelRatio;
+        uMaxRelativePointDiameter;
 
     // Points should not be visible on zero-height bands. Using smoothstep to hide them.
-    float minimum = smoothstep(0.0, 0.5, sampleFacetHeight) * uMinAbsolutePointDiameter / uDevicePixelRatio;
+    float minimum = smoothstep(0.0, 0.5, sampleFacetHeight) * uMinAbsolutePointDiameter;
 
     return max(minimum, min(maxPointDiameter, factor)) / maxPointDiameter;
 }

@@ -16,26 +16,39 @@ bool isInTransit() {
     return uSampleFacet.xy != uSampleFacet.zw;
 }
 
+float getTransitionFraction(float xPos) {
+    return smoothstep(0.0, 0.7 + uTransitionOffset, (xPos - uTransitionOffset) * 2.0);
+}
+
 vec2 applySampleFacet(vec2 pos) {
     if (!isFacetedSamples()) {
         return pos;
+    } 
 
-    } else {
-        vec2 left = uSampleFacet.xy;
-        vec2 right = uSampleFacet.zw;
+    vec2 left = uSampleFacet.xy;
+    vec2 right = uSampleFacet.zw;
 
-        vec2 interpolated = left;
+    vec2 interpolated = left;
 
-        if (isInTransit()) {
-            float fraction = smoothstep(0.0, 0.7 + uTransitionOffset, (pos.x - uTransitionOffset) * 2.0);
-            interpolated = mix(left, right, fraction);
-        }
-
-        return vec2(pos.x, interpolated.x + pos.y * interpolated.y);
+    if (isInTransit()) {
+        interpolated = mix(left, right, getTransitionFraction(pos.x));
     }
+    return vec2(pos.x, interpolated.x + pos.y * interpolated.y);
 }
 
 float getSampleFacetHeight(vec2 pos) {
-    // TODO: implement
-    return 1.0;
+    if (!isFacetedSamples()) {
+        return 1.0;
+    } 
+
+    float left = uSampleFacet.y;
+    float right = uSampleFacet.w;
+
+    float interpolated = left;
+
+    if (isInTransit()) {
+        interpolated = mix(left, right, getTransitionFraction(pos.x));
+    }
+
+    return left;
 }
