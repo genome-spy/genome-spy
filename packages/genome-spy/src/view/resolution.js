@@ -266,16 +266,19 @@ export default class Resolution {
             return false;
         }
 
-        if (!["linear", "locus"].includes(this.getScale().type)) {
+        const scaleType = this.getScale().type;
+        if (!["linear", "locus"].includes(scaleType)) {
             return false;
         }
 
+        // Check explicit configuration
         const props = this.getScaleProps();
-        if ("zoom" in props && !props.zoom) {
-            return false;
+        if ("zoom" in props) {
+            return !!props.zoom;
         }
 
-        return true;
+        // By default, locus scales are zoomable, others are not
+        return scaleType == "locus";
     }
 
     /**
