@@ -59,8 +59,11 @@ export default class View {
         this.name = spec.name || name;
         this.spec = spec;
 
-        /** @type {Object.<string, import("./resolution").default>}  Resolved channels. Supports only scales for now.. */
-        this.resolutions = {};
+        /**
+         * Channel-specific scale resolutions
+         * @type {Record<string, import("./resolution").ScaleResolution>}
+         */
+        this.scaleResolutions = {};
 
         /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
         this._broadcastHandlers = {};
@@ -88,7 +91,7 @@ export default class View {
     }
 
     /**
-     * Returns the configured height if present. Otherwise a computed or default
+     * Returns the configured size, if present. Otherwise a computed or default
      * height is returned.
      *
      * @returns {FlexDimensions}
@@ -260,11 +263,11 @@ export default class View {
     /**
      *
      * @param {string} channel
-     * @returns {import("./resolution").default}
+     * @returns {import("./resolution").ScaleResolution}
      */
     getResolution(channel) {
         return (
-            this.resolutions[channel] ||
+            this.scaleResolutions[channel] ||
             (this.parent && this.parent.getResolution(channel)) ||
             undefined
         );

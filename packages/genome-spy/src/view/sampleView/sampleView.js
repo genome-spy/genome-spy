@@ -427,8 +427,9 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {string} channel
+     * @param {import("../containerView").ResolutionType} resolutionType
      */
-    getDefaultResolution(channel) {
+    getDefaultResolution(channel, resolutionType) {
         return channel == "x" ? "shared" : "independent";
     }
 }

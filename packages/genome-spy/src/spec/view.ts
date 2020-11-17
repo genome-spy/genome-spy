@@ -141,6 +141,7 @@ export type ContainerSpec = (
 ) & {
     resolve?: {
         scale: Record<string, "independent" | "shared">;
+        axis: Record<string, "independent" | "shared">;
     };
 };
 

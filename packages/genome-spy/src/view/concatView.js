@@ -206,10 +206,10 @@ export default class ConcatView extends ContainerView {
 
     /**
      * @param {string} channel
+     * @param {import("./containerView").ResolutionType} resolutionType
      */
-    getDefaultResolution(channel) {
-        // TODO: Default to shared only when working with genomic coordinates
-        //return channel == "x" ? "shared" : "independent";
+    getDefaultResolution(channel, resolutionType) {
+        // TODO: Default to shared when working with genomic coordinates
         return "independent";
     }
 }

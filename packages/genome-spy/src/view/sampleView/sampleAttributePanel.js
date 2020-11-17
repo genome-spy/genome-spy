@@ -165,7 +165,7 @@ export class SampleAttributePanel extends ConcatView {
         for (const view of addedChildViews) {
             if (view instanceof UnitView) {
                 // TODO: Move initialization to viewUtils
-                view.resolve();
+                view.resolveScales();
                 view.mark.initializeEncoders();
                 view.updateData();
                 // Async:
@@ -298,7 +298,11 @@ export class SampleAttributePanel extends ConcatView {
         ];
     }
 
-    getDefaultResolution(channel) {
+    /**
+     * @param {string} channel
+     * @param {import("../containerView").ResolutionType} resolutionType
+     */
+    getDefaultResolution(channel, resolutionType) {
         return "independent";
     }
 }

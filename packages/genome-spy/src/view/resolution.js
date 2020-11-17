@@ -23,7 +23,7 @@ import { getCachedOrCall } from "../utils/propertyCacher";
  * @typedef {import("../utils/interval").default} Interval
  * @typedef { import("./unitView").default} UnitView
  */
-export default class Resolution {
+export default class ScaleResolution {
     /**
      * @param {string} channel
      */
@@ -44,7 +44,7 @@ export default class Resolution {
      * @param {object} scaleConfig
      */
     static createExplicitResolution(channel, scaleConfig) {
-        const r = new Resolution(channel);
+        const r = new ScaleResolution(channel);
         r.scale = scaleConfig;
         r._scale = createScale(r.scale);
         return r;

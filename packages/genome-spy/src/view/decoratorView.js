@@ -222,7 +222,7 @@ export default class DecoratorView extends ContainerView {
      */
     _initializeAxes(channel, orients) {
         const resolutions = this._getResolutionParticipants()
-            .map(view => view.resolutions[channel])
+            .map(view => view.scaleResolutions[channel])
             .filter(resolution => resolution);
 
         // First, fill the preferred slots
@@ -349,7 +349,7 @@ export default class DecoratorView extends ContainerView {
     }
 
     _getZoomableResolutions() {
-        /** @type {Record<string, Set<import("./resolution").default>>} */
+        /** @type {Record<string, Set<import("./resolution").ScaleResolution>>} */
         const resolutions = {
             x: new Set(),
             y: new Set()

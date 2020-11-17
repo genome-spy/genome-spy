@@ -2,6 +2,8 @@ import View, { VISIT_STOP, VISIT_SKIP } from "./view";
 
 /**
  * Compositor view represents a non-leaf node in the view hierarchy.
+ *
+ * @typedef {"scale" | "axis"} ResolutionType
  */
 export default class ContainerView extends View {
     /**
@@ -92,29 +94,28 @@ export default class ContainerView extends View {
 
     /**
      * @param {string} channel
+     * @param {ResolutionType} resolutionType
      */
-    getConfiguredResolution(channel) {
-        return (
-            this.spec.resolve &&
-            this.spec.resolve.scale &&
-            this.spec.resolve.scale[channel]
-        );
+    getConfiguredResolution(channel, resolutionType) {
+        return this.spec.resolve?.[resolutionType]?.[channel];
     }
 
     /**
      * @param {string} channel
+     * @param {ResolutionType} resolutionType
      */
-    getDefaultResolution(channel) {
+    getDefaultResolution(channel, resolutionType) {
         return "shared";
     }
 
     /**
      * @param {string} channel
+     * @param {ResolutionType} resolutionType
      */
-    getConfiguredOrDefaultResolution(channel) {
+    getConfiguredOrDefaultResolution(channel, resolutionType) {
         return (
-            this.getConfiguredResolution(channel) ||
-            this.getDefaultResolution(channel)
+            this.getConfiguredResolution(channel, resolutionType) ||
+            this.getDefaultResolution(channel, resolutionType)
         );
     }
 }

@@ -6,7 +6,7 @@ import TextMark from "../marks/text";
 
 import View from "./view";
 import ContainerView from "./containerView";
-import Resolution from "./resolution";
+import ScaleResolution from "./resolution";
 import {
     isSecondaryChannel,
     secondaryChannels,
@@ -85,7 +85,7 @@ export default class UnitView extends View {
      * Pulls scales up in the view hierarcy according to the resolution rules.
      * TODO: Axes, legends
      */
-    resolve() {
+    resolveScales() {
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
 
         const encoding = this.getEncoding();
@@ -106,18 +106,20 @@ export default class UnitView extends View {
             let view = this;
             while (
                 view.parent instanceof ContainerView &&
-                view.parent.getConfiguredOrDefaultResolution(channel) ==
-                    "shared"
+                view.parent.getConfiguredOrDefaultResolution(
+                    channel,
+                    "scale"
+                ) == "shared"
             ) {
                 // @ts-ignore
                 view = view.parent;
             }
 
-            if (!view.resolutions[channel]) {
-                view.resolutions[channel] = new Resolution(channel);
+            if (!view.scaleResolutions[channel]) {
+                view.scaleResolutions[channel] = new ScaleResolution(channel);
             }
 
-            view.resolutions[channel].pushUnitView(this);
+            view.scaleResolutions[channel].pushUnitView(this);
         }
     }
 
@@ -132,8 +134,8 @@ export default class UnitView extends View {
         // eslint-disable-next-line consistent-this
         let view = this;
         do {
-            if (view.resolutions[channel]) {
-                return view.resolutions[channel];
+            if (view.scaleResolutions[channel]) {
+                return view.scaleResolutions[channel];
             }
             view = view.parent;
         } while (view);
