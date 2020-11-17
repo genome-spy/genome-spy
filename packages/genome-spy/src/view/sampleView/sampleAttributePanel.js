@@ -165,7 +165,8 @@ export class SampleAttributePanel extends ConcatView {
         for (const view of addedChildViews) {
             if (view instanceof UnitView) {
                 // TODO: Move initialization to viewUtils
-                view.resolveScales();
+                view.resolve("scale");
+                view.resolve("axis");
                 view.mark.initializeEncoders();
                 view.updateData();
                 // Async:
@@ -249,7 +250,7 @@ export class SampleAttributePanel extends ConcatView {
         const nameMatch = view.name.match(/attribute-(.*)/);
         if (nameMatch) {
             // Foolhardily assume that color is always used for encoding.
-            const resolution = view.getResolution("color");
+            const resolution = view.getScaleResolution("color");
 
             const attribute = nameMatch[1];
 

@@ -243,10 +243,15 @@ export function getFlattenedViews(root) {
 /**
  * @param {View} root
  */
-export function resolveScales(root) {
+export function resolveScalesAndAxes(root) {
     root.visit(view => {
         if (view instanceof UnitView) {
-            view.resolveScales();
+            view.resolve("scale");
+        }
+    });
+    root.visit(view => {
+        if (view instanceof UnitView) {
+            view.resolve("axis");
         }
     });
 }
@@ -285,13 +290,13 @@ export function addDecorators(root) {
                 originalParent.replaceChild(view, decorator);
             }
 
-            decorator.scaleResolutions = view.scaleResolutions;
+            decorator.resolutions = view.resolutions;
             decorator.name = view.name;
             decorator.spec.height = view.spec.height;
             decorator.spec.width = view.spec.width;
             decorator.spec.padding = view.spec.padding;
 
-            view.scaleResolutions = {};
+            view.resolutions = { scale: {}, axis: {} };
             view.name = "decorated_" + view.name;
             view.spec.height = "container";
             view.spec.width = "container";

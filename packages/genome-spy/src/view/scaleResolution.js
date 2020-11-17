@@ -40,17 +40,6 @@ export default class ScaleResolution {
     }
 
     /**
-     * @param {string} channel
-     * @param {object} scaleConfig
-     */
-    static createExplicitResolution(channel, scaleConfig) {
-        const r = new ScaleResolution(channel);
-        r.scale = scaleConfig;
-        r._scale = createScale(r.scale);
-        return r;
-    }
-
-    /**
      * Adds an observer that is called when the scale domain is changed,
      * e.g., zoomed.
      *
@@ -92,28 +81,6 @@ export default class ScaleResolution {
         // TODO: Merge scale
     }
 
-    getAxisProps() {
-        return getCachedOrCall(this, "axisProps", () => {
-            const propArray = this.views.map(
-                view => this._getEncoding(view).axis
-            );
-
-            if (
-                propArray.length > 0 &&
-                propArray.some(props => props === null)
-            ) {
-                // No axis whatsoever is wanted
-                return null;
-            } else {
-                return /** @type { import("../spec/axis").Axis} */ (mergeObjects(
-                    propArray.filter(props => props !== undefined),
-                    "axis",
-                    ["title"]
-                ));
-            }
-        });
-    }
-
     /**
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
@@ -142,31 +109,6 @@ export default class ScaleResolution {
                 ["domain"]
             ));
         });
-    }
-
-    getTitle() {
-        /** @param {UnitView} view} */
-        const computeTitle = view => {
-            const encodingSpec = this._getEncoding(view);
-
-            // Retain nulls as they indicate that no title should be shown
-            return [
-                encodingSpec.axis === null ? null : undefined,
-                encodingSpec.axis !== null &&
-                typeof encodingSpec.axis === "object"
-                    ? encodingSpec.axis.title
-                    : undefined,
-                encodingSpec.title,
-                encodingSpec.field, // TODO: Use accessor.fields instead of encoding.field
-                encodingSpec.expr
-            ]
-                .filter(title => title !== undefined)
-                .shift();
-        };
-
-        return [...new Set(this.views.map(computeTitle).filter(isString))].join(
-            ", "
-        );
     }
 
     /**

@@ -207,7 +207,7 @@ export default class Mark {
                 } else {
                     return generateScaleGlsl(
                         attr,
-                        this.unitView.getResolution(attr).getScale(),
+                        this.unitView.getScaleResolution(attr).getScale(),
                         {
                             ...("datum" in e[attr]
                                 ? {
@@ -338,7 +338,7 @@ export default class Mark {
         /** @type {Record<string, number | number[]>} */
         const domainUniforms = {};
         for (const channel of Object.keys(this.getAttributes())) {
-            const resolution = this.unitView.getResolution(channel);
+            const resolution = this.unitView.getScaleResolution(channel);
             if (resolution) {
                 const scale = resolution.getScale();
                 const domain = ["band", "point"].includes(scale.type)

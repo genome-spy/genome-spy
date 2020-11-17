@@ -17,7 +17,7 @@ import {
     getFlattenedViews,
     isViewSpec,
     createView,
-    resolveScales,
+    resolveScalesAndAxes,
     isImportSpec,
     initializeData,
     addDecorators,
@@ -106,7 +106,7 @@ export default class GenomeSpy {
         return (this.viewRoot instanceof DecoratorView
             ? this.viewRoot.child
             : this.viewRoot
-        ).getResolution("x");
+        ).getScaleResolution("x");
     }
 
     /**
@@ -236,7 +236,7 @@ export default class GenomeSpy {
             await processImports(this.viewRoot);
 
             // Resolve scales, i.e., if possible, pull them towards the root
-            resolveScales(this.viewRoot);
+            resolveScalesAndAxes(this.viewRoot);
 
             // Wrap unit or layer views that need axes
             this.viewRoot = addDecorators(this.viewRoot);
@@ -253,7 +253,7 @@ export default class GenomeSpy {
             // TODO: Should be set for each scale. Breaks on independent scales!!
             if (this.coordinateSystem.getExtent()) {
                 this.viewRoot
-                    .getResolution("x")
+                    .getScaleResolution("x")
                     .setDomain(
                         createDomain(
                             "quantitative",

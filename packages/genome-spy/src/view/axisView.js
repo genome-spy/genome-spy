@@ -114,7 +114,7 @@ export default class AxisView extends LayerView {
 
     _updateAxisData() {
         const channel = orient2channel(this.axisProps.orient);
-        const scale = this.getResolution(channel).getScale();
+        const scale = this.getScaleResolution(channel).getScale();
         const currentScaleDomain = scale.domain();
 
         if (

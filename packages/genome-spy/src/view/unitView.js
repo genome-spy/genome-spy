@@ -6,16 +6,18 @@ import TextMark from "../marks/text";
 
 import View from "./view";
 import ContainerView from "./containerView";
-import ScaleResolution from "./resolution";
+import ScaleResolution from "./scaleResolution";
 import {
     isSecondaryChannel,
     secondaryChannels,
-    primaryChannel
+    primaryChannel,
+    isPositionalChannel
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 import { parseSizeDef } from "../utils/layout/flexLayout";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import FacetView from "./facetView";
+import AxisResolution from "./axisResolution";
 
 /**
  *
@@ -35,6 +37,7 @@ export const markTypes = {
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  * @typedef {import("../encoder/accessor").Accessor} Accessor
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
+ * @typedef {import("./containerView").ResolutionType} ResolutionType
  *
  */
 export default class UnitView extends View {
@@ -82,15 +85,21 @@ export default class UnitView extends View {
     }
 
     /**
-     * Pulls scales up in the view hierarcy according to the resolution rules.
-     * TODO: Axes, legends
+     * Pulls scales and axes up in the view hierarcy according to the resolution rules.
+     * TODO: legends
+     *
+     * @param {ResolutionType} type
      */
-    resolveScales() {
+    resolve(type) {
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
 
         const encoding = this.getEncoding();
         // eslint-disable-next-line guard-for-in
         for (const channel in encoding) {
+            if (type == "axis" && !isPositionalChannel(channel)) {
+                continue;
+            }
+
             if (isSecondaryChannel(channel)) {
                 // TODO: Secondary channels should be pulled up as "primarys".
                 // Example: The titles of both y and y2 should be shown on the y axis
@@ -106,39 +115,61 @@ export default class UnitView extends View {
             let view = this;
             while (
                 view.parent instanceof ContainerView &&
-                view.parent.getConfiguredOrDefaultResolution(
-                    channel,
-                    "scale"
-                ) == "shared"
+                view.parent.getConfiguredOrDefaultResolution(channel, type) ==
+                    "shared"
             ) {
                 // @ts-ignore
                 view = view.parent;
             }
 
-            if (!view.scaleResolutions[channel]) {
-                view.scaleResolutions[channel] = new ScaleResolution(channel);
+            if (!view.resolutions[type][channel]) {
+                view.resolutions[type][channel] =
+                    type == "scale"
+                        ? new ScaleResolution(channel)
+                        : new AxisResolution(channel);
             }
 
-            view.scaleResolutions[channel].pushUnitView(this);
+            view.resolutions[type][channel].pushUnitView(this);
         }
     }
 
     /**
      *
      * @param {string} channel
+     * @param {ResolutionType} type
      */
-    getResolution(channel) {
+    _getResolution(channel, type) {
         channel = primaryChannel(channel);
 
         /** @type {import("./view").default } */
         // eslint-disable-next-line consistent-this
         let view = this;
         do {
-            if (view.scaleResolutions[channel]) {
-                return view.scaleResolutions[channel];
+            if (view.resolutions[type][channel]) {
+                return view.resolutions[type][channel];
             }
             view = view.parent;
         } while (view);
+    }
+
+    /**
+     * @param {string} channel
+     */
+    getScaleResolution(channel) {
+        return /** @type {ScaleResolution} */ (this._getResolution(
+            channel,
+            "scale"
+        ));
+    }
+
+    /**
+     * @param {string} channel
+     */
+    getAxisResolution(channel) {
+        return /** @type {AxisResolution} */ (this._getResolution(
+            channel,
+            "axis"
+        ));
     }
 
     /**
@@ -259,7 +290,7 @@ export default class UnitView extends View {
         /** @param {string} channel */
         const getZoomLevel = channel => {
             // TODO: Replace this with optional chaining (?.) when webpack can handle it
-            const resolution = this.getResolution(channel);
+            const resolution = this.getScaleResolution(channel);
             return resolution ? resolution.getZoomLevel() : 1.0;
         };
 

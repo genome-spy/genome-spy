@@ -1,6 +1,9 @@
 {
   "name": "The Root",
   "description": "Lollipop plot example",
+
+  "resolve": { "axis": { "y": "independent" } },
+
   "layer": [
     {
       "name": "Baseline",

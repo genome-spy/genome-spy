@@ -65,7 +65,9 @@ export default function createEncoders(mark, encodingConfigs) {
             continue;
         }
 
-        const resolution = mark.unitView.getResolution(primaryChannel(channel));
+        const resolution = mark.unitView.getScaleResolution(
+            primaryChannel(channel)
+        );
         const scale = (resolution && resolution.getScale()) || undefined;
 
         const preScaleModifier = scale
@@ -301,4 +303,11 @@ export function channelWithSecondarys(channel) {
     return secondaryChannels[channel]
         ? [channel, secondaryChannels[channel]]
         : [channel];
+}
+
+/**
+ * @param {string} channel
+ */
+export function isPositionalChannel(channel) {
+    return ["x", "y"].includes(primaryChannel(channel));
 }

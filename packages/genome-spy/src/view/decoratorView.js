@@ -222,7 +222,7 @@ export default class DecoratorView extends ContainerView {
      */
     _initializeAxes(channel, orients) {
         const resolutions = this._getResolutionParticipants()
-            .map(view => view.scaleResolutions[channel])
+            .map(view => view.resolutions.axis[channel])
             .filter(resolution => resolution);
 
         // First, fill the preferred slots
@@ -244,7 +244,7 @@ export default class DecoratorView extends ContainerView {
                         ...axisProps,
                         title: r.getTitle()
                     },
-                    r.type,
+                    r.scaleResolution.type,
                     this.context,
                     this
                 );
@@ -264,7 +264,7 @@ export default class DecoratorView extends ContainerView {
                                 ...axisProps,
                                 title: r.getTitle()
                             },
-                            r.type,
+                            r.scaleResolution.type,
                             this.context,
                             this
                         );
@@ -349,7 +349,7 @@ export default class DecoratorView extends ContainerView {
     }
 
     _getZoomableResolutions() {
-        /** @type {Record<string, Set<import("./resolution").ScaleResolution>>} */
+        /** @type {Record<string, Set<import("./scaleResolution").ScaleResolution>>} */
         const resolutions = {
             x: new Set(),
             y: new Set()
@@ -360,7 +360,7 @@ export default class DecoratorView extends ContainerView {
             for (const [channel, resolutionSet] of Object.entries(
                 resolutions
             )) {
-                const resolution = v.getResolution(channel);
+                const resolution = v.getScaleResolution(channel);
                 if (resolution && resolution.isZoomable()) {
                     resolutionSet.add(resolution);
                 }

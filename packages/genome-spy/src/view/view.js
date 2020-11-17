@@ -59,11 +59,18 @@ export default class View {
         this.name = spec.name || name;
         this.spec = spec;
 
-        /**
-         * Channel-specific scale resolutions
-         * @type {Record<string, import("./resolution").ScaleResolution>}
-         */
-        this.scaleResolutions = {};
+        this.resolutions = {
+            /**
+             * Channel-specific scale resolutions
+             * @type {Record<string, import("./scaleResolution").default>}
+             */
+            scale: {},
+            /**
+             * Channel-specific axis resolutions
+             * @type {Record<string, import("./axisResolution").default>}
+             */
+            axis: {}
+        };
 
         /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
         this._broadcastHandlers = {};
@@ -263,12 +270,12 @@ export default class View {
     /**
      *
      * @param {string} channel
-     * @returns {import("./resolution").ScaleResolution}
+     * @returns {import("./scaleResolution").default}
      */
-    getResolution(channel) {
+    getScaleResolution(channel) {
         return (
-            this.scaleResolutions[channel] ||
-            (this.parent && this.parent.getResolution(channel)) ||
+            this.resolutions.scale[channel] ||
+            (this.parent && this.parent.getScaleResolution(channel)) ||
             undefined
         );
     }

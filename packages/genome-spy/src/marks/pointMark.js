@@ -190,7 +190,7 @@ export default class PointMark extends Mark {
         if (xEncoder && !xEncoder.constant) {
             const bisect = bisector(xEncoder.accessor).left;
             const visibleDomain = this.unitView
-                .getResolution("x")
+                .getScaleResolution("x")
                 .getScale()
                 .domain();
 

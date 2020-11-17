@@ -83,7 +83,7 @@ export default class SampleView extends ContainerView {
                 specifier.path
             ));
 
-            const xScale = this.getResolution("x").getScale();
+            const xScale = this.getScaleResolution("x").getScale();
             const numericLocus = isNumber(specifier.locus)
                 ? specifier.locus
                 : "chromMapper" in xScale
@@ -200,7 +200,7 @@ export default class SampleView extends ContainerView {
         // after transformData.
 
         if (!this.spec.samples.data) {
-            const resolution = this.getResolution("sample");
+            const resolution = this.getScaleResolution("sample");
             if (resolution) {
                 this._setSamples(
                     resolution.getDataDomain().map((s, i) => ({
@@ -361,7 +361,7 @@ export default class SampleView extends ContainerView {
             event.point.x,
             event.point.y
         ).x;
-        const xScale = this.getResolution("x").getScale();
+        const xScale = this.getScaleResolution("x").getScale();
 
         const invertedX = xScale.invert(normalizedXPos);
         const serializedX =
