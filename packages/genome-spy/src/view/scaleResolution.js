@@ -170,6 +170,7 @@ export default class ScaleResolution {
             return;
         }
 
+        // TODO: Use scaleLocus if field type is locus
         const props = {
             type: getDefaultScaleType(this.channel, domain.type),
             ...this._getDefaultScaleProperties(domain.type),
