@@ -96,12 +96,21 @@ export default class ConcatView extends ContainerView {
 
     getSize() {
         /** @type {SizeDef} */
-        const mainSizeDef = (this.spec[this.mainDimension] &&
-            parseSizeDef(this.spec[this.mainDimension])) || {
-            px: getMinimumSize(this._getFlexSizeDefs(), {
-                spacing: this.spec.spacing
-            })
-        };
+        let mainSizeDef;
+        if (this.spec[this.mainDimension]) {
+            mainSizeDef = parseSizeDef(this.spec[this.mainDimension]);
+        } else {
+            const childMainSizeDefs = this._getFlexSizeDefs();
+            mainSizeDef = {
+                // Grows are summed to support sensible nesting of concatViews
+                grow: childMainSizeDefs
+                    .map(sizeDef => +sizeDef.grow)
+                    .reduce((a, b) => a + b, 0),
+                px: getMinimumSize(childMainSizeDefs, {
+                    spacing: this.spec.spacing
+                })
+            };
+        }
 
         const secondarySizeDef = (this.spec[this.secondaryDimension] &&
             parseSizeDef(this.spec[this.secondaryDimension])) || { grow: 1 };

@@ -2,6 +2,7 @@ import ContainerView from "./containerView";
 import AxisView from "./axisView";
 import { getFlattenedViews } from "./viewUtils";
 import Padding from "../utils/layout/padding";
+import { FlexDimensions } from "../utils/layout/flexLayout";
 
 /**
  * TODO: Move these somewhere for common use
@@ -141,9 +142,13 @@ export default class DecoratorView extends ContainerView {
     getSize() {
         const size = super.getSize();
         const padding = this.getAxisSizes();
-        size.width.px = (size.width.px || 0) + padding.width;
-        size.height.px = (size.height.px || 0) + padding.height;
-        return size;
+        return new FlexDimensions(
+            { grow: size.width.grow, px: (size.width.px || 0) + padding.width },
+            {
+                grow: size.height.grow,
+                px: (size.height.px || 0) + padding.height
+            }
+        );
     }
 
     /**

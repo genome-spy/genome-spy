@@ -1,5 +1,4 @@
 {
-  "height": { "grow": 1 },
   "data": {
     "url": "sincos.csv"
   },
@@ -13,6 +12,7 @@
   "concat": [
     {
       "mark": "point",
+      "name": "outerConcat",
       "encoding": {
         "y": {
           "field": "sin",
@@ -21,9 +21,10 @@
       }
     },
     {
+      "name": "innerConcat",
       "concat": [
         {
-          "height": { "px": 80 },
+          "_height": { "px": 80 },
           "mark": "point",
           "encoding": {
             "y": {
@@ -33,7 +34,7 @@
           }
         },
         {
-          "height": { "px": 80 },
+          "_height": { "px": 80 },
           "mark": "point",
           "encoding": {
             "y": {
