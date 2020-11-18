@@ -68,6 +68,14 @@ export default class AxisResolution {
     }
 
     getTitle() {
+        /** @param {string[]} fields */
+        const formatFields = fields =>
+            fields?.length
+                ? fields.length > 1
+                    ? `(${fields.join(", ")})`
+                    : fields[0]
+                : undefined;
+
         /** @param {UnitView} view} */
         const computeTitle = view => {
             const encodingSpec = this._getEncoding(view);
@@ -80,6 +88,7 @@ export default class AxisResolution {
                     ? encodingSpec.axis.title
                     : undefined,
                 encodingSpec.title,
+                formatFields(view.getAccessor(this.channel).fields),
                 encodingSpec.field, // TODO: Use accessor.fields instead of encoding.field
                 encodingSpec.expr
             ]
