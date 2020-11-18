@@ -1,6 +1,11 @@
 $basic-spacing: 10px;
 
+$font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+
 .genome-spy {
+    font-family: $font-family;
+
     display: flex;
     flex-direction: column;
 
@@ -131,9 +136,9 @@ $basic-spacing: 10px;
 
         padding: 0 15px;
         font-size: 13px;
-        line-height: 20px;
+        line-height: 21px;
 
-        font-family: sans-serif;
+        font-family: $font-family;
 
         cursor: pointer;
     }

@@ -9,7 +9,9 @@ $basic-spacing: 10px;
     display: flex;
     flex-direction: column;
 
-    font-family: sans-serif;
+    // https://css-tricks.com/snippets/css/system-font-stack/
+    font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
     .toolbar,
     .toolbar > .btn-group {
