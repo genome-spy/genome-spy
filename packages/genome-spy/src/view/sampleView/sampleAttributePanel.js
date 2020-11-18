@@ -9,6 +9,7 @@ import { getCachedOrCall } from "../../utils/propertyCacher";
 import * as Actions from "../../sampleHandler/sampleHandlerActions";
 import contextMenu from "../../contextMenu";
 import generateAttributeContextMenu from "./attributeContextMenu";
+import formatObject from "../../utils/formatObject";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -60,6 +61,15 @@ export class SampleAttributePanel extends ConcatView {
         }));
 
         this.addEventListener("contextmenu", this.handleContextMenu.bind(this));
+
+        this.addEventListener("mousemove", (coords, event) => {
+            const sample = this._findSampleForMouseEvent(coords, event);
+            if (sample) {
+                this.context.genomeSpy.updateTooltip(sample, sample =>
+                    this.sampleToTooltip(sample)
+                );
+            }
+        });
     }
 
     get sampleHandler() {
@@ -114,16 +124,23 @@ export class SampleAttributePanel extends ConcatView {
      *      Coordinates of the view
      * @param {import("../../utils/interactionEvent").default} event
      */
-    handleContextMenu(coords, event) {
-        const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
-
+    _findSampleForMouseEvent(coords, event) {
         const sampleId = this.parent.getSampleIdAt(
             1 - coords.normalizePoint(event.point.x, event.point.y).y
         );
 
-        const sample = sampleId
-            ? this.parent.sampleMap.get(sampleId)
-            : undefined;
+        return sampleId ? this.parent.sampleMap.get(sampleId) : undefined;
+    }
+
+    /**
+     * @param {import("../../utils/layout/rectangle").default} coords
+     *      Coordinates of the view
+     * @param {import("../../utils/interactionEvent").default} event
+     */
+    handleContextMenu(coords, event) {
+        const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+
+        const sample = this._findSampleForMouseEvent(coords, event);
 
         if (!sample) {
             mouseEvent.preventDefault();
@@ -238,7 +255,7 @@ export class SampleAttributePanel extends ConcatView {
      * @param {string} attribute
      */
     _findViewForAttribute(attribute) {
-        // This is a bit fragile.. +1 is for skipping the sample lable
+        // This is a bit fragile.. +1 is for skipping the sample label
         return this.children[this._getAttributeNames().indexOf(attribute) + 1];
     }
 
@@ -272,6 +289,16 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     *
+     * @param {string} attribute
+     */
+    getAttributeInfo(attribute) {
+        return this.getAttributeInfoFromView(
+            this._findViewForAttribute(attribute)
+        );
+    }
+
+    /**
      * TODO: Move to a separate file
      *
      * @param {Sample} sample
@@ -297,6 +324,50 @@ export class SampleAttributePanel extends ConcatView {
                 callback: () => alert("TODO")
             }
         ];
+    }
+
+    /**
+     *
+     * @param {Sample} sample
+     */
+    sampleToTooltip(sample) {
+        /**
+         * @param {string} attribute
+         * @param {any} value
+         */
+        const getColor = (attribute, value) =>
+            isDefined(value)
+                ? this.getAttributeInfo(attribute).scale(value)
+                : "transparent";
+
+        const table = html`
+            <table class="attributes">
+                ${Object.entries(sample.attributes).map(
+                    ([key, value]) => html`
+                        <tr>
+                            <th>${key}</th>
+                            <td>${formatObject(value)}</td>
+                            <td
+                                class="color"
+                                .style="background-color: ${getColor(
+                                    key,
+                                    value
+                                )}"
+                            ></td>
+                        </tr>
+                    `
+                )}
+            </table>
+        `;
+
+        return html`
+            <div class="sample-track-sample-tooltip">
+                <div class="title">
+                    <strong>${sample.displayName || sample.id}</strong>
+                </div>
+                ${table}
+            </div>
+        `;
     }
 
     /**
@@ -383,4 +454,16 @@ function createLabelViewSpec() {
     };
 
     return titleSpec;
+}
+
+/**
+ *
+ * @param {any} value
+ */
+function isDefined(value) {
+    return (
+        value !== "" &&
+        !(typeof value == "number" && isNaN(value)) &&
+        value !== null
+    );
 }

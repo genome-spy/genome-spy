@@ -2,9 +2,7 @@ import scaleLocus from "./genome/scaleLocus";
 import { scale as vegaScale } from "vega-scale";
 import { interpolateZoom } from "d3-interpolate";
 
-import EventEmitter from "eventemitter3";
 import Interval from "./utils/interval";
-import { Zoom, Transform } from "./utils/zoom";
 import "./styles/genome-spy.scss";
 import Tooltip from "./tooltip";
 import transition from "./utils/transition";
@@ -30,7 +28,6 @@ import createDomain from "./utils/domainArray";
 
 import WebGLHelper from "./gl/webGLHelper";
 import DecoratorView from "./view/decoratorView";
-import MouseTracker2 from "./mouseTracker2";
 import { parseSizeDef } from "./utils/layout/flexLayout";
 import Rectangle from "./utils/layout/rectangle";
 import DeferredViewRenderingContext from "./view/renderingContext/deferredViewRenderingContext";
@@ -308,7 +305,11 @@ export default class GenomeSpy {
         ].forEach(type =>
             canvas.addEventListener(type, event => {
                 if (this.layout && event instanceof MouseEvent) {
-                    // Adapted from: https://github.com/d3/d3-selection/blob/master/src/point.js
+                    if (event.type == "mousemove") {
+                        this.tooltip.handleMouseMove(event);
+                        this._tooltipUpdateRequested = false;
+                    }
+
                     const rect = canvas.getBoundingClientRect();
                     const point = new Point(
                         event.clientX - rect.left - canvas.clientLeft,
@@ -318,12 +319,35 @@ export default class GenomeSpy {
                     this.layout.dispatchInteractionEvent(
                         new InteractionEvent(point, event)
                     );
+
+                    if (!this._tooltipUpdateRequested) {
+                        this.tooltip.clear();
+                    }
                 }
             })
         );
 
         // Prevent text selections etc while dragging
         canvas.addEventListener("dragstart", event => event.stopPropagation());
+    }
+
+    /**
+     * This method should be called in a mouseMove handler. If not called, the
+     * tooltip will be hidden.
+     *
+     * @param {T} datum
+     * @param {function(T):(string | import("lit-html").TemplateResult)} [converter]
+     * @template T
+     */
+    updateTooltip(datum, converter) {
+        if (!this._tooltipUpdateRequested) {
+            this.tooltip.updateWithDatum(datum, converter);
+            this._tooltipUpdateRequested = true;
+        } else {
+            throw new Error(
+                "Tooltip has already been updated! Duplicate event handler?"
+            );
+        }
     }
 
     computeLayout() {

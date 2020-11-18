@@ -1,4 +1,5 @@
 import clientPoint from "./utils/point";
+import { render, TemplateResult } from "lit-html";
 
 // TODO: Figure out a proper place for this class
 
@@ -11,8 +12,22 @@ export default class Tooltip {
 
         this.element = document.createElement("div");
         this.element.className = "tooltip";
-        this.element.style.visibility = "hidden";
+        this.visible = false;
         this.container.appendChild(this.element);
+
+        /** @type {any} */
+        this._previousTooltipDatum = undefined;
+    }
+
+    /**
+     * @param {boolean} visible
+     */
+    set visible(visible) {
+        this.element.style.display = visible ? "block" : "none";
+    }
+
+    get visible() {
+        return this.element.style.display == "block";
     }
 
     /**
@@ -21,7 +36,7 @@ export default class Tooltip {
     handleMouseMove(mouseEvent) {
         this.mouseCoords = clientPoint(this.container, mouseEvent);
 
-        if (this.element.style.visibility == "visible") {
+        if (this.visible) {
             this.updatePlacement();
         }
     }
@@ -46,27 +61,46 @@ export default class Tooltip {
     }
 
     /**
-     * @param {HTMLElement | string} content
+     * @param {string | import("lit-html").TemplateResult} content
      */
     setContent(content) {
         if (!content) {
-            this.element.innerHTML = "";
-            this.element.style.visibility = "hidden";
+            render("", this.element);
+            this.visible = false;
             return;
         }
 
-        if (typeof content == "string") {
-            this.element.innerHTML = content;
-        } else if (content instanceof HTMLElement) {
-            this.element.innerHTML = "";
-            this.element.appendChild(content);
+        if (content instanceof TemplateResult) {
+            render(content, this.element);
         } else {
-            this.element.innerText = "Unknown type";
+            render(JSON.stringify(content), this.element);
         }
 
         this.updatePlacement();
 
         // TODO: update placement
-        this.element.style.visibility = "visible";
+        this.visible = true;
+    }
+
+    clear() {
+        this.setContent(undefined);
+        this._previousTooltipDatum = undefined;
+    }
+
+    /**
+     * Updates the tooltip if the provided datum differs from the previous one.
+     * Otherwise this is nop.
+     *
+     * @param {T} datum
+     * @param {function(T):(string | import("lit-html").TemplateResult)} [converter]
+     * @template T
+     */
+    updateWithDatum(datum, converter) {
+        if (datum !== this._previousTooltipDatum) {
+            this.setContent(
+                converter ? converter(datum) : JSON.stringify(datum)
+            );
+            this._previousTooltipDatum = datum;
+        }
     }
 }

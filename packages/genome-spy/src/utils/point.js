@@ -1,4 +1,9 @@
-// Adapted from: https://github.com/d3/d3-selection/blob/master/src/point.js
+/**
+ * Adapted from: https://github.com/d3/d3-selection/blob/master/src/point.js
+ *
+ * @param {HTMLElement} node
+ * @param {MouseEvent} event
+ */
 export default function(node, event) {
     var rect = node.getBoundingClientRect();
     return [
