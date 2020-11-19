@@ -91,6 +91,12 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
             margin-left: 0.4em;
             box-shadow: 0px 0px 3px 1px white;
         }
+
+        .attributes {
+            .hovered {
+                background-color: #e0e0e0;
+            }
+        }
     }
 
     .gene-track-tooltip {

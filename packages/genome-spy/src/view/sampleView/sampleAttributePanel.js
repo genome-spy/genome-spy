@@ -1,4 +1,6 @@
 import { html } from "lit-html";
+import { classMap } from "lit-html/directives/class-map.js";
+
 import { field as vegaField } from "vega-util";
 import { inferType } from "vega-loader";
 
@@ -65,8 +67,14 @@ export class SampleAttributePanel extends ConcatView {
         this.addEventListener("mousemove", (coords, event) => {
             const sample = this._findSampleForMouseEvent(coords, event);
             if (sample) {
-                this.context.genomeSpy.updateTooltip(sample, sample =>
-                    this.sampleToTooltip(sample)
+                const attribute =
+                    (event.target &&
+                        this.getAttributeInfoFromView(event.target)?.name) ||
+                    undefined;
+                // The following breaks if sample or attribute name contains *
+                const id = `${sample.id}*${attribute}`;
+                this.context.genomeSpy.updateTooltip(id, id =>
+                    this.sampleToTooltip(id)
                 );
             }
         });
@@ -328,9 +336,15 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      *
-     * @param {Sample} sample
+     * @param {string} sampleAndAttribute
      */
-    sampleToTooltip(sample) {
+    sampleToTooltip(sampleAndAttribute) {
+        const [_, sampleId, attribute] = sampleAndAttribute.match(
+            /^(.+)\*(.*)$/
+        );
+
+        const sample = this.parent.sampleMap.get(sampleId);
+
         /**
          * @param {string} attribute
          * @param {any} value
@@ -344,7 +358,7 @@ export class SampleAttributePanel extends ConcatView {
             <table class="attributes">
                 ${Object.entries(sample.attributes).map(
                     ([key, value]) => html`
-                        <tr>
+                        <tr class=${classMap({ hovered: key == attribute })}>
                             <th>${key}</th>
                             <td>${formatObject(value)}</td>
                             <td
