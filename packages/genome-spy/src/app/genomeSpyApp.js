@@ -1,26 +1,25 @@
 import lzString from "lz-string";
 
-import GenomeSpy from "./genomeSpy";
-import "./styles/genome-spy-app.scss";
+import GenomeSpy from "../genomeSpy";
+import "../styles/genome-spy-app.scss";
 import { html, render } from "lit-html";
 
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
-    faUndo,
-    faRedo,
-    faEllipsisH,
-    faBookmark,
-    faFish,
-    faArrowsAltV,
     faInfoCircle,
     faQuestionCircle
 } from "@fortawesome/free-solid-svg-icons";
-import { VISIT_STOP } from "./view/view";
-import SampleView from "./view/sampleView/sampleView";
-import getProvenanceButtons from "./sampleHandler/provenanceToolbar";
+import { VISIT_STOP } from "../view/view";
+import SampleView from "../view/sampleView/sampleView";
+import getProvenanceButtons from "../sampleHandler/provenanceToolbar";
+import DecoratorView from "../view/decoratorView";
+import Interval from "../utils/interval";
+import throttle from "../utils/throttle";
 
 /**
  * A simple wrapper for the GenomeSpy component.
+ *
+ * TODO: Not so simple anymore. Split into components. Use haunted or lit-element.
  */
 export default class GenomeSpyApp {
     /**
@@ -39,6 +38,7 @@ export default class GenomeSpyApp {
             this.appContainer.style.position = "relative";
         }
 
+        // eslint-disable-next-line consistent-this
         const self = this;
 
         function getSearchHelp() {
@@ -96,25 +96,37 @@ export default class GenomeSpyApp {
             `;
         }
 
+        function getSearchField() {
+            if (!self.getFormattedDomain) {
+                return "";
+            }
+
+            return html`
+                <div class="search">
+                    <input
+                        type="text"
+                        class="search-input"
+                        value=${self.getFormattedDomain()}
+                        @keydown=${onSearchKeyDown}
+                        @focus=${onSearchFocused}
+                    />
+                    ${getSearchHelp()}
+                </div>
+            `;
+        }
+
+        function getTitle() {
+            return html`
+                <div class="title">
+                    GenomeSpy
+                </div>
+            `;
+        }
+
         function getToolbar() {
             return html`
                 <nav class="toolbar">
-                    <div class="title">
-                        GenomeSpy
-                    </div>
-                    <div class="search">
-                        <input
-                            type="text"
-                            class="search-input"
-                            value=${self.genomeSpy
-                                ? self.genomeSpy.getViewportDomainString()
-                                : ""}
-                            @keydown=${onSearchKeyDown}
-                            @focus=${onSearchFocused}
-                        />
-                        ${getSearchHelp()}
-                    </div>
-                    ${getToolButtons()}
+                    ${getTitle()} ${getSearchField()} ${getToolButtons()}
                 </nav>
             `;
         }
@@ -164,8 +176,7 @@ export default class GenomeSpyApp {
             if (event.keyCode == 13) {
                 event.preventDefault();
 
-                self.genomeSpy
-                    .search(searchInput.value)
+                self.search(searchInput.value)
                     .then(() => {
                         searchInput.focus();
                         searchInput.select();
@@ -188,7 +199,7 @@ export default class GenomeSpyApp {
             ));
             typeSlowly(term, searchInput).then(() => {
                 searchInput.blur();
-                self.genomeSpy.search(term);
+                self.search(term);
             });
         }
 
@@ -209,7 +220,6 @@ export default class GenomeSpyApp {
                     break;
                 case "Backspace":
                 case "KeyB":
-                    self.genomeSpy.backtrackSamples();
                     break;
                 default:
             }
@@ -231,14 +241,25 @@ export default class GenomeSpyApp {
                 className
             )[0]);
 
-        this.genomeSpy.on("zoom", () => {
-            // Could just call _renderTemplate here, but this is very likely more efficient
-            /** @type {HTMLInputElement} */ (elem(
-                "search-input"
-            )).value = this.genomeSpy.getViewportDomainString();
-        });
-
         await this.genomeSpy.launch();
+
+        const xResolution = this.getXResolution();
+        if (xResolution?.getScale().type == "locus") {
+            this._xResolution = xResolution;
+
+            this.getFormattedDomain = () =>
+                this.genomeSpy.coordinateSystem.formatInterval(
+                    Interval.fromArray(xResolution.getDomain())
+                );
+
+            const updateInput = () => {
+                // Could just call _renderTemplate here, but this is very likely more efficient
+                /** @type {HTMLInputElement} */ (elem(
+                    "search-input"
+                )).value = this.getFormattedDomain();
+            };
+            xResolution.addScaleObserver(throttle(updateInput, 1000 / 15));
+        }
 
         this._replayProvenanceFromUrl();
         // Update the UI now that GenomeSpy is initialized
@@ -306,7 +327,7 @@ export default class GenomeSpyApp {
             return;
         }
 
-        /** @type {import("./view/sampleView/sampleView").default} */
+        /** @type {import("../view/sampleView/sampleView").default} */
         let sampleView;
 
         this.genomeSpy.viewRoot.visit(view => {
@@ -321,6 +342,18 @@ export default class GenomeSpyApp {
 
     getSampleHandler() {
         return this.getSampleView()?.sampleHandler;
+    }
+
+    getXResolution() {
+        // TODO: Proper search. More complex hierarchies may be used later on...
+        return (this.genomeSpy.viewRoot instanceof DecoratorView
+            ? this.genomeSpy.viewRoot.child
+            : this.genomeSpy.viewRoot
+        ).getScaleResolution("x");
+    }
+
+    async search(string) {
+        alert("Still broken!");
     }
 }
 

@@ -1,33 +1,25 @@
 import scaleLocus from "./genome/scaleLocus";
 import { scale as vegaScale } from "vega-scale";
-import { interpolateZoom } from "d3-interpolate";
 
-import Interval from "./utils/interval";
 import "./styles/genome-spy.scss";
 import Tooltip from "./tooltip";
-import transition from "./utils/transition";
 
 import Genome from "./genome/genome";
 
 import RealCoordinateSystem from "./realCoordinateSystem";
 import AccessorFactory from "./encoder/accessor";
 import {
-    getFlattenedViews,
-    isViewSpec,
     createView,
     resolveScalesAndAxes,
-    isImportSpec,
     initializeData,
     addDecorators,
     processImports
 } from "./view/viewUtils";
 import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
-import ImportView from "./view/importView";
 import createDomain from "./utils/domainArray";
 
 import WebGLHelper from "./gl/webGLHelper";
-import DecoratorView from "./view/decoratorView";
 import { parseSizeDef } from "./utils/layout/flexLayout";
 import Rectangle from "./utils/layout/rectangle";
 import DeferredViewRenderingContext from "./view/renderingContext/deferredViewRenderingContext";
@@ -61,9 +53,6 @@ export default class GenomeSpy {
         /** Root level configuration object */
         this.config = config;
 
-        // TODO: Move to CoordinateSystem
-        this.maxUnitZoom = 30;
-
         this.accessorFactory = new AccessorFactory();
 
         /** @type {import("./coordinateSystem").default} */
@@ -71,11 +60,6 @@ export default class GenomeSpy {
 
         /** @type {(function(string):object[])[]} */
         this.namedDataProviders = [];
-    }
-
-    on(...args) {
-        // TODO: A mixin or multiple inheritance would be nice
-        //this.eventEmitter.on(...args);
     }
 
     /**
@@ -97,43 +81,6 @@ export default class GenomeSpy {
                 return data;
             }
         }
-    }
-
-    getXResolution() {
-        // TODO: Proper search. More complex hierarchies may be used later on...
-        return (this.viewRoot instanceof DecoratorView
-            ? this.viewRoot.child
-            : this.viewRoot
-        ).getScaleResolution("x");
-    }
-
-    /**
-     * Returns the hard domain of the coordinate system if it is specified.
-     * Otherwise returns the shared domain of the data.
-     *
-     * TODO: Rename and emphasize X axis
-     * TODO: Return DomainArray
-     * TODO: Tracks should actually be views and X scale should be resolved as shared here
-     *
-     * @return {Interval} the domain
-     */
-    getDomain() {
-        let domain = this.getXResolution().getDomain();
-        if (domain) {
-            return Interval.fromArray(domain);
-        }
-
-        return new Interval(0, 1);
-    }
-
-    getViewportDomainString() {
-        if (!this.rescaledX) {
-            return "";
-        }
-
-        return this.coordinateSystem.formatInterval(
-            this.getViewportDomain().intersect(this.getDomain())
-        );
     }
 
     /**
@@ -190,20 +137,13 @@ export default class GenomeSpy {
     async launch() {
         this._prepareContainer();
 
-        try {
-            // Register scaleLocus to Vega-Scale.
-            // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
-            vegaScale("locus", scaleLocus, ["continuous"]);
+        // Register scaleLocus to Vega-Scale.
+        // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
+        vegaScale("locus", scaleLocus, ["continuous"]);
 
+        try {
             if (this.config.genome) {
                 this.coordinateSystem = new Genome(this.config.genome);
-
-                // TODO: Hierarchy of data providers, i.e. limit visibility to a subtree
-                this.registerNamedDataProvider(name => {
-                    if (name == "genomeAxisTicks") {
-                        return this._generateTicks();
-                    }
-                });
             } else {
                 this.coordinateSystem = new RealCoordinateSystem();
             }
@@ -239,6 +179,7 @@ export default class GenomeSpy {
             // Wrap unit or layer views that need axes
             this.viewRoot = addDecorators(this.viewRoot);
 
+            // Collect all unit views to a list because they need plenty of initialization
             /** @type {UnitView[]} */
             const unitViews = [];
             this.viewRoot.visit(view => {
