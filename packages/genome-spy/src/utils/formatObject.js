@@ -1,5 +1,6 @@
 import { isNumber, isString, isBoolean } from "vega-util";
 import { format as d3format } from "d3-format";
+import { html } from "lit-html";
 
 const numberFormat = d3format(".4~r");
 const exponentNumberFormat = d3format(".4~e");
@@ -10,7 +11,9 @@ const exponentNumberFormat = d3format(".4~e");
  */
 export default function formatObject(object) {
     if (object === null) {
-        return "";
+        return html`
+            <span class="na">NA</span>
+        `;
     }
 
     if (isString(object)) {
