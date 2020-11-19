@@ -17,16 +17,25 @@ let currentlyOpenMenuElement;
  */
 
 /**
- * @param {MenuOptions} options
- * @param {MouseEvent} mouseEvent
+ * Returns true if a menu is visible
  */
-export default function contextMenu(options, mouseEvent) {
-    // TODO: Suppress tooltips when context menu is open
+export function isContextMenuOpen() {
+    return !!currentlyOpenMenuElement;
+}
 
+function clearMenu() {
     if (currentlyOpenMenuElement) {
         currentlyOpenMenuElement.remove();
         currentlyOpenMenuElement = null;
     }
+}
+
+/**
+ * @param {MenuOptions} options
+ * @param {MouseEvent} mouseEvent
+ */
+export default function contextMenu(options, mouseEvent) {
+    clearMenu();
 
     const menuElement = document.createElement("div");
     menuElement.className = "context-menu";
@@ -91,7 +100,7 @@ export default function contextMenu(options, mouseEvent) {
             window.innerWidth - menuElement.offsetWidth - 10 + "px";
     }
 
-    container.addEventListener("click", () => menuElement.remove(), {
+    container.addEventListener("click", () => clearMenu(), {
         once: true
     });
 
@@ -100,7 +109,7 @@ export default function contextMenu(options, mouseEvent) {
         "mouseup",
         () => {
             if (performance.now() - openedAt > 500) {
-                menuElement.remove();
+                clearMenu();
             }
         },
         { once: true }

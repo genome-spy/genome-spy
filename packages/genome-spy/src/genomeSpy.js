@@ -35,6 +35,7 @@ import LayoutRecorderViewRenderingContext from "./view/renderingContext/layoutRe
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext";
 import InteractionEvent from "./utils/interactionEvent";
 import Point from "./utils/layout/point";
+import { isContextMenuOpen } from "./contextMenu";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -340,6 +341,10 @@ export default class GenomeSpy {
      * @template T
      */
     updateTooltip(datum, converter) {
+        if (isContextMenuOpen()) {
+            return;
+        }
+
         if (!this._tooltipUpdateRequested) {
             this.tooltip.updateWithDatum(datum, converter);
             this._tooltipUpdateRequested = true;
