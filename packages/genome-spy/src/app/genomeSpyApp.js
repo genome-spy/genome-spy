@@ -258,7 +258,7 @@ export default class GenomeSpyApp {
                     "search-input"
                 )).value = this.getFormattedDomain();
             };
-            xResolution.addScaleObserver(throttle(updateInput, 1000 / 15));
+            xResolution.addScaleObserver(updateInput);
         }
 
         this._replayProvenanceFromUrl();
