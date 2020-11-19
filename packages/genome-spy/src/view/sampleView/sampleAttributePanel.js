@@ -179,6 +179,10 @@ export class SampleAttributePanel extends ConcatView {
             items.push(...this.generateSampleContextMenu(sample, dispatch));
         }
 
+        // TODO: Better integration with tooltip. Put the logic to contextMenu somehow.
+        // ... or provide contextMenu through ViewContext
+        this.context.genomeSpy.tooltip.visible = false;
+
         contextMenu({ items }, mouseEvent);
     }
 
