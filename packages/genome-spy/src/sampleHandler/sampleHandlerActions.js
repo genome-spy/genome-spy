@@ -6,7 +6,8 @@ import {
     faFilter,
     faMedal,
     faObjectGroup,
-    faCircle
+    faCircle,
+    faTrashAlt
 } from "@fortawesome/free-solid-svg-icons";
 
 /**
@@ -117,7 +118,7 @@ export function getActionInfo(action, sampleHandler) {
                     `
                 ),
                 provenanceTitle: makeTitle(attributeTitle),
-                icon: faFilter
+                icon: payload.action == "remove" ? faTrashAlt : faFilter
             };
         }
         case FILTER_BY_QUANTITATIVE: {
