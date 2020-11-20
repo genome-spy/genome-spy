@@ -120,6 +120,10 @@ export default class SampleView extends ContainerView {
                 scale: undefined
             };
         });
+
+        this._addBroadcastHandler("layout", () => {
+            this._sampleLocations = undefined;
+        });
     }
 
     getEffectivePadding() {
@@ -219,11 +223,14 @@ export default class SampleView extends ContainerView {
     }
 
     getSampleLocations() {
-        return this._calculateSampleLocations(
-            this._coords.height,
-            this._coords.height,
-            0
-        );
+        if (!this._sampleLocations) {
+            this._sampleLocations = this._calculateSampleLocations(
+                this._coords.height,
+                this._coords.height,
+                0
+            );
+        }
+        return this._sampleLocations;
     }
 
     /**
