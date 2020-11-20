@@ -7,7 +7,7 @@ import DataSource from "../../data/dataSource";
 import { SampleAttributePanel } from "./sampleAttributePanel";
 import SampleHandler from "../../sampleHandler/sampleHandler";
 import { peek } from "../../utils/arrayUtils";
-import contextMenu from "../../contextMenu";
+import contextMenu from "../../utils/ui/contextMenu";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
 import Padding from "../../utils/layout/padding";
@@ -382,7 +382,7 @@ export default class SampleView extends ContainerView {
 
         const dispatch = this.sampleHandler.dispatch.bind(this.sampleHandler);
 
-        /** @type {import("../../contextMenu").MenuItem[]} */
+        /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         let items = [
             {
                 label: `Locus: ${locusToString(serializedX)}`,

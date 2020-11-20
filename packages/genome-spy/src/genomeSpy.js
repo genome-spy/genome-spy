@@ -2,7 +2,7 @@ import scaleLocus from "./genome/scaleLocus";
 import { scale as vegaScale } from "vega-scale";
 
 import "./styles/genome-spy.scss";
-import Tooltip from "./tooltip";
+import Tooltip from "./utils/ui/tooltip";
 
 import Genome from "./genome/genome";
 
@@ -27,7 +27,7 @@ import LayoutRecorderViewRenderingContext from "./view/renderingContext/layoutRe
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext";
 import InteractionEvent from "./utils/interactionEvent";
 import Point from "./utils/layout/point";
-import { isContextMenuOpen } from "./contextMenu";
+import { isContextMenuOpen } from "./utils/ui/contextMenu";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec

@@ -1,4 +1,4 @@
-import clientPoint from "./utils/point";
+import clientPoint from "../point";
 import { render, TemplateResult } from "lit-html";
 
 // TODO: Figure out a proper place for this class

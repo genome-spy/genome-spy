@@ -1,6 +1,10 @@
 import * as Actions from "../../sampleHandler/sampleHandlerActions";
 
 /**
+ * @typedef {import("../../utils/ui/contextmenu").MenuItem} MenuItem
+ */
+
+/**
  * @param {string | import("lit-html").TemplateResult} title Menu title
  * @param {import("../../sampleHandler/sampleHandler").AttributeIdentifier} attribute
  * @param {string} attributeType
@@ -16,7 +20,7 @@ export default function generateAttributeContextMenu(
     dispatch,
     provenance
 ) {
-    /** @type {import("../../contextMenu").MenuItem[]} */
+    /** @type {MenuItem[]} */
     let items = [
         {
             label: title,
@@ -26,7 +30,7 @@ export default function generateAttributeContextMenu(
 
     /**
      * @param {import("../../sampleHandler/provenance").Action} action
-     * @returns {import("../../contextMenu").MenuItem}
+     * @returns {MenuItem}
      */
     const actionToItem = action => {
         const info = provenance.getActionInfo(action);

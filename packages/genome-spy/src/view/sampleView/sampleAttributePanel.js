@@ -9,7 +9,7 @@ import ConcatView from "../concatView";
 import UnitView from "../unitView";
 import { getCachedOrCall } from "../../utils/propertyCacher";
 import * as Actions from "../../sampleHandler/sampleHandlerActions";
-import contextMenu from "../../contextMenu";
+import contextMenu from "../../utils/ui/contextMenu";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
 
@@ -157,7 +157,7 @@ export class SampleAttributePanel extends ConcatView {
 
         const dispatch = this.sampleHandler.dispatch.bind(this.sampleHandler);
 
-        /** @type {import("../../contextMenu").MenuItem[]} */
+        /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         const items = [];
 
         const attribute = this.getAttributeInfoFromView(event.target);
@@ -315,7 +315,7 @@ export class SampleAttributePanel extends ConcatView {
      *
      * @param {Sample} sample
      * @param {function(object):void} dispatch
-     * @returns {import("../../contextMenu").MenuItem[]}
+     * @returns {import("../../utils/ui/contextMenu").MenuItem[]}
      */
     generateSampleContextMenu(sample, dispatch) {
         return [
@@ -414,12 +414,12 @@ function locationsToTextureData(locations) {
 
 /**
  * @param {string} attributeName
- * @param {import("../spec/view").SampleAttributeDef} attributeDef
+ * @param {import("../../spec/view").SampleAttributeDef} attributeDef
  */
 function createAttributeSpec(attributeName, attributeDef) {
     const field = `attributes["${attributeName}"]`;
 
-    /** @type {import("./viewUtils").UnitSpec} */
+    /** @type {import("../viewUtils").UnitSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
         width: attributeDef.width || 10,
