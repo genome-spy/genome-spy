@@ -499,9 +499,12 @@ export function createGenomeAxis(axisProps) {
                 main == "y"
                     ? "middle"
                     : ap.orient == "bottom"
-                    ? "top"
-                    : "alphabetic",
-            ["d" + secondary]: ap.chromLabelPadding * offsetDirection,
+                    ? "alphabetic"
+                    : "top",
+            ["d" + secondary]:
+                ap.chromLabelPadding * offsetDirection +
+                ap.chromLabelFontSize * 0.73, // A hack to align baseline with other labels
+            // TODO: use alphabetic vertical-align for all horizontal labels
             clip: false,
             viewportEdgeFadeWidth: [0, 20, 0, 20],
             viewportEdgeFadeDistance: [undefined, -10, undefined, -20]

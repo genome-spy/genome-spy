@@ -32,6 +32,10 @@ out vec2 vTexCoord;
 out float vSlope;
 out float vEdgeFadeOpacity;
 
+struct RangeResult {
+    float pos;
+    float scale;
+};
 
 float minValue(vec4 v) {
     return min(min(v.x, v.y), min(v.z, v.w));
@@ -41,59 +45,94 @@ float maxValue(vec4 v) {
     return max(max(v.x, v.y), max(v.z, v.w));
 }
 
+RangeResult positionInsideRange(float a, float b, float size, float fontSize,
+                          float padding, int align, float viewportSize) {
+    float normalizedSpan = b - a;
+    float normalizedPadding = padding / viewportSize;
+    float paddedNormalizedWidth = size * fontSize / viewportSize + 2.0 * normalizedPadding;
+
+    if (a > 1.0 || b < 0.0) {
+        return RangeResult(0.0, 0.0);
+    }
+
+    // TODO: Scale goes below 1.0 a bit too early. Figure out why.
+    float scale = clamp((normalizedSpan - normalizedPadding) / paddedNormalizedWidth, 0.0, 1.0);
+
+    float pos;
+
+    // Try to keep the text inside the span
+    if (align == 0) {
+        float centre = a + b;
+
+        if (scale >= 1.0) {
+            float leftOver = -(centre - paddedNormalizedWidth);
+            float rightOver = (centre + paddedNormalizedWidth) - 2.0;
+
+            if (leftOver > 0.0) {
+                centre += min(leftOver, normalizedSpan - paddedNormalizedWidth);
+            } else if (rightOver > 0.0) {
+                centre -= min(rightOver, normalizedSpan - paddedNormalizedWidth);
+            }
+        }
+        pos = centre / 2.0;
+
+    } else if (align < 0) {
+        float edge = a;
+        if (scale >= 1.0) {
+            float over = -edge;
+
+            if (over > 0.0) {
+                edge += min(over, normalizedSpan - paddedNormalizedWidth);
+            }
+        }
+        pos = edge + normalizedPadding;
+
+    } else {
+        float edge = b;
+        if (scale >= 1.0) {
+            float over = edge - 1.0;
+
+            if (over > 0.0) {
+                edge -= min(over, normalizedSpan - paddedNormalizedWidth);
+            }
+        }
+        pos = edge - normalizedPadding;
+    }
+
+    // TODO: Fix padding in scale factor. Padding should stay constant
+    return RangeResult(pos, scale);
+}
+
 void main(void) {
     float opacity = getScaled_opacity();
     float size = getScaled_size();
     float x = getScaled_x();
 
+    bool squeeze = true;
+
 #ifdef x2_DEFINED
-    float x2 = getScaled_x2();
+    RangeResult result = positionInsideRange(
+        x, getScaled_x2(), width, size,
+        uPaddingX, int(uAlign), uViewportSize.x);
+    
+    x = result.pos;
 
-    float normalizedSpan = x2 - x;
-    float normalizedPadding = uPaddingX / uViewportSize.x;
-    float paddedNormalizedWidth = width * size / uViewportSize.x + 2.0 * normalizedPadding;
+    if (squeeze) {
+        vec2 scaleFadeExtent = vec2(3.0, 6.0) / size;
 
-    bool outside = x > 1.0 || x2 < 0.0;
-    bool doesntFit = normalizedSpan < paddedNormalizedWidth;
+        if (result.scale < scaleFadeExtent[0]) {
+            gl_Position = vec4(0.0);
+            return;
+        }
 
-    if (outside || doesntFit) {
+        size *= result.scale;
+        opacity *= smoothstep(scaleFadeExtent[0], scaleFadeExtent[1], result.scale); // TODO: "linearstep"
+
+    } else if (result.scale < 1.0) {
         gl_Position = vec4(0.0);
         return;
     }
 
-    // Try to keep the text inside the span
-    // TODO: Provide align as a const instead of an uniform
-    if (uAlign == 0.0) {
-        float centre = x + x2;
-
-        float leftOver = -(centre- paddedNormalizedWidth);
-        float rightOver = (centre+ paddedNormalizedWidth) - 2.0;
-
-        if (leftOver > 0.0) {
-            centre += min(leftOver, normalizedSpan - paddedNormalizedWidth);
-        } else if (rightOver > 0.0) {
-            centre -= min(rightOver, normalizedSpan - paddedNormalizedWidth);
-        }
-        x = centre / 2.0;
-
-    } else if (uAlign < 0.0) {
-        float edge = x;
-        float over = -edge;
-
-        if (over > 0.0) {
-            edge += min(over, normalizedSpan - paddedNormalizedWidth);
-        }
-        x = edge + normalizedPadding;
-
-    } else {
-        float edge = x2;
-        float over = edge - 1.0;
-
-        if (over > 0.0) {
-            edge -= min(over, normalizedSpan - paddedNormalizedWidth);
-        }
-        x = edge - normalizedPadding;
-    }
 #endif
 
     float y = getScaled_y();

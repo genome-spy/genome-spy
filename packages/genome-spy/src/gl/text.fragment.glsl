@@ -12,6 +12,9 @@ float median(float r, float g, float b) {
 }
 
 void main() {
+    // TODO: Really small text should fall back to normal (non-SDF) texture that can be mip-mapped.
+    // Currently small text has severe aliasing artifacts.
+
     vec3 c = texture(uTexture, vTexCoord).rgb;
 
     float sigDist = 1.0 - median(c.r, c.g, c.b);
