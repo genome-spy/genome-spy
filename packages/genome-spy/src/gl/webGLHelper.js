@@ -134,8 +134,8 @@ export default class WebGLHelper {
     getPhysicalCanvasSize(logicalSize) {
         logicalSize = logicalSize || this.getLogicalCanvasSize();
         return {
-            width: logicalSize.width * window.devicePixelRatio,
-            height: logicalSize.height * window.devicePixelRatio
+            width: logicalSize.width * this.dpr,
+            height: logicalSize.height * this.dpr
         };
     }
 
