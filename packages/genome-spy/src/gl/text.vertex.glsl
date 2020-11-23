@@ -24,7 +24,15 @@ uniform vec4 uViewportEdgeFadeDistance;
 in float width;
 
 uniform float uPaddingX;
-uniform float uAlign; // -1, 0, 1 = left, center, right
+uniform float uAlignX; // -1, 0, 1 = left, center, right
+#endif
+
+#ifdef y2_DEFINED
+// Height of the text (font size)
+in float height;
+
+uniform float uPaddingY;
+uniform float uAlignY; // -1, 0, 1 = top, middle, bottom 
 #endif
 
 out vec4 vColor;
@@ -105,13 +113,14 @@ void main(void) {
     float size = getScaled_size();
     float x = getScaled_x();
 
+    // TODO: Configurable
     bool squeeze = true;
 
 #ifdef x2_DEFINED
     RangeResult result = positionInsideRange(
         x, getScaled_x2(),
         size * width / uViewportSize.x, uPaddingX / uViewportSize.x,
-        int(uAlign));
+        int(uAlignX));
     
     x = result.pos;
 

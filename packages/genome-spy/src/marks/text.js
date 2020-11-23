@@ -105,6 +105,21 @@ export default class TextMark extends Mark {
 
         this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
 
+        gl.useProgram(this.programInfo.program);
+
+        const props = this.properties;
+
+        twgl.setUniforms(this.programInfo, {
+            uPaddingX: 4.0, // TODO: Configurable
+            uD: [props.dx, -props.dy],
+            uAlignX: alignments[props.align],
+            uAngle: (-props.angle / 180) * Math.PI,
+            uViewportEdgeFadeWidth: props.viewportEdgeFadeWidth,
+            uViewportEdgeFadeDistance: props.viewportEdgeFadeDistance.map(d =>
+                d === undefined ? -Infinity : d
+            )
+        });
+
         return texturePromise;
     }
 
@@ -154,23 +169,14 @@ export default class TextMark extends Mark {
     prepareRender() {
         super.prepareRender();
 
-        const dpr = window.devicePixelRatio;
-        const props = this.properties;
-
         twgl.setUniforms(this.programInfo, {
+            // TODO: Only set texture once it has been loaded
             uTexture: this.fontTexture,
-            uD: [props.dx, -props.dy],
-            uPaddingX: 4.0, // TODO: Configurable
-            uAlign: alignments[props.align],
-            uAngle: (-props.angle / 180) * Math.PI,
-            uViewportEdgeFadeWidth: props.viewportEdgeFadeWidth,
-            uViewportEdgeFadeDistance: props.viewportEdgeFadeDistance.map(d =>
-                d === undefined ? -Infinity : d
-            ),
+            // TODO: Only update when dpr changes
             uSdfNumerator:
                 /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
                     .common.base /
-                (dpr / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
+                (this.glHelper.dpr / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
         });
 
         twgl.setBuffersAndAttributes(
