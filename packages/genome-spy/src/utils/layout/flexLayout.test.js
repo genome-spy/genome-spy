@@ -36,6 +36,20 @@ test("Absolute sizes with spacing", () => {
     expect(mapped[2]).toEqual({ location: 60, size: 20 });
 });
 
+test("Absolute sizes with spacing, reversed", () => {
+    const items = [10, 30, 20].map(x => ({ px: x }));
+    const containerSize = 100;
+
+    const mapped = mapToPixelCoords(items, containerSize, {
+        spacing: 10,
+        reverse: true
+    });
+
+    expect(mapped[0]).toEqual({ location: 80, size: 10 });
+    expect(mapped[1]).toEqual({ location: 40, size: 30 });
+    expect(mapped[2]).toEqual({ location: 10, size: 20 });
+});
+
 test("Growing sizes", () => {
     const items = [10, 20, 70].map(x => ({ grow: x }));
     const containerSize = 200;
