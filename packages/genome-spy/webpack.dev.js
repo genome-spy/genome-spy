@@ -5,7 +5,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = merge(common, {
     mode: "development",
-    devtool: "eval-cheap-source-map",
+    devtool: "eval-source-map",
 
     entry: {
         main: "./src/singlePageApp.js"
