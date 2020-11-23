@@ -45,59 +45,56 @@ float maxValue(vec4 v) {
     return max(max(v.x, v.y), max(v.z, v.w));
 }
 
-RangeResult positionInsideRange(float a, float b, float size, float fontSize,
-                          float padding, int align, float viewportSize) {
-    float normalizedSpan = b - a;
-    float normalizedPadding = padding / viewportSize;
-    float paddedNormalizedWidth = size * fontSize / viewportSize + 2.0 * normalizedPadding;
+/**
+ * All measures are in [0, 1]
+ */
+RangeResult positionInsideRange(float a, float b, float width, float padding,
+                                int align) {
+    float span = b - a;
+    float paddedWidth = width + 2.0 * padding;
 
+    // Is the text clearly outside the viewport
     if (a > 1.0 || b < 0.0) {
         return RangeResult(0.0, 0.0);
     }
 
-    // TODO: Scale goes below 1.0 a bit too early. Figure out why.
-    float scale = clamp((normalizedSpan - normalizedPadding) / paddedNormalizedWidth, 0.0, 1.0);
+    // How much extra space we have for adjusting the position so that the
+    // text stays inside the range.
+    float extra = max(0.0, span - paddedWidth);
 
     float pos;
 
-    // Try to keep the text inside the span
+    // Align the text and try to keep it inside the range and the viewport
     if (align == 0) {
         float centre = a + b;
 
-        if (scale >= 1.0) {
-            float leftOver = -(centre - paddedNormalizedWidth);
-            float rightOver = (centre + paddedNormalizedWidth) - 2.0;
+        float leftOver = max(0.0, paddedWidth - centre);
+        centre += min(leftOver, extra);
 
-            if (leftOver > 0.0) {
-                centre += min(leftOver, normalizedSpan - paddedNormalizedWidth);
-            } else if (rightOver > 0.0) {
-                centre -= min(rightOver, normalizedSpan - paddedNormalizedWidth);
-            }
-        }
+        float rightOver = max(0.0, paddedWidth + centre - 2.0);
+        centre -= min(rightOver, extra);
+
         pos = centre / 2.0;
 
     } else if (align < 0) {
         float edge = a;
-        if (scale >= 1.0) {
-            float over = -edge;
 
-            if (over > 0.0) {
-                edge += min(over, normalizedSpan - paddedNormalizedWidth);
-            }
-        }
-        pos = edge + normalizedPadding;
+        float over = max(0.0, -edge);
+        edge += min(over, extra);
+
+        pos = edge + padding;
 
     } else {
         float edge = b;
-        if (scale >= 1.0) {
-            float over = edge - 1.0;
 
-            if (over > 0.0) {
-                edge -= min(over, normalizedSpan - paddedNormalizedWidth);
-            }
-        }
-        pos = edge - normalizedPadding;
+        float over = max(0.0, edge - 1.0);
+        edge -= min(over, extra);
+
+        pos = edge - padding;
     }
+
+    // How the text should be scaled to make it fit inside the range (if it didn't fit).
+    float scale = clamp((span - padding) / paddedWidth, 0.0, 1.0);
 
     // TODO: Fix padding in scale factor. Padding should stay constant
     return RangeResult(pos, scale);
@@ -112,8 +109,9 @@ void main(void) {
 
 #ifdef x2_DEFINED
     RangeResult result = positionInsideRange(
-        x, getScaled_x2(), width, size,
-        uPaddingX, int(uAlign), uViewportSize.x);
+        x, getScaled_x2(),
+        size * width / uViewportSize.x, uPaddingX / uViewportSize.x,
+        int(uAlign));
     
     x = result.pos;
 
