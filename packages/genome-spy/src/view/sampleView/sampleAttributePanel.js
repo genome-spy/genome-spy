@@ -454,17 +454,20 @@ function createLabelViewSpec() {
     /** @type {import("../viewUtils").UnitSpec} */
     const titleSpec = {
         name: "sampleLabel",
-        width: 150,
+        width: 140,
         mark: {
             type: "text",
             align: "left",
-            clip: false
+            baseline: "middle",
+            flushY: false
         },
         encoding: {
             x: { value: 0 },
-            y: { value: 0.5 },
+            x2: { value: 1 },
+            y: { value: 0 },
+            y2: { value: 1 },
             text: { field: "displayName", type: "nominal" },
-            size: { value: 8 }
+            size: { value: 11 }
 
             //size: { value: headerConfig.labelFontSize },
             //color: { value: headerConfig.labelColor }

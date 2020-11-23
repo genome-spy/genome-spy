@@ -18,6 +18,7 @@ in lowp float ty;
 uniform vec4 uViewportEdgeFadeWidth;
 uniform vec4 uViewportEdgeFadeDistance;
     
+uniform float uSqueeze;
 
 #ifdef x2_DEFINED
 // Width of the text (all letters)
@@ -25,6 +26,7 @@ in float width;
 
 uniform float uPaddingX;
 uniform float uAlignX; // -1, 0, 1 = left, center, right
+uniform float uFlushX;
 #endif
 
 #ifdef y2_DEFINED
@@ -33,6 +35,7 @@ in float height;
 
 uniform float uPaddingY;
 uniform float uAlignY; // -1, 0, 1 = top, middle, bottom 
+uniform float uFlushY;
 #endif
 
 out vec4 vColor;
@@ -57,7 +60,7 @@ float maxValue(vec4 v) {
  * All measures are in [0, 1]
  */
 RangeResult positionInsideRange(float a, float b, float width, float padding,
-                                int align) {
+                                int align, bool flush) {
     float span = b - a;
     float paddedWidth = width + 2.0 * padding;
 
@@ -76,27 +79,33 @@ RangeResult positionInsideRange(float a, float b, float width, float padding,
     if (align == 0) {
         float centre = a + b;
 
-        float leftOver = max(0.0, paddedWidth - centre);
-        centre += min(leftOver, extra);
+        if (flush) {
+            float leftOver = max(0.0, paddedWidth - centre);
+            centre += min(leftOver, extra);
 
-        float rightOver = max(0.0, paddedWidth + centre - 2.0);
-        centre -= min(rightOver, extra);
+            float rightOver = max(0.0, paddedWidth + centre - 2.0);
+            centre -= min(rightOver, extra);
+        }
 
         pos = centre / 2.0;
 
     } else if (align < 0) {
         float edge = a;
 
-        float over = max(0.0, -edge);
-        edge += min(over, extra);
+        if (flush) {
+            float over = max(0.0, -edge);
+            edge += min(over, extra);
+        }
 
         pos = edge + padding;
 
     } else {
         float edge = b;
 
-        float over = max(0.0, edge - 1.0);
-        edge -= min(over, extra);
+        if (flush) {
+            float over = max(0.0, edge - 1.0);
+            edge -= min(over, extra);
+        }
 
         pos = edge - padding;
     }
@@ -112,40 +121,60 @@ void main(void) {
     float opacity = getScaled_opacity();
     float size = getScaled_size();
     float x = getScaled_x();
+    float y = getScaled_y();
 
-    // TODO: Configurable
-    bool squeeze = true;
+    float scale = 1.0;
+
+    // TODO: !!!!!!!!!!!! Make ranged text compatible with rotated text !!!!!!!!!!!
 
 #ifdef x2_DEFINED
-    RangeResult result = positionInsideRange(
-        x, getScaled_x2(),
-        size * width / uViewportSize.x, uPaddingX / uViewportSize.x,
-        int(uAlignX));
-    
-    x = result.pos;
-
-    if (squeeze) {
-        vec2 scaleFadeExtent = vec2(3.0, 6.0) / size;
-
-        if (result.scale < scaleFadeExtent[0]) {
-            gl_Position = vec4(0.0);
-            return;
-        }
-
-        size *= result.scale;
-        opacity *= smoothstep(scaleFadeExtent[0], scaleFadeExtent[1], result.scale); // TODO: "linearstep"
-
-    } else if (result.scale < 1.0) {
-        gl_Position = vec4(0.0);
-        return;
+    {
+        RangeResult result = positionInsideRange(
+            x, getScaled_x2(),
+            size * width / uViewportSize.x, uPaddingX / uViewportSize.x,
+            int(uAlignX), bool(uFlushX));
+        
+        x = result.pos;
+        scale *= result.scale;
     }
-
 #endif
-
-    float y = getScaled_y();
 
     // Position of the text origo 
     vec2 pos = applySampleFacet(vec2(x, y));
+
+#ifdef y2_DEFINED
+    {
+        float y2 = getScaled_y2();
+        vec2 pos2 = applySampleFacet(vec2(x, y2));
+
+        RangeResult result = positionInsideRange(
+            pos.y, pos2.y,
+            size * scale / uViewportSize.y, uPaddingY / uViewportSize.y,
+            int(uAlignY), bool(uFlushY));
+        
+        pos.y = result.pos;
+        scale *= result.scale;
+    }
+#endif
+
+    if (scale < 1.0) {
+        if (uSqueeze != 0.0) {
+            vec2 scaleFadeExtent = vec2(3.0, 6.0) / size;
+
+            if (scale  < scaleFadeExtent[0]) {
+                gl_Position = vec4(0.0);
+                return;
+            }
+
+            size *= scale;
+            opacity *= smoothstep(scaleFadeExtent[0], scaleFadeExtent[1], scale); // TODO: "linearstep"
+
+        } else if (scale < 1.0) {
+            // Eliminate the text
+            gl_Position = vec4(0.0);
+            return;
+        }
+    }
 
     float sinTheta = sin(uAngle);
     float cosTheta = cos(uAngle);

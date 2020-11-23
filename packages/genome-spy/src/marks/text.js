@@ -14,6 +14,7 @@ const defaultEncoding = {
     x: { value: 0.5 },
     y: { value: 0.5 },
     x2: undefined,
+    y2: undefined,
     text: { value: "" },
     size: { value: 11.0 },
     color: { value: "black" },
@@ -25,6 +26,14 @@ const alignments = {
     left: -1,
     center: 0,
     right: 1
+};
+
+/** For GLSL uniforms */
+const baselines = {
+    top: -1,
+    middle: 0,
+    bottom: 1,
+    alphabetic: 1
 };
 
 /**
@@ -48,6 +57,7 @@ export default class TextMark extends Mark {
             x: { raw: true },
             x2: { raw: true },
             y: { raw: true },
+            y2: { raw: true },
             color: {},
             size: { raw: true },
             opacity: { raw: true }
@@ -66,6 +76,13 @@ export default class TextMark extends Mark {
             dx: 0,
             dy: 0,
             angle: 0,
+
+            // For ranged text:
+            squeeze: true,
+            paddingX: 0,
+            paddingY: 0,
+            flushX: true,
+            flushY: true,
 
             /** @type {number[]} Order: top, right, bottom, left */
             viewportEdgeFadeWidth: [0, 0, 0, 0],
@@ -110,10 +127,18 @@ export default class TextMark extends Mark {
         const props = this.properties;
 
         twgl.setUniforms(this.programInfo, {
-            uPaddingX: 4.0, // TODO: Configurable
-            uD: [props.dx, -props.dy],
+            uSqueeze: props.squeeze ? 1 : 0,
+            uPaddingX: props.paddingX,
+            uPaddingY: props.paddingY,
+            uFlushX: props.flushX ? 1 : 0,
+            uFlushY: props.flushY ? 1 : 0,
+
             uAlignX: alignments[props.align],
+            uAlignY: baselines[props.baseline],
+
+            uD: [props.dx, -props.dy],
             uAngle: (-props.angle / 180) * Math.PI,
+
             uViewportEdgeFadeWidth: props.viewportEdgeFadeWidth,
             uViewportEdgeFadeDistance: props.viewportEdgeFadeDistance.map(d =>
                 d === undefined ? -Infinity : d

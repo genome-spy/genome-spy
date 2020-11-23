@@ -22,6 +22,7 @@ export function generateValueGlsl(channel, value) {
     // These could also be passed as uniforms because GPU drivers often handle
     // uniforms as constants and recompile the shader to eliminate dead code etc.
     let glsl = `
+#define ${channel}_DEFINED
 ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
     // Constant value
     return ${vec};
