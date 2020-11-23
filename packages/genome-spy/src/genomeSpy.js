@@ -328,6 +328,9 @@ export default class GenomeSpy {
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         this.deferredContext.renderDeferred();
+
+        // TODO: Render everything using RequestAnimationFrame
+        gl.flush();
     }
 }
 
