@@ -28,6 +28,7 @@ import CompositeViewRenderingContext from "./view/renderingContext/compositeView
 import InteractionEvent from "./utils/interactionEvent";
 import Point from "./utils/layout/point";
 import { isContextMenuOpen } from "./utils/ui/contextMenu";
+import Animator from "./utils/animator";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -60,6 +61,8 @@ export default class GenomeSpy {
 
         /** @type {(function(string):object[])[]} */
         this.namedDataProviders = [];
+
+        this.animator = new Animator(() => this.renderAll());
     }
 
     /**
@@ -97,7 +100,9 @@ export default class GenomeSpy {
     _prepareContainer() {
         this._glHelper = new WebGLHelper(this.container);
         this._glHelper.addEventListener("resize", () => this.computeLayout());
-        this._glHelper.addEventListener("render", () => this.renderAll());
+        this._glHelper.addEventListener("render", () =>
+            this.animator.requestRender()
+        );
 
         this.loadingMessageElement = document.createElement("div");
         this.loadingMessageElement.className = "loading-message";
@@ -160,7 +165,8 @@ export default class GenomeSpy {
                         baseUrl,
                         this.getNamedData.bind(this)
                     ),
-                glHelper: this._glHelper
+                glHelper: this._glHelper,
+                animator: this.animator
             };
 
             /** @type {import("./spec/view").ConcatSpec & RootConfig} */
@@ -328,9 +334,6 @@ export default class GenomeSpy {
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         this.deferredContext.renderDeferred();
-
-        // TODO: Render everything using RequestAnimationFrame
-        gl.flush();
     }
 }
 

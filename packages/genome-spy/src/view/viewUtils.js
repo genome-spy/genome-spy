@@ -17,6 +17,7 @@ import { VISIT_SKIP } from "./view";
  * @prop {import("../encoder/accessor").default} accessorFactory
  * @prop {import("../coordinateSystem").default} coordinateSystem
  * @prop {import("../gl/webGLHelper").default} glHelper
+ * @prop {import("../utils/animator").default} animator
  */
 
 /**

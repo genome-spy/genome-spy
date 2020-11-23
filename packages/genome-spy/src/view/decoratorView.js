@@ -415,6 +415,8 @@ export default class DecoratorView extends ContainerView {
             }
         }
 
-        this.context.genomeSpy.renderAll(); // TODO: context.requestRender() or something
+        this.context.animator.requestRender();
+        this.context.animator.requestRender();
+        this.context.animator.requestRender();
     }
 }
