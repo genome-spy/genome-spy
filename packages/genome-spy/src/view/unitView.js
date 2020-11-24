@@ -70,6 +70,8 @@ export default class UnitView extends View {
     render(context, coords, options = {}) {
         // Translate by half a pixel to place vertical / horizontal
         // rules inside pixels, not between pixels.
+        // TODO: translation produces piles of garbage. Figure out something.
+        // Perhaps translation could be moved to Mark.setViewport(coords)
         coords = coords.translate(0.5, 0.5);
         coords = coords.shrink(this.getPadding());
 

@@ -82,7 +82,9 @@ export default class View {
     }
 
     getPadding() {
-        return Padding.createFromConfig(this.spec.padding);
+        return getCachedOrCall(this, "size/padding", () =>
+            Padding.createFromConfig(this.spec.padding)
+        );
     }
 
     /**

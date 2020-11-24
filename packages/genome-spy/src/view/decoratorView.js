@@ -126,15 +126,17 @@ export default class DecoratorView extends ContainerView {
     }
 
     _getAxisOffsets() {
-        /** @type {Record<AxisOrient, number>} */
-        // @ts-ignore
-        const paddings = {};
-        for (const view of Object.values(this.axisViews)) {
-            if (view) {
-                paddings[view.getOrient()] = view.axisProps.offset;
+        return getCachedOrCall(this, "size/axisOffsets", () => {
+            /** @type {Record<AxisOrient, number>} */
+            // @ts-ignore
+            const paddings = {};
+            for (const view of Object.values(this.axisViews)) {
+                if (view) {
+                    paddings[view.getOrient()] = view.axisProps.offset;
+                }
             }
-        }
-        return Padding.createFromRecord(paddings);
+            return Padding.createFromRecord(paddings);
+        });
     }
 
     getEffectivePadding() {
@@ -190,11 +192,11 @@ export default class DecoratorView extends ContainerView {
 
         this.child.render(context, childCoords, options);
 
-        for (const [orient, view] of Object.entries(this.axisViews)) {
-            if (!view) {
-                continue;
-            }
+        const entries = getCachedOrCall(this, "axisViewEntries", () =>
+            Object.entries(this.axisViews).filter(e => !!e[1])
+        );
 
+        for (const [orient, view] of entries) {
             const props = view.axisProps;
 
             /** @type {import("../utils/layout/rectangle").default} */

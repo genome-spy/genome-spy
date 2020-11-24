@@ -140,6 +140,10 @@ export default class ConcatView extends ContainerView {
         coords = coords.shrink(this.getPadding());
         context.pushView(this, coords);
 
+        // This method produces piles of garbage when used with sample faceting.
+        // TODO: Figure out something. Perhaps the rectangles could be cached because
+        // they are identical for each sample facet.
+
         const mappedCoords = mapToPixelCoords(
             this._getFlexSizeDefs(),
             coords[this.mainDimension],
