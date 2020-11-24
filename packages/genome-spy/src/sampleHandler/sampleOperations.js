@@ -22,7 +22,7 @@ export function wrapAccessorForComparison(accessor, attributeInfo) {
     let wrapper;
     switch (attributeInfo.type) {
         case "quantitative":
-            wrapper = x => (isNumber(x) && !isNaN(x) ? x : -Infinity);
+            wrapper = x => (isNumber(x) && !isNaN(x) ? -x : -Infinity);
             break;
         case "ordinal":
             // Use the (specified) domain for ordering

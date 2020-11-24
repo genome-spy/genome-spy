@@ -377,12 +377,20 @@ export default class Mark {
      * undefined facet.
      *
      * @param {MarkRenderingOptions} options
+     * @returns {boolean} true if rendering should proceed,
+     *      false if it should be skipped
      */
-    prepareSampleFacetRender(options) {
+    prepareSampleFacetRendering(options) {
         if (options.sampleFacetRenderingOptions) {
             const opts = options.sampleFacetRenderingOptions;
             const pos = isNumber(opts.pos) ? opts.pos : 0.0;
             const height = isNumber(opts.height) ? opts.height : 1.0;
+
+            if (pos > 1.0 || pos + height < 0.0) {
+                // Not visible
+                return false;
+            }
+
             const targetPos = isNumber(opts.targetPos) ? opts.targetPos : pos;
             const targetHeight = isNumber(opts.targetHeight)
                 ? opts.targetHeight
@@ -399,6 +407,8 @@ export default class Mark {
                 targetHeight
             );
         }
+
+        return true;
     }
 
     /**

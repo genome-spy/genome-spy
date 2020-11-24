@@ -299,22 +299,22 @@ export default class DecoratorView extends ContainerView {
         if (event.type == "wheel") {
             event.uiEvent.preventDefault(); // TODO: Only if there was something to zoom
 
-            const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
-            const wheelMultiplier = mouseEvent.deltaMode ? 120 : 1;
+            const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
+            const wheelMultiplier = wheelEvent.deltaMode ? 120 : 1;
 
-            if (Math.abs(mouseEvent.deltaX) < Math.abs(mouseEvent.deltaY)) {
+            if (Math.abs(wheelEvent.deltaX) < Math.abs(wheelEvent.deltaY)) {
                 this._handleZoom(coords, {
                     x: event.point.x,
                     y: event.point.y,
                     xDelta: 0,
                     yDelta: 0,
-                    zDelta: (mouseEvent.deltaY * wheelMultiplier) / 300
+                    zDelta: (wheelEvent.deltaY * wheelMultiplier) / 300
                 });
             } else {
                 this._handleZoom(coords, {
                     x: event.point.x,
                     y: event.point.y,
-                    xDelta: -mouseEvent.deltaX * wheelMultiplier,
+                    xDelta: -wheelEvent.deltaX * wheelMultiplier,
                     yDelta: 0,
                     zDelta: 0
                 });
@@ -415,8 +415,6 @@ export default class DecoratorView extends ContainerView {
             }
         }
 
-        this.context.animator.requestRender();
-        this.context.animator.requestRender();
         this.context.animator.requestRender();
     }
 }

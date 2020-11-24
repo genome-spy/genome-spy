@@ -124,6 +124,32 @@ export default class SampleView extends ContainerView {
         this._addBroadcastHandler("layout", () => {
             this._sampleLocations = undefined;
         });
+
+        this._offset = 0;
+
+        this.addEventListener(
+            "wheel",
+            (coords, event) => {
+                const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
+                if (wheelEvent.shiftKey) {
+                    this._offset += wheelEvent.deltaY;
+
+                    this.context.genomeSpy.computeLayout();
+                    this.context.animator.requestRender();
+
+                    // Replace the uiEvent to prevent decoratorView from zooming.
+                    // Only allow horizontal panning.
+                    event.uiEvent = {
+                        type: wheelEvent.type,
+                        deltaX: wheelEvent.deltaX,
+                        preventDefault: wheelEvent.preventDefault.bind(
+                            wheelEvent
+                        )
+                    };
+                }
+            },
+            true
+        );
     }
 
     getEffectivePadding() {
@@ -227,7 +253,7 @@ export default class SampleView extends ContainerView {
             this._sampleLocations = this._calculateSampleLocations(
                 this._coords.height,
                 this._coords.height,
-                0
+                this._offset
             );
         }
         return this._sampleLocations;
@@ -255,7 +281,7 @@ export default class SampleView extends ContainerView {
         const groupLocations = mapToPixelCoords(
             sampleGroups.map(group => ({ grow: group.length })),
             canvasHeight,
-            { spacing: 5 }
+            { spacing: 5, reverse: true }
         );
 
         /** @param {number} size */
@@ -270,7 +296,8 @@ export default class SampleView extends ContainerView {
                 samples.map(d => sizeDef),
                 groupLocations[gi].size,
                 {
-                    offset: groupLocations[gi].location
+                    offset: groupLocations[gi].location,
+                    reverse: true
                 }
             ).forEach((location, i) => {
                 const padding = getSamplePadding(location.size) / canvasHeight;

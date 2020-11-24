@@ -213,23 +213,24 @@ export default class PointMark extends Mark {
 
         const gl = this.gl;
 
-        const range = this.rangeMap.get(options.facetId);
-        if (range) {
-            const [lower, upper] = this._findIndices
-                ? this._findIndices(this.dataByFacet.get(options.facetId))
-                : [0, range.count];
+        if (this.prepareSampleFacetRendering(options)) {
+            const range = this.rangeMap.get(options.facetId);
+            if (range) {
+                const [lower, upper] = this._findIndices
+                    ? this._findIndices(this.dataByFacet.get(options.facetId))
+                    : [0, range.count];
 
-            const length = upper - lower;
+                const length = upper - lower;
 
-            if (length) {
-                this.prepareSampleFacetRender(options);
-                twgl.drawBufferInfo(
-                    gl,
-                    this.vertexArrayInfo,
-                    gl.POINTS,
-                    length,
-                    range.offset + lower
-                );
+                if (length) {
+                    twgl.drawBufferInfo(
+                        gl,
+                        this.vertexArrayInfo,
+                        gl.POINTS,
+                        length,
+                        range.offset + lower
+                    );
+                }
             }
         }
 

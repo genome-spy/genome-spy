@@ -136,32 +136,42 @@ export default class ConnectionMark extends Mark {
 
         // TODO: Vertical clipping in faceted view
 
-        const range = this.rangeMap.get(options.facetId);
-        if (range && range.count) {
-            // We are using instanced drawing here.
-            // However, WebGL does not provide glDrawElementsInstancedBaseInstance and thus,
-            // we have to hack with offsets in vertexAttribPointer
-            // TODO: Use VAOs to reduce WebGL calls
-            for (const attribInfoObject of Object.entries(
-                this.bufferInfo.attribs
-            )) {
-                const [attribute, attribInfo] = attribInfoObject;
-                if (attribInfo.buffer && this._componentNumbers[attribute]) {
-                    attribInfo.offset =
-                        range.offset * this._componentNumbers[attribute] * 4; // gl.FLOAT in bytes
+        if (this.prepareSampleFacetRendering(options)) {
+            const range = this.rangeMap.get(options.facetId);
+            if (range && range.count) {
+                // We are using instanced drawing here.
+                // However, WebGL does not provide glDrawElementsInstancedBaseInstance and thus,
+                // we have to hack with offsets in vertexAttribPointer
+                // TODO: Use VAOs to reduce WebGL calls
+                for (const attribInfoObject of Object.entries(
+                    this.bufferInfo.attribs
+                )) {
+                    const [attribute, attribInfo] = attribInfoObject;
+                    if (
+                        attribInfo.buffer &&
+                        this._componentNumbers[attribute]
+                    ) {
+                        attribInfo.offset =
+                            range.offset *
+                            this._componentNumbers[attribute] *
+                            4; // gl.FLOAT in bytes
+                    }
                 }
-            }
-            twgl.setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+                twgl.setBuffersAndAttributes(
+                    gl,
+                    this.programInfo,
+                    this.bufferInfo
+                );
 
-            this.prepareSampleFacetRender(options);
-            twgl.drawBufferInfo(
-                gl,
-                this.bufferInfo,
-                gl.TRIANGLE_STRIP,
-                (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
-                0,
-                range.count
-            );
+                twgl.drawBufferInfo(
+                    gl,
+                    this.bufferInfo,
+                    gl.TRIANGLE_STRIP,
+                    (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
+                    0,
+                    range.count
+                );
+            }
         }
     }
 }

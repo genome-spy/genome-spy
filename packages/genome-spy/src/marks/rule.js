@@ -113,7 +113,8 @@ export default class RuleMark extends Mark {
             this.dashTexture = twgl.createTexture(gl, {
                 mag: gl.NEAREST,
                 min: gl.NEAREST,
-                format: gl.LUMINANCE,
+                internalFormat: gl.R8,
+                format: gl.RED,
                 src: textureData,
                 height: 1
             });
@@ -176,16 +177,17 @@ export default class RuleMark extends Mark {
 
         const gl = this.gl;
 
-        const range = this.rangeMap.get(options.facetId);
-        if (range && range.count) {
-            this.prepareSampleFacetRender(options);
-            twgl.drawBufferInfo(
-                gl,
-                this.vertexArrayInfo,
-                gl.TRIANGLE_STRIP,
-                range.count,
-                range.offset
-            );
+        if (this.prepareSampleFacetRendering(options)) {
+            const range = this.rangeMap.get(options.facetId);
+            if (range && range.count) {
+                twgl.drawBufferInfo(
+                    gl,
+                    this.vertexArrayInfo,
+                    gl.TRIANGLE_STRIP,
+                    range.count,
+                    range.offset
+                );
+            }
         }
     }
     //this.gl.bindVertexArray(null);

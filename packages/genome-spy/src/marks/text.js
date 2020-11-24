@@ -219,16 +219,17 @@ export default class TextMark extends Mark {
 
         const gl = this.gl;
 
-        const range = this.rangeMap.get(options.facetId);
-        if (range && range.count) {
-            this.prepareSampleFacetRender(options);
-            twgl.drawBufferInfo(
-                gl,
-                this.vertexArrayInfo,
-                gl.TRIANGLES,
-                range.count,
-                range.offset
-            );
+        if (this.prepareSampleFacetRendering(options)) {
+            const range = this.rangeMap.get(options.facetId);
+            if (range && range.count) {
+                twgl.drawBufferInfo(
+                    gl,
+                    this.vertexArrayInfo,
+                    gl.TRIANGLES,
+                    range.count,
+                    range.offset
+                );
+            }
         }
     }
     //this.gl.bindVertexArray(null);
