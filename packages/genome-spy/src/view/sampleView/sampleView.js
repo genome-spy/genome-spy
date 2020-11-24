@@ -14,6 +14,7 @@ import Padding from "../../utils/layout/padding";
 import smoothstep from "../../utils/smoothstep";
 import { getCachedOrCall } from "../../utils/propertyCacher";
 import transition from "../../utils/transition";
+import { easeCubicIn, easeExpOut } from "d3-ease";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -131,7 +132,7 @@ export default class SampleView extends ContainerView {
             this._sampleLocations = undefined;
         });
 
-        this._offset = 0;
+        this._scrollOffset = 0;
         this._peekState = 0; // [0, 1]
 
         this.addEventListener(
@@ -139,7 +140,7 @@ export default class SampleView extends ContainerView {
             (coords, event) => {
                 const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
                 if (wheelEvent.shiftKey) {
-                    this._offset += wheelEvent.deltaY;
+                    this._scrollOffset += wheelEvent.deltaY;
 
                     //this.context.genomeSpy.computeLayout();
                     this.context.animator.requestRender();
@@ -286,7 +287,7 @@ export default class SampleView extends ContainerView {
             /** @type {ScrollingContext} */
             const scrollingContext = {
                 getViewportHeight: () => this._coords.height,
-                getOffset: () => this._offset
+                getOffset: () => this._scrollOffset
             };
 
             const ratioSource = () => this._peekState;
@@ -385,14 +386,32 @@ export default class SampleView extends ContainerView {
      *
      */
     _togglePeek() {
-        const newState = this._peekState ? 0 : 1;
+        if (this._peekState > 0 && this._peekState < 1) {
+            // Transition is going on
+            return;
+        }
+
+        const props =
+            this._peekState == 0
+                ? {
+                      from: this._peekState,
+                      to: 1,
+                      duration: 500,
+                      easingFunction: easeExpOut
+                  }
+                : {
+                      from: this._peekState,
+                      to: 0,
+                      duration: 400,
+                      easingFunction: easeCubicIn
+                  };
 
         transition({
-            from: this._peekState,
-            to: newState,
-            duration: 350,
+            ...props,
+            requestAnimationFrame: callback =>
+                this.context.animator.requestTransition(callback),
             onUpdate: value => {
-                this._peekState = value;
+                this._peekState = Math.pow(value, 2);
                 this.context.animator.requestRender();
             }
         });
