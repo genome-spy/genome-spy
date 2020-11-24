@@ -135,7 +135,7 @@ export default class SampleView extends ContainerView {
                 if (wheelEvent.shiftKey) {
                     this._offset += wheelEvent.deltaY;
 
-                    this.context.genomeSpy.computeLayout();
+                    //this.context.genomeSpy.computeLayout();
                     this.context.animator.requestRender();
 
                     // Replace the uiEvent to prevent decoratorView from zooming.
@@ -254,9 +254,7 @@ export default class SampleView extends ContainerView {
     getSampleLocations() {
         if (!this._sampleLocations) {
             this._sampleLocations = this._calculateSampleLocations(
-                this._coords.height,
-                this._coords.height,
-                this._offset
+                this._coords.height
             );
         }
         return this._sampleLocations;
@@ -265,10 +263,8 @@ export default class SampleView extends ContainerView {
     /**
      *
      * @param {number} canvasHeight Height reserved for all the samples (in pixels)
-     * @param {number} viewportHeight Height of the viewport where the samples are shown (in pixels)
-     * @param {number} heightOffset Translation of the canvas inside the viewport (in pixels)
      */
-    _calculateSampleLocations(canvasHeight, viewportHeight, heightOffset) {
+    _calculateSampleLocations(canvasHeight) {
         const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
 
         const sampleGroups = flattened
@@ -287,9 +283,6 @@ export default class SampleView extends ContainerView {
             { spacing: 5, reverse: true }
         );
 
-        /** @param {number} size */
-        const getSamplePadding = size => size * 0.1 * smoothstep(15, 22, size);
-
         /** @type {{ sampleId: string, location: LocSize }[]} */
         const sampleLocations = [];
 
@@ -303,16 +296,9 @@ export default class SampleView extends ContainerView {
                     reverse: true
                 }
             ).forEach((location, i) => {
-                const padding = getSamplePadding(location.size) / canvasHeight;
                 sampleLocations.push({
                     sampleId: samples[i],
-                    location: {
-                        location:
-                            (location.location + heightOffset) /
-                                viewportHeight +
-                            padding,
-                        size: location.size / viewportHeight - 2 * padding
-                    }
+                    location: new SampleLocationWrapper(location, this)
                 });
             });
         }
@@ -345,8 +331,7 @@ export default class SampleView extends ContainerView {
             this.child.render(context, coords, {
                 ...options,
                 sampleFacetRenderingOptions: {
-                    pos: sampleLocation.location.location,
-                    height: sampleLocation.location.size
+                    locSize: sampleLocation.location
                 },
                 facetId: sampleLocation.sampleId
             });
@@ -501,4 +486,35 @@ function processSamples(flatSamples) {
         indexNumber: i,
         attributes: extractAttributes(d)
     }));
+}
+
+class SampleLocationWrapper {
+    /**
+     *
+     * @param {LocSize} locSize
+     * @param {SampleView} context
+     */
+    constructor(locSize, context) {
+        this.locSize = locSize;
+        this.context = context;
+    }
+
+    get padding() {
+        const size = this.locSize.size;
+        // TODO: The magic numbers could be configurable
+        return size * 0.1 * smoothstep(15, 22, size);
+    }
+
+    get location() {
+        return (
+            (this.locSize.location + this.padding + this.context._offset) /
+            this.context._coords.height
+        );
+    }
+
+    get size() {
+        return (
+            (this.locSize.size - 2 * this.padding) / this.context._coords.height
+        );
+    }
 }

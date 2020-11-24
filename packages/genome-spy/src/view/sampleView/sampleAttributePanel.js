@@ -119,8 +119,7 @@ export class SampleAttributePanel extends ConcatView {
             super.render(context, coords, {
                 ...options,
                 sampleFacetRenderingOptions: {
-                    pos: sampleLocation.location.location,
-                    height: sampleLocation.location.size
+                    locSize: sampleLocation.location
                 },
                 facetId: sampleLocation.sampleId
             });

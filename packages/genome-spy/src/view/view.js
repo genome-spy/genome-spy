@@ -19,10 +19,12 @@ export const VISIT_SKIP = "VISIT_SKIP";
 export const VISIT_STOP = "VISIT_STOP";
 
 /**
- * @typedef { import("./viewUtils").ViewSpec } ViewSpec
- * @typedef { import("./viewUtils").EncodingConfig } EncodingConfig
- * @typedef { import("./viewUtils").ViewContext} ViewContext
- * @typedef { import("../utils/layout/flexLayout").SizeDef} SizeDef
+ * @typedef {import("./viewUtils").ViewSpec} ViewSpec
+ * @typedef {import("./viewUtils").EncodingConfig} EncodingConfig
+ * @typedef {import("./viewUtils").ViewContext} ViewContext
+ * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
+ * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
+ *
  *
  * @typedef {object} BroadcastMessage
  * @prop {string} type Broadcast type
@@ -31,10 +33,8 @@ export const VISIT_STOP = "VISIT_STOP";
  * @typedef {object} SampleFacetRenderingOptions Describes the location of
  *      a sample facet. Left is the primary pos, right is for transitioning
  *      between two sets of samples.
- * @prop {number} pos Position on unit scale
- * @prop {number} height Height on unit scale
- * @prop {number} [targetPos] Target position (during transition)
- * @prop {number} [targetHeight] Target height (during transition)
+ * @prop {LocSize} locSize location and height on unit scale
+ * @prop {LocSize} [targetLocSize] Target (during transition)
  *
  * @typedef {object} RenderingOptions
  * @prop {any} [facetId] Which facet to render (if faceting is being used)

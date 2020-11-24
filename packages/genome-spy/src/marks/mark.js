@@ -383,17 +383,20 @@ export default class Mark {
     prepareSampleFacetRendering(options) {
         if (options.sampleFacetRenderingOptions) {
             const opts = options.sampleFacetRenderingOptions;
-            const pos = isNumber(opts.pos) ? opts.pos : 0.0;
-            const height = isNumber(opts.height) ? opts.height : 1.0;
+
+            const pos = opts.locSize ? opts.locSize.location : 0.0;
+            const height = opts.locSize ? opts.locSize.size : 1.0;
 
             if (pos > 1.0 || pos + height < 0.0) {
                 // Not visible
                 return false;
             }
 
-            const targetPos = isNumber(opts.targetPos) ? opts.targetPos : pos;
-            const targetHeight = isNumber(opts.targetHeight)
-                ? opts.targetHeight
+            const targetPos = opts.targetLocSize
+                ? opts.targetLocSize.location
+                : pos;
+            const targetHeight = opts.targetLocSize
+                ? opts.targetLocSize.size
                 : height;
 
             // Use WebGL directly, because twgl uses gl.uniform4fv, which has an
