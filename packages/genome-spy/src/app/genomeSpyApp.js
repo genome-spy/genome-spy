@@ -7,7 +7,8 @@ import { html, render } from "lit-html";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faInfoCircle,
-    faQuestionCircle
+    faQuestionCircle,
+    faArrowsAltV
 } from "@fortawesome/free-solid-svg-icons";
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";

@@ -13,7 +13,7 @@ bool isFacetedSamples() {
 }
 
 bool isInTransit() {
-    return uSampleFacet.xy != uSampleFacet.zw;
+    return uTransitionOffset > 0.0 && uSampleFacet.xy != uSampleFacet.zw;
 }
 
 float getTransitionFraction(float xPos) {

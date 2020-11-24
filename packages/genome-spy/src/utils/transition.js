@@ -8,7 +8,7 @@
  * @prop {number} [from]
  * @prop {number} [to]
  * @prop {number} [duration] in milliseconds
- * @prop {function} onUpdate
+ * @prop {function(number):void} onUpdate
  * @prop {function} [easingFunction]
  */
 export default function transition(options) {

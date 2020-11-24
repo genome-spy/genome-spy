@@ -13,6 +13,7 @@ import { formatLocus } from "../../genome/locusFormat";
 import Padding from "../../utils/layout/padding";
 import smoothstep from "../../utils/smoothstep";
 import { getCachedOrCall } from "../../utils/propertyCacher";
+import transition from "../../utils/transition";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -23,6 +24,7 @@ const SPACING = 10;
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
  *
+ * @typedef {import("../../sampleHandler/sampleState").Group} Group
  * @typedef {import("../../utils/layout/flexLayout").LocSize} LocSize
  * @typedef {import("../view").default} View
  * @typedef {import("../layerView").default} LayerView
@@ -41,6 +43,9 @@ const SPACING = 10;
  * @prop {string} field
  * @prop {number | ChromosomalLocus} locus Locus on the domain
  *
+ * @typedef {object} SampleLocation
+ * @prop {string} sampleId
+ * @prop {LocSize} location
  */
 export default class SampleView extends ContainerView {
     /**
@@ -74,7 +79,7 @@ export default class SampleView extends ContainerView {
 
         this.child.addEventListener(
             "contextmenu",
-            this.handleContextMenu.bind(this)
+            this._handleContextMenu.bind(this)
         );
 
         this.sampleHandler.addAttributeInfoSource(VALUE_AT_LOCUS, attribute => {
@@ -127,6 +132,7 @@ export default class SampleView extends ContainerView {
         });
 
         this._offset = 0;
+        this._peekState = 0; // [0, 1]
 
         this.addEventListener(
             "wheel",
@@ -151,6 +157,14 @@ export default class SampleView extends ContainerView {
             },
             true
         );
+
+        // TODO: Remove when appropriate
+        // TODO: More centralized management
+        document.addEventListener("keydown", event => {
+            if (event.code == "KeyZ") {
+                this._togglePeek();
+            }
+        });
     }
 
     getEffectivePadding() {
@@ -253,57 +267,53 @@ export default class SampleView extends ContainerView {
 
     getSampleLocations() {
         if (!this._sampleLocations) {
-            this._sampleLocations = this._calculateSampleLocations(
-                this._coords.height
-            );
-        }
-        return this._sampleLocations;
-    }
+            const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
 
-    /**
-     *
-     * @param {number} canvasHeight Height reserved for all the samples (in pixels)
-     */
-    _calculateSampleLocations(canvasHeight) {
-        const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
-
-        const sampleGroups = flattened
-            .map(
-                group =>
-                    /** @type {import("../../sampleHandler/sampleHandler").SampleGroup} */ (peek(
-                        group
-                    )).samples
-            )
-            // Skip empty groups
-            .filter(samples => samples.length);
-
-        const groupLocations = mapToPixelCoords(
-            sampleGroups.map(group => ({ grow: group.length })),
-            canvasHeight,
-            { spacing: 5, reverse: true }
-        );
-
-        /** @type {{ sampleId: string, location: LocSize }[]} */
-        const sampleLocations = [];
-
-        for (const [gi, samples] of sampleGroups.entries()) {
-            const sizeDef = { grow: 1 };
-            mapToPixelCoords(
-                samples.map(d => sizeDef),
-                groupLocations[gi].size,
-                {
-                    offset: groupLocations[gi].location,
-                    reverse: true
-                }
-            ).forEach((location, i) => {
-                sampleLocations.push({
-                    sampleId: samples[i],
-                    location: new SampleLocationWrapper(location, this)
-                });
+            const fittedLocations = calculateSampleLocations(flattened, {
+                canvasHeight: this._coords.height
             });
+
+            const scrollableLocations = calculateSampleLocations(flattened, {
+                sampleHeight: 35 // TODO: Configurable
+            });
+
+            /** @type {ScrollingContext} */
+            const staticContext = {
+                getViewportHeight: () => this._coords.height,
+                getOffset: () => 0
+            };
+
+            /** @type {ScrollingContext} */
+            const scrollingContext = {
+                getViewportHeight: () => this._coords.height,
+                getOffset: () => this._offset
+            };
+
+            const ratioSource = () => this._peekState;
+
+            /** @type {SampleLocation[]} */
+            const locations = [];
+            for (let i = 0; i < fittedLocations.length; i++) {
+                locations.push({
+                    sampleId: fittedLocations[i].sampleId,
+                    location: new TransitioningSampleLocationWrapper(
+                        new ScrollableSampleLocationWrapper(
+                            fittedLocations[i].location,
+                            staticContext
+                        ),
+                        new ScrollableSampleLocationWrapper(
+                            scrollableLocations[i].location,
+                            scrollingContext
+                        ),
+                        ratioSource
+                    )
+                });
+            }
+
+            this._sampleLocations = locations;
         }
 
-        return sampleLocations;
+        return this._sampleLocations;
     }
 
     /**
@@ -311,6 +321,7 @@ export default class SampleView extends ContainerView {
      * @param {number} pos Coordinate on unit scale
      */
     getSampleIdAt(pos) {
+        // TODO: Matching should be done without paddings
         const match = this.getSampleLocations().find(
             sl =>
                 pos >= sl.location.location &&
@@ -371,11 +382,28 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     *
+     */
+    _togglePeek() {
+        const newState = this._peekState ? 0 : 1;
+
+        transition({
+            from: this._peekState,
+            to: newState,
+            duration: 350,
+            onUpdate: value => {
+                this._peekState = value;
+                this.context.animator.requestRender();
+            }
+        });
+    }
+
+    /**
      * @param {import("../../utils/layout/rectangle").default} coords
      *      Coordinates of the view
      * @param {import("../../utils/interactionEvent").default} event
      */
-    handleContextMenu(coords, event) {
+    _handleContextMenu(coords, event) {
         // TODO: Allow for registering listeners
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
 
@@ -488,33 +516,144 @@ function processSamples(flatSamples) {
     }));
 }
 
-class SampleLocationWrapper {
+/**
+ * Allows from transitioning between two sample locations.
+ */
+class TransitioningSampleLocationWrapper {
+    /**
+     *
+     * @param {LocSize} from
+     * @param {LocSize} to
+     * @param {function():number} ratioSource
+     */
+    constructor(from, to, ratioSource) {
+        this.from = from;
+        this.to = to;
+        this.ratioSource = ratioSource;
+    }
+
+    get location() {
+        const ratio = this.ratioSource();
+        switch (ratio) {
+            case 0:
+                return this.from.location;
+            case 1:
+                return this.to.location;
+            default:
+                return (
+                    ratio * this.to.location + (1 - ratio) * this.from.location
+                );
+        }
+    }
+
+    get size() {
+        const ratio = this.ratioSource();
+        switch (ratio) {
+            case 0:
+                return this.from.size;
+            case 1:
+                return this.to.size;
+            default:
+                return ratio * this.to.size + (1 - ratio) * this.from.size;
+        }
+    }
+}
+
+/**
+ * Wraps a LocSize, converts it into unit range, and allows scrolling by
+ * summing an offset to all locations.
+ *
+ * @typedef {object} ScrollingContext
+ * @prop {function():number} getViewportHeight
+ * @prop {function():number} getOffset Returns the scroll offset
+ */
+class ScrollableSampleLocationWrapper {
     /**
      *
      * @param {LocSize} locSize
-     * @param {SampleView} context
+     * @param {ScrollingContext} context
      */
     constructor(locSize, context) {
         this.locSize = locSize;
         this.context = context;
-    }
 
-    get padding() {
         const size = this.locSize.size;
-        // TODO: The magic numbers could be configurable
-        return size * 0.1 * smoothstep(15, 22, size);
+        // TODO: These magic numbers could be configurable
+        this.padding = size * 0.1 * smoothstep(15, 22, size);
     }
 
     get location() {
         return (
-            (this.locSize.location + this.padding + this.context._offset) /
-            this.context._coords.height
+            (this.locSize.location + this.padding + this.context.getOffset()) /
+            this.context.getViewportHeight()
         );
     }
 
     get size() {
         return (
-            (this.locSize.size - 2 * this.padding) / this.context._coords.height
+            (this.locSize.size - 2 * this.padding) /
+            this.context.getViewportHeight()
         );
     }
+}
+
+/**
+ * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
+ * @param {object} object All measures are in pixels
+ * @param {number} [object.canvasHeight] Height reserved for all the samples
+ * @param {number} [object.sampleHeight] Height of single sample
+ * @param {number} [object.groupSpacing] Space between groups
+ *
+ * @returns {SampleLocation[]}
+ */
+function calculateSampleLocations(
+    flattenedGroupHierarchy,
+    { canvasHeight, sampleHeight, groupSpacing } = { groupSpacing: 5 }
+) {
+    if (!canvasHeight && !sampleHeight) {
+        throw new Error("canvasHeight or sampleHeight must be provided!");
+    }
+
+    const sampleGroups = flattenedGroupHierarchy
+        .map(
+            group =>
+                /** @type {import("../../sampleHandler/sampleHandler").SampleGroup} */ (peek(
+                    group
+                )).samples
+        )
+        // Skip empty groups
+        .filter(samples => samples.length);
+
+    /** @type {function(string[]):import("../../utils/layout/flexLayout").SizeDef} */
+    const sizeDefGenerator = sampleHeight
+        ? group => ({ px: group.length * sampleHeight })
+        : group => ({ grow: group.length });
+
+    const groupLocations = mapToPixelCoords(
+        sampleGroups.map(sizeDefGenerator),
+        canvasHeight,
+        { spacing: groupSpacing, reverse: true }
+    );
+
+    /** @type {{ sampleId: string, location: LocSize }[]} */
+    const sampleLocations = [];
+
+    for (const [gi, samples] of sampleGroups.entries()) {
+        const sizeDef = { grow: 1 };
+        mapToPixelCoords(
+            samples.map(d => sizeDef),
+            groupLocations[gi].size,
+            {
+                offset: groupLocations[gi].location,
+                reverse: true
+            }
+        ).forEach((location, i) => {
+            sampleLocations.push({
+                sampleId: samples[i],
+                location
+            });
+        });
+    }
+
+    return sampleLocations;
 }
