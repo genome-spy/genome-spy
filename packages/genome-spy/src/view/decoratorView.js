@@ -3,6 +3,7 @@ import AxisView from "./axisView";
 import { getFlattenedViews } from "./viewUtils";
 import Padding from "../utils/layout/padding";
 import { FlexDimensions } from "../utils/layout/flexLayout";
+import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
  * TODO: Move these somewhere for common use
@@ -111,15 +112,17 @@ export default class DecoratorView extends ContainerView {
     }
 
     _getAxisExtents() {
-        /** @type {Record<AxisOrient, number>} */
-        // @ts-ignore
-        const paddings = {};
-        for (const view of Object.values(this.axisViews)) {
-            if (view) {
-                paddings[view.getOrient()] = view.getPerpendicularSize();
+        return getCachedOrCall(this, "size/axisExtents", () => {
+            /** @type {Record<AxisOrient, number>} */
+            // @ts-ignore
+            const paddings = {};
+            for (const view of Object.values(this.axisViews)) {
+                if (view) {
+                    paddings[view.getOrient()] = view.getPerpendicularSize();
+                }
             }
-        }
-        return Padding.createFromRecord(paddings);
+            return Padding.createFromRecord(paddings);
+        });
     }
 
     _getAxisOffsets() {
@@ -136,19 +139,26 @@ export default class DecoratorView extends ContainerView {
 
     getEffectivePadding() {
         // TODO: Handle negative axis extents
-        return this.getPadding().add(this._getAxisExtents());
+        return getCachedOrCall(this, "size/effectivePadding", () =>
+            this.getPadding().add(this._getAxisExtents())
+        );
     }
 
     getSize() {
-        const size = super.getSize();
-        const padding = this.getAxisSizes();
-        return new FlexDimensions(
-            { grow: size.width.grow, px: (size.width.px || 0) + padding.width },
-            {
-                grow: size.height.grow,
-                px: (size.height.px || 0) + padding.height
-            }
-        );
+        return getCachedOrCall(this, "size", () => {
+            const size = this.getSizeFromSpec().addPadding(this.getPadding());
+            const padding = this.getAxisSizes();
+            return new FlexDimensions(
+                {
+                    grow: size.width.grow,
+                    px: (size.width.px || 0) + padding.width
+                },
+                {
+                    grow: size.height.grow,
+                    px: (size.height.px || 0) + padding.height
+                }
+            );
+        });
     }
 
     /**
@@ -159,7 +169,9 @@ export default class DecoratorView extends ContainerView {
      */
     getAxisSizes() {
         // TODO: Clamp negative sizes (if axes are positioned entirely onto the plots)
-        return this._getAxisExtents().add(this._getAxisOffsets());
+        return getCachedOrCall(this, "size/axisSizes", () =>
+            this._getAxisExtents().add(this._getAxisOffsets())
+        );
     }
 
     /**

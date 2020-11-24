@@ -12,6 +12,7 @@ import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
 import Padding from "../../utils/layout/padding";
 import smoothstep from "../../utils/smoothstep";
+import { getCachedOrCall } from "../../utils/propertyCacher";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -153,19 +154,21 @@ export default class SampleView extends ContainerView {
     }
 
     getEffectivePadding() {
-        const childEffPad = this.child.getEffectivePadding();
+        return getCachedOrCall(this, "size/effectivePadding", () => {
+            const childEffPad = this.child.getEffectivePadding();
 
-        // TODO: Top / bottom axes
-        return this.getPadding().add(
-            new Padding(
-                0,
-                childEffPad.right,
-                0,
-                this.attributeView.getSize().width.px +
-                    SPACING +
-                    childEffPad.left
-            )
-        );
+            // TODO: Top / bottom axes
+            return this.getPadding().add(
+                new Padding(
+                    0,
+                    childEffPad.right,
+                    0,
+                    this.attributeView.getSize().width.px +
+                        SPACING +
+                        childEffPad.left
+                )
+            );
+        });
     }
 
     /**

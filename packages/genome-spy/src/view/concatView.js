@@ -9,6 +9,7 @@ import {
 import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { peek } from "../utils/arrayUtils";
+import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -53,71 +54,81 @@ export default class ConcatView extends ContainerView {
     }
 
     _getFlexSizeDefs() {
-        return this.children.map(view => view.getSize()[this.mainDimension]);
+        return getCachedOrCall(this, "size/flexSizeDefs", () =>
+            this.children.map(view => view.getSize()[this.mainDimension])
+        );
     }
 
     _getEffectiveChildPaddings() {
-        return this.children
-            .map(view => view.getEffectivePadding())
-            .map(padding =>
-                this.mainDimension == "height"
-                    ? [padding.left, padding.right]
-                    : [padding.top, padding.bottom]
-            );
+        return getCachedOrCall(this, "size/effectiveChildPaddings", () =>
+            this.children
+                .map(view => view.getEffectivePadding())
+                .map(padding =>
+                    this.mainDimension == "height"
+                        ? [padding.left, padding.right]
+                        : [padding.top, padding.bottom]
+                )
+        );
     }
 
     getEffectivePadding() {
-        if (!this.children.length) {
-            return this.getPadding();
-        }
+        return getCachedOrCall(this, "size/effectivePadding", () => {
+            if (!this.children.length) {
+                return this.getPadding();
+            }
 
-        // Max paddings along the secondary dimension
-        const maxPaddings = getMaxEffectivePaddings(
-            this._getEffectiveChildPaddings()
-        );
+            // Max paddings along the secondary dimension
+            const maxPaddings = getMaxEffectivePaddings(
+                this._getEffectiveChildPaddings()
+            );
 
-        const effectiveChildPadding =
-            this.mainDimension == "height"
-                ? new Padding(
-                      this.children[0].getEffectivePadding().top,
-                      maxPaddings[1],
-                      peek(this.children).getEffectivePadding().bottom,
-                      maxPaddings[0]
-                  )
-                : new Padding(
-                      maxPaddings[0],
-                      this.children[0].getEffectivePadding().left,
-                      maxPaddings[1],
-                      peek(this.children).getEffectivePadding().right
-                  );
+            const effectiveChildPadding =
+                this.mainDimension == "height"
+                    ? new Padding(
+                          this.children[0].getEffectivePadding().top,
+                          maxPaddings[1],
+                          peek(this.children).getEffectivePadding().bottom,
+                          maxPaddings[0]
+                      )
+                    : new Padding(
+                          maxPaddings[0],
+                          this.children[0].getEffectivePadding().left,
+                          maxPaddings[1],
+                          peek(this.children).getEffectivePadding().right
+                      );
 
-        return this.getPadding().add(effectiveChildPadding);
+            return this.getPadding().add(effectiveChildPadding);
+        });
     }
 
     getSize() {
-        /** @type {SizeDef} */
-        let mainSizeDef;
-        if (this.spec[this.mainDimension]) {
-            mainSizeDef = parseSizeDef(this.spec[this.mainDimension]);
-        } else {
-            const childMainSizeDefs = this._getFlexSizeDefs();
-            mainSizeDef = {
-                // Grows are summed to support sensible nesting of concatViews
-                grow: childMainSizeDefs
-                    .map(sizeDef => +sizeDef.grow)
-                    .reduce((a, b) => a + b, 0),
-                px: getMinimumSize(childMainSizeDefs, {
-                    spacing: this.spec.spacing
-                })
+        return getCachedOrCall(this, "size", () => {
+            /** @type {SizeDef} */
+            let mainSizeDef;
+            if (this.spec[this.mainDimension]) {
+                mainSizeDef = parseSizeDef(this.spec[this.mainDimension]);
+            } else {
+                const childMainSizeDefs = this._getFlexSizeDefs();
+                mainSizeDef = {
+                    // Grows are summed to support sensible nesting of concatViews
+                    grow: childMainSizeDefs
+                        .map(sizeDef => +sizeDef.grow)
+                        .reduce((a, b) => a + b, 0),
+                    px: getMinimumSize(childMainSizeDefs, {
+                        spacing: this.spec.spacing
+                    })
+                };
+            }
+
+            const secondarySizeDef = (this.spec[this.secondaryDimension] &&
+                parseSizeDef(this.spec[this.secondaryDimension])) || {
+                grow: 1
             };
-        }
 
-        const secondarySizeDef = (this.spec[this.secondaryDimension] &&
-            parseSizeDef(this.spec[this.secondaryDimension])) || { grow: 1 };
-
-        return this.mainDimension == "height"
-            ? new FlexDimensions(secondarySizeDef, mainSizeDef)
-            : new FlexDimensions(mainSizeDef, secondarySizeDef);
+            return this.mainDimension == "height"
+                ? new FlexDimensions(secondarySizeDef, mainSizeDef)
+                : new FlexDimensions(mainSizeDef, secondarySizeDef);
+        });
     }
 
     /**

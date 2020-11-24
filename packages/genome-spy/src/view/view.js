@@ -104,14 +104,25 @@ export default class View {
      * @returns {FlexDimensions}
      */
     getSize() {
-        return new FlexDimensions(
-            (this.spec.width && parseSizeDef(this.spec.width)) || {
-                grow: 1
-            },
-            (this.spec.height && parseSizeDef(this.spec.height)) || {
-                grow: 1
-            }
-        ).addPadding(this.getPadding());
+        return getCachedOrCall(this, "size", () =>
+            this.getSizeFromSpec().addPadding(this.getPadding())
+        );
+    }
+
+    getSizeFromSpec() {
+        return getCachedOrCall(
+            this,
+            "size/sizeFromSpec",
+            () =>
+                new FlexDimensions(
+                    (this.spec.width && parseSizeDef(this.spec.width)) || {
+                        grow: 1
+                    },
+                    (this.spec.height && parseSizeDef(this.spec.height)) || {
+                        grow: 1
+                    }
+                )
+        );
     }
 
     getPathString() {
