@@ -1,5 +1,3 @@
-import { scaleLinear } from "d3-scale";
-
 /**
  *
  * TODO: Implement AbortController: https://developer.mozilla.org/en-US/docs/Web/API/AbortController
@@ -7,12 +5,13 @@ import { scaleLinear } from "d3-scale";
  * @param {TransitionOptions} options
  *
  * @typedef {Object} TransitionOptions
- * @prop {number} [from]
- * @prop {number} [to]
- * @prop {number} [duration] in milliseconds
+ * @prop {number} [from] default: 0
+ * @prop {number} [to] default: 1
+ * @prop {number} [duration] in milliseconds, default: 1000
  * @prop {function(number):void} onUpdate
- * @prop {function(number):number} [easingFunction]
+ * @prop {function(number):number} [easingFunction] default: linear
  * @prop {function(function(number):void):void} [requestAnimationFrame]
+ *      default: window.requestAnimationFrame
  */
 export default function transition(options) {
     const requestAnimationFrame =
@@ -26,19 +25,24 @@ export default function transition(options) {
         const to = typeof options.to == "number" ? options.to : 1;
         const ease = options.easingFunction || (x => x);
 
-        const scale = scaleLinear()
-            .domain([beginTimestamp, endTimestamp])
-            .range([from, to])
-            .clamp(true);
+        /** @param {number} x */
+        const toUnit = x =>
+            (x - beginTimestamp) / (endTimestamp - beginTimestamp);
+
+        /** @param {number} x */
+        const toRange = x => x * (to - from) + from;
+
+        /** @param {number} x */
+        const clamp = x => Math.max(0, Math.min(1, x));
 
         /** @param {number} stamp */
         const step = stamp => {
-            options.onUpdate(ease(scale(stamp)));
+            options.onUpdate(toRange(ease(clamp(toUnit(stamp)))));
 
             if (stamp < endTimestamp) {
                 requestAnimationFrame(step);
             } else {
-                options.onUpdate(to);
+                options.onUpdate(toRange(ease(1)));
                 resolve();
             }
         };

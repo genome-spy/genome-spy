@@ -14,7 +14,8 @@ import Padding from "../../utils/layout/padding";
 import smoothstep from "../../utils/smoothstep";
 import { getCachedOrCall } from "../../utils/propertyCacher";
 import transition from "../../utils/transition";
-import { easeCubicIn, easeExpOut } from "d3-ease";
+import { easeCubicOut, easeExpOut } from "d3-ease";
+import clamp from "../../utils/clamp";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -72,6 +73,7 @@ export default class SampleView extends ContainerView {
         this.sampleHandler = new SampleHandler();
 
         this.sampleHandler.provenance.addListener(() => {
+            // TODO: Scroll offset should be handled
             this.context.genomeSpy.computeLayout();
             this.context.animator.requestRender();
         });
@@ -133,16 +135,32 @@ export default class SampleView extends ContainerView {
         });
 
         this._scrollOffset = 0;
+        this._scrollableHeight = 1;
         this._peekState = 0; // [0, 1]
+
+        /** @type {number} On unit scale. Recorded so that peek can be offset correctly */
+        this._lastMouseY = 0.5;
+
+        this.addEventListener("mousemove", (coords, event) => {
+            // TODO: Should be reset to undefined on mouseout
+            this._lastMouseY = coords.normalizePoint(
+                event.point.x,
+                event.point.y
+            ).y;
+        });
 
         this.addEventListener(
             "wheel",
             (coords, event) => {
                 const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
                 if (wheelEvent.shiftKey) {
-                    this._scrollOffset += wheelEvent.deltaY;
+                    this._scrollOffset = clamp(
+                        this._scrollOffset +
+                            wheelEvent.deltaY / this._coords.height,
+                        1 - this._scrollableHeight,
+                        0
+                    );
 
-                    //this.context.genomeSpy.computeLayout();
                     this.context.animator.requestRender();
 
                     // Replace the uiEvent to prevent decoratorView from zooming.
@@ -161,9 +179,15 @@ export default class SampleView extends ContainerView {
 
         // TODO: Remove when appropriate
         // TODO: More centralized management
+        // TODO: Check that the mouse pointer is inside the view (or inside the app instance)
         document.addEventListener("keydown", event => {
-            if (event.code == "KeyZ") {
+            if (event.code == "KeyE" && !event.repeat) {
                 this._togglePeek();
+            }
+        });
+        document.addEventListener("keyup", event => {
+            if (event.code == "KeyE") {
+                this._togglePeek(false);
             }
         });
     }
@@ -269,42 +293,45 @@ export default class SampleView extends ContainerView {
     getSampleLocations() {
         if (!this._sampleLocations) {
             const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
+            const viewportHeight = this._coords.height;
 
-            const fittedLocations = calculateSampleLocations(flattened, {
-                canvasHeight: this._coords.height
-            });
+            const fittedLocations = calculateSampleLocations(
+                flattened,
+                viewportHeight,
+                {
+                    canvasHeight: this._coords.height
+                }
+            );
 
-            const scrollableLocations = calculateSampleLocations(flattened, {
-                sampleHeight: 35 // TODO: Configurable
-            });
+            const scrollableLocations = calculateSampleLocations(
+                flattened,
+                viewportHeight,
+                {
+                    sampleHeight: 35 // TODO: Configurable
+                }
+            );
 
-            /** @type {ScrollingContext} */
-            const staticContext = {
-                getViewportHeight: () => this._coords.height,
-                getOffset: () => 0
-            };
-
-            /** @type {ScrollingContext} */
-            const scrollingContext = {
-                getViewportHeight: () => this._coords.height,
-                getOffset: () => this._scrollOffset
-            };
-
+            const offsetSource = () => this._scrollOffset;
             const ratioSource = () => this._peekState;
+
+            /** Store for scroll offset computation when peek fires */
+            this._scrollableSampleLocations = scrollableLocations;
+            this._scrollableHeight = scrollableLocations
+                .map(d => d.location.location + d.location.size)
+                .reduce((a, b) => Math.max(a, b));
 
             /** @type {SampleLocation[]} */
             const locations = [];
+
             for (let i = 0; i < fittedLocations.length; i++) {
+                const sampleId = fittedLocations[i].sampleId;
                 locations.push({
-                    sampleId: fittedLocations[i].sampleId,
+                    sampleId,
                     location: new TransitioningSampleLocationWrapper(
-                        new ScrollableSampleLocationWrapper(
-                            fittedLocations[i].location,
-                            staticContext
-                        ),
+                        fittedLocations[i].location,
                         new ScrollableSampleLocationWrapper(
                             scrollableLocations[i].location,
-                            scrollingContext
+                            offsetSource
                         ),
                         ratioSource
                     )
@@ -322,12 +349,7 @@ export default class SampleView extends ContainerView {
      * @param {number} pos Coordinate on unit scale
      */
     getSampleIdAt(pos) {
-        // TODO: Matching should be done without paddings
-        const match = this.getSampleLocations().find(
-            sl =>
-                pos >= sl.location.location &&
-                pos < sl.location.location + sl.location.size
-        );
+        const match = getSampleLocationAt(pos, this.getSampleLocations());
         if (match) {
             return match.sampleId;
         }
@@ -383,38 +405,81 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     *
+     * @param {boolean} [open] open if true, close if false, toggle if undefined
      */
-    _togglePeek() {
+    _togglePeek(open) {
         if (this._peekState > 0 && this._peekState < 1) {
             // Transition is going on
             return;
         }
 
-        const props =
-            this._peekState == 0
-                ? {
-                      from: this._peekState,
-                      to: 1,
-                      duration: 500,
-                      easingFunction: easeExpOut
-                  }
-                : {
-                      from: this._peekState,
-                      to: 0,
-                      duration: 400,
-                      easingFunction: easeCubicIn
-                  };
+        if (open !== undefined && open == !!this._peekState) {
+            return;
+        }
 
-        transition({
-            ...props,
+        /** @type {import("../../utils/transition").TransitionOptions} */
+        const props = {
             requestAnimationFrame: callback =>
                 this.context.animator.requestTransition(callback),
             onUpdate: value => {
                 this._peekState = Math.pow(value, 2);
                 this.context.animator.requestRender();
+            },
+            from: this._peekState
+        };
+
+        if (this._peekState == 0) {
+            const mouseY = 1 - this._lastMouseY;
+
+            const sampleId = this.getSampleIdAt(mouseY);
+
+            if (sampleId) {
+                /** @param {LocSize} locSize */
+                const getCentroid = locSize =>
+                    locSize.location + locSize.size / 2;
+
+                const target = getCentroid(
+                    this._scrollableSampleLocations.find(
+                        sampleLocation => sampleLocation.sampleId == sampleId
+                    ).location
+                );
+                this._scrollOffset = mouseY - target;
+            } else {
+                this._scrollOffset = (1 - this._scrollableHeight) / 2;
             }
-        });
+
+            // Dimensions are on unit scale
+
+            if (this._scrollableHeight > 1) {
+                transition({
+                    ...props,
+                    to: 1,
+                    duration: 500,
+                    easingFunction: easeExpOut
+                });
+            } else {
+                // No point to zoom out in peek. Indicate the request registration and
+                // refusal with a discrete animation.
+
+                /** @param {number} x */
+                const bounce = x => (1 - Math.pow(x * 2 - 1, 2)) * 0.5;
+
+                transition({
+                    ...props,
+                    from: 0,
+                    to: 1,
+                    duration: 300,
+                    easingFunction: bounce
+                });
+            }
+        } else {
+            transition({
+                ...props,
+                to: 0,
+                duration: 400,
+                easingFunction: easeCubicOut
+            });
+        }
     }
 
     /**
@@ -579,45 +644,31 @@ class TransitioningSampleLocationWrapper {
 }
 
 /**
- * Wraps a LocSize, converts it into unit range, and allows scrolling by
- * summing an offset to all locations.
- *
- * @typedef {object} ScrollingContext
- * @prop {function():number} getViewportHeight
- * @prop {function():number} getOffset Returns the scroll offset
+ * Wraps a LocSize, and allows scrolling by summing an offset to the location.
  */
 class ScrollableSampleLocationWrapper {
     /**
      *
      * @param {LocSize} locSize
-     * @param {ScrollingContext} context
+     * @param {function():number} offsetSource
      */
-    constructor(locSize, context) {
+    constructor(locSize, offsetSource) {
         this.locSize = locSize;
-        this.context = context;
-
-        const size = this.locSize.size;
-        // TODO: These magic numbers could be configurable
-        this.padding = size * 0.1 * smoothstep(15, 22, size);
+        this.offsetSource = offsetSource;
     }
 
     get location() {
-        return (
-            (this.locSize.location + this.padding + this.context.getOffset()) /
-            this.context.getViewportHeight()
-        );
+        return this.locSize.location + this.offsetSource();
     }
 
     get size() {
-        return (
-            (this.locSize.size - 2 * this.padding) /
-            this.context.getViewportHeight()
-        );
+        return this.locSize.size;
     }
 }
 
 /**
  * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
+ * @param {number} viewportHeight
  * @param {object} object All measures are in pixels
  * @param {number} [object.canvasHeight] Height reserved for all the samples
  * @param {number} [object.sampleHeight] Height of single sample
@@ -627,6 +678,7 @@ class ScrollableSampleLocationWrapper {
  */
 function calculateSampleLocations(
     flattenedGroupHierarchy,
+    viewportHeight,
     { canvasHeight, sampleHeight, groupSpacing } = { groupSpacing: 5 }
 ) {
     if (!canvasHeight && !sampleHeight) {
@@ -666,13 +718,35 @@ function calculateSampleLocations(
                 offset: groupLocations[gi].location,
                 reverse: true
             }
-        ).forEach((location, i) => {
+        ).forEach((locSize, i) => {
+            const { size, location } = locSize;
+
+            // TODO: Make padding configurable
+            const padding = size * 0.1 * smoothstep(15, 22, size);
+
+            locSize.location = (location + padding) / viewportHeight;
+            locSize.size = (size - 2 * padding) / viewportHeight;
+
             sampleLocations.push({
                 sampleId: samples[i],
-                location
+                location: locSize
             });
         });
     }
 
     return sampleLocations;
+}
+
+/**
+ *
+ * @param {number} pos Coordinate on unit scale
+ * @param {SampleLocation[]} [sampleLocations]
+ */
+function getSampleLocationAt(pos, sampleLocations) {
+    // TODO: Matching should be done without paddings
+    return sampleLocations.find(
+        sl =>
+            pos >= sl.location.location &&
+            pos < sl.location.location + sl.location.size
+    );
 }
