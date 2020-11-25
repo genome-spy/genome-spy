@@ -299,7 +299,8 @@ export default class SampleView extends ContainerView {
                 flattened,
                 viewportHeight,
                 {
-                    canvasHeight: this._coords.height
+                    canvasHeight: this._coords.height,
+                    groupSpacing: 5
                 }
             );
 
@@ -307,7 +308,8 @@ export default class SampleView extends ContainerView {
                 flattened,
                 viewportHeight,
                 {
-                    sampleHeight: 35 // TODO: Configurable
+                    sampleHeight: 35, // TODO: Configurable
+                    groupSpacing: 15
                 }
             );
 
@@ -445,6 +447,7 @@ export default class SampleView extends ContainerView {
                 );
                 this._scrollOffset = mouseY - target;
             } else {
+                // TODO: Find closest sample instead
                 this._scrollOffset = (1 - this._scrollableHeight) / 2;
             }
 
@@ -679,7 +682,7 @@ class ScrollableSampleLocationWrapper {
 function calculateSampleLocations(
     flattenedGroupHierarchy,
     viewportHeight,
-    { canvasHeight, sampleHeight, groupSpacing } = { groupSpacing: 5 }
+    { canvasHeight, sampleHeight, groupSpacing = 5 }
 ) {
     if (!canvasHeight && !sampleHeight) {
         throw new Error("canvasHeight or sampleHeight must be provided!");
@@ -702,7 +705,7 @@ function calculateSampleLocations(
 
     const groupLocations = mapToPixelCoords(
         sampleGroups.map(sizeDefGenerator),
-        canvasHeight,
+        canvasHeight || 0,
         { spacing: groupSpacing, reverse: true }
     );
 

@@ -56,20 +56,22 @@ export function mapToPixelCoords(
     /** @type {LocSize[]} */
     const results = [];
 
-    let x = reverse ? containerSize : 0;
+    let x = reverse ? Math.max(containerSize, totalPx) : 0;
     for (const size of items) {
         const advance =
             z(size.px) +
             (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
 
         if (reverse) {
-            x -= advance + spacing;
+            x -= advance;
         }
 
         results.push({ location: round(x) + offset, size: round(advance) });
 
         if (!reverse) {
             x += advance + spacing;
+        } else {
+            x -= spacing;
         }
     }
 
