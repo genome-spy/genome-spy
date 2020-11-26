@@ -343,7 +343,8 @@ function createAxis(axisProps) {
                     : "alphabetic",
             ["d" + secondary]:
                 (ap.tickSize + ap.labelPadding) * offsetDirection,
-            minBufferSize: 1500
+            minBufferSize: 1500,
+            dynamicData: true
         },
         encoding: {
             [main]: { field: "value", type: "quantitative" },
@@ -361,7 +362,8 @@ function createAxis(axisProps) {
             clip: false,
             strokeDash: ap.tickDash,
             strokeCap: ap.tickCap,
-            minBufferSize: 300
+            minBufferSize: 300,
+            dynamicData: true
         },
         encoding: {
             [secondary]: { value: anchor },
@@ -477,7 +479,8 @@ export function createGenomeAxis(axisProps) {
         mark: {
             type: "rule",
             strokeDash: axisProps.chromTickDash,
-            strokeDashOffset: axisProps.chromTickDashOffset
+            strokeDashOffset: axisProps.chromTickDashOffset,
+            dynamicData: true
         },
         encoding: {
             [secondary]: { value: anchor },
@@ -508,7 +511,8 @@ export function createGenomeAxis(axisProps) {
             paddingX: 4,
             clip: false,
             viewportEdgeFadeWidth: [0, 20, 0, 20],
-            viewportEdgeFadeDistance: [undefined, -10, undefined, -20]
+            viewportEdgeFadeDistance: [undefined, -10, undefined, -20],
+            dynamicData: true
         },
         encoding: {
             [main + "2"]: { field: "continuousEnd", type: "locus" },

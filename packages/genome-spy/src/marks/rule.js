@@ -173,24 +173,21 @@ export default class RuleMark extends Mark {
      * @param {import("./Mark").MarkRenderingOptions} options
      */
     render(options) {
-        super.render(options);
-
         const gl = this.gl;
 
-        if (this.prepareSampleFacetRendering(options)) {
-            const range = this.rangeMap.get(options.facetId);
-            if (range && range.count) {
+        return this.createRenderCallback(
+            range =>
                 twgl.drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,
                     gl.TRIANGLE_STRIP,
                     range.count,
                     range.offset
-                );
-            }
-        }
+                ),
+            options,
+            () => this.rangeMap
+        );
     }
-    //this.gl.bindVertexArray(null);
 }
 
 /**

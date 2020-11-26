@@ -25,7 +25,15 @@ export interface MarkConfig {
     xOffset?: number;
     yOffset?: number;
     tooltip?: object;
-    sorting?: object;
+
+    dynamicData?: boolean;
+
+    /**
+     * Minimum size for WebGL buffers (number of data items).
+     * Allows for using bufferSubData to update graphics.
+     * This property is intended for internal usage.
+     */
+    minBufferSize?: number;
 }
 
 // TODO: Create an interface for values (they don't have type or anything else)

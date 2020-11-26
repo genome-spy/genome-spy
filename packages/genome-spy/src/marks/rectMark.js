@@ -200,25 +200,23 @@ export default class RectMark extends Mark {
      * @param {import("./Mark").MarkRenderingOptions} options
      */
     render(options) {
-        super.render(options);
-
         const gl = this.gl;
 
-        if (this.prepareSampleFacetRendering(options)) {
-            const range = this._sampleBufferInfo.rangeMap.get(options.facetId);
-            if (range && range.count) {
-                // TODO: draw only the part that intersects with the viewport
-                // Could use: http://lin-ear-th-inking.blogspot.com/2007/06/packed-1-dimensional-r-tree.html
+        // TODO: draw only the part that intersects with the viewport
+        // Could use: http://lin-ear-th-inking.blogspot.com/2007/06/packed-1-dimensional-r-tree.html
+
+        return this.createRenderCallback(
+            range =>
                 twgl.drawBufferInfo(
                     gl,
                     this.bufferInfo,
                     gl.TRIANGLE_STRIP,
                     range.count,
                     range.offset
-                );
-            }
-        }
-        //this.gl.bindVertexArray(null);
+                ),
+            options,
+            () => this._sampleBufferInfo.rangeMap
+        );
     }
 
     /**

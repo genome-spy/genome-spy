@@ -130,19 +130,19 @@ export default class ConnectionMark extends Mark {
      * @param {import("./Mark").MarkRenderingOptions} options
      */
     render(options) {
-        super.render(options);
-
         const gl = this.gl;
 
         // TODO: Vertical clipping in faceted view
 
-        if (this.prepareSampleFacetRendering(options)) {
-            const range = this.rangeMap.get(options.facetId);
-            if (range && range.count) {
+        return this.createRenderCallback(
+            range => {
                 // We are using instanced drawing here.
                 // However, WebGL does not provide glDrawElementsInstancedBaseInstance and thus,
                 // we have to hack with offsets in vertexAttribPointer
                 // TODO: Use VAOs to reduce WebGL calls
+
+                this.gl.bindVertexArray(null);
+
                 for (const attribInfoObject of Object.entries(
                     this.bufferInfo.attribs
                 )) {
@@ -171,8 +171,10 @@ export default class ConnectionMark extends Mark {
                     0,
                     range.count
                 );
-            }
-        }
+            },
+            options,
+            () => this.rangeMap
+        );
     }
 }
 

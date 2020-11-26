@@ -209,13 +209,11 @@ export default class PointMark extends Mark {
      * @param {import("./Mark").MarkRenderingOptions} options
      */
     render(options) {
-        super.render(options);
-
         const gl = this.gl;
 
-        if (this.prepareSampleFacetRendering(options)) {
-            const range = this.rangeMap.get(options.facetId);
-            if (range) {
+        return this.createRenderCallback(
+            range => {
+                // TODO: findIndices is rather slow. Consider a more coarse-grained, "tiled" solution.
                 const [lower, upper] = this._findIndices
                     ? this._findIndices(this.dataByFacet.get(options.facetId))
                     : [0, range.count];
@@ -231,9 +229,9 @@ export default class PointMark extends Mark {
                         range.offset + lower
                     );
                 }
-            }
-        }
-
-        //this.gl.bindVertexArray(null);
+            },
+            options,
+            () => this.rangeMap
+        );
     }
 }

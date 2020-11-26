@@ -25,6 +25,9 @@ import { isNumber } from "vega-util";
  *      without instancing. Thus, constant values must be provided as attributes. Default: false
  * @prop {boolean} [raw] Data is uploaded to the GPU memory as is, i.e., not scale transformed.
  *      Default: false
+ *
+ * @callback DrawFunction
+ * @param {import("../gl/dataToVertices").RangeEntry} range
  */
 export default class Mark {
     /**
@@ -381,9 +384,8 @@ export default class Mark {
      *      false if it should be skipped
      */
     prepareSampleFacetRendering(options) {
-        if (options.sampleFacetRenderingOptions) {
-            const opts = options.sampleFacetRenderingOptions;
-
+        const opts = options.sampleFacetRenderingOptions;
+        if (opts) {
             const pos = opts.locSize ? opts.locSize.location : 0.0;
             const height = opts.locSize ? opts.locSize.size : 1.0;
 
@@ -415,10 +417,46 @@ export default class Mark {
     }
 
     /**
+     * Returns a callback function that the ViewRenderingContext calls to
+     * perform the actual rendering either immediately or at a later time.
+     *
      * @param {MarkRenderingOptions} options
+     * @returns {function():void} A function that renderingContext calls to
+     *      trigger the actual rendering
      */
     render(options) {
-        // override
+        // Override
+        return undefined;
+    }
+
+    /**
+     * @param {DrawFunction} draw A function that draws a range of vertices
+     * @param {import("./Mark").MarkRenderingOptions} options
+     * @param {function():Map<string, import("../gl/dataToVertices").RangeEntry>} rangeMapSource
+     */
+    createRenderCallback(draw, options, rangeMapSource) {
+        // eslint-disable-next-line consistent-this
+        const self = this;
+
+        if (this.properties.dynamicData) {
+            return function renderDynamic() {
+                const range = rangeMapSource().get(options.facetId);
+                if (range && range.count) {
+                    if (self.prepareSampleFacetRendering(options)) {
+                        draw(range);
+                    }
+                }
+            };
+        } else {
+            const range = rangeMapSource().get(options.facetId);
+            if (range && range.count) {
+                return function renderStatic() {
+                    if (self.prepareSampleFacetRendering(options)) {
+                        draw(range);
+                    }
+                };
+            }
+        }
     }
 
     /**

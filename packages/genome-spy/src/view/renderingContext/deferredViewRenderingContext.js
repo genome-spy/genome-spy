@@ -7,8 +7,8 @@ import ViewRenderingContext from "./viewRenderingContext";
  * @typedef {object} DeferredRenderingRequest Allows for collecting marks for
  *      optimized rendering order.
  * @prop {import("../../marks/mark").default} mark
+ * @prop {function():void} callback
  * @prop {import("../../utils/layout/rectangle").default} coords
- * @prop {import("../view").RenderingOptions} options
  */
 export default class DeferredViewRenderingContext extends ViewRenderingContext {
     constructor() {
@@ -44,11 +44,14 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      * @param {import("../view").RenderingOptions} options
      */
     renderMark(mark, options) {
-        this.buffer.push({
-            mark,
-            coords: this.coords,
-            options
-        });
+        const callback = mark.render(options);
+        if (callback) {
+            this.buffer.push({
+                mark,
+                callback,
+                coords: this.coords
+            });
+        }
     }
 
     /**
@@ -56,30 +59,30 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      * changes.
      */
     renderDeferred() {
-        if (!this.pipeline) {
+        if (!this.batch) {
             /**
-             * Store the operations as a linear pipeline for cheap subsequent rendering.
+             * Store the operations as a sequence of commands for cheap subsequent rendering.
              *
              * @type {(function():void)[]}
              */
-            this.pipeline = [];
+            this.batch = [];
 
+            // Group by marks in order to minimize program changes
             const requestByMark = group(this.buffer, request => request.mark);
 
             for (const [mark, requests] of requestByMark.entries()) {
                 // Change program, set common uniforms (mark properties, shared domains)
-                this.pipeline.push(() => mark.prepareRender());
+                this.batch.push(() => mark.prepareRender());
 
                 /** @type {import("../../utils/layout/rectangle").default} */
                 let previousCoords;
                 for (const request of requests) {
                     const coords = request.coords;
-                    const options = request.options;
                     // Render each facet
                     if (!coords.equals(previousCoords)) {
-                        this.pipeline.push(() => mark.setViewport(coords));
+                        this.batch.push(() => mark.setViewport(coords));
                     }
-                    this.pipeline.push(() => mark.render(options));
+                    this.batch.push(request.callback);
                     previousCoords = request.coords;
                 }
             }
@@ -90,7 +93,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
         }
 
         // Execute the pipeline
-        for (const op of this.pipeline) {
+        for (const op of this.batch) {
             op();
         }
     }

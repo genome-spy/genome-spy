@@ -1,6 +1,9 @@
 import ViewRenderingContext from "./viewRenderingContext";
 
 /**
+ * This class is mainly for illustrative purpose, i.e., how the rendering
+ * would be performed in the most straightforward, unoptimized way.
+ *
  * @typedef {import("../view").default} View
  */
 export default class SimpleViewRenderingContext extends ViewRenderingContext {
@@ -39,6 +42,6 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
     renderMark(mark, options) {
         mark.prepareRender();
         mark.setViewport(this.coords);
-        mark.render(options);
+        mark.render(options)();
     }
 }
