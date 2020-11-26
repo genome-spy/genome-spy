@@ -3,6 +3,7 @@ import LayerView from "./layerView";
 import { isNumber, inrange } from "vega-util";
 import smoothstep from "../utils/smoothstep";
 import { shallowArrayEquals } from "../utils/arrayUtils";
+import { FlexDimensions } from "../utils/layout/flexLayout";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
@@ -56,6 +57,7 @@ function orient2channel(slot) {
  * @typedef {import("../spec/axis").Axis} Axis
  * @typedef {import("../spec/axis").GenomeAxis} GenomeAxis
  * @typedef {import("../spec/axis").AxisOrient} AxisOrient
+ * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
  *
  * @typedef {Axis & { extent: number }} AugmentedAxis
  */
@@ -104,8 +106,17 @@ export default class AxisView extends LayerView {
     }
 
     getSize() {
-        // TODO: Semantics of getSize in AxisView's case needs to be defined
-        return super.getSize();
+        /** @type {SizeDef} */
+        const perpendicularSize = { px: this.getPerpendicularSize() };
+
+        /** @type {SizeDef} */
+        const mainSize = { grow: 1 };
+
+        if (ORIENT_CHANNELS[this.axisProps.orient] == "x") {
+            return new FlexDimensions(mainSize, perpendicularSize);
+        } else {
+            return new FlexDimensions(perpendicularSize, mainSize);
+        }
     }
 
     getPerpendicularSize() {
@@ -190,6 +201,8 @@ function getExtent(axisProps) {
         extent += axisProps.titlePadding + axisProps.titleFontSize;
     }
 
+    // TODO: Include chrom ticks and labels!
+
     extent = Math.min(
         axisProps.maxExtent || Infinity,
         Math.max(axisProps.minExtent || 0, extent)
@@ -252,7 +265,7 @@ const defaultAxisProps = {
     /** @type {number[] | string[] | boolean[]} */
     values: null,
 
-    minExtent: 30,
+    minExtent: 20,
     maxExtent: Infinity,
     offset: 0, // TODO: Implement
 
