@@ -4,11 +4,11 @@
   },
   "transform": [
     { "type": "formula", "as": "x", "expr": "datum.z % 100" },
-    { "type": "formula", "as": "y", "expr": "floor(datum.z / 200)" },
+    { "type": "formula", "as": "y", "expr": "floor(datum.z / 100)" },
     {
       "type": "formula",
       "as": "measurement",
-      "expr": "sin(datum.x / 9) + cos(datum.y / 4.5 + 3.25 + sin(datum.x / 20) * 2)"
+      "expr": "sin(datum.x / 9) + cos(datum.y / 9 + 3.25 + sin(datum.x / 20) * 2)"
     }
   ],
   "mark": "rect",

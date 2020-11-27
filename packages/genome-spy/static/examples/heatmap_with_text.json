@@ -1,0 +1,61 @@
+{
+  "data": {
+    "sequence": { "start": 0, "stop": 40000, "as": "z" }
+  },
+  "transform": [
+    { "type": "formula", "as": "x", "expr": "datum.z % 200" },
+    { "type": "formula", "as": "y", "expr": "floor(datum.z / 200)" },
+    {
+      "type": "formula",
+      "as": "measurement",
+      "expr": "sin((sin(datum.x / 20) + cos(datum.y / 19 + 3.25 + sin(datum.x / 40) * 2)) * 2)"
+    }
+  ],
+
+  "resolve": { "scale": { "color": "independent" } },
+
+  "layer": [
+    {
+      "mark": "rect",
+      "encoding": {
+        "x": { "field": "x", "type": "locus" },
+        "y": { "field": "y", "type": "locus" },
+        "color": {
+          "field": "measurement",
+          "type": "quantitative",
+          "scale": {
+            "scheme": "viridis"
+          }
+        }
+      }
+    },
+    {
+      "mark": {
+        "type": "text",
+        "paddingX": 3,
+        "paddingY": 2
+      },
+      "_comment": "Text placement needs some more work...",
+      "encoding": {
+        "x": { "field": "x", "type": "locus" },
+        "x2": { "expr": "datum.x + 1" },
+        "y": { "field": "y", "type": "locus" },
+        "y2": { "expr": "datum.y + 1" },
+        "text": { "field": "measurement", "type": "nominal", "format": ".2f" },
+        "size": { "value": 11 },
+        "opacity": {
+          "value": 0.8
+        },
+        "color": {
+          "field": "measurement",
+          "type": "quantitative",
+          "scale": {
+            "type": "threshold",
+            "domain": [-0.5],
+            "range": ["white", "black"]
+          }
+        }
+      }
+    }
+  ]
+}
