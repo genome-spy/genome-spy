@@ -1,4 +1,5 @@
 import coverage from "./coverage";
+import flattenCompressedExons from "./flattenCompressedExons";
 import formula from "./formula";
 import gather from "./gather";
 import regexExtract from "./regexExtract";
@@ -12,6 +13,7 @@ import pileup from "./pileup";
 const transforms = {
     coverage,
     filter,
+    flattenCompressedExons,
     flattenDelimited,
     formula,
     gather,
