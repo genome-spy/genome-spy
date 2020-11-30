@@ -11,17 +11,20 @@ import createFunction from "../../utils/expression";
 export default function formulaTransform(formulaConfig, rows) {
     const fn = createFunction(formulaConfig.expr);
 
+    const as = formulaConfig.as;
+
     if (formulaConfig.inplace) {
         // Faster, but causes side effects.
         // TODO: Build a "dataflow graph" and infer where in-place modifications are acceptable
         for (const row of rows) {
-            row[formulaConfig.as] = fn(row);
+            row[as] = fn(row);
         }
         return rows;
     } else {
-        return rows.map(row => ({
-            ...row,
-            [formulaConfig.as]: fn(row)
-        }));
+        return rows.map(row => {
+            const copy = Object.assign({}, row);
+            copy[as] = fn(row);
+            return copy;
+        });
     }
 }
