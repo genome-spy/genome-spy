@@ -46,8 +46,8 @@ float getDownscaleFactor(vec2 pos) {
         uViewportSize.y *
         uMaxRelativePointDiameter;
 
-    // Points should not be visible on zero-height bands. Using smoothstep to hide them.
-    float minimum = smoothstep(0.0, 0.5, sampleFacetHeight) * uMinAbsolutePointDiameter;
+    // Points should not be visible on zero-height bands.
+    float minimum = linearstep(0.0, 0.5, sampleFacetHeight) * uMinAbsolutePointDiameter;
 
     return max(minimum, min(maxPointDiameter, factor)) / maxPointDiameter;
 }

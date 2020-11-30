@@ -18,3 +18,7 @@ vec4 unitToNdc(vec2 coord) {
 vec4 unitToNdc(float x, float y) {
     return unitToNdc(vec2(x, y));
 }
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}

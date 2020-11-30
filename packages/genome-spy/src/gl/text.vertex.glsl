@@ -167,7 +167,7 @@ void main(void) {
             }
 
             size *= scale;
-            opacity *= smoothstep(scaleFadeExtent[0], scaleFadeExtent[1], scale); // TODO: "linearstep"
+            opacity *= linearstep(scaleFadeExtent[0], scaleFadeExtent[1], scale);
 
         } else if (scale < 1.0) {
             // Eliminate the text

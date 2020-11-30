@@ -125,14 +125,13 @@ void main() {
     if (vStrokeWidth > 0.0) {
         float strokeWidth = vStrokeWidth * uDevicePixelRatio * pixelWidth; // TODO: Move computation to vertex shader
 
-        // TODO: Replace smoothsteps with clamp
-        lowp float strokeFraction = smoothstep(-strokeWidth, -strokeWidth - pixelWidth, dist);
-        lowp float alpha = smoothstep(0., -pixelWidth, dist) * vColor.a;
+        lowp float strokeFraction = linearstep(-strokeWidth, -strokeWidth - pixelWidth, dist);
+        lowp float alpha = linearstep(0., -pixelWidth, dist) * vColor.a;
 
         fragColor = vec4(mix(strokeColor, fillColor, strokeFraction) * alpha, alpha);
 
     } else {
-        lowp float alpha = smoothstep(0., -pixelWidth, dist) * vColor.a;
+        lowp float alpha = linearstep(0., -pixelWidth, dist) * vColor.a;
 
         fragColor = vec4(fillColor * alpha, alpha);
     }
