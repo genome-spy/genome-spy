@@ -8,6 +8,7 @@ import fontUrl from "../fonts/Lato-Regular.png";
 import fontMetadata from "../fonts/Lato-Regular.json";
 
 import Mark from "./mark";
+import { fixPositional } from "./markUtils";
 
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
@@ -77,7 +78,9 @@ export default class TextMark extends Mark {
             dy: 0,
             angle: 0,
 
-            // For ranged text:
+            /** When only primary channel is defined with band/locus scale */
+            fitToBand: false,
+
             squeeze: true,
             paddingX: 0,
             paddingY: 0,
@@ -95,6 +98,20 @@ export default class TextMark extends Mark {
                 -Infinity
             ]
         };
+    }
+
+    getEncoding() {
+        const encoding = super.getEncoding();
+
+        // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
+
+        for (const channel of ["x", "y"]) {
+            if (this.properties.fitToBand) {
+                fixPositional(encoding, channel);
+            }
+        }
+
+        return encoding;
     }
 
     async initializeGraphics() {

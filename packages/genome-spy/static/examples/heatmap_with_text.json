@@ -8,18 +8,21 @@
     {
       "type": "formula",
       "as": "measurement",
-      "expr": "sin((sin(datum.x / 20) + cos(datum.y / 19 + 3.25 + sin(datum.x / 40) * 2)) * 2)"
+      "expr": "sin((sin(datum.x / 30) + cos(datum.y / 25 - 0.5 + sin(datum.x / 40) * 2)) * 4)"
     }
   ],
 
   "resolve": { "scale": { "color": "independent" } },
 
+  "encoding": {
+    "x": { "field": "x", "type": "locus" },
+    "y": { "field": "y", "type": "locus" }
+  },
+
   "layer": [
     {
       "mark": "rect",
       "encoding": {
-        "x": { "field": "x", "type": "locus" },
-        "y": { "field": "y", "type": "locus" },
         "color": {
           "field": "measurement",
           "type": "quantitative",
@@ -32,17 +35,13 @@
     {
       "mark": {
         "type": "text",
-        "paddingX": 3,
-        "paddingY": 2
+        "fitToBand": true,
+        "paddingX": 4,
+        "paddingY": 3
       },
-      "_comment": "Text placement needs some more work...",
       "encoding": {
-        "x": { "field": "x", "type": "locus" },
-        "x2": { "expr": "datum.x + 1" },
-        "y": { "field": "y", "type": "locus" },
-        "y2": { "expr": "datum.y + 1" },
         "text": { "field": "measurement", "type": "nominal", "format": ".2f" },
-        "size": { "value": 11 },
+        "size": { "value": 12 },
         "opacity": {
           "value": 0.8
         },
@@ -51,10 +50,27 @@
           "type": "quantitative",
           "scale": {
             "type": "threshold",
-            "domain": [-0.5],
+            "domain": [-0],
             "range": ["white", "black"]
           }
         }
+      }
+    },
+    {
+      "data": { "values": [{}] },
+      "mark": {
+        "type": "text",
+        "align": "left",
+        "baseline": "bottom",
+        "dx": 5,
+        "dy": -5
+      },
+      "encoding": {
+        "x": { "value": 0 },
+        "y": { "value": 0 },
+        "text": { "value": "Zoom in using the mouse wheel!" },
+        "color": { "value": "white" },
+        "size": { "value": 13 }
       }
     }
   ]

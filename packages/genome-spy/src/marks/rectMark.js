@@ -5,6 +5,7 @@ import { RectVertexBuilder } from "../gl/dataToVertices";
 import createEncoders, { secondaryChannel } from "../encoder/encoder";
 
 import Mark from "./mark";
+import { fixPositional } from "./markUtils";
 
 /** @type {import("../spec/view").EncodingConfigs} */
 const defaultEncoding = {
@@ -60,45 +61,10 @@ export default class RectMark extends Mark {
     getEncoding() {
         const encoding = super.getEncoding();
 
-        /** @param {string} channel */
-        function fixPositional(channel) {
-            const secondary = secondaryChannel(channel);
-            if (encoding[channel]) {
-                if (!encoding[secondary]) {
-                    if (encoding[channel].type == "quantitative") {
-                        // Bar plot, anchor the other end to zero
-                        encoding[secondary] = {
-                            datum: 0
-                        };
-                    } else {
-                        // Must make copies because the definition may be shared with other views/marks
-                        encoding[channel] = { ...encoding[channel] };
-                        encoding[secondary] = { ...encoding[channel] };
-
-                        // Fill the bands (bar plot / heatmap)
-                        // We are following the Vega-Lite convention:
-                        // the band property works differently on rectangular marks, i.e., it adjusts the band coverage.
-                        const adjustment =
-                            (1 - (encoding[channel].band || 1)) / 2;
-                        encoding[channel].band = 0 + adjustment;
-                        encoding[secondary].band = 1 - adjustment;
-                    }
-                }
-            } else if (encoding[secondary]) {
-                throw new Error(
-                    `Only secondary channel ${secondary} has been specified!`
-                );
-            } else {
-                // Nothing specified, fill the whole viewport
-                encoding[channel] = { value: 0 };
-                encoding[secondary] = { value: 1 };
-            }
-        }
-
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
 
-        fixPositional("x");
-        fixPositional("y");
+        fixPositional(encoding, "x");
+        fixPositional(encoding, "y");
 
         return encoding;
     }
