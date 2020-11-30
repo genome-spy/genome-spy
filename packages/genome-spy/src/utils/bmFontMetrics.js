@@ -1,5 +1,7 @@
 export const SDF_PADDING = 5; // Not sure if this is same with all msdf bmfonts...
 
+const MAX_ASCII = 127;
+
 /**
  * Metrics calculation for msdf bmfonts:
  * https://github.com/etiennepinchon/aframe-fonts
@@ -7,14 +9,27 @@ export const SDF_PADDING = 5; // Not sure if this is same with all msdf bmfonts.
  * @param {import("../fonts/types").FontMetadata} metadata
  */
 export default function getMetrics(metadata) {
-    /** @type {import("../fonts/types").Char[]} */
-    const asciiChars = new Array(256);
+    /**
+     * Use an ordinary array for fast lookup of ascii chars
+     *
+     * @type {import("../fonts/types").Char[]}
+     */
+    const asciiChars = [];
 
-    /** @type {Map<number, import("../fonts/types").Char>} */
+    // Ensure that the array is not "holey": https://v8.dev/blog/elements-kinds
+    for (let i = 0; i <= MAX_ASCII; i++) {
+        asciiChars.push(undefined);
+    }
+
+    /**
+     * Put the rest (unicode = sparse and infrequent) chars into a map
+     *
+     * @type {Map<number, import("../fonts/types").Char>}
+     */
     const unicodeChars = new Map();
 
     for (const char of metadata.chars) {
-        if (char.id < 256) {
+        if (char.id <= MAX_ASCII) {
             asciiChars[char.id] = char;
         } else {
             unicodeChars.set(char.id, char);
@@ -24,7 +39,9 @@ export default function getMetrics(metadata) {
     /** @param {number} charCode */
     function getCharByCode(charCode) {
         const char =
-            charCode < 256 ? asciiChars[charCode] : unicodeChars.get(charCode);
+            charCode <= MAX_ASCII
+                ? asciiChars[charCode]
+                : unicodeChars.get(charCode);
         return char || asciiChars[63];
     }
 
