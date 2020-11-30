@@ -1,3 +1,4 @@
+/* eslint-disable no-unmodified-loop-condition */
 import Heapify from "heapify";
 import { isNumber, field as vuField } from "vega-util";
 
@@ -21,13 +22,22 @@ export default function pileupTransform(pileupConfig, rows) {
     const startAccessor = vuField(pileupConfig.start);
     const endAccessor = vuField(pileupConfig.end);
 
+    // Keep track of the last processed element. Flush the queues if the start
+    // pos suddenly decreases. This happens when piling up consecutive chromosomes.
+    let lastStart = -Infinity;
+
     let maxLane = 0;
 
     for (const row of rows) {
-        while (ends.size && ends.peekPriority() <= startAccessor(row)) {
+        const start = startAccessor(row);
+        while (
+            ends.size &&
+            (ends.peekPriority() <= start || start < lastStart)
+        ) {
             const freeLane = ends.pop();
             freeLanes.push(freeLane, freeLane);
         }
+        lastStart = start;
 
         let lane = freeLanes.pop();
         if (lane === undefined) {
