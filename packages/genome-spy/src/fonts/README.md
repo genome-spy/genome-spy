@@ -1,3 +1,3 @@
 # SDF fonts
 
-Taken from https://github.com/etiennepinchon/aframe-fonts
+The json metadata and SDFs were taken from https://github.com/etiennepinchon/aframe-fonts

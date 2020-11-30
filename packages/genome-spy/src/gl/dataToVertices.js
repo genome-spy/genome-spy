@@ -8,6 +8,7 @@ import Interval from "../utils/interval";
 import { SHAPES } from "../marks/pointMark"; // Circular dependency, TODO: Fix
 import ArrayBuilder from "./arrayBuilder";
 import { ATTRIBUTE_PREFIX } from "../scale/glslScaleGenerator";
+import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
 
 /*
  * TODO: Optimize constant values: compile them dynamically into vertex shader
@@ -622,11 +623,9 @@ export class TextVertexBuilder extends VertexBuilder {
         });
 
         this.metadata = metadata;
-        this.properties = properties;
+        this.metrics = getMetrics(metadata);
 
-        this.chars = Object.fromEntries(
-            this.metadata.chars.map(e => [e.id, e])
-        );
+        this.properties = properties;
 
         const e = encoders;
 
@@ -659,23 +658,17 @@ export class TextVertexBuilder extends VertexBuilder {
         const base = this.metadata.common.base;
         const scale = this.metadata.common.scaleH; // Assume square textures
 
-        const getChar = /** @param {number} charCode */ charCode =>
-            this.chars[charCode] || this.chars[63];
-
-        // Font metrics are not available in the bmfont metadata. Have to calculate...
-        const sdfPadding = 5; // Not sure if this is same with all all fonts...
-        const xHeight = getChar("x".charCodeAt(0)).height - sdfPadding * 2;
-        const capHeight = getChar("X".charCodeAt(0)).height - sdfPadding * 2;
-
-        let baseline = -sdfPadding;
+        let baseline = -SDF_PADDING;
         switch (this.properties.baseline) {
             case "top":
-                baseline += capHeight;
+                baseline += this.metrics.capHeight;
                 break;
             case "middle":
-                baseline += capHeight / 2;
+                baseline += this.metrics.capHeight / 2;
                 break;
             case "bottom":
+                baseline -= this.metrics.descent;
+                break;
             default:
             // alphabetic
         }
@@ -693,11 +686,7 @@ export class TextVertexBuilder extends VertexBuilder {
 
             this.variableBuilder.updateFromDatum(d);
 
-            let textWidth = 0;
-            for (let i = 0; i < str.length; i++) {
-                textWidth += getChar(str.charCodeAt(i)).xadvance;
-            }
-            textWidth /= base;
+            const textWidth = this.metrics.measureWidth(str);
 
             this.updateWidth(textWidth); // TODO: Check if one letter space should be reduced
 
@@ -708,11 +697,11 @@ export class TextVertexBuilder extends VertexBuilder {
                     ? -textWidth / 2
                     : 0;
 
-            const firstChar = getChar(str.charCodeAt(0));
+            const firstChar = this.metrics.getCharByCode(str.charCodeAt(0));
             x -= (firstChar.width - firstChar.xadvance) / base / 2; // TODO: Fix, this is a bit off..
 
             for (let i = 0; i < str.length; i++) {
-                const c = getChar(str.charCodeAt(i));
+                const c = this.metrics.getCharByCode(str.charCodeAt(i));
 
                 const tx = c.x;
                 const ty = c.y;
