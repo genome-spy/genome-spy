@@ -5,6 +5,8 @@
  * @prop {string[]} as
  */
 
+import numberExtractor from "../../utils/numberExtractor";
+
 /**
  * Flattens "run-length encoded" exons. The transforms inputs the start
  * coordinate of the gene body and a comma-delimited string of alternating
@@ -14,8 +16,6 @@
  * @param {any[]} rows
  */
 export default function flattenCompressedExonsTranform(config, rows) {
-    // TODO: Check that gene length equals to cumulative length
-
     const exons = config.exons || "exons";
     const startpos = config.startpos || "start";
     const [exonStart, exonEnd] = config.as || ["exonStart", "exonEnd"];
@@ -24,21 +24,25 @@ export default function flattenCompressedExonsTranform(config, rows) {
     const newRows = [];
 
     for (const row of rows) {
-        const steps = row[exons].split(",");
-
         let upper = row[startpos];
         let lower = upper;
 
-        for (let i = 0; i < steps.length; ) {
-            lower = upper + parseInt(steps[i++], 10);
-            upper = lower + parseInt(steps[i++], 10);
+        let inExon = true;
+        for (const token of numberExtractor(row[exons])) {
+            if (inExon) {
+                lower = upper + token;
+            } else {
+                upper = lower + token;
 
-            // Use the original row as a prototype
-            const newRow = Object.create(row);
-            newRow[exonStart] = lower;
-            newRow[exonEnd] = upper;
+                // Use the original row as a prototype
+                const newRow = Object.create(row);
+                newRow[exonStart] = lower;
+                newRow[exonEnd] = upper;
 
-            newRows.push(newRow);
+                newRows.push(newRow);
+            }
+
+            inExon = !inExon;
         }
     }
 
