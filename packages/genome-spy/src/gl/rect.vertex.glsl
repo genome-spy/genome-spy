@@ -24,7 +24,7 @@ out vec4 vColor;
  * Clamps the minimumSize and returns an opacity that reflects the amount of clamping.
  */
 float clampMinSize(inout float pos, float size, float minSize) {
-    if (abs(size) < minSize) {
+    if (minSize > 0.0 && abs(size) < minSize) {
         pos += (minSize * sign(size) - size) / 2.0;
         return abs(size) / minSize;
     }
@@ -45,6 +45,7 @@ void main(void) {
     vec2 normalizedMinSize = uMinSize / uViewportSize;
 
     float opa = getScaled_opacity() * max(uMinOpacity, 
+        // TODO: "attr_x + width" likely fails with fp64
         clampMinSize(x, scale_x(attr_x + width) - x, normalizedMinSize.x) *
         clampMinSize(y, scale_y(attr_y + facetedHeight) - y, normalizedMinSize.y));
 

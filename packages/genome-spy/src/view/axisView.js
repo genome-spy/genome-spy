@@ -69,6 +69,9 @@ export default class AxisView extends LayerView {
      * @param {string} type Data type (quantitative, ..., locus)
      */
     constructor(axisProps, type, context, parent) {
+        // TODO: We actually need the scale (and its type), not the data type:
+        // 1. Measure axis extents (need tick labels)
+        // 2. Decide whether chromosome labels etc are needed
         const genomeAxis = type == "locus";
 
         // TODO: Compute extent

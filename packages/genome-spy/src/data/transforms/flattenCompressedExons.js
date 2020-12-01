@@ -26,13 +26,12 @@ export default function flattenCompressedExonsTranform(config, rows) {
     for (const row of rows) {
         const steps = row[exons].split(",");
 
-        let cumulativePos = row[startpos];
+        let upper = row[startpos];
+        let lower = upper;
 
         for (let i = 0; i < steps.length; ) {
-            cumulativePos += parseInt(steps[i++], 10);
-            const lower = cumulativePos;
-            cumulativePos += parseInt(steps[i++], 10);
-            const upper = cumulativePos;
+            lower = upper + parseInt(steps[i++], 10);
+            upper = lower + parseInt(steps[i++], 10);
 
             // Use the original row as a prototype
             const newRow = Object.create(row);
