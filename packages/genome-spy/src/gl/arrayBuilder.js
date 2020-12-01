@@ -99,9 +99,20 @@ export default class ArrayBuilder {
         // TODO: Messy with all the typecasting. Create different createUpdater methods for regular and typed arrays
 
         if (numComponents == 1) {
-            pusher = i => {
-                array[i] = /** @type {number} */ (pendingValue);
-            };
+            if (typed) {
+                // A hack that improves performance on chrome significantly.
+                // For some reason, accessing the array using an index is super-slow on Chrome but very fast
+                // on Firefox. However, I couldn't replicate the phenomenon using a trivial benchmark.
+                const tmp = [0];
+                pusher = i => {
+                    tmp[0] = pendingValue;
+                    array.set(tmp, i);
+                };
+            } else {
+                pusher = i => {
+                    array[i] = /** @type {number} */ (pendingValue);
+                };
+            }
         } else if (typed) {
             pusher = i =>
                 /** @type {Float32Array} */ (array).set(
