@@ -44,7 +44,7 @@ export default class ArrayBuilder {
         /** @type {Object.<string, {data: number[] | Float32Array, numComponents: number, divisor: ?number}>} */
         this.arrays = {};
 
-        /** @type {function[]} */
+        /** @type {(function(number):void)[]} */
         this.pushers = [];
 
         /** @type {function[]} */
@@ -77,6 +77,7 @@ export default class ArrayBuilder {
         /** @type {number | number[] | Float32Array} */
         let pendingValue;
 
+        // Note: Writing to TypedArray appears to be super-slow on Chrome.
         const typed = !!this.size;
 
         /** @type {number[] | Float32Array} */
@@ -92,38 +93,74 @@ export default class ArrayBuilder {
             pendingValue = value;
         };
 
+        /** @type {function(number):void} */
         let pusher;
 
         // TODO: Messy with all the typecasting. Create different createUpdater methods for regular and typed arrays
 
         if (numComponents == 1) {
-            pusher = () => {
-                array[this.vertexCount] = /** @type {number} */ (pendingValue);
+            pusher = i => {
+                array[i] = /** @type {number} */ (pendingValue);
             };
         } else if (typed) {
-            pusher = () =>
+            pusher = i =>
                 /** @type {Float32Array} */ (array).set(
                     /** @type {Float32Array} */ (pendingValue),
-                    this.vertexCount * numComponents
+                    i * numComponents
                 );
         } else {
-            pusher = () => {
-                const offset = this.vertexCount * numComponents;
-                for (let i = 0; i < numComponents; i++) {
-                    array[offset + i] =
-                        /** @type {number[]} */ (pendingValue)[i];
+            pusher = i => {
+                const offset = i * numComponents;
+                for (let j = 0; j < numComponents; j++) {
+                    array[offset + j] =
+                        /** @type {number[]} */ (pendingValue)[j];
                 }
             };
         }
         this.pushers.push(pusher);
+
         return updater;
     }
 
-    pushAll() {
-        for (const pusher of this.pushers) {
-            pusher();
+    _unrollPushAll() {
+        let preps = "";
+        let pushs = "";
+
+        for (let i = 0; i < this.pushers.length; i++) {
+            preps += `const p${i} = that.pushers[${i}];\n`;
+            pushs += `p${i}(i)\n`;
         }
-        this.vertexCount++;
+
+        // eslint-disable-next-line no-new-func
+        const createUnrolled = new Function(
+            "that",
+            `${preps}
+
+            return function unrolledPushAll() {
+                const i = that.vertexCount++;
+                ${pushs}
+            };
+        `
+        );
+
+        this.pushAll = createUnrolled(this);
+    }
+
+    pushAll() {
+        const unroll = true;
+        if (unroll) {
+            // Unrolling appears to give a 15% performance boost on Chrome.
+            this._unrollPushAll();
+        } else {
+            this.pushAll = () => {
+                const i = this.vertexCount++;
+                for (const pusher of this.pushers) {
+                    pusher(i);
+                }
+            };
+        }
+
+        this.pushAll();
     }
 
     /**
