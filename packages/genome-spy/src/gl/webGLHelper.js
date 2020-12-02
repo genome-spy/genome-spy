@@ -14,6 +14,9 @@ export default class WebGLHelper {
     constructor(container) {
         this._container = container;
 
+        /** @type {Map<string, WebGLShader>} */
+        this._shaderCache = new Map();
+
         /** @type {{ type: string, listener: function}[]} */
         this._listeners = [];
 
@@ -80,7 +83,7 @@ export default class WebGLHelper {
      * @param {string} fragmentCode
      * @param {string[]} [extraHeaders]
      */
-    processShader(vertexCode, fragmentCode, extraHeaders) {
+    compileShaders(vertexCode, fragmentCode, extraHeaders) {
         const vertexIncludes = [
             GLSL_COMMON,
             GLSL_SCALES,
@@ -97,23 +100,38 @@ export default class WebGLHelper {
         const VERSION = "#version 300 es";
         const PRECISION = "precision mediump float;";
 
+        const gl = this.gl;
+
         /**
-         * @param {string} shaderCode
+         * @param {number} type
+         * @param {string} shaderSource
          * @param {string[]} includes
          */
-        const process = (shaderCode, includes) =>
-            [
-                VERSION,
-                PRECISION,
-                this._shaderDefines || "",
-                ...(extraHeaders || []),
-                ...includes,
-                shaderCode
-            ].join("\n\n");
+        const compileAndCache = (type, shaderSource, includes) => {
+            const cacheKey =
+                "" + type + shaderSource + JSON.stringify(extraHeaders);
+            let shader = this._shaderCache.get(cacheKey);
+            if (!shader) {
+                const stitchedSource = [
+                    VERSION,
+                    PRECISION,
+                    this._shaderDefines || "",
+                    ...(extraHeaders || []),
+                    ...includes,
+                    shaderSource
+                ].join("\n\n");
+
+                shader = gl.createShader(type);
+                gl.shaderSource(shader, stitchedSource);
+                gl.compileShader(shader);
+                this._shaderCache.set(cacheKey, shader);
+            }
+            return shader;
+        };
 
         return [
-            process(vertexCode, vertexIncludes),
-            process(fragmentCode, fragmentIncludes)
+            compileAndCache(gl.VERTEX_SHADER, vertexCode, vertexIncludes),
+            compileAndCache(gl.FRAGMENT_SHADER, fragmentCode, fragmentIncludes)
         ];
     }
 

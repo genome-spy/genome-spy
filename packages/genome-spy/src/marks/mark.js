@@ -229,15 +229,15 @@ export default class Mark {
             glsl
         );
 
-        //console.log(glsl);
-        this.programInfo = twgl.createProgramInfo(
-            this.gl,
-            this.glHelper.processShader(
-                vertexShaderWithScales,
-                fragmentShader,
-                extraHeaders
-            )
+        const shaders = this.glHelper.compileShaders(
+            vertexShaderWithScales,
+            fragmentShader,
+            extraHeaders
         );
+
+        const program = twgl.createProgram(this.gl, shaders);
+
+        this.programInfo = twgl.createProgramInfoFromProgram(this.gl, program);
     }
 
     /**
