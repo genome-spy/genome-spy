@@ -229,12 +229,14 @@ export class RectVertexBuilder extends VertexBuilder {
      * @param {number} [object.tesselationThreshold]
      *     If the rect is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
+     * @param {number} [object.numItems] Number of data items
      */
     constructor({
         encoders,
         attributes,
         tesselationThreshold = Infinity,
-        visibleRange = [-Infinity, Infinity]
+        visibleRange = [-Infinity, Infinity],
+        numItems
     }) {
         super({
             encoders,
@@ -244,7 +246,9 @@ export class RectVertexBuilder extends VertexBuilder {
                 x2: undefined,
                 y2: undefined
             },
-            attributes
+            attributes,
+            numVertices:
+                tesselationThreshold == Infinity ? numItems * 6 : undefined
         });
 
         this.visibleRange = visibleRange;
