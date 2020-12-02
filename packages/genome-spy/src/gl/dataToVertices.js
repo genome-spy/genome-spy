@@ -323,7 +323,7 @@ export class RectVertexBuilder extends VertexBuilder {
             const width = x2 - x;
             const height = y2 - y;
 
-            // Start a new segment. Duplicate the first vertex to produce degenerate triangles
+            // Start a new segment.
             this.variableBuilder.updateFromDatum(d);
 
             const squeeze = /** @type {string} */ (this.encoders.squeeze(d));
@@ -346,6 +346,8 @@ export class RectVertexBuilder extends VertexBuilder {
                 this.updateWidth(-width);
                 this.updateY(y);
                 this.updateHeight(-height);
+
+                // Duplicate the first vertex to produce degenerate triangles
                 this.variableBuilder.pushAll();
 
                 // Tesselate segments
@@ -364,15 +366,7 @@ export class RectVertexBuilder extends VertexBuilder {
                     }
 
                     this.updateWidth(w);
-
-                    // Note: Infinity is used for horizontal and vertical rule marks that have unspecified start/end coords
-                    const tx = isFinite(width)
-                        ? x + width * frac
-                        : i == 0
-                        ? -Infinity
-                        : Infinity;
-
-                    this.updateX(tx);
+                    this.updateX(x + width * frac);
                     this.updateY(y);
                     this.updateHeight(-height);
                     this.variableBuilder.pushAll();
@@ -382,11 +376,6 @@ export class RectVertexBuilder extends VertexBuilder {
                 }
 
                 // Duplicate the last vertex to produce a degenerate triangle between the segments
-                this.variableBuilder.updateFromDatum(d);
-                this.updateX(x2);
-                this.updateWidth(width);
-                this.updateHeight(height);
-                this.updateY(y2);
                 this.variableBuilder.pushAll();
             }
         }
