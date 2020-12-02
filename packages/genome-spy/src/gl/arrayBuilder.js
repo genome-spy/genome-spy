@@ -44,7 +44,7 @@ export default class ArrayBuilder {
         /** @type {Object.<string, {data: number[] | Float32Array, numComponents: number, divisor: ?number}>} */
         this.arrays = {};
 
-        /** @type {(function(number):void)[]} */
+        /** @type {(function():void)[]} */
         this.pushers = [];
 
         /** @type {function[]} */
@@ -93,38 +93,28 @@ export default class ArrayBuilder {
             pendingValue = value;
         };
 
-        /** @type {function(number):void} */
+        /** @type {function():void} */
         let pusher;
 
         // TODO: Messy with all the typecasting. Create different createUpdater methods for regular and typed arrays
 
         if (numComponents == 1) {
-            if (typed) {
-                // A hack that improves performance on chrome significantly.
-                // For some reason, accessing the array using an index is super-slow on Chrome but very fast
-                // on Firefox. However, I couldn't replicate the phenomenon using a trivial benchmark.
-                const tmp = [0];
-                pusher = i => {
-                    tmp[0] = pendingValue;
-                    array.set(tmp, i);
-                };
-            } else {
-                pusher = i => {
-                    array[i] = /** @type {number} */ (pendingValue);
-                };
-            }
+            let i = 0;
+            pusher = () => {
+                array[i++] = /** @type {number} */ (pendingValue);
+            };
         } else if (typed) {
-            pusher = i =>
+            let i = 0;
+            pusher = () =>
                 /** @type {Float32Array} */ (array).set(
                     /** @type {Float32Array} */ (pendingValue),
-                    i * numComponents
+                    i++ * numComponents
                 );
         } else {
-            pusher = i => {
-                const offset = i * numComponents;
+            let i = 0;
+            pusher = () => {
                 for (let j = 0; j < numComponents; j++) {
-                    array[offset + j] =
-                        /** @type {number[]} */ (pendingValue)[j];
+                    array[i++] = /** @type {number[]} */ (pendingValue)[j];
                 }
             };
         }
@@ -139,7 +129,7 @@ export default class ArrayBuilder {
 
         for (let i = 0; i < this.pushers.length; i++) {
             preps += `const p${i} = that.pushers[${i}];\n`;
-            pushs += `p${i}(i)\n`;
+            pushs += `p${i}()\n`;
         }
 
         // eslint-disable-next-line no-new-func
@@ -148,8 +138,8 @@ export default class ArrayBuilder {
             `${preps}
 
             return function unrolledPushAll() {
-                const i = that.vertexCount++;
                 ${pushs}
+                that.vertexCount++;
             };
         `
         );
@@ -158,16 +148,17 @@ export default class ArrayBuilder {
     }
 
     pushAll() {
-        const unroll = true;
+        // Unrolling appears to give a 20% performance boost on Chrome but compiling the
+        // dynamically generated code takes time and is thus not great for small dynamic data.
+        const unroll = this.size > 100000;
         if (unroll) {
-            // Unrolling appears to give a 15% performance boost on Chrome.
             this._unrollPushAll();
         } else {
             this.pushAll = () => {
-                const i = this.vertexCount++;
                 for (const pusher of this.pushers) {
-                    pusher(i);
+                    pusher();
                 }
+                this.vertexCount++;
             };
         }
 
