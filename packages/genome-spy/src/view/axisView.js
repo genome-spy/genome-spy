@@ -140,7 +140,7 @@ export default class AxisView extends LayerView {
         }
         this.previousScaleDomain = currentScaleDomain;
 
-        const oldTicks = (this.data && [...this.data.flatData()]) || [];
+        const oldTicks = this.getData();
         const newTicks = generateTicks(
             this.axisProps,
             scale,
@@ -156,7 +156,7 @@ export default class AxisView extends LayerView {
             const chromLayer = this.findChildByName(CHROM_LAYER_NAME);
             const chromMapper = /** @type {import("../genome/scaleLocus").default} */ (scale).chromMapper();
             if (chromLayer && chromMapper) {
-                if (![...chromLayer.getData().flatData()].length) {
+                if (!chromLayer.getData().length) {
                     chromLayer.updateData(chromMapper.chromosomes);
                 }
             }

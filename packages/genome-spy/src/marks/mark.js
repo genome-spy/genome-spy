@@ -148,19 +148,15 @@ export default class Mark {
         // TODO: Consider putting initializeData to unitView
 
         const data = this.unitView.getData();
-        if (!data) {
-            // TODO: Show view path in error
-            throw new Error("Can not initialize mark, no data available!");
-        }
 
         const accessor = this.unitView.getFacetAccessor();
         if (accessor) {
             // TODO: Optimize. Now inherited data is faceted in all children.
             // Faceting should be moved to Views
             /** @type {Map<string, object[]>} */
-            this.dataByFacet = group(data.flatData(), accessor);
+            this.dataByFacet = group(data, accessor);
         } else {
-            this.dataByFacet = new Map([[undefined, data.ungroupAll().data]]);
+            this.dataByFacet = new Map([[undefined, data]]);
         }
     }
 

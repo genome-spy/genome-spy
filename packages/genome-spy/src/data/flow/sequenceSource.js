@@ -22,7 +22,7 @@ export default class SequenceSource extends FlowNode {
      * @param {any} datum
      */
     handle(datum) {
-        throw new Error("Source does not handle incoming data");
+        throw new Error("Source does not handle incoming data!");
     }
 
     complete() {
@@ -33,5 +33,7 @@ export default class SequenceSource extends FlowNode {
         for (let x = this.params.start; x < stop; x += step) {
             this._propagate({ [as]: x });
         }
+
+        super.complete();
     }
 }

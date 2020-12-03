@@ -264,8 +264,6 @@ export default class UnitView extends View {
         return getCachedOrCall(this, "dataDomain-" + channel, () => {
             let domain;
 
-            const data = this.getData();
-
             const encodingSpec = this.getEncoding()[channel];
 
             if (encodingSpec) {
@@ -278,7 +276,7 @@ export default class UnitView extends View {
                     if (accessor.constant) {
                         domain.extend(accessor({}));
                     } else {
-                        for (const datum of data.flatData()) {
+                        for (const datum of this.getData()) {
                             domain.extend(accessor(datum));
                         }
                     }

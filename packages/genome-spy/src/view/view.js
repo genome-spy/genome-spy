@@ -59,6 +59,9 @@ export default class View {
         this.name = spec.name || name;
         this.spec = spec;
 
+        /** @type {import("../data/flow/collector").default} */
+        this.collector = undefined;
+
         this.resolutions = {
             /**
              * Channel-specific scale resolutions
@@ -306,35 +309,18 @@ export default class View {
     }
 
     /**
-     * @returns {boolean}
-     */
-    isDataAvailable() {
-        if (this.data) {
-            return true;
-        }
-
-        if (this.parent) {
-            return this.parent.isDataAvailable();
-        }
-
-        return false;
-    }
-
-    /**
-     * @returns {import("../data/group").Group}
+     * @returns {any[]}
      */
     getData() {
-        // TODO: Redesign and replace with a more sophisticated data flow
-
-        if (this.data) {
-            return this.data;
+        if (this.collector) {
+            return this.collector.getData();
         }
 
         if (this.parent) {
             return this.parent.getData();
         }
 
-        throw new Error(`No data are available!`);
+        throw new Error(`No data source can be found!`);
     }
 
     /**
@@ -347,6 +333,8 @@ export default class View {
      * @param {any[]} [data] New data. If not provided, processes inherited data.
      */
     updateData(data) {
+        throw new Error("updateData is broken");
+
         if (data) {
             this.data = new DataGroup("immediate", data);
         } else {
@@ -367,6 +355,7 @@ export default class View {
         });
     }
 
+    /*
     async loadData() {
         if (this.spec.data) {
             this.data = await this.context
@@ -374,11 +363,13 @@ export default class View {
                 .getData();
         }
     }
+    */
 
     /**
      * Must be called in depth-first order
      */
     transformData() {
+        console.warn("called deprecated transformData()!");
         if (this.spec.transform) {
             this.data = transformData(this.spec.transform, this.getData());
         }

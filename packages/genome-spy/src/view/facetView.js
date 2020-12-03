@@ -193,7 +193,7 @@ export default class FacetView extends ContainerView {
             );
 
             const factors = new OrdinalDomain().extendAllWithAccessor(
-                this.getData().flatData(),
+                this.getData(),
                 accessor
             );
 

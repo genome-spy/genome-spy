@@ -11,7 +11,7 @@ describe("Test flow graphs", () => {
 
         source.complete();
 
-        expect(collector.data).toEqual(
+        expect(collector.getData()).toEqual(
             [0, 1, 2, 3, 4].map(d => ({
                 data: d
             }))
@@ -27,15 +27,15 @@ describe("Test flow graphs", () => {
 
         source.complete();
 
-        expect(collector1.data).not.toBe(collector2.data);
+        expect(collector1.getData()).not.toBe(collector2._data);
 
-        expect(collector1.data).toEqual(
+        expect(collector1.getData()).toEqual(
             [0, 1, 2, 3, 4].map(d => ({
                 data: d
             }))
         );
 
-        expect(collector2.data).toEqual(
+        expect(collector2.getData()).toEqual(
             [0, 1, 2, 3, 4].map(d => ({
                 data: d
             }))
@@ -61,7 +61,7 @@ describe("Test flow graphs", () => {
 
         source.complete();
 
-        expect(collector.data).toEqual(
+        expect(collector.getData()).toEqual(
             [0, 2, 4, 6, 8].map(d => ({
                 data: d
             }))
