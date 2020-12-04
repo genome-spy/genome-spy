@@ -1,4 +1,4 @@
-import FlowNode from "../flow/flowNode";
+import FlowNode from "../flowNode";
 
 /**
  * Folds fields using a regex

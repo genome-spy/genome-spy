@@ -320,14 +320,18 @@ export function addDecorators(root) {
  * @param {View} root
  */
 export async function initializeData(root) {
+    return;
+
     /** @type {Promise<void>[]} */
     const promises = [];
 
+    /*
     root.visit(view => {
         // TODO: Add view to exceptions. Does not work now
         promises.push(view.loadData());
     });
     await Promise.all(promises);
+    */
 
     root.visit(view => view.transformData());
 

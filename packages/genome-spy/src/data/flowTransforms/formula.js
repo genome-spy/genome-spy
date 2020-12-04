@@ -1,5 +1,5 @@
 import createFunction from "../../utils/expression";
-import FlowNode from "../flow/flowNode";
+import FlowNode from "../flowNode";
 
 /**
  * @typedef {import("../../spec/transform").FormulaConfig} FormulaConfig

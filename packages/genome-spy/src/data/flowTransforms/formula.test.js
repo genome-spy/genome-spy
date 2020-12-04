@@ -1,15 +1,16 @@
-import formulaTransform from "./formula";
+import { processData } from "../flowTestUtils";
+import FormulaTransform from "./formula";
 
 test("FormulaTransform", () => {
     const data = [{ a: 2 }, { a: 3 }];
 
     expect(
-        formulaTransform(
-            {
+        processData(
+            new FormulaTransform({
                 type: "formula",
                 expr: "datum.a * 2",
                 as: "b"
-            },
+            }),
             data
         )
     ).toEqual([

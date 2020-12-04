@@ -5,6 +5,8 @@ export default class FlowNode {
 
         /** @type {FlowNode} */
         this.parent = undefined;
+
+        this.completed = false;
     }
 
     /**
@@ -15,6 +17,19 @@ export default class FlowNode {
         this.children.push(child);
         child.parent = this;
         return this;
+    }
+
+    /**
+     *
+     * @param {FlowNode} child
+     */
+    removeChild(child) {
+        const index = this.children.indexOf(child);
+        if (index > -1) {
+            this.children.splice(index, 1);
+        } else {
+            throw new Error("Trying to remove an unknown child node!");
+        }
     }
 
     isBranching() {
@@ -34,6 +49,8 @@ export default class FlowNode {
     }
 
     complete() {
+        this.completed = true;
+
         for (const child of this.children) {
             child.complete();
         }

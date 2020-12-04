@@ -1,8 +1,6 @@
-import { transformData } from "../data/dataMapper";
 import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
-import { DataGroup } from "../data/group";
 import { getCachedOrCall } from "../utils/propertyCacher";
 
 // TODO: View classes have too many responsibilities. Come up with a way
@@ -59,7 +57,7 @@ export default class View {
         this.name = spec.name || name;
         this.spec = spec;
 
-        /** @type {import("../data/flow/collector").default} */
+        /** @type {import("../data/collector").default} */
         this.collector = undefined;
 
         this.resolutions = {
@@ -370,8 +368,5 @@ export default class View {
      */
     transformData() {
         console.warn("called deprecated transformData()!");
-        if (this.spec.transform) {
-            this.data = transformData(this.spec.transform, this.getData());
-        }
     }
 }

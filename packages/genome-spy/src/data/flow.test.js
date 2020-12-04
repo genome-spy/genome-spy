@@ -1,15 +1,15 @@
-import FilterTransform from "../flowTransforms/filter";
-import FormulaTransform from "../flowTransforms/formula";
+import FilterTransform from "./flowTransforms/filter";
+import FormulaTransform from "./flowTransforms/formula";
 import Collector from "./collector";
-import SequenceSource from "./sequenceSource";
+import { SynchronousSequenceSource } from "./flowTestUtils";
 
 describe("Test flow graphs", () => {
     test("Trivial graph: sequence to collector", () => {
-        const source = new SequenceSource({ start: 0, stop: 5 });
+        const source = new SynchronousSequenceSource(5);
         const collector = new Collector();
         source.addChild(collector);
 
-        source.complete();
+        source.dispatch();
 
         expect(collector.getData()).toEqual(
             [0, 1, 2, 3, 4].map(d => ({
@@ -19,13 +19,13 @@ describe("Test flow graphs", () => {
     });
 
     test("Trivial branching: sequence to two collectors", () => {
-        const source = new SequenceSource({ start: 0, stop: 5 });
+        const source = new SynchronousSequenceSource(5);
         const collector1 = new Collector();
         source.addChild(collector1);
         const collector2 = new Collector();
         source.addChild(collector2);
 
-        source.complete();
+        source.dispatch();
 
         expect(collector1.getData()).not.toBe(collector2._data);
 
@@ -43,7 +43,7 @@ describe("Test flow graphs", () => {
     });
 
     test("Longer chain of nodes", () => {
-        const source = new SequenceSource({ start: 0, stop: 10 });
+        const source = new SynchronousSequenceSource(10);
         const filter = new FilterTransform({
             type: "filter",
             expr: "datum.data < 5"
@@ -59,7 +59,7 @@ describe("Test flow graphs", () => {
         filter.addChild(formula);
         formula.addChild(collector);
 
-        source.complete();
+        source.dispatch();
 
         expect(collector.getData()).toEqual(
             [0, 2, 4, 6, 8].map(d => ({

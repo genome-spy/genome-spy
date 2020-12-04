@@ -1,4 +1,5 @@
-import gatherTransform from "./gather";
+import { processData } from "../flowTestUtils";
+import RegexFoldTransform from "./regexFold";
 
 const sampleData = [
     {
@@ -13,19 +14,22 @@ const sampleData = [
     }
 ];
 
-/** @type { import("./gather").GatherConfig } */
+/** @type { import("../../spec/transform").GatherConfig } */
 const singleGatherConfig = {
     type: "gather",
     columnRegex: "^(.*)_a$",
     asValue: "a"
 };
 
-describe("Gather", () => {
+describe("RegexFold", () => {
     // TODO: Implement support for multiple variables
 
     test("Transform single variable", () => {
-        const result = gatherTransform(singleGatherConfig, sampleData);
-        console.log(JSON.stringify(result));
+        const result = processData(
+            new RegexFoldTransform(singleGatherConfig),
+            sampleData
+        );
+
         expect(result).toEqual([
             {
                 row: 1,

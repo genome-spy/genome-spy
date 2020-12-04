@@ -4,7 +4,6 @@ import { classMap } from "lit-html/directives/class-map.js";
 import { field as vegaField } from "vega-util";
 import { inferType } from "vega-loader";
 
-import { DataGroup } from "../../data/group";
 import ConcatView from "../concatView";
 import UnitView from "../unitView";
 import { getCachedOrCall } from "../../utils/propertyCacher";
@@ -86,7 +85,7 @@ export class SampleAttributePanel extends ConcatView {
 
     getData() {
         // SampleView maintains the sample data
-        return new DataGroup("sample attributes", this.parent.getAllSamples());
+        return this.parent.getAllSamples();
     }
 
     transformData() {

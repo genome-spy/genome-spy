@@ -77,7 +77,7 @@ export interface CompareConfig {
     /**
      * The order(s) to use: `"ascending"` (default), `"descending"`.
      */
-    order: SortOrder[] | SortOrder;
+    order?: SortOrder[] | SortOrder;
 }
 
 export interface StackConfig extends TransformConfigBase {

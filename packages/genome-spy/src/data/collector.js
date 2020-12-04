@@ -2,7 +2,7 @@ import { compare } from "vega-util";
 import FlowNode from "./flowNode";
 
 /**
- * @typedef {import("../../spec/transform").SortConfig} SortConfig
+ * @typedef {import("../spec/transform").SortConfig} SortConfig
  */
 export default class Collector extends FlowNode {
     /**
@@ -15,8 +15,6 @@ export default class Collector extends FlowNode {
 
         /** @type {any[]} */
         this._data = [];
-
-        this.completed = false;
     }
 
     /**
@@ -39,7 +37,6 @@ export default class Collector extends FlowNode {
             }
         }
 
-        this.completed = true;
         super.complete();
     }
 
