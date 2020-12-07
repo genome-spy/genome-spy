@@ -224,8 +224,8 @@ export interface CoverageConfig extends TransformConfigBase {
     asEnd?: string;
 }
 
-export interface SortConfig extends TransformConfigBase {
-    type: "sort";
+export interface CollectConfig extends TransformConfigBase {
+    type: "collect";
 
     /**
      * The sort order.
@@ -233,16 +233,11 @@ export interface SortConfig extends TransformConfigBase {
     sort: CompareConfig;
 }
 
-export interface UngroupConfig extends TransformConfigBase {
-    type: "ungroup";
-}
-
 export type TransformConfig =
-    | UngroupConfig
     | FlattenDelimitedConfig
     | FormulaConfig
+    | FilterConfig
     | GatherConfig
     | RegexExtractConfig
-    | SimpleFilterConfig
     | StackConfig
     | PileupConfig;

@@ -38,7 +38,7 @@ export default class RegexFoldTransform extends FlowNode {
          * @param {any} datum
          */
         this.handle = datum => {
-            // Conserve memory by skipping the columns being gathered
+            // Save memory by skipping the columns being gathered
             /** @type {Record<string, any>} */
             const strippedRow = {};
             for (const prop in datum) {

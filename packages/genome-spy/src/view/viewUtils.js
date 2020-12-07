@@ -13,7 +13,6 @@ import { VISIT_SKIP } from "./view";
 /**
  * @typedef {Object} ViewContext
  * @prop {import("../genomeSpy").default} genomeSpy TODO: Break genomeSpy dependency
- * @prop {function(import("../spec/data").Data, string):import("../data/dataSource").default} getDataSource
  * @prop {import("../encoder/accessor").default} accessorFactory
  * @prop {import("../coordinateSystem").default} coordinateSystem
  * @prop {import("../gl/webGLHelper").default} glHelper
@@ -127,6 +126,8 @@ export function isFacetMapping(spec) {
  * @returns {spec is ViewSpec}
  */
 export function isViewSpec(spec) {
+    return true;
+    /*
     const matches = viewTypes
         .map(v => (v.guard(spec) ? v.prop : undefined))
         .filter(prop => isString(prop));
@@ -139,6 +140,7 @@ export function isViewSpec(spec) {
     }
 
     return matches.length == 1;
+    */
 }
 
 /**
@@ -192,6 +194,7 @@ export function isImportSpec(spec) {
  * @returns {typeof View}
  */
 export function getViewClass(spec) {
+    console.log(viewTypes);
     for (const viewType of viewTypes) {
         if (viewType.guard(spec)) {
             return viewType.viewClass;
@@ -209,6 +212,7 @@ export function getViewClass(spec) {
  */
 export function createView(spec, context) {
     const ViewClass = getViewClass(spec);
+    console.log(ViewClass);
     return /** @type {View} */ (new ViewClass(
         spec,
         context,

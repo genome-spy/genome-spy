@@ -215,7 +215,7 @@ export default class View {
      * Visits child views in depth-first order. Visitor's return value
      * controls the traversal.
      *
-     * @param {(function(View):(VISIT_SKIP|VISIT_STOP|void)) & { afterChildren?: function}} visitor
+     * @param {(function(View):(VISIT_SKIP|VISIT_STOP|void)) & { afterChildren?: function(View):void}} visitor
      * @returns {any}
      *
      * @typedef {"VISIT_SKIP"} VISIT_SKIP Don't visit children of the current node

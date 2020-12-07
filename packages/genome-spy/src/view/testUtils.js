@@ -4,7 +4,6 @@
  */
 
 import { createView, resolveScalesAndAxes, initializeData } from "./viewUtils";
-import DataSource from "../data/dataSource";
 import AccessorFactory from "../encoder/accessor";
 
 /**
@@ -15,8 +14,6 @@ import AccessorFactory from "../encoder/accessor";
 export function create(spec, context) {
     const c = {
         ...(context || {}),
-        /** @param {object} config */
-        getDataSource: config => new DataSource(config, "."),
         accessorFactory: new AccessorFactory()
     };
 
