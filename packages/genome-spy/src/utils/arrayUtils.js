@@ -29,8 +29,9 @@ export function isHomogeneous(a) {
 }
 
 /**
- *
- * @param {any[] | any} obj
+ * @param {T[] | T} obj
+ * @returns {T[]}
+ * @template T
  */
 export function asArray(obj) {
     if (Array.isArray(obj)) {

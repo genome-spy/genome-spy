@@ -1,10 +1,21 @@
-import regexMatchTransform from "./regexExtract";
+import { processData } from "../flowTestUtils";
 
-describe("RegexMatchTransform", () => {
+import RegexExtractTransform from "./regexExtract";
+
+/**
+ *
+ * @param {import("./regexExtract").RegexExtractConfig} params
+ * @param {any[]} data
+ */
+function transform(params, data) {
+    return processData(new RegexExtractTransform(params), data);
+}
+
+describe("RegexExtractTransform", () => {
     const rows = [{ a: "12-34" }, { a: "23-45" }];
 
     /** @type {import("./regexExtract").RegexExtractConfig} */
-    const config = {
+    const params = {
         type: "regexExtract",
         regex: "^(\\d+)-(\\d+)$",
         field: "a",
@@ -12,7 +23,7 @@ describe("RegexMatchTransform", () => {
     };
 
     test("Valid config and input", () => {
-        expect(regexMatchTransform(config, rows)).toEqual([
+        expect(transform(params, rows)).toEqual([
             { a: "12-34", b: "12", c: "34" },
             { a: "23-45", b: "23", c: "45" }
         ]);
@@ -27,26 +38,26 @@ describe("RegexMatchTransform", () => {
             as: ["b", "c", "d"]
         };
 
-        expect(() => regexMatchTransform(config2, rows)).toThrow();
+        expect(() => transform(config2, rows)).toThrow();
     });
 
     test("Invalid data", () => {
         const rows2 = [{ a: "12--34" }];
 
-        expect(() => regexMatchTransform(config, rows2)).toThrow();
+        expect(() => transform(params, rows2)).toThrow();
     });
 
     test("Invalid, non-string data", () => {
         const rows2 = [{ a: 123 }];
 
-        expect(() => regexMatchTransform(config, rows2)).toThrow();
+        expect(() => transform(params, rows2)).toThrow();
     });
 
     test("Skip invalid or non-string data", () => {
         const rows2 = [{ a: 123 }, { a: "xyzzy" }, { a: "12-34" }];
 
         expect(
-            regexMatchTransform({ ...config, skipInvalidInput: true }, rows2)
+            transform({ ...params, skipInvalidInput: true }, rows2)
         ).toEqual([
             { a: 123 },
             { a: "xyzzy" },

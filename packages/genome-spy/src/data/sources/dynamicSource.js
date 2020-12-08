@@ -1,4 +1,3 @@
-import { getFormat } from "./dataUtils";
 import FlowNode from "../flowNode";
 
 /**
@@ -39,6 +38,10 @@ export default class DynamicSource extends FlowNode {
             throw new Error(
                 "The host of DynamicSource does not have getDynamicData()!"
             );
+        }
+
+        if (!Array.isArray(data)) {
+            throw new Error("Dynamic data source didn't return data!");
         }
 
         this.reset();

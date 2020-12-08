@@ -1,10 +1,19 @@
-import flattenDelimitedTransform from "./flattenDelimited";
+import { processData } from "../flowTestUtils";
+import FlattenDelimitedTransform from "./flattenDelimited";
 
 const sampleData = [
     { id: 1, a: "q, w, e", b: "a-s-d" },
     { id: 2, a: "r, t, y", b: "f-g-h" },
     { id: 3, a: "u", b: "j" }
 ];
+
+/**
+ * @param {import("./flattenDelimited").FlattenDelimitedConfig} params
+ * @param {any[]} data
+ */
+function transform(params, data) {
+    return processData(new FlattenDelimitedTransform(params), data);
+}
 
 describe("FlattenDelimited transform", () => {
     test("With a single field", () => {
@@ -15,7 +24,7 @@ describe("FlattenDelimited transform", () => {
             separator: ", "
         };
 
-        expect(flattenDelimitedTransform(config, sampleData)).toEqual([
+        expect(transform(config, sampleData)).toEqual([
             { id: 1, a: "q", b: "a-s-d" },
             { id: 1, a: "w", b: "a-s-d" },
             { id: 1, a: "e", b: "a-s-d" },
@@ -35,7 +44,7 @@ describe("FlattenDelimited transform", () => {
             separator: [", ", "-"]
         };
 
-        expect(flattenDelimitedTransform(config, sampleData)).toEqual([
+        expect(transform(config, sampleData)).toEqual([
             { id: 1, a: "q", b: "a-s-d", c: "a" },
             { id: 1, a: "w", b: "a-s-d", c: "s" },
             { id: 1, a: "e", b: "a-s-d", c: "d" },
@@ -61,7 +70,7 @@ describe("FlattenDelimited transform", () => {
             separator: ["-", "-"]
         };
 
-        expect(() => flattenDelimitedTransform(config, data)).toThrow();
+        expect(() => transform(config, data)).toThrow();
     });
 
     test("Throws on mismatching spec lengths", () => {
@@ -72,6 +81,6 @@ describe("FlattenDelimited transform", () => {
             separator: ["a"]
         };
 
-        expect(() => flattenDelimitedTransform(config, sampleData)).toThrow();
+        expect(() => transform(config, sampleData)).toThrow();
     });
 });
