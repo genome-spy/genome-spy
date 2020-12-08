@@ -1,8 +1,7 @@
 import Collector from "../data/collector";
-import createTransform from "../data/flowTransforms/transformFactory";
+import createTransform from "../data/transforms/transformFactory";
 import createDataSource from "../data/sources/dataSourceFactory";
 import UnitView from "./unitView";
-import { createView } from "./viewUtils";
 
 /**
  * @typedef {import("./view").default} View

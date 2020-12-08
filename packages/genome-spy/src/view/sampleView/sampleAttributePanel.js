@@ -86,7 +86,7 @@ export class SampleAttributePanel extends ConcatView {
 
     getDynamicData() {
         // SampleView maintains the sample data
-        return this.parent.getAllSamples();
+        return this.parent.getAllSamples() || [];
     }
 
     transformData() {

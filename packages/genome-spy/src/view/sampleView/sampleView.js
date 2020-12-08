@@ -15,6 +15,7 @@ import { getCachedOrCall } from "../../utils/propertyCacher";
 import transition from "../../utils/transition";
 import { easeCubicOut, easeExpOut } from "d3-ease";
 import clamp from "../../utils/clamp";
+import createDataSource from "../../data/sources/dataSourceFactory";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -251,7 +252,7 @@ export default class SampleView extends ContainerView {
         const dataPromise = super.loadData();
 
         if (this.spec.samples.data) {
-            const sampleDataSource = new DataSource(
+            const sampleDataSource = createDataSource(
                 this.spec.samples.data,
                 this.context.genomeSpy.config.baseUrl
             );

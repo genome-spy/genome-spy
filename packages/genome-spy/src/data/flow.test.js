@@ -1,5 +1,5 @@
-import FilterTransform from "./flowTransforms/filter";
-import FormulaTransform from "./flowTransforms/formula";
+import FilterTransform from "./transforms/filter";
+import FormulaTransform from "./transforms/formula";
 import Collector from "./collector";
 import { SynchronousSequenceSource } from "./flowTestUtils";
 

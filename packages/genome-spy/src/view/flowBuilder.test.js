@@ -1,7 +1,7 @@
 import Collector from "../data/collector";
 import FlowNode from "../data/flowNode";
-import FilterTransform from "../data/flowTransforms/filter";
-import FormulaTransform from "../data/flowTransforms/formula";
+import FilterTransform from "../data/transforms/filter";
+import FormulaTransform from "../data/transforms/formula";
 import InlineSource from "../data/sources/inlineSource";
 import SequenceSource from "../data/sources/sequenceSource";
 import { buildDataFlow } from "./flowBuilder";
