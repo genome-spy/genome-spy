@@ -126,9 +126,10 @@ export interface NamedData extends DataBase {
 
 export interface DynamicData extends DataBase {
     /**
-     * A function that provides the data
+     * The View class has `getDynamicData()` methods that provides the data.
+     * This is intended for internal use such as axis ticks/labels.
      */
-    dynamicSource: DynamicDataset;
+    dynamicSource: boolean;
 }
 
 export function isUrlData(data: Partial<Data>): data is UrlData {

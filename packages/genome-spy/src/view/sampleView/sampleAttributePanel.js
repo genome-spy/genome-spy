@@ -36,6 +36,7 @@ export class SampleAttributePanel extends ConcatView {
     constructor(sampleView) {
         super(
             {
+                data: { dynamicSource: true },
                 hconcat: [createLabelViewSpec()],
                 spacing: 1
             },
@@ -83,7 +84,7 @@ export class SampleAttributePanel extends ConcatView {
         return this.parent.sampleHandler;
     }
 
-    getData() {
+    getDynamicData() {
         // SampleView maintains the sample data
         return this.parent.getAllSamples();
     }

@@ -63,9 +63,7 @@ export function buildDataFlow(root) {
                     transform,
                     () =>
                         new Error(
-                            `Cannot create a transform at ${
-                                view.getPathString
-                            } because no (inherited) data are available: ${JSON.stringify(
+                            `Cannot create a transform because no (inherited) data are available: ${JSON.stringify(
                                 params
                             )}`
                         )
@@ -78,11 +76,7 @@ export function buildDataFlow(root) {
             collector.host = view;
             appendNode(
                 collector,
-                () =>
-                    new Error(
-                        "A unit view has no (inherited) data source: " +
-                            view.getPathString()
-                    )
+                () => new Error("A unit view has no (inherited) data source")
             );
 
             view.collector = collector;
