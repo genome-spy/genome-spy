@@ -15,7 +15,7 @@
     "html-webpack-inline-source-plugin": "0.0.10",
     "html-webpack-plugin": "^5.0.0-alpha.14",
     "husky": "^3.1.0",
-    "jest": "^26.6.3",
+    "jest": "^25.0.0",
     "lerna": "^3.22.1",
     "mini-css-extract-plugin": "^0.5.0",
     "node-sass": "^4.14.1",
@@ -32,7 +32,9 @@
     "webpack-cli": "^3.3.12",
     "webpack-dev-server": "^3.11.0",
     "webpack-md5-hash": "0.0.6",
-    "webpack-merge": "^4.2.2"
+    "webpack-merge": "^4.2.2",
+    "terser-webpack-plugin": "^5.0.3",
+    "webpack-dev-middleware": "^4.0.0"
   },
   "scripts": {
     "bootstrap": "lerna bootstrap",
@@ -44,9 +46,7 @@
   "dependencies": {
     "genome-spy": "file:packages/genome-spy",
     "genome-spy-doc-embed": "file:packages/genome-spy-doc-embed",
-    "genome-spy-playground": "file:packages/genome-spy-playground",
-    "terser-webpack-plugin": "^5.0.3",
-    "webpack-dev-middleware": "^4.0.0"
+    "genome-spy-playground": "file:packages/genome-spy-playground"
   },
   "husky": {
     "hooks": {
