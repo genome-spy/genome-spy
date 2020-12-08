@@ -3,7 +3,6 @@ import { processData } from "../flowTestUtils";
 import RegexExtractTransform from "./regexExtract";
 
 /**
- *
  * @param {import("./regexExtract").RegexExtractConfig} params
  * @param {any[]} data
  */

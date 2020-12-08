@@ -1,4 +1,5 @@
-import pileupTransform from "./pileup";
+import PileupTransform from "./pileup";
+import { processData } from "../flowTestUtils";
 
 /**
  * @typedef {import("../../spec/transform").PileupConfig} PileupConfig
@@ -24,11 +25,19 @@ const reads = [
 const lanes = [0, 1, 2, 1, 0, 0, 1, 2, 0, 1, 2];
 
 /** @type {PileupConfig} */
-const coverageConfig = {
+const params = {
     type: "pileup",
     start: "start",
     end: "end"
 };
+
+/**
+ * @param {PileupConfig} params
+ * @param {any[]} data
+ */
+function pileupTransform(params, data) {
+    return processData(new PileupTransform(params), data);
+}
 
 test("Pileup transform produces correct pileup", () => {
     const piledUp = lanes.map((d, i) => ({
@@ -36,7 +45,7 @@ test("Pileup transform produces correct pileup", () => {
         lane: d
     }));
 
-    expect(pileupTransform(coverageConfig, reads)).toEqual(piledUp);
+    expect(pileupTransform(params, reads)).toEqual(piledUp);
 });
 
 test("Pileup transform produces correct pileup with consecutive contigs", () => {
@@ -52,5 +61,5 @@ test("Pileup transform produces correct pileup with consecutive contigs", () => 
         lane: d
     }));
 
-    expect(pileupTransform(coverageConfig, repeatedReads)).toEqual(piledUp);
+    expect(pileupTransform(params, repeatedReads)).toEqual(piledUp);
 });

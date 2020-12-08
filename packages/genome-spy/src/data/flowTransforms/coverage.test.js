@@ -1,8 +1,17 @@
-import coverageTransform from "./coverage";
+import CoverageTransform from "./coverage";
+import { processData } from "../flowTestUtils";
 
 /**
  * @typedef {import("../../spec/transform").CoverageConfig} CoverageConfig
  */
+
+/**
+ * @param {CoverageConfig} params
+ * @param {any[]} data
+ */
+function transform(params, data) {
+    return processData(new CoverageTransform(params), data);
+}
 
 test("Coverage transform produces correct coverage segments", () => {
     const reads = [
@@ -46,7 +55,7 @@ test("Coverage transform produces correct coverage segments", () => {
         start: "start",
         end: "end"
     };
-    expect(coverageTransform(coverageConfig, reads)).toEqual(coverageSegments);
+    expect(transform(coverageConfig, reads)).toEqual(coverageSegments);
 });
 
 test("Coverage transform handles chromosomes", () => {
@@ -70,7 +79,7 @@ test("Coverage transform handles chromosomes", () => {
         end: "end"
     };
 
-    expect(coverageTransform(coverageConfig, reads)).toEqual(coverageSegments);
+    expect(transform(coverageConfig, reads)).toEqual(coverageSegments);
 });
 
 test("Coverage transform handles weights", () => {
@@ -107,5 +116,5 @@ test("Coverage transform handles weights", () => {
         weight: "weight"
     };
 
-    expect(coverageTransform(coverageConfig, reads)).toEqual(coverageSegments);
+    expect(transform(coverageConfig, reads)).toEqual(coverageSegments);
 });
