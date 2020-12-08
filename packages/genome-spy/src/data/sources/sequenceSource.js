@@ -8,6 +8,10 @@ export function isSequenceGenerator(data) {
     return "sequence" in data;
 }
 
+/**
+ * @template H
+ * @extends {FlowNode<H>}
+ */
 export default class SequenceSource extends FlowNode {
     /**
      *
@@ -33,15 +37,21 @@ export default class SequenceSource extends FlowNode {
         throw new Error("Source does not handle incoming data!");
     }
 
-    async load() {
+    loadSynchronously() {
         const as = this.sequence.as || "data";
         const step = this.sequence.step || 1;
         const stop = this.sequence.stop;
+
+        this.reset();
 
         for (let x = this.sequence.start; x < stop; x += step) {
             this._propagate({ [as]: x });
         }
 
         this.complete();
+    }
+
+    async load() {
+        this.loadSynchronously();
     }
 }

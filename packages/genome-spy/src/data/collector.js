@@ -17,6 +17,11 @@ export default class Collector extends FlowNode {
         this._data = [];
     }
 
+    reset() {
+        super.reset();
+        this._data = [];
+    }
+
     /**
      *
      * @param {any} datum

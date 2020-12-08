@@ -10,6 +10,10 @@ export function isInlineData(data) {
     return "values" in data;
 }
 
+/**
+ * @template H
+ * @extends {FlowNode<H>}
+ */
 export default class InlineSource extends FlowNode {
     /**
      * @param {import("../../spec/data").InlineData} params
@@ -34,7 +38,7 @@ export default class InlineSource extends FlowNode {
         throw new Error("Source does not handle incoming data!");
     }
 
-    async load() {
+    loadSynchronously() {
         const values = this.params.values;
 
         let data = [];
@@ -61,10 +65,16 @@ export default class InlineSource extends FlowNode {
             );
         }
 
+        this.reset();
+
         for (const d of data) {
             this._propagate(wrap(d));
         }
 
         this.complete();
+    }
+
+    async load() {
+        this.loadSynchronously();
     }
 }

@@ -15,7 +15,6 @@ import {
     addDecorators,
     processImports
 } from "./view/viewUtils";
-import DataSource from "./data/dataSource";
 import UnitView from "./view/unitView";
 import createDomain from "./utils/domainArray";
 
@@ -159,12 +158,6 @@ export default class GenomeSpy {
                 coordinateSystem: this.coordinateSystem,
                 accessorFactory: this.accessorFactory,
                 genomeSpy: this, // TODO: An interface instead of a GenomeSpy
-                getDataSource: (config, baseUrl) =>
-                    new DataSource(
-                        config,
-                        baseUrl,
-                        this.getNamedData.bind(this)
-                    ),
                 glHelper: this._glHelper,
                 animator: this.animator
             };
@@ -208,7 +201,7 @@ export default class GenomeSpy {
             }
 
             // Load and transform all data
-            await initializeData(this.viewRoot);
+            this.dataFlow = await initializeData(this.viewRoot);
 
             // Compile shaders, handle textures, etc.
             // TODO: Move above initializeData. However, scales need domains before they can be created...

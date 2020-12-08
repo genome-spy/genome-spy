@@ -348,8 +348,10 @@ export function addDecorators(root) {
  * @param {View} root
  */
 export async function initializeData(root) {
+    const flow = buildDataFlow(root);
+
     /** @type {Promise<void>[]} */
-    const promises = buildDataFlow(root).map(dataSource => dataSource.load());
+    const promises = flow.dataSources.map(dataSource => dataSource.load());
 
     await Promise.all(promises);
 
@@ -358,6 +360,8 @@ export async function initializeData(root) {
             view.mark.initializeData();
         }
     });
+
+    return flow;
 }
 
 /**

@@ -10,6 +10,10 @@ export function isUrlData(data) {
     return "url" in data;
 }
 
+/**
+ * @template H
+ * @extends {FlowNode<H>}
+ */
 export default class UrlSource extends FlowNode {
     /**
      * @param {import("../../spec/data").UrlData} params
@@ -46,6 +50,8 @@ export default class UrlSource extends FlowNode {
                 throw new Error(`Cannot fetch: ${url}: ${e.message}`);
             }
         });
+
+        this.reset();
 
         for (const promise of promises) {
             const text = await promise;

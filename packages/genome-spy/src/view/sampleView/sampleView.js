@@ -3,7 +3,6 @@ import { html } from "lit-html";
 import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
 import { mapToPixelCoords } from "../../utils/layout/flexLayout";
-import DataSource from "../../data/dataSource";
 import { SampleAttributePanel } from "./sampleAttributePanel";
 import SampleHandler from "../../sampleHandler/sampleHandler";
 import { peek } from "../../utils/arrayUtils";
