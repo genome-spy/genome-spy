@@ -45,7 +45,16 @@ export default class ContainerView extends View {
      * @returns {any}
      */
     visit(visitor) {
-        const result = super.visit(visitor);
+        /** @type  {"VISIT_SKIP"|"VISIT_STOP"|void}*/
+        let result;
+        try {
+            result = visitor(this);
+        } catch (e) {
+            // Augment the exception with the view
+            e.view = this;
+            throw e;
+        }
+
         if (result === VISIT_STOP) {
             return result;
         }

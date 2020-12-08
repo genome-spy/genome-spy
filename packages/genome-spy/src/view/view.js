@@ -6,9 +6,6 @@ import { getCachedOrCall } from "../utils/propertyCacher";
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
 // the hierarchy, which makes the separation quite tricky.
-// For instance, all data processing could be encapsulated into a class
-// that is included in the views through composition rather than
-// inheritance.
 // Separation of concerns would also make the code more easily testable.
 
 /** Skip children */
@@ -224,6 +221,11 @@ export default class View {
     visit(visitor) {
         try {
             const result = visitor(this);
+
+            if (visitor.afterChildren) {
+                visitor.afterChildren(this);
+            }
+
             if (result !== VISIT_STOP) {
                 return result;
             }
@@ -318,7 +320,7 @@ export default class View {
             return this.parent.getData();
         }
 
-        throw new Error(`No data source can be found!`);
+        throw new Error(`No data are available!`);
     }
 
     /**
@@ -351,22 +353,5 @@ export default class View {
             }
             // TODO: Update cached domain extents
         });
-    }
-
-    /*
-    async loadData() {
-        if (this.spec.data) {
-            this.data = await this.context
-                .getDataSource(this.spec.data, this.getBaseUrl())
-                .getData();
-        }
-    }
-    */
-
-    /**
-     * Must be called in depth-first order
-     */
-    transformData() {
-        console.warn("called deprecated transformData()!");
     }
 }

@@ -9,6 +9,7 @@ import SampleView from "./sampleView/sampleView";
 import ConcatView from "./concatView";
 import DecoratorView from "./decoratorView";
 import { VISIT_SKIP } from "./view";
+import { buildDataFlow } from "./flowBuilder";
 
 /**
  * @typedef {Object} ViewContext
@@ -42,6 +43,8 @@ import { VISIT_SKIP } from "./view";
  * @typedef {import("../spec/view").FacetMapping} FacetMapping
  */
 
+/*
+// This breaks with Jest or Babel. Some classes mysteriously transform into undefined!
 const viewTypes = [
     { prop: "import", guard: isImportSpec, viewClass: ImportView },
     { prop: "layer", guard: isLayerSpec, viewClass: LayerView },
@@ -52,6 +55,7 @@ const viewTypes = [
     { prop: "hconcat", guard: isHConcatSpec, viewClass: ConcatView },
     { prop: "concat", guard: isConcatSpec, viewClass: ConcatView }
 ];
+*/
 
 /**
  *
@@ -126,21 +130,24 @@ export function isFacetMapping(spec) {
  * @returns {spec is ViewSpec}
  */
 export function isViewSpec(spec) {
-    return true;
-    /*
-    const matches = viewTypes
-        .map(v => (v.guard(spec) ? v.prop : undefined))
-        .filter(prop => isString(prop));
+    const guards = [
+        isImportSpec,
+        isLayerSpec,
+        isFacetSpec,
+        isSampleSpec,
+        isUnitSpec,
+        isVConcatSpec,
+        isHConcatSpec,
+        isConcatSpec
+    ];
+
+    const matches = guards.filter(guard => guard(spec));
 
     if (matches.length > 1) {
-        // TODO: test
-        throw new Error(
-            "Ambiguous spec, multiple properties: " + matches.join(", ")
-        );
+        throw new Error("Ambiguous spec. Cannot create a view!");
     }
 
     return matches.length == 1;
-    */
 }
 
 /**
@@ -194,15 +201,32 @@ export function isImportSpec(spec) {
  * @returns {typeof View}
  */
 export function getViewClass(spec) {
-    console.log(viewTypes);
-    for (const viewType of viewTypes) {
-        if (viewType.guard(spec)) {
-            return viewType.viewClass;
-        }
+    let ViewClass;
+    if (isImportSpec(spec)) {
+        ViewClass = ImportView;
+    } else if (isLayerSpec(spec)) {
+        ViewClass = LayerView;
+    } else if (isFacetSpec(spec)) {
+        ViewClass = FacetView;
+    } else if (isSampleSpec(spec)) {
+        ViewClass = SampleView;
+    } else if (isUnitSpec(spec)) {
+        ViewClass = UnitView;
+    } else if (isVConcatSpec(spec)) {
+        ViewClass = ConcatView;
+    } else if (isHConcatSpec(spec)) {
+        ViewClass = ConcatView;
+    } else if (isConcatSpec(spec)) {
+        ViewClass = ConcatView;
     }
-    throw new Error(
-        "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)
-    );
+
+    if (!ViewClass) {
+        throw new Error(
+            "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)
+        );
+    }
+
+    return ViewClass;
 }
 
 /**
@@ -212,7 +236,7 @@ export function getViewClass(spec) {
  */
 export function createView(spec, context) {
     const ViewClass = getViewClass(spec);
-    console.log(ViewClass);
+
     return /** @type {View} */ (new ViewClass(
         spec,
         context,
@@ -324,20 +348,10 @@ export function addDecorators(root) {
  * @param {View} root
  */
 export async function initializeData(root) {
-    return;
-
     /** @type {Promise<void>[]} */
-    const promises = [];
+    const promises = buildDataFlow(root).map(dataSource => dataSource.load());
 
-    /*
-    root.visit(view => {
-        // TODO: Add view to exceptions. Does not work now
-        promises.push(view.loadData());
-    });
     await Promise.all(promises);
-    */
-
-    root.visit(view => view.transformData());
 
     root.visit(view => {
         if (view instanceof UnitView) {
