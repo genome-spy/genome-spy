@@ -2,6 +2,8 @@ import Collector from "../data/collector";
 import createTransform from "../data/transforms/transformFactory";
 import createDataSource from "../data/sources/dataSourceFactory";
 import UnitView from "./unitView";
+import { BEHAVIOR_MODIFIES } from "../data/flowNode";
+import CloneTransform from "../data/transforms/clone";
 
 /**
  * @typedef {import("./view").default} View
@@ -35,6 +37,40 @@ export function buildDataFlow(root) {
         currentNode = node;
     }
 
+    /**
+     * @param {FlowNode} transform
+     * @param {any} [params]
+     */
+    function appendTransform(transform, params) {
+        appendNode(
+            transform,
+            () =>
+                new Error(
+                    `Cannot append a transform because no (inherited) data are available! ${
+                        params ? JSON.stringify(params) : ""
+                    }`
+                )
+        );
+    }
+
+    /**
+     *
+     * @param {import("../spec/transform").TransformConfig[]} transforms
+     */
+    function createTransforms(transforms) {
+        for (const params of transforms) {
+            const transform = createTransform(params);
+            if (transform.behavior & BEHAVIOR_MODIFIES) {
+                // Make defensive copies before every modifying transform to
+                // ensure that modifications don't inadvertently become visible
+                // in other branches of the flow.
+                // These can be later optimized away where possible.
+                appendTransform(new CloneTransform());
+            }
+            appendTransform(transform);
+        }
+    }
+
     /** @param {View} view */
     const processView = view => {
         nodeStack.push(currentNode);
@@ -55,24 +91,11 @@ export function buildDataFlow(root) {
         }
 
         if (view.spec.transform) {
-            for (const params of view.spec.transform) {
-                const transform = createTransform(params);
-                transform.host = view;
-                appendNode(
-                    transform,
-                    () =>
-                        new Error(
-                            `Cannot create a transform because no (inherited) data are available: ${JSON.stringify(
-                                params
-                            )}`
-                        )
-                );
-            }
+            createTransforms(view.spec.transform);
         }
 
         if (view instanceof UnitView) {
             const collector = new Collector();
-            collector.host = view;
             appendNode(
                 collector,
                 () => new Error("A unit view has no (inherited) data source")

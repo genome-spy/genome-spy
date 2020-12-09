@@ -1,13 +1,16 @@
 import { field } from "vega-util";
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 /**
  * @typedef {import("../../spec/transform").RegexExtractConfig} RegexExtractConfig
  */
 
 export default class RegexExtractTransform extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_MODIFIES;
+    }
+
     /**
-     *
      * @param {RegexExtractConfig} params
      */
     constructor(params) {
@@ -22,8 +25,6 @@ export default class RegexExtractTransform extends FlowNode {
          * @param {any} datum
          */
         this.handle = datum => {
-            const newRow = Object.assign({}, datum);
-
             const value = accessor(datum);
             if (typeof value === "string") {
                 const m = value.match(re);
@@ -36,7 +37,7 @@ export default class RegexExtractTransform extends FlowNode {
                     }
 
                     as.forEach((group, i) => {
-                        newRow[group] = m[i + 1];
+                        datum[group] = m[i + 1];
                     });
                 } else if (!params.skipInvalidInput) {
                     throw new Error(
@@ -49,7 +50,7 @@ export default class RegexExtractTransform extends FlowNode {
                 );
             }
 
-            this._propagate(newRow);
+            this._propagate(datum);
         };
     }
 }

@@ -1,4 +1,4 @@
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 /**
  * Folds fields using a regex
@@ -10,6 +10,10 @@ import FlowNode from "../flowNode";
  * @typedef {import("../../spec/transform").GatherConfig} GatherConfig
  */
 export default class RegexFoldTransform extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_CLONES;
+    }
+
     /**
      * @param {GatherConfig} params
      */
@@ -27,7 +31,7 @@ export default class RegexFoldTransform extends FlowNode {
         const matchCache = [];
 
         // Prevent JavaScript engine from doing deoptimizations etc. when
-        // an out of bounds index is being accessed.
+        // an out-of-bounds index is being accessed.
         for (let i = 0; i < 1000; i++) {
             propCache.push(undefined);
             matchCache.push(undefined);

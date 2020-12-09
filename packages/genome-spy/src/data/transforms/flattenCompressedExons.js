@@ -1,5 +1,5 @@
 import numberExtractor from "../../utils/numberExtractor";
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 /**
  * @typedef {object} FlattenExonsConfig
@@ -14,6 +14,10 @@ import FlowNode from "../flowNode";
  * exon and intron lengths. A new datum is created for each exon.
  */
 export default class FlattenCompressedExonsTransform extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_CLONES;
+    }
+
     /**
      *
      * @param {FlattenExonsConfig} config

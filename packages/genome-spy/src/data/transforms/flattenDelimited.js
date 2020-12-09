@@ -1,6 +1,6 @@
 import { field } from "vega-util";
 import { asArray } from "../../utils/arrayUtils";
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 /**
  * @typedef {import("../../spec/transform").FlattenDelimitedConfig} FlattenDelimitedConfig
@@ -8,7 +8,12 @@ import FlowNode from "../flowNode";
  * @prop {string[]} fields
  * @prop {string[]} [as]
  */
+
 export default class FlattenDelimitedTransform extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_CLONES;
+    }
+
     /**
      *
      * @param {FlattenDelimitedConfig} params

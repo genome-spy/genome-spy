@@ -9,6 +9,10 @@ const maxDepth = 65536;
  * @typedef {import("../../spec/transform").PileupConfig} PileupConfig
  */
 export default class PileupTransform extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_MODIFIES;
+    }
+
     /**
      *
      * @param {PileupConfig} params

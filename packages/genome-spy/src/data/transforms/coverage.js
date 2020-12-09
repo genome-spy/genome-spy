@@ -1,6 +1,6 @@
 import Heapify from "heapify";
 import { field as vuField } from "vega-util";
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 const maxDepth = 65536;
 
@@ -15,6 +15,10 @@ const maxDepth = 65536;
  * TODO: Weighted coverage
  */
 export default class CoverageTransform extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_MODIFIES;
+    }
+
     /**
      * @param {CoverageConfig} params
      */

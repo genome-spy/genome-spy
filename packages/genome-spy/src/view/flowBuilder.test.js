@@ -6,17 +6,18 @@ import InlineSource from "../data/sources/inlineSource";
 import SequenceSource from "../data/sources/sequenceSource";
 import { buildDataFlow } from "./flowBuilder";
 import { create } from "./testUtils";
+import CloneTransform from "../data/transforms/clone";
 
 /**
  *
- * @param {FlowNode} node
+ * @param {FlowNode} root
  * @param {number[]} path
  */
-function getNodeByPath(node, path) {
+function byPath(root, path) {
     for (const elem of path) {
-        node = node.children[elem];
+        root = root.children[elem];
     }
-    return node;
+    return root;
 }
 
 test("Trivial flow", () => {
@@ -36,10 +37,11 @@ test("Trivial flow", () => {
     const dataSource = flow.dataSources[0];
 
     expect(dataSource).toBeInstanceOf(InlineSource);
-    expect(dataSource.children[0]).toBeInstanceOf(FormulaTransform);
-    expect(dataSource.children[0].children[0]).toBeInstanceOf(Collector);
+    expect(byPath(dataSource, [0])).toBeInstanceOf(CloneTransform);
+    expect(byPath(dataSource, [0, 0])).toBeInstanceOf(FormulaTransform);
+    expect(byPath(dataSource, [0, 0, 0])).toBeInstanceOf(Collector);
 
-    expect(flow.collectors[0]).toBe(dataSource.children[0].children[0]);
+    expect(flow.collectors[0]).toBe(byPath(dataSource, [0, 0, 0]));
 });
 
 test("Branching flow", () => {
@@ -71,10 +73,12 @@ test("Branching flow", () => {
     const dataSource = buildDataFlow(root).dataSources[0];
 
     expect(dataSource).toBeInstanceOf(InlineSource);
-    expect(dataSource.children[0]).toBeInstanceOf(FormulaTransform);
-    expect(dataSource.children[0].children[0]).toBeInstanceOf(Collector);
-    expect(dataSource.children[1]).toBeInstanceOf(FilterTransform);
-    expect(dataSource.children[1].children[0]).toBeInstanceOf(Collector);
+    // Formula transform modifies data and it should be implicitly preceded by CloneTransform
+    expect(byPath(dataSource, [0])).toBeInstanceOf(CloneTransform);
+    expect(byPath(dataSource, [0, 0])).toBeInstanceOf(FormulaTransform);
+    expect(byPath(dataSource, [0, 0, 0])).toBeInstanceOf(Collector);
+    expect(byPath(dataSource, [1])).toBeInstanceOf(FilterTransform);
+    expect(byPath(dataSource, [1, 0])).toBeInstanceOf(Collector);
 });
 
 test("Nested data sources", () => {
@@ -96,6 +100,8 @@ test("Nested data sources", () => {
     expect(dataSources[0].children[0]).toBeInstanceOf(FilterTransform);
     expect(dataSources[0].children[0].children.length).toEqual(0);
 
-    expect(dataSources[1]).toBeInstanceOf(SequenceSource);
-    expect(dataSources[1].children[0]).toBeInstanceOf(FormulaTransform);
+    expect(byPath(dataSources[1], [])).toBeInstanceOf(SequenceSource);
+    expect(byPath(dataSources[1], [0])).toBeInstanceOf(CloneTransform);
+    expect(byPath(dataSources[1], [0, 0])).toBeInstanceOf(FormulaTransform);
+    expect(byPath(dataSources[1], [0, 0, 0])).toBeInstanceOf(Collector);
 });

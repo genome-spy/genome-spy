@@ -1,11 +1,15 @@
 import createFunction from "../../utils/expression";
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 /**
  * @typedef {import("../../spec/transform").FormulaConfig} FormulaConfig
  */
 
 export default class FormulaTransform extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_MODIFIES;
+    }
+
     /**
      *
      * @param {FormulaConfig} config
@@ -22,8 +26,7 @@ export default class FormulaTransform extends FlowNode {
      * @param {any} datum
      */
     handle(datum) {
-        const copy = Object.assign({}, datum);
-        copy[this.as] = this.fn(datum);
-        this._propagate(copy);
+        datum[this.as] = this.fn(datum);
+        this._propagate(datum);
     }
 }

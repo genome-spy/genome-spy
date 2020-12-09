@@ -9,6 +9,7 @@ module.exports = {
         sourceType: "module"
     },
     rules: {
+        "no-bitwise": "off",
         "no-undefined": "off",
         "no-nested-ternary": "off",
         "dot-notation": "off",

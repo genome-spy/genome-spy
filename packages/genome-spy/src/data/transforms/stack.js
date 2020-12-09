@@ -1,14 +1,17 @@
 import { compare, field as vuField } from "vega-util";
 import { groups as d3groups, sum as d3sum } from "d3-array";
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 /**
  * @typedef {import("../../spec/transform").StackConfig} StackConfig
  */
 
 export default class StackTransform extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_MODIFIES;
+    }
+
     /**
-     *
      * @param {StackConfig} params
      */
     constructor(params) {
@@ -64,15 +67,13 @@ export default class StackTransform extends FlowNode {
             const sum = d3sum(group, accessor);
 
             let prev = 0;
-            for (const row of group) {
-                const current = prev + accessor(row);
+            for (const datum of group) {
+                const current = prev + accessor(datum);
 
-                // TODO: Modify in-place if safe
-                this._propagate({
-                    ...row,
-                    [as[0]]: offsetF(prev, sum),
-                    [as[1]]: offsetF(current, sum)
-                });
+                datum[as[0]] = offsetF(prev, sum);
+                datum[as[1]] = offsetF(current, sum);
+
+                this._propagate(datum);
 
                 prev = current;
             }

@@ -1,7 +1,23 @@
 /**
+ * THe FlowNode clones the data objects passing through or creates entirely
+ * new objects.
+ */
+export const BEHAVIOR_CLONES = 1 << 0;
+
+/**
+ * FlowNode modifies the objects that pass through. Creating defensive copies
+ * (clones) in an upstream node may be appropriate, depending on branching.
+ */
+export const BEHAVIOR_MODIFIES = 1 << 1;
+
+/**
  * @template H host. For example a GenomeSpy view.
  */
 export default class FlowNode {
+    get behavior() {
+        return 0;
+    }
+
     constructor() {
         /** @type {FlowNode<H>[]} */
         this.children = [];
