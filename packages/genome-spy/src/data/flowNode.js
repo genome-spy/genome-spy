@@ -11,7 +11,7 @@ export const BEHAVIOR_CLONES = 1 << 0;
 export const BEHAVIOR_MODIFIES = 1 << 1;
 
 /**
- * @template H host. For example a GenomeSpy view.
+ * This is heavily inspired by Vega's and Vega-Lite's data flow system.
  */
 export default class FlowNode {
     get behavior() {
@@ -19,15 +19,15 @@ export default class FlowNode {
     }
 
     constructor() {
-        /** @type {FlowNode<H>[]} */
+        /** @type {FlowNode[]} */
         this.children = [];
 
-        /** @type {FlowNode<H>} */
+        /** @type {FlowNode} */
         this.parent = undefined;
 
         this.completed = false;
 
-        /** @type {H} */
+        /** @type {any} */
         this.host = undefined;
     }
 
@@ -73,7 +73,7 @@ export default class FlowNode {
 
     /**
      *
-     * @param {FlowNode<H>} child
+     * @param {FlowNode} child
      */
     addChild(child) {
         this.children.push(child);
@@ -84,7 +84,7 @@ export default class FlowNode {
 
     /**
      *
-     * @param {FlowNode<H>} child
+     * @param {FlowNode} child
      */
     removeChild(child) {
         const index = this.children.indexOf(child);
@@ -96,6 +96,31 @@ export default class FlowNode {
         }
     }
 
+    /**
+     * Removes this node and ligates (connects) the preceding and succeeding nodes.
+     */
+    excise() {
+        if (this.isRoot()) {
+            // TODO: Implement
+            throw new Error("Cannot excise root node!");
+        } else if (this.isTerminal()) {
+            this.parent.removeChild(this);
+            this.parent = undefined;
+        } else if (this.children.length == 1) {
+            const child = this.children[0];
+            child.parent = this.parent;
+            this.parent.children[this.parent.children.indexOf(this)] = child;
+            this.parent._updatePropagator();
+        } else {
+            // TODO: Implement
+            throw new Error("Cannot excise a node that has multiple children!");
+        }
+    }
+
+    isRoot() {
+        return !this.parent;
+    }
+
     isBranching() {
         return this.children.length > 1;
     }
@@ -105,11 +130,31 @@ export default class FlowNode {
     }
 
     /**
+     * Visits child nodes in depth-first order.
+     *
+     * @param {(function(FlowNode):void) & { afterChildren?: function(FlowNode):void}} visitor
+     */
+    visit(visitor) {
+        // pre-order
+        visitor(this);
+
+        for (const child of this.children) {
+            child.visit(visitor);
+        }
+
+        // post-oder
+        if (visitor.afterChildren) {
+            visitor.afterChildren(this);
+        }
+    }
+
+    /**
      *
      * @param {any} datum
      */
     handle(datum) {
-        //
+        // Default implementation just passes through
+        this._propagate(datum);
     }
 
     complete() {

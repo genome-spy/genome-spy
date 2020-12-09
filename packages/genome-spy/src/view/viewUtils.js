@@ -10,6 +10,7 @@ import ConcatView from "./concatView";
 import DecoratorView from "./decoratorView";
 import { VISIT_SKIP } from "./view";
 import { buildDataFlow } from "./flowBuilder";
+import { optimizeFlowGraph } from "../data/flowOptimizer";
 
 /**
  * @typedef {Object} ViewContext
@@ -349,6 +350,9 @@ export function addDecorators(root) {
  */
 export async function initializeData(root) {
     const flow = buildDataFlow(root);
+    for (const dataSource of flow.dataSources) {
+        optimizeFlowGraph(dataSource);
+    }
 
     /** @type {Promise<void>[]} */
     const promises = flow.dataSources.map(dataSource => dataSource.load());
