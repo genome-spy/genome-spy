@@ -11,8 +11,7 @@ export function isInlineData(data) {
 }
 
 /**
- * @template H
- * @extends {FlowNode<H>}
+ * @extends {FlowNode}
  */
 export default class InlineSource extends FlowNode {
     /**

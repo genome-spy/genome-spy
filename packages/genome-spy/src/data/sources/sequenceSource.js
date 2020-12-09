@@ -9,8 +9,7 @@ export function isSequenceGenerator(data) {
 }
 
 /**
- * @template H
- * @extends {FlowNode<H>}
+ * @extends {FlowNode}
  */
 export default class SequenceSource extends FlowNode {
     /**

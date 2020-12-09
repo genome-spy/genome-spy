@@ -10,11 +10,12 @@ import ConcatView from "./concatView";
 import DecoratorView from "./decoratorView";
 import { VISIT_SKIP } from "./view";
 import { buildDataFlow } from "./flowBuilder";
-import { optimizeFlowGraph } from "../data/flowOptimizer";
+import { optimizeDataFlow, optimizeFlowGraph } from "../data/flowOptimizer";
 
 /**
  * @typedef {Object} ViewContext
  * @prop {import("../genomeSpy").default} genomeSpy TODO: Break genomeSpy dependency
+ * @prop {import("../data/dataFlow").default<View>} dataFlow
  * @prop {import("../encoder/accessor").default} accessorFactory
  * @prop {import("../coordinateSystem").default} coordinateSystem
  * @prop {import("../gl/webGLHelper").default} glHelper
@@ -347,23 +348,17 @@ export function addDecorators(root) {
 
 /**
  * @param {View} root
+ * @param {import("../data/dataFlow").default<View>} [existingFlow] Add data flow
+ *      graphs to an existing DataFlow object.
  */
-export async function initializeData(root) {
-    const flow = buildDataFlow(root);
-    for (const dataSource of flow.dataSources) {
-        optimizeFlowGraph(dataSource);
-    }
+export async function initializeData(root, existingFlow) {
+    const flow = buildDataFlow(root, existingFlow);
+    optimizeDataFlow(flow);
 
     /** @type {Promise<void>[]} */
     const promises = flow.dataSources.map(dataSource => dataSource.load());
 
     await Promise.all(promises);
-
-    root.visit(view => {
-        if (view instanceof UnitView) {
-            view.mark.initializeData();
-        }
-    });
 
     return flow;
 }

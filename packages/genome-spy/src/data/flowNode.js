@@ -25,10 +25,8 @@ export default class FlowNode {
         /** @type {FlowNode} */
         this.parent = undefined;
 
+        /** True if all data have been processed */
         this.completed = false;
-
-        /** @type {any} */
-        this.host = undefined;
     }
 
     /**
@@ -76,6 +74,9 @@ export default class FlowNode {
      * @param {FlowNode} child
      */
     addChild(child) {
+        if (child.parent) {
+            throw new Error("Cannot add a child! It already has a parent.");
+        }
         this.children.push(child);
         child.parent = this;
         this._updatePropagator();

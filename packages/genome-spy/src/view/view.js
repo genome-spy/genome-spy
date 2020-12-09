@@ -3,6 +3,7 @@ import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import InlineSource from "../data/sources/inlineSource";
+import DynamicSource from "../data/sources/dynamicSource";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -54,20 +55,6 @@ export default class View {
         this.parent = parent;
         this.name = spec.name || name;
         this.spec = spec;
-
-        /**
-         * A data flow collector that collects the transformed data
-         *
-         * @type {import("../data/collector").default}
-         */
-        this.collector = undefined;
-
-        /**
-         * A data source if the view specification has one for this view.
-         *
-         * @type {import("../data/flowNode").default<View>}
-         */
-        this.dataSource = undefined;
 
         this.resolutions = {
             /**
@@ -324,8 +311,12 @@ export default class View {
      * @returns {any[]}
      */
     getData() {
-        if (this.collector) {
-            return this.collector.getData();
+        // TODO: provide dataFlow through viewContext
+        const dataFlow = this.context.dataFlow;
+        const collector = dataFlow.findCollectorForHost(this);
+
+        if (collector) {
+            return collector.getData();
         }
 
         if (this.parent) {
@@ -336,21 +327,22 @@ export default class View {
     }
 
     /**
-     * Updates an InlineSource of this node synchronously, propagates it to children
+     * Updates an DynamicSource of this node synchronously, propagates it to children
      * and updates all marks.
      *
      * Currently used for updating axes. A more robust solution is needed
      * for true dynamic data loading.
-     *
-     * @param {any[]} [data] New data. If not provided, processes inherited data.
      */
-    updateData(data) {
-        if (this.dataSource instanceof InlineSource) {
-            this.dataSource.params.values = data;
-            this.dataSource.loadSynchronously();
+    updateData() {
+        const dataFlow = this.context.dataFlow;
+        const dataSource = dataFlow.findDataSourceForHost(this);
 
+        if (dataSource instanceof DynamicSource) {
+            dataSource.loadSynchronously();
+
+            // TODO: The following should be called by a listener attacher to a collector
             this.visit(node => {
-                if (node.dataSource && node !== this) {
+                if (node.spec.data && node !== this) {
                     return VISIT_SKIP;
                 }
                 if (node.mark) {

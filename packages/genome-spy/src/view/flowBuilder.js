@@ -4,25 +4,26 @@ import createDataSource from "../data/sources/dataSourceFactory";
 import UnitView from "./unitView";
 import { BEHAVIOR_MODIFIES } from "../data/flowNode";
 import CloneTransform from "../data/transforms/clone";
+import DynamicSource, { isDynamicData } from "../data/sources/dynamicSource";
+import DataFlow from "../data/dataFlow";
 
 /**
  * @typedef {import("./view").default} View
- * @typedef {import("../data/flowNode").default<View>} FlowNode
+ * @typedef {import("../data/flowNode").default} FlowNode
  *
  * @param {View} root
+ * @param {import("../data/dataFlow").default<View>} [existingFlow] Add data flow
+ *      graphs to an existing DataFlow object.
  */
-export function buildDataFlow(root) {
+export function buildDataFlow(root, existingFlow) {
     /** @type {FlowNode[]} "Current nodes" on the path from view root to the current view */
     const nodeStack = [];
 
     /** @type {FlowNode} */
     let currentNode;
 
-    /** @type {FlowNode[]} */
-    const dataSources = [];
-
-    /** @type {Collector[]} */
-    const collectors = [];
+    /** @type {DataFlow<View>} */
+    const dataFlow = existingFlow ?? new DataFlow();
 
     /**
      * @param {FlowNode} node
@@ -71,23 +72,30 @@ export function buildDataFlow(root) {
         }
     }
 
+    /**
+     *
+     * @param {View} view
+     */
+    function createDynamicSource(view) {
+        if ("getDynamicData" in view) {
+            return new DynamicSource(() => view.getDynamicData());
+        }
+        throw new Error("View does not implement getDynamicData()!");
+    }
+
     /** @param {View} view */
     const processView = view => {
         nodeStack.push(currentNode);
 
         if (view.spec.data) {
             // TODO: If multiple UrlSources have identical url etc, merge them.
-            const dataSource = createDataSource(
-                view.spec.data,
-                view.getBaseUrl()
-            );
 
-            // Give view an access to the data source to allow for dynamic updates
-            view.dataSource = dataSource;
+            const dataSource = isDynamicData(view.spec.data)
+                ? createDynamicSource(view)
+                : createDataSource(view.spec.data, view.getBaseUrl());
 
-            dataSource.host = view;
             currentNode = dataSource;
-            dataSources.push(dataSource);
+            dataFlow.addDataSource(dataSource, view);
         }
 
         if (view.spec.transform) {
@@ -101,8 +109,7 @@ export function buildDataFlow(root) {
                 () => new Error("A unit view has no (inherited) data source")
             );
 
-            view.collector = collector;
-            collectors.push(collector);
+            dataFlow.addCollector(collector, view);
         }
     };
 
@@ -113,8 +120,5 @@ export function buildDataFlow(root) {
 
     root.visit(processView);
 
-    return {
-        dataSources,
-        collectors
-    };
+    return dataFlow;
 }

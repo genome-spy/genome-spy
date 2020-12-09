@@ -11,8 +11,7 @@ export function isUrlData(data) {
 }
 
 /**
- * @template H
- * @extends {FlowNode<H>}
+ * @extends {FlowNode}
  */
 export default class UrlSource extends FlowNode {
     /**

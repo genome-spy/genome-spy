@@ -5,6 +5,7 @@
 
 import { createView, resolveScalesAndAxes, initializeData } from "./viewUtils";
 import AccessorFactory from "../encoder/accessor";
+import DataFlow from "../data/dataFlow";
 
 /**
  *
@@ -26,8 +27,9 @@ export function create(spec, context) {
  * @param {import("./viewUtils").ViewContext} [context]
  */
 export async function createAndInitialize(spec, context) {
+    context = { ...(context || {}), dataFlow: new DataFlow() };
     const view = create(spec, context);
     resolveScalesAndAxes(view);
-    await initializeData(view);
+    await initializeData(view, context.dataFlow);
     return view;
 }

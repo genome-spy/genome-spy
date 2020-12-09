@@ -28,6 +28,7 @@ import InteractionEvent from "./utils/interactionEvent";
 import Point from "./utils/layout/point";
 import { isContextMenuOpen } from "./utils/ui/contextMenu";
 import Animator from "./utils/animator";
+import DataFlow from "./data/dataFlow";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -156,6 +157,7 @@ export default class GenomeSpy {
             /** @type {import("./view/viewUtils").ViewContext} */
             const context = {
                 coordinateSystem: this.coordinateSystem,
+                dataFlow: new DataFlow(),
                 accessorFactory: this.accessorFactory,
                 genomeSpy: this, // TODO: An interface instead of a GenomeSpy
                 glHelper: this._glHelper,
@@ -201,7 +203,14 @@ export default class GenomeSpy {
             }
 
             // Load and transform all data
-            this.dataFlow = await initializeData(this.viewRoot);
+            await initializeData(this.viewRoot, context.dataFlow);
+
+            // TODO: Put unitViews to listen to collectors
+            this.viewRoot.visit(view => {
+                if (view instanceof UnitView) {
+                    view.mark.initializeData();
+                }
+            });
 
             // Compile shaders, handle textures, etc.
             // TODO: Move above initializeData. However, scales need domains before they can be created...

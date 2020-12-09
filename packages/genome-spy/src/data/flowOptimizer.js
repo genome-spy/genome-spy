@@ -67,3 +67,14 @@ export function optimizeFlowGraph(root) {
         );
     }
 }
+
+/**
+ *
+ * @param {import("./dataFlow").default<H>} dataFlow
+ * @template {object} H
+ */
+export function optimizeDataFlow(dataFlow) {
+    for (const dataSource of dataFlow.dataSources) {
+        optimizeFlowGraph(dataSource);
+    }
+}

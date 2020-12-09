@@ -9,15 +9,16 @@ export function isDynamicData(data) {
 }
 
 /**
- * @template H
- * @extends {FlowNode<H>}
+ * @extends {FlowNode}
  */
 export default class DynamicSource extends FlowNode {
     /**
-     * @param {import("../../spec/data").InlineData} params
+     * @param {function():Iterable<any>} callback Function that provides the data
      */
-    constructor(params) {
+    constructor(callback) {
         super();
+
+        this.callback = callback;
     }
 
     /**
@@ -29,31 +30,22 @@ export default class DynamicSource extends FlowNode {
     }
 
     loadSynchronously() {
-        /** @type {any[]} */
-        let data;
+        const iterable = this.callback();
 
-        if ("getDynamicData" in this.host) {
-            data = this.host.getDynamicData();
-        } else {
-            throw new Error(
-                "The host of DynamicSource does not have getDynamicData()!"
-            );
-        }
-
-        if (!Array.isArray(data)) {
-            throw new Error("Dynamic data source didn't return data!");
+        if (!iterable || typeof iterable[Symbol.iterator] !== "function") {
+            throw new Error("Dynamic data source didn't return iterable data!");
         }
 
         this.reset();
 
-        // TODO: Support streaming of iterables
-        if (data.length) {
-            const wrap =
-                typeof data[0] != "object" ? x => ({ data: x }) : x => x;
+        let wrap;
 
-            for (const d of data) {
-                this._propagate(wrap(d));
+        for (const d of iterable) {
+            if (!wrap) {
+                wrap = typeof d != "object" ? x => ({ data: x }) : x => x;
             }
+
+            this._propagate(wrap(d));
         }
 
         this.complete();

@@ -102,6 +102,9 @@ export default class AxisView extends LayerView {
 
         /** @type {number} */
         this.axisLength = undefined;
+
+        /** @type {TickDatum} */
+        this.ticks = [];
     }
 
     getOrient() {
@@ -126,6 +129,10 @@ export default class AxisView extends LayerView {
         return getExtent(this.axisProps);
     }
 
+    getDynamicData() {
+        return this.ticks;
+    }
+
     _updateAxisData() {
         const channel = orient2channel(this.axisProps.orient);
         const scale = this.getScaleResolution(channel).getScale();
@@ -140,10 +147,7 @@ export default class AxisView extends LayerView {
         }
         this.previousScaleDomain = currentScaleDomain;
 
-        const dataSource = /** @type {import("../data/sources/inlineSource").default} */ (this
-            .dataSource);
-        const oldTicks = /** @type {number[]} */ (dataSource.params.values);
-
+        const oldTicks = this.ticks;
         const newTicks = generateTicks(
             this.axisProps,
             scale,
@@ -152,7 +156,8 @@ export default class AxisView extends LayerView {
         );
 
         if (newTicks !== oldTicks) {
-            this.updateData(newTicks);
+            this.ticks = newTicks;
+            this.updateData();
         }
 
         if (scale.type == "locus") {
@@ -442,7 +447,7 @@ function createAxis(axisProps) {
         [CHANNEL_DIMENSIONS[
             getPerpendicularChannel(orient2channel(ap.orient))
         ]]: ap.extent,
-        data: { values: [] },
+        data: { dynamicSource: true },
         layer: []
     };
 
