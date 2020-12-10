@@ -15,6 +15,9 @@ export default class Collector extends FlowNode {
 
         /** @type {any[]} */
         this._data = [];
+
+        /** @type {(function(Collector):void)[]} */
+        this.observers = [];
     }
 
     reset() {
@@ -43,6 +46,10 @@ export default class Collector extends FlowNode {
         }
 
         super.complete();
+
+        for (const observer of this.observers) {
+            observer(this);
+        }
     }
 
     getData() {
