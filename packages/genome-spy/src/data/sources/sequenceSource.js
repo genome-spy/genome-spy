@@ -1,4 +1,4 @@
-import FlowNode from "../flowNode";
+import DataSource from "./dataSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data
@@ -8,10 +8,7 @@ export function isSequenceGenerator(data) {
     return "sequence" in data;
 }
 
-/**
- * @extends {FlowNode}
- */
-export default class SequenceSource extends FlowNode {
+export default class SequenceSource extends DataSource {
     /**
      *
      * @param {import("../../spec/data").SequenceGenerator} params
@@ -26,14 +23,6 @@ export default class SequenceSource extends FlowNode {
         if (!("stop" in this.sequence)) {
             throw new Error("'stop' is missing from sequence parameters!");
         }
-    }
-
-    /**
-     *
-     * @param {any} datum
-     */
-    handle(datum) {
-        throw new Error("Source does not handle incoming data!");
     }
 
     loadSynchronously() {

@@ -160,7 +160,7 @@ export default class AxisView extends LayerView {
             this.updateData();
         }
 
-        if (scale.type == "locus") {
+        if (false && scale.type == "locus") {
             const chromLayer = this.findChildByName(CHROM_LAYER_NAME);
             const chromMapper = /** @type {import("../genome/scaleLocus").default} */ (scale).chromMapper();
             if (chromLayer && chromMapper) {

@@ -11,6 +11,7 @@ describe("Flow mutation", () => {
         expect(a.children[0]).toBeUndefined();
         expect(b.parent).toBeUndefined();
     });
+
     test("Excise a node in the middle", () => {
         const a = new FlowNode();
         const b = new FlowNode();

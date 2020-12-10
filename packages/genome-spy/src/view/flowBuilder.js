@@ -94,8 +94,7 @@ export function buildDataFlow(root, existingFlow) {
                 ? createDynamicSource(view)
                 : createDataSource(view.spec.data, view.getBaseUrl());
 
-            currentNode = dataSource;
-            dataFlow.addDataSource(dataSource, view);
+            currentNode = dataFlow.addDataSource(dataSource, view);
         }
 
         if (view.spec.transform) {

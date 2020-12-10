@@ -1,6 +1,6 @@
 import { read } from "vega-loader";
 import { getFormat } from "./dataUtils";
-import FlowNode from "../flowNode";
+import DataSource from "./dataSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data
@@ -10,10 +10,7 @@ export function isInlineData(data) {
     return "values" in data;
 }
 
-/**
- * @extends {FlowNode}
- */
-export default class InlineSource extends FlowNode {
+export default class InlineSource extends DataSource {
     /**
      * @param {import("../../spec/data").InlineData} params
      */
@@ -27,14 +24,6 @@ export default class InlineSource extends FlowNode {
                 "Data format type (csv, dsv, ...) must be specified if a string is provided!"
             );
         }
-    }
-
-    /**
-     *
-     * @param {any} datum
-     */
-    handle(datum) {
-        throw new Error("Source does not handle incoming data!");
     }
 
     loadSynchronously() {

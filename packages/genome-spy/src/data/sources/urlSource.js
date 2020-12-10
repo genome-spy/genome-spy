@@ -1,6 +1,6 @@
 import { loader as vegaLoader, read } from "vega-loader";
 import { getFormat } from "./dataUtils";
-import FlowNode from "../flowNode";
+import DataSource from "./dataSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data
@@ -10,13 +10,10 @@ export function isUrlData(data) {
     return "url" in data;
 }
 
-/**
- * @extends {FlowNode}
- */
-export default class UrlSource extends FlowNode {
+export default class UrlSource extends DataSource {
     /**
      * @param {import("../../spec/data").UrlData} params
-     * @param {string} baseUrl
+     * @param {string} [baseUrl]
      */
     constructor(params, baseUrl) {
         super();
@@ -25,12 +22,8 @@ export default class UrlSource extends FlowNode {
         this.baseUrl = baseUrl;
     }
 
-    /**
-     *
-     * @param {any} datum
-     */
-    handle(datum) {
-        throw new Error("Source does not handle incoming data!");
+    get identifier() {
+        return JSON.stringify({ params: this.params, baseUrl: this.baseUrl });
     }
 
     async load() {

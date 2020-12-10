@@ -1,9 +1,11 @@
-/**
- * @typedef {import("./flowNode").default} FlowNode
- */
-
+import { group } from "d3-array";
 import { BEHAVIOR_CLONES, BEHAVIOR_MODIFIES } from "./flowNode";
 import CloneTransform from "./transforms/clone";
+
+/**
+ * @typedef {import("./flowNode").default} FlowNode
+ * @typedef {import("./dataFlow").default<any>} DataFlow
+ */
 
 /**
  * @param {FlowNode} node
@@ -53,6 +55,14 @@ export function removeRedundantCloneTransforms(node, cloneRequired = false) {
             cloneRequired || i < n - 1
         );
     }
+}
+
+export function removeRedundantCollectors() {
+    // TODO: Remove chained collectors, e.g., first collect and sort, then just collect
+}
+
+export function combineAndPullCollectorsUp() {
+    // TODO:
 }
 
 /**

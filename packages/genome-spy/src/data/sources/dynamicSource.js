@@ -1,4 +1,4 @@
-import FlowNode from "../flowNode";
+import DataSource from "./dataSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data
@@ -8,10 +8,7 @@ export function isDynamicData(data) {
     return "dynamicSource" in data;
 }
 
-/**
- * @extends {FlowNode}
- */
-export default class DynamicSource extends FlowNode {
+export default class DynamicSource extends DataSource {
     /**
      * @param {function():Iterable<any>} callback Function that provides the data
      */
@@ -19,14 +16,6 @@ export default class DynamicSource extends FlowNode {
         super();
 
         this.callback = callback;
-    }
-
-    /**
-     *
-     * @param {any} datum
-     */
-    handle(datum) {
-        throw new Error("Source does not handle incoming data!");
     }
 
     loadSynchronously() {

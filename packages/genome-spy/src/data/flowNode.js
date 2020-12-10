@@ -75,12 +75,32 @@ export default class FlowNode {
      */
     addChild(child) {
         if (child.parent) {
-            throw new Error("Cannot add a child! It already has a parent.");
+            throw new Error("Cannot add the child! It already has a parent.");
         }
         this.children.push(child);
         child.parent = this;
         this._updatePropagator();
         return this;
+    }
+
+    /**
+     * @param {FlowNode} node
+     */
+    adopt(node) {
+        if (node.parent) {
+            node.parent.removeChild(node);
+        }
+
+        this.addChild(node);
+    }
+
+    /**
+     * @param {FlowNode} otherParent
+     */
+    adoptChildrenOf(otherParent) {
+        for (const child of otherParent.children) {
+            this.adopt(child);
+        }
     }
 
     /**
@@ -91,6 +111,7 @@ export default class FlowNode {
         const index = this.children.indexOf(child);
         if (index > -1) {
             this.children.splice(index, 1);
+            child.parent = undefined;
             this._updatePropagator();
         } else {
             throw new Error("Trying to remove an unknown child node!");
@@ -106,12 +127,13 @@ export default class FlowNode {
             throw new Error("Cannot excise root node!");
         } else if (this.isTerminal()) {
             this.parent.removeChild(this);
-            this.parent = undefined;
         } else if (this.children.length == 1) {
             const child = this.children[0];
             child.parent = this.parent;
             this.parent.children[this.parent.children.indexOf(this)] = child;
             this.parent._updatePropagator();
+            this.parent = undefined;
+            this.children.length = 0;
         } else {
             // TODO: Implement
             throw new Error("Cannot excise a node that has multiple children!");

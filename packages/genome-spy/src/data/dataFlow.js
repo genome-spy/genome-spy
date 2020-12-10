@@ -1,60 +1,76 @@
 /**
  *
- * @typedef {import("./flowNode").default} FlowNode
+ * @typedef {import("./sources/dataSource").default} DataSource
  * @typedef {import("./collector").default} Collector
  */
 
 /**
- * @template {object} H
+ * @template H A key (string, object, whatever) that is used to retrieve
+ *      data sources and collectors.
  */
 export default class DataFlow {
     constructor() {
-        /** @type {FlowNode[]} */
-        this.dataSources = [];
+        /** @type {Map<H, DataSource>} */
+        this.dataSourcesByHost = new Map();
 
-        /** @type {Collector[]} */
-        this.collectors = [];
+        /** @type {Map<H, Collector>} */
+        this.collectorsByHost = new Map();
+    }
 
-        /** @type {WeakMap<H, FlowNode>} */
-        this.dataSourceHosts = new WeakMap();
+    get dataSources() {
+        return [...new Set(this.dataSourcesByHost.values()).values()];
+    }
 
-        /** @type {WeakMap<H, Collector>} */
-        this.collectorHosts = new WeakMap();
+    get collectors() {
+        return [...this.collectorsByHost.values()];
     }
 
     /**
      *
-     * @param {FlowNode} dataSource
-     * @param {H} host
+     * @param {DataSource} dataSource
+     * @param {H} key
+     * @returns {DataSource} The newly added data source or an existing source with the
+     *      same identifier.
      */
-    addDataSource(dataSource, host) {
-        this.dataSources.push(dataSource);
-        this.dataSourceHosts.set(host, dataSource);
+    addDataSource(dataSource, key) {
+        // Merge identical sources
+        const identifier = dataSource.identifier;
+        if (identifier) {
+            for (const existingSource of this.dataSources) {
+                if (existingSource.identifier === identifier) {
+                    existingSource.adoptChildrenOf(dataSource);
+                    dataSource = existingSource;
+                }
+            }
+        }
+
+        this.dataSourcesByHost.set(key, dataSource);
+
+        return dataSource;
     }
 
     /**
      *
-     * @param {H} host
+     * @param {H} key
      */
-    findDataSourceForHost(host) {
-        return this.dataSourceHosts.get(host);
+    findDataSource(key) {
+        return this.dataSourcesByHost.get(key);
     }
 
     /**
      *
      * @param {Collector} collector
-     * @param {H} host
+     * @param {H} key
      */
-    addCollector(collector, host) {
-        this.collectors.push(collector);
-        this.collectorHosts.set(host, collector);
+    addCollector(collector, key) {
+        this.collectorsByHost.set(key, collector);
     }
 
     /**
      *
-     * @param {H} host
+     * @param {H} key
      */
-    findCollectorForHost(host) {
-        return this.collectorHosts.get(host);
+    findCollector(key) {
+        return this.collectorsByHost.get(key);
     }
 }

@@ -1,7 +1,7 @@
 /* eslint-disable no-unmodified-loop-condition */
 import Heapify from "heapify";
 import { isNumber, field as vuField } from "vega-util";
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 const maxDepth = 65536;
 
