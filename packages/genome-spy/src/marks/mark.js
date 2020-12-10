@@ -145,9 +145,9 @@ export default class Mark {
     }
 
     initializeData() {
-        // TODO: Consider putting initializeData to unitView
+        // TODO: Move this stuff to data flow or something
 
-        const data = this.unitView.getData();
+        const data = this.unitView.getCollectedData();
 
         const accessor = this.unitView.getFacetAccessor();
         if (accessor) {

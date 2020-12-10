@@ -307,23 +307,8 @@ export default class View {
         }
     }
 
-    /**
-     * @returns {any[]}
-     */
-    getData() {
-        // TODO: provide dataFlow through viewContext
-        const dataFlow = this.context.dataFlow;
-        const collector = dataFlow.findCollectorByKey(this);
-
-        if (collector) {
-            return collector.getData();
-        }
-
-        if (this.parent) {
-            return this.parent.getData();
-        }
-
-        throw new Error(`No data are available!`);
+    getDynamicData() {
+        throw new Error("The view does not provide dynamic data!");
     }
 
     /**

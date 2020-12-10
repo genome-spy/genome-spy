@@ -92,7 +92,7 @@ export default class PointMark extends Mark {
         );
         if (semanticScoreAccessor) {
             const sampler = new ReservoirSampler(3000); // n chosen using Stetson-Harrison
-            for (const d of this.unitView.getData()) {
+            for (const d of this.unitView.getCollectedData()) {
                 // TODO: Throw on missing scores
                 sampler.ingest(semanticScoreAccessor(d));
             }

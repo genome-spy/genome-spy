@@ -209,6 +209,15 @@ export default class UnitView extends View {
         return (cs && cs.getExtent()) || undefined;
     }
 
+    getCollectedData() {
+        const collector = this.context.dataFlow.findCollectorByKey(this);
+        if (!collector) {
+            throw new Error(`No data collector found for view!`);
+        }
+
+        return collector.getData();
+    }
+
     /**
      * Returns the domain of the specified channel of this domain/mark.
      * Either returns the configured domain or extracts it from the data.
@@ -256,6 +265,8 @@ export default class UnitView extends View {
     /**
      * Extracts and caches the domain from the data.
      *
+     * TODO: Optimize! Now this performs redundant work if multiple views share the same collector.
+     *
      * @param {string} channel
      * @param {string} type secondary channels have an implicit type based on the primary channel
      * @returns {DomainArray}
@@ -276,7 +287,7 @@ export default class UnitView extends View {
                     if (accessor.constant) {
                         domain.extend(accessor({}));
                     } else {
-                        for (const datum of this.getData()) {
+                        for (const datum of this.getCollectedData()) {
                             domain.extend(accessor(datum));
                         }
                     }

@@ -218,6 +218,8 @@ export default class GenomeSpy {
                 unitViews.map(view => view.mark.initializeGraphics())
             );
 
+            // Some of the encoders need an initialized scale (domain). Thus, it has
+            // to be done after all data have been loaded.
             unitViews.forEach(view => view.mark.initializeEncoders());
             unitViews.forEach(view => view.mark.updateGraphicsData());
 
