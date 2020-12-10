@@ -1,6 +1,11 @@
 import FlowNode, { BEHAVIOR_CLONES } from "./flowNode";
 import { removeRedundantCloneTransforms, validateLinks } from "./flowOptimizer";
 import CloneTransform from "./transforms/clone";
+import Collector from "./collector";
+import DataFlow from "./dataFlow";
+import { combineIdenticalDataSources } from "./flowOptimizer";
+import InlineSource from "./sources/inlineSource";
+import UrlSource from "./sources/urlSource";
 
 test("validateLinks() detects broken graph", () => {
     const root = new FlowNode();
@@ -120,5 +125,68 @@ describe("removeRedundantCloneTransforms", () => {
         expect(branching.children[0]).toBe(a);
         expect(branching.children[1]).toBe(b);
         expect(branching.children[2]).toBe(cl);
+    });
+});
+
+describe("Merge indentical data sources", () => {
+    test("Merges correctly", () => {
+        /** @type {DataFlow<string>} */
+        const dataFlow = new DataFlow();
+
+        const a = new UrlSource({ url: "http://genomespy.app/" });
+        const ac = new Collector();
+        a.addChild(ac);
+
+        const b = new UrlSource({ url: "http://genomespy.app/" });
+        const bc = new Collector();
+        b.addChild(bc);
+
+        const c = new UrlSource({ url: "http://helsinki.fi/" });
+        const cc = new Collector();
+        c.addChild(cc);
+
+        dataFlow.addDataSource(a, "a");
+        dataFlow.addDataSource(b, "b");
+        dataFlow.addDataSource(c, "c");
+
+        dataFlow.addCollector(ac, "a");
+        dataFlow.addCollector(bc, "b");
+        dataFlow.addCollector(cc, "c");
+
+        combineIdenticalDataSources(dataFlow);
+
+        expect(dataFlow.dataSources.length).toEqual(2);
+
+        expect(dataFlow.findDataSourceByKey("a")).toBe(a);
+        expect(dataFlow.findDataSourceByKey("b")).toBe(a); // Merged!
+        expect(dataFlow.findDataSourceByKey("c")).toBe(c);
+
+        expect(new Set(a.children)).toEqual(new Set([ac, bc]));
+        expect(c.children[0]).toBe(cc);
+
+        for (const dataSource of dataFlow.dataSources) {
+            // Cheat that we loaded something
+            dataSource.complete();
+        }
+
+        expect(ac.completed).toBeTruthy();
+        expect(bc.completed).toBeTruthy();
+        expect(cc.completed).toBeTruthy();
+    });
+
+    test("Does not merge those with undefined identifier", () => {
+        /** @type {DataFlow<string>} */
+        const dataFlow = new DataFlow();
+
+        const a = new InlineSource({ values: [1, 2, 3] });
+        const b = new InlineSource({ values: [1, 2, 3] });
+
+        dataFlow.addDataSource(a, "a");
+        dataFlow.addDataSource(b, "b");
+
+        combineIdenticalDataSources(dataFlow);
+
+        expect(dataFlow.findDataSourceByKey("a")).toBe(a);
+        expect(dataFlow.findDataSourceByKey("b")).toBe(b);
     });
 });

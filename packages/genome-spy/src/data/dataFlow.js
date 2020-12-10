@@ -11,50 +11,35 @@
 export default class DataFlow {
     constructor() {
         /** @type {Map<H, DataSource>} */
-        this.dataSourcesByHost = new Map();
+        this._dataSourcesByHost = new Map();
 
         /** @type {Map<H, Collector>} */
-        this.collectorsByHost = new Map();
+        this._collectorsByHost = new Map();
     }
 
     get dataSources() {
-        return [...new Set(this.dataSourcesByHost.values()).values()];
+        return [...new Set(this._dataSourcesByHost.values()).values()];
     }
 
     get collectors() {
-        return [...this.collectorsByHost.values()];
+        return [...this._collectorsByHost.values()];
     }
 
     /**
      *
      * @param {DataSource} dataSource
      * @param {H} key
-     * @returns {DataSource} The newly added data source or an existing source with the
-     *      same identifier.
      */
     addDataSource(dataSource, key) {
-        // Merge identical sources
-        const identifier = dataSource.identifier;
-        if (identifier) {
-            for (const existingSource of this.dataSources) {
-                if (existingSource.identifier === identifier) {
-                    existingSource.adoptChildrenOf(dataSource);
-                    dataSource = existingSource;
-                }
-            }
-        }
-
-        this.dataSourcesByHost.set(key, dataSource);
-
-        return dataSource;
+        this._dataSourcesByHost.set(key, dataSource);
     }
 
     /**
      *
      * @param {H} key
      */
-    findDataSource(key) {
-        return this.dataSourcesByHost.get(key);
+    findDataSourceByKey(key) {
+        return this._dataSourcesByHost.get(key);
     }
 
     /**
@@ -63,14 +48,14 @@ export default class DataFlow {
      * @param {H} key
      */
     addCollector(collector, key) {
-        this.collectorsByHost.set(key, collector);
+        this._collectorsByHost.set(key, collector);
     }
 
     /**
      *
      * @param {H} key
      */
-    findCollector(key) {
-        return this.collectorsByHost.get(key);
+    findCollectorByKey(key) {
+        return this._collectorsByHost.get(key);
     }
 }

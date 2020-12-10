@@ -4,6 +4,7 @@ import CloneTransform from "./transforms/clone";
 
 /**
  * @typedef {import("./flowNode").default} FlowNode
+ * @typedef {import("./sources/dataSource").default} DataSource
  * @typedef {import("./dataFlow").default<any>} DataFlow
  */
 
@@ -66,6 +67,33 @@ export function combineAndPullCollectorsUp() {
 }
 
 /**
+ * @param {import("./dataFlow").default<any>} dataFlow
+ */
+export function combineIdenticalDataSources(dataFlow) {
+    const dataSourceEntries = [...dataFlow._dataSourcesByHost.entries()];
+
+    /** @type {Map<string, DataSource>} */
+    const sourcesByIdentifiers = new Map();
+    for (const e of dataSourceEntries) {
+        const ds = e[1];
+        if (ds.identifier && !sourcesByIdentifiers.has(ds.identifier)) {
+            sourcesByIdentifiers.set(ds.identifier, ds);
+        }
+    }
+
+    dataFlow._dataSourcesByHost.clear();
+
+    for (let [key, dataSource] of dataSourceEntries) {
+        const target = sourcesByIdentifiers.get(dataSource.identifier);
+        if (target) {
+            target.adoptChildrenOf(dataSource);
+            dataSource = target;
+        }
+        dataFlow.addDataSource(dataSource, key);
+    }
+}
+
+/**
  *
  * @param {FlowNode} root
  */
@@ -79,12 +107,12 @@ export function optimizeFlowGraph(root) {
 }
 
 /**
- *
- * @param {import("./dataFlow").default<H>} dataFlow
- * @template {object} H
+ * @param {import("./dataFlow").default<any>} dataFlow
  */
 export function optimizeDataFlow(dataFlow) {
     for (const dataSource of dataFlow.dataSources) {
         optimizeFlowGraph(dataSource);
     }
+
+    combineIdenticalDataSources(dataFlow);
 }

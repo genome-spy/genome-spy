@@ -313,7 +313,7 @@ export default class View {
     getData() {
         // TODO: provide dataFlow through viewContext
         const dataFlow = this.context.dataFlow;
-        const collector = dataFlow.findCollector(this);
+        const collector = dataFlow.findCollectorByKey(this);
 
         if (collector) {
             return collector.getData();
@@ -335,7 +335,7 @@ export default class View {
      */
     updateData() {
         const dataFlow = this.context.dataFlow;
-        const dataSource = dataFlow.findDataSource(this);
+        const dataSource = dataFlow.findDataSourceByKey(this);
 
         if (dataSource instanceof DynamicSource) {
             dataSource.loadSynchronously();
