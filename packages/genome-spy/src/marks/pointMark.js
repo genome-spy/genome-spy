@@ -6,7 +6,7 @@ import VERTEX_SHADER from "../gl/point.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
 
 import Mark from "./mark";
-import ReservoirSampler from "../utils/reservoirSampler";
+import SampleTransform from "../data/transforms/sample";
 
 /** @type {Record<string, import("../view/viewUtils").EncodingConfig>} */
 const defaultEncoding = {
@@ -91,12 +91,14 @@ export default class PointMark extends Mark {
             "semanticScore"
         );
         if (semanticScoreAccessor) {
-            const sampler = new ReservoirSampler(3000); // n chosen using Stetson-Harrison
+            const sampler = new SampleTransform({ type: "sample", size: 3000 }); // n chosen using Stetson-Harrison
             for (const d of this.unitView.getCollectedData()) {
                 // TODO: Throw on missing scores
-                sampler.ingest(semanticScoreAccessor(d));
+                sampler.handle(semanticScoreAccessor(d));
             }
-            this.sampledSemanticScores = Float32Array.from(sampler.getSample());
+            sampler.complete();
+
+            this.sampledSemanticScores = Float32Array.from(sampler.reservoir);
             this.sampledSemanticScores.sort((a, b) => a - b);
         }
     }

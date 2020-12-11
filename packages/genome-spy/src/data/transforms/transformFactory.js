@@ -6,11 +6,12 @@ import FormulaTransform from "./formula";
 import PileupTransform from "./pileup";
 import RegexExtractTransform from "./regexExtract";
 import RegexFoldTransform from "./regexFold";
+import SampleTransform from "./sample";
 import StackTransform from "./stack";
 
 /**
  * TODO: Typecasting
- * @type {Record<string, function(object):import("../flowNode").default}
+ * @type {Record<string, function(object):import("../flowNode").default>}
  */
 const transforms = {
     coverage: p => new CoverageTransform(p),
@@ -21,6 +22,7 @@ const transforms = {
     pileup: p => new PileupTransform(p),
     regexExtract: p => new RegexExtractTransform(p),
     regexFold: p => new RegexFoldTransform(p),
+    sample: p => new SampleTransform(p),
     stack: p => new StackTransform(p)
 };
 

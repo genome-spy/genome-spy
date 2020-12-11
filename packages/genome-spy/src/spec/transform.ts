@@ -135,16 +135,6 @@ export interface FlattenDelimitedConfig extends TransformConfigBase {
     as?: string[] | string;
 }
 
-export interface SimpleFilterConfig extends TransformConfigBase {
-    type: "simpleFilter";
-
-    field: string;
-
-    operator: "eq" | "neq" | "lt" | "lte" | "gte";
-
-    value: number | string | boolean;
-}
-
 export interface PileupConfig extends TransformConfigBase {
     type: "pileup";
 
@@ -233,11 +223,24 @@ export interface CollectConfig extends TransformConfigBase {
     sort: CompareConfig;
 }
 
+export interface SampleConfig extends TransformConfigBase {
+    type: "sample";
+
+    /**
+     * The maximum sample size.
+     *
+     * **Default:** `500`
+     */
+    size?: number;
+}
+
 export type TransformConfig =
+    | CollectConfig
     | FlattenDelimitedConfig
     | FormulaConfig
     | FilterConfig
-    | RegexFoldConfig
+    | PileupConfig
     | RegexExtractConfig
-    | StackConfig
-    | PileupConfig;
+    | RegexFoldConfig
+    | SampleConfig
+    | StackConfig;

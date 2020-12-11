@@ -1,8 +1,8 @@
-import ReservoirSampler from "./reservoirSampler";
-
+import SampleTransform from "./sample";
 import { extent } from "d3-array";
+import { createChain } from "../../view/flowBuilder";
 
-test("ReservoirSampler produces roughly uniform distributions", () => {
+test("SampleTransform produces roughly uniform distributions", () => {
     const size = 10;
     const n = 20;
     const rounds = 10000;
@@ -12,16 +12,21 @@ test("ReservoirSampler produces roughly uniform distributions", () => {
         freqs[i] = 0;
     }
 
+    const { dataSource, collector } = createChain(
+        new SampleTransform({ type: "sample", size })
+    );
+
     for (let r = 0; r < rounds; r++) {
-        const sampler = new ReservoirSampler(size);
-
         for (let i = 0; i < n; i++) {
-            sampler.ingest(i);
+            dataSource.handle(i);
         }
+        dataSource.complete();
 
-        for (const a of sampler.getSample()) {
+        for (const a of collector.getData()) {
             freqs[a] = freqs[a] + 1;
         }
+
+        dataSource.reset();
     }
 
     const e = extent(freqs);
