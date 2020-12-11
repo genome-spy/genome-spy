@@ -4,7 +4,9 @@ import createDataSource from "../data/sources/dataSourceFactory";
 import UnitView from "./unitView";
 import { BEHAVIOR_MODIFIES } from "../data/flowNode";
 import CloneTransform from "../data/transforms/clone";
-import DynamicSource, { isDynamicData } from "../data/sources/dynamicSource";
+import DynamicCallbackSource, {
+    isDynamicData
+} from "../data/sources/dynamicCallbackSource";
 import DataFlow from "../data/dataFlow";
 
 /**
@@ -78,7 +80,7 @@ export function buildDataFlow(root, existingFlow) {
      */
     function createDynamicSource(view) {
         if ("getDynamicData" in view) {
-            return new DynamicSource(() => view.getDynamicData());
+            return new DynamicCallbackSource(() => view.getDynamicData());
         }
         throw new Error("View does not implement getDynamicData()!");
     }

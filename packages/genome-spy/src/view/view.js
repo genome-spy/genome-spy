@@ -3,7 +3,7 @@ import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import InlineSource from "../data/sources/inlineSource";
-import DynamicSource from "../data/sources/dynamicSource";
+import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -322,7 +322,7 @@ export default class View {
         const dataFlow = this.context.dataFlow;
         const dataSource = dataFlow.findDataSourceByKey(this);
 
-        if (dataSource instanceof DynamicSource) {
+        if (dataSource instanceof DynamicCallbackSource) {
             dataSource.loadSynchronously();
 
             // TODO: The following should be called by a listener attacher to a collector

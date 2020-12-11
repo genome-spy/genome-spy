@@ -8,7 +8,10 @@ export function isDynamicData(data) {
     return "dynamicSource" in data;
 }
 
-export default class DynamicSource extends DataSource {
+/**
+ * A data source that retrieves the data from a callback that returns an iterable.
+ */
+export default class DynamicCallbackSource extends DataSource {
     /**
      * @param {function():Iterable<any>} callback Function that provides the data
      */
@@ -22,7 +25,9 @@ export default class DynamicSource extends DataSource {
         const iterable = this.callback();
 
         if (!iterable || typeof iterable[Symbol.iterator] !== "function") {
-            throw new Error("Dynamic data source didn't return iterable data!");
+            throw new Error(
+                "Dynamic data callback didn't return iterable data!"
+            );
         }
 
         this.reset();

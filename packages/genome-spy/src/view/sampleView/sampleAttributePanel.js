@@ -78,6 +78,10 @@ export class SampleAttributePanel extends ConcatView {
                 );
             }
         });
+
+        this.context.dataFlow.addObserver(this, collector =>
+            this._setupAttributeViews()
+        );
     }
 
     get sampleHandler() {
@@ -93,7 +97,7 @@ export class SampleAttributePanel extends ConcatView {
         super.transformData();
         // A hacky solution for updating stuff. TODO: Something more robust.
 
-        this.setupAttributeViews();
+        this._setupAttributeViews();
     }
 
     /**
@@ -185,7 +189,7 @@ export class SampleAttributePanel extends ConcatView {
         contextMenu({ items }, mouseEvent);
     }
 
-    setupAttributeViews() {
+    _setupAttributeViews() {
         const addedChildViews = this._createAttributeViewSpecs().map(spec =>
             this.addChild(spec)
         );

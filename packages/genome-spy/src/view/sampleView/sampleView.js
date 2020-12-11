@@ -16,6 +16,7 @@ import transition from "../../utils/transition";
 import { easeCubicOut, easeExpOut } from "d3-ease";
 import clamp from "../../utils/clamp";
 import createDataSource from "../../data/sources/dataSourceFactory";
+import FlowNode from "../../data/flowNode";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -214,6 +215,10 @@ export default class SampleView extends ContainerView {
      * @param {Sample[]} samples
      */
     _setSamples(samples) {
+        if (this._samples) {
+            throw new Error("Samples have already been set!");
+        }
+
         this._samples = samples;
 
         this.sampleHandler.setSamples(samples.map(sample => sample.id));
@@ -224,6 +229,9 @@ export default class SampleView extends ContainerView {
         this.sampleAccessor = sampleId => this.sampleMap.get(sampleId);
     }
 
+    /**
+     * Get all existing samples that are known to the SampleView
+     */
     getAllSamples() {
         return this._samples;
     }
@@ -254,8 +262,12 @@ export default class SampleView extends ContainerView {
         if (this.spec.samples.data) {
             const sampleDataSource = createDataSource(
                 this.spec.samples.data,
-                this.context.genomeSpy.config.baseUrl
+                this.getBaseUrl()
             );
+            const processSample = new ProcessSample();
+            sampleDataSource.addChild(processSample);
+            // WIP!
+
             this._setSamples(
                 processSamples(await sampleDataSource.getUngroupedData())
             );
@@ -580,6 +592,30 @@ function locusToString(locus) {
         : "" + locus;
 }
 
+class ProcessSample extends FlowNode {
+    constructor() {
+        super();
+        this.reset();
+    }
+
+    reset() {
+        this._index = 0;
+    }
+
+    /**
+     *
+     * @param {any} datum
+     */
+    handle(datum) {
+        this._propagate({
+            id: datum.sample,
+            displayName: datum.displayName || datum.sample,
+            indexNumber: this._index++,
+            attributes: extractAttributes(datum)
+        });
+    }
+}
+
 /**
  *
  * @param {any} row
@@ -589,18 +625,6 @@ function extractAttributes(row) {
     delete attributes.sample;
     delete attributes.displayName;
     return attributes;
-}
-
-/**
- * @param {any[]} flatSamples
- */
-function processSamples(flatSamples) {
-    return flatSamples.map((d, i) => ({
-        id: d.sample,
-        displayName: d.displayName || d.sample,
-        indexNumber: i,
-        attributes: extractAttributes(d)
-    }));
 }
 
 /**

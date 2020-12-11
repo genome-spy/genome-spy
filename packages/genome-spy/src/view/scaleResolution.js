@@ -184,7 +184,7 @@ export default class ScaleResolution {
             props.range = [props.range[1], props.range[0]];
         }
 
-        // A hack to remove ambigious color configs. TODO: Something more formal
+        // A hack to remove ambiguous color configs. TODO: Something more formal
         if (Array.isArray(props.range)) {
             delete props.scheme;
         }
