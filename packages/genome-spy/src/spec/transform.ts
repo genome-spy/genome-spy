@@ -55,7 +55,7 @@ export interface RegexExtractConfig extends TransformConfigBase {
     skipInvalidInput?: boolean;
 }
 
-export interface GatherConfig extends TransformConfigBase {
+export interface RegexFoldConfig extends TransformConfigBase {
     type: "gather";
 
     columnRegex: string;
@@ -237,7 +237,7 @@ export type TransformConfig =
     | FlattenDelimitedConfig
     | FormulaConfig
     | FilterConfig
-    | GatherConfig
+    | RegexFoldConfig
     | RegexExtractConfig
     | StackConfig
     | PileupConfig;

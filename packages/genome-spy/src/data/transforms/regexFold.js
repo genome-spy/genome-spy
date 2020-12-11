@@ -7,7 +7,7 @@ import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
  *
  * See: https://vega.github.io/vega/docs/transforms/fold/
  *
- * @typedef {import("../../spec/transform").GatherConfig} GatherConfig
+ * @typedef {import("../../spec/transform").RegexFoldConfig} RegexFoldConfig
  */
 export default class RegexFoldTransform extends FlowNode {
     get behavior() {
@@ -15,7 +15,7 @@ export default class RegexFoldTransform extends FlowNode {
     }
 
     /**
-     * @param {GatherConfig} params
+     * @param {RegexFoldConfig} params
      */
     constructor(params) {
         super();

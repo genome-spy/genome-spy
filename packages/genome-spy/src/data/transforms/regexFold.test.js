@@ -14,7 +14,7 @@ const sampleData = [
     }
 ];
 
-/** @type { import("../../spec/transform").GatherConfig } */
+/** @type { import("../../spec/transform").RegexFoldConfig } */
 const singleGatherConfig = {
     type: "gather",
     columnRegex: "^(.*)_a$",
