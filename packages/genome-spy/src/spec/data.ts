@@ -42,7 +42,7 @@ export interface DataFormatBase {
      * __Default value:__  The default format type is determined by the extension of the file URL.
      * If no extension is detected, `"json"` will be used by default.
      */
-    type?: "csv" | "tsv" | "dsv" | "json" | "topojson";
+    type?: "csv" | "tsv" | "dsv" | "json";
 }
 
 export interface CsvDataFormat extends DataFormatBase {
@@ -76,7 +76,12 @@ export type DataFormat = CsvDataFormat | DsvDataFormat | JsonDataFormat;
 
 export type DataFormatType = "json" | "csv" | "tsv" | "dsv";
 
-export type DataSource = UrlData | InlineData | NamedData | DynamicData;
+export type DataSource =
+    | UrlData
+    | InlineData
+    | NamedData
+    | DynamicCallbackData
+    | DynamicData;
 
 export type Data = DataSource | Generator;
 
@@ -87,8 +92,6 @@ export type InlineDataset =
     | object[]
     | string
     | object;
-
-export type DynamicDataset = () => object[];
 
 export interface DataBase {
     /**
@@ -124,20 +127,27 @@ export interface NamedData extends DataBase {
     name: string;
 }
 
-export interface DynamicData extends DataBase {
+export interface DynamicCallbackData extends DataBase {
     /**
      * The View class has `getDynamicData()` methods that provides the data.
-     * This is intended for internal use such as axis ticks/labels.
+     * This is intended for internal use.
+     */
+    dynamicCallbackSource: boolean;
+}
+
+export interface DynamicData extends DataBase {
+    /**
+     * For internal use.
      */
     dynamicSource: boolean;
 }
 
 export function isUrlData(data: Partial<Data>): data is UrlData {
-    return !!data["url"];
+    return "url" in data;
 }
 
 export function isInlineData(data: Partial<Data>): data is InlineData {
-    return !!data["values"];
+    return "values" in data;
 }
 
 export function isNamedData(data: Partial<Data>): data is NamedData {
@@ -146,7 +156,7 @@ export function isNamedData(data: Partial<Data>): data is NamedData {
         !isUrlData(data) &&
         !isInlineData(data) &&
         !isGenerator(data) &&
-        isDynamicData(data)
+        !isDynamicData(data)
     );
 }
 
@@ -159,14 +169,15 @@ export function isSequenceGenerator(
 ): data is SequenceGenerator {
     return !!data["sequence"];
 }
-export function isDynamicData(data: Partial<Data>): data is DynamicData {
-    return !!data["dynamicSource"];
+export function isDynamicCallbackData(
+    data: Partial<Data>
+): data is DynamicCallbackData {
+    return "dynamicCallbackSource" in data;
 }
 
-export type DataSourceType = "raw" | "main" | "row" | "column" | "lookup";
-
-export const MAIN: "main" = "main";
-export const RAW: "raw" = "raw";
+export function isDynamicData(data: Partial<Data>): data is DynamicData {
+    return "dynamicSource" in data;
+}
 
 export type Generator = SequenceGenerator;
 

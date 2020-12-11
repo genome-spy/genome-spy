@@ -447,7 +447,7 @@ function createAxis(axisProps) {
         [CHANNEL_DIMENSIONS[
             getPerpendicularChannel(orient2channel(ap.orient))
         ]]: ap.extent,
-        data: { dynamicSource: true },
+        data: { dynamicCallbackSource: true },
         layer: []
     };
 

@@ -5,9 +5,10 @@ import UnitView from "./unitView";
 import { BEHAVIOR_MODIFIES } from "../data/flowNode";
 import CloneTransform from "../data/transforms/clone";
 import DynamicCallbackSource, {
-    isDynamicData
+    isDynamicCallbackData
 } from "../data/sources/dynamicCallbackSource";
 import DataFlow from "../data/dataFlow";
+import DataSource from "../data/sources/dataSource";
 
 /**
  * @typedef {import("./view").default} View
@@ -92,7 +93,7 @@ export function buildDataFlow(root, existingFlow) {
         if (view.spec.data) {
             // TODO: If multiple UrlSources have identical url etc, merge them.
 
-            const dataSource = isDynamicData(view.spec.data)
+            const dataSource = isDynamicCallbackData(view.spec.data)
                 ? createDynamicSource(view)
                 : createDataSource(view.spec.data, view.getBaseUrl());
 
@@ -123,4 +124,49 @@ export function buildDataFlow(root, existingFlow) {
     root.visit(processView);
 
     return dataFlow;
+}
+
+/**
+ * A helper function for creating linear data flows programmatically.
+ *
+ * @param {H} dataSource A data source or any other initial FlowNode.
+ * @param  {...FlowNode} transforms
+ * @template {FlowNode} H
+ */
+export function createChain(dataSource, ...transforms) {
+    /** @type {FlowNode} */
+    let node = dataSource;
+    for (const transform of transforms) {
+        node.addChild(transform);
+        node = transform;
+    }
+
+    /** @type {Collector} */
+    let collector;
+
+    if (node instanceof Collector) {
+        collector = node;
+    } else {
+        collector = new Collector();
+        node.addChild(collector);
+    }
+
+    /** @type {function():Promise<any[]>} */
+    let loadAndCollect;
+    if (dataSource instanceof DataSource) {
+        loadAndCollect = async () => {
+            await dataSource.load();
+            return collector.getData();
+        };
+    } else {
+        loadAndCollect = async () => {
+            throw new Error("The root node is not derived from DataSource!");
+        };
+    }
+
+    return {
+        dataSource,
+        collector,
+        loadAndCollect
+    };
 }

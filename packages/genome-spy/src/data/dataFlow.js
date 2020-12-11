@@ -36,7 +36,7 @@ export default class DataFlow {
      */
     addObserver(callback, key) {
         let arr = this._observers.get(key);
-        if (arr) {
+        if (!arr) {
             arr = [];
             this._observers.set(key, arr);
         }

@@ -307,6 +307,9 @@ export default class View {
         }
     }
 
+    /**
+     * @returns {Iterable<any>}
+     */
     getDynamicData() {
         throw new Error("The view does not provide dynamic data!");
     }

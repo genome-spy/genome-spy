@@ -11,6 +11,7 @@ import * as Actions from "../../sampleHandler/sampleHandlerActions";
 import contextMenu from "../../utils/ui/contextMenu";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
+import { buildDataFlow } from "../flowBuilder";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -37,7 +38,7 @@ export class SampleAttributePanel extends ConcatView {
         super(
             {
                 data: { dynamicSource: true },
-                hconcat: [createLabelViewSpec()],
+                hconcat: [], // Contents are added dynamically
                 spacing: 1
             },
             sampleView.context,
@@ -78,26 +79,10 @@ export class SampleAttributePanel extends ConcatView {
                 );
             }
         });
-
-        this.context.dataFlow.addObserver(this, collector =>
-            this._setupAttributeViews()
-        );
     }
 
     get sampleHandler() {
         return this.parent.sampleHandler;
-    }
-
-    getDynamicData() {
-        // SampleView maintains the sample data
-        return this.parent.getAllSamples() || [];
-    }
-
-    transformData() {
-        super.transformData();
-        // A hacky solution for updating stuff. TODO: Something more robust.
-
-        this._setupAttributeViews();
     }
 
     /**
@@ -189,22 +174,49 @@ export class SampleAttributePanel extends ConcatView {
         contextMenu({ items }, mouseEvent);
     }
 
-    _setupAttributeViews() {
-        const addedChildViews = this._createAttributeViewSpecs().map(spec =>
-            this.addChild(spec)
-        );
+    /**
+     * @param {Sample[]} samples
+     */
+    _setSamples(samples) {
+        this._createViews();
+
+        const dataFlow = this.context.dataFlow;
+        buildDataFlow(this, dataFlow);
+
+        const dynamicSource = /** @type {import("../../data/sources/dynamicSource").default} */ (dataFlow.findDataSourceByKey(
+            this
+        ));
+
+        dynamicSource.publishData(samples);
+
+        this._updateAttributeData();
+    }
+
+    _createViews() {
+        const addedChildViews = [
+            createLabelViewSpec(),
+            ...this._createAttributeViewSpecs()
+        ].map(spec => this.addChild(spec));
 
         for (const view of addedChildViews) {
             if (view instanceof UnitView) {
                 // TODO: Move initialization to viewUtils
                 view.resolve("scale");
                 view.resolve("axis");
-                view.mark.initializeEncoders();
-                view.updateData();
-                // Async:
-                view.mark.initializeGraphics();
             }
         }
+    }
+
+    _updateAttributeData() {
+        this.visit(view => {
+            if (view instanceof UnitView) {
+                const mark = view.mark;
+                mark.initializeEncoders();
+                mark.initializeData(); // does faceting
+                mark.initializeGraphics();
+                mark.updateGraphicsData();
+            }
+        });
     }
 
     /**

@@ -17,6 +17,7 @@ import { easeCubicOut, easeExpOut } from "d3-ease";
 import clamp from "../../utils/clamp";
 import createDataSource from "../../data/sources/dataSourceFactory";
 import FlowNode from "../../data/flowNode";
+import { createChain } from "../flowBuilder";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -191,6 +192,12 @@ export default class SampleView extends ContainerView {
                 this._togglePeek(false);
             }
         });
+
+        if (this.spec.samples.data) {
+            this.loadSamples();
+        } else {
+            // TODO: schedule: extractSamplesFromData()
+        }
     }
 
     getEffectivePadding() {
@@ -227,6 +234,8 @@ export default class SampleView extends ContainerView {
 
         /** @param {string} sampleId */
         this.sampleAccessor = sampleId => this.sampleMap.get(sampleId);
+
+        this.attributeView._setSamples(samples);
     }
 
     /**
@@ -256,49 +265,41 @@ export default class SampleView extends ContainerView {
         this.child = /** @type {UnitView | LayerView | DecoratorView} */ (replacement);
     }
 
-    async loadData() {
-        const dataPromise = super.loadData();
-
-        if (this.spec.samples.data) {
-            const sampleDataSource = createDataSource(
-                this.spec.samples.data,
-                this.getBaseUrl()
-            );
-            const processSample = new ProcessSample();
-            sampleDataSource.addChild(processSample);
-            // WIP!
-
-            this._setSamples(
-                processSamples(await sampleDataSource.getUngroupedData())
+    loadSamples() {
+        if (!this.spec.samples.data) {
+            throw new Error(
+                "SampleView has no explicit sample metadata specified!"
             );
         }
 
-        return dataPromise;
+        const { dataSource, collector } = createChain(
+            createDataSource(this.spec.samples.data, this.getBaseUrl()),
+            new ProcessSample()
+        );
+
+        collector.observers.push(collector =>
+            this._setSamples(collector.getData())
+        );
+
+        // Synchronize loading with other data
+        const key = "samples " + this.getPathString();
+        this.context.dataFlow.addDataSource(dataSource, key);
     }
 
-    transformData() {
-        super.transformData();
-
-        // A hacky solution for updating facets. TODO: Something more robust.
-        // Perhaps an "updateFacets" method that is called during initialization,
-        // after transformData.
-
-        if (!this.spec.samples.data) {
-            const resolution = this.getScaleResolution("sample");
-            if (resolution) {
-                this._setSamples(
-                    resolution.getDataDomain().map((s, i) => ({
-                        id: s,
-                        displayName: s,
-                        indexNumber: i,
-                        attributes: []
-                    }))
-                );
-            } else {
-                throw new Error(
-                    "No explicit sample data nor sample channels found!"
-                );
-            }
+    extractSamplesFromData() {
+        // TODO: Call this from somewhere!
+        const resolution = this.getScaleResolution("sample");
+        if (resolution) {
+            return resolution.getDataDomain().map((s, i) => ({
+                id: s,
+                displayName: s,
+                indexNumber: i,
+                attributes: []
+            }));
+        } else {
+            throw new Error(
+                "No explicit sample data nor sample channels found!"
+            );
         }
     }
 

@@ -2,10 +2,10 @@ import DataSource from "./dataSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data
- * @returns {data is import("../../spec/data").InlineData}
+ * @returns {data is import("../../spec/data").DynamicCallbackData}
  */
-export function isDynamicData(data) {
-    return "dynamicSource" in data;
+export function isDynamicCallbackData(data) {
+    return "dynamicCallbackSource" in data;
 }
 
 /**
