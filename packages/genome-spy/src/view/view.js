@@ -320,14 +320,14 @@ export default class View {
      *
      * Currently used for updating axes. A more robust solution is needed
      * for true dynamic data loading.
+     *
+     * ARRRGHH! This is a fugly hack
      */
     updateData() {
         const dataFlow = this.context.dataFlow;
         const dataSource = dataFlow.findDataSourceByKey(this);
 
-        if (dataSource instanceof DynamicCallbackSource) {
-            dataSource.loadSynchronously();
-
+        const updateMarks = () => {
             // TODO: The following should be called by a listener attacher to a collector
             this.visit(node => {
                 if (node.spec.data && node !== this) {
@@ -340,9 +340,17 @@ export default class View {
                 }
                 // TODO: Update cached domain extents
             });
+        };
+
+        if (
+            dataSource instanceof DynamicCallbackSource ||
+            dataSource instanceof InlineSource
+        ) {
+            dataSource.loadSynchronously();
+            updateMarks();
         } else {
             throw new Error(
-                `View ${this.getPathString()} has no associated InlineSource! Cannot update data.`
+                `View ${this.getPathString()} has no associated DynamicCallbackSource! Cannot update data.`
             );
         }
     }
