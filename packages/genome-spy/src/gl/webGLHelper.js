@@ -124,6 +124,24 @@ export default class WebGLHelper {
                 shader = gl.createShader(type);
                 gl.shaderSource(shader, stitchedSource);
                 gl.compileShader(shader);
+
+                const compiled = gl.getShaderParameter(
+                    shader,
+                    gl.COMPILE_STATUS
+                );
+                if (!compiled) {
+                    const lastError = gl.getShaderInfoLog(shader);
+                    gl.deleteShader(shader);
+                    console.error(
+                        `${addLineNumbersWithError(
+                            shaderSource,
+                            lastError,
+                            0
+                        )}\nError compiling: ${lastError}`
+                    );
+                    throw new Error("Cannot compile GLSL shader!");
+                }
+
                 this._shaderCache.set(cacheKey, shader);
             }
             return shader;
@@ -205,4 +223,33 @@ export default class WebGLHelper {
             }
         }
     }
+}
+
+/**
+ * Copy-pasted from twgl.js:
+ * https://github.com/greggman/twgl.js/blob/master/src/programs.js
+ * Copyright 2019 Gregg Tavares, MIT license
+ */
+function addLineNumbersWithError(src, log = "", lineOffset = 0) {
+    const errorRE = /ERROR:\s*\d+:(\d+)/gi;
+    // Note: Error message formats are not defined by any spec so this may or may not work.
+    const matches = [...log.matchAll(errorRE)];
+    const lineNoToErrorMap = new Map(
+        matches.map((m, ndx) => {
+            const lineNo = parseInt(m[1]);
+            const next = matches[ndx + 1];
+            const end = next ? next.index : log.length;
+            const msg = log.substring(m.index, end);
+            return [lineNo - 1, msg];
+        })
+    );
+    return src
+        .split("\n")
+        .map((line, lineNo) => {
+            const err = lineNoToErrorMap.get(lineNo);
+            return `${lineNo + 1 + lineOffset}: ${line}${
+                err ? `\n\n^^^ ${err}` : ""
+            }`;
+        })
+        .join("\n");
 }
