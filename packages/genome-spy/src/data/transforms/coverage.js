@@ -60,6 +60,7 @@ export default class CoverageTransform extends FlowNode {
         let chrom;
 
         // TODO: Whattabout cumulative error when float weights are used?
+        // Howabout https://github.com/d3/d3-array#fsum ?
         let coverage = 0;
 
         /** @type {number} */
