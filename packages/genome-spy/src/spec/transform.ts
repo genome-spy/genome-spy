@@ -234,6 +234,18 @@ export interface SampleConfig extends TransformConfigBase {
     size?: number;
 }
 
+export interface MeasureTextConfig extends TransformConfigBase {
+    type: "measureText";
+
+    field: string;
+
+    fontSize: number;
+
+    as: string;
+
+    // TODO: FontFamily etc
+}
+
 export type TransformConfig =
     | CollectConfig
     | FlattenDelimitedConfig
