@@ -7,17 +7,6 @@ import createEncoders, { secondaryChannel } from "../encoder/encoder";
 import Mark from "./mark";
 import { fixPositional } from "./markUtils";
 
-/** @type {import("../spec/view").EncodingConfigs} */
-const defaultEncoding = {
-    x: null,
-    x2: null,
-    y: null,
-    y2: null,
-    color: { value: "#4c78a8" }, // TODO: Configurable/theme
-    opacity: { value: 1.0 },
-    squeeze: { value: "none" } // choices: none, top, right, bottom, left
-};
-
 export const SQUEEZE = Object.fromEntries(
     ["none", "top", "right", "bottom", "left"].map((squeeze, i) => [squeeze, i])
 );
@@ -39,13 +28,20 @@ export default class RectMark extends Mark {
         };
     }
 
-    getDefaultEncoding() {
-        return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    getSupportedChannels() {
+        return [...super.getSupportedChannels(), "x2", "y2", "squeeze"];
     }
 
     getDefaultProperties() {
         return {
             ...super.getDefaultProperties(),
+
+            x2: undefined,
+            y2: undefined,
+            color: "#4c78a8",
+            opacity: 1.0,
+            squeeze: "none", // choices: none, top, right, bottom, left
+
             minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
             minHeight: 0.5,
             minOpacity: 0.0,
@@ -56,13 +52,11 @@ export default class RectMark extends Mark {
     }
 
     /**
+     * @param {import("../spec/view").EncodingConfigs} encoding
      * @returns {import("../spec/view").EncodingConfigs}
      */
-    getEncoding() {
-        const encoding = super.getEncoding();
-
+    fixEncoding(encoding) {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
-
         fixPositional(encoding, "x");
         fixPositional(encoding, "y");
 

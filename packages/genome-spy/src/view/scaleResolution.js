@@ -358,7 +358,9 @@ function getDefaultScaleType(channel, dataType) {
         squeeze: ["ordinal", null],
         sample: ["identity", "identity"],
         semanticScore: [null, "identity"],
-        text: ["identity", "identity"]
+        text: ["identity", "identity"],
+        dx: [null, "identity"],
+        dy: [null, "identity"]
     };
 
     return defaults[channel]

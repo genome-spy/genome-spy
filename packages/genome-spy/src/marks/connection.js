@@ -5,20 +5,6 @@ import { ConnectionVertexBuilder } from "../gl/dataToVertices";
 
 import Mark from "./mark";
 
-/** @type {import("../spec/view").EncodingConfigs} */
-const defaultEncoding = {
-    x: null,
-    x2: null,
-    y: { value: 0.0 },
-    y2: { value: 0.0 },
-    height: { value: 1.0 },
-    size: { value: 1.0 },
-    size2: null,
-    color: { value: "black" },
-    color2: null,
-    opacity: { value: 1.0 }
-};
-
 export default class ConnectionMark extends Mark {
     /**
      * @param {import("../view/unitView").default} unitView
@@ -38,24 +24,41 @@ export default class ConnectionMark extends Mark {
         };
     }
 
-    getDefaultEncoding() {
-        return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    getSupportedChannels() {
+        return [
+            ...super.getSupportedChannels(),
+            "x2",
+            "y2",
+            "size",
+            "size2",
+            "color2"
+        ];
     }
 
     getDefaultProperties() {
         return {
             ...super.getDefaultProperties(),
 
+            x: undefined,
+            x2: undefined,
+            y: 0.0,
+            y2: 0.0,
+            height: 1.0,
+            size: 1.0,
+            size2: undefined,
+            color: "black",
+            color2: undefined,
+            opacity: 1.0,
+
             segments: 101 // Performance is affected more by the fill rate, i.e. number of pixels
         };
     }
 
     /**
+     * @param {import("../spec/view").EncodingConfigs} encoding
      * @returns {import("../spec/view").EncodingConfigs}
      */
-    getEncoding() {
-        const encoding = super.getEncoding();
-
+    fixEncoding(encoding) {
         if (!encoding.x) {
             throw new Error(
                 "The x channel has not been defined: " +

@@ -35,16 +35,14 @@
     {
       "mark": {
         "type": "text",
+        "size": 12,
+        "opacity": 0.8,
         "fitToBand": true,
         "paddingX": 4,
         "paddingY": 3
       },
       "encoding": {
         "text": { "field": "measurement", "type": "nominal", "format": ".2f" },
-        "size": { "value": 12 },
-        "opacity": {
-          "value": 0.8
-        },
         "color": {
           "field": "measurement",
           "type": "quantitative",
@@ -60,17 +58,17 @@
       "data": { "values": [{}] },
       "mark": {
         "type": "text",
+        "size": 13,
+        "color": "white",
         "align": "left",
         "baseline": "bottom",
         "dx": 5,
-        "dy": -5
+        "dy": -5,
+        "text": "Zoom in using the mouse wheel!"
       },
       "encoding": {
         "x": { "value": 0 },
-        "y": { "value": 0 },
-        "text": { "value": "Zoom in using the mouse wheel!" },
-        "color": { "value": "white" },
-        "size": { "value": 13 }
+        "y": { "value": 0 }
       }
     }
   ]

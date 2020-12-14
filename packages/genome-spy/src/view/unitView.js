@@ -180,7 +180,7 @@ export default class UnitView extends View {
      */
     getAccessor(channel) {
         return getCachedOrCall(this, "accessor-" + channel, () => {
-            const encoding = this.mark.getEncoding(); // Mark provides encodings with defaults and possible modifications
+            const encoding = this.mark.encoding; // Mark provides encodings with defaults and possible modifications
             if (encoding && encoding[channel]) {
                 return this.context.accessorFactory.createAccessor(
                     encoding[channel]

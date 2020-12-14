@@ -57,7 +57,7 @@ export default function createEncoders(mark, encodingConfigs) {
     const encoders = {};
 
     if (!encodingConfigs) {
-        encodingConfigs = mark.getEncoding();
+        encodingConfigs = mark.encoding;
     }
 
     for (const [channel, encodingConfig] of Object.entries(encodingConfigs)) {

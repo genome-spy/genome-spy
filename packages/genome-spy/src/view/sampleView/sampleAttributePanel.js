@@ -474,6 +474,7 @@ function createLabelViewSpec() {
             type: "text",
             align: "left",
             baseline: "middle",
+            size: 11,
             flushY: false
         },
         encoding: {
@@ -481,11 +482,7 @@ function createLabelViewSpec() {
             x2: { value: 1 },
             y: { value: 0 },
             y2: { value: 1 },
-            text: { field: "displayName", type: "nominal" },
-            size: { value: 11 }
-
-            //size: { value: headerConfig.labelFontSize },
-            //color: { value: headerConfig.labelColor }
+            text: { field: "displayName", type: "nominal" }
         }
     };
 

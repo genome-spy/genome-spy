@@ -44,10 +44,9 @@
         {
           "name": "Arrow shafts",
 
-          "mark": "rule",
-
-          "encoding": {
-            "size": { "value": 3 }
+          "mark": {
+            "type": "rule",
+            "size": 3
           }
         },
         {

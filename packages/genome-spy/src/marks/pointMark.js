@@ -9,17 +9,7 @@ import Mark from "./mark";
 import SampleTransform from "../data/transforms/sample";
 
 /** @type {Record<string, import("../view/viewUtils").EncodingConfig>} */
-const defaultEncoding = {
-    x: { value: 0.5 },
-    y: { value: 0.5 },
-    color: { value: "#4c78a8" }, // TODO: Configurable/theme
-    opacity: { value: 1.0 },
-    size: { value: 100.0 },
-    semanticScore: { value: 0.0 }, // TODO: Should be datum instead of value. But needs fixing.
-    shape: { value: "circle" },
-    strokeWidth: { value: 0.0 },
-    gradientStrength: { value: 0.0 }
-};
+const defaultEncoding = {};
 
 export const SHAPES = Object.fromEntries(
     [
@@ -52,8 +42,23 @@ export default class PointMark extends Mark {
             semanticScore: { raw: true },
             shape: {},
             strokeWidth: { raw: true },
-            gradientStrength: { raw: true }
+            gradientStrength: { raw: true },
+            dx: { raw: true },
+            dy: { raw: true }
         };
+    }
+
+    getSupportedChannels() {
+        return [
+            ...super.getSupportedChannels(),
+            "size",
+            "semanticScore",
+            "shape",
+            "strokeWidth",
+            "gradientStrength",
+            "dx",
+            "dy"
+        ];
     }
 
     getDefaultEncoding() {
@@ -63,6 +68,19 @@ export default class PointMark extends Mark {
     getDefaultProperties() {
         return {
             ...super.getDefaultProperties(),
+
+            x: 0.5,
+            y: 0.5,
+            color: "#4c78a8",
+            opacity: 1.0,
+            size: 100.0,
+            semanticScore: 0.0, // TODO: Should be datum instead of value. But needs fixing.
+            shape: "circle",
+            strokeWidth: 0.0,
+            gradientStrength: 0.0,
+            dx: 0,
+            dy: 0,
+
             /** TODO: Implement */
             relativeSizing: false,
 

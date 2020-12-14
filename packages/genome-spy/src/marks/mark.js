@@ -1,16 +1,13 @@
 import { group } from "d3-array";
 import { fp64ify } from "../gl/includes/fp64-utils";
 import * as twgl from "twgl.js";
-import Interval from "../utils/interval";
 import createEncoders from "../encoder/encoder";
-import { DOMAIN_PREFIX } from "../scale/glslScaleGenerator";
 import {
+    DOMAIN_PREFIX,
     generateValueGlsl,
     generateScaleGlsl
 } from "../scale/glslScaleGenerator";
 import { getCachedOrCall } from "../utils/propertyCacher";
-import coalesce from "../utils/coalesce";
-import { isNumber } from "vega-util";
 
 /**
  *
@@ -66,12 +63,16 @@ export default class Mark {
         throw new Error("Not implemented!");
     }
 
+    getSupportedChannels() {
+        return ["x", "y", "color", "opacity"];
+    }
+
     /**
      * @returns {import("../spec/view").EncodingConfigs}
      */
     getDefaultEncoding() {
         return {
-            sample: null
+            sample: undefined
         };
     }
 
@@ -95,31 +96,43 @@ export default class Mark {
     }
 
     /**
+     * Adds intelligent defaults etc to the encoding.
+     *
+     * @param {import("../spec/view").EncodingConfigs} encoding
+     * @returns {import("../spec/view").EncodingConfigs}
+     */
+    fixEncoding(encoding) {
+        return encoding;
+    }
+
+    /**
      * Returns the encoding spec supplemented with mark's default encodings
      *
      * TODO: Replace with getter, cache it
      *
      * @returns {import("../spec/view").EncodingConfigs}
      */
-    getEncoding() {
-        const defaults = this.getDefaultEncoding();
-        const configured = this.unitView.getEncoding();
+    get encoding() {
+        return getCachedOrCall(this, "encoding", () => {
+            const defaults = this.getDefaultEncoding();
+            const configured = this.unitView.getEncoding();
 
-        /*
-        // TODO: Figure out a way to log a warning only once. After that, enable this check:
-        for (const channel in configured) {
-            if (typeof defaults[channel] !== "object") {
-                // TODO: Only warn if the channel was not inherited
-                console.warn(
-                    `Unsupported channel "${channel}" in ${this.getType()}'s encoding: ${JSON.stringify(
-                        configured
-                    )}`
-                );
-            }
-        }
-        */
+            const channels = this.getSupportedChannels();
+            const propertyValues = Object.fromEntries(
+                Object.entries(this.properties)
+                    .filter(
+                        ([prop, value]) =>
+                            channels.includes(prop) && value !== undefined
+                    )
+                    .map(([prop, value]) => [prop, { value }])
+            );
 
-        return { ...defaults, ...configured };
+            return this.fixEncoding({
+                ...defaults,
+                ...propertyValues,
+                ...configured
+            });
+        });
     }
 
     /**
@@ -189,7 +202,7 @@ export default class Mark {
      * @param {string[]} [extraHeaders]
      */
     createShaders(vertexShader, fragmentShader, extraHeaders = []) {
-        const e = this.getEncoding();
+        const e = this.encoding;
         const attributes = this.getAttributes();
         const glsl = Object.keys(attributes)
             .filter(attr => attributes[attr].raw && e[attr])

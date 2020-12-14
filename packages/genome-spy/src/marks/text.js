@@ -10,18 +10,6 @@ import fontMetadata from "../fonts/Lato-Regular.json";
 import Mark from "./mark";
 import { fixPositional } from "./markUtils";
 
-/** @type {import("../spec/view").EncodingConfigs} */
-const defaultEncoding = {
-    x: { value: 0.5 },
-    y: { value: 0.5 },
-    x2: undefined,
-    y2: undefined,
-    text: { value: "" },
-    size: { value: 11.0 },
-    color: { value: "black" },
-    opacity: { value: 1.0 }
-};
-
 /** For GLSL uniforms */
 const alignments = {
     left: -1,
@@ -65,13 +53,23 @@ export default class TextMark extends Mark {
         };
     }
 
-    getDefaultEncoding() {
-        return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    getSupportedChannels() {
+        return [...super.getSupportedChannels(), "x2", "y2", "size", "text"];
     }
 
     getDefaultProperties() {
         return {
             ...super.getDefaultProperties(),
+
+            x: 0.5,
+            y: 0.5,
+            x2: undefined,
+            y2: undefined,
+            text: "",
+            size: 11.0,
+            color: "black",
+            opacity: 1.0,
+
             align: "center",
             baseline: "middle",
             dx: 0,
@@ -100,9 +98,11 @@ export default class TextMark extends Mark {
         };
     }
 
-    getEncoding() {
-        const encoding = super.getEncoding();
-
+    /**
+     * @param {import("../spec/view").EncodingConfigs} encoding
+     * @returns {import("../spec/view").EncodingConfigs}
+     */
+    fixEncoding(encoding) {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
 
         for (const channel of ["x", "y"]) {
@@ -166,7 +166,7 @@ export default class TextMark extends Mark {
     }
 
     updateGraphicsData() {
-        const encoding = this.getEncoding();
+        const encoding = this.encoding;
 
         // Count the total number of characters to that we can pre-allocate a typed array
         const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value

@@ -347,12 +347,10 @@ function createAxis(axisProps) {
             type: "rule",
             clip: false,
             strokeDash: ap.domainDash,
-            strokeCap: ap.domainCap
-        },
-        encoding: {
-            color: { value: ap.domainColor },
-            [secondary]: { value: anchor },
-            size: { value: ap.domainWidth }
+            strokeCap: ap.domainCap,
+            color: ap.domainColor,
+            [secondary]: anchor,
+            size: ap.domainWidth
         }
     });
 
@@ -371,15 +369,15 @@ function createAxis(axisProps) {
                     : "alphabetic",
             ["d" + secondary]:
                 (ap.tickSize + ap.labelPadding) * offsetDirection,
+            [secondary]: anchor,
+            size: ap.labelFontSize,
+            color: ap.labelColor,
             minBufferSize: 1500,
             dynamicData: true
         },
         encoding: {
             [main]: { field: "value", type: "quantitative" },
-            text: { field: "label", type: "quantitative" },
-            [secondary]: { value: anchor },
-            size: { value: ap.labelFontSize },
-            color: { value: ap.labelColor }
+            text: { field: "label", type: "quantitative" }
         }
     });
 
@@ -390,6 +388,8 @@ function createAxis(axisProps) {
             clip: false,
             strokeDash: ap.tickDash,
             strokeCap: ap.tickCap,
+            color: ap.tickColor,
+            size: ap.tickWidth,
             minBufferSize: 300,
             dynamicData: true
         },
@@ -397,9 +397,7 @@ function createAxis(axisProps) {
             [secondary]: { value: anchor },
             [secondary + "2"]: {
                 value: anchor - (ap.tickSize / ap.extent) * (anchor ? 1 : -1)
-            },
-            color: { value: ap.tickColor },
-            size: { value: ap.tickWidth }
+            }
         }
     });
 
@@ -413,13 +411,11 @@ function createAxis(axisProps) {
             baseline: ap.orient == "bottom" ? "bottom" : "top",
             angle: [0, 90, 0, -90][
                 ["top", "right", "bottom", "left"].indexOf(ap.orient)
-            ]
-        },
-        encoding: {
-            text: { value: ap.title },
-            color: { value: ap.titleColor },
-            [main]: { value: 0.5 },
-            [secondary]: { value: 1 - anchor }
+            ],
+            text: ap.title,
+            color: ap.titleColor,
+            [main]: 0.5,
+            [secondary]: 1 - anchor
         }
     });
 
@@ -508,16 +504,12 @@ export function createGenomeAxis(axisProps) {
             type: "rule",
             strokeDash: axisProps.chromTickDash,
             strokeDashOffset: axisProps.chromTickDashOffset,
+            [secondary]: anchor,
+            [secondary + "2"]:
+                anchor - (ap.chromTickSize / ap.extent) * (anchor ? 1 : -1),
+            color: axisProps.chromTickColor,
+            size: ap.chromTickWidth,
             dynamicData: true
-        },
-        encoding: {
-            [secondary]: { value: anchor },
-            [secondary + "2"]: {
-                value:
-                    anchor - (ap.chromTickSize / ap.extent) * (anchor ? 1 : -1)
-            },
-            color: { value: axisProps.chromTickColor },
-            size: { value: ap.chromTickWidth }
         }
     });
 
@@ -525,6 +517,9 @@ export function createGenomeAxis(axisProps) {
         name: "chromosome_labels",
         mark: {
             type: "text",
+            [secondary]: anchor,
+            size: ap.chromLabelFontSize,
+            color: ap.chromLabelColor,
             align: axisProps.chromLabelAlign,
             baseline:
                 main == "y"
@@ -544,10 +539,7 @@ export function createGenomeAxis(axisProps) {
         },
         encoding: {
             [main + "2"]: { field: "continuousEnd", type: "locus" },
-            text: { field: "name", type: "ordinal" },
-            [secondary]: { value: anchor },
-            size: { value: ap.chromLabelFontSize },
-            color: { value: ap.chromLabelColor }
+            text: { field: "name", type: "ordinal" }
         }
     });
 

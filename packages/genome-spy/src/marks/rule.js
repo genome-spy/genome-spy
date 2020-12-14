@@ -4,17 +4,6 @@ import VERTEX_SHADER from "../gl/rule.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rule.fragment.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices";
 
-/** @type {import("../spec/view").EncodingConfigs} */
-const defaultEncoding = {
-    x: null,
-    x2: null,
-    y: null,
-    y2: null,
-    size: { value: 1 },
-    color: { value: "black" },
-    opacity: { value: 1.0 }
-};
-
 /**
  * Rule mark is just a special case of rect mark. However, it provides
  * a more straightforward configuration for rules.
@@ -41,13 +30,20 @@ export default class RuleMark extends Mark {
         };
     }
 
-    getDefaultEncoding() {
-        return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    getSupportedChannels() {
+        return [...super.getSupportedChannels(), "x2", "y2", "size"];
     }
 
     getDefaultProperties() {
         return {
             ...super.getDefaultProperties(),
+
+            x2: undefined,
+            y2: undefined,
+            size: 1,
+            color: "black",
+            opacity: 1.0,
+
             minLength: 0.0,
             /** @type {number[]} */
             strokeDash: null,
@@ -56,13 +52,12 @@ export default class RuleMark extends Mark {
         };
     }
 
+    /**
+     * @param {import("../spec/view").EncodingConfigs} encoding
+     * @returns {import("../spec/view").EncodingConfigs}
+     */
     // eslint-disable-next-line complexity
-    getEncoding() {
-        const encoding = {
-            ...this.getDefaultEncoding(),
-            ...this.unitView.getEncoding()
-        };
-
+    fixEncoding(encoding) {
         // TODO: Write test for this mess
         if (encoding.x && encoding.y && encoding.x2 && encoding.y2) {
             // Everything is defined
