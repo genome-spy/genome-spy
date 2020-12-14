@@ -52,6 +52,15 @@ float getDownscaleFactor(vec2 pos) {
     return max(minimum, min(maxPointDiameter, factor)) / maxPointDiameter;
 }
 
+// TODO: Move this into common.glsl or something
+vec2 getDxDy() {
+#if defined(dx_DEFINED) || defined(dy_DEFINED)
+    return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;
+#else
+    return vec2(0.0, 0.0);
+#endif
+}
+
 void main(void) {
 
     float semanticThresholdFactor = computeSemanticThresholdFactor();
@@ -62,7 +71,7 @@ void main(void) {
     }
 
     float size = getScaled_size();
-    vec2 pos = vec2(getScaled_x(), getScaled_y());
+    vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
 
     gl_Position = unitToNdc(applySampleFacet(pos));
 
