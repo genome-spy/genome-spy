@@ -52,20 +52,22 @@
         {
           "name": "Arrowheads",
 
-          "mark": "point",
+          "mark": {
+            "type": "point",
+            "size": 500,
+            "strokeWidth": 0
+          },
 
           "encoding": {
             "shape": {
               "field": "sin(x)",
-              "type": "quantitative",
+              "type": "nominal",
               "scale": {
                 "type": "threshold",
                 "domain": [-0.01, 0.01],
                 "range": ["triangle-down", "diamond", "triangle-up"]
               }
-            },
-            "size": { "value": 500 },
-            "strokeWidth": { "value": 0 }
+            }
           }
         }
       ]

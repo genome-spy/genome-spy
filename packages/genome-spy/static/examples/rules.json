@@ -1,0 +1,59 @@
+{
+  "data": {
+    "sequence": { "start": 0, "stop": 10000 }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "random()",
+      "as": "x"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.x + random() * 0.3 - 0.15",
+      "as": "x2"
+    },
+    {
+      "type": "formula",
+      "expr": "random()",
+      "as": "y"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.y + random() * 0.3 - 0.15",
+      "as": "y2"
+    },
+    { "type": "formula", "expr": "pow(random(), 2) * 15", "as": "size" }
+  ],
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "fp64": true, "zoom": true }
+    },
+    "x2": { "field": "x2" },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "fp64": true, "zoom": true }
+    },
+    "y2": { "field": "y2" },
+    "size": {
+      "field": "size",
+      "type": "quantitative",
+      "scale": { "type": "identity" }
+    },
+    "color": {
+      "field": "x",
+      "type": "nominal",
+      "scale": { "scheme": "category20" }
+    }
+  },
+
+  "mark": {
+    "type": "rule",
+    "strokeCap": "round"
+  }
+}

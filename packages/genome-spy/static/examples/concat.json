@@ -1,15 +1,10 @@
 {
+  "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
   "data": {
     "url": "sincos.csv"
   },
-  "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative"
-    }
-  },
 
-  "concat": [
+  "vconcat": [
     {
       "mark": "point",
       "name": "outerConcat",
@@ -17,28 +12,38 @@
         "y": {
           "field": "sin",
           "type": "quantitative"
+        },
+        "x": {
+          "field": "x",
+          "type": "quantitative"
         }
       }
     },
     {
       "name": "innerConcat",
-      "concat": [
+      "vconcat": [
         {
-          "_height": { "px": 80 },
           "mark": "point",
           "encoding": {
             "y": {
               "field": "cos",
               "type": "quantitative"
+            },
+            "x": {
+              "field": "x",
+              "type": "quantitative"
             }
           }
         },
         {
-          "_height": { "px": 80 },
           "mark": "point",
           "encoding": {
             "y": {
               "field": "cos",
+              "type": "quantitative"
+            },
+            "x": {
+              "field": "x",
               "type": "quantitative"
             }
           }
