@@ -44,7 +44,7 @@ void main(void) {
 
     vec2 normalizedMinSize = uMinSize / uViewportSize;
 
-    float opa = getScaled_opacity() * max(uMinOpacity, 
+    float opa = getScaled_opacity() * uViewOpacity * max(uMinOpacity, 
         // TODO: "attr_x + width" likely fails with fp64
         clampMinSize(x, scale_x(attr_x + width) - x, normalizedMinSize.x) *
         clampMinSize(y, scale_y(attr_y + facetedHeight) - y, normalizedMinSize.y));

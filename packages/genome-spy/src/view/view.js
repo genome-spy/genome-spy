@@ -4,6 +4,8 @@ import Padding from "../utils/layout/padding";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import InlineSource from "../data/sources/inlineSource";
 import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
+import { isNumber, span } from "vega-util";
+import { scaleLinear, scaleLog } from "d3-scale";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -76,6 +78,9 @@ export default class View {
         this._capturingInteractionEventListeners = {};
         /** @type {Record<string, InteractionEventListener[]>} */
         this._nonCapturingInteractionEventListeners = {};
+
+        /** @type {function(number):number} */
+        this._opacityFunction = parentOpacity => parentOpacity;
     }
 
     getPadding() {
@@ -122,6 +127,18 @@ export default class View {
                     }
                 )
         );
+    }
+
+    /**
+     * Returns the effective opacity of this view, e.g., view's opacity multiplied
+     * by opacities of its ancestors.
+     *
+     * TODO: This methods makes sense only in Unit and Layer views.
+     *
+     * @returns {number}
+     */
+    getEffectiveOpacity() {
+        return this._opacityFunction(this.parent?.getEffectiveOpacity() ?? 1.0);
     }
 
     getPathString() {
@@ -233,6 +250,21 @@ export default class View {
             e.view = this;
             throw e;
         }
+    }
+
+    /**
+     * Called after all scales in the view hierarchy have been resolved.
+     */
+    onScalesResolved() {
+        //
+    }
+
+    /**
+     * Called after all data have been loaded and processed by the data flow.
+     * TODO: What about dynamic data?
+     */
+    onDataLoaded() {
+        this._opacityFunction = createViewOpacityFunction(this);
     }
 
     /**
@@ -354,4 +386,60 @@ export default class View {
             );
         }
     }
+}
+
+/**
+ *
+ * @param {any} opacity
+ * @returns {opacity is import("../spec/view").DynamicOpacity}
+ */
+function isDynamicOpacity(opacity) {
+    return "unitsPerPixel" in opacity;
+}
+
+/**
+ *
+ * @param {View} view
+ * @returns {function(number):number}
+ */
+function createViewOpacityFunction(view) {
+    const opacityDef = view.spec.opacity;
+
+    if (opacityDef !== undefined) {
+        if (isNumber(opacityDef)) {
+            return parentOpacity => parentOpacity * opacityDef;
+        } else if (isDynamicOpacity(opacityDef)) {
+            /** @type {function(string):any} */
+            const getScale = channel => {
+                const scale = view.getScaleResolution(channel)?.getScale();
+                // Only works on linear scales
+                if (["quantitative", "locus"].includes(scale?.type)) {
+                    return scale;
+                }
+            };
+
+            const scale = opacityDef.channel
+                ? getScale(opacityDef.channel)
+                : getScale("x") || getScale("y");
+
+            if (!scale) {
+                throw new Error(
+                    "Cannot find a resolved quantitative scale for dynamic opacity!"
+                );
+            }
+
+            const interpolate = scaleLog()
+                .domain(opacityDef.unitsPerPixel)
+                .range(opacityDef.values)
+                .clamp(true);
+
+            return parentOpacity => {
+                const rangeSpan = 1000; //span(scale.range());
+                const unitsPerPixel = span(scale.domain()) / rangeSpan;
+
+                return interpolate(unitsPerPixel) * parentOpacity;
+            };
+        }
+    }
+    return parentOpacity => parentOpacity;
 }

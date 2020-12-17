@@ -60,41 +60,61 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      */
     renderDeferred() {
         if (!this.batch) {
-            /**
-             * Store the operations as a sequence of commands for cheap subsequent rendering.
-             *
-             * @type {(function():void)[]}
-             */
-            this.batch = [];
-
-            // Group by marks in order to minimize program changes
-            const requestByMark = group(this.buffer, request => request.mark);
-
-            for (const [mark, requests] of requestByMark.entries()) {
-                // Change program, set common uniforms (mark properties, shared domains)
-                this.batch.push(() => mark.prepareRender());
-
-                /** @type {import("../../utils/layout/rectangle").default} */
-                let previousCoords;
-                for (const request of requests) {
-                    const coords = request.coords;
-                    // Render each facet
-                    if (!coords.equals(previousCoords)) {
-                        this.batch.push(() => mark.setViewport(coords));
-                    }
-                    this.batch.push(request.callback);
-                    previousCoords = request.coords;
-                }
-            }
+            this._buildBatch();
         }
 
         for (const view of this.views) {
             view.onBeforeRender();
         }
 
-        // Execute the pipeline
+        // Execute the batch
         for (const op of this.batch) {
             op();
+        }
+    }
+
+    _buildBatch() {
+        /**
+         * Store the operations as a sequence of commands for cheap subsequent rendering.
+         *
+         * @type {(function():void)[]}
+         */
+        this.batch = [];
+
+        /**
+         * Is drawing enabled or not. As an optimization this is toggled off for invisible views.
+         */
+        let enabled = true;
+
+        /**
+         * @type {function(function():void):(function():void)}
+         */
+        const ifEnabled = op => () => {
+            if (enabled) op();
+        };
+
+        // Group by marks in order to minimize program changes
+        const requestByMark = group(this.buffer, request => request.mark);
+
+        for (const [mark, requests] of requestByMark.entries()) {
+            // eslint-disable-next-line no-loop-func
+            this.batch.push(() => {
+                enabled = mark.unitView.getEffectiveOpacity() > 0;
+            });
+            // Change program, set common uniforms (mark properties, shared domains)
+            this.batch.push(ifEnabled(() => mark.prepareRender()));
+
+            /** @type {import("../../utils/layout/rectangle").default} */
+            let previousCoords;
+            for (const request of requests) {
+                const coords = request.coords;
+                // Render each facet
+                if (!coords.equals(previousCoords)) {
+                    this.batch.push(ifEnabled(() => mark.setViewport(coords)));
+                }
+                this.batch.push(ifEnabled(request.callback));
+                previousCoords = request.coords;
+            }
         }
     }
 }

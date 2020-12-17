@@ -16,7 +16,7 @@ out vec4 vColor;
 
 void main(void) {
 
-    float opacity = getScaled_opacity();
+    float opacity = getScaled_opacity() * uViewOpacity;
     float x = getScaled_x();
     float x2 = getScaled_x2();
     float y = getScaled_y();

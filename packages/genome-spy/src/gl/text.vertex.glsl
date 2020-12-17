@@ -118,7 +118,7 @@ RangeResult positionInsideRange(float a, float b, float width, float padding,
 }
 
 void main(void) {
-    float opacity = getScaled_opacity();
+    float opacity = getScaled_opacity() * uViewOpacity;
     float size = getScaled_size();
     float x = getScaled_x();
     float y = getScaled_y();

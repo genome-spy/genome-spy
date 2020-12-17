@@ -55,6 +55,10 @@
       }
     },
     {
+      "opacity": {
+        "unitsPerPixel": [0.1, 0.05],
+        "values": [1, 0]
+      },
       "data": { "values": [{}] },
       "mark": {
         "type": "text",

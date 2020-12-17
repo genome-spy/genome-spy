@@ -35,7 +35,7 @@ void main(void) {
 
     // Stroke width in pixels
     float size = getScaled_size();
-    float opacity = getScaled_opacity();
+    float opacity = getScaled_opacity() * uViewOpacity;
 
     // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively
     if (size < pixelSize) {

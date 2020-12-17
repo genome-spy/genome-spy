@@ -285,6 +285,7 @@ export function resolveScalesAndAxes(root) {
             view.resolve("axis");
         }
     });
+    root.visit(view => view.onScalesResolved());
 }
 
 /**
@@ -359,6 +360,8 @@ export async function initializeData(root, existingFlow) {
     const promises = flow.dataSources.map(dataSource => dataSource.load());
 
     await Promise.all(promises);
+
+    root.visit(view => view.onDataLoaded());
 
     return flow;
 }

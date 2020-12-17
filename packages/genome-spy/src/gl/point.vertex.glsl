@@ -83,7 +83,7 @@ void main(void) {
 
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.
-    float opacity = getScaled_opacity();
+    float opacity = getScaled_opacity() * uViewOpacity;
     const float sizeLimit = 2.0;
     if (vSize < sizeLimit) {
         // We do some "cheap" gamma correction here. It breaks on dark background, though.

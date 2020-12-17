@@ -367,7 +367,14 @@ export default class Mark {
 
         twgl.setUniforms(this.programInfo, {
             ONE: 1.0, // a hack needed by emulated 64 bit floats
-            uDevicePixelRatio: this.glHelper.dpr
+            uDevicePixelRatio: this.glHelper.dpr,
+            uViewOpacity: this.unitView.getEffectiveOpacity()
+        });
+
+        twgl.setUniforms(this.programInfo, {
+            // left pos, left height, right pos, right height
+            uSampleFacet: [0, 1, 0, 1],
+            uTransitionOffset: 0.0
         });
 
         if (this.opaque) {
@@ -375,12 +382,6 @@ export default class Mark {
         } else {
             gl.enable(gl.BLEND);
         }
-
-        twgl.setUniforms(this.programInfo, {
-            // left pos, left height, right pos, right height
-            uSampleFacet: [0, 1, 0, 1],
-            uTransitionOffset: 0.0
-        });
     }
 
     /**

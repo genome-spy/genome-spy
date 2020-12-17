@@ -75,6 +75,20 @@ export interface FacetMapping {
 
 export type EncodingConfigs = Record<string, EncodingConfig>;
 
+/**
+ * DynamicOpacity specifies a zoom-dependent behavior for view opacity.
+ * The opacity is interpolated between the specified stops.
+ */
+export interface DynamicOpacity {
+    channel?: "x" | "y";
+    /** Stops expressed as units (base pairs, for example) per pixel. */
+    unitsPerPixel: number[];
+    /** Opacity values that match the given stops. */
+    values: number[];
+}
+
+export type ViewOpacityDef = number | DynamicOpacity;
+
 export interface ViewSpecBase {
     name?: string;
 
@@ -91,12 +105,10 @@ export interface ViewSpecBase {
     baseUrl?: string;
 
     /**
-     * Background color of the plotting area. The property has effect only on
-     * the immediate non-concat children of concat views or in the single root view.
-     * In practice, the property can be used to define background colors for "tracks".
-     * TODO: Use view background instead: https://vega.github.io/vega-lite/docs/spec.html#view-background
+     * Opacity of the view and all its children. Default: `1.0`.
+     * TODO: Should be available only in Unit and Layer views.
      */
-    plotBackground?: string;
+    opacity?: ViewOpacityDef;
 }
 
 export interface TableRowSpec extends ViewSpecBase {
