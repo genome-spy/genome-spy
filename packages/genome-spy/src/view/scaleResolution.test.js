@@ -1,9 +1,7 @@
 import { createAndInitialize } from "./testUtils";
-import createDomain, {
-    toRegularArray as r,
-    QuantitativeDomain
-} from "../utils/domainArray";
+import createDomain, { toRegularArray as r } from "../utils/domainArray";
 
+/** @type {import("../spec/view").LayerSpec} */
 const spec = {
     data: { values: [] },
     layer: [
@@ -47,14 +45,14 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
         ).toEqual([1, 5]);
     });
 
-    /*
-    // The following hangs Jest for some reason.
-    // https://github.com/facebook/jest/issues/10577
-
     test("Independent scales (domains) are not pulled up", async () => {
         const independentSpec = {
             ...spec,
-            resolve: { scale: { y: "independent" } }
+            resolve: {
+                scale: { y: "independent" },
+                // TODO: independent scales should imply independent axes
+                axis: { y: "independent" }
+            }
         };
 
         const view = await createAndInitialize(independentSpec);
@@ -66,7 +64,6 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
             r(view.children[1].getScaleResolution("y").getDataDomain())
         ).toEqual([4, 5]);
     });
-    */
 
     test("Channels with just values (no fields or scales) do not resolve", async () => {
         const view = await createAndInitialize(spec);
@@ -168,66 +165,4 @@ describe("Domain handling", () => {
         expect(d("x")).toEqual([2, 3]);
         expect(d("y")).toEqual([2, 3]);
     });
-});
-
-describe("Axes resolve properly", () => {
-    const sharedSpec = {
-        ...spec,
-        resolve: { scale: { y: "shared" }, axis: { y: "shared" } }
-    };
-
-    test("Shared axes have joined titles", async () => {
-        const view = await createAndInitialize(sharedSpec);
-        expect(view.children[0].getAxisResolution("y").getTitle()).toEqual(
-            "a, b"
-        );
-    });
-
-    test("Title is taken from axis title, encoding title, and field name, in that order.", async () => {
-        let view = await createAndInitialize({
-            data: { values: [1] },
-            mark: "point",
-            encoding: {
-                x: { field: "a" },
-                y: {
-                    field: "a",
-                    type: "quantitative"
-                }
-            }
-        });
-        expect(view.getAxisResolution("y").getTitle()).toEqual("a");
-
-        view = await createAndInitialize({
-            data: { values: [1] },
-            mark: "point",
-            encoding: {
-                x: { field: "a" },
-                y: {
-                    field: "a",
-                    title: "x",
-                    type: "quantitative"
-                }
-            }
-        });
-        expect(view.getAxisResolution("y").getTitle()).toEqual("x");
-
-        view = await createAndInitialize({
-            data: { values: [1] },
-            mark: "point",
-            encoding: {
-                x: { field: "a" },
-                y: {
-                    field: "a",
-                    title: "x",
-                    type: "quantitative",
-                    axis: {
-                        title: "z"
-                    }
-                }
-            }
-        });
-        expect(view.getAxisResolution("y").getTitle()).toEqual("z");
-    });
-
-    test.todo("Test legend titles when legends are implemented");
 });
