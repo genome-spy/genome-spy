@@ -12,7 +12,11 @@
 
 import * as util from "vega-util";
 import * as vs from "vega-scale";
-import scale from "./scale";
+import createScale from "./scale";
+
+// Suppress warnings by default
+const scale = (params, logger) =>
+    createScale(params, logger || { warn: () => {} });
 
 test("Scale respects domain configuration", function() {
     var s,

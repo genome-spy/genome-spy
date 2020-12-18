@@ -71,6 +71,14 @@ function includePad(type) {
     return isContinuous(type) && type !== Sequential;
 }
 
+function ensureLogger(logger) {
+    return (
+        logger || {
+            warn: (msg, ...rest) => console.warn(msg, ...rest)
+        }
+    );
+}
+
 var SKIP = toSet([
     "set",
     "modified",
@@ -93,15 +101,15 @@ var SKIP = toSet([
     "round",
     "reverse",
     "interpolate",
-    "interpolateGamma"
+    "interpolateGamma",
+    "zoom",
+    "fp64"
 ]);
 
 export default function createScale(_, logger) {
     const key = scaleKey(_);
     const scale = getScale(key)();
-    const df = logger || {
-        warn: (msg, ...rest) => console.warn(msg, ...rest)
-    };
+    logger = ensureLogger(logger);
 
     for (const key in _)
         if (!SKIP[key]) {
@@ -110,13 +118,13 @@ export default function createScale(_, logger) {
             // invoke scale property setter, raise warning if not found
             isFunction(scale[key])
                 ? scale[key](_[key])
-                : df.warn("Unsupported scale property: " + key);
+                : logger.warn("Unsupported scale property: " + key);
         }
 
     configureRange(
         scale,
         _,
-        configureBins(scale, _, configureDomain(scale, _, df))
+        configureBins(scale, _, configureDomain(scale, _, logger))
     );
 
     return scale;
@@ -152,9 +160,11 @@ function isContinuousColor(_) {
     );
 }
 
-function configureDomain(scale, _, df) {
+export function configureDomain(scale, _, logger) {
+    logger = ensureLogger(logger);
+
     // check raw domain, if provided use that and exit early
-    var raw = rawDomain(scale, _.domainRaw, df);
+    var raw = rawDomain(scale, _.domainRaw, logger);
     if (raw > -1) return raw;
 
     var domain = _.domain,
@@ -195,14 +205,14 @@ function configureDomain(scale, _, df) {
         if (_.domainMid != null) {
             mid = _.domainMid;
             if (mid < domain[0] || mid > domain[n]) {
-                df.warn("Scale domainMid exceeds domain min or max.", mid);
+                logger.warn("Scale domainMid exceeds domain min or max.", mid);
             }
             domain.splice(n, 0, mid);
         }
     }
 
     // set the scale domain
-    scale.domain(domainCheck(type, domain, df));
+    scale.domain(domainCheck(type, domain, logger));
 
     // if ordinal scale domain is defined, prevent implicit
     // domain construction as side-effect of scale lookup
@@ -219,9 +229,9 @@ function configureDomain(scale, _, df) {
     return domain.length;
 }
 
-function rawDomain(scale, raw, df) {
+function rawDomain(scale, raw, logger) {
     if (raw) {
-        scale.domain(domainCheck(scale.type, raw, df));
+        scale.domain(domainCheck(scale.type, raw, logger));
         return raw.length;
     } else {
         return -1;
@@ -248,7 +258,7 @@ function padDomain(type, domain, range, pad, exponent, constant) {
     return domain;
 }
 
-function domainCheck(type, domain, df) {
+function domainCheck(type, domain, logger) {
     if (isLogarithmic(type)) {
         // sum signs of domain values
         // if all pos or all neg, abs(sum) === domain.length
@@ -259,7 +269,9 @@ function domainCheck(type, domain, df) {
         );
 
         if (s !== domain.length) {
-            df.warn("Log scale domain includes zero: " + stringValue(domain));
+            logger.warn(
+                "Log scale domain includes zero: " + stringValue(domain)
+            );
         }
     }
     return domain;

@@ -31,7 +31,6 @@ export default class ScaleResolution {
         this.channel = channel;
         /** @type {import("./unitView").default[]} The involved views */
         this.views = [];
-        this.scale = {};
         /** @type {string} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
@@ -77,14 +76,12 @@ export default class ScaleResolution {
         }
 
         this.views.push(view);
-
-        // TODO: Merge scale
     }
 
     /**
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
-    isDomainDefined() {
+    isExplicitDomain() {
         if (this._explicitDomain) {
             return true;
         }
@@ -123,7 +120,7 @@ export default class ScaleResolution {
     }
 
     /**
-     * Unions the domains of all participating views
+     * Unions the domains (explicit or extracted) of all participating views
      *
      * @return { DomainArray }
      */
@@ -132,28 +129,18 @@ export default class ScaleResolution {
             return this._explicitDomain;
         }
 
-        const domains = this.views
+        // TODO: Optimize: extract domain only once if the views share the data
+        return this.views
             .map(view => view.getDomain(this.channel))
-            .filter(domain => !!domain);
-
-        if (domains.length > 1) {
-            return domains.reduce((acc, curr) => acc.extendAll(curr));
-        } else if (domains.length === 1) {
-            return domains[0];
-        }
-
-        throw new Error(
-            `Cannot resolve domain! Channel: ${
-                this.channel
-            }, views: ${this.views.map(v => v.getPathString()).join(", ")}`
-        );
+            .filter(domain => !!domain)
+            .reduce((acc, curr) => acc.extendAll(curr));
     }
 
     /**
      * Returns the domain of the scale
      */
     getDomain() {
-        return this.getScale().domain();
+        return this.getScale()?.domain();
     }
 
     /**
@@ -165,10 +152,6 @@ export default class ScaleResolution {
         }
 
         const domain = this.getDataDomain();
-
-        if (!domain) {
-            return;
-        }
 
         // TODO: Use scaleLocus if field type is locus
         const props = {
@@ -184,9 +167,14 @@ export default class ScaleResolution {
             props.range = [props.range[1], props.range[0]];
         }
 
-        // A hack to remove ambiguous color configs. TODO: Something more formal
-        if (Array.isArray(props.range)) {
+        if (props.range && props.scheme) {
             delete props.scheme;
+            // TODO: Settings should be set more intelligently
+            /*
+            throw new Error(
+                `Scale has both "range" and "scheme" defined! Views: ${this._getViewPaths()}`
+            );
+            */
         }
 
         this._scale = createScale(props);
@@ -194,7 +182,9 @@ export default class ScaleResolution {
             this._configureGenome();
         }
 
-        // Tag the scale. N.B. the tag is lost upon scale.clone().
+        // Tag the scale and inform encoders and shaders that emulated
+        // 64bit floats should be used.
+        // N.B. the tag is lost upon scale.clone().
         this._scale.fp64 = !!props.fp64;
 
         // Can be used as zoom extent
@@ -291,12 +281,12 @@ export default class ScaleResolution {
         const channel = this.channel;
         const props = {};
 
-        if (this.isDomainDefined()) {
+        if (this.isExplicitDomain()) {
             props.zero = false;
         }
 
         if (channel == "y" || channel == "x") {
-            props.nice = !this.isDomainDefined();
+            props.nice = !this.isExplicitDomain();
         } else if (channel == "color") {
             // TODO: Named ranges
             props.scheme =
@@ -325,6 +315,10 @@ export default class ScaleResolution {
         /** @type {import("../genome/scaleLocus").default} */ (this._scale).chromMapper(
             cm
         );
+    }
+
+    _getViewPaths() {
+        return this.views.map(v => v.getPathString()).join(", ");
     }
 }
 
