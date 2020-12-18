@@ -1,3 +1,9 @@
+/**
+ * The name of the field or a JavaScript expression for accessing nested properties.
+ * Dots and brackets in the field name must be escaped.
+ */
+export type Field = string;
+
 export interface TransformConfigBase {
     /** The type of the transform to be applied */
     type: string;
@@ -40,7 +46,7 @@ export interface RegexExtractConfig extends TransformConfigBase {
     /**
      * The source field
      */
-    field: string;
+    field: Field;
 
     /**
      * The new field or an array of fields where the extracted values are written.
@@ -70,9 +76,9 @@ export type SortOrder = "ascending" | "descending";
 
 export interface CompareConfig {
     /**
-     * The name(s) of the field to sort.
+     * The field(s) to sort by
      */
-    field: string[] | string;
+    field: Field[] | Field;
 
     /**
      * The order(s) to use: `"ascending"` (default), `"descending"`.
@@ -86,12 +92,12 @@ export interface StackConfig extends TransformConfigBase {
     /**
      * The field to stack. If no field is defined, a constant value of one is assumed.
      */
-    field?: string;
+    field?: Field;
 
     /**
      * The fields to be used for forming groups for different stacks.
      */
-    groupby: string[];
+    groupby: Field[];
 
     /**
      * The sort order of data in each stack.
@@ -118,9 +124,9 @@ export interface FlattenDelimitedConfig extends TransformConfigBase {
     type: "flattenDelimited";
 
     /**
-     * Field(s) to split and flatten
+     * The field(s) to split and flatten
      */
-    field: string[] | string;
+    field: Field[] | Field;
 
     /**
      * Separator(s) used on the field(s)
@@ -141,12 +147,12 @@ export interface PileupConfig extends TransformConfigBase {
     /**
      * The field representing the start coordinate of the segment (inclusive).
      */
-    start: string;
+    start: Field;
 
     /**
      * The field representing the end coordinate of the segment (exclusive).
      */
-    end: string;
+    end: Field;
 
     /**
      * The output field name for the computed lane.
@@ -167,25 +173,25 @@ export interface CoverageConfig extends TransformConfigBase {
     type: "coverage";
 
     /**
-     * An optional chromosome field that is passed through.
+     * An optional chromosome field that is passed through. TODO: groupby
      */
-    chrom?: string;
+    chrom?: Field;
 
     /**
      * The field representing the start coordinate of the segment (inclusive).
      */
-    start: string;
+    start: Field;
 
     /**
      * The field representing the end coordinate of the segment (exclusive).
      */
-    end: string;
+    end: Field;
 
     /**
      * A field representing an optional weight for the segment. Can be used with
      * copy ratios, for example.
      */
-    weight?: string;
+    weight?: Field;
 
     /**
      * The output field for the computed coverage.
@@ -237,13 +243,28 @@ export interface SampleConfig extends TransformConfigBase {
 export interface MeasureTextConfig extends TransformConfigBase {
     type: "measureText";
 
-    field: string;
+    field: Field;
 
     fontSize: number;
 
     as: string;
 
     // TODO: FontFamily etc
+}
+
+export interface LinearizeGenomicCoordinateConfig extends TransformConfigBase {
+    type: "linearizeGenomicCoordinate";
+
+    /** Which genome assembly to use (its name) */
+    genome?: Field;
+
+    /** Get the assembly from the scale of the channel. */
+    channel?: "x" | "y";
+
+    chrom: Field;
+    pos: Field;
+
+    as: string;
 }
 
 export type TransformConfig =
