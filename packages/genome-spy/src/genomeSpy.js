@@ -29,6 +29,7 @@ import Point from "./utils/layout/point";
 import { isContextMenuOpen } from "./utils/ui/contextMenu";
 import Animator from "./utils/animator";
 import DataFlow from "./data/dataFlow";
+import scaleIndex from "./genome/scaleIndex";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -144,6 +145,7 @@ export default class GenomeSpy {
 
         // Register scaleLocus to Vega-Scale.
         // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
+        vegaScale("index", scaleIndex, ["continuous"]);
         vegaScale("locus", scaleLocus, ["continuous"]);
 
         try {

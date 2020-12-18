@@ -200,7 +200,7 @@ export default class ScaleResolution {
         }
 
         const scaleType = this.getScale().type;
-        if (!["linear", "locus"].includes(scaleType)) {
+        if (!["linear", "locus", "index"].includes(scaleType)) {
             return false;
         }
 
@@ -210,8 +210,8 @@ export default class ScaleResolution {
             return !!props.zoom;
         }
 
-        // By default, locus scales are zoomable, others are not
-        return scaleType == "locus";
+        // By default, index and locus scales are zoomable, others are not
+        return ["index", "locus"].includes(scaleType);
     }
 
     /**
@@ -330,13 +330,13 @@ export default class ScaleResolution {
 function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
 
-    if (dataType == "locus") {
+    if (["index", "locus"].includes(dataType)) {
         if ("xy".includes(channel)) {
-            return "locus";
+            return dataType;
         } else {
             // TODO: Also explicitly set scales should be validated
             throw new Error(
-                `${channel} does not support locus data type. Only positional channels do.`
+                `${channel} does not support ${dataType} data type. Only positional channels do.`
             );
         }
     }

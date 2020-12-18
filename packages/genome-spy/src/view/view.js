@@ -413,7 +413,7 @@ function createViewOpacityFunction(view) {
             const getScale = channel => {
                 const scale = view.getScaleResolution(channel)?.getScale();
                 // Only works on linear scales
-                if (["quantitative", "locus"].includes(scale?.type)) {
+                if (["linear", "index", "locus"].includes(scale?.type)) {
                     return scale;
                 }
             };

@@ -553,7 +553,7 @@ export function createGenomeAxis(axisProps) {
             data: { values: [] },
             encoding: {
                 // TODO: { chrom: "name", type: "locus" } // without pos = pos is 0
-                [main]: { field: "continuousStart", type: "locus" }
+                [main]: { field: "continuousStart", type: "locus", band: 0 }
             },
             layer: []
         };

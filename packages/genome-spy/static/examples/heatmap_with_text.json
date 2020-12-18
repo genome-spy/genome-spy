@@ -15,8 +15,8 @@
   "resolve": { "scale": { "color": "independent" } },
 
   "encoding": {
-    "x": { "field": "x", "type": "locus" },
-    "y": { "field": "y", "type": "locus" }
+    "x": { "field": "x", "type": "index" },
+    "y": { "field": "y", "type": "index" }
   },
 
   "layer": [

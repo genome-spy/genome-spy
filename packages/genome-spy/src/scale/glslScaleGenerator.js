@@ -50,8 +50,9 @@ export function generateScaleGlsl(channel, scale, { datum } = {}) {
 
     let functionCall;
     switch (scale.type) {
-        case "locus":
+        case "index":
         case "linear":
+        case "locus":
             functionCall = `scaleLinear${fp64Suffix}(value, ${domainName}, ${rangeName})`;
             break;
         case "band":

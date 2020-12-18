@@ -223,7 +223,7 @@ function createBandModifier(scale, encodingConfig, bandwidth) {
  * @returns {function(any):any}
  */
 function createPreScaleModifier(scale, encodingConfig, channel, markType) {
-    return ["locus"].includes(scale.type)
+    return ["index", "locus"].includes(scale.type)
         ? createBandModifier(scale, encodingConfig, 1)
         : x => x;
 }
