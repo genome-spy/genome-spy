@@ -221,7 +221,8 @@ export default class Mark {
                         attr,
                         this.unitView.getScaleResolution(attr).getScale(),
                         {
-                            ...("datum" in e[attr]
+                            ...("datum" in e[attr] &&
+                            !attributes[attr].complexGeometry
                                 ? {
                                       datum: /** @type {number} */ (+e[attr]
                                           .datum)

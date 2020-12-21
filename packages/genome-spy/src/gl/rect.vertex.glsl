@@ -3,20 +3,15 @@
 
 in lowp vec3 color;
 
-/**
- * Height of the rectangle.
- *
- * Negative if the top vertex, positive if the bottom vertex.
- */
-in float height;
-in float width;
+/** Mainly needed by band scale */
+in float xFrac;
+in float yFrac;
 
 /** Minimum size (width, height) of the displayed rectangle in pixels */
 uniform vec2 uMinSize;
 
 /** Minimum opacity for the size size clamping */
 uniform float uMinOpacity;
-
 
 out vec4 vColor;
 
@@ -25,7 +20,7 @@ out vec4 vColor;
  */
 float clampMinSize(inout float pos, float size, float minSize) {
     if (minSize > 0.0 && abs(size) < minSize) {
-        pos += (minSize * sign(size) - size) / 2.0;
+        pos -= (minSize * sign(size) - size) / 2.0;
         return abs(size) / minSize;
     }
 
@@ -33,23 +28,22 @@ float clampMinSize(inout float pos, float size, float minSize) {
 }
 
 void main(void) {
-    vec2 pos = applySampleFacet(
-        vec2(getScaled_x(), getScaled_y())
-    );
-    
-    float x = pos.x;
-    float y = pos.y;
-
-    float facetedHeight = height * getSampleFacetHeight(pos);
-
     vec2 normalizedMinSize = uMinSize / uViewportSize;
 
-    float opa = getScaled_opacity() * uViewOpacity * max(uMinOpacity, 
-        // TODO: "attr_x + width" likely fails with fp64
-        clampMinSize(x, scale_x(attr_x + width) - x, normalizedMinSize.x) *
-        clampMinSize(y, scale_y(attr_y + facetedHeight) - y, normalizedMinSize.y));
+    vec2 pos = vec2(getScaled_x(), getScaled_y());
+    vec2 pos2 = vec2(getScaled_x2(), getScaled_y2());
+    vec2 size = pos2 - pos;
 
-    gl_Position = unitToNdc(x, y);
+    size.y /= getSampleFacetHeight(pos);
+
+    float opa = getScaled_opacity() * uViewOpacity * max(uMinOpacity,
+        clampMinSize(pos.x, size.x, normalizedMinSize.x) *
+        clampMinSize(pos.y, size.y, normalizedMinSize.y));
+        // TODO: Fix opacity of pinched rects
+
+    pos = applySampleFacet(pos);
+
+    gl_Position = unitToNdc(pos);
 
     vColor = vec4(color * opa, opa);
 

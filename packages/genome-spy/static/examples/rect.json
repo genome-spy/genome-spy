@@ -32,7 +32,7 @@
     },
     {
       "transform": [
-        { "type": "gather", "columnRegex": ["^(x.?)$"], "asValue": ["z"] }
+        { "type": "regexFold", "columnRegex": ["^(x.?)$"], "asValue": ["z"] }
       ],
 
       "layer": [

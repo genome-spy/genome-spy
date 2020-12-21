@@ -22,7 +22,9 @@ export default class RectMark extends Mark {
     getAttributes() {
         return {
             x: { raw: true, complexGeometry: true },
+            x2: { raw: true, complexGeometry: true },
             y: { raw: true, complexGeometry: true },
+            y2: { raw: true, complexGeometry: true },
             color: {},
             opacity: { raw: true }
         };
@@ -47,7 +49,7 @@ export default class RectMark extends Mark {
             minOpacity: 0.0,
 
             tesselationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
-            tesselationTiles: 35
+            tesselationTiles: 35 // TODO: Tiles per unit (bp)
         };
     }
 

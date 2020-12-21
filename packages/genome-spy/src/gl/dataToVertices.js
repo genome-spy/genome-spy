@@ -255,27 +255,32 @@ export class RectVertexBuilder extends VertexBuilder {
 
         this.tesselationThreshold = tesselationThreshold || Infinity;
 
-        // TODO: The following does not support constant "values"
         this.updateX = this.variableBuilder.createUpdater(
             ATTRIBUTE_PREFIX + "x",
+            1
+        );
+        this.updateX2 = this.variableBuilder.createUpdater(
+            ATTRIBUTE_PREFIX + "x2",
             1
         );
         this.updateY = this.variableBuilder.createUpdater(
             ATTRIBUTE_PREFIX + "y",
             1
         );
+        this.updateY2 = this.variableBuilder.createUpdater(
+            ATTRIBUTE_PREFIX + "y2",
+            1
+        );
 
-        // TODO: Optimization: width/height could be constants when minWidth/minHeight are zero
-        // ... or in case of band scale etc.
-        this.updateWidth = this.variableBuilder.createUpdater("width", 1);
-        this.updateHeight = this.variableBuilder.createUpdater("height", 1);
+        this.updateXFrac = this.variableBuilder.createUpdater("xFrac", 1);
+        this.updateYFrac = this.variableBuilder.createUpdater("yFrac", 1);
     }
 
     /* eslint-disable complexity */
     /**
      *
      * @param {string} key
-     * @param {object} data
+     * @param {object[]} data
      */
     addBatch(key, data) {
         const offset = this.variableBuilder.vertexCount;
@@ -320,58 +325,69 @@ export class RectVertexBuilder extends VertexBuilder {
                 [y, y2] = [y2, y];
             }
 
-            const width = x2 - x;
-            const height = y2 - y;
-
             // Start a new segment.
             this.variableBuilder.updateFromDatum(d);
 
             const squeeze = /** @type {string} */ (this.encoders.squeeze(d));
             if (squeeze && squeeze != "none") {
-                // TODO: Fix minWidth/minHeight. It's totally broken.
+                // This is probably terribly slow but for now, it's only used for
+                // centromeres on the cytoband track.
+                // TODO: Optimize and reduce object allocation
                 const c = this._squeeze(squeeze, x, x2, y, y2);
-                this.updateX(c.ax);
-                this.updateY(c.ay);
+                this.updateX(c[0][0][0]);
+                this.updateX2(c[1][0][0]);
+                this.updateY(c[0][0][1]);
+                this.updateY2(c[1][0][1]);
+                this.updateXFrac(c[0][0][2]);
+                this.updateYFrac(c[0][0][3]);
                 this.variableBuilder.pushAll();
                 this.variableBuilder.pushAll();
-                this.updateX(c.bx);
-                this.updateY(c.by);
+                this.updateX(c[0][1][0]);
+                this.updateX2(c[1][1][0]);
+                this.updateY(c[0][1][1]);
+                this.updateY2(c[1][1][1]);
+                this.updateXFrac(c[0][1][2]);
+                this.updateYFrac(c[0][1][3]);
                 this.variableBuilder.pushAll();
-                this.updateX(c.cx);
-                this.updateY(c.cy);
+                this.updateX(c[0][2][0]);
+                this.updateX2(c[1][2][0]);
+                this.updateY(c[0][2][1]);
+                this.updateY2(c[1][2][1]);
+                this.updateXFrac(c[0][2][2]);
+                this.updateYFrac(c[0][2][3]);
                 this.variableBuilder.pushAll();
                 this.variableBuilder.pushAll();
             } else {
                 this.updateX(x);
-                this.updateWidth(-width);
+                this.updateX2(x2);
+                this.updateXFrac(0);
                 this.updateY(y);
-                this.updateHeight(-height);
+                this.updateY2(y2);
+                this.updateYFrac(0);
 
                 // Duplicate the first vertex to produce degenerate triangles
                 this.variableBuilder.pushAll();
 
                 // Tesselate segments
                 const tileCount = 1;
+                const width = x2 - x;
+
                 //    width < Infinity
                 //        ? Math.ceil(width / this.tesselationThreshold)
                 //        : 1;
                 for (let i = 0; i <= tileCount; i++) {
                     const frac = i / tileCount;
 
-                    let w = 0;
-                    if (i == 0) {
-                        w = -width;
-                    } else if (i >= tileCount) {
-                        w = width;
-                    }
-
-                    this.updateWidth(w);
+                    this.updateXFrac(frac);
                     this.updateX(x + width * frac);
+                    this.updateX2(x2 - width * frac);
                     this.updateY(y);
-                    this.updateHeight(-height);
+                    this.updateY2(y2);
+                    this.updateYFrac(0);
                     this.variableBuilder.pushAll();
                     this.updateY(y2);
-                    this.updateHeight(height);
+                    this.updateY2(y);
+                    this.updateYFrac(1);
                     this.variableBuilder.pushAll();
                 }
 
@@ -399,43 +415,39 @@ export class RectVertexBuilder extends VertexBuilder {
      * @param {number} y2
      */
     _squeeze(squeeze, x, x2, y, y2) {
+        const xc = (x + x2) / 2;
+        const yc = (y + y2) / 2;
+
+        // points going round a rectangle clockwise, starting from the bottom left corner
+        const points = [
+            [x, y, 0, 0],
+            [x, yc, 0, 0.5],
+            [x, y2, 0, 1],
+            [xc, y2, 0.5, 1],
+            [x2, y2, 1, 1],
+            [x2, yc, 1, 0.5],
+            [x2, y, 1, 0],
+            [xc, y, 0.5, 1]
+        ];
+
+        const top = [0, 3, 6];
+
+        /** @param {number} steps */
+        const rotate = steps =>
+            top.map(x => points[(x + steps) % points.length]);
+
+        /** @param {number} steps */
+        const rotated = steps => [rotate(steps), rotate(steps + 4)];
+
         switch (squeeze) {
-            case "bottom":
-                return {
-                    ax: x,
-                    ay: y2,
-                    bx: (x + x2) / 2,
-                    by: y,
-                    cx: x2,
-                    cy: y2
-                };
             case "top":
-                return {
-                    ax: x,
-                    ay: y,
-                    bx: x2,
-                    by: y,
-                    cx: (x + x2) / 2,
-                    cy: y2
-                };
-            case "left":
-                return {
-                    ax: x,
-                    ay: (y + y2) / 2,
-                    bx: x2,
-                    by: y,
-                    cx: x2,
-                    cy: y2
-                };
+                return rotated(0);
             case "right":
-                return {
-                    ax: x,
-                    ay: y,
-                    bx: x2,
-                    by: (y + y2) / 2,
-                    cx: x,
-                    cy: y2
-                };
+                return rotated(2);
+            case "bottom":
+                return rotated(4);
+            case "left":
+                return rotated(6);
             default:
         }
     }
