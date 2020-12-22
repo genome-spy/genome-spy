@@ -217,25 +217,12 @@ function isValueEncoding(encodingConfig) {
 /**
  * @param {VegaScale} scale
  * @param {import("../view/view").EncodingConfig} encodingConfig
- * @param {number} bandwidth
- */
-function createBandModifier(scale, encodingConfig, bandwidth) {
-    const bandOffset =
-        (isNumber(encodingConfig.band) ? encodingConfig.band : 0.5) * bandwidth;
-    return x => x + bandOffset;
-}
-
-/**
- * @param {VegaScale} scale
- * @param {import("../view/view").EncodingConfig} encodingConfig
  * @param {string} channel
  * @param {string} markType
  * @returns {function(any):any}
  */
 function createPreScaleModifier(scale, encodingConfig, channel, markType) {
-    return ["index", "locus"].includes(scale.type)
-        ? createBandModifier(scale, encodingConfig, 1)
-        : x => x;
+    return x => x;
 }
 
 /**

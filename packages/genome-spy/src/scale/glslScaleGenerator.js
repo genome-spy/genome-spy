@@ -52,14 +52,20 @@ export function generateScaleGlsl(channel, scale, encoding) {
     switch (scale.type) {
         case "index":
         case "locus":
+            functionCall = `scaleBand(value, ${domainName}, ${rangeName}, 0.0, 0.0, ${toDecimal(
+                encoding.band ?? 0.5
+            )})`;
+            break;
+
         case "linear":
-            // TODO: Use scaleBand for locus/index scales
             functionCall = `scaleLinear${fp64Suffix}(value, ${domainName}, ${rangeName})`;
             break;
+
         case "point":
             // TODO: implement real scalePoint as it is calculated slightly differently
             functionCall = `scaleBand(value, ${domainName}, ${rangeName}, 0.5, 0.0, 0.5)`;
             break;
+
         case "band":
             functionCall = `scaleBand(value, ${domainName}, ${rangeName}, ${toDecimal(
                 scale.paddingInner()
@@ -67,9 +73,11 @@ export function generateScaleGlsl(channel, scale, encoding) {
                 encoding.band ?? 0.5
             )})`;
             break;
+
         case "identity":
             functionCall = `scaleIdentity${fp64Suffix}(value)`;
             break;
+
         default:
             // TODO: Implement log, sqrt, etc...
             throw new Error("Unsupported scale type: " + scale.type);

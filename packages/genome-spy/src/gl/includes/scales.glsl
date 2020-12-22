@@ -24,5 +24,5 @@ float scaleBand(float value, vec2 domainExtent, vec2 range,
     start += (stop - start - step * (n - paddingInner)) * 0.5;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + value * step + bandwidth * band;
+    return start + (value - domainExtent[0]) * step + bandwidth * band;
 }
