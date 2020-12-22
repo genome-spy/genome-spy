@@ -1,6 +1,7 @@
 import { primaryChannel } from "../encoder/encoder";
-import { isContinuous } from "vega-scale";
+import { isContinuous, isDiscrete } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
+import { isNumber } from "vega-util";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
@@ -34,11 +35,10 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  *
  * @param {string} channel
  * @param {any} scale
- * @param {object} extra
- * @param {number} [extra.datum] A constant value (in domain), replaces an attribute
+ * @param {import("../spec/view").EncodingConfig} encoding
  */
 // eslint-disable-next-line complexity
-export function generateScaleGlsl(channel, scale, { datum } = {}) {
+export function generateScaleGlsl(channel, scale, encoding) {
     const primary = primaryChannel(channel);
     const attributeName = ATTRIBUTE_PREFIX + channel;
     const domainName = DOMAIN_PREFIX + primary;
@@ -51,23 +51,33 @@ export function generateScaleGlsl(channel, scale, { datum } = {}) {
     let functionCall;
     switch (scale.type) {
         case "index":
-        case "linear":
         case "locus":
+        case "linear":
+            // TODO: Use scaleBand for locus/index scales
             functionCall = `scaleLinear${fp64Suffix}(value, ${domainName}, ${rangeName})`;
             break;
-        case "band":
         case "point":
-            functionCall = "value";
+            // TODO: implement real scalePoint as it is calculated slightly differently
+            functionCall = `scaleBand(value, ${domainName}, ${rangeName}, 0.5, 0.0, 0.5)`;
+            break;
+        case "band":
+            functionCall = `scaleBand(value, ${domainName}, ${rangeName}, ${toDecimal(
+                scale.paddingInner()
+            )}, ${toDecimal(scale.paddingOuter())}, ${toDecimal(
+                encoding.band ?? 0.5
+            )})`;
             break;
         case "identity":
             functionCall = `scaleIdentity${fp64Suffix}(value)`;
             break;
         default:
+            // TODO: Implement log, sqrt, etc...
             throw new Error("Unsupported scale type: " + scale.type);
     }
 
     const domainDef =
-        isContinuous(scale.type) && channel == primary
+        (isContinuous(scale.type) || isDiscrete(scale.type)) &&
+        channel == primary
             ? `uniform ${fp64 ? "vec4" : "vec2"} ${domainName};`
             : "";
 
@@ -79,6 +89,20 @@ export function generateScaleGlsl(channel, scale, { datum } = {}) {
         range && channel == primary
             ? `const ${range.type} ${rangeName} = ${range};`
             : "";
+
+    /** @type {number} */
+    let datum;
+    if ("datum" in encoding) {
+        if (isNumber(encoding.datum)) {
+            datum = encoding.datum;
+        } else {
+            throw new Error(
+                `Only scalar datums are currently supported in the encoding definition: ${JSON.stringify(
+                    encoding
+                )}`
+            );
+        }
+    }
 
     return `
 #define ${channel}_DEFINED

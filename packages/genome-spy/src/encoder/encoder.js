@@ -1,4 +1,6 @@
 import { isNumber } from "vega-util";
+import { isDiscrete } from "vega-scale";
+import createIndexer from "../utils/indexer";
 
 /**
  * @typedef {Object} EncoderMetadata
@@ -104,7 +106,7 @@ export default function createEncoders(mark, encodingConfigs) {
 /**
  *
  * @param {import("../view/viewUtils").EncodingConfig} encodingConfig
- * @param {VegaScale} scale
+ * @param {any} scale
  * @param {import("./accessor").Accessor} accessor
  * @param {string} channel
  * @param {function(any):any} [preScaleModifier]
@@ -142,6 +144,14 @@ export function createEncoder(
                         encodingConfig
                     )}`
                 );
+            }
+
+            if (isDiscrete(scale.type)) {
+                // TODO: and check that it's raw
+                // TODO: pass the found values back to the scale/resolution
+                const indexer = createIndexer();
+                indexer.addAll(scale.domain());
+                scale = indexer;
             }
 
             const definedPreScaleModifier = preScaleModifier || (x => x);
@@ -236,9 +246,7 @@ function createPreScaleModifier(scale, encodingConfig, channel, markType) {
  * @returns {function(any):any}
  */
 function createPostScaleModifier(scale, encodingConfig, channel, markType) {
-    return ["band", "point"].includes(scale.type)
-        ? createBandModifier(scale, encodingConfig, scale.bandwidth())
-        : x => x;
+    return x => x;
 }
 
 /**

@@ -134,7 +134,7 @@ export default class WebGLHelper {
                     gl.deleteShader(shader);
                     console.error(
                         `${addLineNumbersWithError(
-                            shaderSource,
+                            stitchedSource,
                             lastError,
                             0
                         )}\nError compiling: ${lastError}`

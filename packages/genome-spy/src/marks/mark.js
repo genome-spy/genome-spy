@@ -202,41 +202,34 @@ export default class Mark {
      * @param {string[]} [extraHeaders]
      */
     createShaders(vertexShader, fragmentShader, extraHeaders = []) {
-        const e = this.encoding;
         const attributes = this.getAttributes();
-        const glsl = Object.keys(attributes)
-            .filter(attr => attributes[attr].raw && e[attr])
-            .map(attr => {
-                if ("value" in e[attr]) {
-                    if (!attributes[attr].complexGeometry) {
-                        return generateValueGlsl(
-                            attr,
-                            /** @type {number} */ (e[attr].value)
-                        );
-                    } else {
-                        return generateScaleGlsl(attr, { type: "identity" });
-                    }
-                } else {
-                    return generateScaleGlsl(
-                        attr,
-                        this.unitView.getScaleResolution(attr).getScale(),
-                        {
-                            ...("datum" in e[attr] &&
-                            !attributes[attr].complexGeometry
-                                ? {
-                                      datum: /** @type {number} */ (+e[attr]
-                                          .datum)
-                                  }
-                                : {})
-                        }
+        const scaleGlsl = Object.keys(attributes)
+            .map(attributeName => {
+                const a = attributes[attributeName];
+                const e = this.encoding[attributeName];
+
+                if (!e || !a.raw) {
+                    return undefined;
+                }
+
+                if ("value" in e) {
+                    return generateValueGlsl(
+                        attributeName,
+                        /** @type {number} */ (e.value)
                     );
+                } else {
+                    const scale = this.unitView
+                        .getScaleResolution(attributeName)
+                        .getScale();
+                    return generateScaleGlsl(attributeName, scale, e);
                 }
             })
+            .filter(s => s !== undefined)
             .join("\n");
 
         const vertexShaderWithScales = /** @type {string} */ (vertexShader).replace(
             "#pragma SCALES_HERE",
-            glsl
+            scaleGlsl
         );
 
         const shaders = this.glHelper.compileShaders(
@@ -355,7 +348,7 @@ export default class Mark {
             if (resolution) {
                 const scale = resolution.getScale();
                 const domain = ["band", "point"].includes(scale.type)
-                    ? [0, 1]
+                    ? [0, resolution.getDomain().length]
                     : resolution.getDomain();
 
                 domainUniforms[DOMAIN_PREFIX + channel] = scale.fp64

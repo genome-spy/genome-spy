@@ -30,16 +30,22 @@ float clampMinSize(inout float pos, float size, float minSize) {
 void main(void) {
     vec2 normalizedMinSize = uMinSize / uViewportSize;
 
-    vec2 pos = vec2(getScaled_x(), getScaled_y());
+    vec2 pos1 = vec2(getScaled_x(), getScaled_y());
     vec2 pos2 = vec2(getScaled_x2(), getScaled_y2());
-    vec2 size = pos2 - pos;
+    vec2 size = pos2 - pos1;
+
+    // Do extra tricks to maintain precision at the endpoints 
+    // Equivalent to: pos = pos1 + vec2(xFrac, yFrac) * size;
+    vec2 pos = vec2(
+        xFrac < 0.5 ? (pos1.x + xFrac * size.x) : (pos2.x - (1.0 - xFrac) * size.x),
+        yFrac < 0.5 ? (pos1.y + yFrac * size.y) : (pos2.y - (1.0 - yFrac) * size.y)
+    );
 
     size.y /= getSampleFacetHeight(pos);
 
     float opa = getScaled_opacity() * uViewOpacity * max(uMinOpacity,
         clampMinSize(pos.x, size.x, normalizedMinSize.x) *
         clampMinSize(pos.y, size.y, normalizedMinSize.y));
-        // TODO: Fix opacity of pinched rects
 
     pos = applySampleFacet(pos);
 

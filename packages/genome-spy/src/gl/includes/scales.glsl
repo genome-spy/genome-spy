@@ -7,3 +7,22 @@ float scaleLinear(float value, vec2 domain, vec2 range) {
     float rangeSpan = range[1] - range[0];
     return (value - domain[0]) / domainSpan * rangeSpan + range[0];
 }
+
+float scaleBand(float value, vec2 domainExtent, vec2 range,
+                float paddingInner, float paddingOuter,
+                float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+
+    // TODO: zoom/pan
+    float n = domainExtent[1] - domainExtent[0];
+
+    // Based on: https://github.com/d3/d3-scale/blob/master/src/band.js
+    float step = (stop - start) / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (stop - start - step * (n - paddingInner)) * 0.5;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    return start + value * step + bandwidth * band;
+}

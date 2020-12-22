@@ -90,10 +90,6 @@ export class VertexBuilder {
             ...converters
         };
 
-        // Here's some complexity because of constants. They can be collapsed into a single
-        // element in the WebGL buffers - expect in the case of complex geometries (rect mark)
-        // where different channels map to different vertices.
-
         const rawChannels = Object.entries(attributes)
             .filter(([channel, attributeProps]) => attributeProps.raw)
             .map(([channel, attributeProps]) => channel);
@@ -124,15 +120,6 @@ export class VertexBuilder {
             }
         }
 
-        /**
-         * Is the channel complex, i.e. resulting multiple vertices for a single datum
-         * @param {string} channel
-         */
-        const isComplexChannel = channel => {
-            channel = primaryChannel(channel);
-            return attributes[channel] && attributes[channel].complexGeometry;
-        };
-
         /** @param {function(string, Encoder):boolean} encodingPredicate */
         const getAttributes = encodingPredicate =>
             Object.entries(encoders)
@@ -143,8 +130,7 @@ export class VertexBuilder {
                 .map(([channel, encoding]) => channel);
 
         /** @type {function(string, Encoder):boolean} */
-        const isConstant = (channel, encoder) =>
-            encoder.constant && !isComplexChannel(channel);
+        const isConstant = (channel, encoder) => encoder.constant;
 
         // Raw constants are included in the generated glsl code and thus skipped here
         const constants = getAttributes(
@@ -240,12 +226,6 @@ export class RectVertexBuilder extends VertexBuilder {
     }) {
         super({
             encoders,
-            converters: {
-                x: undefined,
-                y: undefined,
-                x2: undefined,
-                y2: undefined
-            },
             attributes,
             numVertices:
                 tesselationThreshold == Infinity ? numItems * 6 : undefined
@@ -254,23 +234,6 @@ export class RectVertexBuilder extends VertexBuilder {
         this.visibleRange = visibleRange;
 
         this.tesselationThreshold = tesselationThreshold || Infinity;
-
-        this.updateX = this.variableBuilder.createUpdater(
-            ATTRIBUTE_PREFIX + "x",
-            1
-        );
-        this.updateX2 = this.variableBuilder.createUpdater(
-            ATTRIBUTE_PREFIX + "x2",
-            1
-        );
-        this.updateY = this.variableBuilder.createUpdater(
-            ATTRIBUTE_PREFIX + "y",
-            1
-        );
-        this.updateY2 = this.variableBuilder.createUpdater(
-            ATTRIBUTE_PREFIX + "y2",
-            1
-        );
 
         this.updateXFrac = this.variableBuilder.createUpdater("xFrac", 1);
         this.updateYFrac = this.variableBuilder.createUpdater("yFrac", 1);
@@ -298,8 +261,6 @@ export class RectVertexBuilder extends VertexBuilder {
                 : encoder.accessorWithModifier;
         const xAccessor = a(e.x);
         const x2Accessor = a(e.x2);
-        const yAccessor = a(e.y);
-        const y2Accessor = a(e.y2);
 
         for (const d of data) {
             let x = xAccessor(d),
@@ -318,18 +279,13 @@ export class RectVertexBuilder extends VertexBuilder {
             if (x < lower) x = lower;
             if (x2 > upper) x2 = upper;
 
-            let y = yAccessor(d),
-                y2 = y2Accessor(d);
-
-            if (y > y2) {
-                [y, y2] = [y2, y];
-            }
-
             // Start a new segment.
             this.variableBuilder.updateFromDatum(d);
 
             const squeeze = /** @type {string} */ (this.encoders.squeeze(d));
-            if (squeeze && squeeze != "none") {
+            if (false && squeeze && squeeze != "none") {
+                // TODO: a separate triangle mark is needed!
+
                 // This is probably terribly slow but for now, it's only used for
                 // centromeres on the cytoband track.
                 // TODO: Optimize and reduce object allocation
@@ -358,11 +314,7 @@ export class RectVertexBuilder extends VertexBuilder {
                 this.variableBuilder.pushAll();
                 this.variableBuilder.pushAll();
             } else {
-                this.updateX(x);
-                this.updateX2(x2);
                 this.updateXFrac(0);
-                this.updateY(y);
-                this.updateY2(y2);
                 this.updateYFrac(0);
 
                 // Duplicate the first vertex to produce degenerate triangles
@@ -370,7 +322,6 @@ export class RectVertexBuilder extends VertexBuilder {
 
                 // Tesselate segments
                 const tileCount = 1;
-                const width = x2 - x;
 
                 //    width < Infinity
                 //        ? Math.ceil(width / this.tesselationThreshold)
@@ -379,14 +330,8 @@ export class RectVertexBuilder extends VertexBuilder {
                     const frac = i / tileCount;
 
                     this.updateXFrac(frac);
-                    this.updateX(x + width * frac);
-                    this.updateX2(x2 - width * frac);
-                    this.updateY(y);
-                    this.updateY2(y2);
                     this.updateYFrac(0);
                     this.variableBuilder.pushAll();
-                    this.updateY(y2);
-                    this.updateY2(y);
                     this.updateYFrac(1);
                     this.variableBuilder.pushAll();
                 }

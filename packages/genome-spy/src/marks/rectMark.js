@@ -21,10 +21,10 @@ export default class RectMark extends Mark {
 
     getAttributes() {
         return {
-            x: { raw: true, complexGeometry: true },
-            x2: { raw: true, complexGeometry: true },
-            y: { raw: true, complexGeometry: true },
-            y2: { raw: true, complexGeometry: true },
+            x: { raw: true },
+            x2: { raw: true },
+            y: { raw: true },
+            y2: { raw: true },
             color: {},
             opacity: { raw: true }
         };

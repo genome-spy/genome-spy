@@ -24,6 +24,9 @@ export function fixPositional(encoding, channel) {
                 const adjustment = (1 - (encoding[channel].band || 1)) / 2;
                 encoding[channel].band = 0 + adjustment;
                 encoding[secondary].band = 1 - adjustment;
+
+                // TODO: If the secondary channel duplicates the primary channel
+                // the data should be uploaded to the GPU only once.
             }
         }
     } else if (encoding[secondary]) {
