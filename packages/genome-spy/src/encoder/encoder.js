@@ -9,10 +9,7 @@ import createIndexer from "../utils/indexer";
  * @prop {function} invert
  * @prop {VegaScale} [scale]
  * @prop {import("./accessor").Accessor} accessor
- * @prop {function(any):any} accessorWithModifier Applies preScaleModifier to accessor. TODO: AccessorMetadata
  * @prop {import("../view/viewUtils").EncodingConfig} encodingConfig
- * @prop {function(any):any} [preScaleModifier]
- * @prop {function(any):any} [postScaleModifier]
  * @prop {function(function):void} applyMetadata Copies metadata to the target function
  *
  * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder
@@ -72,31 +69,11 @@ export default function createEncoders(mark, encodingConfigs) {
         );
         const scale = (resolution && resolution.getScale()) || undefined;
 
-        const preScaleModifier = scale
-            ? createPreScaleModifier(
-                  scale,
-                  encodingConfig,
-                  channel,
-                  mark.getType()
-              )
-            : undefined;
-
-        const postScaleModifier = scale
-            ? createPostScaleModifier(
-                  scale,
-                  encodingConfig,
-                  channel,
-                  mark.getType()
-              )
-            : undefined;
-
         encoders[channel] = createEncoder(
             encodingConfigs[channel],
             scale,
             mark.unitView.getAccessor(channel),
-            channel,
-            preScaleModifier,
-            postScaleModifier
+            channel
         );
     }
 
@@ -109,18 +86,9 @@ export default function createEncoders(mark, encodingConfigs) {
  * @param {any} scale
  * @param {import("./accessor").Accessor} accessor
  * @param {string} channel
- * @param {function(any):any} [preScaleModifier]
- * @param {function(any):any} [postScaleModifier]
  * @returns {Encoder}
  */
-export function createEncoder(
-    encodingConfig,
-    scale,
-    accessor,
-    channel,
-    preScaleModifier,
-    postScaleModifier
-) {
+export function createEncoder(encodingConfig, scale, accessor, channel) {
     /** @type {Encoder} */
     let encoder;
 
@@ -129,13 +97,11 @@ export function createEncoder(
         encoder.constant = true;
         encoder.constantValue = true;
         encoder.accessor = undefined;
-        encoder.accessorWithModifier = undefined;
     } else if (accessor) {
         if (channel == "text") {
             // TODO: Define somewhere channels that don't use a scale
             encoder = /** @type {Encoder} */ (datum => undefined);
             encoder.accessor = accessor;
-            encoder.accessorWithModifier = accessor;
             encoder.constant = accessor.constant;
         } else {
             if (!scale) {
@@ -154,22 +120,11 @@ export function createEncoder(
                 scale = indexer;
             }
 
-            const definedPreScaleModifier = preScaleModifier || (x => x);
-            const definedPostScaleModifier = postScaleModifier || (x => x);
-
-            encoder = /** @type {Encoder} */ (datum =>
-                definedPostScaleModifier(
-                    scale(definedPreScaleModifier(accessor(datum)))
-                ));
+            encoder = /** @type {Encoder} */ (datum => scale(accessor(datum)));
 
             encoder.constant = accessor.constant;
             encoder.accessor = accessor;
-            encoder.accessorWithModifier = preScaleModifier
-                ? x => preScaleModifier(accessor(x))
-                : accessor;
             encoder.scale = scale;
-            encoder.preScaleModifier = preScaleModifier;
-            encoder.postScaleModifier = postScaleModifier;
         }
     } else {
         throw new Error(
@@ -212,28 +167,6 @@ export function createEncoder(
  */
 function isValueEncoding(encodingConfig) {
     return "value" in encodingConfig;
-}
-
-/**
- * @param {VegaScale} scale
- * @param {import("../view/view").EncodingConfig} encodingConfig
- * @param {string} channel
- * @param {string} markType
- * @returns {function(any):any}
- */
-function createPreScaleModifier(scale, encodingConfig, channel, markType) {
-    return x => x;
-}
-
-/**
- * @param {VegaScale} scale
- * @param {import("../view/view").EncodingConfig} encodingConfig
- * @param {string} channel
- * @param {string} markType
- * @returns {function(any):any}
- */
-function createPostScaleModifier(scale, encodingConfig, channel, markType) {
-    return x => x;
 }
 
 /**
