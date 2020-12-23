@@ -16,7 +16,6 @@ float scaleBand(float value, vec2 domainExtent, vec2 range,
     float start = range[0];
     float stop = range[1];
 
-    // TODO: zoom/pan
     float n = domainExtent[1] - domainExtent[0];
 
     // Based on: https://github.com/d3/d3-scale/blob/master/src/band.js

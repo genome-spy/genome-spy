@@ -52,7 +52,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
     switch (scale.type) {
         case "index":
         case "locus":
-            functionCall = `scaleBand(value, ${domainName}, ${rangeName}, 0.0, 0.0, ${toDecimal(
+            functionCall = `scaleBand${fp64Suffix}(value, ${domainName}, ${rangeName}, 0.0, 0.0, ${toDecimal(
                 encoding.band ?? 0.5
             )})`;
             break;
@@ -105,7 +105,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
             datum = encoding.datum;
         } else {
             throw new Error(
-                `Only scalar datums are currently supported in the encoding definition: ${JSON.stringify(
+                `Only quantitative datums are currently supported in the encoding definition: ${JSON.stringify(
                     encoding
                 )}`
             );
