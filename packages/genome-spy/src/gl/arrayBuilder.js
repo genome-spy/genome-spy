@@ -2,7 +2,7 @@ import { ATTRIBUTE_PREFIX } from "../scale/glslScaleGenerator";
 
 /**
  * @typedef {Object} Converter
- * @prop {function(object)} f
+ * @prop {function(object):any} f
  * @prop {number} [numComponents]
  * @prop {boolean} [raw]
  *
@@ -11,7 +11,7 @@ export default class ArrayBuilder {
     // TODO: Support strided layout. May yield better performance or not. No consensus in literature.
 
     /**
-     * @param {Object.<string, import("./arraybuilder").Converter>} converters
+     * @param {Record<string, Converter>} converters
      * @param {string[]} attributes Which attributes to include
      * @param {number} size Size if known, uses TypedArray
      */

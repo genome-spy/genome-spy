@@ -233,8 +233,7 @@ export class RectVertexBuilder extends VertexBuilder {
 
         this.tesselationThreshold = tesselationThreshold || Infinity;
 
-        this.updateXFrac = this.variableBuilder.createUpdater("xFrac", 1);
-        this.updateYFrac = this.variableBuilder.createUpdater("yFrac", 1);
+        this.updateFrac = this.variableBuilder.createUpdater("frac", 2);
     }
 
     /* eslint-disable complexity */
@@ -259,6 +258,9 @@ export class RectVertexBuilder extends VertexBuilder {
                 : encoder.accessor;
         const xAccessor = a(e.x);
         const x2Accessor = a(e.x2);
+
+        const frac = [0, 0];
+        this.updateFrac(frac);
 
         for (const d of data) {
             let x = xAccessor(d),
@@ -312,8 +314,8 @@ export class RectVertexBuilder extends VertexBuilder {
                 this.variableBuilder.pushAll();
                 this.variableBuilder.pushAll();
             } else {
-                this.updateXFrac(0);
-                this.updateYFrac(0);
+                frac[0] = 0;
+                frac[1] = 0;
 
                 // Duplicate the first vertex to produce degenerate triangles
                 this.variableBuilder.pushAll();
@@ -325,12 +327,10 @@ export class RectVertexBuilder extends VertexBuilder {
                 //        ? Math.ceil(width / this.tesselationThreshold)
                 //        : 1;
                 for (let i = 0; i <= tileCount; i++) {
-                    const frac = i / tileCount;
-
-                    this.updateXFrac(frac);
-                    this.updateYFrac(0);
+                    frac[0] = i / tileCount;
+                    frac[1] = 0;
                     this.variableBuilder.pushAll();
-                    this.updateYFrac(1);
+                    frac[1] = 1;
                     this.variableBuilder.pushAll();
                 }
 
