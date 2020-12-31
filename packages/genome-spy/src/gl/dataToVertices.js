@@ -13,7 +13,6 @@ import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
  *
  * @typedef {import("./arraybuilder").Converter} Converter
  * @typedef {import("../encoder/encoder").Encoder} Encoder
- * @typedef {import("../marks/mark").AttributeProps} AttributeProps
  */
 export class VertexBuilder {
     /**
@@ -21,7 +20,7 @@ export class VertexBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {Record<string, Converter>} [object.converters]
-     * @param {Record<string, AttributeProps>} [object.attributes]
+     * @param {string[]} [object.attributes]
      * @param {number} [object.numVertices] If the number of data items is known, a
      *      preallocated TypedArray is used
      */
@@ -39,11 +38,7 @@ export class VertexBuilder {
             ...converters
         };
 
-        const rawChannels = Object.entries(attributes)
-            .filter(([channel, attributeProps]) => attributeProps.raw)
-            .map(([channel, attributeProps]) => channel);
-
-        for (const channel of rawChannels) {
+        for (const channel of attributes) {
             const ce = encoders[channel];
             if (ce) {
                 if (ce.scale) {
@@ -70,23 +65,14 @@ export class VertexBuilder {
         /** @param {function(string, Encoder):boolean} encodingPredicate */
         const getAttributes = encodingPredicate =>
             Object.entries(encoders)
-                .filter(([channel, encoder]) => attributes[channel])
+                .filter(([channel, encoder]) => attributes.includes(channel))
                 .filter(([channel, encoder]) =>
                     encodingPredicate(channel, encoder)
                 )
                 .map(([channel, encoding]) => channel);
 
-        /** @type {function(string, Encoder):boolean} */
-        const isConstant = (channel, encoder) => encoder.constant;
-
-        // Raw constants are included in the generated glsl code and thus skipped here
-        const constants = getAttributes(
-            (channel, encoder) =>
-                isConstant(channel, encoder) && !attributes[channel].raw
-        );
-
         const variables = getAttributes(
-            (channel, encoder) => !isConstant(channel, encoder)
+            (channel, encoder) => !encoder.constant
         );
 
         this.variableBuilder = ArrayBuilder.create(
@@ -94,11 +80,6 @@ export class VertexBuilder {
             variables,
             numVertices
         );
-        this.constantBuilder = ArrayBuilder.create(this.converters, constants);
-
-        // Update all constants with an empty datum
-        this.constantBuilder.updateFromDatum({});
-        this.constantBuilder.pushAll();
 
         /** Vertex index */
         this.index = 0;
@@ -133,10 +114,7 @@ export class VertexBuilder {
     toArrays() {
         return {
             /** @type {Record<string, {data: number[] | Float32Array, numComponents: number, divisor?: number}>} */
-            arrays: {
-                ...this.variableBuilder.arrays,
-                ...this.constantBuilder.toValues()
-            },
+            arrays: this.variableBuilder.arrays,
             /** Number of vertices used */
             vertexCount: this.variableBuilder.vertexCount,
             /** Number of vertices allocated in buffers */
@@ -158,7 +136,7 @@ export class RectVertexBuilder extends VertexBuilder {
      *
      * @param {Object} object
      * @param {Record<string, Encoder>} object.encoders
-     * @param {Record<string, AttributeProps>} object.attributes
+     * @param {string[]} object.attributes
      * @param {number} [object.tesselationThreshold]
      *     If the rect is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
@@ -350,7 +328,7 @@ export class RuleVertexBuilder extends VertexBuilder {
      *
      * @param {Object} object
      * @param {Record<string, Encoder>} object.encoders
-     * @param {Record<string, AttributeProps>} object.attributes
+     * @param {string[]} object.attributes
      * @param {number} [object.tesselationThreshold]
      *     If the rule is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
@@ -432,7 +410,7 @@ export class PointVertexBuilder extends VertexBuilder {
      *
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
-     * @param {Record<string, AttributeProps>} object.attributes
+     * @param {string[]} object.attributes
      * @param {number} [object.numItems] Number of points if known, uses TypedArray
      */
     constructor({ encoders, attributes, numItems = undefined }) {
@@ -467,7 +445,7 @@ export class ConnectionVertexBuilder extends VertexBuilder {
     /**
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
-     * @param {Record<string, AttributeProps>} object.attributes
+     * @param {string[]} object.attributes
      * @param {number} [object.numItems ] Number of points if known, uses TypedArray
      */
     constructor({ encoders, attributes, numItems = undefined }) {
@@ -501,7 +479,7 @@ export class TextVertexBuilder extends VertexBuilder {
      *
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
-     * @param {Record<string, AttributeProps>} object.attributes
+     * @param {string[]} object.attributes
      * @param {import("../fonts/types").FontMetadata} object.metadata
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters

@@ -20,14 +20,7 @@ export default class RectMark extends Mark {
     }
 
     getAttributes() {
-        return {
-            x: { raw: true },
-            x2: { raw: true },
-            y: { raw: true },
-            y2: { raw: true },
-            color: { raw: true },
-            opacity: { raw: true }
-        };
+        return ["x", "x2", "y", "y2", "color", "opacity"];
     }
 
     getSupportedChannels() {

@@ -42,15 +42,7 @@ export default class TextMark extends Mark {
     }
 
     getAttributes() {
-        return {
-            x: { raw: true },
-            x2: { raw: true },
-            y: { raw: true },
-            y2: { raw: true },
-            color: { raw: true },
-            size: { raw: true },
-            opacity: { raw: true }
-        };
+        return ["x", "x2", "y", "y2", "color", "size", "opacity"];
     }
 
     getSupportedChannels() {

@@ -22,12 +22,6 @@ import {
  *      optimized faceted rendering
  * @typedef {RenderingOptions & _MarkRenderingOptions} MarkRenderingOptions
  *
- * @typedef {Object} AttributeProps
- * @prop {boolean} [complexGeometry] The mark consists of multiple vertices that are rendered
- *      without instancing. Thus, constant values must be provided as attributes. Default: false
- * @prop {boolean} [raw] Data is uploaded to the GPU memory as is, i.e., not scale transformed.
- *      Default: false
- *
  * @callback DrawFunction
  * @param {import("../gl/dataToVertices").RangeEntry} range
  */
@@ -61,7 +55,7 @@ export default class Mark {
      * Note: attributes and channels do not necessarily match.
      * For example, rectangles have x, y, x2, and y2 channels but only x and y as attributes.
      *
-     * @returns {Record<string, AttributeProps>}
+     * @returns {string[]}
      */
     getAttributes() {
         // override
@@ -225,25 +219,21 @@ export default class Mark {
      */
     createShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const attributes = this.getAttributes();
-        const scaleGlsl = Object.keys(attributes)
-            .map(attributeName => {
-                const a = attributes[attributeName];
-                const fieldDef = this.encoding[attributeName];
+        const scaleGlsl = attributes
+            .map(channel => {
+                const fieldDef = this.encoding[channel];
 
-                if (!fieldDef || !a.raw) {
+                if (!fieldDef) {
                     return undefined;
                 }
 
                 if (isValueDef(fieldDef)) {
-                    return generateValueGlsl(
-                        attributeName,
-                        /** @type {number} */ (fieldDef.value)
-                    );
+                    return generateValueGlsl(channel, fieldDef.value);
                 } else {
                     const scale = this.unitView
-                        .getScaleResolution(attributeName)
+                        .getScaleResolution(channel)
                         .getScale();
-                    return generateScaleGlsl(attributeName, scale, fieldDef);
+                    return generateScaleGlsl(channel, scale, fieldDef);
                 }
             })
             .filter(s => s !== undefined)
@@ -365,7 +355,7 @@ export default class Mark {
 
         /** @type {Record<string, number | number[]>} */
         const domainUniforms = {};
-        for (const channel of Object.keys(this.getAttributes())) {
+        for (const channel of this.getAttributes()) {
             const resolution = this.unitView.getScaleResolution(channel);
             if (resolution) {
                 const scale = resolution.getScale();

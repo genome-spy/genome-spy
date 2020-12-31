@@ -1,6 +1,6 @@
 import { isContinuous, isDiscrete, isInterpolating } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
-import { isArray, isNumber, isString } from "vega-util";
+import { isArray, isBoolean, isNumber, isString } from "vega-util";
 import { color as d3color } from "d3-color";
 
 import { isColorChannel, primaryChannel } from "../encoder/encoder";
@@ -34,7 +34,7 @@ function splitScaleType(type) {
 /**
  *
  * @param {string} channel
- * @param {number | number[] | string} value
+ * @param {number | number[] | string | boolean} value
  */
 export function generateValueGlsl(channel, value) {
     /** @type {VectorizedValue} */
@@ -48,6 +48,8 @@ export function generateValueGlsl(channel, value) {
             );
         }
         // TODO: Symbols
+    } else if (isBoolean(value)) {
+        vec = vectorize(value ? 1 : 0);
     } else {
         vec = vectorize(value);
     }

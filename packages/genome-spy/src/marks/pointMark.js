@@ -33,19 +33,19 @@ export default class PointMark extends Mark {
     }
 
     getAttributes() {
-        return {
-            x: { raw: true },
-            y: { raw: true },
-            size: { raw: true },
-            color: { raw: true },
-            opacity: { raw: true },
-            semanticScore: { raw: true },
-            shape: {},
-            strokeWidth: { raw: true },
-            gradientStrength: { raw: true },
-            dx: { raw: true },
-            dy: { raw: true }
-        };
+        return [
+            "x",
+            "y",
+            "size",
+            "color",
+            "opacity",
+            "semanticScore",
+            "shape",
+            "strokeWidth",
+            "gradientStrength",
+            "dx",
+            "dy"
+        ];
     }
 
     getSupportedChannels() {
