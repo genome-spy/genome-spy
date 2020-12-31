@@ -1,3 +1,5 @@
+// Utils ------------
+
 vec3 getDiscreteColor(sampler2D s, int index) {
     return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
 }
@@ -5,6 +7,13 @@ vec3 getDiscreteColor(sampler2D s, int index) {
 vec3 getInterpolatedColor(sampler2D s, float unitValue) {
     return texture(s, vec2(unitValue, 0.0)).rgb;
 }
+
+float clampToRange(float value, vec2 range) {
+    return clamp(value, range[0], range[1]);
+}
+
+
+// Scales ------------
 
 float scaleIdentity(float value) {
     return value;

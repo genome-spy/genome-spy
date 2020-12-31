@@ -1,6 +1,6 @@
 import { isContinuous, isDiscrete, isInterpolating } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
-import { isNumber, isString } from "vega-util";
+import { extent, isArray, isNumber, isString } from "vega-util";
 import { color as d3color } from "d3-color";
 
 import { isColorChannel, primaryChannel } from "../encoder/encoder";
@@ -77,43 +77,83 @@ export function generateScaleGlsl(channel, scale, encoding) {
     const rangeName = RANGE_PREFIX + primary;
 
     const fp64 = scale.fp64;
-    const fp64Suffix = fp64 ? "Fp64" : "";
     const attributeType = fp64 ? "vec2" : "float";
 
+    /** @type {string[]} The generated shader (concatenated at the end) */
+    const glsl = [];
+
+    // For debugging
+    glsl.push("");
+    glsl.push("/".repeat(70));
+    glsl.push(`// Channel: ${channel}`);
+    glsl.push("");
+
+    glsl.push(`#define ${channel}_DEFINED`);
+    if (fp64) {
+        glsl.push(`#define ${channel}_FP64`);
+    }
+
     const { transform } = splitScaleType(scale.type);
+
+    /**
+     * @param {string} name
+     * @param {...any} args
+     */
+    const makeScaleCall = (name, ...args) =>
+        // eslint-disable-next-line no-useless-call
+        makeFunctionCall.apply(null, [
+            name + (fp64 ? "Fp64" : ""),
+            "value",
+            ...args
+        ]);
 
     let functionCall;
     switch (transform) {
         case "index":
         case "locus":
-            functionCall = `scaleBand${fp64Suffix}(value, ${domainName}, ${rangeName}, 0.0, 0.0, ${toDecimal(
+            functionCall = makeScaleCall(
+                "scaleBand",
+                domainName,
+                rangeName,
+                0,
+                0,
                 encoding.band ?? 0.5
-            )})`;
+            );
             break;
 
         case "linear":
-            functionCall = `scaleLinear${fp64Suffix}(value, ${domainName}, ${rangeName})`;
+            functionCall = makeScaleCall("scaleLinear", domainName, rangeName);
             break;
 
         case "point":
             // TODO: implement real scalePoint as it is calculated slightly differently
-            functionCall = `scaleBand(value, ${domainName}, ${rangeName}, 0.5, 0.0, 0.5)`;
+            functionCall = makeScaleCall(
+                "scaleBand",
+                domainName,
+                rangeName,
+                0.5,
+                0,
+                0
+            );
             break;
 
         case "band":
-            functionCall = `scaleBand(value, ${domainName}, ${rangeName}, ${toDecimal(
-                scale.paddingInner()
-            )}, ${toDecimal(scale.paddingOuter())}, ${toDecimal(
+            functionCall = makeScaleCall(
+                "scaleBand",
+                domainName,
+                rangeName,
+                scale.paddingInner(),
+                scale.paddingOuter(),
                 encoding.band ?? 0.5
-            )})`;
+            );
             break;
 
         case "ordinal":
-            functionCall = `scaleIdentity(value)`;
+            functionCall = makeScaleCall("scaleIdentity");
             break;
 
         case "identity":
-            functionCall = `scaleIdentity${fp64Suffix}(value)`;
+            functionCall = makeScaleCall("scaleIdentity");
             break;
 
         default:
@@ -125,11 +165,12 @@ export function generateScaleGlsl(channel, scale, encoding) {
             );
     }
 
-    const domainDef =
+    if (
         (isContinuous(scale.type) || isDiscrete(scale.type)) &&
         channel == primary
-            ? `uniform ${fp64 ? "vec4" : "vec2"} ${domainName};`
-            : "";
+    ) {
+        glsl.push(`uniform ${fp64 ? "vec4" : "vec2"} ${domainName};`);
+    }
 
     // N.B. Interpolating scales require unit range
     const range = isInterpolating(scale.type)
@@ -138,14 +179,14 @@ export function generateScaleGlsl(channel, scale, encoding) {
         ? scale.range()
         : undefined;
 
-    /** @type {string} */
-    let rangeDef;
-    if (isContinuous(scale.type) && range && channel == primary) {
-        const vectorizedRange = range ? vectorize(range) : undefined;
+    if (range && channel == primary && range.every(isNumber)) {
+        const vectorizedRange = vectorizeRange(range);
 
-        // Range needs no runtime adjustment. Thus, pass it as a constant that the
+        // Range needs no runtime adjustment (at least for now). Thus, pass it as a constant that the
         // GLSL compiler can optimize away in the case of unit ranges.
-        rangeDef = `const ${vectorizedRange.type} ${rangeName} = ${vectorizedRange};`;
+        glsl.push(
+            `const ${vectorizedRange.type} ${rangeName} = ${vectorizedRange};`
+        );
     }
 
     /** @type {number} */
@@ -166,12 +207,9 @@ export function generateScaleGlsl(channel, scale, encoding) {
 
     /** @type {string} */
     let interpolate;
-    /** @type {string} */
-    let interpolatorTexture;
-
     if (isColorChannel(channel)) {
         const textureUniformName = `uSchemeTexture_${channel}`;
-        interpolatorTexture = `uniform sampler2D ${textureUniformName};`;
+        glsl.push(`uniform sampler2D ${textureUniformName};`);
         if (isInterpolating(scale.type)) {
             interpolate = `getInterpolatedColor(${textureUniformName}, transformed)`;
         } else if (transform == "ordinal") {
@@ -181,36 +219,40 @@ export function generateScaleGlsl(channel, scale, encoding) {
         }
     }
 
-    return `
-#define ${channel}_DEFINED
-${fp64 ? `#define ${channel}_FP64` : ""}
+    // Declare the data
+    if (datum !== undefined) {
+        // Datums could also be provided as uniforms, allowing for modifications
+        glsl.push(
+            `const highp ${attributeType} ${attributeName} = ${vectorize(
+                fp64 ? fp64ify(datum) : datum
+            )};`
+        );
+    } else {
+        glsl.push(`in highp ${attributeType} ${attributeName};`);
+    }
 
-${interpolatorTexture ?? ""}
-${domainDef}
-${rangeDef ?? ""}
-in highp ${attributeType} ${attributeName};
-
-// Channel's scale function
+    // Channel's scale function
+    glsl.push(`
 ${returnType} ${SCALE_FUNCTION_PREFIX}${channel}(${attributeType} value) {
     float transformed = ${functionCall};
     ${
         scale.clamp && scale.clamp()
-            ? `transformed = clamp(transformed, ${[range[0], peek(range)]
-                  .map(toDecimal)
-                  .join(", ")});`
+            ? `transformed = clampToRange(transformed, ${vectorizeRange(
+                  range
+              )});`
             : ""
     }
     return ${interpolate ?? "transformed"};
-}
+}`);
 
-// Getter for the scaled value
+    // A convenience getter for the scaled value
+    glsl.push(`
 ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
-    return ${SCALE_FUNCTION_PREFIX}${channel}(${
-        datum !== undefined
-            ? vectorize(fp64 ? fp64ify(datum) : datum)
-            : attributeName
-    });
-}`;
+    return ${SCALE_FUNCTION_PREFIX}${channel}(${attributeName});
+}`);
+
+    const concatenated = glsl.join("\n");
+    return concatenated;
 }
 
 /**
@@ -270,4 +312,34 @@ function vectorize(value) {
 function vectorizeCssColor(color) {
     const rgb = d3color(color).rgb();
     return vectorize([rgb.r, rgb.g, rgb.b].map(x => x / 255));
+}
+
+/**
+ *
+ * @param {number[]} range
+ */
+function vectorizeRange(range) {
+    return vectorize([range[0], peek(range)]);
+}
+
+/**
+ *
+ * @param {string} name
+ * @param  {...any} args
+ */
+function makeFunctionCall(name, ...args) {
+    /** @type {string[]} */
+    const fixedArgs = [];
+
+    for (const arg of args) {
+        if (isNumber(arg)) {
+            fixedArgs.push(toDecimal(arg));
+        } else if (isArray(arg)) {
+            fixedArgs.push(vectorize(arg));
+        } else {
+            fixedArgs.push(arg);
+        }
+    }
+
+    return `${name}(${fixedArgs.join(", ")})`;
 }
