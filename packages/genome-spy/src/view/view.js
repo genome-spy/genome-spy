@@ -19,7 +19,7 @@ export const VISIT_STOP = "VISIT_STOP";
 
 /**
  * @typedef {import("./viewUtils").ViewSpec} ViewSpec
- * @typedef {import("./viewUtils").EncodingConfig} EncodingConfig
+ * @typedef {import("./viewUtils").ChannelDef} ChannelDef
  * @typedef {import("./viewUtils").ViewContext} ViewContext
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
  * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
@@ -291,7 +291,7 @@ export default class View {
     /**
      * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
      *      selectively breaking the inheritance.
-     * @return {Object.<string, EncodingConfig>}
+     * @return {Object.<string, ChannelDef>}
      */
     getEncoding(whoIsAsking) {
         const pe = this.parent ? this.parent.getEncoding(this) : {};

@@ -37,7 +37,7 @@ export interface MarkConfig {
 }
 
 // TODO: Create an interface for values (they don't have type or anything else)
-export interface EncodingConfig {
+export interface ChannelDef {
     type?: string;
     field?: FieldName;
 
@@ -73,7 +73,7 @@ export interface FacetMapping {
     row?: FacetFieldDef;
 }
 
-export type EncodingConfigs = Record<string, EncodingConfig>;
+export type Encoding = Record<string, ChannelDef>;
 
 /**
  * DynamicOpacity specifies a zoom-dependent behavior for view opacity.
@@ -99,7 +99,7 @@ export interface ViewSpecBase {
 
     data?: Data;
     transform?: TransformConfig[];
-    encoding?: Record<string, EncodingConfig>;
+    encoding?: Record<string, ChannelDef>;
     title?: string;
     description?: string;
     baseUrl?: string;

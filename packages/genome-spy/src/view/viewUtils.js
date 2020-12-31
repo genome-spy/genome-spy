@@ -24,7 +24,7 @@ import { optimizeDataFlow, optimizeFlowGraph } from "../data/flowOptimizer";
 
 /**
  * @typedef {import("../spec/view").MarkConfig} MarkConfig
- * @typedef {import("../spec/view").EncodingConfig} EncodingConfig
+ * @typedef {import("../spec/view").ChannelDef} ChannelDef
  * @typedef {import("../spec/view").ContainerSpec} ContainerSpec
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
@@ -294,9 +294,8 @@ export function resolveScalesAndAxes(root) {
 export function addDecorators(root) {
     let newRoot = root; // If the root is wrapped...
 
-    /** @param {EncodingConfig} encodingConfig */
-    const hasDomain = encodingConfig =>
-        encodingConfig && !("value" in encodingConfig);
+    /** @param {ChannelDef} channelDef */
+    const hasDomain = channelDef => channelDef && !("value" in channelDef);
 
     root.visit(view => {
         if (view instanceof LayerView || view instanceof UnitView) {

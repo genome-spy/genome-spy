@@ -8,7 +8,7 @@ import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
 import Mark from "./mark";
 import SampleTransform from "../data/transforms/sample";
 
-/** @type {Record<string, import("../view/viewUtils").EncodingConfig>} */
+/** @type {Record<string, import("../view/viewUtils").ChannelDef>} */
 const defaultEncoding = {};
 
 export const SHAPES = Object.fromEntries(

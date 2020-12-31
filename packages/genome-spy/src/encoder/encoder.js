@@ -9,7 +9,7 @@ import createIndexer from "../utils/indexer";
  * @prop {function} invert
  * @prop {VegaScale} [scale]
  * @prop {import("./accessor").Accessor} accessor
- * @prop {import("../view/viewUtils").EncodingConfig} encodingConfig
+ * @prop {import("../view/viewUtils").ChannelDef} channelDef
  * @prop {function(function):void} applyMetadata Copies metadata to the target function
  *
  * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder
@@ -48,19 +48,19 @@ import createIndexer from "../utils/indexer";
  * TODO: This method should have a test. But how to mock Mark...
  *
  * @param {import("../marks/mark").default} mark
- * @param {Record<string, import("../view/viewUtils").EncodingConfig>} [encodingConfigs] Taken from the mark if not provided
+ * @param {Record<string, import("../view/viewUtils").ChannelDef>} [encoding] Taken from the mark if not provided
  * @returns {Record<string, Encoder>}
  */
-export default function createEncoders(mark, encodingConfigs) {
+export default function createEncoders(mark, encoding) {
     /** @type {Record<string, Encoder>} */
     const encoders = {};
 
-    if (!encodingConfigs) {
-        encodingConfigs = mark.encoding;
+    if (!encoding) {
+        encoding = mark.encoding;
     }
 
-    for (const [channel, encodingConfig] of Object.entries(encodingConfigs)) {
-        if (!encodingConfig) {
+    for (const [channel, channelDef] of Object.entries(encoding)) {
+        if (!channelDef) {
             continue;
         }
 
@@ -70,7 +70,7 @@ export default function createEncoders(mark, encodingConfigs) {
         const scale = (resolution && resolution.getScale()) || undefined;
 
         encoders[channel] = createEncoder(
-            encodingConfigs[channel],
+            encoding[channel],
             scale,
             mark.unitView.getAccessor(channel),
             channel
@@ -82,18 +82,18 @@ export default function createEncoders(mark, encodingConfigs) {
 
 /**
  *
- * @param {import("../view/viewUtils").EncodingConfig} encodingConfig
+ * @param {import("../view/viewUtils").ChannelDef} channelDef
  * @param {any} scale
  * @param {import("./accessor").Accessor} accessor
  * @param {string} channel
  * @returns {Encoder}
  */
-export function createEncoder(encodingConfig, scale, accessor, channel) {
+export function createEncoder(channelDef, scale, accessor, channel) {
     /** @type {Encoder} */
     let encoder;
 
-    if (isValueEncoding(encodingConfig)) {
-        encoder = /** @type {Encoder} */ (datum => encodingConfig.value);
+    if (isValueDef(channelDef)) {
+        encoder = /** @type {Encoder} */ (datum => channelDef.value);
         encoder.constant = true;
         encoder.constantValue = true;
         encoder.accessor = undefined;
@@ -106,9 +106,7 @@ export function createEncoder(encodingConfig, scale, accessor, channel) {
         } else {
             if (!scale) {
                 throw new Error(
-                    `Missing scale! "${channel}": ${JSON.stringify(
-                        encodingConfig
-                    )}`
+                    `Missing scale! "${channel}": ${JSON.stringify(channelDef)}`
                 );
             }
 
@@ -129,7 +127,7 @@ export function createEncoder(encodingConfig, scale, accessor, channel) {
     } else {
         throw new Error(
             `Missing value or accessor (field, expr, datum) on channel "${channel}": ${JSON.stringify(
-                encodingConfig
+                channelDef
             )}`
         );
     }
@@ -140,12 +138,12 @@ export function createEncoder(encodingConfig, scale, accessor, channel) {
         : value => {
               throw new Error(
                   "No scale available, cannot invert: " +
-                      JSON.stringify(encodingConfig)
+                      JSON.stringify(channelDef)
               );
           };
 
     // Just to provide a convenient access to the config
-    encoder.encodingConfig = encodingConfig;
+    encoder.channelDef = channelDef;
 
     /** @param {Encoder} target */
     encoder.applyMetadata = target => {
@@ -163,10 +161,10 @@ export function createEncoder(encodingConfig, scale, accessor, channel) {
 /**
  * TODO: Move to a more generic place
  *
- * @param {import("../view/view").EncodingConfig} encodingConfig
+ * @param {import("../view/view").ChannelDef} channelDef
  */
-function isValueEncoding(encodingConfig) {
-    return "value" in encodingConfig;
+export function isValueDef(channelDef) {
+    return channelDef && "value" in channelDef;
 }
 
 /**

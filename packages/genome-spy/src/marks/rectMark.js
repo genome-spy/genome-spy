@@ -54,8 +54,8 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @param {import("../spec/view").EncodingConfigs} encoding
-     * @returns {import("../spec/view").EncodingConfigs}
+     * @param {import("../spec/view").Encoding} encoding
+     * @returns {import("../spec/view").Encoding}
      */
     fixEncoding(encoding) {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)

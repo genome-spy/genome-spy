@@ -1,6 +1,6 @@
 import { isContinuous, isDiscrete, isInterpolating } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
-import { extent, isArray, isNumber, isString } from "vega-util";
+import { isArray, isNumber, isString } from "vega-util";
 import { color as d3color } from "d3-color";
 
 import { isColorChannel, primaryChannel } from "../encoder/encoder";
@@ -67,7 +67,7 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  *
  * @param {string} channel
  * @param {any} scale
- * @param {import("../spec/view").EncodingConfig} encoding
+ * @param {import("../spec/view").ChannelDef} encoding
  */
 // eslint-disable-next-line complexity
 export function generateScaleGlsl(channel, scale, encoding) {
@@ -208,7 +208,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
     /** @type {string} */
     let interpolate;
     if (isColorChannel(channel)) {
-        const textureUniformName = `uSchemeTexture_${channel}`;
+        const textureUniformName = `uRangeTexture_${channel}`;
         glsl.push(`uniform sampler2D ${textureUniformName};`);
         if (isInterpolating(scale.type)) {
             interpolate = `getInterpolatedColor(${textureUniformName}, transformed)`;

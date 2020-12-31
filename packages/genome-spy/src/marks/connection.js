@@ -55,8 +55,8 @@ export default class ConnectionMark extends Mark {
     }
 
     /**
-     * @param {import("../spec/view").EncodingConfigs} encoding
-     * @returns {import("../spec/view").EncodingConfigs}
+     * @param {import("../spec/view").Encoding} encoding
+     * @returns {import("../spec/view").Encoding}
      */
     fixEncoding(encoding) {
         if (!encoding.x) {

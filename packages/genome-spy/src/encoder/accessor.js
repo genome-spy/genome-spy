@@ -9,11 +9,11 @@ import { field, accessorFields, constant } from "vega-util";
  *
  * @typedef {(function(object):any) & AccessorMetadata} Accessor
  *
- * @typedef {import("../view/viewUtils").EncodingConfig} EncodingConfig
+ * @typedef {import("../view/viewUtils").ChannelDef} ChannelDef
  */
 export default class AccessorFactory {
     constructor() {
-        /** @type {(function(EncodingConfig):Accessor)[]} */
+        /** @type {(function(ChannelDef):Accessor)[]} */
         this.accessorCreators = [];
 
         this.register(encoding => {
@@ -47,7 +47,7 @@ export default class AccessorFactory {
 
     /**
      *
-     * @param {function(EncodingConfig):Accessor} creator
+     * @param {function(ChannelDef):Accessor} creator
      */
     register(creator) {
         this.accessorCreators.push(creator);
@@ -55,7 +55,7 @@ export default class AccessorFactory {
 
     /**
      *
-     * @param {EncodingConfig} encoding
+     * @param {ChannelDef} encoding
      */
     createAccessor(encoding) {
         for (const creator of this.accessorCreators) {

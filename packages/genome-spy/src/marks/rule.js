@@ -53,8 +53,8 @@ export default class RuleMark extends Mark {
     }
 
     /**
-     * @param {import("../spec/view").EncodingConfigs} encoding
-     * @returns {import("../spec/view").EncodingConfigs}
+     * @param {import("../spec/view").Encoding} encoding
+     * @returns {import("../spec/view").Encoding}
      */
     // eslint-disable-next-line complexity
     fixEncoding(encoding) {

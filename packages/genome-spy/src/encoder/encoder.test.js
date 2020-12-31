@@ -4,7 +4,7 @@ import { scale as vegaScale } from "vega-scale";
 import { createEncoder } from "./encoder";
 
 describe("Encoder", () => {
-    /** @type {Record<string, import("../view/viewUtils").EncodingConfig>} */
+    /** @type {Record<string, import("../view/viewUtils").ChannelDef>} */
     const encodingSpecs = {
         x: { value: 0 },
         y: { field: "a" },
@@ -22,15 +22,13 @@ describe("Encoder", () => {
 
     const accessorFactory = new AccessorFactory();
 
-    /** @param {Record<string, import("../view/viewUtils").EncodingConfig>} encodingConfigs */
-    function createEncoders(encodingConfigs) {
+    /** @param {Record<string, import("../view/viewUtils").ChannelDef>} encoding */
+    function createEncoders(encoding) {
         /** @type {Record<string, import("./encoder").Encoder>} */
         const encoders = {};
-        for (const [channel, encodingConfig] of Object.entries(
-            encodingConfigs
-        )) {
+        for (const [channel, channelDef] of Object.entries(encoding)) {
             encoders[channel] = createEncoder(
-                encodingConfig,
+                channelDef,
                 scales[channel],
                 accessorFactory.createAccessor(encodingSpecs[channel]),
                 channel,

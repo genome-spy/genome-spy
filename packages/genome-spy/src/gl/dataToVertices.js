@@ -527,8 +527,8 @@ export class TextVertexBuilder extends VertexBuilder {
         const e = encoders;
 
         /** @type {function(any):any} */
-        this.numberFormat = e.text.encodingConfig.format
-            ? format(e.text.encodingConfig.format)
+        this.numberFormat = e.text.channelDef.format
+            ? format(e.text.channelDef.format)
             : d => d;
 
         // TODO: Store these as vec2

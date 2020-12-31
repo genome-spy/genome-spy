@@ -1,7 +1,7 @@
 import { secondaryChannel } from "../encoder/encoder";
 
 /**
- * @param {Record<string, import("../view/view").EncodingConfig>} encoding
+ * @param {Record<string, import("../view/view").ChannelDef>} encoding
  * @param {string} channel
  */
 export function fixPositional(encoding, channel) {

@@ -1,7 +1,8 @@
 import { group } from "d3-array";
 import * as twgl from "twgl.js";
+import { isDiscrete } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
-import createEncoders from "../encoder/encoder";
+import createEncoders, { isValueDef } from "../encoder/encoder";
 import {
     DOMAIN_PREFIX,
     generateValueGlsl,
@@ -72,7 +73,7 @@ export default class Mark {
     }
 
     /**
-     * @returns {import("../spec/view").EncodingConfigs}
+     * @returns {import("../spec/view").Encoding}
      */
     getDefaultEncoding() {
         return {
@@ -102,8 +103,8 @@ export default class Mark {
     /**
      * Adds intelligent defaults etc to the encoding.
      *
-     * @param {import("../spec/view").EncodingConfigs} encoding
-     * @returns {import("../spec/view").EncodingConfigs}
+     * @param {import("../spec/view").Encoding} encoding
+     * @returns {import("../spec/view").Encoding}
      */
     fixEncoding(encoding) {
         return encoding;
@@ -114,7 +115,7 @@ export default class Mark {
      *
      * TODO: Replace with getter, cache it
      *
-     * @returns {import("../spec/view").EncodingConfigs}
+     * @returns {import("../spec/view").Encoding}
      */
     get encoding() {
         return getCachedOrCall(this, "encoding", () => {
@@ -192,16 +193,16 @@ export default class Mark {
         //override
 
         // TODO: Identical schemes could be deduped
-        if (this.encoding.color && !("value" in this.encoding.color)) {
+        if (this.encoding.color && !isValueDef(this.encoding.color)) {
             const resolution = this.unitView.getScaleResolution("color");
             const props = resolution.getScaleProps();
 
             if (props.scheme) {
-                this.schemeTexture = createSchemeTexture(props.scheme, this.gl);
+                this.rangeTexture = createSchemeTexture(props.scheme, this.gl);
             } else {
                 // Assume colors specified as range
                 // TODO: Continuous scales need interpolated colors
-                this.schemeTexture = createDiscreteColorTexture(
+                this.rangeTexture = createDiscreteColorTexture(
                     resolution.getScale().range(),
                     this.gl
                 );
@@ -227,22 +228,22 @@ export default class Mark {
         const scaleGlsl = Object.keys(attributes)
             .map(attributeName => {
                 const a = attributes[attributeName];
-                const e = this.encoding[attributeName];
+                const fieldDef = this.encoding[attributeName];
 
-                if (!e || !a.raw) {
+                if (!fieldDef || !a.raw) {
                     return undefined;
                 }
 
-                if ("value" in e) {
+                if (isValueDef(fieldDef)) {
                     return generateValueGlsl(
                         attributeName,
-                        /** @type {number} */ (e.value)
+                        /** @type {number} */ (fieldDef.value)
                     );
                 } else {
                     const scale = this.unitView
                         .getScaleResolution(attributeName)
                         .getScale();
-                    return generateScaleGlsl(attributeName, scale, e);
+                    return generateScaleGlsl(attributeName, scale, fieldDef);
                 }
             })
             .filter(s => s !== undefined)
@@ -368,7 +369,7 @@ export default class Mark {
             const resolution = this.unitView.getScaleResolution(channel);
             if (resolution) {
                 const scale = resolution.getScale();
-                const domain = ["band", "point"].includes(scale.type)
+                const domain = isDiscrete(scale.type)
                     ? [0, resolution.getDomain().length]
                     : resolution.getDomain();
 
@@ -378,9 +379,9 @@ export default class Mark {
             }
         }
 
-        if (this.schemeTexture) {
+        if (this.rangeTexture) {
             twgl.setUniforms(this.programInfo, {
-                uSchemeTexture_color: this.schemeTexture
+                uRangeTexture_color: this.rangeTexture
             });
         }
 
