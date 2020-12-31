@@ -47,7 +47,7 @@ export default class TextMark extends Mark {
             x2: { raw: true },
             y: { raw: true },
             y2: { raw: true },
-            color: {},
+            color: { raw: true },
             size: { raw: true },
             opacity: { raw: true }
         };

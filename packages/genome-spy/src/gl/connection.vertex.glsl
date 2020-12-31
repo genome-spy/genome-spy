@@ -7,8 +7,6 @@ uniform float uBandwidth;
 attribute vec2 strip;
 
 in float height;
-in lowp vec3 color;
-in lowp vec3 color2;
 in float size;
 in float size2;
 
@@ -85,5 +83,6 @@ void main(void) {
     gl_Position = unitToNdc(p);
 
     // Yuck, RGB interpolation in gamma space! TODO: linear space: https://unlimited3d.wordpress.com/2020/01/08/srgb-color-space-in-opengl/
-    vColor = vec4(mix(color, color2, t) * opacity, opacity);
+    // TODO: Optimize: don't mix if only the primary color channel is utilized
+    vColor = vec4(mix(getScaled_color(), getScaled_color2(), t) * opacity, opacity);
 }

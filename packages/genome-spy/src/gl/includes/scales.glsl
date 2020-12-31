@@ -1,3 +1,11 @@
+vec3 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+}
+
+vec3 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgb;
+}
+
 float scaleIdentity(float value) {
     return value;
 }

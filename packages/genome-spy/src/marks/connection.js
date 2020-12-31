@@ -19,7 +19,7 @@ export default class ConnectionMark extends Mark {
             x2: { raw: true },
             y: { raw: true },
             y2: { raw: true },
-            color: {},
+            color: { raw: true },
             opacity: { raw: true }
         };
     }

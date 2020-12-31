@@ -25,7 +25,7 @@ export default class RuleMark extends Mark {
             y: { raw: true },
             y2: { raw: true },
             size: { raw: true },
-            color: {},
+            color: { raw: true },
             opacity: { raw: true }
         };
     }

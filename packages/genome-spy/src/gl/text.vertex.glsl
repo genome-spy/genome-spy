@@ -5,8 +5,6 @@ uniform float uSdfNumerator;
 uniform vec2 uD; // dx & dy
 uniform float uAngle;
 
-in vec3 color;
-
 // TODO: Store as vec2
 in float cx;
 in float cy;
@@ -191,7 +189,7 @@ void main(void) {
     // Controls antialiasing of the SDF
     vSlope = max(1.0, size / uSdfNumerator);
 
-    vColor = vec4(color * opacity, opacity);
+    vColor = vec4(getScaled_color() * opacity, opacity);
 
     vTexCoord = vec2(tx, ty);
 

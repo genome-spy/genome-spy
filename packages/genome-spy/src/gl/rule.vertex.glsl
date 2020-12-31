@@ -5,8 +5,6 @@ const int BUTT = 0;
 const int SQUARE = 1;
 const int ROUND = 2;
 
-in lowp vec3 color;
-
 /** Position along the rule */
 in float pos;
 
@@ -84,7 +82,7 @@ void main(void) {
 
     gl_Position = unitToNdc(p);
 
-    vColor = vec4(color * opacity, opacity);
+    vColor = vec4(getScaled_color() * opacity, opacity);
     vSize = size;
     vNormalLengthInPixels = side * (size + aaPadding);
 

@@ -37,7 +37,7 @@ export default class PointMark extends Mark {
             x: { raw: true },
             y: { raw: true },
             size: { raw: true },
-            color: {},
+            color: { raw: true },
             opacity: { raw: true },
             semanticScore: { raw: true },
             shape: {},

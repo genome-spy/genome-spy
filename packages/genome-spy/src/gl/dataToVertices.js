@@ -1,56 +1,10 @@
-import { color as d3color } from "d3-color";
 import { format } from "d3-format";
-import { fastmap, isString, accessor } from "vega-util";
-import { primaryChannel } from "../encoder/encoder";
+import { isString } from "vega-util";
 import { isContinuous } from "vega-scale";
 import { fp64ify } from "./includes/fp64-utils";
-import Interval from "../utils/interval";
 import { SHAPES } from "../marks/pointMark"; // Circular dependency, TODO: Fix
 import ArrayBuilder from "./arrayBuilder";
-import { ATTRIBUTE_PREFIX } from "../scale/glslScaleGenerator";
 import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
-
-/*
- * TODO: Optimize constant values: compile them dynamically into vertex shader
- */
-
-// https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
-const glConst = {
-    POINTS: 0x0000,
-    TRIANGLES: 0x0004,
-    TRIANGLE_STRIP: 0x0005,
-    STATIC_DRAW: 0x88e4
-};
-
-function color2floatArray(color) {
-    if (!color) {
-        return [0.9, 0.9, 0.9]; // TODO: Configurable NA color
-    } else if (isString(color)) {
-        color = d3color(color);
-    }
-    return new Float32Array([
-        color.r / 255.0,
-        color.g / 255.0,
-        color.b / 255.0
-    ]);
-}
-
-function createCachingColor2floatArray() {
-    const cache = fastmap();
-
-    return color => {
-        if (isString(color) && cache.size < 30) {
-            let value = cache.get(color);
-            if (value) {
-                return value;
-            }
-            value = color2floatArray(color);
-            cache.set(color, value);
-            return value;
-        }
-        return color2floatArray(color);
-    };
-}
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
@@ -80,13 +34,8 @@ export class VertexBuilder {
         this.encoders = encoders;
         this.allocatedVertices = numVertices;
 
-        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (encoders);
-
-        const c2f = createCachingColor2floatArray();
-
         /** @type {Record<string, Converter>} */
         this.converters = {
-            color: { f: d => c2f(e.color(d)), numComponents: 3 },
             ...converters
         };
 

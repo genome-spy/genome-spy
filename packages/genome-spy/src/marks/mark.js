@@ -1,6 +1,6 @@
 import { group } from "d3-array";
-import { fp64ify } from "../gl/includes/fp64-utils";
 import * as twgl from "twgl.js";
+import { fp64ify } from "../gl/includes/fp64-utils";
 import createEncoders from "../encoder/encoder";
 import {
     DOMAIN_PREFIX,
@@ -8,6 +8,10 @@ import {
     generateScaleGlsl
 } from "../scale/glslScaleGenerator";
 import { getCachedOrCall } from "../utils/propertyCacher";
+import {
+    createDiscreteColorTexture,
+    createSchemeTexture
+} from "../scale/colorUtils";
 
 /**
  *
@@ -186,6 +190,23 @@ export default class Mark {
      */
     async initializeGraphics() {
         //override
+
+        // TODO: Identical schemes could be deduped
+        if (this.encoding.color && !("value" in this.encoding.color)) {
+            const resolution = this.unitView.getScaleResolution("color");
+            const props = resolution.getScaleProps();
+
+            if (props.scheme) {
+                this.schemeTexture = createSchemeTexture(props.scheme, this.gl);
+            } else {
+                // Assume colors specified as range
+                // TODO: Continuous scales need interpolated colors
+                this.schemeTexture = createDiscreteColorTexture(
+                    resolution.getScale().range(),
+                    this.gl
+                );
+            }
+        }
     }
 
     /**
@@ -355,6 +376,12 @@ export default class Mark {
                     ? domain.map(x => fp64ify(x)).flat()
                     : domain;
             }
+        }
+
+        if (this.schemeTexture) {
+            twgl.setUniforms(this.programInfo, {
+                uSchemeTexture_color: this.schemeTexture
+            });
         }
 
         twgl.setUniforms(this.programInfo, domainUniforms);

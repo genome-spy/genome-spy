@@ -1,8 +1,6 @@
 
 #pragma SCALES_HERE
 
-in lowp vec3 color;
-
 /** Mainly needed by band scale */
 in vec2 frac;
 
@@ -51,5 +49,5 @@ void main(void) {
 
     gl_Position = unitToNdc(pos);
 
-    vColor = vec4(color * opa, opa);
+    vColor = vec4(getScaled_color() * opa, opa);
 }
