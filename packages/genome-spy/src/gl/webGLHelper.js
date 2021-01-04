@@ -41,7 +41,9 @@ export default class WebGLHelper {
             );
         }
 
-        // TODO: Configurable
+        // Disable depth writes. We don't use depth testing.
+        gl.depthMask(false);
+
         gl.clearColor(0, 0, 0, 0);
         // TODO: view background: https://vega.github.io/vega-lite/docs/spec.html#view-background
 
