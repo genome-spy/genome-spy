@@ -2,7 +2,6 @@ import { format } from "d3-format";
 import { isString } from "vega-util";
 import { isContinuous } from "vega-scale";
 import { fp64ify } from "./includes/fp64-utils";
-import { SHAPES } from "../marks/pointMark"; // Circular dependency, TODO: Fix
 import ArrayBuilder from "./arrayBuilder";
 import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
 
@@ -416,25 +415,7 @@ export class PointVertexBuilder extends VertexBuilder {
     constructor({ encoders, attributes, numItems = undefined }) {
         super({
             encoders,
-            converters: {
-                semanticScore: {
-                    f: encoders.semanticScore,
-                    numComponents: 1
-                },
-                shape: {
-                    // TODO: Optimization: Reconfigure the scale to have the shape indices as the range
-                    f: d => SHAPES[encoders.shape(d)] || 0,
-                    numComponents: 1
-                },
-                strokeWidth: {
-                    f: encoders.strokeWidth,
-                    numComponents: 1
-                },
-                gradientStrength: {
-                    f: encoders.gradientStrength,
-                    numComponents: 1
-                }
-            },
+            converters: {},
             attributes,
             numVertices: numItems
         });

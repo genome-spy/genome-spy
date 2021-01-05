@@ -2,15 +2,21 @@ import { group } from "d3-array";
 import * as twgl from "twgl.js";
 import { isDiscrete } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
-import createEncoders, { isValueDef } from "../encoder/encoder";
+import createEncoders, {
+    getDiscreteRangeMapper,
+    isDiscreteChannel,
+    isValueDef
+} from "../encoder/encoder";
 import {
     DOMAIN_PREFIX,
     generateValueGlsl,
-    generateScaleGlsl
+    generateScaleGlsl,
+    RANGE_TEXTURE_PREFIX
 } from "../scale/glslScaleGenerator";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import {
     createDiscreteColorTexture,
+    createDiscreteTexture,
     createSchemeTexture
 } from "../scale/colorUtils";
 
@@ -45,6 +51,9 @@ export default class Mark {
 
         /** @type {twgl.VertexArrayInfo} WebGL buffers */
         this.vertexArrayInfo = undefined;
+
+        /** @type {Map<string, WebGLTexture>} */
+        this.rangeTextures = new Map();
 
         this.opaque = false;
     }
@@ -186,19 +195,54 @@ export default class Mark {
     async initializeGraphics() {
         //override
 
-        // TODO: Identical schemes could be deduped
+        // TODO: Identical and inherited schemes could be deduped
+
         if (this.encoding.color && !isValueDef(this.encoding.color)) {
             const resolution = this.unitView.getScaleResolution("color");
             const props = resolution.getScaleProps();
 
             if (props.scheme) {
-                this.rangeTexture = createSchemeTexture(props.scheme, this.gl);
+                // TODO: Discrete scale
+                this.rangeTextures.set(
+                    "color",
+                    createSchemeTexture(props.scheme, this.gl)
+                );
             } else {
-                // Assume colors specified as range
-                // TODO: Continuous scales need interpolated colors
-                this.rangeTexture = createDiscreteColorTexture(
-                    resolution.getScale().range(),
-                    this.gl
+                const scale = resolution.getScale();
+                if (isDiscrete(scale.type)) {
+                    // Assume colors specified as range
+                    this.rangeTextures.set(
+                        "color",
+                        createDiscreteColorTexture(
+                            resolution.getScale().range(),
+                            this.gl,
+                            scale.domain().length
+                        )
+                    );
+                } else {
+                    throw new Error(
+                        "TODO: Continuous scales need interpolated colors"
+                    );
+                }
+            }
+        }
+
+        // Create range textures for "shape" channel etc.
+        for (const [channel, channelDef] of Object.entries(this.encoding)) {
+            if (isDiscreteChannel(channel) && !isValueDef(channelDef)) {
+                const resolution = this.unitView.getScaleResolution(channel);
+                const scale = resolution.getScale();
+                const mapper = getDiscreteRangeMapper(channel);
+                this.rangeTextures.set(
+                    channel,
+                    createDiscreteTexture(
+                        resolution
+                            .getScale()
+                            .range()
+                            .map(mapper),
+                        this.gl,
+                        scale.domain().length
+                    )
                 );
             }
         }
@@ -221,19 +265,19 @@ export default class Mark {
         const attributes = this.getAttributes();
         const scaleGlsl = attributes
             .map(channel => {
-                const fieldDef = this.encoding[channel];
+                const channelDef = this.encoding[channel];
 
-                if (!fieldDef) {
+                if (!channelDef) {
                     return undefined;
                 }
 
-                if (isValueDef(fieldDef)) {
-                    return generateValueGlsl(channel, fieldDef.value);
+                if (isValueDef(channelDef)) {
+                    return generateValueGlsl(channel, channelDef.value);
                 } else {
                     const scale = this.unitView
                         .getScaleResolution(channel)
                         .getScale();
-                    return generateScaleGlsl(channel, scale, fieldDef);
+                    return generateScaleGlsl(channel, scale, channelDef);
                 }
             })
             .filter(s => s !== undefined)
@@ -369,9 +413,9 @@ export default class Mark {
             }
         }
 
-        if (this.rangeTexture) {
+        for (const [channel, texture] of this.rangeTextures.entries()) {
             twgl.setUniforms(this.programInfo, {
-                uRangeTexture_color: this.rangeTexture
+                [RANGE_TEXTURE_PREFIX + channel]: texture
             });
         }
 

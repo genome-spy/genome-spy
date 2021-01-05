@@ -168,6 +168,13 @@ export function isValueDef(channelDef) {
 }
 
 /**
+ * @param {import("../view/view").ChannelDef} channelDef
+ */
+export function isDatumDef(channelDef) {
+    return channelDef && "datum" in channelDef;
+}
+
+/**
  * Map primary channels to secondarys
  *
  * @type {Record<string, string>}
@@ -243,4 +250,61 @@ export function isPositionalChannel(channel) {
  */
 export function isColorChannel(channel) {
     return ["color", "fill", "color2"].includes(channel);
+}
+
+/**
+ * Returns true if the channel has a discrete range.
+ *
+ * @param {string} channel
+ */
+export function isDiscreteChannel(channel) {
+    return ["shape", "squeeze"].includes(channel);
+}
+
+/**
+ * Returns valid discrete values for a discrete channel.
+ *
+ * @param {string} channel
+ * @returns {any[]}
+ */
+export function getDiscreteRange(channel) {
+    // TODO: This is not easily extendable. Figure out a more dynamic approach.
+    switch (channel) {
+        case "shape":
+            return [
+                "circle",
+                "square",
+                "triangle-up",
+                "cross",
+                "diamond",
+                "triangle-down",
+                "triangle-right",
+                "triangle-left"
+            ];
+        case "squeeze":
+            return ["none", "top", "right", "bottom", "left"];
+        default:
+    }
+}
+
+/**
+ * @param {string} channel
+ * @returns {function(any):number}
+ */
+export function getDiscreteRangeMapper(channel) {
+    if (!isDiscreteChannel(channel)) {
+        throw new Error("Not a discrete channel: " + channel);
+    }
+
+    const valueMap = new Map(
+        getDiscreteRange(channel).map((value, i) => [value, i])
+    );
+
+    return value => {
+        const mapped = valueMap.get(value);
+        if (mapped !== undefined) {
+            return mapped;
+        }
+        throw new Error(`Invalid value for "${channel}" channel: ${value}`);
+    };
 }

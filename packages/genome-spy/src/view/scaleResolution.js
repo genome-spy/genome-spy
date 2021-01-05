@@ -11,9 +11,13 @@ import { isDiscrete, isContinuous } from "vega-scale";
 import mergeObjects from "../utils/mergeObjects";
 import createScale from "../scale/scale";
 
-import { SHAPES } from "../marks/pointMark"; // TODO: Fix silly dependency
-import { SQUEEZE } from "../marks/rectMark"; // TODO: Fix silly dependency
 import { getCachedOrCall } from "../utils/propertyCacher";
+import {
+    getDiscreteRange,
+    isColorChannel,
+    isDiscreteChannel,
+    isPositionalChannel
+} from "../encoder/encoder";
 
 /**
  * Resolution takes care of merging domains and scales from multiple views.
@@ -285,9 +289,9 @@ export default class ScaleResolution {
             props.zero = false;
         }
 
-        if (channel == "y" || channel == "x") {
+        if (isPositionalChannel(channel)) {
             props.nice = !this.isExplicitDomain();
-        } else if (channel == "color") {
+        } else if (isColorChannel(channel)) {
             // TODO: Named ranges
             props.scheme =
                 dataType == "nominal"
@@ -295,12 +299,9 @@ export default class ScaleResolution {
                     : dataType == "ordinal"
                     ? "blues"
                     : "viridis";
-        } else if (channel == "shape") {
-            // of point mark
-            props.range = Object.keys(SHAPES);
-        } else if (channel == "squeeze") {
-            // of rect mark
-            props.range = Object.keys(SQUEEZE);
+        } else if (isDiscreteChannel(channel)) {
+            // Shapes of point mark, for example
+            props.range = getDiscreteRange(channel);
         } else if (channel == "size") {
             props.range = [0, 400]; // TODO: Configurable default. This is currently optimized for points.
         }

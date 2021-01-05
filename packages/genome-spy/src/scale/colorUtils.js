@@ -34,12 +34,39 @@ export function createSchemeTexture(schemeDef, gl) {
 }
 
 /**
+ * Creates a texture that maps integer indices to discrete 32bit floats.
+ * The range may represent point shapes, for example.
+ *
+ * @param {number[]} range
+ * @param {WebGL2RenderingContext} gl
+ * @param {number} [count]
+ */
+export function createDiscreteTexture(range, gl, count) {
+    const size = count ?? range.length;
+    const textureData = new Float32Array(size);
+
+    for (let i = 0; i < size; i++) {
+        textureData[i] = range[i % range.length];
+    }
+
+    return twgl.createTexture(gl, {
+        minMag: gl.NEAREST,
+        format: gl.RED,
+        internalFormat: gl.R32F,
+        src: textureData,
+        height: 1
+    });
+}
+
+/**
+ * Creates a texture that maps integer indices to discrete RGB colors.
  *
  * @param {string[]} colors
  * @param {WebGL2RenderingContext} gl
+ * @param {number} [count]
  */
-export function createDiscreteColorTexture(colors, gl) {
-    const textureData = colorArrayToTextureData(colors);
+export function createDiscreteColorTexture(colors, gl, count) {
+    const textureData = colorArrayToTextureData(colors, count);
     return twgl.createTexture(gl, {
         minMag: gl.NEAREST,
         format: gl.RGB,
@@ -49,7 +76,8 @@ export function createDiscreteColorTexture(colors, gl) {
 }
 
 /**
- * Renders an interpolator to a texture.
+ * Renders an interpolator to a texture, which can be used for mapping
+ * quantitative values to colors (sequential scale).
  *
  * @param {function(number):string} interpolator
  * @param {object} options
@@ -80,13 +108,14 @@ function interpolatorToTextureData(
  * Renders a scheme (an array of colors) to a texture.
  *
  * @param {string[]} scheme
+ * @param {number} [count]
  */
-function colorArrayToTextureData(scheme) {
-    const size = scheme.length;
+function colorArrayToTextureData(scheme, count) {
+    const size = count ?? scheme.length;
 
     const textureData = new Uint8Array(size * 3);
     for (let i = 0; i < size; i++) {
-        const color = d3color(scheme[i]).rgb();
+        const color = d3color(scheme[i % scheme.length]).rgb();
         textureData[i * 3 + 0] = color.r;
         textureData[i * 3 + 1] = color.g;
         textureData[i * 3 + 2] = color.b;

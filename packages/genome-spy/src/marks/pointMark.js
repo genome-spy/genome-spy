@@ -11,19 +11,6 @@ import SampleTransform from "../data/transforms/sample";
 /** @type {Record<string, import("../view/viewUtils").ChannelDef>} */
 const defaultEncoding = {};
 
-export const SHAPES = Object.fromEntries(
-    [
-        "circle",
-        "square",
-        "triangle-up",
-        "cross",
-        "diamond",
-        "triangle-down",
-        "triangle-right",
-        "triangle-left"
-    ].map((shape, i) => [shape, i])
-);
-
 export default class PointMark extends Mark {
     /**
      * @param {import("../view/unitView").default} unitView
@@ -97,7 +84,7 @@ export default class PointMark extends Mark {
         const xAccessor = this.unitView.getAccessor("x");
         if (xAccessor) {
             // Sort each point of each sample for binary search
-            // TODO: Support pre-sorted data
+            // TODO: Support pre-sorted data, move this to the data flow
             for (const arr of this.dataByFacet.values()) {
                 arr.sort((a, b) => xAccessor(a) - xAccessor(b));
             }

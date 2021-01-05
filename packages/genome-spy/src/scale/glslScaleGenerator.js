@@ -1,9 +1,20 @@
-import { isContinuous, isDiscrete, isInterpolating } from "vega-scale";
+import {
+    isContinuous,
+    isDiscrete,
+    isDiscretizing,
+    isInterpolating
+} from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
 import { isArray, isBoolean, isNumber, isString } from "vega-util";
 import { color as d3color } from "d3-color";
 
-import { isColorChannel, primaryChannel } from "../encoder/encoder";
+import {
+    getDiscreteRangeMapper,
+    isColorChannel,
+    isDatumDef,
+    isDiscreteChannel,
+    primaryChannel
+} from "../encoder/encoder";
 import { peek } from "../utils/arrayUtils";
 
 export const ATTRIBUTE_PREFIX = "attr_";
@@ -11,6 +22,7 @@ export const DOMAIN_PREFIX = "uDomain_";
 export const RANGE_PREFIX = "range_";
 export const SCALE_FUNCTION_PREFIX = "scale_";
 export const SCALED_FUNCTION_PREFIX = "getScaled_";
+export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
 
 // https://stackoverflow.com/a/47543127
 const FLT_MAX = 3.402823466e38;
@@ -39,15 +51,16 @@ function splitScaleType(type) {
 export function generateValueGlsl(channel, value) {
     /** @type {VectorizedValue} */
     let vec;
-    if (isString(value)) {
+    if (isDiscreteChannel(channel)) {
+        vec = vectorize(getDiscreteRangeMapper(channel)(value));
+    } else if (isString(value)) {
         if (isColorChannel(channel)) {
             vec = vectorizeCssColor(value);
         } else {
             throw new Error(
-                `String values are not supported on "${channel}" channel!`
+                `String values are not supported on the "${channel}" channel: ${value}`
             );
         }
-        // TODO: Symbols
     } else if (isBoolean(value)) {
         vec = vectorize(value ? 1 : 0);
     } else {
@@ -151,6 +164,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
             break;
 
         case "ordinal":
+            // Use identity transform and lookup the value from a data (range) texture
             functionCall = makeScaleCall("scaleIdentity");
             break;
 
@@ -193,7 +207,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
 
     /** @type {number} */
     let datum;
-    if ("datum" in encoding) {
+    if (isDatumDef(encoding)) {
         if (isNumber(encoding.datum)) {
             datum = encoding.datum;
         } else {
@@ -207,10 +221,13 @@ export function generateScaleGlsl(channel, scale, encoding) {
 
     const returnType = isColorChannel(channel) ? "vec3" : "float";
 
-    /** @type {string} */
+    /**
+     * An optional interpolator function that maps the transformed value to the range.
+     * @type {string}
+     */
     let interpolate;
     if (isColorChannel(channel)) {
-        const textureUniformName = `uRangeTexture_${channel}`;
+        const textureUniformName = RANGE_TEXTURE_PREFIX + channel;
         glsl.push(`uniform sampler2D ${textureUniformName};`);
         if (isInterpolating(scale.type)) {
             interpolate = `getInterpolatedColor(${textureUniformName}, transformed)`;
@@ -219,11 +236,20 @@ export function generateScaleGlsl(channel, scale, encoding) {
         } else {
             throw new Error("Problem with color scale!");
         }
+    } else if (isDiscreteChannel(channel)) {
+        if (!isDiscrete(scale.type) && !isDiscretizing(scale.type)) {
+            throw new Error(
+                `The "${channel}" requires a discrete or discretizing scale!`
+            );
+        }
+        const textureUniformName = RANGE_TEXTURE_PREFIX + channel;
+        glsl.push(`uniform sampler2D ${textureUniformName};`);
+        interpolate = `getDiscreteColor(${textureUniformName}, int(transformed)).r`;
     }
 
-    // Declare the data
+    // Declare the data: a variable or a constant datum (in domain).
     if (datum !== undefined) {
-        // Datums could also be provided as uniforms, allowing for modifications
+        // TODO: Datums could also be provided as uniforms, allowing for modifications
         glsl.push(
             `const highp ${attributeType} ${attributeName} = ${vectorize(
                 fp64 ? fp64ify(datum) : datum
@@ -233,7 +259,10 @@ export function generateScaleGlsl(channel, scale, encoding) {
         glsl.push(`in highp ${attributeType} ${attributeName};`);
     }
 
-    // Channel's scale function
+    // Channel's scale function:
+    //  1. transform
+    //  2. clamp
+    //  3. interpolate or map to discrete value
     glsl.push(`
 ${returnType} ${SCALE_FUNCTION_PREFIX}${channel}(${attributeType} value) {
     float transformed = ${functionCall};

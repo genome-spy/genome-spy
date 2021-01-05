@@ -2,8 +2,6 @@ precision mediump float;
 
 #pragma SCALES_HERE
 
-in lowp float shape;
-
 /** Maximum size of the largest point as the fraction of the height of the (faceted) view */
 uniform lowp float uMaxRelativePointDiameter;
 /** Minimum width/height in pixels of the largest point */
@@ -95,7 +93,7 @@ void main(void) {
     gl_PointSize = vSize;
 
     vColor = vec4(getScaled_color(), opacity); // Premultiplied in fragment shader
-    vShape = shape;
+    vShape = getScaled_shape();
     vStrokeWidth = getScaled_strokeWidth();
     vGradientStrength = getScaled_gradientStrength();
 }
