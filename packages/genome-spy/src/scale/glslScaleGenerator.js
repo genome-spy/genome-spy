@@ -261,8 +261,8 @@ export function generateScaleGlsl(channel, scale, encoding) {
 
     // Channel's scale function:
     //  1. transform
-    //  2. clamp
-    //  3. interpolate or map to discrete value
+    //  2. (optionally) clamp
+    //  3. (optionally) interpolate or map to a discrete value
     glsl.push(`
 ${returnType} ${SCALE_FUNCTION_PREFIX}${channel}(${attributeType} value) {
     float transformed = ${functionCall};

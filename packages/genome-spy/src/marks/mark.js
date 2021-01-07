@@ -342,6 +342,8 @@ export default class Mark {
                         attributeData.data,
                         0
                     );
+                    // TODO: Consider double buffering:
+                    // https://community.khronos.org/t/texture-buffers-are-much-slower-than-uniform-buffers/77139
                 }
             }
         } else {
