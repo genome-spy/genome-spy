@@ -94,6 +94,9 @@ export function generateScaleGlsl(channel, scale, encoding) {
     const fp64 = scale.fp64;
     const attributeType = fp64 ? "vec2" : "float";
 
+    /** @type {string} */
+    let domainUniform;
+
     /** @type {string[]} The generated shader (concatenated at the end) */
     const glsl = [];
 
@@ -185,7 +188,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
         (isContinuous(scale.type) || isDiscrete(scale.type)) &&
         channel == primary
     ) {
-        glsl.push(`uniform ${fp64 ? "vec4" : "vec2"} ${domainName};`);
+        domainUniform = `${fp64 ? "vec4" : "vec2"} ${domainName};`;
     }
 
     // N.B. Interpolating scales require unit range
@@ -283,7 +286,11 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
 }`);
 
     const concatenated = glsl.join("\n");
-    return concatenated;
+
+    return {
+        glsl: concatenated,
+        domainUniform
+    };
 }
 
 /**

@@ -52,6 +52,9 @@ export default class Mark {
         /** @type {twgl.VertexArrayInfo} WebGL buffers */
         this.vertexArrayInfo = undefined;
 
+        /** @type {twgl.UniformBlockInfo} WebGL buffers */
+        this.domainUniformInfo = undefined;
+
         /** @type {Map<string, WebGLTexture>} */
         this.rangeTextures = new Map();
 
@@ -263,29 +266,45 @@ export default class Mark {
      */
     createShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const attributes = this.getAttributes();
-        const scaleGlsl = attributes
-            .map(channel => {
-                const channelDef = this.encoding[channel];
 
-                if (!channelDef) {
-                    return undefined;
-                }
+        /** @type {string[]} */
+        let domainUniforms = [];
 
-                if (isValueDef(channelDef)) {
-                    return generateValueGlsl(channel, channelDef.value);
-                } else {
-                    const scale = this.unitView
-                        .getScaleResolution(channel)
-                        .getScale();
-                    return generateScaleGlsl(channel, scale, channelDef);
+        /** @type {string[]} */
+        let scaleCode = [];
+
+        for (const channel of attributes) {
+            const channelDef = this.encoding[channel];
+
+            if (!channelDef) {
+                continue;
+            }
+
+            if (isValueDef(channelDef)) {
+                scaleCode.push(generateValueGlsl(channel, channelDef.value));
+            } else {
+                const scale = this.unitView
+                    .getScaleResolution(channel)
+                    .getScale();
+
+                const generated = generateScaleGlsl(channel, scale, channelDef);
+
+                scaleCode.push(generated.glsl);
+                if (generated.domainUniform) {
+                    domainUniforms.push(generated.domainUniform);
                 }
-            })
-            .filter(s => s !== undefined)
-            .join("\n");
+            }
+        }
+
+        const domainUniformBlock = domainUniforms.length
+            ? "uniform Domains {\n" +
+              domainUniforms.map(u => `    ${u}\n`).join("") +
+              "};\n\n"
+            : "";
 
         const vertexShaderWithScales = /** @type {string} */ (vertexShader).replace(
             "#pragma SCALES_HERE",
-            scaleGlsl
+            domainUniformBlock + scaleCode.join("\n\n")
         );
 
         const shaders = this.glHelper.compileShaders(
@@ -297,6 +316,14 @@ export default class Mark {
         const program = twgl.createProgram(this.gl, shaders);
 
         this.programInfo = twgl.createProgramInfoFromProgram(this.gl, program);
+
+        if (domainUniforms.length) {
+            this.domainUniformInfo = twgl.createUniformBlockInfo(
+                this.gl,
+                this.programInfo,
+                "Domains"
+            );
+        }
     }
 
     /**
@@ -399,20 +426,28 @@ export default class Mark {
 
         gl.useProgram(this.programInfo.program);
 
-        /** @type {Record<string, number | number[]>} */
-        const domainUniforms = {};
-        for (const channel of this.getAttributes()) {
-            const resolution = this.unitView.getScaleResolution(channel);
-            if (resolution) {
-                const scale = resolution.getScale();
-                const domain = isDiscrete(scale.type)
-                    ? [0, resolution.getDomain().length]
-                    : resolution.getDomain();
+        if (this.domainUniformInfo) {
+            // TODO: Only update the domains that have changed
+            /** @type {Record<string, number | number[]>} */
+            const domainUniforms = {};
+            for (const channel of this.getAttributes()) {
+                const resolution = this.unitView.getScaleResolution(channel);
+                if (resolution) {
+                    const scale = resolution.getScale();
+                    const domain = isDiscrete(scale.type)
+                        ? [0, resolution.getDomain().length]
+                        : resolution.getDomain();
 
-                domainUniforms[DOMAIN_PREFIX + channel] = scale.fp64
-                    ? domain.map(x => fp64ify(x)).flat()
-                    : domain;
+                    domainUniforms[DOMAIN_PREFIX + channel] = scale.fp64
+                        ? domain.map(x => fp64ify(x)).flat()
+                        : domain;
+                }
             }
+
+            // TODO: Only update the block if at least one domain has changed
+            twgl.setBlockUniforms(this.domainUniformInfo, domainUniforms);
+
+            twgl.setUniformBlock(gl, this.programInfo, this.domainUniformInfo);
         }
 
         for (const [channel, texture] of this.rangeTextures.entries()) {
@@ -420,8 +455,6 @@ export default class Mark {
                 [RANGE_TEXTURE_PREFIX + channel]: texture
             });
         }
-
-        twgl.setUniforms(this.programInfo, domainUniforms);
 
         twgl.setUniforms(this.programInfo, {
             ONE: 1.0, // a hack needed by emulated 64 bit floats
