@@ -11,8 +11,8 @@
   "mark": "point",
 
   "encoding": {
-    "x": { "field": "x", "type": "ordinal" },
-    "y": { "field": "y", "type": "ordinal" },
+    "x": { "field": "x", "type": "ordinal", "axis": null },
+    "y": { "field": "y", "type": "ordinal", "axis": null },
     "shape": { "field": "x", "type": "nominal" },
     "color": {
       "expr": "datum.x + datum.y",
@@ -22,7 +22,7 @@
     "size": {
       "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))",
       "type": "quantitative",
-      "scale": { "range": [0, 4000] }
+      "scale": { "range": [0, 1000] }
     },
     "strokeWidth": {
       "field": "y",
