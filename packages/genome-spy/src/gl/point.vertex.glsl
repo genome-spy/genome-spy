@@ -16,11 +16,11 @@ uniform float uMaxPointSize;
 uniform float uZoomLevel;
 uniform float uSemanticThreshold;
 
-out float vSize;
-out lowp vec4 vColor;
-out lowp float vShape;
-out lowp float vStrokeWidth;
-out lowp float vGradientStrength;
+flat out float vSize;
+flat out lowp vec4 vColor;
+flat out lowp float vShape;
+flat out lowp float vStrokeWidth;
+flat out lowp float vGradientStrength;
 
 
 float computeSemanticThresholdFactor() {

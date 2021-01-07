@@ -36,9 +36,9 @@ uniform float uAlignY; // -1, 0, 1 = top, middle, bottom
 uniform float uFlushY;
 #endif
 
-out vec4 vColor;
 out vec2 vTexCoord;
-out float vSlope;
+flat out vec4 vColor;
+flat out float vSlope;
 out float vEdgeFadeOpacity;
 
 struct RangeResult {

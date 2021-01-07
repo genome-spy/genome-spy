@@ -10,7 +10,7 @@ uniform vec2 uMinSize;
 /** Minimum opacity for the size size clamping */
 uniform float uMinOpacity;
 
-out vec4 vColor;
+flat out vec4 vColor;
 
 /**
  * Clamps the minimumSize and returns an opacity that reflects the amount of clamping.

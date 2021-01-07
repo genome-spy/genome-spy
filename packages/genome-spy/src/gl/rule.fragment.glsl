@@ -8,8 +8,9 @@ uniform float uDashTextureSize;
 uniform float uStrokeDashOffset;
 uniform float uStrokeCap;
 
-in vec4 vColor;
-in float vSize;
+flat in vec4 vColor;
+flat in float vSize;
+
 in vec2 vPosInPixels;
 in float vNormalLengthInPixels;
 

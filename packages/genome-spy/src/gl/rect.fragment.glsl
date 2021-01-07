@@ -1,4 +1,4 @@
-in lowp vec4 vColor;
+flat in lowp vec4 vColor;
 
 out lowp vec4 fragColor;
 

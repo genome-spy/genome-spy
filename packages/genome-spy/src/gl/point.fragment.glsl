@@ -1,11 +1,11 @@
 const lowp vec3 white = vec3(1.0);
 const lowp vec3 black = vec3(0.0);
 
-in lowp vec4 vColor;
-in float vSize;
-in lowp float vShape;
-in lowp float vStrokeWidth;
-in lowp float vGradientStrength;
+flat in lowp vec4 vColor;
+flat in float vSize;
+flat in lowp float vShape;
+flat in lowp float vStrokeWidth;
+flat in lowp float vGradientStrength;
 
 out lowp vec4 fragColor;
 
