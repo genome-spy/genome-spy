@@ -46,12 +46,15 @@ export default class ScaleResolution {
      * Adds an observer that is called when the scale domain is changed,
      * e.g., zoomed.
      *
-     * @type {function():void} callback function
+     * @param {function():void} observer function
      */
     addScaleObserver(observer) {
         this.scaleObservers.add(observer);
     }
 
+    /**
+     * @param {function():void} observer function
+     */
     removeScaleObserver(observer) {
         this.scaleObservers.delete(observer);
     }
@@ -92,13 +95,19 @@ export default class ScaleResolution {
 
         for (const view of this.views) {
             const scale = this._getEncoding(view).scale;
-            return scale && Array.isArray(scale.domain);
+            if (scale && Array.isArray(scale.domain)) {
+                return true;
+            }
         }
         return false;
     }
 
-    getScaleProps() {
-        return getCachedOrCall(this, "scaleProps", () => {
+    /**
+     * Collects and merges scale properties from the participating views.
+     * Does not include inferred default values such as schemes etc.
+     */
+    getMergedScaleProps() {
+        return getCachedOrCall(this, "mergedScaleProps", () => {
             const propArray = this.views.map(
                 view => this._getEncoding(view).scale
             );
@@ -109,6 +118,38 @@ export default class ScaleResolution {
                 "scale",
                 ["domain"]
             ));
+        });
+    }
+
+    getScaleProps() {
+        return getCachedOrCall(this, "scaleProps", () => {
+            const domain = this.getDataDomain();
+
+            // TODO: Use scaleLocus if field type is locus
+            const props = {
+                type: getDefaultScaleType(this.channel, domain.type),
+                ...this._getDefaultScaleProperties(domain.type),
+                ...this.getMergedScaleProps(),
+                domain,
+                ...getLockedScaleProperties(this.channel)
+            };
+
+            // Swap discrete y axis
+            if (this.channel == "y" && isDiscrete(props.type)) {
+                props.range = [props.range[1], props.range[0]];
+            }
+
+            if (props.range && props.scheme) {
+                delete props.scheme;
+                // TODO: Props should be set more intelligently
+                /*
+                throw new Error(
+                    `Scale has both "range" and "scheme" defined! Views: ${this._getViewPaths()}`
+                );
+                */
+            }
+
+            return props;
         });
     }
 
@@ -155,31 +196,7 @@ export default class ScaleResolution {
             return this._scale;
         }
 
-        const domain = this.getDataDomain();
-
-        // TODO: Use scaleLocus if field type is locus
-        const props = {
-            type: getDefaultScaleType(this.channel, domain.type),
-            ...this._getDefaultScaleProperties(domain.type),
-            ...this.getScaleProps(),
-            domain,
-            ...getLockedScaleProperties(this.channel)
-        };
-
-        // Swap discrete y axis
-        if (this.channel == "y" && isDiscrete(props.type)) {
-            props.range = [props.range[1], props.range[0]];
-        }
-
-        if (props.range && props.scheme) {
-            delete props.scheme;
-            // TODO: Settings should be set more intelligently
-            /*
-            throw new Error(
-                `Scale has both "range" and "scheme" defined! Views: ${this._getViewPaths()}`
-            );
-            */
-        }
+        const props = this.getScaleProps();
 
         this._scale = createScale(props);
         if (this._scale.type == "locus") {

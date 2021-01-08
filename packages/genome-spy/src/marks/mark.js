@@ -1,6 +1,6 @@
 import { group } from "d3-array";
 import * as twgl from "twgl.js";
-import { isDiscrete } from "vega-scale";
+import { isDiscrete, isDiscretizing } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
 import createEncoders, {
     getDiscreteRangeMapper,
@@ -212,7 +212,7 @@ export default class Mark {
                 );
             } else {
                 const scale = resolution.getScale();
-                if (isDiscrete(scale.type)) {
+                if (isDiscrete(scale.type) || isDiscretizing(scale.type)) {
                     // Assume colors specified as range
                     this.rangeTextures.set(
                         "color",

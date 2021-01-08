@@ -42,7 +42,7 @@ export function createSchemeTexture(schemeDef, gl) {
  * @param {number} [count]
  */
 export function createDiscreteTexture(range, gl, count) {
-    const size = count ?? range.length;
+    const size = Math.max(range.length, count || 0);
     const textureData = new Float32Array(size);
 
     for (let i = 0; i < size; i++) {
@@ -111,7 +111,7 @@ function interpolatorToTextureData(
  * @param {number} [count]
  */
 function colorArrayToTextureData(scheme, count) {
-    const size = count ?? scheme.length;
+    const size = Math.max(scheme.length, count || 0);
 
     const textureData = new Uint8Array(size * 3);
     for (let i = 0; i < size; i++) {

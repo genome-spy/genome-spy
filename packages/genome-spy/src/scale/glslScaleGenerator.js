@@ -94,6 +94,8 @@ export function generateScaleGlsl(channel, scale, encoding) {
     const fp64 = !!scale.fp64;
     const attributeType = fp64 ? "vec2" : "float";
 
+    const domainLength = scale.domain().length;
+
     /** @type {string} */
     let domainUniform;
 
@@ -175,6 +177,9 @@ export function generateScaleGlsl(channel, scale, encoding) {
             functionCall = makeScaleCall("scaleIdentity");
             break;
 
+        case "threshold":
+            break;
+
         default:
             // TODO: Implement log, sqrt, etc...
             throw new Error(
@@ -193,7 +198,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
         const length =
             isContinuous(scale.type) ||
             ["quantize", "threshold"].includes(scale.type)
-                ? scale.domain().length
+                ? domainLength
                 : 2;
         domainUniform = `${
             fp64 ? "vec2" : "float"
@@ -243,7 +248,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
         glsl.push(`uniform sampler2D ${textureUniformName};`);
         if (isInterpolating(scale.type)) {
             interpolate = `getInterpolatedColor(${textureUniformName}, transformed)`;
-        } else if (transform == "ordinal") {
+        } else if (isDiscretizing(scale.type) || isDiscretizing(scale.type)) {
             interpolate = `getDiscreteColor(${textureUniformName}, int(transformed))`;
         } else {
             throw new Error("Problem with color scale!");
@@ -274,22 +279,39 @@ export function generateScaleGlsl(channel, scale, encoding) {
     /** @type {string[]} Channel's scale function*/
     const scaleBody = [];
 
+    const piecewise = isContinuous(scale.type) && domainLength > 2;
+    const needsSlot = isDiscretizing(scale.type) || piecewise;
+
+    scaleBody.push(`int slot = 0;`);
+    if (needsSlot) {
+        const name = domainUniformName;
+        // Use a simple linear search.
+        // This cannot be put into a function because GLSL requires fixed array lengths for parameters.
+        scaleBody.push(
+            `while (slot < ${name}.length() && value >= ${name}[slot]) { slot++; }`
+        );
+    }
+
     // 1. Setup domain
     if (domainDefined) {
         const name = domainUniformName;
         if (fp64) {
-            // Piecewise is not supported
-            scaleBody.push(`vec4 domain = vec4(${name}[0], ${name}[1]);`);
-        } else {
-            // TODO: Piecewise
             scaleBody.push(
-                `vec2 domain = vec2(${name}[0], ${name}[${name}.length() - 1]);`
+                `vec4 domain = vec4(${name}[slot], ${name}[slot + 1]);`
+            );
+        } else {
+            scaleBody.push(
+                `vec2 domain = vec2(${name}[slot], ${name}[slot + 1]);`
             );
         }
     }
 
     // 2. transform
-    scaleBody.push(`float transformed = ${functionCall};`);
+    if (functionCall) {
+        scaleBody.push(`float transformed = ${functionCall};`);
+    } else if (needsSlot && !piecewise) {
+        scaleBody.push(`float transformed = float(slot);`);
+    }
 
     // 3. clamp
     if (scale.clamp && scale.clamp()) {

@@ -1,6 +1,6 @@
 import { format } from "d3-format";
 import { isString } from "vega-util";
-import { isContinuous } from "vega-scale";
+import { isContinuous, isDiscretizing } from "vega-scale";
 import { fp64ify } from "./includes/fp64-utils";
 import ArrayBuilder from "./arrayBuilder";
 import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
@@ -42,7 +42,11 @@ export class VertexBuilder {
             if (ce) {
                 if (ce.scale) {
                     // Continuous variables go to GPU as is. Discrete variables must be "indexed".
-                    const f = isContinuous(ce.scale.type) ? ce.accessor : ce;
+                    const f =
+                        isContinuous(ce.scale.type) ||
+                        isDiscretizing(ce.scale.type)
+                            ? ce.accessor
+                            : ce;
                     const fp64 = ce.scale.fp64;
                     const double = new Float32Array(2);
                     this.converters[channel] = {
@@ -179,7 +183,9 @@ export class RectVertexBuilder extends VertexBuilder {
          * @param {import("../encoder/encoder").Encoder} encoder
          */
         const a = encoder =>
-            encoder.constantValue || !isContinuous(encoder.scale.type)
+            encoder.constantValue ||
+            (!isContinuous(encoder.scale.type) &&
+                !isDiscretizing(encoder.scale.type))
                 ? encoder
                 : encoder.accessor;
         const xAccessor = a(e.x);
