@@ -105,6 +105,8 @@ export default class ScaleResolution {
     /**
      * Collects and merges scale properties from the participating views.
      * Does not include inferred default values such as schemes etc.
+     *
+     * @returns {import("../spec/scale").Scale}
      */
     getMergedScaleProps() {
         return getCachedOrCall(this, "mergedScaleProps", () => {
@@ -121,6 +123,9 @@ export default class ScaleResolution {
         });
     }
 
+    /**
+     * @returns {import("../spec/scale").Scale}
+     */
     getScaleProps() {
         return getCachedOrCall(this, "scaleProps", () => {
             const domain = this.getDataDomain();

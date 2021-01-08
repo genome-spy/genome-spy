@@ -189,22 +189,6 @@ export function generateScaleGlsl(channel, scale, encoding) {
             );
     }
 
-    const domainDefined =
-        isContinuous(scale.type) ||
-        isDiscretizing(scale.type) ||
-        ["band", "point"].includes(scale.type);
-
-    if (domainDefined && channel == primary) {
-        const length =
-            isContinuous(scale.type) ||
-            ["quantize", "threshold"].includes(scale.type)
-                ? domainLength
-                : 2;
-        domainUniform = `${
-            fp64 ? "vec2" : "float"
-        } ${domainUniformName}[${length}];`;
-    }
-
     // N.B. Interpolating scales require unit range
     const range = isInterpolating(scale.type)
         ? [0, 1]
@@ -248,7 +232,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
         glsl.push(`uniform sampler2D ${textureUniformName};`);
         if (isInterpolating(scale.type)) {
             interpolate = `getInterpolatedColor(${textureUniformName}, transformed)`;
-        } else if (isDiscretizing(scale.type) || isDiscretizing(scale.type)) {
+        } else if (isDiscrete(scale.type) || isDiscretizing(scale.type)) {
             interpolate = `getDiscreteColor(${textureUniformName}, int(transformed))`;
         } else {
             throw new Error("Problem with color scale!");
@@ -282,34 +266,44 @@ export function generateScaleGlsl(channel, scale, encoding) {
     const piecewise = isContinuous(scale.type) && domainLength > 2;
     const needsSlot = isDiscretizing(scale.type) || piecewise;
 
+    // 1. If scale is piecewise or discretizing, find a matching slot
     scaleBody.push(`int slot = 0;`);
     if (needsSlot) {
         const name = domainUniformName;
         // Use a simple linear search.
         // This cannot be put into a function because GLSL requires fixed array lengths for parameters.
         scaleBody.push(
-            `while (slot < ${name}.length() && value >= ${name}[slot]) { slot++; }`
+            piecewise
+                ? `while (slot < ${name}.length() - 2 && value >= ${name}[slot + 1]) { slot++; }`
+                : `while (slot < ${name}.length() && value >= ${name}[slot]) { slot++; }`
         );
     }
 
-    // 1. Setup domain
-    if (domainDefined) {
-        const name = domainUniformName;
-        if (fp64) {
-            scaleBody.push(
-                `vec4 domain = vec4(${name}[slot], ${name}[slot + 1]);`
-            );
-        } else {
-            scaleBody.push(
-                `vec2 domain = vec2(${name}[slot], ${name}[slot + 1]);`
-            );
-        }
-    }
+    const usesDomain =
+        isContinuous(scale.type) ||
+        isDiscretizing(scale.type) ||
+        ["band", "point"].includes(scale.type);
 
     // 2. transform
     if (functionCall) {
+        const name = domainUniformName;
+        if (usesDomain) {
+            const dtype = fp64 ? "vec4" : "vec2";
+            scaleBody.push(
+                `${dtype} domain = ${dtype}(${name}[slot], ${name}[slot + 1]);`
+            );
+        }
+
         scaleBody.push(`float transformed = ${functionCall};`);
-    } else if (needsSlot && !piecewise) {
+
+        if (piecewise) {
+            // TODO: Handle range correctly. Now this assumes unit range.
+            scaleBody.push(
+                `transformed = (float(slot) + transformed) / (float(${name}.length()) - 1.0);`
+            );
+        }
+    } else {
+        // Discretizing scale
         scaleBody.push(`float transformed = float(slot);`);
     }
 
@@ -335,6 +329,17 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
 }`);
 
     const concatenated = glsl.join("\n");
+
+    if (usesDomain && channel == primary) {
+        // Band, point, index, and locus scale need the domain extent (the first and last elements).
+        const length =
+            isContinuous(scale.type) || isDiscretizing(scale.type)
+                ? domainLength
+                : 2;
+        domainUniform = `${
+            fp64 ? "vec2" : "float"
+        } ${domainUniformName}[${length}];`;
+    }
 
     return {
         glsl: concatenated,

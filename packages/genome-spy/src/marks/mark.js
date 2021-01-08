@@ -17,6 +17,7 @@ import { getCachedOrCall } from "../utils/propertyCacher";
 import {
     createDiscreteColorTexture,
     createDiscreteTexture,
+    createInterpolatedColorTexture,
     createSchemeTexture
 } from "../scale/colorUtils";
 
@@ -204,30 +205,34 @@ export default class Mark {
             const resolution = this.unitView.getScaleResolution("color");
             const props = resolution.getScaleProps();
 
+            /** @type {WebGLTexture} */
+            let texture;
+
             if (props.scheme) {
                 // TODO: Discrete scale
-                this.rangeTextures.set(
-                    "color",
-                    createSchemeTexture(props.scheme, this.gl)
-                );
+                texture = createSchemeTexture(props.scheme, this.gl);
             } else {
+                // Assume colors are specified in the range
                 const scale = resolution.getScale();
+                /** @type {any[]} */
+                const range = scale.range();
+
                 if (isDiscrete(scale.type) || isDiscretizing(scale.type)) {
-                    // Assume colors specified as range
-                    this.rangeTextures.set(
-                        "color",
-                        createDiscreteColorTexture(
-                            resolution.getScale().range(),
-                            this.gl,
-                            scale.domain().length
-                        )
+                    texture = createDiscreteColorTexture(
+                        range,
+                        this.gl,
+                        scale.domain().length
                     );
                 } else {
-                    throw new Error(
-                        "TODO: Continuous scales need interpolated colors"
+                    texture = createInterpolatedColorTexture(
+                        range,
+                        props.interpolate,
+                        this.gl
                     );
                 }
             }
+
+            this.rangeTextures.set("color", texture);
         }
 
         // Create range textures for "shape" channel etc.

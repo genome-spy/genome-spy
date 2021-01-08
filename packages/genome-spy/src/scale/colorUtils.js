@@ -1,6 +1,6 @@
 import { color as d3color } from "d3-color";
 import { range } from "d3-array";
-import { scheme as vegaScheme } from "vega-scale";
+import { scheme as vegaScheme, interpolateColors } from "vega-scale";
 import { isString, isArray, isFunction } from "vega-util";
 import * as twgl from "twgl.js";
 import { peek } from "../utils/arrayUtils";
@@ -31,6 +31,35 @@ export function createSchemeTexture(schemeDef, gl) {
             throw new Error("Unknown scheme: " + schemeName);
         }
     }
+}
+
+/**
+ * @param {string[]} colors
+ * @param {import("../spec/scale").ScaleInterpolate | import("../spec/scale").ScaleInterpolateParams} interpolateParams
+ * @param {WebGL2RenderingContext} gl
+ */
+export function createInterpolatedColorTexture(
+    colors,
+    interpolateParams = "rgb",
+    gl
+) {
+    const interpolator = interpolateColors(
+        colors,
+        isString(interpolateParams)
+            ? interpolateParams
+            : interpolateParams.type,
+        isString(interpolateParams) ? undefined : interpolateParams.gamma
+    );
+
+    // TODO: Reverse
+    const textureData = interpolatorToTextureData(interpolator);
+    return twgl.createTexture(gl, {
+        minMag: gl.LINEAR,
+        format: gl.RGB,
+        src: textureData,
+        height: 1,
+        wrap: gl.CLAMP_TO_EDGE
+    });
 }
 
 /**
