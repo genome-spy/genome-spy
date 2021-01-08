@@ -88,10 +88,10 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
 export function generateScaleGlsl(channel, scale, encoding) {
     const primary = primaryChannel(channel);
     const attributeName = ATTRIBUTE_PREFIX + channel;
-    const domainName = DOMAIN_PREFIX + primary;
+    const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeName = RANGE_PREFIX + primary;
 
-    const fp64 = scale.fp64;
+    const fp64 = !!scale.fp64;
     const attributeType = fp64 ? "vec2" : "float";
 
     /** @type {string} */
@@ -131,7 +131,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
         case "locus":
             functionCall = makeScaleCall(
                 "scaleBand",
-                domainName,
+                "domain",
                 rangeName,
                 0,
                 0,
@@ -140,14 +140,14 @@ export function generateScaleGlsl(channel, scale, encoding) {
             break;
 
         case "linear":
-            functionCall = makeScaleCall("scaleLinear", domainName, rangeName);
+            functionCall = makeScaleCall("scaleLinear", "domain", rangeName);
             break;
 
         case "point":
             // TODO: implement real scalePoint as it is calculated slightly differently
             functionCall = makeScaleCall(
                 "scaleBand",
-                domainName,
+                "domain",
                 rangeName,
                 0.5,
                 0,
@@ -158,7 +158,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
         case "band":
             functionCall = makeScaleCall(
                 "scaleBand",
-                domainName,
+                "domain",
                 rangeName,
                 scale.paddingInner(),
                 scale.paddingOuter(),
@@ -184,11 +184,20 @@ export function generateScaleGlsl(channel, scale, encoding) {
             );
     }
 
-    if (
-        (isContinuous(scale.type) || isDiscrete(scale.type)) &&
-        channel == primary
-    ) {
-        domainUniform = `${fp64 ? "vec4" : "vec2"} ${domainName};`;
+    const domainDefined =
+        isContinuous(scale.type) ||
+        isDiscretizing(scale.type) ||
+        ["band", "point"].includes(scale.type);
+
+    if (domainDefined && channel == primary) {
+        const length =
+            isContinuous(scale.type) ||
+            ["quantize", "threshold"].includes(scale.type)
+                ? scale.domain().length
+                : 2;
+        domainUniform = `${
+            fp64 ? "vec2" : "float"
+        } ${domainUniformName}[${length}];`;
     }
 
     // N.B. Interpolating scales require unit range
@@ -262,21 +271,39 @@ export function generateScaleGlsl(channel, scale, encoding) {
         glsl.push(`in highp ${attributeType} ${attributeName};`);
     }
 
-    // Channel's scale function:
-    //  1. transform
-    //  2. (optionally) clamp
-    //  3. (optionally) interpolate or map to a discrete value
+    /** @type {string[]} Channel's scale function*/
+    const scaleBody = [];
+
+    // 1. Setup domain
+    if (domainDefined) {
+        const name = domainUniformName;
+        if (fp64) {
+            // Piecewise is not supported
+            scaleBody.push(`vec4 domain = vec4(${name}[0], ${name}[1]);`);
+        } else {
+            // TODO: Piecewise
+            scaleBody.push(
+                `vec2 domain = vec2(${name}[0], ${name}[${name}.length() - 1]);`
+            );
+        }
+    }
+
+    // 2. transform
+    scaleBody.push(`float transformed = ${functionCall};`);
+
+    // 3. clamp
+    if (scale.clamp && scale.clamp()) {
+        scaleBody.push(
+            `transformed = clampToRange(transformed, ${vectorizeRange(range)});`
+        );
+    }
+
+    // 4. interpolate or map to a discrete value
+    scaleBody.push(`return ${interpolate ?? "transformed"};`);
+
     glsl.push(`
 ${returnType} ${SCALE_FUNCTION_PREFIX}${channel}(${attributeType} value) {
-    float transformed = ${functionCall};
-    ${
-        scale.clamp && scale.clamp()
-            ? `transformed = clampToRange(transformed, ${vectorizeRange(
-                  range
-              )});`
-            : ""
-    }
-    return ${interpolate ?? "transformed"};
+${scaleBody.map(x => `    ${x}\n`).join("")}
 }`);
 
     // A convenience getter for the scaled value

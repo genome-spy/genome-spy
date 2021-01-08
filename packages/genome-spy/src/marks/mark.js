@@ -297,7 +297,7 @@ export default class Mark {
         }
 
         const domainUniformBlock = domainUniforms.length
-            ? "uniform Domains {\n" +
+            ? "layout(std140) uniform Domains {\n" +
               domainUniforms.map(u => `    ${u}\n`).join("") +
               "};\n\n"
             : "";
@@ -428,9 +428,21 @@ export default class Mark {
 
         if (this.domainUniformInfo) {
             // TODO: Only update the domains that have changed
-            /** @type {Record<string, number | number[]>} */
-            const domainUniforms = {};
-            for (const channel of this.getAttributes()) {
+
+            // A horrific hack to work around: https://github.com/greggman/twgl.js/issues/173
+            // TODO: Fix twgl or something
+            const uniformInfos = this.programInfo.uniformBlockSpec.uniformData
+                .filter(d => /^uDomain_/.test(d.name))
+                .map(d => ({
+                    channel: d.name.match(/^uDomain_(\w+)/)[1],
+                    offset: d.offset / 4
+                }));
+
+            const floatArray = this.domainUniformInfo.asFloat;
+
+            /* @type {Record<string, number | number[]>} */
+            //const domainUniforms = {};
+            for (const { channel, offset } of uniformInfos) {
                 const resolution = this.unitView.getScaleResolution(channel);
                 if (resolution) {
                     const scale = resolution.getScale();
@@ -438,14 +450,28 @@ export default class Mark {
                         ? [0, resolution.getDomain().length]
                         : resolution.getDomain();
 
-                    domainUniforms[DOMAIN_PREFIX + channel] = scale.fp64
+                    /*
+                    domainUniforms[DOMAIN_PREFIX + channel + "[0]"] = scale.fp64
                         ? domain.map(x => fp64ify(x)).flat()
                         : domain;
+                    */
+
+                    if (scale.fp64) {
+                        for (const [i, e] of domain
+                            .map(x => fp64ify(x))
+                            .entries()) {
+                            floatArray.set(e, offset + i * 4);
+                        }
+                    } else {
+                        for (const [i, e] of domain.entries()) {
+                            floatArray[offset + i * 4] = e;
+                        }
+                    }
                 }
             }
 
             // TODO: Only update the block if at least one domain has changed
-            twgl.setBlockUniforms(this.domainUniformInfo, domainUniforms);
+            //twgl.setBlockUniforms(this.domainUniformInfo, domainUniforms);
 
             twgl.setUniformBlock(gl, this.programInfo, this.domainUniformInfo);
         }
