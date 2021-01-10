@@ -1,6 +1,6 @@
 import { group } from "d3-array";
 import * as twgl from "twgl.js";
-import { isDiscrete, isDiscretizing } from "vega-scale";
+import { isDiscrete, isDiscretizing, isInterpolating } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
 import createEncoders, {
     getDiscreteRangeMapper,
@@ -20,6 +20,7 @@ import {
     createInterpolatedColorTexture,
     createSchemeTexture
 } from "../scale/colorUtils";
+import { isString } from "vega-util";
 
 /**
  *
@@ -205,29 +206,46 @@ export default class Mark {
             const resolution = this.unitView.getScaleResolution("color");
             const props = resolution.getScaleProps();
 
+            const scale = resolution.getScale();
+
             /** @type {WebGLTexture} */
             let texture;
 
             if (props.scheme) {
-                // TODO: Discrete scale
-                texture = createSchemeTexture(props.scheme, this.gl);
+                let count = isString(props.scheme)
+                    ? undefined
+                    : props.scheme.count;
+                if (isDiscrete(scale.type)) {
+                    count = scale.domain().length;
+                } else if (scale.type == "threshold") {
+                    count = scale.domain().length + 1;
+                } else if (scale.type == "quantize") {
+                    count = count ?? 4;
+                } else if (scale.type == "quantile") {
+                    count = count ?? 4;
+                }
+
+                // TODO: The count configuration logic above etc should be combined
+                // with scale.js that configures d3 scales using vega specs
+
+                texture = createSchemeTexture(props.scheme, this.gl, count);
             } else {
-                // Assume colors are specified in the range
-                const scale = resolution.getScale();
+                // No scheme, assume that colors are specified in the range
+
                 /** @type {any[]} */
                 const range = scale.range();
 
-                if (isDiscrete(scale.type) || isDiscretizing(scale.type)) {
-                    texture = createDiscreteColorTexture(
-                        range,
-                        this.gl,
-                        scale.domain().length
-                    );
-                } else {
+                if (isInterpolating(scale.type)) {
                     texture = createInterpolatedColorTexture(
                         range,
                         props.interpolate,
                         this.gl
+                    );
+                } else {
+                    texture = createDiscreteColorTexture(
+                        range,
+                        this.gl,
+                        scale.domain().length
                     );
                 }
             }

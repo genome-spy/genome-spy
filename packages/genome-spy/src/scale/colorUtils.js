@@ -6,18 +6,28 @@ import * as twgl from "twgl.js";
 import { peek } from "../utils/arrayUtils";
 
 /**
- * @param {string | import("../spec/scale").SchemeParams} schemeDef
+ * @param {string | import("../spec/scale").SchemeParams} schemeParams
  * @param {WebGL2RenderingContext} gl
+ * @param {number} [count]
  */
-export function createSchemeTexture(schemeDef, gl) {
-    const schemeName = isString(schemeDef) ? schemeDef : schemeDef.name;
-    const extent = (!isString(schemeDef) && schemeDef.extent) || [0, 1];
+export function createSchemeTexture(schemeParams, gl, count) {
+    const schemeName = isString(schemeParams)
+        ? schemeParams
+        : schemeParams.name;
+    const extent = (!isString(schemeParams) && schemeParams.extent) || [0, 1];
+
+    if (count === undefined && !isString(schemeParams)) {
+        count = schemeParams.count;
+    }
 
     if (schemeName) {
         const scheme = vegaScheme(schemeName);
         if (isFunction(scheme)) {
             // TODO: Reverse
-            const textureData = interpolatorToTextureData(scheme, { extent });
+            const textureData = interpolatorToTextureData(scheme, {
+                extent,
+                count
+            });
             return twgl.createTexture(gl, {
                 minMag: gl.LINEAR,
                 format: gl.RGB,
@@ -112,17 +122,17 @@ export function createDiscreteColorTexture(colors, gl, count) {
  * @param {object} options
  * @param {number[]} [options.extent]
  * @param {boolean} [options.reverse]
- * @param {number} [options.size]
+ * @param {number} [options.count]
  */
 function interpolatorToTextureData(
     interpolator,
-    { extent = [0, 1], reverse = false, size = 256 } = {}
+    { extent = [0, 1], reverse = false, count = 256 } = {}
 ) {
     const start = extent[0];
     const span = peek(extent) - start;
 
-    const steps = range(size)
-        .map(x => x / (size - 1))
+    const steps = range(count)
+        .map(x => x / (count - 1))
         .map(x => start + x / span)
         .map(interpolator);
 
