@@ -237,12 +237,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
         } else {
             throw new Error("Problem with color scale!");
         }
-    } else if (isDiscreteChannel(channel)) {
-        if (!isDiscrete(scale.type) && !isDiscretizing(scale.type)) {
-            throw new Error(
-                `The "${channel}" requires a discrete or discretizing scale!`
-            );
-        }
+    } else if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
         const textureUniformName = RANGE_TEXTURE_PREFIX + channel;
         glsl.push(`uniform sampler2D ${textureUniformName};`);
         interpolate = `getDiscreteColor(${textureUniformName}, int(transformed)).r`;
