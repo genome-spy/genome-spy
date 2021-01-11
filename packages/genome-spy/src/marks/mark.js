@@ -200,6 +200,26 @@ export default class Mark {
     async initializeGraphics() {
         //override
 
+        /**
+         * TODO: The count configuration logic etc should be combined
+         * with scale.js that configures d3 scales using vega specs
+         * @param {number} count
+         * @param {any} scale
+         * @returns {number}
+         */
+        function fixCount(count, scale) {
+            if (isDiscrete(scale.type)) {
+                return scale.domain().length;
+            } else if (scale.type == "threshold") {
+                return scale.domain().length + 1;
+            } else if (scale.type == "quantize") {
+                return count ?? 4;
+            } else if (scale.type == "quantile") {
+                return count ?? 4;
+            }
+            return count;
+        }
+
         // TODO: Identical and inherited schemes could be deduped
 
         if (this.encoding.color && !isValueDef(this.encoding.color)) {
@@ -215,18 +235,8 @@ export default class Mark {
                 let count = isString(props.scheme)
                     ? undefined
                     : props.scheme.count;
-                if (isDiscrete(scale.type)) {
-                    count = scale.domain().length;
-                } else if (scale.type == "threshold") {
-                    count = scale.domain().length + 1;
-                } else if (scale.type == "quantize") {
-                    count = count ?? 4;
-                } else if (scale.type == "quantile") {
-                    count = count ?? 4;
-                }
 
-                // TODO: The count configuration logic above etc should be combined
-                // with scale.js that configures d3 scales using vega specs
+                count = fixCount(count, scale);
 
                 texture = createSchemeTexture(props.scheme, this.gl, count);
             } else {
@@ -253,23 +263,37 @@ export default class Mark {
             this.rangeTextures.set("color", texture);
         }
 
-        // Create range textures for "shape" channel etc.
         for (const [channel, channelDef] of Object.entries(this.encoding)) {
-            if (isDiscreteChannel(channel) && !isValueDef(channelDef)) {
-                const resolution = this.unitView.getScaleResolution(channel);
-                const scale = resolution.getScale();
-                const mapper = getDiscreteRangeMapper(channel);
+            if (channel === "color" || isValueDef(channelDef)) {
+                continue;
+            }
+
+            const resolution = this.unitView.getScaleResolution(channel);
+            if (!resolution) {
+                continue;
+            }
+
+            const scale = resolution.getScale();
+
+            if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
+                /** @type {function(any):number} Handle "shape" etc */
+                const mapper = isDiscreteChannel(channel)
+                    ? getDiscreteRangeMapper(channel)
+                    : x => x;
+
+                /** @type {any[]} */
+                const range = resolution.getScale().range();
+
                 this.rangeTextures.set(
                     channel,
                     createDiscreteTexture(
-                        resolution
-                            .getScale()
-                            .range()
-                            .map(mapper),
+                        range.map(mapper),
                         this.gl,
                         scale.domain().length
                     )
                 );
+
+                console.log(channel);
             }
         }
     }
