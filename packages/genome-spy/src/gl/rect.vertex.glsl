@@ -1,7 +1,12 @@
 
 #pragma SCALES_HERE
 
-/** Mainly needed by band scale */
+/**
+ * The vertex position wrt the rectangle specified by (x, x2, y, y2).
+ * [0, 0] = [x, y], [1, 1] = [x2, y2]. 
+ * The x or y component may contain fractional values if the rectangle 
+ * have been tessellated.
+ */
 in vec2 frac;
 
 /** Minimum size (width, height) of the displayed rectangle in pixels */
