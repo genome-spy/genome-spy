@@ -19,6 +19,11 @@ import {
     isPositionalChannel
 } from "../encoder/encoder";
 
+export const QUANTITATIVE = "quantitative";
+export const ORDINAL = "ordinal";
+export const NOMINAL = "nominal";
+export const LOCUS = "locus"; // Humdum, should this be "genomic"?
+
 /**
  * Resolution takes care of merging domains and scales from multiple views.
  * This class also provides some utility methods for zooming the scales etc..
@@ -134,14 +139,16 @@ export default class ScaleResolution {
         return getCachedOrCall(this, "scaleProps", () => {
             const domain = this.getDataDomain();
 
-            // TODO: Use scaleLocus if field type is locus
             const props = {
-                type: getDefaultScaleType(this.channel, domain.type),
-                ...this._getDefaultScaleProperties(domain.type),
+                ...this._getDefaultScaleProperties(this.type),
                 ...this.getMergedScaleProps(),
                 domain,
                 ...getLockedScaleProperties(this.channel)
             };
+
+            if (!props.type) {
+                props.type = getDefaultScaleType(this.channel, this.type);
+            }
 
             // Swap discrete y axis
             if (this.channel == "y" && isDiscrete(props.type)) {
@@ -285,8 +292,8 @@ export default class ScaleResolution {
     /**
      * Returns the zoom level with respect to the reference domain span (the original domain).
      *
-     * TODO: This is highly specific to positional channels. Figure out a better place for this
-     * and other zoom-related stuff.
+     * In principle, this is highly specific to positional channels. However, zooming can
+     * be generalized to other quantitative channels such as color, opacity, size, etc.
      */
     getZoomLevel() {
         if (this.isZoomable()) {
@@ -323,9 +330,9 @@ export default class ScaleResolution {
         } else if (isColorChannel(channel)) {
             // TODO: Named ranges
             props.scheme =
-                dataType == "nominal"
+                dataType == NOMINAL
                     ? "tableau10"
-                    : dataType == "ordinal"
+                    : dataType == ORDINAL
                     ? "blues"
                     : "viridis";
         } else if (isDiscreteChannel(channel)) {
@@ -360,7 +367,7 @@ export default class ScaleResolution {
 function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
 
-    if (["index", "locus"].includes(dataType)) {
+    if (["index", LOCUS].includes(dataType)) {
         if ("xy".includes(channel)) {
             return dataType;
         } else {
@@ -371,27 +378,38 @@ function getDefaultScaleType(channel, dataType) {
         }
     }
 
-    /** @type {Object.<string, string[]>} [nominal/ordinal, quantitative]*/
+    /**
+     * @type {Object.<string, string[]>}
+     * Default types: nominal, ordinal, quantitative
+     */
     const defaults = {
-        x: ["band", "linear"],
-        y: ["band", "linear"],
-        size: ["point", "linear"],
-        opacity: ["point", "linear"],
-        color: ["ordinal", "linear"],
-        shape: ["ordinal", null], // TODO: Perhaps some discretizing quantitative scale?
-        squeeze: ["ordinal", null],
-        sample: ["identity", "identity"],
-        semanticScore: [null, "identity"],
-        text: ["identity", "identity"],
-        dx: [null, "identity"],
-        dy: [null, "identity"]
+        x: ["band", "band", "linear"],
+        y: ["band", "band", "linear"],
+        size: [null, "point", "linear"],
+        opacity: [null, "point", "linear"],
+        color: ["ordinal", "ordinal", "linear"],
+        shape: ["ordinal", "ordinal", null],
+        squeeze: ["ordinal", "ordinal", null],
+        sample: ["identity", "identity", null],
+        semanticScore: [null, null, "identity"],
+        text: ["identity", "identity", "identity"],
+        dx: [null, null, "identity"],
+        dy: [null, null, "identity"]
     };
 
-    return defaults[channel]
-        ? defaults[channel][dataType == "quantitative" ? 1 : 0]
-        : dataType == "quantitative"
+    const type = defaults[channel]
+        ? defaults[channel][[NOMINAL, ORDINAL, QUANTITATIVE].indexOf(dataType)]
+        : dataType == QUANTITATIVE
         ? "linear"
         : "ordinal";
+
+    if (!type) {
+        throw new Error(
+            `Channel "${channel}" is not compatible with "${dataType}" data type. Use of a proper scale may be needed.`
+        );
+    }
+
+    return type;
 }
 
 /**
