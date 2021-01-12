@@ -8,7 +8,8 @@ import createIndexer from "../utils/indexer";
  * @prop {boolean} constantValue True the encoder returns a "value" without a scale
  * @prop {function} invert
  * @prop {VegaScale} [scale]
- * @prop {import("./accessor").Accessor} accessor
+ * @prop {import("./accessor").Accessor} accessor 
+ * @prop {function(any):number} [indexer] Converts ordinal values to index numbers
  * @prop {import("../view/viewUtils").ChannelDef} channelDef
  * @prop {function(function):void} applyMetadata Copies metadata to the target function
  *
@@ -110,15 +111,14 @@ export function createEncoder(channelDef, scale, accessor, channel) {
                 );
             }
 
+            encoder = /** @type {Encoder} */ (datum => scale(accessor(datum)));
+
             if (isDiscrete(scale.type)) {
-                // TODO: and check that it's raw
                 // TODO: pass the found values back to the scale/resolution
                 const indexer = createIndexer();
                 indexer.addAll(scale.domain());
-                scale = indexer;
+                encoder.indexer = d => indexer(accessor(d));
             }
-
-            encoder = /** @type {Encoder} */ (datum => scale(accessor(datum)));
 
             encoder.constant = accessor.constant;
             encoder.accessor = accessor;

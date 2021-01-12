@@ -1,6 +1,5 @@
 import { format } from "d3-format";
 import { isString } from "vega-util";
-import { isContinuous, isDiscretizing } from "vega-scale";
 import { fp64ify } from "./includes/fp64-utils";
 import ArrayBuilder from "./arrayBuilder";
 import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
@@ -40,47 +39,31 @@ export class VertexBuilder {
         for (const channel of attributes) {
             const ce = encoders[channel];
             if (ce) {
-                if (ce.scale) {
-                    // Continuous variables go to GPU as is. Discrete variables must be "indexed".
-                    const f =
-                        isContinuous(ce.scale.type) ||
-                        isDiscretizing(ce.scale.type)
-                            ? ce.accessor
-                            : ce;
-                    const fp64 = ce.scale.fp64;
+                if (ce.scale && !ce.constant) {
+                    const accessor = ce.accessor;
                     const double = new Float32Array(2);
+
+                    const fp64 = ce.scale.fp64;
+
+                    /** @type {function(any):(number | number[])} Continuous variables go to GPU as is. Discrete variables must be "indexed". */
+                    const f = ce.indexer
+                        ? ce.indexer
+                        : fp64
+                        ? d => fp64ify(accessor(d), double)
+                        : accessor;
+
+                    // TODO: If more than one channels use the same field, convert the field only once
+
                     this.converters[channel] = {
-                        f: fp64 ? d => fp64ify(f(d), double) : f,
-                        numComponents: fp64 ? 2 : 1,
-                        raw: true
-                    };
-                } else {
-                    // No scale, it's a "value".
-                    this.converters[channel] = {
-                        f: ce,
-                        numComponents: 1,
-                        raw: true
+                        f,
+                        numComponents: fp64 ? 2 : 1
                     };
                 }
             }
         }
 
-        /** @param {function(string, Encoder):boolean} encodingPredicate */
-        const getAttributes = encodingPredicate =>
-            Object.entries(encoders)
-                .filter(([channel, encoder]) => attributes.includes(channel))
-                .filter(([channel, encoder]) =>
-                    encodingPredicate(channel, encoder)
-                )
-                .map(([channel, encoding]) => channel);
-
-        const variables = getAttributes(
-            (channel, encoder) => !encoder.constant
-        );
-
         this.variableBuilder = ArrayBuilder.create(
             this.converters,
-            variables,
             numVertices
         );
 
@@ -182,12 +165,8 @@ export class RectVertexBuilder extends VertexBuilder {
         /**
          * @param {import("../encoder/encoder").Encoder} encoder
          */
-        const a = encoder =>
-            encoder.constantValue ||
-            (!isContinuous(encoder.scale.type) &&
-                !isDiscretizing(encoder.scale.type))
-                ? encoder
-                : encoder.accessor;
+        const a = encoder => encoder.accessor || (x => 0);
+
         const xAccessor = a(e.x);
         const x2Accessor = a(e.x2);
 

@@ -4,7 +4,6 @@ import { ATTRIBUTE_PREFIX } from "../scale/glslScaleGenerator";
  * @typedef {Object} Converter
  * @prop {function(object):any} f
  * @prop {number} [numComponents]
- * @prop {boolean} [raw]
  *
  */
 export default class ArrayBuilder {
@@ -12,24 +11,18 @@ export default class ArrayBuilder {
 
     /**
      * @param {Record<string, Converter>} converters
-     * @param {string[]} attributes Which attributes to include
      * @param {number} size Size if known, uses TypedArray
      */
-    static create(converters, attributes, size = undefined) {
+    static create(converters, size = undefined) {
         const builder = new ArrayBuilder(size);
 
-        Object.entries(converters)
-            .filter(entry => attributes.includes(entry[0]))
-            .forEach(([attribute, props]) => {
-                if (!props) {
-                    throw new Error("Bug!");
-                }
-                return builder.addConverter(
-                    !props.raw ? attribute : ATTRIBUTE_PREFIX + attribute,
-                    props.numComponents || 1,
-                    props.f
-                );
-            });
+        for (const [attribute, props] of Object.entries(converters)) {
+            builder.addConverter(
+                ATTRIBUTE_PREFIX + attribute,
+                props.numComponents || 1,
+                props.f
+            );
+        }
 
         return builder;
     }
@@ -41,7 +34,7 @@ export default class ArrayBuilder {
     constructor(size) {
         this.size = size;
 
-        /** @type {Object.<string, {data: number[] | Float32Array, numComponents: number, divisor: ?number}>} */
+        /** @type {Object.<string, {data: number[] | Float32Array, numComponents: number, divisor?: number}>} */
         this.arrays = {};
 
         /** @type {(function():void)[]} */
@@ -61,9 +54,6 @@ export default class ArrayBuilder {
      */
     addConverter(attributeName, numComponents, converter) {
         const updater = this.createUpdater(attributeName, numComponents);
-        if (!converter) {
-            throw new Error("Bug: no converter for " + attributeName + "!");
-        }
         this.converters.push(d => updater(converter(d)));
     }
 
