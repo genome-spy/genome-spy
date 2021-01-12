@@ -15,7 +15,7 @@ in float side;
 uniform float uMinLength;
 
 uniform float uDashTextureSize;
-uniform float uStrokeCap;
+uniform lowp int uStrokeCap;
 
 flat out vec4 vColor;
 
@@ -45,15 +45,11 @@ void main(void) {
     vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
     vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
 
-    int lineCap = int(uStrokeCap);
-
-    //float translatedY = transit(x, y)[0];
-
     vec2 tangent = b - a;
 
     float offset = 0.0;
     float relativeDiff = 0.0;
-    if (uMinLength > 0.0 || lineCap != BUTT) {
+    if (uMinLength > 0.0 || uStrokeCap != BUTT) {
         float len = length(tangent * uViewportSize);
 
         // Elongate to reach the minimum length.
@@ -61,7 +57,7 @@ void main(void) {
         float diff = max(0.0, uMinLength - len);
 
         // Add line caps
-        if (lineCap != BUTT) {
+        if (uStrokeCap != BUTT) {
             diff += size;
         }
 
@@ -89,5 +85,5 @@ void main(void) {
 
     // TODO: Here's a precision problem that breaks round caps when zoomed in enough
     vPosInPixels = vec2(pos, (1.0 - pos)) * (1.0 + relativeDiff) * length(tangent * uViewportSize) -
-        vec2(lineCap != BUTT ? size / 2.0 : 0.0);
+        vec2(uStrokeCap != BUTT ? size / 2.0 : 0.0);
 }
