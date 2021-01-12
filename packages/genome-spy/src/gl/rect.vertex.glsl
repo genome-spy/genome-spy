@@ -15,9 +15,9 @@ flat out vec4 vColor;
 /**
  * Clamps the minimumSize and returns an opacity that reflects the amount of clamping.
  */
-float clampMinSize(inout float pos, float size, float minSize) {
+float clampMinSize(inout float pos, float frac, float size, float minSize) {
     if (minSize > 0.0 && abs(size) < minSize) {
-        pos -= (minSize * sign(size) - size) / 2.0;
+        pos += (frac - 0.5) * (minSize * sign(size) - size);
         return abs(size) / minSize;
     }
 
@@ -42,8 +42,8 @@ void main(void) {
     size.y /= getSampleFacetHeight(pos);
 
     float opa = getScaled_opacity() * uViewOpacity * max(uMinOpacity,
-        clampMinSize(pos.x, size.x, normalizedMinSize.x) *
-        clampMinSize(pos.y, size.y, normalizedMinSize.y));
+        clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
+        clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
 
     pos = applySampleFacet(pos);
 

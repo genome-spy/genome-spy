@@ -1,15 +1,18 @@
 {
   "data": {
     "values": [
-      { "x": 0.2, "x2": 0.4, "z": "a" },
-      { "x": 0.6, "x2": 0.8, "z": "a" },
-      { "x": 0, "x2": 0.2, "z": "b" }
+      { "x": 0.2, "x2": 0.4 },
+      { "x": 0.6, "x2": 0.8 }
     ]
   },
 
   "layer": [
     {
-      "mark": "rect",
+      "mark": {
+        "type": "rect",
+        "minWidth": 100,
+        "minHeight": 100
+      },
 
       "encoding": {
         "x": {
@@ -22,10 +25,6 @@
           "field": "x",
           "type": "quantitative",
           "scale": { "domain": [0, 1] }
-        },
-        "squeeze": {
-          "field": "z",
-          "type": "nominal"
         },
         "y2": { "field": "x2" }
       }
