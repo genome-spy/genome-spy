@@ -129,55 +129,32 @@ export function generateScaleGlsl(channel, scale, encoding) {
 
     let functionCall;
     switch (transform) {
-        case "index":
-        case "locus":
-            functionCall = makeScaleCall(
-                "scaleBand",
-                "domain",
-                rangeName,
-                0,
-                0,
-                encoding.band ?? 0.5
-            );
-            break;
-
         case "linear":
             functionCall = makeScaleCall("scaleLinear", "domain", rangeName);
             break;
 
+        case "index":
+        case "locus":
         case "point":
-            // TODO: implement real scalePoint as it is calculated slightly differently
-            functionCall = makeScaleCall(
-                "scaleBand",
-                "domain",
-                rangeName,
-                0.5,
-                0,
-                0
-            );
-            break;
-
         case "band":
             functionCall = makeScaleCall(
                 "scaleBand",
                 "domain",
                 rangeName,
-                scale.paddingInner(),
-                scale.paddingOuter(),
+                scale.paddingInner ? scale.paddingInner() : 0,
+                scale.paddingOuter ? scale.paddingOuter() : 0,
                 encoding.band ?? 0.5
             );
             break;
 
-        case "ordinal":
-            // Use identity transform and lookup the value from a data (range) texture
-            functionCall = makeScaleCall("scaleIdentity");
-            break;
-
+        case "ordinal": // Use identity transform and lookup the value from a texture
         case "identity":
             functionCall = makeScaleCall("scaleIdentity");
             break;
 
         case "threshold":
+            // TODO: Quantile (it's a specialization of threshold scale)
+            // TODO: Quantize
             break;
 
         default:
