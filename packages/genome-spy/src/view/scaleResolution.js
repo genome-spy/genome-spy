@@ -11,7 +11,7 @@ import { isDiscrete, isContinuous } from "vega-scale";
 import mergeObjects from "../utils/mergeObjects";
 import createScale from "../scale/scale";
 
-import { getCachedOrCall } from "../utils/propertyCacher";
+import { expire, getCachedOrCall } from "../utils/propertyCacher";
 import {
     getDiscreteRange,
     isColorChannel,
@@ -80,6 +80,7 @@ export default class ScaleResolution {
                 `Can not use shared scale for different data types: ${this.type} vs. ${type}. Use "resolve: independent" for channel ${this.channel}`
             );
             // Actually, point scale could be changed into band scale
+            // TODO: Use the same merging logic as in: https://github.com/vega/vega-lite/blob/master/src/scale.ts
         }
 
         this.views.push(view);
@@ -124,6 +125,9 @@ export default class ScaleResolution {
     }
 
     /**
+     * Returns the merged scale properties supplemented with inferred properties
+     * and domain.
+     *
      * @returns {import("../spec/scale").Scale}
      */
     getScaleProps() {
@@ -166,7 +170,10 @@ export default class ScaleResolution {
      */
     setDomain(domain) {
         this._explicitDomain = domain;
-        this._scale = undefined;
+        if (this._scale) {
+            this._scale.domain(domain);
+        }
+        expire(this, "scaleProps");
     }
 
     /**
