@@ -253,6 +253,10 @@ export default class GenomeSpy {
             // Ensure that all external textures (font atlases) have been loaded
             await graphicsInitialized;
 
+            for (const view of unitViews) {
+                view.mark.finalizeGraphicsInitialization();
+            }
+
             this.renderAll();
 
             return this;

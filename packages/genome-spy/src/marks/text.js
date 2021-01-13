@@ -129,12 +129,18 @@ export default class TextMark extends Mark {
             );
         });
 
-        this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        return texturePromise;
+    }
 
-        gl.useProgram(this.programInfo.program);
+    finalizeGraphicsInitialization() {
+        super.finalizeGraphicsInitialization();
+
+        this.gl.useProgram(this.programInfo.program);
 
         const props = this.properties;
 
+        // TODO: Use uniform block.
         twgl.setUniforms(this.programInfo, {
             uSqueeze: props.squeeze ? 1 : 0,
             uPaddingX: props.paddingX,
@@ -153,8 +159,6 @@ export default class TextMark extends Mark {
                 d === undefined ? -Infinity : d
             )
         });
-
-        return texturePromise;
     }
 
     updateGraphicsData() {

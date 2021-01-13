@@ -108,7 +108,7 @@ export default class RuleMark extends Mark {
             this.dashTextureSize = textureData.length; // Not needed with WebGL2
         }
 
-        this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
     updateGraphicsData() {

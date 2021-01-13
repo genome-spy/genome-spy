@@ -97,6 +97,10 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
         const requestByMark = group(this.buffer, request => request.mark);
 
         for (const [mark, requests] of requestByMark.entries()) {
+            if (!mark.isReady()) {
+                continue;
+            }
+
             // eslint-disable-next-line no-loop-func
             this.batch.push(() => {
                 enabled = mark.unitView.getEffectiveOpacity() > 0;

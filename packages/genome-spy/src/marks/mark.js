@@ -21,6 +21,7 @@ import {
     createSchemeTexture
 } from "../scale/colorUtils";
 import { isString } from "vega-util";
+import { createProgram } from "../gl/webGLHelper";
 
 /**
  *
@@ -309,11 +310,12 @@ export default class Mark {
      * @param {string} fragmentShader
      * @param {string[]} [extraHeaders]
      */
-    createShaders(vertexShader, fragmentShader, extraHeaders = []) {
+    createAndLinkShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const attributes = this.getAttributes();
 
+        // TODO: This is a temporary variable, don't store it in the mark object
         /** @type {string[]} */
-        let domainUniforms = [];
+        this.domainUniforms = [];
 
         /** @type {string[]} */
         let scaleCode = [];
@@ -336,14 +338,14 @@ export default class Mark {
 
                 scaleCode.push(generated.glsl);
                 if (generated.domainUniform) {
-                    domainUniforms.push(generated.domainUniform);
+                    this.domainUniforms.push(generated.domainUniform);
                 }
             }
         }
 
-        const domainUniformBlock = domainUniforms.length
+        const domainUniformBlock = this.domainUniforms.length
             ? "layout(std140) uniform Domains {\n" +
-              domainUniforms.map(u => `    ${u}\n`).join("") +
+              this.domainUniforms.map(u => `    ${u}\n`).join("") +
               "};\n\n"
             : "";
 
@@ -358,17 +360,39 @@ export default class Mark {
             extraHeaders
         );
 
-        const program = twgl.createProgram(this.gl, shaders);
+        this.programStatus = createProgram(this.gl, shaders[0], shaders[1]);
 
-        this.programInfo = twgl.createProgramInfoFromProgram(this.gl, program);
+        // Postpone status checking to allow for background compilation
+        // See: https://toji.github.io/shader-perf/
+    }
 
-        if (domainUniforms.length) {
+    /**
+     * Check WebGL shader/program compilation/linking status and finalize
+     * initialization.
+     */
+    finalizeGraphicsInitialization() {
+        const error = this.programStatus.getProgramErrors();
+        if (error) {
+            if (error.detail) {
+                console.warn(error.detail);
+            }
+            throw new Error("Cannot create shader program: " + error.message);
+        }
+
+        this.programInfo = twgl.createProgramInfoFromProgram(
+            this.gl,
+            this.programStatus.program
+        );
+
+        if (this.domainUniforms.length) {
             this.domainUniformInfo = twgl.createUniformBlockInfo(
                 this.gl,
                 this.programInfo,
                 "Domains"
             );
         }
+
+        delete this.programStatus;
     }
 
     /**
@@ -448,6 +472,10 @@ export default class Mark {
         // override
     }
 
+    isReady() {
+        return this.bufferInfo && this.programInfo;
+    }
+
     /**
      * Configures the WebGL state for rendering the mark instances.
      * A separate preparation stage allows for efficient rendering of faceted
@@ -456,10 +484,6 @@ export default class Mark {
      */
     prepareRender() {
         const gl = this.gl;
-
-        if (!this.bufferInfo) {
-            return;
-        }
 
         if (!this.vertexArrayInfo) {
             this.vertexArrayInfo = twgl.createVertexArrayInfo(

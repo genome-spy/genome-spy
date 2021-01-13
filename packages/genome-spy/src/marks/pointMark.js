@@ -110,7 +110,7 @@ export default class PointMark extends Mark {
 
     async initializeGraphics() {
         await super.initializeGraphics();
-        this.createShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
     updateGraphicsData() {

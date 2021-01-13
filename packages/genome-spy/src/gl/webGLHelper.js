@@ -127,24 +127,7 @@ export default class WebGLHelper {
                 gl.shaderSource(shader, stitchedSource);
                 gl.compileShader(shader);
 
-                // TODO: Only check status if linking fails:
-                // https://developer.mozilla.org/en-US/docs/Web/API/KHR_parallel_shader_compile
-                const compiled = gl.getShaderParameter(
-                    shader,
-                    gl.COMPILE_STATUS
-                );
-                if (!compiled) {
-                    const lastError = gl.getShaderInfoLog(shader);
-                    gl.deleteShader(shader);
-                    console.error(
-                        `${addLineNumbersWithError(
-                            stitchedSource,
-                            lastError,
-                            0
-                        )}\nError compiling: ${lastError}`
-                    );
-                    throw new Error("Cannot compile GLSL shader!");
-                }
+                // Don't check errors here. Check them if linking fails.
 
                 this._shaderCache.set(cacheKey, shader);
             }
@@ -256,4 +239,55 @@ function addLineNumbersWithError(src, log = "", lineOffset = 0) {
             }`;
         })
         .join("\n");
+}
+
+/**
+ * @param {WebGL2RenderingContext} gl
+ * @param {WebGLShader} vertexShader
+ * @param {WebGLShader} fragmentShader
+ */
+export function createProgram(gl, vertexShader, fragmentShader) {
+    var program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+
+    function getProgramErrors() {
+        /** @type {string} */
+        let errorMsg;
+        /** @type {string} */
+        let errorDetail;
+
+        const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+        if (!linked) {
+            errorMsg = gl.getProgramInfoLog(program);
+
+            for (const shader of [vertexShader, fragmentShader]) {
+                const compiled = gl.getShaderParameter(
+                    shader,
+                    gl.COMPILE_STATUS
+                );
+                if (!compiled) {
+                    errorMsg = gl.getShaderInfoLog(shader);
+                    errorDetail =
+                        addLineNumbersWithError(
+                            gl.getShaderSource(shader),
+                            errorMsg,
+                            0
+                        ) + `\nError compiling: ${errorMsg}`;
+                    gl.deleteShader(shader);
+                }
+            }
+            gl.deleteProgram(program);
+        }
+
+        if (errorMsg) {
+            return { message: errorMsg, detail: errorDetail };
+        }
+    }
+
+    return {
+        program,
+        getProgramErrors
+    };
 }
