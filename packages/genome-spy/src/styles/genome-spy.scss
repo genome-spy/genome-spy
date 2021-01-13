@@ -38,6 +38,16 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         .loading-message .message {
             opacity: 1;
         }
+
+        .ellipsis {
+            animation: blinker 1s linear infinite;
+        }
+
+        @keyframes blinker {
+            50% {
+                opacity: 0;
+            }
+        }
     }
 
     .tooltip {

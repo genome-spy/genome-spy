@@ -109,7 +109,7 @@ export default class GenomeSpy {
 
         this.loadingMessageElement = document.createElement("div");
         this.loadingMessageElement.className = "loading-message";
-        this.loadingMessageElement.innerHTML = `<div class="message">Loading...</div>`;
+        this.loadingMessageElement.innerHTML = `<div class="message">Loading<span class="ellipsis">...</span></div>`;
         this.container.appendChild(this.loadingMessageElement);
 
         this.tooltip = new Tooltip(this.container);
