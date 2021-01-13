@@ -200,7 +200,14 @@ export default class Mark {
      */
     async initializeGraphics() {
         //override
+    }
 
+    /**
+     * Creates textures for color schemes and discrete/discretizing ranges.
+     * N.B. Discrete range textures need domain. Thus, this cannot be called
+     * before the final domains are resolved.
+     */
+    _createRangeTextures() {
         /**
          * TODO: The count configuration logic etc should be combined
          * with scale.js that configures d3 scales using vega specs
@@ -383,6 +390,7 @@ export default class Mark {
             this.gl,
             this.programStatus.program
         );
+        delete this.programStatus;
 
         if (this.domainUniforms.length) {
             this.domainUniformInfo = twgl.createUniformBlockInfo(
@@ -392,7 +400,7 @@ export default class Mark {
             );
         }
 
-        delete this.programStatus;
+        this._createRangeTextures();
     }
 
     /**
