@@ -178,18 +178,51 @@ export class SampleAttributePanel extends ConcatView {
      * @param {Sample[]} samples
      */
     _setSamples(samples) {
+        if (this.children.length) {
+            throw new Error("Children are already created!");
+            // TODO: Check whether the attributes match and update the views and data accordingly
+        }
+
         this._createViews();
 
-        const dataFlow = this.context.dataFlow;
-        buildDataFlow(this, dataFlow);
+        const flow = this.context.dataFlow;
+        buildDataFlow(this, flow);
+        // TODO: optimizeDataFlow(dataFlow);
 
-        const dynamicSource = /** @type {import("../../data/sources/dynamicSource").default} */ (dataFlow.findDataSourceByKey(
+        const dynamicSource = /** @type {import("../../data/sources/dynamicSource").default} */ (flow.findDataSourceByKey(
             this
         ));
 
-        dynamicSource.publishData(samples);
+        /** @type {Promise<import("../../marks/mark").default>[]} */
+        const promises = [];
 
-        this._updateAttributeData();
+        this.visit(view => {
+            if (view instanceof UnitView) {
+                const mark = view.mark;
+                promises.push(mark.initializeGraphics().then(result => mark));
+
+                flow.addObserver(collector => {
+                    mark.initializeEncoders();
+                    mark.initializeData(); // does faceting
+                    mark.updateGraphicsData();
+                }, view);
+            }
+        });
+
+        Promise.allSettled(promises).then(results => {
+            for (const result of results) {
+                if ("value" in result) {
+                    result.value.finalizeGraphicsInitialization();
+                } else if ("reason" in result) {
+                    console.error(result.reason);
+                }
+            }
+            // TODO: Ensure that the views are rendered after finalization:
+            // this.context.animator.requestRender();
+            // But also ensure that the cached batch is invalidated
+        });
+
+        dynamicSource.publishData(samples);
     }
 
     _createViews() {
@@ -205,18 +238,6 @@ export class SampleAttributePanel extends ConcatView {
                 view.resolve("axis");
             }
         }
-    }
-
-    _updateAttributeData() {
-        this.visit(view => {
-            if (view instanceof UnitView) {
-                const mark = view.mark;
-                mark.initializeEncoders();
-                mark.initializeData(); // does faceting
-                mark.initializeGraphics();
-                mark.updateGraphicsData();
-            }
-        });
     }
 
     /**
