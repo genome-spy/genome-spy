@@ -204,26 +204,39 @@ export default class GenomeSpy {
                     );
             }
 
+            // Create encoders (accessors, scales and related metadata)
+            unitViews.forEach(view => view.mark.initializeEncoders());
+
+            // Compile shaders, create or load textures, etc.
+            const graphicsInitialized = Promise.all(
+                // TODO: The compilation should be initiated here but the
+                // statuses should be checked later to allow for background compilation.
+                // Also: https://www.khronos.org/registry/webgl/extensions/KHR_parallel_shader_compile/
+                unitViews.map(view => view.mark.initializeGraphics())
+            );
+
             // Load and transform all data
             await initializeData(this.viewRoot, context.dataFlow);
 
             // TODO: Put unitViews to listen to collectors
             this.viewRoot.visit(view => {
                 if (view instanceof UnitView) {
+                    // TODO: Replace initializeData with a faceted dataflow
                     view.mark.initializeData();
+                    // Update WebGL buffers
+                    view.mark.updateGraphicsData();
                 }
             });
 
-            // Compile shaders, handle textures, etc.
-            // TODO: Move above initializeData. However, scales need domains before they can be created...
-            const graphicsInitialized = Promise.all(
-                unitViews.map(view => view.mark.initializeGraphics())
-            );
-
-            // Some of the encoders need an initialized scale (domain). Thus, it has
-            // to be done after all data have been loaded.
-            unitViews.forEach(view => view.mark.initializeEncoders());
-            unitViews.forEach(view => view.mark.updateGraphicsData());
+            // Now that all data has been loaded, the domains may need adjusting
+            this.viewRoot.visit(view => {
+                for (const resolution of Object.values(
+                    view.resolutions.scale
+                )) {
+                    // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
+                    resolution.reconfigure();
+                }
+            });
 
             this.registerMouseEvents();
 

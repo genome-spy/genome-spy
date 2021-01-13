@@ -167,13 +167,15 @@ export function generateScaleGlsl(channel, scale, encoding) {
     }
 
     // N.B. Interpolating scales require unit range
-    const range = isInterpolating(scale.type)
-        ? [0, 1]
-        : scale.range
-        ? scale.range()
-        : undefined;
+    const range =
+        isInterpolating(scale.type) ||
+        (isContinuous(scale.type) && channel === "color")
+            ? [0, 1]
+            : scale.range
+            ? scale.range()
+            : undefined;
 
-    if (range && channel == primary && range.every(isNumber)) {
+    if (range && channel == primary && range.length && range.every(isNumber)) {
         const vectorizedRange = vectorizeRange(range);
 
         // Range needs no runtime adjustment (at least for now). Thus, pass it as a constant that the
@@ -207,7 +209,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
     if (isColorChannel(channel)) {
         const textureUniformName = RANGE_TEXTURE_PREFIX + channel;
         glsl.push(`uniform sampler2D ${textureUniformName};`);
-        if (isInterpolating(scale.type)) {
+        if (isContinuous(scale.type)) {
             interpolate = `getInterpolatedColor(${textureUniformName}, transformed)`;
         } else if (isDiscrete(scale.type) || isDiscretizing(scale.type)) {
             interpolate = `getDiscreteColor(${textureUniformName}, int(transformed))`;
@@ -326,6 +328,10 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
  * @returns {string}
  */
 function toDecimal(number) {
+    if (!isNumber(number)) {
+        throw new Error(`Not a number: ${number}`);
+    }
+
     if (number == Infinity) {
         return "" + FLT_MAX;
     } else if (number == -Infinity) {

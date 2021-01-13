@@ -106,9 +106,7 @@ var SKIP = toSet([
     "fp64"
 ]);
 
-export default function createScale(_, logger) {
-    const key = scaleKey(_);
-    const scale = getScale(key)();
+export function configureScale(_, scale, logger) {
     logger = ensureLogger(logger);
 
     for (const key in _)
@@ -126,6 +124,13 @@ export default function createScale(_, logger) {
         _,
         configureBins(scale, _, configureDomain(scale, _, logger))
     );
+}
+
+export default function createScale(_, logger) {
+    const key = scaleKey(_);
+    const scale = getScale(key)();
+
+    configureScale(_, scale, logger);
 
     return scale;
 }

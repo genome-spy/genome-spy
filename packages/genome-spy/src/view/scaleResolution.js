@@ -9,7 +9,7 @@ import {
 import { isDiscrete, isContinuous } from "vega-scale";
 
 import mergeObjects from "../utils/mergeObjects";
-import createScale from "../scale/scale";
+import createScale, { configureScale } from "../scale/scale";
 
 import { expire, getCachedOrCall } from "../utils/propertyCacher";
 import {
@@ -137,14 +137,16 @@ export default class ScaleResolution {
      */
     getScaleProps() {
         return getCachedOrCall(this, "scaleProps", () => {
-            const domain = this.getDataDomain();
-
             const props = {
                 ...this._getDefaultScaleProperties(this.type),
                 ...this.getMergedScaleProps(),
-                domain,
                 ...getLockedScaleProperties(this.channel)
             };
+
+            const domain = this.getDataDomain();
+            if (domain && domain.length > 0) {
+                props.domain = domain;
+            }
 
             if (!props.type) {
                 props.type = getDefaultScaleType(this.channel, this.type);
@@ -205,6 +207,18 @@ export default class ScaleResolution {
      */
     getDomain() {
         return this.getScale()?.domain();
+    }
+
+    /**
+     * Reconfigures the scale: updates domain and other settings
+     */
+    reconfigure() {
+        if (this._scale) {
+            expire(this, "scaleProps");
+            configureScale(this.getScaleProps(), this._scale);
+            const domain = this.getDataDomain();
+            this._originalDomain = [...domain];
+        }
     }
 
     /**

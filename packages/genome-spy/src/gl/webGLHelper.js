@@ -127,6 +127,8 @@ export default class WebGLHelper {
                 gl.shaderSource(shader, stitchedSource);
                 gl.compileShader(shader);
 
+                // TODO: Only check status if linking fails:
+                // https://developer.mozilla.org/en-US/docs/Web/API/KHR_parallel_shader_compile
                 const compiled = gl.getShaderParameter(
                     shader,
                     gl.COMPILE_STATUS

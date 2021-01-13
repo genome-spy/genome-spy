@@ -31,8 +31,7 @@ describe("Encoder", () => {
                 channelDef,
                 scales[channel],
                 accessorFactory.createAccessor(encodingSpecs[channel]),
-                channel,
-                x => x // TODO: Test modifiers
+                channel
             );
         }
         return encoders;
@@ -93,4 +92,6 @@ describe("Encoder", () => {
         expect(encoders.z.accessor).toBeDefined();
         expect(encoders.x.accessor).toBeUndefined();
     });
+
+    // TODO: Test indexer
 });

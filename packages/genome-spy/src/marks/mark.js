@@ -292,8 +292,6 @@ export default class Mark {
                         scale.domain().length
                     )
                 );
-
-                console.log(channel);
             }
         }
     }

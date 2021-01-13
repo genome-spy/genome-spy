@@ -212,7 +212,7 @@ export default class UnitView extends View {
     getCollectedData() {
         const collector = this.context.dataFlow.findCollectorByKey(this);
         if (!collector) {
-            throw new Error(`No data collector found for view!`);
+            return undefined;
         }
 
         return collector.getData();
@@ -272,29 +272,30 @@ export default class UnitView extends View {
      * @returns {DomainArray}
      */
     _extractDomain(channel, type) {
-        return getCachedOrCall(this, "dataDomain-" + channel, () => {
-            let domain;
+        //        return getCachedOrCall(this, "dataDomain-" + channel, () => {
+        let domain;
 
-            const encodingSpec = this.getEncoding()[channel];
+        const encodingSpec = this.getEncoding()[channel];
 
-            if (encodingSpec) {
-                const accessor = this.context.accessorFactory.createAccessor(
-                    encodingSpec
-                );
-                if (accessor) {
-                    domain = createDomain(type);
+        if (encodingSpec) {
+            const accessor = this.context.accessorFactory.createAccessor(
+                encodingSpec
+            );
+            if (accessor) {
+                domain = createDomain(type);
 
-                    if (accessor.constant) {
-                        domain.extend(accessor({}));
-                    } else {
-                        for (const datum of this.getCollectedData()) {
-                            domain.extend(accessor(datum));
-                        }
+                if (accessor.constant) {
+                    domain.extend(accessor({}));
+                } else {
+                    const data = this.getCollectedData() || [];
+                    for (const datum of data) {
+                        domain.extend(accessor(datum));
                     }
                 }
             }
-            return domain;
-        });
+        }
+        return domain;
+        //        });
     }
 
     getZoomLevel() {
