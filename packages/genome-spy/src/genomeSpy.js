@@ -30,6 +30,8 @@ import { isContextMenuOpen } from "./utils/ui/contextMenu";
 import Animator from "./utils/animator";
 import DataFlow from "./data/dataFlow";
 import scaleIndex from "./genome/scaleIndex";
+import { buildDataFlow } from "./view/flowBuilder";
+import { optimizeDataFlow } from "./data/flowOptimizer";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -215,18 +217,24 @@ export default class GenomeSpy {
                 unitViews.map(view => view.mark.initializeGraphics())
             );
 
-            // Load and transform all data
-            await initializeData(this.viewRoot, context.dataFlow);
+            // Build the data flow based on the view hierarchy
+            const flow = buildDataFlow(this.viewRoot, context.dataFlow);
+            optimizeDataFlow(flow);
 
-            // TODO: Put unitViews to listen to collectors
-            this.viewRoot.visit(view => {
-                if (view instanceof UnitView) {
+            for (const view of unitViews) {
+                flow.addObserver(collector => {
+                    view.onDataLoaded();
                     // TODO: Replace initializeData with a faceted dataflow
                     view.mark.initializeData();
                     // Update WebGL buffers
                     view.mark.updateGraphicsData();
-                }
-            });
+                }, view);
+            }
+
+            // Find all data sources and initiate loading
+            await Promise.all(
+                flow.dataSources.map(dataSource => dataSource.load())
+            );
 
             // Now that all data has been loaded, the domains may need adjusting
             this.viewRoot.visit(view => {
@@ -242,6 +250,7 @@ export default class GenomeSpy {
 
             this.computeLayout();
 
+            // Ensure that all external textures (font atlases) have been loaded
             await graphicsInitialized;
 
             this.renderAll();

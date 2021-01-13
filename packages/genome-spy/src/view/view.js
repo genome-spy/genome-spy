@@ -264,6 +264,7 @@ export default class View {
      * TODO: What about dynamic data?
      */
     onDataLoaded() {
+        // TODO: The following depends on the domains
         this._opacityFunction = createViewOpacityFunction(this);
     }
 
