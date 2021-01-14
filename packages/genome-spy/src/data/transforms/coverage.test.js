@@ -2,11 +2,11 @@ import CoverageTransform from "./coverage";
 import { processData } from "../flowTestUtils";
 
 /**
- * @typedef {import("../../spec/transform").CoverageConfig} CoverageConfig
+ * @typedef {import("../../spec/transform").CoverageParams} CoverageParams
  */
 
 /**
- * @param {CoverageConfig} params
+ * @param {CoverageParams} params
  * @param {any[]} data
  */
 function transform(params, data) {
@@ -49,7 +49,7 @@ test("Coverage transform produces correct coverage segments", () => {
         coverage: d[2]
     }));
 
-    /** @type {CoverageConfig} */
+    /** @type {CoverageParams} */
     const coverageConfig = {
         type: "coverage",
         start: "start",
@@ -71,7 +71,7 @@ test("Coverage transform handles chromosomes", () => {
         { chrom: "chr3", start: 1, end: 3, coverage: 1 }
     ];
 
-    /** @type {CoverageConfig} */
+    /** @type {CoverageParams} */
     const coverageConfig = {
         type: "coverage",
         chrom: "chrom",
@@ -107,7 +107,7 @@ test("Coverage transform handles weights", () => {
         coverage: d[2]
     }));
 
-    /** @type {CoverageConfig} */
+    /** @type {CoverageParams} */
     const coverageConfig = {
         type: "coverage",
         chrom: "chrom",

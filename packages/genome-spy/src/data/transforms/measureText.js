@@ -6,7 +6,7 @@ import getMetrics from "../../utils/bmFontMetrics";
  * Measures text length. This is mainly intended for reading-direction arrows
  * in gene annotations.
  *
- * @typedef {import("../../spec/transform").MeasureTextConfig} MeasureTextConfig
+ * @typedef {import("../../spec/transform").MeasureTextParams} MeasureTextParams
  */
 export default class MeasureTextTransform extends FlowNode {
     get behavior() {
@@ -15,7 +15,7 @@ export default class MeasureTextTransform extends FlowNode {
 
     /**
      *
-     * @param {MeasureTextConfig} config
+     * @param {MeasureTextParams} config
      */
     constructor(config) {
         super();

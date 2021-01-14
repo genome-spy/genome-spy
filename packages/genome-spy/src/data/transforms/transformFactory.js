@@ -30,7 +30,7 @@ const transforms = {
     stack: p => new StackTransform(p)
 };
 
-/** @param {import("../../spec/transform").TransformConfigBase} params */
+/** @param {import("../../spec/transform").TransformParamsBase} params */
 export default function createTransform(params) {
     const f = transforms[params.type];
     if (f) {

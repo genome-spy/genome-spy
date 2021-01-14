@@ -59,7 +59,7 @@ export function buildDataFlow(root, existingFlow) {
 
     /**
      *
-     * @param {import("../spec/transform").TransformConfig[]} transforms
+     * @param {import("../spec/transform").TransformParams[]} transforms
      */
     function createTransforms(transforms) {
         for (const params of transforms) {

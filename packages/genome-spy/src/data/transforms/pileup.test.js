@@ -2,7 +2,7 @@ import PileupTransform from "./pileup";
 import { processData } from "../flowTestUtils";
 
 /**
- * @typedef {import("../../spec/transform").PileupConfig} PileupConfig
+ * @typedef {import("../../spec/transform").PileupParams} PileupParams
  */
 
 const reads = [
@@ -24,7 +24,7 @@ const reads = [
 
 const lanes = [0, 1, 2, 1, 0, 0, 1, 2, 0, 1, 2];
 
-/** @type {PileupConfig} */
+/** @type {PileupParams} */
 const params = {
     type: "pileup",
     start: "start",
@@ -32,7 +32,7 @@ const params = {
 };
 
 /**
- * @param {PileupConfig} params
+ * @param {PileupParams} params
  * @param {any[]} data
  */
 function pileupTransform(params, data) {

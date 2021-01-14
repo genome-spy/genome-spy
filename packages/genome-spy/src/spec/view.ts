@@ -1,7 +1,7 @@
 import { Data } from "./data";
 import { Scale } from "./scale";
 import { Axis } from "./axis";
-import { TransformConfig } from "./transform";
+import { TransformParams } from "./transform";
 import { GenomeConfig } from "../genome/genome";
 import { SizeDef } from "../utils/layout/flexLayout";
 
@@ -98,7 +98,7 @@ export interface ViewSpecBase {
     padding?: number;
 
     data?: Data;
-    transform?: TransformConfig[];
+    transform?: TransformParams[];
     encoding?: Record<string, ChannelDef>;
     title?: string;
     description?: string;

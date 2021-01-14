@@ -3,7 +3,7 @@ import { processData } from "../flowTestUtils";
 import RegexExtractTransform from "./regexExtract";
 
 /**
- * @param {import("./regexExtract").RegexExtractConfig} params
+ * @param {import("./regexExtract").RegexExtractParams} params
  * @param {any[]} data
  */
 function transform(params, data) {
@@ -13,7 +13,7 @@ function transform(params, data) {
 describe("RegexExtractTransform", () => {
     const rows = [{ a: "12-34" }, { a: "23-45" }];
 
-    /** @type {import("./regexExtract").RegexExtractConfig} */
+    /** @type {import("./regexExtract").RegexExtractParams} */
     const params = {
         type: "regexExtract",
         regex: "^(\\d+)-(\\d+)$",
@@ -29,7 +29,7 @@ describe("RegexExtractTransform", () => {
     });
 
     test("Invalid config", () => {
-        /** @type {import("./regexExtract").RegexExtractConfig} */
+        /** @type {import("./regexExtract").RegexExtractParams} */
         const config2 = {
             type: "regexExtract",
             regex: "^(\\d+)-(\\d+)$",

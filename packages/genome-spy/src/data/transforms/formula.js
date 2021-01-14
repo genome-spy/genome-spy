@@ -2,7 +2,7 @@ import createFunction from "../../utils/expression";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 /**
- * @typedef {import("../../spec/transform").FormulaConfig} FormulaConfig
+ * @typedef {import("../../spec/transform").FormulaParams} FormulaParams
  */
 
 export default class FormulaTransform extends FlowNode {
@@ -12,7 +12,7 @@ export default class FormulaTransform extends FlowNode {
 
     /**
      *
-     * @param {FormulaConfig} config
+     * @param {FormulaParams} config
      */
     constructor(config) {
         super();

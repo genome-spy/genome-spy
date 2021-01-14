@@ -1,7 +1,7 @@
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 /**
- * @typedef {import("../../spec/transform").LinearizeGenomicCoordinateConfig} LinearizeGenomicCoordinateConfig
+ * @typedef {import("../../spec/transform").LinearizeGenomicCoordinateParams} LinearizeGenomicCoordinateParams
  */
 export default class LinearizeGenomicCoordinate extends FlowNode {
     get behavior() {
@@ -10,7 +10,7 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
 
     /**
      *
-     * @param {LinearizeGenomicCoordinateConfig} config
+     * @param {LinearizeGenomicCoordinateParams} config
      */
     constructor(config) {
         super();

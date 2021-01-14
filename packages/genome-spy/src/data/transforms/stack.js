@@ -3,7 +3,7 @@ import { groups as d3groups, sum as d3sum } from "d3-array";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 /**
- * @typedef {import("../../spec/transform").StackConfig} StackConfig
+ * @typedef {import("../../spec/transform").StackParams} StackParams
  */
 
 export default class StackTransform extends FlowNode {
@@ -12,7 +12,7 @@ export default class StackTransform extends FlowNode {
     }
 
     /**
-     * @param {StackConfig} params
+     * @param {StackParams} params
      */
     constructor(params) {
         super();

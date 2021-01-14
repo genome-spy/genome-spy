@@ -4,19 +4,19 @@
  */
 export type Field = string;
 
-export interface TransformConfigBase {
+export interface TransformParamsBase {
     /** The type of the transform to be applied */
     type: string;
 }
 
-export interface FilterConfig extends TransformConfigBase {
+export interface FilterParams extends TransformParamsBase {
     type: "filter";
 
     /** An expression string. The row is removed if the expression evaluates to false. */
     expr: string;
 }
 
-export interface FormulaConfig extends TransformConfigBase {
+export interface FormulaParams extends TransformParamsBase {
     type: "formula";
 
     /** An expression string */
@@ -33,7 +33,7 @@ export interface FormulaConfig extends TransformConfigBase {
     inplace?: boolean;
 }
 
-export interface RegexExtractConfig extends TransformConfigBase {
+export interface RegexExtractParams extends TransformParamsBase {
     type: "regexExtract";
 
     /**
@@ -61,7 +61,7 @@ export interface RegexExtractConfig extends TransformConfigBase {
     skipInvalidInput?: boolean;
 }
 
-export interface RegexFoldConfig extends TransformConfigBase {
+export interface RegexFoldParams extends TransformParamsBase {
     type: "gather";
 
     columnRegex: string;
@@ -74,7 +74,7 @@ export interface RegexFoldConfig extends TransformConfigBase {
 
 export type SortOrder = "ascending" | "descending";
 
-export interface CompareConfig {
+export interface CompareParams {
     /**
      * The field(s) to sort by
      */
@@ -86,7 +86,7 @@ export interface CompareConfig {
     order?: SortOrder[] | SortOrder;
 }
 
-export interface StackConfig extends TransformConfigBase {
+export interface StackParams extends TransformParamsBase {
     type: "stack";
 
     /**
@@ -102,7 +102,7 @@ export interface StackConfig extends TransformConfigBase {
     /**
      * The sort order of data in each stack.
      */
-    sort?: CompareConfig;
+    sort?: CompareParams;
 
     /**
      * How to offset the values in a stack.
@@ -120,7 +120,7 @@ export interface StackConfig extends TransformConfigBase {
     as: string[];
 }
 
-export interface FlattenDelimitedConfig extends TransformConfigBase {
+export interface FlattenDelimitedParams extends TransformParamsBase {
     type: "flattenDelimited";
 
     /**
@@ -130,6 +130,7 @@ export interface FlattenDelimitedConfig extends TransformConfigBase {
 
     /**
      * Separator(s) used on the field(s)
+     * TODO: Rename to delimiter
      */
     separator: string[] | string;
 
@@ -141,7 +142,7 @@ export interface FlattenDelimitedConfig extends TransformConfigBase {
     as?: string[] | string;
 }
 
-export interface PileupConfig extends TransformConfigBase {
+export interface PileupParams extends TransformParamsBase {
     type: "pileup";
 
     /**
@@ -169,7 +170,7 @@ export interface PileupConfig extends TransformConfigBase {
     spacing?: number;
 }
 
-export interface CoverageConfig extends TransformConfigBase {
+export interface CoverageParams extends TransformParamsBase {
     type: "coverage";
 
     /**
@@ -220,16 +221,16 @@ export interface CoverageConfig extends TransformConfigBase {
     asEnd?: string;
 }
 
-export interface CollectConfig extends TransformConfigBase {
+export interface CollectParams extends TransformParamsBase {
     type: "collect";
 
     /**
      * The sort order.
      */
-    sort: CompareConfig;
+    sort: CompareParams;
 }
 
-export interface SampleConfig extends TransformConfigBase {
+export interface SampleParams extends TransformParamsBase {
     type: "sample";
 
     /**
@@ -240,7 +241,7 @@ export interface SampleConfig extends TransformConfigBase {
     size?: number;
 }
 
-export interface MeasureTextConfig extends TransformConfigBase {
+export interface MeasureTextParams extends TransformParamsBase {
     type: "measureText";
 
     field: Field;
@@ -252,11 +253,11 @@ export interface MeasureTextConfig extends TransformConfigBase {
     // TODO: FontFamily etc
 }
 
-export interface LinearizeGenomicCoordinateConfig extends TransformConfigBase {
+export interface LinearizeGenomicCoordinateParams extends TransformParamsBase {
     type: "linearizeGenomicCoordinate";
 
     /** Which genome assembly to use (its name) */
-    genome?: Field;
+    genome?: string;
 
     /** Get the assembly from the scale of the channel. */
     channel?: "x" | "y";
@@ -267,13 +268,13 @@ export interface LinearizeGenomicCoordinateConfig extends TransformConfigBase {
     as: string;
 }
 
-export type TransformConfig =
-    | CollectConfig
-    | FlattenDelimitedConfig
-    | FormulaConfig
-    | FilterConfig
-    | PileupConfig
-    | RegexExtractConfig
-    | RegexFoldConfig
-    | SampleConfig
-    | StackConfig;
+export type TransformParams =
+    | CollectParams
+    | FlattenDelimitedParams
+    | FormulaParams
+    | FilterParams
+    | PileupParams
+    | RegexExtractParams
+    | RegexFoldParams
+    | SampleParams
+    | StackParams;

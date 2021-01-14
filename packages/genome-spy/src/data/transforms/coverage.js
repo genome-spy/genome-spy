@@ -5,7 +5,7 @@ import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 const maxDepth = 65536;
 
 /**
- * @typedef {import("../../spec/transform").CoverageConfig} CoverageConfig
+ * @typedef {import("../../spec/transform").CoverageParams} CoverageParams
  */
 
 /**
@@ -20,7 +20,7 @@ export default class CoverageTransform extends FlowNode {
     }
 
     /**
-     * @param {CoverageConfig} params
+     * @param {CoverageParams} params
      */
     constructor(params) {
         super();
