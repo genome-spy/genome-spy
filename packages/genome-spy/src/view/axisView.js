@@ -4,6 +4,7 @@ import { isNumber, inrange } from "vega-util";
 import smoothstep from "../utils/smoothstep";
 import { shallowArrayEquals } from "../utils/arrayUtils";
 import { FlexDimensions } from "../utils/layout/flexLayout";
+import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
@@ -103,20 +104,23 @@ export default class AxisView extends LayerView {
             this.axisUpdateRequested = true;
         });
 
+        /** @type {any[]} */
         this.previousScaleDomain = [];
 
-        /** @type {number} */
+        /** @type {number} TODO: Take from scal*/
         this.axisLength = undefined;
 
-        /** @type {TickDatum} */
+        /** @type {TickDatum[]} */
         this.ticks = [];
+
+        this.tickSource = new DynamicCallbackSource(() => this.ticks);
 
         if (genomeAxis) {
             const channel = orient2channel(this.axisProps.orient);
             const scale = this.getScaleResolution(channel).getScale();
             const chromMapper = /** @type {any} */ (scale).chromMapper(); // Locus scale
-            this.findChildByName(CHROM_LAYER_NAME).getDynamicData = () =>
-                chromMapper.chromosomes;
+            this.findChildByName(CHROM_LAYER_NAME).getDynamicDataSource = () =>
+                new DynamicCallbackSource(() => chromMapper.chromosomes);
         }
     }
 
@@ -142,8 +146,8 @@ export default class AxisView extends LayerView {
         return getExtent(this.axisProps);
     }
 
-    getDynamicData() {
-        return this.ticks;
+    getDynamicDataSource() {
+        return this.tickSource;
     }
 
     _updateAxisData() {
@@ -170,7 +174,7 @@ export default class AxisView extends LayerView {
 
         if (newTicks !== oldTicks) {
             this.ticks = newTicks;
-            this.updateData();
+            this.tickSource.loadSynchronously();
         }
 
         this.axisUpdateRequested = false;

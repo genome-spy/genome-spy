@@ -83,7 +83,7 @@ export function buildDataFlow(root, existingFlow) {
             // TODO: If multiple UrlSources have identical url etc, merge them.
 
             const dataSource = isDynamicCallbackData(view.spec.data)
-                ? new DynamicCallbackSource(() => view.getDynamicData())
+                ? view.getDynamicDataSource()
                 : createDataSource(view.spec.data, view.getBaseUrl());
 
             currentNode = dataSource;

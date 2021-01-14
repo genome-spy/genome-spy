@@ -256,15 +256,6 @@ export default class View {
      * Called after all scales in the view hierarchy have been resolved.
      */
     onScalesResolved() {
-        //
-    }
-
-    /**
-     * Called after all data have been loaded and processed by the data flow.
-     * TODO: What about dynamic data?
-     */
-    onDataLoaded() {
-        // TODO: The following depends on the domains
         this._opacityFunction = createViewOpacityFunction(this);
     }
 
@@ -341,31 +332,10 @@ export default class View {
     }
 
     /**
-     * @returns {Iterable<any>}
+     * @returns {import("../data/sources/dataSource").default}
      */
-    getDynamicData() {
+    getDynamicDataSource() {
         throw new Error("The view does not provide dynamic data!");
-    }
-
-    /**
-     * Updates an DynamicSource of this view synchronously, propagates it to children
-     * and updates all marks.
-     */
-    updateData() {
-        const dataFlow = this.context.dataFlow;
-        const dataSource = dataFlow.findDataSourceByKey(this);
-
-        if (
-            dataSource instanceof DynamicCallbackSource ||
-            dataSource instanceof InlineSource
-        ) {
-            dataSource.loadSynchronously();
-            // Assume that the associated marks are listening to collectors
-        } else {
-            throw new Error(
-                `View ${this.getPathString()} has no associated DynamicCallbackSource! Cannot update data.`
-            );
-        }
     }
 }
 

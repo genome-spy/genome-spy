@@ -360,8 +360,6 @@ export async function initializeData(root, existingFlow) {
 
     await Promise.all(promises);
 
-    root.visit(view => view.onDataLoaded());
-
     return flow;
 }
 
