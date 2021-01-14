@@ -13,7 +13,7 @@ export function isDynamicCallbackData(data) {
  */
 export default class DynamicCallbackSource extends DataSource {
     /**
-     * @param {function():Iterable<any>} callback Function that provides the data
+     * @param {function():Iterable<any>} [callback] Function that provides the data
      */
     constructor(callback) {
         super();
@@ -22,6 +22,10 @@ export default class DynamicCallbackSource extends DataSource {
     }
 
     loadSynchronously() {
+        if (!this.callback) {
+            return;
+        }
+
         const iterable = this.callback();
 
         if (!iterable || typeof iterable[Symbol.iterator] !== "function") {

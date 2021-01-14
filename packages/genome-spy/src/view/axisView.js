@@ -7,6 +7,11 @@ import { FlexDimensions } from "../utils/layout/flexLayout";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
+/**
+ * @typedef {import("../spec/view").PositionalChannel} PositionalChannel
+ * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
+ */
+
 /** @type {Record<PositionalChannel, GeometricDimension>} */
 const CHANNEL_DIMENSIONS = {
     x: "width",
@@ -63,15 +68,15 @@ function orient2channel(slot) {
  */
 export default class AxisView extends LayerView {
     /**
-     * @param {import("./viewUtils").ViewContext} context
-     * @param {view} parent
      * @param {Axis} axisProps
+     * @param {import("./viewUtils").ViewContext} context
      * @param {string} type Data type (quantitative, ..., locus)
+     * @param {import("./containerView").default} parent
      */
     constructor(axisProps, type, context, parent) {
-        // TODO: We actually need the scale (and its type), not the data type:
-        // 1. Measure axis extents (need tick labels)
-        // 2. Decide whether chromosome labels etc are needed
+        // Now the presence of genomeAxis is based on field type, not scale type.
+        // TODO: Use scale instead. However, it would make the initialization much more
+        // complex because scales are not available before scale resolution.
         const genomeAxis = type == "locus";
 
         // TODO: Compute extent
@@ -105,6 +110,14 @@ export default class AxisView extends LayerView {
 
         /** @type {TickDatum} */
         this.ticks = [];
+
+        if (genomeAxis) {
+            const channel = orient2channel(this.axisProps.orient);
+            const scale = this.getScaleResolution(channel).getScale();
+            const chromMapper = /** @type {any} */ (scale).chromMapper(); // Locus scale
+            this.findChildByName(CHROM_LAYER_NAME).getDynamicData = () =>
+                chromMapper.chromosomes;
+        }
     }
 
     getOrient() {
@@ -158,20 +171,6 @@ export default class AxisView extends LayerView {
         if (newTicks !== oldTicks) {
             this.ticks = newTicks;
             this.updateData();
-        }
-
-        if (scale.type == "locus") {
-            const chromLayer = this.findChildByName(CHROM_LAYER_NAME);
-            const chromMapper = /** @type {import("../genome/scaleLocus").default} */ (scale).chromMapper();
-            if (chromLayer && chromMapper) {
-                const chromDataSource = /** @type {import("../data/sources/inlineSource").default} */ (this.context.dataFlow.findDataSourceByKey(
-                    chromLayer
-                ));
-                if (!chromDataSource.params.values.length) {
-                    chromDataSource.params.values = chromMapper.chromosomes;
-                    chromLayer.updateData();
-                }
-            }
         }
 
         this.axisUpdateRequested = false;
@@ -550,7 +549,7 @@ export function createGenomeAxis(axisProps) {
         const chromLayerSpec = {
             // TODO: Configuration
             name: CHROM_LAYER_NAME,
-            data: { values: [] },
+            data: { dynamicCallbackSource: true },
             encoding: {
                 // TODO: { chrom: "name", type: "locus" } // without pos = pos is 0
                 [main]: { field: "continuousStart", type: "locus", band: 0 }

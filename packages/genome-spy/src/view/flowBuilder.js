@@ -75,17 +75,6 @@ export function buildDataFlow(root, existingFlow) {
         }
     }
 
-    /**
-     *
-     * @param {View} view
-     */
-    function createDynamicSource(view) {
-        if ("getDynamicData" in view) {
-            return new DynamicCallbackSource(() => view.getDynamicData());
-        }
-        throw new Error("View does not implement getDynamicData()!");
-    }
-
     /** @param {View} view */
     const processView = view => {
         nodeStack.push(currentNode);
@@ -94,7 +83,7 @@ export function buildDataFlow(root, existingFlow) {
             // TODO: If multiple UrlSources have identical url etc, merge them.
 
             const dataSource = isDynamicCallbackData(view.spec.data)
-                ? createDynamicSource(view)
+                ? new DynamicCallbackSource(() => view.getDynamicData())
                 : createDataSource(view.spec.data, view.getBaseUrl());
 
             currentNode = dataSource;

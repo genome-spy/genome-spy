@@ -6,7 +6,6 @@ import { FlexDimensions } from "../utils/layout/flexLayout";
 import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
- * TODO: Move these somewhere for common use
  * @typedef {import("../spec/view").PositionalChannel} PositionalChannel
  * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
  */
