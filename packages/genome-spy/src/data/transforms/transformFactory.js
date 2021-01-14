@@ -4,6 +4,7 @@ import FilterTransform from "./filter";
 import FlattenCompressedExonsTransform from "./flattenCompressedExons";
 import FlattenDelimitedTransform from "./flattenDelimited";
 import FormulaTransform from "./formula";
+import LinearizeGenomicCoordinate from "./linearizeGenomicCoordinate";
 import MeasureTextTransform from "./measureText";
 import PileupTransform from "./pileup";
 import RegexExtractTransform from "./regexExtract";
@@ -12,29 +13,35 @@ import SampleTransform from "./sample";
 import StackTransform from "./stack";
 
 /**
- * TODO: Typecasting
- * @type {Record<string, function(object):import("../flowNode").default>}
+ * @typedef {import("../../view/view").default} View
+ * @typedef {import("../flowNode").default} FlowNode
+ *
+ * @type {Record<string, new (params: any, view?: View) => FlowNode>}
  */
 const transforms = {
-    collect: p => new Collector(p),
-    coverage: p => new CoverageTransform(p),
-    filter: p => new FilterTransform(p),
-    flattenCompressedExons: p => new FlattenCompressedExonsTransform(p),
-    flattenDelimited: p => new FlattenDelimitedTransform(p),
-    formula: p => new FormulaTransform(p),
-    measureText: p => new MeasureTextTransform(p),
-    pileup: p => new PileupTransform(p),
-    regexExtract: p => new RegexExtractTransform(p),
-    regexFold: p => new RegexFoldTransform(p),
-    sample: p => new SampleTransform(p),
-    stack: p => new StackTransform(p)
+    collect: Collector,
+    coverage: CoverageTransform,
+    filter: FilterTransform,
+    flattenCompressedExons: FlattenCompressedExonsTransform,
+    flattenDelimited: FlattenDelimitedTransform,
+    formula: FormulaTransform,
+    linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
+    measureText: MeasureTextTransform,
+    pileup: PileupTransform,
+    regexExtract: RegexExtractTransform,
+    regexFold: RegexFoldTransform,
+    sample: SampleTransform,
+    stack: StackTransform
 };
 
-/** @param {import("../../spec/transform").TransformParamsBase} params */
-export default function createTransform(params) {
-    const f = transforms[params.type];
-    if (f) {
-        return f(params);
+/**
+ * @param {import("../../spec/transform").TransformParamsBase} params
+ * @param {View} [view]
+ */
+export default function createTransform(params, view) {
+    const Transform = transforms[params.type];
+    if (Transform) {
+        return new Transform(params, view);
     } else {
         throw new Error("Unknown transform: " + params.type);
     }

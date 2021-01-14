@@ -256,10 +256,10 @@ export interface MeasureTextParams extends TransformParamsBase {
 export interface LinearizeGenomicCoordinateParams extends TransformParamsBase {
     type: "linearizeGenomicCoordinate";
 
-    /** Which genome assembly to use (its name) */
-    genome?: string;
-
-    /** Get the assembly from the scale of the channel. */
+    /** Get the assembly from the scale of the channel.
+     *
+     * **Default:** `"x"`
+     */
     channel?: "x" | "y";
 
     chrom: Field;

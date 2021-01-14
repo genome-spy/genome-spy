@@ -4,9 +4,7 @@ import createDataSource from "../data/sources/dataSourceFactory";
 import UnitView from "./unitView";
 import { BEHAVIOR_MODIFIES } from "../data/flowNode";
 import CloneTransform from "../data/transforms/clone";
-import DynamicCallbackSource, {
-    isDynamicCallbackData
-} from "../data/sources/dynamicCallbackSource";
+import { isDynamicCallbackData } from "../data/sources/dynamicCallbackSource";
 import DataFlow from "../data/dataFlow";
 import DataSource from "../data/sources/dataSource";
 
@@ -60,10 +58,20 @@ export function buildDataFlow(root, existingFlow) {
     /**
      *
      * @param {import("../spec/transform").TransformParams[]} transforms
+     * @param {View} view
      */
-    function createTransforms(transforms) {
+    function createTransforms(transforms, view) {
         for (const params of transforms) {
-            const transform = createTransform(params);
+            /** @type {FlowNode} */
+            let transform;
+            try {
+                transform = createTransform(params, view);
+            } catch (e) {
+                throw new Error(
+                    `Cannot initialize "${params.type}" transform: ${e}`
+                );
+            }
+
             if (transform.behavior & BEHAVIOR_MODIFIES) {
                 // Make defensive copies before every modifying transform to
                 // ensure that modifications don't inadvertently become visible
@@ -91,7 +99,7 @@ export function buildDataFlow(root, existingFlow) {
         }
 
         if (view.spec.transform) {
-            createTransforms(view.spec.transform);
+            createTransforms(view.spec.transform, view);
         }
 
         if (view instanceof UnitView) {
