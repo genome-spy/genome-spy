@@ -348,39 +348,19 @@ export default class View {
     }
 
     /**
-     * Updates an DynamicSource of this node synchronously, propagates it to children
+     * Updates an DynamicSource of this view synchronously, propagates it to children
      * and updates all marks.
-     *
-     * Currently used for updating axes. A more robust solution is needed
-     * for true dynamic data loading.
-     *
-     * ARRRGHH! This is a fugly hack
      */
     updateData() {
         const dataFlow = this.context.dataFlow;
         const dataSource = dataFlow.findDataSourceByKey(this);
-
-        const updateMarks = () => {
-            // TODO: The following should be called by a listener attacher to a collector
-            this.visit(node => {
-                if (node.spec.data && node !== this) {
-                    return VISIT_SKIP;
-                }
-                if (node.mark) {
-                    // instanceof complains about circular reference >:(
-                    node.mark.initializeData();
-                    node.mark.updateGraphicsData();
-                }
-                // TODO: Update cached domain extents
-            });
-        };
 
         if (
             dataSource instanceof DynamicCallbackSource ||
             dataSource instanceof InlineSource
         ) {
             dataSource.loadSynchronously();
-            updateMarks();
+            // Assume that the associated marks are listening to collectors
         } else {
             throw new Error(
                 `View ${this.getPathString()} has no associated DynamicCallbackSource! Cannot update data.`
