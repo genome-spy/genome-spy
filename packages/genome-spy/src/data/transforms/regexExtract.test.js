@@ -55,12 +55,12 @@ describe("RegexExtractTransform", () => {
     test("Skip invalid or non-string data", () => {
         const rows2 = [{ a: 123 }, { a: "xyzzy" }, { a: "12-34" }];
 
-        expect(
-            transform({ ...params, skipInvalidInput: true }, rows2)
-        ).toEqual([
-            { a: 123 },
-            { a: "xyzzy" },
-            { a: "12-34", b: "12", c: "34" }
-        ]);
+        expect(transform({ ...params, skipInvalidInput: true }, rows2)).toEqual(
+            [
+                { a: 123, b: undefined, c: undefined },
+                { a: "xyzzy", b: undefined, c: undefined },
+                { a: "12-34", b: "12", c: "34" }
+            ]
+        );
     });
 });

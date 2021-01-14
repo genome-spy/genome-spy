@@ -1,4 +1,4 @@
-import { field } from "vega-util";
+import { field, isString } from "vega-util";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 /**
@@ -26,7 +26,7 @@ export default class RegexExtractTransform extends FlowNode {
          */
         this.handle = datum => {
             const value = accessor(datum);
-            if (typeof value === "string") {
+            if (isString(value)) {
                 const m = value.match(re);
 
                 if (m) {
@@ -36,17 +36,21 @@ export default class RegexExtractTransform extends FlowNode {
                         );
                     }
 
-                    as.forEach((group, i) => {
-                        datum[group] = m[i + 1];
-                    });
-                } else if (!params.skipInvalidInput) {
+                    for (let i = 0; i < as.length; i++) {
+                        datum[as[i]] = m[i + 1];
+                    }
+                } else if (params.skipInvalidInput) {
+                    for (let i = 0; i < as.length; i++) {
+                        datum[as[i]] = undefined;
+                    }
+                } else {
                     throw new Error(
                         `"${value}" does not match the given regex: ${re.toString()}`
                     );
                 }
             } else if (!params.skipInvalidInput) {
                 throw new Error(
-                    `Trying to match a non-string field. Encountered type: ${typeof value}`
+                    `Trying to match a non-string field. Encountered type: ${typeof value}, field content: "${value}".`
                 );
             }
 
