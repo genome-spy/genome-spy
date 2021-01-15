@@ -12,7 +12,7 @@ float scaleLinearFp64(vec2 value, vec4 domain, vec2 range) {
 
 float scaleBandFp64(vec2 value, vec4 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
-                float band) {
+                float align, float band) {
 
     // TODO: reverse
     float start = range[0];
@@ -23,7 +23,7 @@ float scaleBandFp64(vec2 value, vec4 domainExtent, vec2 range,
 
     // Based on: https://github.com/d3/d3-scale/blob/master/src/band.js
     float step = (stop - start) / max(1.0, n - paddingInner + paddingOuter * 2.0);
-    start += (stop - start - step * (n - paddingInner)) * 0.5;
+    start += (stop - start - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
     return start + sub_fp64(value, domainExtent.xy).x * step + bandwidth * band;

@@ -144,6 +144,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
                 rangeName,
                 scale.paddingInner ? scale.paddingInner() : 0,
                 scale.paddingOuter ? scale.paddingOuter() : 0,
+                scale.align ? scale.align() : 0.5,
                 encoding.band ?? 0.5
             );
             break;
@@ -167,11 +168,11 @@ export function generateScaleGlsl(channel, scale, encoding) {
             );
     }
 
-    // N.B. Interpolating and positional scales require unit range
+    // N.B. Interpolating scales require unit range
+    // TODO: Reverse
     const range =
         isInterpolating(scale.type) ||
-        (isContinuous(scale.type) && channel === "color") ||
-        isPositionalChannel(channel)
+        (isContinuous(scale.type) && channel === "color")
             ? [0, 1]
             : scale.range
             ? scale.range()
