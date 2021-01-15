@@ -31,6 +31,7 @@ export const LOCUS = "locus"; // Humdum, should this be "genomic"?
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  * @typedef {import("../utils/interval").default} Interval
  * @typedef { import("./unitView").default} UnitView
+ * @typedef {import("../encoder/encoder").VegaScale} VegaScale
  */
 export default class ScaleResolution {
     /**
@@ -43,7 +44,7 @@ export default class ScaleResolution {
         /** @type {string} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
-        /** @type {Set<function():void>} Observers that are called when the scale domain is changed */
+        /** @type {Set<function(VegaScale):void>} Observers that are called when the scale domain is changed */
         this.scaleObservers = new Set();
     }
 
@@ -51,7 +52,7 @@ export default class ScaleResolution {
      * Adds an observer that is called when the scale domain is changed,
      * e.g., zoomed.
      *
-     * @param {function():void} observer function
+     * @param {function(VegaScale):void} observer function
      */
     addScaleObserver(observer) {
         this.scaleObservers.add(observer);
@@ -66,7 +67,7 @@ export default class ScaleResolution {
 
     _notifyScaleObservers() {
         for (const observer of this.scaleObservers.values()) {
-            observer();
+            observer(this._scale);
         }
     }
 

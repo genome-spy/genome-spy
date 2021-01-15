@@ -67,6 +67,7 @@ export function buildDataFlow(root, existingFlow) {
             try {
                 transform = createTransform(params, view);
             } catch (e) {
+                console.warn(e);
                 throw new Error(
                     `Cannot initialize "${params.type}" transform: ${e}`
                 );

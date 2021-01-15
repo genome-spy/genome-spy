@@ -256,7 +256,8 @@ export interface MeasureTextParams extends TransformParamsBase {
 export interface LinearizeGenomicCoordinateParams extends TransformParamsBase {
     type: "linearizeGenomicCoordinate";
 
-    /** Get the assembly from the scale of the channel.
+    /**
+     * Get the genome assembly from the scale of the channel.
      *
      * **Default:** `"x"`
      */
@@ -268,11 +269,51 @@ export interface LinearizeGenomicCoordinateParams extends TransformParamsBase {
     as: string;
 }
 
+export interface FilterScoredLabelsParams extends TransformParamsBase {
+    type: "filterScoredLabels";
+
+    /**
+     * The field representing the score used for prioritization.
+     */
+    score: Field;
+
+    /**
+     * The field representing element's width in pixels
+     */
+    width: Field;
+
+    /**
+     * The field representing element's position on the domain.
+     */
+    pos: Field;
+
+    /**
+     * An optional field representing element's lane, e.g., if transcripts
+     * are shown using a piled up layout.
+     */
+    lane?: Field;
+
+    /**
+     * Padding (in pixels) around the element.
+     *
+     * **Default:** `0`
+     */
+    padding?: number;
+
+    /**
+     * **Default:** `"x"`
+     */
+    channel?: "x" | "y";
+}
+
 export type TransformParams =
     | CollectParams
     | FlattenDelimitedParams
     | FormulaParams
     | FilterParams
+    | FilterScoredLabelsParams
+    | LinearizeGenomicCoordinateParams
+    | MeasureTextParams
     | PileupParams
     | RegexExtractParams
     | RegexFoldParams

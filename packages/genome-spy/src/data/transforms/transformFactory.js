@@ -1,5 +1,6 @@
 import Collector from "../collector";
 import CoverageTransform from "./coverage";
+import FilterScoredLabelsTransform from "./filterScoredLabels";
 import FilterTransform from "./filter";
 import FlattenCompressedExonsTransform from "./flattenCompressedExons";
 import FlattenDelimitedTransform from "./flattenDelimited";
@@ -21,6 +22,7 @@ import StackTransform from "./stack";
 const transforms = {
     collect: Collector,
     coverage: CoverageTransform,
+    filterScoredLabels: FilterScoredLabelsTransform,
     filter: FilterTransform,
     flattenCompressedExons: FlattenCompressedExonsTransform,
     flattenDelimited: FlattenDelimitedTransform,
