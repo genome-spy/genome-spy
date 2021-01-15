@@ -60,6 +60,13 @@ export default class UnitView extends View {
         } else {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
+
+        /**
+         * Not nice! Inconsistent when faceting!
+         * TODO: Something. Perhaps a Map that has coords for each facet or something...
+         * @type {import("../utils/layout/rectangle").default}
+         */
+        this.coords = undefined;
     }
 
     /**
@@ -68,12 +75,15 @@ export default class UnitView extends View {
      * @param {import("./view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
+        coords = coords.shrink(this.getPadding());
+
+        this.coords = coords;
+
         // Translate by half a pixel to place vertical / horizontal
         // rules inside pixels, not between pixels.
         // TODO: translation produces piles of garbage. Figure out something.
         // Perhaps translation could be moved to Mark.setViewport(coords)
         coords = coords.translate(0.5, 0.5);
-        coords = coords.shrink(this.getPadding());
 
         context.pushView(this, coords);
         context.renderMark(this.mark, options);

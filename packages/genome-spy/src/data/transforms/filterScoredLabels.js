@@ -22,10 +22,10 @@ export default class FilterScoredLabelsTransform extends FlowNode {
         /** @type {any[]} */
         this._data = [];
 
-        const channel = params.channel ?? "x";
+        this.channel = params.channel ?? "x";
 
-        if (!["x", "y"].includes(channel)) {
-            throw new Error("Invalid channel: " + channel);
+        if (!["x", "y"].includes(this.channel)) {
+            throw new Error("Invalid channel: " + this.channel);
         }
 
         this.posAccessor = field(this.params.pos);
@@ -39,13 +39,20 @@ export default class FilterScoredLabelsTransform extends FlowNode {
         /** @type {Map<any, ReservationMap>} */
         this.reservationMaps = new Map();
 
-        const resolution = view.getScaleResolution(channel);
-        this.scale = resolution.getScale();
+        this.resolution = view.getScaleResolution(this.channel);
 
-        resolution.addScaleObserver(scale => {
-            const domain = /** @type {[number, number]} */ (scale.domain());
-            this._filterAndPropagate(domain);
-        });
+        // Synchronize propagation with rendering because we need both the domain and the range (length of the axis).
+        const callback = () => this._filterAndPropagate();
+        this.schedule = () => view.context.animator.requestTransition(callback);
+
+        // Propagate when the domain changes
+        this.resolution.addScaleObserver(scale => this.schedule());
+
+        // Propagate when layout changes. Abusing a "private" method.
+        // TODO: Provide another attachment point, in view context for example
+        view._addBroadcastHandler("layoutComputed", () => this.schedule());
+
+        // TODO: Remove observers when this FlowNode is thrown away.
     }
 
     complete() {
@@ -58,23 +65,31 @@ export default class FilterScoredLabelsTransform extends FlowNode {
             this.reservationMaps.set(lane, new ReservationMap(200));
         }
 
-        this._filterAndPropagate([-Infinity, Infinity]);
+        this.schedule();
 
         super.complete();
     }
 
-    /**
-     *
-     * @param {[number, number]} domain
-     */
-    _filterAndPropagate(domain) {
+    _filterAndPropagate() {
         super.reset();
+
+        const scale = this.resolution.getScale();
+        const rangeSpan = this.resolution.views[0].coords?.[
+            this.channel == "x" ? "width" : "height"
+        ];
+        if (!rangeSpan) {
+            // The view size is not (yet) available
+            return;
+        }
 
         for (const reservationMap of this.reservationMaps.values()) {
             reservationMap.reset();
         }
 
+        const domain = scale.domain();
         const k = 70; // TODO: Configurable
+
+        // Find the maximum of k elements from the visible domain in priority order
         const topIndices = topKSlice(
             this._scores,
             k,
@@ -82,10 +97,10 @@ export default class FilterScoredLabelsTransform extends FlowNode {
             this.posBisector.right(this._data, domain[1])
         );
 
+        // Try to fit the elements on the available lanes and propagate if there was room
         for (const i of topIndices) {
             const datum = this._data[i];
-            // TODO: Need a range that represents pixels
-            const pos = this.scale(this.posAccessor(datum)) * 1200;
+            const pos = scale(this.posAccessor(datum)) * rangeSpan;
             const halfWidth = this.widthAccessor(datum) / 2 + this.padding;
 
             if (

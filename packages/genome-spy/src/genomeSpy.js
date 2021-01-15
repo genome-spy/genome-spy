@@ -357,6 +357,8 @@ export default class GenomeSpy {
         );
 
         this.layout = layoutRecorder.getLayout();
+
+        this.broadcast("layoutComputed");
     }
 
     renderAll() {

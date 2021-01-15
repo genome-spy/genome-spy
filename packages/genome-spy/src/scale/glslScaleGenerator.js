@@ -13,6 +13,7 @@ import {
     isColorChannel,
     isDatumDef,
     isDiscreteChannel,
+    isPositionalChannel,
     primaryChannel
 } from "../encoder/encoder";
 import { peek } from "../utils/arrayUtils";
@@ -166,10 +167,11 @@ export function generateScaleGlsl(channel, scale, encoding) {
             );
     }
 
-    // N.B. Interpolating scales require unit range
+    // N.B. Interpolating and positional scales require unit range
     const range =
         isInterpolating(scale.type) ||
-        (isContinuous(scale.type) && channel === "color")
+        (isContinuous(scale.type) && channel === "color") ||
+        isPositionalChannel(channel)
             ? [0, 1]
             : scale.range
             ? scale.range()
