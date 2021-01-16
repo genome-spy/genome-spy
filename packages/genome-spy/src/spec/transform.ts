@@ -168,6 +168,18 @@ export interface PileupParams extends TransformParamsBase {
      * **Default:** `1`.
      */
     spacing?: number;
+
+    /**
+     * An optional field indicating the preferred lane.
+     */
+    preference?: Field;
+
+    /**
+     * The order of the lane preferences. The first element has the value that
+     * should place the segment on the first lane and so forth.
+     * If the preferred lane is occupied, the first available lane is taken.
+     */
+    preferredOrder?: string[] | number[] | boolean[];
 }
 
 export interface CoverageParams extends TransformParamsBase {

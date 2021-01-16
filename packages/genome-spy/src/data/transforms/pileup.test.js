@@ -1,6 +1,8 @@
 import PileupTransform from "./pileup";
 import { processData } from "../flowTestUtils";
 
+// TODO: Test for lane preferences
+
 /**
  * @typedef {import("../../spec/transform").PileupParams} PileupParams
  */

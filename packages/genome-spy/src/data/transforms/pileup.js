@@ -30,48 +30,107 @@ export default class PileupTransform extends FlowNode {
 
     initialize() {
         const params = this.params;
-        const ends = new Heapify(maxDepth, [], [], Uint16Array, Float64Array);
-        const freeLanes = new Heapify(
-            maxDepth,
-            [],
-            [],
-            Uint16Array,
-            Uint16Array
-        );
 
         const laneField = params.as || "lane";
         const spacing = isNumber(params.spacing) ? params.spacing : 1;
         const startAccessor = vuField(params.start);
         const endAccessor = vuField(params.end);
 
-        // Keep track of the last processed element. Flush the queues if the start
-        // pos suddenly decreases. This happens when piling up consecutive chromosomes.
-        let lastStart = -Infinity;
+        // We choose the implementation based on the need of order preference.
+        // The preference-aware algorithm has a lousy O(n^2) time complexity but
+        // it's acceptable for finding lanes for genes based on their strands.
 
-        let maxLane = 0;
+        // Both implementations expect the items to be sorted by their start
+        // coordinates.
 
-        /** @param {Record<string, any>} datum */
-        this.handle = datum => {
-            const start = startAccessor(datum);
-            while (
-                ends.size &&
-                (ends.peekPriority() <= start || start < lastStart)
-            ) {
-                const freeLane = ends.pop();
-                freeLanes.push(freeLane, freeLane);
-            }
-            lastStart = start;
+        if (!params.preference !== !params.preferredOrder) {
+            throw new Error(
+                `Must specify both "preference" and "preferredOrder"`
+            );
+        } else if (params.preference) {
+            const freeLaneMap = new Float64Array(maxDepth);
 
-            let lane = freeLanes.pop();
-            if (lane === undefined) {
-                lane = maxLane++;
-            }
+            const preferenceAccessor = vuField(params.preference);
+            /** @type {any[]} */
+            const preferredOrder = params.preferredOrder;
 
-            datum[laneField] = lane;
+            let lastStart = Infinity;
 
-            this._propagate(datum);
+            /** @param {Record<string, any>} datum */
+            this.handle = datum => {
+                const start = startAccessor(datum);
+                if (start < lastStart) {
+                    // Reset if encountered a new chromosome...
+                    freeLaneMap.fill(-Infinity);
+                }
+                lastStart = start;
 
-            ends.push(lane, endAccessor(datum) + spacing);
-        };
+                // Linear search, but the number of preferences is likely be low
+                const preferredLane = preferredOrder.indexOf(
+                    preferenceAccessor(datum)
+                );
+                let lane = -1;
+                if (preferredLane >= 0 && freeLaneMap[preferredLane] < start) {
+                    lane = preferredLane;
+                } else {
+                    const start = startAccessor(datum);
+                    for (lane = 0; lane < freeLaneMap.length; lane++) {
+                        if (freeLaneMap[lane] < start) {
+                            break;
+                        }
+                    }
+                    if (lane >= freeLaneMap.length) {
+                        throw new Error("Out of lanes!");
+                    }
+                }
+                freeLaneMap[lane] = endAccessor(datum) + spacing;
+                datum[laneField] = lane;
+                this._propagate(datum);
+            };
+        } else {
+            const ends = new Heapify(
+                maxDepth,
+                [],
+                [],
+                Uint16Array,
+                Float64Array
+            );
+            const freeLanes = new Heapify(
+                maxDepth,
+                [],
+                [],
+                Uint16Array,
+                Uint16Array
+            );
+            // Keep track of the last processed element. Flush the queues if the start
+            // pos suddenly decreases. This happens when piling up consecutive chromosomes.
+            let lastStart = -Infinity;
+
+            let maxLane = 0;
+
+            /** @param {Record<string, any>} datum */
+            this.handle = datum => {
+                const start = startAccessor(datum);
+                while (
+                    ends.size &&
+                    (ends.peekPriority() <= start || start < lastStart)
+                ) {
+                    const freeLane = ends.pop();
+                    freeLanes.push(freeLane, freeLane);
+                }
+                lastStart = start;
+
+                let lane = freeLanes.pop();
+                if (lane === undefined) {
+                    lane = maxLane++;
+                }
+
+                datum[laneField] = lane;
+
+                this._propagate(datum);
+
+                ends.push(lane, endAccessor(datum) + spacing);
+            };
+        }
     }
 }
