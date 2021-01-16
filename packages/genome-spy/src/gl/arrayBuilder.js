@@ -86,20 +86,17 @@ export default class ArrayBuilder {
         /** @type {function():void} */
         let pusher;
 
-        // TODO: Messy with all the typecasting. Create different createUpdater methods for regular and typed arrays
-
         if (numComponents == 1) {
             let i = 0;
             pusher = () => {
                 array[i++] = /** @type {number} */ (pendingValue);
             };
-        } else if (typed) {
+        } else if (numComponents == 2) {
             let i = 0;
-            pusher = () =>
-                /** @type {Float32Array} */ (array).set(
-                    /** @type {Float32Array} */ (pendingValue),
-                    i++ * numComponents
-                );
+            pusher = () => {
+                array[i++] = /** @type {number[]} */ (pendingValue)[0];
+                array[i++] = /** @type {number[]} */ (pendingValue)[1];
+            };
         } else {
             let i = 0;
             pusher = () => {
