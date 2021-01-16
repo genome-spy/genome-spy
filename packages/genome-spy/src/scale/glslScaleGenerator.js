@@ -142,9 +142,9 @@ export function generateScaleGlsl(channel, scale, encoding) {
                 "scaleBand",
                 "domain",
                 rangeName,
-                scale.paddingInner ? scale.paddingInner() : 0,
-                scale.paddingOuter ? scale.paddingOuter() : 0,
-                scale.align ? scale.align() : 0.5,
+                scale.paddingInner(),
+                scale.paddingOuter(),
+                scale.align(),
                 encoding.band ?? 0.5
             );
             break;

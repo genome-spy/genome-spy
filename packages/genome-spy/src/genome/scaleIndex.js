@@ -2,7 +2,7 @@ import { ticks as d3ticks, tickStep, extent } from "d3-array";
 import { format as d3format } from "d3-format";
 
 /**
- * Creates a "index" scale, which works similarly to band scale but the domain
+ * Creates a "index" scale, which works similarly to d3's band scale but the domain
  * consists of integer indexes.
  */
 export default function scaleIndex() {
@@ -11,6 +11,10 @@ export default function scaleIndex() {
 
     let domainSpan = 1;
     let rangeSpan = 1;
+
+    let paddingInner = 0;
+    let paddingOuter = 0;
+    let align = 0.5;
 
     /** The number of the first element. This affects the generated ticks and their labels. */
     let numberingOffset = 0;
@@ -22,6 +26,7 @@ export default function scaleIndex() {
     function scale(x) {
         // In principle, the domain consists of integer indices. However,
         // we accept real numbers so that items can be centered inside a band.
+        // TODO: paddingInner/paddingOuter/align. Now they are implemented in GLSL.
         return ((x - domain[0]) / domainSpan) * rangeSpan + range[0];
     }
 
@@ -74,8 +79,58 @@ export default function scaleIndex() {
         }
     };
 
-    // TODO: Mutation
-    scale.align = () => 0.5;
+    /**
+     *
+     * @param {number} _
+     */
+    scale.padding = function(_) {
+        if (arguments.length) {
+            paddingOuter = _;
+            paddingInner = Math.min(1, _);
+            return scale;
+        } else {
+            return paddingInner;
+        }
+    };
+
+    /**
+     *
+     * @param {number} _
+     */
+    scale.paddingInner = function(_) {
+        if (arguments.length) {
+            paddingInner = Math.min(1, _);
+            return scale;
+        } else {
+            return paddingInner;
+        }
+    };
+
+    /**
+     *
+     * @param {number} _
+     */
+    scale.paddingOuter = function(_) {
+        if (arguments.length) {
+            paddingOuter = _;
+            return scale;
+        } else {
+            return paddingOuter;
+        }
+    };
+
+    /**
+     *
+     * @param {number} _
+     */
+    scale.align = function(_) {
+        if (arguments.length) {
+            align = Math.max(0, Math.min(1, _));
+            return scale;
+        } else {
+            return align;
+        }
+    };
 
     scale.step = () => rangeSpan / domainSpan;
 
@@ -118,6 +173,8 @@ export default function scaleIndex() {
         scaleIndex()
             .domain(domain)
             .range(range)
+            .paddingInner(paddingInner)
+            .paddingOuter(paddingOuter)
             .numberingOffset(numberingOffset);
 
     return scale;
