@@ -1,17 +1,15 @@
+import { field } from "vega-util";
 import numberExtractor from "../../utils/numberExtractor";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 /**
- * @typedef {object} FlattenExonsConfig
- * @prop {string} exons
- * @prop {string} startpos
- * @prop {string[]} as
+ * @typedef {import("../../spec/transform").FlattenCompressedExonsParams} FlattenCompressedExonsParams
  */
 
 /**
  * Flattens "run-length encoded" exons. The transforms inputs the start
  * coordinate of the gene body and a comma-delimited string of alternating
- * exon and intron lengths. A new datum is created for each exon.
+ * intron and exon lengths. A new datum is created for each exon.
  */
 export default class FlattenCompressedExonsTransform extends FlowNode {
     get behavior() {
@@ -20,32 +18,31 @@ export default class FlattenCompressedExonsTransform extends FlowNode {
 
     /**
      *
-     * @param {FlattenExonsConfig} config
+     * @param {FlattenCompressedExonsParams} params
      */
-    constructor(config) {
+    constructor(params) {
         super();
 
-        const exons = config.exons || "exons";
-        const startpos = config.startpos || "start";
-        const [exonStart, exonEnd] = config.as || ["exonStart", "exonEnd"];
+        const exonsAccessor = field(params.exons ?? "exons");
+        const startAccessor = field(params.start ?? "start");
+        const [exonStart, exonEnd] = params.as || ["exonStart", "exonEnd"];
 
         /**
          *
          * @param {any} datum
          */
         this.handle = datum => {
-            let upper = datum[startpos];
+            let upper = startAccessor(datum);
             let lower = upper;
 
             let inExon = true;
-            for (const token of numberExtractor(datum[exons])) {
+            for (const token of numberExtractor(exonsAccessor(datum))) {
                 if (inExon) {
                     lower = upper + token;
                 } else {
                     upper = lower + token;
 
-                    // Use the original row as a prototype
-                    const newRow = Object.create(datum);
+                    const newRow = Object.assign({}, datum);
                     newRow[exonStart] = lower;
                     newRow[exonEnd] = upper;
 

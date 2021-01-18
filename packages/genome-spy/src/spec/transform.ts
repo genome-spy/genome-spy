@@ -318,12 +318,45 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
     channel?: "x" | "y";
 }
 
+export interface FlattenCompressedExonsParams extends TransformParamsBase {
+    type: "flattenCompressedExons";
+
+    /**
+     * The field containing the exons.
+     *
+     * **Default:** `"exons"`
+     */
+    exons?: Field;
+
+    /**
+     * Start coordinate of the gene body.
+     *
+     * **Default:** `"start"`
+     */
+    start?: Field;
+
+    /**
+     * Field names for the flattened exons.
+     *
+     * **Default:** `["exonStart", "exonEnd"]`
+     */
+    as?: [string, string];
+}
+
+/**
+ * @typedef {object} FlattenExonsConfig
+ * @prop {string} exons
+ * @prop {string} startpos
+ * @prop {string[]} as
+ */
+
 export type TransformParams =
     | CollectParams
     | FlattenDelimitedParams
     | FormulaParams
     | FilterParams
     | FilterScoredLabelsParams
+    | FlattenCompressedExonsParams
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams
     | PileupParams
