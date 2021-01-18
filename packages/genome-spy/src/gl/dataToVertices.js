@@ -475,13 +475,14 @@ export class TextVertexBuilder extends VertexBuilder {
             ? format(e.text.channelDef.format)
             : d => d;
 
-        // TODO: Store these as vec2
-        this.updateCX = this.variableBuilder.createUpdater("cx", 1);
-        this.updateCY = this.variableBuilder.createUpdater("cy", 1);
-
-        // Texture
-        this.updateTX = this.variableBuilder.createUpdater("tx", 1);
-        this.updateTY = this.variableBuilder.createUpdater("ty", 1);
+        this.updateVertexCoord = this.variableBuilder.createUpdater(
+            "vertexCoord",
+            2
+        );
+        this.updateTextureCoord = this.variableBuilder.createUpdater(
+            "textureCoord",
+            2
+        );
 
         this.updateWidth = this.variableBuilder.createUpdater("width", 1);
     }
@@ -515,6 +516,11 @@ export class TextVertexBuilder extends VertexBuilder {
         }
 
         const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
+
+        const vertexCoord = [0, 0];
+        this.updateVertexCoord(vertexCoord);
+        const textureCoord = [0, 0];
+        this.updateTextureCoord(textureCoord);
 
         for (const d of data) {
             const value = this.numberFormat(accessor(d));
@@ -557,40 +563,40 @@ export class TextVertexBuilder extends VertexBuilder {
                 const height = c.height / base;
                 const bottom = -(c.height + c.yoffset + baseline) / base;
 
-                this.updateCX(x);
-                this.updateCY(bottom + height);
-                this.updateTX(tx / scale);
-                this.updateTY(ty / scale);
+                vertexCoord[0] = x;
+                vertexCoord[1] = bottom + height;
+                textureCoord[0] = tx / scale;
+                textureCoord[1] = ty / scale;
                 this.variableBuilder.pushAll();
 
-                this.updateCX(x + c.width / base);
-                this.updateCY(bottom + height);
-                this.updateTX((tx + c.width) / scale);
-                this.updateTY(ty / scale);
+                vertexCoord[0] = x + c.width / base;
+                vertexCoord[1] = bottom + height;
+                textureCoord[0] = (tx + c.width) / scale;
+                textureCoord[1] = ty / scale;
                 this.variableBuilder.pushAll();
 
-                this.updateCX(x);
-                this.updateCY(bottom);
-                this.updateTX(tx / scale);
-                this.updateTY((ty + c.height) / scale);
+                vertexCoord[0] = x;
+                vertexCoord[1] = bottom;
+                textureCoord[0] = tx / scale;
+                textureCoord[1] = (ty + c.height) / scale;
                 this.variableBuilder.pushAll();
 
-                this.updateCX(x + c.width / base);
-                this.updateCY(bottom + height);
-                this.updateTX((tx + c.width) / scale);
-                this.updateTY(ty / scale);
+                vertexCoord[0] = x + c.width / base;
+                vertexCoord[1] = bottom + height;
+                textureCoord[0] = (tx + c.width) / scale;
+                textureCoord[1] = ty / scale;
                 this.variableBuilder.pushAll();
 
-                this.updateCX(x);
-                this.updateCY(bottom);
-                this.updateTX(tx / scale);
-                this.updateTY((ty + c.height) / scale);
+                vertexCoord[0] = x;
+                vertexCoord[1] = bottom;
+                textureCoord[0] = tx / scale;
+                textureCoord[1] = (ty + c.height) / scale;
                 this.variableBuilder.pushAll();
 
-                this.updateCX(x + c.width / base);
-                this.updateCY(bottom);
-                this.updateTX((tx + c.width) / scale);
-                this.updateTY((ty + c.height) / scale);
+                vertexCoord[0] = x + c.width / base;
+                vertexCoord[1] = bottom;
+                textureCoord[0] = (tx + c.width) / scale;
+                textureCoord[1] = (ty + c.height) / scale;
                 this.variableBuilder.pushAll();
 
                 x += advance;

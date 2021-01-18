@@ -5,13 +5,8 @@ uniform float uSdfNumerator;
 uniform vec2 uD; // dx & dy
 uniform float uAngle;
 
-// TODO: Store as vec2
-in float cx;
-in float cy;
-
-// TODO: Store as vec2
-in lowp float tx;
-in lowp float ty;
+in mediump vec2 vertexCoord;
+in lowp vec2 textureCoord;
 
 uniform vec4 uViewportEdgeFadeWidth;
 uniform vec4 uViewportEdgeFadeDistance;
@@ -179,7 +174,7 @@ void main(void) {
     mat2 rotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
 
     // Position of the character vertex in relation to the text origo
-    vec2 charPos = rotationMatrix * (vec2(cx, cy) * size + uD);
+    vec2 charPos = rotationMatrix * (vertexCoord * size + uD);
 
     // Position of the character vertex inside the unit viewport
     vec2 unitPos = pos + charPos / uViewportSize;
@@ -191,7 +186,7 @@ void main(void) {
 
     vColor = vec4(getScaled_color() * opacity, opacity);
 
-    vTexCoord = vec2(tx, ty);
+    vTexCoord = textureCoord;
 
     // Edge fading. The implementation is simplistic and fails with primitives that
     // span the whole viewport. However, it works just fine with reasonable font sizes.
