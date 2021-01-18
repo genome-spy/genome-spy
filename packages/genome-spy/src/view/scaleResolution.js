@@ -153,6 +153,10 @@ export default class ScaleResolution {
                 props.type = getDefaultScaleType(this.channel, this.type);
             }
 
+            if (props.type == "locus" && !("fp64" in props)) {
+                props.fp64 = true;
+            }
+
             // Swap discrete y axis
             if (this.channel == "y" && isDiscrete(props.type)) {
                 props.range = [props.range[1], props.range[0]];
