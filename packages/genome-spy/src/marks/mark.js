@@ -122,8 +122,6 @@ export default class Mark {
     /**
      * Returns the encoding spec supplemented with mark's default encodings
      *
-     * TODO: Replace with getter, cache it
-     *
      * @returns {import("../spec/view").Encoding}
      */
     get encoding() {
