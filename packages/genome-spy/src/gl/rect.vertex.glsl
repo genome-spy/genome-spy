@@ -32,17 +32,19 @@ float clampMinSize(inout float pos, float frac, float size, float minSize) {
 void main(void) {
     vec2 normalizedMinSize = uMinSize / uViewportSize;
 
-    vec2 pos1 = vec2(getScaled_x(), getScaled_y());
-    vec2 pos2 = vec2(getScaled_x2(), getScaled_y2());
+    // Clamp x to unit range to prevent precision artifacts when the scale is zoomed very close.
+    vec2 pos1 = vec2(clamp(getScaled_x(), 0.0, 1.0), getScaled_y());
+    vec2 pos2 = vec2(clamp(getScaled_x2(), 0.0, 1.0), getScaled_y2());
+
     vec2 size = pos2 - pos1;
 
-    vec2 fracSize = frac * size;
-    // Do extra tricks to maintain precision at the endpoints 
-    // Equivalent to: pos = pos1 + fracSize;
-    vec2 pos = vec2(
-        frac.x < 0.5 ? (pos1.x + fracSize.x) : (pos2.x + fracSize.x - size.x),
-        frac.y < 0.5 ? (pos1.y + fracSize.y) : (pos2.y + fracSize.y - size.y)
-    );
+    if (size.x <= 0.0 && size.y <= 0.0) {
+        // Early exit. May increase performance or not...
+        gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
+    vec2 pos = pos1 + frac * size;
 
     size.y /= getSampleFacetHeight(pos);
 
