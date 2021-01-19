@@ -8,6 +8,7 @@ import FormulaTransform from "./formula";
 import LinearizeGenomicCoordinate from "./linearizeGenomicCoordinate";
 import MeasureTextTransform from "./measureText";
 import PileupTransform from "./pileup";
+import ProjectTransform from "./project";
 import RegexExtractTransform from "./regexExtract";
 import RegexFoldTransform from "./regexFold";
 import SampleTransform from "./sample";
@@ -30,6 +31,7 @@ const transforms = {
     linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
     measureText: MeasureTextTransform,
     pileup: PileupTransform,
+    project: ProjectTransform,
     regexExtract: RegexExtractTransform,
     regexFold: RegexFoldTransform,
     sample: SampleTransform,

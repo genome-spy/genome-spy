@@ -24,13 +24,20 @@ export interface FormulaParams extends TransformParamsBase {
 
     /** The (new) field where the computed value is written to */
     as: string;
+}
+
+export interface ProjectParams extends TransformParamsBase {
+    type: "project";
 
     /**
-     * Modify the rows in place (a temporary hack). Will be removed.
-     *
-     * **Default:** `false`
+     * The fields to be projected.
      */
-    inplace?: boolean;
+    fields: Field[];
+
+    /**
+     * New names for the projected fields. If omitted, the names of the source fields are used.
+     */
+    as?: string[];
 }
 
 export interface RegexExtractParams extends TransformParamsBase {
@@ -343,13 +350,6 @@ export interface FlattenCompressedExonsParams extends TransformParamsBase {
     as?: [string, string];
 }
 
-/**
- * @typedef {object} FlattenExonsConfig
- * @prop {string} exons
- * @prop {string} startpos
- * @prop {string[]} as
- */
-
 export type TransformParams =
     | CollectParams
     | FlattenDelimitedParams
@@ -360,6 +360,7 @@ export type TransformParams =
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams
     | PileupParams
+    | ProjectParams
     | RegexExtractParams
     | RegexFoldParams
     | SampleParams
