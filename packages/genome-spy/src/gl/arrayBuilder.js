@@ -170,16 +170,4 @@ export default class ArrayBuilder {
         this.updateFromDatum(datum);
         this.pushAll();
     }
-
-    /**
-     * Creates TWGL constant arrays
-     */
-    toValues() {
-        return Object.fromEntries(
-            Object.entries(this.arrays).map(entry => [
-                entry[0],
-                { value: entry[1].data }
-            ])
-        );
-    }
 }
