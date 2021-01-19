@@ -334,10 +334,14 @@ export default class GenomeSpy {
     }
 
     computeLayout() {
+        const root = this.viewRoot;
+        if (!root) {
+            return;
+        }
+
         this.broadcast("layout");
 
         const canvasSize = this._glHelper.getLogicalCanvasSize();
-        const root = this.viewRoot;
 
         /** @param {"width" | "height"} c */
         const getComponent = c =>
@@ -366,7 +370,9 @@ export default class GenomeSpy {
         const gl = this._glHelper.gl;
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        this.deferredContext.renderDeferred();
+        if (this.viewRoot) {
+            this.deferredContext.renderDeferred();
+        }
     }
 }
 
