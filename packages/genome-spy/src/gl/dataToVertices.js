@@ -193,61 +193,28 @@ export class RectVertexBuilder extends VertexBuilder {
             // Start a new segment.
             this.variableBuilder.updateFromDatum(d);
 
-            const squeeze = /** @type {string} */ (this.encoders.squeeze(d));
-            if (false && squeeze && squeeze != "none") {
-                // TODO: a separate triangle mark is needed!
+            frac[0] = 0;
+            frac[1] = 0;
 
-                // This is probably terribly slow but for now, it's only used for
-                // centromeres on the cytoband track.
-                // TODO: Optimize and reduce object allocation
-                const c = this._squeeze(squeeze, x, x2, y, y2);
-                this.updateX(c[0][0][0]);
-                this.updateX2(c[1][0][0]);
-                this.updateY(c[0][0][1]);
-                this.updateY2(c[1][0][1]);
-                this.updateXFrac(c[0][0][2]);
-                this.updateYFrac(c[0][0][3]);
-                this.variableBuilder.pushAll();
-                this.variableBuilder.pushAll();
-                this.updateX(c[0][1][0]);
-                this.updateX2(c[1][1][0]);
-                this.updateY(c[0][1][1]);
-                this.updateY2(c[1][1][1]);
-                this.updateXFrac(c[0][1][2]);
-                this.updateYFrac(c[0][1][3]);
-                this.variableBuilder.pushAll();
-                this.updateX(c[0][2][0]);
-                this.updateX2(c[1][2][0]);
-                this.updateY(c[0][2][1]);
-                this.updateY2(c[1][2][1]);
-                this.updateXFrac(c[0][2][2]);
-                this.updateYFrac(c[0][2][3]);
-                this.variableBuilder.pushAll();
-                this.variableBuilder.pushAll();
-            } else {
-                frac[0] = 0;
+            // Duplicate the first vertex to produce degenerate triangles
+            this.variableBuilder.pushAll();
+
+            // Tesselate segments
+            const tileCount = 1;
+
+            //    width < Infinity
+            //        ? Math.ceil(width / this.tesselationThreshold)
+            //        : 1;
+            for (let i = 0; i <= tileCount; i++) {
+                frac[0] = i / tileCount;
                 frac[1] = 0;
-
-                // Duplicate the first vertex to produce degenerate triangles
                 this.variableBuilder.pushAll();
-
-                // Tesselate segments
-                const tileCount = 1;
-
-                //    width < Infinity
-                //        ? Math.ceil(width / this.tesselationThreshold)
-                //        : 1;
-                for (let i = 0; i <= tileCount; i++) {
-                    frac[0] = i / tileCount;
-                    frac[1] = 0;
-                    this.variableBuilder.pushAll();
-                    frac[1] = 1;
-                    this.variableBuilder.pushAll();
-                }
-
-                // Duplicate the last vertex to produce a degenerate triangle between the segments
+                frac[1] = 1;
                 this.variableBuilder.pushAll();
             }
+
+            // Duplicate the last vertex to produce a degenerate triangle between the segments
+            this.variableBuilder.pushAll();
         }
 
         const count = this.variableBuilder.vertexCount - offset;
@@ -257,52 +224,6 @@ export class RectVertexBuilder extends VertexBuilder {
                 count
                 // TODO: Add some indices that allow rendering just a range
             });
-        }
-    }
-
-    /**
-     *
-     * @param {string} squeeze
-     * @param {number} x
-     * @param {number} x2
-     * @param {number} y
-     * @param {number} y2
-     */
-    _squeeze(squeeze, x, x2, y, y2) {
-        const xc = (x + x2) / 2;
-        const yc = (y + y2) / 2;
-
-        // points going round a rectangle clockwise, starting from the bottom left corner
-        const points = [
-            [x, y, 0, 0],
-            [x, yc, 0, 0.5],
-            [x, y2, 0, 1],
-            [xc, y2, 0.5, 1],
-            [x2, y2, 1, 1],
-            [x2, yc, 1, 0.5],
-            [x2, y, 1, 0],
-            [xc, y, 0.5, 1]
-        ];
-
-        const top = [0, 3, 6];
-
-        /** @param {number} steps */
-        const rotate = steps =>
-            top.map(x => points[(x + steps) % points.length]);
-
-        /** @param {number} steps */
-        const rotated = steps => [rotate(steps), rotate(steps + 4)];
-
-        switch (squeeze) {
-            case "top":
-                return rotated(0);
-            case "right":
-                return rotated(2);
-            case "bottom":
-                return rotated(4);
-            case "left":
-                return rotated(6);
-            default:
         }
     }
 }

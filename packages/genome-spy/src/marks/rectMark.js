@@ -19,7 +19,7 @@ export default class RectMark extends Mark {
     }
 
     getSupportedChannels() {
-        return [...super.getSupportedChannels(), "x2", "y2", "squeeze"];
+        return [...super.getSupportedChannels(), "x2", "y2"];
     }
 
     getDefaultProperties() {
@@ -30,7 +30,6 @@ export default class RectMark extends Mark {
             y2: undefined,
             color: "#4c78a8",
             opacity: 1.0,
-            squeeze: "none", // choices: none, top, right, bottom, left
 
             minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
             minHeight: 0.5,
