@@ -1,31 +1,15 @@
 import { ATTRIBUTE_PREFIX } from "../scale/glslScaleGenerator";
 
 /**
- * @typedef {Object} Converter
- * @prop {function(object):any} f
+ * @typedef {Object} ConverterMetadata
+ *      A function that extracts a raw attribute from a datum (optionally) converts
+ *      it to floats or float vectors that can be stored in GPU buffers.
+ * @prop {function(object):any} f The converter
+ * @prop {number[]} [arrayReference] An optimization for fp64 mainly
  * @prop {number} [numComponents]
- *
  */
 export default class ArrayBuilder {
     // TODO: Support strided layout. May yield better performance or not. No consensus in literature.
-
-    /**
-     * @param {Record<string, Converter>} converters
-     * @param {number} size Size if known, uses TypedArray
-     */
-    static create(converters, size = undefined) {
-        const builder = new ArrayBuilder(size);
-
-        for (const [attribute, props] of Object.entries(converters)) {
-            builder.addConverter(
-                ATTRIBUTE_PREFIX + attribute,
-                props.numComponents || 1,
-                props.f
-            );
-        }
-
-        return builder;
-    }
 
     /**
      *
@@ -40,34 +24,40 @@ export default class ArrayBuilder {
         /** @type {(function():void)[]} */
         this.pushers = [];
 
-        /** @type {function[]} */
-        this.converters = [];
+        /** @type {(function(any):void)[]} */
+        this.dataUpdaters = [];
 
         this.vertexCount = 0;
     }
 
     /**
      *
-     * @param {string} attributeName
-     * @param {number} numComponents
-     * @param {function} converter
+     * @param {string} attribute
+     * @param {ConverterMetadata} metadata
      */
-    addConverter(attributeName, numComponents, converter) {
-        const updater = this.createUpdater(attributeName, numComponents);
-        this.converters.push(d => updater(converter(d)));
+    addConverter(attribute, metadata) {
+        const updater = this.createUpdater(
+            ATTRIBUTE_PREFIX + attribute,
+            metadata.numComponents || 1,
+            metadata.arrayReference
+        );
+        const f = metadata.f;
+        this.dataUpdaters.push(
+            metadata.arrayReference ? d => updater(f(d)) : d => updater(f(d))
+        );
     }
 
     /**
      *
      * @param {string} attributeName
      * @param {number} numComponents
+     * @param {number[]} [arrayReference]
      * @return {function(number|number[])}
      */
-    createUpdater(attributeName, numComponents) {
+    createUpdater(attributeName, numComponents, arrayReference) {
         /** @type {number | number[] | Float32Array} */
-        let pendingValue;
+        let pendingValue = arrayReference ? arrayReference : undefined;
 
-        // Note: Writing to TypedArray appears to be super-slow on Chrome.
         const typed = !!this.size;
 
         /** @type {number[] | Float32Array} */
@@ -78,33 +68,50 @@ export default class ArrayBuilder {
             numComponents: numComponents
         };
 
-        /** @param {number} value */
-        const updater = function(value) {
-            pendingValue = value;
-        };
+        /** @type {function(number):void} value */
+        const updater = arrayReference
+            ? value => {
+                  // Nop. Pending value is updated through the array reference.
+              }
+            : value => {
+                  pendingValue = value;
+              };
 
         /** @type {function():void} */
         let pusher;
+        let i = 0;
 
-        if (numComponents == 1) {
-            let i = 0;
-            pusher = () => {
-                array[i++] = /** @type {number} */ (pendingValue);
-            };
-        } else if (numComponents == 2) {
-            let i = 0;
-            pusher = () => {
-                array[i++] = /** @type {number[]} */ (pendingValue)[0];
-                array[i++] = /** @type {number[]} */ (pendingValue)[1];
-            };
-        } else {
-            let i = 0;
-            pusher = () => {
-                for (let j = 0; j < numComponents; j++) {
-                    array[i++] = /** @type {number[]} */ (pendingValue)[j];
-                }
-            };
+        switch (numComponents) {
+            case 1:
+                pusher = () => {
+                    array[i++] = /** @type {number} */ (pendingValue);
+                };
+                break;
+            case 2:
+                pusher = () => {
+                    array[i++] = /** @type {number[]} */ (pendingValue)[0];
+                    array[i++] = /** @type {number[]} */ (pendingValue)[1];
+                };
+                break;
+            case 3:
+                pusher = () => {
+                    array[i++] = /** @type {number[]} */ (pendingValue)[0];
+                    array[i++] = /** @type {number[]} */ (pendingValue)[1];
+                    array[i++] = /** @type {number[]} */ (pendingValue)[2];
+                };
+                break;
+            case 4:
+                pusher = () => {
+                    array[i++] = /** @type {number[]} */ (pendingValue)[0];
+                    array[i++] = /** @type {number[]} */ (pendingValue)[1];
+                    array[i++] = /** @type {number[]} */ (pendingValue)[2];
+                    array[i++] = /** @type {number[]} */ (pendingValue)[3];
+                };
+                break;
+            default:
+                throw new Error("Invalid numComponents: " + numComponents);
         }
+
         this.pushers.push(pusher);
 
         return updater;
@@ -157,8 +164,8 @@ export default class ArrayBuilder {
      * @param {object} datum
      */
     updateFromDatum(datum) {
-        for (const converter of this.converters) {
-            converter(datum);
+        for (const updater of this.dataUpdaters) {
+            updater(datum);
         }
     }
 

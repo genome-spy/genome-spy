@@ -9,92 +9,87 @@ import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
  * @prop {number} offset in vertices
  * @prop {number} count in vertices
  *
- * @typedef {import("./arraybuilder").Converter} Converter
+ * @typedef {import("./arraybuilder").ConverterMetadata} Converter
  * @typedef {import("../encoder/encoder").Encoder} Encoder
  */
-export class VertexBuilder {
+export class GeometryBuilder {
     /**
      *
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
-     * @param {Record<string, Converter>} [object.converters]
      * @param {string[]} [object.attributes]
      * @param {number} [object.numVertices] If the number of data items is known, a
      *      preallocated TypedArray is used
      */
-    constructor({
-        encoders,
-        converters = {},
-        numVertices = undefined,
-        attributes
-    }) {
+    constructor({ encoders, numVertices = undefined, attributes }) {
         this.encoders = encoders;
         this.allocatedVertices = numVertices;
 
-        /** @type {Record<string, Converter>} */
-        this.converters = {
-            ...converters
-        };
+        this.variableBuilder = new ArrayBuilder(numVertices);
 
         for (const channel of attributes) {
             const ce = encoders[channel];
             if (ce) {
                 if (ce.scale && !ce.constant) {
                     const accessor = ce.accessor;
-                    const double = new Float32Array(2);
 
+                    const doubleArray = [0, 0];
                     const fp64 = ce.scale.fp64;
 
                     /** @type {function(any):(number | number[])} Continuous variables go to GPU as is. Discrete variables must be "indexed". */
                     const f = ce.indexer
                         ? ce.indexer
                         : fp64
-                        ? d => fp64ify(accessor(d), double)
+                        ? d => fp64ify(accessor(d), doubleArray)
                         : accessor;
 
                     // TODO: If more than one channels use the same field, convert the field only once
 
-                    this.converters[channel] = {
+                    this.variableBuilder.addConverter(channel, {
                         f,
-                        numComponents: fp64 ? 2 : 1
-                    };
+                        numComponents: fp64 ? 2 : 1,
+                        arrayReference: fp64 ? doubleArray : undefined
+                    });
                 }
             }
         }
 
-        this.variableBuilder = ArrayBuilder.create(
-            this.converters,
-            numVertices
-        );
+        this._lastOffset = 0;
 
-        /** Vertex index */
-        this.index = 0;
-
-        /** @type {Map<string, RangeEntry>} keep track of sample locations within the vertex array */
+        /** @type {Map<any, RangeEntry>} keep track of sample locations within the vertex array */
         this.rangeMap = new Map();
+    }
+
+    /**
+     * Should be called at the end of `addBatch`
+     *
+     * @param {any} key
+     */
+    registerBatch(key) {
+        const offset = this._lastOffset;
+        const index = this.variableBuilder.vertexCount;
+        const size = index - offset;
+        if (size) {
+            this.rangeMap.set(key, {
+                offset,
+                count: size
+                // TODO: Add some indices that allow rendering just a range
+            });
+        }
+        this._lastOffset = index;
     }
 
     /**
      *
      * @param {String} key
-     * @param {object[]} points
+     * @param {object[]} data
      */
-    addBatch(key, points) {
-        const offset = this.index;
-
-        for (const p of points) {
+    addBatch(key, data) {
+        for (const p of data) {
             this.variableBuilder.pushFromDatum(p);
-            this.index++;
         }
 
-        const count = this.index - offset;
-        if (count) {
-            this.rangeMap.set(key, {
-                offset,
-                count
-                // TODO: Add some indices that allow rendering just a range
-            });
-        }
+        this.registerBatch(key);
     }
 
     toArrays() {
@@ -105,19 +100,21 @@ export class VertexBuilder {
             vertexCount: this.variableBuilder.vertexCount,
             /** Number of vertices allocated in buffers */
             allocatedVertices: this.allocatedVertices,
-            rangeMap: this.rangeMap,
+            rangeMap: this.rangeMap
             // TODO: better name for "componentNumbers"
+            /* TODO: Fix: needed by connection mark
             componentNumbers: Object.fromEntries(
                 Object.entries(this.converters).map(e => [
                     e[0],
                     (e[1] && e[1].numComponents) || undefined // TODO: Check
                 ])
             )
+            */
         };
     }
 }
 
-export class RectVertexBuilder extends VertexBuilder {
+export class RectVertexBuilder extends GeometryBuilder {
     /**
      *
      * @param {Object} object
@@ -152,12 +149,10 @@ export class RectVertexBuilder extends VertexBuilder {
     /* eslint-disable complexity */
     /**
      *
-     * @param {string} key
+     * @param {any} key
      * @param {object[]} data
      */
     addBatch(key, data) {
-        const offset = this.variableBuilder.vertexCount;
-
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
             .encoders);
         const [lower, upper] = this.visibleRange;
@@ -217,18 +212,11 @@ export class RectVertexBuilder extends VertexBuilder {
             this.variableBuilder.pushAll();
         }
 
-        const count = this.variableBuilder.vertexCount - offset;
-        if (count) {
-            this.rangeMap.set(key, {
-                offset,
-                count
-                // TODO: Add some indices that allow rendering just a range
-            });
-        }
+        this.registerBatch(key);
     }
 }
 
-export class RuleVertexBuilder extends VertexBuilder {
+export class RuleVertexBuilder extends GeometryBuilder {
     /**
      *
      * @param {Object} object
@@ -248,7 +236,6 @@ export class RuleVertexBuilder extends VertexBuilder {
     }) {
         super({
             encoders,
-            converters: {},
             attributes,
             numVertices:
                 tesselationThreshold == Infinity ? numItems * 6 : undefined
@@ -266,11 +253,9 @@ export class RuleVertexBuilder extends VertexBuilder {
     /**
      *
      * @param {string} key
-     * @param {object} data
+     * @param {object[]} data
      */
     addBatch(key, data) {
-        const offset = this.variableBuilder.vertexCount;
-
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
             .encoders);
         const [lower, upper] = this.visibleRange; // TODO
@@ -299,18 +284,11 @@ export class RuleVertexBuilder extends VertexBuilder {
             this.variableBuilder.pushAll();
         }
 
-        const count = this.variableBuilder.vertexCount - offset;
-        if (count) {
-            this.rangeMap.set(key, {
-                offset,
-                count
-                // TODO: Add some indices that allow rendering just a range
-            });
-        }
+        this.registerBatch(key);
     }
 }
 
-export class PointVertexBuilder extends VertexBuilder {
+export class PointVertexBuilder extends GeometryBuilder {
     /**
      *
      * @param {object} object
@@ -321,29 +299,25 @@ export class PointVertexBuilder extends VertexBuilder {
     constructor({ encoders, attributes, numItems = undefined }) {
         super({
             encoders,
-            converters: {},
             attributes,
             numVertices: numItems
         });
     }
 }
 
-export class ConnectionVertexBuilder extends VertexBuilder {
+export class ConnectionVertexBuilder extends GeometryBuilder {
     /**
+     * BROKEN !!!!!!!
+     * FIX !!!!!!!
+     *
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
      * @param {number} [object.numItems ] Number of points if known, uses TypedArray
      */
     constructor({ encoders, attributes, numItems = undefined }) {
-        const c2f2 = createCachingColor2floatArray();
         super({
             encoders,
-            converters: {
-                size2: { f: encoders.size2, numComponents: 1 },
-                height: { f: encoders.height, numComponents: 1 },
-                color2: { f: d => c2f2(encoders.color2(d)), numComponents: 3 }
-            },
             attributes,
             numVertices: numItems
         });
@@ -361,7 +335,7 @@ export class ConnectionVertexBuilder extends VertexBuilder {
     }
 }
 
-export class TextVertexBuilder extends VertexBuilder {
+export class TextVertexBuilder extends GeometryBuilder {
     /**
      *
      * @param {object} object
@@ -414,8 +388,6 @@ export class TextVertexBuilder extends VertexBuilder {
      * @param {object[]} data
      */
     addBatch(key, data) {
-        const offset = this.variableBuilder.vertexCount;
-
         const align = this.properties.align || "left";
 
         const base = this.metadata.common.base;
@@ -524,13 +496,6 @@ export class TextVertexBuilder extends VertexBuilder {
             }
         }
 
-        const count = this.variableBuilder.vertexCount - offset;
-        if (count) {
-            this.rangeMap.set(key, {
-                offset,
-                count
-                // TODO: Add some indices that allow rendering just a range
-            });
-        }
+        this.registerBatch(key);
     }
 }
