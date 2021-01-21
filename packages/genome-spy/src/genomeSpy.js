@@ -11,7 +11,6 @@ import AccessorFactory from "./encoder/accessor";
 import {
     createView,
     resolveScalesAndAxes,
-    initializeData,
     addDecorators,
     processImports
 } from "./view/viewUtils";
@@ -101,6 +100,9 @@ export default class GenomeSpy {
     }
 
     _prepareContainer() {
+        this.container.classList.add("genome-spy");
+        this.container.classList.add("loading");
+
         this._glHelper = new WebGLHelper(this.container);
         this._glHelper.addEventListener("resize", () => this.computeLayout());
         this._glHelper.addEventListener("render", () =>
@@ -113,9 +115,6 @@ export default class GenomeSpy {
         this.container.appendChild(this.loadingMessageElement);
 
         this.tooltip = new Tooltip(this.container);
-
-        this.container.classList.add("genome-spy");
-        this.container.classList.add("loading");
 
         this.loadingMessageElement
             .querySelector(".message")
