@@ -166,6 +166,10 @@ function isContinuousColor(_) {
 }
 
 export function configureDomain(scale, _, logger) {
+    if (!scale.domain) {
+        return 0;
+    }
+
     logger = ensureLogger(logger);
 
     // check raw domain, if provided use that and exit early

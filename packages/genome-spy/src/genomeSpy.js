@@ -31,6 +31,7 @@ import DataFlow from "./data/dataFlow";
 import scaleIndex from "./genome/scaleIndex";
 import { buildDataFlow } from "./view/flowBuilder";
 import { optimizeDataFlow } from "./data/flowOptimizer";
+import scaleNull from "./utils/scaleNull";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -148,6 +149,7 @@ export default class GenomeSpy {
         // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
         vegaScale("index", scaleIndex, ["continuous"]);
         vegaScale("locus", scaleLocus, ["continuous"]);
+        vegaScale("null", scaleNull, []);
 
         try {
             if (this.config.genome) {

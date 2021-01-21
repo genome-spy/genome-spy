@@ -3,15 +3,24 @@
  * @param  {object[]} objects
  * @param {string} propertyOf
  * @param {string[]} [skip]
- * @returns {Object}
+ * @returns {object}
  */
 export default function mergeObjects(objects, propertyOf, skip) {
     skip = skip || [];
 
-    /** @type {object} */
+    if (objects.some(d => d === null)) {
+        if (objects.every(d => d === null)) {
+            return null;
+        } else {
+            console.warn(objects);
+            throw new Error("Cannot merge objects with nulls!");
+        }
+    }
+
+    /** @type {any} */
     const target = {};
 
-    /** @param {object} obj */
+    /** @param {any} obj */
     const merger = obj => {
         for (let prop in obj) {
             if (!skip.includes(prop) && obj[prop] !== undefined) {

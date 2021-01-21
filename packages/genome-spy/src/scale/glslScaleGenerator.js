@@ -95,7 +95,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
     const fp64 = !!scale.fp64;
     const attributeType = fp64 ? "vec2" : "float";
 
-    const domainLength = scale.domain().length;
+    const domainLength = scale.domain ? scale.domain().length : undefined;
 
     /** @type {string} */
     let domainUniform;
@@ -150,6 +150,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
             break;
 
         case "ordinal": // Use identity transform and lookup the value from a texture
+        case "null":
         case "identity":
             functionCall = makeScaleCall("scaleIdentity");
             break;

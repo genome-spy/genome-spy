@@ -138,9 +138,16 @@ export default class ScaleResolution {
      */
     getScaleProps() {
         return getCachedOrCall(this, "scaleProps", () => {
+            const mergedProps = this.getMergedScaleProps();
+            if (mergedProps === null || mergedProps.type == "null") {
+                // No scale (pass-thru)
+                // TODO: Check that the channel is compatible
+                return { type: "null" };
+            }
+
             const props = {
                 ...this._getDefaultScaleProperties(this.type),
-                ...this.getMergedScaleProps(),
+                ...mergedProps,
                 ...getLockedScaleProperties(this.channel)
             };
 
@@ -218,7 +225,7 @@ export default class ScaleResolution {
      * Reconfigures the scale: updates domain and other settings
      */
     reconfigure() {
-        if (this._scale) {
+        if (this._scale && this._scale.type != "null") {
             expire(this, "scaleProps");
             configureScale(this.getScaleProps(), this._scale);
             const domain = this.getDataDomain();
@@ -236,20 +243,24 @@ export default class ScaleResolution {
 
         const props = this.getScaleProps();
 
-        this._scale = createScale(props);
-        if (this._scale.type == "locus") {
+        const scale = createScale(props);
+        this._scale = scale;
+
+        if (scale.type == "locus") {
             this._configureGenome();
         }
 
         // Tag the scale and inform encoders and shaders that emulated
         // 64bit floats should be used.
         // N.B. the tag is lost upon scale.clone().
-        this._scale.fp64 = !!props.fp64;
+        scale.fp64 = !!props.fp64;
 
         // Can be used as zoom extent
-        this._originalDomain = [...this._scale.domain()];
+        this._originalDomain = scale.domain
+            ? [...this._scale.domain()]
+            : undefined;
 
-        return this._scale;
+        return scale;
     }
 
     isZoomable() {
@@ -399,21 +410,22 @@ function getDefaultScaleType(channel, dataType) {
 
     /**
      * @type {Object.<string, string[]>}
-     * Default types: nominal, ordinal, quantitative
+     * Default types: nominal, ordinal, quantitative.
+     * undefined = incompatible, "null" = disabled (pass-thru)
      */
     const defaults = {
         x: ["band", "band", "linear"],
         y: ["band", "band", "linear"],
-        size: [null, "point", "linear"],
-        opacity: [null, "point", "linear"],
+        size: [undefined, "point", "linear"],
+        opacity: [undefined, "point", "linear"],
         color: ["ordinal", "ordinal", "linear"],
-        shape: ["ordinal", "ordinal", null],
-        squeeze: ["ordinal", "ordinal", null],
-        sample: ["identity", "identity", null],
-        semanticScore: [null, null, "identity"],
-        text: ["identity", "identity", "identity"],
-        dx: [null, null, "identity"],
-        dy: [null, null, "identity"]
+        shape: ["ordinal", "ordinal", undefined],
+        squeeze: ["ordinal", "ordinal", undefined],
+        sample: ["null", "null", undefined],
+        semanticScore: [undefined, undefined, "null"],
+        text: ["null", "null", "null"],
+        dx: [undefined, undefined, "null"],
+        dy: [undefined, undefined, "null"]
     };
 
     const type = defaults[channel]
@@ -422,7 +434,7 @@ function getDefaultScaleType(channel, dataType) {
         ? "linear"
         : "ordinal";
 
-    if (!type) {
+    if (type === undefined) {
         throw new Error(
             `Channel "${channel}" is not compatible with "${dataType}" data type. Use of a proper scale may be needed.`
         );
