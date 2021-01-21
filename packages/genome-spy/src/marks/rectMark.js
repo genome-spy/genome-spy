@@ -90,7 +90,8 @@ export default class RectMark extends Mark {
             attributes: this.getAttributes(),
             tesselationThreshold,
             visibleRange: interval ? interval.toArray() : undefined,
-            numItems
+            numItems,
+            buildXIndex: this.properties.buildIndex
         });
 
         for (const [sample, data] of this.dataByFacet.entries()) {
@@ -156,18 +157,16 @@ export default class RectMark extends Mark {
     render(options) {
         const gl = this.gl;
 
-        // TODO: draw only the part that intersects with the viewport
-        // Could use: http://lin-ear-th-inking.blogspot.com/2007/06/packed-1-dimensional-r-tree.html
-
         return this.createRenderCallback(
-            range =>
+            (offset, count) => {
                 twgl.drawBufferInfo(
                     gl,
                     this.bufferInfo,
                     gl.TRIANGLE_STRIP,
-                    range.count,
-                    range.offset
-                ),
+                    count,
+                    offset
+                );
+            },
             options,
             () => this._sampleBufferInfo.rangeMap
         );

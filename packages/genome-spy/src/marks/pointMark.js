@@ -219,11 +219,11 @@ export default class PointMark extends Mark {
         const gl = this.gl;
 
         return this.createRenderCallback(
-            range => {
+            (offset, count) => {
                 // TODO: findIndices is rather slow. Consider a more coarse-grained, "tiled" solution.
                 const [lower, upper] = this._findIndices
                     ? this._findIndices(this.dataByFacet.get(options.facetId))
-                    : [0, range.count];
+                    : [0, count];
 
                 const length = upper - lower;
 
@@ -233,7 +233,7 @@ export default class PointMark extends Mark {
                         this.vertexArrayInfo,
                         gl.POINTS,
                         length,
-                        range.offset + lower
+                        offset + lower
                     );
                 }
             },

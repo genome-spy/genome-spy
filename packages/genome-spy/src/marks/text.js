@@ -192,7 +192,8 @@ export default class TextMark extends Mark {
             numCharacters: Math.max(
                 charCount,
                 this.properties.minBufferSize || 0
-            )
+            ),
+            buildXIndex: this.properties.buildIndex
         });
 
         for (const [sample, texts] of this.dataByFacet.entries()) {
@@ -231,13 +232,13 @@ export default class TextMark extends Mark {
         const gl = this.gl;
 
         return this.createRenderCallback(
-            range =>
+            (offset, count) =>
                 twgl.drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,
                     gl.TRIANGLES,
-                    range.count,
-                    range.offset
+                    count,
+                    offset
                 ),
             options,
             () => this.rangeMap

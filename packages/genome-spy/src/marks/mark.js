@@ -32,7 +32,8 @@ import { createProgram } from "../gl/webGLHelper";
  * @typedef {RenderingOptions & _MarkRenderingOptions} MarkRenderingOptions
  *
  * @callback DrawFunction
- * @param {import("../gl/dataToVertices").RangeEntry} range
+ * @param {number} offset
+ * @param {number} count
  */
 export default class Mark {
     /**
@@ -613,21 +614,48 @@ export default class Mark {
         // eslint-disable-next-line consistent-this
         const self = this;
 
+        /** @type {function(import("../gl/dataToVertices").RangeEntry):void} rangeEntry */
+        let drawWithRangeEntry;
+
+        if (this.properties.buildIndex) {
+            const scale = this.unitView.getScaleResolution("x")?.getScale();
+
+            drawWithRangeEntry = rangeEntry => {
+                if (scale && rangeEntry.xIndex) {
+                    const domain = scale.domain();
+                    const vertexIndices = rangeEntry.xIndex(
+                        domain[0],
+                        domain[1]
+                    );
+                    const offset = vertexIndices[0];
+                    const count = vertexIndices[1] - offset;
+                    if (count > 0) {
+                        draw(offset, count);
+                    }
+                } else {
+                    draw(rangeEntry.offset, rangeEntry.count);
+                }
+            };
+        } else {
+            drawWithRangeEntry = rangeEntry =>
+                draw(rangeEntry.offset, rangeEntry.count);
+        }
+
         if (this.properties.dynamicData) {
             return function renderDynamic() {
-                const range = rangeMapSource().get(options.facetId);
-                if (range && range.count) {
+                const rangeEntry = rangeMapSource().get(options.facetId);
+                if (rangeEntry && rangeEntry.count) {
                     if (self.prepareSampleFacetRendering(options)) {
-                        draw(range);
+                        drawWithRangeEntry(rangeEntry);
                     }
                 }
             };
         } else {
-            const range = rangeMapSource().get(options.facetId);
-            if (range && range.count) {
+            const rangeEntry = rangeMapSource().get(options.facetId);
+            if (rangeEntry && rangeEntry.count) {
                 return function renderStatic() {
                     if (self.prepareSampleFacetRendering(options)) {
-                        draw(range);
+                        drawWithRangeEntry(rangeEntry);
                     }
                 };
             }

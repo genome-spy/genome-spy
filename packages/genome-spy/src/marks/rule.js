@@ -119,7 +119,8 @@ export default class RuleMark extends Mark {
         const builder = new RuleVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            numItems: Math.max(itemCount, this.properties.minBufferSize || 0)
+            numItems: Math.max(itemCount, this.properties.minBufferSize || 0),
+            buildXIndex: this.properties.buildIndex
         });
 
         for (const [sample, d] of this.dataByFacet.entries()) {
@@ -163,13 +164,13 @@ export default class RuleMark extends Mark {
         const gl = this.gl;
 
         return this.createRenderCallback(
-            range =>
+            (offset, count) =>
                 twgl.drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,
                     gl.TRIANGLE_STRIP,
-                    range.count,
-                    range.offset
+                    count,
+                    offset
                 ),
             options,
             () => this.rangeMap

@@ -34,6 +34,14 @@ export interface MarkConfig {
      * This property is intended for internal usage.
      */
     minBufferSize?: number;
+
+    /**
+     * Builds and index for efficient rendering of subsets of the data.
+     * The data must be sorted by the x coordinate.
+     *
+     * TODO: This should be enabled automatically if the data are sorted.
+     */
+    buildIndex?: boolean;
 }
 
 // TODO: Create an interface for values (they don't have type or anything else)

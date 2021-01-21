@@ -3,11 +3,14 @@ import { isString } from "vega-util";
 import { fp64ify } from "./includes/fp64-utils";
 import ArrayBuilder from "./arrayBuilder";
 import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
+import { peek } from "../utils/arrayUtils";
+import createBinningRangeIndexer from "../utils/binnedRangeIndex";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
  * @prop {number} offset in vertices
  * @prop {number} count in vertices
+ * @prop {import("../utils/binnedRangeIndex").Lookup} xIndex
  *
  * @typedef {import("./arraybuilder").ConverterMetadata} Converter
  * @typedef {import("../encoder/encoder").Encoder} Encoder
@@ -20,68 +23,85 @@ export class GeometryBuilder {
      * @param {string[]} [object.attributes]
      * @param {number} [object.numVertices] If the number of data items is known, a
      *      preallocated TypedArray is used
+     * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
      */
-    constructor({ encoders, numVertices = undefined, attributes }) {
+    constructor({
+        encoders,
+        numVertices = undefined,
+        attributes = [],
+        buildXIndex = false
+    }) {
         this.encoders = encoders;
+        this._buildXIndex = buildXIndex;
+
+        // Encoders for variable channels
+        this.variableEncoders = Object.fromEntries(
+            Object.entries(encoders).filter(
+                ([channel, e]) =>
+                    attributes.includes(channel) && e && e.scale && !e.constant
+            )
+        );
+
         this.allocatedVertices = numVertices;
 
         this.variableBuilder = new ArrayBuilder(numVertices);
 
-        for (const channel of attributes) {
-            const ce = encoders[channel];
-            if (ce) {
-                if (ce.scale && !ce.constant) {
-                    const accessor = ce.accessor;
+        // Create converters and updaters for all variable channels.
+        // TODO: If more than one channels use the same field with the same data type, convert the field only once.
 
-                    const doubleArray = [0, 0];
-                    const fp64 = ce.scale.fp64;
+        for (const [channel, ce] of Object.entries(this.variableEncoders)) {
+            const accessor = ce.accessor;
 
-                    /** @type {function(any):(number | number[])} Continuous variables go to GPU as is. Discrete variables must be "indexed". */
-                    const f = ce.indexer
-                        ? ce.indexer
-                        : fp64
-                        ? d => fp64ify(accessor(d), doubleArray)
-                        : accessor;
+            const doubleArray = [0, 0];
+            const fp64 = ce.scale.fp64;
 
-                    // TODO: If more than one channels use the same field, convert the field only once
+            /**
+             * Discrete variables both numeric and strings must be "indexed",
+             * 64 bit floats must be converted to vec2.
+             * 32 bit continuous variables go to GPU as is.
+             *
+             * @type {function(any):(number | number[])}
+             */
+            const f = ce.indexer
+                ? ce.indexer
+                : fp64
+                ? d => fp64ify(accessor(d), doubleArray)
+                : accessor;
 
-                    this.variableBuilder.addConverter(channel, {
-                        f,
-                        numComponents: fp64 ? 2 : 1,
-                        arrayReference: fp64 ? doubleArray : undefined
-                    });
-                }
-            }
+            this.variableBuilder.addConverter(channel, {
+                f,
+                numComponents: fp64 ? 2 : 1,
+                arrayReference: fp64 ? doubleArray : undefined
+            });
         }
 
-        this._lastOffset = 0;
+        this.lastOffset = 0;
 
         /** @type {Map<any, RangeEntry>} keep track of sample locations within the vertex array */
         this.rangeMap = new Map();
     }
 
     /**
-     * Should be called at the end of `addBatch`
+     * Must be called at the end of `addBatch`
      *
      * @param {any} key
      */
     registerBatch(key) {
-        const offset = this._lastOffset;
+        const offset = this.lastOffset;
         const index = this.variableBuilder.vertexCount;
         const size = index - offset;
         if (size) {
             this.rangeMap.set(key, {
                 offset,
-                count: size
-                // TODO: Add some indices that allow rendering just a range
+                count: size,
+                xIndex: this.xIndexer?.getIndex()
             });
         }
-        this._lastOffset = index;
+        this.lastOffset = index;
     }
 
     /**
-     *
-     * @param {String} key
+     * @param {String} key The facet id, for example
      * @param {object[]} data
      */
     addBatch(key, data) {
@@ -90,6 +110,62 @@ export class GeometryBuilder {
         }
 
         this.registerBatch(key);
+    }
+
+    /**
+     * @param {any[]} data
+     */
+    prepareXIndexer(data) {
+        if (!this._buildXIndex) {
+            return;
+        }
+
+        const xe = this.variableEncoders.x;
+        const x2e = this.variableEncoders.x2;
+
+        if (xe && x2e) {
+            const xa = xe.accessor;
+            const x2a = x2e.accessor;
+
+            this.xIndexer = createBinningRangeIndexer(50, [
+                xa(data[0]),
+                x2a(peek(data))
+            ]);
+
+            let lastVertexCount = this.variableBuilder.vertexCount;
+
+            /**
+             * @param {any} datum
+             */
+            this.addToXIndex = datum => {
+                let currentVertexCount = this.variableBuilder.vertexCount;
+                this.xIndexer(
+                    xa(datum),
+                    x2a(datum),
+                    lastVertexCount,
+                    currentVertexCount
+                );
+                lastVertexCount = currentVertexCount;
+            };
+        } else {
+            this.xIndexer = undefined;
+            /**
+             * @param {any} datum
+             */
+            this.addToXIndex = datum => {
+                //
+            };
+        }
+    }
+
+    /**
+     * Add the datum to an index, which allows for efficient rendering of ranges
+     * on the x axis. Must be called after a datum has been pushed to the ArrayBuilder.
+     *
+     * @param {any} datum
+     */
+    addToXIndex(datum) {
+        //
     }
 
     toArrays() {
@@ -124,19 +200,22 @@ export class RectVertexBuilder extends GeometryBuilder {
      *     If the rect is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
      * @param {number} [object.numItems] Number of data items
+     * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
      */
     constructor({
         encoders,
         attributes,
         tesselationThreshold = Infinity,
         visibleRange = [-Infinity, Infinity],
-        numItems
+        numItems,
+        buildXIndex = false
     }) {
         super({
             encoders,
             attributes,
             numVertices:
-                tesselationThreshold == Infinity ? numItems * 6 : undefined
+                tesselationThreshold == Infinity ? numItems * 6 : undefined,
+            buildXIndex
         });
 
         this.visibleRange = visibleRange;
@@ -146,13 +225,16 @@ export class RectVertexBuilder extends GeometryBuilder {
         this.updateFrac = this.variableBuilder.createUpdater("frac", 2);
     }
 
-    /* eslint-disable complexity */
     /**
      *
      * @param {any} key
      * @param {object[]} data
      */
     addBatch(key, data) {
+        if (!data.length) {
+            return;
+        }
+
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
             .encoders);
         const [lower, upper] = this.visibleRange;
@@ -164,6 +246,8 @@ export class RectVertexBuilder extends GeometryBuilder {
 
         const xAccessor = a(e.x);
         const x2Accessor = a(e.x2);
+
+        this.prepareXIndexer(data);
 
         const frac = [0, 0];
         this.updateFrac(frac);
@@ -181,7 +265,7 @@ export class RectVertexBuilder extends GeometryBuilder {
                 continue;
             }
 
-            // Truncate to prevent tesselation of parts that are outside the viewport
+            // Truncate to prevent tessellation of parts that are outside the viewport
             if (x < lower) x = lower;
             if (x2 > upper) x2 = upper;
 
@@ -191,15 +275,15 @@ export class RectVertexBuilder extends GeometryBuilder {
             frac[0] = 0;
             frac[1] = 0;
 
-            // Duplicate the first vertex to produce degenerate triangles
-            this.variableBuilder.pushAll();
-
-            // Tesselate segments
+            // Tessellate segments
             const tileCount = 1;
-
             //    width < Infinity
             //        ? Math.ceil(width / this.tesselationThreshold)
             //        : 1;
+
+            // Duplicate the first vertex to produce degenerate triangles
+            this.variableBuilder.pushAll();
+
             for (let i = 0; i <= tileCount; i++) {
                 frac[0] = i / tileCount;
                 frac[1] = 0;
@@ -210,6 +294,7 @@ export class RectVertexBuilder extends GeometryBuilder {
 
             // Duplicate the last vertex to produce a degenerate triangle between the segments
             this.variableBuilder.pushAll();
+            this.addToXIndex(d);
         }
 
         this.registerBatch(key);
@@ -226,19 +311,22 @@ export class RuleVertexBuilder extends GeometryBuilder {
      *     If the rule is wider than the threshold, tesselate it into pieces
      * @param {number[]} [object.visibleRange]
      * @param {number} [object.numItems] Number of data items
+     * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
      */
     constructor({
         encoders,
         attributes,
         tesselationThreshold = Infinity,
         visibleRange = [-Infinity, Infinity],
-        numItems
+        numItems,
+        buildXIndex
     }) {
         super({
             encoders,
             attributes,
             numVertices:
-                tesselationThreshold == Infinity ? numItems * 6 : undefined
+                tesselationThreshold == Infinity ? numItems * 6 : undefined,
+            buildXIndex
         });
 
         this.visibleRange = visibleRange;
@@ -259,6 +347,8 @@ export class RuleVertexBuilder extends GeometryBuilder {
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
             .encoders);
         const [lower, upper] = this.visibleRange; // TODO
+
+        this.prepareXIndexer(data);
 
         for (const d of data) {
             // Start a new rule. Duplicate the first vertex to produce degenerate triangles
@@ -282,6 +372,7 @@ export class RuleVertexBuilder extends GeometryBuilder {
 
             // Duplicate the last vertex to produce a degenerate triangle between the rules
             this.variableBuilder.pushAll();
+            this.addToXIndex(d);
         }
 
         this.registerBatch(key);
@@ -344,18 +435,21 @@ export class TextVertexBuilder extends GeometryBuilder {
      * @param {import("../fonts/types").FontMetadata} object.metadata
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters
+     * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
      */
     constructor({
         encoders,
         attributes,
         metadata,
         properties,
-        numCharacters = undefined
+        numCharacters = undefined,
+        buildXIndex = false
     }) {
         super({
             encoders,
             attributes,
-            numVertices: numCharacters * 6 // six vertices per quad (character)
+            numVertices: numCharacters * 6, // six vertices per quad (character)
+            buildXIndex
         });
 
         this.metadata = metadata;
@@ -414,6 +508,8 @@ export class TextVertexBuilder extends GeometryBuilder {
         this.updateVertexCoord(vertexCoord);
         const textureCoord = [0, 0];
         this.updateTextureCoord(textureCoord);
+
+        this.prepareXIndexer(data);
 
         for (const d of data) {
             const value = this.numberFormat(accessor(d));
@@ -494,6 +590,8 @@ export class TextVertexBuilder extends GeometryBuilder {
 
                 x += advance;
             }
+
+            this.addToXIndex(data);
         }
 
         this.registerBatch(key);
