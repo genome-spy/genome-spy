@@ -79,7 +79,7 @@ export default class Mark {
     }
 
     getSupportedChannels() {
-        return ["x", "y", "color", "opacity"];
+        return ["x", "y", "color", "opacity", "search"];
     }
 
     /**

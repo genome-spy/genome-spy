@@ -1,11 +1,4 @@
-import {
-    isString,
-    isNumber,
-    panLinear,
-    zoomLinear,
-    clampRange,
-    span
-} from "vega-util";
+import { panLinear, zoomLinear, clampRange, span } from "vega-util";
 import { isDiscrete, isContinuous } from "vega-scale";
 
 import mergeObjects from "../utils/mergeObjects";
@@ -320,6 +313,19 @@ export default class ScaleResolution {
     }
 
     /**
+     *
+     * @param {number[]} interval
+     */
+    zoomTo(interval) {
+        if (!this.isZoomable()) {
+            throw new Error("Not a zoomable scale!");
+        }
+
+        this.getScale().domain(interval);
+        this._notifyScaleObservers();
+    }
+
+    /**
      * Returns the zoom level with respect to the reference domain span (the original domain).
      *
      * In principle, this is highly specific to positional channels. However, zooming can
@@ -423,6 +429,7 @@ function getDefaultScaleType(channel, dataType) {
         squeeze: ["ordinal", "ordinal", undefined],
         sample: ["null", "null", undefined],
         semanticScore: [undefined, undefined, "null"],
+        search: ["null", undefined, undefined],
         text: ["null", "null", "null"],
         dx: [undefined, undefined, "null"],
         dy: [undefined, undefined, "null"]

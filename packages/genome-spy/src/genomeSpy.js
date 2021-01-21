@@ -375,6 +375,17 @@ export default class GenomeSpy {
             this.deferredContext.renderDeferred();
         }
     }
+
+    getSearchableViews() {
+        /** @type {UnitView[]} */
+        const views = [];
+        this.viewRoot.visit(view => {
+            if (view instanceof UnitView && view.getAccessor("search")) {
+                views.push(view);
+            }
+        });
+        return views;
+    }
 }
 
 /**

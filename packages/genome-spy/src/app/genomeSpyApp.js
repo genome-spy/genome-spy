@@ -7,15 +7,14 @@ import { html, render } from "lit-html";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faInfoCircle,
-    faQuestionCircle,
-    faArrowsAltV
+    faQuestionCircle
 } from "@fortawesome/free-solid-svg-icons";
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
 import getProvenanceButtons from "../sampleHandler/provenanceToolbar";
 import DecoratorView from "../view/decoratorView";
 import Interval from "../utils/interval";
-import throttle from "../utils/throttle";
+import { zoomLinear } from "vega-util";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -353,8 +352,39 @@ export default class GenomeSpyApp {
         ).getScaleResolution("x");
     }
 
+    /**
+     * @param {string} term
+     */
+    searchViews(term) {
+        const collator = new Intl.Collator("en", {
+            usage: "search",
+            sensitivity: "base"
+        });
+        for (const view of this.genomeSpy.getSearchableViews()) {
+            const sa = view.getAccessor("search");
+            const xa = view.getAccessor("x");
+            const x2a = view.getAccessor("x2");
+            const resolution = view.getScaleResolution("x");
+
+            if (!xa || !x2a || !resolution?.isZoomable()) {
+                continue;
+            }
+
+            const data = view.getCollectedData();
+            const index = data.findIndex(
+                v => collator.compare(sa(v), term) === 0
+            );
+            if (index >= 0) {
+                const d = data[index];
+                const interval = zoomLinear([xa(d), x2a(d)], null, 1.2);
+                resolution.zoomTo(interval);
+                view.context.animator.requestRender();
+            }
+        }
+    }
+
     async search(string) {
-        alert("Still broken!");
+        console.log(this.searchViews(string));
     }
 }
 
