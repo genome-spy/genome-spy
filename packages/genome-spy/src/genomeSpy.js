@@ -42,6 +42,12 @@ import scaleNull from "./utils/scaleNull";
  * @typedef {import("./spec/view").RootConfig} RootConfig
  */
 
+// Register scaleLocus to Vega-Scale.
+// Loci are discrete but the scale's domain can be adjusted in a continuous manner.
+vegaScale("index", scaleIndex, ["continuous"]);
+vegaScale("locus", scaleLocus, ["continuous"]);
+vegaScale("null", scaleNull, []);
+
 /**
  * The actual browser without any toolbars etc
  */
@@ -141,122 +147,116 @@ export default class GenomeSpy {
         throw new Error("destroy() not properly implemented");
     }
 
+    async _prepareViewsAndData() {
+        if (this.config.genome) {
+            this.coordinateSystem = new Genome(this.config.genome);
+        } else {
+            this.coordinateSystem = new RealCoordinateSystem();
+        }
+        await this.coordinateSystem.initialize(this);
+
+        /** @type {import("./view/viewUtils").ViewContext} */
+        const context = {
+            coordinateSystem: this.coordinateSystem,
+            dataFlow: new DataFlow(),
+            accessorFactory: this.accessorFactory,
+            genomeSpy: this, // TODO: An interface instead of a GenomeSpy
+            glHelper: this._glHelper,
+            animator: this.animator
+        };
+
+        /** @type {import("./spec/view").ConcatSpec & RootConfig} */
+        const rootSpec = this.config;
+
+        // Create the view hierarchy
+        /** @type {import("./view/view").default} */
+        this.viewRoot = createView(rootSpec, context);
+
+        // Replace placeholder ImportViews with actual views.
+        await processImports(this.viewRoot);
+
+        // Resolve scales, i.e., if possible, pull them towards the root
+        resolveScalesAndAxes(this.viewRoot);
+
+        // Wrap unit or layer views that need axes
+        this.viewRoot = addDecorators(this.viewRoot);
+
+        // Collect all unit views to a list because they need plenty of initialization
+        /** @type {UnitView[]} */
+        const unitViews = [];
+        this.viewRoot.visit(view => {
+            if (view instanceof UnitView) {
+                unitViews.push(view);
+            }
+        });
+
+        // If the coordinate system has a hard extent, use it
+        // TODO: Should be set for each scale. Breaks on independent scales!!
+        if (this.coordinateSystem.getExtent()) {
+            this.viewRoot
+                .getScaleResolution("x")
+                .setDomain(
+                    createDomain(
+                        "quantitative",
+                        this.coordinateSystem.getExtent().toArray()
+                    )
+                );
+        }
+
+        // Create encoders (accessors, scales and related metadata)
+        unitViews.forEach(view => view.mark.initializeEncoders());
+
+        // Compile shaders, create or load textures, etc.
+        const graphicsInitialized = Promise.all(
+            // TODO: The compilation should be initiated here but the
+            // statuses should be checked later to allow for background compilation.
+            // Also: https://www.khronos.org/registry/webgl/extensions/KHR_parallel_shader_compile/
+            unitViews.map(view => view.mark.initializeGraphics())
+        );
+
+        // Build the data flow based on the view hierarchy
+        const flow = buildDataFlow(this.viewRoot, context.dataFlow);
+        optimizeDataFlow(flow);
+
+        for (const view of unitViews) {
+            flow.addObserver(collector => {
+                // TODO: Replace initializeData with a faceted dataflow
+                view.mark.initializeData();
+                // Update WebGL buffers
+                view.mark.updateGraphicsData();
+            }, view);
+        }
+
+        // Find all data sources and initiate loading
+        await Promise.all(
+            flow.dataSources.map(dataSource => dataSource.load())
+        );
+
+        // Now that all data has been loaded, the domains may need adjusting
+        this.viewRoot.visit(view => {
+            for (const resolution of Object.values(view.resolutions.scale)) {
+                // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
+                resolution.reconfigure();
+            }
+        });
+
+        // Ensure that all external textures (font atlases) have been loaded
+        await graphicsInitialized;
+
+        for (const view of unitViews) {
+            view.mark.finalizeGraphicsInitialization();
+        }
+    }
+
     // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
     async launch() {
         this._prepareContainer();
 
-        // Register scaleLocus to Vega-Scale.
-        // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
-        vegaScale("index", scaleIndex, ["continuous"]);
-        vegaScale("locus", scaleLocus, ["continuous"]);
-        vegaScale("null", scaleNull, []);
-
         try {
-            if (this.config.genome) {
-                this.coordinateSystem = new Genome(this.config.genome);
-            } else {
-                this.coordinateSystem = new RealCoordinateSystem();
-            }
-            await this.coordinateSystem.initialize(this);
-
-            /** @type {import("./view/viewUtils").ViewContext} */
-            const context = {
-                coordinateSystem: this.coordinateSystem,
-                dataFlow: new DataFlow(),
-                accessorFactory: this.accessorFactory,
-                genomeSpy: this, // TODO: An interface instead of a GenomeSpy
-                glHelper: this._glHelper,
-                animator: this.animator
-            };
-
-            /** @type {import("./spec/view").ConcatSpec & RootConfig} */
-            const rootSpec = this.config;
-
-            // Create the view hierarchy
-            /** @type {import("./view/view").default} */
-            this.viewRoot = createView(rootSpec, context);
-
-            // Replace placeholder ImportViews with actual views.
-            await processImports(this.viewRoot);
-
-            // Resolve scales, i.e., if possible, pull them towards the root
-            resolveScalesAndAxes(this.viewRoot);
-
-            // Wrap unit or layer views that need axes
-            this.viewRoot = addDecorators(this.viewRoot);
-
-            // Collect all unit views to a list because they need plenty of initialization
-            /** @type {UnitView[]} */
-            const unitViews = [];
-            this.viewRoot.visit(view => {
-                if (view instanceof UnitView) {
-                    unitViews.push(view);
-                }
-            });
-
-            // If the coordinate system has a hard extent, use it
-            // TODO: Should be set for each scale. Breaks on independent scales!!
-            if (this.coordinateSystem.getExtent()) {
-                this.viewRoot
-                    .getScaleResolution("x")
-                    .setDomain(
-                        createDomain(
-                            "quantitative",
-                            this.coordinateSystem.getExtent().toArray()
-                        )
-                    );
-            }
-
-            // Create encoders (accessors, scales and related metadata)
-            unitViews.forEach(view => view.mark.initializeEncoders());
-
-            // Compile shaders, create or load textures, etc.
-            const graphicsInitialized = Promise.all(
-                // TODO: The compilation should be initiated here but the
-                // statuses should be checked later to allow for background compilation.
-                // Also: https://www.khronos.org/registry/webgl/extensions/KHR_parallel_shader_compile/
-                unitViews.map(view => view.mark.initializeGraphics())
-            );
-
-            // Build the data flow based on the view hierarchy
-            const flow = buildDataFlow(this.viewRoot, context.dataFlow);
-            optimizeDataFlow(flow);
-
-            for (const view of unitViews) {
-                flow.addObserver(collector => {
-                    // TODO: Replace initializeData with a faceted dataflow
-                    view.mark.initializeData();
-                    // Update WebGL buffers
-                    view.mark.updateGraphicsData();
-                }, view);
-            }
-
-            // Find all data sources and initiate loading
-            await Promise.all(
-                flow.dataSources.map(dataSource => dataSource.load())
-            );
-
-            // Now that all data has been loaded, the domains may need adjusting
-            this.viewRoot.visit(view => {
-                for (const resolution of Object.values(
-                    view.resolutions.scale
-                )) {
-                    // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
-                    resolution.reconfigure();
-                }
-            });
+            await this._prepareViewsAndData();
 
             this.registerMouseEvents();
-
             this.computeLayout();
-
-            // Ensure that all external textures (font atlases) have been loaded
-            await graphicsInitialized;
-
-            for (const view of unitViews) {
-                view.mark.finalizeGraphicsInitialization();
-            }
-
             this.renderAll();
 
             return this;
@@ -264,7 +264,6 @@ export default class GenomeSpy {
             const message = `${
                 reason.view ? `At "${reason.view.getPathString()}": ` : ""
             }${reason.toString()}`;
-            console.error(message);
             console.error(reason.stack);
             createMessageBox(this.container, message);
         } finally {
@@ -275,6 +274,30 @@ export default class GenomeSpy {
     registerMouseEvents() {
         const canvas = this._glHelper.canvas;
 
+        /** @param {Event} event */
+        const listener = event => {
+            if (this.layout && event instanceof MouseEvent) {
+                if (event.type == "mousemove") {
+                    this.tooltip.handleMouseMove(event);
+                    this._tooltipUpdateRequested = false;
+                }
+
+                const rect = canvas.getBoundingClientRect();
+                const point = new Point(
+                    event.clientX - rect.left - canvas.clientLeft,
+                    event.clientY - rect.top - canvas.clientTop
+                );
+
+                this.layout.dispatchInteractionEvent(
+                    new InteractionEvent(point, event)
+                );
+
+                if (!this._tooltipUpdateRequested) {
+                    this.tooltip.clear();
+                }
+            }
+        };
+
         [
             "mousedown",
             "wheel",
@@ -282,30 +305,7 @@ export default class GenomeSpy {
             "mousemove",
             "gesturechange",
             "contextmenu"
-        ].forEach(type =>
-            canvas.addEventListener(type, event => {
-                if (this.layout && event instanceof MouseEvent) {
-                    if (event.type == "mousemove") {
-                        this.tooltip.handleMouseMove(event);
-                        this._tooltipUpdateRequested = false;
-                    }
-
-                    const rect = canvas.getBoundingClientRect();
-                    const point = new Point(
-                        event.clientX - rect.left - canvas.clientLeft,
-                        event.clientY - rect.top - canvas.clientTop
-                    );
-
-                    this.layout.dispatchInteractionEvent(
-                        new InteractionEvent(point, event)
-                    );
-
-                    if (!this._tooltipUpdateRequested) {
-                        this.tooltip.clear();
-                    }
-                }
-            })
-        );
+        ].forEach(type => canvas.addEventListener(type, listener));
 
         // Prevent text selections etc while dragging
         canvas.addEventListener("dragstart", event => event.stopPropagation());
