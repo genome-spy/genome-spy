@@ -223,12 +223,11 @@ export default class UnitView extends View {
 
     /**
      * Returns the domain of the specified channel of this domain/mark.
-     * Either returns the configured domain or extracts it from the data.
      *
-     * @param {string} channel
+     * @param {string} channel A primary channel
      * @returns {DomainArray}
      */
-    getDomain(channel) {
+    getConfiguredDomain(channel) {
         if (isSecondaryChannel(channel)) {
             throw new Error(
                 `getDomain(${channel}), must only be called for primary channels!`
@@ -246,59 +245,67 @@ export default class UnitView extends View {
         if (specDomain) {
             return createDomain(type, specDomain);
         }
+    }
 
-        let domain = this._extractDomain(channel, type);
-        if (!domain) {
-            console.warn(
-                `Cannot extract domain for channel "${channel}" on ${this.getPathString()}. You can specify it explicitly.`
+    /**
+     * Extracts the domain from the data.
+     *
+     * TODO: Optimize! Now this performs redundant work if multiple views share the same collector.
+     *
+     * @param {string} channel
+     * @returns {DomainArray}
+     */
+    extractDataDomain(channel) {
+        if (isSecondaryChannel(channel)) {
+            throw new Error(
+                `getDomain(${channel}), must only be called for primary channels!`
             );
         }
 
+        const encodingSpec = this.getEncoding()[channel];
+        const type = encodingSpec.type;
+        if (!type) {
+            throw new Error(`No data type for channel "${channel}"!`);
+            // TODO: Support defaults
+        }
+
+        /** @param {string} channel */
+        const extract = channel => {
+            let domain;
+
+            const encodingSpec = this.getEncoding()[channel];
+
+            if (encodingSpec) {
+                const accessor = this.context.accessorFactory.createAccessor(
+                    encodingSpec
+                );
+                if (accessor) {
+                    domain = createDomain(type);
+
+                    if (accessor.constant) {
+                        domain.extend(accessor({}));
+                    } else {
+                        const data = this.getCollectedData() || [];
+                        for (const datum of data) {
+                            domain.extend(accessor(datum));
+                        }
+                    }
+                }
+            }
+            return domain;
+        };
+
+        let domain = extract(channel);
+
         const secondaryChannel = secondaryChannels[channel];
         if (secondaryChannel) {
-            const secondaryDomain = this._extractDomain(secondaryChannel, type);
+            const secondaryDomain = extract(secondaryChannel);
             if (secondaryDomain) {
                 domain.extendAll(secondaryDomain);
             }
         }
 
         return domain;
-    }
-
-    /**
-     * Extracts and caches the domain from the data.
-     *
-     * TODO: Optimize! Now this performs redundant work if multiple views share the same collector.
-     *
-     * @param {string} channel
-     * @param {string} type secondary channels have an implicit type based on the primary channel
-     * @returns {DomainArray}
-     */
-    _extractDomain(channel, type) {
-        //        return getCachedOrCall(this, "dataDomain-" + channel, () => {
-        let domain;
-
-        const encodingSpec = this.getEncoding()[channel];
-
-        if (encodingSpec) {
-            const accessor = this.context.accessorFactory.createAccessor(
-                encodingSpec
-            );
-            if (accessor) {
-                domain = createDomain(type);
-
-                if (accessor.constant) {
-                    domain.extend(accessor({}));
-                } else {
-                    const data = this.getCollectedData() || [];
-                    for (const datum of data) {
-                        domain.extend(accessor(datum));
-                    }
-                }
-            }
-        }
-        return domain;
-        //        });
     }
 
     getZoomLevel() {

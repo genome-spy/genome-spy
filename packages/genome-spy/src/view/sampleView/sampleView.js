@@ -290,7 +290,7 @@ export default class SampleView extends ContainerView {
         // TODO: Call this from somewhere!
         const resolution = this.getScaleResolution("sample");
         if (resolution) {
-            return resolution.getDataDomain().map((s, i) => ({
+            return resolution.getConfiguredDomain().map((s, i) => ({
                 id: s,
                 displayName: s,
                 indexNumber: i,

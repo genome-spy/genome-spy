@@ -11,7 +11,6 @@ import {
     isDiscreteChannel,
     isPositionalChannel
 } from "../encoder/encoder";
-import createDomain, { DomainArray } from "../utils/domainArray";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
@@ -23,7 +22,7 @@ export const INDEX = "index";
  * Resolution takes care of merging domains and scales from multiple views.
  * This class also provides some utility methods for zooming the scales etc..
  *
- * @typedef { import("./unitView").default} UnitView
+ * @typedef {import("./unitView").default} UnitView
  * @typedef {import("../encoder/encoder").VegaScale} VegaScale
  */
 export default class ScaleResolution {
@@ -89,17 +88,7 @@ export default class ScaleResolution {
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
     isExplicitDomain() {
-        if (this._explicitDomain) {
-            return true;
-        }
-
-        for (const view of this.views) {
-            const scale = this._getEncoding(view).scale;
-            if (scale && Array.isArray(scale.domain)) {
-                return true;
-            }
-        }
-        return false;
+        return !!this.getConfiguredDomain();
     }
 
     /**
@@ -144,13 +133,14 @@ export default class ScaleResolution {
                 ...getLockedScaleProperties(this.channel)
             };
 
-            if (this.type == LOCUS) {
-                props.domain = this._getGenome().chromMapper.getExtent();
-            } else {
-                const domain = this.getDataDomain();
-                if (domain && domain.length > 0) {
-                    props.domain = domain;
-                }
+            const domain =
+                this.getConfiguredDomain() ??
+                (this.type == LOCUS
+                    ? this._getGenome().chromMapper.getExtent()
+                    : this.getDataDomain());
+
+            if (domain && domain.length > 0) {
+                props.domain = domain;
             }
 
             if (!props.type) {
@@ -181,46 +171,24 @@ export default class ScaleResolution {
     }
 
     /**
-     * Set an explicit domain that overrides all other configurations and
-     * computed domains
+     * Unions the configured domains of all participating views.
      *
-     * @param {DomainArray | any[]} domain
+     * @return { DomainArray }
      */
-    setDomain(domain) {
-        const domainArray =
-            domain instanceof DomainArray
-                ? domain
-                : createDomain(this.type, domain);
-
-        this._explicitDomain = domainArray;
-        if (this._scale) {
-            this._scale.domain(domainArray);
-        }
-        expire(this, "scaleProps");
+    getConfiguredDomain() {
+        return this._reduceDomain(view =>
+            view.getConfiguredDomain(this.channel)
+        );
     }
 
     /**
-     * Unions the domains (explicit or extracted) of all participating views
+     * Extracts and unions the data domains of all participating views.
      *
      * @return { DomainArray }
      */
     getDataDomain() {
-        if (this._explicitDomain) {
-            return this._explicitDomain;
-        }
-
         // TODO: Optimize: extract domain only once if the views share the data
-        return this.views
-            .map(view => view.getDomain(this.channel))
-            .filter(domain => !!domain)
-            .reduce((acc, curr) => acc.extendAll(curr));
-    }
-
-    /**
-     * Returns the domain of the scale
-     */
-    getDomain() {
-        return this.getScale().domain();
+        return this._reduceDomain(view => view.extractDataDomain(this.channel));
     }
 
     /**
@@ -229,9 +197,9 @@ export default class ScaleResolution {
     reconfigure() {
         if (this._scale && this._scale.type != "null") {
             expire(this, "scaleProps");
-            configureScale(this.getScaleProps(), this._scale);
-            const domain = this.getDataDomain();
-            this._originalDomain = [...domain];
+            const props = this.getScaleProps();
+            configureScale(props, this._scale);
+            this._originalDomain = [...props.domain];
         }
     }
 
@@ -250,7 +218,6 @@ export default class ScaleResolution {
 
         if (scale.type == "locus") {
             const cm = this._getGenome().chromMapper;
-            this.setDomain(cm.getExtent());
             scale.chromMapper(cm);
         }
 
@@ -402,6 +369,20 @@ export default class ScaleResolution {
 
     _getViewPaths() {
         return this.views.map(v => v.getPathString()).join(", ");
+    }
+
+    /**
+     * @param {function(UnitView):DomainArray} domainAccessor
+     * @returns {DomainArray}
+     */
+    _reduceDomain(domainAccessor) {
+        const domains = this.views
+            .map(domainAccessor)
+            .filter(domain => !!domain);
+
+        if (domains.length) {
+            return domains.reduce((acc, curr) => acc.extendAll(curr));
+        }
     }
 }
 

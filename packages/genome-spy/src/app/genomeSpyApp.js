@@ -247,7 +247,9 @@ export default class GenomeSpyApp {
             this._genome = this.genomeSpy.genomeStore.getGenome();
 
             this.getFormattedDomain = () =>
-                this._genome.formatInterval(genomeResolution.getDomain());
+                this._genome.formatInterval(
+                    genomeResolution.getScale().domain()
+                );
 
             const elem = /** @param {string} className */ className =>
                 /** @type {HTMLElement} */ (this.appContainer.getElementsByClassName(

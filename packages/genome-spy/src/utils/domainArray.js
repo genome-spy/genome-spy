@@ -207,7 +207,7 @@ export function isDomainArray(array) {
 /**
  * For unit tests
  *
- * @param {DomainArray} domainArray
+ * @param {DomainArray | any[]} domainArray
  */
 export function toRegularArray(domainArray) {
     return [...domainArray];

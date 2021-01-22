@@ -13,7 +13,7 @@ describe("Trivial creations and initializations", () => {
 
     /*
 
-    Tests commented out because importing UnitView makes UnitView in viewUtils undefined !!???! WTF
+    //Tests commented out because importing UnitView makes UnitView in viewUtils undefined !!???! WTF
 
     test("Parses a trivial spec", () => {
         expect(create({ mark: "point" })).toBeInstanceOf(UnitView);
@@ -77,11 +77,11 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec).then(view =>
-            expect(r(view.getDomain("y"))).toEqual([0, 1000])
+            expect(r(view.getExplicitDomain("y"))).toEqual([0, 1000])
         );
     });
 
-    test("Includes a constant in the domain", () => {
+    test("Includes a constant in the data domain", () => {
         const spec = {
             data: dataSpec,
             mark: "point",
@@ -92,7 +92,7 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec).then(view =>
-            expect(r(view.getDomain("x"))).toEqual([123, 123])
+            expect(r(view.extractDataDomain("x"))).toEqual([123, 123])
         );
     });
 
@@ -107,7 +107,7 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec).then(view =>
-            expect(r(view.getDomain("y"))).toEqual([1, 3])
+            expect(r(view.extractDataDomain("y"))).toEqual([1, 3])
         );
     });
 
@@ -123,7 +123,7 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec).then(view =>
-            expect(r(view.getDomain("y"))).toEqual([1, 5])
+            expect(r(view.extractDataDomain("y"))).toEqual([1, 5])
         );
     });
 });

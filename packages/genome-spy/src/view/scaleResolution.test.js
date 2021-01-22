@@ -33,16 +33,19 @@ const spec = {
 };
 
 describe("Scales resolve with with non-trivial hierarchy", () => {
+    /** @param {import("./view").default} view */
+    const d = view =>
+        view
+            .getScaleResolution("y")
+            .getScale()
+            .domain();
+
     test("Scales (domains) are shared and merged by default on layers", async () => {
         const view = await createAndInitialize(spec);
 
-        expect(r(view.getScaleResolution("y").getDataDomain())).toEqual([1, 5]);
-        expect(
-            r(view.children[0].getScaleResolution("y").getDataDomain())
-        ).toEqual([1, 5]);
-        expect(
-            r(view.children[1].getScaleResolution("y").getDataDomain())
-        ).toEqual([1, 5]);
+        expect(r(d(view))).toEqual([1, 5]);
+        expect(r(d(view.children[0]))).toEqual([1, 5]);
+        expect(r(d(view.children[1]))).toEqual([1, 5]);
     });
 
     test("Independent scales (domains) are not pulled up", async () => {
@@ -56,13 +59,9 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
         };
 
         const view = await createAndInitialize(independentSpec);
-        // TODO: expect(view.getScaleResolution("x")).toBeUndefined();
-        expect(
-            r(view.children[0].getScaleResolution("y").getDataDomain())
-        ).toEqual([1, 2]);
-        expect(
-            r(view.children[1].getScaleResolution("y").getDataDomain())
-        ).toEqual([4, 5]);
+        expect(view.getScaleResolution("y")).toBeUndefined();
+        expect(r(d(view.children[0]))).toEqual([1, 2]);
+        expect(r(d(view.children[1]))).toEqual([4, 5]);
     });
 
     test("Channels with just values (no fields or scales) do not resolve", async () => {
@@ -72,24 +71,6 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
 });
 
 describe("Domain handling", () => {
-    test("The domain of a resolution can be overridden", async () => {
-        const view = await createAndInitialize({
-            data: { values: [-1, 1] },
-            mark: "point",
-            encoding: {
-                x: { field: "data", type: "quantitative" }
-            }
-        });
-
-        let r = view.getScaleResolution("x");
-        expect([...r.getDataDomain()]).toEqual([-1, 1]);
-        expect(r.getScale().domain()).toEqual([-1, 1]);
-
-        r.setDomain(createDomain("quantitative", [0, 2]));
-        expect([...r.getDataDomain()]).toEqual([0, 2]);
-        expect(r.getScale().domain()).toEqual([0, 2]);
-    });
-
     test("Channels with quantitative fields include zero in their scale domain by default", async () => {
         const view = await createAndInitialize({
             data: { values: [2, 3] },

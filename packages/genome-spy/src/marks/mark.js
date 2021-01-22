@@ -513,8 +513,8 @@ export default class Mark {
                 if (resolution) {
                     const scale = resolution.getScale();
                     const domain = isDiscrete(scale.type)
-                        ? [0, resolution.getDomain().length]
-                        : resolution.getDomain();
+                        ? [0, scale.domain().length]
+                        : scale.domain();
 
                     setter(
                         scale.fp64 ? domain.map(x => fp64ify(x)).flat() : domain
