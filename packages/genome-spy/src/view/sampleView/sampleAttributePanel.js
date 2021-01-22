@@ -74,9 +74,7 @@ export class SampleAttributePanel extends ConcatView {
                     undefined;
                 // The following breaks if sample or attribute name contains *
                 const id = `${sample.id}*${attribute}`;
-                this.context.genomeSpy.updateTooltip(id, id =>
-                    this.sampleToTooltip(id)
-                );
+                this.context.updateTooltip(id, id => this.sampleToTooltip(id));
             }
         });
     }
@@ -168,8 +166,7 @@ export class SampleAttributePanel extends ConcatView {
         }
 
         // TODO: Better integration with tooltip. Put the logic to contextMenu somehow.
-        // ... or provide contextMenu through ViewContext
-        this.context.genomeSpy.tooltip.visible = false;
+        this.context.updateTooltip(null);
 
         contextMenu({ items }, mouseEvent);
     }

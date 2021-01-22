@@ -13,16 +13,7 @@ import { buildDataFlow } from "./flowBuilder";
 import { optimizeDataFlow, optimizeFlowGraph } from "../data/flowOptimizer";
 
 /**
- * @typedef {Object} ViewContext
- * @prop {import("../genomeSpy").default} genomeSpy TODO: Break genomeSpy dependency
- * @prop {import("../data/dataFlow").default<View>} dataFlow
- * @prop {import("../encoder/accessor").default} accessorFactory
- * @prop {import("../coordinateSystem").default} coordinateSystem
- * @prop {import("../gl/webGLHelper").default} glHelper
- * @prop {import("../utils/animator").default} animator
- */
-
-/**
+ * @typedef {import("./viewContext").default} ViewContext
  * @typedef {import("../spec/view").MarkConfig} MarkConfig
  * @typedef {import("../spec/view").ChannelDef} ChannelDef
  * @typedef {import("../spec/view").ContainerSpec} ContainerSpec

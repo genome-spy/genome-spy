@@ -384,7 +384,7 @@ export default class ScaleResolution {
     _configureGenome() {
         // Aargh what a hack
         const cm = /** @type {import("../genome/genome").default}*/ (this
-            .views[0].context.genomeSpy.coordinateSystem).chromMapper;
+            .views[0].context.coordinateSystem).chromMapper;
         /** @type {import("../genome/scaleLocus").default} */ (this._scale).chromMapper(
             cm
         );

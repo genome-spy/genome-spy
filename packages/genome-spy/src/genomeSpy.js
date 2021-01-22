@@ -155,14 +155,15 @@ export default class GenomeSpy {
         }
         await this.coordinateSystem.initialize(this);
 
-        /** @type {import("./view/viewUtils").ViewContext} */
+        /** @type {import("./view/viewContext").default} */
         const context = {
             coordinateSystem: this.coordinateSystem,
             dataFlow: new DataFlow(),
             accessorFactory: this.accessorFactory,
-            genomeSpy: this, // TODO: An interface instead of a GenomeSpy
             glHelper: this._glHelper,
-            animator: this.animator
+            animator: this.animator,
+            requestLayoutReflow: this.computeLayout.bind(this),
+            updateTooltip: this.updateTooltip.bind(this)
         };
 
         /** @type {import("./spec/view").ConcatSpec & RootConfig} */

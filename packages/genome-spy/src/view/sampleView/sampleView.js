@@ -76,7 +76,7 @@ export default class SampleView extends ContainerView {
 
         this.sampleHandler.provenance.addListener(() => {
             // TODO: Scroll offset should be handled
-            this.context.genomeSpy.computeLayout();
+            this.context.requestLayoutReflow();
             this.context.animator.requestRender();
         });
 
