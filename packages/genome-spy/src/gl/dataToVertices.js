@@ -196,8 +196,8 @@ export class RectVertexBuilder extends GeometryBuilder {
      * @param {Object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
-     * @param {number} [object.tesselationThreshold]
-     *     If the rect is wider than the threshold, tesselate it into pieces
+     * @param {number} [object.tessellationThreshold]
+     *     If the rect is wider than the threshold, tessellate it into pieces
      * @param {number[]} [object.visibleRange]
      * @param {number} [object.numItems] Number of data items
      * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
@@ -205,7 +205,7 @@ export class RectVertexBuilder extends GeometryBuilder {
     constructor({
         encoders,
         attributes,
-        tesselationThreshold = Infinity,
+        tessellationThreshold = Infinity,
         visibleRange = [-Infinity, Infinity],
         numItems,
         buildXIndex = false
@@ -214,13 +214,13 @@ export class RectVertexBuilder extends GeometryBuilder {
             encoders,
             attributes,
             numVertices:
-                tesselationThreshold == Infinity ? numItems * 6 : undefined,
+                tessellationThreshold == Infinity ? numItems * 6 : undefined,
             buildXIndex
         });
 
         this.visibleRange = visibleRange;
 
-        this.tesselationThreshold = tesselationThreshold || Infinity;
+        this.tessellationThreshold = tessellationThreshold || Infinity;
 
         this.updateFrac = this.variableBuilder.createUpdater("frac", 2);
     }
@@ -278,7 +278,7 @@ export class RectVertexBuilder extends GeometryBuilder {
             // Tessellate segments
             const tileCount = 1;
             //    width < Infinity
-            //        ? Math.ceil(width / this.tesselationThreshold)
+            //        ? Math.ceil(width / this.tessellationThreshold)
             //        : 1;
 
             // Duplicate the first vertex to produce degenerate triangles
@@ -307,8 +307,8 @@ export class RuleVertexBuilder extends GeometryBuilder {
      * @param {Object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
-     * @param {number} [object.tesselationThreshold]
-     *     If the rule is wider than the threshold, tesselate it into pieces
+     * @param {number} [object.tessellationThreshold]
+     *     If the rule is wider than the threshold, tessellate it into pieces
      * @param {number[]} [object.visibleRange]
      * @param {number} [object.numItems] Number of data items
      * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
@@ -316,7 +316,7 @@ export class RuleVertexBuilder extends GeometryBuilder {
     constructor({
         encoders,
         attributes,
-        tesselationThreshold = Infinity,
+        tessellationThreshold = Infinity,
         visibleRange = [-Infinity, Infinity],
         numItems,
         buildXIndex
@@ -325,13 +325,13 @@ export class RuleVertexBuilder extends GeometryBuilder {
             encoders,
             attributes,
             numVertices:
-                tesselationThreshold == Infinity ? numItems * 6 : undefined,
+                tessellationThreshold == Infinity ? numItems * 6 : undefined,
             buildXIndex
         });
 
         this.visibleRange = visibleRange;
 
-        this.tesselationThreshold = tesselationThreshold || Infinity;
+        this.tessellationThreshold = tessellationThreshold || Infinity;
 
         this.updateSide = this.variableBuilder.createUpdater("side", 1);
         this.updatePos = this.variableBuilder.createUpdater("pos", 1);
@@ -360,7 +360,7 @@ export class RuleVertexBuilder extends GeometryBuilder {
             // Tesselate segments
             const tileCount = 1;
             //    width < Infinity
-            //        ? Math.ceil(width / this.tesselationThreshold)
+            //        ? Math.ceil(width / this.tessellationThreshold)
             //        : 1;
             for (let i = 0; i <= tileCount; i++) {
                 this.updatePos(i / tileCount);

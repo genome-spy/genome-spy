@@ -35,8 +35,8 @@ export default class RectMark extends Mark {
             minHeight: 0.5,
             minOpacity: 0.0,
 
-            tesselationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
-            tesselationTiles: 35 // TODO: Tiles per unit (bp)
+            tessellationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
+            tessellationTiles: 35 // TODO: Tiles per unit (bp)
         };
     }
 
@@ -60,12 +60,12 @@ export default class RectMark extends Mark {
             this.getContext()
                 .genomeSpy.getDomain()
                 .width() /
-                this.properties.tesselationZoomThreshold
+                this.properties.tessellationZoomThreshold
         ) {
             // TODO: Only bufferize the samples that are being animated
             this._sampleBufferInfo = this._createSampleBufferInfo(
                 interval,
-                interval.width() / this.properties.tesselationTiles
+                interval.width() / this.properties.tessellationTiles
             );
         }
     }
@@ -77,18 +77,18 @@ export default class RectMark extends Mark {
     /**
      *
      * @param {number[]} [interval]
-     * @param {number} [tesselationThreshold]
+     * @param {number} [tessellationThreshold]
      */
-    _createSampleBufferInfo(interval, tesselationThreshold) {
+    _createSampleBufferInfo(interval, tessellationThreshold) {
         const numItems = [...this.dataByFacet.values()]
             .map(arr => arr.length)
             .reduce((a, c) => a + c, 0);
 
-        // TODO: Disable tesselation on SimpleTrack - no need for it
+        // TODO: Disable tessellation on SimpleTrack - no need for it
         const builder = new RectVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            tesselationThreshold,
+            tessellationThreshold,
             visibleRange: interval,
             numItems,
             buildXIndex: this.properties.buildIndex
@@ -126,8 +126,8 @@ export default class RectMark extends Mark {
         this._fullSampleBufferInfo = this._createSampleBufferInfo(
             undefined,
             domainWidth /
-                this.properties.tesselationZoomThreshold /
-                this.properties.tesselationTiles
+                this.properties.tessellationZoomThreshold /
+                this.properties.tessellationTiles
         );
         this._sampleBufferInfo = this._fullSampleBufferInfo;
 
