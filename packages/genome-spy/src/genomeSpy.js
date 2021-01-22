@@ -4,9 +4,6 @@ import { scale as vegaScale } from "vega-scale";
 import "./styles/genome-spy.scss";
 import Tooltip from "./utils/ui/tooltip";
 
-import Genome from "./genome/genome";
-
-import RealCoordinateSystem from "./realCoordinateSystem";
 import AccessorFactory from "./encoder/accessor";
 import {
     createView,
@@ -32,6 +29,7 @@ import scaleIndex from "./genome/scaleIndex";
 import { buildDataFlow } from "./view/flowBuilder";
 import { optimizeDataFlow } from "./data/flowOptimizer";
 import scaleNull from "./utils/scaleNull";
+import GenomeStore from "./genome/genomeStore";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -65,13 +63,13 @@ export default class GenomeSpy {
 
         this.accessorFactory = new AccessorFactory();
 
-        /** @type {import("./coordinateSystem").default} */
-        this.coordinateSystem = null;
-
         /** @type {(function(string):object[])[]} */
         this.namedDataProviders = [];
 
         this.animator = new Animator(() => this.renderAll());
+
+        /** @type {GenomeStore} */
+        this.genomeStore = undefined;
     }
 
     /**
@@ -149,19 +147,17 @@ export default class GenomeSpy {
 
     async _prepareViewsAndData() {
         if (this.config.genome) {
-            this.coordinateSystem = new Genome(this.config.genome);
-        } else {
-            this.coordinateSystem = new RealCoordinateSystem();
+            this.genomeStore = new GenomeStore(this);
+            await this.genomeStore.initialize(this.config.genome);
         }
-        await this.coordinateSystem.initialize(this);
 
         /** @type {import("./view/viewContext").default} */
         const context = {
-            coordinateSystem: this.coordinateSystem,
             dataFlow: new DataFlow(),
             accessorFactory: this.accessorFactory,
             glHelper: this._glHelper,
             animator: this.animator,
+            genomeStore: this.genomeStore,
             requestLayoutReflow: this.computeLayout.bind(this),
             updateTooltip: this.updateTooltip.bind(this)
         };
@@ -190,19 +186,6 @@ export default class GenomeSpy {
                 unitViews.push(view);
             }
         });
-
-        // If the coordinate system has a hard extent, use it
-        // TODO: Should be set for each scale. Breaks on independent scales!!
-        if (this.coordinateSystem.getExtent()) {
-            this.viewRoot
-                .getScaleResolution("x")
-                .setDomain(
-                    createDomain(
-                        "quantitative",
-                        this.coordinateSystem.getExtent().toArray()
-                    )
-                );
-        }
 
         // Create encoders (accessors, scales and related metadata)
         unitViews.forEach(view => view.mark.initializeEncoders());

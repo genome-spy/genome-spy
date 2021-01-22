@@ -12,8 +12,6 @@ import {
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
 import getProvenanceButtons from "../sampleHandler/provenanceToolbar";
-import DecoratorView from "../view/decoratorView";
-import Interval from "../utils/interval";
 import { zoomLinear } from "vega-util";
 
 /**
@@ -50,13 +48,6 @@ export default class GenomeSpyApp {
                         <li>chr8:21,445,873-24,623,697</li>
                         <li>chr4:166,014,727-chr15:23,731,397</li>
                     </ul>
-
-                    ${/*unsafeHTML(
-                        (self.genomeSpy
-                            ? self.genomeSpy.tracks.map(t => t.searchHelp())
-                            : []
-                        ).join("")
-                        )*/ ""}
                 </div>
             `;
         }
@@ -236,31 +227,9 @@ export default class GenomeSpyApp {
     }
 
     async launch() {
-        const elem = /** @param {string} className */ className =>
-            /** @type {HTMLElement} */ (this.appContainer.getElementsByClassName(
-                className
-            )[0]);
-
         await this.genomeSpy.launch();
 
-        const xResolution = this.getXResolution();
-        if (xResolution?.getScale().type == "locus") {
-            this._xResolution = xResolution;
-
-            this.getFormattedDomain = () =>
-                this.genomeSpy.coordinateSystem.formatInterval(
-                    Interval.fromArray(xResolution.getDomain())
-                );
-
-            const updateInput = () => {
-                // Could just call _renderTemplate here, but this is very likely more efficient
-                /** @type {HTMLInputElement} */ (elem(
-                    "search-input"
-                )).value = this.getFormattedDomain();
-            };
-            xResolution.addScaleObserver(updateInput);
-        }
-
+        this._initializeGenome();
         this._replayProvenanceFromUrl();
         // Update the UI now that GenomeSpy is initialized
         this._renderTemplate();
@@ -269,6 +238,31 @@ export default class GenomeSpyApp {
             this._renderTemplate();
             this._updateUrl();
         });
+    }
+
+    _initializeGenome() {
+        const genomeResolution = this.findGenomeScaleResolution();
+        if (genomeResolution) {
+            this._genomeResolution = genomeResolution;
+            this._genome = this.genomeSpy.genomeStore.getGenome();
+
+            this.getFormattedDomain = () =>
+                this._genome.formatInterval(genomeResolution.getDomain());
+
+            const elem = /** @param {string} className */ className =>
+                /** @type {HTMLElement} */ (this.appContainer.getElementsByClassName(
+                    className
+                )[0]);
+
+            const updateInput = () => {
+                // Could just call _renderTemplate here, but this is very likely more efficient
+                /** @type {HTMLInputElement} */ (elem(
+                    "search-input"
+                )).value = this.getFormattedDomain();
+            };
+
+            genomeResolution.addScaleObserver(updateInput);
+        }
     }
 
     /**
@@ -344,12 +338,28 @@ export default class GenomeSpyApp {
         return this.getSampleView()?.sampleHandler;
     }
 
-    getXResolution() {
-        // TODO: Proper search. More complex hierarchies may be used later on...
-        return (this.genomeSpy.viewRoot instanceof DecoratorView
-            ? this.genomeSpy.viewRoot.child
-            : this.genomeSpy.viewRoot
-        ).getScaleResolution("x");
+    /**
+     * Finds a scale resolution that has a zoomable locus scale
+     */
+    findGenomeScaleResolution() {
+        /** @type {import("../view/scaleResolution").default} */
+        let match;
+
+        this.genomeSpy.viewRoot.visit(view => {
+            for (const channel of ["x", "y"]) {
+                const resolution = view.resolutions.scale[channel];
+                if (
+                    resolution &&
+                    resolution.type == "locus" &&
+                    resolution.isZoomable()
+                ) {
+                    match = resolution;
+                    return VISIT_STOP;
+                }
+            }
+        });
+
+        return match;
     }
 
     /**
@@ -362,11 +372,14 @@ export default class GenomeSpyApp {
         });
         for (const view of this.genomeSpy.getSearchableViews()) {
             const sa = view.getAccessor("search");
+
             const xa = view.getAccessor("x");
             const x2a = view.getAccessor("x2");
-            const resolution = view.getScaleResolution("x");
+            const xResolution = view.getScaleResolution("x");
 
-            if (!xa || !x2a || !resolution?.isZoomable()) {
+            // TODO: y
+
+            if (!xa || !x2a || !xResolution?.isZoomable()) {
                 continue;
             }
 
@@ -377,14 +390,28 @@ export default class GenomeSpyApp {
             if (index >= 0) {
                 const d = data[index];
                 const interval = zoomLinear([xa(d), x2a(d)], null, 1.2);
-                resolution.zoomTo(interval);
+                xResolution.zoomTo(interval);
                 view.context.animator.requestRender();
+                return true;
             }
         }
     }
 
-    async search(string) {
-        console.log(this.searchViews(string));
+    /**
+     * @param {string} term
+     */
+    // eslint-disable-next-line require-await
+    async search(term) {
+        if (this._genomeResolution && this._genome) {
+            const interval = this._genome.parseInterval(term);
+            if (interval) {
+                this._genomeResolution.zoomTo(interval);
+                this.genomeSpy.animator.requestRender();
+                return;
+            }
+        }
+
+        this.searchViews(term);
     }
 }
 

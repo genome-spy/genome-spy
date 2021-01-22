@@ -1,5 +1,4 @@
 import ChromMapper from "./chromMapper";
-import Interval from "../utils/interval";
 
 describe("Human genome, chromosome names prefixed with 'chr'", () => {
     // Actually, the chromosomes are just named as in hg38, for example
@@ -56,7 +55,7 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
             number: 2,
             continuousStart: 10,
             continuousEnd: 30,
-            continuousInterval: new Interval(10, 30),
+            continuousInterval: [10, 30],
             odd: false
         });
     });

@@ -14,9 +14,7 @@ import {
     isPositionalChannel
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
-import { parseSizeDef } from "../utils/layout/flexLayout";
 import { getCachedOrCall } from "../utils/propertyCacher";
-import FacetView from "./facetView";
 import AxisResolution from "./axisResolution";
 
 /**
@@ -212,11 +210,6 @@ export default class UnitView extends View {
         }
 
         return super.getFacetAccessor(this);
-    }
-
-    _getCoordinateSystemExtent() {
-        const cs = this.context.coordinateSystem;
-        return (cs && cs.getExtent()) || undefined;
     }
 
     getCollectedData() {

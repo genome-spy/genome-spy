@@ -76,7 +76,7 @@ export default class RectMark extends Mark {
 
     /**
      *
-     * @param {import("../utils/interval").default} [interval]
+     * @param {number[]} [interval]
      * @param {number} [tesselationThreshold]
      */
     _createSampleBufferInfo(interval, tesselationThreshold) {
@@ -89,7 +89,7 @@ export default class RectMark extends Mark {
             encoders: this.encoders,
             attributes: this.getAttributes(),
             tesselationThreshold,
-            visibleRange: interval ? interval.toArray() : undefined,
+            visibleRange: interval,
             numItems,
             buildXIndex: this.properties.buildIndex
         });
@@ -124,7 +124,7 @@ export default class RectMark extends Mark {
         const domainWidth = xDomain ? xDomain.width() : Infinity;
 
         this._fullSampleBufferInfo = this._createSampleBufferInfo(
-            null,
+            undefined,
             domainWidth /
                 this.properties.tesselationZoomThreshold /
                 this.properties.tesselationTiles

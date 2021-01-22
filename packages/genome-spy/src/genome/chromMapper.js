@@ -1,5 +1,4 @@
 import { bisect } from "d3-array";
-import Interval from "../utils/interval";
 
 /**
  * @typedef {object} ChromosomalLocus
@@ -15,7 +14,7 @@ import Interval from "../utils/interval";
  * @prop {number} number 1-based index
  * @prop {number} continuousStart zero-based start, inclusive
  * @prop {number} continuousEnd zero-based end, exclusive
- * @prop {Interval} continuousInterval
+ * @prop {[number, number]} continuousInterval
  * @prop {boolean} odd true if odd chrom number
  */
 
@@ -50,7 +49,7 @@ export default class ChromMapper {
 
             chrom.continuousStart = pos;
             chrom.continuousEnd = pos + chrom.size;
-            chrom.continuousInterval = new Interval(pos, pos + chrom.size);
+            chrom.continuousInterval = [pos, pos + chrom.size];
             chrom.index = i;
             chrom.number = i + 1;
             // eslint-disable-next-line no-bitwise
@@ -124,16 +123,6 @@ export default class ChromMapper {
         }
     }
 
-    /**
-     * @param {string} chrom
-     * @param {number} start
-     * @param {number} end
-     */
-    segmentToContinuous(chrom, start, end) {
-        const offset = this.startByName.get(chrom);
-        return new Interval(offset + start, offset + end);
-    }
-
     getChromosomes() {
         return this.chromosomes;
     }
@@ -144,5 +133,9 @@ export default class ChromMapper {
      */
     getChromosome(name) {
         return this.chromosomesByName.get(name);
+    }
+
+    getExtent() {
+        return [0, this.totalSize];
     }
 }

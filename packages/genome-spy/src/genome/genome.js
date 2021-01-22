@@ -2,21 +2,19 @@ import { tsvParseRows } from "d3-dsv";
 import { loader } from "vega-loader";
 import { field, accessorFields } from "vega-util";
 import ChromMapper from "./chromMapper";
-import CoordinateSystem from "../coordinateSystem";
-import Interval from "../utils/interval";
 import { formatRange } from "./locusFormat";
 
 const defaultBaseUrl = "https://genomespy.app/data/genomes/";
+
 /**
  * @typedef {import("../spec/genome").GenomeConfig} GenomeConfig
  */
 
-export default class Genome extends CoordinateSystem {
+export default class Genome {
     /**
      * @param {GenomeConfig} config
      */
     constructor(config) {
-        super();
         this.config = config;
 
         if (!this.config.contigs && typeof this.config.name !== "string") {
@@ -59,6 +57,7 @@ export default class Genome extends CoordinateSystem {
         }
         this.chromMapper = new ChromMapper(this.chromSizes);
 
+        // TODO: Support multiple genomes
         genomeSpy.accessorFactory.register(encoding => {
             if (encoding.chrom && encoding.pos) {
                 const offset =
@@ -79,6 +78,7 @@ export default class Genome extends CoordinateSystem {
             }
         });
 
+        // TODO: Support multiple genomes
         genomeSpy.registerNamedDataProvider(name => {
             if (name == "chromSizes") {
                 return this.chromMapper.getChromosomes();
@@ -94,14 +94,14 @@ export default class Genome extends CoordinateSystem {
      * The inteval is shown as one-based closed-open range.
      * See https://genome.ucsc.edu/FAQ/FAQtracks#tracks1
      *
-     * @param {import("../utils/interval").default} interval
+     * @param {number[]} interval
      * @returns {string}
      */
     formatInterval(interval) {
         // Round the lower end
-        const begin = this.chromMapper.toChromosomal(interval.lower + 0.5);
+        const begin = this.chromMapper.toChromosomal(interval[0] + 0.5);
         // Because of the open upper bound, one is first subtracted from the upper bound and later added back.
-        const end = this.chromMapper.toChromosomal(interval.upper - 1);
+        const end = this.chromMapper.toChromosomal(interval[1] - 1);
         end.pos += 1;
 
         return formatRange(begin, end);
@@ -110,7 +110,7 @@ export default class Genome extends CoordinateSystem {
     /**
      *
      * @param {string} str
-     * @returns {import("../utils/interval").default}
+     * @returns {[number, number]}
      */
     parseInterval(str) {
         // TODO: consider changing [0-9XY] to support other species besides humans
@@ -125,22 +125,11 @@ export default class Genome extends CoordinateSystem {
             const startIndex = parseInt(matches[2].replace(/,/g, ""));
             const endIndex = parseInt(matches[4].replace(/,/g, ""));
 
-            return new Interval(
+            return [
                 this.chromMapper.toContinuous(startChr, startIndex - 1),
                 this.chromMapper.toContinuous(endChr, endIndex)
-            );
-        } else {
-            return null;
+            ];
         }
-    }
-
-    /**
-     * If the coordinate system has a hard extent, return it. Otherwise returns undefined.
-     *
-     * @returns {import("../utils/interval").default}
-     */
-    getExtent() {
-        return new Interval(0, this.chromMapper.totalSize);
     }
 }
 

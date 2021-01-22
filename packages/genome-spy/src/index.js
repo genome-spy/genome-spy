@@ -4,8 +4,6 @@ import { loader as vegaLoader } from "vega-loader";
 import GenomeSpy from "./genomeSpy.js";
 import GenomeSpyApp from "./app/genomeSpyApp.js";
 
-export { default as Interval } from "./utils/interval.js";
-
 export { GenomeSpy, GenomeSpyApp };
 
 /**

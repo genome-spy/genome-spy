@@ -11,18 +11,18 @@ import {
     isDiscreteChannel,
     isPositionalChannel
 } from "../encoder/encoder";
+import createDomain, { DomainArray } from "../utils/domainArray";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
 export const NOMINAL = "nominal";
 export const LOCUS = "locus"; // Humdum, should this be "genomic"?
+export const INDEX = "index";
 
 /**
  * Resolution takes care of merging domains and scales from multiple views.
  * This class also provides some utility methods for zooming the scales etc..
  *
- * @typedef {import("../utils/domainArray").DomainArray} DomainArray
- * @typedef {import("../utils/interval").default} Interval
  * @typedef { import("./unitView").default} UnitView
  * @typedef {import("../encoder/encoder").VegaScale} VegaScale
  */
@@ -144,16 +144,20 @@ export default class ScaleResolution {
                 ...getLockedScaleProperties(this.channel)
             };
 
-            const domain = this.getDataDomain();
-            if (domain && domain.length > 0) {
-                props.domain = domain;
+            if (this.type == LOCUS) {
+                props.domain = this._getGenome().chromMapper.getExtent();
+            } else {
+                const domain = this.getDataDomain();
+                if (domain && domain.length > 0) {
+                    props.domain = domain;
+                }
             }
 
             if (!props.type) {
                 props.type = getDefaultScaleType(this.channel, this.type);
             }
 
-            if (props.type == "locus" && !("fp64" in props)) {
+            if (props.type == LOCUS && !("fp64" in props)) {
                 props.fp64 = true;
             }
 
@@ -180,12 +184,17 @@ export default class ScaleResolution {
      * Set an explicit domain that overrides all other configurations and
      * computed domains
      *
-     * @param {DomainArray} domain
+     * @param {DomainArray | any[]} domain
      */
     setDomain(domain) {
-        this._explicitDomain = domain;
+        const domainArray =
+            domain instanceof DomainArray
+                ? domain
+                : createDomain(this.type, domain);
+
+        this._explicitDomain = domainArray;
         if (this._scale) {
-            this._scale.domain(domain);
+            this._scale.domain(domainArray);
         }
         expire(this, "scaleProps");
     }
@@ -211,7 +220,7 @@ export default class ScaleResolution {
      * Returns the domain of the scale
      */
     getDomain() {
-        return this.getScale()?.domain();
+        return this.getScale().domain();
     }
 
     /**
@@ -240,7 +249,9 @@ export default class ScaleResolution {
         this._scale = scale;
 
         if (scale.type == "locus") {
-            this._configureGenome();
+            const cm = this._getGenome().chromMapper;
+            this.setDomain(cm.getExtent());
+            scale.chromMapper(cm);
         }
 
         // Tag the scale and inform encoders and shaders that emulated
@@ -381,13 +392,12 @@ export default class ScaleResolution {
         return props;
     }
 
-    _configureGenome() {
-        // Aargh what a hack
-        const cm = /** @type {import("../genome/genome").default}*/ (this
-            .views[0].context.coordinateSystem).chromMapper;
-        /** @type {import("../genome/scaleLocus").default} */ (this._scale).chromMapper(
-            cm
-        );
+    _getGenome() {
+        if (this.type !== "locus") {
+            return undefined;
+        }
+
+        return this.views[0].context.genomeStore.getGenome();
     }
 
     _getViewPaths() {
@@ -403,7 +413,7 @@ export default class ScaleResolution {
 function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
 
-    if (["index", LOCUS].includes(dataType)) {
+    if ([INDEX, LOCUS].includes(dataType)) {
         if ("xy".includes(channel)) {
             return dataType;
         } else {
