@@ -77,7 +77,7 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec).then(view =>
-            expect(r(view.getExplicitDomain("y"))).toEqual([0, 1000])
+            expect(r(view.getConfiguredDomain("y"))).toEqual([0, 1000])
         );
     });
 
