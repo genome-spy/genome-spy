@@ -72,8 +72,7 @@ export class SampleAttributePanel extends ConcatView {
                     (event.target &&
                         this.getAttributeInfoFromView(event.target)?.name) ||
                     undefined;
-                // The following breaks if sample or attribute name contains *
-                const id = `${sample.id}*${attribute}`;
+                const id = JSON.stringify([sample.id, attribute]);
                 this.context.updateTooltip(id, id => this.sampleToTooltip(id));
             }
         });
@@ -376,9 +375,8 @@ export class SampleAttributePanel extends ConcatView {
      * @param {string} sampleAndAttribute
      */
     sampleToTooltip(sampleAndAttribute) {
-        const [_, sampleId, attribute] = sampleAndAttribute.match(
-            /^(.+)\*(.*)$/
-        );
+        /** @type {string[]} */
+        const [sampleId, attribute] = JSON.parse(sampleAndAttribute);
 
         const sample = this.parent.sampleMap.get(sampleId);
 
