@@ -164,10 +164,7 @@ export class SampleAttributePanel extends ConcatView {
             items.push(...this.generateSampleContextMenu(sample, dispatch));
         }
 
-        // TODO: Better integration with tooltip. Put the logic to contextMenu somehow.
-        this.context.updateTooltip(null);
-
-        contextMenu({ items }, mouseEvent);
+        this.context.contextMenu({ items }, mouseEvent);
     }
 
     /**

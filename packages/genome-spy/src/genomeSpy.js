@@ -22,7 +22,7 @@ import LayoutRecorderViewRenderingContext from "./view/renderingContext/layoutRe
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext";
 import InteractionEvent from "./utils/interactionEvent";
 import Point from "./utils/layout/point";
-import { isContextMenuOpen } from "./utils/ui/contextMenu";
+import contextMenu, { isContextMenuOpen } from "./utils/ui/contextMenu";
 import Animator from "./utils/animator";
 import DataFlow from "./data/dataFlow";
 import scaleIndex from "./genome/scaleIndex";
@@ -159,7 +159,8 @@ export default class GenomeSpy {
             animator: this.animator,
             genomeStore: this.genomeStore,
             requestLayoutReflow: this.computeLayout.bind(this),
-            updateTooltip: this.updateTooltip.bind(this)
+            updateTooltip: this.updateTooltip.bind(this),
+            contextMenu: this.contextMenu.bind(this)
         };
 
         /** @type {import("./spec/view").ConcatSpec & RootConfig} */
@@ -308,7 +309,7 @@ export default class GenomeSpy {
             return;
         }
 
-        if (!this._tooltipUpdateRequested) {
+        if (!this._tooltipUpdateRequested || !datum) {
             this.tooltip.updateWithDatum(datum, converter);
             this._tooltipUpdateRequested = true;
         } else {
@@ -316,6 +317,15 @@ export default class GenomeSpy {
                 "Tooltip has already been updated! Duplicate event handler?"
             );
         }
+    }
+
+    /**
+     * @param {import("./utils/ui/contextMenu").MenuOptions} options
+     * @param {MouseEvent} mouseEvent
+     */
+    contextMenu(options, mouseEvent) {
+        this.tooltip.clear();
+        contextMenu(options, mouseEvent);
     }
 
     computeLayout() {

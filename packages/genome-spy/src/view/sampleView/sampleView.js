@@ -572,7 +572,7 @@ export default class SampleView extends ContainerView {
             );
         }
 
-        contextMenu({ items }, mouseEvent);
+        this.context.contextMenu({ items }, mouseEvent);
     }
 
     /**

@@ -5,6 +5,7 @@ import AccessorFactory from "../encoder/accessor";
 import WebGLHelper from "../gl/webGLHelper";
 import Animator from "../utils/animator";
 import GenomeStore from "../genome/genomeStore";
+import { MenuOptions } from "../utils/ui/contextMenu";
 
 export default interface ViewContext {
     dataFlow: DataFlow<View>;
@@ -19,4 +20,6 @@ export default interface ViewContext {
         datum: T,
         converter?: (datum: T) => string | TemplateResult
     ) => void;
+
+    contextMenu: (options: MenuOptions, mouseEvent: MouseEvent) => void;
 }

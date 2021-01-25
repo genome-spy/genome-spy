@@ -26,7 +26,7 @@ export function isContextMenuOpen() {
 function clearMenu() {
     if (currentlyOpenMenuElement) {
         currentlyOpenMenuElement.remove();
-        currentlyOpenMenuElement = null;
+        currentlyOpenMenuElement = undefined;
     }
 }
 
@@ -63,7 +63,7 @@ export default function contextMenu(options, mouseEvent) {
                                 @mouseup=${() => {
                                     // Prevent accidental selection when the position of an overflowing menu has been adjusted
                                     if (performance.now() - openedAt > 200) {
-                                        menuElement.remove();
+                                        clearMenu();
                                         item.callback();
                                     }
                                 }}
