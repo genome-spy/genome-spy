@@ -4,7 +4,7 @@ import FP64 from "./includes/fp64-arithmetic.glsl";
 import GLSL_COMMON from "./includes/common.glsl";
 import GLSL_SCALES from "./includes/scales.glsl";
 import GLSL_SCALES_FP64 from "./includes/scales_fp64.glsl";
-import GLSL_SAMPLE_TRANSITION from "./includes/sampleTransition.glsl";
+import GLSL_SAMPLE_FACET from "./includes/sampleFacet.glsl";
 
 export default class WebGLHelper {
     /**
@@ -86,11 +86,7 @@ export default class WebGLHelper {
      * @param {string[]} [extraHeaders]
      */
     compileShaders(vertexCode, fragmentCode, extraHeaders) {
-        const vertexIncludes = [
-            GLSL_COMMON,
-            GLSL_SCALES,
-            GLSL_SAMPLE_TRANSITION
-        ];
+        const vertexIncludes = [GLSL_COMMON, GLSL_SCALES, GLSL_SAMPLE_FACET];
 
         if (/[Ff]p64/.test(vertexCode)) {
             vertexIncludes.push(FP64);
