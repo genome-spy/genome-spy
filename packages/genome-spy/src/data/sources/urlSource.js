@@ -32,7 +32,8 @@ export default class UrlSource extends DataSource {
         /** @type {string[]} */
         const urls = Array.isArray(url) ? url : [url];
 
-        const promises = urls.map(async url => {
+        /** @param {string} url */
+        const load = async url => {
             try {
                 // TODO: Support chunked loading
                 return /** @type {string} */ (vegaLoader({
@@ -41,13 +42,10 @@ export default class UrlSource extends DataSource {
             } catch (e) {
                 throw new Error(`Cannot fetch: ${url}: ${e.message}`);
             }
-        });
+        };
 
-        this.reset();
-
-        for (const promise of promises) {
-            const text = await promise;
-
+        /** @param {string} text */
+        const readAndParse = text => {
             try {
                 /** @type {any[]} */
                 const data = read(text, getFormat(this.params));
@@ -57,7 +55,11 @@ export default class UrlSource extends DataSource {
             } catch (e) {
                 throw new Error(`Cannot parse: ${url}: ${e.message}`);
             }
-        }
+        };
+
+        this.reset();
+
+        await Promise.all(urls.map(url => load(url).then(readAndParse)));
 
         this.complete();
     }
