@@ -199,7 +199,9 @@ export default class ScaleResolution {
             expire(this, "scaleProps");
             const props = this.getScaleProps();
             configureScale(props, this._scale);
-            this._originalDomain = [...props.domain];
+            if (props.domain) {
+                this._originalDomain = [...props.domain];
+            }
         }
     }
 
