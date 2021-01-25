@@ -29,7 +29,7 @@ export default class GenomeSpyApp {
         this.config = config;
 
         this.appContainer = appContainerElement;
-        if (this.appContainer == document.body) {
+        if (this.isFullPage()) {
             this.appContainer.style.margin = "0";
             this.appContainer.style.padding = "0";
         } else {
@@ -226,8 +226,16 @@ export default class GenomeSpyApp {
         );
     }
 
+    isFullPage() {
+        return this.appContainer == document.body;
+    }
+
     async launch() {
         await this.genomeSpy.launch();
+
+        if (this.isFullPage() && this.genomeSpy.config.title) {
+            document.title = "GenomeSpy - " + this.genomeSpy.config.title;
+        }
 
         this._initializeGenome();
         this._replayProvenanceFromUrl();
