@@ -1,3 +1,4 @@
+import { isNumber } from "vega-util";
 import { ATTRIBUTE_PREFIX } from "../scale/glslScaleGenerator";
 
 /**
@@ -58,7 +59,12 @@ export default class ArrayBuilder {
         /** @type {number | number[] | Float32Array} */
         let pendingValue = arrayReference ? arrayReference : undefined;
 
-        const typed = !!this.size;
+        const typed = isNumber(this.size);
+
+        // TODO: Optimize!
+        // Having an untyped array here apparently causes V8 to ruin (deoptimize) the code,
+        // which leads to a massive (like 5x) performance loss on all subsequent
+        // ArrayBuilder instances.
 
         /** @type {number[] | Float32Array} */
         const array = typed ? new Float32Array(this.size * numComponents) : [];
@@ -123,7 +129,7 @@ export default class ArrayBuilder {
 
         for (let i = 0; i < this.pushers.length; i++) {
             preps += `const p${i} = that.pushers[${i}];\n`;
-            pushs += `p${i}()\n`;
+            pushs += `p${i}();\n`;
         }
 
         // eslint-disable-next-line no-new-func

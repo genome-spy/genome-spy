@@ -121,7 +121,7 @@ export default class PointMark extends Mark {
         const builder = new PointVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            numItems: Math.min(itemCount, this.properties.minBufferSize || 0)
+            numItems: Math.max(itemCount, this.properties.minBufferSize || 0)
         });
 
         for (const [sample, points] of this.dataByFacet.entries()) {
