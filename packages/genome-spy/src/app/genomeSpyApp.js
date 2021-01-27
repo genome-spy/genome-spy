@@ -7,7 +7,8 @@ import { html, render } from "lit-html";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faInfoCircle,
-    faQuestionCircle
+    faQuestionCircle,
+    faExpandArrowsAlt
 } from "@fortawesome/free-solid-svg-icons";
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
@@ -75,6 +76,14 @@ export default class GenomeSpyApp {
                     : ""}
 
                 <span class="spacer"></span>
+
+                <button
+                    class="tool-btn"
+                    title="Fullscreen"
+                    @click=${() => self.toggleFullScreen()}
+                >
+                    ${icon(faExpandArrowsAlt).node[0]}
+                </button>
 
                 <button
                     class="tool-btn"
@@ -224,6 +233,14 @@ export default class GenomeSpyApp {
             elem("genome-spy-container"),
             this.config
         );
+    }
+
+    toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            this.appContainer.requestFullscreen();
+        } else if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
     }
 
     isFullPage() {
