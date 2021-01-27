@@ -1,6 +1,3 @@
-
-#pragma SCALES_HERE
-
 /**
  * The vertex position wrt the rectangle specified by (x, x2, y, y2).
  * [0, 0] = [x, y], [1, 1] = [x2, y2]. 

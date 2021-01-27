@@ -381,23 +381,16 @@ export default class Mark {
               "};\n\n"
             : "";
 
-        // TODO: Remove "pragma"
-        const vertexShaderWithScales = /** @type {string} */ (vertexShader).replace(
-            "#pragma SCALES_HERE",
-            ""
-        );
-
         const shaders = this.glHelper.compileShaders(
-            vertexShaderWithScales,
+            vertexShader,
             fragmentShader,
             domainUniformBlock + scaleCode.join("\n\n"),
             extraHeaders
         );
 
-        this.programStatus = createProgram(this.gl, shaders[0], shaders[1]);
-
         // Postpone status checking to allow for background compilation
         // See: https://toji.github.io/shader-perf/
+        this.programStatus = createProgram(this.gl, shaders[0], shaders[1]);
     }
 
     /**

@@ -1,7 +1,5 @@
 precision mediump float;
 
-#pragma SCALES_HERE
-
 /** Maximum size of the largest point as the fraction of the height of the (faceted) view */
 uniform lowp float uMaxRelativePointDiameter;
 /** Minimum width/height in pixels of the largest point */

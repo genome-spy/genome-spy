@@ -1,5 +1,3 @@
-#pragma SCALES_HERE
-
 uniform float uSdfNumerator;
 
 uniform vec2 uD; // dx & dy

@@ -1,5 +1,3 @@
-#pragma SCALES_HERE
-
 // Line caps
 const int BUTT = 0;
 const int SQUARE = 1;
