@@ -260,8 +260,8 @@ export default class View {
     }
 
     /**
-     * ViewRenderingContext calls this method at least once during each rendering
-     * pass.
+     * ViewRenderingContext calls this method once for each view during each rendering
+     * pass. The order is depth first, pre order.
      */
     onBeforeRender() {
         //

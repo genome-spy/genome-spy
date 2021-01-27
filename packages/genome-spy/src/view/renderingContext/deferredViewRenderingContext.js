@@ -22,8 +22,8 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
         /** @type {import("../../utils/layout/rectangle").default} */
         this.coords = undefined;
 
-        /** @type {(import("../view").default)[]} */
-        this.views = [];
+        /** @type {Set<import("../view").default>} */
+        this.views = new Set();
     }
 
     /**
@@ -34,7 +34,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      *      inside the padding.
      */
     pushView(view, coords) {
-        this.views.push(view);
+        this.views.add(view);
         this.coords = coords;
     }
 

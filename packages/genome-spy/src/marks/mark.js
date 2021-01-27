@@ -22,6 +22,10 @@ import {
 } from "../scale/colorUtils";
 import { isString } from "vega-util";
 import { createProgram } from "../gl/webGLHelper";
+import SampleView from "../view/sampleView/sampleView";
+
+export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
+export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 
 /**
  *
@@ -79,7 +83,7 @@ export default class Mark {
     }
 
     getSupportedChannels() {
-        return ["x", "y", "color", "opacity", "search"];
+        return ["facetIndex", "x", "y", "color", "opacity", "search"];
     }
 
     /**
@@ -310,6 +314,20 @@ export default class Mark {
         // override
     }
 
+    _findSampleView() {
+        return /** @type {SampleView} */ (this.unitView
+            .getAncestors()
+            .find(view => view instanceof SampleView));
+    }
+
+    getSampleFacetMode() {
+        if (this.encoders.facetIndex) {
+            return SAMPLE_FACET_TEXTURE;
+        } else if (this.unitView.getFacetAccessor()) {
+            return SAMPLE_FACET_UNIFORM;
+        }
+    }
+
     /**
      *
      * @param {string} vertexShader
@@ -319,12 +337,20 @@ export default class Mark {
     createAndLinkShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const attributes = this.getAttributes();
 
+        // For debugging
+        extraHeaders.push("// view: " + this.unitView.getPathString());
+
         // TODO: This is a temporary variable, don't store it in the mark object
         /** @type {string[]} */
         this.domainUniforms = [];
 
         /** @type {string[]} */
         let scaleCode = [];
+
+        const sampleFacetMode = this.getSampleFacetMode();
+        if (sampleFacetMode) {
+            extraHeaders.push(`#define ${sampleFacetMode}`);
+        }
 
         for (const channel of attributes) {
             const channelDef = this.encoding[channel];
@@ -355,14 +381,16 @@ export default class Mark {
               "};\n\n"
             : "";
 
+        // TODO: Remove "pragma"
         const vertexShaderWithScales = /** @type {string} */ (vertexShader).replace(
             "#pragma SCALES_HERE",
-            domainUniformBlock + scaleCode.join("\n\n")
+            ""
         );
 
         const shaders = this.glHelper.compileShaders(
             vertexShaderWithScales,
             fragmentShader,
+            domainUniformBlock + scaleCode.join("\n\n"),
             extraHeaders
         );
 
@@ -531,6 +559,12 @@ export default class Mark {
             });
         }
 
+        if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
+            twgl.setUniforms(this.programInfo, {
+                uSampleFacetTexture: this._findSampleView().facetTexture
+            });
+        }
+
         twgl.setUniforms(this.programInfo, {
             ONE: 1.0, // a hack needed by emulated 64 bit floats
             uDevicePixelRatio: this.glHelper.dpr,
@@ -561,7 +595,9 @@ export default class Mark {
      */
     prepareSampleFacetRendering(options) {
         const opts = options.sampleFacetRenderingOptions;
-        if (opts) {
+        const locationSetter = this.programInfo.uniformSetters.uSampleFacet;
+
+        if (opts && locationSetter) {
             const pos = opts.locSize ? opts.locSize.location : 0.0;
             const height = opts.locSize ? opts.locSize.size : 1.0;
 
@@ -581,7 +617,7 @@ export default class Mark {
             // inferior performance. Based on profiling, this optimization gives
             // a significant performance boost.
             this.gl.uniform4f(
-                this.programInfo.uniformSetters.uSampleFacet.location,
+                locationSetter.location, // TODO: Make a twgl pull request to fix typing
                 pos,
                 height,
                 targetPos,

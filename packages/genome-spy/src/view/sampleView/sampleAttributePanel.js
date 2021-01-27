@@ -1,14 +1,12 @@
 import { html } from "lit-html";
 import { classMap } from "lit-html/directives/class-map.js";
 
-import { field as vegaField } from "vega-util";
 import { inferType } from "vega-loader";
 
 import ConcatView from "../concatView";
 import UnitView from "../unitView";
 import { getCachedOrCall } from "../../utils/propertyCacher";
 import * as Actions from "../../sampleHandler/sampleHandlerActions";
-import contextMenu from "../../utils/ui/contextMenu";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
 import { buildDataFlow } from "../flowBuilder";
@@ -86,30 +84,13 @@ export class SampleAttributePanel extends ConcatView {
      * @param {View} [whoIsAsking]
      */
     getFacetAccessor(whoIsAsking) {
-        // All children display faceted data
-        return vegaField("id");
+        // Using texture texture-based faceting
+        return undefined;
     }
 
     getEncoding(whoIsAsking) {
         // Block all inheritance
         return {};
-    }
-
-    /**
-     * @param {import("../renderingContext/viewRenderingContext").default} context
-     * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../view").RenderingOptions} [options]
-     */
-    render(context, coords, options = {}) {
-        for (const sampleLocation of this.parent.getSampleLocations()) {
-            super.render(context, coords, {
-                ...options,
-                sampleFacetRenderingOptions: {
-                    locSize: sampleLocation.location
-                },
-                facetId: sampleLocation.sampleId
-            });
-        }
     }
 
     /**
@@ -426,21 +407,6 @@ export class SampleAttributePanel extends ConcatView {
 }
 
 /**
- *
- * @param {LocSize[]} locations
- */
-function locationsToTextureData(locations) {
-    // Create a RG32F texture
-    const arr = new Float32Array(locations.length * 2);
-    let i = 0;
-    for (const location of locations) {
-        arr[i++] = location.location;
-        arr[i++] = location.size;
-    }
-    return arr;
-}
-
-/**
  * @param {string} attributeName
  * @param {import("../../spec/view").SampleAttributeDef} attributeDef
  */
@@ -456,6 +422,7 @@ function createAttributeSpec(attributeName, attributeDef) {
             type: "rect"
         },
         encoding: {
+            facetIndex: { field: "indexNumber", type: "nominal" },
             color: {
                 field,
                 type: attributeDef.type,
@@ -491,6 +458,7 @@ function createLabelViewSpec() {
             flushY: false
         },
         encoding: {
+            facetIndex: { field: "indexNumber", type: "nominal" },
             x: { value: 0 },
             x2: { value: 1 },
             y: { value: 0 },

@@ -14,7 +14,7 @@ export default class ConnectionMark extends Mark {
     }
 
     getAttributes() {
-        return ["x2", "x2", "y", "y2", "color", "opacity"];
+        return ["facetIndex", "x2", "x2", "y", "y2", "color", "opacity"];
     }
 
     getSupportedChannels() {

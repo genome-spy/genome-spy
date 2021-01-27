@@ -11,6 +11,9 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
         super();
         /** @type {import("../../utils/layout/rectangle").default} */
         this.coords = undefined;
+
+        /** @type {Set<import("../view").default>} */
+        this.views = new Set();
     }
 
     /**
@@ -21,7 +24,12 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
      *      inside the padding.
      */
     pushView(view, coords) {
-        view.onBeforeRender();
+        if (!this.views.has(view)) {
+            // Ensure that the method is called only once, even when rendering facets.
+            view.onBeforeRender();
+            this.views.add(view);
+        }
+
         this.coords = coords;
     }
 

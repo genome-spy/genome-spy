@@ -83,14 +83,20 @@ export default class WebGLHelper {
     /**
      * @param {string} vertexCode
      * @param {string} fragmentCode
+     * @param {string} scaleCode
      * @param {string[]} [extraHeaders]
      */
-    compileShaders(vertexCode, fragmentCode, extraHeaders) {
-        const vertexIncludes = [GLSL_COMMON, GLSL_SCALES, GLSL_SAMPLE_FACET];
+    compileShaders(vertexCode, fragmentCode, scaleCode, extraHeaders = []) {
+        const vertexIncludes = [
+            GLSL_COMMON,
+            GLSL_SCALES,
+            scaleCode,
+            GLSL_SAMPLE_FACET
+        ];
 
-        if (/[Ff]p64/.test(vertexCode)) {
-            vertexIncludes.push(FP64);
-            vertexIncludes.push(GLSL_SCALES_FP64);
+        if ([vertexCode, scaleCode].some(code => /[Ff]p64/.test(code))) {
+            vertexIncludes.unshift(GLSL_SCALES_FP64);
+            vertexIncludes.unshift(FP64);
         }
 
         const fragmentIncludes = [GLSL_COMMON];
@@ -106,15 +112,19 @@ export default class WebGLHelper {
          * @param {string[]} includes
          */
         const compileAndCache = (type, shaderSource, includes) => {
-            const cacheKey =
-                "" + type + shaderSource + JSON.stringify(extraHeaders);
+            const cacheKey = JSON.stringify({
+                type,
+                shaderSource,
+                extraHeaders,
+                scaleCode: type == gl.VERTEX_SHADER ? scaleCode : null
+            });
             let shader = this._shaderCache.get(cacheKey);
             if (!shader) {
                 const stitchedSource = [
                     VERSION,
                     PRECISION,
                     this._shaderDefines || "",
-                    ...(extraHeaders || []),
+                    ...extraHeaders,
                     ...includes,
                     shaderSource
                 ].join("\n\n");

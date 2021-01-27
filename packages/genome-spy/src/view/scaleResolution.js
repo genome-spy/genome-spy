@@ -413,6 +413,7 @@ function getDefaultScaleType(channel, dataType) {
      * undefined = incompatible, "null" = disabled (pass-thru)
      */
     const defaults = {
+        facetIndex: ["null", undefined, undefined],
         x: ["band", "band", "linear"],
         y: ["band", "band", "linear"],
         size: [undefined, "point", "linear"],

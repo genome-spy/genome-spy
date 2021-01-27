@@ -1,12 +1,12 @@
 import { isNumber, span, error } from "vega-util";
 import { html } from "lit-html";
+import * as twgl from "twgl.js";
 import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
 import { mapToPixelCoords } from "../../utils/layout/flexLayout";
 import { SampleAttributePanel } from "./sampleAttributePanel";
 import SampleHandler from "../../sampleHandler/sampleHandler";
 import { peek } from "../../utils/arrayUtils";
-import contextMenu from "../../utils/ui/contextMenu";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
 import Padding from "../../utils/layout/padding";
@@ -71,6 +71,21 @@ export default class SampleView extends ContainerView {
             this,
             `sample`
         ));
+
+        /**
+         * There are to ways to manage how facets are drawn:
+         *
+         * 1) Use one draw call for each facet and pass the location data as a uniform.
+         * 2) Draw all facets with one call and pass the facet locations as a texture.
+         *
+         * The former is suitable for large datasets, which can be subsetted for better
+         * performance. The latter one is more performant for cases where each facet
+         * consists of few data items (sample attributes / metadata).
+         * @type {WebGLTexture}
+         */
+        this.facetTexture = undefined;
+        /** @type {Float32Array} */
+        this.facetTextureData = undefined;
 
         this.sampleHandler = new SampleHandler();
 
@@ -226,6 +241,11 @@ export default class SampleView extends ContainerView {
             throw new Error("Samples have already been set!");
         }
 
+        samples = samples.map((sample, index) => ({
+            ...sample,
+            indexNumber: index
+        }));
+
         this._samples = samples;
 
         this.sampleHandler.setSamples(samples.map(sample => sample.id));
@@ -236,6 +256,11 @@ export default class SampleView extends ContainerView {
         this.sampleAccessor = sampleId => this.sampleMap.get(sampleId);
 
         this.attributeView._setSamples(samples);
+
+        // Align size to four bytes
+        this.facetTextureData = new Float32Array(
+            Math.ceil((samples.length * 2) / 4) * 4
+        );
     }
 
     /**
@@ -417,6 +442,56 @@ export default class SampleView extends ContainerView {
         this.renderChild(context, toColumnCoords(cols[1]), options);
 
         context.popView(this);
+    }
+
+    onBeforeRender() {
+        // TODO: Only when needed
+        this._updateFacetTexture();
+    }
+
+    _updateFacetTexture() {
+        const sampleLocations = this.getSampleLocations();
+        const sampleMap = this.sampleMap;
+        const arr = this.facetTextureData;
+
+        arr.fill(0);
+
+        for (const sampleLocation of sampleLocations) {
+            // TODO: Get rid of the map lookup
+            const index = sampleMap.get(sampleLocation.sampleId).indexNumber;
+            arr[index * 2 + 0] = sampleLocation.location.location;
+            arr[index * 2 + 1] = sampleLocation.location.size;
+        }
+
+        const gl = this.context.glHelper.gl;
+        const options = {
+            internalFormat: gl.RG32F,
+            format: gl.RG,
+            height: 1
+        };
+
+        if (this.facetTexture) {
+            // Slow because of twgl's unpack-alignment hack:
+            //twgl.setTextureFromArray(gl, this.facetTexture, arr, options);
+
+            gl.bindTexture(gl.TEXTURE_2D, this.facetTexture);
+            gl.texImage2D(
+                gl.TEXTURE_2D,
+                0,
+                options.internalFormat,
+                arr.length / 2,
+                1,
+                0,
+                options.format,
+                gl.FLOAT,
+                arr
+            );
+        } else {
+            this.facetTexture = twgl.createTexture(gl, {
+                ...options,
+                src: arr
+            });
+        }
     }
 
     /**
