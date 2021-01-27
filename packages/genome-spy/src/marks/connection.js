@@ -14,7 +14,19 @@ export default class ConnectionMark extends Mark {
     }
 
     getAttributes() {
-        return ["facetIndex", "x2", "x2", "y", "y2", "color", "opacity"];
+        return [
+            "facetIndex",
+            "x",
+            "x2",
+            "y",
+            "y2",
+            "size",
+            "size2",
+            "height",
+            "color",
+            "color2",
+            "opacity"
+        ];
     }
 
     getSupportedChannels() {
@@ -24,7 +36,8 @@ export default class ConnectionMark extends Mark {
             "y2",
             "size",
             "size2",
-            "color2"
+            "color2",
+            "height"
         ];
     }
 
@@ -96,8 +109,6 @@ export default class ConnectionMark extends Mark {
         }
         const vertexData = builder.toArrays();
 
-        this._componentNumbers = vertexData.componentNumbers; // TODO: Better place/name/etc
-
         vertexData.arrays.strip = {
             data: createStrip(this.properties.segments),
             numComponents: 2
@@ -105,12 +116,17 @@ export default class ConnectionMark extends Mark {
 
         this.rangeMap = vertexData.rangeMap;
 
+        this.arrays = Object.fromEntries(
+            Object.entries(vertexData.arrays).map(([k, v]) => [
+                k,
+                { ...v, data: undefined }
+            ])
+        );
+
         this.updateBufferInfo(vertexData);
     }
 
     prepareRender() {
-        this.gl.bindVertexArray(null);
-
         super.prepareRender();
 
         const getBandwidth = scale =>
@@ -131,13 +147,13 @@ export default class ConnectionMark extends Mark {
         // TODO: Vertical clipping in faceted view
 
         return this.createRenderCallback(
-            range => {
+            (offset, count) => {
                 // We are using instanced drawing here.
                 // However, WebGL does not provide glDrawElementsInstancedBaseInstance and thus,
                 // we have to hack with offsets in vertexAttribPointer
-                // TODO: Use VAOs to reduce WebGL calls
+                // TODO: Use VAOs more intelligently to reduce WebGL calls
 
-                this.gl.bindVertexArray(null);
+                this.gl.bindVertexArray(this.vertexArrayInfo.vertexArrayObject);
 
                 for (const attribInfoObject of Object.entries(
                     this.bufferInfo.attribs
@@ -145,12 +161,10 @@ export default class ConnectionMark extends Mark {
                     const [attribute, attribInfo] = attribInfoObject;
                     if (
                         attribInfo.buffer &&
-                        this._componentNumbers[attribute]
+                        this.arrays[attribute].numComponents
                     ) {
                         attribInfo.offset =
-                            range.offset *
-                            this._componentNumbers[attribute] *
-                            4; // gl.FLOAT in bytes
+                            offset * this.arrays[attribute].numComponents * 4; // gl.FLOAT in bytes
                     }
                 }
                 twgl.setBuffersAndAttributes(
@@ -165,7 +179,7 @@ export default class ConnectionMark extends Mark {
                     gl.TRIANGLE_STRIP,
                     (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
                     0,
-                    range.count
+                    count
                 );
             },
             options,

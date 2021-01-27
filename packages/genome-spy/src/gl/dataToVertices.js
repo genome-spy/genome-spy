@@ -177,15 +177,6 @@ export class GeometryBuilder {
             /** Number of vertices allocated in buffers */
             allocatedVertices: this.allocatedVertices,
             rangeMap: this.rangeMap
-            // TODO: better name for "componentNumbers"
-            /* TODO: Fix: needed by connection mark
-            componentNumbers: Object.fromEntries(
-                Object.entries(this.converters).map(e => [
-                    e[0],
-                    (e[1] && e[1].numComponents) || undefined // TODO: Check
-                ])
-            )
-            */
         };
     }
 }

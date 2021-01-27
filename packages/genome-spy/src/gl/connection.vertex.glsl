@@ -1,14 +1,8 @@
-#pragma SCALES_HERE
-
-uniform float zoomLevel; // TODO: u prefix
+uniform float uZoomLevel;
 
 uniform float uBandwidth;
 
-attribute vec2 strip;
-
-in float height;
-in float size;
-in float size2;
+in vec2 strip;
 
 out vec4 vColor;
 
@@ -19,8 +13,12 @@ void main(void) {
     float x2 = getScaled_x2();
     float y = getScaled_y();
     float y2 = getScaled_y2();
+    float size = getScaled_size();
+    float size2 = getScaled_size2();
+    float height = getScaled_height();
     
     float hY;
+
 
     if (y == y2) {
         // Let's create an arc
@@ -28,7 +26,7 @@ void main(void) {
             // Move the control points so that the unit-height connection produces a unit-height arc
             float stretch = 1.0 / 0.75; // TODO: Apply to height outside the shader
 
-            hY = height * stretch * zoomLevel + max(y, y2);
+            hY = height * stretch * uZoomLevel + max(y, y2);
         } else {
             // Move above the band
             y += uBandwidth;
