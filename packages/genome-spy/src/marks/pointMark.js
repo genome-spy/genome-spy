@@ -190,7 +190,7 @@ export default class PointMark extends Mark {
         twgl.setBuffersAndAttributes(
             this.gl,
             this.programInfo,
-            this.bufferInfo
+            this.vertexArrayInfo
         );
 
         // Setup bisector that allows for searching the points that reside within the viewport.

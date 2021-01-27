@@ -153,7 +153,7 @@ export default class RuleMark extends Mark {
         twgl.setBuffersAndAttributes(
             this.gl,
             this.programInfo,
-            this.bufferInfo
+            this.vertexArrayInfo
         );
     }
 

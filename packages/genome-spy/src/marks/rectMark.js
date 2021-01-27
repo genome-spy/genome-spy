@@ -147,7 +147,7 @@ export default class RectMark extends Mark {
         twgl.setBuffersAndAttributes(
             this.gl,
             this.programInfo,
-            this._sampleBufferInfo.bufferInfo
+            this.vertexArrayInfo
         );
     }
 
@@ -161,7 +161,7 @@ export default class RectMark extends Mark {
             (offset, count) => {
                 twgl.drawBufferInfo(
                     gl,
-                    this.bufferInfo,
+                    this.vertexArrayInfo,
                     gl.TRIANGLE_STRIP,
                     count,
                     offset

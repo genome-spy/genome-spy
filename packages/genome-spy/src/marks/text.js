@@ -221,7 +221,7 @@ export default class TextMark extends Mark {
         twgl.setBuffersAndAttributes(
             this.gl,
             this.programInfo,
-            this.bufferInfo
+            this.vertexArrayInfo
         );
     }
 
