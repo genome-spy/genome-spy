@@ -1,10 +1,6 @@
 import * as twgl from "twgl.js";
+import { isArray } from "vega-util";
 import { getPlatformShaderDefines } from "./includes/fp64-utils";
-import FP64 from "./includes/fp64-arithmetic.glsl";
-import GLSL_COMMON from "./includes/common.glsl";
-import GLSL_SCALES from "./includes/scales.glsl";
-import GLSL_SCALES_FP64 from "./includes/scales_fp64.glsl";
-import GLSL_SAMPLE_FACET from "./includes/sampleFacet.glsl";
 
 export default class WebGLHelper {
     /**
@@ -81,69 +77,36 @@ export default class WebGLHelper {
     }
 
     /**
-     * @param {string} vertexCode
-     * @param {string} fragmentCode
-     * @param {string} scaleCode
-     * @param {string[]} [extraHeaders]
+     * Compiles and caches a shader. The shader source is used as a cache key.
+     *
+     * @param {number} type gl.VERTEX_SHADER or gl.FRAGMENT_SHADER
+     * @param {string | string[]} glsl
      */
-    compileShaders(vertexCode, fragmentCode, scaleCode, extraHeaders = []) {
-        const vertexIncludes = [
-            GLSL_COMMON,
-            GLSL_SCALES,
-            scaleCode,
-            GLSL_SAMPLE_FACET
-        ];
-
-        if ([vertexCode, scaleCode].some(code => /[Ff]p64/.test(code))) {
-            vertexIncludes.unshift(GLSL_SCALES_FP64);
-            vertexIncludes.unshift(FP64);
-        }
-
-        const fragmentIncludes = [GLSL_COMMON];
-
+    compileShader(type, glsl) {
         const VERSION = "#version 300 es";
         const PRECISION = "precision mediump float;";
 
+        if (isArray(glsl)) {
+            glsl = glsl.join("\n\n");
+        }
+
         const gl = this.gl;
+        const cacheKey = glsl.replaceAll(/ {2,}|^\s*\/\/.*$/gm, "");
 
-        /**
-         * @param {number} type
-         * @param {string} shaderSource
-         * @param {string[]} includes
-         */
-        const compileAndCache = (type, shaderSource, includes) => {
-            const cacheKey = JSON.stringify({
-                type,
-                shaderSource,
-                extraHeaders,
-                scaleCode: type == gl.VERTEX_SHADER ? scaleCode : null
-            });
-            let shader = this._shaderCache.get(cacheKey);
-            if (!shader) {
-                const stitchedSource = [
-                    VERSION,
-                    PRECISION,
-                    this._shaderDefines || "",
-                    ...extraHeaders,
-                    ...includes,
-                    shaderSource
-                ].join("\n\n");
+        let shader = this._shaderCache.get(cacheKey);
+        if (!shader) {
+            const stitchedSource = [VERSION, PRECISION, glsl].join("\n\n");
 
-                shader = gl.createShader(type);
-                gl.shaderSource(shader, stitchedSource);
-                gl.compileShader(shader);
+            shader = gl.createShader(type);
+            gl.shaderSource(shader, stitchedSource);
+            gl.compileShader(shader);
 
-                // Don't check errors here. Check them if linking fails.
+            // Don't check errors here. Only check them if linking fails.
 
-                this._shaderCache.set(cacheKey, shader);
-            }
-            return shader;
-        };
+            this._shaderCache.set(cacheKey, shader);
+        }
 
-        return [
-            compileAndCache(gl.VERTEX_SHADER, vertexCode, vertexIncludes),
-            compileAndCache(gl.FRAGMENT_SHADER, fragmentCode, fragmentIncludes)
-        ];
+        return shader;
     }
 
     adjustGl() {

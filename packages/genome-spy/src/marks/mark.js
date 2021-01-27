@@ -13,6 +13,11 @@ import {
     generateScaleGlsl,
     RANGE_TEXTURE_PREFIX
 } from "../scale/glslScaleGenerator";
+import FP64 from "../gl/includes/fp64-arithmetic.glsl";
+import GLSL_COMMON from "../gl/includes/common.glsl";
+import GLSL_SCALES from "../gl/includes/scales.glsl";
+import GLSL_SCALES_FP64 from "../gl/includes/scales_fp64.glsl";
+import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import {
     createDiscreteColorTexture,
@@ -381,16 +386,33 @@ export default class Mark {
               "};\n\n"
             : "";
 
-        const shaders = this.glHelper.compileShaders(
-            vertexShader,
-            fragmentShader,
-            domainUniformBlock + scaleCode.join("\n\n"),
-            extraHeaders
-        );
+        const vertexParts = [
+            ...extraHeaders,
+            GLSL_COMMON,
+            GLSL_SCALES,
+            domainUniformBlock,
+            ...scaleCode,
+            GLSL_SAMPLE_FACET,
+            vertexShader
+        ];
+
+        if (vertexParts.some(code => /[Ff]p64/.test(code))) {
+            vertexParts.unshift(GLSL_SCALES_FP64);
+            vertexParts.unshift(FP64);
+        }
+
+        const fragmentParts = [...extraHeaders, GLSL_COMMON, fragmentShader];
+
+        const gl = this.gl;
 
         // Postpone status checking to allow for background compilation
         // See: https://toji.github.io/shader-perf/
-        this.programStatus = createProgram(this.gl, shaders[0], shaders[1]);
+        // TODO: It might make sense to cache and share identical programs between mark instances.
+        this.programStatus = createProgram(
+            gl,
+            this.glHelper.compileShader(gl.VERTEX_SHADER, vertexParts),
+            this.glHelper.compileShader(gl.FRAGMENT_SHADER, fragmentParts)
+        );
     }
 
     /**
@@ -578,9 +600,7 @@ export default class Mark {
     }
 
     /**
-     * Prepares rendering of a single sample facet. However, this must be called
-     * even when no faceting is being used, i.e., when there is only a single,
-     * undefined facet.
+     * Prepares rendering of a single sample facet.
      *
      * @param {MarkRenderingOptions} options
      * @returns {boolean} true if rendering should proceed,
