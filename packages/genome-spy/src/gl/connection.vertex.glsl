@@ -6,7 +6,14 @@ in vec2 strip;
 
 out vec4 vColor;
 
+/** Stroke width */
+out float vSize;
+
+/** The distance from the line center to the direction of normal in pixels */
+out float vNormalLengthInPixels;
+
 void main(void) {
+    float pixelSize = 1.0 / uDevicePixelRatio;
 
     float opacity = getScaled_opacity() * uViewOpacity;
     float x = getScaled_x();
@@ -18,7 +25,6 @@ void main(void) {
     float height = getScaled_height();
     
     float hY;
-
 
     if (y == y2) {
         // Let's create an arc
@@ -74,13 +80,28 @@ void main(void) {
     vec2 tangent = 3.0 * C1*t*t + 2.0*C2*t + C3;
     vec2 normal = normalize(vec2(-tangent.y, tangent.x) / uViewportSize);
 
-    // Extrude
     // TODO: Scale the stroke width as the transition progresses, fix the aspect ratio of faceted strokes
-    p += strip.y * normal * mix(size, size2, t) / uViewportSize;
+    float mixedSize = mix(size, size2, t);
+
+    // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively
+    if (mixedSize < pixelSize) {
+        opacity *= mixedSize / pixelSize;
+        mixedSize = pixelSize;
+    }
+
+    // Add an extra pixel to stroke width to accommodate edge antialiasing
+    float paddedSize = mixedSize + pixelSize;
+
+    vNormalLengthInPixels = strip.y * paddedSize;
+    
+    // Extrude
+    p += normal * vNormalLengthInPixels / uViewportSize;
 
     gl_Position = unitToNdc(p);
 
     // Yuck, RGB interpolation in gamma space! TODO: linear space: https://unlimited3d.wordpress.com/2020/01/08/srgb-color-space-in-opengl/
     // TODO: Optimize: don't mix if only the primary color channel is utilized
     vColor = vec4(mix(getScaled_color(), getScaled_color2(), t) * opacity, opacity);
+
+    vSize = paddedSize;
 }
