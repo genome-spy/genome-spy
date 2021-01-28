@@ -24,6 +24,17 @@ export const VISIT_STOP = "VISIT_STOP";
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
  * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
  *
+ * @typedef {VISIT_SKIP|VISIT_STOP|void} VisitResult
+ *
+ * @callback VisitorCallback
+ * @param {View} view
+ * @returns {VisitResult}
+ *
+ * @typedef {VisitorCallback & {
+ *      postOrder?: function(View):void,
+ *      beforeChildren?: function(View):void,
+ *      afterChildren?: function(View):void}
+ * } Visitor
  *
  * @typedef {object} BroadcastMessage
  * @prop {string} type Broadcast type
@@ -228,18 +239,16 @@ export default class View {
      * Visits child views in depth-first order. Visitor's return value
      * controls the traversal.
      *
-     * @param {(function(View):(VISIT_SKIP|VISIT_STOP|void)) & { afterChildren?: function(View):void}} visitor
-     * @returns {any}
+     * @param {Visitor} visitor
+     * @returns {VisitResult}
      *
-     * @typedef {"VISIT_SKIP"} VISIT_SKIP Don't visit children of the current node
-     * @typedef {"VISIT_STOP"} VISIT_STOP Stop further visits
      */
     visit(visitor) {
         try {
             const result = visitor(this);
 
-            if (visitor.afterChildren) {
-                visitor.afterChildren(this);
+            if (visitor.postOrder) {
+                visitor.postOrder(this);
             }
 
             if (result !== VISIT_STOP) {

@@ -136,7 +136,7 @@ export function buildDataFlow(root, existingFlow) {
     };
 
     /** @param {View} view */
-    processView.afterChildren = view => {
+    processView.postOrder = view => {
         currentNode = nodeStack.pop();
     };
 

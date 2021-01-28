@@ -41,11 +41,11 @@ export default class ContainerView extends View {
      * the value if the visitor returns a defined value. The `afterChildren` callback
      * allows for post-order traversal
      *
-     * @param {(function(View):("VISIT_SKIP"|"VISIT_STOP"|void)) & { afterChildren?: function(View):void}} visitor
-     * @returns {any}
+     * @param {import("./view").Visitor} visitor
+     * @returns {import("./view").VisitResult}
      */
     visit(visitor) {
-        /** @type  {"VISIT_SKIP"|"VISIT_STOP"|void}*/
+        /** @type  {import("./view").VisitResult}*/
         let result;
         try {
             result = visitor(this);
@@ -60,6 +60,10 @@ export default class ContainerView extends View {
         }
 
         if (result !== VISIT_SKIP) {
+            if (visitor.beforeChildren) {
+                visitor.beforeChildren(this);
+            }
+
             for (const view of this) {
                 const result = view.visit(visitor);
                 if (result === VISIT_STOP) {
@@ -69,6 +73,10 @@ export default class ContainerView extends View {
 
             if (visitor.afterChildren) {
                 visitor.afterChildren(this);
+            }
+
+            if (visitor.postOrder) {
+                visitor.postOrder(this);
             }
         }
     }
