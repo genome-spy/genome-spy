@@ -1,5 +1,6 @@
 import clientPoint from "../point";
 import { render, TemplateResult } from "lit-html";
+import { peek } from "../arrayUtils";
 
 // TODO: Figure out a proper place for this class
 
@@ -17,6 +18,8 @@ export default class Tooltip {
 
         /** @type {any} */
         this._previousTooltipDatum = undefined;
+
+        this.enabledStack = [true];
     }
 
     /**
@@ -28,6 +31,24 @@ export default class Tooltip {
 
     get visible() {
         return this.element.style.display == "block";
+    }
+
+    get enabled() {
+        return peek(this.enabledStack) ?? true;
+    }
+
+    /**
+     * @param {boolean} enabled True if tooltip is enabled (allowed to be shown)
+     */
+    pushEnabledState(enabled) {
+        this.enabledStack.push(enabled);
+        if (!enabled) {
+            this.visible = false;
+        }
+    }
+
+    popEnabledState() {
+        this.enabledStack.pop();
     }
 
     /**
@@ -64,7 +85,7 @@ export default class Tooltip {
      * @param {string | import("lit-html").TemplateResult} content
      */
     setContent(content) {
-        if (!content) {
+        if (!content || !this.enabled) {
             render("", this.element);
             this.visible = false;
             return;

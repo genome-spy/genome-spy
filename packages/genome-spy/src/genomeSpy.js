@@ -292,6 +292,15 @@ export default class GenomeSpy {
             "contextmenu"
         ].forEach(type => canvas.addEventListener(type, listener));
 
+        canvas.addEventListener("mousedown", () => {
+            document.addEventListener(
+                "mouseup",
+                () => this.tooltip.popEnabledState(),
+                { once: true }
+            );
+            this.tooltip.pushEnabledState(false);
+        });
+
         // Prevent text selections etc while dragging
         canvas.addEventListener("dragstart", event => event.stopPropagation());
     }
