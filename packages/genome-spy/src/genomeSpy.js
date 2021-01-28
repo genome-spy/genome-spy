@@ -242,7 +242,7 @@ export default class GenomeSpy {
 
             this.registerMouseEvents();
             this.computeLayout();
-            this.renderAll();
+            this.animator.requestRender();
 
             return this;
         } catch (reason) {
