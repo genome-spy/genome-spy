@@ -472,6 +472,9 @@ export default class Mark {
      * @param {any} vertexData TODO: Extract type from VertexBuilder
      */
     updateBufferInfo(vertexData) {
+        // Ensure that no VAOs are inadvertently altered
+        this.gl.bindVertexArray(null);
+
         if (
             this.bufferInfo &&
             vertexData.vertexCount <= this.bufferInfo.allocatedVertices

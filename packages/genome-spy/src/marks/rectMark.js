@@ -99,6 +99,11 @@ export default class RectMark extends Mark {
         }
         const vertexData = builder.toArrays();
 
+        // Ensure that no VAOs are inadvertently altered
+        this.gl.bindVertexArray(null);
+
+        // TODO: Should mark.updateBufferInfo() be used instead?
+
         return {
             rangeMap: vertexData.rangeMap,
             bufferInfo: twgl.createBufferInfoFromArrays(
