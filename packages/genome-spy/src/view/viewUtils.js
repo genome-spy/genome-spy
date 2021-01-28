@@ -8,10 +8,12 @@ import FacetView from "./facetView";
 import SampleView from "./sampleView/sampleView";
 import ConcatView from "./concatView";
 import DecoratorView from "./decoratorView";
-import { VISIT_SKIP } from "./view";
+import { VISIT_SKIP, VISIT_STOP } from "./view";
 import { buildDataFlow } from "./flowBuilder";
-import { optimizeDataFlow, optimizeFlowGraph } from "../data/flowOptimizer";
-import { isFieldDef } from "../encoder/encoder";
+import { optimizeDataFlow } from "../data/flowOptimizer";
+import { isFieldDef, isValueDef } from "../encoder/encoder";
+import ContainerView from "./containerView";
+import { peek } from "../utils/arrayUtils";
 
 /**
  * @typedef {import("./viewContext").default} ViewContext
@@ -287,7 +289,7 @@ export function addDecorators(root) {
     let newRoot = root; // If the root is wrapped...
 
     /** @param {ChannelDef} channelDef */
-    const hasDomain = channelDef => channelDef && !("value" in channelDef);
+    const hasDomain = channelDef => channelDef && !isValueDef(channelDef);
 
     root.visit(view => {
         if (view instanceof LayerView || view instanceof UnitView) {
@@ -308,21 +310,47 @@ export function addDecorators(root) {
             const decorator = new DecoratorView(view.context, originalParent);
             view.parent = decorator;
             decorator.child = view;
+            decorator.name = view.name + "_decorator";
 
             if (originalParent) {
-                originalParent.replaceChild(view, decorator);
+                if (originalParent instanceof ContainerView) {
+                    originalParent.replaceChild(view, decorator);
+                } else {
+                    // The situation is likely related to summaries of SampleView and the
+                    // hierarchy is inconsistent. Let's try to find the SampleView.
+
+                    /** @type {view} */
+                    let parent;
+                    root.visit(
+                        stackifyVisitor((needle, stack) => {
+                            if (needle === view) {
+                                parent = peek(stack);
+                                return VISIT_STOP;
+                            }
+                        })
+                    );
+
+                    if (parent instanceof ContainerView) {
+                        parent.replaceChild(view, decorator);
+                    } else {
+                        throw new Error(
+                            "Cannot find parent while decorating: " +
+                                view.getPathString()
+                        );
+                    }
+                }
             }
 
             decorator.resolutions = view.resolutions;
-            decorator.name = view.name;
-            decorator.spec.height = view.spec.height;
-            decorator.spec.width = view.spec.width;
-            decorator.spec.padding = view.spec.padding;
-
             view.resolutions = { scale: {}, axis: {} };
-            view.name = "decorated_" + view.name;
+
+            decorator.spec.height = view.spec.height;
             view.spec.height = "container";
+
+            decorator.spec.width = view.spec.width;
             view.spec.width = "container";
+
+            decorator.spec.padding = view.spec.padding;
             view.spec.padding = undefined;
 
             if (view === root) {
@@ -451,4 +479,27 @@ export async function processImports(viewRoot) {
         // Import recursively
         await processImports(importedView);
     }
+}
+
+/**
+ * @param {function(View, View[]):void} visitor
+ */
+export function stackifyVisitor(visitor) {
+    /** @type {View[]} */
+    const stack = [];
+
+    /** @type {import("./view").Visitor} */
+    const stackified = view => {
+        return visitor(view, stack);
+    };
+
+    stackified.beforeChildren = view => {
+        stack.push(view);
+    };
+
+    stackified.afterChildren = view => {
+        stack.pop();
+    };
+
+    return stackified;
 }

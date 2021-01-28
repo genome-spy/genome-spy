@@ -194,6 +194,7 @@ export default class GenomeSpy {
         // Build the data flow based on the view hierarchy
         const flow = buildDataFlow(this.viewRoot, context.dataFlow);
         optimizeDataFlow(flow);
+        this.broadcast("dataFlowBuilt", flow);
 
         flow.dataSources.forEach(ds => console.log(ds.subtreeToString()));
 

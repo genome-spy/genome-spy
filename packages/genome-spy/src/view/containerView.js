@@ -27,7 +27,7 @@ export default class ContainerView extends View {
     }
 
     /**
-     * Replaces a child view with another one. Does not set any references.
+     * Replaces a child view with another one. Does not alter the old or new child.
      *
      * @param {import("./view").default} child
      * @param {import("./view").default} replacement

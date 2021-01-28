@@ -18,6 +18,7 @@ import clamp from "../../utils/clamp";
 import createDataSource from "../../data/sources/dataSourceFactory";
 import FlowNode from "../../data/flowNode";
 import { createChain } from "../flowBuilder";
+import ConcatView from "../concatView";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -69,8 +70,48 @@ export default class SampleView extends ContainerView {
             spec.spec,
             context,
             this,
-            `sample`
+            `sampleFacet`
         ));
+
+        this.summaryViews = new ConcatView(
+            { vconcat: [] },
+            context,
+            this,
+            "sampleSummaries"
+        );
+
+        /*
+         * This produces an inconsistent view hierarchy by design. The summaries have the
+         * enclosing (by the spec) views as their parents, but they are children of
+         * "this.summaryViews". The rationale is: the views inherit encodings and resolutions
+         * from their enclosing views but layout and rendering are managed by SampleView.
+         */
+        let summaryIndex = 0;
+        this.child.visit(view => {
+            const summarySpec = view.spec.sampleSummary;
+            if (summarySpec) {
+                if (!summarySpec.data) {
+                    summarySpec.data = { values: [] };
+                }
+
+                const View = getViewClass(summarySpec);
+                const summaryView = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
+                    summarySpec,
+                    context,
+                    view,
+                    "summaryView" + summaryIndex++
+                ));
+                this.summaryViews.children.push(summaryView);
+            }
+        });
+
+        this._addBroadcastHandler("dataFlowBuilt", message => {
+            const flow =
+                /** @type {import("../../data/dataFlow").default<View>} */ (message.payload);
+
+            for (const view of this.summaryViews) {
+            }
+        });
 
         /**
          * There are to ways to manage how facets are drawn:
@@ -276,6 +317,7 @@ export default class SampleView extends ContainerView {
     *[Symbol.iterator]() {
         yield this.child;
         yield this.attributeView;
+        yield this.summaryViews;
     }
 
     /**
