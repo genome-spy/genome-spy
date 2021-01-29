@@ -211,8 +211,10 @@ export function generateScaleGlsl(channel, scale, encoding) {
      */
     let interpolate;
     if (isColorChannel(channel)) {
-        const textureUniformName = RANGE_TEXTURE_PREFIX + channel;
-        glsl.push(`uniform sampler2D ${textureUniformName};`);
+        const textureUniformName = RANGE_TEXTURE_PREFIX + primary;
+        if (channel == primary) {
+            glsl.push(`uniform sampler2D ${textureUniformName};`);
+        }
         if (isContinuous(scale.type)) {
             interpolate = `getInterpolatedColor(${textureUniformName}, transformed)`;
         } else if (isDiscrete(scale.type) || isDiscretizing(scale.type)) {
@@ -221,7 +223,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
             throw new Error("Problem with color scale!");
         }
     } else if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
-        const textureUniformName = RANGE_TEXTURE_PREFIX + channel;
+        const textureUniformName = RANGE_TEXTURE_PREFIX + primary;
         glsl.push(`uniform sampler2D ${textureUniformName};`);
         interpolate = `getDiscreteColor(${textureUniformName}, int(transformed)).r`;
     }

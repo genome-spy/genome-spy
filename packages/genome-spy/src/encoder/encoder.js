@@ -249,7 +249,7 @@ export function isPositionalChannel(channel) {
  * @param {string} channel
  */
 export function isColorChannel(channel) {
-    return ["color", "fill", "color2"].includes(channel);
+    return ["color", "fill"].includes(primaryChannel(channel));
 }
 
 /**
