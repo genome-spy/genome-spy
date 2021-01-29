@@ -361,31 +361,33 @@ export default class DecoratorView extends ContainerView {
     }
 
     isZoomable() {
-        return Object.values(this._getZoomableResolutions()).some(
-            set => set.size
+        return getCachedOrCall(this, "zoomable", () =>
+            Object.values(this._getZoomableResolutions()).some(set => set.size)
         );
     }
 
     _getZoomableResolutions() {
-        /** @type {Record<string, Set<import("./scaleResolution").ScaleResolution>>} */
-        const resolutions = {
-            x: new Set(),
-            y: new Set()
-        };
+        return getCachedOrCall(this, "zoomableResolutions", () => {
+            /** @type {Record<string, Set<import("./scaleResolution").default>>} */
+            const resolutions = {
+                x: new Set(),
+                y: new Set()
+            };
 
-        // Find all resolutions (scales) that are candidates for zooming
-        this.child.visit(v => {
-            for (const [channel, resolutionSet] of Object.entries(
-                resolutions
-            )) {
-                const resolution = v.getScaleResolution(channel);
-                if (resolution && resolution.isZoomable()) {
-                    resolutionSet.add(resolution);
+            // Find all resolutions (scales) that are candidates for zooming
+            this.child.visit(v => {
+                for (const [channel, resolutionSet] of Object.entries(
+                    resolutions
+                )) {
+                    const resolution = v.getScaleResolution(channel);
+                    if (resolution && resolution.isZoomable()) {
+                        resolutionSet.add(resolution);
+                    }
                 }
-            }
-        });
+            });
 
-        return resolutions;
+            return resolutions;
+        });
     }
 
     /**
