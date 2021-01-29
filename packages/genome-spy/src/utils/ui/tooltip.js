@@ -13,24 +13,29 @@ export default class Tooltip {
 
         this.element = document.createElement("div");
         this.element.className = "tooltip";
-        this.visible = false;
+        this._visible = true;
         this.container.appendChild(this.element);
 
         /** @type {any} */
         this._previousTooltipDatum = undefined;
 
         this.enabledStack = [true];
+
+        this.clear();
     }
 
     /**
      * @param {boolean} visible
      */
     set visible(visible) {
-        this.element.style.display = visible ? "block" : "none";
+        if (visible != this._visible) {
+            this.element.style.display = visible ? "block" : "none";
+            this._visible = visible;
+        }
     }
 
     get visible() {
-        return this.element.style.display == "block";
+        return this._visible;
     }
 
     get enabled() {
@@ -86,8 +91,10 @@ export default class Tooltip {
      */
     setContent(content) {
         if (!content || !this.enabled) {
-            render("", this.element);
-            this.visible = false;
+            if (this.visible) {
+                render("", this.element);
+                this.visible = false;
+            }
             return;
         }
 
