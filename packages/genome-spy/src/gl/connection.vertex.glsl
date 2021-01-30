@@ -1,7 +1,3 @@
-uniform float uZoomLevel;
-
-uniform float uBandwidth;
-
 in vec2 strip;
 
 out vec4 vColor;
@@ -12,51 +8,46 @@ out float vSize;
 /** The distance from the line center to the direction of normal in pixels */
 out float vNormalLengthInPixels;
 
+/** Make very small arcs visible */
+const float minSagittaLength = 1.5;
+
 void main(void) {
     float pixelSize = 1.0 / uDevicePixelRatio;
-
     float opacity = getScaled_opacity() * uViewOpacity;
-    float x = getScaled_x();
-    float x2 = getScaled_x2();
-    float y = getScaled_y();
-    float y2 = getScaled_y2();
-    float size = getScaled_size();
-    float size2 = getScaled_size2();
-    float height = getScaled_height();
+
+    vec2 a = vec2(getScaled_x(), getScaled_y()) * uViewportSize;
+    vec2 b = vec2(getScaled_x2(), getScaled_y2()) * uViewportSize;
     
-    float hY;
+    vec2 chordVector = b - a;
+    vec2 unitChordVector = normalize(chordVector);
+    vec2 chordNormal = vec2(-unitChordVector.y, unitChordVector.x);
 
-    if (y == y2) {
-        // Let's create an arc
-        if (uBandwidth == 0.0) {
-            // Move the control points so that the unit-height connection produces a unit-height arc
-            float stretch = 1.0 / 0.75; // TODO: Apply to height outside the shader
+    float sagitta = max(
+        length(chordVector) / 2.0,
+        minSagittaLength * uDevicePixelRatio
+    );
 
-            hY = height * stretch * uZoomLevel + max(y, y2);
-        } else {
-            // Move above the band
-            y += uBandwidth;
-            y2 = y;
-            hY = y + uBandwidth * 0.4; // TODO: breaks when outer padding is zero or something very small
+    bool compress = false;
+    if (compress) {
+        // Work in progres...
+        float maxSagittaLen = length(chordNormal * uViewportSize);
+        float maxChordLen = length(unitChordVector * uViewportSize);
+
+        float threshold = maxSagittaLen * 0.5;
+        if (sagitta > threshold) {
+            float m = (maxSagittaLen - threshold) / (maxChordLen - threshold);
+            sagitta = (sagitta - threshold) * m + threshold;
         }
-
-    } else {
-        // Not an arc, a curve instead!
-        if (y < y2) {
-            y += uBandwidth;
-        } else if (y2 < y) {
-            y2 += uBandwidth;
-        }
-
-        hY = (y + y2) / 2.0;
     }
 
-    vec2 p1 = vec2(x, y);
-    vec2 p2 = vec2(x, hY);
-    vec2 p3 = vec2(x2, hY);
-    vec2 p4 = vec2(x2, y2);
+    vec2 controlOffset = chordNormal * sagitta / 0.75;
 
-    // Let's make segments shorter near the endpoints to make the tightly bent attachment points smoother
+    vec2 p1 = a;
+    vec2 p2 = a + controlOffset;
+    vec2 p3 = b + controlOffset;
+    vec2 p4 = b;
+
+    // Make segments shorter near the endpoints to make the tightly bent attachment points smoother
     float t = smoothstep(0.0, 1.0, strip.x);
 
     // https://stackoverflow.com/a/31317254/1547896
@@ -66,7 +57,7 @@ void main(void) {
     vec2 C4 = p1;
 
     vec2 p;
-    // Skip computation on endpoints to maintain precision
+    // Skip computation at endpoints to maintain precision
     if (t == 0.0) {
         p = p1;
     } else if (t == 1.0) {
@@ -75,13 +66,16 @@ void main(void) {
         p = C1*t*t*t + C2*t*t + C3*t + C4;
     }
 
-    p = applySampleFacet(p);
+    vec2 tangent = normalize(3.0*C1*t*t + 2.0*C2*t + C3);
+    vec2 normal = vec2(-tangent.y, tangent.x);
 
-    vec2 tangent = 3.0 * C1*t*t + 2.0*C2*t + C3;
-    vec2 normal = normalize(vec2(-tangent.y, tangent.x) / uViewportSize);
+    //p = applySampleFacet(p);
 
-    // TODO: Scale the stroke width as the transition progresses, fix the aspect ratio of faceted strokes
-    float mixedSize = mix(size, size2, t);
+#ifdef size2_DEFINED
+    float mixedSize = mix(getScaled_size(), getScaled_size2(), t);
+#else
+    float mixedSize = getScaled_size();
+#endif
 
     // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively
     if (mixedSize < pixelSize) {
@@ -95,13 +89,19 @@ void main(void) {
     vNormalLengthInPixels = strip.y * paddedSize;
     
     // Extrude
-    p += normal * vNormalLengthInPixels / uViewportSize;
+    p += normal * vNormalLengthInPixels;
 
-    gl_Position = unitToNdc(p);
+    gl_Position = pixelsToNdc(p);
 
-    // Yuck, RGB interpolation in gamma space! TODO: linear space: https://unlimited3d.wordpress.com/2020/01/08/srgb-color-space-in-opengl/
-    // TODO: Optimize: don't mix if only the primary color channel is utilized
-    vColor = vec4(mix(getScaled_color(), getScaled_color2(), t) * opacity, opacity);
+#ifdef color2_DEFINED
+    // Yuck, RGB interpolation in gamma space!
+    // TODO: linear space: https://unlimited3d.wordpress.com/2020/01/08/srgb-color-space-in-opengl/
+    vec3 color = mix(getScaled_color(), getScaled_color2(), t);
+#else 
+    vec3 color = getScaled_color();
+#endif
+
+    vColor = vec4(color * opacity, opacity);
 
     vSize = paddedSize;
 }

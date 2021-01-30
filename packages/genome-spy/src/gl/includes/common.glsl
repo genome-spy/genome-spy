@@ -3,7 +3,7 @@ uniform vec2 uViewOffset;
 
 uniform vec2 uViewScale;
 
-/** Size of the logical viewport, i.e., the view */
+/** Size of the logical viewport in pixels, i.e., the view */
 uniform vec2 uViewportSize;
 
 uniform lowp float uDevicePixelRatio;
@@ -13,7 +13,8 @@ uniform lowp float uDevicePixelRatio;
 uniform lowp float uViewOpacity;
 
 /**
- * Maps a coordinate on unit scale to normalized device coordinates
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
  */
 vec4 unitToNdc(vec2 coord) {
     return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
@@ -21,6 +22,14 @@ vec4 unitToNdc(vec2 coord) {
 
 vec4 unitToNdc(float x, float y) {
     return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
 }
 
 float linearstep(float edge0, float edge1, float x) {

@@ -45,10 +45,10 @@ export default class ConnectionMark extends Mark {
         return {
             ...super.getDefaultProperties(),
 
-            x: undefined,
+            x: 0.0,
             x2: undefined,
             y: 0.0,
-            y2: 0.0,
+            y2: undefined,
             height: 1.0,
             size: 1.0,
             size2: undefined,
@@ -66,22 +66,11 @@ export default class ConnectionMark extends Mark {
      */
     fixEncoding(encoding) {
         if (!encoding.x) {
-            throw new Error(
-                "The x channel has not been defined: " +
-                    JSON.stringify(encoding)
-            );
-        }
-
-        if (!encoding.size2) {
-            encoding.size2 = encoding.size;
+            encoding.x2 = encoding.x;
         }
 
         if (!encoding.y2) {
             encoding.y2 = encoding.y;
-        }
-
-        if (!encoding.color2) {
-            encoding.color2 = encoding.color;
         }
 
         return encoding;
@@ -124,18 +113,6 @@ export default class ConnectionMark extends Mark {
         );
 
         this.updateBufferInfo(vertexData);
-    }
-
-    prepareRender() {
-        super.prepareRender();
-
-        const getBandwidth = scale =>
-            scale && scale.type == "band" ? scale.bandwidth() : 0;
-
-        twgl.setUniforms(this.programInfo, {
-            uBandwidth: getBandwidth(this.encoders.y.scale),
-            uZoomLevel: this.unitView.getZoomLevel()
-        });
     }
 
     /**
