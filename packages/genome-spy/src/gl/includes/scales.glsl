@@ -25,6 +25,13 @@ float scaleLinear(float value, vec2 domain, vec2 range) {
     return (value - domain[0]) / domainSpan * rangeSpan + range[0];
 }
 
+float scaleLog(float value, vec2 domain, vec2 range, float base) {
+    // y = m log(x) + b 
+    // TODO: Perf optimization: precalculate log domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+}
+
 float scaleBand(float value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {

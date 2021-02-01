@@ -134,6 +134,15 @@ export function generateScaleGlsl(channel, scale, encoding) {
             functionCall = makeScaleCall("scaleLinear", "domain", rangeName);
             break;
 
+        case "log":
+            functionCall = makeScaleCall(
+                "scaleLog",
+                "domain",
+                rangeName,
+                scale.base()
+            );
+            break;
+
         case "index":
         case "locus":
         case "point":
