@@ -453,7 +453,8 @@ function getLockedScaleProperties(channel) {
     /** @type {Object.<string, any>} */
     const locked = {
         x: { range: [0, 1] },
-        y: { range: [0, 1] }
+        y: { range: [0, 1] },
+        opacity: { clamp: true }
     };
 
     return locked[channel] || {};
