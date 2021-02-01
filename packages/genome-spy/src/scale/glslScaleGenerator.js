@@ -143,6 +143,16 @@ export function generateScaleGlsl(channel, scale, encoding) {
             );
             break;
 
+        case "pow":
+        case "sqrt":
+            functionCall = makeScaleCall(
+                "scalePow",
+                "domain",
+                rangeName,
+                scale.exponent()
+            );
+            break;
+
         case "index":
         case "locus":
         case "point":

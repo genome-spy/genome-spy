@@ -1,4 +1,13 @@
-import { panLinear, zoomLinear, clampRange, span } from "vega-util";
+import {
+    panLinear,
+    zoomLinear,
+    clampRange,
+    span,
+    panLog,
+    zoomLog,
+    panPow,
+    zoomPow
+} from "vega-util";
 import { isDiscrete, isContinuous } from "vega-scale";
 
 import mergeObjects from "../utils/mergeObjects";
@@ -243,7 +252,11 @@ export default class ScaleResolution {
         }
 
         const scaleType = this.getScale().type;
-        if (!["linear", "locus", "index"].includes(scaleType)) {
+        if (
+            !["linear", "locus", "index", "log", "pow", "sqrt"].includes(
+                scaleType
+            )
+        ) {
             return false;
         }
 
@@ -273,13 +286,33 @@ export default class ScaleResolution {
         const oldDomain = scale.domain();
         let newDomain = [...oldDomain];
 
+        const anchor = scale.invert(scaleAnchor);
+
         // TODO: log, pow, symlog, ...
-        newDomain = panLinear(newDomain, pan || 0);
-        newDomain = zoomLinear(
-            newDomain,
-            scale.invert(scaleAnchor),
-            scaleFactor
-        );
+        switch (scale.type) {
+            case "linear":
+            case "index":
+            case "locus":
+                newDomain = panLinear(newDomain, pan || 0);
+                newDomain = zoomLinear(newDomain, anchor, scaleFactor);
+                break;
+            case "log":
+                newDomain = panLog(newDomain, pan || 0);
+                newDomain = zoomLog(newDomain, anchor, scaleFactor);
+                break;
+            case "pow":
+            case "sqrt":
+                newDomain = panPow(newDomain, pan || 0, scale.exponent());
+                newDomain = zoomPow(
+                    newDomain,
+                    anchor,
+                    scaleFactor,
+                    scale.exponent()
+                );
+                break;
+            default:
+                throw new Error("Unsupported scale type: " + scale.type);
+        }
 
         newDomain = clampRange(newDomain, ...this._originalDomain);
 

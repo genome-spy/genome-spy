@@ -32,6 +32,17 @@ float scaleLog(float value, vec2 domain, vec2 range, float base) {
     return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
 }
 
+float scalePow(float value, vec2 domain, vec2 range, float exponent) {
+    // y = mx^k + b
+    // TODO: Perf optimization: precalculate pow domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(
+        pow(abs(value), exponent) * sign(value),
+        pow(abs(domain), vec2(exponent)) * sign(domain),
+        range
+    );
+}
+
 float scaleBand(float value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
