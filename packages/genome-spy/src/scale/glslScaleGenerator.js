@@ -143,6 +143,15 @@ export function generateScaleGlsl(channel, scale, encoding) {
             );
             break;
 
+        case "symlog":
+            functionCall = makeScaleCall(
+                "scaleSymlog",
+                "domain",
+                rangeName,
+                scale.constant()
+            );
+            break;
+
         case "pow":
         case "sqrt":
             functionCall = makeScaleCall(
