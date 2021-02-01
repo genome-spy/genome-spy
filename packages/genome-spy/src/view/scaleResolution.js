@@ -33,6 +33,7 @@ export const INDEX = "index";
  *
  * @typedef {import("./unitView").default} UnitView
  * @typedef {import("../encoder/encoder").VegaScale} VegaScale
+ * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  */
 export default class ScaleResolution {
     /**
@@ -209,7 +210,7 @@ export default class ScaleResolution {
             const props = this.getScaleProps();
             configureScale(props, this._scale);
             if (props.domain) {
-                this._originalDomain = [...props.domain];
+                this._originalDomain = this._scale.domain();
             }
         }
     }
