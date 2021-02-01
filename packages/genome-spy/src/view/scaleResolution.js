@@ -153,6 +153,12 @@ export default class ScaleResolution {
                 props.domain = domain;
             }
 
+            if (!props.domain && props.domainMid !== undefined) {
+                // Initialize with a bogus domain so that scale.js can inject the domainMid.
+                // The number of domain elements must be know before the glsl scale is generated.
+                props.domain = [props.domainMin ?? 0, props.domainMax ?? 1];
+            }
+
             if (!props.type) {
                 props.type = getDefaultScaleType(this.channel, this.type);
             }
