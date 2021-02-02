@@ -1,5 +1,13 @@
 import { group } from "d3-array";
-import * as twgl from "twgl.js";
+import {
+    createBufferInfoFromArrays,
+    createProgramInfoFromProgram,
+    createUniformBlockInfo,
+    createVertexArrayInfo,
+    setAttribInfoBufferFromArray,
+    setUniformBlock,
+    setUniforms
+} from "twgl.js";
 import { isDiscrete, isDiscretizing, isInterpolating } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
 import createEncoders, {
@@ -56,16 +64,16 @@ export default class Mark {
 
         // TODO: Consolidate the following webgl stuff into a single object
 
-        /** @type {twgl.BufferInfo & { allocatedVertices?: number }} WebGL buffers */
+        /** @type {import("twgl.js").BufferInfo & { allocatedVertices?: number }} WebGL buffers */
         this.bufferInfo = undefined;
 
-        /** @type {twgl.ProgramInfo} WebGL buffers */
+        /** @type {import("twgl.js").ProgramInfo} WebGL buffers */
         this.programInfo = undefined;
 
-        /** @type {twgl.VertexArrayInfo} WebGL buffers */
+        /** @type {import("twgl.js").VertexArrayInfo} WebGL buffers */
         this.vertexArrayInfo = undefined;
 
-        /** @type {twgl.UniformBlockInfo} WebGL buffers */
+        /** @type {import("twgl.js").UniformBlockInfo} WebGL buffers */
         this.domainUniformInfo = undefined;
 
         /** @type {Map<string, WebGLTexture>} */
@@ -428,14 +436,14 @@ export default class Mark {
             throw new Error("Cannot create shader program: " + error.message);
         }
 
-        this.programInfo = twgl.createProgramInfoFromProgram(
+        this.programInfo = createProgramInfoFromProgram(
             this.gl,
             this.programStatus.program
         );
         delete this.programStatus;
 
         if (this.domainUniforms.length) {
-            this.domainUniformInfo = twgl.createUniformBlockInfo(
+            this.domainUniformInfo = createUniformBlockInfo(
                 this.gl,
                 this.programInfo,
                 "Domains"
@@ -485,7 +493,7 @@ export default class Mark {
                 // Skip constants
                 if (attributeData.data) {
                     // TODO: Check that all attributes and numComponents match
-                    twgl.setAttribInfoBufferFromArray(
+                    setAttribInfoBufferFromArray(
                         this.gl,
                         this.bufferInfo.attribs[attribute],
                         attributeData.data,
@@ -497,7 +505,7 @@ export default class Mark {
             }
         } else {
             this.deleteGraphicsData();
-            this.bufferInfo = twgl.createBufferInfoFromArrays(
+            this.bufferInfo = createBufferInfoFromArrays(
                 this.gl,
                 vertexData.arrays,
                 { numElements: vertexData.vertexCount }
@@ -539,7 +547,7 @@ export default class Mark {
         const gl = this.gl;
 
         if (!this.vertexArrayInfo) {
-            this.vertexArrayInfo = twgl.createVertexArrayInfo(
+            this.vertexArrayInfo = createVertexArrayInfo(
                 this.gl,
                 this.programInfo,
                 this.bufferInfo
@@ -568,28 +576,28 @@ export default class Mark {
                 }
             }
 
-            twgl.setUniformBlock(gl, this.programInfo, this.domainUniformInfo);
+            setUniformBlock(gl, this.programInfo, this.domainUniformInfo);
         }
 
         for (const [channel, texture] of this.rangeTextures.entries()) {
-            twgl.setUniforms(this.programInfo, {
+            setUniforms(this.programInfo, {
                 [RANGE_TEXTURE_PREFIX + channel]: texture
             });
         }
 
         if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
-            twgl.setUniforms(this.programInfo, {
+            setUniforms(this.programInfo, {
                 uSampleFacetTexture: this._findSampleView().facetTexture
             });
         }
 
-        twgl.setUniforms(this.programInfo, {
+        setUniforms(this.programInfo, {
             ONE: 1.0, // a hack needed by emulated 64 bit floats
             uDevicePixelRatio: this.glHelper.dpr,
             uViewOpacity: this.unitView.getEffectiveOpacity()
         });
 
-        twgl.setUniforms(this.programInfo, {
+        setUniforms(this.programInfo, {
             // left pos, left height, right pos, right height
             uSampleFacet: [0, 1, 0, 1],
             uTransitionOffset: 0.0
@@ -791,9 +799,9 @@ export default class Mark {
         }
 
         // TODO: Optimization: Use uniform buffer object
-        twgl.setUniforms(this.programInfo, uniforms);
+        setUniforms(this.programInfo, uniforms);
 
-        twgl.setUniforms(this.programInfo, {
+        setUniforms(this.programInfo, {
             uViewportSize: [coords.width, coords.height]
         });
     }

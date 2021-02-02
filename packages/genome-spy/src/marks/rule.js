@@ -1,5 +1,10 @@
 import Mark from "./mark.js";
-import * as twgl from "twgl.js";
+import {
+    createTexture,
+    drawBufferInfo,
+    setBuffersAndAttributes,
+    setUniforms
+} from "twgl.js";
 import VERTEX_SHADER from "../gl/rule.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rule.fragment.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices";
@@ -97,7 +102,7 @@ export default class RuleMark extends Mark {
             const textureData = createDashTextureArray(
                 this.properties.strokeDash
             );
-            this.dashTexture = twgl.createTexture(gl, {
+            this.dashTexture = createTexture(gl, {
                 mag: gl.NEAREST,
                 min: gl.NEAREST,
                 internalFormat: gl.R8,
@@ -135,7 +140,7 @@ export default class RuleMark extends Mark {
     prepareRender() {
         super.prepareRender();
 
-        twgl.setUniforms(this.programInfo, {
+        setUniforms(this.programInfo, {
             uMinLength: this.properties.minLength,
             uDashTextureSize: this.dashTextureSize,
             uStrokeCap: ["butt", "square", "round"].indexOf(
@@ -144,13 +149,13 @@ export default class RuleMark extends Mark {
         });
 
         if (this.dashTexture) {
-            twgl.setUniforms(this.programInfo, {
+            setUniforms(this.programInfo, {
                 uDashTexture: this.dashTexture,
                 uStrokeDashOffset: this.properties.strokeDashOffset
             });
         }
 
-        twgl.setBuffersAndAttributes(
+        setBuffersAndAttributes(
             this.gl,
             this.programInfo,
             this.vertexArrayInfo
@@ -165,7 +170,7 @@ export default class RuleMark extends Mark {
 
         return this.createRenderCallback(
             (offset, count) =>
-                twgl.drawBufferInfo(
+                drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,
                     gl.TRIANGLE_STRIP,

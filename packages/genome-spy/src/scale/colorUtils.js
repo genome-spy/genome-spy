@@ -2,7 +2,7 @@ import { color as d3color } from "d3-color";
 import { range } from "d3-array";
 import { scheme as vegaScheme, interpolateColors } from "vega-scale";
 import { isString, isArray, isFunction } from "vega-util";
-import * as twgl from "twgl.js";
+import { createTexture } from "twgl.js";
 import { peek } from "../utils/arrayUtils";
 
 /**
@@ -28,7 +28,7 @@ export function createSchemeTexture(schemeParams, gl, count) {
                 extent,
                 count
             });
-            return twgl.createTexture(gl, {
+            return createTexture(gl, {
                 minMag: gl.LINEAR,
                 format: gl.RGB,
                 src: textureData,
@@ -63,7 +63,7 @@ export function createInterpolatedColorTexture(
 
     // TODO: Reverse
     const textureData = interpolatorToTextureData(interpolator);
-    return twgl.createTexture(gl, {
+    return createTexture(gl, {
         minMag: gl.LINEAR,
         format: gl.RGB,
         src: textureData,
@@ -88,7 +88,7 @@ export function createDiscreteTexture(range, gl, count) {
         textureData[i] = range[i % range.length];
     }
 
-    return twgl.createTexture(gl, {
+    return createTexture(gl, {
         minMag: gl.NEAREST,
         format: gl.RED,
         internalFormat: gl.R32F,
@@ -106,7 +106,7 @@ export function createDiscreteTexture(range, gl, count) {
  */
 export function createDiscreteColorTexture(colors, gl, count) {
     const textureData = colorArrayToTextureData(colors, count);
-    return twgl.createTexture(gl, {
+    return createTexture(gl, {
         minMag: gl.NEAREST,
         format: gl.RGB,
         src: textureData,

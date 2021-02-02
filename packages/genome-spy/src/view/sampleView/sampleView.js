@@ -1,6 +1,6 @@
 import { isNumber, span, error } from "vega-util";
 import { html } from "lit-html";
-import * as twgl from "twgl.js";
+import { createTexture } from "twgl.js";
 import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
 import { mapToPixelCoords } from "../../utils/layout/flexLayout";
@@ -472,7 +472,7 @@ export default class SampleView extends ContainerView {
 
         if (this.facetTexture) {
             // Slow because of twgl's unpack-alignment hack:
-            //twgl.setTextureFromArray(gl, this.facetTexture, arr, options);
+            //setTextureFromArray(gl, this.facetTexture, arr, options);
 
             gl.bindTexture(gl.TEXTURE_2D, this.facetTexture);
             gl.texImage2D(
@@ -487,7 +487,7 @@ export default class SampleView extends ContainerView {
                 arr
             );
         } else {
-            this.facetTexture = twgl.createTexture(gl, {
+            this.facetTexture = createTexture(gl, {
                 ...options,
                 src: arr
             });

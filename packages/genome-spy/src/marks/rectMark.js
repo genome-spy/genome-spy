@@ -1,4 +1,9 @@
-import * as twgl from "twgl.js";
+import {
+    createBufferInfoFromArrays,
+    drawBufferInfo,
+    setBuffersAndAttributes,
+    setUniforms
+} from "twgl.js";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices";
@@ -106,13 +111,9 @@ export default class RectMark extends Mark {
 
         return {
             rangeMap: vertexData.rangeMap,
-            bufferInfo: twgl.createBufferInfoFromArrays(
-                this.gl,
-                vertexData.arrays,
-                {
-                    numElements: vertexData.vertexCount
-                }
-            )
+            bufferInfo: createBufferInfoFromArrays(this.gl, vertexData.arrays, {
+                numElements: vertexData.vertexCount
+            })
         };
     }
 
@@ -144,12 +145,12 @@ export default class RectMark extends Mark {
 
         const props = this.properties;
 
-        twgl.setUniforms(this.programInfo, {
+        setUniforms(this.programInfo, {
             uMinSize: [props.minWidth, props.minHeight], // in pixels
             uMinOpacity: props.minOpacity
         });
 
-        twgl.setBuffersAndAttributes(
+        setBuffersAndAttributes(
             this.gl,
             this.programInfo,
             this.vertexArrayInfo
@@ -164,7 +165,7 @@ export default class RectMark extends Mark {
 
         return this.createRenderCallback(
             (offset, count) => {
-                twgl.drawBufferInfo(
+                drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,
                     gl.TRIANGLE_STRIP,

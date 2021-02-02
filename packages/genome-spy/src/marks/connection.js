@@ -1,4 +1,4 @@
-import * as twgl from "twgl.js";
+import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
 import VERTEX_SHADER from "../gl/connection.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/connection.fragment.glsl";
 import { ConnectionVertexBuilder } from "../gl/dataToVertices";
@@ -144,13 +144,9 @@ export default class ConnectionMark extends Mark {
                             offset * this.arrays[attribute].numComponents * 4; // gl.FLOAT in bytes
                     }
                 }
-                twgl.setBuffersAndAttributes(
-                    gl,
-                    this.programInfo,
-                    this.bufferInfo
-                );
+                setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
-                twgl.drawBufferInfo(
+                drawBufferInfo(
                     gl,
                     this.bufferInfo,
                     gl.TRIANGLE_STRIP,

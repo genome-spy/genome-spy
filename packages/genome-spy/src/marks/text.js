@@ -1,6 +1,11 @@
 import { isString } from "vega-util";
 import { format } from "d3-format";
-import * as twgl from "twgl.js";
+import {
+    createTexture,
+    drawBufferInfo,
+    setBuffersAndAttributes,
+    setUniforms
+} from "twgl.js";
 import VERTEX_SHADER from "../gl/text.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/text.fragment.glsl";
 import { TextVertexBuilder } from "../gl/dataToVertices";
@@ -113,7 +118,7 @@ export default class TextMark extends Mark {
 
         // TODO: Share the texture with other text mark instances
         const texturePromise = new Promise((resolve, reject) => {
-            this.fontTexture = twgl.createTexture(
+            this.fontTexture = createTexture(
                 gl,
                 {
                     src: fontUrl,
@@ -141,7 +146,7 @@ export default class TextMark extends Mark {
         const props = this.properties;
 
         // TODO: Use uniform block.
-        twgl.setUniforms(this.programInfo, {
+        setUniforms(this.programInfo, {
             uSqueeze: props.squeeze ? 1 : 0,
             uPaddingX: props.paddingX,
             uPaddingY: props.paddingY,
@@ -208,7 +213,7 @@ export default class TextMark extends Mark {
     prepareRender() {
         super.prepareRender();
 
-        twgl.setUniforms(this.programInfo, {
+        setUniforms(this.programInfo, {
             // TODO: Only set texture once it has been loaded
             uTexture: this.fontTexture,
             // TODO: Only update when dpr changes
@@ -218,7 +223,7 @@ export default class TextMark extends Mark {
                 (this.glHelper.dpr / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
         });
 
-        twgl.setBuffersAndAttributes(
+        setBuffersAndAttributes(
             this.gl,
             this.programInfo,
             this.vertexArrayInfo
@@ -233,7 +238,7 @@ export default class TextMark extends Mark {
 
         return this.createRenderCallback(
             (offset, count) =>
-                twgl.drawBufferInfo(
+                drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,
                     gl.TRIANGLES,

@@ -1,4 +1,4 @@
-import * as twgl from "twgl.js";
+import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
 import { bisector, quantileSorted } from "d3-array";
 import { zoomLinear } from "vega-util";
 import { PointVertexBuilder } from "../gl/dataToVertices";
@@ -179,7 +179,7 @@ export default class PointMark extends Mark {
     prepareRender() {
         super.prepareRender();
 
-        twgl.setUniforms(this.programInfo, {
+        setUniforms(this.programInfo, {
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
             uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),
@@ -187,7 +187,7 @@ export default class PointMark extends Mark {
             uSemanticThreshold: this.getSemanticThreshold()
         });
 
-        twgl.setBuffersAndAttributes(
+        setBuffersAndAttributes(
             this.gl,
             this.programInfo,
             this.vertexArrayInfo
@@ -229,7 +229,7 @@ export default class PointMark extends Mark {
                 const length = upper - lower;
 
                 if (length) {
-                    twgl.drawBufferInfo(
+                    drawBufferInfo(
                         gl,
                         this.vertexArrayInfo,
                         gl.POINTS,

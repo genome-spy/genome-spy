@@ -1,4 +1,4 @@
-import * as twgl from "twgl.js";
+import { addExtensionsToContext, getContext, isWebGL2 } from "twgl.js";
 import { isArray } from "vega-util";
 import { getPlatformShaderDefines } from "./includes/fp64-utils";
 
@@ -22,8 +22,8 @@ export default class WebGLHelper {
         container.appendChild(canvas);
 
         /** @type {WebGL2RenderingContext} */
-        const gl = twgl.getContext(canvas);
-        twgl.addExtensionsToContext(gl);
+        const gl = getContext(canvas);
+        addExtensionsToContext(gl);
 
         if (!gl) {
             throw new Error(
@@ -31,7 +31,7 @@ export default class WebGLHelper {
             );
         }
 
-        if (!twgl.isWebGL2(gl)) {
+        if (!isWebGL2(gl)) {
             throw new Error(
                 "Your web browser does not support WebGL 2.0. Chrome, Firefox, and Safari Tech Preview should work."
             );
