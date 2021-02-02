@@ -88,7 +88,9 @@ export default class SampleView extends ContainerView {
          */
         let summaryIndex = 0;
         this.child.visit(view => {
-            const summarySpec = view.spec.sampleSummary;
+            const summarySpec =
+                /** @type {import("../../spec/view").UnitSpec | import("../../spec/view").LayerSpec} */ (view
+                    .spec.sampleSummary);
             if (summarySpec) {
                 if (!summarySpec.data) {
                     summarySpec.data = { values: [] };
