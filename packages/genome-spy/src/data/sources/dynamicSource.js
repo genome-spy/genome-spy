@@ -15,6 +15,7 @@ export default class DynamicSource extends DataSource {
      */
     publishData(iterable) {
         this.reset();
+        this.beginBatch();
 
         let wrap;
 

@@ -69,13 +69,29 @@ export interface RegexExtractParams extends TransformParamsBase {
 }
 
 export interface RegexFoldParams extends TransformParamsBase {
-    type: "gather";
+    type: "regexFold";
 
-    columnRegex: string;
+    /**
+     * A regular expression that matches to column names. The regex must have one
+     * capturing group that is used for extracting the key (e.g., a sample id)
+     * from the column name.
+     */
+    columnRegex: string[] | string;
 
-    asValue: string;
+    /**
+     * A new column name for the extracted values.
+     */
+    asValue: string[] | string;
 
-    /** **Default:** `"sample"` */
+    /**
+     * An optional regex that matches to columns that should not be included
+     * in the new folded rows.
+     */
+    skipRegex?: string;
+
+    /**
+     * **Default:** `"sample"`
+     */
     asKey?: string;
 }
 

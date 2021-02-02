@@ -1,5 +1,5 @@
 /**
- * THe FlowNode clones the data objects passing through or creates entirely
+ * The FlowNode clones the data objects passing through or creates entirely
  * new objects.
  */
 export const BEHAVIOR_CLONES = 1 << 0;
@@ -12,6 +12,8 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
 
 /**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
+ *
+ * @typedef {object} BatchMetadata
  */
 export default class FlowNode {
     get behavior() {
@@ -185,6 +187,17 @@ export default class FlowNode {
 
         for (const child of this.children) {
             child.complete();
+        }
+    }
+
+    /**
+     * Signals that a new batch of data will be propagated.
+     *
+     * @param {BatchMetadata} [metadata]
+     */
+    beginBatch(metadata) {
+        for (const child of this.children) {
+            child.beginBatch(metadata);
         }
     }
 

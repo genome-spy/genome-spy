@@ -49,6 +49,7 @@ export default class UrlSource extends DataSource {
             try {
                 /** @type {any[]} */
                 const data = read(text, getFormat(this.params));
+                this.beginBatch();
                 for (const d of data) {
                     this._propagate(d);
                 }
