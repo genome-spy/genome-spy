@@ -1,20 +1,26 @@
-import { compare } from "vega-util";
+import { InternMap } from "internmap";
+import { group } from "d3-array";
+import { compare, field } from "vega-util";
+import iterateNestedMaps from "../utils/iterateNestedMaps";
 import FlowNode from "./flowNode";
 
 /**
- * @typedef {import("../spec/transform").SortConfig} SortConfig
+ * @typedef {import("../spec/transform").CollectParams} CollectParams
  */
 export default class Collector extends FlowNode {
     /**
-     * @param {SortConfig} [params]
+     * @param {CollectParams} [params]
      */
     constructor(params) {
         super();
 
-        this.params = params;
+        this.params = params ?? { type: "collect" };
 
         /** @type {any[]} */
         this._data = [];
+
+        /** @type {Map<any[], [number, number]>} */
+        this._groupExtentMap = new InternMap([], JSON.stringify);
 
         /** @type {(function(Collector):void)[]} */
         this.observers = [];
@@ -23,6 +29,7 @@ export default class Collector extends FlowNode {
     reset() {
         super.reset();
         this._data = [];
+        this._groupExtentMap = new InternMap([], JSON.stringify);
     }
 
     /**
@@ -35,8 +42,36 @@ export default class Collector extends FlowNode {
 
     complete() {
         const sort = this.params?.sort;
-        if (sort) {
-            this._data.sort(compare(sort.field, sort.order));
+        const comparator = sort ? compare(sort.field, sort.order) : undefined;
+
+        /** @param {any[]} data */
+        const sortData = data => {
+            if (comparator) {
+                data.sort(comparator);
+            }
+        };
+
+        if (this.params.groupby?.length) {
+            const accessors = this.params.groupby.map(fieldName =>
+                field(fieldName)
+            );
+            // @ts-ignore
+            const groups = group(this._data, ...accessors);
+
+            /** @type {any[]} */
+            const concatenated = [];
+            for (const [key, data] of iterateNestedMaps(groups)) {
+                sortData(data);
+                this._groupExtentMap.set(key, [
+                    concatenated.length,
+                    concatenated.length + data.length
+                ]);
+                concatenated.push(...data);
+            }
+
+            this._data = concatenated;
+        } else {
+            sortData(this._data);
         }
 
         if (this.children.length) {
@@ -59,5 +94,17 @@ export default class Collector extends FlowNode {
             );
         }
         return this._data;
+    }
+
+    /**
+     * @param {any[]} key
+     */
+    getGroupExtent(key) {
+        return this._groupExtentMap.get(key);
+    }
+
+    getGroups() {
+        // @ts-ignore
+        return [...this._groupExtentMap.keys()];
     }
 }

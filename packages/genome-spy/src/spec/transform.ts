@@ -260,9 +260,16 @@ export interface CollectParams extends TransformParamsBase {
     type: "collect";
 
     /**
+     * Arranges the data into consecutive batched based on the groups.
+     * This is mainly intended for internal use so that faceted data can
+     * be handled as batches.
+     */
+    groupby?: Field[];
+
+    /**
      * The sort order.
      */
-    sort: CompareParams;
+    sort?: CompareParams;
 }
 
 export interface SampleParams extends TransformParamsBase {
