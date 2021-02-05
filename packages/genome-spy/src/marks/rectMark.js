@@ -46,8 +46,8 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @param {import("../spec/view").Encoding} encoding
-     * @returns {import("../spec/view").Encoding}
+     * @param {import("../spec/channel").Encoding} encoding
+     * @returns {import("../spec/channel").Encoding}
      */
     fixEncoding(encoding) {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
@@ -85,9 +85,9 @@ export default class RectMark extends Mark {
      * @param {number} [tessellationThreshold]
      */
     _createSampleBufferInfo(interval, tessellationThreshold) {
-        const numItems = [...this.dataByFacet.values()]
-            .map(arr => arr.length)
-            .reduce((a, c) => a + c, 0);
+        const collector = this.unitView.getCollector();
+        const data = collector.getData();
+        const numItems = data.length;
 
         // TODO: Disable tessellation on SimpleTrack - no need for it
         const builder = new RectVertexBuilder({
@@ -99,9 +99,14 @@ export default class RectMark extends Mark {
             buildXIndex: this.properties.buildIndex
         });
 
-        for (const [sample, data] of this.dataByFacet.entries()) {
-            builder.addBatch(sample, data);
+        if (this.unitView.getFacetFields()) {
+            for (const [facetKey, extent] of collector.groupExtentMap) {
+                builder.addBatch(facetKey, data, ...extent);
+            }
+        } else {
+            builder.addBatch(undefined, data);
         }
+
         const vertexData = builder.toArrays();
 
         // Ensure that no VAOs are inadvertently altered
@@ -189,6 +194,7 @@ export default class RectMark extends Mark {
      * @returns {any}
      */
     findDatumAt(facetId, x) {
+        throw new Error("Broken!");
         const e = this.encoders;
         const data = this.dataByFacet.get(facetId);
         const a = e.x.accessor;

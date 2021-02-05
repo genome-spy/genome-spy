@@ -307,6 +307,16 @@ export default class View {
     }
 
     /**
+     * Returns the fields that should be used for partitioning the data for facets.
+     *
+     * @param {View} [whoIsAsking]
+     * @returns {string[]}
+     */
+    getFacetFields(whoIsAsking) {
+        return this.parent?.getFacetFields(this);
+    }
+
+    /**
      *
      * @param {string} channel
      * @returns {import("./scaleResolution").default}

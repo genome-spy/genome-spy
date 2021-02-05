@@ -5,6 +5,11 @@ import iterateNestedMaps from "../utils/iterateNestedMaps";
 import FlowNode from "./flowNode";
 
 /**
+ * Collects (materializes) the data that flows through this node.
+ * The collected data can be optionally grouped and sorted.
+ *
+ * Grouping is primarily intended for handling faceted data.
+ *
  * @typedef {import("../spec/transform").CollectParams} CollectParams
  */
 export default class Collector extends FlowNode {
@@ -27,7 +32,7 @@ export default class Collector extends FlowNode {
         this._data = [];
 
         /** @type {Map<any[], [number, number]>} */
-        this._groupExtentMap = new InternMap([], JSON.stringify);
+        this.groupExtentMap = new InternMap([], JSON.stringify);
     }
 
     reset() {
@@ -65,7 +70,7 @@ export default class Collector extends FlowNode {
             const concatenated = [];
             for (const [key, data] of iterateNestedMaps(groups)) {
                 sortData(data);
-                this._groupExtentMap.set(key, [
+                this.groupExtentMap.set(key, [
                     concatenated.length,
                     concatenated.length + data.length
                 ]);
@@ -97,17 +102,5 @@ export default class Collector extends FlowNode {
             );
         }
         return this._data;
-    }
-
-    /**
-     * @param {any[]} key
-     */
-    getGroupExtent(key) {
-        return this._groupExtentMap.get(key);
-    }
-
-    getGroups() {
-        // @ts-ignore
-        return [...this._groupExtentMap.keys()];
     }
 }

@@ -82,15 +82,6 @@ export default class PointMark extends Mark {
     initializeData() {
         super.initializeData();
 
-        const xAccessor = this.unitView.getAccessor("x");
-        if (xAccessor) {
-            // Sort each point of each sample for binary search
-            // TODO: Support pre-sorted data, move this to the data flow
-            for (const arr of this.dataByFacet.values()) {
-                arr.sort((a, b) => xAccessor(a) - xAccessor(b));
-            }
-        }
-
         // Semantic zooming is currently solely a feature of point mark.
         // Build a sorted sample that allows for computing p-quantiles
         const semanticScoreAccessor = this.unitView.getAccessor(
@@ -115,9 +106,9 @@ export default class PointMark extends Mark {
     }
 
     updateGraphicsData() {
-        const itemCount = [...this.dataByFacet.values()]
-            .map(arr => arr.length)
-            .reduce((a, c) => a + c, 0);
+        const collector = this.unitView.getCollector();
+        const data = collector.getData();
+        const itemCount = data.length;
 
         const builder = new PointVertexBuilder({
             encoders: this.encoders,
@@ -125,9 +116,14 @@ export default class PointMark extends Mark {
             numItems: Math.max(itemCount, this.properties.minBufferSize || 0)
         });
 
-        for (const [sample, points] of this.dataByFacet.entries()) {
-            builder.addBatch(sample, points);
+        if (this.unitView.getFacetFields()) {
+            for (const [facetKey, extent] of collector.groupExtentMap) {
+                builder.addBatch(facetKey, data, ...extent);
+            }
+        } else {
+            builder.addBatch(undefined, data);
         }
+
         const vertexData = builder.toArrays();
         this.rangeMap = vertexData.rangeMap;
         this.updateBufferInfo(vertexData);
@@ -222,9 +218,12 @@ export default class PointMark extends Mark {
         return this.createRenderCallback(
             (offset, count) => {
                 // TODO: findIndices is rather slow. Consider a more coarse-grained, "tiled" solution.
+                /*
                 const [lower, upper] = this._findIndices
                     ? this._findIndices(this.dataByFacet.get(options.facetId))
                     : [0, count];
+                    */
+                const [lower, upper] = [0, count];
 
                 const length = upper - lower;
 

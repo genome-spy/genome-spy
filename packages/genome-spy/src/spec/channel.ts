@@ -53,6 +53,17 @@ export interface ChromPosDef extends ChannelDefWithScale {
     pos?: FieldName;
 }
 
-export type ChannelDef = FieldDef | DatumDef | ValueDef | ExprDef | ChromPosDef;
+export interface FacetFieldDef extends ChannelDefBase {
+    field: FieldName;
+    spacing?: number;
+}
+
+export type ChannelDef =
+    | FieldDef
+    | DatumDef
+    | ValueDef
+    | ExprDef
+    | ChromPosDef
+    | FacetFieldDef;
 
 export type Encoding = Record<string, ChannelDef>;

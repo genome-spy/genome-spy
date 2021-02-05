@@ -111,7 +111,10 @@ export function buildDataFlow(root, existingFlow) {
         }
 
         if (view instanceof UnitView) {
-            const collector = new Collector();
+            const collector = new Collector({
+                type: "collect",
+                groupby: view.getFacetFields()
+            });
             appendNode(
                 collector,
                 () => new Error("A unit view has no (inherited) data source")

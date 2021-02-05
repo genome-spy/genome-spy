@@ -407,7 +407,7 @@ export default class SampleView extends ContainerView {
                 sampleFacetRenderingOptions: {
                     locSize: sampleLocation.location
                 },
-                facetId: sampleLocation.sampleId
+                facetId: [sampleLocation.sampleId]
             });
         }
     }

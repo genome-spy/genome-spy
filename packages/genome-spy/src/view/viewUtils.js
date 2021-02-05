@@ -33,7 +33,7 @@ import { isFieldDef } from "../encoder/encoder";
  * @typedef {import("../spec/view").RootConfig} RootConfig
  * @typedef {import("./view").default} View
  *
- * @typedef {import("../spec/view").FacetFieldDef} FacetFieldDef
+ * @typedef {import("../spec/channel").FacetFieldDef} FacetFieldDef
  * @typedef {import("../spec/view").FacetMapping} FacetMapping
  */
 
@@ -99,22 +99,22 @@ export function isSampleSpec(spec) {
 
 /**
  *
- * @param {FacetFieldDef | FacetMapping} spec
+ * @param {ChannelDef | FacetMapping} def
  * @returns {spec is FacetFieldDef}
  */
-export function isFacetFieldDef(spec) {
-    return "field" in spec && isString(spec.field);
+export function isFacetFieldDef(def) {
+    return def && "field" in def && isString(def.field);
 }
 
 /**
  *
- * @param {FacetFieldDef | FacetMapping} spec
+ * @param {FacetFieldDef | FacetMapping} def
  * @returns {spec is FacetMapping}
  */
-export function isFacetMapping(spec) {
+export function isFacetMapping(def) {
     return (
-        ("row" in spec && isObject(spec.row)) ||
-        ("column" in spec && isObject(spec.column))
+        ("row" in def && isObject(def.row)) ||
+        ("column" in def && isObject(def.column))
     );
 }
 

@@ -50,8 +50,8 @@ export default class RuleMark extends Mark {
     }
 
     /**
-     * @param {import("../spec/view").Encoding} encoding
-     * @returns {import("../spec/view").Encoding}
+     * @param {import("../spec/channel").Encoding} encoding
+     * @returns {import("../spec/channel").Encoding}
      */
     // eslint-disable-next-line complexity
     fixEncoding(encoding) {
@@ -117,9 +117,9 @@ export default class RuleMark extends Mark {
     }
 
     updateGraphicsData() {
-        const itemCount = [...this.dataByFacet.values()]
-            .map(arr => arr.length)
-            .reduce((a, c) => a + c, 0);
+        const collector = this.unitView.getCollector();
+        const data = collector.getData();
+        const itemCount = data.length;
 
         const builder = new RuleVertexBuilder({
             encoders: this.encoders,
@@ -128,9 +128,14 @@ export default class RuleMark extends Mark {
             buildXIndex: this.properties.buildIndex
         });
 
-        for (const [sample, d] of this.dataByFacet.entries()) {
-            builder.addBatch(sample, d);
+        if (this.unitView.getFacetFields()) {
+            for (const [facetKey, extent] of collector.groupExtentMap) {
+                builder.addBatch(facetKey, data, ...extent);
+            }
+        } else {
+            builder.addBatch(undefined, data);
         }
+
         const vertexData = builder.toArrays();
         this.rangeMap = vertexData.rangeMap;
 

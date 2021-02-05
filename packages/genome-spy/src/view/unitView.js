@@ -17,6 +17,7 @@ import {
 import createDomain from "../utils/domainArray";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import AxisResolution from "./axisResolution";
+import { isFacetFieldDef } from "./viewUtils";
 
 /**
  *
@@ -210,6 +211,21 @@ export default class UnitView extends View {
         }
 
         return super.getFacetAccessor(this);
+    }
+
+    /**
+     * Returns the fields that should be used for partitioning the data for facets.
+     *
+     * @param {View} [whoIsAsking]
+     * @returns {string[]}
+     */
+    getFacetFields(whoIsAsking) {
+        const sampleFieldDef = this.getEncoding().sample;
+        if (isFacetFieldDef(sampleFieldDef)) {
+            return [sampleFieldDef.field];
+        }
+
+        return super.getFacetFields(this);
     }
 
     /**

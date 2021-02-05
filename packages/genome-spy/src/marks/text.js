@@ -96,8 +96,8 @@ export default class TextMark extends Mark {
     }
 
     /**
-     * @param {import("../spec/view").Encoding} encoding
-     * @returns {import("../spec/view").Encoding}
+     * @param {import("../spec/channel").Encoding} encoding
+     * @returns {import("../spec/channel").Encoding}
      */
     fixEncoding(encoding) {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
@@ -167,6 +167,8 @@ export default class TextMark extends Mark {
     }
 
     updateGraphicsData() {
+        const collector = this.unitView.getCollector();
+        const data = collector.getData();
         const encoding = this.encoding;
 
         // Count the total number of characters to that we can pre-allocate a typed array
@@ -176,17 +178,15 @@ export default class TextMark extends Mark {
         const numberFormat = encoding.text.format
             ? format(encoding.text.format)
             : d => d;
-        for (const data of this.dataByFacet.values()) {
-            for (const d of data) {
-                // TODO: Optimization: don't format twice (calculation and actual encoding)
-                const value = numberFormat(accessor(d));
-                const str = isString(value)
-                    ? value
-                    : value === null
-                    ? ""
-                    : "" + value;
-                charCount += (str && str.length) || 0;
-            }
+        for (const d of data) {
+            // TODO: Optimization: don't format twice (calculation and actual encoding)
+            const value = numberFormat(accessor(d));
+            const str = isString(value)
+                ? value
+                : value === null
+                ? ""
+                : "" + value;
+            charCount += (str && str.length) || 0;
         }
 
         const builder = new TextVertexBuilder({
@@ -201,9 +201,14 @@ export default class TextMark extends Mark {
             buildXIndex: this.properties.buildIndex
         });
 
-        for (const [sample, texts] of this.dataByFacet.entries()) {
-            builder.addBatch(sample, texts);
+        if (this.unitView.getFacetFields()) {
+            for (const [facetKey, extent] of collector.groupExtentMap) {
+                builder.addBatch(facetKey, data, ...extent);
+            }
+        } else {
+            builder.addBatch(undefined, data);
         }
+
         const vertexData = builder.toArrays();
         this.rangeMap = vertexData.rangeMap;
 

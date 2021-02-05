@@ -3,7 +3,7 @@ import { Scale } from "./scale";
 import { TransformParams } from "./transform";
 import { GenomeConfig } from "../genome/genome";
 import { SizeDef } from "../utils/layout/flexLayout";
-import { Encoding, PositionalChannel } from "./channel";
+import { Encoding, FacetFieldDef, PositionalChannel } from "./channel";
 
 // TODO: Perhaps this should be in "utils"
 export type GeometricDimension = "width" | "height";
@@ -35,12 +35,6 @@ export interface MarkConfig {
      * TODO: This should be enabled automatically if the data are sorted.
      */
     buildIndex?: boolean;
-}
-
-export interface FacetFieldDef {
-    field: string;
-    type: string;
-    spacing?: number;
 }
 
 export interface FacetMapping {

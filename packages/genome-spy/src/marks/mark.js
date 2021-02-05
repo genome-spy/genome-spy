@@ -188,19 +188,7 @@ export default class Mark {
     }
 
     initializeData() {
-        // TODO: Move this stuff to data flow or something
-
-        const data = this.unitView.getCollector()?.getData();
-
-        const accessor = this.unitView.getFacetAccessor();
-        if (accessor) {
-            // TODO: Optimize. Now inherited data is faceted in all children.
-            // Faceting should be moved to Views
-            /** @type {Map<string, object[]>} */
-            this.dataByFacet = group(data, accessor);
-        } else {
-            this.dataByFacet = new Map([[undefined, data]]);
-        }
+        //
     }
 
     /**

@@ -1,3 +1,4 @@
+import { InternMap } from "internmap";
 import { format } from "d3-format";
 import { isString } from "vega-util";
 import { fp64ify } from "./includes/fp64-utils";
@@ -78,7 +79,7 @@ export class GeometryBuilder {
         this.lastOffset = 0;
 
         /** @type {Map<any, RangeEntry>} keep track of sample locations within the vertex array */
-        this.rangeMap = new Map();
+        this.rangeMap = new InternMap([], JSON.stringify);
     }
 
     /**
@@ -101,12 +102,12 @@ export class GeometryBuilder {
     }
 
     /**
-     * @param {String} key The facet id, for example
+     * @param {any} key The facet id, for example
      * @param {object[]} data
      */
-    addBatch(key, data) {
-        for (const p of data) {
-            this.variableBuilder.pushFromDatum(p);
+    addBatch(key, data, lo = 0, hi = data.length) {
+        for (let i = lo; i < hi; i++) {
+            this.variableBuilder.pushFromDatum(data[i]);
         }
 
         this.registerBatch(key);
@@ -221,8 +222,8 @@ export class RectVertexBuilder extends GeometryBuilder {
      * @param {any} key
      * @param {object[]} data
      */
-    addBatch(key, data) {
-        if (!data.length) {
+    addBatch(key, data, lo = 0, hi = data.length) {
+        if (hi <= lo) {
             return;
         }
 
@@ -243,7 +244,9 @@ export class RectVertexBuilder extends GeometryBuilder {
         const frac = [0, 0];
         this.updateFrac(frac);
 
-        for (const d of data) {
+        for (let i = lo; i < hi; i++) {
+            const d = data[i];
+
             let x = xAccessor(d),
                 x2 = x2Accessor(d);
 
@@ -331,17 +334,19 @@ export class RuleVertexBuilder extends GeometryBuilder {
     /* eslint-disable complexity */
     /**
      *
-     * @param {string} key
+     * @param {any} key
      * @param {object[]} data
      */
-    addBatch(key, data) {
+    addBatch(key, data, lo = 0, hi = data.length) {
         const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
             .encoders);
         const [lower, upper] = this.visibleRange; // TODO
 
         this.prepareXIndexer(data);
 
-        for (const d of data) {
+        for (let i = lo; i < hi; i++) {
+            const d = data[i];
+
             // Start a new rule. Duplicate the first vertex to produce degenerate triangles
             this.variableBuilder.updateFromDatum(d);
             this.updateSide(-0.5);
@@ -389,9 +394,6 @@ export class PointVertexBuilder extends GeometryBuilder {
 
 export class ConnectionVertexBuilder extends GeometryBuilder {
     /**
-     * BROKEN !!!!!!!
-     * FIX !!!!!!!
-     *
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
@@ -469,10 +471,10 @@ export class TextVertexBuilder extends GeometryBuilder {
 
     /**
      *
-     * @param {String} key
+     * @param {any} key
      * @param {object[]} data
      */
-    addBatch(key, data) {
+    addBatch(key, data, lo = 0, hi = data.length) {
         const align = this.properties.align || "left";
 
         const base = this.metadata.common.base;
@@ -502,7 +504,9 @@ export class TextVertexBuilder extends GeometryBuilder {
 
         this.prepareXIndexer(data);
 
-        for (const d of data) {
+        for (let i = lo; i < hi; i++) {
+            const d = data[i];
+
             const value = this.numberFormat(accessor(d));
             const str = isString(value)
                 ? value

@@ -61,8 +61,8 @@ export default class ConnectionMark extends Mark {
     }
 
     /**
-     * @param {import("../spec/view").Encoding} encoding
-     * @returns {import("../spec/view").Encoding}
+     * @param {import("../spec/channel").Encoding} encoding
+     * @returns {import("../spec/channel").Encoding}
      */
     fixEncoding(encoding) {
         if (!encoding.x) {
@@ -83,9 +83,9 @@ export default class ConnectionMark extends Mark {
     }
 
     updateGraphicsData() {
-        const itemCount = [...this.dataByFacet.values()]
-            .map(arr => arr.length)
-            .reduce((a, c) => a + c, 0);
+        const collector = this.unitView.getCollector();
+        const data = collector.getData();
+        const itemCount = data.length;
 
         const builder = new ConnectionVertexBuilder({
             encoders: this.encoders,
@@ -93,9 +93,14 @@ export default class ConnectionMark extends Mark {
             numItems: itemCount
         });
 
-        for (const [sample, connections] of this.dataByFacet.entries()) {
-            builder.addBatch(sample, connections);
+        if (this.unitView.getFacetFields()) {
+            for (const [facetKey, extent] of collector.groupExtentMap) {
+                builder.addBatch(facetKey, data, ...extent);
+            }
+        } else {
+            builder.addBatch(undefined, data);
         }
+
         const vertexData = builder.toArrays();
 
         vertexData.arrays.strip = {
