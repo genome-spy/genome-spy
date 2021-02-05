@@ -212,13 +212,11 @@ export default class UnitView extends View {
         return super.getFacetAccessor(this);
     }
 
-    getCollectedData() {
-        const collector = this.context.dataFlow.findCollectorByKey(this);
-        if (!collector) {
-            return undefined;
-        }
-
-        return collector.getData();
+    /**
+     * Returns a collector that is associated with this view.
+     */
+    getCollector() {
+        return this.context.dataFlow.findCollectorByKey(this);
     }
 
     /**
@@ -251,6 +249,7 @@ export default class UnitView extends View {
      * Extracts the domain from the data.
      *
      * TODO: Optimize! Now this performs redundant work if multiple views share the same collector.
+     * Also, all relevant fields should be processed in one iteration: https://jsbench.me/y5kkqy52jo/1
      *
      * @param {string} channel
      * @returns {DomainArray}
@@ -285,7 +284,7 @@ export default class UnitView extends View {
                     if (accessor.constant) {
                         domain.extend(accessor({}));
                     } else {
-                        const data = this.getCollectedData() || [];
+                        const data = this.getCollector()?.getData() || [];
                         for (const datum of data) {
                             domain.extend(accessor(datum));
                         }

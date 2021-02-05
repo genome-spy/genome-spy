@@ -410,7 +410,7 @@ export default class GenomeSpyApp {
                 continue;
             }
 
-            const data = view.getCollectedData();
+            const data = view.getCollector()?.getData();
             const index = data.findIndex(
                 v => collator.compare(sa(v), term) === 0
             );

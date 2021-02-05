@@ -98,7 +98,7 @@ export default class PointMark extends Mark {
         );
         if (semanticScoreAccessor) {
             const sampler = new SampleTransform({ type: "sample", size: 3000 }); // n chosen using Stetson-Harrison
-            for (const d of this.unitView.getCollectedData()) {
+            for (const d of this.unitView.getCollector()?.getData()) {
                 // TODO: Throw on missing scores
                 sampler.handle(semanticScoreAccessor(d));
             }
