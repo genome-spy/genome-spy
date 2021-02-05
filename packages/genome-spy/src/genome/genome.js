@@ -58,27 +58,6 @@ export default class Genome {
         this.chromMapper = new ChromMapper(this.chromSizes);
 
         // TODO: Support multiple genomes
-        genomeSpy.accessorFactory.register(encoding => {
-            if (encoding.chrom && encoding.pos) {
-                const offset =
-                    typeof encoding.offset == "number" ? encoding.offset : 0;
-                const chromField = field(encoding.chrom);
-                const posField = field(encoding.pos);
-
-                /** @type {import("../encoder/accessor").Accessor} */
-                const accessor = d =>
-                    this.chromMapper.toContinuous(chromField(d), posField(d)) +
-                    offset;
-                accessor.constant = false;
-                accessor.fields = [
-                    accessorFields(chromField),
-                    accessorFields(posField)
-                ].flat();
-                return accessor;
-            }
-        });
-
-        // TODO: Support multiple genomes
         genomeSpy.registerNamedDataProvider(name => {
             if (name == "chromSizes") {
                 return this.chromMapper.getChromosomes();

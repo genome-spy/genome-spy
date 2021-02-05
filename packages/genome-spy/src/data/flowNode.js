@@ -106,6 +106,22 @@ export default class FlowNode {
     }
 
     /**
+     * @param {FlowNode} newParent
+     */
+    insertAsParent(newParent) {
+        if (this.isRoot()) {
+            // Root should always be a data source
+            throw new Error("Cannot insert a new parent for a root node!");
+        }
+
+        newParent.parent = this.parent;
+        this.parent.children[this.parent.children.indexOf(this)] = newParent;
+        this.parent._updatePropagator();
+        this.parent = undefined;
+        newParent.addChild(this);
+    }
+
+    /**
      *
      * @param {FlowNode} child
      */
@@ -171,6 +187,23 @@ export default class FlowNode {
         if (visitor.afterChildren) {
             visitor.afterChildren(this);
         }
+    }
+
+    /**
+     * @param {number} [depth]
+     * @returns {string}
+     */
+    subtreeToString(depth = 0) {
+        const childTree = this.children
+            .map(child => child.subtreeToString(depth + 1))
+            .join("");
+        return (
+            " ".repeat(depth * 2) +
+            "* " +
+            /^class ([A-Za-z0-9_]+)/.exec("" + this.constructor)?.[1] +
+            "\n" +
+            childTree
+        );
     }
 
     /**

@@ -11,7 +11,8 @@ import {
     isSecondaryChannel,
     secondaryChannels,
     primaryChannel,
-    isPositionalChannel
+    isPositionalChannel,
+    isChannelDefWithScale
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 import { getCachedOrCall } from "../utils/propertyCacher";
@@ -103,9 +104,9 @@ export default class UnitView extends View {
     resolve(type) {
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
 
-        const encoding = this.getEncoding();
-        // eslint-disable-next-line guard-for-in
-        for (const channel in encoding) {
+        for (const [channel, channelDef] of Object.entries(
+            this.getEncoding()
+        )) {
             if (type == "axis" && !isPositionalChannel(channel)) {
                 continue;
             }
@@ -116,8 +117,7 @@ export default class UnitView extends View {
                 continue;
             }
 
-            if (!this.getAccessor(channel)) {
-                // The channel has no fields or anything, so it's likely just a "value". Let's skip.
+            if (!isChannelDefWithScale(channelDef)) {
                 continue;
             }
 
@@ -284,9 +284,12 @@ export default class UnitView extends View {
                     if (accessor.constant) {
                         domain.extend(accessor({}));
                     } else {
-                        const data = this.getCollector()?.getData() || [];
-                        for (const datum of data) {
-                            domain.extend(accessor(datum));
+                        const collector = this.getCollector();
+                        if (collector?.completed) {
+                            // eslint-disable-next-line max-depth
+                            for (const datum of collector.getData()) {
+                                domain.extend(accessor(datum));
+                            }
                         }
                     }
                 }

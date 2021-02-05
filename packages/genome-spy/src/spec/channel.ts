@@ -10,6 +10,11 @@ export interface ChannelDefBase {
     title?: string;
 }
 
+export interface ValueDef extends ChannelDefBase {
+    /** A constant value in the context of the range */
+    value: Scalar;
+}
+
 export interface ChannelDefWithScale extends ChannelDefBase {
     type: string;
 
@@ -38,16 +43,12 @@ export interface DatumDef extends ChannelDefWithScale {
     datum: Scalar;
 }
 
-export interface ValueDef extends ChannelDefBase {
-    /** A constant value in the context of the range */
-    value: Scalar;
-}
-
-export interface ExprDef extends ChannelDefBase {
+export interface ExprDef extends ChannelDefWithScale {
     /** An expression. Properties of the data can be accessed through the `datum` object. */
     expr: string;
 }
-export interface ChromPosDef extends ChannelDefBase {
+export interface ChromPosDef extends ChannelDefWithScale {
+    type: "locus";
     chrom: FieldName;
     pos?: FieldName;
 }

@@ -7,13 +7,20 @@ import CloneTransform from "../data/transforms/clone";
 import { isDynamicCallbackData } from "../data/sources/dynamicCallbackSource";
 import DataFlow from "../data/dataFlow";
 import DataSource from "../data/sources/dataSource";
+import {
+    isChromPosDef,
+    isPositionalChannel,
+    primaryChannel
+} from "../encoder/encoder";
+import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
 
 /**
  * @typedef {import("./view").default} View
  * @typedef {import("../data/flowNode").default} FlowNode
+ * @typedef {import("../data/dataFlow").default<View>} DataFlow
  *
  * @param {View} root
- * @param {import("../data/dataFlow").default<View>} [existingFlow] Add data flow
+ * @param {DataFlow<View>} [existingFlow] Add data flow
  *      graphs to an existing DataFlow object.
  */
 export function buildDataFlow(root, existingFlow) {
@@ -122,6 +129,61 @@ export function buildDataFlow(root, existingFlow) {
     root.visit(processView);
 
     return dataFlow;
+}
+
+/**
+ * Modifies both the dataflow and view hierarchy by inserting
+ * LinearizeGenomicCoordinate transforms to the data flow and replacing the
+ * "chrom/pos" in the encoding block with a "field".
+ *
+ * @param {DataFlow<View>} dataFlow
+ */
+export function linearizeLocusAccess(dataFlow) {
+    for (const [view, collector] of dataFlow._collectorsByHost.entries()) {
+        for (const [channel, channelDef] of Object.entries(
+            view.getEncoding()
+        )) {
+            if (isPositionalChannel(channel) && isChromPosDef(channelDef)) {
+                /** @param {string} str */
+                const strip = str => str.replace(/[^A-Za-z0-9_]/g, "");
+                const linearizedField = [
+                    "_linearized_",
+                    strip(channelDef.chrom),
+                    "_",
+                    strip(channelDef.pos)
+                ].join("");
+
+                collector.insertAsParent(
+                    new LinearizeGenomicCoordinate(
+                        {
+                            type: "linearizeGenomicCoordinate",
+                            channel: /** @type {"x" | "y"} */ (primaryChannel(
+                                channel
+                            )),
+                            chrom: channelDef.chrom,
+                            pos: channelDef.pos,
+                            as: linearizedField
+                        },
+                        view
+                    )
+                );
+
+                // Use spec directly because getEncoding() returns inherited props too.
+                /** @type {any} */
+                const newFieldDef = {
+                    ...(view.spec.encoding?.[channel] || {}),
+                    field: linearizedField
+                };
+                delete newFieldDef.chrom;
+                delete newFieldDef.pos;
+                if (!newFieldDef.type && channelDef.type) {
+                    newFieldDef.type = channelDef.type;
+                }
+
+                view.spec.encoding[channel] = newFieldDef;
+            }
+        }
+    }
 }
 
 /**

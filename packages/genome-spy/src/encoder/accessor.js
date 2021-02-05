@@ -1,6 +1,7 @@
 import createFunction from "../utils/expression";
 
 import { field, accessorFields, constant } from "vega-util";
+import { isDatumDef, isExprDef, isFieldDef } from "./encoder";
 
 /**
  * @typedef {Object} AccessorMetadata
@@ -16,11 +17,11 @@ export default class AccessorFactory {
         /** @type {(function(ChannelDef):Accessor)[]} */
         this.accessorCreators = [];
 
-        this.register(encoding => {
-            if (encoding.field) {
+        this.register(channelDef => {
+            if (isFieldDef(channelDef)) {
                 try {
                     /** @type {Accessor} */
-                    const accessor = field(encoding.field);
+                    const accessor = field(channelDef.field);
                     accessor.constant = false;
                     accessor.fields = accessorFields(accessor);
                     return accessor;
@@ -30,14 +31,16 @@ export default class AccessorFactory {
             }
         });
 
-        this.register(encoding =>
-            encoding.expr ? createExpressionAccessor(encoding.expr) : undefined
+        this.register(channelDef =>
+            isExprDef(channelDef)
+                ? createExpressionAccessor(channelDef.expr)
+                : undefined
         );
 
-        this.register(encoding => {
-            if ("datum" in encoding) {
+        this.register(channelDef => {
+            if (isDatumDef(channelDef)) {
                 /** @type {Accessor} */
-                const accessor = constant(encoding.datum);
+                const accessor = constant(channelDef.datum);
                 accessor.constant = true; // Can be optimized downstream
                 accessor.fields = [];
                 return accessor;

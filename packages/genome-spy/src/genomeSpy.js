@@ -26,7 +26,10 @@ import contextMenu, { isContextMenuOpen } from "./utils/ui/contextMenu";
 import Animator from "./utils/animator";
 import DataFlow from "./data/dataFlow";
 import scaleIndex from "./genome/scaleIndex";
-import { buildDataFlow } from "./view/flowBuilder";
+import {
+    buildDataFlow,
+    linearizeLocusAccess as linearizeGenomicCoordinates
+} from "./view/flowBuilder";
 import { optimizeDataFlow } from "./data/flowOptimizer";
 import scaleNull from "./utils/scaleNull";
 import GenomeStore from "./genome/genomeStore";
@@ -163,7 +166,7 @@ export default class GenomeSpy {
             contextMenu: this.contextMenu.bind(this)
         };
 
-        /** @type {import("./spec/view").ConcatSpec & RootConfig} */
+        /** @type {import("./spec/view").ViewSpec & RootConfig} */
         const rootSpec = this.config;
 
         // Create the view hierarchy
@@ -188,20 +191,18 @@ export default class GenomeSpy {
             }
         });
 
+        // Build the data flow based on the view hierarchy
+        const flow = buildDataFlow(this.viewRoot, context.dataFlow);
+        linearizeGenomicCoordinates(flow); // TODO: Optimize redundant linearization nodes
+        optimizeDataFlow(flow);
+
         // Create encoders (accessors, scales and related metadata)
         unitViews.forEach(view => view.mark.initializeEncoders());
 
         // Compile shaders, create or load textures, etc.
         const graphicsInitialized = Promise.all(
-            // TODO: The compilation should be initiated here but the
-            // statuses should be checked later to allow for background compilation.
-            // Also: https://www.khronos.org/registry/webgl/extensions/KHR_parallel_shader_compile/
             unitViews.map(view => view.mark.initializeGraphics())
         );
-
-        // Build the data flow based on the view hierarchy
-        const flow = buildDataFlow(this.viewRoot, context.dataFlow);
-        optimizeDataFlow(flow);
 
         for (const view of unitViews) {
             flow.addObserver(collector => {

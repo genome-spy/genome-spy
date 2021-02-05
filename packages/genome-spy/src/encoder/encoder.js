@@ -185,6 +185,19 @@ export function isDatumDef(channelDef) {
 
 /**
  * @param {import("../spec/channel").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel").ChannelDefWithScale}
+ */
+export function isChannelDefWithScale(channelDef) {
+    return (
+        isFieldDef(channelDef) ||
+        isDatumDef(channelDef) ||
+        isExprDef(channelDef) ||
+        isChromPosDef(channelDef)
+    );
+}
+
+/**
+ * @param {import("../spec/channel").ChannelDef} channelDef
  * @returns {channelDef is import("../spec/channel").ChromPosDef}
  */
 export function isChromPosDef(channelDef) {

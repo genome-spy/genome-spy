@@ -1,5 +1,6 @@
 import { isString } from "vega-util";
 import { peek } from "../utils/arrayUtils";
+import coalesce from "../utils/coalesce";
 
 import mergeObjects from "../utils/mergeObjects";
 import { getCachedOrCall } from "../utils/propertyCacher";
@@ -68,32 +69,20 @@ export default class AxisResolution {
     }
 
     getTitle() {
-        /** @param {string[]} fields */
-        const formatFields = fields =>
-            fields?.length
-                ? fields.length > 1
-                    ? `(${fields.join(", ")})`
-                    : fields[0]
-                : undefined;
-
         /** @param {UnitView} view} */
         const computeTitle = view => {
-            const encodingSpec = this._getEncoding(view);
+            const channelDef = /** @type {import("../spec/channel").ChannelDefWithScale} */ (this._getEncoding(
+                view
+            ));
 
             // Retain nulls as they indicate that no title should be shown
-            return [
-                encodingSpec.axis === null ? null : undefined,
-                encodingSpec.axis !== null &&
-                typeof encodingSpec.axis === "object"
-                    ? encodingSpec.axis.title
-                    : undefined,
-                encodingSpec.title,
-                formatFields(view.getAccessor(this.channel).fields),
-                encodingSpec.field, // TODO: Use accessor.fields instead of encoding.field
-                encodingSpec.expr
-            ]
-                .filter(title => title !== undefined)
-                .shift();
+            return coalesce(
+                channelDef.axis === null ? null : undefined,
+                channelDef.axis?.title,
+                channelDef.title,
+                channelDef.field,
+                channelDef.expr
+            );
         };
 
         return [...new Set(this.views.map(computeTitle).filter(isString))].join(
