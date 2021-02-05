@@ -100,7 +100,7 @@ export default class Mark {
     }
 
     /**
-     * @returns {import("../spec/view").Encoding}
+     * @returns {import("../spec/channel").Encoding}
      */
     getDefaultEncoding() {
         return {
@@ -130,8 +130,8 @@ export default class Mark {
     /**
      * Adds intelligent defaults etc to the encoding.
      *
-     * @param {import("../spec/view").Encoding} encoding
-     * @returns {import("../spec/view").Encoding}
+     * @param {import("../spec/channel").Encoding} encoding
+     * @returns {import("../spec/channel").Encoding}
      */
     fixEncoding(encoding) {
         return encoding;
@@ -140,7 +140,7 @@ export default class Mark {
     /**
      * Returns the encoding spec supplemented with mark's default encodings
      *
-     * @returns {import("../spec/view").Encoding}
+     * @returns {import("../spec/channel").Encoding}
      */
     get encoding() {
         return getCachedOrCall(this, "encoding", () => {

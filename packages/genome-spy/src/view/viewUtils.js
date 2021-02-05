@@ -11,11 +11,12 @@ import DecoratorView from "./decoratorView";
 import { VISIT_SKIP } from "./view";
 import { buildDataFlow } from "./flowBuilder";
 import { optimizeDataFlow, optimizeFlowGraph } from "../data/flowOptimizer";
+import { isFieldDef } from "../encoder/encoder";
 
 /**
  * @typedef {import("./viewContext").default} ViewContext
  * @typedef {import("../spec/view").MarkConfig} MarkConfig
- * @typedef {import("../spec/view").ChannelDef} ChannelDef
+ * @typedef {import("../spec/channel").ChannelDef} ChannelDef
  * @typedef {import("../spec/view").ContainerSpec} ContainerSpec
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
@@ -366,9 +367,13 @@ export function findEncodedFields(view) {
         if (view instanceof UnitView) {
             const encoding = view.getEncoding();
             for (const [channel, def] of Object.entries(encoding)) {
-                const field = def.field;
-                if (field) {
-                    fieldInfos.push({ view, channel, field, type: def.type });
+                if (isFieldDef(def)) {
+                    fieldInfos.push({
+                        view,
+                        channel,
+                        field: def.field,
+                        type: def.type
+                    });
                 }
             }
         }

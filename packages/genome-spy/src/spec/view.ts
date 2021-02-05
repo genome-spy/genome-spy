@@ -1,19 +1,12 @@
 import { Data } from "./data";
 import { Scale } from "./scale";
-import { Axis } from "./axis";
 import { TransformParams } from "./transform";
 import { GenomeConfig } from "../genome/genome";
 import { SizeDef } from "../utils/layout/flexLayout";
-
-export type Scalar = string | number | boolean;
-
-export type FieldName = string;
-
-export type PositionalChannel = "x" | "y";
+import { Encoding, PositionalChannel } from "./channel";
 
 // TODO: Perhaps this should be in "utils"
 export type GeometricDimension = "width" | "height";
-
 export interface MarkConfig {
     type: string;
     /** Whether the mark should be clipped to the UnitView's rectangle.  */
@@ -44,36 +37,6 @@ export interface MarkConfig {
     buildIndex?: boolean;
 }
 
-// TODO: Create an interface for values (they don't have type or anything else)
-export interface ChannelDef {
-    type?: string;
-    field?: FieldName;
-
-    /** A constant value in the context of the range */
-    value?: Scalar;
-
-    /** An expression. Properties of the data can be accessed through the `datum` object. */
-    expr?: string;
-
-    /** A constant value on the data domain */
-    datum?: Scalar;
-
-    /**
-     * Offset within a band of a band scale, [0, 1]
-     *
-     * TODO: rename to bandPosition: https://github.com/vega/vega-lite/pull/7190
-     */
-    band?: number;
-
-    scale?: Scale;
-    axis?: Axis;
-    title?: string;
-    format?: string;
-
-    /** Use emulated 64 bit floating points to increase GPU rendering precision */
-    fp64?: boolean;
-}
-
 export interface FacetFieldDef {
     field: string;
     type: string;
@@ -85,14 +48,12 @@ export interface FacetMapping {
     row?: FacetFieldDef;
 }
 
-export type Encoding = Record<string, ChannelDef>;
-
 /**
  * DynamicOpacity specifies a zoom-dependent behavior for view opacity.
  * The opacity is interpolated between the specified stops.
  */
 export interface DynamicOpacity {
-    channel?: "x" | "y";
+    channel?: PositionalChannel;
     /** Stops expressed as units (base pairs, for example) per pixel. */
     unitsPerPixel: number[];
     /** Opacity values that match the given stops. */
@@ -111,7 +72,7 @@ export interface ViewSpecBase {
 
     data?: Data;
     transform?: TransformParams[];
-    encoding?: Record<string, ChannelDef>;
+    encoding?: Encoding;
     title?: string;
     description?: string;
     baseUrl?: string;

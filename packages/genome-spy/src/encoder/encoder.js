@@ -1,4 +1,3 @@
-import { isNumber } from "vega-util";
 import { isDiscrete } from "vega-scale";
 import createIndexer from "../utils/indexer";
 
@@ -161,17 +160,43 @@ export function createEncoder(channelDef, scale, accessor, channel) {
 /**
  * TODO: Move to a more generic place
  *
- * @param {import("../view/view").ChannelDef} channelDef
+ * @param {import("../spec/channel").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel").ValueDef}
  */
 export function isValueDef(channelDef) {
     return channelDef && "value" in channelDef;
 }
 
 /**
- * @param {import("../view/view").ChannelDef} channelDef
+ * @param {import("../spec/channel").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel").FieldDef}
+ */
+export function isFieldDef(channelDef) {
+    return channelDef && "field" in channelDef;
+}
+
+/**
+ * @param {import("../spec/channel").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel").DatumDef}
  */
 export function isDatumDef(channelDef) {
     return channelDef && "datum" in channelDef;
+}
+
+/**
+ * @param {import("../spec/channel").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel").ChromPosDef}
+ */
+export function isChromPosDef(channelDef) {
+    return channelDef && "chrom" in channelDef;
+}
+
+/**
+ * @param {import("../spec/channel").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel").ExprDef}
+ */
+export function isExprDef(channelDef) {
+    return channelDef && "expr" in channelDef;
 }
 
 /**
