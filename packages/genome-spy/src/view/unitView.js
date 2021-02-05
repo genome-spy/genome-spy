@@ -220,28 +220,42 @@ export default class UnitView extends View {
     }
 
     /**
-     * Returns the domain of the specified channel of this domain/mark.
-     *
      * @param {string} channel A primary channel
-     * @returns {DomainArray}
      */
-    getConfiguredDomain(channel) {
+    _validateDomainQuery(channel) {
         if (isSecondaryChannel(channel)) {
             throw new Error(
                 `getDomain(${channel}), must only be called for primary channels!`
             );
         }
 
-        const encodingSpec = this.getEncoding()[channel];
-        const type = encodingSpec.type;
+        const channelDef = this.getEncoding()[channel];
+        if (!isChannelDefWithScale(channelDef)) {
+            throw new Error("The channel has no scale, cannot get domain!");
+        }
+
+        const type = channelDef.type;
         if (!type) {
             throw new Error(`No data type for channel "${channel}"!`);
             // TODO: Support defaults
         }
+
+        return channelDef;
+    }
+
+    /**
+     * Returns the domain of the specified channel of this domain/mark.
+     *
+     * @param {string} channel A primary channel
+     * @returns {DomainArray}
+     */
+    getConfiguredDomain(channel) {
+        const channelDef = this._validateDomainQuery(channel);
+
         const specDomain =
-            encodingSpec && encodingSpec.scale && encodingSpec.scale.domain;
+            channelDef && channelDef.scale && channelDef.scale.domain;
         if (specDomain) {
-            return createDomain(type, specDomain);
+            return createDomain(channelDef.type, specDomain);
         }
     }
 
@@ -255,18 +269,8 @@ export default class UnitView extends View {
      * @returns {DomainArray}
      */
     extractDataDomain(channel) {
-        if (isSecondaryChannel(channel)) {
-            throw new Error(
-                `getDomain(${channel}), must only be called for primary channels!`
-            );
-        }
-
-        const encodingSpec = this.getEncoding()[channel];
-        const type = encodingSpec.type;
-        if (!type) {
-            throw new Error(`No data type for channel "${channel}"!`);
-            // TODO: Support defaults
-        }
+        const channelDef = this._validateDomainQuery(channel);
+        const type = channelDef.type;
 
         /** @param {string} channel */
         const extract = channel => {
@@ -286,9 +290,10 @@ export default class UnitView extends View {
                     } else {
                         const collector = this.getCollector();
                         if (collector?.completed) {
+                            const data = collector.getData();
                             // eslint-disable-next-line max-depth
-                            for (const datum of collector.getData()) {
-                                domain.extend(accessor(datum));
+                            for (let i = 0, n = data.length; i < n; i++) {
+                                domain.extend(accessor(data[i]));
                             }
                         }
                     }

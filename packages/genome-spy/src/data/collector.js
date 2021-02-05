@@ -16,20 +16,23 @@ export default class Collector extends FlowNode {
 
         this.params = params ?? { type: "collect" };
 
+        /** @type {(function(Collector):void)[]} */
+        this.observers = [];
+
+        this._init();
+    }
+
+    _init() {
         /** @type {any[]} */
         this._data = [];
 
         /** @type {Map<any[], [number, number]>} */
         this._groupExtentMap = new InternMap([], JSON.stringify);
-
-        /** @type {(function(Collector):void)[]} */
-        this.observers = [];
     }
 
     reset() {
         super.reset();
-        this._data = [];
-        this._groupExtentMap = new InternMap([], JSON.stringify);
+        this._init();
     }
 
     /**

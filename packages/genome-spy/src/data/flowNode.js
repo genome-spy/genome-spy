@@ -32,8 +32,8 @@ export default class FlowNode {
     }
 
     /**
-     * Resets the node to its initial state, i.e., preparing it for a new batch
-     * of data.
+     * Resets the node and all its descendants to their initial state, i.e., preparing
+     * for a new batch of data.
      */
     reset() {
         this.completed = false;
