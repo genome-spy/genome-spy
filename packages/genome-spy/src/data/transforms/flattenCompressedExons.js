@@ -1,4 +1,4 @@
-import { field } from "vega-util";
+import { field } from "../../utils/field";
 import numberExtractor from "../../utils/numberExtractor";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
@@ -36,7 +36,8 @@ export default class FlattenCompressedExonsTransform extends FlowNode {
             let lower = upper;
 
             let inExon = true;
-            for (const token of numberExtractor(exonsAccessor(datum))) {
+            const exons = exonsAccessor(datum);
+            for (const token of numberExtractor(exons)) {
                 if (inExon) {
                     lower = upper + token;
                 } else {

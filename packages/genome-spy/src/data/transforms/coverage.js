@@ -1,5 +1,5 @@
 import Heapify from "heapify";
-import { field as vuField } from "vega-util";
+import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 const maxDepth = 65536;
@@ -40,15 +40,15 @@ export default class CoverageTransform extends FlowNode {
         const asEnd = params.asEnd || params.end;
         const asChrom = params.asChrom || params.chrom;
 
-        const startAccessor = vuField(params.start);
-        const endAccessor = vuField(params.end);
+        const startAccessor = field(params.start);
+        const endAccessor = field(params.end);
 
         /** @type {function(any):string} */
         const chromAccessor = params.chrom
-            ? vuField(params.chrom)
+            ? field(params.chrom)
             : d => undefined;
         /** @type {function(any):number} */
-        const weightAccessor = params.weight ? vuField(params.weight) : d => 1;
+        const weightAccessor = params.weight ? field(params.weight) : d => 1;
 
         /** @type {Record<string, number|string>} used for merging adjacent segment */
         let bufferedSegment;

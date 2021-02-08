@@ -1,8 +1,9 @@
 import { InternMap } from "internmap";
 import { group } from "d3-array";
-import { compare, field } from "vega-util";
+import { compare } from "vega-util";
 import iterateNestedMaps from "../utils/iterateNestedMaps";
 import FlowNode from "./flowNode";
+import { field } from "../utils/field";
 
 /**
  * Collects (materializes) the data that flows through this node.

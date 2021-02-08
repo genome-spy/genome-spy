@@ -1,4 +1,5 @@
-import { accessorName, field } from "vega-util";
+import { accessorName } from "vega-util";
+import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 /**

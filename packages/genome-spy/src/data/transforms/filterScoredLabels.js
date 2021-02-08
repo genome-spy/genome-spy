@@ -1,8 +1,8 @@
-import { field } from "vega-util";
 import { bisector } from "d3-array";
 import FlowNode from "../flowNode";
 import { topKSlice } from "../../utils/topk";
 import ReservationMap from "../../utils/reservationMap";
+import { field } from "../../utils/field";
 
 /**
  * @typedef {import("../../spec/transform").FilterScoredLabelsParams} Params

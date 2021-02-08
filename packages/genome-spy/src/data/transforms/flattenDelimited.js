@@ -1,5 +1,5 @@
-import { field } from "vega-util";
 import { asArray } from "../../utils/arrayUtils";
+import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 /**

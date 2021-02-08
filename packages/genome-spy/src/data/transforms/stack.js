@@ -1,6 +1,7 @@
-import { compare, field as vuField } from "vega-util";
+import { compare } from "vega-util";
 import { groups as d3groups, sum as d3sum } from "d3-array";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
+import { field } from "../../utils/field";
 
 /**
  * @typedef {import("../../spec/transform").StackParams} StackParams
@@ -43,9 +44,9 @@ export default class StackTransform extends FlowNode {
             ? compare(params.sort.field, params.sort.order)
             : undefined;
 
-        const accessor = params.field ? vuField(params.field) : d => 1;
+        const accessor = params.field ? field(params.field) : d => 1;
 
-        const groupFields = params.groupby.map(f => vuField(f));
+        const groupFields = params.groupby.map(f => field(f));
 
         const groups = d3groups(this.buffer, row =>
             groupFields.map(f => f(row)).join()

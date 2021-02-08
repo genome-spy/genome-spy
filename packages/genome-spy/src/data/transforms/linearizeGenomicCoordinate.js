@@ -1,4 +1,4 @@
-import { field } from "vega-util";
+import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 /**

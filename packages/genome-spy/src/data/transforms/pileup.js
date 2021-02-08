@@ -1,6 +1,7 @@
 /* eslint-disable no-unmodified-loop-condition */
 import Heapify from "heapify";
-import { isNumber, field as vuField } from "vega-util";
+import { isNumber } from "vega-util";
+import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
 const maxDepth = 65536;
@@ -33,8 +34,8 @@ export default class PileupTransform extends FlowNode {
 
         const laneField = params.as || "lane";
         const spacing = isNumber(params.spacing) ? params.spacing : 1;
-        const startAccessor = vuField(params.start);
-        const endAccessor = vuField(params.end);
+        const startAccessor = field(params.start);
+        const endAccessor = field(params.end);
 
         // We choose the implementation based on the need of order preference.
         // The preference-aware algorithm has a lousy O(n^2) time complexity but
@@ -50,7 +51,7 @@ export default class PileupTransform extends FlowNode {
         } else if (params.preference) {
             const freeLaneMap = new Float64Array(maxDepth);
 
-            const preferenceAccessor = vuField(params.preference);
+            const preferenceAccessor = field(params.preference);
             /** @type {any[]} */
             const preferredOrder = params.preferredOrder;
 

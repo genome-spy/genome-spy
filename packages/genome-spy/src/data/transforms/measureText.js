@@ -1,6 +1,7 @@
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 import fontMetadata from "../../fonts/Lato-Regular.json";
 import getMetrics from "../../utils/bmFontMetrics";
+import { field } from "../../utils/field";
 
 /**
  * Measures text length. This is mainly intended for reading-direction arrows
@@ -21,7 +22,7 @@ export default class MeasureTextTransform extends FlowNode {
         super();
 
         const metrics = getMetrics(fontMetadata);
-        const field = config.field;
+        const accessor = field(config.field);
         const as = config.as;
         const size = config.fontSize;
 
@@ -30,7 +31,7 @@ export default class MeasureTextTransform extends FlowNode {
          * @param {any} datum
          */
         this.handle = datum => {
-            const text = datum[field];
+            const text = accessor(datum);
             if (text !== undefined) {
                 datum[as] = metrics.measureWidth(text, size);
             } else {
