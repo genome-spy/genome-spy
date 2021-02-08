@@ -56,66 +56,76 @@ export default class ArrayBuilder {
      * @return {function(number|number[])}
      */
     createUpdater(attributeName, numComponents, arrayReference) {
-        /** @type {number | number[] | Float32Array} */
-        let pendingValue = arrayReference ? arrayReference : undefined;
+        if (!isNumber(this.size)) {
+            throw new Error("The number of vertices must be defined!");
+        }
 
-        const typed = isNumber(this.size);
+        /** @type {function():void} */
+        let pusher;
+        let updater;
+        let i = 0;
 
-        // TODO: Optimize!
-        // Having an untyped array here apparently causes V8 to ruin (deoptimize) the code,
-        // which leads to a massive (like 5x) performance loss on all subsequent
-        // ArrayBuilder instances.
-
-        /** @type {number[] | Float32Array} */
-        const array = typed ? new Float32Array(this.size * numComponents) : [];
+        const array = new Float32Array(this.size * numComponents);
 
         this.arrays[attributeName] = {
             data: array,
             numComponents: numComponents
         };
 
-        /** @type {function(number):void} value */
-        const updater = arrayReference
-            ? value => {
-                  // Nop. Pending value is updated through the array reference.
-              }
-            : value => {
-                  pendingValue = value;
-              };
+        if (numComponents == 1) {
+            let pendingValue = 0;
 
-        /** @type {function():void} */
-        let pusher;
-        let i = 0;
+            /** @param {number} value */
+            const valueUpdater = value => {
+                pendingValue = value;
+            };
 
-        switch (numComponents) {
-            case 1:
-                pusher = () => {
-                    array[i++] = /** @type {number} */ (pendingValue);
-                };
-                break;
-            case 2:
-                pusher = () => {
-                    array[i++] = /** @type {number[]} */ (pendingValue)[0];
-                    array[i++] = /** @type {number[]} */ (pendingValue)[1];
-                };
-                break;
-            case 3:
-                pusher = () => {
-                    array[i++] = /** @type {number[]} */ (pendingValue)[0];
-                    array[i++] = /** @type {number[]} */ (pendingValue)[1];
-                    array[i++] = /** @type {number[]} */ (pendingValue)[2];
-                };
-                break;
-            case 4:
-                pusher = () => {
-                    array[i++] = /** @type {number[]} */ (pendingValue)[0];
-                    array[i++] = /** @type {number[]} */ (pendingValue)[1];
-                    array[i++] = /** @type {number[]} */ (pendingValue)[2];
-                    array[i++] = /** @type {number[]} */ (pendingValue)[3];
-                };
-                break;
-            default:
-                throw new Error("Invalid numComponents: " + numComponents);
+            pusher = () => {
+                array[i++] = pendingValue;
+            };
+            updater = valueUpdater;
+        } else {
+            let pendingArray = arrayReference ?? [0];
+
+            /** @type {function(number[]):void} value */
+            const arrayUpdater = arrayReference
+                ? value => {
+                      // Nop. Pending value is updated through the array reference.
+                  }
+                : value => {
+                      pendingArray = value;
+                  };
+
+            switch (numComponents) {
+                case 1:
+                    break;
+                case 2:
+                    pusher = () => {
+                        array[i++] = pendingArray[0];
+                        array[i++] = pendingArray[1];
+                    };
+                    updater = arrayUpdater;
+                    break;
+                case 3:
+                    pusher = () => {
+                        array[i++] = pendingArray[0];
+                        array[i++] = pendingArray[1];
+                        array[i++] = pendingArray[2];
+                    };
+                    updater = arrayUpdater;
+                    break;
+                case 4:
+                    pusher = () => {
+                        array[i++] = pendingArray[0];
+                        array[i++] = pendingArray[1];
+                        array[i++] = pendingArray[2];
+                        array[i++] = pendingArray[3];
+                    };
+                    updater = arrayUpdater;
+                    break;
+                default:
+                    throw new Error("Invalid numComponents: " + numComponents);
+            }
         }
 
         this.pushers.push(pusher);
@@ -150,6 +160,7 @@ export default class ArrayBuilder {
     pushAll() {
         // Unrolling appears to give a 20% performance boost on Chrome but compiling the
         // dynamically generated code takes time and is thus not great for small dynamic data.
+        // Unrolling probably allows the JS engine to inline pusher calls.
         const unroll = this.size > 100000;
         if (unroll) {
             this._unrollPushAll();
