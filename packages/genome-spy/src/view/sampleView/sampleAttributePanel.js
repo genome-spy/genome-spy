@@ -80,14 +80,6 @@ export class SampleAttributePanel extends ConcatView {
         return this.parent.sampleHandler;
     }
 
-    /**
-     * @param {View} [whoIsAsking]
-     */
-    getFacetAccessor(whoIsAsking) {
-        // Using texture texture-based faceting
-        return undefined;
-    }
-
     getEncoding(whoIsAsking) {
         // Block all inheritance
         return {};

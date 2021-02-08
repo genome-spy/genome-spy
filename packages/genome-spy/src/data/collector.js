@@ -50,6 +50,8 @@ export default class Collector extends FlowNode {
 
     complete() {
         const sort = this.params?.sort;
+        // Vega's "compare" function is in incredibly slow
+        // TODO: Implement a replacement for static data types
         const comparator = sort ? compare(sort.field, sort.order) : undefined;
 
         /** @param {any[]} data */

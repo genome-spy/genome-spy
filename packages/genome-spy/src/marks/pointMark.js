@@ -201,11 +201,24 @@ export default class PointMark extends Mark {
             // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
             const paddedDomain = zoomLinear(visibleDomain, null, 1.01);
 
-            /** @param {any[]} data */
-            this._findIndices = data => [
-                bisect(data, paddedDomain[0]),
-                bisect(data, paddedDomain[paddedDomain.length - 1])
-            ];
+            const collector = this.unitView.getCollector();
+            const data = collector.getData();
+
+            /** @param {any[]} facetId */
+            this._findIndices = facetId => {
+                const extent =
+                    facetId !== undefined
+                        ? collector.groupExtentMap.get(facetId) ?? [0, 0]
+                        : [0, data.length];
+                return [
+                    bisect(data, paddedDomain[0], ...extent) - extent[0],
+                    bisect(
+                        data,
+                        paddedDomain[paddedDomain.length - 1],
+                        ...extent
+                    ) - extent[0]
+                ];
+            };
         }
     }
 
@@ -218,12 +231,9 @@ export default class PointMark extends Mark {
         return this.createRenderCallback(
             (offset, count) => {
                 // TODO: findIndices is rather slow. Consider a more coarse-grained, "tiled" solution.
-                /*
                 const [lower, upper] = this._findIndices
-                    ? this._findIndices(this.dataByFacet.get(options.facetId))
+                    ? this._findIndices(options.facetId)
                     : [0, count];
-                    */
-                const [lower, upper] = [0, count];
 
                 const length = upper - lower;
 

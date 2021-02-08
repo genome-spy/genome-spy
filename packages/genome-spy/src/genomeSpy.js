@@ -193,7 +193,6 @@ export default class GenomeSpy {
 
         // Build the data flow based on the view hierarchy
         const flow = buildDataFlow(this.viewRoot, context.dataFlow);
-        linearizeGenomicCoordinates(flow); // TODO: Optimize redundant linearization nodes
         optimizeDataFlow(flow);
 
         // Create encoders (accessors, scales and related metadata)

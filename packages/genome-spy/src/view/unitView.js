@@ -205,6 +205,7 @@ export default class UnitView extends View {
      * @returns {function(object):any}
      */
     getFacetAccessor(whoIsAsking) {
+        // TODO: Rewrite, call getFacetFields
         const sampleAccessor = this.getAccessor("sample");
         if (sampleAccessor) {
             return sampleAccessor;

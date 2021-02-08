@@ -8,7 +8,10 @@ import { isDynamicCallbackData } from "../data/sources/dynamicCallbackSource";
 import DataFlow from "../data/dataFlow";
 import DataSource from "../data/sources/dataSource";
 import {
+    isChannelDefWithScale,
     isChromPosDef,
+    isDatumDef,
+    isFieldDef,
     isPositionalChannel,
     primaryChannel
 } from "../encoder/encoder";
@@ -35,23 +38,26 @@ export function buildDataFlow(root, existingFlow) {
 
     /**
      * @param {FlowNode} node
-     * @param {function():Error} onMissingParent
+     * @param {function():Error} [onMissingParent]
+     * @returns {FlowNode} The appended node
      */
-    function appendNode(node, onMissingParent) {
+    function appendNode(node, onMissingParent = () => undefined) {
         if (!currentNode) {
             throw onMissingParent() ||
                 new Error("Cannot append data flow node, no parent exist!");
         }
         currentNode.addChild(node);
         currentNode = node;
+        return node;
     }
 
     /**
      * @param {FlowNode} transform
      * @param {any} [params]
+     * @returns {FlowNode} The appended node
      */
     function appendTransform(transform, params) {
-        appendNode(
+        return appendNode(
             transform,
             () =>
                 new Error(
@@ -96,8 +102,6 @@ export function buildDataFlow(root, existingFlow) {
         nodeStack.push(currentNode);
 
         if (view.spec.data) {
-            // TODO: If multiple UrlSources have identical url etc, merge them.
-
             const dataSource = isDynamicCallbackData(view.spec.data)
                 ? view.getDynamicDataSource()
                 : createDataSource(view.spec.data, view.getBaseUrl());
@@ -111,15 +115,22 @@ export function buildDataFlow(root, existingFlow) {
         }
 
         if (view instanceof UnitView) {
+            if (!currentNode) {
+                throw new Error("A unit view has no (inherited) data source");
+            }
+
+            // Support chrom/pos channelDefs
+            for (const transform of linearizeLocusAccess(view)) {
+                appendTransform(transform);
+            }
+
             const collector = new Collector({
                 type: "collect",
-                groupby: view.getFacetFields()
+                groupby: view.getFacetFields(),
+                sort: getCompareParamsForUnitView(view)
             });
-            appendNode(
-                collector,
-                () => new Error("A unit view has no (inherited) data source")
-            );
 
+            appendNode(collector);
             dataFlow.addCollector(collector, view);
         }
     };
@@ -135,55 +146,79 @@ export function buildDataFlow(root, existingFlow) {
 }
 
 /**
- * Modifies both the dataflow and view hierarchy by inserting
- * LinearizeGenomicCoordinate transforms to the data flow and replacing the
- * "chrom/pos" in the encoding block with a "field".
+ * Changes the ChromPos channelDefs into FieldDefs and returns
+ * LinearizeGenomicCoordinate transform(s) that should be inserted into
+ * the data flow.
  *
- * @param {DataFlow<View>} dataFlow
+ * @param {UnitView} view
  */
-export function linearizeLocusAccess(dataFlow) {
-    for (const [view, collector] of dataFlow._collectorsByHost.entries()) {
-        for (const [channel, channelDef] of Object.entries(
-            view.getEncoding()
-        )) {
-            if (isPositionalChannel(channel) && isChromPosDef(channelDef)) {
-                /** @param {string} str */
-                const strip = str => str.replace(/[^A-Za-z0-9_]/g, "");
-                const linearizedField = [
-                    "_linearized_",
-                    strip(channelDef.chrom),
-                    "_",
-                    strip(channelDef.pos)
-                ].join("");
+export function linearizeLocusAccess(view) {
+    /** @type {FlowNode[]} */
+    const transforms = [];
 
-                collector.insertAsParent(
-                    new LinearizeGenomicCoordinate(
-                        {
-                            type: "linearizeGenomicCoordinate",
-                            channel: /** @type {"x" | "y"} */ (primaryChannel(
-                                channel
-                            )),
-                            chrom: channelDef.chrom,
-                            pos: channelDef.pos,
-                            as: linearizedField
-                        },
-                        view
-                    )
+    for (const [channel, channelDef] of Object.entries(view.getEncoding())) {
+        if (isPositionalChannel(channel) && isChromPosDef(channelDef)) {
+            /** @param {string} str */
+            const strip = str => str.replace(/[^A-Za-z0-9_]/g, "");
+            const linearizedField = [
+                "_linearized_",
+                strip(channelDef.chrom),
+                "_",
+                strip(channelDef.pos)
+            ].join("");
+
+            transforms.push(
+                new LinearizeGenomicCoordinate(
+                    {
+                        type: "linearizeGenomicCoordinate",
+                        channel: /** @type {"x" | "y"} */ (primaryChannel(
+                            channel
+                        )),
+                        chrom: channelDef.chrom,
+                        pos: channelDef.pos,
+                        as: linearizedField
+                    },
+                    view
+                )
+            );
+
+            // Use spec directly because getEncoding() returns inherited props too.
+            /** @type {any} */
+            const newFieldDef = {
+                ...(view.spec.encoding?.[channel] || {}),
+                field: linearizedField
+            };
+            delete newFieldDef.chrom;
+            delete newFieldDef.pos;
+            if (!newFieldDef.type && channelDef.type) {
+                newFieldDef.type = channelDef.type;
+            }
+
+            view.spec.encoding[channel] = newFieldDef;
+        }
+    }
+
+    return transforms;
+}
+
+/**
+ * @param {UnitView} view
+ * @returns {import("../spec/transform").CompareParams}
+ */
+function getCompareParamsForUnitView(view) {
+    // TODO: Should sort by min(x, x2).
+    const e = view.getEncoding().x;
+    if (isChannelDefWithScale(e)) {
+        if (view.getScaleResolution("x")?.isZoomable()) {
+            if (isFieldDef(e)) {
+                return { field: e.field };
+            } else if (isDatumDef(e)) {
+                // Nop
+            } else {
+                // TODO: Support expr by inserting a Formula transform
+                throw new Error(
+                    "A zoomable x channel must be mapped to a field."
                 );
-
-                // Use spec directly because getEncoding() returns inherited props too.
-                /** @type {any} */
-                const newFieldDef = {
-                    ...(view.spec.encoding?.[channel] || {}),
-                    field: linearizedField
-                };
-                delete newFieldDef.chrom;
-                delete newFieldDef.pos;
-                if (!newFieldDef.type && channelDef.type) {
-                    newFieldDef.type = channelDef.type;
-                }
-
-                view.spec.encoding[channel] = newFieldDef;
             }
         }
     }
