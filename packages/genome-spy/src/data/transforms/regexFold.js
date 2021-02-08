@@ -41,8 +41,8 @@ export default class RegexFoldTransform extends FlowNode {
         /** @type {string[]} */
         let includedColumns;
 
-        /** @type {function(any):any} */
-        let createOrCopy = datum => Object.assign({}, datum);
+        /** @type {(datum: any, sampleId: string) => Record<string, any>} */
+        let create;
 
         /**
          * @param {any} datum
@@ -76,13 +76,24 @@ export default class RegexFoldTransform extends FlowNode {
                     !(skipRegex && skipRegex.test(colName))
             );
 
-            // Copying large objects is slow, accessing inherited objects is slow.
-            // Choosing copying strategy based on the number of columns. The threshold
-            // is chosen randomly.
-            createOrCopy =
-                includedColumns.length > 10
-                    ? d => Object.create(d)
-                    : d => Object.assign({}, d);
+            const props = [
+                ...includedColumns.map(
+                    prop =>
+                        JSON.stringify(prop) +
+                        ": datum[" +
+                        JSON.stringify(prop) +
+                        "]"
+                ),
+                JSON.stringify(sampleKey) + ": sampleId",
+                ...as.map(a => JSON.stringify(a) + ": null")
+            ];
+
+            // eslint-disable-next-line no-new-func
+            create = /** @type {any} */ (new Function(
+                "datum",
+                "sampleId",
+                "return {\n" + props.join(",\n") + "\n};"
+            ));
         };
 
         /**
@@ -93,20 +104,11 @@ export default class RegexFoldTransform extends FlowNode {
                 detectColumns(datum);
             }
 
-            // Save memory by skipping the columns being gathered
-            /** @type {Record<string, any>} */
-            const strippedRow = {};
-            for (const prop of includedColumns) {
-                strippedRow[prop] = datum[prop];
-            }
-
             for (const [sampleId, attrs] of sampleAttrs) {
-                const tidyRow = createOrCopy(strippedRow);
-
-                tidyRow[sampleKey] = sampleId;
-
+                const tidyRow = create(datum, sampleId);
                 for (let i = 0; i < attrs.length; i++) {
-                    tidyRow[as[i]] = datum[attrs[i]];
+                    // TODO: Support other than numbers too...
+                    tidyRow[as[i]] = +datum[attrs[i]];
                 }
 
                 this._propagate(tidyRow);
