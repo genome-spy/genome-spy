@@ -7,7 +7,7 @@ const spec = {
         {
             mark: "point",
             encoding: {
-                x: { field: "a" },
+                x: { field: "a", type: "quantitative" },
                 y: {
                     field: "a",
                     type: "quantitative",
@@ -19,7 +19,7 @@ const spec = {
         {
             mark: "point",
             encoding: {
-                x: { field: "a" },
+                x: { field: "a", type: "quantitative" },
                 y: {
                     field: "b",
                     type: "quantitative",
@@ -65,7 +65,7 @@ describe("Axes resolve properly", () => {
             data: { values: [1] },
             mark: "point",
             encoding: {
-                x: { field: "a" },
+                x: { field: "a", type: "quantitative" },
                 y: {
                     field: "a",
                     type: "quantitative"
@@ -78,7 +78,7 @@ describe("Axes resolve properly", () => {
             data: { values: [1] },
             mark: "point",
             encoding: {
-                x: { field: "a" },
+                x: { field: "a", type: "quantitative" },
                 y: {
                     field: "a",
                     title: "x",
@@ -92,7 +92,7 @@ describe("Axes resolve properly", () => {
             data: { values: [1] },
             mark: "point",
             encoding: {
-                x: { field: "a" },
+                x: { field: "a", type: "quantitative" },
                 y: {
                     field: "a",
                     title: "x",

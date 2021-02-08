@@ -107,8 +107,7 @@ export default class RegexFoldTransform extends FlowNode {
             for (const [sampleId, attrs] of sampleAttrs) {
                 const tidyRow = create(datum, sampleId);
                 for (let i = 0; i < attrs.length; i++) {
-                    // TODO: Support other than numbers too...
-                    tidyRow[as[i]] = +datum[attrs[i]];
+                    tidyRow[as[i]] = datum[attrs[i]];
                 }
 
                 this._propagate(tidyRow);

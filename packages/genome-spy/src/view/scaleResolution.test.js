@@ -8,7 +8,7 @@ const spec = {
         {
             mark: "point",
             encoding: {
-                x: { field: "a" },
+                x: { field: "a", type: "quantitative" },
                 y: {
                     field: "a",
                     type: "quantitative",
@@ -20,7 +20,7 @@ const spec = {
         {
             mark: "point",
             encoding: {
-                x: { field: "a" },
+                x: { field: "a", type: "quantitative" },
                 y: {
                     field: "b",
                     type: "quantitative",
@@ -81,6 +81,11 @@ describe("Domain handling", () => {
             }
         });
 
+        for (const channel of ["x", "y"]) {
+            // Extract domain from data
+            view.getScaleResolution(channel).reconfigure();
+        }
+
         const d = /** @param {string} channel*/ channel =>
             view
                 .getScaleResolution(channel)
@@ -136,6 +141,11 @@ describe("Domain handling", () => {
                 }
             }
         });
+
+        for (const channel of ["x", "y"]) {
+            // Extract domain from data
+            view.getScaleResolution(channel).reconfigure();
+        }
 
         const d = /** @param {string} channel*/ channel =>
             view
