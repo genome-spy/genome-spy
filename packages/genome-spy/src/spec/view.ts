@@ -78,6 +78,9 @@ export interface ViewSpecBase {
     opacity?: ViewOpacityDef;
 }
 
+export interface SummarizeSamplesSpec {
+    summarizeSamples?: UnitSpec | LayerSpec;
+}
 export interface TableRowSpec extends ViewSpecBase {
     center: ViewSpec;
     left?: ViewSpec;
@@ -88,7 +91,7 @@ export interface TableSpec extends ViewSpecBase {
     table: TableRowSpec[];
 }
 
-export interface LayerSpec extends ViewSpecBase {
+export interface LayerSpec extends ViewSpecBase, SummarizeSamplesSpec {
     layer: (LayerSpec | UnitSpec)[];
 }
 
@@ -132,7 +135,7 @@ export type ContainerSpec = (
     };
 };
 
-export interface UnitSpec extends ViewSpecBase {
+export interface UnitSpec extends ViewSpecBase, SummarizeSamplesSpec {
     mark: string | MarkConfig;
 }
 

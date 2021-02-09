@@ -1,7 +1,11 @@
 import { isNumber, span, error } from "vega-util";
 import { html } from "lit-html";
 import { createTexture } from "twgl.js";
-import { findEncodedFields, getViewClass } from "../viewUtils";
+import {
+    findEncodedFields,
+    getViewClass,
+    isSummarizeSamplesSpec
+} from "../viewUtils";
 import ContainerView from "../containerView";
 import { mapToPixelCoords } from "../../utils/layout/flexLayout";
 import { SampleAttributePanel } from "./sampleAttributePanel";
@@ -36,6 +40,7 @@ const SPACING = 10;
  * @typedef {import("../unitView").default} UnitView
  * @typedef {import("../decoratorView").default} DecoratorView
  * @typedef {import("../../genome/chromMapper").ChromosomalLocus} ChromosomalLocus
+ * @typedef {import("../../data/dataFlow").default<View>} DataFlow
  *
  * @typedef {object} Sample Sample metadata
  * @prop {string} id
@@ -84,13 +89,12 @@ export default class SampleView extends ContainerView {
          * This produces an inconsistent view hierarchy by design. The summaries have the
          * enclosing (by the spec) views as their parents, but they are children of
          * "this.summaryViews". The rationale is: the views inherit encodings and resolutions
-         * from their enclosing views but layout and rendering are managed by SampleView.
+         * from their enclosing views but layout and rendering are managed by the SampleView.
          */
         let summaryIndex = 0;
         this.child.visit(view => {
             const summarySpec =
-                /** @type {import("../../spec/view").UnitSpec | import("../../spec/view").LayerSpec} */ (view
-                    .spec.sampleSummary);
+                isSummarizeSamplesSpec(view.spec) && view.spec.summarizeSamples;
             if (summarySpec) {
                 if (!summarySpec.data) {
                     summarySpec.data = { values: [] };
@@ -108,8 +112,7 @@ export default class SampleView extends ContainerView {
         });
 
         this._addBroadcastHandler("dataFlowBuilt", message => {
-            const flow =
-                /** @type {import("../../data/dataFlow").default<View>} */ (message.payload);
+            const flow = /** @type {DataFlow} */ (message.payload);
 
             for (const view of this.summaryViews) {
             }

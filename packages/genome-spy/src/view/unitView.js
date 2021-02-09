@@ -215,21 +215,6 @@ export default class UnitView extends View {
     }
 
     /**
-     * Returns the fields that should be used for partitioning the data for facets.
-     *
-     * @param {View} [whoIsAsking]
-     * @returns {string[]}
-     */
-    getFacetFields(whoIsAsking) {
-        const sampleFieldDef = this.getEncoding().sample;
-        if (isFacetFieldDef(sampleFieldDef)) {
-            return [sampleFieldDef.field];
-        }
-
-        return super.getFacetFields(this);
-    }
-
-    /**
      * Returns a collector that is associated with this view.
      */
     getCollector() {

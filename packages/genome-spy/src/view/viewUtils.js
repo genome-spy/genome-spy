@@ -101,6 +101,19 @@ export function isSampleSpec(spec) {
 
 /**
  *
+ * @param {ViewSpec} spec
+ * @returns {spec is import("../spec/view").SummarizeSamplesSpec}
+ */
+export function isSummarizeSamplesSpec(spec) {
+    return (
+        spec &&
+        (isUnitSpec(spec) || isLayerSpec(spec)) &&
+        "summarizeSamples" in spec
+    );
+}
+
+/**
+ *
  * @param {ChannelDef | FacetMapping} def
  * @returns {spec is FacetFieldDef}
  */

@@ -2,10 +2,9 @@ import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { getCachedOrCall } from "../utils/propertyCacher";
-import InlineSource from "../data/sources/inlineSource";
-import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
 import { isNumber, span } from "vega-util";
 import { scaleLinear, scaleLog } from "d3-scale";
+import { isFieldDef } from "../encoder/encoder";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -322,6 +321,11 @@ export default class View {
      * @returns {string[]}
      */
     getFacetFields(whoIsAsking) {
+        const sampleFieldDef = this.getEncoding().sample;
+        if (isFieldDef(sampleFieldDef)) {
+            return [sampleFieldDef.field];
+        }
+
         return this.parent?.getFacetFields(this);
     }
 
@@ -404,7 +408,7 @@ function createViewOpacityFunction(view) {
                 .clamp(true);
 
             return parentOpacity => {
-                const rangeSpan = 1000; //span(scale.range());
+                const rangeSpan = 1000; //TODO: span(scale.range());
                 const unitsPerPixel = span(scale.domain()) / rangeSpan;
 
                 return interpolate(unitsPerPixel) * parentOpacity;

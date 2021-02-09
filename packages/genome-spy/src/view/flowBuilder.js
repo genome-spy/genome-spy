@@ -16,6 +16,7 @@ import {
     primaryChannel
 } from "../encoder/encoder";
 import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
+import { isSummarizeSamplesSpec } from "./viewUtils";
 
 /**
  * @typedef {import("./view").default} View
@@ -132,6 +133,25 @@ export function buildDataFlow(root, existingFlow) {
 
             appendNode(collector);
             dataFlow.addCollector(collector, view);
+        } else if (false && isSummarizeSamplesSpec(view.spec)) {
+            if (!currentNode) {
+                throw new Error(
+                    'A view with "summarizeSamples" has no (inherited) data source'
+                );
+            }
+
+            // TODO: Should sort by min(x, x2).
+            const e = view.getEncoding().x;
+            if (isChannelDefWithScale(e)) {
+                const collector = new Collector({
+                    type: "collect",
+                    groupby: view.getFacetFields(),
+                    sort: getCompareParamsForUnitView(view)
+                });
+
+                appendNode(collector);
+                dataFlow.addCollector(collector, view);
+            }
         }
     };
 
