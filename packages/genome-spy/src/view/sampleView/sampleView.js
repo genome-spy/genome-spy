@@ -1,4 +1,4 @@
-import { isNumber, span, error } from "vega-util";
+import { isNumber, span, error, key } from "vega-util";
 import { html } from "lit-html";
 import { createTexture } from "twgl.js";
 import {
@@ -23,6 +23,8 @@ import createDataSource from "../../data/sources/dataSourceFactory";
 import FlowNode from "../../data/flowNode";
 import { createChain } from "../flowBuilder";
 import ConcatView from "../concatView";
+import DecoratorView from "../decoratorView";
+import UnitView from "../unitView";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -41,6 +43,7 @@ const SPACING = 10;
  * @typedef {import("../decoratorView").default} DecoratorView
  * @typedef {import("../../genome/chromMapper").ChromosomalLocus} ChromosomalLocus
  * @typedef {import("../../data/dataFlow").default<View>} DataFlow
+ * @typedef {import("../../data/sources/dynamicSource").default} DynamicSource
  *
  * @typedef {object} Sample Sample metadata
  * @prop {string} id
@@ -86,35 +89,14 @@ export default class SampleView extends ContainerView {
         );
 
         /*
-         * This produces an inconsistent view hierarchy by design. The summaries have the
-         * enclosing (by the spec) views as their parents, but they are children of
+         * We produce an inconsistent view hierarchy by design. The summaries have the
+         * enclosing (by the spec) views as their parents, but they are also children of
          * "this.summaryViews". The rationale is: the views inherit encodings and resolutions
          * from their enclosing views but layout and rendering are managed by the SampleView.
          */
-        let summaryIndex = 0;
         this.child.visit(view => {
-            const summarySpec =
-                isSummarizeSamplesSpec(view.spec) && view.spec.summarizeSamples;
-            if (summarySpec) {
-                if (!summarySpec.data) {
-                    summarySpec.data = { values: [] };
-                }
-
-                const View = getViewClass(summarySpec);
-                const summaryView = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
-                    summarySpec,
-                    context,
-                    view,
-                    "summaryView" + summaryIndex++
-                ));
-                this.summaryViews.children.push(summaryView);
-            }
-        });
-
-        this._addBroadcastHandler("dataFlowBuilt", message => {
-            const flow = /** @type {DataFlow} */ (message.payload);
-
-            for (const view of this.summaryViews) {
+            if (view instanceof UnitView) {
+                this.summaryViews.children.push(...view.sampleSummaryViews);
             }
         });
 
@@ -322,7 +304,6 @@ export default class SampleView extends ContainerView {
     *[Symbol.iterator]() {
         yield this.child;
         yield this.attributeView;
-        yield this.summaryViews;
     }
 
     /**
@@ -464,6 +445,15 @@ export default class SampleView extends ContainerView {
      * @param {import("../../utils/layout/rectangle").default} coords
      * @param {import("../view").RenderingOptions} [options]
      */
+    renderSummaries(context, coords, options = {}) {
+        this.summaryViews.render(context, coords, options);
+    }
+
+    /**
+     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../utils/layout/rectangle").default} coords
+     * @param {import("../view").RenderingOptions} [options]
+     */
     render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
         context.pushView(this, coords);
@@ -487,6 +477,8 @@ export default class SampleView extends ContainerView {
 
         this.attributeView.render(context, toColumnCoords(cols[0]), options);
         this.renderChild(context, toColumnCoords(cols[1]), options);
+
+        this.renderSummaries(context, toColumnCoords(cols[1]), options);
 
         context.popView(this);
     }

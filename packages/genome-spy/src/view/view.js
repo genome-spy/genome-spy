@@ -328,9 +328,11 @@ export default class View {
         const sampleFieldDef = this.getEncoding().sample;
         if (isFieldDef(sampleFieldDef)) {
             return [sampleFieldDef.field];
+        } else if (sampleFieldDef === null) {
+            return undefined;
+        } else {
+            return this.parent?.getFacetFields(this);
         }
-
-        return this.parent?.getFacetFields(this);
     }
 
     /**

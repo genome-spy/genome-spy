@@ -16,7 +16,7 @@ const maxDepth = 65536;
  */
 export default class CoverageTransform extends FlowNode {
     get behavior() {
-        return BEHAVIOR_MODIFIES;
+        return 0;
     }
 
     /**

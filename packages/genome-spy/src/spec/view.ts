@@ -119,6 +119,17 @@ export interface SampleSpec extends ViewSpecBase {
     spec: LayerSpec | UnitSpec;
 }
 
+export interface UnitSpec extends ViewSpecBase, SummarizeSamplesSpec {
+    mark: string | MarkConfig;
+}
+
+export interface ResolveSpec {
+    resolve?: {
+        scale: Record<string, "independent" | "shared">;
+        axis: Record<string, "independent" | "shared">;
+    };
+}
+
 export type ContainerSpec = (
     | LayerSpec
     | FacetSpec
@@ -128,16 +139,9 @@ export type ContainerSpec = (
     | ConcatSpec
     | TableSpec
     | TableRowSpec
-) & {
-    resolve?: {
-        scale: Record<string, "independent" | "shared">;
-        axis: Record<string, "independent" | "shared">;
-    };
-};
-
-export interface UnitSpec extends ViewSpecBase, SummarizeSamplesSpec {
-    mark: string | MarkConfig;
-}
+    | UnitSpec
+) &
+    ResolveSpec;
 
 export type ViewSpec =
     | UnitSpec

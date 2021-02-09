@@ -1,6 +1,5 @@
 import { tsvParseRows } from "d3-dsv";
 import { loader } from "vega-loader";
-import { field, accessorFields } from "vega-util";
 import ChromMapper from "./chromMapper";
 import { formatRange } from "./locusFormat";
 

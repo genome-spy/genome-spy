@@ -37,6 +37,9 @@ export function buildDataFlow(root, existingFlow) {
     /** @type {DataFlow<View>} */
     const dataFlow = existingFlow ?? new DataFlow();
 
+    /** @type {(function():void)[]} */
+    const postProcessOps = [];
+
     /**
      * @param {FlowNode} node
      * @param {function():Error} [onMissingParent]
@@ -121,37 +124,31 @@ export function buildDataFlow(root, existingFlow) {
             }
 
             // Support chrom/pos channelDefs
-            for (const transform of linearizeLocusAccess(view)) {
-                appendTransform(transform);
+            const linearize = linearizeLocusAccess(view);
+            if (linearize) {
+                postProcessOps.push(linearize.rewrite);
+                for (const transform of linearize.transforms) {
+                    // TODO: Transforms should not be added if they already exist in the flow.
+                    // Alternatively they should be optimized away.
+                    appendTransform(transform);
+                }
             }
 
             const collector = new Collector({
                 type: "collect",
                 groupby: view.getFacetFields(),
-                sort: getCompareParamsForUnitView(view)
+                sort: getCompareParamsForView(
+                    view,
+                    linearize?.rewrittenEncoding
+                )
             });
 
             appendNode(collector);
             dataFlow.addCollector(collector, view);
-        } else if (false && isSummarizeSamplesSpec(view.spec)) {
-            if (!currentNode) {
-                throw new Error(
-                    'A view with "summarizeSamples" has no (inherited) data source'
-                );
-            }
+        }
 
-            // TODO: Should sort by min(x, x2).
-            const e = view.getEncoding().x;
-            if (isChannelDefWithScale(e)) {
-                const collector = new Collector({
-                    type: "collect",
-                    groupby: view.getFacetFields(),
-                    sort: getCompareParamsForUnitView(view)
-                });
-
-                appendNode(collector);
-                dataFlow.addCollector(collector, view);
-            }
+        if (isSummarizeSamplesSpec(view.spec)) {
+            // TODO: implement summarization of layer views
         }
     };
 
@@ -162,6 +159,8 @@ export function buildDataFlow(root, existingFlow) {
 
     root.visit(processView);
 
+    postProcessOps.forEach(op => op());
+
     return dataFlow;
 }
 
@@ -170,11 +169,14 @@ export function buildDataFlow(root, existingFlow) {
  * LinearizeGenomicCoordinate transform(s) that should be inserted into
  * the data flow.
  *
- * @param {UnitView} view
+ * @param {View} view
  */
 export function linearizeLocusAccess(view) {
     /** @type {FlowNode[]} */
     const transforms = [];
+
+    /** @type {Record<string, import("../spec/channel").ChannelDef>} */
+    const rewrittenEncoding = {};
 
     for (const [channel, channelDef] of Object.entries(view.getEncoding())) {
         if (isPositionalChannel(channel) && isChromPosDef(channelDef)) {
@@ -187,19 +189,17 @@ export function linearizeLocusAccess(view) {
                 strip(channelDef.pos)
             ].join("");
 
-            transforms.push(
-                new LinearizeGenomicCoordinate(
-                    {
-                        type: "linearizeGenomicCoordinate",
-                        channel: /** @type {"x" | "y"} */ (primaryChannel(
-                            channel
-                        )),
-                        chrom: channelDef.chrom,
-                        pos: channelDef.pos,
-                        as: linearizedField
-                    },
-                    view
-                )
+            // TODO: linearize both primary and secondary channel at the same time
+            // if both have the same chromosome field
+            const transform = new LinearizeGenomicCoordinate(
+                {
+                    type: "linearizeGenomicCoordinate",
+                    channel: /** @type {"x" | "y"} */ (primaryChannel(channel)),
+                    chrom: channelDef.chrom,
+                    pos: channelDef.pos,
+                    as: linearizedField
+                },
+                view
             );
 
             // Use spec directly because getEncoding() returns inherited props too.
@@ -214,20 +214,38 @@ export function linearizeLocusAccess(view) {
                 newFieldDef.type = channelDef.type;
             }
 
-            view.spec.encoding[channel] = newFieldDef;
+            rewrittenEncoding[channel] = newFieldDef;
+
+            transforms.push(transform);
         }
     }
 
-    return transforms;
+    return transforms.length
+        ? {
+              transforms,
+              rewrittenEncoding,
+              /**
+               * Should be called after the whole flow has been created in order to
+               * not disrupt inheritance of encodings
+               */
+              rewrite: () => {
+                  view.spec.encoding = {
+                      ...view.spec.encoding,
+                      ...rewrittenEncoding
+                  };
+              }
+          }
+        : undefined;
 }
 
 /**
- * @param {UnitView} view
+ * @param {View} view
+ * @param {Record<string, import("../spec/channel").ChannelDef>} [encoding]
  * @returns {import("../spec/transform").CompareParams}
  */
-function getCompareParamsForUnitView(view) {
+function getCompareParamsForView(view, encoding) {
     // TODO: Should sort by min(x, x2).
-    const e = view.getEncoding().x;
+    const e = { ...view.getEncoding(), ...encoding }.x;
     if (isChannelDefWithScale(e)) {
         if (view.getScaleResolution("x")?.isZoomable()) {
             if (isFieldDef(e)) {

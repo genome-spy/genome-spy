@@ -16,6 +16,7 @@ import {
 import createDomain from "../utils/domainArray";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import AxisResolution from "./axisResolution";
+import { getViewClass, isSummarizeSamplesSpec } from "./viewUtils";
 
 /**
  *
@@ -36,9 +37,10 @@ export const markTypes = {
  * @typedef {import("../encoder/accessor").Accessor} Accessor
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
  * @typedef {import("./containerView").ResolutionType} ResolutionType
+ * @typedef {import("./decoratorView").default} DecoratorView
  *
  */
-export default class UnitView extends View {
+export default class UnitView extends ContainerView {
     /**
      *
      * @param {import("../spec/view").UnitSpec} spec
@@ -59,12 +61,54 @@ export default class UnitView extends View {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
 
+        this.sampleSummaryViews = [];
+        if (isSummarizeSamplesSpec(spec)) {
+            // TODO: Support multiple
+            const sumSpec = spec.summarizeSamples;
+
+            if (!sumSpec.transform) {
+                sumSpec.transform = [];
+            }
+            sumSpec.transform.unshift({ type: "mergeFacets" });
+
+            const View = getViewClass(sumSpec);
+            const summaryView = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
+                sumSpec,
+                context,
+                this,
+                "summaryView"
+            ));
+            this.sampleSummaryViews.push(summaryView);
+        }
+
         /**
          * Not nice! Inconsistent when faceting!
          * TODO: Something. Perhaps a Map that has coords for each facet or something...
          * @type {import("../utils/layout/rectangle").default}
          */
         this.coords = undefined;
+    }
+
+    /**
+     * @returns {IterableIterator<View>}
+     */
+    *[Symbol.iterator]() {
+        for (const child of this.sampleSummaryViews) {
+            yield child;
+        }
+    }
+
+    /**
+     * @param {import("./view").default} child
+     * @param {import("./view").default} replacement
+     */
+    replaceChild(child, replacement) {
+        const i = this.sampleSummaryViews.indexOf(child);
+        if (i >= 0) {
+            this.sampleSummaryViews[i] = replacement;
+        } else {
+            throw new Error("Not my child view!");
+        }
     }
 
     /**

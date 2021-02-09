@@ -295,6 +295,10 @@ export interface MeasureTextParams extends TransformParamsBase {
     // TODO: FontFamily etc
 }
 
+export interface MergeFacetsParams extends TransformParamsBase {
+    type: "mergeFacets";
+}
+
 export interface LinearizeGenomicCoordinateParams extends TransformParamsBase {
     type: "linearizeGenomicCoordinate";
 
@@ -382,6 +386,7 @@ export type TransformParams =
     | FlattenCompressedExonsParams
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams
+    | MergeFacetsParams
     | PileupParams
     | ProjectParams
     | RegexExtractParams
