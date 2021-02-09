@@ -195,6 +195,8 @@ export default class GenomeSpy {
         const flow = buildDataFlow(this.viewRoot, context.dataFlow);
         optimizeDataFlow(flow);
 
+        flow.dataSources.forEach(ds => console.log(ds.subtreeToString()));
+
         // Create encoders (accessors, scales and related metadata)
         unitViews.forEach(view => view.mark.initializeEncoders());
 
