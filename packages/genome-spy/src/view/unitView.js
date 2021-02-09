@@ -10,14 +10,12 @@ import ScaleResolution from "./scaleResolution";
 import {
     isSecondaryChannel,
     secondaryChannels,
-    primaryChannel,
     isPositionalChannel,
     isChannelDefWithScale
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import AxisResolution from "./axisResolution";
-import { isFacetFieldDef } from "./viewUtils";
 
 /**
  *
@@ -142,45 +140,6 @@ export default class UnitView extends View {
 
             view.resolutions[type][channel].pushUnitView(this);
         }
-    }
-
-    /**
-     *
-     * @param {string} channel
-     * @param {ResolutionType} type
-     */
-    _getResolution(channel, type) {
-        channel = primaryChannel(channel);
-
-        /** @type {import("./view").default } */
-        // eslint-disable-next-line consistent-this
-        let view = this;
-        do {
-            if (view.resolutions[type][channel]) {
-                return view.resolutions[type][channel];
-            }
-            view = view.parent;
-        } while (view);
-    }
-
-    /**
-     * @param {string} channel
-     */
-    getScaleResolution(channel) {
-        return /** @type {ScaleResolution} */ (this._getResolution(
-            channel,
-            "scale"
-        ));
-    }
-
-    /**
-     * @param {string} channel
-     */
-    getAxisResolution(channel) {
-        return /** @type {AxisResolution} */ (this._getResolution(
-            channel,
-            "axis"
-        ));
     }
 
     /**

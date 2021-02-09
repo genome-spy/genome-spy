@@ -4,7 +4,7 @@ import Padding from "../utils/layout/padding";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import { isNumber, span } from "vega-util";
 import { scaleLinear, scaleLog } from "d3-scale";
-import { isFieldDef } from "../encoder/encoder";
+import { isFieldDef, primaryChannel } from "../encoder/encoder";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -22,6 +22,10 @@ export const VISIT_STOP = "VISIT_STOP";
  * @typedef {import("./viewUtils").ViewContext} ViewContext
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
  * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
+ *
+ * @typedef {import("./containerView").ResolutionType} ResolutionType
+ * @typedef {import("./scaleResolution").default} ScaleResolution
+ * @typedef {import("./axisResolution").default} AxisResolution
  *
  * @typedef {VISIT_SKIP|VISIT_STOP|void} VisitResult
  *
@@ -332,14 +336,40 @@ export default class View {
     /**
      *
      * @param {string} channel
-     * @returns {import("./scaleResolution").default}
+     * @param {ResolutionType} type
+     */
+    _getResolution(channel, type) {
+        channel = primaryChannel(channel);
+
+        /** @type {import("./view").default } */
+        // eslint-disable-next-line consistent-this
+        let view = this;
+        do {
+            if (view.resolutions[type][channel]) {
+                return view.resolutions[type][channel];
+            }
+            view = view.parent;
+        } while (view);
+    }
+
+    /**
+     * @param {string} channel
      */
     getScaleResolution(channel) {
-        return (
-            this.resolutions.scale[channel] ||
-            (this.parent && this.parent.getScaleResolution(channel)) ||
-            undefined
-        );
+        return /** @type {ScaleResolution} */ (this._getResolution(
+            channel,
+            "scale"
+        ));
+    }
+
+    /**
+     * @param {string} channel
+     */
+    getAxisResolution(channel) {
+        return /** @type {AxisResolution} */ (this._getResolution(
+            channel,
+            "axis"
+        ));
     }
 
     getBaseUrl() {
