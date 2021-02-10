@@ -42,6 +42,20 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
             );
         }
 
+        const setter = new Function(
+            "datum",
+            "offset",
+            "posAccessors",
+            as
+                .map(
+                    (a, i) =>
+                        `datum[${JSON.stringify(
+                            a
+                        )}] = offset + +posAccessors[${i}](datum);`
+                )
+                .join("\n")
+        );
+
         /** @type {any} */
         let lastChrom;
         let chromOffset = 0;
@@ -61,11 +75,7 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
 
         /** @param {Record<string, any>} datum */
         this.handle = datum => {
-            const offset = getChromOffset(chromAccessor(datum));
-            for (let i = 0; i < as.length; i++) {
-                datum[as[i]] = offset + +posAccessors[i](datum);
-            }
-
+            setter(datum, getChromOffset(chromAccessor(datum)), posAccessors);
             this._propagate(datum);
         };
     }
