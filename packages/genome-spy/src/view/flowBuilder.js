@@ -17,6 +17,8 @@ import {
 } from "../encoder/encoder";
 import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
 import { isSummarizeSamplesSpec } from "./viewUtils";
+import { group } from "d3-array";
+import iterateNestedMaps from "../utils/iterateNestedMaps";
 
 /**
  * @typedef {import("./view").default} View
@@ -178,45 +180,72 @@ export function linearizeLocusAccess(view) {
     /** @type {Record<string, import("../spec/channel").ChannelDef>} */
     const rewrittenEncoding = {};
 
+    /** @type {{channel: string, chromPosDef: import("../spec/channel").ChromPosDef}[]} */
+    const channelsAndChromPosDefs = [];
+
+    // Optimize the number of transforms. Use only a single transform for positions
+    // that share the chromosome field and channel.
     for (const [channel, channelDef] of Object.entries(view.getEncoding())) {
         if (isPositionalChannel(channel) && isChromPosDef(channelDef)) {
-            /** @param {string} str */
-            const strip = str => str.replace(/[^A-Za-z0-9_]/g, "");
-            const linearizedField = [
-                "_linearized_",
-                strip(channelDef.chrom),
-                "_",
-                strip(channelDef.pos)
-            ].join("");
+            channelsAndChromPosDefs.push({ channel, chromPosDef: channelDef });
+        }
+    }
 
-            // TODO: linearize both primary and secondary channel at the same time
-            // if both have the same chromosome field
-            const transform = new LinearizeGenomicCoordinate(
-                {
-                    type: "linearizeGenomicCoordinate",
-                    channel: /** @type {"x" | "y"} */ (primaryChannel(channel)),
-                    chrom: channelDef.chrom,
-                    pos: channelDef.pos,
-                    as: linearizedField
-                },
-                view
-            );
+    // Nngh. group uses InternMap but doesn't have a way to define an interning function.
+    // Have to use multi-level grouping.
+    const grouped = group(
+        channelsAndChromPosDefs,
+        d => /** @type {"x" | "y"} */ (primaryChannel(d.channel)),
+        d => d.chromPosDef.chrom
+    );
 
-            // Use spec directly because getEncoding() returns inherited props too.
-            /** @type {any} */
-            const newFieldDef = {
-                ...(view.spec.encoding?.[channel] || {}),
-                field: linearizedField
-            };
-            delete newFieldDef.chrom;
-            delete newFieldDef.pos;
-            if (!newFieldDef.type && channelDef.type) {
-                newFieldDef.type = channelDef.type;
+    for (const [primaryChan, chromAndStuff] of grouped.entries()) {
+        for (const [chrom, chanChromPos] of chromAndStuff.entries()) {
+            /** @type {string[]} */
+            const pos = [];
+            /** @type {string[]} */
+            const as = [];
+
+            for (const { channel, chromPosDef } of chanChromPos) {
+                /** @param {string} str */
+                const strip = str => str.replace(/[^A-Za-z0-9_]/g, "");
+                const linearizedField = [
+                    "_linearized_",
+                    strip(chromPosDef.chrom),
+                    "_",
+                    strip(chromPosDef.pos)
+                ].join("");
+
+                // Use spec directly because getEncoding() returns inherited props too.
+                /** @type {any} */
+                const newFieldDef = {
+                    ...(view.spec.encoding?.[channel] || {}),
+                    field: linearizedField
+                };
+                delete newFieldDef.chrom;
+                delete newFieldDef.pos;
+                if (!newFieldDef.type && chromPosDef.type) {
+                    newFieldDef.type = chromPosDef.type;
+                }
+
+                rewrittenEncoding[channel] = newFieldDef;
+
+                pos.push(chromPosDef.pos);
+                as.push(linearizedField);
             }
 
-            rewrittenEncoding[channel] = newFieldDef;
-
-            transforms.push(transform);
+            transforms.push(
+                new LinearizeGenomicCoordinate(
+                    {
+                        type: "linearizeGenomicCoordinate",
+                        channel: primaryChan,
+                        chrom: chrom,
+                        pos,
+                        as
+                    },
+                    view
+                )
+            );
         }
     }
 
