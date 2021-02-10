@@ -1,3 +1,4 @@
+import { asArray } from "../../utils/arrayUtils";
 import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
@@ -32,24 +33,38 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
         }
 
         const chromAccessor = field(params.chrom);
-        const posAccessor = field(params.pos);
-        const as = params.as;
+        const posAccessors = asArray(params.pos).map(pos => field(pos));
+        const as = asArray(params.as);
+
+        if (posAccessors.length != as.length) {
+            throw new Error(
+                'The number of "pos" and "as" elements must be equal!'
+            );
+        }
 
         /** @type {any} */
         let lastChrom;
         let chromOffset = 0;
 
-        /** @param {Record<string, any>} datum */
-        this.handle = datum => {
-            const chrom = chromAccessor(datum);
-            if (chrom != lastChrom) {
+        /** @param {string | number} chrom */
+        const getChromOffset = chrom => {
+            if (chrom !== lastChrom) {
                 chromOffset = genome.cumulativeChromPositions.get(chrom);
                 if (chromOffset === undefined) {
                     throw new Error("Unknown chromosome/contig: " + chrom);
                 }
+                lastChrom = chrom;
             }
 
-            datum[as] = chromOffset + +posAccessor(datum);
+            return chromOffset;
+        };
+
+        /** @param {Record<string, any>} datum */
+        this.handle = datum => {
+            const offset = getChromOffset(chromAccessor(datum));
+            for (let i = 0; i < as.length; i++) {
+                datum[as[i]] = offset + +posAccessors[i](datum);
+            }
 
             this._propagate(datum);
         };
