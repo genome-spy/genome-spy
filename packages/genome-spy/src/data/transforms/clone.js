@@ -1,3 +1,4 @@
+import createCloner from "../../utils/cloner";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 /**
@@ -8,10 +9,30 @@ export default class CloneTransform extends FlowNode {
         return BEHAVIOR_CLONES;
     }
 
-    /**
-     * @param {any} datum
-     */
-    handle(datum) {
-        this._propagate(Object.assign({}, datum));
+    constructor() {
+        super();
+
+        /** @param {any} datum */
+        const setupCloner = datum => {
+            const clone = createCloner(datum);
+
+            /** @param {any} datum */
+            this.handle = datum => this._propagate(clone(datum));
+
+            this.handle(datum);
+        };
+
+        this.handle = setupCloner;
+
+        /**
+         * Signals that a new batch of data will be propagated.
+         *
+         * @param {import("../flowNode").BatchMetadata} [metadata]
+         */
+        this.beginBatch = metadata => {
+            super.beginBatch(metadata);
+            // TODO: Only create new cloner if the props change
+            this.handle = setupCloner;
+        };
     }
 }
