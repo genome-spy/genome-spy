@@ -34,7 +34,7 @@ const SPACING = 10;
  * @typedef {import("../layerView").default} LayerView
  * @typedef {import("../unitView").default} UnitView
  * @typedef {import("../decoratorView").default} DecoratorView
- * @typedef {import("../../genome/chromMapper").ChromosomalLocus} ChromosomalLocus
+ * @typedef {import("../../genome/genome").ChromosomalLocus} ChromosomalLocus
  *
  * @typedef {object} Sample Sample metadata
  * @prop {string} id
@@ -109,18 +109,16 @@ export default class SampleView extends ContainerView {
                 specifier.path
             ));
 
-            const xScale = this.getScaleResolution("x").getScale();
+            const genome = this.getScaleResolution("x").getGenome();
             const numericLocus = isNumber(specifier.locus)
                 ? specifier.locus
-                : "chromMapper" in xScale
-                ? xScale
-                      .chromMapper()
-                      .toContinuous(
-                          specifier.locus.chromosome,
-                          specifier.locus.pos
-                      )
+                : genome
+                ? genome.toContinuous(
+                      specifier.locus.chromosome,
+                      specifier.locus.pos
+                  )
                 : error(
-                      "Encountered a complex locus but no ChromMapper is available!"
+                      "Encountered a complex locus but no genome is available!"
                   );
 
             /** @param {string} sampleId */
@@ -586,13 +584,12 @@ export default class SampleView extends ContainerView {
             event.point.x,
             event.point.y
         ).x;
-        const xScale = this.getScaleResolution("x").getScale();
+        const xResolution = this.getScaleResolution("x");
+        const xScale = xResolution.getScale();
+        const genome = xResolution.getGenome();
 
         const invertedX = xScale.invert(normalizedXPos);
-        const serializedX =
-            "chromMapper" in xScale
-                ? xScale.chromMapper().toChromosomal(invertedX)
-                : invertedX;
+        const serializedX = genome?.toChromosomal(invertedX) ?? invertedX;
 
         const fieldInfos = findEncodedFields(this.child).filter(
             d => !["sample", "x", "x2"].includes(d.channel)

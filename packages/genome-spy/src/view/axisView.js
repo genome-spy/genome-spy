@@ -117,10 +117,9 @@ export default class AxisView extends LayerView {
 
         if (genomeAxis) {
             const channel = orient2channel(this.axisProps.orient);
-            const scale = this.getScaleResolution(channel).getScale();
-            const chromMapper = /** @type {any} */ (scale).chromMapper(); // Locus scale
+            const genome = this.getScaleResolution(channel).getGenome();
             this.findChildByName(CHROM_LAYER_NAME).getDynamicDataSource = () =>
-                new DynamicCallbackSource(() => chromMapper.chromosomes);
+                new DynamicCallbackSource(() => genome.chromosomes);
         }
     }
 

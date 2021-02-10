@@ -1,13 +1,29 @@
+import { bisect } from "d3-array";
 import { tsvParseRows } from "d3-dsv";
 import { loader } from "vega-loader";
-import { field, accessorFields } from "vega-util";
-import ChromMapper from "./chromMapper";
+import createDomain from "../utils/domainArray";
 import { formatRange } from "./locusFormat";
 
 const defaultBaseUrl = "https://genomespy.app/data/genomes/";
 
 /**
  * @typedef {import("../spec/genome").GenomeConfig} GenomeConfig
+ *
+ * @typedef {object} ChromosomalLocus
+ * @prop {string} chromosome
+ * @prop {number} pos Zero-based index
+ *
+ * @typedef {object} Chromosome
+ * @prop {string} name
+ * @prop {number} size
+ *
+ * @typedef {object} ChromosomeAnnotation
+ * @prop {number} index 0-based index
+ * @prop {number} number 1-based index
+ * @prop {number} continuousStart zero-based start, inclusive
+ * @prop {number} continuousEnd zero-based end, exclusive
+ * @prop {number[]} continuousInterval
+ * @prop {boolean} odd true if odd chrom number
  */
 
 export default class Genome {
@@ -22,6 +38,24 @@ export default class Genome {
                 "No name has been defined for the genome assembly!"
             );
         }
+
+        /** @type {(Chromosome & ChromosomeAnnotation)[]} */
+        this.chromosomes = [];
+
+        /** @type {Map<string | number, number>} */
+        this.cumulativeChromPositions = new Map();
+
+        /** @type {Map<string | number, Chromosome & ChromosomeAnnotation>} */
+        this.chromosomesByName = new Map();
+
+        /** @type {number[]} */
+        this.startByIndex = [];
+
+        this.totalSize = 0;
+
+        if (this.config.contigs) {
+            this.setChromSizes(this.config.contigs);
+        }
     }
 
     get name() {
@@ -29,40 +63,139 @@ export default class Genome {
     }
 
     /**
-     *
-     * @param {import("../genomeSpy").default} genomeSpy
+     * @param {string} baseUrl
      */
-    async initialize(genomeSpy) {
+    async load(baseUrl) {
+        if (this.config.contigs) {
+            return;
+        }
+
         if (this.config.baseUrl) {
             this.baseUrl = /^http(s)?/.test(this.config.baseUrl)
                 ? this.config.baseUrl
-                : genomeSpy.config.baseUrl + "/" + this.config.baseUrl;
+                : baseUrl + "/" + this.config.baseUrl;
         } else {
             this.baseUrl = defaultBaseUrl;
         }
 
-        if (this.config.contigs) {
-            // TODO: Sanity check for contig config
-            this.chromSizes = this.config.contigs;
-        } else {
-            try {
-                this.chromSizes = parseChromSizes(
+        try {
+            this.setChromSizes(
+                parseChromSizes(
                     await loader({ baseURL: this.baseUrl }).load(
                         `${this.config.name}/${this.name}.chrom.sizes`
                     )
-                );
-            } catch (e) {
-                throw new Error(`Could not load chrom sizes: ${e.message}`);
-            }
+                )
+            );
+        } catch (e) {
+            throw new Error(`Could not load chrom sizes: ${e.message}`);
         }
-        this.chromMapper = new ChromMapper(this.chromSizes);
+    }
 
-        // TODO: Support multiple genomes
-        genomeSpy.registerNamedDataProvider(name => {
-            if (name == "chromSizes") {
-                return this.chromMapper.getChromosomes();
+    /**
+     *
+     * @param {Chromosome[]} chromSizes
+     */
+    setChromSizes(chromSizes) {
+        let pos = 0;
+        this.startByIndex = [0];
+
+        for (let i = 0; i < chromSizes.length; i++) {
+            this.startByIndex.push(pos);
+            const size = chromSizes[i].size;
+
+            const chrom = {
+                ...chromSizes[i],
+                continuousStart: pos,
+                continuousEnd: pos + size,
+                continuousInterval: [pos, pos + size],
+                index: i,
+                number: i + 1,
+                // eslint-disable-next-line no-bitwise
+                odd: !(i & 1)
+            };
+
+            this.chromosomes.push(chrom);
+
+            const plain = chrom.name.replace(/^chr/i, "");
+            for (const name of [
+                "chr" + plain,
+                "CHR" + plain,
+                "Chr" + plain,
+                chrom.number,
+                "" + chrom.number,
+                plain,
+                chrom.name
+            ]) {
+                this.cumulativeChromPositions.set(name, pos);
+                this.chromosomesByName.set(name, chrom);
             }
-        });
+
+            pos += chrom.size;
+        }
+
+        this.totalSize = pos;
+    }
+
+    getExtent() {
+        return [0, this.totalSize];
+    }
+
+    /**
+     * Returns a chromosomal locus in the continuous domain
+     *
+     * @param {string | number} chrom A number or name with or without a "chr" prefix. Examples: 23, chrX, X
+     * @param {number} pos zero-based coordinate
+     */
+    toContinuous(chrom, pos) {
+        let offset = this.cumulativeChromPositions.get(chrom);
+        if (offset === undefined) {
+            throw new Error("Unknown chromosome/contig: " + chrom);
+        }
+
+        return offset + +pos;
+    }
+
+    /**
+     *
+     * @param {number} continuousPos
+     */
+    toChromosome(continuousPos) {
+        if (continuousPos >= this.totalSize) {
+            return; // TODO: Consider displaying a warning
+        }
+
+        continuousPos = Math.floor(continuousPos);
+
+        // TODO: Fix the offset by one
+        const i = bisect(this.startByIndex, continuousPos) - 1;
+        if (i > 0 && i <= this.chromosomes.length) {
+            return this.chromosomes[i - 1];
+        }
+    }
+
+    /**
+     *
+     * @param {number} continuousPos
+     * @returns {ChromosomalLocus}
+     */
+    toChromosomal(continuousPos) {
+        const chrom = this.toChromosome(continuousPos);
+        if (!chrom) {
+            return undefined;
+        }
+
+        return {
+            chromosome: chrom.name,
+            pos: Math.floor(continuousPos) - chrom.continuousStart
+        };
+    }
+
+    /**
+     *
+     * @param {string} name
+     */
+    getChromosome(name) {
+        return this.chromosomesByName.get(name);
     }
 
     /**
@@ -78,9 +211,9 @@ export default class Genome {
      */
     formatInterval(interval) {
         // Round the lower end
-        const begin = this.chromMapper.toChromosomal(interval[0] + 0.5);
+        const begin = this.toChromosomal(interval[0] + 0.5);
         // Because of the open upper bound, one is first subtracted from the upper bound and later added back.
-        const end = this.chromMapper.toChromosomal(interval[1] - 1);
+        const end = this.toChromosomal(interval[1] - 1);
         end.pos += 1;
 
         return formatRange(begin, end);
@@ -105,8 +238,8 @@ export default class Genome {
             const endIndex = parseInt(matches[4].replace(/,/g, ""));
 
             return [
-                this.chromMapper.toContinuous(startChr, startIndex - 1),
-                this.chromMapper.toContinuous(endChr, endIndex)
+                this.toContinuous(startChr, startIndex - 1),
+                this.toContinuous(endChr, endIndex)
             ];
         }
     }
@@ -121,46 +254,4 @@ export function parseChromSizes(chromSizesData) {
     return tsvParseRows(chromSizesData)
         .filter(row => /^chr[0-9A-Z]+$/.test(row[0]))
         .map(([name, size]) => ({ name, size: parseInt(size) }));
-}
-
-/**
- * Parses a UCSC chromosome band table
- *
- * See: https://genome.ucsc.edu/goldenpath/gbdDescriptionsOld.html#ChromosomeBand
- *
- * @param {string} cytobandData cytoband table
- * @returns an array of cytoband objects
- */
-export function parseUcscCytobands(cytobandData) {
-    return (
-        tsvParseRows(cytobandData)
-            // TODO: Support other organisms too
-            .filter(b => /^chr[0-9A-Z]+$/.test(b[0]))
-            .map(row => ({
-                chrom: row[0],
-                chromStart: +row[1],
-                chromEnd: +row[2],
-                name: row[3],
-                gieStain: row[4]
-            }))
-    );
-}
-
-/**
- * Builds a chromosome-sizes object from a cytoband array
- *
- * @param {*} cytobands
- */
-export function cytobandsToChromSizes(cytobands) {
-    const chromSizes = {};
-
-    cytobands.forEach(band => {
-        const chrom = band.chrom;
-        chromSizes[chrom] = Math.max(
-            chromSizes.hasOwnProperty(chrom) ? chromSizes[chrom] : 0,
-            band.chromEnd + 1
-        );
-    });
-
-    return chromSizes;
 }

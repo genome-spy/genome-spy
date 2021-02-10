@@ -24,14 +24,8 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
             throw new Error("Invalid channel: " + channel);
         }
 
-        const scale = view.getScaleResolution(channel).getScale();
-
-        /** @type {import("../../genome/chromMapper").default} */
-        let chromMapper;
-
-        if ("chromMapper" in scale) {
-            chromMapper = scale.chromMapper();
-        } else {
+        const genome = view.getScaleResolution(channel).getGenome();
+        if (!genome) {
             throw new Error(
                 "LinearizeGenomicCoordinate transform requires a locus scale!"
             );
@@ -41,12 +35,22 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
         const posAccessor = field(params.pos);
         const as = params.as;
 
+        /** @type {any} */
+        let lastChrom;
+        let chromOffset = 0;
+
         /** @param {Record<string, any>} datum */
         this.handle = datum => {
-            datum[as] = chromMapper.toContinuous(
-                chromAccessor(datum),
-                posAccessor(datum)
-            );
+            const chrom = chromAccessor(datum);
+            if (chrom != lastChrom) {
+                chromOffset = genome.cumulativeChromPositions.get(chrom);
+                if (chromOffset === undefined) {
+                    throw new Error("Unknown chromosome/contig: " + chrom);
+                }
+            }
+
+            datum[as] = chromOffset + +posAccessor(datum);
+
             this._propagate(datum);
         };
     }
