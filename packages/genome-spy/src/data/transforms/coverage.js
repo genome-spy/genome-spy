@@ -70,6 +70,28 @@ export default class CoverageTransform extends FlowNode {
         // End pos as priority, weight as value
         const ends = new Heapify(maxDepth, [], [], Float32Array, Float64Array);
 
+        const segmentProps = [
+            [asStart, "start"],
+            [asEnd, "end"],
+            [asCoverage, "coverage"]
+        ];
+        if (asChrom) {
+            segmentProps.push([asChrom, "chrom"]);
+        }
+
+        // eslint-disable-next-line no-new-func
+        const createSegment = /** @type {function} */ (new Function(
+            "start",
+            "end",
+            "coverage",
+            "chrom",
+            "return {" +
+                segmentProps
+                    .map(([prop, param]) => `${JSON.stringify(prop)}: ${param}`)
+                    .join(", ") +
+                "};"
+        ));
+
         /**
          * @param {number} start
          * @param {number} end
@@ -92,14 +114,7 @@ export default class CoverageTransform extends FlowNode {
             }
 
             if (!extended) {
-                bufferedSegment = {
-                    [asStart]: start,
-                    [asEnd]: end,
-                    [asCoverage]: coverage
-                };
-                if (chrom) {
-                    bufferedSegment[asChrom] = chrom;
-                }
+                bufferedSegment = createSegment(start, end, coverage, chrom);
             }
         };
 
