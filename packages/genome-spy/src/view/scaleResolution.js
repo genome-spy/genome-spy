@@ -146,7 +146,7 @@ export default class ScaleResolution {
             const domain =
                 this.getConfiguredDomain() ??
                 (this.type == LOCUS
-                    ? this._getGenome().chromMapper.getExtent()
+                    ? this.getGenome().getExtent()
                     : this.getDataDomain());
 
             if (domain && domain.length > 0) {
@@ -235,8 +235,7 @@ export default class ScaleResolution {
         this._scale = scale;
 
         if (scale.type == "locus") {
-            const cm = this._getGenome().chromMapper;
-            scale.chromMapper(cm);
+            scale.genome(this.getGenome());
         }
 
         // Tag the scale and inform encoders and shaders that emulated
@@ -401,11 +400,12 @@ export default class ScaleResolution {
         return props;
     }
 
-    _getGenome() {
+    getGenome() {
         if (this.type !== "locus") {
             return undefined;
         }
 
+        // TODO: Support multiple assemblies
         return this.views[0].context.genomeStore.getGenome();
     }
 

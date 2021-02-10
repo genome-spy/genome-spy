@@ -3,7 +3,7 @@ import { format as d3format } from "d3-format";
 const numberFormat = d3format(",d");
 
 /**
- * @typedef {import("./chromMapper").ChromosomalLocus} ChromosomalLocus
+ * @typedef {import("./genome").ChromosomalLocus} ChromosomalLocus
  */
 
 /**

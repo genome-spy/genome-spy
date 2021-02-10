@@ -1,4 +1,4 @@
-import { ticks as d3ticks, tickStep, extent } from "d3-array";
+import { tickStep } from "d3-array";
 import { format as d3format } from "d3-format";
 import scaleIndex from "./scaleIndex";
 
@@ -6,24 +6,25 @@ import scaleIndex from "./scaleIndex";
  * Creates a "locus" scale, which works similarly to band scale but the domain
  * consists of integer indexes.
  *
- * @typedef {import("./chromMapper").default} ChromMapper
+ * @typedef {import("./genome").default} Genome
  */
 export default function scaleLocus() {
     const scale = scaleIndex().numberingOffset(1);
 
-    /** @type {ChromMapper} */
-    let cm; // TODO: Consider assimilating ChromMapper into scaleLocus
+    /** @type {Genome} */
+    let genome;
 
     /**
      *
-     * @param {ChromMapper} [_]
+     * @param {Genome} [_]
+     * @deprecated
      */
-    scale.chromMapper = function(_) {
+    scale.genome = function(_) {
         if (arguments.length) {
-            cm = _;
+            genome = _;
             return scale;
         } else {
-            return cm;
+            return genome;
         }
     };
 
@@ -32,7 +33,7 @@ export default function scaleLocus() {
      * @returns {number[]}
      */
     scale.ticks = count => {
-        if (!cm) {
+        if (!genome) {
             return [];
         }
 
@@ -41,15 +42,15 @@ export default function scaleLocus() {
 
         const [minChrom, maxChrom] = [
             domain[0],
-            Math.min(domain[1], cm.totalSize - 1)
-        ].map(x => cm.getChromosome(cm.toChromosomal(x).chromosome));
+            Math.min(domain[1], genome.totalSize - 1)
+        ].map(x => genome.toChromosome(x));
 
         const step = Math.max(1, tickStep(domain[0], domain[1], count));
 
         const ticks = [];
 
         for (let i = minChrom.index; i <= maxChrom.index; i++) {
-            const chrom = cm.getChromosomes()[i];
+            const chrom = genome.chromosomes[i];
 
             const from = Math.max(
                 chrom.continuousStart + step,
@@ -70,7 +71,7 @@ export default function scaleLocus() {
      * @param {string} [specifier]
      */
     scale.tickFormat = (count, specifier) => {
-        if (!cm) {
+        if (!genome) {
             return;
         }
 
@@ -94,9 +95,7 @@ export default function scaleLocus() {
         const numberFormat = step < 100000 ? d3format(",") : d3format(".3s");
 
         /** @type {function(number):number} */
-        const fixer = x =>
-            x -
-            cm.getChromosome(cm.toChromosomal(x).chromosome).continuousStart;
+        const fixer = x => x - genome.toChromosome(x).continuousStart;
 
         return /** @param {number} x */ x =>
             numberFormat(fixer(x) + numberingOffset);
@@ -104,7 +103,7 @@ export default function scaleLocus() {
 
     const originalCopy = scale.copy;
 
-    scale.copy = () => originalCopy().chromMapper(cm);
+    scale.copy = () => originalCopy().genome(genome);
 
     return scale;
 }

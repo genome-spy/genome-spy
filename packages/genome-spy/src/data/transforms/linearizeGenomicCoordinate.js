@@ -1,3 +1,4 @@
+import { asArray } from "../../utils/arrayUtils";
 import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
@@ -24,29 +25,47 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
             throw new Error("Invalid channel: " + channel);
         }
 
-        const scale = view.getScaleResolution(channel).getScale();
-
-        /** @type {import("../../genome/chromMapper").default} */
-        let chromMapper;
-
-        if ("chromMapper" in scale) {
-            chromMapper = scale.chromMapper();
-        } else {
+        const genome = view.getScaleResolution(channel).getGenome();
+        if (!genome) {
             throw new Error(
                 "LinearizeGenomicCoordinate transform requires a locus scale!"
             );
         }
 
         const chromAccessor = field(params.chrom);
-        const posAccessor = field(params.pos);
-        const as = params.as;
+        const posAccessors = asArray(params.pos).map(pos => field(pos));
+        const as = asArray(params.as);
+
+        if (posAccessors.length != as.length) {
+            throw new Error(
+                'The number of "pos" and "as" elements must be equal!'
+            );
+        }
+
+        /** @type {any} */
+        let lastChrom;
+        let chromOffset = 0;
+
+        /** @param {string | number} chrom */
+        const getChromOffset = chrom => {
+            if (chrom !== lastChrom) {
+                chromOffset = genome.cumulativeChromPositions.get(chrom);
+                if (chromOffset === undefined) {
+                    throw new Error("Unknown chromosome/contig: " + chrom);
+                }
+                lastChrom = chrom;
+            }
+
+            return chromOffset;
+        };
 
         /** @param {Record<string, any>} datum */
         this.handle = datum => {
-            datum[as] = chromMapper.toContinuous(
-                chromAccessor(datum),
-                posAccessor(datum)
-            );
+            const offset = getChromOffset(chromAccessor(datum));
+            for (let i = 0; i < as.length; i++) {
+                datum[as[i]] = offset + +posAccessors[i](datum);
+            }
+
             this._propagate(datum);
         };
     }

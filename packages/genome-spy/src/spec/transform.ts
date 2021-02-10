@@ -310,9 +310,9 @@ export interface LinearizeGenomicCoordinateParams extends TransformParamsBase {
     channel?: "x" | "y";
 
     chrom: Field;
-    pos: Field;
+    pos: Field | Field[];
 
-    as: string;
+    as: string | string[];
 }
 
 export interface FilterScoredLabelsParams extends TransformParamsBase {
