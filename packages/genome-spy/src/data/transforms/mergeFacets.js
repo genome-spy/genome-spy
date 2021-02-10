@@ -78,8 +78,6 @@ export default class MergeFacetsTransform extends FlowNode {
                 .map(sample => collector.groupExtentMap.get([sample]))
                 .filter(extent => extent);
 
-            console.log(extents);
-
             const iterator = kWayMerge(
                 collector.getData(),
                 extents,

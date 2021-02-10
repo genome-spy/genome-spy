@@ -24,6 +24,8 @@ export default function* kWayMerge(array, extents, accessor = x => +x) {
     /** @type {number[]} */
     const stops = [];
 
+    const validate = false;
+
     for (const [i, extent] of extents.entries()) {
         const [lo, hi] = extent;
         pointers[i] = lo;
@@ -37,13 +39,12 @@ export default function* kWayMerge(array, extents, accessor = x => +x) {
         const i = heap.pop();
         let pointer = pointers[i];
         const element = array[pointer++];
-        const value = accessor(element);
 
         yield element;
 
         if (pointer < stops[i]) {
             const newValue = accessor(array[pointer]);
-            if (newValue < value) {
+            if (validate && newValue < accessor(element)) {
                 throw new Error(
                     "The input arrays to be merged are not in sorted order!"
                 );

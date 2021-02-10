@@ -145,7 +145,7 @@ export default class CoverageTransform extends FlowNode {
 
             if (asChrom) {
                 let newChrom = chromAccessor(datum);
-                if (newChrom != prevChrom) {
+                if (newChrom !== prevChrom) {
                     flushQueue();
                     chrom = newChrom;
                     prevChrom = chrom;
