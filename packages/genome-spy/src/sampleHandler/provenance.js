@@ -49,7 +49,7 @@ export default class Provenance {
         /** @type {number} */
         this.currentNodeIndex = undefined;
 
-        /** @type {(function():void)[]} */
+        /** @type {(function(S):void)[]} */
         this.listeners = [];
 
         /** @type {(function(Action):ActionInfo)[]} */
@@ -62,7 +62,7 @@ export default class Provenance {
 
     /**
      *
-     * @param {function():void} listener
+     * @param {function(S):void} listener
      */
     addListener(listener) {
         this.listeners.push(listener);
@@ -91,7 +91,7 @@ export default class Provenance {
 
     _notifyListeners() {
         for (const listener of this.listeners) {
-            listener();
+            listener(this.state);
         }
     }
 

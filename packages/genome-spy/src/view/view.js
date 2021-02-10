@@ -156,22 +156,19 @@ export default class View {
     }
 
     getPathString() {
-        return this.getAncestors()
+        return [...this.getAncestors()]
             .map(v => v.name)
             .reverse()
             .join("/");
     }
 
-    getAncestors() {
-        /** @type {View[]} */
-        const views = [];
+    *getAncestors() {
         // eslint-disable-next-line consistent-this
         let view = /** @type {View} */ (this);
         do {
-            views.push(view);
+            yield view;
             view = view.parent;
         } while (view);
-        return views;
     }
 
     /**

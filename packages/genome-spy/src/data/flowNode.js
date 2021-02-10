@@ -73,6 +73,14 @@ export default class FlowNode {
 
     /**
      *
+     * @param {FlowNode} parent
+     */
+    setParent(parent) {
+        this.parent = parent;
+    }
+
+    /**
+     *
      * @param {FlowNode} child
      */
     addChild(child) {
@@ -80,7 +88,7 @@ export default class FlowNode {
             throw new Error("Cannot add the child! It already has a parent.");
         }
         this.children.push(child);
-        child.parent = this;
+        child.setParent(this);
         this._updatePropagator();
         return this;
     }
@@ -147,10 +155,10 @@ export default class FlowNode {
             this.parent.removeChild(this);
         } else if (this.children.length == 1) {
             const child = this.children[0];
-            child.parent = this.parent;
+            child.setParent(this.parent);
             this.parent.children[this.parent.children.indexOf(this)] = child;
             this.parent._updatePropagator();
-            this.parent = undefined;
+            this.setParent(undefined);
             this.children.length = 0;
         } else {
             // TODO: Implement

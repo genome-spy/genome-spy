@@ -646,7 +646,7 @@ export default class SampleView extends ContainerView {
         ];
 
         for (const [i, fieldInfo] of fieldInfos.entries()) {
-            let path = fieldInfo.view.getAncestors();
+            let path = [...fieldInfo.view.getAncestors()];
             // takeUntil would be aweseome
             path = path.slice(
                 0,

@@ -208,10 +208,12 @@ export default class GenomeSpy {
 
         for (const view of unitViews) {
             flow.addObserver(collector => {
-                // TODO: Replace initializeData with a faceted dataflow
                 view.mark.initializeData();
                 // Update WebGL buffers
                 view.mark.updateGraphicsData();
+
+                // TODO: Fix temporary hack...
+                view.getScaleResolution("y")?.reconfigure();
             }, view);
         }
 

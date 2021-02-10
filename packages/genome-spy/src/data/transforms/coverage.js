@@ -29,6 +29,7 @@ export default class CoverageTransform extends FlowNode {
     }
 
     reset() {
+        super.reset();
         this.initialize();
     }
 

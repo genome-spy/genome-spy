@@ -316,9 +316,11 @@ export default class Mark {
     }
 
     _findSampleView() {
-        return /** @type {SampleView} */ (this.unitView
-            .getAncestors()
-            .find(view => view instanceof SampleView));
+        for (const view of this.unitView.getAncestors()) {
+            if (view instanceof SampleView) {
+                return view;
+            }
+        }
     }
 
     getSampleFacetMode() {

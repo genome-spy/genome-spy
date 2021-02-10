@@ -259,7 +259,7 @@ export default class SampleHandler {
 
 /**
  * @param {Group} group
- * @return {Group is SampleGroup}
+ * @return {group is SampleGroup}
  */
 export function isSampleGroup(group) {
     return "samples" in group;
@@ -267,7 +267,7 @@ export function isSampleGroup(group) {
 
 /**
  * @param {Group} group
- * @return {Group is GroupGroup}
+ * @return {group is GroupGroup}
  */
 export function isGroupGroup(group) {
     return "groups" in group;

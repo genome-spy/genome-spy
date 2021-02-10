@@ -58,33 +58,20 @@ export default class RectMark extends Mark {
     }
 
     onBeforeSampleAnimation() {
-        const interval = this.getContext().genomeSpy.getViewportDomain();
-
-        if (
-            interval.width() <
-            this.getContext()
-                .genomeSpy.getDomain()
-                .width() /
-                this.properties.tessellationZoomThreshold
-        ) {
-            // TODO: Only bufferize the samples that are being animated
-            this._sampleBufferInfo = this._createSampleBufferInfo(
-                interval,
-                interval.width() / this.properties.tessellationTiles
-            );
-        }
+        // TODO: Tessellate rects inside the viewport
     }
 
     onAfterSampleAnimation() {
-        this._sampleBufferInfo = this._fullSampleBufferInfo;
+        // TODO: Pop the previous buffers
     }
 
-    /**
-     *
-     * @param {number[]} [interval]
-     * @param {number} [tessellationThreshold]
-     */
-    _createSampleBufferInfo(interval, tessellationThreshold) {
+    async initializeGraphics() {
+        await super.initializeGraphics();
+
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+    }
+
+    updateGraphicsData() {
         const collector = this.unitView.getCollector();
         const data = collector.getData();
         const numItems = data.length;
@@ -93,8 +80,6 @@ export default class RectMark extends Mark {
         const builder = new RectVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            tessellationThreshold,
-            visibleRange: interval,
             numItems,
             buildXIndex: this.properties.buildIndex
         });
@@ -108,41 +93,8 @@ export default class RectMark extends Mark {
         }
 
         const vertexData = builder.toArrays();
-
-        // Ensure that no VAOs are inadvertently altered
-        this.gl.bindVertexArray(null);
-
-        // TODO: Should mark.updateBufferInfo() be used instead?
-
-        return {
-            rangeMap: vertexData.rangeMap,
-            bufferInfo: createBufferInfoFromArrays(this.gl, vertexData.arrays, {
-                numElements: vertexData.vertexCount
-            })
-        };
-    }
-
-    async initializeGraphics() {
-        await super.initializeGraphics();
-
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
-    }
-
-    updateGraphicsData() {
-        this.deleteGraphicsData();
-
-        const xDomain = undefined; //this.getXDomain();
-        const domainWidth = xDomain ? xDomain.width() : Infinity;
-
-        this._fullSampleBufferInfo = this._createSampleBufferInfo(
-            undefined,
-            domainWidth /
-                this.properties.tessellationZoomThreshold /
-                this.properties.tessellationTiles
-        );
-        this._sampleBufferInfo = this._fullSampleBufferInfo;
-
-        this.bufferInfo = this._fullSampleBufferInfo.bufferInfo;
+        this.rangeMap = vertexData.rangeMap;
+        this.updateBufferInfo(vertexData);
     }
 
     prepareRender() {
@@ -179,7 +131,7 @@ export default class RectMark extends Mark {
                 );
             },
             options,
-            () => this._sampleBufferInfo.rangeMap
+            () => this.rangeMap
         );
     }
 
