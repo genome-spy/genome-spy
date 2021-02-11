@@ -359,12 +359,15 @@ export default class SampleView extends ContainerView {
             const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
             const viewportHeight = this._coords.height;
 
+            const summaryHeight = this.summaryViews?.getSize().height.px ?? 0;
+
             const fittedLocations = calculateSampleLocations(
                 flattened,
                 viewportHeight,
                 {
                     canvasHeight: this._coords.height,
-                    groupSpacing: 5
+                    groupSpacing: 5,
+                    summaryHeight
                 }
             );
 
@@ -373,7 +376,8 @@ export default class SampleView extends ContainerView {
                 viewportHeight,
                 {
                     sampleHeight: 35, // TODO: Configurable
-                    groupSpacing: 15
+                    groupSpacing: 15,
+                    summaryHeight
                 }
             );
 
@@ -812,13 +816,14 @@ class ScrollableSampleLocationWrapper {
  * @param {number} [object.canvasHeight] Height reserved for all the samples
  * @param {number} [object.sampleHeight] Height of single sample
  * @param {number} [object.groupSpacing] Space between groups
+ * @param {number} [object.summaryHeight] Height of group summaries
  *
  * @returns {SampleLocation[]}
  */
 function calculateSampleLocations(
     flattenedGroupHierarchy,
     viewportHeight,
-    { canvasHeight, sampleHeight, groupSpacing = 5 }
+    { canvasHeight, sampleHeight, groupSpacing = 5, summaryHeight = 0 }
 ) {
     if (!canvasHeight && !sampleHeight) {
         throw new Error("canvasHeight or sampleHeight must be provided!");
@@ -836,8 +841,8 @@ function calculateSampleLocations(
 
     /** @type {function(string[]):import("../../utils/layout/flexLayout").SizeDef} */
     const sizeDefGenerator = sampleHeight
-        ? group => ({ px: group.length * sampleHeight })
-        : group => ({ grow: group.length });
+        ? group => ({ px: group.length * sampleHeight + summaryHeight })
+        : group => ({ px: summaryHeight, grow: group.length });
 
     const groupLocations = mapToPixelCoords(
         sampleGroups.map(sizeDefGenerator),
@@ -852,7 +857,7 @@ function calculateSampleLocations(
         const sizeDef = { grow: 1 };
         mapToPixelCoords(
             samples.map(d => sizeDef),
-            groupLocations[gi].size,
+            Math.max(0, groupLocations[gi].size - summaryHeight),
             {
                 offset: groupLocations[gi].location,
                 reverse: true

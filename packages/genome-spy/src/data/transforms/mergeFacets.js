@@ -78,6 +78,9 @@ export default class MergeFacetsTransform extends FlowNode {
                 .map(sample => collector.groupExtentMap.get([sample]))
                 .filter(extent => extent);
 
+            // TODO: Only merge and propagate if the sets of samples change.
+            // Computation is unnecessary when data is just sorted.
+
             const iterator = kWayMerge(
                 collector.getData(),
                 extents,
