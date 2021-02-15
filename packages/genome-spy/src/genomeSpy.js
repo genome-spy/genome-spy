@@ -235,7 +235,10 @@ export default class GenomeSpy {
         }
     }
 
-    // TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
+    /**
+     * TODO: Come up with a sensible name. And maybe this should be called at the end of the constructor.
+     * @returns {Promise<boolean>} true if the launch was successful
+     */
     async launch() {
         this._prepareContainer();
 
@@ -246,13 +249,15 @@ export default class GenomeSpy {
             this.computeLayout();
             this.animator.requestRender();
 
-            return this;
+            return true;
         } catch (reason) {
             const message = `${
                 reason.view ? `At "${reason.view.getPathString()}": ` : ""
             }${reason.toString()}`;
             console.error(reason.stack);
             createMessageBox(this.container, message);
+
+            return false;
         } finally {
             this.container.classList.remove("loading");
         }
