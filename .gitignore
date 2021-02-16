@@ -11,6 +11,7 @@
 node_modules/
 
 **/static/private/
+**/private/
 **/static/examples/drafts/
 
 /docs/app/

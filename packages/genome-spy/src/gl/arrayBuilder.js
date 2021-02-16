@@ -77,7 +77,7 @@ export default class ArrayBuilder {
 
             /** @param {number} value */
             const valueUpdater = value => {
-                pendingValue = value;
+                pendingValue = +value;
             };
 
             pusher = () => {
@@ -166,8 +166,8 @@ export default class ArrayBuilder {
             this._unrollPushAll();
         } else {
             this.pushAll = () => {
-                for (const pusher of this.pushers) {
-                    pusher();
+                for (let i = 0; i < this.pushers.length; i++) {
+                    this.pushers[i]();
                 }
                 this.vertexCount++;
             };
@@ -181,8 +181,8 @@ export default class ArrayBuilder {
      * @param {object} datum
      */
     updateFromDatum(datum) {
-        for (const updater of this.dataUpdaters) {
-            updater(datum);
+        for (let i = 0; i < this.dataUpdaters.length; i++) {
+            this.dataUpdaters[i](datum);
         }
     }
 

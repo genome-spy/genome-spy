@@ -248,7 +248,10 @@ export default class GenomeSpyApp {
     }
 
     async launch() {
-        await this.genomeSpy.launch();
+        const result = await this.genomeSpy.launch();
+        if (!result) {
+            return;
+        }
 
         if (this.isFullPage() && this.genomeSpy.config.title) {
             document.title = "GenomeSpy - " + this.genomeSpy.config.title;
