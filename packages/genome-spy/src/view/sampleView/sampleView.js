@@ -1,11 +1,7 @@
 import { isNumber, span, error, key } from "vega-util";
 import { html } from "lit-html";
-import { createTexture } from "twgl.js";
-import {
-    findEncodedFields,
-    getViewClass,
-    isSummarizeSamplesSpec
-} from "../viewUtils";
+import { createTexture, setTextureFromArray } from "twgl.js";
+import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
 import { mapToPixelCoords } from "../../utils/layout/flexLayout";
 import { SampleAttributePanel } from "./sampleAttributePanel";
@@ -547,21 +543,7 @@ export default class SampleView extends ContainerView {
         };
 
         if (this.facetTexture) {
-            // Slow because of twgl's unpack-alignment hack:
-            //setTextureFromArray(gl, this.facetTexture, arr, options);
-
-            gl.bindTexture(gl.TEXTURE_2D, this.facetTexture);
-            gl.texImage2D(
-                gl.TEXTURE_2D,
-                0,
-                options.internalFormat,
-                arr.length / 2,
-                1,
-                0,
-                options.format,
-                gl.FLOAT,
-                arr
-            );
+            setTextureFromArray(gl, this.facetTexture, arr, options);
         } else {
             this.facetTexture = createTexture(gl, {
                 ...options,

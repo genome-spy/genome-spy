@@ -169,16 +169,16 @@ export default class ConcatView extends ContainerView {
             const childCoords =
                 this.mainDimension == "height"
                     ? new Rectangle(
-                          coords.x + pa,
-                          coords.y + flexCoords.location,
-                          secondarySize,
-                          flexCoords.size
+                          () => coords.x + pa,
+                          () => coords.y + flexCoords.location,
+                          () => secondarySize,
+                          () => flexCoords.size
                       )
                     : new Rectangle(
-                          coords.x + flexCoords.location,
-                          coords.y + pa,
-                          flexCoords.size,
-                          secondarySize
+                          () => coords.x + flexCoords.location,
+                          () => coords.y + pa,
+                          () => flexCoords.size,
+                          () => secondarySize
                       );
 
             view.render(context, childCoords, options);

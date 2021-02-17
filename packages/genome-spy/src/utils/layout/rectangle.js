@@ -1,7 +1,18 @@
 /**
- * An immutable rectangle
+ * @param {number} value
+ * @returns {ValueAccessor}
+ */
+function constant(value) {
+    return () => value;
+}
+
+/**
+ * An immutable rectangle with a scene-graph -like hierarchy.
+ * Allows for implementing scrolling viewports etc.
  *
+ * @typedef {("x" | "y" | "width" | "height")} Prop
  * @typedef {import("./padding").default } Padding
+ * @typedef {() => number} ValueAccessor
  */
 export default class Rectangle {
     /**
@@ -11,11 +22,77 @@ export default class Rectangle {
      * @param {number} width
      * @param {number} height
      */
+    static create(x, y, width, height) {
+        return new Rectangle(
+            constant(x),
+            constant(y),
+            constant(width),
+            constant(height)
+        );
+    }
+
+    /**
+     * @param {Prop} prop
+     * @param {number | function():number} value
+     */
+    _offset(prop, value) {
+        switch (typeof value) {
+            case "number":
+                return () => this[prop] + value;
+            case "function":
+                return () => this[prop] + value();
+            default:
+                throw new Error("Not a number of function");
+        }
+    }
+
+    /**
+     * @param {Prop} prop
+     */
+    _passThrough(prop) {
+        return this._offset(prop, 0);
+    }
+
+    /**
+     *
+     * @param {ValueAccessor} x
+     * @param {ValueAccessor} y
+     * @param {ValueAccessor} width
+     * @param {ValueAccessor} height
+     */
     constructor(x, y, width, height) {
-        /** @readonly */ this.x = x;
-        /** @readonly */ this.y = y;
-        /** @readonly */ this.width = width;
-        /** @readonly */ this.height = height;
+        /** @readonly */ this._x = x;
+        /** @readonly */ this._y = y;
+        /** @readonly */ this._width = width;
+        /** @readonly */ this._height = height;
+    }
+
+    /**
+     * @returns {number}
+     */
+    get x() {
+        return this._x();
+    }
+
+    /**
+     * @returns {number}
+     */
+    get y() {
+        return this._y();
+    }
+
+    /**
+     * @returns {number}
+     */
+    get width() {
+        return this._width();
+    }
+
+    /**
+     * @returns {number}
+     */
+    get height() {
+        return this._height();
     }
 
     get x2() {
@@ -50,29 +127,37 @@ export default class Rectangle {
      * @param {Record<string, number>} param0
      */
     modify({ x, y, width, height }) {
-        if (!x && !y && !width && !height) {
+        /** @type {function(number):boolean} */
+        const isNum = x => typeof x === "number";
+
+        if (!isNum(x) && !isNum(y) && !isNum(width) && !isNum(height)) {
             return this;
         }
 
         return new Rectangle(
-            typeof x === "number" ? x : this.x,
-            typeof y === "number" ? y : this.y,
-            typeof width === "number" ? width : this.width,
-            typeof height === "number" ? height : this.height
+            isNum(x) ? constant(x) : this._passThrough("x"),
+            isNum(y) ? constant(y) : this._passThrough("y"),
+            isNum(width) ? constant(width) : this._passThrough("width"),
+            isNum(height) ? constant(height) : this._passThrough("height")
         );
     }
 
     /**
      *
-     * @param {number} x
-     * @param {number} y
+     * @param {number | function():number} x
+     * @param {number | function():number} y
      */
     translate(x, y) {
-        if (x == 0 && y == 0) {
+        if (x === 0 && y === 0) {
             return this;
         }
 
-        return new Rectangle(this.x + x, this.y + y, this.width, this.height);
+        return new Rectangle(
+            this._offset("x", x),
+            this._offset("y", y),
+            this._passThrough("width"),
+            this._passThrough("height")
+        );
     }
 
     /**
@@ -81,12 +166,8 @@ export default class Rectangle {
      * @param {Rectangle} rectangle
      */
     translateBy(rectangle) {
-        return new Rectangle(
-            this.x + rectangle.x,
-            this.y + rectangle.y,
-            this.width,
-            this.height
-        );
+        // TODO: Make dynamic
+        return this.translate(rectangle.x, rectangle.y);
     }
 
     /**
@@ -104,10 +185,18 @@ export default class Rectangle {
         }
 
         return new Rectangle(
-            this.x - padding.left * direction,
-            this.y - padding.top * direction,
-            this.width + padding.width * direction,
-            this.height + padding.height * direction
+            padding.left
+                ? this._offset("x", -padding.left * direction)
+                : this._passThrough("x"),
+            padding.top
+                ? this._offset("y", -padding.top * direction)
+                : this._passThrough("y"),
+            padding.width
+                ? this._offset("width", padding.width * direction)
+                : this._passThrough("width"),
+            padding.height
+                ? this._offset("height", padding.height * direction)
+                : this._passThrough("height")
         );
     }
 

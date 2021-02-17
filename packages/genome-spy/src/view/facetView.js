@@ -402,7 +402,7 @@ export default class FacetView extends ContainerView {
                 const yCell = rowFlexCoords[Math.floor(x / nCols) * yStride];
                 this._labelViews.column.render(
                     context,
-                    new Rectangle(
+                    Rectangle.create(
                         xCell.location + axisSizes.left,
                         yCell.location,
                         xCell.size - axisSizes.width,
@@ -421,7 +421,7 @@ export default class FacetView extends ContainerView {
                 const yCell = rowFlexCoords[y * yStride + yOffset];
                 this._labelViews.row.render(
                     context,
-                    new Rectangle(
+                    Rectangle.create(
                         xCell.location,
                         yCell.location + axisSizes.top,
                         xCell.size,

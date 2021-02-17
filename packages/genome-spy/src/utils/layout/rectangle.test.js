@@ -2,7 +2,7 @@ import Rectangle from "./rectangle";
 import Padding from "./padding";
 
 test("Rectangle creation", () => {
-    const r = new Rectangle(1, 2, 3, 4);
+    const r = Rectangle.create(1, 2, 3, 4);
     expect(r.x).toEqual(1);
     expect(r.y).toEqual(2);
     expect(r.width).toEqual(3);
@@ -10,28 +10,53 @@ test("Rectangle creation", () => {
 });
 
 test("equals", () => {
-    const r = new Rectangle(1, 2, 3, 4);
+    const r = Rectangle.create(1, 2, 3, 4);
     expect(r.equals(r)).toBeTruthy();
-    expect(r.equals(new Rectangle(1, 2, 3, 4))).toBeTruthy();
+    expect(r.equals(Rectangle.create(1, 2, 3, 4))).toBeTruthy();
     expect(r.equals(undefined)).toBeFalsy();
 });
 
 test("x2 and y2 calculation", () => {
-    const r = new Rectangle(1, 2, 3, 4);
+    const r = Rectangle.create(1, 2, 3, 4);
     expect(r.x2).toEqual(4);
     expect(r.y2).toEqual(6);
 });
 
 test("translate", () => {
-    const r = new Rectangle(1, 2, 3, 4).translate(2, 3);
+    const r = Rectangle.create(1, 2, 3, 4).translate(2, 3);
     expect(r.x).toEqual(3);
     expect(r.y).toEqual(5);
     expect(r.width).toEqual(3);
     expect(r.height).toEqual(4);
 });
 
+test("Dynamic translate", () => {
+    let tx = 0;
+    let ty = 0;
+
+    const r = Rectangle.create(1, 2, 3, 4)
+        .translate(
+            () => tx,
+            () => ty
+        )
+        .translate(2, 3);
+
+    expect(r.x).toEqual(3);
+    expect(r.y).toEqual(5);
+    expect(r.width).toEqual(3);
+    expect(r.height).toEqual(4);
+
+    tx = 1;
+    ty = 2;
+
+    expect(r.x).toEqual(4);
+    expect(r.y).toEqual(7);
+    expect(r.width).toEqual(3);
+    expect(r.height).toEqual(4);
+});
+
 test("expand", () => {
-    const r = new Rectangle(1, 2, 3, 4).expand(
+    const r = Rectangle.create(1, 2, 3, 4).expand(
         Padding.createFromRecord({ top: 2, right: 3, bottom: 4, left: 5 })
     );
 
@@ -42,7 +67,9 @@ test("expand", () => {
 });
 
 test("shrink", () => {
-    const r = new Rectangle(1, 2, 3, 4).shrink(Padding.createUniformPadding(1));
+    const r = Rectangle.create(1, 2, 3, 4).shrink(
+        Padding.createUniformPadding(1)
+    );
 
     expect(r.x).toEqual(2);
     expect(r.width).toEqual(1);
@@ -51,7 +78,7 @@ test("shrink", () => {
 });
 
 test("containsPoint", () => {
-    const r = new Rectangle(1, 2, 3, 4);
+    const r = Rectangle.create(1, 2, 3, 4);
 
     expect(r.containsPoint(0, 0)).toBeFalsy();
     expect(r.containsPoint(0, 10)).toBeFalsy();
@@ -74,7 +101,7 @@ test("containsPoint", () => {
 });
 
 test("normalizePoint", () => {
-    const r = new Rectangle(1, 2, 6, 4);
+    const r = Rectangle.create(1, 2, 6, 4);
 
     expect(r.normalizePoint(1, 2)).toEqual({ x: 0, y: 0 });
     expect(r.normalizePoint(7, 2)).toEqual({ x: 1, y: 0 });

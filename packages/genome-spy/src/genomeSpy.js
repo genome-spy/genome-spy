@@ -371,7 +371,12 @@ export default class GenomeSpy {
                 this.deferredContext,
                 layoutRecorder
             ),
-            new Rectangle(0, 0, getComponent("width"), getComponent("height"))
+            Rectangle.create(
+                0,
+                0,
+                getComponent("width"),
+                getComponent("height")
+            )
         );
 
         this.layout = layoutRecorder.getLayout();
