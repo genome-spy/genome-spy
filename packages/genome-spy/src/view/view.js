@@ -1,5 +1,4 @@
 import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
-import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import { isNumber, span } from "vega-util";
@@ -43,15 +42,7 @@ export const VISIT_STOP = "VISIT_STOP";
  * @prop {string} type Broadcast type
  * @prop {any} [payload] Anything
  *
- * @typedef {object} SampleFacetRenderingOptions Describes the location of
- *      a sample facet. Left is the primary pos, right is for transitioning
- *      between two sets of samples.
- * @prop {LocSize} locSize location and height on unit scale
- * @prop {LocSize} [targetLocSize] Target (during transition)
- *
- * @typedef {object} RenderingOptions
- * @prop {any} [facetId] Which facet to render (if faceting is being used)
- * @prop {SampleFacetRenderingOptions} [sampleFacetRenderingOptions]
+ * @typedef {import("./rendering").RenderingOptions} RenderingOptions
  *
  * @callback InteractionEventListener
  * @param {import("../utils/layout/rectangle").default} coords
@@ -281,9 +272,9 @@ export default class View {
      * and coordinates the mark rendering.
      *
      * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {Rectangle} coords The coordinate rectangle that the parent computed
+     * @param {import("../utils/layout/rectangle").default} coords The coordinate rectangle that the parent computed
      *      for the child that is being visited.
-     * @param {import("./view").RenderingOptions} [options]
+     * @param {RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         // override

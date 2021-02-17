@@ -99,6 +99,46 @@ test("Dynamic modify", () => {
     expect(m.equals(Rectangle.create(5, 2, 3, 4))).toBeTruthy();
 });
 
+test("intersect", () => {
+    const a = Rectangle.create(1, 1, 6, 3);
+    const b = Rectangle.create(5, 2, 3, 4);
+    const c = Rectangle.create(5, 2, 2, 2);
+
+    expect(a.intersect(b).equals(c)).toBeTruthy();
+    expect(a.intersect(b).isDefined()).toBeTruthy();
+
+    const x = Rectangle.create(1, 1, 1, 1);
+    const y = Rectangle.create(3, 3, 1, 1);
+
+    expect(x.intersect(y).isDefined()).toBeFalsy();
+});
+
+test("isDefined", () => {
+    expect(Rectangle.create(0, 0, 1, 1).isDefined()).toBeTruthy();
+    expect(Rectangle.create(0, 0, 0, 0).isDefined()).toBeTruthy();
+
+    expect(Rectangle.create(0, 0, -1, 0).isDefined()).toBeFalsy();
+    expect(Rectangle.create(0, 0, 0, -1).isDefined()).toBeFalsy();
+});
+
+test("flatten", () => {
+    let tx = 0;
+    let ty = 0;
+
+    const r = Rectangle.create(1, 2, 3, 4).translate(
+        () => tx,
+        () => ty
+    );
+
+    const flattened = r.flatten();
+
+    tx = -1;
+    ty = -2;
+
+    expect(r.equals(Rectangle.create(0, 0, 3, 4)));
+    expect(flattened.equals(Rectangle.create(1, 2, 3, 4)));
+});
+
 test("containsPoint", () => {
     const r = Rectangle.create(1, 2, 3, 4);
 

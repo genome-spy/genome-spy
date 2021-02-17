@@ -718,22 +718,14 @@ export default class Mark {
      * TODO: Viewport should be handled at the view level
      *
      * @param {import("../utils/layout/rectangle").default} coords
+     * @param {import("../utils/layout/rectangle").default} [clipRect]
      */
-    setViewport(coords) {
+    setViewport(coords, clipRect) {
         const dpr = this.glHelper.dpr;
         const gl = this.gl;
         const props = this.properties;
 
         const logicalSize = this.glHelper.getLogicalCanvasSize();
-
-        const physicalGlCoords = [
-            coords.x,
-            logicalSize.height - coords.y2,
-            coords.width,
-            coords.height
-        ].map(x => x * dpr);
-
-        // @ts-ignore
 
         // Note: we also handle xOffset/yOffset mark properties here
         const xOffset = props.xOffset || 0;
@@ -742,7 +734,35 @@ export default class Mark {
         /** @type {object} */
         let uniforms;
 
-        if (props.clip) {
+        if (props.clip || clipRect) {
+            let xClipOffset = 0;
+            let yClipOffset = 0;
+
+            /** @type {[number, number]} */
+            let uViewScale;
+
+            if (clipRect) {
+                const viewCoords = coords;
+
+                coords = props.clip ? coords.intersect(clipRect) : clipRect;
+                uViewScale = [
+                    viewCoords.width / coords.width,
+                    viewCoords.height / coords.height
+                ];
+
+                yClipOffset = Math.max(0, viewCoords.y2 - clipRect.y2);
+                xClipOffset = Math.max(0, viewCoords.x2 - clipRect.x2); // TODO: Check sign
+            } else {
+                uViewScale = [1, 1];
+            }
+
+            const physicalGlCoords = [
+                coords.x,
+                logicalSize.height - coords.y2,
+                Math.max(0, coords.width),
+                Math.max(0, coords.height)
+            ].map(x => x * dpr);
+
             // Because glViewport accepts only integers, we subtract the rounding
             // errors from xyOffsets to guarantee that graphics in clipped
             // and non-clipped viewports align correctly
@@ -759,10 +779,10 @@ export default class Mark {
 
             uniforms = {
                 uViewOffset: [
-                    (xOffset + xError) / coords.width,
-                    -(yOffset - yError) / coords.height
+                    (xOffset + xClipOffset + xError) / coords.width,
+                    -(yOffset + yClipOffset - yError) / coords.height
                 ],
-                uViewScale: [1, 1]
+                uViewScale
             };
         } else {
             // Viewport comprises of the full canvas

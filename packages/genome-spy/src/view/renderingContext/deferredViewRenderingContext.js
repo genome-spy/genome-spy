@@ -9,6 +9,7 @@ import ViewRenderingContext from "./viewRenderingContext";
  * @prop {import("../../marks/mark").default} mark
  * @prop {function():void} callback
  * @prop {import("../../utils/layout/rectangle").default} coords
+ * @prop {import("../../utils/layout/rectangle").default} [clipRect]
  */
 export default class DeferredViewRenderingContext extends ViewRenderingContext {
     constructor() {
@@ -49,7 +50,8 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
             this.buffer.push({
                 mark,
                 callback,
-                coords: this.coords
+                coords: this.coords,
+                clipRect: options.clipRect
             });
         }
     }
@@ -114,7 +116,12 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
                 const coords = request.coords;
                 // Render each facet
                 if (!coords.equals(previousCoords)) {
-                    this.batch.push(ifEnabled(() => mark.setViewport(coords)));
+                    this.batch.push(
+                        ifEnabled(() =>
+                            // TODO: Suppress rendering if viewport is outside the clipRect
+                            mark.setViewport(coords, request.clipRect)
+                        )
+                    );
                 }
                 this.batch.push(ifEnabled(request.callback));
                 previousCoords = request.coords;

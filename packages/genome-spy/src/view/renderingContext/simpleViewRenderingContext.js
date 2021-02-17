@@ -49,7 +49,7 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
      */
     renderMark(mark, options) {
         mark.prepareRender();
-        mark.setViewport(this.coords);
+        mark.setViewport(this.coords, options.clipRect);
         mark.render(options)();
     }
 }

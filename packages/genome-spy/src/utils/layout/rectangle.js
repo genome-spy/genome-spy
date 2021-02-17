@@ -211,7 +211,47 @@ export default class Rectangle {
     }
 
     /**
-     * Tests whether the rectangle contains the given point.
+     * Returns an intersection of this and the other rectangle.
+     *
+     * @param {Rectangle} rectangle
+     */
+    intersect(rectangle) {
+        if (this === rectangle) {
+            return this;
+        }
+
+        return new Rectangle(
+            () => Math.max(this.x, rectangle.x),
+            () => Math.max(this.y, rectangle.y),
+            () =>
+                Math.min(this.x2, rectangle.x2) - Math.max(this.x, rectangle.x),
+            () =>
+                Math.min(this.y2, rectangle.y2) - Math.max(this.y, rectangle.y)
+        );
+    }
+
+    /**
+     * Returns true if width and height are greater than equal to zero.
+     */
+    isDefined() {
+        return this.width >= 0 && this.height >= 0;
+    }
+
+    /**
+     * Returns a flattened rectangle, i.e., drops the hierarchy and materializes
+     * the parameters.
+     */
+    flatten() {
+        return new Rectangle(
+            constant(this.x),
+            constant(this.y),
+            constant(this.width),
+            constant(this.height)
+        );
+    }
+
+    /**
+     * Tests whether the rectangle contains the given point. Uses half open intervals.
      *
      * @param {number} x
      * @param {number} y

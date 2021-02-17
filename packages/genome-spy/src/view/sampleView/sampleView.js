@@ -470,6 +470,11 @@ export default class SampleView extends ContainerView {
      * @param {import("../view").RenderingOptions} [options]
      */
     renderSummaries(context, coords, options = {}) {
+        options = {
+            ...options,
+            clipRect: coords
+        };
+
         for (const summaryLocation of this.getLocations().summaries) {
             this.summaryViews.render(
                 context,
