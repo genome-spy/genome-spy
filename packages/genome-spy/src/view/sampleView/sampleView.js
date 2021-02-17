@@ -25,6 +25,8 @@ import { createChain } from "../flowBuilder";
 import ConcatView from "../concatView";
 import DecoratorView from "../decoratorView";
 import UnitView from "../unitView";
+import RegexFoldTransform from "../../data/transforms/regexFold";
+import Rectangle from "../../utils/layout/rectangle";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -174,7 +176,7 @@ export default class SampleView extends ContainerView {
         });
 
         this._addBroadcastHandler("layout", () => {
-            this._sampleLocations = undefined;
+            this._locations = undefined;
         });
 
         this._scrollOffset = 0;
@@ -354,14 +356,15 @@ export default class SampleView extends ContainerView {
         }
     }
 
-    getSampleLocations() {
-        if (!this._sampleLocations) {
+    getLocations() {
+        if (!this._locations) {
             const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
             const viewportHeight = this._coords.height;
 
             const summaryHeight = this.summaryViews?.getSize().height.px ?? 0;
 
-            const fittedLocations = calculateSampleLocations(
+            // Locations squeezed into the viewport height
+            const fittedLocations = calculateLocations(
                 flattened,
                 viewportHeight,
                 {
@@ -371,7 +374,8 @@ export default class SampleView extends ContainerView {
                 }
             );
 
-            const scrollableLocations = calculateSampleLocations(
+            // Scrollable locations that are shown when "peek" activates
+            const scrollableLocations = calculateLocations(
                 flattened,
                 viewportHeight,
                 {
@@ -385,22 +389,25 @@ export default class SampleView extends ContainerView {
             const ratioSource = () => this._peekState;
 
             /** Store for scroll offset computation when peek fires */
-            this._scrollableSampleLocations = scrollableLocations;
-            this._scrollableHeight = scrollableLocations
-                .map(d => d.location.location + d.location.size)
-                .reduce((a, b) => Math.max(a, b));
+            this._scrollableSampleLocations =
+                scrollableLocations.sampleLocations;
+            this._scrollableHeight =
+                scrollableLocations.sampleLocations
+                    .map(d => d.location.location + d.location.size)
+                    .reduce((a, b) => Math.max(a, b)) +
+                summaryHeight / viewportHeight;
 
             /** @type {SampleLocation[]} */
-            const locations = [];
-
-            for (let i = 0; i < fittedLocations.length; i++) {
-                const sampleId = fittedLocations[i].sampleId;
-                locations.push({
+            const sampleLocations = [];
+            const fsamplel = fittedLocations.sampleLocations;
+            for (let i = 0; i < fsamplel.length; i++) {
+                const sampleId = fsamplel[i].sampleId;
+                sampleLocations.push({
                     sampleId,
-                    location: new TransitioningSampleLocationWrapper(
-                        fittedLocations[i].location,
-                        new ScrollableSampleLocationWrapper(
-                            scrollableLocations[i].location,
+                    location: new TransitioningLocationWrapper(
+                        fsamplel[i].location,
+                        new ScrollableLocationWrapper(
+                            scrollableLocations.sampleLocations[i].location,
                             offsetSource
                         ),
                         ratioSource
@@ -408,10 +415,29 @@ export default class SampleView extends ContainerView {
                 });
             }
 
-            this._sampleLocations = locations;
+            /** @type {LocSize[]} */
+            const summaryLocations = [];
+            const fsuml = fittedLocations.summaryLocations;
+            for (let i = 0; i < fsuml.length; i++) {
+                summaryLocations.push(
+                    new TransitioningLocationWrapper(
+                        fsuml[i],
+                        new ScrollableLocationWrapper(
+                            scrollableLocations.summaryLocations[i],
+                            offsetSource
+                        ),
+                        ratioSource
+                    )
+                );
+            }
+
+            this._locations = {
+                samples: sampleLocations,
+                summaries: summaryLocations
+            };
         }
 
-        return this._sampleLocations;
+        return this._locations;
     }
 
     /**
@@ -419,7 +445,7 @@ export default class SampleView extends ContainerView {
      * @param {number} pos Coordinate on unit scale
      */
     getSampleIdAt(pos) {
-        const match = getSampleLocationAt(pos, this.getSampleLocations());
+        const match = getSampleLocationAt(pos, this.getLocations().samples);
         if (match) {
             return match.sampleId;
         }
@@ -431,7 +457,7 @@ export default class SampleView extends ContainerView {
      * @param {import("../view").RenderingOptions} [options]
      */
     renderChild(context, coords, options = {}) {
-        for (const sampleLocation of this.getSampleLocations()) {
+        for (const sampleLocation of this.getLocations().samples) {
             this.child.render(context, coords, {
                 ...options,
                 sampleFacetRenderingOptions: {
@@ -448,7 +474,16 @@ export default class SampleView extends ContainerView {
      * @param {import("../view").RenderingOptions} [options]
      */
     renderSummaries(context, coords, options = {}) {
-        this.summaryViews.render(context, coords, options);
+        for (const summaryLocation of this.getLocations().summaries) {
+            this.summaryViews.render(
+                context,
+                new Proxy(
+                    coords,
+                    createScrollableRectangleProxyHandler(summaryLocation)
+                ),
+                options
+            );
+        }
     }
 
     /**
@@ -491,7 +526,7 @@ export default class SampleView extends ContainerView {
     }
 
     _updateFacetTexture() {
-        const sampleLocations = this.getSampleLocations();
+        const sampleLocations = this.getLocations().samples;
         const sampleMap = this.sampleMap;
         const arr = this.facetTextureData;
 
@@ -746,7 +781,7 @@ function extractAttributes(row) {
 /**
  * Allows from transitioning between two sample locations.
  */
-class TransitioningSampleLocationWrapper {
+class TransitioningLocationWrapper {
     /**
      *
      * @param {LocSize} from
@@ -789,7 +824,7 @@ class TransitioningSampleLocationWrapper {
 /**
  * Wraps a LocSize, and allows scrolling by summing an offset to the location.
  */
-class ScrollableSampleLocationWrapper {
+class ScrollableLocationWrapper {
     /**
      *
      * @param {LocSize} locSize
@@ -810,6 +845,28 @@ class ScrollableSampleLocationWrapper {
 }
 
 /**
+ *
+ * @param {LocSize} locSize
+ */
+function createScrollableRectangleProxyHandler(locSize) {
+    return {
+        /**
+         * @param {any} target
+         * @param {string|number|symbol} prop
+         * @param {any} receiver
+         */
+        get(target, prop, receiver) {
+            const original = Reflect.get(...arguments);
+            if (prop === "y") {
+                const containerHeight = Reflect.get(target, "height", receiver);
+                return original + (1 - locSize.location) * containerHeight;
+            }
+            return original;
+        }
+    };
+}
+
+/**
  * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
  * @param {number} viewportHeight
  * @param {object} object All measures are in pixels
@@ -818,9 +875,9 @@ class ScrollableSampleLocationWrapper {
  * @param {number} [object.groupSpacing] Space between groups
  * @param {number} [object.summaryHeight] Height of group summaries
  *
- * @returns {SampleLocation[]}
+ * @returns {{sampleLocations: SampleLocation[], summaryLocations: LocSize[]}}
  */
-function calculateSampleLocations(
+function calculateLocations(
     flattenedGroupHierarchy,
     viewportHeight,
     { canvasHeight, sampleHeight, groupSpacing = 5, summaryHeight = 0 }
@@ -878,7 +935,13 @@ function calculateSampleLocations(
         });
     }
 
-    return sampleLocations;
+    return {
+        sampleLocations,
+        summaryLocations: groupLocations.map(locSize => ({
+            location: (locSize.location + locSize.size) / viewportHeight,
+            size: summaryHeight / viewportHeight
+        }))
+    };
 }
 
 /**
