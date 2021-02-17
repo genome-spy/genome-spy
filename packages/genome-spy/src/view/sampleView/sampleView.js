@@ -473,10 +473,12 @@ export default class SampleView extends ContainerView {
         for (const summaryLocation of this.getLocations().summaries) {
             this.summaryViews.render(
                 context,
-                new Proxy(
-                    coords,
-                    createScrollableRectangleProxyHandler(summaryLocation)
-                ),
+                coords.modify({
+                    y: () =>
+                        coords.y +
+                        (1 - summaryLocation.location) * coords.height,
+                    height: summaryLocation.size
+                }),
                 options
             );
         }
@@ -824,28 +826,6 @@ class ScrollableLocationWrapper {
     get size() {
         return this.locSize.size;
     }
-}
-
-/**
- *
- * @param {LocSize} locSize
- */
-function createScrollableRectangleProxyHandler(locSize) {
-    return {
-        /**
-         * @param {any} target
-         * @param {string|number|symbol} prop
-         * @param {any} receiver
-         */
-        get(target, prop, receiver) {
-            const original = Reflect.get(...arguments);
-            if (prop === "y") {
-                const containerHeight = Reflect.get(target, "height", receiver);
-                return original + (1 - locSize.location) * containerHeight;
-            }
-            return original;
-        }
-    };
 }
 
 /**

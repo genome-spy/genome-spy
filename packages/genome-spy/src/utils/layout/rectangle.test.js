@@ -77,6 +77,28 @@ test("shrink", () => {
     expect(r.height).toEqual(2);
 });
 
+test("modify", () => {
+    const r = Rectangle.create(1, 2, 3, 4);
+    const m = r.modify({ x: 5 });
+
+    expect(m.equals(r)).toBeFalsy();
+    expect(m.equals(Rectangle.create(5, 2, 3, 4))).toBeTruthy();
+});
+
+test("Dynamic modify", () => {
+    let x = 1;
+    const r = Rectangle.create(1, 2, 3, 4);
+    const m = r.modify({ x: () => x });
+
+    expect(m.equals(r)).toBeTruthy();
+    expect(m.equals(Rectangle.create(1, 2, 3, 4))).toBeTruthy();
+
+    x = 5;
+
+    expect(m.equals(r)).toBeFalsy();
+    expect(m.equals(Rectangle.create(5, 2, 3, 4))).toBeTruthy();
+});
+
 test("containsPoint", () => {
     const r = Rectangle.create(1, 2, 3, 4);
 

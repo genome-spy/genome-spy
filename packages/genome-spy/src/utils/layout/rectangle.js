@@ -124,22 +124,24 @@ export default class Rectangle {
 
     /**
      *
-     * @param {Record<string, number>} param0
+     * @param {Partial<Record<Prop, number | function():number>>} props
      */
-    modify({ x, y, width, height }) {
-        /** @type {function(number):boolean} */
-        const isNum = x => typeof x === "number";
-
-        if (!isNum(x) && !isNum(y) && !isNum(width) && !isNum(height)) {
+    modify(props) {
+        if (!Object.keys(props).length) {
             return this;
         }
 
-        return new Rectangle(
-            isNum(x) ? constant(x) : this._passThrough("x"),
-            isNum(y) ? constant(y) : this._passThrough("y"),
-            isNum(width) ? constant(width) : this._passThrough("width"),
-            isNum(height) ? constant(height) : this._passThrough("height")
-        );
+        /** @param {Prop} prop */
+        const map = prop => {
+            const v = props[prop];
+            return typeof v == "number"
+                ? constant(v)
+                : typeof v == "function"
+                ? v
+                : this._passThrough(prop);
+        };
+
+        return new Rectangle(map("x"), map("y"), map("width"), map("height"));
     }
 
     /**
