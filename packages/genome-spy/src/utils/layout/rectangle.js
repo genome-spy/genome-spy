@@ -1,6 +1,6 @@
 /**
  * @param {number} value
- * @returns {ValueAccessor}
+ * @returns {Accessor}
  */
 function constant(value) {
     return () => value;
@@ -12,7 +12,7 @@ function constant(value) {
  *
  * @typedef {("x" | "y" | "width" | "height")} Prop
  * @typedef {import("./padding").default } Padding
- * @typedef {() => number} ValueAccessor
+ * @typedef {() => number} Accessor
  */
 export default class Rectangle {
     /**
@@ -34,13 +34,20 @@ export default class Rectangle {
     /**
      * @param {Prop} prop
      * @param {number | function():number} value
+     * @returns {Accessor}
      */
     _offset(prop, value) {
+        // @ts-ignore
+        const accessor = this["_" + prop];
+        if (value === 0) {
+            return accessor;
+        }
+
         switch (typeof value) {
             case "number":
-                return () => this[prop] + value;
+                return () => accessor() + value;
             case "function":
-                return () => this[prop] + value();
+                return () => accessor() + value();
             default:
                 throw new Error("Not a number of function");
         }
@@ -55,10 +62,10 @@ export default class Rectangle {
 
     /**
      *
-     * @param {ValueAccessor} x
-     * @param {ValueAccessor} y
-     * @param {ValueAccessor} width
-     * @param {ValueAccessor} height
+     * @param {Accessor} x
+     * @param {Accessor} y
+     * @param {Accessor} width
+     * @param {Accessor} height
      */
     constructor(x, y, width, height) {
         /** @readonly */ this._x = x;
@@ -96,11 +103,11 @@ export default class Rectangle {
     }
 
     get x2() {
-        return this.x + this.width;
+        return this._x() + this._width();
     }
 
     get y2() {
-        return this.y + this.height;
+        return this._y() + this._height();
     }
 
     /**
