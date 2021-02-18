@@ -86,6 +86,18 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../utils/layout/rectangle").default} coords
+     * @param {import("../view").RenderingOptions} [options]
+     */
+    render(context, coords, options = {}) {
+        super.render(context, coords, {
+            ...options,
+            clipRect: this.parent._clipBySummary(coords)
+        });
+    }
+
+    /**
      * @param {import("../../utils/layout/rectangle").default} coords
      *      Coordinates of the view
      * @param {import("../../utils/interactionEvent").default} event

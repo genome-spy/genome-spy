@@ -73,6 +73,8 @@ export default class SampleView extends ContainerView {
 
         this.spec = spec;
 
+        this.stickySummaries = spec.stickySummaries ?? true;
+
         const View = getViewClass(spec.spec);
         this.child = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
             spec.spec,
@@ -410,13 +412,13 @@ export default class SampleView extends ContainerView {
 
             /** @type {LocSize[]} */
             const summaryLocations = [];
-            const fsuml = fittedLocations.summaryLocations;
+            const fsuml = fittedLocations.groupLocations;
             for (let i = 0; i < fsuml.length; i++) {
                 summaryLocations.push(
                     interpolateLocSizes(
                         fsuml[i],
                         translateLocSize(
-                            scrollableLocations.summaryLocations[i],
+                            scrollableLocations.groupLocations[i],
                             offsetSource
                         ),
                         ratioSource
@@ -426,7 +428,7 @@ export default class SampleView extends ContainerView {
 
             this._locations = {
                 samples: sampleLocations,
-                summaries: summaryLocations
+                groups: summaryLocations
             };
         }
 
@@ -445,6 +447,19 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * @param {import("../../utils/layout/rectangle").default} coords
+     */
+    _clipBySummary(coords) {
+        if (this.stickySummaries && this.summaryViews.children.length) {
+            const summaryHeight = this.summaryViews.getSize().height.px;
+            return coords.modify({
+                y: () => coords.y + summaryHeight,
+                height: () => coords.height - summaryHeight
+            });
+        }
+    }
+
+    /**
      * @param {import("../renderingContext/viewRenderingContext").default} context
      * @param {import("../../utils/layout/rectangle").default} coords
      * @param {import("../view").RenderingOptions} [options]
@@ -452,6 +467,8 @@ export default class SampleView extends ContainerView {
     renderChild(context, coords, options = {}) {
         const heightFactor = 1 / coords.height;
         const heightFactorSource = () => heightFactor;
+
+        const clipRect = this._clipBySummary(coords);
 
         for (const sampleLocation of this.getLocations().samples) {
             this.child.render(context, coords, {
@@ -462,7 +479,8 @@ export default class SampleView extends ContainerView {
                         heightFactorSource
                     )
                 },
-                facetId: [sampleLocation.sampleId]
+                facetId: [sampleLocation.sampleId],
+                clipRect
             });
         }
     }
@@ -478,12 +496,25 @@ export default class SampleView extends ContainerView {
             clipRect: coords
         };
 
-        for (const summaryLocation of this.getLocations().summaries) {
+        const summaryHeight = this.summaryViews.getSize().height.px;
+
+        for (const groupLocation of this.getLocations().groups) {
             this.summaryViews.render(
                 context,
                 coords.modify({
-                    y: () => coords.y + summaryLocation.location,
-                    height: summaryLocation.size
+                    y: () => {
+                        const gLoc = groupLocation.location;
+                        let pos = coords.y + gLoc;
+                        return this.stickySummaries
+                            ? pos +
+                                  clamp(
+                                      -gLoc,
+                                      0,
+                                      groupLocation.size - summaryHeight
+                                  )
+                            : pos;
+                    },
+                    height: summaryHeight
                 }),
                 options
             );
@@ -783,7 +814,7 @@ function extractAttributes(row) {
  * @param {number} [object.groupSpacing] Space between groups
  * @param {number} [object.summaryHeight] Height of group summaries
  *
- * @returns {{sampleLocations: SampleLocation[], summaryLocations: LocSize[]}}
+ * @returns {{sampleLocations: SampleLocation[], groupLocations: LocSize[]}}
  */
 function calculateLocations(
     flattenedGroupHierarchy,
@@ -844,10 +875,7 @@ function calculateLocations(
 
     return {
         sampleLocations,
-        summaryLocations: groupLocations.map(locSize => ({
-            location: locSize.location,
-            size: summaryHeight
-        }))
+        groupLocations
     };
 }
 

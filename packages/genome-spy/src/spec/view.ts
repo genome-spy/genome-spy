@@ -117,6 +117,8 @@ export interface SampleDef {
 export interface SampleSpec extends ViewSpecBase {
     samples: SampleDef;
     spec: LayerSpec | UnitSpec;
+
+    stickySummaries?: boolean;
 }
 
 export interface UnitSpec extends ViewSpecBase, SummarizeSamplesSpec {
