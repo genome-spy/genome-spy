@@ -719,6 +719,7 @@ export default class Mark {
      *
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("../utils/layout/rectangle").default} [clipRect]
+     * @returns {boolean} true if the viewport is renderable (size > 0)
      */
     setViewport(coords, clipRect) {
         const dpr = this.glHelper.dpr;
@@ -814,6 +815,10 @@ export default class Mark {
         setUniforms(this.programInfo, {
             uViewportSize: [coords.width, coords.height]
         });
+
+        // TODO: Optimize: don't set viewport and stuff if rect is outside clipRect or screen
+
+        return coords.height > 0 && coords.width > 0;
     }
 
     /**

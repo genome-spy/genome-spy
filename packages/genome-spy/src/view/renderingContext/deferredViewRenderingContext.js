@@ -88,11 +88,20 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
          */
         let enabled = true;
 
+        let viewportVisible = true;
+
         /**
          * @type {function(function():void):(function():void)}
          */
         const ifEnabled = op => () => {
             if (enabled) op();
+        };
+
+        /**
+         * @type {function(function():void):(function():void)}
+         */
+        const ifEnabledAndVisible = op => () => {
+            if (enabled && viewportVisible) op();
         };
 
         // Group by marks in order to minimize program changes
@@ -117,13 +126,17 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
                 // Render each facet
                 if (!coords.equals(previousCoords)) {
                     this.batch.push(
-                        ifEnabled(() =>
-                            // TODO: Suppress rendering if viewport is outside the clipRect
-                            mark.setViewport(coords, request.clipRect)
-                        )
+                        // eslint-disable-next-line no-loop-func
+                        ifEnabled(() => {
+                            // Suppress rendering if viewport is outside the clipRect
+                            viewportVisible = mark.setViewport(
+                                coords,
+                                request.clipRect
+                            );
+                        })
                     );
                 }
-                this.batch.push(ifEnabled(request.callback));
+                this.batch.push(ifEnabledAndVisible(request.callback));
                 previousCoords = request.coords;
             }
         }
