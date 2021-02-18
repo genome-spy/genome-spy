@@ -35,9 +35,9 @@ uniform vec4 uSampleFacet;
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
-        uSampleFacet.x,
+        1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y,
-        uSampleFacet.z,
+        1.0 - uSampleFacet.z - uSampleFacet.w,
         uSampleFacet.w
     );
 }
@@ -48,7 +48,11 @@ uniform sampler2D uSampleFacetTexture;
 
 SampleFacetPosition getSampleFacetPos() {
     vec4 texel = texelFetch(uSampleFacetTexture, ivec2(int(attr_facetIndex), 0), 0);
-    return SampleFacetPosition(texel.r, texel.g, texel.r, texel.g);
+    return SampleFacetPosition(
+        1.0 - texel.r - texel.g,
+        texel.g,
+        1.0 - texel.r - texel.g,
+        texel.g);
 }
 
 #endif

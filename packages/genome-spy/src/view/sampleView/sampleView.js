@@ -3,7 +3,12 @@ import { html } from "lit-html";
 import { createTexture, setTextureFromArray } from "twgl.js";
 import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
-import { mapToPixelCoords } from "../../utils/layout/flexLayout";
+import {
+    interpolateLocSizes,
+    mapToPixelCoords,
+    scaleLocSize,
+    translateLocSize
+} from "../../utils/layout/flexLayout";
 import { SampleAttributePanel } from "./sampleAttributePanel";
 import SampleHandler from "../../sampleHandler/sampleHandler";
 import { peek } from "../../utils/arrayUtils";
@@ -19,10 +24,7 @@ import createDataSource from "../../data/sources/dataSourceFactory";
 import FlowNode from "../../data/flowNode";
 import { createChain } from "../flowBuilder";
 import ConcatView from "../concatView";
-import DecoratorView from "../decoratorView";
 import UnitView from "../unitView";
-import RegexFoldTransform from "../../data/transforms/regexFold";
-import Rectangle from "../../utils/layout/rectangle";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -176,18 +178,15 @@ export default class SampleView extends ContainerView {
         });
 
         this._scrollOffset = 0;
-        this._scrollableHeight = 1;
+        this._scrollableHeight = 0;
         this._peekState = 0; // [0, 1]
 
-        /** @type {number} On unit scale. Recorded so that peek can be offset correctly */
-        this._lastMouseY = 0.5;
+        /** @type {number} Recorded so that peek can be offset correctly */
+        this._lastMouseY = -1;
 
         this.addEventListener("mousemove", (coords, event) => {
             // TODO: Should be reset to undefined on mouseout
-            this._lastMouseY = coords.normalizePoint(
-                event.point.x,
-                event.point.y
-            ).y;
+            this._lastMouseY = event.point.y - coords.y;
         });
 
         this.addEventListener(
@@ -196,10 +195,9 @@ export default class SampleView extends ContainerView {
                 const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
                 if (wheelEvent.shiftKey) {
                     this._scrollOffset = clamp(
-                        this._scrollOffset +
-                            wheelEvent.deltaY / this._coords.height,
-                        1 - this._scrollableHeight,
-                        0
+                        this._scrollOffset + wheelEvent.deltaY,
+                        0,
+                        this._scrollableHeight - this._coords.height
                     );
 
                     this.context.animator.requestRender();
@@ -381,7 +379,7 @@ export default class SampleView extends ContainerView {
                 }
             );
 
-            const offsetSource = () => this._scrollOffset;
+            const offsetSource = () => -this._scrollOffset;
             const ratioSource = () => this._peekState;
 
             /** Store for scroll offset computation when peek fires */
@@ -390,8 +388,7 @@ export default class SampleView extends ContainerView {
             this._scrollableHeight =
                 scrollableLocations.sampleLocations
                     .map(d => d.location.location + d.location.size)
-                    .reduce((a, b) => Math.max(a, b)) +
-                summaryHeight / viewportHeight;
+                    .reduce((a, b) => Math.max(a, b)) + summaryHeight;
 
             /** @type {SampleLocation[]} */
             const sampleLocations = [];
@@ -400,9 +397,9 @@ export default class SampleView extends ContainerView {
                 const sampleId = fsamplel[i].sampleId;
                 sampleLocations.push({
                     sampleId,
-                    location: new TransitioningLocationWrapper(
+                    location: interpolateLocSizes(
                         fsamplel[i].location,
-                        new ScrollableLocationWrapper(
+                        translateLocSize(
                             scrollableLocations.sampleLocations[i].location,
                             offsetSource
                         ),
@@ -416,9 +413,9 @@ export default class SampleView extends ContainerView {
             const fsuml = fittedLocations.summaryLocations;
             for (let i = 0; i < fsuml.length; i++) {
                 summaryLocations.push(
-                    new TransitioningLocationWrapper(
+                    interpolateLocSizes(
                         fsuml[i],
-                        new ScrollableLocationWrapper(
+                        translateLocSize(
                             scrollableLocations.summaryLocations[i],
                             offsetSource
                         ),
@@ -453,11 +450,17 @@ export default class SampleView extends ContainerView {
      * @param {import("../view").RenderingOptions} [options]
      */
     renderChild(context, coords, options = {}) {
+        const heightFactor = 1 / coords.height;
+        const heightFactorSource = () => heightFactor;
+
         for (const sampleLocation of this.getLocations().samples) {
             this.child.render(context, coords, {
                 ...options,
                 sampleFacetRenderingOptions: {
-                    locSize: sampleLocation.location
+                    locSize: scaleLocSize(
+                        sampleLocation.location,
+                        heightFactorSource
+                    )
                 },
                 facetId: [sampleLocation.sampleId]
             });
@@ -479,9 +482,7 @@ export default class SampleView extends ContainerView {
             this.summaryViews.render(
                 context,
                 coords.modify({
-                    y: () =>
-                        coords.y +
-                        (1 - summaryLocation.location) * coords.height,
+                    y: () => coords.y + summaryLocation.location,
                     height: summaryLocation.size
                 }),
                 options
@@ -535,11 +536,13 @@ export default class SampleView extends ContainerView {
 
         arr.fill(0);
 
+        const height = this._coords.height;
+
         for (const sampleLocation of sampleLocations) {
             // TODO: Get rid of the map lookup
             const index = sampleMap.get(sampleLocation.sampleId).indexNumber;
-            arr[index * 2 + 0] = sampleLocation.location.location;
-            arr[index * 2 + 1] = sampleLocation.location.size;
+            arr[index * 2 + 0] = sampleLocation.location.location / height;
+            arr[index * 2 + 1] = sampleLocation.location.size / height;
         }
 
         const gl = this.context.glHelper.gl;
@@ -584,29 +587,33 @@ export default class SampleView extends ContainerView {
         };
 
         if (this._peekState == 0) {
-            const mouseY = 1 - this._lastMouseY;
-
+            const mouseY = this._lastMouseY;
             const sampleId = this.getSampleIdAt(mouseY);
 
+            let target;
             if (sampleId) {
                 /** @param {LocSize} locSize */
                 const getCentroid = locSize =>
                     locSize.location + locSize.size / 2;
 
-                const target = getCentroid(
+                target = getCentroid(
                     this._scrollableSampleLocations.find(
                         sampleLocation => sampleLocation.sampleId == sampleId
                     ).location
                 );
-                this._scrollOffset = mouseY - target;
+            }
+
+            if (target) {
+                this._scrollOffset = target - mouseY;
             } else {
                 // TODO: Find closest sample instead
-                this._scrollOffset = (1 - this._scrollableHeight) / 2;
+                this._scrollOffset =
+                    (this._scrollableHeight - this._coords.height) / 2;
             }
 
             // Dimensions are on unit scale
 
-            if (this._scrollableHeight > 1) {
+            if (this._scrollableHeight > this._coords.height) {
                 transition({
                     ...props,
                     to: 1,
@@ -768,72 +775,6 @@ function extractAttributes(row) {
 }
 
 /**
- * Allows from transitioning between two sample locations.
- */
-class TransitioningLocationWrapper {
-    /**
-     *
-     * @param {LocSize} from
-     * @param {LocSize} to
-     * @param {function():number} ratioSource
-     */
-    constructor(from, to, ratioSource) {
-        this.from = from;
-        this.to = to;
-        this.ratioSource = ratioSource;
-    }
-
-    get location() {
-        const ratio = this.ratioSource();
-        switch (ratio) {
-            case 0:
-                return this.from.location;
-            case 1:
-                return this.to.location;
-            default:
-                return (
-                    ratio * this.to.location + (1 - ratio) * this.from.location
-                );
-        }
-    }
-
-    get size() {
-        const ratio = this.ratioSource();
-        switch (ratio) {
-            case 0:
-                return this.from.size;
-            case 1:
-                return this.to.size;
-            default:
-                return ratio * this.to.size + (1 - ratio) * this.from.size;
-        }
-    }
-}
-
-/**
- * Wraps a LocSize, and allows scrolling by summing an offset to the location.
- */
-class ScrollableLocationWrapper {
-    /**
-     *
-     * @param {LocSize} locSize
-     * @param {function():number} offsetSource
-     */
-    constructor(locSize, offsetSource) {
-        this.locSize = locSize;
-        this.offsetSource = offsetSource;
-    }
-
-    get location() {
-        return this.locSize.location + this.offsetSource();
-    }
-
-    get size() {
-        return this.locSize.size;
-    }
-}
-
-/**
  * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
  * @param {number} viewportHeight
  * @param {object} object All measures are in pixels
@@ -871,7 +812,7 @@ function calculateLocations(
     const groupLocations = mapToPixelCoords(
         sampleGroups.map(sizeDefGenerator),
         canvasHeight || 0,
-        { spacing: groupSpacing, reverse: true }
+        { spacing: groupSpacing }
     );
 
     /** @type {{ sampleId: string, location: LocSize }[]} */
@@ -883,8 +824,7 @@ function calculateLocations(
             samples.map(d => sizeDef),
             Math.max(0, groupLocations[gi].size - summaryHeight),
             {
-                offset: groupLocations[gi].location,
-                reverse: true
+                offset: groupLocations[gi].location + summaryHeight
             }
         ).forEach((locSize, i) => {
             const { size, location } = locSize;
@@ -892,8 +832,8 @@ function calculateLocations(
             // TODO: Make padding configurable
             const padding = size * 0.1 * smoothstep(15, 22, size);
 
-            locSize.location = (location + padding) / viewportHeight;
-            locSize.size = (size - 2 * padding) / viewportHeight;
+            locSize.location = location + padding;
+            locSize.size = size - 2 * padding;
 
             sampleLocations.push({
                 sampleId: samples[i],
@@ -905,8 +845,8 @@ function calculateLocations(
     return {
         sampleLocations,
         summaryLocations: groupLocations.map(locSize => ({
-            location: (locSize.location + locSize.size) / viewportHeight,
-            size: summaryHeight / viewportHeight
+            location: locSize.location,
+            size: summaryHeight
         }))
     };
 }

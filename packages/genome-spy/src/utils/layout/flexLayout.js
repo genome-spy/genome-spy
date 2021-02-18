@@ -162,3 +162,81 @@ export function parseSizeDef(size) {
 
     throw new Error(`Invalid sizeDef: ${size}`);
 }
+
+// TODO: Find a better place for the following utilities: ////////////////////////////////////
+
+/**
+ * Interpolates between two LocSizes
+ *
+ * @param {LocSize} from
+ * @param {LocSize} to
+ * @param {function():number} ratio
+ * @returns {LocSize}
+ */
+export function interpolateLocSizes(from, to, ratio) {
+    return {
+        get location() {
+            const r = ratio();
+            switch (r) {
+                case 0:
+                    return from.location;
+                case 1:
+                    return to.location;
+                default:
+                    return r * to.location + (1 - r) * from.location;
+            }
+        },
+
+        get size() {
+            const r = ratio();
+            switch (r) {
+                case 0:
+                    return from.size;
+                case 1:
+                    return to.size;
+                default:
+                    return r * to.size + (1 - r) * from.size;
+            }
+        }
+    };
+}
+
+/**
+ * Wraps a LocSize and allows scrolling.
+ *
+ * @param {LocSize} locSize
+ * @param {number | function():number} offset
+ * @returns {LocSize}
+ */
+export function translateLocSize(locSize, offset) {
+    const fn = isNumber(offset) ? () => offset : offset;
+    return {
+        get location() {
+            return locSize.location + fn();
+        },
+
+        get size() {
+            return locSize.size;
+        }
+    };
+}
+
+/**
+ * Wraps a LocSize and allows scaling.
+ *
+ * @param {LocSize} locSize
+ * @param {number | function():number} factor
+ * @returns {LocSize}
+ */
+export function scaleLocSize(locSize, factor) {
+    const fn = isNumber(factor) ? () => factor : factor;
+    return {
+        get location() {
+            return locSize.location * fn();
+        },
+
+        get size() {
+            return locSize.size * fn();
+        }
+    };
+}

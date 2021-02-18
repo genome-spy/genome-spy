@@ -91,9 +91,7 @@ export class SampleAttributePanel extends ConcatView {
      * @param {import("../../utils/interactionEvent").default} event
      */
     _findSampleForMouseEvent(coords, event) {
-        const sampleId = this.parent.getSampleIdAt(
-            1 - coords.normalizePoint(event.point.x, event.point.y).y
-        );
+        const sampleId = this.parent.getSampleIdAt(event.point.y - coords.y);
 
         return sampleId ? this.parent.sampleMap.get(sampleId) : undefined;
     }

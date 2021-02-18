@@ -7,7 +7,7 @@ import Rectangle from "../utils/layout/rectangle";
  */
 export interface SampleFacetRenderingOptions {
     /**
-     * Location and height on unit scale
+     * Location and height on unit scale, zero at top
      */
     locSize: LocSize;
 
