@@ -1,6 +1,9 @@
 import { isFieldDef } from "../../encoder/encoder";
-import { isSampleGroup } from "../../sampleHandler/sampleHandler";
-import { shallowArrayEquals } from "../../utils/arrayUtils";
+import {
+    isSampleGroup,
+    iterateGroupHierarcy
+} from "../../sampleHandler/sampleHandler";
+import { peek, shallowArrayEquals } from "../../utils/arrayUtils";
 import { field } from "../../utils/field";
 import kWayMerge from "../../utils/kWayMerge";
 import SampleView from "../../view/sampleView/sampleView";
@@ -69,7 +72,13 @@ export default class MergeFacetsTransform extends FlowNode {
      * @param {import("../../sampleHandler/sampleState").State} state
      */
     _facetGroupsUpdated(state) {
-        const group = state.rootGroup;
+        const groups = [...iterateGroupHierarcy(state.rootGroup)]
+            .map(path => peek(path))
+            .filter(node => isSampleGroup(node));
+
+        console.log(groups);
+
+        const group = groups[0];
         if (isSampleGroup(group)) {
             const samples = group.samples;
             const collector = this._getCollector();

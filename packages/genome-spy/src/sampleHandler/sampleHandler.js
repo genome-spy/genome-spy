@@ -272,3 +272,22 @@ export function isSampleGroup(group) {
 export function isGroupGroup(group) {
     return "groups" in group;
 }
+
+/**
+ * Iterates the hierarchy, returning arrays that represent the path from
+ * the root to the yielded node.
+ *
+ * @param {Group} group
+ * @returns {Generator<Group[]>}
+ */
+export function* iterateGroupHierarcy(group) {
+    yield [group];
+
+    if (isGroupGroup(group)) {
+        for (const child of group.groups) {
+            for (const elem of iterateGroupHierarcy(child)) {
+                yield [group, ...elem];
+            }
+        }
+    }
+}
