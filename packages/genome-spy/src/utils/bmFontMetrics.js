@@ -36,6 +36,11 @@ export default function getMetrics(metadata) {
         }
     }
 
+    // Workaround https://github.com/d3/d3-format/commit/39f41940386024d3b8a2172240189a0950c8dd23
+    if (!unicodeChars.has(8722)) {
+        unicodeChars.set(8722, asciiChars["-".charCodeAt(0)]);
+    }
+
     /** @param {number} charCode */
     function getCharByCode(charCode) {
         const char =
