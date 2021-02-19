@@ -728,9 +728,13 @@ export default class Mark {
 
         const logicalSize = this.glHelper.getLogicalCanvasSize();
 
+        // Translate by half a pixel to place vertical / horizontal
+        // rules inside pixels, not between pixels.
+        const pixelOffset = 0.5;
+
         // Note: we also handle xOffset/yOffset mark properties here
-        const xOffset = props.xOffset || 0;
-        const yOffset = -props.yOffset || 0;
+        const xOffset = (props.xOffset || 0) + pixelOffset;
+        const yOffset = (-props.yOffset || 0) + pixelOffset;
 
         /** @type {object} */
         let uniforms;

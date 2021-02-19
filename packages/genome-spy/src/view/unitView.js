@@ -121,12 +121,6 @@ export default class UnitView extends ContainerView {
 
         this.coords = coords;
 
-        // Translate by half a pixel to place vertical / horizontal
-        // rules inside pixels, not between pixels.
-        // TODO: translation produces piles of garbage. Figure out something.
-        // Perhaps translation could be moved to Mark.setViewport(coords)
-        coords = coords.translate(0.5, 0.5);
-
         context.pushView(this, coords);
         context.renderMark(this.mark, options);
         context.popView(this);
