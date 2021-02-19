@@ -9,7 +9,7 @@ vec3 getInterpolatedColor(sampler2D s, float unitValue) {
 }
 
 float clampToRange(float value, vec2 range) {
-    return clamp(value, range[0], range[1]);
+    return clamp(value, min(range[0], range[1]), max(range[0], range[1]));
 }
 
 // Scales ------------
