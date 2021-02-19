@@ -139,8 +139,7 @@ export default class ScaleResolution {
 
             const props = {
                 ...this._getDefaultScaleProperties(this.type),
-                ...mergedProps,
-                ...getLockedScaleProperties(this.channel)
+                ...mergedProps
             };
 
             const domain =
@@ -181,6 +180,8 @@ export default class ScaleResolution {
                 );
                 */
             }
+
+            applyLockedProperties(props, this.channel);
 
             return props;
         });
@@ -485,17 +486,17 @@ function getDefaultScaleType(channel, dataType) {
 }
 
 /**
- * Properties that are always overriden
- *
+ * @param {import("../spec/scale").Scale} props
  * @param {string} channel
  */
-function getLockedScaleProperties(channel) {
-    /** @type {Object.<string, any>} */
-    const locked = {
-        x: { range: [0, 1] },
-        y: { range: [0, 1] },
-        opacity: { clamp: true }
-    };
+function applyLockedProperties(props, channel) {
+    if (isPositionalChannel(channel)) {
+        props.range = [0, 1];
+    }
 
-    return locked[channel] || {};
+    if (channel == "opacity") {
+        if (isContinuous(props.type)) {
+            props.clamp = true;
+        }
+    }
 }
