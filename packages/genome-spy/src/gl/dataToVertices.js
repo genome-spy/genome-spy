@@ -3,7 +3,7 @@ import { format } from "d3-format";
 import { isString } from "vega-util";
 import { fp64ify } from "./includes/fp64-utils";
 import ArrayBuilder from "./arrayBuilder";
-import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
+import getMetrics, { SDF_PADDING } from "../fonts/bmFontMetrics";
 import { peek } from "../utils/arrayUtils";
 import createBinningRangeIndexer from "../utils/binnedRangeIndex";
 
@@ -425,7 +425,7 @@ export class TextVertexBuilder extends GeometryBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
-     * @param {import("../fonts/types").FontMetadata} object.metadata
+     * @param {import("../fonts/bmFontMetrics").BMFontMetrics} object.fontMetrics
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters
      * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
@@ -433,7 +433,7 @@ export class TextVertexBuilder extends GeometryBuilder {
     constructor({
         encoders,
         attributes,
-        metadata,
+        fontMetrics,
         properties,
         numCharacters = undefined,
         buildXIndex = false
@@ -445,8 +445,8 @@ export class TextVertexBuilder extends GeometryBuilder {
             buildXIndex
         });
 
-        this.metadata = metadata;
-        this.metrics = getMetrics(metadata);
+        this.metadata = fontMetrics;
+        this.metrics = fontMetrics;
 
         this.properties = properties;
 

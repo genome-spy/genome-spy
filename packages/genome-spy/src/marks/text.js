@@ -1,16 +1,9 @@
 import { isString } from "vega-util";
 import { format } from "d3-format";
-import {
-    createTexture,
-    drawBufferInfo,
-    setBuffersAndAttributes,
-    setUniforms
-} from "twgl.js";
+import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
 import VERTEX_SHADER from "../gl/text.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/text.fragment.glsl";
 import { TextVertexBuilder } from "../gl/dataToVertices";
-import fontUrl from "../fonts/Lato-Regular.png";
-import fontMetadata from "../fonts/Lato-Regular.json";
 
 import Mark from "./mark";
 import { fixPositional } from "./markUtils";
@@ -44,6 +37,14 @@ export default class TextMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
+
+        this.font = this.properties.font
+            ? unitView.context.fontManager.getFont(
+                  this.properties.font,
+                  this.properties.fontStyle,
+                  this.properties.fontWeight
+              )
+            : unitView.context.fontManager.getDefaultFont();
     }
 
     getAttributes() {
@@ -66,6 +67,11 @@ export default class TextMark extends Mark {
             size: 11.0,
             color: "black",
             opacity: 1.0,
+
+            // Use the built-in default
+            font: undefined,
+            fontStyle: undefined,
+            fontWeight: undefined,
 
             align: "center",
             baseline: "middle",
@@ -113,29 +119,7 @@ export default class TextMark extends Mark {
 
     async initializeGraphics() {
         await super.initializeGraphics();
-
-        const gl = this.gl;
-
-        // TODO: Share the texture with other text mark instances
-        const texturePromise = new Promise((resolve, reject) => {
-            this.fontTexture = createTexture(
-                gl,
-                {
-                    src: fontUrl,
-                    min: gl.LINEAR
-                },
-                (err, texture, source) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve();
-                    }
-                }
-            );
-        });
-
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
-        return texturePromise;
     }
 
     finalizeGraphicsInitialization() {
@@ -193,7 +177,7 @@ export default class TextMark extends Mark {
             encoders: this.encoders,
             attributes: this.getAttributes(),
             properties: this.properties,
-            metadata: fontMetadata,
+            fontMetrics: this.font.metrics,
             numCharacters: Math.max(
                 charCount,
                 this.properties.minBufferSize || 0
@@ -219,13 +203,9 @@ export default class TextMark extends Mark {
         super.prepareRender();
 
         setUniforms(this.programInfo, {
-            // TODO: Only set texture once it has been loaded
-            uTexture: this.fontTexture,
-            // TODO: Only update when dpr changes
+            uTexture: this.font.texture,
             uSdfNumerator:
-                /** @type {import("../fonts/types").FontMetadata}*/ (fontMetadata)
-                    .common.base /
-                (this.glHelper.dpr / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
+                this.font.metrics.common.base / (this.glHelper.dpr / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
         });
 
         setBuffersAndAttributes(

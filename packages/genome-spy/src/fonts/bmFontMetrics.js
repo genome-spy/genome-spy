@@ -4,15 +4,29 @@ const MAX_ASCII = 127;
 
 /**
  * Metrics calculation for msdf bmfonts:
+ *
+ * https://github.com/mattdesl/bmfont2json
  * https://github.com/etiennepinchon/aframe-fonts
  *
- * @param {import("../fonts/types").FontMetadata} metadata
+ * @typedef {import("./bmFont").Char} Char
+ *
+ * @typedef {object} BMFontMetrics
+ * @prop {(text: string, fontSize?: number) => number} measureWidth
+ * @prop {(charCode: number) => Char} getCharByCode
+ * @prop {(char: string) => Char} getChar
+ * @prop {number} xHeight
+ * @prop {number} capHeight
+ * @prop {number} descent
+ * @prop {import("./bmFont").Common} common
+ *
+ * @param {import("./bmFont").BMFont} bmFont
+ * @returns {BMFontMetrics}
  */
-export default function getMetrics(metadata) {
+export default function getMetrics(bmFont) {
     /**
      * Use an ordinary array for fast lookup of ascii chars
      *
-     * @type {import("../fonts/types").Char[]}
+     * @type {import("./bmFont").Char[]}
      */
     const asciiChars = [];
 
@@ -24,11 +38,11 @@ export default function getMetrics(metadata) {
     /**
      * Put the rest (unicode = sparse and infrequent) chars into a map
      *
-     * @type {Map<number, import("../fonts/types").Char>}
+     * @type {Map<number, Char>}
      */
     const unicodeChars = new Map();
 
-    for (const char of metadata.chars) {
+    for (const char of bmFont.chars) {
         if (char.id <= MAX_ASCII) {
             asciiChars[char.id] = char;
         } else {
@@ -37,8 +51,9 @@ export default function getMetrics(metadata) {
     }
 
     // Workaround https://github.com/d3/d3-format/commit/39f41940386024d3b8a2172240189a0950c8dd23
-    if (!unicodeChars.has(8722)) {
-        unicodeChars.set(8722, asciiChars["-".charCodeAt(0)]);
+    const minusHyphen = 8722;
+    if (!unicodeChars.has(minusHyphen)) {
+        unicodeChars.set(minusHyphen, asciiChars["-".charCodeAt(0)]);
     }
 
     /** @param {number} charCode */
@@ -55,7 +70,7 @@ export default function getMetrics(metadata) {
         return getCharByCode(char.charCodeAt(0));
     }
 
-    const base = metadata.common.base;
+    const base = bmFont.common.base;
 
     // Font metrics are not available in the bmfont metadata. Have to calculate...
     const x = getChar("x");
@@ -67,6 +82,7 @@ export default function getMetrics(metadata) {
     const descent = q.height - x.height + q.yoffset - x.yoffset;
 
     /**
+     * TODO: Kerning
      *
      * @param {string} text text to measure
      * @param {number} fontSize
@@ -86,6 +102,7 @@ export default function getMetrics(metadata) {
         getChar,
         xHeight,
         capHeight,
-        descent
+        descent,
+        common: bmFont.common
     };
 }
