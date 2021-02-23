@@ -9,15 +9,16 @@ in lowp vec2 textureCoord;
 uniform vec4 uViewportEdgeFadeWidth;
 uniform vec4 uViewportEdgeFadeDistance;
     
-uniform float uSqueeze;
+uniform bool uSqueeze;
+uniform bool uLogoLetter;
 
 #ifdef x2_DEFINED
 // Width of the text (all letters)
 in float width;
 
 uniform float uPaddingX;
-uniform float uAlignX; // -1, 0, 1 = left, center, right
-uniform float uFlushX;
+uniform int uAlignX; // -1, 0, 1 = left, center, right
+uniform bool uFlushX;
 #endif
 
 #ifdef y2_DEFINED
@@ -25,8 +26,8 @@ uniform float uFlushX;
 in float height;
 
 uniform float uPaddingY;
-uniform float uAlignY; // -1, 0, 1 = top, middle, bottom 
-uniform float uFlushY;
+uniform int uAlignY; // -1, 0, 1 = top, middle, bottom 
+uniform bool uFlushY;
 #endif
 
 out vec2 vTexCoord;
@@ -110,7 +111,7 @@ RangeResult positionInsideRange(float a, float b, float width, float padding,
 
 void main(void) {
     float opacity = getScaled_opacity() * uViewOpacity;
-    float size = getScaled_size();
+    vec2 size = vec2(getScaled_size());
     float x = getScaled_x();
     float y = getScaled_y();
 
@@ -119,11 +120,17 @@ void main(void) {
     // TODO: !!!!!!!!!!!! Make ranged text compatible with rotated text !!!!!!!!!!!
 
 #ifdef x2_DEFINED
-    {
+    float x2 = getScaled_x2();
+
+    if (uLogoLetter) {
+        size.x = (x2 - x) * uViewportSize.x;
+        x += (x2 - x) / 2.0;
+
+    } else {
         RangeResult result = positionInsideRange(
             x, getScaled_x2(),
-            size * width / uViewportSize.x, uPaddingX / uViewportSize.x,
-            int(uAlignX), bool(uFlushX));
+            size.x * width / uViewportSize.x, uPaddingX / uViewportSize.x,
+            uAlignX, uFlushX);
         
         x = result.pos;
         scale *= result.scale;
@@ -134,14 +141,18 @@ void main(void) {
     vec2 pos = applySampleFacet(vec2(x, y));
 
 #ifdef y2_DEFINED
-    {
-        float y2 = getScaled_y2();
-        vec2 pos2 = applySampleFacet(vec2(x, y2));
+    float y2 = getScaled_y2();
+    vec2 pos2 = applySampleFacet(vec2(x, y2));
 
+    if (uLogoLetter) {
+        size.y = (pos2.y - pos.y) * uViewportSize.y;
+        pos.y += (pos2.y - pos.y) / 2.0;
+
+    } else {
         RangeResult result = positionInsideRange(
             pos.y, pos2.y,
-            size * scale / uViewportSize.y, uPaddingY / uViewportSize.y,
-            int(uAlignY), bool(uFlushY));
+            size.y * scale / uViewportSize.y, uPaddingY / uViewportSize.y,
+            uAlignY, uFlushY);
         
         pos.y = result.pos;
         scale *= result.scale;
@@ -149,7 +160,7 @@ void main(void) {
 #endif
 
     if (scale < 1.0) {
-        if (uSqueeze != 0.0) {
+        if (uSqueeze) {
             vec2 scaleFadeExtent = vec2(3.0, 6.0) / size;
 
             if (scale  < scaleFadeExtent[0]) {
@@ -180,7 +191,7 @@ void main(void) {
     gl_Position = unitToNdc(unitPos);
 
     // Controls antialiasing of the SDF
-    vSlope = max(1.0, size / uSdfNumerator);
+    vSlope = max(1.0, min(size.x, size.y) / uSdfNumerator);
 
     vColor = vec4(getScaled_color() * opacity, opacity);
 

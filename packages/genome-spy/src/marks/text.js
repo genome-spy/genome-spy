@@ -88,6 +88,8 @@ export default class TextMark extends Mark {
             flushX: true,
             flushY: true,
 
+            logoLetter: false,
+
             /** @type {number[]} Order: top, right, bottom, left */
             viewportEdgeFadeWidth: [0, 0, 0, 0],
 
@@ -139,6 +141,8 @@ export default class TextMark extends Mark {
 
             uAlignX: alignments[props.align],
             uAlignY: baselines[props.baseline],
+
+            uLogoLetter: props.logoLetter ? 1 : 0,
 
             uD: [props.dx, -props.dy],
             uAngle: (-props.angle / 180) * Math.PI,
