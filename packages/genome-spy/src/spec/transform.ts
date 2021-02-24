@@ -165,6 +165,25 @@ export interface FlattenDelimitedParams extends TransformParamsBase {
     as?: string[] | string;
 }
 
+export interface FlattenSequenceParams extends TransformParamsBase {
+    type: "flattenSequence";
+
+    /**
+     * The field to flatten.
+     *
+     * **Default:** `"sequence"`
+     */
+    field?: Field;
+
+    /**
+     * Name of the fields where the flattened sequence letter and the
+     * zero-based index number are written to.
+     *
+     * **Default:** `["sequence", "pos"]`
+     */
+    as?: [string, string];
+}
+
 export interface PileupParams extends TransformParamsBase {
     type: "pileup";
 

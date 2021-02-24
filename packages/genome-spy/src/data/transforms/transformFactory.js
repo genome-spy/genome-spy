@@ -14,6 +14,7 @@ import RegexExtractTransform from "./regexExtract";
 import RegexFoldTransform from "./regexFold";
 import SampleTransform from "./sample";
 import StackTransform from "./stack";
+import FlattenSequenceTransform from "./flattenSequence";
 
 /**
  * @typedef {import("../../view/view").default} View
@@ -28,6 +29,7 @@ const transforms = {
     filter: FilterTransform,
     flattenCompressedExons: FlattenCompressedExonsTransform,
     flattenDelimited: FlattenDelimitedTransform,
+    flattenSequence: FlattenSequenceTransform,
     formula: FormulaTransform,
     linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
     measureText: MeasureTextTransform,

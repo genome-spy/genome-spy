@@ -6,6 +6,7 @@ import WebGLHelper from "../gl/webGLHelper";
 import Animator from "../utils/animator";
 import GenomeStore from "../genome/genomeStore";
 import { MenuOptions } from "../utils/ui/contextMenu";
+import BmFontManager from "../fonts/bmFontManager";
 
 export default interface ViewContext {
     dataFlow: DataFlow<View>;
@@ -13,6 +14,7 @@ export default interface ViewContext {
     glHelper: WebGLHelper;
     animator: Animator;
     genomeStore?: GenomeStore;
+    fontManager: BmFontManager;
 
     requestLayoutReflow: () => void;
 

@@ -3,7 +3,7 @@ import { format } from "d3-format";
 import { isString } from "vega-util";
 import { fp64ify } from "./includes/fp64-utils";
 import ArrayBuilder from "./arrayBuilder";
-import getMetrics, { SDF_PADDING } from "../utils/bmFontMetrics";
+import getMetrics, { SDF_PADDING } from "../fonts/bmFontMetrics";
 import { peek } from "../utils/arrayUtils";
 import createBinningRangeIndexer from "../utils/binnedRangeIndex";
 
@@ -425,15 +425,16 @@ export class TextVertexBuilder extends GeometryBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
-     * @param {import("../fonts/types").FontMetadata} object.metadata
+     * @param {import("../fonts/bmFontMetrics").BMFontMetrics} object.fontMetrics
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters
      * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
+     * @param {boolean} [object.logoLetter]
      */
     constructor({
         encoders,
         attributes,
-        metadata,
+        fontMetrics,
         properties,
         numCharacters = undefined,
         buildXIndex = false
@@ -445,8 +446,8 @@ export class TextVertexBuilder extends GeometryBuilder {
             buildXIndex
         });
 
-        this.metadata = metadata;
-        this.metrics = getMetrics(metadata);
+        this.metadata = fontMetrics;
+        this.metrics = fontMetrics;
 
         this.properties = properties;
 
@@ -476,6 +477,7 @@ export class TextVertexBuilder extends GeometryBuilder {
      */
     addBatch(key, data, lo = 0, hi = data.length) {
         const align = this.properties.align || "left";
+        const logoLetter = this.properties.logoLetter ?? false;
 
         const base = this.metadata.common.base;
         const scale = this.metadata.common.scaleH; // Assume square textures
@@ -517,7 +519,9 @@ export class TextVertexBuilder extends GeometryBuilder {
 
             this.variableBuilder.updateFromDatum(d);
 
-            const textWidth = this.metrics.measureWidth(str);
+            const textWidth = logoLetter
+                ? str.length
+                : this.metrics.measureWidth(str);
 
             this.updateWidth(textWidth); // TODO: Check if one letter space should be reduced
 
@@ -528,24 +532,38 @@ export class TextVertexBuilder extends GeometryBuilder {
                     ? -textWidth / 2
                     : 0;
 
-            const firstChar = this.metrics.getCharByCode(str.charCodeAt(0));
-            x -= (firstChar.width - firstChar.xadvance) / base / 2; // TODO: Fix, this is a bit off..
+            if (!logoLetter) {
+                const firstChar = this.metrics.getCharByCode(str.charCodeAt(0));
+                x -= (firstChar.width - firstChar.xadvance) / base / 2; // TODO: Fix, this is a bit off..
+            }
+
+            let bottom = -0.5,
+                height = 1,
+                normalWidth = 1;
 
             for (let i = 0; i < str.length; i++) {
                 const c = this.metrics.getCharByCode(str.charCodeAt(i));
 
-                const tx = c.x;
-                const ty = c.y;
-                const advance = c.xadvance / base;
+                const advance = logoLetter ? 1 : c.xadvance / base;
 
                 if (c.id == 32) {
                     x += advance;
                     continue;
                 }
 
-                // TODO: Simplify
-                const height = c.height / base;
-                const bottom = -(c.height + c.yoffset + baseline) / base;
+                if (!logoLetter) {
+                    height = c.height / base;
+                    bottom = -(c.height + c.yoffset + baseline) / base;
+                    normalWidth = c.width / base;
+                } else {
+                    normalWidth = (c.width + SDF_PADDING * 2) / c.width;
+                    x = -normalWidth / 2;
+                    height = (c.height + SDF_PADDING * 2) / c.height;
+                    bottom = -0.5 - SDF_PADDING / c.height;
+                }
+
+                const tx = c.x;
+                const ty = c.y;
 
                 vertexCoord[0] = x;
                 vertexCoord[1] = bottom + height;
@@ -553,19 +571,7 @@ export class TextVertexBuilder extends GeometryBuilder {
                 textureCoord[1] = ty / scale;
                 this.variableBuilder.pushAll();
 
-                vertexCoord[0] = x + c.width / base;
-                vertexCoord[1] = bottom + height;
-                textureCoord[0] = (tx + c.width) / scale;
-                textureCoord[1] = ty / scale;
-                this.variableBuilder.pushAll();
-
-                vertexCoord[0] = x;
-                vertexCoord[1] = bottom;
-                textureCoord[0] = tx / scale;
-                textureCoord[1] = (ty + c.height) / scale;
-                this.variableBuilder.pushAll();
-
-                vertexCoord[0] = x + c.width / base;
+                vertexCoord[0] = x + normalWidth;
                 vertexCoord[1] = bottom + height;
                 textureCoord[0] = (tx + c.width) / scale;
                 textureCoord[1] = ty / scale;
@@ -577,7 +583,19 @@ export class TextVertexBuilder extends GeometryBuilder {
                 textureCoord[1] = (ty + c.height) / scale;
                 this.variableBuilder.pushAll();
 
-                vertexCoord[0] = x + c.width / base;
+                vertexCoord[0] = x + normalWidth;
+                vertexCoord[1] = bottom + height;
+                textureCoord[0] = (tx + c.width) / scale;
+                textureCoord[1] = ty / scale;
+                this.variableBuilder.pushAll();
+
+                vertexCoord[0] = x;
+                vertexCoord[1] = bottom;
+                textureCoord[0] = tx / scale;
+                textureCoord[1] = (ty + c.height) / scale;
+                this.variableBuilder.pushAll();
+
+                vertexCoord[0] = x + normalWidth;
                 vertexCoord[1] = bottom;
                 textureCoord[0] = (tx + c.width) / scale;
                 textureCoord[1] = (ty + c.height) / scale;

@@ -26,12 +26,28 @@ float clampMinSize(inout float pos, float frac, float size, float minSize) {
     return 1.0;
 }
 
+void sort(inout float a, inout float b) {
+    if (a > b) {
+        float tmp = b;
+        b = a;
+        a = tmp;
+    }
+}
+
 void main(void) {
     vec2 normalizedMinSize = uMinSize / uViewportSize;
 
+    float x = getScaled_x();
+    float x2 = getScaled_x2();
+    float y = getScaled_y();
+    float y2 = getScaled_y2();
+
+    sort(x, x2);
+    sort(y, y2);
+
     // Clamp x to unit range to prevent precision artifacts when the scale is zoomed very close.
-    vec2 pos1 = vec2(clamp(getScaled_x(), 0.0, 1.0), getScaled_y());
-    vec2 pos2 = vec2(clamp(getScaled_x2(), 0.0, 1.0), getScaled_y2());
+    vec2 pos1 = vec2(clamp(x, 0.0, 1.0), y);
+    vec2 pos2 = vec2(clamp(x2, 0.0, 1.0), y2);
 
     vec2 size = pos2 - pos1;
 

@@ -1,6 +1,6 @@
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 import fontMetadata from "../../fonts/Lato-Regular.json";
-import getMetrics from "../../utils/bmFontMetrics";
+import getMetrics from "../../fonts/bmFontMetrics";
 import { field } from "../../utils/field";
 
 /**
