@@ -127,8 +127,9 @@ void main(void) {
         x += (x2 - x) / 2.0;
 
     } else {
+        float x2 = getScaled_x2();
         RangeResult result = positionInsideRange(
-            x, getScaled_x2(),
+            min(x, x2), max(x, x2),
             size.x * width / uViewportSize.x, uPaddingX / uViewportSize.x,
             uAlignX, uFlushX);
         
@@ -150,7 +151,7 @@ void main(void) {
 
     } else {
         RangeResult result = positionInsideRange(
-            pos.y, pos2.y,
+            min(pos.y, pos2.y), max(pos.y, pos2.y),
             size.y * scale / uViewportSize.y, uPaddingY / uViewportSize.y,
             uAlignY, uFlushY);
         
