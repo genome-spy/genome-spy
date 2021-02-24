@@ -1,5 +1,6 @@
 import scaleLocus from "./genome/scaleLocus";
 import { scale as vegaScale } from "vega-scale";
+import { formats as vegaFormats } from "vega-loader";
 
 import "./styles/genome-spy.scss";
 import Tooltip from "./utils/ui/tooltip";
@@ -34,6 +35,7 @@ import { optimizeDataFlow } from "./data/flowOptimizer";
 import scaleNull from "./utils/scaleNull";
 import GenomeStore from "./genome/genomeStore";
 import BmFontManager from "./fonts/bmFontManager";
+import fasta from "./data/formats/fasta";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -49,6 +51,8 @@ import BmFontManager from "./fonts/bmFontManager";
 vegaScale("index", scaleIndex, ["continuous"]);
 vegaScale("locus", scaleLocus, ["continuous"]);
 vegaScale("null", scaleNull, []);
+
+vegaFormats("fasta", fasta);
 
 /**
  * The actual browser without any toolbars etc
