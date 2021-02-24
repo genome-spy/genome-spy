@@ -61,25 +61,9 @@ export default class UnitView extends ContainerView {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
 
+        /** @type {(UnitView | LayerView | DecoratorView)[]} */
         this.sampleSummaryViews = [];
-        if (isSummarizeSamplesSpec(spec)) {
-            // TODO: Support multiple
-            const sumSpec = spec.summarizeSamples;
-
-            if (!sumSpec.transform) {
-                sumSpec.transform = [];
-            }
-            sumSpec.transform.unshift({ type: "mergeFacets" });
-
-            const View = getViewClass(sumSpec);
-            const summaryView = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
-                sumSpec,
-                context,
-                this,
-                "summaryView"
-            ));
-            this.sampleSummaryViews.push(summaryView);
-        }
+        this._initializeSummaryViews();
 
         /**
          * Not nice! Inconsistent when faceting!
@@ -119,6 +103,9 @@ export default class UnitView extends ContainerView {
     render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
 
+        if (this.name == "amplification") {
+            console.log(this.getCollector());
+        }
         this.coords = coords;
 
         context.pushView(this, coords);
@@ -323,5 +310,37 @@ export default class UnitView extends ContainerView {
         };
 
         return ["x", "y"].map(getZoomLevel).reduce((a, c) => a * c, 1);
+    }
+
+    _initializeSummaryViews() {
+        if (isSummarizeSamplesSpec(this.spec)) {
+            // TODO: Support multiple
+            const sumSpec = this.spec.summarizeSamples;
+
+            sumSpec.transform = [
+                ...(sumSpec.transform ?? []),
+                { type: "mergeFacets" }
+            ];
+
+            sumSpec.encoding = {
+                ...(sumSpec.encoding ?? {}),
+                sample: null
+            };
+
+            const View = getViewClass(sumSpec);
+            const summaryView = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
+                sumSpec,
+                this.context,
+                this,
+                "summaryView"
+            ));
+
+            /**
+             * @param {View} [whoIsAsking]
+             */
+            summaryView.getFacetFields = whoIsAsking => undefined;
+
+            this.sampleSummaryViews.push(summaryView);
+        }
     }
 }

@@ -289,10 +289,19 @@ export default class View {
         const pe = this.parent ? this.parent.getEncoding(this) : {};
         const te = this.spec.encoding || {};
 
-        return {
+        const combined = {
             ...pe,
             ...te
         };
+
+        for (const [channel, channelDef] of Object.entries(combined)) {
+            if (channelDef === null) {
+                // Prevent propagation
+                delete combined[channel];
+            }
+        }
+
+        return combined;
     }
 
     /**
@@ -316,8 +325,6 @@ export default class View {
         const sampleFieldDef = this.getEncoding().sample;
         if (isFieldDef(sampleFieldDef)) {
             return [sampleFieldDef.field];
-        } else if (sampleFieldDef === null) {
-            return undefined;
         } else {
             return this.parent?.getFacetFields(this);
         }

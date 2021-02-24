@@ -1,4 +1,4 @@
-import { isNumber, span, error, key } from "vega-util";
+import { isNumber, error } from "vega-util";
 import { html } from "lit-html";
 import { createTexture, setTextureFromArray } from "twgl.js";
 import { findEncodedFields, getViewClass } from "../viewUtils";
@@ -498,24 +498,19 @@ export default class SampleView extends ContainerView {
 
         const summaryHeight = this.summaryViews.getSize().height.px;
 
-        for (const groupLocation of this.getLocations().groups) {
+        for (const [i, groupLocation] of this.getLocations().groups.entries()) {
+            const y = () => {
+                const gLoc = groupLocation.location;
+                let pos = coords.y + gLoc;
+                return this.stickySummaries
+                    ? pos + clamp(-gLoc, 0, groupLocation.size - summaryHeight)
+                    : pos;
+            };
+
             this.summaryViews.render(
                 context,
-                coords.modify({
-                    y: () => {
-                        const gLoc = groupLocation.location;
-                        let pos = coords.y + gLoc;
-                        return this.stickySummaries
-                            ? pos +
-                                  clamp(
-                                      -gLoc,
-                                      0,
-                                      groupLocation.size - summaryHeight
-                                  )
-                            : pos;
-                    },
-                    height: summaryHeight
-                }),
+                coords.modify({ y, height: summaryHeight }),
+                //{ ...options, facetId: [i] }
                 options
             );
         }

@@ -72,36 +72,41 @@ export default class MergeFacetsTransform extends FlowNode {
      * @param {import("../../sampleHandler/sampleState").State} state
      */
     _facetGroupsUpdated(state) {
-        const groups = [...iterateGroupHierarcy(state.rootGroup)]
-            .map(path => peek(path))
-            .filter(node => isSampleGroup(node));
+        const groupPaths = [
+            ...iterateGroupHierarcy(state.rootGroup)
+        ].filter(path => isSampleGroup(peek(path)));
 
-        console.log(groups);
+        this.reset();
 
-        const group = groups[0];
-        if (isSampleGroup(group)) {
-            const samples = group.samples;
-            const collector = this._getCollector();
+        for (const [i, groupPath] of groupPaths.entries()) {
+            if (i > 0) break; // Temporarily
 
-            const extents = samples
-                .map(sample => collector.groupExtentMap.get([sample]))
-                .filter(extent => extent);
+            const group = peek(groupPath);
 
-            // TODO: Only merge and propagate if the sets of samples change.
-            // Computation is unnecessary when data is just sorted.
+            if (isSampleGroup(group)) {
+                const samples = group.samples;
+                const collector = this._getCollector();
 
-            const iterator = kWayMerge(
-                collector.getData(),
-                extents,
-                this._getXAccessor()
-            );
+                const extents = samples
+                    .map(sample => collector.groupExtentMap.get([sample]))
+                    .filter(extent => extent);
 
-            this.reset();
-            for (const d of iterator) {
-                this._propagate(d);
+                // TODO: Only merge and propagate if the sets of samples change.
+                // Computation is unnecessary when data is just sorted.
+
+                const iterator = kWayMerge(
+                    collector.getData(),
+                    extents,
+                    this._getXAccessor()
+                );
+
+                for (const d of iterator) {
+                    this._propagate(d);
+                }
             }
-            this.complete();
         }
+
+        this.complete();
     }
 
     /**
