@@ -168,7 +168,7 @@ export default class ScaleResolution {
 
             // Swap discrete y axis
             if (this.channel == "y" && isDiscrete(props.type)) {
-                props.range = [props.range[1], props.range[0]];
+                props.reverse = true;
             }
 
             if (props.range && props.scheme) {
