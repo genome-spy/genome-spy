@@ -1,5 +1,5 @@
 import createCloner from "../../utils/cloner";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
+import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode";
 
 /**
  * Clones the data objects that pass through.
@@ -27,12 +27,14 @@ export default class CloneTransform extends FlowNode {
         /**
          * Signals that a new batch of data will be propagated.
          *
-         * @param {import("../flowNode").BatchMetadata} [metadata]
+         * @param {import("../flowNode").FlowBatch} [flowBatch]
          */
-        this.beginBatch = metadata => {
-            super.beginBatch(metadata);
-            // TODO: Only create new cloner if the props change
-            this.handle = setupCloner;
+        this.beginBatch = flowBatch => {
+            if (isFileBatch(flowBatch)) {
+                // TODO: Only create new cloner if the props change
+                this.handle = setupCloner;
+            }
+            super.beginBatch(flowBatch);
         };
     }
 }

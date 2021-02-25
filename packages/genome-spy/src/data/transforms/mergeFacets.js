@@ -81,11 +81,11 @@ export default class MergeFacetsTransform extends FlowNode {
         this.reset();
 
         for (const [i, groupPath] of groupPaths.entries()) {
-            if (i > 0) break; // Temporarily
-
             const group = peek(groupPath);
 
             if (isSampleGroup(group)) {
+                this.beginBatch({ type: "facet", facetId: [i] });
+
                 const samples = group.samples;
                 const collector = this._getCollector();
 

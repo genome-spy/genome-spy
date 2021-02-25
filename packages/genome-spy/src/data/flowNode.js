@@ -13,7 +13,7 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
 /**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
  *
- * @typedef {object} BatchMetadata
+ * @typedef {import("./flowBatch").FlowBatch} FlowBatch
  */
 export default class FlowNode {
     get behavior() {
@@ -234,11 +234,11 @@ export default class FlowNode {
     /**
      * Signals that a new batch of data will be propagated.
      *
-     * @param {BatchMetadata} [metadata]
+     * @param {FlowBatch} flowBatch
      */
-    beginBatch(metadata) {
+    beginBatch(flowBatch) {
         for (const child of this.children) {
-            child.beginBatch(metadata);
+            child.beginBatch(flowBatch);
         }
     }
 
@@ -249,4 +249,20 @@ export default class FlowNode {
     _propagate(datum) {
         // Implementation is set dynamically in add/removeChild
     }
+}
+
+/**
+ * @param {FlowBatch} flowBatch
+ * @returns {flowBatch is import("./flowBatch").FileBatch}
+ */
+export function isFileBatch(flowBatch) {
+    return flowBatch.type == "file";
+}
+
+/**
+ * @param {FlowBatch} flowBatch
+ * @returns {flowBatch is import("./flowBatch").FacetBatch}
+ */
+export function isFacetBatch(flowBatch) {
+    return flowBatch.type == "facet";
 }

@@ -1,5 +1,5 @@
 import { asArray } from "../../utils/arrayUtils";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
+import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode";
 
 /**
  * Folds fields using a regex
@@ -127,11 +127,13 @@ export default class RegexFoldTransform extends FlowNode {
 
         /**
          *
-         * @param {import("../flowNode").BatchMetadata} metadata
+         * @param {import("../flowNode").FlowBatch} flowBatch
          */
-        this.beginBatch = metadata => {
-            this.handle = detectAndHandle;
-            super.beginBatch(metadata);
+        this.beginBatch = flowBatch => {
+            if (isFileBatch(flowBatch)) {
+                this.handle = detectAndHandle;
+            }
+            super.beginBatch(flowBatch);
         };
     }
 }

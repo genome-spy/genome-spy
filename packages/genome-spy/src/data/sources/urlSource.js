@@ -44,12 +44,15 @@ export default class UrlSource extends DataSource {
             }
         };
 
-        /** @param {string} text */
-        const readAndParse = text => {
+        /**
+         * @param {string} text
+         * @param {string} [url]
+         */
+        const readAndParse = (text, url) => {
             try {
                 /** @type {any[]} */
                 const data = read(text, getFormat(this.params));
-                this.beginBatch();
+                this.beginBatch({ type: "file", url: url });
                 for (const d of data) {
                     this._propagate(d);
                 }

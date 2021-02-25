@@ -35,7 +35,7 @@ export default class DynamicCallbackSource extends DataSource {
         }
 
         this.reset();
-        this.beginBatch();
+        this.beginBatch({ type: "file" });
 
         let wrap;
 

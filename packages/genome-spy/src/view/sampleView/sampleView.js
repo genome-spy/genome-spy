@@ -510,8 +510,8 @@ export default class SampleView extends ContainerView {
             this.summaryViews.render(
                 context,
                 coords.modify({ y, height: summaryHeight }),
-                //{ ...options, facetId: [i] }
-                options
+                { ...options, facetId: [i] }
+                //options
             );
         }
     }

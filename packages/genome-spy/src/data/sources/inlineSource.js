@@ -54,7 +54,7 @@ export default class InlineSource extends DataSource {
         }
 
         this.reset();
-        this.beginBatch();
+        this.beginBatch({ type: "file" });
 
         for (const d of data) {
             this._propagate(wrap(d));

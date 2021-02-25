@@ -2,8 +2,9 @@ import { InternMap } from "internmap";
 import { group } from "d3-array";
 import { compare } from "vega-util";
 import iterateNestedMaps from "../utils/iterateNestedMaps";
-import FlowNode from "./flowNode";
+import FlowNode, { isFacetBatch } from "./flowNode";
 import { field } from "../utils/field";
+import { asArray } from "../utils/arrayUtils";
 
 /**
  * Collects (materializes) the data that flows through this node.
@@ -25,6 +26,12 @@ export default class Collector extends FlowNode {
         /** @type {(function(Collector):void)[]} */
         this.observers = [];
 
+        /** @type {Map<any[], [number, number]>} */
+        this.groupExtentMap = undefined;
+
+        /** @type {Map<any | any[], any[]>} */
+        this.facetBatches = undefined;
+
         this._init();
     }
 
@@ -32,8 +39,11 @@ export default class Collector extends FlowNode {
         /** @type {any[]} */
         this._data = [];
 
-        /** @type {Map<any[], [number, number]>} */
         this.groupExtentMap = new InternMap([], JSON.stringify);
+
+        // TODO: Consider nested maps
+        this.facetBatches = new InternMap([], JSON.stringify);
+        this.facetBatches.set(undefined, this._data);
     }
 
     reset() {
@@ -47,6 +57,18 @@ export default class Collector extends FlowNode {
      */
     handle(datum) {
         this._data.push(datum);
+    }
+
+    /**
+     * @param {import("./flowBatch").FlowBatch} flowBatch
+     */
+    beginBatch(flowBatch) {
+        // TODO: Propagate batches to children(?)
+
+        if (isFacetBatch(flowBatch)) {
+            this._data = [];
+            this.facetBatches.set(asArray(flowBatch.facetId), this._data);
+        }
     }
 
     complete() {
@@ -63,6 +85,10 @@ export default class Collector extends FlowNode {
         };
 
         if (this.params.groupby?.length) {
+            if (this.facetBatches.size > 1) {
+                throw new Error("TODO: Support faceted data!");
+            }
+
             const accessors = this.params.groupby.map(fieldName =>
                 field(fieldName)
             );
@@ -82,8 +108,25 @@ export default class Collector extends FlowNode {
 
             this._data = concatenated;
         } else {
-            sortData(this._data);
+            const concatenated = [];
+            for (const [key, data] of this.facetBatches.entries()) {
+                sortData(data);
+                this.groupExtentMap.set(key, [
+                    concatenated.length,
+                    concatenated.length + data.length
+                ]);
+
+                // TODO: Skip unnecessary copying if there's only a single facet or group
+                for (let i = 0; i < data.length; i++) {
+                    concatenated.push(data[i]);
+                }
+            }
+
+            this._data = concatenated;
         }
+
+        // Free some memory
+        this.facetBatches = undefined;
 
         if (this.children.length) {
             for (const datum of this._data) {

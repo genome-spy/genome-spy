@@ -31,7 +31,7 @@ export default class SequenceSource extends DataSource {
         const stop = this.sequence.stop;
 
         this.reset();
-        this.beginBatch();
+        this.beginBatch({ type: "file" });
 
         for (let x = this.sequence.start; x < stop; x += step) {
             this._propagate({ [as]: x });

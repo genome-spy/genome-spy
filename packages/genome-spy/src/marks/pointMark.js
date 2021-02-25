@@ -116,12 +116,8 @@ export default class PointMark extends Mark {
             numItems: Math.max(itemCount, this.properties.minBufferSize || 0)
         });
 
-        if (this.unitView.getFacetFields()) {
-            for (const [facetKey, extent] of collector.groupExtentMap) {
-                builder.addBatch(facetKey, data, ...extent);
-            }
-        } else {
-            builder.addBatch(undefined, data);
+        for (const [facetKey, extent] of collector.groupExtentMap) {
+            builder.addBatch(facetKey, data, ...extent);
         }
 
         const vertexData = builder.toArrays();
