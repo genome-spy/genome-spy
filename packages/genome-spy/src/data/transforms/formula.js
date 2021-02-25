@@ -23,7 +23,7 @@ export default class FormulaTransform extends FlowNode {
 
     /**
      *
-     * @param {any} datum
+     * @param {import("../flowNode").Datum} datum
      */
     handle(datum) {
         datum[this.as] = this.fn(datum);

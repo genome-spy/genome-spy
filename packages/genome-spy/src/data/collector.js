@@ -13,6 +13,7 @@ import { asArray } from "../utils/arrayUtils";
  * Grouping is primarily intended for handling faceted data.
  *
  * @typedef {import("../spec/transform").CollectParams} CollectParams
+ * @typedef {import("./flowNode").Data} Data
  */
 export default class Collector extends FlowNode {
     /**
@@ -29,14 +30,14 @@ export default class Collector extends FlowNode {
         /** @type {Map<any[], [number, number]>} */
         this.groupExtentMap = undefined;
 
-        /** @type {Map<any | any[], any[]>} */
+        /** @type {Map<any | any[], Data>} */
         this.facetBatches = undefined;
 
         this._init();
     }
 
     _init() {
-        /** @type {any[]} */
+        /** @type {Data} */
         this._data = [];
 
         this.groupExtentMap = new InternMap([], JSON.stringify);
@@ -53,7 +54,7 @@ export default class Collector extends FlowNode {
 
     /**
      *
-     * @param {any} datum
+     * @param {import("./flowNode").Datum} datum
      */
     handle(datum) {
         this._data.push(datum);
@@ -73,7 +74,7 @@ export default class Collector extends FlowNode {
 
     complete() {
         const sort = this.params?.sort;
-        // Vega's "compare" function is in incredibly slow
+        // Vega's "compare" function is incredibly slow (uses megamorphic field accessor)
         // TODO: Implement a replacement for static data types
         const comparator = sort ? compare(sort.field, sort.order) : undefined;
 

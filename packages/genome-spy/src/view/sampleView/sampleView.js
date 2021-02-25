@@ -777,7 +777,7 @@ class ProcessSample extends FlowNode {
 
     /**
      *
-     * @param {any} datum
+     * @param {import("../../data/flowNode").Datum} datum
      */
     handle(datum) {
         this._propagate({

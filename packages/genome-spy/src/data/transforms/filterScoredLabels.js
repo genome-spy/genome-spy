@@ -123,7 +123,7 @@ export default class FilterScoredLabelsTransform extends FlowNode {
 
     /**
      *
-     * @param {any} datum
+     * @param {import("../flowNode").Datum} datum
      */
     handle(datum) {
         this._data.push(datum);

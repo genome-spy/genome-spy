@@ -18,7 +18,7 @@ export default class FilterTransform extends FlowNode {
 
     /**
      *
-     * @param {any} datum
+     * @param {import("../flowNode").Datum} datum
      */
     handle(datum) {
         if (this.predicate(datum)) {

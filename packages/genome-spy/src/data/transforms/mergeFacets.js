@@ -42,7 +42,7 @@ export default class MergeFacetsTransform extends FlowNode {
     }
 
     /**
-     * @param {any} datum
+     * @param {import("../flowNode").Datum} datum
      */
     handle(datum) {
         // NOP. Block propagation.

@@ -14,6 +14,9 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
  *
  * @typedef {import("./flowBatch").FlowBatch} FlowBatch
+ *
+ * @typedef {Record<string, any>} Datum
+ * @typedef {Datum[]} Data
  */
 export default class FlowNode {
     get behavior() {
@@ -216,7 +219,7 @@ export default class FlowNode {
 
     /**
      *
-     * @param {any} datum
+     * @param {Datum} datum
      */
     handle(datum) {
         // Default implementation just passes through

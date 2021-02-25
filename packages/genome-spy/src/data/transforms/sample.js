@@ -62,7 +62,7 @@ export default class SampleTransform extends FlowNode {
 
     /**
      *
-     * @param {any} datum
+     * @param {import("../flowNode").Datum} datum
      */
     handle(datum) {
         this.ingester(datum);

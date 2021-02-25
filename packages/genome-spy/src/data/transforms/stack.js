@@ -29,7 +29,7 @@ export default class StackTransform extends FlowNode {
 
     /**
      *
-     * @param {any} datum
+     * @param {import("../flowNode").Datum} datum
      */
     handle(datum) {
         this.buffer.push(datum);
