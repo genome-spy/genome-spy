@@ -7,6 +7,8 @@ import { peek, shallowArrayEquals } from "../../utils/arrayUtils";
 import { field } from "../../utils/field";
 import kWayMerge from "../../utils/kWayMerge";
 import SampleView from "../../view/sampleView/sampleView";
+import ScaleResolution from "../../view/scaleResolution";
+import UnitView from "../../view/unitView";
 import View from "../../view/view";
 import Collector from "../collector";
 import FlowNode from "../flowNode";
@@ -107,6 +109,8 @@ export default class MergeFacetsTransform extends FlowNode {
         }
 
         this.complete();
+
+        this._updateScales();
     }
 
     /**
@@ -117,5 +121,21 @@ export default class MergeFacetsTransform extends FlowNode {
         super.setParent(parent);
 
         // TODO: Validate that the parent is a collector
+    }
+
+    _updateScales() {
+        /** @type {Set<ScaleResolution>} */
+        const resolutions = new Set();
+        this.view.visit(view => {
+            if (view instanceof UnitView && view.getEncoding().y) {
+                const resolution = view.getScaleResolution("y");
+                if (resolution) {
+                    resolutions.add(resolution);
+                }
+            }
+        });
+        for (const resolution of resolutions) {
+            resolution.reconfigure();
+        }
     }
 }

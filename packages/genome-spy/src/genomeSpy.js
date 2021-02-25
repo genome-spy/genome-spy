@@ -217,9 +217,6 @@ export default class GenomeSpy {
                 view.mark.initializeData();
                 // Update WebGL buffers
                 view.mark.updateGraphicsData();
-
-                // TODO: Fix temporary hack...
-                view.getScaleResolution("y")?.reconfigure();
             }, view);
         }
 
