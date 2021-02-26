@@ -55,15 +55,14 @@ test("Collector collects, groups, and sorts data", () => {
     );
 
     /** @param {any[]} group*/
-    const getGroupX = group =>
-        cd.slice(...collector.groupExtentMap.get(group)).map(d => d.x);
+    const getGroupX = group => collector.facetBatches.get(group).map(d => d.x);
 
     expect(getGroupX([1, 1])).toEqual([1]);
     expect(getGroupX([1, 2])).toEqual([2, 3]);
     expect(getGroupX([2, 1])).toEqual([4, 5]);
     expect(getGroupX([2, 2])).toEqual([6]);
 
-    expect(new Set(collector.groupExtentMap.keys())).toEqual(
+    expect(new Set(collector.facetBatches.keys())).toEqual(
         new Set([
             [1, 1],
             [1, 2],
