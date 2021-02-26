@@ -316,7 +316,7 @@ export function createChain(dataSource, ...transforms) {
         node.addChild(collector);
     }
 
-    /** @type {function():Promise<any[]>} */
+    /** @type {function():Promise<Iterable<import("../data/flowNode").Datum>>} */
     let loadAndCollect;
     if (dataSource instanceof DataSource) {
         loadAndCollect = async () => {

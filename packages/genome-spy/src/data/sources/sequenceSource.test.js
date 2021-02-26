@@ -10,7 +10,7 @@ async function collectSource(source) {
 
     await source.load();
 
-    return collector.getData();
+    return [...collector.getData()];
 }
 
 test("SequenceSource generates a sequence", async () => {

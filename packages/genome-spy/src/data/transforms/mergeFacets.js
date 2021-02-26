@@ -6,6 +6,7 @@ import {
 import { peek, shallowArrayEquals } from "../../utils/arrayUtils";
 import { field } from "../../utils/field";
 import kWayMerge from "../../utils/kWayMerge";
+import { getCachedOrCall } from "../../utils/propertyCacher";
 import SampleView from "../../view/sampleView/sampleView";
 import ScaleResolution from "../../view/scaleResolution";
 import UnitView from "../../view/unitView";
@@ -80,6 +81,9 @@ export default class MergeFacetsTransform extends FlowNode {
 
         this.reset();
 
+        // TODO: Recycle accessor
+        const xAccessor = this._getXAccessor();
+
         for (const [i, groupPath] of groupPaths.entries()) {
             const group = peek(groupPath);
 
@@ -89,17 +93,14 @@ export default class MergeFacetsTransform extends FlowNode {
                 const samples = group.samples;
                 const collector = this._getCollector();
 
-                const extents = samples
-                    .map(sample => collector.groupExtentMap.get([sample]))
-                    .filter(extent => extent);
-
                 // TODO: Only merge and propagate if the sets of samples change.
                 // Computation is unnecessary when data is just sorted.
 
                 const iterator = kWayMerge(
-                    collector.getData(),
-                    extents,
-                    this._getXAccessor()
+                    samples.map(
+                        sample => collector.facetBatches.get([sample]) ?? []
+                    ),
+                    xAccessor
                 );
 
                 for (const d of iterator) {

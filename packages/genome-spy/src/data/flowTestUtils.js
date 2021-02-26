@@ -17,7 +17,7 @@ export function processData(flowNode, data) {
 
     flowNode.removeChild(collector);
 
-    return collector.getData();
+    return [...collector.getData()];
 }
 
 /**

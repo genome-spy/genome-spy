@@ -413,17 +413,15 @@ export default class GenomeSpyApp {
                 continue;
             }
 
-            const data = view.getCollector()?.getData();
-            const index = data.findIndex(
-                v => collator.compare(sa(v), term) === 0
-            );
-            if (index >= 0) {
-                const d = data[index];
-                const interval = zoomLinear([xa(d), x2a(d)], null, 1.2);
-                xResolution.zoomTo(interval);
-                view.context.animator.requestRender();
-                return true;
+            for (const d of view.getCollector()?.getData()) {
+                if (collator.compare(sa(d), term) === 0) {
+                    const interval = zoomLinear([xa(d), x2a(d)], null, 1.2);
+                    xResolution.zoomTo(interval);
+                    view.context.animator.requestRender();
+                    return true;
+                }
             }
+            return false;
         }
     }
 

@@ -88,7 +88,10 @@ export default class PointMark extends Mark {
             "semanticScore"
         );
         if (semanticScoreAccessor) {
-            const sampler = new SampleTransform({ type: "sample", size: 3000 }); // n chosen using Stetson-Harrison
+            const sampler = new SampleTransform({
+                type: "sample",
+                size: 10000
+            }); // n chosen using Stetson-Harrison
             for (const d of this.unitView.getCollector()?.getData()) {
                 // TODO: Throw on missing scores
                 sampler.handle(semanticScoreAccessor(d));
@@ -107,8 +110,7 @@ export default class PointMark extends Mark {
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
-        const data = collector.getData();
-        const itemCount = data.length;
+        const itemCount = collector.getItemCount();
 
         const builder = new PointVertexBuilder({
             encoders: this.encoders,
@@ -116,9 +118,7 @@ export default class PointMark extends Mark {
             numItems: Math.max(itemCount, this.properties.minBufferSize || 0)
         });
 
-        for (const [facetKey, extent] of collector.groupExtentMap) {
-            builder.addBatch(facetKey, data, ...extent);
-        }
+        builder.addBatches(collector.facetBatches);
 
         const vertexData = builder.toArrays();
         this.rangeMap = vertexData.rangeMap;
@@ -197,22 +197,15 @@ export default class PointMark extends Mark {
             // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
             const paddedDomain = zoomLinear(visibleDomain, null, 1.01);
 
-            const collector = this.unitView.getCollector();
-            const data = collector.getData();
-
             /** @param {any[]} facetId */
             this._findIndices = facetId => {
-                const extent =
-                    facetId !== undefined
-                        ? collector.groupExtentMap.get(facetId) ?? [0, 0]
-                        : [0, data.length];
+                const data = this.unitView
+                    .getCollector()
+                    .facetBatches.get(facetId);
+
                 return [
-                    bisect(data, paddedDomain[0], ...extent) - extent[0],
-                    bisect(
-                        data,
-                        paddedDomain[paddedDomain.length - 1],
-                        ...extent
-                    ) - extent[0]
+                    bisect(data, paddedDomain[0]),
+                    bisect(data, paddedDomain[paddedDomain.length - 1])
                 ];
             };
         }

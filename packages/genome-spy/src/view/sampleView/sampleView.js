@@ -327,7 +327,7 @@ export default class SampleView extends ContainerView {
         );
 
         collector.observers.push(collector =>
-            this._setSamples(collector.getData())
+            this._setSamples([...collector.getData()])
         );
 
         // Synchronize loading with other data

@@ -24,7 +24,7 @@ test("Collector collects and sorts data", () => {
     }
     collector.complete();
 
-    expect(collector.getData()).toEqual([1, 2, 3, 4, 5].map(x => ({ x })));
+    expect([...collector.getData()]).toEqual([1, 2, 3, 4, 5].map(x => ({ x })));
 });
 
 test("Collector collects, groups, and sorts data", () => {
@@ -48,7 +48,7 @@ test("Collector collects, groups, and sorts data", () => {
     }
     collector.complete();
 
-    const cd = collector.getData();
+    const cd = [...collector.getData()];
 
     expect(cd.map(d => ({ x: d.x }))).toEqual(
         [1, 2, 3, 4, 5, 6].map(x => ({ x }))

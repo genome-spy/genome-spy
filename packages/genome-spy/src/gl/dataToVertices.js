@@ -102,6 +102,15 @@ export class GeometryBuilder {
     }
 
     /**
+     * @param {Map<any, object[]>} batches
+     */
+    addBatches(batches) {
+        for (const [key, data] of batches) {
+            this.addBatch(key, data);
+        }
+    }
+
+    /**
      * @param {any} key The facet id, for example
      * @param {object[]} data
      */

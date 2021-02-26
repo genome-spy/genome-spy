@@ -18,12 +18,12 @@ test("SampleTransform produces roughly uniform distributions", () => {
 
     for (let r = 0; r < rounds; r++) {
         for (let i = 0; i < n; i++) {
-            dataSource.handle(i);
+            dataSource.handle({ data: i });
         }
         dataSource.complete();
 
-        for (const a of collector.getData()) {
-            freqs[a] = freqs[a] + 1;
+        for (const datum of collector.getData()) {
+            freqs[datum.data] = freqs[datum.data] + 1;
         }
 
         dataSource.reset();

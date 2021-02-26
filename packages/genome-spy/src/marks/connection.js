@@ -84,8 +84,7 @@ export default class ConnectionMark extends Mark {
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
-        const data = collector.getData();
-        const itemCount = data.length;
+        const itemCount = collector.getItemCount();
 
         const builder = new ConnectionVertexBuilder({
             encoders: this.encoders,
@@ -93,9 +92,7 @@ export default class ConnectionMark extends Mark {
             numItems: itemCount
         });
 
-        for (const [facetKey, extent] of collector.groupExtentMap) {
-            builder.addBatch(facetKey, data, ...extent);
-        }
+        builder.addBatches(collector.facetBatches);
 
         const vertexData = builder.toArrays();
 

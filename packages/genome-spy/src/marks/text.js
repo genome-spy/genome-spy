@@ -189,9 +189,7 @@ export default class TextMark extends Mark {
             buildXIndex: this.properties.buildIndex
         });
 
-        for (const [facetKey, extent] of collector.groupExtentMap) {
-            builder.addBatch(facetKey, data, ...extent);
-        }
+        builder.addBatches(collector.facetBatches);
 
         const vertexData = builder.toArrays();
         this.rangeMap = vertexData.rangeMap;

@@ -27,9 +27,6 @@ export default class Collector extends FlowNode {
         /** @type {(function(Collector):void)[]} */
         this.observers = [];
 
-        /** @type {Map<any[], [number, number]>} */
-        this.groupExtentMap = undefined;
-
         /** @type {Map<any | any[], Data>} */
         this.facetBatches = undefined;
 
@@ -39,8 +36,6 @@ export default class Collector extends FlowNode {
     _init() {
         /** @type {Data} */
         this._data = [];
-
-        this.groupExtentMap = new InternMap([], JSON.stringify);
 
         // TODO: Consider nested maps
         this.facetBatches = new InternMap([], JSON.stringify);
@@ -96,42 +91,22 @@ export default class Collector extends FlowNode {
             // @ts-ignore
             const groups = group(this._data, ...accessors);
 
-            /** @type {any[]} */
-            const concatenated = [];
+            this.facetBatches.clear();
             for (const [key, data] of iterateNestedMaps(groups)) {
-                sortData(data);
-                this.groupExtentMap.set(key, [
-                    concatenated.length,
-                    concatenated.length + data.length
-                ]);
-                concatenated.push(...data);
+                this.facetBatches.set(key, data);
             }
-
-            this._data = concatenated;
-        } else {
-            const concatenated = [];
-            for (const [key, data] of this.facetBatches.entries()) {
-                sortData(data);
-                this.groupExtentMap.set(key, [
-                    concatenated.length,
-                    concatenated.length + data.length
-                ]);
-
-                // TODO: Skip unnecessary copying if there's only a single facet or group
-                for (let i = 0; i < data.length; i++) {
-                    concatenated.push(data[i]);
-                }
-            }
-
-            this._data = concatenated;
         }
 
-        // Free some memory
-        this.facetBatches = undefined;
+        for (const data of this.facetBatches.values()) {
+            // TODO: Only sort if not already sorted
+            sortData(data);
+        }
 
         if (this.children.length) {
-            for (const datum of this._data) {
-                this._propagate(datum);
+            for (const data of this.facetBatches.values()) {
+                for (const datum of data) {
+                    this._propagate(datum);
+                }
             }
         }
 
@@ -142,12 +117,62 @@ export default class Collector extends FlowNode {
         }
     }
 
+    /**
+     * @returns {Iterable<import("./flowNode").Datum>}
+     */
     getData() {
+        this._checkStatus();
+
+        switch (this.facetBatches.size) {
+            case 0:
+                return [];
+            case 1:
+                return [...this.facetBatches.values()][0];
+            default: {
+                const groups = this.facetBatches;
+                return {
+                    [Symbol.iterator]: function* generator() {
+                        for (const data of groups.values()) {
+                            for (let i = 0; i < data.length; i++) {
+                                yield data[i];
+                            }
+                        }
+                    }
+                };
+            }
+        }
+    }
+
+    /**
+     *
+     * @param {(datum: import("./flowNode").Datum) => void} visitor
+     */
+    visitData(visitor) {
+        this._checkStatus();
+
+        for (const data of this.facetBatches.values()) {
+            for (let i = 0; i < data.length; i++) {
+                visitor(data[i]);
+            }
+        }
+    }
+
+    /**
+     * Returns the total number of data items collected.
+     */
+    getItemCount() {
+        let count = 0;
+        for (const data of this.facetBatches.values()) {
+            count += data.length;
+        }
+        return count;
+    }
+
+    _checkStatus() {
         if (!this.completed) {
             throw new Error(
                 "Data propagation is not completed! No data are available."
             );
         }
-        return this._data;
     }
 }

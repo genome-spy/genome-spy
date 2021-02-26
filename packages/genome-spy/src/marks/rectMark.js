@@ -73,8 +73,7 @@ export default class RectMark extends Mark {
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
-        const data = collector.getData();
-        const numItems = data.length;
+        const numItems = collector.getItemCount();
 
         // TODO: Disable tessellation on SimpleTrack - no need for it
         const builder = new RectVertexBuilder({
@@ -84,9 +83,7 @@ export default class RectMark extends Mark {
             buildXIndex: this.properties.buildIndex
         });
 
-        for (const [facetKey, extent] of collector.groupExtentMap) {
-            builder.addBatch(facetKey, data, ...extent);
-        }
+        builder.addBatches(collector.facetBatches);
 
         const vertexData = builder.toArrays();
         this.rangeMap = vertexData.rangeMap;

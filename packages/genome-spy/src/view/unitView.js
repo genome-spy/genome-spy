@@ -260,6 +260,7 @@ export default class UnitView extends ContainerView {
 
         /** @param {string} channel */
         const extract = channel => {
+            /** @type {DomainArray} */
             let domain;
 
             const encodingSpec = this.getEncoding()[channel];
@@ -276,11 +277,9 @@ export default class UnitView extends ContainerView {
                     } else {
                         const collector = this.getCollector();
                         if (collector?.completed) {
-                            const data = collector.getData();
-                            // eslint-disable-next-line max-depth
-                            for (let i = 0, n = data.length; i < n; i++) {
-                                domain.extend(accessor(data[i]));
-                            }
+                            collector.visitData(d =>
+                                domain.extend(accessor(d))
+                            );
                         }
                     }
                 }
