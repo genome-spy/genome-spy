@@ -1,6 +1,6 @@
 import Heapify from "heapify";
 import { field } from "../../utils/field";
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
+import FlowNode from "../flowNode";
 
 const maxDepth = 65536;
 
@@ -12,7 +12,6 @@ const maxDepth = 65536;
  * Computes coverage for sorted segments
  *
  * TODO: Binned coverage
- * TODO: Weighted coverage
  */
 export default class CoverageTransform extends FlowNode {
     get behavior() {
@@ -25,7 +24,6 @@ export default class CoverageTransform extends FlowNode {
     constructor(params) {
         super();
         this.params = params;
-        this.initialize();
     }
 
     reset() {

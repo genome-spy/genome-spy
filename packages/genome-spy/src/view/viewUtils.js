@@ -387,6 +387,7 @@ export function addDecorators(root) {
 export async function initializeData(root, existingFlow) {
     const flow = buildDataFlow(root, existingFlow);
     optimizeDataFlow(flow);
+    flow.initialize();
 
     /** @type {Promise<void>[]} */
     const promises = flow.dataSources.map(dataSource => dataSource.load());

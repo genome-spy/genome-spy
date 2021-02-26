@@ -7,7 +7,7 @@ import FlattenDelimitedTransform from "./flattenDelimited";
 import FormulaTransform from "./formula";
 import LinearizeGenomicCoordinate from "./linearizeGenomicCoordinate";
 import MeasureTextTransform from "./measureText";
-import MergeFacetsTransform from "./mergeFacets";
+import MergeFacets from "../mergeFacets";
 import PileupTransform from "./pileup";
 import ProjectTransform from "./project";
 import RegexExtractTransform from "./regexExtract";
@@ -33,7 +33,7 @@ const transforms = {
     formula: FormulaTransform,
     linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
     measureText: MeasureTextTransform,
-    mergeFacets: MergeFacetsTransform,
+    mergeFacets: MergeFacets,
     pileup: PileupTransform,
     project: ProjectTransform,
     regexExtract: RegexExtractTransform,

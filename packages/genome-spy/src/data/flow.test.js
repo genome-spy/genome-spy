@@ -59,6 +59,7 @@ describe("Test flow graphs", () => {
         filter.addChild(formula);
         formula.addChild(collector);
 
+        source.visit(node => node.initialize());
         source.dispatch();
 
         expect(collector.getData()).toEqual(

@@ -10,7 +10,9 @@ import { processData } from "../flowTestUtils";
  * @param {any[]} data
  */
 function transform(params, data) {
-    return processData(new CoverageTransform(params), data);
+    const t = new CoverageTransform(params);
+    t.initialize();
+    return processData(t, data);
 }
 
 test("Coverage transform produces correct coverage segments", () => {

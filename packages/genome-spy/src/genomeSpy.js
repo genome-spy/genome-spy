@@ -226,6 +226,7 @@ export default class GenomeSpy {
         await context.fontManager.waitUntilReady();
 
         // Find all data sources and initiate loading
+        flow.initialize();
         await Promise.all(
             flow.dataSources.map(dataSource => dataSource.load())
         );

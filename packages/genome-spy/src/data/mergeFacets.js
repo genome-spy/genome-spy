@@ -1,24 +1,29 @@
-import { isFieldDef } from "../../encoder/encoder";
+import { isFieldDef } from "../encoder/encoder";
 import {
     isSampleGroup,
     iterateGroupHierarcy
-} from "../../sampleHandler/sampleHandler";
-import { peek, shallowArrayEquals } from "../../utils/arrayUtils";
-import { field } from "../../utils/field";
-import kWayMerge from "../../utils/kWayMerge";
-import { getCachedOrCall } from "../../utils/propertyCacher";
-import SampleView from "../../view/sampleView/sampleView";
-import ScaleResolution from "../../view/scaleResolution";
-import UnitView from "../../view/unitView";
-import View from "../../view/view";
-import Collector from "../collector";
-import FlowNode from "../flowNode";
+} from "../sampleHandler/sampleHandler";
+import { peek, shallowArrayEquals } from "../utils/arrayUtils";
+import { field } from "../utils/field";
+import kWayMerge from "../utils/kWayMerge";
+import { getCachedOrCall } from "../utils/propertyCacher";
+import SampleView from "../view/sampleView/sampleView";
+import ScaleResolution from "../view/scaleResolution";
+import UnitView from "../view/unitView";
+import View from "../view/view";
+import Collector from "./collector";
+import FlowNode from "./flowNode";
+
+/** The number of samples in a facet */
+const SAMPLE_COUNT_VARIABLE = "sampleCount";
 
 /**
+ * Merges sample facets by groups that have been formed in SampleHandler.
+ * Propagates the merged facets as new facets.
  *
- * @typedef {import("../../view/view").default} View
+ * @typedef {import("../view/view").default} View
  */
-export default class MergeFacetsTransform extends FlowNode {
+export default class MergeFacets extends FlowNode {
     /**
      *
      * @param {any} params
@@ -40,14 +45,20 @@ export default class MergeFacetsTransform extends FlowNode {
                 );
             }
         }
+
+        this.contextObject = Object.create(super.getGlobalObject());
     }
 
     /**
-     * @param {import("../flowNode").Datum} datum
+     * @param {import("./flowNode").Datum} datum
      */
     handle(datum) {
         // NOP. Block propagation.
         // TODO: Optimize by preventing calling altogether
+    }
+
+    getGlobalObject() {
+        return this.contextObject;
     }
 
     _getCollector() {
@@ -72,7 +83,7 @@ export default class MergeFacetsTransform extends FlowNode {
     }
 
     /**
-     * @param {import("../../sampleHandler/sampleState").State} state
+     * @param {import("../sampleHandler/sampleState").State} state
      */
     _facetGroupsUpdated(state) {
         const groupPaths = [
@@ -88,6 +99,9 @@ export default class MergeFacetsTransform extends FlowNode {
             const group = peek(groupPath);
 
             if (isSampleGroup(group)) {
+                this.contextObject[SAMPLE_COUNT_VARIABLE] =
+                    group.samples.length;
+
                 this.beginBatch({ type: "facet", facetId: [i] });
 
                 const samples = group.samples;

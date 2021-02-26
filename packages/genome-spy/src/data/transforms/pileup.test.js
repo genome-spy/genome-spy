@@ -38,7 +38,9 @@ const params = {
  * @param {any[]} data
  */
 function pileupTransform(params, data) {
-    return processData(new PileupTransform(params), data);
+    const t = new PileupTransform(params);
+    t.initialize();
+    return processData(t, data);
 }
 
 test("Pileup transform produces correct pileup", () => {

@@ -169,6 +169,8 @@ export class SampleAttributePanel extends ConcatView {
             this
         ));
 
+        dynamicSource.visit(node => node.initialize());
+
         /** @type {Promise<import("../../marks/mark").default>[]} */
         const promises = [];
 

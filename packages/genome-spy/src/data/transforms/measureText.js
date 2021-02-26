@@ -24,6 +24,7 @@ export default class MeasureTextTransform extends FlowNode {
         const metrics = getMetrics(fontMetadata);
         const accessor = field(config.field);
         const as = config.as;
+        // TODO: Support custom fonts.
         const size = config.fontSize;
 
         /**

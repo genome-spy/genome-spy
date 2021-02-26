@@ -22,7 +22,6 @@ export default class PileupTransform extends FlowNode {
         super();
 
         this.params = params;
-        this.initialize();
     }
 
     reset() {

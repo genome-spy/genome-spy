@@ -103,9 +103,6 @@ export default class UnitView extends ContainerView {
     render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
 
-        if (this.name == "amplification") {
-            console.log(this.getCollector());
-        }
         this.coords = coords;
 
         context.pushView(this, coords);

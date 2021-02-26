@@ -10,7 +10,8 @@ test("FilterTransform filter rows", () => {
         expr: "datum.x > 3 && datum.x != 5"
     };
 
-    expect(processData(new FilterTransform(filterParams), data)).toEqual(
-        [4, 6].map(x => ({ x }))
-    );
+    const t = new FilterTransform(filterParams);
+    t.initialize();
+
+    expect(processData(t, data)).toEqual([4, 6].map(x => ({ x })));
 });

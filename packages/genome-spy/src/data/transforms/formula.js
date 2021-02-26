@@ -12,13 +12,20 @@ export default class FormulaTransform extends FlowNode {
 
     /**
      *
-     * @param {FormulaParams} config
+     * @param {FormulaParams} params
      */
-    constructor(config) {
+    constructor(params) {
         super();
+        this.params = params;
 
-        this.fn = createFunction(config.expr);
-        this.as = config.as;
+        this.as = params.as;
+
+        /** @type {(datum: any) => any} */
+        this.fn = undefined;
+    }
+
+    initialize() {
+        this.fn = createFunction(this.params.expr, this.getGlobalObject());
     }
 
     /**

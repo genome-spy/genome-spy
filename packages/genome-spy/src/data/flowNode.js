@@ -10,6 +10,7 @@ export const BEHAVIOR_CLONES = 1 << 0;
  */
 export const BEHAVIOR_MODIFIES = 1 << 1;
 
+const ROOT_CONTEXT_OBJECT = {};
 /**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
  *
@@ -44,6 +45,14 @@ export default class FlowNode {
         for (const child of this.children) {
             child.reset();
         }
+    }
+
+    /**
+     * Allows for doing final initialization after the flow structure has been
+     * built and optimized. Must be called before any data are to be propagated.
+     */
+    initialize() {
+        // override
     }
 
     /**
@@ -215,6 +224,19 @@ export default class FlowNode {
             "\n" +
             childTree
         );
+    }
+
+    /**
+     * The global object for expressions (in formula and filter transforms).
+     * Nodes in the hierarchy may extend the object using Object.create to
+     * introduce variables that are visible downstream the flow.
+     *
+     * @returns {Record<string, any>}
+     */
+    getGlobalObject() {
+        return this.parent
+            ? this.parent.getGlobalObject()
+            : ROOT_CONTEXT_OBJECT;
     }
 
     /**

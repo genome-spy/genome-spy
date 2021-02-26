@@ -8,12 +8,21 @@ import FlowNode from "../flowNode";
 export default class FilterTransform extends FlowNode {
     /**
      *
-     * @param {FilterParams} filterConfig
+     * @param {FilterParams} params
      */
-    constructor(filterConfig) {
+    constructor(params) {
         super();
+        this.params = params;
 
-        this.predicate = createFunction(filterConfig.expr);
+        /** @type {(datum: any) => boolean} */
+        this.predicate = undefined;
+    }
+
+    initialize() {
+        this.predicate = createFunction(
+            this.params.expr,
+            this.getGlobalObject()
+        );
     }
 
     /**
