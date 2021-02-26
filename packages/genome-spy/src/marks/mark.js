@@ -715,8 +715,6 @@ export default class Mark {
     /**
      * Sets viewport, clipping, and uniforms related to scaling and translation
      *
-     * TODO: Viewport should be handled at the view level
-     *
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("../utils/layout/rectangle").default} [clipRect]
      * @returns {boolean} true if the viewport is renderable (size > 0)
@@ -739,6 +737,8 @@ export default class Mark {
         /** @type {object} */
         let uniforms;
 
+        let clippedCoords = coords;
+
         if (props.clip || clipRect) {
             let xClipOffset = 0;
             let yClipOffset = 0;
@@ -747,25 +747,26 @@ export default class Mark {
             let uViewScale;
 
             if (clipRect) {
-                const viewCoords = coords;
+                clippedCoords = props.clip
+                    ? coords.intersect(clipRect)
+                    : clipRect;
 
-                coords = props.clip ? coords.intersect(clipRect) : clipRect;
                 uViewScale = [
-                    viewCoords.width / coords.width,
-                    viewCoords.height / coords.height
+                    coords.width / clippedCoords.width,
+                    coords.height / clippedCoords.height
                 ];
 
-                yClipOffset = Math.max(0, viewCoords.y2 - clipRect.y2);
-                xClipOffset = Math.max(0, viewCoords.x2 - clipRect.x2); // TODO: Check sign
+                yClipOffset = Math.max(0, coords.y2 - clipRect.y2);
+                xClipOffset = Math.max(0, coords.x2 - clipRect.x2); // TODO: Check sign
             } else {
                 uViewScale = [1, 1];
             }
 
             const physicalGlCoords = [
                 coords.x,
-                logicalSize.height - coords.y2,
-                Math.max(0, coords.width),
-                Math.max(0, coords.height)
+                logicalSize.height - clippedCoords.y2,
+                Math.max(0, clippedCoords.width),
+                Math.max(0, clippedCoords.height)
             ].map(x => x * dpr);
 
             // Because glViewport accepts only integers, we subtract the rounding
@@ -784,8 +785,8 @@ export default class Mark {
 
             uniforms = {
                 uViewOffset: [
-                    (xOffset + xClipOffset + xError) / coords.width,
-                    -(yOffset + yClipOffset - yError) / coords.height
+                    (xOffset + xClipOffset + xError) / clippedCoords.width,
+                    -(yOffset + yClipOffset - yError) / clippedCoords.height
                 ],
                 uViewScale
             };
@@ -822,7 +823,7 @@ export default class Mark {
 
         // TODO: Optimize: don't set viewport and stuff if rect is outside clipRect or screen
 
-        return coords.height > 0 && coords.width > 0;
+        return clippedCoords.height > 0 && clippedCoords.width > 0;
     }
 
     /**
