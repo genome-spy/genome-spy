@@ -10,6 +10,7 @@ import { RectVertexBuilder } from "../gl/dataToVertices";
 
 import Mark from "./mark";
 import { fixPositional } from "./markUtils";
+import { asArray } from "../utils/arrayUtils";
 
 export default class RectMark extends Mark {
     /**
@@ -134,14 +135,14 @@ export default class RectMark extends Mark {
      *
      * This is highly specific to SampleView and its sorting/filtering functionality.
      *
-     * @param {string} facetId
+     * @param {any} facetId
      * @param {number} x position on the x domain
      * @returns {any}
      */
     findDatumAt(facetId, x) {
-        throw new Error("Broken!");
+        facetId = asArray(facetId); // TODO: Do at the call site
         const e = this.encoders;
-        const data = this.dataByFacet.get(facetId);
+        const data = this.unitView.getCollector().facetBatches.get(facetId);
         const a = e.x.accessor;
         const a2 = e.x2.accessor;
         if (data) {

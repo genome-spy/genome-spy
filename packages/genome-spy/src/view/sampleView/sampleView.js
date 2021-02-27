@@ -691,9 +691,10 @@ export default class SampleView extends ContainerView {
         const invertedX = xScale.invert(normalizedXPos);
         const serializedX = genome?.toChromosomal(invertedX) ?? invertedX;
 
-        const fieldInfos = findEncodedFields(this.child).filter(
-            d => !["sample", "x", "x2"].includes(d.channel)
-        );
+        const fieldInfos = findEncodedFields(this.child)
+            .filter(d => !["sample", "x", "x2"].includes(d.channel))
+            // TODO: A method to check if a mark covers a range (both x and x2 defined)
+            .filter(info => ["rect", "rule"].includes(info.view.getMarkType()));
 
         const dispatch = this.sampleHandler.dispatch.bind(this.sampleHandler);
 

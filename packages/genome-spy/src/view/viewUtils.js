@@ -418,6 +418,7 @@ export function findEncodedFields(view) {
                     });
                 }
             }
+            return VISIT_SKIP; // Skip sample summaries
         }
     });
 
