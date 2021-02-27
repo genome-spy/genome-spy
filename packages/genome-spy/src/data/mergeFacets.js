@@ -3,14 +3,11 @@ import {
     isSampleGroup,
     iterateGroupHierarcy
 } from "../sampleHandler/sampleHandler";
-import { peek, shallowArrayEquals } from "../utils/arrayUtils";
+import { peek } from "../utils/arrayUtils";
 import { field } from "../utils/field";
 import kWayMerge from "../utils/kWayMerge";
-import { getCachedOrCall } from "../utils/propertyCacher";
 import SampleView from "../view/sampleView/sampleView";
-import ScaleResolution from "../view/scaleResolution";
 import UnitView from "../view/unitView";
-import View from "../view/view";
 import Collector from "./collector";
 import FlowNode from "./flowNode";
 
@@ -23,7 +20,7 @@ const SAMPLE_COUNT_VARIABLE = "sampleCount";
  *
  * @typedef {import("../view/view").default} View
  */
-export default class MergeFacets extends FlowNode {
+export default class MergeSampleFacets extends FlowNode {
     /**
      *
      * @param {any} params
@@ -46,7 +43,20 @@ export default class MergeFacets extends FlowNode {
             }
         }
 
+        /** @type {any} */
+        this.contextObject = undefined;
+    }
+
+    initialize() {
         this.contextObject = Object.create(super.getGlobalObject());
+
+        const xChannelDef = this.view.parent.getEncoding()["x"];
+        if (isFieldDef(xChannelDef)) {
+            this.xAccessor = field(xChannelDef.field);
+        } else {
+            // TODO
+            throw new Error("Crash!");
+        }
     }
 
     /**
@@ -72,16 +82,6 @@ export default class MergeFacets extends FlowNode {
         }
     }
 
-    _getXAccessor() {
-        const xChannelDef = this.view.parent.getEncoding()["x"];
-        if (isFieldDef(xChannelDef)) {
-            return field(xChannelDef.field);
-        } else {
-            // TODO
-            throw new Error("Crash!");
-        }
-    }
-
     /**
      * @param {import("../sampleHandler/sampleState").State} state
      */
@@ -91,9 +91,6 @@ export default class MergeFacets extends FlowNode {
         ].filter(path => isSampleGroup(peek(path)));
 
         this.reset();
-
-        // TODO: Recycle accessor
-        const xAccessor = this._getXAccessor();
 
         for (const [i, groupPath] of groupPaths.entries()) {
             const group = peek(groupPath);
@@ -114,7 +111,7 @@ export default class MergeFacets extends FlowNode {
                     samples.map(
                         sample => collector.facetBatches.get([sample]) ?? []
                     ),
-                    xAccessor
+                    this.xAccessor
                 );
 
                 for (const d of iterator) {
@@ -139,7 +136,7 @@ export default class MergeFacets extends FlowNode {
     }
 
     _updateScales() {
-        /** @type {Set<ScaleResolution>} */
+        /** @type {Set<import("../view/view").ScaleResolution>} */
         const resolutions = new Set();
         this.view.visit(view => {
             if (view instanceof UnitView && view.getEncoding().y) {

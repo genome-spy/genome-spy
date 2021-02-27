@@ -1,6 +1,6 @@
 import Heapify from "heapify";
 import { field } from "../../utils/field";
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 const maxDepth = 65536;
 
@@ -15,7 +15,7 @@ const maxDepth = 65536;
  */
 export default class CoverageTransform extends FlowNode {
     get behavior() {
-        return 0;
+        return BEHAVIOR_CLONES;
     }
 
     /**
@@ -24,6 +24,40 @@ export default class CoverageTransform extends FlowNode {
     constructor(params) {
         super();
         this.params = params;
+
+        this.startAccessor = field(params.start);
+        this.endAccessor = field(params.end);
+
+        /** @type {function(any):string} */
+        this.chromAccessor = params.chrom
+            ? field(params.chrom)
+            : d => undefined;
+        /** @type {function(any):number} */
+        this.weightAccessor = params.weight ? field(params.weight) : d => 1;
+
+        this.as = {
+            coverage: params.as || "coverage",
+            start: params.asStart || params.start,
+            end: params.asEnd || params.end,
+            chrom: params.asChrom || params.chrom
+        };
+
+        // eslint-disable-next-line no-new-func
+        this.createSegment = /** @type {function} */ (new Function(
+            "start",
+            "end",
+            "coverage",
+            "chrom",
+            "return {" +
+                Object.entries(this.as)
+                    .filter(([param, prop]) => prop)
+                    .map(([param, prop]) => `${JSON.stringify(prop)}: ${param}`)
+                    .join(", ") +
+                "};"
+        ));
+
+        // End pos as priority, weight as value
+        this.ends = new Heapify(maxDepth, [], [], Float32Array, Float64Array);
     }
 
     reset() {
@@ -32,22 +66,14 @@ export default class CoverageTransform extends FlowNode {
     }
 
     initialize() {
-        const params = this.params;
+        const asCoverage = this.as.coverage;
+        const asEnd = this.as.end;
+        const asChrom = this.as.chrom;
 
-        const asCoverage = params.as || "coverage";
-        const asStart = params.asStart || params.start;
-        const asEnd = params.asEnd || params.end;
-        const asChrom = params.asChrom || params.chrom;
-
-        const startAccessor = field(params.start);
-        const endAccessor = field(params.end);
-
-        /** @type {function(any):string} */
-        const chromAccessor = params.chrom
-            ? field(params.chrom)
-            : d => undefined;
-        /** @type {function(any):number} */
-        const weightAccessor = params.weight ? field(params.weight) : d => 1;
+        const startAccessor = this.startAccessor;
+        const endAccessor = this.endAccessor;
+        const chromAccessor = this.chromAccessor;
+        const weightAccessor = this.weightAccessor;
 
         /** @type {Record<string, number|string>} used for merging adjacent segment */
         let bufferedSegment;
@@ -66,29 +92,8 @@ export default class CoverageTransform extends FlowNode {
         let prevEdge;
 
         // End pos as priority, weight as value
-        const ends = new Heapify(maxDepth, [], [], Float32Array, Float64Array);
-
-        const segmentProps = [
-            [asStart, "start"],
-            [asEnd, "end"],
-            [asCoverage, "coverage"]
-        ];
-        if (asChrom) {
-            segmentProps.push([asChrom, "chrom"]);
-        }
-
-        // eslint-disable-next-line no-new-func
-        const createSegment = /** @type {function} */ (new Function(
-            "start",
-            "end",
-            "coverage",
-            "chrom",
-            "return {" +
-                segmentProps
-                    .map(([prop, param]) => `${JSON.stringify(prop)}: ${param}`)
-                    .join(", ") +
-                "};"
-        ));
+        const ends = this.ends;
+        ends.clear();
 
         /**
          * @param {number} start
@@ -112,7 +117,12 @@ export default class CoverageTransform extends FlowNode {
             }
 
             if (!extended) {
-                bufferedSegment = createSegment(start, end, coverage, chrom);
+                bufferedSegment = this.createSegment(
+                    start,
+                    end,
+                    coverage,
+                    chrom
+                );
             }
         };
 
@@ -134,7 +144,9 @@ export default class CoverageTransform extends FlowNode {
 
         /** @param {Record<string, any>} datum */
         this.handle = datum => {
-            while (ends.size && ends.peekPriority() < startAccessor(datum)) {
+            const start = startAccessor(datum);
+
+            while (ends.size && ends.peekPriority() < start) {
                 const edge = ends.peekPriority();
                 pushSegment(prevEdge, edge, coverage);
                 prevEdge = edge;
@@ -150,11 +162,10 @@ export default class CoverageTransform extends FlowNode {
                 }
             }
 
-            const edge = startAccessor(datum);
             if (prevEdge !== undefined) {
-                pushSegment(prevEdge, edge, coverage);
+                pushSegment(prevEdge, start, coverage);
             }
-            prevEdge = edge;
+            prevEdge = start;
 
             const weight = weightAccessor(datum);
             coverage += weight;

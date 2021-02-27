@@ -23,9 +23,9 @@ export default function createFunction(expr, global = {}) {
             `"use strict"; return (${generatedCode.code});`
         );
 
-        const fun = /** @param {object} x */ x => fn(x, global);
-        fun.fields = generatedCode.fields;
-        return fun;
+        const exprFunction = /** @param {object} x */ x => fn(x, global);
+        exprFunction.fields = generatedCode.fields;
+        return exprFunction;
     } catch (e) {
         throw new Error(`Invalid expression: ${expr}, ${e.message}`);
     }
