@@ -35,12 +35,19 @@ export default class MergeSampleFacets extends FlowNode {
 
         for (const v of view.getAncestors()) {
             if (v instanceof SampleView) {
-                v.sampleHandler.provenance.addListener(state =>
-                    animator.requestTransition(() =>
-                        this._facetGroupsUpdated(state)
-                    )
+                this.provenance = v.sampleHandler.provenance;
+                this.provenance.addListener(state =>
+                    animator.requestTransition(() => {
+                        this.reset();
+                        this._mergeAndPropagate(state);
+                        this.complete();
+                    })
                 );
             }
+        }
+
+        if (!this.provenance) {
+            throw new Error("No SampleView was found!");
         }
 
         /** @type {any} */
@@ -82,15 +89,18 @@ export default class MergeSampleFacets extends FlowNode {
         }
     }
 
+    complete() {
+        this._mergeAndPropagate(this.provenance.state);
+        super.complete();
+    }
+
     /**
      * @param {import("../sampleHandler/sampleState").State} state
      */
-    _facetGroupsUpdated(state) {
+    _mergeAndPropagate(state) {
         const groupPaths = [
             ...iterateGroupHierarcy(state.rootGroup)
         ].filter(path => isSampleGroup(peek(path)));
-
-        this.reset();
 
         for (const [i, groupPath] of groupPaths.entries()) {
             const group = peek(groupPath);
@@ -119,8 +129,6 @@ export default class MergeSampleFacets extends FlowNode {
                 }
             }
         }
-
-        this.complete();
 
         this._updateScales();
     }
