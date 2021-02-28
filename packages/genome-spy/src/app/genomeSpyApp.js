@@ -14,6 +14,7 @@ import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
 import getProvenanceButtons from "../sampleHandler/provenanceToolbar";
 import { zoomLinear } from "vega-util";
+import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -421,8 +422,8 @@ export default class GenomeSpyApp {
                     return true;
                 }
             }
-            return false;
         }
+        return false;
     }
 
     /**
@@ -439,7 +440,15 @@ export default class GenomeSpyApp {
             }
         }
 
-        this.searchViews(term);
+        if (this.searchViews(term)) {
+            return;
+        }
+
+        this.genomeSpy.viewRoot.visit(view => {
+            if (view instanceof SampleAttributePanel) {
+                view.handleVerboseCommand(term);
+            }
+        });
     }
 }
 

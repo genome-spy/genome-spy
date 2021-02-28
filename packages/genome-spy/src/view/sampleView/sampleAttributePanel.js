@@ -10,6 +10,8 @@ import * as Actions from "../../sampleHandler/sampleHandlerActions";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
 import { buildDataFlow } from "../flowBuilder";
+import { NOMINAL, ORDINAL } from "../scaleResolution";
+import { filterByNominal } from "../../sampleHandler/sampleHandlerActions";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -407,6 +409,40 @@ export class SampleAttributePanel extends ConcatView {
      */
     getDefaultResolution(channel, resolutionType) {
         return "independent";
+    }
+
+    /**
+     * Parses a search field input into an action (if applicable) and
+     * dispatches it.
+     *
+     * TODO: Should return a list of candidate actions that could be shown
+     * in a dropdown as the user types something.
+     *
+     * @param {string} command
+     * @returns {boolean} true of an action was dispatched
+     */
+    handleVerboseCommand(command) {
+        // TODO: Provide an easier access to the attribute data
+        for (const name of this._getAttributeNames()) {
+            const info = this.getAttributeInfo(name);
+            if (info.type == ORDINAL || info.type == NOMINAL) {
+                const sample = this.parent._samples.find(
+                    sample => sample.attributes[info.name] == command
+                );
+
+                if (sample) {
+                    this.sampleHandler.dispatch(
+                        filterByNominal(
+                            { type: SAMPLE_ATTRIBUTE, specifier: name },
+                            "retain",
+                            [command]
+                        )
+                    );
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
 
