@@ -5,6 +5,7 @@ import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
 import {
     interpolateLocSizes,
+    locSizeEncloses,
     mapToPixelCoords,
     scaleLocSize,
     translateLocSize
@@ -120,7 +121,9 @@ export default class SampleView extends ContainerView {
         this.sampleHandler = new SampleHandler();
 
         this.sampleHandler.provenance.addListener(() => {
-            // TODO: Scroll offset should be handled
+            // TODO: Handle scroll offset instead
+            this._peekState = 0;
+
             this.context.requestLayoutReflow();
             this.context.animator.requestRender();
         });
@@ -384,13 +387,13 @@ export default class SampleView extends ContainerView {
             const offsetSource = () => -this._scrollOffset;
             const ratioSource = () => this._peekState;
 
-            /** Store for scroll offset computation when peek fires */
-            this._scrollableSampleLocations =
-                scrollableLocations.sampleLocations;
-            this._scrollableHeight =
-                scrollableLocations.sampleLocations
-                    .map(d => d.location.location + d.location.size)
-                    .reduce((a, b) => Math.max(a, b)) + summaryHeight;
+            /** Store for scroll offset calculation when peek fires */
+            this._scrollableLocations = scrollableLocations;
+
+            // TODO: Use groups to calculate
+            this._scrollableHeight = scrollableLocations.groupLocations
+                .map(d => d.location + d.size)
+                .reduce((a, b) => Math.max(a, b));
 
             /** @type {SampleLocation[]} */
             const sampleLocations = [];
@@ -436,14 +439,27 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     *
-     * @param {number} pos Coordinate on unit scale
+     * @param {number} pos
      */
     getSampleIdAt(pos) {
         const match = getSampleLocationAt(pos, this.getLocations().samples);
         if (match) {
             return match.sampleId;
         }
+    }
+
+    /**
+     * @param {number} pos
+     */
+    getGroupAt(pos) {
+        const groups = this.getLocations().groups;
+        const groupIndex = groups.findIndex(locSize =>
+            locSizeEncloses(locSize, pos)
+        );
+
+        return groupIndex >= 0
+            ? { index: groupIndex, location: groups[groupIndex] }
+            : undefined;
     }
 
     /**
@@ -623,10 +639,20 @@ export default class SampleView extends ContainerView {
                     locSize.location + locSize.size / 2;
 
                 target = getCentroid(
-                    this._scrollableSampleLocations.find(
+                    this._scrollableLocations.sampleLocations.find(
                         sampleLocation => sampleLocation.sampleId == sampleId
                     ).location
                 );
+            } else {
+                // Match sample summaries
+                const groupInfo = this.getGroupAt(mouseY);
+                if (groupInfo) {
+                    target =
+                        this._scrollableLocations.groupLocations[
+                            groupInfo.index
+                        ].location -
+                        (groupInfo.location.location - mouseY);
+                }
             }
 
             if (target) {
@@ -636,8 +662,6 @@ export default class SampleView extends ContainerView {
                 this._scrollOffset =
                     (this._scrollableHeight - this._coords.height) / 2;
             }
-
-            // Dimensions are on unit scale
 
             if (this._scrollableHeight > this._coords.height) {
                 transition({
@@ -882,9 +906,5 @@ function calculateLocations(
  */
 function getSampleLocationAt(pos, sampleLocations) {
     // TODO: Matching should be done without paddings
-    return sampleLocations.find(
-        sl =>
-            pos >= sl.location.location &&
-            pos < sl.location.location + sl.location.size
-    );
+    return sampleLocations.find(sl => locSizeEncloses(sl.location, pos));
 }

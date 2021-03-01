@@ -240,3 +240,11 @@ export function scaleLocSize(locSize, factor) {
         }
     };
 }
+
+/**
+ * @param {LocSize} locSize
+ * @param {number} value
+ */
+export function locSizeEncloses(locSize, value) {
+    return value >= locSize.location && value < locSize.location + locSize.size;
+}
