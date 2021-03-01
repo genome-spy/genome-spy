@@ -11,17 +11,27 @@ import { isNumber } from "vega-util";
  *
  * @param {SampleGroup} sampleGroup
  * @param {function(any):any} accessor
+ * @param {any[]} [groups] Explicitly specify the groups and their order
  */
-export function groupSamplesByAccessor(sampleGroup, accessor) {
+export function groupSamplesByAccessor(sampleGroup, accessor, groups) {
     const grouped = /** @type {Map<any, string[]>} */ (group(
         sampleGroup.samples,
         accessor
     ));
 
+    const sortedEntries = groups
+        ? groups
+              .map(groupTerm => /** @type {[any, string[]]} */ ([
+                  groupTerm,
+                  grouped.get(groupTerm)
+              ]))
+              .filter(entry => entry[1])
+        : [...grouped];
+
     // Transform SampleGroup into GroupGroup
     const groupGroup = /** @type {GroupGroup} */ /** @type {unknown} */ (sampleGroup);
 
-    groupGroup.groups = [...grouped.entries()].map(([name, samples]) => ({
+    groupGroup.groups = sortedEntries.map(([name, samples]) => ({
         name: "" + name,
         samples
     }));
@@ -43,7 +53,8 @@ export function groupSamplesByQuartiles(sampleGroup, accessor) {
 
     groupSamplesByAccessor(
         sampleGroup,
-        createQuantileAccessor(accessor, quartiles)
+        createQuantileAccessor(accessor, quartiles),
+        [3, 2, 1, 0] // Decreasing order
     );
 }
 
