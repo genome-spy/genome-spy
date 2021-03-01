@@ -98,7 +98,7 @@ export default class SampleView extends ContainerView {
          */
         this.child.visit(view => {
             if (view instanceof UnitView) {
-                this.summaryViews.children.push(...view.sampleSummaryViews);
+                this.summaryViews.children.push(...view.sampleAggregateViews);
             }
         });
 

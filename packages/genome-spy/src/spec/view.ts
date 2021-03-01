@@ -78,8 +78,9 @@ export interface ViewSpecBase {
     opacity?: ViewOpacityDef;
 }
 
-export interface SummarizeSamplesSpec {
-    summarizeSamples?: UnitSpec | LayerSpec;
+export interface AggregateSamplesSpec {
+    // TODO: Introduce a type (UnitSpec | LayerSpec) that can ba used in SampleView and here
+    aggregateSamples?: (UnitSpec | LayerSpec)[];
 }
 export interface TableRowSpec extends ViewSpecBase {
     center: ViewSpec;
@@ -91,7 +92,7 @@ export interface TableSpec extends ViewSpecBase {
     table: TableRowSpec[];
 }
 
-export interface LayerSpec extends ViewSpecBase, SummarizeSamplesSpec {
+export interface LayerSpec extends ViewSpecBase, AggregateSamplesSpec {
     layer: (LayerSpec | UnitSpec)[];
 }
 
@@ -121,7 +122,7 @@ export interface SampleSpec extends ViewSpecBase {
     stickySummaries?: boolean;
 }
 
-export interface UnitSpec extends ViewSpecBase, SummarizeSamplesSpec {
+export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
     mark: string | MarkConfig;
 }
 

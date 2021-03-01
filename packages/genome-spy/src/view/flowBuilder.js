@@ -16,7 +16,7 @@ import {
     primaryChannel
 } from "../encoder/encoder";
 import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
-import { isSummarizeSamplesSpec } from "./viewUtils";
+import { isAggregateSamplesSpec } from "./viewUtils";
 import { group } from "d3-array";
 import iterateNestedMaps from "../utils/iterateNestedMaps";
 
@@ -149,7 +149,7 @@ export function buildDataFlow(root, existingFlow) {
             dataFlow.addCollector(collector, view);
         }
 
-        if (isSummarizeSamplesSpec(view.spec)) {
+        if (isAggregateSamplesSpec(view.spec)) {
             // TODO: implement summarization of layer views
         }
     };

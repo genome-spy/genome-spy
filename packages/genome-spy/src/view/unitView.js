@@ -16,7 +16,7 @@ import {
 import createDomain from "../utils/domainArray";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import AxisResolution from "./axisResolution";
-import { getViewClass, isSummarizeSamplesSpec } from "./viewUtils";
+import { getViewClass, isAggregateSamplesSpec } from "./viewUtils";
 
 /**
  *
@@ -62,8 +62,8 @@ export default class UnitView extends ContainerView {
         }
 
         /** @type {(UnitView | LayerView | DecoratorView)[]} */
-        this.sampleSummaryViews = [];
-        this._initializeSummaryViews();
+        this.sampleAggregateViews = [];
+        this._initializeAggregateViews();
 
         /**
          * Not nice! Inconsistent when faceting!
@@ -77,7 +77,7 @@ export default class UnitView extends ContainerView {
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
-        for (const child of this.sampleSummaryViews) {
+        for (const child of this.sampleAggregateViews) {
             yield child;
         }
     }
@@ -87,9 +87,9 @@ export default class UnitView extends ContainerView {
      * @param {import("./view").default} replacement
      */
     replaceChild(child, replacement) {
-        const i = this.sampleSummaryViews.indexOf(child);
+        const i = this.sampleAggregateViews.indexOf(child);
         if (i >= 0) {
-            this.sampleSummaryViews[i] = replacement;
+            this.sampleAggregateViews[i] = replacement;
         } else {
             throw new Error("Not my child view!");
         }
@@ -308,35 +308,44 @@ export default class UnitView extends ContainerView {
         return ["x", "y"].map(getZoomLevel).reduce((a, c) => a * c, 1);
     }
 
-    _initializeSummaryViews() {
-        if (isSummarizeSamplesSpec(this.spec)) {
+    _initializeAggregateViews() {
+        if (isAggregateSamplesSpec(this.spec)) {
             // TODO: Support multiple
-            const sumSpec = this.spec.summarizeSamples;
+            for (const sumSpec of this.spec.aggregateSamples) {
+                sumSpec.transform = [
+                    ...(sumSpec.transform ?? []),
+                    { type: "mergeFacets" }
+                ];
 
-            sumSpec.transform = [
-                ...(sumSpec.transform ?? []),
-                { type: "mergeFacets" }
-            ];
+                sumSpec.encoding = {
+                    ...(sumSpec.encoding ?? {}),
+                    sample: null
+                };
 
-            sumSpec.encoding = {
-                ...(sumSpec.encoding ?? {}),
-                sample: null
-            };
+                const View = getViewClass(sumSpec);
+                const summaryView = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
+                    sumSpec,
+                    this.context,
+                    this,
+                    "summaryView"
+                ));
 
-            const View = getViewClass(sumSpec);
-            const summaryView = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
-                sumSpec,
-                this.context,
-                this,
-                "summaryView"
-            ));
+                /**
+                 * @param {View} [whoIsAsking]
+                 */
+                summaryView.getFacetFields = whoIsAsking => undefined;
 
-            /**
-             * @param {View} [whoIsAsking]
-             */
-            summaryView.getFacetFields = whoIsAsking => undefined;
-
-            this.sampleSummaryViews.push(summaryView);
+                this.sampleAggregateViews.push(summaryView);
+            }
         }
+    }
+
+    /**
+     * @param {string} channel
+     * @param {import("./containerView").ResolutionType} resolutionType
+     */
+    getDefaultResolution(channel, resolutionType) {
+        // This affects the sample aggregate views.
+        return channel == "x" ? "shared" : "independent";
     }
 }

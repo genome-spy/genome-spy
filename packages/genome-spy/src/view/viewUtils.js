@@ -104,11 +104,11 @@ export function isSampleSpec(spec) {
  * @param {ViewSpec} spec
  * @returns {spec is import("../spec/view").SummarizeSamplesSpec}
  */
-export function isSummarizeSamplesSpec(spec) {
+export function isAggregateSamplesSpec(spec) {
     return (
         spec &&
         (isUnitSpec(spec) || isLayerSpec(spec)) &&
-        "summarizeSamples" in spec
+        "aggregateSamples" in spec
     );
 }
 
