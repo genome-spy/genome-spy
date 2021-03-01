@@ -1,3 +1,5 @@
+import { range } from "d3-array";
+
 /**
  * The FlowNode clones the data objects passing through or creates entirely
  * new objects.
@@ -60,27 +62,15 @@ export default class FlowNode {
      * to employ optimizations such as inlining.
      */
     _updatePropagator() {
-        /** @type {function(any):void} */
-        let propagate;
-
-        if (this.children.length == 0) {
-            propagate = datum => {
-                // nop. This case should have been optimized away from the flow structure.
-            };
-        } else if (this.children.length == 1) {
-            const child = this.children[0];
-            propagate = datum => {
-                child.handle(datum);
-            };
-        } else {
-            // TODO: Consider unrolling
-            propagate = datum => {
-                for (const child of this.children) {
-                    child.handle(datum);
-                }
-            };
-        }
-        this._propagate = propagate;
+        this._propagate = Function(
+            "children",
+            range(this.children.length)
+                .map(i => `const child${i} = children[${i}];`)
+                .join("\n") +
+                `return function propagate(datum) {${range(this.children.length)
+                    .map(i => `child${i}.handle(datum);`)
+                    .join("\n")}}`
+        )(this.children);
     }
 
     /**
