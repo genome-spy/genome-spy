@@ -5,7 +5,8 @@ import {
     faRedo,
     faEllipsisH,
     faBookmark,
-    faCircle
+    faCircle,
+    faCheck
 } from "@fortawesome/free-solid-svg-icons";
 
 /**
@@ -29,8 +30,14 @@ export default function getProvenanceButtons(provenance) {
                 @click=${() => provenance.activateState(index)}
                 class=${index == provenance.currentNodeIndex ? "active" : ""}
                 ><li>
-                    ${icon(info.icon || faCircle).node[0]}
-                    ${info.provenanceTitle || info.title}
+                    ${index == 0 && !action
+                        ? html`
+                              ${icon(faCheck).node[0]} The initial state
+                          `
+                        : html`
+                              ${icon(info.icon || faCircle).node[0]}
+                              ${info.provenanceTitle || info.title}
+                          `}
                 </li></a
             >
         `;
