@@ -15,6 +15,7 @@ import {
     groupSamplesByAccessor,
     groupSamplesByQuartiles
 } from "./groupOperations";
+import BookmarkDatabase from "./bookmarkDatabase";
 
 /**
  * This class handles sample sorting, filtering, grouping, etc.
@@ -38,6 +39,7 @@ import {
  * @prop {any} scale
  *
  * @typedef {(function(AttributeIdentifier):AttributeInfo)} AttributeInfoSource
+ * @typedef {import("./provenance").Action} Action
  *
  */
 export default class SampleHandler {
@@ -54,6 +56,9 @@ export default class SampleHandler {
         this.provenance.addActionInfoSource(action =>
             Actions.getActionInfo(action, this)
         );
+
+        // TODO: Find a better place for this
+        this.bookmarkDatabase = new BookmarkDatabase();
     }
 
     get state() {
@@ -147,9 +152,20 @@ export default class SampleHandler {
 
     /**
      *
-     * @param {any} action
+     * @param {Action[]} actions
      */
-    dispatch(action) {
+    dispatchBatch(actions) {
+        for (let i = 0, n = actions.length; i < n; i++) {
+            this.dispatch(actions[i], i == n - 1);
+        }
+    }
+
+    /**
+     *
+     * @param {Action} action
+     * @param {boolean} [notify] Notify listeners
+     */
+    dispatch(action, notify = true) {
         const payload = action.payload;
 
         /** Returns an accessor to an abstract attribute. TODO: Memoize */
@@ -177,7 +193,7 @@ export default class SampleHandler {
                     sampleGroup.samples = operation(sampleGroup.samples);
                 }
             });
-            this.provenance.push(newState, action);
+            this.provenance.push(newState, action, notify);
         };
 
         /**
@@ -192,7 +208,7 @@ export default class SampleHandler {
                 }
                 draftState.groups.push({ name: payload.attribute });
             });
-            this.provenance.push(newState, action);
+            this.provenance.push(newState, action, notify);
         };
 
         switch (action.type) {

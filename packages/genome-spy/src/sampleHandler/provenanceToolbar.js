@@ -4,10 +4,10 @@ import {
     faUndo,
     faRedo,
     faEllipsisH,
-    faBookmark,
     faCircle,
     faCheck
 } from "@fortawesome/free-solid-svg-icons";
+import { toggleDropdown } from "./dropdown";
 
 /**
  *
@@ -81,41 +81,5 @@ export default function getProvenanceButtons(provenance) {
                 ${icon(faRedo).node[0]}
             </button>
         </div>
-
-        <button
-            class="tool-btn"
-            title="Bookmark"
-            ?disabled=${provenance.isAtInitialState()}
-            @click=${() =>
-                console.log(JSON.stringify(provenance.getActionHistory()))}
-        >
-            ${icon(faBookmark).node[0]}
-        </button>
     `;
-}
-
-/**
- *
- * @param {UIEvent} event
- */
-function toggleDropdown(event) {
-    const target = /** @type {HTMLElement} */ (event.currentTarget);
-    const dropdown = /** @type {HTMLElement} */ (target.parentNode);
-
-    if (!dropdown.classList.contains("show")) {
-        event.stopPropagation();
-        dropdown.classList.add("show");
-        window.addEventListener(
-            "click",
-            e => {
-                if (dropdown.classList.contains("show")) {
-                    dropdown.classList.remove("show");
-                    e.preventDefault();
-                }
-            },
-            { once: true }
-        );
-    } else {
-        window.dispatchEvent(new MouseEvent("click"));
-    }
 }

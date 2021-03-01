@@ -162,42 +162,32 @@ $basic-spacing: 10px;
             }
         }
 
-        .btn-group {
+        .btn-group,
+        .dropdown {
             .tool-btn {
                 margin-left: 0;
             }
         }
 
+        $hPadding: 13px;
+
         .dropdown {
             position: relative;
-
-            .dropdown-menu {
-                display: none;
-                z-index: 1;
-                position: absolute;
-                top: 35px;
-                width: max-content;
-                background-color: #f8f8f8;
-
-                // TODO: Same as in context menu
-                font-size: 13px;
-            }
 
             &.show .dropdown-menu {
                 display: block;
             }
         }
 
-        .provenance-dropdown {
-            $hPadding: 13px;
+        .dropdown-menu {
+            display: none;
+            z-index: 1;
+            position: absolute;
+            width: max-content;
+            background-color: #f8f8f8;
 
-            a.active {
-                $tickSize: 5px;
-
-                background-color: #e0e0e0;
-                border-left: $tickSize solid #c0c0c0;
-                padding-left: $hPadding - $tickSize;
-            }
+            // TODO: Same as in context menu
+            font-size: 13px;
 
             a {
                 display: block;
@@ -220,6 +210,16 @@ $basic-spacing: 10px;
 
             svg {
                 margin-right: 3px;
+            }
+        }
+
+        .provenance-dropdown {
+            a.active {
+                $tickSize: 5px;
+
+                background-color: #e0e0e0;
+                border-left: $tickSize solid #c0c0c0;
+                padding-left: $hPadding - $tickSize;
             }
         }
     }

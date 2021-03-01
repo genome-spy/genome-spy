@@ -111,8 +111,9 @@ export default class Provenance {
     /**
      * @param {S} state The new state
      * @param {Action} action The action that led to the new state
+     * @param {boolean} [notify] Notify listeners
      */
-    push(state, action) {
+    push(state, action, notify = true) {
         if (this.isRedoable()) {
             // Discard future nodes.
             // TODO: Branch
@@ -122,7 +123,9 @@ export default class Provenance {
         this.nodes.push({ state, action });
         this.currentNodeIndex++;
 
-        this._notifyListeners();
+        if (notify) {
+            this._notifyListeners();
+        }
     }
 
     isRedoable() {

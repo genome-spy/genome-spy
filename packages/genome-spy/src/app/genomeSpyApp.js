@@ -15,6 +15,7 @@ import SampleView from "../view/sampleView/sampleView";
 import getProvenanceButtons from "../sampleHandler/provenanceToolbar";
 import { zoomLinear } from "vega-util";
 import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
+import getBookmarkButtons from "../sampleHandler/bookmarkToolbar";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -55,10 +56,12 @@ export default class GenomeSpyApp {
         }
 
         function getToolButtons() {
-            const provenance = self.getSampleHandler()?.provenance;
+            const sampleHandler = self.getSampleHandler();
+            const provenance = sampleHandler?.provenance;
 
             return html`
                 ${getProvenanceButtons(provenance)}
+                ${getBookmarkButtons(sampleHandler)}
 
                 <button
                     class="tool-btn"
@@ -328,10 +331,7 @@ export default class GenomeSpyApp {
             );
 
             if (Array.isArray(history)) {
-                for (const action of history) {
-                    // TODO: Suppress transitions while applying actions
-                    this.getSampleHandler().dispatch(action);
-                }
+                this.getSampleHandler().dispatchBatch(history);
             }
         }
     }
