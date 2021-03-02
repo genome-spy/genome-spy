@@ -174,8 +174,15 @@ $basic-spacing: 10px;
         .dropdown {
             position: relative;
 
-            &.show .dropdown-menu {
-                display: block;
+            &.show {
+                .dropdown-menu {
+                    display: block;
+                }
+
+                > button {
+                    background-color: lighten($background, 1%);
+                    background-image: none;
+                }
             }
         }
 
@@ -186,6 +193,10 @@ $basic-spacing: 10px;
             width: max-content;
             background-color: #f8f8f8;
 
+            margin: 0;
+            padding-left: 0px;
+            list-style: none;
+
             // TODO: Same as in context menu
             font-size: 13px;
 
@@ -193,16 +204,21 @@ $basic-spacing: 10px;
                 display: block;
                 padding: 4px $hPadding;
                 cursor: pointer;
+
+                &:hover {
+                    background-color: #e0e0e0;
+                }
+            }
+
+            a.active {
+                $tickSize: 5px;
+
+                background-color: #e0e0e0;
+                border-left: $tickSize solid #c0c0c0;
+                padding-left: $hPadding - $tickSize;
             }
 
             padding: 7px 0;
-
-            ol,
-            ul {
-                margin: 0;
-                padding-left: 0px;
-                list-style: none;
-            }
 
             li {
                 padding: 0;
@@ -210,16 +226,7 @@ $basic-spacing: 10px;
 
             svg {
                 margin-right: 3px;
-            }
-        }
-
-        .provenance-dropdown {
-            a.active {
-                $tickSize: 5px;
-
-                background-color: #e0e0e0;
-                border-left: $tickSize solid #c0c0c0;
-                padding-left: $hPadding - $tickSize;
+                width: 1em;
             }
         }
     }

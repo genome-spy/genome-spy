@@ -62,18 +62,16 @@ export default function getBookmarkButtons(sampleHandler) {
             <button class="tool-btn" title="Bookmarks" @click=${toggleDropdown}>
                 ${icon(faBookmark).node[0]}
             </button>
-            <div class="dropdown-menu context-menu">
-                <ol>
-                    <li>
-                        <a
-                            @click=${addBookmark}
-                            ?disabled=${provenance.isAtInitialState()}
-                            >Add bookmark...</a
-                        >
-                    </li>
-                    ${getBookmarks()}
-                </ol>
-            </div>
+            <ul class="dropdown-menu context-menu">
+                <li>
+                    <a
+                        @click=${addBookmark}
+                        ?disabled=${provenance.isAtInitialState()}
+                        >Add bookmark...</a
+                    >
+                </li>
+                ${getBookmarks()}
+            </ul>
         </div>
     `;
 

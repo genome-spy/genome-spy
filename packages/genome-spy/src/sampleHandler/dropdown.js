@@ -1,13 +1,24 @@
+/** @type {Set<HTMLElement>} */
+const visibleDropdowns = new Set();
+
 /**
- *
  * @param {UIEvent} event
  */
 export function toggleDropdown(event) {
     const target = /** @type {HTMLElement} */ (event.currentTarget);
     const dropdown = /** @type {HTMLElement} */ (target.parentNode);
+    const show = !dropdown.classList.contains("show");
 
-    if (!dropdown.classList.contains("show")) {
-        event.stopPropagation();
+    for (const dropdown of visibleDropdowns) {
+        dropdown.classList.remove("show");
+    }
+    visibleDropdowns.clear();
+
+    event.stopPropagation();
+
+    if (show) {
+        visibleDropdowns.add(dropdown);
+
         dropdown.classList.add("show");
         window.addEventListener(
             "click",

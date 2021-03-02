@@ -26,10 +26,13 @@ export default function getProvenanceButtons(provenance) {
     const makeDropdownItem = (action, index) => {
         const info = provenance.getActionInfo(action);
         return html`
-            <a
-                @click=${() => provenance.activateState(index)}
-                class=${index == provenance.currentNodeIndex ? "active" : ""}
-                ><li>
+            <li>
+                <a
+                    @click=${() => provenance.activateState(index)}
+                    class=${index == provenance.currentNodeIndex
+                        ? "active"
+                        : ""}
+                >
                     ${index == 0 && !action
                         ? html`
                               ${icon(faCheck).node[0]} The initial state
@@ -38,8 +41,8 @@ export default function getProvenanceButtons(provenance) {
                               ${icon(info.icon || faCircle).node[0]}
                               ${info.provenanceTitle || info.title}
                           `}
-                </li></a
-            >
+                </a>
+            </li>
         `;
     };
 
@@ -53,11 +56,9 @@ export default function getProvenanceButtons(provenance) {
             >
                 ${icon(faEllipsisH).node[0]}
             </button>
-            <div class="dropdown-menu context-menu">
-                <ol>
-                    ${provenance.getFullActionHistory().map(makeDropdownItem)}
-                </ol>
-            </div>
+            <ol class="dropdown-menu context-menu">
+                ${provenance.getFullActionHistory().map(makeDropdownItem)}
+            </ol>
         </div>
     `;
 
