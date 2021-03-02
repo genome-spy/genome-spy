@@ -7,22 +7,22 @@ import { toggleDropdown } from "./dropdown";
 /**
  *
  * @param {import("./sampleHandler").default} sampleHandler
+ * @param {import("./bookmarkDatabase").default} bookmarkDatabase
+ * @param {function():void} render TODO: Use web components
  */
-export default function getBookmarkButtons(sampleHandler) {
-    if (!sampleHandler) {
-        return "";
-    }
-
+export default function getBookmarkButtons(
+    sampleHandler,
+    bookmarkDatabase,
+    render
+) {
     const provenance = sampleHandler.provenance;
-    const bookmarkDatabase = sampleHandler.bookmarkDatabase;
 
     const addBookmark = () => {
         const name = prompt("Please enter a name for the bookmark");
         if (name) {
-            sampleHandler.bookmarkDatabase.add(
-                name,
-                provenance.getActionHistory()
-            );
+            bookmarkDatabase
+                .add(name, provenance.getActionHistory())
+                .then(render);
         }
     };
 
@@ -31,6 +31,7 @@ export default function getBookmarkButtons(sampleHandler) {
         const entry = await bookmarkDatabase.get(name);
         if (entry) {
             // Return to the initial state
+            // TODO: listeners should be suppressed during the visit to the initial state
             provenance.activateState(0);
             sampleHandler.dispatchBatch(entry.actions);
         }

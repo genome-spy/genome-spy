@@ -16,6 +16,7 @@ import getProvenanceButtons from "../sampleHandler/provenanceToolbar";
 import { zoomLinear } from "vega-util";
 import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
 import getBookmarkButtons from "../sampleHandler/bookmarkToolbar";
+import BookmarkDatabase from "../sampleHandler/bookmarkDatabase";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -26,7 +27,7 @@ export default class GenomeSpyApp {
     /**
      *
      * @param {HTMLElement} appContainerElement
-     * @param {Object} config
+     * @param {import("../spec/view").RootSpec} config
      */
     constructor(appContainerElement, config) {
         this.config = config;
@@ -41,6 +42,15 @@ export default class GenomeSpyApp {
 
         // eslint-disable-next-line consistent-this
         const self = this;
+
+        const bookmarkDatabase =
+            typeof config.specId == "string"
+                ? new BookmarkDatabase(config.specId)
+                : undefined;
+
+        this._renderTemplate = () => {
+            render(getAppBody(), self.appContainer);
+        };
 
         function getSearchHelp() {
             return html`
@@ -61,7 +71,11 @@ export default class GenomeSpyApp {
 
             return html`
                 ${getProvenanceButtons(provenance)}
-                ${getBookmarkButtons(sampleHandler)}
+                ${sampleHandler && bookmarkDatabase
+                    ? getBookmarkButtons(sampleHandler, bookmarkDatabase, () =>
+                          self._renderTemplate()
+                      )
+                    : ""}
 
                 <button
                     class="tool-btn"
@@ -206,10 +220,6 @@ export default class GenomeSpyApp {
                 self.search(term);
             });
         }
-
-        this._renderTemplate = () => {
-            render(getAppBody(), self.appContainer);
-        };
 
         this._renderTemplate();
 

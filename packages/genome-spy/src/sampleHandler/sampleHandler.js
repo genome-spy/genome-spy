@@ -15,7 +15,6 @@ import {
     groupSamplesByAccessor,
     groupSamplesByQuartiles
 } from "./groupOperations";
-import BookmarkDatabase from "./bookmarkDatabase";
 
 /**
  * This class handles sample sorting, filtering, grouping, etc.
@@ -56,9 +55,6 @@ export default class SampleHandler {
         this.provenance.addActionInfoSource(action =>
             Actions.getActionInfo(action, this)
         );
-
-        // TODO: Find a better place for this
-        this.bookmarkDatabase = new BookmarkDatabase();
     }
 
     get state() {

@@ -32,7 +32,11 @@ export async function embed(el, spec, opt = {}) {
     let genomeSpy;
 
     try {
-        const specObject = isObject(spec) ? spec : await loadSpec(spec);
+        const specObject = /** @type {import("./spec/view").RootSpec} */ (isObject(
+            spec
+        )
+            ? spec
+            : await loadSpec(spec));
 
         specObject.baseUrl = specObject.baseUrl || "";
 
