@@ -199,7 +199,10 @@ export default class GenomeSpyApp {
                         searchInput.focus();
                         searchInput.select();
                     })
-                    .catch(reason => alert(reason));
+                    .catch(reason => {
+                        console.log(reason);
+                        alert(reason);
+                    });
             } else if (event.keyCode == 27) {
                 searchInput.blur();
             } else {

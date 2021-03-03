@@ -393,7 +393,7 @@ export default class SampleView extends ContainerView {
             // TODO: Use groups to calculate
             this._scrollableHeight = scrollableLocations.groupLocations
                 .map(d => d.location + d.size)
-                .reduce((a, b) => Math.max(a, b));
+                .reduce((a, b) => Math.max(a, b), 0);
 
             /** @type {SampleLocation[]} */
             const sampleLocations = [];
