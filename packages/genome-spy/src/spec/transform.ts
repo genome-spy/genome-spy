@@ -132,8 +132,10 @@ export interface StackParams extends TransformParamsBase {
      * `"zero"` (default) starts stacking at 0.
      * `"center"` centers the values around zero.
      * `"normalize"` computes intra-stack percentages and normalizes the values to the range of `[0, 1]`.
+     * `"information"` computer a layout for sequence logo. The total height of the stack reflects
+     * the group's information content.
      */
-    offset?: "zero" | "center" | "normalize";
+    offset?: "zero" | "center" | "normalize" | "information";
 
     /**
      * Fields to write the stacked values.
@@ -141,6 +143,23 @@ export interface StackParams extends TransformParamsBase {
      * **Default:** `["y0", "y1"]`
      */
     as: string[];
+
+    /**
+     * Cardinality, e.g., the number if distinct bases or amino acids. Used for
+     * information content calculation when the offset is `"information"`.
+     *
+     * **Default:** `4`;
+     */
+    cardinality?: number;
+
+    /**
+     * The field that contains the base or amino acid. Used for
+     * information content calculation when the offset is `"information"`.
+     * The data items that have `null` in the baseField are considered gaps
+     * and they are taken into account when scaling the the locus' information
+     * content.
+     */
+    baseField?: Field;
 }
 
 export interface AggregateParams extends TransformParamsBase {
