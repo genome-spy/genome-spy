@@ -438,7 +438,7 @@ export class TextVertexBuilder extends GeometryBuilder {
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters
      * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
-     * @param {boolean} [object.logoLetter]
+     * @param {boolean} [object.logoLetters]
      */
     constructor({
         encoders,
@@ -486,7 +486,7 @@ export class TextVertexBuilder extends GeometryBuilder {
      */
     addBatch(key, data, lo = 0, hi = data.length) {
         const align = this.properties.align || "left";
-        const logoLetter = this.properties.logoLetter ?? false;
+        const logoLetters = this.properties.logoLetters ?? false;
 
         const base = this.metadata.common.base;
         const scale = this.metadata.common.scaleH; // Assume square textures
@@ -528,7 +528,7 @@ export class TextVertexBuilder extends GeometryBuilder {
 
             this.variableBuilder.updateFromDatum(d);
 
-            const textWidth = logoLetter
+            const textWidth = logoLetters
                 ? str.length
                 : this.metrics.measureWidth(str);
 
@@ -541,7 +541,7 @@ export class TextVertexBuilder extends GeometryBuilder {
                     ? -textWidth / 2
                     : 0;
 
-            if (!logoLetter) {
+            if (!logoLetters) {
                 const firstChar = this.metrics.getCharByCode(str.charCodeAt(0));
                 x -= (firstChar.width - firstChar.xadvance) / base / 2; // TODO: Fix, this is a bit off..
             }
@@ -553,14 +553,14 @@ export class TextVertexBuilder extends GeometryBuilder {
             for (let i = 0; i < str.length; i++) {
                 const c = this.metrics.getCharByCode(str.charCodeAt(i));
 
-                const advance = logoLetter ? 1 : c.xadvance / base;
+                const advance = logoLetters ? 1 : c.xadvance / base;
 
                 if (c.id == 32) {
                     x += advance;
                     continue;
                 }
 
-                if (!logoLetter) {
+                if (!logoLetters) {
                     height = c.height / base;
                     bottom = -(c.height + c.yoffset + baseline) / base;
                     normalWidth = c.width / base;

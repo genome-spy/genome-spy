@@ -88,7 +88,8 @@ export default class TextMark extends Mark {
             flushX: true,
             flushY: true,
 
-            logoLetter: false,
+            /** Stretch letters so that they can be used with sequence logos etc... */
+            logoLetters: false,
 
             /** @type {number[]} Order: top, right, bottom, left */
             viewportEdgeFadeWidth: [0, 0, 0, 0],
@@ -142,7 +143,7 @@ export default class TextMark extends Mark {
             uAlignX: alignments[props.align],
             uAlignY: baselines[props.baseline],
 
-            uLogoLetter: props.logoLetter ? 1 : 0,
+            uLogoLetter: props.logoLetters ? 1 : 0,
 
             uD: [props.dx, -props.dy],
             uAngle: (-props.angle / 180) * Math.PI,
@@ -200,10 +201,18 @@ export default class TextMark extends Mark {
     prepareRender() {
         super.prepareRender();
 
+        let q = 0.35; // TODO: Ensure that this makes sense. Now chosen by trial & error
+        if (this.properties.logoLetters) {
+            // Adjust to make stretched letters a bit less blurry
+            // A proper solution would probably be to compute gradients in the fragment shader
+            // to find a suitable divisor.
+            q /= 2;
+        }
+
         setUniforms(this.programInfo, {
             uTexture: this.font.texture,
             uSdfNumerator:
-                this.font.metrics.common.base / (this.glHelper.dpr / 0.35) // TODO: Ensure that this makes sense. Now chosen by trial & error
+                this.font.metrics.common.base / (this.glHelper.dpr / q)
         });
 
         setBuffersAndAttributes(
