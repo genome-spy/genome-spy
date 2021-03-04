@@ -21,7 +21,16 @@ export default class RectMark extends Mark {
     }
 
     getAttributes() {
-        return ["facetIndex", "x", "x2", "y", "y2", "color", "opacity"];
+        return [
+            "uniqueId",
+            "facetIndex",
+            "x",
+            "x2",
+            "y",
+            "y2",
+            "color",
+            "opacity"
+        ];
     }
 
     getSupportedChannels() {

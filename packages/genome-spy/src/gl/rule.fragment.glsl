@@ -45,4 +45,8 @@ void main(void) {
     }
 
     fragColor = vColor * opacity;
+
+    if (uPickingEnabled) {
+        fragColor = vPickingColor;
+    }
 }

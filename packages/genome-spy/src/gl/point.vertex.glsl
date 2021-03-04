@@ -90,8 +90,11 @@ void main(void) {
 
     gl_PointSize = vSize;
 
-    vColor = vec4(getScaled_color(), opacity); // Premultiplied in fragment shader
     vShape = getScaled_shape();
     vStrokeWidth = getScaled_strokeWidth();
     vGradientStrength = getScaled_gradientStrength();
+
+    vColor = vec4(getScaled_color(), opacity); // Premultiplied in fragment shader
+
+    setupPicking();
 }

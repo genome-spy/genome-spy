@@ -24,7 +24,17 @@ export default class RuleMark extends Mark {
     }
 
     getAttributes() {
-        return ["facetIndex", "x", "x2", "y", "y2", "size", "color", "opacity"];
+        return [
+            "uniqueId",
+            "facetIndex",
+            "x",
+            "x2",
+            "y",
+            "y2",
+            "size",
+            "color",
+            "opacity"
+        ];
     }
 
     getSupportedChannels() {

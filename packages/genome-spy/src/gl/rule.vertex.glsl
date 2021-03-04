@@ -84,4 +84,6 @@ void main(void) {
     // TODO: Here's a precision problem that breaks round caps when zoomed in enough
     vPosInPixels = vec2(pos, (1.0 - pos)) * (1.0 + relativeDiff) * length(tangent * uViewportSize) -
         vec2(uStrokeCap != BUTT ? size / 2.0 : 0.0);
+    
+    setupPicking();
 }

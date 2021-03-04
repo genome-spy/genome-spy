@@ -15,6 +15,7 @@ export default class ConnectionMark extends Mark {
 
     getAttributes() {
         return [
+            "uniqueId",
             "facetIndex",
             "x",
             "x2",

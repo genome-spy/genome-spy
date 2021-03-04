@@ -372,7 +372,7 @@ function toDecimal(number) {
         return "" + -FLT_MAX;
     } else {
         let str = `${number}`;
-        if (/^\d+$/.test(str)) {
+        if (/^(-)?\d+$/.test(str)) {
             str += ".0";
         }
         return str;

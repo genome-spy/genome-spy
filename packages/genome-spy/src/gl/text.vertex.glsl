@@ -209,4 +209,5 @@ void main(void) {
         vEdgeFadeOpacity = 1.0;
     }
 
+    setupPicking();
 }

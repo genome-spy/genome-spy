@@ -48,7 +48,17 @@ export default class TextMark extends Mark {
     }
 
     getAttributes() {
-        return ["facetIndex", "x", "x2", "y", "y2", "color", "size", "opacity"];
+        return [
+            "uniqueId",
+            "facetIndex",
+            "x",
+            "x2",
+            "y",
+            "y2",
+            "color",
+            "size",
+            "opacity"
+        ];
     }
 
     getSupportedChannels() {

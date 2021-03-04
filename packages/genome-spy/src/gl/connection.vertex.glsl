@@ -104,4 +104,6 @@ void main(void) {
     vColor = vec4(color * opacity, opacity);
 
     vSize = paddedSize;
+
+    setupPicking();
 }

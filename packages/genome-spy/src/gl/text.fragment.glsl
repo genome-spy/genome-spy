@@ -24,4 +24,8 @@ void main() {
     opa *= pow(clamp(vEdgeFadeOpacity, 0.0, 1.0), 2.2);
 
     fragColor = vColor * opa;
+
+    if (uPickingEnabled) {
+        fragColor = vPickingColor;
+    }
 }

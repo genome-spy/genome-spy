@@ -26,6 +26,8 @@ import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
 import GLSL_SCALES_FP64 from "../gl/includes/scales_fp64.glsl";
 import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
+import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
+import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import {
     createDiscreteColorTexture,
@@ -96,7 +98,15 @@ export default class Mark {
     }
 
     getSupportedChannels() {
-        return ["facetIndex", "x", "y", "color", "opacity", "search"];
+        return [
+            "facetIndex",
+            "x",
+            "y",
+            "color",
+            "opacity",
+            "search",
+            "uniqueId"
+        ];
     }
 
     /**
@@ -104,7 +114,8 @@ export default class Mark {
      */
     getDefaultEncoding() {
         return {
-            sample: undefined
+            sample: undefined,
+            uniqueId: undefined
         };
     }
 
@@ -391,6 +402,7 @@ export default class Mark {
             domainUniformBlock,
             ...scaleCode,
             GLSL_SAMPLE_FACET,
+            GLSL_PICKING_VERTEX,
             vertexShader
         ];
 
@@ -399,7 +411,12 @@ export default class Mark {
             vertexParts.unshift(FP64);
         }
 
-        const fragmentParts = [...extraHeaders, GLSL_COMMON, fragmentShader];
+        const fragmentParts = [
+            ...extraHeaders,
+            GLSL_COMMON,
+            GLSL_PICKING_FRAGMENT,
+            fragmentShader
+        ];
 
         const gl = this.gl;
 
@@ -423,7 +440,11 @@ export default class Mark {
             if (error.detail) {
                 console.warn(error.detail);
             }
-            throw new Error("Cannot create shader program: " + error.message);
+            const err = new Error(
+                "Cannot create shader program: " + error.message
+            );
+            err.view = this.unitView;
+            throw err;
         }
 
         this.programInfo = createProgramInfoFromProgram(
@@ -584,7 +605,8 @@ export default class Mark {
         setUniforms(this.programInfo, {
             ONE: 1.0, // a hack needed by emulated 64 bit floats
             uDevicePixelRatio: this.glHelper.dpr,
-            uViewOpacity: this.unitView.getEffectiveOpacity()
+            uViewOpacity: this.unitView.getEffectiveOpacity(),
+            uPickingEnabled: false
         });
 
         setUniforms(this.programInfo, {

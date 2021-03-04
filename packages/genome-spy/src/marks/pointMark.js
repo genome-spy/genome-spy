@@ -21,6 +21,7 @@ export default class PointMark extends Mark {
 
     getAttributes() {
         return [
+            "uniqueId",
             "facetIndex",
             "x",
             "y",

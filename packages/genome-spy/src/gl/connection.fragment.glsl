@@ -11,4 +11,8 @@ void main(void) {
     float opacity = clamp(((vSize / 2.0 - distance) * dpr), 0.0, 1.0);
 
     fragColor = vColor * opacity;
+
+    if (uPickingEnabled) {
+        fragColor = vPickingColor;
+    }
 }

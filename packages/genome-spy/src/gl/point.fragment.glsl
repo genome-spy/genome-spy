@@ -135,5 +135,9 @@ void main() {
 
         fragColor = vec4(fillColor * alpha, alpha);
     }
+
+    if (uPickingEnabled) {
+        fragColor = vPickingColor;
+    }
 }
 

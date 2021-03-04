@@ -70,4 +70,6 @@ void main(void) {
     gl_Position = unitToNdc(pos);
 
     vColor = vec4(getScaled_color() * opa, opa);
+
+    setupPicking();
 }
