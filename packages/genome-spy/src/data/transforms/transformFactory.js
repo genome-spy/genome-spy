@@ -15,6 +15,7 @@ import RegexFoldTransform from "./regexFold";
 import SampleTransform from "./sample";
 import StackTransform from "./stack";
 import FlattenSequenceTransform from "./flattenSequence";
+import AggregateTransform from "./aggregate";
 
 /**
  * @typedef {import("../../view/view").default} View
@@ -23,6 +24,7 @@ import FlattenSequenceTransform from "./flattenSequence";
  * @type {Record<string, new (params: any, view?: View) => FlowNode>}
  */
 const transforms = {
+    aggregate: AggregateTransform,
     collect: Collector,
     coverage: CoverageTransform,
     filterScoredLabels: FilterScoredLabelsTransform,

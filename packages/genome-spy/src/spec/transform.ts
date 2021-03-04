@@ -143,6 +143,16 @@ export interface StackParams extends TransformParamsBase {
     as: string[];
 }
 
+export interface AggregateParams extends TransformParamsBase {
+    type: "aggregate";
+
+    /**
+     * Which fields to use for grouping. Missing `groupby` results in a single
+     * group that includes all the data items.
+     */
+    groupby?: Field[];
+}
+
 export interface FlattenDelimitedParams extends TransformParamsBase {
     type: "flattenDelimited";
 
