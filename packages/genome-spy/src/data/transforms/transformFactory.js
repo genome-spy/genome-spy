@@ -16,6 +16,7 @@ import SampleTransform from "./sample";
 import StackTransform from "./stack";
 import FlattenSequenceTransform from "./flattenSequence";
 import AggregateTransform from "./aggregate";
+import IdentifierTransform from "./identifier";
 
 /**
  * @typedef {import("../../view/view").default} View
@@ -33,6 +34,7 @@ const transforms = {
     flattenDelimited: FlattenDelimitedTransform,
     flattenSequence: FlattenSequenceTransform,
     formula: FormulaTransform,
+    identifier: IdentifierTransform,
     linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
     measureText: MeasureTextTransform,
     mergeFacets: MergeSampleFacets,

@@ -9,6 +9,14 @@ export interface TransformParamsBase {
     type: string;
 }
 
+export interface IdentifierParams extends TransformParamsBase {
+    type: "identifier";
+
+    /**
+     * **Default:** `"_uniqueId"`
+     */
+    as?: string;
+}
 export interface FilterParams extends TransformParamsBase {
     type: "filter";
 
@@ -426,12 +434,14 @@ export interface FlattenCompressedExonsParams extends TransformParamsBase {
 }
 
 export type TransformParams =
+    | AggregateParams
     | CollectParams
     | FlattenDelimitedParams
     | FormulaParams
     | FilterParams
     | FilterScoredLabelsParams
     | FlattenCompressedExonsParams
+    | IdentifierParams
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams
     | MergeFacetsParams
