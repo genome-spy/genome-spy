@@ -33,6 +33,7 @@ import scaleNull from "./utils/scaleNull";
 import GenomeStore from "./genome/genomeStore";
 import BmFontManager from "./fonts/bmFontManager";
 import fasta from "./data/formats/fasta";
+import { VISIT_STOP } from "./view/view";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -300,15 +301,7 @@ export default class GenomeSpy {
                 );
 
                 if (event.type == "mousemove") {
-                    const pixelValue = this._glHelper.readPickingPixel(
-                        point.x,
-                        point.y
-                    );
-                    if (!pixelValue.every(v => v == 0)) {
-                        this.updateTooltip({
-                            uniqueId: [...pixelValue]
-                        });
-                    }
+                    this._handlePicking(point.x, point.y);
                 }
 
                 if (event.type == "mousedown") {
@@ -345,6 +338,46 @@ export default class GenomeSpy {
 
         // Prevent text selections etc while dragging
         canvas.addEventListener("dragstart", event => event.stopPropagation());
+    }
+
+    /**
+     * @param {number} x
+     * @param {number} y
+     */
+    _handlePicking(x, y) {
+        const pixelValue = this._glHelper.readPickingPixel(x, y);
+        if (pixelValue.every(v => v == 0)) {
+            return;
+        }
+
+        const uniqueId =
+            pixelValue[0] | (pixelValue[1] << 8) | (pixelValue[2] << 16);
+
+        // We are doing an exhaustive search of the data. This is a bit slow with
+        // millions of items.
+        // TODO: Optimize by indexing or something
+
+        /** @type {import("./data/flowNode").Datum} */
+        let match;
+        this.viewRoot.visit(view => {
+            if (view instanceof UnitView) {
+                if (view.mark.isPickingParticipant()) {
+                    const accessor = view.mark.encoders.uniqueId.accessor;
+                    view.getCollector().visitData(d => {
+                        if (accessor(d) == uniqueId) {
+                            match = d;
+                        }
+                    });
+                }
+            }
+            if (match) {
+                return VISIT_STOP;
+            }
+        });
+
+        if (match) {
+            this.updateTooltip(match);
+        }
     }
 
     /**

@@ -38,6 +38,8 @@ import {
 import { isString } from "vega-util";
 import { createProgram } from "../gl/webGLHelper";
 import SampleView from "../view/sampleView/sampleView";
+import AxisView from "../view/axisView";
+import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -549,6 +551,23 @@ export default class Mark {
     }
 
     /**
+     * Returns true if this mark instance participates in picking.
+     *
+     * TODO: Check if tooltip is enabled,
+     * TODO: Check if selection (when it's implemented) is enabled
+     */
+    isPickingParticipant() {
+        for (const v of this.unitView.getAncestors()) {
+            // TODO: Break dependencies
+            if (v instanceof AxisView || v instanceof SampleAttributePanel) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Configures the WebGL state for rendering the mark instances.
      * A separate preparation stage allows for efficient rendering of faceted
      * views, i.e., multiple views share the uniforms (such as mark properties
@@ -608,7 +627,10 @@ export default class Mark {
             ONE: 1.0, // a hack needed by emulated 64 bit floats
             uDevicePixelRatio: this.glHelper.dpr,
             uViewOpacity: this.unitView.getEffectiveOpacity(),
-            uPickingEnabled: options.picking ?? false
+            // TODO: Rendering of the mark should be completely skipped if it doesn't
+            // participate picking
+            uPickingEnabled:
+                (options.picking ?? false) && this.isPickingParticipant()
         });
 
         setUniforms(this.programInfo, {
