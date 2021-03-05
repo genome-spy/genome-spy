@@ -208,8 +208,11 @@ export default class TextMark extends Mark {
         this.updateBufferInfo(vertexData);
     }
 
-    prepareRender() {
-        super.prepareRender();
+    /**
+     * @param {import("../view/rendering").GlobalRenderingOptions} options
+     */
+    prepareRender(options) {
+        super.prepareRender(options);
 
         let q = 0.35; // TODO: Ensure that this makes sense. Now chosen by trial & error
         if (this.properties.logoLetters) {

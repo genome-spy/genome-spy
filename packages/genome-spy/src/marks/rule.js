@@ -145,8 +145,11 @@ export default class RuleMark extends Mark {
         this.updateBufferInfo(vertexData);
     }
 
-    prepareRender() {
-        super.prepareRender();
+    /**
+     * @param {import("../view/rendering").GlobalRenderingOptions} options
+     */
+    prepareRender(options) {
+        super.prepareRender(options);
 
         setUniforms(this.programInfo, {
             uMinLength: this.properties.minLength,

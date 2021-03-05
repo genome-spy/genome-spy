@@ -100,8 +100,11 @@ export default class RectMark extends Mark {
         this.updateBufferInfo(vertexData);
     }
 
-    prepareRender() {
-        super.prepareRender();
+    /**
+     * @param {import("../view/rendering").GlobalRenderingOptions} options
+     */
+    prepareRender(options) {
+        super.prepareRender(options);
 
         const props = this.properties;
 

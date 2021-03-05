@@ -7,8 +7,11 @@ import ViewRenderingContext from "./viewRenderingContext";
  * @typedef {import("../view").default} View
  */
 export default class SimpleViewRenderingContext extends ViewRenderingContext {
-    constructor() {
-        super();
+    /**
+     * @param {import("../rendering").GlobalRenderingOptions} globalOptions
+     */
+    constructor(globalOptions) {
+        super(globalOptions);
         /** @type {import("../../utils/layout/rectangle").default} */
         this.coords = undefined;
 
@@ -48,7 +51,7 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
      * @param {import("../view").RenderingOptions} options
      */
     renderMark(mark, options) {
-        mark.prepareRender();
+        mark.prepareRender(this.globalOptions);
         mark.setViewport(this.coords, options.clipRect);
         mark.render(options)();
     }

@@ -27,10 +27,7 @@ import contextMenu, { isContextMenuOpen } from "./utils/ui/contextMenu";
 import Animator from "./utils/animator";
 import DataFlow from "./data/dataFlow";
 import scaleIndex from "./genome/scaleIndex";
-import {
-    buildDataFlow,
-    linearizeLocusAccess as linearizeGenomicCoordinates
-} from "./view/flowBuilder";
+import { buildDataFlow } from "./view/flowBuilder";
 import { optimizeDataFlow } from "./data/flowOptimizer";
 import scaleNull from "./utils/scaleNull";
 import GenomeStore from "./genome/genomeStore";
@@ -78,6 +75,14 @@ export default class GenomeSpy {
 
         /** @type {GenomeStore} */
         this.genomeStore = undefined;
+
+        /** @type {DeferredViewRenderingContext} */
+        this._renderingContext = undefined;
+        /** @type {DeferredViewRenderingContext} */
+        this._pickingContext = undefined;
+
+        /** Does picking buffer need to be rendered again */
+        this._dirtyPickingBuffer = false;
     }
 
     /**
@@ -283,6 +288,9 @@ export default class GenomeSpy {
                 if (event.type == "mousemove") {
                     this.tooltip.handleMouseMove(event);
                     this._tooltipUpdateRequested = false;
+
+                    // TODO: Disable during dragging
+                    this.renderPickingFramebuffer();
                 }
 
                 const rect = canvas.getBoundingClientRect();
@@ -290,6 +298,22 @@ export default class GenomeSpy {
                     event.clientX - rect.left - canvas.clientLeft,
                     event.clientY - rect.top - canvas.clientTop
                 );
+
+                if (event.type == "mousemove") {
+                    const pixelValue = this._glHelper.readPickingPixel(
+                        point.x,
+                        point.y
+                    );
+                    if (!pixelValue.every(v => v == 0)) {
+                        this.updateTooltip({
+                            uniqueId: [...pixelValue]
+                        });
+                    }
+                }
+
+                if (event.type == "mousedown") {
+                    this.renderPickingFramebuffer();
+                }
 
                 this.layout.dispatchInteractionEvent(
                     new InteractionEvent(point, event)
@@ -371,12 +395,16 @@ export default class GenomeSpy {
                 ? canvasSize[c]
                 : root.getSize()[c].px) || canvasSize[c];
 
-        this.deferredContext = new DeferredViewRenderingContext();
-        const layoutRecorder = new LayoutRecorderViewRenderingContext();
+        this._renderingContext = new DeferredViewRenderingContext({});
+        this._pickingContext = new DeferredViewRenderingContext({
+            picking: true
+        });
+        const layoutRecorder = new LayoutRecorderViewRenderingContext({});
 
         root.render(
             new CompositeViewRenderingContext(
-                this.deferredContext,
+                this._renderingContext,
+                this._pickingContext,
                 layoutRecorder
             ),
             Rectangle.create(
@@ -395,11 +423,41 @@ export default class GenomeSpy {
     renderAll() {
         // TODO: Move gl stuff to renderingContext
         const gl = this._glHelper.gl;
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         if (this.viewRoot) {
-            this.deferredContext.renderDeferred();
+            this._renderingContext.renderDeferred();
         }
+
+        this._dirtyPickingBuffer = true;
+    }
+
+    renderPickingFramebuffer() {
+        if (!this._dirtyPickingBuffer) {
+            return;
+        }
+
+        const gl = this._glHelper.gl;
+
+        gl.bindFramebuffer(
+            gl.FRAMEBUFFER,
+            this._glHelper._pickingBufferInfo.framebuffer
+        );
+        //gl.clearColor(1, 1, 1, 1);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        // TODO: blending should be disabled
+
+        if (this.viewRoot) {
+            this._pickingContext.renderDeferred();
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        this._dirtyPickingBuffer = false;
     }
 
     getSearchableViews() {

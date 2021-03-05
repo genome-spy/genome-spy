@@ -31,3 +31,14 @@ export interface RenderingOptions {
      */
     clipRect?: Rectangle;
 }
+
+/**
+ * Options that affect the whole rendering pass.
+ */
+export interface GlobalRenderingOptions {
+    /**
+     * Replace colors with unique ids for picking.
+     * Views that haven't enabled picking can be skipped.
+     */
+    picking?: boolean;
+}

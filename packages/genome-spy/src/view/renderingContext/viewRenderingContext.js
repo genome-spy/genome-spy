@@ -2,8 +2,12 @@
  * @typedef {import("../view").default} View
  */
 export default class ViewRenderingContext {
-    constructor() {
-        //
+    /**
+     *
+     * @param {import("../rendering").GlobalRenderingOptions} globalOptions
+     */
+    constructor(globalOptions) {
+        this.globalOptions = globalOptions;
     }
 
     /**

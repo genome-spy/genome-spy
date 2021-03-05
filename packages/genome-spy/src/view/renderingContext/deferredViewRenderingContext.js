@@ -12,8 +12,11 @@ import ViewRenderingContext from "./viewRenderingContext";
  * @prop {import("../../utils/layout/rectangle").default} [clipRect]
  */
 export default class DeferredViewRenderingContext extends ViewRenderingContext {
-    constructor() {
-        super();
+    /**
+     * @param {import("../rendering").GlobalRenderingOptions} globalOptions
+     */
+    constructor(globalOptions) {
+        super(globalOptions);
 
         /**
          * @type {DeferredRenderingRequest[]}
@@ -117,7 +120,9 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
                 enabled = mark.unitView.getEffectiveOpacity() > 0;
             });
             // Change program, set common uniforms (mark properties, shared domains)
-            this.batch.push(ifEnabled(() => mark.prepareRender()));
+            this.batch.push(
+                ifEnabled(() => mark.prepareRender(this.globalOptions))
+            );
 
             /** @type {import("../../utils/layout/rectangle").default} */
             let previousCoords;

@@ -9,7 +9,7 @@ export default class CompositeViewRenderingContext extends ViewRenderingContext 
      * @param  {...ViewRenderingContext} contexts
      */
     constructor(...contexts) {
-        super();
+        super({});
 
         this.contexts = contexts;
     }

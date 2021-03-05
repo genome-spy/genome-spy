@@ -553,8 +553,10 @@ export default class Mark {
      * A separate preparation stage allows for efficient rendering of faceted
      * views, i.e., multiple views share the uniforms (such as mark properties
      * and scales) and buffers.
+     *
+     * @param {import("../view/rendering").GlobalRenderingOptions} options
      */
-    prepareRender() {
+    prepareRender(options) {
         const gl = this.gl;
 
         if (!this.vertexArrayInfo) {
@@ -606,7 +608,7 @@ export default class Mark {
             ONE: 1.0, // a hack needed by emulated 64 bit floats
             uDevicePixelRatio: this.glHelper.dpr,
             uViewOpacity: this.unitView.getEffectiveOpacity(),
-            uPickingEnabled: false
+            uPickingEnabled: options.picking ?? false
         });
 
         setUniforms(this.programInfo, {

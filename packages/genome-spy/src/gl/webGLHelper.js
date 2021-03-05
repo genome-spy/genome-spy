@@ -1,4 +1,10 @@
-import { addExtensionsToContext, getContext, isWebGL2 } from "twgl.js";
+import {
+    addExtensionsToContext,
+    createFramebufferInfo,
+    getContext,
+    isWebGL2,
+    resizeFramebufferInfo
+} from "twgl.js";
 import { isArray } from "vega-util";
 import { getPlatformShaderDefines } from "./includes/fp64-utils";
 
@@ -40,7 +46,6 @@ export default class WebGLHelper {
         // Disable depth writes. We don't use depth testing.
         gl.depthMask(false);
 
-        gl.clearColor(0, 0, 0, 0);
         // TODO: view background: https://vega.github.io/vega-lite/docs/spec.html#view-background
 
         // Always use pre-multiplied alpha
@@ -50,6 +55,22 @@ export default class WebGLHelper {
 
         this.canvas = canvas;
         this.gl = gl;
+
+        // Setup framebuffer for piccking
+        /** @type {import("twgl.js").AttachmentOptions[]} */
+        this._pickingAttachmentOptions = [
+            {
+                format: gl.RGBA,
+                type: gl.UNSIGNED_BYTE,
+                minMag: gl.LINEAR,
+                wrap: gl.CLAMP_TO_EDGE
+            }
+        ];
+        this._pickingBufferInfo = createFramebufferInfo(
+            gl,
+            this._pickingAttachmentOptions
+        );
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         this.adjustGl();
 
@@ -117,6 +138,12 @@ export default class WebGLHelper {
         const physicalSize = this.getPhysicalCanvasSize(logicalSize);
         this.canvas.width = physicalSize.width;
         this.canvas.height = physicalSize.height;
+
+        resizeFramebufferInfo(
+            this.gl,
+            this._pickingBufferInfo,
+            this._pickingAttachmentOptions
+        );
     }
 
     destroy() {
@@ -178,6 +205,35 @@ export default class WebGLHelper {
                 entry.listener();
             }
         }
+    }
+
+    /**
+     *
+     * @param {number} x
+     * @param {number} y
+     */
+    readPickingPixel(x, y) {
+        const gl = this.gl;
+
+        x *= this.dpr;
+        y *= this.dpr;
+
+        const height = this.getPhysicalCanvasSize().height;
+
+        const pixel = new Uint8Array(4);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this._pickingBufferInfo.framebuffer);
+        gl.readPixels(
+            x,
+            height - y - 1,
+            1,
+            1,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            pixel
+        );
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        return pixel;
     }
 }
 

@@ -169,8 +169,11 @@ export default class PointMark extends Mark {
         }
     }
 
-    prepareRender() {
-        super.prepareRender();
+    /**
+     * @param {import("../view/rendering").GlobalRenderingOptions} options
+     */
+    prepareRender(options) {
+        super.prepareRender(options);
 
         setUniforms(this.programInfo, {
             uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
