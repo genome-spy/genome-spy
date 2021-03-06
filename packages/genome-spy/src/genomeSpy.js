@@ -34,6 +34,7 @@ import GenomeStore from "./genome/genomeStore";
 import BmFontManager from "./fonts/bmFontManager";
 import fasta from "./data/formats/fasta";
 import { VISIT_STOP } from "./view/view";
+import { datumToTooltip } from "./marks/mark";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -290,8 +291,10 @@ export default class GenomeSpy {
                     this.tooltip.handleMouseMove(event);
                     this._tooltipUpdateRequested = false;
 
-                    // TODO: Disable during dragging
-                    this.renderPickingFramebuffer();
+                    if (event.buttons == 0) {
+                        // Disable during dragging
+                        this.renderPickingFramebuffer();
+                    }
                 }
 
                 const rect = canvas.getBoundingClientRect();
@@ -301,11 +304,12 @@ export default class GenomeSpy {
                 );
 
                 if (event.type == "mousemove") {
+                    // TODO: Hide tooltip if mouse moves very fast
                     this._handlePicking(point.x, point.y);
-                }
-
-                if (event.type == "mousedown") {
+                } else if (event.type == "mousedown") {
                     this.renderPickingFramebuffer();
+                } else if (event.type == "wheel") {
+                    this._tooltipUpdateRequested = false;
                 }
 
                 this.layout.dispatchInteractionEvent(
@@ -346,21 +350,22 @@ export default class GenomeSpy {
      */
     _handlePicking(x, y) {
         const pixelValue = this._glHelper.readPickingPixel(x, y);
-        if (pixelValue.every(v => v == 0)) {
-            return;
-        }
 
         const uniqueId =
             pixelValue[0] | (pixelValue[1] << 8) | (pixelValue[2] << 16);
+
+        if (uniqueId == 0) {
+            return;
+        }
 
         // We are doing an exhaustive search of the data. This is a bit slow with
         // millions of items.
         // TODO: Optimize by indexing or something
 
-        /** @type {import("./data/flowNode").Datum} */
-        let match;
         this.viewRoot.visit(view => {
             if (view instanceof UnitView) {
+                /** @type {import("./data/flowNode").Datum} */
+                let match;
                 if (view.mark.isPickingParticipant()) {
                     const accessor = view.mark.encoders.uniqueId.accessor;
                     view.getCollector().visitData(d => {
@@ -369,15 +374,14 @@ export default class GenomeSpy {
                         }
                     });
                 }
-            }
-            if (match) {
-                return VISIT_STOP;
+                if (match) {
+                    this.updateTooltip(match, d =>
+                        datumToTooltip(d, view.mark)
+                    );
+                    return VISIT_STOP;
+                }
             }
         });
-
-        if (match) {
-            this.updateTooltip(match);
-        }
     }
 
     /**
@@ -428,7 +432,9 @@ export default class GenomeSpy {
                 ? canvasSize[c]
                 : root.getSize()[c].px) || canvasSize[c];
 
-        this._renderingContext = new DeferredViewRenderingContext({});
+        this._renderingContext = new DeferredViewRenderingContext({
+            picking: false
+        });
         this._pickingContext = new DeferredViewRenderingContext({
             picking: true
         });
@@ -458,8 +464,8 @@ export default class GenomeSpy {
         const gl = this._glHelper.gl;
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        this._glHelper.clearAll();
 
         if (this.viewRoot) {
             this._renderingContext.renderDeferred();
@@ -479,10 +485,8 @@ export default class GenomeSpy {
             gl.FRAMEBUFFER,
             this._glHelper._pickingBufferInfo.framebuffer
         );
-        //gl.clearColor(1, 1, 1, 1);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        // TODO: blending should be disabled
+
+        this._glHelper.clearAll();
 
         if (this.viewRoot) {
             this._pickingContext.renderDeferred();

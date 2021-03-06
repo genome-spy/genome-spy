@@ -1,4 +1,3 @@
-import { group } from "d3-array";
 import {
     createBufferInfoFromArrays,
     createProgramInfoFromProgram,
@@ -40,6 +39,8 @@ import { createProgram } from "../gl/webGLHelper";
 import SampleView from "../view/sampleView/sampleView";
 import AxisView from "../view/axisView";
 import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
+import { html } from "lit-html";
+import formatObject from "../utils/formatObject";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -115,10 +116,20 @@ export default class Mark {
      * @returns {import("../spec/channel").Encoding}
      */
     getDefaultEncoding() {
-        return {
+        /** @type {import("../spec/channel").Encoding} */
+        const encoding = {
             sample: undefined,
             uniqueId: undefined
         };
+
+        if (this.isPickingParticipant()) {
+            encoding.uniqueId = {
+                field: "_uniqueId", // TODO: Use constant
+                type: "nominal"
+            };
+        }
+
+        return encoding;
     }
 
     /**
@@ -170,11 +181,13 @@ export default class Mark {
                     .map(([prop, value]) => [prop, { value }])
             );
 
-            return this.fixEncoding({
+            const encoding = this.fixEncoding({
                 ...defaults,
                 ...propertyValues,
                 ...configured
             });
+
+            return encoding;
         });
     }
 
@@ -557,6 +570,12 @@ export default class Mark {
      * TODO: Check if selection (when it's implemented) is enabled
      */
     isPickingParticipant() {
+        // TODO: Should check encoding instead
+        if (this.properties.tooltip === null) {
+            // Disabled
+            return false;
+        }
+
         for (const v of this.unitView.getAncestors()) {
             // TODO: Break dependencies
             if (v instanceof AxisView || v instanceof SampleAttributePanel) {
@@ -639,7 +658,7 @@ export default class Mark {
             uTransitionOffset: 0.0
         });
 
-        if (this.opaque) {
+        if (this.opaque || options.picking) {
             gl.disable(gl.BLEND);
         } else {
             gl.enable(gl.BLEND);
@@ -885,4 +904,73 @@ export default class Mark {
     findDatumAt(facetId, x) {
         // override
     }
+}
+
+/**
+ * Converts a datum to a tooltip html.
+ *
+ * TODO: Find proper place for this
+ *
+ * @param {import("../data/flowNode").Datum} datum
+ * @param {Mark} mark
+ */
+export function datumToTooltip(datum, mark) {
+    if (!mark.isPickingParticipant()) {
+        return;
+    }
+
+    /**
+     * @param {string} key
+     * @param {object} datum
+     */
+    const legend = (key, datum) => {
+        for (const [channel, encoder] of Object.entries(mark.encoders)) {
+            if (encoder?.accessor?.fields.includes(key)) {
+                switch (channel) {
+                    case "color":
+                        return html`
+                            <span
+                                class="color-legend"
+                                style=${`background-color: ${encoder(datum)}`}
+                            ></span>
+                        `;
+                    default:
+                }
+            }
+        }
+
+        return "";
+    };
+
+    const table = html`
+        <table class="attributes">
+            ${Object.entries(datum)
+                .filter(([key, value]) => !key.startsWith("_"))
+                .map(
+                    ([key, value]) => html`
+                        <tr>
+                            <th>${key}</th>
+                            <td>
+                                ${formatObject(value)} ${legend(key, datum)}
+                            </td>
+                        </tr>
+                    `
+                )}
+        </table>
+    `;
+
+    const title = mark.unitView.spec.title
+        ? html`
+              <div class="title">
+                  <strong>${mark.unitView.spec.title}</strong>
+              </div>
+          `
+        : "";
+
+    return html`
+        ${title}
+        <div class="">
+            ${table}
+        </div>
+    `;
 }

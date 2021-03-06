@@ -18,7 +18,8 @@ import {
 import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
 import { isAggregateSamplesSpec } from "./viewUtils";
 import { group } from "d3-array";
-import iterateNestedMaps from "../utils/iterateNestedMaps";
+import IdentifierTransform from "../data/transforms/identifier";
+import { expire } from "../utils/propertyCacher";
 
 /**
  * @typedef {import("./view").default} View
@@ -132,8 +133,16 @@ export function buildDataFlow(root, existingFlow) {
                 for (const transform of linearize.transforms) {
                     // TODO: Transforms should not be added if they already exist in the flow.
                     // Alternatively they should be optimized away.
+                    // TODO: Add CloneTransform
                     appendTransform(transform);
                 }
+            }
+
+            if (view.mark.isPickingParticipant()) {
+                // TODO: Add CloneTransform
+                appendTransform(
+                    new IdentifierTransform({ type: "identifier" })
+                );
             }
 
             const collector = new Collector({
@@ -262,6 +271,8 @@ export function linearizeLocusAccess(view) {
                       ...view.spec.encoding,
                       ...rewrittenEncoding
                   };
+                  // This is so ugly...
+                  expire(view.mark, "encoding");
               }
           }
         : undefined;

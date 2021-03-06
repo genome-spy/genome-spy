@@ -235,6 +235,15 @@ export default class WebGLHelper {
 
         return pixel;
     }
+
+    clearAll() {
+        const gl = this.gl;
+        const { width, height } = this.getPhysicalCanvasSize();
+        gl.viewport(0, 0, width, height);
+        gl.disable(gl.SCISSOR_TEST);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+    }
 }
 
 /**

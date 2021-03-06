@@ -51,6 +51,10 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
      * @param {import("../view").RenderingOptions} options
      */
     renderMark(mark, options) {
+        if (this.globalOptions.picking && !mark.isPickingParticipant()) {
+            return;
+        }
+
         mark.prepareRender(this.globalOptions);
         mark.setViewport(this.coords, options.clipRect);
         mark.render(options)();

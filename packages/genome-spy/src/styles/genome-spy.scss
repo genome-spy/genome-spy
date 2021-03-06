@@ -59,7 +59,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     .tooltip {
         position: absolute;
 
-        max-width: 300px;
+        max-width: 450px;
         overflow: hidden;
 
         background: #f6f6f6;
@@ -86,7 +86,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
             th,
             td {
-                padding: 0.2em 0.4em;
+                padding: 2px 0.4em;
                 vertical-align: top;
 
                 &:first-child {

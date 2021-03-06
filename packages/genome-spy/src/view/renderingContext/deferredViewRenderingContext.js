@@ -48,6 +48,10 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      * @param {import("../view").RenderingOptions} options
      */
     renderMark(mark, options) {
+        if (this.globalOptions.picking && !mark.isPickingParticipant()) {
+            return;
+        }
+
         const callback = mark.render(options);
         if (callback) {
             this.buffer.push({
