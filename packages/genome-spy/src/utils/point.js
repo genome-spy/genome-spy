@@ -3,6 +3,7 @@
  *
  * @param {HTMLElement} node
  * @param {MouseEvent} event
+ * @returns {[number, number]}
  */
 export default function(node, event) {
     var rect = node.getBoundingClientRect();

@@ -2,8 +2,6 @@ import clientPoint from "../point";
 import { render, TemplateResult } from "lit-html";
 import { peek } from "../arrayUtils";
 
-// TODO: Figure out a proper place for this class
-
 export default class Tooltip {
     /**
      * @param {HTMLElement} container
@@ -21,6 +19,11 @@ export default class Tooltip {
 
         this.enabledStack = [true];
 
+        this._accelerationPenalty = false;
+        this._penaltyUntil = 0;
+        /** @type {[number, number]} */
+        this._lastCoords = undefined;
+
         this.clear();
     }
 
@@ -31,6 +34,9 @@ export default class Tooltip {
         if (visible != this._visible) {
             this.element.style.display = visible ? "block" : "none";
             this._visible = visible;
+        }
+        if (visible) {
+            this._accelerationPenalty = false;
         }
     }
 
@@ -62,6 +68,25 @@ export default class Tooltip {
     handleMouseMove(mouseEvent) {
         this.mouseCoords = clientPoint(this.container, mouseEvent);
 
+        // Prevent the tooltip from flashing briefly before it becomes penalized
+        // because of a quickly moving mouse pointer
+        if (!this.visible && !this._isPenalty() && !this._accelerationPenalty) {
+            this._penaltyUntil = performance.now() + 40;
+            this._accelerationPenalty = true;
+        }
+
+        // Disable the tooltip for a while if the mouse is being moved very quickly.
+        // Makes the tooltip less annoying.
+        // TODO: Should calculate speed: pixels per millisecond or something
+        if (
+            this._lastCoords &&
+            distance(this.mouseCoords, this._lastCoords) > 50
+        ) {
+            this._penaltyUntil = performance.now() + 300;
+        }
+
+        this._lastCoords = this.mouseCoords;
+
         if (this.visible) {
             this.updatePlacement();
         }
@@ -90,11 +115,12 @@ export default class Tooltip {
      * @param {string | import("lit-html").TemplateResult} content
      */
     setContent(content) {
-        if (!content || !this.enabled) {
+        if (!content || !this.enabled || this._isPenalty()) {
             if (this.visible) {
                 render("", this.element);
                 this.visible = false;
             }
+            this._previousTooltipDatum = undefined;
             return;
         }
 
@@ -111,8 +137,8 @@ export default class Tooltip {
     }
 
     clear() {
-        this.setContent(undefined);
         this._previousTooltipDatum = undefined;
+        this.setContent(undefined);
     }
 
     /**
@@ -125,10 +151,28 @@ export default class Tooltip {
      */
     updateWithDatum(datum, converter) {
         if (datum !== this._previousTooltipDatum) {
+            this._previousTooltipDatum = datum;
             this.setContent(
                 converter ? converter(datum) : JSON.stringify(datum)
             );
-            this._previousTooltipDatum = datum;
         }
     }
+
+    _isPenalty() {
+        return this._penaltyUntil && this._penaltyUntil > performance.now();
+    }
+}
+
+/**
+ * Calculate euclidean distance
+ *
+ * @param {number[]} a
+ * @param {number[]} b
+ */
+function distance(a, b) {
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) {
+        sum += (a[i] - b[i]) ** 2;
+    }
+    return Math.sqrt(sum);
 }
