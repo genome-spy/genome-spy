@@ -62,7 +62,8 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         max-width: 450px;
         overflow: hidden;
 
-        background: #f6f6f6;
+        $background-color: #f6f6f6;
+        background: $background-color;
         padding: $basic-spacing;
         font-size: 13px;
 
@@ -72,12 +73,12 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         z-index: 100;
 
         > .title {
-            margin-bottom: $basic-spacing;
+            padding-bottom: $basic-spacing / 2;
+            margin-bottom: $basic-spacing / 2;
+            border-bottom: 1px dashed darken($background-color, 25%);
         }
 
         table {
-            margin-top: $basic-spacing;
-
             &:first-child {
                 margin-top: 0;
             }

@@ -394,12 +394,10 @@ export class SampleAttributePanel extends ConcatView {
         `;
 
         return html`
-            <div class="sample-track-sample-tooltip">
-                <div class="title">
-                    <strong>${sample.displayName || sample.id}</strong>
-                </div>
-                ${table}
+            <div class="title">
+                <strong>${sample.displayName || sample.id}</strong>
             </div>
+            ${table}
         `;
     }
 

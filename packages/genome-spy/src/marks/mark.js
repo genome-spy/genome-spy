@@ -968,9 +968,6 @@ export function datumToTooltip(datum, mark) {
         : "";
 
     return html`
-        ${title}
-        <div class="">
-            ${table}
-        </div>
+        ${title}${table}
     `;
 }
