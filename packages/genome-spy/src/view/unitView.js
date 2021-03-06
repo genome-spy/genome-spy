@@ -126,7 +126,7 @@ export default class UnitView extends ContainerView {
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
 
         for (const [channel, channelDef] of Object.entries(
-            this.getEncoding()
+            this.mark.encoding
         )) {
             if (type == "axis" && !isPositionalChannel(channel)) {
                 continue;
@@ -212,7 +212,7 @@ export default class UnitView extends ContainerView {
             );
         }
 
-        const channelDef = this.getEncoding()[channel];
+        const channelDef = this.mark.encoding[channel];
         if (!isChannelDefWithScale(channelDef)) {
             throw new Error("The channel has no scale, cannot get domain!");
         }
@@ -260,7 +260,7 @@ export default class UnitView extends ContainerView {
             /** @type {DomainArray} */
             let domain;
 
-            const encodingSpec = this.getEncoding()[channel];
+            const encodingSpec = this.mark.encoding[channel];
 
             if (encodingSpec) {
                 const accessor = this.context.accessorFactory.createAccessor(

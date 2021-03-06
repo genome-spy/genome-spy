@@ -95,6 +95,6 @@ export default class AxisResolution {
      * @param {UnitView} view
      */
     _getEncoding(view) {
-        return view.getEncoding()[this.channel];
+        return view.mark.encoding[this.channel];
     }
 }

@@ -147,7 +147,7 @@ export default class MergeSampleFacets extends FlowNode {
         /** @type {Set<import("../view/view").ScaleResolution>} */
         const resolutions = new Set();
         this.view.visit(view => {
-            if (view instanceof UnitView && view.getEncoding().y) {
+            if (view instanceof UnitView && view.mark.encoding.y) {
                 const resolution = view.getScaleResolution("y");
                 if (resolution) {
                     resolutions.add(resolution);

@@ -281,6 +281,10 @@ export default class View {
     }
 
     /**
+     * Returns the encodings specified in this view combined with the inherited
+     * encodings. However, this does not contain any defaults or inferred/adjusted/fixed
+     * encodings. Those are available in Mark's encoding property.
+     *
      * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
      *      selectively breaking the inheritance.
      * @return {Object.<string, ChannelDef>}

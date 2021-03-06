@@ -364,7 +364,7 @@ export default class ScaleResolution {
      * @param {UnitView} view
      */
     _getEncoding(view) {
-        return view.getEncoding()[this.channel];
+        return view.mark.encoding[this.channel];
     }
 
     /**

@@ -67,11 +67,10 @@ export default function createEncoders(mark, encoding) {
         const resolution = mark.unitView.getScaleResolution(
             primaryChannel(channel)
         );
-        const scale = (resolution && resolution.getScale()) || undefined;
 
         encoders[channel] = createEncoder(
             encoding[channel],
-            scale,
+            resolution?.getScale(),
             mark.unitView.getAccessor(channel),
             channel
         );
