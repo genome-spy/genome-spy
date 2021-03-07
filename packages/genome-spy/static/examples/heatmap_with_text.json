@@ -1,13 +1,14 @@
 {
   "data": {
-    "sequence": { "start": 0, "stop": 40000, "as": "z" }
+    "sequence": { "start": 0, "stop": 40000, "as": "i" }
   },
   "transform": [
-    { "type": "formula", "as": "x", "expr": "datum.z % 200" },
-    { "type": "formula", "as": "y", "expr": "floor(datum.z / 200)" },
+    { "type": "formula", "as": "x", "expr": "datum.i % 200" },
+    { "type": "formula", "as": "y", "expr": "floor(datum.i / 200)" },
+    { "type": "project", "fields": ["x", "y"] },
     {
       "type": "formula",
-      "as": "measurement",
+      "as": "z",
       "expr": "sin((sin(datum.x / 30) + cos(datum.y / 25 - 0.5 + sin(datum.x / 40) * 2)) * 4)"
     }
   ],
@@ -24,7 +25,7 @@
       "mark": "rect",
       "encoding": {
         "color": {
-          "field": "measurement",
+          "field": "z",
           "type": "quantitative",
           "scale": {
             "scheme": "viridis"
@@ -42,13 +43,13 @@
         "paddingY": 3
       },
       "encoding": {
-        "text": { "field": "measurement", "type": "nominal", "format": ".2f" },
+        "text": { "field": "z", "type": "nominal", "format": ".2f" },
         "color": {
-          "field": "measurement",
+          "field": "z",
           "type": "quantitative",
           "scale": {
             "type": "threshold",
-            "domain": [-0],
+            "domain": [0],
             "range": ["white", "black"]
           }
         }
