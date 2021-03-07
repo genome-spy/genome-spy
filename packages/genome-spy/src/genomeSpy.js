@@ -85,6 +85,12 @@ export default class GenomeSpy {
 
         /** Does picking buffer need to be rendered again */
         this._dirtyPickingBuffer = false;
+
+        /**
+         * Currently hovered mark and datum
+         * @type {{ mark: import("./marks/Mark").default, datum: import("./data/flowNode").Datum}}
+         */
+        this._currentHover = undefined;
     }
 
     /**
@@ -176,7 +182,8 @@ export default class GenomeSpy {
             fontManager: new BmFontManager(this._glHelper),
             requestLayoutReflow: this.computeLayout.bind(this),
             updateTooltip: this.updateTooltip.bind(this),
-            contextMenu: this.contextMenu.bind(this)
+            contextMenu: this.contextMenu.bind(this),
+            getCurrentHover: () => this._currentHover
         };
 
         /** @type {import("./spec/view").ViewSpec & RootConfig} */
@@ -304,12 +311,27 @@ export default class GenomeSpy {
                 );
 
                 if (event.type == "mousemove") {
-                    // TODO: Hide tooltip if mouse moves very fast
                     this._handlePicking(point.x, point.y);
-                } else if (event.type == "mousedown") {
+                } else if (
+                    event.type == "mousedown" ||
+                    event.type == "mouseup"
+                ) {
                     this.renderPickingFramebuffer();
                 } else if (event.type == "wheel") {
                     this._tooltipUpdateRequested = false;
+
+                    // If the viewport is panned using the wheel (touchpad), the picking
+                    // buffer becomes stale and needs redrawing. However, we optimize by
+                    // just clearing the currently hovered item so that snapping doesn't
+                    // work incorrectly when zooming in/out.
+                    // TODO: More robust solution (handle at higher level such as ScaleResolution's zoom method)
+                    const wheelEvent = /** @type {WheelEvent} */ (event);
+                    if (
+                        Math.abs(wheelEvent.deltaX) >
+                        Math.abs(wheelEvent.deltaY)
+                    ) {
+                        this._currentHover = null;
+                    }
                 }
 
                 this.layout.dispatchInteractionEvent(
@@ -324,6 +346,7 @@ export default class GenomeSpy {
 
         [
             "mousedown",
+            "mouseup",
             "wheel",
             "click",
             "mousemove",
@@ -349,6 +372,8 @@ export default class GenomeSpy {
      * @param {number} y
      */
     _handlePicking(x, y) {
+        this._currentHover = null;
+
         const pixelValue = this._glHelper.readPickingPixel(x, y);
 
         const uniqueId =
@@ -364,19 +389,23 @@ export default class GenomeSpy {
 
         this.viewRoot.visit(view => {
             if (view instanceof UnitView) {
-                /** @type {import("./data/flowNode").Datum} */
-                let match;
                 if (view.mark.isPickingParticipant()) {
                     const accessor = view.mark.encoders.uniqueId.accessor;
                     view.getCollector().visitData(d => {
                         if (accessor(d) == uniqueId) {
-                            match = d;
+                            this._currentHover = {
+                                mark: view.mark,
+                                datum: d
+                            };
                         }
                     });
                 }
-                if (match) {
-                    this.updateTooltip(match, d =>
-                        datumToTooltip(d, view.mark)
+                if (this._currentHover) {
+                    this.updateTooltip(this._currentHover, d =>
+                        datumToTooltip(
+                            this._currentHover.datum,
+                            this._currentHover.mark
+                        )
                     );
                     return VISIT_STOP;
                 }

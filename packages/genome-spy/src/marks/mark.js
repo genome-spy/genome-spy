@@ -102,6 +102,7 @@ export default class Mark {
 
     getSupportedChannels() {
         return [
+            "sample",
             "facetIndex",
             "x",
             "y",
@@ -186,6 +187,15 @@ export default class Mark {
                 ...propertyValues,
                 ...configured
             });
+
+            for (const channel of Object.keys(encoding)) {
+                if (!this.getSupportedChannels().includes(channel)) {
+                    // TODO: Only delete channels that were inherited
+                    // Should complain about unsupported channels that were
+                    // explicitly specified.
+                    delete encoding[channel];
+                }
+            }
 
             return encoding;
         });

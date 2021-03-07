@@ -4,6 +4,8 @@ import { getFlattenedViews } from "./viewUtils";
 import Padding from "../utils/layout/padding";
 import { FlexDimensions } from "../utils/layout/flexLayout";
 import { getCachedOrCall } from "../utils/propertyCacher";
+import UnitView from "./unitView";
+import { VISIT_STOP } from "./view";
 
 /**
  * @typedef {import("../spec/view").PositionalChannel} PositionalChannel
@@ -315,18 +317,41 @@ export default class DecoratorView extends ContainerView {
             const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
             const wheelMultiplier = wheelEvent.deltaMode ? 120 : 1;
 
+            let { x, y } = event.point;
+
+            // Snapping to the hovered item:
+            // We find the currently hovered object and move the pointed coordinates
+            // to its center if the mark has only primary positional channels.
+            // This allows the user to rapidly zoom closer without having to
+            // continuously adjust the cursor position.
+
+            const hover = this.context.getCurrentHover();
+            if (hover) {
+                const viewCoords = coords.shrink(this.getEffectivePadding());
+
+                const e = hover.mark.encoders;
+                if (e.x && !e.x2) {
+                    x = +e.x(hover.datum) * viewCoords.width + viewCoords.x;
+                }
+                if (e.y && !e.y2) {
+                    y =
+                        (1 - +e.y(hover.datum)) * viewCoords.height +
+                        viewCoords.y;
+                }
+            }
+
             if (Math.abs(wheelEvent.deltaX) < Math.abs(wheelEvent.deltaY)) {
                 this._handleZoom(coords, {
-                    x: event.point.x,
-                    y: event.point.y,
+                    x,
+                    y,
                     xDelta: 0,
                     yDelta: 0,
                     zDelta: (wheelEvent.deltaY * wheelMultiplier) / 300
                 });
             } else {
                 this._handleZoom(coords, {
-                    x: event.point.x,
-                    y: event.point.y,
+                    x,
+                    y,
                     xDelta: -wheelEvent.deltaX * wheelMultiplier,
                     yDelta: 0,
                     zDelta: 0
