@@ -19,10 +19,11 @@ export default class Tooltip {
 
         this.enabledStack = [true];
 
-        this._accelerationPenalty = false;
         this._penaltyUntil = 0;
         /** @type {[number, number]} */
         this._lastCoords = undefined;
+
+        this._previousMove = 0;
 
         this.clear();
     }
@@ -34,9 +35,6 @@ export default class Tooltip {
         if (visible != this._visible) {
             this.element.style.display = visible ? "block" : "none";
             this._visible = visible;
-        }
-        if (visible) {
-            this._accelerationPenalty = false;
         }
     }
 
@@ -68,11 +66,16 @@ export default class Tooltip {
     handleMouseMove(mouseEvent) {
         this.mouseCoords = clientPoint(this.container, mouseEvent);
 
+        const now = performance.now();
+
         // Prevent the tooltip from flashing briefly before it becomes penalized
         // because of a quickly moving mouse pointer
-        if (!this.visible && !this._isPenalty() && !this._accelerationPenalty) {
-            this._penaltyUntil = performance.now() + 40;
-            this._accelerationPenalty = true;
+        if (
+            !this.visible &&
+            !this._isPenalty() &&
+            now - this._previousMove > 500
+        ) {
+            this._penaltyUntil = now + 70;
         }
 
         // Disable the tooltip for a while if the mouse is being moved very quickly.
@@ -80,9 +83,9 @@ export default class Tooltip {
         // TODO: Should calculate speed: pixels per millisecond or something
         if (
             this._lastCoords &&
-            distance(this.mouseCoords, this._lastCoords) > 50
+            distance(this.mouseCoords, this._lastCoords) > 20
         ) {
-            this._penaltyUntil = performance.now() + 300;
+            this._penaltyUntil = now + 400;
         }
 
         this._lastCoords = this.mouseCoords;
@@ -90,6 +93,8 @@ export default class Tooltip {
         if (this.visible) {
             this.updatePlacement();
         }
+
+        this._previousMove = now;
     }
 
     updatePlacement() {
