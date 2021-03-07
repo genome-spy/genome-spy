@@ -23,12 +23,19 @@ export default class Animator {
      * @param {function(number):void} callback
      */
     requestTransition(callback) {
+        this.cancelTransition(callback);
+        this.transitions.push(callback);
+        this.requestRender();
+    }
+
+    /**
+     * @param {function(number):void} callback
+     */
+    cancelTransition(callback) {
         const existingIndex = this.transitions.indexOf(callback);
         if (existingIndex >= 0) {
             this.transitions.splice(existingIndex, 1);
         }
-        this.transitions.push(callback);
-        this.requestRender();
     }
 
     /**

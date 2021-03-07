@@ -13,7 +13,6 @@ import {
     processImports
 } from "./view/viewUtils";
 import UnitView from "./view/unitView";
-import createDomain from "./utils/domainArray";
 
 import WebGLHelper from "./gl/webGLHelper";
 import { parseSizeDef } from "./utils/layout/flexLayout";
@@ -35,6 +34,7 @@ import BmFontManager from "./fonts/bmFontManager";
 import fasta from "./data/formats/fasta";
 import { VISIT_STOP } from "./view/view";
 import { datumToTooltip } from "./marks/mark";
+import Inertia, { makeEventTemplate } from "./utils/inertia";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -91,6 +91,8 @@ export default class GenomeSpy {
          * @type {{ mark: import("./marks/Mark").default, datum: import("./data/flowNode").Datum}}
          */
         this._currentHover = undefined;
+
+        this._wheelInertia = new Inertia(this.animator);
     }
 
     /**
@@ -291,6 +293,10 @@ export default class GenomeSpy {
     registerMouseEvents() {
         const canvas = this._glHelper.canvas;
 
+        // TODO: This function is huge. Refactor this into a separate class
+        // that would also contain state-related stuff that currently pollute the
+        // GenomeSpy class.
+
         /** @param {Event} event */
         const listener = event => {
             if (this.layout && event instanceof MouseEvent) {
@@ -310,6 +316,23 @@ export default class GenomeSpy {
                     event.clientY - rect.top - canvas.clientTop
                 );
 
+                /**
+                 * @param {MouseEvent} event
+                 */
+                const dispatchEvent = event => {
+                    this.layout.dispatchInteractionEvent(
+                        new InteractionEvent(point, event)
+                    );
+
+                    if (!this._tooltipUpdateRequested) {
+                        this.tooltip.clear();
+                    }
+                };
+
+                if (event.type != "wheel") {
+                    this._wheelInertia.cancel();
+                }
+
                 if (event.type == "mousemove") {
                     this._handlePicking(point.x, point.y);
                 } else if (
@@ -320,27 +343,44 @@ export default class GenomeSpy {
                 } else if (event.type == "wheel") {
                     this._tooltipUpdateRequested = false;
 
-                    // If the viewport is panned using the wheel (touchpad), the picking
-                    // buffer becomes stale and needs redrawing. However, we optimize by
-                    // just clearing the currently hovered item so that snapping doesn't
-                    // work incorrectly when zooming in/out.
-                    // TODO: More robust solution (handle at higher level such as ScaleResolution's zoom method)
                     const wheelEvent = /** @type {WheelEvent} */ (event);
+
                     if (
                         Math.abs(wheelEvent.deltaX) >
                         Math.abs(wheelEvent.deltaY)
                     ) {
+                        // If the viewport is panned (horizontally) using the wheel (touchpad),
+                        // the picking buffer becomes stale and needs redrawing. However, we
+                        // optimize by just clearing the currently hovered item so that snapping
+                        // doesn't work incorrectly when zooming in/out.
+
+                        // TODO: More robust solution (handle at higher level such as ScaleResolution's zoom method)
                         this._currentHover = null;
+
+                        this._wheelInertia.cancel();
+                    } else {
+                        // Vertical wheeling zooms.
+                        // We use inertia to generate fake wheel events for smoother zooming
+
+                        const template = makeEventTemplate(wheelEvent);
+                        this._wheelInertia.setMomentum(
+                            wheelEvent.deltaY,
+                            delta => {
+                                const e = new WheelEvent("wheel", {
+                                    ...template,
+                                    deltaMode: 0,
+                                    deltaY: delta
+                                });
+                                dispatchEvent(e);
+                            }
+                        );
+
+                        wheelEvent.preventDefault();
+                        return;
                     }
                 }
 
-                this.layout.dispatchInteractionEvent(
-                    new InteractionEvent(point, event)
-                );
-
-                if (!this._tooltipUpdateRequested) {
-                    this.tooltip.clear();
-                }
+                dispatchEvent(event);
             }
         };
 
