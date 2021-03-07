@@ -20,6 +20,12 @@ function byPath(root, path) {
     return root;
 }
 
+/** @type {import("../spec/view").MarkConfig} */
+const mark = {
+    type: "rect",
+    tooltip: null
+};
+
 test("Trivial flow", () => {
     const root = create({
         data: { values: [3.141] },
@@ -30,7 +36,7 @@ test("Trivial flow", () => {
                 as: "x"
             }
         ],
-        mark: "rect"
+        mark
     });
 
     const flow = buildDataFlow(root);
@@ -56,7 +62,7 @@ test("Branching flow", () => {
                         as: "x"
                     }
                 ],
-                mark: "rect"
+                mark
             },
             {
                 transform: [
@@ -65,7 +71,7 @@ test("Branching flow", () => {
                         expr: "datum.data > 4"
                     }
                 ],
-                mark: "rect"
+                mark
             }
         ]
     });
@@ -89,7 +95,7 @@ test("Nested data sources", () => {
             {
                 data: { sequence: { start: 0, stop: 5 } },
                 transform: [{ type: "formula", expr: "3", as: "foo" }],
-                mark: "rect"
+                mark
             }
         ]
     });
