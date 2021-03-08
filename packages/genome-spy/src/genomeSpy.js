@@ -364,7 +364,7 @@ export default class GenomeSpy {
 
                         const template = makeEventTemplate(wheelEvent);
                         this._wheelInertia.setMomentum(
-                            wheelEvent.deltaY,
+                            wheelEvent.deltaY * (wheelEvent.deltaMode ? 80 : 1),
                             delta => {
                                 const e = new WheelEvent("wheel", {
                                     ...template,

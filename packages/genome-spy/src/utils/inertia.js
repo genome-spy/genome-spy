@@ -54,6 +54,10 @@ export default class Inertia {
             return;
         }
 
+        // This may have some use in the future to improve the behavior of
+        // a mechanical mouse wheel:
+        // https://github.com/w3c/uievents/issues/181
+
         if (value * this.momentum < 0) {
             this.momentum = 0; // Stop if the direction changes
         } else if (Math.abs(value) > this.accelerationThreshold) {
