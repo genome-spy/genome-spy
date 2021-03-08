@@ -1,8 +1,8 @@
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
-const DEFAULT_AS = "_uniqueId";
+export const DEFAULT_AS = "_uniqueId";
 
-const BLOCK_SIZE = 10000;
+export const BLOCK_SIZE = 10000;
 
 /**
  * TODO: The reservation map should be bound to GenomeSpy instances.
@@ -54,7 +54,7 @@ export default class IdentifierTransform extends FlowNode {
         this._usedBlocks = 0;
 
         /**
-         * The next advancement allocates the initial block
+         * The next advancement allocates the initial block for this instance
          */
         this._id = -1;
     }
@@ -83,16 +83,14 @@ export default class IdentifierTransform extends FlowNode {
      * @returns {number}
      */
     _nextId() {
-        let next = this._id++;
-        if (next % BLOCK_SIZE == 0) {
+        if (++this._id % BLOCK_SIZE == 0) {
             this._id = this._getBlock() * BLOCK_SIZE;
-            return this._id++;
         }
-        return next;
+        return this._id;
     }
 
     _getBlock() {
-        if (this._usedBlocks < this._blocks.length - 1) {
+        if (this._usedBlocks < this._blocks.length) {
             return this._blocks[this._usedBlocks++];
         }
 
@@ -103,6 +101,7 @@ export default class IdentifierTransform extends FlowNode {
         const blockId = reservationMap.length;
         reservationMap[blockId] = this;
         this._blocks.push(blockId);
+        this._usedBlocks++;
 
         return blockId;
     }
