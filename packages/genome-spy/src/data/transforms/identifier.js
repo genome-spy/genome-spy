@@ -8,9 +8,14 @@ const BLOCK_SIZE = 10000;
  * TODO: The reservation map should be bound to GenomeSpy instances.
  * Because it's now global, there's a higher risk that we run out of ids.
  *
+ * TODO: Identifier transforms should be removed from the reservation map
+ * when a transform is removed from the flow.
+ *
+ * The first block is reserved for "none".
+ *
  * @type {IdentifierTransform[]}
  */
-const reservationMap = [];
+const reservationMap = [null];
 
 /**
  * Assigns unique identifiers for tuples that pass through this transform.
@@ -43,7 +48,15 @@ export default class IdentifierTransform extends FlowNode {
          */
         this._blocks = [];
 
-        this._id = this._reserveBlock() + 1; // Reserve zero for "none"
+        /**
+         * The number of blocks used
+         */
+        this._usedBlocks = 0;
+
+        /**
+         * The next advancement allocates the initial block
+         */
+        this._id = -1;
     }
 
     initialize() {
@@ -52,8 +65,9 @@ export default class IdentifierTransform extends FlowNode {
 
     reset() {
         super.reset();
-        // TODO: Mark the allocated blocks undefined
-        // TODO: Reuse the blocks that were previously reserved
+
+        this._usedBlocks = 0;
+        this._id = -1;
     }
 
     /**
@@ -65,21 +79,31 @@ export default class IdentifierTransform extends FlowNode {
         this._propagate(datum);
     }
 
+    /**
+     * @returns {number}
+     */
     _nextId() {
         let next = this._id++;
         if (next % BLOCK_SIZE == 0) {
-            this._id = this._reserveBlock();
+            this._id = this._getBlock() * BLOCK_SIZE;
             return this._id++;
         }
         return next;
     }
 
+    _getBlock() {
+        if (this._usedBlocks < this._blocks.length - 1) {
+            return this._blocks[this._usedBlocks++];
+        }
+
+        return this._reserveBlock();
+    }
+
     _reserveBlock() {
-        // TODO: Reuse blocks when the transform is reset.
         const blockId = reservationMap.length;
         reservationMap[blockId] = this;
         this._blocks.push(blockId);
 
-        return blockId * BLOCK_SIZE;
+        return blockId;
     }
 }
