@@ -363,12 +363,14 @@ export default class GenomeSpy {
                         // We use inertia to generate fake wheel events for smoother zooming
 
                         const template = makeEventTemplate(wheelEvent);
+
                         this._wheelInertia.setMomentum(
                             wheelEvent.deltaY * (wheelEvent.deltaMode ? 80 : 1),
                             delta => {
                                 const e = new WheelEvent("wheel", {
                                     ...template,
                                     deltaMode: 0,
+                                    deltaX: 0,
                                     deltaY: delta
                                 });
                                 dispatchEvent(e);

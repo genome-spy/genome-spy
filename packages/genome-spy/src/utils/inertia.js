@@ -1,5 +1,4 @@
 import { lerp } from "vega-util";
-import AxisView from "../view/axisView";
 
 /**
  * Creates some inertia, mainly for zooming with a mechanical mouse wheel
@@ -12,10 +11,10 @@ export default class Inertia {
     constructor(animator, disabled) {
         this.animator = animator;
         this.disabled = !!disabled;
-        this.damping = 10e-5;
-        this.acceleration = 0.3;
+        this.damping = 0.015;
+        this.acceleration = 0.3; // per event
         /** Use acceleration if the momentum step is greater than X */
-        this.accelerationThreshold = 50;
+        this.accelerationThreshold = 100;
         this.lowerLimit = 0.5; // When to stop updating
         this.loop = false;
 
@@ -78,13 +77,20 @@ export default class Inertia {
      * @param {number} [timestamp]
      */
     animate(timestamp) {
+        this.callback(this.momentum); // TODO: This is actually a delta, should take the elapsed time into account
+
         const timeDelta = timestamp - this.timestamp || 0;
         this.timestamp = timestamp;
 
-        const damp = Math.pow(this.damping, timeDelta / 1000);
-        this.momentum *= damp;
+        const velocity = Math.abs(this.momentum);
 
-        this.callback(this.momentum); // TODO: This is actually a delta, should take elapsed time into account
+        this.momentum =
+            Math.sign(this.momentum) *
+            Math.max(
+                0,
+                velocity - ((velocity * this.damping) ** 1.5 + 0.04) * timeDelta
+            );
+
         if (Math.abs(this.momentum) > this.lowerLimit) {
             this.loop = true;
             this.animator.requestTransition(this._transitionCallback);
@@ -101,11 +107,16 @@ export default class Inertia {
 export function makeEventTemplate(event) {
     /** @type {Partial<Record<keyof T, any>>} */
     const template = {};
-    const accepted = ["string", "number", "boolean"];
+    const acceptedTypes = ["string", "number", "boolean"];
+    const rejectedProps = ["wheelDelta", "wheelDeltaX", "wheelDeltaY"];
+
     // eslint-disable-next-line guard-for-in
     for (const key in event) {
         const k = /** @type {keyof T} */ (key);
-        if (accepted.includes(typeof event[k])) {
+        if (
+            !rejectedProps.includes(key) &&
+            acceptedTypes.includes(typeof event[k])
+        ) {
             template[k] = /** @type {any} */ (event[k]);
         }
     }
