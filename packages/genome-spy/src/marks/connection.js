@@ -125,9 +125,10 @@ export default class ConnectionMark extends Mark {
         return this.createRenderCallback(
             (offset, count) => {
                 // We are using instanced drawing here.
-                // However, WebGL does not provide glDrawElementsInstancedBaseInstance and thus,
+                // However, WebGL does not provide glDrawArraysInstancedBaseInstance and thus,
                 // we have to hack with offsets in vertexAttribPointer
                 // TODO: Use VAOs more intelligently to reduce WebGL calls
+                // TODO: Explore multiDrawArraysInstancedWEBGL
 
                 this.gl.bindVertexArray(this.vertexArrayInfo.vertexArrayObject);
 
