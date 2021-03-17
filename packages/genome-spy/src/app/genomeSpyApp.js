@@ -17,6 +17,7 @@ import { zoomLinear } from "vega-util";
 import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
 import getBookmarkButtons from "../sampleHandler/bookmarkToolbar";
 import BookmarkDatabase from "../sampleHandler/bookmarkDatabase";
+import { asArray } from "../utils/arrayUtils";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -69,6 +70,24 @@ export default class GenomeSpyApp {
             const sampleHandler = self.getSampleHandler();
             const provenance = sampleHandler?.provenance;
 
+            let infoButton = html``;
+
+            if (self.config.description) {
+                const concatenated = asArray(self.config.description).join(
+                    "\n"
+                );
+
+                infoButton = html`
+                    <button
+                        class="tool-btn"
+                        title="Show a description of the visualization"
+                        @click=${() => alert(concatenated)}
+                    >
+                        ${icon(faInfoCircle).node[0]}
+                    </button>
+                `;
+            }
+
             return html`
                 ${getProvenanceButtons(provenance)}
                 ${sampleHandler && bookmarkDatabase
@@ -76,15 +95,7 @@ export default class GenomeSpyApp {
                           self._renderTemplate()
                       )
                     : ""}
-
-                <button
-                    class="tool-btn"
-                    title="Info"
-                    @click=${() => alert("TODO")}
-                >
-                    ${icon(faInfoCircle).node[0]}
-                </button>
-
+                ${infoButton}
                 ${self.genomeSpy && self.genomeSpy.config.title
                     ? html`
                           <span class="vis-title"

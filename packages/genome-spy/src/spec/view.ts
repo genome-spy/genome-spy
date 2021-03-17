@@ -68,7 +68,12 @@ export interface ViewSpecBase {
     transform?: TransformParams[];
     encoding?: Encoding;
     title?: string;
-    description?: string;
+
+    /**
+     * A description of the view. Multiple lines can be provided as an array.
+     */
+    description?: string | string[];
+
     baseUrl?: string;
 
     /**
