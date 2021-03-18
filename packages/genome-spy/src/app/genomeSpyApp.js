@@ -49,6 +49,14 @@ export default class GenomeSpyApp {
                 ? new BookmarkDatabase(config.specId)
                 : undefined;
 
+        /**
+         * The first entry in the description array is shown as a title in the toolbar
+         * @type {string[]}
+         */
+        const description = self.config.description
+            ? asArray(self.config.description)
+            : [];
+
         this._renderTemplate = () => {
             render(getAppBody(), self.appContainer);
         };
@@ -72,16 +80,12 @@ export default class GenomeSpyApp {
 
             let infoButton = html``;
 
-            if (self.config.description) {
-                const concatenated = asArray(self.config.description).join(
-                    "\n"
-                );
-
+            if (description.length > 1) {
                 infoButton = html`
                     <button
                         class="tool-btn"
                         title="Show a description of the visualization"
-                        @click=${() => alert(concatenated)}
+                        @click=${() => alert(description.join("\n"))}
                     >
                         ${icon(faInfoCircle).node[0]}
                     </button>
@@ -96,11 +100,9 @@ export default class GenomeSpyApp {
                       )
                     : ""}
                 ${infoButton}
-                ${self.genomeSpy && self.genomeSpy.config.title
+                ${description.length > 0
                     ? html`
-                          <span class="vis-title"
-                              >${self.genomeSpy.config.title}</span
-                          >
+                          <span class="vis-title">${description[0]}</span>
                       `
                     : ""}
 
@@ -281,8 +283,10 @@ export default class GenomeSpyApp {
             return;
         }
 
-        if (this.isFullPage() && this.genomeSpy.config.title) {
-            document.title = "GenomeSpy - " + this.genomeSpy.config.title;
+        const title = asArray(this.genomeSpy.config.description ?? []);
+
+        if (this.isFullPage() && title.length > 0) {
+            document.title = "GenomeSpy - " + title;
         }
 
         this._initializeGenome();
