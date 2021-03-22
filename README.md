@@ -1,8 +1,10 @@
 # GenomeSpy
 
-GenomeSpy is a genome visualization tool with a grammar of graphics and WebGL-powered fluid interactions.
+![Teaser](docs/img/teaser.png)
 
-The application is still work in progress. Documentation and examples can be found at https://genomespy.app/
+GenomeSpy is a genome visualization tool with a Vega-Lite inspired visualization grammar and high-performance WebGL-powered graphics.
+
+The software is still work in progress. Documentation and examples of an early alpha version can be found at https://genomespy.app/
 
 # Legal stuff etc.
 
