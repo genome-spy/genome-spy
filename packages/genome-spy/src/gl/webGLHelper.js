@@ -29,7 +29,6 @@ export default class WebGLHelper {
 
         /** @type {WebGL2RenderingContext} */
         const gl = getContext(canvas);
-        addExtensionsToContext(gl);
 
         if (!gl) {
             throw new Error(
@@ -42,6 +41,8 @@ export default class WebGLHelper {
                 "Your web browser does not support WebGL 2.0. Chrome, Firefox, and Safari Tech Preview should work."
             );
         }
+
+        addExtensionsToContext(gl);
 
         // Disable depth writes. We don't use depth testing.
         gl.depthMask(false);

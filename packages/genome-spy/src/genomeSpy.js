@@ -267,9 +267,9 @@ export default class GenomeSpy {
      * @returns {Promise<boolean>} true if the launch was successful
      */
     async launch() {
-        this._prepareContainer();
-
         try {
+            this._prepareContainer();
+
             await this._prepareViewsAndData();
 
             this.registerMouseEvents();
