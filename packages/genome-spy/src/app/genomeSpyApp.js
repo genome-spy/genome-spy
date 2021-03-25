@@ -37,6 +37,7 @@ export default class GenomeSpyApp {
         if (this.isFullPage()) {
             this.appContainer.style.margin = "0";
             this.appContainer.style.padding = "0";
+            this.appContainer.style.overflow = "hidden";
         } else {
             this.appContainer.style.position = "relative";
         }
