@@ -2,6 +2,9 @@
  * A simple data structure for keeping track of unreserved space in one dimension.
  * Doesn't do any balancing, reservations must be done in random order.
  * Uses arrays to minimize object allocation and burden on GC.
+ *
+ * Note: this data structure appears to have some similarities to "Segment Tree".
+ * TODO: Balancing ideas: https://cp-algorithms.com/data_structures/segment_tree.html
  */
 export default class ReservationMap {
     /**
