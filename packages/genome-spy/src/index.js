@@ -102,7 +102,7 @@ export async function loadSpec(url) {
     }
 
     if (!spec.baseUrl) {
-        const m = url.match(/^.*\//);
+        const m = url.match(/^[^?#]*\//);
         spec.baseUrl = (m && m[0]) || "./";
     }
 

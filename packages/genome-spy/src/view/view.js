@@ -373,16 +373,22 @@ export default class View {
         ));
     }
 
+    /**
+     * @returns {string}
+     */
     getBaseUrl() {
-        /** @type {View} */
-        // eslint-disable-next-line consistent-this
-        let view = this;
-        while (view) {
-            if (view.spec.baseUrl) {
-                return view.spec.baseUrl;
-            }
-            view = view.parent;
+        const protoRe = /^([A-Za-z]+:)?\/\//;
+
+        if (this.spec.baseUrl && protoRe.test(this.spec.baseUrl)) {
+            return this.spec.baseUrl;
         }
+
+        let parentBaseUrl = this.parent?.getBaseUrl();
+        if (parentBaseUrl && this.spec.baseUrl) {
+            return parentBaseUrl + "/" + this.spec.baseUrl;
+        }
+
+        return parentBaseUrl ?? this.spec.baseUrl;
     }
 
     /**

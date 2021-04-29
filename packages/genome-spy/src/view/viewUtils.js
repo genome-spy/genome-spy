@@ -448,9 +448,7 @@ async function loadExternalViewSpec(spec, baseUrl) {
     );
 
     if (isViewSpec(importedSpec)) {
-        importedSpec.baseUrl = (await loader.sanitize(url)).href.match(
-            /^.*\//
-        )[0];
+        importedSpec.baseUrl = url.match(/^[^?#]*\//)[0];
         return importedSpec;
     } else {
         throw new Error(

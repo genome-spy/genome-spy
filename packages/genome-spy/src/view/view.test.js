@@ -127,3 +127,67 @@ describe("Test domain handling", () => {
         );
     });
 });
+
+describe("Utility methods", () => {
+    test("BaseUrl is handled correctly", () => {
+        createAndInitialize({
+            layer: []
+        }).then(view => expect(view.getBaseUrl()).toBeUndefined());
+
+        createAndInitialize({
+            baseUrl: "blaa",
+            layer: []
+        }).then(view => expect(view.getBaseUrl()).toEqual("blaa"));
+
+        createAndInitialize({
+            baseUrl: "https://site.com",
+            layer: []
+        }).then(view => expect(view.getBaseUrl()).toEqual("https://site.com"));
+
+        createAndInitialize({
+            baseUrl: "https://site.com",
+            layer: [
+                {
+                    baseUrl: "blaa",
+                    layer: []
+                }
+            ]
+        }).then(view =>
+            expect(view.children[0].getBaseUrl()).toEqual(
+                "https://site.com/blaa"
+            )
+        );
+
+        createAndInitialize({
+            baseUrl: "https://site.com",
+            layer: [
+                {
+                    baseUrl: "http://another-site.com",
+                    layer: []
+                }
+            ]
+        }).then(view =>
+            expect(view.children[0].getBaseUrl()).toEqual(
+                "https://another-site.com"
+            )
+        );
+
+        createAndInitialize({
+            baseUrl: "https://site.com",
+            layer: [
+                {
+                    layer: [
+                        {
+                            baseUrl: "blaa",
+                            layer: []
+                        }
+                    ]
+                }
+            ]
+        }).then(view =>
+            expect(view.children[0].children[0].getBaseUrl()).toEqual(
+                "https://site.com/blaa"
+            )
+        );
+    });
+});
