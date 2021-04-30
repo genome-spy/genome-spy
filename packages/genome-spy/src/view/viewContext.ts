@@ -22,7 +22,7 @@ export default interface ViewContext {
 
     updateTooltip: <T>(
         datum: T,
-        converter?: (datum: T) => string | TemplateResult
+        converter?: (datum: T) => Promise<TemplateResult>
     ) => void;
 
     contextMenu: (options: MenuOptions, mouseEvent: MouseEvent) => void;

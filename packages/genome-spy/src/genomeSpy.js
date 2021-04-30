@@ -33,8 +33,9 @@ import GenomeStore from "./genome/genomeStore";
 import BmFontManager from "./fonts/bmFontManager";
 import fasta from "./data/formats/fasta";
 import { VISIT_STOP } from "./view/view";
-import { datumToTooltip } from "./marks/mark";
 import Inertia, { makeEventTemplate } from "./utils/inertia";
+import refseqGeneTooltipHandler from "./utils/tooltip/refseqGeneTooltipHandler";
+import dataTooltipHandler from "./utils/tooltip/dataTooltipHandler";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -88,7 +89,7 @@ export default class GenomeSpy {
 
         /**
          * Currently hovered mark and datum
-         * @type {{ mark: import("./marks/Mark").default, datum: import("./data/flowNode").Datum}}
+         * @type {{ mark: import("./marks/Mark").default, datum: import("./data/flowNode").Datum, uniqueId: number }}
          */
         this._currentHover = undefined;
 
@@ -414,8 +415,6 @@ export default class GenomeSpy {
      * @param {number} y
      */
     _handlePicking(x, y) {
-        this._currentHover = null;
-
         const pixelValue = this._glHelper.readPickingPixel(x, y);
 
         const uniqueId =
@@ -425,34 +424,54 @@ export default class GenomeSpy {
             return;
         }
 
-        // We are doing an exhaustive search of the data. This is a bit slow with
-        // millions of items.
-        // TODO: Optimize by indexing or something
+        if (uniqueId !== this._currentHover?.uniqueId) {
+            this._currentHover = null;
+        }
 
-        this.viewRoot.visit(view => {
-            if (view instanceof UnitView) {
-                if (view.mark.isPickingParticipant()) {
-                    const accessor = view.mark.encoders.uniqueId.accessor;
-                    view.getCollector().visitData(d => {
-                        if (accessor(d) == uniqueId) {
-                            this._currentHover = {
-                                mark: view.mark,
-                                datum: d
-                            };
-                        }
-                    });
+        if (!this._currentHover) {
+            // We are doing an exhaustive search of the data. This is a bit slow with
+            // millions of items.
+            // TODO: Optimize by indexing or something
+
+            this.viewRoot.visit(view => {
+                if (view instanceof UnitView) {
+                    if (view.mark.isPickingParticipant()) {
+                        const accessor = view.mark.encoders.uniqueId.accessor;
+                        view.getCollector().visitData(d => {
+                            if (accessor(d) == uniqueId) {
+                                this._currentHover = {
+                                    mark: view.mark,
+                                    datum: d,
+                                    uniqueId
+                                };
+                            }
+                        });
+                    }
+                    if (this._currentHover) {
+                        return VISIT_STOP;
+                    }
                 }
-                if (this._currentHover) {
-                    this.updateTooltip(this._currentHover, d =>
-                        datumToTooltip(
-                            this._currentHover.datum,
-                            this._currentHover.mark
-                        )
-                    );
-                    return VISIT_STOP;
+            });
+        }
+
+        if (this._currentHover) {
+            const mark = this._currentHover.mark;
+            this.updateTooltip(this._currentHover.datum, async datum => {
+                if (!mark.isPickingParticipant()) {
+                    return;
                 }
-            }
-        });
+
+                const tooltipProps = mark.properties.tooltip;
+                if (tooltipProps?.handler) {
+                    // TODO: Create a proper handler registry
+                    if (tooltipProps.handler == "refseqgene") {
+                        return refseqGeneTooltipHandler(datum, mark);
+                    }
+                }
+
+                return dataTooltipHandler(datum, mark);
+            });
+        }
     }
 
     /**
@@ -460,7 +479,7 @@ export default class GenomeSpy {
      * tooltip will be hidden.
      *
      * @param {T} datum
-     * @param {function(T):(string | import("lit-html").TemplateResult)} [converter]
+     * @param {function(T):Promise<import("lit-html").TemplateResult>} [converter]
      * @template T
      */
     updateTooltip(datum, converter) {

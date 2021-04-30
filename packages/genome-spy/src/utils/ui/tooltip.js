@@ -1,5 +1,5 @@
 import clientPoint from "../point";
-import { render, TemplateResult } from "lit-html";
+import { html, render, TemplateResult } from "lit-html";
 import { peek } from "../arrayUtils";
 
 export default class Tooltip {
@@ -135,10 +135,9 @@ export default class Tooltip {
             render(JSON.stringify(content), this.element);
         }
 
-        this.updatePlacement();
-
-        // TODO: update placement
         this.visible = true;
+
+        this.updatePlacement();
     }
 
     clear() {
@@ -151,15 +150,28 @@ export default class Tooltip {
      * Otherwise this is nop.
      *
      * @param {T} datum
-     * @param {function(T):(string | import("lit-html").TemplateResult)} [converter]
+     * @param {function(T):Promise<import("lit-html").TemplateResult>} [converter]
      * @template T
      */
     updateWithDatum(datum, converter) {
         if (datum !== this._previousTooltipDatum) {
             this._previousTooltipDatum = datum;
-            this.setContent(
-                converter ? converter(datum) : JSON.stringify(datum)
-            );
+            if (!converter) {
+                converter = d =>
+                    Promise.resolve(
+                        html`
+                            ${JSON.stringify(d)}
+                        `
+                    );
+            }
+
+            converter(datum)
+                .then(result => this.setContent(result))
+                .catch(error => {
+                    if (error !== "debounced") {
+                        throw error;
+                    }
+                });
         }
     }
 

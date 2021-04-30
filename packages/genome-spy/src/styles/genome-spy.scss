@@ -72,10 +72,18 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         pointer-events: none;
         z-index: 100;
 
+        > :last-child {
+            margin-bottom: 0;
+        }
+
         > .title {
             padding-bottom: $basic-spacing / 2;
             margin-bottom: $basic-spacing / 2;
             border-bottom: 1px dashed darken($background-color, 25%);
+        }
+
+        .summary {
+            font-size: 12px;
         }
 
         table {

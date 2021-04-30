@@ -73,7 +73,9 @@ export class SampleAttributePanel extends ConcatView {
                         this.getAttributeInfoFromView(event.target)?.name) ||
                     undefined;
                 const id = JSON.stringify([sample.id, attribute]);
-                this.context.updateTooltip(id, id => this.sampleToTooltip(id));
+                this.context.updateTooltip(id, id =>
+                    Promise.resolve(this.sampleToTooltip(id))
+                );
             }
         });
     }

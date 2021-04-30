@@ -39,8 +39,8 @@ import { createProgram } from "../gl/webGLHelper";
 import SampleView from "../view/sampleView/sampleView";
 import AxisView from "../view/axisView";
 import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
-import { html } from "lit-html";
-import formatObject from "../utils/formatObject";
+import refseqGeneTooltipHandler from "../utils/tooltip/refseqGeneTooltipHandler";
+import dataTooltipHandler from "../utils/tooltip/dataTooltipHandler";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -202,7 +202,7 @@ export default class Mark {
     }
 
     /**
-     * @returns {Record<string, any>}
+     * @returns {Partial<import("../view/viewUtils").MarkConfig> & Record<string, any>}
      */
     get properties() {
         return getCachedOrCall(this, "properties", () => {
@@ -914,70 +914,4 @@ export default class Mark {
     findDatumAt(facetId, x) {
         // override
     }
-}
-
-/**
- * Converts a datum to a tooltip html.
- *
- * TODO: Find proper place for this
- *
- * @param {import("../data/flowNode").Datum} datum
- * @param {Mark} mark
- */
-export function datumToTooltip(datum, mark) {
-    if (!mark.isPickingParticipant()) {
-        return;
-    }
-
-    /**
-     * @param {string} key
-     * @param {object} datum
-     */
-    const legend = (key, datum) => {
-        for (const [channel, encoder] of Object.entries(mark.encoders)) {
-            if (encoder?.accessor?.fields.includes(key)) {
-                switch (channel) {
-                    case "color":
-                        return html`
-                            <span
-                                class="color-legend"
-                                style=${`background-color: ${encoder(datum)}`}
-                            ></span>
-                        `;
-                    default:
-                }
-            }
-        }
-
-        return "";
-    };
-
-    const table = html`
-        <table class="attributes">
-            ${Object.entries(datum)
-                .filter(([key, value]) => !key.startsWith("_"))
-                .map(
-                    ([key, value]) => html`
-                        <tr>
-                            <th>${key}</th>
-                            <td>
-                                ${formatObject(value)} ${legend(key, datum)}
-                            </td>
-                        </tr>
-                    `
-                )}
-        </table>
-    `;
-
-    const title = mark.unitView.spec.title
-        ? html`
-              <div class="title">
-                  <strong>${mark.unitView.spec.title}</strong>
-              </div>
-          `
-        : "";
-
-    return html`
-        ${title}${table}
-    `;
 }

@@ -4,6 +4,7 @@ import { TransformParams } from "./transform";
 import { GenomeConfig } from "../genome/genome";
 import { SizeDef } from "../utils/layout/flexLayout";
 import { Encoding, FacetFieldDef, PositionalChannel } from "./channel";
+import { Tooltip } from "./tooltip";
 
 // TODO: Perhaps this should be in "utils"
 export type GeometricDimension = "width" | "height";
@@ -17,7 +18,7 @@ export interface MarkConfig {
     dy?: number;
     xOffset?: number;
     yOffset?: number;
-    tooltip?: object;
+    tooltip?: Tooltip;
 
     dynamicData?: boolean;
 
