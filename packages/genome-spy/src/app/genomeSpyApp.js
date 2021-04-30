@@ -2,13 +2,14 @@ import lzString from "lz-string";
 
 import GenomeSpy from "../genomeSpy";
 import "../styles/genome-spy-app.scss";
-import { html, render } from "lit-html";
+import { html, render, nothing } from "lit-html";
 
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faInfoCircle,
     faQuestionCircle,
-    faExpandArrowsAlt
+    faExpandArrowsAlt,
+    faArrowsAltV
 } from "@fortawesome/free-solid-svg-icons";
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
@@ -79,10 +80,21 @@ export default class GenomeSpyApp {
             const sampleHandler = self.getSampleHandler();
             const provenance = sampleHandler?.provenance;
 
-            let infoButton = html``;
+            /** @type {(import("lit-html").TemplateResult | string)[]} */
+            const elements = [];
+
+            elements.push(getProvenanceButtons(provenance));
+
+            if (sampleHandler && bookmarkDatabase) {
+                elements.push(
+                    getBookmarkButtons(sampleHandler, bookmarkDatabase, () =>
+                        self._renderTemplate()
+                    )
+                );
+            }
 
             if (description.length > 1) {
-                infoButton = html`
+                elements.push(html`
                     <button
                         class="tool-btn"
                         title="Show a description of the visualization"
@@ -90,23 +102,16 @@ export default class GenomeSpyApp {
                     >
                         ${icon(faInfoCircle).node[0]}
                     </button>
-                `;
+                `);
             }
 
-            return html`
-                ${getProvenanceButtons(provenance)}
-                ${sampleHandler && bookmarkDatabase
-                    ? getBookmarkButtons(sampleHandler, bookmarkDatabase, () =>
-                          self._renderTemplate()
-                      )
-                    : ""}
-                ${infoButton}
-                ${description.length > 0
-                    ? html`
-                          <span class="vis-title">${description[0]}</span>
-                      `
-                    : ""}
+            if (description.length > 0) {
+                elements.push(html`
+                    <span class="vis-title">${description[0]}</span>
+                `);
+            }
 
+            elements.push(html`
                 <span class="spacer"></span>
 
                 <button
@@ -125,12 +130,14 @@ export default class GenomeSpyApp {
                 >
                     ${icon(faQuestionCircle).node[0]}
                 </button>
-            `;
+            `);
+
+            return elements;
         }
 
         function getSearchField() {
             if (!self.getFormattedDomain) {
-                return "";
+                return nothing;
             }
 
             return html`
