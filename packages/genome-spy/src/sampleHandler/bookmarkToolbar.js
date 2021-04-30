@@ -33,7 +33,14 @@ export default function getBookmarkButtons(
             // Return to the initial state
             // TODO: listeners should be suppressed during the visit to the initial state
             provenance.activateState(0);
-            sampleHandler.dispatchBatch(entry.actions);
+
+            try {
+                sampleHandler.dispatchBatch(entry.actions);
+            } catch (e) {
+                console.error(e);
+                alert(`Cannot restore bookmark:\n${e}`);
+                provenance.activateState(0);
+            }
         }
     };
 
