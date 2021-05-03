@@ -85,6 +85,17 @@ export default class GenomeSpyApp {
 
             elements.push(getProvenanceButtons(provenance));
 
+            if (sampleHandler) {
+                elements.push(html`
+                    <button
+                        class="tool-btn"
+                        title="Peek (E)"
+                        @click=${() => self.getSampleView()._togglePeek()}
+                    >
+                        ${icon(faArrowsAltV).node[0]}
+                    </button>
+                `);
+            }
             if (sampleHandler && bookmarkDatabase) {
                 elements.push(
                     getBookmarkButtons(sampleHandler, bookmarkDatabase, () =>
