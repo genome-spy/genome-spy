@@ -1,5 +1,5 @@
 import { format as d3format } from "d3-format";
-import { html } from "lit-html";
+import { html } from "lit";
 
 import {
     faSortAmountDown,
@@ -96,7 +96,7 @@ export function getActionInfo(action, sampleHandler) {
                 icon: faMedal
             };
         case FILTER_BY_NOMINAL: {
-            /** @param {string | import("lit-html").TemplateResult} attr */
+            /** @param {string | import("lit").TemplateResult} attr */
             const makeTitle = attr => html`
                 ${payload.action == "remove" ? "Remove" : "Retain"} samples
                 having
@@ -122,7 +122,7 @@ export function getActionInfo(action, sampleHandler) {
             };
         }
         case FILTER_BY_QUANTITATIVE: {
-            /** @param {string | import("lit-html").TemplateResult} attr */
+            /** @param {string | import("lit").TemplateResult} attr */
             const makeTitle = attr => html`
                 Retain samples having ${attr} ${verboseOps[payload.operator]}
                 <strong>${attributeNumberFormat(payload.operand)}</strong>

@@ -18,11 +18,16 @@ module.exports = merge(common, {
     ],
 
     devServer: {
-        contentBase: [
-            path.join(__dirname, "static"),
-            path.join(__dirname, "private")
-        ],
-        contentBasePublicPath: ["/", "/private"]
+        static: [
+            {
+                directory: path.join(__dirname, "static"),
+                publicPath: "/"
+            },
+            {
+                directory: path.join(__dirname, "private"),
+                publicPath: "/private"
+            }
+        ]
     },
 
     module: {

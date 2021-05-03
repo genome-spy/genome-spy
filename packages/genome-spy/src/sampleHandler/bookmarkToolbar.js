@@ -1,5 +1,5 @@
-import { html } from "lit-html";
-import { until } from "lit-html/directives/until.js";
+import { html } from "lit";
+import { until } from "lit/directives/until.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faBookmark } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "./dropdown";

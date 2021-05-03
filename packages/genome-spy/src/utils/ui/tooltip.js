@@ -1,5 +1,5 @@
 import clientPoint from "../point";
-import { html, render, TemplateResult } from "lit-html";
+import { html, render, TemplateResult } from "lit";
 import { peek } from "../arrayUtils";
 
 export default class Tooltip {
@@ -117,7 +117,7 @@ export default class Tooltip {
     }
 
     /**
-     * @param {string | import("lit-html").TemplateResult} content
+     * @param {string | import("lit").TemplateResult} content
      */
     setContent(content) {
         if (!content || !this.enabled || this._isPenalty()) {
@@ -129,11 +129,7 @@ export default class Tooltip {
             return;
         }
 
-        if (content instanceof TemplateResult) {
-            render(content, this.element);
-        } else {
-            render(JSON.stringify(content), this.element);
-        }
+        render(content, this.element);
 
         this.visible = true;
 
@@ -150,7 +146,7 @@ export default class Tooltip {
      * Otherwise this is nop.
      *
      * @param {T} datum
-     * @param {function(T):Promise<import("lit-html").TemplateResult>} [converter]
+     * @param {function(T):Promise<import("lit").TemplateResult>} [converter]
      * @template T
      */
     updateWithDatum(datum, converter) {

@@ -479,7 +479,7 @@ export default class GenomeSpy {
      * tooltip will be hidden.
      *
      * @param {T} datum
-     * @param {function(T):Promise<import("lit-html").TemplateResult>} [converter]
+     * @param {function(T):Promise<import("lit").TemplateResult>} [converter]
      * @template T
      */
     updateTooltip(datum, converter) {

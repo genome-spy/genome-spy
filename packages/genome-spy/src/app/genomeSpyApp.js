@@ -2,7 +2,7 @@ import lzString from "lz-string";
 
 import GenomeSpy from "../genomeSpy";
 import "../styles/genome-spy-app.scss";
-import { html, render, nothing } from "lit-html";
+import { html, render, nothing } from "lit";
 
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -80,7 +80,7 @@ export default class GenomeSpyApp {
             const sampleHandler = self.getSampleHandler();
             const provenance = sampleHandler?.provenance;
 
-            /** @type {(import("lit-html").TemplateResult | string)[]} */
+            /** @type {(import("lit").TemplateResult | string)[]} */
             const elements = [];
 
             elements.push(getProvenanceButtons(provenance));

@@ -5,7 +5,7 @@ import * as Actions from "../../sampleHandler/sampleHandlerActions";
  */
 
 /**
- * @param {string | import("lit-html").TemplateResult} title Menu title
+ * @param {string | import("lit").TemplateResult} title Menu title
  * @param {import("../../sampleHandler/sampleHandler").AttributeIdentifier} attribute
  * @param {string} attributeType
  * @param {any} attributeValue

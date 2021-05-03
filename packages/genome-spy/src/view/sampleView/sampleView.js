@@ -1,5 +1,5 @@
 import { isNumber, error } from "vega-util";
-import { html } from "lit-html";
+import { html } from "lit";
 import { createTexture, setTextureFromArray } from "twgl.js";
 import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";

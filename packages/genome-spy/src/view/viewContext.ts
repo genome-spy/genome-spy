@@ -1,4 +1,4 @@
-import { TemplateResult } from "lit-html";
+import { TemplateResult } from "lit";
 import View from "../view/view";
 import DataFlow from "../data/dataFlow";
 import AccessorFactory from "../encoder/accessor";

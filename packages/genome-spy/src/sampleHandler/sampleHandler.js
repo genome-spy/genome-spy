@@ -31,7 +31,7 @@ import {
  *
  * @typedef {object} AttributeInfo
  * @prop {string} name A concise name of the attribute
- * @prop {string | import("lit-html").TemplateResult} [title] A more detailed name
+ * @prop {string | import("lit").TemplateResult} [title] A more detailed name
  *      with optional formatting.
  * @prop {function(string):any} accessor A function that maps a sampleId to an attribute value
  * @prop {string} type e.g., "quantitative"

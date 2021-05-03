@@ -1,4 +1,4 @@
-import { html } from "lit-html";
+import { html } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faUndo,

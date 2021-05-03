@@ -1,4 +1,4 @@
-import { html, render } from "lit-html";
+import { html, render } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 
 /** @type {HTMLElement} */
@@ -6,7 +6,7 @@ let currentlyOpenMenuElement;
 
 /**
  * @typedef {Object} MenuItem
- * @prop {string | import("lit-html").TemplateResult} [label]
+ * @prop {string | import("lit").TemplateResult} [label]
  * @prop {function} [callback]
  * @prop {string} [type]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
