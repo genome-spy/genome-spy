@@ -198,7 +198,7 @@ export default class SampleView extends ContainerView {
             "wheel",
             (coords, event) => {
                 const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
-                if (wheelEvent.altKey) {
+                if (this._peekState && !wheelEvent.ctrlKey) {
                     this._scrollOffset = clamp(
                         this._scrollOffset + wheelEvent.deltaY,
                         0,
