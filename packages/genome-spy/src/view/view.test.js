@@ -129,22 +129,22 @@ describe("Test domain handling", () => {
 });
 
 describe("Utility methods", () => {
-    test("BaseUrl is handled correctly", () => {
+    test("BaseUrl is handled correctly", async () => {
         createAndInitialize({
             layer: []
         }).then(view => expect(view.getBaseUrl()).toBeUndefined());
 
-        createAndInitialize({
+        await createAndInitialize({
             baseUrl: "blaa",
             layer: []
         }).then(view => expect(view.getBaseUrl()).toEqual("blaa"));
 
-        createAndInitialize({
+        await createAndInitialize({
             baseUrl: "https://site.com",
             layer: []
         }).then(view => expect(view.getBaseUrl()).toEqual("https://site.com"));
 
-        createAndInitialize({
+        await createAndInitialize({
             baseUrl: "https://site.com",
             layer: [
                 {
@@ -158,11 +158,11 @@ describe("Utility methods", () => {
             )
         );
 
-        createAndInitialize({
+        await createAndInitialize({
             baseUrl: "https://site.com",
             layer: [
                 {
-                    baseUrl: "http://another-site.com",
+                    baseUrl: "https://another-site.com",
                     layer: []
                 }
             ]
@@ -172,7 +172,7 @@ describe("Utility methods", () => {
             )
         );
 
-        createAndInitialize({
+        await createAndInitialize({
             baseUrl: "https://site.com",
             layer: [
                 {
