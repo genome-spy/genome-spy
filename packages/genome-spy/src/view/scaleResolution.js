@@ -295,6 +295,10 @@ export default class ScaleResolution {
 
         const anchor = scale.invert(scaleAnchor);
 
+        if (this.getScaleProps().reverse) {
+            pan = -pan;
+        }
+
         // TODO: log, pow, symlog, ...
         switch (scale.type) {
             case "linear":
