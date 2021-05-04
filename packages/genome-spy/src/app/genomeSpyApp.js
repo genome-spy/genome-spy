@@ -19,6 +19,7 @@ import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
 import getBookmarkButtons from "../sampleHandler/bookmarkToolbar";
 import BookmarkDatabase from "../sampleHandler/bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
+import { sampleIterable } from "../data/transforms/sample";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -64,14 +65,47 @@ export default class GenomeSpyApp {
         };
 
         function getSearchHelp() {
+            /** @type {import("lit").TemplateResult[]} */
+            const parts = [];
+
+            parts.push(html`
+                <p>Focus to a specific range. Examples:</p>
+                <ul>
+                    <!-- TODO: Display only when using a genomic coordinate system-->
+                    <li>chr8:21,445,873-24,623,697</li>
+                    <li>chr4:166,014,727-chr15:23,731,397</li>
+                </ul>
+            `);
+
+            for (const view of self.genomeSpy.getSearchableViews()) {
+                const viewTitle = view.spec.title ?? view.spec.name;
+                const a = view.getAccessor("search");
+                const fieldString = a.fields.join(", "); // TODO: Field title
+
+                const examples = sampleIterable(
+                    3,
+                    view.getCollector().getData(),
+                    a
+                );
+
+                parts.push(html`
+                    <p>
+                        Search <em>${viewTitle}</em> (${fieldString}). Examples:
+                    </p>
+                    <ul>
+                        ${examples.map(
+                            example =>
+                                html`
+                                    <li>${example}</li>
+                                `
+                        )}
+                    </ul>
+                `);
+            }
+
             return html`
                 <div class="search-help" @click=${onSearchHelpClicked}>
-                    <p>Focus to a specific range. Examples:</p>
-                    <ul>
-                        <!-- TODO: Display only when using a genomic coordinate system-->
-                        <li>chr8:21,445,873-24,623,697</li>
-                        <li>chr4:166,014,727-chr15:23,731,397</li>
-                    </ul>
+                    ${parts}
                 </div>
             `;
         }
