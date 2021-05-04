@@ -76,3 +76,26 @@ export default class SampleTransform extends FlowNode {
         super.complete();
     }
 }
+
+/**
+ * A convenience function that uses SampleTransform to sample an iterable.
+ *
+ * @param {number} n
+ * @param {Iterable<T>} iterable
+ * @param {function(T):R} accessor
+ * @returns {R[]}
+ * @template T
+ * @template R
+ */
+export function sampleIterable(n, iterable, accessor) {
+    const sampler = new SampleTransform({
+        type: "sample",
+        size: n
+    });
+    for (const d of iterable) {
+        sampler.handle(accessor(d));
+    }
+    sampler.complete();
+
+    return sampler.reservoir;
+}

@@ -6,7 +6,7 @@ import VERTEX_SHADER from "../gl/point.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
 
 import Mark from "./mark";
-import SampleTransform from "../data/transforms/sample";
+import SampleTransform, { sampleIterable } from "../data/transforms/sample";
 
 /** @type {Record<string, import("../view/viewUtils").ChannelDef>} */
 const defaultEncoding = {};
@@ -89,17 +89,15 @@ export default class PointMark extends Mark {
             "semanticScore"
         );
         if (semanticScoreAccessor) {
-            const sampler = new SampleTransform({
-                type: "sample",
-                size: 10000
-            }); // n chosen using Stetson-Harrison
-            for (const d of this.unitView.getCollector()?.getData()) {
-                // TODO: Throw on missing scores
-                sampler.handle(semanticScoreAccessor(d));
-            }
-            sampler.complete();
-
-            this.sampledSemanticScores = Float32Array.from(sampler.reservoir);
+            // n chosen using Stetson-Harrison
+            // TODO: Throw on missing scores
+            this.sampledSemanticScores = Float32Array.from(
+                sampleIterable(
+                    10000,
+                    this.unitView.getCollector().getData(),
+                    semanticScoreAccessor
+                )
+            );
             this.sampledSemanticScores.sort((a, b) => a - b);
         }
     }
