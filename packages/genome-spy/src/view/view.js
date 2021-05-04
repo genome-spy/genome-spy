@@ -4,6 +4,7 @@ import { getCachedOrCall } from "../utils/propertyCacher";
 import { isNumber, span } from "vega-util";
 import { scaleLinear, scaleLog } from "d3-scale";
 import { isFieldDef, primaryChannel } from "../encoder/encoder";
+import { appendToBaseUrl } from "../utils/url";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -377,18 +378,10 @@ export default class View {
      * @returns {string}
      */
     getBaseUrl() {
-        const protoRe = /^([A-Za-z]+:)?\/\//;
-
-        if (this.spec.baseUrl && protoRe.test(this.spec.baseUrl)) {
-            return this.spec.baseUrl;
-        }
-
-        let parentBaseUrl = this.parent?.getBaseUrl();
-        if (parentBaseUrl && this.spec.baseUrl) {
-            return parentBaseUrl + "/" + this.spec.baseUrl;
-        }
-
-        return parentBaseUrl ?? this.spec.baseUrl;
+        return appendToBaseUrl(
+            () => this.parent?.getBaseUrl(),
+            this.spec.baseUrl
+        );
     }
 
     /**
