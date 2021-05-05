@@ -708,12 +708,10 @@ export default class SampleView extends ContainerView {
             event.point.x,
             event.point.y
         ).x;
-        const xResolution = this.getScaleResolution("x");
-        const xScale = xResolution.getScale();
-        const genome = xResolution.getGenome();
 
-        const invertedX = xScale.invert(normalizedXPos);
-        const serializedX = genome?.toChromosomal(invertedX) ?? invertedX;
+        const complexX = this.getScaleResolution("x").invertToComplex(
+            normalizedXPos
+        );
 
         const fieldInfos = findEncodedFields(this.child)
             .filter(d => !["sample", "x", "x2"].includes(d.channel))
@@ -725,7 +723,7 @@ export default class SampleView extends ContainerView {
         /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         let items = [
             {
-                label: `Locus: ${locusToString(serializedX)}`,
+                label: `Locus: ${locusToString(complexX)}`,
                 type: "header"
             },
             { type: "divider" }
@@ -744,7 +742,7 @@ export default class SampleView extends ContainerView {
                 // TODO: Relative path
                 path: path.map(v => v.name).reverse(),
                 field: fieldInfo.field,
-                locus: serializedX
+                locus: complexX
             };
 
             /** @type {import("../../sampleHandler/sampleHandler").AttributeIdentifier} */

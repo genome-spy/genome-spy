@@ -255,3 +255,12 @@ export function parseChromSizes(chromSizesData) {
         .filter(row => /^chr[0-9A-Z]+$/.test(row[0]))
         .map(([name, size]) => ({ name, size: parseInt(size) }));
 }
+
+/**
+ *
+ * @param {any} value
+ * @return {value is ChromosomalLocus}
+ */
+export function isChromosomalLocus(value) {
+    return "chromosomal" in value;
+}

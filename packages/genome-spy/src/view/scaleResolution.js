@@ -20,6 +20,7 @@ import {
     isDiscreteChannel,
     isPositionalChannel
 } from "../encoder/encoder";
+import { isChromosomalLocus } from "../genome/genome";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
@@ -412,6 +413,40 @@ export default class ScaleResolution {
 
         // TODO: Support multiple assemblies
         return this.views[0].context.genomeStore.getGenome();
+    }
+
+    /**
+     * Inverts a value in range to a value on domain. Returns an object in
+     * case of locus scale.
+     *
+     * @param {number} value
+     */
+    invertToComplex(value) {
+        const scale = this.getScale();
+        if ("invert" in scale) {
+            const inverted = /** @type {number} */ (scale.invert(value));
+            const genome = this.getGenome();
+            return genome?.toChromosomal(inverted) ?? inverted;
+        } else {
+            throw new Error("The scale does not support inverting!");
+        }
+    }
+
+    /**
+     * Maps a value on domain to value in range. Accepts a ChromosomalLocus
+     * in case of locus scale.
+     *
+     * @param {any} complex
+     */
+    fromComplex(complex) {
+        const scale = this.getScale();
+        let value = complex;
+        if (isChromosomalLocus(complex)) {
+            const genome = this.getGenome();
+            value = genome.toContinuous(complex.chromosome, complex.pos);
+        }
+
+        return scale(value);
     }
 
     _getViewPaths() {
