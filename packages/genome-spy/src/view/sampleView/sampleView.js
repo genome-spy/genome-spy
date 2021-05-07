@@ -268,6 +268,22 @@ export default class SampleView extends ContainerView {
             throw new Error("Samples have already been set!");
         }
 
+        if (
+            samples.some(
+                sample => sample.id === undefined || sample.id === null
+            )
+        ) {
+            throw new Error(
+                'The sample metadata contains missing sample ids or the "sample" column is missing!'
+            );
+        }
+
+        if (new Set(samples.map(sample => sample.id)).size != samples.length) {
+            throw new Error(
+                "The sample metadata contains duplicate sample ids!"
+            );
+        }
+
         samples = samples.map((sample, index) => ({
             ...sample,
             indexNumber: index
