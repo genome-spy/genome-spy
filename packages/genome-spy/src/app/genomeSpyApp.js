@@ -3,6 +3,7 @@ import lzString from "lz-string";
 import GenomeSpy from "../genomeSpy";
 import "../styles/genome-spy-app.scss";
 import favIcon from "../img/genomespy-favicon.svg";
+import bowtie from "../img/bowtie.svg";
 import { html, render, nothing } from "lit";
 
 import { icon } from "@fortawesome/fontawesome-svg-core";
@@ -204,8 +205,11 @@ export default class GenomeSpyApp {
 
         function getTitle() {
             return html`
+                <a href="https://genomespy.app" target="_blank" class="logo">
+                    <img title="GenomeSpy" alt="GenomeSpy" src="${bowtie}" />
+                </a>
                 <div class="title">
-                    GenomeSpy
+                    <span>GenomeSpy</span>
                 </div>
             `;
         }
