@@ -2,6 +2,7 @@ import lzString from "lz-string";
 
 import GenomeSpy from "../genomeSpy";
 import "../styles/genome-spy-app.scss";
+import favIcon from "../img/genomespy-favicon.svg";
 import { html, render, nothing } from "lit";
 
 import { icon } from "@fortawesome/fontawesome-svg-core";
@@ -40,6 +41,8 @@ export default class GenomeSpyApp {
             this.appContainer.style.margin = "0";
             this.appContainer.style.padding = "0";
             this.appContainer.style.overflow = "hidden";
+
+            setFavicon(favIcon);
         } else {
             this.appContainer.style.position = "relative";
         }
@@ -556,4 +559,17 @@ function typeSlowly(text, element) {
 
         next();
     });
+}
+
+/**
+ * https://spemer.com/articles/set-favicon-with-javascript.html
+ *
+ * @param {string} favImg
+ */
+function setFavicon(favImg) {
+    let headTitle = document.querySelector("head");
+    let setFavicon = document.createElement("link");
+    setFavicon.setAttribute("rel", "shortcut icon");
+    setFavicon.setAttribute("href", favImg);
+    headTitle.appendChild(setFavicon);
 }
