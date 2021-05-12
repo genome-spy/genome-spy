@@ -22,6 +22,7 @@ import getBookmarkButtons from "../sampleHandler/bookmarkToolbar";
 import BookmarkDatabase from "../sampleHandler/bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
 import { sampleIterable } from "../data/transforms/sample";
+import { debounce } from "../utils/debounce";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -383,7 +384,7 @@ export default class GenomeSpyApp {
                 )).value = this.getFormattedDomain();
             };
 
-            genomeResolution.addScaleObserver(updateInput);
+            genomeResolution.addScaleObserver(debounce(updateInput, 60, false));
         }
     }
 

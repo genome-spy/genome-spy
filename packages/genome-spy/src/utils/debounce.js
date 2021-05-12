@@ -4,7 +4,7 @@
  * @template {any[]} T
  * @template R
  */
-export function debounce(func, wait) {
+export function debounce(func, wait, rejectOnDebounce = true) {
     /** @type {number} */
     let timeout;
 
@@ -23,7 +23,9 @@ export function debounce(func, wait) {
                 resolve(func(...args));
             };
 
-            rejectPrevious("debounced");
+            if (rejectOnDebounce) {
+                rejectPrevious("debounced");
+            }
             clearTimeout(timeout);
 
             rejectPrevious = reject;
