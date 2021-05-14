@@ -129,6 +129,9 @@ export default class ConnectionMark extends Mark {
                 // we have to hack with offsets in vertexAttribPointer
                 // TODO: Use VAOs more intelligently to reduce WebGL calls
                 // TODO: Explore multiDrawArraysInstancedWEBGL
+                // There's also a promising extension draft:
+                // https://www.khronos.org/registry/webgl/extensions/WEBGL_draw_instanced_base_vertex_base_instance/
+                // (and https://www.khronos.org/registry/webgl/extensions/WEBGL_multi_draw_instanced_base_vertex_base_instance/)
 
                 this.gl.bindVertexArray(this.vertexArrayInfo.vertexArrayObject);
 
