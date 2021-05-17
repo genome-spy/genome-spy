@@ -97,7 +97,7 @@ $basic-spacing: 10px;
             transition: opacity 0.2s, transform 0.2s ease-in-out,
                 visibility 0.2s;
 
-            transform: translate(0, 10px);
+            transform: translate(0, 13px);
 
             li {
                 cursor: pointer;
@@ -107,7 +107,7 @@ $basic-spacing: 10px;
         .search:focus-within .search-help {
             opacity: 1;
             visibility: visible;
-            transform: translate(0, 0);
+            transform: translate(0, 3px);
         }
 
         > * {
