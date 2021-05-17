@@ -15,7 +15,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
-import getProvenanceButtons from "../sampleHandler/provenanceToolbar";
 import { zoomLinear } from "vega-util";
 import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
 import getBookmarkButtons from "../sampleHandler/bookmarkToolbar";
@@ -23,6 +22,8 @@ import BookmarkDatabase from "../sampleHandler/bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
 import { sampleIterable } from "../data/transforms/sample";
 import { debounce } from "../utils/debounce";
+
+import "../sampleHandler/provenanceToolbar-wc";
 
 /**
  * A simple wrapper for the GenomeSpy component.
@@ -122,7 +123,15 @@ export default class GenomeSpyApp {
             /** @type {(import("lit").TemplateResult | string)[]} */
             const elements = [];
 
-            elements.push(getProvenanceButtons(provenance));
+            if (provenance) {
+                elements.push(
+                    html`
+                        <genome-spy-provenance-buttons
+                            .provenance=${provenance}
+                        />
+                    `
+                );
+            }
 
             if (sampleHandler) {
                 elements.push(html`
@@ -356,7 +365,6 @@ export default class GenomeSpyApp {
         this._renderTemplate();
 
         this.getSampleHandler()?.provenance.addListener(() => {
-            this._renderTemplate();
             this._updateUrl();
         });
     }

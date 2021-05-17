@@ -18,7 +18,7 @@ $basic-spacing: 10px;
         "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
     .toolbar,
-    .toolbar > .btn-group {
+    .toolbar .btn-group {
         display: flex;
         flex-direction: row;
         align-items: center;
