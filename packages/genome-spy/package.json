@@ -19,7 +19,8 @@
     "url": "https://github.com/tuner/genome-spy"
   },
   "sideEffects": [
-    "*.scss"
+    "*.scss",
+    "**/*-wc.js"
   ],
   "scripts": {
     "start": "webpack-cli serve --progress --hot --config webpack.dev.js",
