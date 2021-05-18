@@ -3,24 +3,17 @@ import lzString from "lz-string";
 import GenomeSpy from "../genomeSpy";
 import "../styles/genome-spy-app.scss";
 import favIcon from "../img/genomespy-favicon.svg";
-import bowtie from "../img/bowtie.svg";
 import { html, render, nothing } from "lit";
 
-import { icon } from "@fortawesome/fontawesome-svg-core";
-import {
-    faInfoCircle,
-    faQuestionCircle,
-    faExpandArrowsAlt,
-    faArrowsAltV
-} from "@fortawesome/free-solid-svg-icons";
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
 import BookmarkDatabase from "../sampleHandler/bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
 
 import "../sampleHandler/provenanceToolbar-wc";
-import { findGenomeScaleResolution } from "./searchField-wc";
 import "../sampleHandler/bookmarkButton-wc";
+import "./toolbar-wc";
+import { createRef, ref } from "lit/directives/ref";
 
 /**
  * A simple wrapper for the GenomeSpy core.
@@ -34,7 +27,9 @@ export default class GenomeSpyApp {
     constructor(appContainerElement, config) {
         this.config = config;
 
-        this.launched = false;
+        this.toolbarRef = createRef();
+
+        //this.launched = false;
 
         this.appContainer = appContainerElement;
         if (this.isFullPage()) {
@@ -50,135 +45,22 @@ export default class GenomeSpyApp {
         // eslint-disable-next-line consistent-this
         const self = this;
 
-        const bookmarkDatabase =
+        this.bookmarkDatabase =
             typeof config.specId == "string"
                 ? new BookmarkDatabase(config.specId)
                 : undefined;
-
-        /**
-         * The first entry in the description array is shown as a title in the toolbar
-         * @type {string[]}
-         */
-        const description = self.config.description
-            ? asArray(self.config.description)
-            : [];
 
         this._renderTemplate = () => {
             render(getAppBody(), self.appContainer);
         };
 
-        function getToolButtons() {
-            const sampleHandler = self.getSampleHandler();
-            const provenance = sampleHandler?.provenance;
-
-            /** @type {(import("lit").TemplateResult | string)[]} */
-            const elements = [];
-
-            if (provenance) {
-                elements.push(
-                    html`
-                        <genome-spy-provenance-buttons
-                            .provenance=${provenance}
-                        />
-                    `
-                );
-            }
-
-            if (sampleHandler) {
-                elements.push(html`
-                    <button
-                        class="tool-btn"
-                        title="Peek (E)"
-                        @click=${() => self.getSampleView()._togglePeek()}
-                    >
-                        ${icon(faArrowsAltV).node[0]}
-                    </button>
-                `);
-            }
-
-            if (sampleHandler && bookmarkDatabase) {
-                elements.push(html`
-                    <genome-spy-bookmark-button
-                        .sampleHandler=${sampleHandler}
-                        .bookmarkDatabase=${bookmarkDatabase}
-                    ></genome-spy-bookmark-button>
-                `);
-            }
-
-            if (description.length > 1) {
-                elements.push(html`
-                    <button
-                        class="tool-btn"
-                        title="Show a description of the visualization"
-                        @click=${() => alert(description.join("\n"))}
-                    >
-                        ${icon(faInfoCircle).node[0]}
-                    </button>
-                `);
-            }
-
-            if (description.length > 0) {
-                elements.push(html`
-                    <span class="vis-title">${description[0]}</span>
-                `);
-            }
-
-            elements.push(html`
-                <span class="spacer"></span>
-
-                <button
-                    class="tool-btn"
-                    title="Fullscreen"
-                    @click=${() => self.toggleFullScreen()}
-                >
-                    ${icon(faExpandArrowsAlt).node[0]}
-                </button>
-
-                <button
-                    class="tool-btn"
-                    title="Help"
-                    @click=${() =>
-                        window.open("https://genomespy.app/docs/", "_blank")}
-                >
-                    ${icon(faQuestionCircle).node[0]}
-                </button>
-            `);
-
-            return elements;
-        }
-
-        function getTitle() {
-            return html`
-                <a href="https://genomespy.app" target="_blank" class="logo">
-                    <img title="GenomeSpy" alt="GenomeSpy" src="${bowtie}" />
-                </a>
-                <div class="title">
-                    <span>GenomeSpy</span>
-                </div>
-            `;
-        }
-
-        function getToolbar() {
-            return html`
-                <nav class="toolbar">
-                    ${getTitle()}
-                    ${self.launched &&
-                    findGenomeScaleResolution(self.genomeSpy.viewRoot)
-                        ? html`
-                              <genome-spy-search-field
-                                  .genomeSpy=${self.genomeSpy}
-                              ></genome-spy-search-field>
-                          `
-                        : nothing}
-                    ${getToolButtons()}
-                </nav>
-            `;
-        }
-
         function getAppBody() {
             return html`
                 <div class="genome-spy-app">
-                    ${getToolbar()}
+                    <genome-spy-toolbar
+                        ${ref(self.toolbarRef)}
+                        .app=${self}
+                    ></genome-spy-toolbar>
                     <div class="genome-spy-container"></div>
                 </div>
             `;
@@ -221,20 +103,21 @@ export default class GenomeSpyApp {
         }
         this.launched = true;
 
+        this._replayProvenanceFromUrl();
+        this.getSampleHandler()?.provenance.addListener(() => {
+            this._updateUrl();
+        });
+
+        const toolbar = /** @type {import("./toolbar-wc").default} */ (this
+            .toolbarRef.value);
+        // Just trigger re-render. Need a way to broadcast this to all components.
+        toolbar.appInitialized = true;
+
         const title = asArray(this.genomeSpy.config.description ?? []);
 
         if (this.isFullPage() && title.length > 0) {
             document.title = "GenomeSpy - " + title;
         }
-
-        this._replayProvenanceFromUrl();
-
-        // Update the UI now that GenomeSpy is initialized
-        this._renderTemplate();
-
-        this.getSampleHandler()?.provenance.addListener(() => {
-            this._updateUrl();
-        });
     }
 
     /**
