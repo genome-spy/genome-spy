@@ -15,12 +15,12 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
-import getBookmarkButtons from "../sampleHandler/bookmarkToolbar";
 import BookmarkDatabase from "../sampleHandler/bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
 
 import "../sampleHandler/provenanceToolbar-wc";
 import { findGenomeScaleResolution } from "./searchField-wc";
+import "../sampleHandler/bookmarkButton-wc";
 
 /**
  * A simple wrapper for the GenomeSpy core.
@@ -95,12 +95,14 @@ export default class GenomeSpyApp {
                     </button>
                 `);
             }
+
             if (sampleHandler && bookmarkDatabase) {
-                elements.push(
-                    getBookmarkButtons(sampleHandler, bookmarkDatabase, () =>
-                        self._renderTemplate()
-                    )
-                );
+                elements.push(html`
+                    <genome-spy-bookmark-button
+                        .sampleHandler=${sampleHandler}
+                        .bookmarkDatabase=${bookmarkDatabase}
+                    ></genome-spy-bookmark-button>
+                `);
             }
 
             if (description.length > 1) {
@@ -189,17 +191,6 @@ export default class GenomeSpyApp {
             )[0]);
 
         this._renderTemplate();
-
-        // TODO: Implement a centralized shortcut handler
-        document.addEventListener("keydown", event => {
-            switch (event.code) {
-                case "Backspace":
-                case "KeyB":
-                    // TODO: Backtrack
-                    break;
-                default:
-            }
-        });
 
         elem("genome-spy-container").addEventListener("click", event => {
             elem("search-input").blur();
