@@ -47,16 +47,11 @@ export default class BookmarkDatabase {
     }
 
     /**
-     * @param {string} name
-     * @param {Action[]} actions
+     * @param {import("./databaseSchema").BookmarkEntry} entry
      */
-    async add(name, actions) {
+    async add(entry) {
         const db = await this._getDB();
-        await db.put(BOOKMARKS_STORE, {
-            name,
-            timestamp: Date.now(),
-            actions
-        });
+        await db.put(BOOKMARKS_STORE, entry);
     }
 
     async getNames() {

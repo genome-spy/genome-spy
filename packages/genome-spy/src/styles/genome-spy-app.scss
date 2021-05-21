@@ -168,12 +168,16 @@ $basic-spacing: 10px;
                 color: mix($background, $foreground, 50%);
             }
 
-            &:hover {
+            &:hover:not(:disabled) {
                 background-image: linear-gradient(
                     to bottom,
-                    lighten($color, 6%),
+                    lighten($color, 5%),
                     darken($color, 0%)
                 );
+
+                > svg {
+                    filter: drop-shadow(0 0 3px rgba(150, 200, 255, 1));
+                }
             }
 
             &:focus {

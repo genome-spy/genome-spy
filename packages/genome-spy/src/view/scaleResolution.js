@@ -425,28 +425,32 @@ export default class ScaleResolution {
         const scale = this.getScale();
         if ("invert" in scale) {
             const inverted = /** @type {number} */ (scale.invert(value));
-            const genome = this.getGenome();
-            return genome?.toChromosomal(inverted) ?? inverted;
+            return this.toComplex(inverted);
         } else {
             throw new Error("The scale does not support inverting!");
         }
     }
 
     /**
-     * Maps a value on domain to value in range. Accepts a ChromosomalLocus
-     * in case of locus scale.
      *
-     * @param {any} complex
+     * @param {number} value
+     */
+    toComplex(value) {
+        const genome = this.getGenome();
+        return genome ? genome.toChromosomal(value) : value;
+    }
+
+    /**
+     * @param {number | import("../genome/genome").ChromosomalLocus} complex
      */
     fromComplex(complex) {
-        const scale = this.getScale();
         let value = complex;
         if (isChromosomalLocus(complex)) {
             const genome = this.getGenome();
             value = genome.toContinuous(complex.chromosome, complex.pos);
         }
 
-        return scale(value);
+        return value;
     }
 
     _getViewPaths() {

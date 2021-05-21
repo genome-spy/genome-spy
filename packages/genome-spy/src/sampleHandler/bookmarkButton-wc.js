@@ -11,13 +11,18 @@ class BookmarkButton extends LitElement {
         /** @type {import("./sampleHandler").default} */
         this.sampleHandler = undefined;
 
+        /** @type {import("../view/sampleView/sampleView").default} */
+        this.sampleView = undefined;
+
         /** @type {import("./bookmarkDatabase").default} */
         this.bookmarkDatabase = undefined;
     }
 
     static get properties() {
+        // TODO: Use event-based dependency injection or something to get access to these
         return {
             sampleHandler: { type: Object },
+            sampleView: { type: Object },
             bookmarkDatabase: { type: Object }
         };
     }
@@ -31,10 +36,24 @@ class BookmarkButton extends LitElement {
     }
 
     _addBookmark() {
+        // TODO: Allow bookmarking regions of interest even if sampleView is not being used.
+        const resolution = this.sampleView?.getScaleResolution("x");
+        const complexDomain =
+            resolution.type == "locus"
+                ? resolution
+                      .getGenome()
+                      .toChromosomalInterval(resolution.getScale().domain())
+                : undefined;
+
         const name = prompt("Please enter a name for the bookmark");
         if (name) {
             this.bookmarkDatabase
-                .add(name, this._provenance.getActionHistory())
+                .add({
+                    name,
+                    timestamp: Date.now(),
+                    actions: this._provenance.getActionHistory(),
+                    zoom: complexDomain
+                })
                 .then(() => this.requestUpdate());
         }
     }
@@ -49,6 +68,18 @@ class BookmarkButton extends LitElement {
 
             try {
                 this.sampleHandler.dispatchBatch(entry.actions);
+                if (this.sampleView && entry.zoom) {
+                    const resolution = this.sampleView.getScaleResolution("x");
+                    resolution.zoomTo(
+                        resolution.type == "locus"
+                            ? resolution
+                                  .getGenome()
+                                  .toContinuousInterval(
+                                      /** @type {import("../genome/genome").ChromosomalLocus[]} */ (entry.zoom)
+                                  )
+                            : /** @type {number[]} */ (entry.zoom)
+                    );
+                }
             } catch (e) {
                 console.error(e);
                 alert(`Cannot restore bookmark:\n${e}`);

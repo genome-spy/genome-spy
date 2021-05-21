@@ -52,6 +52,33 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
         expect(g.toChromosomal(100)).toBeUndefined();
     });
 
+    test("Maps continuous interval to chromosomal interval", () => {
+        // Testing half-open intervals
+        expect(g.toChromosomalInterval([0, 10])).toEqual([
+            { chromosome: "chr1", pos: 0 },
+            { chromosome: "chr1", pos: 10 }
+        ]);
+        expect(g.toChromosomalInterval([10, 100])).toEqual([
+            { chromosome: "chr2", pos: 0 },
+            { chromosome: "chrX", pos: 40 }
+        ]);
+    });
+
+    test("Maps chromosomal interval to continuous interval", () => {
+        expect(
+            g.toContinuousInterval([
+                { chromosome: "chr1", pos: 0 },
+                { chromosome: "chr1", pos: 10 }
+            ])
+        ).toEqual([0, 10]);
+        expect(
+            g.toContinuousInterval([
+                { chromosome: "chr2", pos: 0 },
+                { chromosome: "chrX", pos: 40 }
+            ])
+        ).toEqual([10, 100]);
+    });
+
     test("Returns a properly annotated chromosomes array", () => {
         expect(g.chromosomes[1]).toEqual({
             name: "chr2",

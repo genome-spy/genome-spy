@@ -210,13 +210,29 @@ export default class Genome {
      * @returns {string}
      */
     formatInterval(interval) {
+        return formatRange(...this.toChromosomalInterval(interval));
+    }
+
+    /**
+     * @param {number[]} interval
+     * @returns {[ChromosomalLocus, ChromosomalLocus]}
+     */
+    toChromosomalInterval(interval) {
         // Round the lower end
         const begin = this.toChromosomal(interval[0] + 0.5);
         // Because of the open upper bound, one is first subtracted from the upper bound and later added back.
         const end = this.toChromosomal(interval[1] - 1);
         end.pos += 1;
 
-        return formatRange(begin, end);
+        return [begin, end];
+    }
+
+    /**
+     *
+     * @param {ChromosomalLocus[]} chromosomal
+     */
+    toContinuousInterval(chromosomal) {
+        return chromosomal.map(c => this.toContinuous(c.chromosome, c.pos));
     }
 
     /**
@@ -262,5 +278,5 @@ export function parseChromSizes(chromSizesData) {
  * @return {value is ChromosomalLocus}
  */
 export function isChromosomalLocus(value) {
-    return "chromosomal" in value;
+    return "chromosome" in value;
 }

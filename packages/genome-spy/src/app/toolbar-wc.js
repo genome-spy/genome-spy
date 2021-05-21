@@ -34,6 +34,7 @@ export default class Toolbar extends LitElement {
 
     _getToolButtons() {
         const sampleHandler = this.app.getSampleHandler();
+        const sampleView = this.app.getSampleView();
         const provenance = sampleHandler?.provenance;
 
         /** @type {(import("lit").TemplateResult | string)[]} */
@@ -64,6 +65,7 @@ export default class Toolbar extends LitElement {
                 <genome-spy-bookmark-button
                     .sampleHandler=${sampleHandler}
                     .bookmarkDatabase=${this.app.bookmarkDatabase}
+                    .sampleView=${sampleView}
                 ></genome-spy-bookmark-button>
             `);
         }
