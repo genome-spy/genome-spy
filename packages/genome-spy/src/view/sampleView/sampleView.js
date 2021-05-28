@@ -222,14 +222,13 @@ export default class SampleView extends ContainerView {
         );
 
         // TODO: Remove when appropriate
-        // TODO: More centralized management
         // TODO: Check that the mouse pointer is inside the view (or inside the app instance)
-        document.addEventListener("keydown", event => {
+        context.addKeyboardListener("keydown", event => {
             if (event.code == "KeyE" && !event.repeat) {
                 this._togglePeek();
             }
         });
-        document.addEventListener("keyup", event => {
+        context.addKeyboardListener("keyup", event => {
             if (event.code == "KeyE") {
                 this._togglePeek(false);
             }

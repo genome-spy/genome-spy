@@ -28,4 +28,16 @@ export default interface ViewContext {
     contextMenu: (options: MenuOptions, mouseEvent: MouseEvent) => void;
 
     getCurrentHover: () => { mark: Mark; datum: Datum };
+
+    /**
+     * Adds a keyboard event listener to the document. Cleanup is performed automatically
+     * when GenomeSpy is finalized.
+     *
+     * TODO: Listeners should be called only when the mouse pointer is inside the
+     * container or the app covers the full document.
+     */
+    addKeyboardListener: (
+        type: "keydown" | "keyup",
+        listener: (event: KeyboardEvent) => void
+    ) => void;
 }

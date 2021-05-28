@@ -94,6 +94,12 @@ export default class GenomeSpy {
         this._currentHover = undefined;
 
         this._wheelInertia = new Inertia(this.animator);
+
+        /**
+         * Keeping track so that these can be cleaned up upon finalization.
+         * @type {Map<string, (function(KeyboardEvent):void)[]>}
+         */
+        this._keyboardListeners = new Map();
     }
 
     /**
@@ -166,6 +172,12 @@ export default class GenomeSpy {
         this.container.classList.remove("genome-spy");
         this.container.classList.remove("loading");
 
+        for (const [type, listeners] of this._keyboardListeners) {
+            for (const listener of listeners) {
+                document.removeEventListener(type, listener);
+            }
+        }
+
         throw new Error("destroy() not properly implemented");
     }
 
@@ -186,7 +198,19 @@ export default class GenomeSpy {
             requestLayoutReflow: this.computeLayout.bind(this),
             updateTooltip: this.updateTooltip.bind(this),
             contextMenu: this.contextMenu.bind(this),
-            getCurrentHover: () => this._currentHover
+            getCurrentHover: () => this._currentHover,
+
+            addKeyboardListener: (type, listener) => {
+                // TODO: Listeners should be called only when the mouse pointer is inside the
+                // container or the app covers the full document.
+                document.addEventListener(type, listener);
+                let listeners = this._keyboardListeners.get(type);
+                if (!listeners) {
+                    listeners = [];
+                    this._keyboardListeners.set(type, listeners);
+                }
+                listeners.push(listener);
+            }
         };
 
         /** @type {import("./spec/view").ViewSpec & RootConfig} */
