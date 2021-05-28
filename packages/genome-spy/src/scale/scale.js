@@ -128,11 +128,17 @@ export function configureScale(_, scale, logger) {
 
 export default function createScale(_, logger) {
     const key = scaleKey(_);
-    const scale = getScale(key)();
+    const scale = getScale(key);
 
-    configureScale(_, scale, logger);
+    if (!scale) {
+        throw new Error("Unknown scale type: " + key);
+    }
 
-    return scale;
+    const scaleInstance = scale();
+
+    configureScale(_, scaleInstance, logger);
+
+    return scaleInstance;
 }
 
 function scaleKey(_) {
