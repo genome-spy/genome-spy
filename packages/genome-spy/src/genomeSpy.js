@@ -163,11 +163,7 @@ export default class GenomeSpy {
      * Unregisters all listeners, removes all created dom elements, removes all css classes from the container
      */
     destroy() {
-        /*
-        for (const e of this._listeners) {
-            e.target.removeEventListener(e.type, e.listener);
-        }
-        */
+        // TODO: There's a memory leak somewhere
 
         this.container.classList.remove("genome-spy");
         this.container.classList.remove("loading");
@@ -178,7 +174,11 @@ export default class GenomeSpy {
             }
         }
 
-        throw new Error("destroy() not properly implemented");
+        this._glHelper.finalize();
+
+        while (this.container.firstChild) {
+            this.container.firstChild.remove();
+        }
     }
 
     async _prepareViewsAndData() {

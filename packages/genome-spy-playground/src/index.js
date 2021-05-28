@@ -34,7 +34,7 @@ window.jsonlint = JsonLint;
 
 const STORAGE_KEY = "playgroundSpec";
 
-let genomeSpy;
+let embedResult;
 let codeMirror;
 let storedSpec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
 
@@ -87,12 +87,12 @@ async function update(force = false) {
 
         previousStringifiedSpec = stringifiedSpec;
 
-        if (genomeSpy) {
-            genomeSpy.destroy();
+        if (embedResult) {
+            embedResult.finalize();
         }
 
         // TODO: Fix possible race condition
-        genomeSpy = await embed(
+        embedResult = await embed(
             document.querySelector("#genome-spy-pane"),
             parsedSpec,
             {

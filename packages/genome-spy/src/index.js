@@ -70,7 +70,16 @@ export async function embed(el, spec, opt = {}) {
         console.error(e);
     }
 
-    return genomeSpy;
+    return {
+        // TODO: Should probably return a more stable API than the GenomeSpy object
+        genomeSpy,
+        finalize: () => {
+            genomeSpy.destroy();
+            while (element.firstChild) {
+                element.firstChild.remove();
+            }
+        }
+    };
 }
 
 /**

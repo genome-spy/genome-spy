@@ -29,8 +29,6 @@ export default class GenomeSpyApp {
 
         this.toolbarRef = createRef();
 
-        //this.launched = false;
-
         this.appContainer = appContainerElement;
         if (this.isFullPage()) {
             this.appContainer.style.margin = "0";
@@ -101,7 +99,6 @@ export default class GenomeSpyApp {
         if (!result) {
             return;
         }
-        this.launched = true;
 
         this._replayProvenanceFromUrl();
         this.getSampleHandler()?.provenance.addListener(() => {
@@ -159,9 +156,12 @@ export default class GenomeSpyApp {
 
     /**
      *
-     * @param {object} config
+     * @param {import("../spec/view").RootSpec} config
      */
     async updateConfig(config) {
+        // TODO: provenance etc must be re-registered etc
+        throw new Error("Broken");
+
         this.config = config;
         // TODO: Preserve viewport
         this.genomeSpy.destroy();

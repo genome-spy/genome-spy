@@ -75,13 +75,13 @@ export default class WebGLHelper {
 
         this.adjustGl();
 
-        const resizeObserver = new ResizeObserver(entries => {
+        this._resizeObserver = new ResizeObserver(entries => {
             this._logicalCanvasSize = undefined;
             this._updateDpr();
             this.adjustGl();
             this.render();
         });
-        resizeObserver.observe(this._container);
+        this._resizeObserver.observe(this._container);
 
         // TODO: Observe devicePixelRatio
         // https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio#Monitoring_screen_resolution_or_zoom_level_changes
@@ -147,7 +147,8 @@ export default class WebGLHelper {
         );
     }
 
-    destroy() {
+    finalize() {
+        this._resizeObserver.unobserve(this._container);
         this.canvas.remove();
     }
 

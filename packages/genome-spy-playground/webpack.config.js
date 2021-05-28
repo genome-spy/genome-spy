@@ -27,7 +27,7 @@ module.exports = {
                 use: "raw-loader"
             },
             {
-                test: /\.png$/,
+                test: /\.(png|svg)$/,
                 use: "url-loader"
             }
         ]
