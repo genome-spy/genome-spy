@@ -12,9 +12,13 @@ export default class WebGLHelper {
     /**
      *
      * @param {HTMLElement} container
+     * @param {() => {width: number, height: number}} [sizeSource]
+     *      A function that returns the content size. If a dimension is undefined,
+     *      the canvas fills the container, otherwise the canvas is adjusted to the content size.
      */
-    constructor(container) {
+    constructor(container, sizeSource) {
         this._container = container;
+        this._sizeSource = sizeSource;
 
         /** @type {Map<string, WebGLShader>} */
         this._shaderCache = new Map();
@@ -23,7 +27,6 @@ export default class WebGLHelper {
         this._listeners = [];
 
         const canvas = document.createElement("canvas");
-        canvas.style.position = "absolute";
 
         container.appendChild(canvas);
 
@@ -75,10 +78,9 @@ export default class WebGLHelper {
 
         this.adjustGl();
 
+        // TODO: Size should be observed only if the content is not absolutely sized
         this._resizeObserver = new ResizeObserver(entries => {
-            this._logicalCanvasSize = undefined;
-            this._updateDpr();
-            this.adjustGl();
+            this.invalidateSize();
             this.render();
         });
         this._resizeObserver.observe(this._container);
@@ -87,6 +89,12 @@ export default class WebGLHelper {
         // https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio#Monitoring_screen_resolution_or_zoom_level_changes
 
         this._updateDpr();
+    }
+
+    invalidateSize() {
+        this._logicalCanvasSize = undefined;
+        this._updateDpr();
+        this.adjustGl();
     }
 
     _updateDpr() {
@@ -169,22 +177,28 @@ export default class WebGLHelper {
      * Returns the canvas size in logical pixels (without devicePixelRatio correction)
      */
     getLogicalCanvasSize() {
-        // TODO: Size should never be smaller than the minimum content size!
-
         if (this._logicalCanvasSize) {
             return this._logicalCanvasSize;
         }
 
+        // TODO: The size should never be smaller than the minimum content size!
+        const contentSize = this._sizeSource?.() ?? {
+            width: undefined,
+            height: undefined
+        };
+
         const cs = window.getComputedStyle(this._container, null);
         const width =
+            contentSize.width ??
             this._container.clientWidth -
-            parseFloat(cs.paddingLeft) -
-            parseFloat(cs.paddingRight);
+                parseFloat(cs.paddingLeft) -
+                parseFloat(cs.paddingRight);
 
         const height =
+            contentSize.height ??
             this._container.clientHeight -
-            parseFloat(cs.paddingTop) -
-            parseFloat(cs.paddingBottom);
+                parseFloat(cs.paddingTop) -
+                parseFloat(cs.paddingBottom);
 
         this._logicalCanvasSize = { width, height };
         return this._logicalCanvasSize;

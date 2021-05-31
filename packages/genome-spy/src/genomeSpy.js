@@ -138,7 +138,24 @@ export default class GenomeSpy {
         this.container.classList.add("genome-spy");
         this.container.classList.add("loading");
 
-        this._glHelper = new WebGLHelper(this.container);
+        this._glHelper = new WebGLHelper(this.container, () => {
+            if (this.viewRoot) {
+                const size = this.viewRoot.getSize();
+
+                // If a dimension has an absolutely specified size (in pixels), use it for the canvas size.
+                // However, if the dimension has a growing component, the canvas should be fit to the
+                // container.
+                // TODO: Enforce the minimum size (in case of both absolute and growing components).
+
+                /** @param {import("./utils/layout/flexLayout").SizeDef} dim */
+                const f = dim => (dim.grow > 0 ? undefined : dim.px);
+                return {
+                    width: f(size.width),
+                    height: f(size.height)
+                };
+            }
+        });
+
         this._glHelper.addEventListener("resize", () => this.computeLayout());
         this._glHelper.addEventListener("render", () =>
             this.animator.requestRender()
@@ -298,6 +315,10 @@ export default class GenomeSpy {
             await this._prepareViewsAndData();
 
             this.registerMouseEvents();
+
+            // We may have new absolute size for the view root
+            this._glHelper.invalidateSize();
+
             this.computeLayout();
             this.animator.requestRender();
 
