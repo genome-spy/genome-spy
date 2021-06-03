@@ -333,6 +333,10 @@ export default class GenomeSpy {
             return false;
         } finally {
             this.container.classList.remove("loading");
+            // Transition listener doesn't appear to work on observablehq
+            window.setTimeout(() => {
+                this.loadingMessageElement.style.display = "none";
+            }, 2000);
         }
     }
 
