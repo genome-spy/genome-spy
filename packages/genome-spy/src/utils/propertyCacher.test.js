@@ -1,4 +1,4 @@
-import { getCachedOrCall, expire, expireAll } from "./propertyCacher";
+import { getCachedOrCall, invalidate, invalidateAll } from "./propertyCacher";
 
 class TestClass {
     constructor() {
@@ -22,7 +22,7 @@ class TestClass {
 
     set x(x) {
         this._x = x;
-        expire(this, "x");
+        invalidate(this, "x");
     }
 
     get y() {
@@ -34,13 +34,13 @@ class TestClass {
 
     set y(y) {
         this._y = y;
-        expire(this, "y");
+        invalidate(this, "y");
     }
 
     resetAll() {
         this._x = 10;
         this._y = 20;
-        expireAll(this);
+        invalidateAll(this);
     }
 }
 
@@ -54,7 +54,7 @@ test("Initial cached get returns correct values and calls callable only once", (
     expect(instance._xCalls).toEqual(1);
 });
 
-test("Expire expires", () => {
+test("Invalidate invalidates", () => {
     const instance = new TestClass();
 
     expect(instance._xCalls).toEqual(0);
@@ -68,7 +68,7 @@ test("Expire expires", () => {
     expect(instance._xCalls).toEqual(2);
 });
 
-test("ExpireAll expires All", () => {
+test("InvalidateAll invalidates everything", () => {
     const instance = new TestClass();
 
     instance.x = 123;

@@ -9,7 +9,6 @@ import {
 import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
 import { peek } from "../utils/arrayUtils";
-import { getCachedOrCall } from "../utils/propertyCacher";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -54,13 +53,13 @@ export default class ConcatView extends ContainerView {
     }
 
     _getFlexSizeDefs() {
-        return getCachedOrCall(this, "size/flexSizeDefs", () =>
+        return this._cache("size/flexSizeDefs", () =>
             this.children.map(view => view.getSize()[this.mainDimension])
         );
     }
 
     _getEffectiveChildPaddings() {
-        return getCachedOrCall(this, "size/effectiveChildPaddings", () =>
+        return this._cache("size/effectiveChildPaddings", () =>
             this.children
                 .map(view => view.getEffectivePadding())
                 .map(padding =>
@@ -72,7 +71,7 @@ export default class ConcatView extends ContainerView {
     }
 
     getEffectivePadding() {
-        return getCachedOrCall(this, "size/effectivePadding", () => {
+        return this._cache("size/effectivePadding", () => {
             if (!this.children.length) {
                 return this.getPadding();
             }
@@ -102,7 +101,7 @@ export default class ConcatView extends ContainerView {
     }
 
     getSize() {
-        return getCachedOrCall(this, "size", () => {
+        return this._cache("size", () => {
             /** @type {SizeDef} */
             let mainSizeDef;
             if (this.spec[this.mainDimension]) {

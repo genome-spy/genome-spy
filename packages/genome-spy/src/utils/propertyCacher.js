@@ -1,4 +1,4 @@
-const cacheGroupKey = Symbol("cacheGroup");
+const cacheMapKey = Symbol("cacheMap");
 
 /**
  * @param {object} host The object that uses caching
@@ -8,10 +8,10 @@ const cacheGroupKey = Symbol("cacheGroup");
  * @template T
  */
 export function getCachedOrCall(host, key, callable) {
-    let value = getCacheGroup(host).get(key);
+    let value = getCacheMap(host).get(key);
     if (value === undefined) {
         value = callable(key);
-        getCacheGroup(host).set(key, value);
+        getCacheMap(host).set(key, value);
     }
     return value;
 }
@@ -21,29 +21,50 @@ export function getCachedOrCall(host, key, callable) {
  * @param {object} host The object that uses caching
  * @param {string} key
  */
-export function expire(host, key) {
-    getCacheGroup(host).delete(key);
+export function invalidate(host, key) {
+    getCacheMap(host).delete(key);
 }
 
 /**
  *
  * @param {object} host The object that uses caching
+ * @param {string} keyPrefix
  */
-export function expireAll(host) {
-    getCacheGroup(host).clear();
+export function invalidatePrefix(host, keyPrefix) {
+    const m = getCacheMap(host);
+    for (const key of m.keys()) {
+        if (key.startsWith(keyPrefix)) {
+            m.delete(key);
+        }
+    }
+    getCacheMap(host).delete(keyPrefix);
+}
+/**
+ *
+ * @param {object} host The object that uses caching
+ */
+export function invalidateAll(host) {
+    getCacheMap(host).clear();
+}
+
+/**
+ * @param {any} host The object that uses caching
+ */
+export function initPropertyCache(host) {
+    /** @type {Map<string, any>} */
+    host[cacheMapKey] = new Map();
 }
 
 /**
  * @param {any} host The object that uses caching
  * @returns {Map<string, any>}
  */
-function getCacheGroup(host) {
-    if (host[cacheGroupKey]) {
-        return host[cacheGroupKey];
+function getCacheMap(host) {
+    if (host[cacheMapKey]) {
+        return host[cacheMapKey];
     }
 
-    /** @type {Map<string, any>} */
-    host[cacheGroupKey] = new Map();
+    initPropertyCache(host);
 
-    return host[cacheGroupKey];
+    return host[cacheMapKey];
 }

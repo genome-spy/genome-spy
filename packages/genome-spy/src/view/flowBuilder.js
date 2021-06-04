@@ -19,7 +19,7 @@ import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoord
 import { isAggregateSamplesSpec } from "./viewUtils";
 import { group } from "d3-array";
 import IdentifierTransform from "../data/transforms/identifier";
-import { expire } from "../utils/propertyCacher";
+import { invalidate } from "../utils/propertyCacher";
 
 /**
  * @typedef {import("./view").default} View
@@ -272,7 +272,7 @@ export function linearizeLocusAccess(view) {
                       ...rewrittenEncoding
                   };
                   // This is so ugly...
-                  expire(view.mark, "encoding");
+                  invalidate(view.mark, "encoding");
               }
           }
         : undefined;

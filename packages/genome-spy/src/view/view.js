@@ -1,6 +1,10 @@
 import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
 import Padding from "../utils/layout/padding";
-import { getCachedOrCall } from "../utils/propertyCacher";
+import {
+    getCachedOrCall,
+    initPropertyCache,
+    invalidatePrefix
+} from "../utils/propertyCacher";
 import { isNumber, span } from "vega-util";
 import { scaleLinear, scaleLog } from "d3-scale";
 import { isFieldDef, primaryChannel } from "../encoder/encoder";
@@ -85,12 +89,14 @@ export default class View {
         /** @type {Record<string, InteractionEventListener[]>} */
         this._nonCapturingInteractionEventListeners = {};
 
+        initPropertyCache(this);
+
         /** @type {function(number):number} */
         this._opacityFunction = parentOpacity => parentOpacity;
     }
 
     getPadding() {
-        return getCachedOrCall(this, "size/padding", () =>
+        return this._cache("size/padding", () =>
             Padding.createFromConfig(this.spec.padding)
         );
     }
@@ -114,14 +120,13 @@ export default class View {
      * @returns {FlexDimensions}
      */
     getSize() {
-        return getCachedOrCall(this, "size", () =>
+        return this._cache("size/size", () =>
             this.getSizeFromSpec().addPadding(this.getPadding())
         );
     }
 
     getSizeFromSpec() {
-        return getCachedOrCall(
-            this,
+        return this._cache(
             "size/sizeFromSpec",
             () =>
                 new FlexDimensions(
@@ -389,6 +394,38 @@ export default class View {
      */
     getDynamicDataSource() {
         throw new Error("The view does not provide dynamic data!");
+    }
+
+    /**
+     * @param {any} key string
+     * @param {function(key?):T} callable A function that produces a value to be cached
+     * @returns {T}
+     * @template T
+     */
+    _cache(key, callable) {
+        return getCachedOrCall(this, key, callable);
+    }
+
+    /**
+     *
+     * @param {string} key
+     * @param {"self" | "progeny" | "ancestors"} [direction]
+     */
+    _invalidateCacheByPrefix(key, direction = "self") {
+        switch (direction) {
+            case "self":
+                invalidatePrefix(this, key);
+                break;
+            case "ancestors":
+                for (const view of this.getAncestors()) {
+                    invalidatePrefix(view, key);
+                }
+                break;
+            case "progeny":
+                this.visit(view => invalidatePrefix(view, key));
+                break;
+            default:
+        }
     }
 }
 

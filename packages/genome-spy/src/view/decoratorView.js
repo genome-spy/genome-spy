@@ -3,12 +3,9 @@ import AxisView from "./axisView";
 import { getFlattenedViews } from "./viewUtils";
 import Padding from "../utils/layout/padding";
 import { FlexDimensions } from "../utils/layout/flexLayout";
-import { getCachedOrCall } from "../utils/propertyCacher";
-import UnitView from "./unitView";
-import { VISIT_STOP } from "./view";
 
 /**
- * @typedef {import("../spec/view").PositionalChannel} PositionalChannel
+ * @typedef {import("../spec/channel").PositionalChannel} PositionalChannel
  * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
  */
 
@@ -69,6 +66,7 @@ export default class DecoratorView extends ContainerView {
         Object.entries(CHANNEL_ORIENTS).forEach(([channel, orients]) =>
             this._initializeAxes(channel, orients)
         );
+        this._invalidateCacheByPrefix("size/", "ancestors");
     }
 
     /**
@@ -113,7 +111,7 @@ export default class DecoratorView extends ContainerView {
     }
 
     _getAxisExtents() {
-        return getCachedOrCall(this, "size/axisExtents", () => {
+        return this._cache("size/axisExtents", () => {
             /** @type {Record<AxisOrient, number>} */
             // @ts-ignore
             const paddings = {};
@@ -127,7 +125,7 @@ export default class DecoratorView extends ContainerView {
     }
 
     _getAxisOffsets() {
-        return getCachedOrCall(this, "size/axisOffsets", () => {
+        return this._cache("size/axisOffsets", () => {
             /** @type {Record<AxisOrient, number>} */
             // @ts-ignore
             const paddings = {};
@@ -142,13 +140,13 @@ export default class DecoratorView extends ContainerView {
 
     getEffectivePadding() {
         // TODO: Handle negative axis extents
-        return getCachedOrCall(this, "size/effectivePadding", () =>
+        return this._cache("size/effectivePadding", () =>
             this.getPadding().add(this._getAxisExtents())
         );
     }
 
     getSize() {
-        return getCachedOrCall(this, "size", () => {
+        return this._cache("size/size", () => {
             const size = this.getSizeFromSpec().addPadding(this.getPadding());
             const padding = this.getAxisSizes();
             return new FlexDimensions(
@@ -172,7 +170,7 @@ export default class DecoratorView extends ContainerView {
      */
     getAxisSizes() {
         // TODO: Clamp negative sizes (if axes are positioned entirely onto the plots)
-        return getCachedOrCall(this, "size/axisSizes", () =>
+        return this._cache("size/axisSizes", () =>
             this._getAxisExtents().add(this._getAxisOffsets())
         );
     }
@@ -193,7 +191,7 @@ export default class DecoratorView extends ContainerView {
 
         this.child.render(context, childCoords, options);
 
-        const entries = getCachedOrCall(this, "axisViewEntries", () =>
+        const entries = this._cache("axisViewEntries", () =>
             Object.entries(this.axisViews).filter(e => !!e[1])
         );
 
@@ -386,13 +384,13 @@ export default class DecoratorView extends ContainerView {
     }
 
     isZoomable() {
-        return getCachedOrCall(this, "zoomable", () =>
+        return this._cache("zoomable", () =>
             Object.values(this._getZoomableResolutions()).some(set => set.size)
         );
     }
 
     _getZoomableResolutions() {
-        return getCachedOrCall(this, "zoomableResolutions", () => {
+        return this._cache("zoomableResolutions", () => {
             /** @type {Record<string, Set<import("./scaleResolution").default>>} */
             const resolutions = {
                 x: new Set(),

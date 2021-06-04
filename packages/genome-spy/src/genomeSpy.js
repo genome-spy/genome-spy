@@ -248,8 +248,7 @@ export default class GenomeSpy {
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
-        // TODO: Ensure that memoized view sizes are invalidated
-        // TODO: this._glHelper.invalidateSize();
+        this._glHelper.invalidateSize();
 
         // Collect all unit views to a list because they need plenty of initialization
         /** @type {UnitView[]} */

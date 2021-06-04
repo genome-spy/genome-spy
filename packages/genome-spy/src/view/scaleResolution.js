@@ -13,7 +13,7 @@ import { isDiscrete, isContinuous } from "vega-scale";
 import mergeObjects from "../utils/mergeObjects";
 import createScale, { configureScale } from "../scale/scale";
 
-import { expire, getCachedOrCall } from "../utils/propertyCacher";
+import { invalidate, getCachedOrCall } from "../utils/propertyCacher";
 import {
     getDiscreteRange,
     isColorChannel,
@@ -214,7 +214,7 @@ export default class ScaleResolution {
      */
     reconfigure() {
         if (this._scale && this._scale.type != "null") {
-            expire(this, "scaleProps");
+            invalidate(this, "scaleProps");
             const props = this.getScaleProps();
             configureScale(props, this._scale);
             if (props.domain) {

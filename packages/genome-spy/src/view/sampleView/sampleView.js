@@ -17,7 +17,6 @@ import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
 import Padding from "../../utils/layout/padding";
 import smoothstep from "../../utils/smoothstep";
-import { getCachedOrCall } from "../../utils/propertyCacher";
 import transition from "../../utils/transition";
 import { easeCubicOut, easeExpOut } from "d3-ease";
 import clamp from "../../utils/clamp";
@@ -242,7 +241,7 @@ export default class SampleView extends ContainerView {
     }
 
     getEffectivePadding() {
-        return getCachedOrCall(this, "size/effectivePadding", () => {
+        return this._cache("size/effectivePadding", () => {
             const childEffPad = this.child.getEffectivePadding();
 
             // TODO: Top / bottom axes

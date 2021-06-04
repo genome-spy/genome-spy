@@ -5,7 +5,6 @@ import { inferType } from "vega-loader";
 
 import ConcatView from "../concatView";
 import UnitView from "../unitView";
-import { getCachedOrCall } from "../../utils/propertyCacher";
 import * as Actions from "../../sampleHandler/sampleHandlerActions";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
@@ -231,7 +230,7 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     _getAttributeNames() {
-        return getCachedOrCall(this, "attributeNames", () => {
+        return this._cache("attributeNames", () => {
             const samples = this.parent.getAllSamples();
 
             // Find all attributes

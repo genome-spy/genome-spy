@@ -14,7 +14,6 @@ import {
     isChannelDefWithScale
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
-import { getCachedOrCall } from "../utils/propertyCacher";
 import AxisResolution from "./axisResolution";
 import { getViewClass, isAggregateSamplesSpec } from "./viewUtils";
 
@@ -169,7 +168,7 @@ export default class UnitView extends ContainerView {
      * @param {string} channel
      */
     getAccessor(channel) {
-        return getCachedOrCall(this, "accessor-" + channel, () => {
+        return this._cache("accessor/" + channel, () => {
             const encoding = this.mark.encoding; // Mark provides encodings with defaults and possible modifications
             if (encoding && encoding[channel]) {
                 return this.context.accessorFactory.createAccessor(
