@@ -246,6 +246,11 @@ export default class GenomeSpy {
         // Wrap unit or layer views that need axes
         this.viewRoot = addDecorators(this.viewRoot);
 
+        // We should now have a complete view hierarchy. Let's update the canvas size
+        // and ensure that the loading message is visible.
+        // TODO: Ensure that memoized view sizes are invalidated
+        // TODO: this._glHelper.invalidateSize();
+
         // Collect all unit views to a list because they need plenty of initialization
         /** @type {UnitView[]} */
         const unitViews = [];
@@ -315,9 +320,6 @@ export default class GenomeSpy {
             await this._prepareViewsAndData();
 
             this.registerMouseEvents();
-
-            // We may have new absolute size for the view root
-            this._glHelper.invalidateSize();
 
             this.computeLayout();
             this.animator.requestRender();
@@ -565,11 +567,13 @@ export default class GenomeSpy {
 
         const canvasSize = this._glHelper.getLogicalCanvasSize();
 
-        /** @param {"width" | "height"} c */
-        const getComponent = c =>
-            (root.spec[c] && parseSizeDef(root.spec[c]).grow
-                ? canvasSize[c]
-                : root.getSize()[c].px) || canvasSize[c];
+        if (isNaN(canvasSize.width) || isNaN(canvasSize.height)) {
+            // TODO: Figure out what causes this
+            console.log(
+                `NaN in canvas size: ${canvasSize.width}x${canvasSize.height}. Skipping computeLayout().`
+            );
+            return;
+        }
 
         this._renderingContext = new DeferredViewRenderingContext({
             picking: false
@@ -585,12 +589,8 @@ export default class GenomeSpy {
                 this._pickingContext,
                 layoutRecorder
             ),
-            Rectangle.create(
-                0,
-                0,
-                getComponent("width"),
-                getComponent("height")
-            )
+            // Canvas should now be sized based on the root view or the container
+            Rectangle.create(0, 0, canvasSize.width, canvasSize.height)
         );
 
         this.layout = layoutRecorder.getLayout();
