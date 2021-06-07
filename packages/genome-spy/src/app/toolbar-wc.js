@@ -132,7 +132,7 @@ export default class Toolbar extends LitElement {
                     <span>GenomeSpy</span>
                 </div>
 
-                ${this.app?.launched &&
+                ${this.appInitialized &&
                 findGenomeScaleResolution(genomeSpy.viewRoot)
                     ? html`
                           <genome-spy-search-field
