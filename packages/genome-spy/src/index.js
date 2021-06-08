@@ -49,17 +49,10 @@ export async function embed(el, spec, opt = {}) {
         }
 
         if (opt.bare) {
-            // Not sure if clientHeight is a reliable indicator that the container has a non-zero height.
-            if (!("height" in specObject) && element.clientHeight) {
-                specObject.height = "container";
-            }
             genomeSpy = new GenomeSpy(element, specObject);
             applyOptions(genomeSpy, opt);
             await genomeSpy.launch();
         } else {
-            if (!("height" in specObject)) {
-                specObject.height = "container";
-            }
             const app = new GenomeSpyApp(element, specObject);
             genomeSpy = app.genomeSpy;
             applyOptions(genomeSpy, opt);

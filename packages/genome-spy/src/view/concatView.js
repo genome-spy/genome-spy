@@ -124,9 +124,10 @@ export default class ConcatView extends ContainerView {
                 grow: 1
             };
 
-            return this.mainDimension == "height"
+            return (this.mainDimension == "height"
                 ? new FlexDimensions(secondarySizeDef, mainSizeDef)
-                : new FlexDimensions(mainSizeDef, secondarySizeDef);
+                : new FlexDimensions(mainSizeDef, secondarySizeDef)
+            ).addPadding(this.getPadding());
         });
     }
 
