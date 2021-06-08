@@ -107,22 +107,21 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 ```json
 {
   "data": {
-    "sequence": { "start": 0, "stop": 1000, "as": "z" }
+    "sequence": { "start": 0, "stop": 800, "as": "z" }
   },
   "transform": [
-    { "type": "formula", "as": "sample", "expr": "floor(datum.z / 100) + 1" },
-    { "type": "formula", "as": "x", "expr": "datum.z % 100" },
+    { "type": "formula", "as": "y", "expr": "floor(datum.z / 40)" },
+    { "type": "formula", "as": "x", "expr": "datum.z % 40" },
     {
       "type": "formula",
       "as": "measurement",
-      "expr": "sin(datum.x / 9) + cos(datum.sample / 2 + 3.25)"
+      "expr": "sin(datum.x / 2.2) + cos(datum.y / 2 + 3.25)"
     }
   ],
   "mark": "rect",
   "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "x2": { "expr": "datum.x + 1" },
-    "y": { "field": "sample", "type": "nominal" },
+    "x": { "field": "x", "type": "index" },
+    "y": { "field": "y", "type": "index" },
     "color": {
       "field": "measurement",
       "type": "quantitative",
@@ -146,21 +145,20 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 ```json
 {
   "data": {
-    "sequence": {
-      "start": -12.57,
-      "stop": 12.57,
-      "step": 0.39269908169,
-      "as": "x"
-    }
+    "sequence": { "start": 0, "stop": 100, "as": "x" }
   },
   "transform": [
-    { "type": "formula", "expr": "sin(datum.x) + datum.x / 7", "as": "y" }
+    {
+      "type": "formula",
+      "expr": "sin((datum.x - 50) / 4) + (datum.x - 50) / 30",
+      "as": "y"
+    }
   ],
   "mark": "rect",
   "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "x2": { "expr": "datum.x + 0.35" },
+    "x": { "field": "x", "type": "index", "band": 0.9 },
     "y": { "field": "y", "type": "quantitative" },
+    "y2": { "datum": 0 },
     "color": {
       "field": "y",
       "type": "quantitative",

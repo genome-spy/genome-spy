@@ -110,8 +110,8 @@ The example below demonstrates how points can be varied by using
   "mark": "point",
 
   "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "y": { "field": "y", "type": "nominal" },
+    "x": { "field": "x", "type": "nominal", "axis": null },
+    "y": { "field": "y", "type": "nominal", "axis": null },
     "shape": { "field": "x", "type": "nominal" },
     "color": {
       "expr": "datum.x + datum.y",
@@ -185,7 +185,7 @@ about 1500X zoom.
     "geometricZoomBound": 10.5
   },
   "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
+    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
     "y": { "field": "y", "type": "quantitative" },
     "size": { "value": 200 },
     "opacity": { "value": 0.6 }
@@ -245,7 +245,7 @@ approximately constant until the lowest possible score has been reached.
     "semanticZoomFraction": 0.002
   },
   "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
+    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
     "y": { "field": "y", "type": "quantitative" },
     "color": {
       "field": "score",

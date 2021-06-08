@@ -5,7 +5,7 @@
 
 ## Parameters
 
-SCHEMA StackConfig
+SCHEMA StackParams
 
 ## Example
 

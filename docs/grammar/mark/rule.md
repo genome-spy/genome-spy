@@ -23,12 +23,6 @@ width or height of the view. Alternatively, they may have specific endpoints.
 </div>
 </div>
 
-!!! warning "It's actually a rectangle!"
-
-    Currently, rule mark is just a specialization of Rect mark. This imposes
-    some shortcomings, such as missing support for slanted lines and variable
-    stroke widths.
-
 ## Channels
 
 TODO, but in principle, the same as in [Rect mark](./rect.md).

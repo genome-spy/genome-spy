@@ -5,14 +5,14 @@ The `concat` operator allows for building visualizations with multiple tracks.
 ## Example
 
 <div class="embed-example">
-<div class="embed-container" style="height: 200px"></div>
+<div class="embed-container" style="height: 300px"></div>
 <div class="embed-spec">
 
 ```json
 {
   "data": { "url": "sincos.csv" },
 
-  "concat": [
+  "vconcat": [
     {
       "mark": "point",
       "encoding": {
@@ -36,5 +36,4 @@ The `concat` operator allows for building visualizations with multiple tracks.
 
 ## Resolve
 
-The scales of the `x` channel are always shared. By default, all other
-channels have independent scales.
+By default, all channels have independent scales and axes.

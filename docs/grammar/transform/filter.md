@@ -4,7 +4,7 @@ The filter transform removes rows based on a predicate [expression](../expressio
 
 ## Parameters
 
-SCHEMA FilterConfig
+SCHEMA FilterParams
 
 ## Example
 

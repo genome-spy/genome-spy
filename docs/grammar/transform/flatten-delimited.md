@@ -5,7 +5,7 @@ fields that contain delimited values.
 
 ## Parameters
 
-SCHEMA FlattenDelimitedConfig
+SCHEMA FlattenDelimitedParams
 
 ## Example
 

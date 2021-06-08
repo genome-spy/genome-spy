@@ -6,7 +6,7 @@ The Gather transform gathers columns into key-value pairs using a regular expres
 
 ## Parameters
 
-SCHEMA GatherConfig
+SCHEMA RegexFoldParams
 
 ## Example
 

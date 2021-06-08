@@ -47,7 +47,7 @@ channel is unioned by default.
       },
 
       "encoding": {
-        "x": { "field": "Position", "type": "quantitative" },
+        "x": { "field": "Position", "type": "index" },
         "y": { "field": "logR", "type": "quantitative" },
         "color": { "value": "#404068" },
         "size": { "value": 225 },
@@ -65,7 +65,7 @@ channel is unioned by default.
         "minLength": 3.0
       },
       "encoding": {
-        "x": { "field": "startpos", "type": "quantitative" },
+        "x": { "field": "startpos", "type": "index" },
         "x2": { "field": "endpos" },
         "y": { "field": "segMean", "type": "quantitative" },
         "color": { "value": "#ff4422" }
@@ -107,7 +107,7 @@ no sense with these data.
       },
 
       "encoding": {
-        "x": { "field": "Position", "type": "quantitative" },
+        "x": { "field": "Position", "type": "index" },
         "y": { "field": "logR", "type": "quantitative" },
         "color": { "value": "#404068" },
         "size": { "value": 225 },
@@ -125,7 +125,7 @@ no sense with these data.
       },
 
       "encoding": {
-        "x": { "field": "startpos", "type": "quantitative" },
+        "x": { "field": "startpos", "type": "index" },
         "x2": { "field": "endpos" },
         "y": { "field": "segMean", "type": "quantitative" },
         "color": { "value": "#ff4422" }

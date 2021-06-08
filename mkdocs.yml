@@ -25,16 +25,15 @@ nav:
           - Data Input: "grammar/data.md"
           - Transform:
                 - Data Transformation: "grammar/transform/index.md"
+                - Collect: "grammar/transform/collect.md"
                 - Coverage: "grammar/transform/coverage.md"
-                - Gather: "grammar/transform/gather.md"
                 - Filter: "grammar/transform/filter.md"
                 - FlattenDelimited: "grammar/transform/flatten-delimited.md"
                 - Formula: "grammar/transform/formula.md"
                 - Pileup: "grammar/transform/pileup.md"
                 - RegexExtract: "grammar/transform/regex-extract.md"
-                - Sort: "grammar/transform/sort.md"
+                - RegexFold: "grammar/transform/regex-fold.md"
                 - Stack: "grammar/transform/stack.md"
-                - Ungroup: "grammar/transform/ungroup.md"
           - Graphical Marks:
                 - Point: "grammar/mark/point.md"
                 - Rect: "grammar/mark/rect.md"

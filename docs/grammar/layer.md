@@ -10,7 +10,11 @@ Layer operator superimposes multiple views over each other.
 
 ```json
 {
+  "name": "The Root",
   "description": "Lollipop plot example",
+
+  "resolve": { "axis": { "y": "independent" } },
+
   "layer": [
     {
       "name": "Baseline",
@@ -53,26 +57,28 @@ Layer operator superimposes multiple views over each other.
 
           "mark": {
             "type": "rule",
-            "size": 3.0
+            "size": 3
           }
         },
         {
           "name": "Arrowheads",
 
-          "mark": "point",
+          "mark": {
+            "type": "point",
+            "size": 500,
+            "strokeWidth": 0
+          },
 
           "encoding": {
             "shape": {
               "field": "sin(x)",
-              "type": "quantitative",
+              "type": "nominal",
               "scale": {
                 "type": "threshold",
                 "domain": [-0.01, 0.01],
                 "range": ["triangle-down", "diamond", "triangle-up"]
               }
-            },
-            "size": { "value": 500 },
-            "strokeWidth": { "value": 0 }
+            }
           }
         }
       ]

@@ -5,7 +5,7 @@ and add a new field to the data.
 
 ## Parameters
 
-SCHEMA FormulaConfig
+SCHEMA FormulaParams
 
 ## Example
 

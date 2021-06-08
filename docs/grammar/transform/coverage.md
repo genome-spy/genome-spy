@@ -6,7 +6,7 @@ The segments must be sorted by their start coordinates.
 
 ## Parameters
 
-SCHEMA CoverageConfig
+SCHEMA CoverageParams
 
 ## Example
 
@@ -59,6 +59,7 @@ The following example demonstrates both `coverage` and `pileup` transforms.
       "as": "end"
     }
   ],
+  "resolve": { "scale": { "x": "shared" } },
   "concat": [
     {
       "styles": { "height": 100 },
@@ -72,7 +73,7 @@ The following example demonstrates both `coverage` and `pileup` transforms.
       ],
       "mark": "rect",
       "encoding": {
-        "x": { "field": "start", "type": "quantitative" },
+        "x": { "field": "start", "type": "index" },
         "x2": { "field": "end" },
         "y": { "field": "coverage", "type": "quantitative" }
       }
@@ -88,7 +89,7 @@ The following example demonstrates both `coverage` and `pileup` transforms.
       ],
       "mark": "rect",
       "encoding": {
-        "x": { "field": "start", "type": "quantitative" },
+        "x": { "field": "start", "type": "index" },
         "x2": { "field": "end" },
         "y": {
           "field": "lane",

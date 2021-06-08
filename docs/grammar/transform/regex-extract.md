@@ -5,7 +5,7 @@ regular expression.
 
 ## Parameters
 
-SCHEMA RegexExtractConfig
+SCHEMA RegexExtractParams
 
 ## Example
 

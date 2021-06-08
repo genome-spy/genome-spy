@@ -90,7 +90,7 @@ The `x2` channel allows for positioning the text inside a segment. The text is
 hidden if it does not fit in the segment.
 
 The example below has two layers: gray rectangles at the bottom and ranged
-text on the top.
+text on the top. Try to zoom and pan to see how they behave!
 
 <div class="embed-example">
 <div class="embed-container" style="height: 250px"></div>
@@ -101,11 +101,11 @@ text on the top.
     "values": ["A", "B", "C", "D", "E", "F", "G"]
   },
   "transform": [
-    { "type": "formula", "expr": "random() * 100", "as": "a" },
-    { "type": "formula", "expr": "datum.a + random() * 60", "as": "b" }
+    { "type": "formula", "expr": "round(random() * 100)", "as": "a" },
+    { "type": "formula", "expr": "datum.a + round(random() * 60)", "as": "b" }
   ],
   "encoding": {
-    "x": { "field": "a", "type": "quantitative" },
+    "x": { "field": "a", "type": "index" },
     "x2": { "field": "b" },
     "y": {
       "field": "data",
@@ -124,7 +124,8 @@ text on the top.
       "mark": {
         "type": "text",
         "align": "center",
-        "baseline": "middle"
+        "baseline": "middle",
+        "paddingX": 5
       },
       "encoding": {
         "text": {
