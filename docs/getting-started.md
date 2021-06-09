@@ -2,13 +2,18 @@
 
 ## Playground
 
-The easiest way to try out GenomeSpy is the Playground app, which allows you
-to experiment with different visualization specifications directly in the web
-browser. You can load data from publicly accessible web servers or your
-computer. The app is still rudimentary and does not support saving or sharing
-the visualizations.
+The easiest way to try out GenomeSpy is the [Playground
+app](https://genomespy.app/playground/), which allows you to experiment with
+different visualization specifications directly in the web browser. You can load
+data from publicly accessible web servers or your computer. The app is still
+rudimentary and does not support saving or sharing the visualizations.
 
-<a href="https://genomespy.app/playground/" target="_blank">Go to the Playground</a>
+## Observable notebooks
+
+You can embed GenomeSpy into an [Observable](https://observablehq.com) notebook.
+Please check the [GenomeSpy
+collection](https://observablehq.com/collection/@tuner/genomespy) for usage
+examples.
 
 ## Local or remote web server
 

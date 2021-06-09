@@ -12,7 +12,10 @@ width or height of the view. Alternatively, they may have specific endpoints.
   "data": {
     "sequence": { "start": 0, "stop": 15, "as": "y" }
   },
-  "mark": "rule",
+  "mark": {
+    "type": "rule",
+    "strokeDash": [6, 3]
+  },
   "encoding": {
     "x": { "field": "y", "type": "quantitative" },
     "color": { "field": "y", "type": "nominal" }
@@ -67,7 +70,8 @@ TODO, but in principle, the same as in [Rect mark](./rect.md) plus the following
   },
   "mark": {
     "type": "rule",
-    "size": 7
+    "size": 10,
+    "strokeCap": "round"
   },
   "encoding": {
     "y": { "field": "y", "type": "nominal" },

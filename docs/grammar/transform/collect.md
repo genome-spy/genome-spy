@@ -1,6 +1,7 @@
 # Collect
 
-TODO. (But anyway, it sorts the dataset)
+Collects the data items from the data flow into an internal array and optionally
+sorts them.
 
 ## Parameters
 

@@ -7,19 +7,18 @@ Text mark displays each data item as text.
 <div class="embed-spec">
 ```json
 {
-  "data": { "url": "sincos.csv" },
+  "data": {
+    "values": [
+      { "x": 1, "text": "Hello" },
+      { "x": 2, "text": "world!" }
+    ]
+  },
   "mark": "text",
   "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "y": { "field": "sin", "type": "quantitative" },
-    "text": { "field": "sin", "type": "quantitative", "format": ".2f" },
-    "size": {
-      "field": "x",
-      "type": "quantitative",
-      "scale": {
-        "range": [6, 28]
-      }
-    }
+    "x": { "field": "x", "type": "ordinal" },
+    "color": { "field": "x", "type": "nominal" },
+    "text": { "field": "text", "type": "nominal" },
+    "size": { "value": 100 }
   }
 }
 ```
@@ -86,8 +85,9 @@ channels:
 
 ### Ranged text
 
-The `x2` channel allows for positioning the text inside a segment. The text is
-hidden if it does not fit in the segment.
+The `x2` and `y2` channels allow for positioning the text inside a segment. The
+text is either squeezed or hidden if it does not fit in the segment. The `squeeze`
+property controls the behavior.
 
 The example below has two layers: gray rectangles at the bottom and ranged
 text on the top. Try to zoom and pan to see how they behave!

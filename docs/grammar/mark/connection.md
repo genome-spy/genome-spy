@@ -37,20 +37,13 @@ The mark can be used to display structural variation and interactions, for examp
 
 !!! warning "Still under development"
 
-    Connection mark does not currently support details on demand (tooltips).
-    Also, the parameterization is likely to be changed a bit to support
+    The parameterization is likely to be changed a bit to support
     more use cases.
 
 ## Channels
 
 In addition to the standard [position](../encoding/index.md) channels and
 `color` and `opacity` channels, connection mark supports the following channels:
-
-`height`
-: Type: Number
-
-    If the `y` and `y2` are equal or left undefined, the connections are rendered as arcs.
-    The height channel specifies their heights.
 
 `size`
 : Type: Number

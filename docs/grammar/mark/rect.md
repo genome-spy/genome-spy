@@ -100,6 +100,9 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 
 ### Heatmap
 
+When used with `band` or `index` scales, the rectangles fill the whole bands
+when only the primary positional channel is defined.
+
 <div class="embed-example">
 <div class="embed-container" style="height: 300px"></div>
 <div class="embed-spec">
@@ -114,8 +117,8 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
     { "type": "formula", "as": "x", "expr": "datum.z % 40" },
     {
       "type": "formula",
-      "as": "measurement",
-      "expr": "sin(datum.x / 2.2) + cos(datum.y / 2 + 3.25)"
+      "as": "z",
+      "expr": "sin(datum.x / 8) + cos(datum.y / 10 - 0.5 + sin(datum.x / 20) * 2)"
     }
   ],
   "mark": "rect",
@@ -123,7 +126,7 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
     "x": { "field": "x", "type": "index" },
     "y": { "field": "y", "type": "index" },
     "color": {
-      "field": "measurement",
+      "field": "z",
       "type": "quantitative",
       "scale": {
         "scheme": "magma"
@@ -145,12 +148,12 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 ```json
 {
   "data": {
-    "sequence": { "start": 0, "stop": 100, "as": "x" }
+    "sequence": { "start": 0, "stop": 60, "as": "x" }
   },
   "transform": [
     {
       "type": "formula",
-      "expr": "sin((datum.x - 50) / 4) + (datum.x - 50) / 30",
+      "expr": "sin((datum.x - 30) / 4) + (datum.x - 30) / 30",
       "as": "y"
     }
   ],

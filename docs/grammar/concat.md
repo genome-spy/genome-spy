@@ -1,6 +1,8 @@
 # View Concatenation
 
-The `concat` operator allows for building visualizations with multiple tracks.
+The `vconcat` and `hconcat` composition operators place views side-by-side
+either vertically or horizontally. The `vconcat` is practical for building
+genomic visualizations with multiple tracks.
 
 ## Example
 

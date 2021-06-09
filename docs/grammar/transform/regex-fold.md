@@ -1,8 +1,6 @@
-# Gather
+# Regex Fold
 
-TODO: Rename to RegexGather
-
-The Gather transform gathers columns into key-value pairs using a regular expression.
+The RegexFold transform gathers columns into key-value pairs using a regular expression.
 
 ## Parameters
 
