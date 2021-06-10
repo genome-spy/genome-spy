@@ -20,7 +20,7 @@ export interface IdentifierParams extends TransformParamsBase {
 export interface FilterParams extends TransformParamsBase {
     type: "filter";
 
-    /** An expression string. The row is removed if the expression evaluates to false. */
+    /** An expression string. The data object is removed if the expression evaluates to false. */
     expr: string;
 }
 
@@ -92,8 +92,8 @@ export interface RegexFoldParams extends TransformParamsBase {
     asValue: string[] | string;
 
     /**
-     * An optional regex that matches to columns that should not be included
-     * in the new folded rows.
+     * An optional regex that matches to fields that should not be included
+     * in the new folded data objects.
      */
     skipRegex?: string;
 

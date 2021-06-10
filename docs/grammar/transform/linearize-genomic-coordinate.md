@@ -7,3 +7,12 @@ TODO
 SCHEMA LinearizeGenomicCoordinateParams
 
 ## Example
+
+```json
+{
+  "type": "linearizeGenomicCoordinate",
+  "chrom": "chrom",
+  "pos": "start",
+  "as": "_start"
+}
+```

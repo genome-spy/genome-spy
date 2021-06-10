@@ -1,7 +1,7 @@
 # Regex Extract
 
-RegexExtract extracts and adds one or more new fields to the data by using a
-regular expression.
+The `regexExtract` transform extracts groups from a string field
+and adds them to the data objects as new fields.
 
 ## Parameters
 

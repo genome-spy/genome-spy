@@ -105,7 +105,7 @@ text on the top. Try to zoom and pan to see how they behave!
     { "type": "formula", "expr": "datum.a + round(random() * 60)", "as": "b" }
   ],
   "encoding": {
-    "x": { "field": "a", "type": "index" },
+    "x": { "field": "a", "type": "quantitative", "scale": { "zoom": true } },
     "x2": { "field": "b" },
     "y": {
       "field": "data",

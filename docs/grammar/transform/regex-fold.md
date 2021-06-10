@@ -1,6 +1,7 @@
 # Regex Fold
 
-The RegexFold transform gathers columns into key-value pairs using a regular expression.
+The `regexFold` transform gathers columns into key-value pairs using a regular
+expression.
 
 ## Parameters
 

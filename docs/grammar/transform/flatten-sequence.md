@@ -1,7 +1,7 @@
 # Flatten Sequence
 
-Flattens strings such as FASTA sequences into rows with position and character
-fields.
+The `flattenSequence` transform flattens strings such as FASTA sequences into
+data objecsts with position and character fields.
 
 ## Parameters
 

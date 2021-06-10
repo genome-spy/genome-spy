@@ -1,8 +1,9 @@
 # Pileup
 
-The pileup transform computes a piled up layout for overlapping segments. The
-computed lane can be used to position the segments in a visualization.
-The segments must be sorted by their start coordinates.
+The `pileup` transform computes a piled up layout for overlapping segments. The
+computed lane can be used to position the segments in a visualization. The
+segments must be sorted by their start coordinates before passing them to the
+pileup transform.
 
 ## Parameters
 

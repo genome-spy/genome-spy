@@ -1,7 +1,7 @@
 # Transforms
 
 Transforms allow for modifying the data before it is displayed on screen.
-They may filter or derive data, adding or removing fields or rows.
+They may filter or derive data, adding or removing fields or data objects.
 
 TODO: More about the data flow etc...
 

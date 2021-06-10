@@ -1,11 +1,12 @@
 # Genomic coordinates
 
-To support easy visualization of genomic data, GenomeSpy provides a specific
-genomic coordinate system, which maps the discrete chromosomes or contigs
-onto a concatenated, continuous linear axis.
+To allow easy visualization of coordinate-based genomic data, GenomeSpy can
+concatenate the discrete chromosomes onto a single continuous linear axis.
+Concatenation needs the sizes and preferred order for the contigs or
+chromosomes. These are usually provided with a genome assembly.
 
-To activate the genomic coordinate system, add `genome` property to the
-root level configuration object:
+To activate support for genomic coordinates, add `genome` property with the
+name of the assembly to the root level configuration object:
 
 ```json
 {
@@ -16,10 +17,17 @@ root level configuration object:
 }
 ```
 
+!!! note "Only a single genome assembly"
+
+    Currently, a visualization may have only a single globally configured
+    genome.  Different genomes for different scales (for x and y axes, for
+    example) will be supported in the future.
+
 ## Supported genomes
 
-By default, GenomeSpy loads genomes from _genomespy.app_. The following
-assemblies are provided: `hg38`, `hg19`, `hg18`, `mm10`, `mm9`, and `dm6`.
+By default, GenomeSpy loads genomes from the _genomespy.app_ website. The
+following assemblies are provided: `hg38`, `hg19`, `hg18`, `mm10`, `mm9`, and
+`dm6`.
 
 ## Custom genomes
 
@@ -75,7 +83,7 @@ Cytobands and genome annotations cannot be provided inline.
 
 ## Encoding genomic coordinates
 
-With the genomic coordinate system enabled, you can encode the genomic coordinates
+When a genome has been specified, you can encode the genomic coordinates
 conveniently:
 
 ```json
@@ -86,23 +94,35 @@ conveniently:
       "chrom": "Chr",
       "pos": "Pos",
       "offset": -1.0,
-      "type": "quantitative"
+      "type": "locus"
     },
     ...
   }
 }
 ```
 
-The example above specifies that the chromosome and the
-intra-chromosomal position is read from the `Chr` and `Pos` columns,
-respectively.
+The example above specifies that the chromosome and the intra-chromosomal
+position is read from the `Chr` and `Pos` fields, respectively.
+
+!!! note "What happens under the hood"
+
+    When the `chrom` and `pos` properties are used used in channel definitions,
+    GenomeSpy inserts an implicit
+    [linearizeGenomicCoordinate](../grammar/transform/linearize-genomic-coordinate.md)
+    transform into the data flow. The transform introduces a new field that
+    contains a linearized (concatenated) coordinate for the chromosome-position
+    pair. The channel definition is modified to use the new field.
+
+    In some cases you may want to insert an explicit transform to the data flow
+    to have better control on its behavior.
 
 ## Coordinate counting
 
-The `offset` property allows for aligning and adjusting for
-different coordinate notations: zero or one based, closed or half-open.
-The offset is added to the final coordinate.
+The `offset` property allows for aligning and adjusting for different coordinate
+notations: zero or one based, closed or half-open. The offset is added to the
+final coordinate.
 
-GenomeSpy expects **half-open**, **zero-based** coordinates.
+GenomeSpy's [`locus` scale](../grammar/scale.md) expects **half-open**,
+**zero-based** coordinates.
 
 Read more about coordinates at the [UCSC Genome Browser Blog](http://genome.ucsc.edu/blog/the-ucsc-genome-browser-coordinate-counting-systems/).

@@ -1,7 +1,9 @@
 # Flatten Delimited
 
-FlattenDelimited transform flattens (or normalizes) a field or a set of
-fields that contain delimited values.
+The `flattenDelimited` transform flattens (or normalizes) a field or a set of
+fields that contain delimited values. In other words, each delimited value is
+written into a new data object that contains a single value from the delimited
+field. All other fields are copied as such.
 
 ## Parameters
 
