@@ -21,6 +21,8 @@ export default class ProjectTransform extends FlowNode {
             throw new Error(`"fields" and "as" have unequal lengths!`);
         }
 
+        // TODO: "If unspecified, all fields will be copied using their existing names."
+
         const accessors = params.fields.map(f => field(f));
         const as = params.as ? params.as : accessors.map(accessorName);
 

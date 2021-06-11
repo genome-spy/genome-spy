@@ -1,9 +1,10 @@
 # Coverage
 
-The `coverage` transform computes coverage for overlapping segments. The result is
-a new list of non-overlapping segments with the coverage values. The segments
-must be sorted by their start coordinates before passing them to the coverage
-transform.
+The `coverage` transform computes
+[coverage](<https://en.wikipedia.org/wiki/Coverage_(genetics)>) for overlapping
+segments. The result is a new list of non-overlapping segments with the coverage
+values. The segments must be sorted by their start coordinates before passing
+them to the coverage transform.
 
 ## Parameters
 

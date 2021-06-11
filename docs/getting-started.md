@@ -17,7 +17,7 @@ examples.
 
 ## Local or remote web server
 
-For more serious work, you should use the GenomeSpy JavaScript component to
+For more serious work, you should use the GenomeSpy JavaScript library to
 create a web page for the visualization:
 
 1. Create an HTML document (web page) by using the example below

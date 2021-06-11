@@ -249,12 +249,13 @@ export interface PileupParams extends TransformParamsBase {
     spacing?: number;
 
     /**
-     * An optional field indicating the preferred lane.
+     * An optional field indicating the preferred lane. Use together with the
+     * `preferredOrder` property.
      */
     preference?: Field;
 
     /**
-     * The order of the lane preferences. The first element has the value that
+     * The order of the lane preferences. The first element contains the value that
      * should place the segment on the first lane and so forth.
      * If the preferred lane is occupied, the first available lane is taken.
      */
@@ -316,7 +317,7 @@ export interface CollectParams extends TransformParamsBase {
     type: "collect";
 
     /**
-     * Arranges the data into consecutive batched based on the groups.
+     * Arranges the data into consecutive batches based on the groups.
      * This is mainly intended for internal use so that faceted data can
      * be handled as batches.
      */

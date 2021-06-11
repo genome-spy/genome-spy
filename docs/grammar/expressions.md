@@ -16,7 +16,7 @@ All basic arithmetic operators are supported:
 (1 + 2) * 3 / 4
 ```
 
-The current data row is provided as the `datum` object. Its properties (columns)
+The current data object is provided as the `datum` object. Its properties (fields)
 can be accessed by using the dot or bracket notation:
 
 <!-- prettier-ignore -->

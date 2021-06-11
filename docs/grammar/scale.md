@@ -15,8 +15,11 @@ replicate their behavior identically (unless stated otherwise) in GenomeSpy.
 Although that has not yet fully materialized, Vega-Lite's scale documentation
 generally applies to GenomeSpy as well.
 
-Currently, `time`, `utc`, `quantile`, `bin-linear`, `bin-ordinal`, and disabled
-scales are **not** supported.
+The supported scales are: `"linear"`, `"pow"`, `"sqrt"`, `"symlog"`, `"log"`,
+`"ordinal"`, `"band"`, `"point"`, `"quantize"`, and `"threshold"`.
+
+Currently, the following scales are **not** supported: `"time"`, `"utc"`,
+`"quantile"`, `"bin-linear"`, `"bin-ordinal"`, and disabled scale.
 
 !!! note "Relation to Vega scales"
 
@@ -36,6 +39,8 @@ amino-acid locations to positional visual channels. It has traits from both the
 continuous `linear` and the discrete `band` scale. It is linear and zoomable but
 maps indices to the range similarly to the band scale – each index has its own
 band.
+
+The `index` scale is used by default when the field type is `index`.
 
 #### Point indices
 
@@ -106,7 +111,7 @@ Marks such as `point` that do not support the secondary positional channel are c
 
 TODO: Write something
 
-TODO: Fix the bug
+TODO: Fix the bug: segment edges are placed at the center of the bands.
 
 <div class="embed-example hidden-spec">
 <div class="embed-container" style="height: 100px"></div>
@@ -200,7 +205,45 @@ the label indices. (TODO: Consider another name like "labelIndexBase")
 
 ### Locus scale
 
-Locus scale extends the index scale with chromosomes. Blablaa.
+The `locus` scale is similar to the `index` scale, but provides a genome-aware
+axis with concatenated chromosomes. To use the locus scale, a
+[genome](genomic-data/genomic-coordinates.md) must be specified.
+
+The `locus` scale is used by default when the field type is `locus`.
+
+!!! note
+
+    The locus scale does not map the discrete chromosomes onto the concatenated
+    axis. It's done by the
+    [linearizeGenomicCoordinate](../grammar/transform/linearize-genomic-coordinate.md)
+    transform.
+
+#### Example
+
+<div class="embed-example">
+<div class="embed-container" style="height: 80px"></div>
+<div class="embed-spec">
+
+```json
+{
+  "genome": { "name": "hg38" },
+  "data": {
+    "values": [
+      { "chrom": "chr1", "pos": 234567890 },
+      { "chrom": "chr4", "pos": 123456789 },
+      { "chrom": "chr9", "pos": 34567890 }
+    ]
+  },
+  "mark": "point",
+  "encoding": {
+    "x": { "chrom": "chrom", "pos": "pos", "type": "locus" },
+    "size": { "value": 200 }
+  }
+}
+```
+
+</div>
+</div>
 
 ## Zooming and panning
 
