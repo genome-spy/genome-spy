@@ -122,7 +122,7 @@ The `offset` property allows for aligning and adjusting for different coordinate
 notations: zero or one based, closed or half-open. The offset is added to the
 final coordinate.
 
-GenomeSpy's [`locus` scale](../grammar/scale.md#locus-sclae) expects
+GenomeSpy's [`locus` scale](../grammar/scale.md#locus-scale) expects
 **half-open**, **zero-based** coordinates.
 
 Read more about coordinates at the [UCSC Genome Browser
