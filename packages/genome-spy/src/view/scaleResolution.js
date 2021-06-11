@@ -412,7 +412,11 @@ export default class ScaleResolution {
         }
 
         // TODO: Support multiple assemblies
-        return this.views[0].context.genomeStore.getGenome();
+        const genome = this.views[0].context.genomeStore?.getGenome();
+        if (!genome) {
+            throw new Error("No genome has been defined!");
+        }
+        return genome;
     }
 
     /**
