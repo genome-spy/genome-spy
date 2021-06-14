@@ -29,10 +29,7 @@ The example below shows an excerpt of segmented copy number data
 [layered](layer.md) with the raw SNP logR values. The domain of the `y`
 channel is unioned by default.
 
-<div class="embed-example hidden-spec">
-<div class="embed-container" style="height: 300px"></div>
-<div class="show-spec"><a href="#">Show specification</a></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed spechidden>
 
 ```json
 {
@@ -75,8 +72,7 @@ channel is unioned by default.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ### Independent
 
@@ -84,10 +80,7 @@ By specifying that the scales of the `y` channel should remain `independent`,
 both layers get their own scales and axes. Obviously, such a configuration makes
 no sense with these data.
 
-<div class="embed-example hidden-spec">
-<div class="embed-container" style="height: 300px"></div>
-<div class="show-spec"><a href="#">Show specification</a></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed spechidden>
 
 ```json
 {
@@ -135,5 +128,4 @@ no sense with these data.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>

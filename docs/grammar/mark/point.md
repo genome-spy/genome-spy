@@ -4,9 +4,7 @@ Point mark displays each data item as a symbol. Points are often used to create
 a scatter plot. In the genomic context, they could represent, for example,
 point mutations at genomic loci.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 200px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="200">
 
 ```json
 {
@@ -20,8 +18,7 @@ point mutations at genomic loci.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ## Channels
 
@@ -92,9 +89,7 @@ channels:
 The example below demonstrates how points can be varied by using
 `shape`, `color`, `size`, `strokeWidth`, and `gradientStrength` channels.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 300px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed>
 
 ```json
 {
@@ -137,8 +132,7 @@ The example below demonstrates how points can be varied by using
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ## Zoom behavior
 
@@ -163,9 +157,7 @@ The example below displays 200 000 semi-randomly generated points. The points
 reach their full size when 1 / 2^10.5 of the domain is visible, which equals
 about 1500X zoom.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 300px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed>
 
 ```json
 {
@@ -193,8 +185,7 @@ about 1500X zoom.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 !!! tip
 
@@ -218,9 +209,7 @@ The scores are sampled from an exponential distribution. As the view is
 zoomed in, new points appear. Their number in the viewport stays
 approximately constant until the lowest possible score has been reached.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 300px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed>
 
 ```json
 {
@@ -258,8 +247,7 @@ approximately constant until the lowest possible score has been reached.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 !!! tip
 

@@ -2,9 +2,7 @@
 
 Rect mark displays each data item as a rectangle.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 300px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed>
 
 ```json
 {
@@ -28,8 +26,7 @@ Rect mark displays each data item as a rectangle.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ## Channels
 
@@ -103,9 +100,7 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 When used with `band` or `index` scales, the rectangles fill the whole bands
 when only the primary positional channel is defined.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 300px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed>
 
 ```json
 {
@@ -136,14 +131,11 @@ when only the primary positional channel is defined.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ### Bars
 
-<div class="embed-example">
-<div class="embed-container" style="height: 300px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed>
 
 ```json
 {
@@ -175,5 +167,4 @@ when only the primary positional channel is defined.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>

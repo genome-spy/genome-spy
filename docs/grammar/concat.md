@@ -11,9 +11,7 @@ The spacing (in pixels) between concatenated views can be adjusted using the
 
 ### Vertical
 
-<div class="embed-example">
-<div class="embed-container" style="height: 300px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed>
 
 ```json
 {
@@ -40,14 +38,11 @@ The spacing (in pixels) between concatenated views can be adjusted using the
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ### Horizontal
 
-<div class="embed-example">
-<div class="embed-container" style="height: 200px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="200">
 
 ```json
 {
@@ -72,8 +67,7 @@ The spacing (in pixels) between concatenated views can be adjusted using the
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ## Child sizing
 
@@ -88,9 +82,7 @@ has a grow of `1`, and the right view has a grow of `2`. If you resize the web
 browser, you can observe that the width of the left view stays constant while
 the remaining space is distributed in proportions of 1:2.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 50px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="50">
 
 ```json
 {
@@ -113,8 +105,7 @@ the remaining space is distributed in proportions of 1:2.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 The size may have both absolute (`px`) and proportional (`grow`) components.
 When views are nested, both the absolute and proportional sizes are added up.
@@ -128,9 +119,7 @@ the same as `{ grow: 1 }`. Undefined sizes generally default to `"container"`.
 Concatenation operators can nested flexibly to build complex layouts as in the
 following example.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 150px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="150">
 
 ```json
 {
@@ -145,8 +134,7 @@ following example.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ## Resolve
 

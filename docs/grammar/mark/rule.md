@@ -3,9 +3,7 @@
 Rule mark displays each data item as a line segment. Rules can span the whole
 width or height of the view. Alternatively, they may have specific endpoints.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 150px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="150">
 
 ```json
 {
@@ -23,8 +21,7 @@ width or height of the view. Alternatively, they may have specific endpoints.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ## Channels
 
@@ -53,9 +50,7 @@ TODO, but in principle, the same as in [Rect mark](./rect.md) plus the following
 
 ### Ranged rules
 
-<div class="embed-example">
-<div class="embed-container" style="height: 150px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="150">
 
 ```json
 {
@@ -81,5 +76,4 @@ TODO, but in principle, the same as in [Rect mark](./rect.md) plus the following
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>

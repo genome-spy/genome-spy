@@ -17,6 +17,7 @@
     "build": "webpack --config webpack.config.js"
   },
   "dependencies": {
-    "genome-spy": "^0.0.5"
+    "genome-spy": "^0.0.5",
+    "lit": "^2.0.0-rc.2"
   }
 }

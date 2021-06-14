@@ -3,9 +3,7 @@
 Connection mark displays each data item as a curve that connects two points.
 The mark can be used to display structural variation and interactions, for example.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 250px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="250">
 
 ```json
 {
@@ -32,8 +30,7 @@ The mark can be used to display structural variation and interactions, for examp
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 !!! warning "Still under development"
 

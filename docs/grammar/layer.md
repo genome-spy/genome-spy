@@ -4,9 +4,7 @@ Layer operator superimposes multiple views over each other.
 
 ## Example
 
-<div class="embed-example">
-<div class="embed-container" style="height: 300px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed>
 
 ```json
 {
@@ -87,8 +85,7 @@ Layer operator superimposes multiple views over each other.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 To specify multiple layers, use the `layer` property:
 

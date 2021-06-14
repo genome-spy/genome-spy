@@ -11,9 +11,7 @@ SCHEMA StackParams
 
 ### Stacked bar plot
 
-<div class="embed-example">
-<div class="embed-container" style="height: 250px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="250">
 
 ```json
 {
@@ -44,14 +42,11 @@ SCHEMA StackParams
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ### Sequence logo
 
-<div class="embed-example">
-<div class="embed-container" style="height: 150px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="150">
 
 ```json
 {
@@ -116,5 +111,4 @@ SCHEMA StackParams
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>

@@ -41,9 +41,7 @@ A new list of segments is produced:
 
 The following example demonstrates both `coverage` and `pileup` transforms.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 300px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed>
 
 ```json
 {
@@ -108,3 +106,5 @@ The following example demonstrates both `coverage` and `pileup` transforms.
   ]
 }
 ```
+
+</genome-spy-doc-embed></div>

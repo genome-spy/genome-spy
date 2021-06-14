@@ -1,4 +1,7 @@
 import { embed } from "genome-spy";
+import { html, css, LitElement, nothing } from "lit";
+import { styleMap } from "lit/directives/style-map.js";
+import { ref, createRef } from "lit/directives/ref.js";
 
 /**
  *
@@ -22,19 +25,22 @@ async function fetchConf(url) {
     return conf;
 }
 
-/**
- * @param {HTMLElement} container
- * @param {object | string} conf configuriation object or url to json configuration
- */
-async function embedToDoc(container, conf) {
+function getBaseUrl() {
     const baseUrl = document
         .querySelector("meta[name='base_url']")
         .getAttribute("content");
     if (!baseUrl) {
         console.error(`No <meta name="base_url" ...> found!`);
-        return;
     }
+    return baseUrl;
+}
 
+/**
+ * @param {HTMLElement} container
+ * @param {object | string} conf configuration object or url to json configuration
+ */
+async function embedToDoc(container, conf) {
+    const baseUrl = getBaseUrl();
     const dataBaseUrl = `${baseUrl}/data/`;
 
     try {
@@ -47,65 +53,94 @@ async function embedToDoc(container, conf) {
     }
 }
 
-async function initialize(exampleElement) {
-    const htmlElement = /** @type {HTMLElement} */ (exampleElement);
-    const container = /** @type {HTMLElement} */ (htmlElement.querySelector(
-        ".embed-container"
-    ));
-    const url = htmlElement.dataset.url;
-
-    try {
-        if (url) {
-            let container = /** @type {HTMLElement} */ (htmlElement.querySelector(
-                ".embed-container"
-            ));
-            if (!container) {
-                container = document.createElement("div");
-                container.className = "embed-container";
-                htmlElement.appendChild(container);
+export class GenomeSpyDocEmbed extends LitElement {
+    static get styles() {
+        return css`
+            .show-spec {
+                font-size: 70%;
+                text-align: center;
             }
 
-            const conf = await fetchConf(url);
-            embedToDoc(container, conf);
-        } else {
-            const spec = /** @type {HTMLElement} */ (htmlElement.querySelector(
-                ".embed-spec"
-            ));
-
-            if (spec && container) {
-                embedToDoc(container, JSON.parse(spec.textContent));
+            .show-spec a {
+                color: #3f51b5;
+                text-decoration: none;
             }
+        `;
+    }
+
+    static get properties() {
+        return {
+            height: { type: String },
+            specHidden: { type: Boolean }
+        };
+    }
+
+    constructor() {
+        super();
+        this.height = 300;
+        this.specHidden = false;
+        this.embedRef = createRef();
+    }
+
+    render() {
+        return html`
+            <link rel="stylesheet" href=${getBaseUrl() + "/app/main.css"} />
+            <div
+                class="embed-container"
+                style=${styleMap({
+                    height: this.height + "px"
+                })}
+                ${ref(this.embedRef)}
+            ></div>
+            ${this.specHidden
+                ? html`
+                      <div class="show-spec">
+                          <a
+                              href="#"
+                              @click=${event => {
+                                  this.specHidden = false;
+                                  event.preventDefault();
+                              }}
+                              >Show specification</a
+                          >
+                      </div>
+                  `
+                : nothing}
+
+            <div
+                class="embed-spec"
+                style=${styleMap({
+                    display: this.specHidden ? "none" : "block"
+                })}
+            >
+                <slot></slot>
+            </div>
+        `;
+    }
+
+    firstUpdated() {
+        const spec = this.shadowRoot
+            .querySelector("slot")
+            .assignedNodes()
+            .filter(el => el instanceof HTMLElement)[0]?.textContent;
+
+        if (spec) {
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const container = entry.target;
+
+                        embedToDoc(container, JSON.parse(spec));
+
+                        observer.unobserve(container);
+                    }
+                });
+            });
+
+            // Slight delay to reduce layout flickering.
+            setTimeout(() => observer.observe(this.embedRef.value), 80);
         }
-    } catch (e) {
-        console.error(e);
-        container.innerText = e.message;
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    const examples = document.querySelectorAll(".embed-example");
-
-    let observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const example = entry.target;
-                initialize(example);
-                observer.unobserve(example);
-            }
-        });
-    });
-
-    examples.forEach(example => {
-        if (example.classList.contains("hidden-spec")) {
-            const showSpec = example.querySelector(".show-spec a");
-            if (showSpec) {
-                showSpec.addEventListener("click", e => {
-                    example.classList.remove("hidden-spec");
-                    e.preventDefault();
-                });
-            }
-        }
-
-        observer.observe(example);
-    });
-});
+customElements.define("genome-spy-doc-embed", GenomeSpyDocEmbed);

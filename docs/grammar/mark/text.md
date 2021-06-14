@@ -2,9 +2,8 @@
 
 Text mark displays each data item as text.
 
-<div class="embed-example">
-<div class="embed-container" style="height: 200px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="200">
+
 ```json
 {
   "data": {
@@ -22,8 +21,8 @@ Text mark displays each data item as text.
   }
 }
 ```
-</div>
-</div>
+
+</genome-spy-doc-embed></div>
 
 ## Channels
 
@@ -92,9 +91,8 @@ property controls the behavior.
 The example below has two layers: gray rectangles at the bottom and ranged
 text on the top. Try to zoom and pan to see how they behave!
 
-<div class="embed-example">
-<div class="embed-container" style="height: 250px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="250">
+
 ```json
 {
   "data": {
@@ -138,5 +136,5 @@ text on the top. Try to zoom and pan to see how they behave!
   ]
 }
 ```
-</div>
-</div>
+
+</genome-spy-doc-embed></div>

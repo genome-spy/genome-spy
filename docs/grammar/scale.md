@@ -47,10 +47,7 @@ The `index` scale is used by default when the field type is `index`.
 When only the primary positional channel is defined, marks such as `rect` fill
 the whole band.
 
-<div class="embed-example hidden-spec">
-<div class="embed-container" style="height: 100px"></div>
-<div class="show-spec"><a href="#">Show specification</a></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="100" spechidden="true">
 
 ```json
 {
@@ -80,15 +77,11 @@ the whole band.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 Marks such as `point` that do not support the secondary positional channel are centered.
 
-<div class="embed-example hidden-spec">
-<div class="embed-container" style="height: 100px"></div>
-<div class="show-spec"><a href="#">Show specification</a></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="100" spechidden="true">
 
 ```json
 {
@@ -104,8 +97,7 @@ Marks such as `point` that do not support the secondary positional channel are c
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 #### Range indices
 
@@ -113,10 +105,7 @@ TODO: Write something
 
 TODO: Fix the bug: segment edges are placed at the center of the bands.
 
-<div class="embed-example hidden-spec">
-<div class="embed-container" style="height: 100px"></div>
-<div class="show-spec"><a href="#">Show specification</a></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="100" spechidden="true">
 
 ```json
 {
@@ -152,8 +141,7 @@ TODO: Fix the bug: segment edges are placed at the center of the bands.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 #### Adjusting the indexing of axis labels
 
@@ -161,10 +149,7 @@ The index scale expects zero-based indexing. However, it may be desirable to dis
 the axis labels using one-based indexing. Use the `numberingOffset` property adjust
 the label indices. (TODO: Consider another name like "labelIndexBase")
 
-<div class="embed-example hidden-spec">
-<div class="embed-container" style="height: 100px"></div>
-<div class="show-spec"><a href="#">Show specification</a></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="100" spechidden="true">
 
 ```json
 {
@@ -200,8 +185,7 @@ the label indices. (TODO: Consider another name like "labelIndexBase")
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ### Locus scale
 
@@ -220,9 +204,7 @@ The `locus` scale is used by default when the field type is `locus`.
 
 #### Example
 
-<div class="embed-example">
-<div class="embed-container" style="height: 80px"></div>
-<div class="embed-spec">
+<div><genome-spy-doc-embed height="80">
 
 ```json
 {
@@ -242,8 +224,7 @@ The `locus` scale is used by default when the field type is `locus`.
 }
 ```
 
-</div>
-</div>
+</genome-spy-doc-embed></div>
 
 ## Zooming and panning
 
