@@ -10,7 +10,6 @@ import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
 import { buildDataFlow } from "../flowBuilder";
 import { NOMINAL, ORDINAL } from "../scaleResolution";
-import { filterByNominal } from "../../sampleHandler/sampleHandlerActions";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -431,7 +430,7 @@ export class SampleAttributePanel extends ConcatView {
 
                 if (sample) {
                     this.sampleHandler.dispatch(
-                        filterByNominal(
+                        Actions.filterByNominal(
                             { type: SAMPLE_ATTRIBUTE, specifier: name },
                             "retain",
                             [command]
@@ -465,7 +464,7 @@ function createAttributeSpec(attributeName, attributeDef) {
             color: {
                 field,
                 type: attributeDef.type,
-                scale: attributeDef.colorScale
+                scale: attributeDef.scale
             }
         }
     };
