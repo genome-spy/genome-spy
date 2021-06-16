@@ -5,7 +5,8 @@ theme:
 markdown_extensions:
     - markdown.extensions.def_list
     - pymdownx.magiclink
-    - codehilite
+    - pymdownx.highlight
+    - pymdownx.superfences
     - admonition
     - toc:
           permalink: true
@@ -50,7 +51,7 @@ nav:
                 - Composing Visualizations: "grammar/composition.md"
                 - Concat: "grammar/concat.md"
                 - Layer: "grammar/layer.md"
-                - Faceting Multiple Samples: "grammar/facet.md"
+                - Samples: "grammar/samples.md"
           - Scales: "grammar/scale.md"
           - Importing Views: "grammar/import.md"
           - Expressions: "grammar/expressions.md"

@@ -194,20 +194,20 @@ about 1500X zoom.
 
 ### Semantic zoom
 
-The score-based semantic zoom adjusts the point visibility by coupling a
-score threshold to current zoom level. The `semanticScore` channel enables
-the semantic zoom and specifies the score field. The `semanticZoomFraction`
-property controls the fraction of data items to show in the fully zoomed-out
-view, i.e., it specifies the threshold score. The fraction is scaled as the
-viewport is zoomed. Thus, if the data is distributed roughly uniformly along
-the zoomed axis, roughly constant number of points are visible at all zoom
-levels. The score can be arbitrarily distributed, as the threshold is
-computed using _p_-quantiles.
+The score-based semantic zoom adjusts the point visibility by coupling a score
+threshold to current zoom level. The `semanticScore` channel enables the
+semantic zoom and specifies the score field. The `semanticZoomFraction` property
+controls the fraction of data items to show in the fully zoomed-out view, i.e.,
+it specifies the threshold score. The fraction is scaled as the viewport is
+zoomed. Thus, if the data is distributed roughly uniformly along the zoomed
+axis, roughly constant number of points are visible at all zoom levels. The
+score can be _arbitrarily distributed_, as the threshold is computed using
+_p_-quantiles.
 
-The example below has 200 000 semi-randomly generated points with a score.
-The scores are sampled from an exponential distribution. As the view is
-zoomed in, new points appear. Their number in the viewport stays
-approximately constant until the lowest possible score has been reached.
+The example below has 200 000 semi-randomly generated points with an
+exponentially distributed score. As the view is zoomed in, new points appear.
+Their number in the viewport stays approximately constant until the lowest
+possible score has been reached.
 
 <div><genome-spy-doc-embed>
 
@@ -236,10 +236,10 @@ approximately constant until the lowest possible score has been reached.
   "encoding": {
     "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
     "y": { "field": "y", "type": "quantitative" },
-    "color": {
+    "opacity": {
       "field": "score",
       "type": "quantitative",
-      "scale": { "scheme": "bluegreen" }
+      "scale": { "range": [0.1, 1] }
     },
     "semanticScore": { "field": "score", "type": "quantitative" },
     "size": { "value": 100 }
