@@ -78,7 +78,7 @@ export async function embed(el, spec, opt = {}) {
 /**
  *
  * @param {import("./genomeSpy").default} genomeSpy
- * @param {object} opt
+ * @param {Record<string, any>} opt
  */
 function applyOptions(genomeSpy, opt) {
     if (opt.namedDataProvider) {

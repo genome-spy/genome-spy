@@ -200,6 +200,11 @@ export interface RootConfig {
     specId?: string;
 
     baseUrl?: string;
+
+    /**
+     * https://vega.github.io/vega-lite/docs/data.html#datasets
+     */
+    datasets?: Record<string, any[]>;
 }
 
 export type RootSpec = ViewSpec & RootConfig;

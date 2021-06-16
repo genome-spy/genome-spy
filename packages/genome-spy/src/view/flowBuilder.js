@@ -20,6 +20,7 @@ import { isAggregateSamplesSpec } from "./viewUtils";
 import { group } from "d3-array";
 import IdentifierTransform from "../data/transforms/identifier";
 import { invalidate } from "../utils/propertyCacher";
+import NamedSource, { isNamedData } from "../data/sources/namedSource";
 
 /**
  * @typedef {import("./view").default} View
@@ -111,6 +112,8 @@ export function buildDataFlow(root, existingFlow) {
         if (view.spec.data) {
             const dataSource = isDynamicCallbackData(view.spec.data)
                 ? view.getDynamicDataSource()
+                : isNamedData(view.spec.data)
+                ? new NamedSource(view.spec.data, view.context.getNamedData)
                 : createDataSource(view.spec.data, view.getBaseUrl());
 
             currentNode = dataSource;

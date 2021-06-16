@@ -40,4 +40,6 @@ export default interface ViewContext {
         type: "keydown" | "keyup",
         listener: (event: KeyboardEvent) => void
     ) => void;
+
+    getNamedData: (name: string) => any[];
 }

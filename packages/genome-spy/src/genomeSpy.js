@@ -104,7 +104,7 @@ export default class GenomeSpy {
 
     /**
      *
-     * @param {function(string):object[]} provider
+     * @param {function(string):any[]} provider
      */
     registerNamedDataProvider(provider) {
         this.namedDataProviders.unshift(provider);
@@ -215,6 +215,7 @@ export default class GenomeSpy {
             requestLayoutReflow: this.computeLayout.bind(this),
             updateTooltip: this.updateTooltip.bind(this),
             contextMenu: this.contextMenu.bind(this),
+            getNamedData: this.getNamedData.bind(this),
             getCurrentHover: () => this._currentHover,
 
             addKeyboardListener: (type, listener) => {
@@ -232,6 +233,10 @@ export default class GenomeSpy {
 
         /** @type {import("./spec/view").ViewSpec & RootConfig} */
         const rootSpec = this.config;
+
+        if (rootSpec.datasets) {
+            this.registerNamedDataProvider(name => rootSpec.datasets[name]);
+        }
 
         // Create the view hierarchy
         /** @type {import("./view/view").default} */
