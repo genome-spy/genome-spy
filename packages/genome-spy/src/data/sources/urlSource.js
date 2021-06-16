@@ -34,14 +34,17 @@ export default class UrlSource extends DataSource {
 
         /** @param {string} url */
         const load = async url => {
-            try {
-                // TODO: Support chunked loading
-                return /** @type {string} */ (vegaLoader({
-                    baseURL: this.baseUrl
-                }).load(url));
-            } catch (e) {
-                throw new Error(`Cannot fetch: ${url}: ${e.message}`);
-            }
+            // TODO: Support chunked loading
+            return /** @type {string} */ (vegaLoader({
+                baseURL: this.baseUrl
+            })
+                .load(url)
+                .catch(e => {
+                    // TODO: Include baseurl in the error message. Should be normalized, however.
+                    throw new Error(
+                        `Cannot fetch: ${this.baseUrl}${url}: ${e.message}`
+                    );
+                }));
         };
 
         /**
