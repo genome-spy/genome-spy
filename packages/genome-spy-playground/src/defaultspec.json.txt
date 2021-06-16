@@ -1,22 +1,26 @@
 {
   "data": {
-    "sequence": { "start": 0, "stop": 1000, "as": "z" }
+    "sequence": { "start": 0, "stop": 60, "as": "x" }
   },
   "transform": [
-    { "type": "formula", "as": "sample", "expr": "floor(datum.z / 100) + 1" },
-    { "type": "formula", "as": "x", "expr": "datum.z % 100" },
-    { "type": "formula", "as": "measurement", "expr": "sin(datum.x / 9) + cos(datum.sample / 2 + 3.25)" }
+    {
+      "type": "formula",
+      "expr": "sin((datum.x - 30) / 4) + (datum.x - 30) / 30",
+      "as": "y"
+    }
   ],
   "mark": "rect",
   "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "x2": { "expr": "datum.x + 1" },
-    "y": { "field": "sample", "type": "nominal" },
+    "x": { "field": "x", "type": "index", "band": 0.9 },
+    "y": { "field": "y", "type": "quantitative" },
+    "y2": { "datum": 0 },
     "color": {
-      "field": "measurement",
+      "field": "y",
       "type": "quantitative",
       "scale": {
-        "scheme": "magma"
+        "type": "threshold",
+        "domain": [0],
+        "range": ["#ed553b", "#20639b"]
       }
     }
   }
