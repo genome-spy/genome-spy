@@ -1,6 +1,8 @@
 import { ticks as d3ticks, tickStep, extent } from "d3-array";
 import { format as d3format } from "d3-format";
 
+const minimumDomainSpan = 1;
+
 /**
  * Creates a "index" scale, which works similarly to d3's band scale but the domain
  * consists of integer indexes.
@@ -46,6 +48,14 @@ export default function scaleIndex() {
         if (arguments.length) {
             domain = extent(_);
             domainSpan = domain[1] - domain[0];
+
+            if (domainSpan < minimumDomainSpan) {
+                domainSpan = minimumDomainSpan;
+                const centroid = (domain[0] + domain[1]) / 2;
+                domain[0] = centroid - domainSpan / 2;
+                domain[1] = centroid + domainSpan / 2;
+            }
+
             return scale;
         } else {
             return domain;
