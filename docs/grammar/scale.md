@@ -16,10 +16,11 @@ Although that has not yet fully materialized, Vega-Lite's scale documentation
 generally applies to GenomeSpy as well.
 
 The supported scales are: `"linear"`, `"pow"`, `"sqrt"`, `"symlog"`, `"log"`,
-`"ordinal"`, `"band"`, `"point"`, `"quantize"`, and `"threshold"`.
+`"ordinal"`, `"band"`, `"point"`, `"quantize"`, and `"threshold"`. Disabled
+scale is supported on quantitative channels such as `x` and `opacity`.
 
 Currently, the following scales are **not** supported: `"time"`, `"utc"`,
-`"quantile"`, `"bin-linear"`, `"bin-ordinal"`, and disabled scale.
+`"quantile"`, `"bin-linear"`, `"bin-ordinal"`.
 
 !!! note "Relation to Vega scales"
 

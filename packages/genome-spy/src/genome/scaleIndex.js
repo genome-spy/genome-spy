@@ -140,10 +140,17 @@ export default function scaleIndex() {
      * @param {number} count
      * @returns {number[]}
      */
-    scale.ticks = count =>
-        d3ticks(domain[0], domain[1], Math.min(count, Math.ceil(domainSpan)))
+    scale.ticks = count => {
+        const align = /** @type {number} */ (scale.align());
+        const offset = /** @type {number} */ (scale.numberingOffset());
+        return d3ticks(
+            domain[0] - align + offset,
+            domain[1] - align + offset,
+            Math.min(count, Math.ceil(domainSpan))
+        )
             .filter(Number.isInteger)
             .map(x => x - numberingOffset);
+    };
 
     /**
      *

@@ -58,7 +58,10 @@ export default function scaleLocus() {
             );
             const to = Math.min(chrom.continuousEnd - step / 4, domain[1] + 1);
             for (let pos = from; pos <= to; pos += step) {
-                ticks.push(pos - numberingOffset);
+                const tick = pos - numberingOffset;
+                if (tick >= domain[0] && tick < domain[1]) {
+                    ticks.push(tick);
+                }
             }
         }
 

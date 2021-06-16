@@ -7,7 +7,7 @@
     { "type": "formula", "expr": "datum.a + random() * 100", "as": "b" }
   ],
   "encoding": {
-    "x": { "field": "a", "type": "quantitative" },
+    "x": { "field": "a", "type": "quantitative", "scale": { "zoom": true } },
     "x2": { "field": "b" },
     "y": {
       "field": "data",
