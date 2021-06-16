@@ -61,7 +61,8 @@ body {
 
 #genome-spy-pane {
     grid-area: genome-spy;
-    padding: $basic-spacing;
+
+    position: relative;
 
     .stacked & {
         border-bottom: $border;
@@ -69,6 +70,14 @@ body {
 
     .parallel & {
         border-left: $border;
+    }
+
+    & > div {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
     }
 }
 

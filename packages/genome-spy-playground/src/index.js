@@ -1,4 +1,5 @@
-import { html, render } from "lit-html";
+import { html, render } from "lit";
+import { ref, createRef } from "lit/directives/ref.js";
 
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -33,6 +34,8 @@ import { embed } from "genome-spy";
 window.jsonlint = JsonLint;
 
 const STORAGE_KEY = "playgroundSpec";
+
+const genomeSpyContainerRef = createRef();
 
 let embedResult;
 let codeMirror;
@@ -92,14 +95,10 @@ async function update(force = false) {
         }
 
         // TODO: Fix possible race condition
-        embedResult = await embed(
-            document.querySelector("#genome-spy-pane"),
-            parsedSpec,
-            {
-                bare: true,
-                namedDataProvider: getNamedData
-            }
-        );
+        embedResult = await embed(genomeSpyContainerRef.value, parsedSpec, {
+            bare: true,
+            namedDataProvider: getNamedData
+        });
     } catch (e) {
         console.log(e);
     }
@@ -307,7 +306,9 @@ const layoutTemplate = () => html`
         <section id="editor-pane">
             <textarea class="editor">${storedSpec}</textarea>
         </section>
-        <section id="genome-spy-pane"></section>
+        <section id="genome-spy-pane">
+            <div ${ref(genomeSpyContainerRef)}></div>
+        </section>
         <section id="file-pane">
             ${fileTemplate()}
         </section>

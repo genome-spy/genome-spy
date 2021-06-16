@@ -6,9 +6,6 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 .genome-spy {
     font-family: $font-family;
 
-    display: flex;
-    flex-direction: column;
-
     position: relative;
 
     canvas {
