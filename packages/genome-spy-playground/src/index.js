@@ -29,7 +29,7 @@ import "codemirror/theme/neo.css";
 import "./playground.scss";
 import "./codemirror-theme.scss";
 
-import { embed } from "genome-spy";
+import { embed, icon as genomeSpyIcon } from "genome-spy";
 
 window.jsonlint = JsonLint;
 
@@ -159,8 +159,13 @@ function changeTab(event) {
 
 const toolbarTemplate = () => html`
     <div class="toolbar">
+        <img
+            title="GenomeSpy"
+            alt="GenomeSpy"
+            src="${genomeSpyIcon}"
+            class="genome-spy-icon"
+        />
         <span class="title">
-            ${icon(faDna).node[0]}
             <span>GenomeSpy Playground</span>
         </span>
         <button @click=${toggleLayout}>
