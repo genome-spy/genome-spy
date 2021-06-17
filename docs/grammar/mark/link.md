@@ -1,7 +1,8 @@
-# Connection
+# Link
 
-Connection mark displays each data item as a curve that connects two points.
-The mark can be used to display structural variation and interactions, for example.
+The `"link"` mark displays each data item as a curve that connects two points.
+The mark can be used to display structural variation and interactions, for
+example.
 
 <div><genome-spy-doc-embed height="250">
 
@@ -18,7 +19,7 @@ The mark can be used to display structural variation and interactions, for examp
       "as": "x2"
     }
   ],
-  "mark": "connection",
+  "mark": "link",
   "encoding": {
     "x": { "field": "x", "type": "index" },
     "x2": { "field": "x2" }
@@ -36,7 +37,7 @@ The mark can be used to display structural variation and interactions, for examp
 ## Channels
 
 In addition to the standard [position](../encoding/index.md) channels and
-`color` and `opacity` channels, connection mark supports the following channels:
+`color` and `opacity` channels, link mark supports the following channels:
 
 `size`
 : Type: Number
@@ -79,7 +80,7 @@ In addition to the standard [position](../encoding/index.md) channels and
     { "type": "formula", "expr": "sin(datum.theta)", "as": "y" }
   ],
   "mark": {
-    "type": "connection",
+    "type": "link",
     "size": 10,
     "size2": 0
   },

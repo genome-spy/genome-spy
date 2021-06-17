@@ -1,7 +1,7 @@
 import RectMark from "../marks/rectMark";
 import PointMark from "../marks/pointMark";
 import RuleMark from "../marks/rule";
-import ConnectionMark from "../marks/connection";
+import LinkMark from "../marks/link";
 import TextMark from "../marks/text";
 
 import View from "./view";
@@ -26,7 +26,7 @@ export const markTypes = {
     point: PointMark,
     rect: RectMark,
     rule: RuleMark,
-    connection: ConnectionMark,
+    link: LinkMark,
     text: TextMark
 };
 

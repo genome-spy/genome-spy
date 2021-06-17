@@ -1,11 +1,11 @@
 import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
-import VERTEX_SHADER from "../gl/connection.vertex.glsl";
-import FRAGMENT_SHADER from "../gl/connection.fragment.glsl";
+import VERTEX_SHADER from "../gl/link.vertex.glsl";
+import FRAGMENT_SHADER from "../gl/link.fragment.glsl";
 import { ConnectionVertexBuilder } from "../gl/dataToVertices";
 
 import Mark from "./mark";
 
-export default class ConnectionMark extends Mark {
+export default class LinkMark extends Mark {
     /**
      * @param {import("../view/unitView").default} unitView
      */

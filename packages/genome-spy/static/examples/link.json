@@ -9,7 +9,7 @@
   ],
 
   "mark": {
-    "type": "connection",
+    "type": "link",
     "segments": 101
   },
 

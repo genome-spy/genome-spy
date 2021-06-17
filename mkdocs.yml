@@ -42,11 +42,11 @@ nav:
                 - Sample: "grammar/transform/sample.md"
                 - Stack: "grammar/transform/stack.md"
           - Graphical Marks:
+                - Link: "grammar/mark/link.md"
                 - Point: "grammar/mark/point.md"
                 - Rect: "grammar/mark/rect.md"
                 - Rule: "grammar/mark/rule.md"
                 - Text: "grammar/mark/text.md"
-                - Connection: "grammar/mark/connection.md"
           - View Composition:
                 - Composing Visualizations: "grammar/composition.md"
                 - Concat: "grammar/concat.md"
