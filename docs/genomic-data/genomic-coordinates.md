@@ -17,7 +17,7 @@ name of the assembly to the root level configuration object:
 }
 ```
 
-!!! note "Only a single genome assembly"
+!!! warning "Only a single genome assembly"
 
     Currently, a visualization may have only a single globally configured
     genome.  Different genomes for different scales (for x and y axes, for

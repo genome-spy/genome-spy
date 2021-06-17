@@ -25,11 +25,11 @@ width or height of the view. Alternatively, they may have specific endpoints.
 
 ## Channels
 
-TODO, but in principle, the same as in [Rect mark](./rect.md).
+TODO, but in principle, the same as in the [rect](./rect.md) mark.
 
 ## Properties
 
-TODO, but in principle, the same as in [Rect mark](./rect.md) plus the following:
+TODO, but in principle, the same as in the [rect](./rect.md) mark plus the following:
 
 `size`
 : Type: Number
@@ -42,9 +42,31 @@ TODO, but in principle, the same as in [Rect mark](./rect.md) plus the following
 : Type: Number
 
     The minimum length of the rule.
-    The property translates to `minLength` or `minWidth` of Rect mark.
 
     **Default value:** `0`
+
+`strokeDash`
+: Type: Number[]
+
+    An array of of alternating stroke and gap lengths or `null` for solid
+    strokes.
+
+    **Default value:** `null`
+
+`strokeDashOffset`
+: Type: Number
+
+    An offset for the stroke pattern.
+
+    **Default value:** `0`
+
+`strokeCap`
+: Type: String
+
+    The style of stroke ends. Available choices: `"butt"`, `"round`", and
+    `"square"`.
+
+    **Default value:** `"butt"`
 
 ## Examples
 

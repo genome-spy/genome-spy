@@ -6,7 +6,7 @@ The easiest way to try out GenomeSpy is the [Playground
 app](https://genomespy.app/playground/), which allows you to experiment with
 different visualization specifications directly in the web browser. You can load
 data from publicly accessible web servers or your computer. The app is still
-rudimentary and does not support saving or sharing the visualizations.
+rudimentary and does not support saving or sharing visualizations.
 
 ## Observable notebooks
 
@@ -108,3 +108,8 @@ This template loads the spec from the `spec.json` file.
   </body>
 </html>
 ```
+
+## Using the GenomeSpy library in a web application
+
+The API is still unstable, but you may want to have a look at the [SegmentModel
+Spy](https://github.com/tuner/segment-model-spy) for an example.

@@ -31,15 +31,7 @@ Rect mark displays each data item as a rectangle.
 ## Channels
 
 Rect mark supports the standard [position](../encoding/index.md) channels and
-`color` and `opacity` channels and the following:
-
-`squeeze`
-: Type: String
-
-    Squeezes a side of the rectangle turning it into a triangle. Valid
-    choices: `none` (default), `top`, `right`, `bottom`, `left`.
-
-    **Default value:** `none`
+`color` and `opacity` channels.
 
 ## Properties
 
@@ -65,8 +57,8 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 `minOpacity`
 : Type: Number
 
-    Clamps the minimum size-dependent opacity. The property does not affect
-    the `opacity` channel. Valid values are between `0` and `1`.
+    Clamps the minimum size-dependent opacity. The property does not affect the
+    `opacity` channel. Valid values are between `0` and `1`.
 
     When a rectangle would be smaller than what is specified in `minHeight` and
     `minWidth`, it is faded out proportionally. Example: a rectangle would be
@@ -77,19 +69,19 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 
     **Default value:** `0`
 
-`offsetX`
+`xOffset`
 : Type: Number
 
-    Offsets of the x and x2 coordinates in pixels. The offset is applied after
-    the viewport scaling and translation.
+    Offsets of the `x` and `x2` coordinates in pixels. The offset is applied
+    after the viewport scaling and translation.
 
     **Default value:** `0`
 
-`offsetY`
+`yOffset`
 : Type: Number
 
-    Offsets of the x and x2 coordinates in pixels. The offset is applied after
-    the viewport scaling and translation.
+    Offsets of the `y` and `y2` coordinates in pixels. The offset is applied
+    after the viewport scaling and translation.
 
     **Default value:** `0`
 

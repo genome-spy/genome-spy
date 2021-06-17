@@ -4,7 +4,7 @@ Transforms allow for building a pipeline that modifies the data before the data
 objects are mapped into marks. They may filter or derive data, adding or
 removing fields or data objects.
 
-!!! note "Departure from Vega-Lite"
+!!! warning "Departure from Vega-Lite"
 
     The notation of transforms is different from Vega-Lite to enable more
     straghtforward addition of new operations. Each transform has to be

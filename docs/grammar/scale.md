@@ -1,10 +1,12 @@
 # Scale
 
-Scales are functions that transform abstract values (e.g., a type of a point
-mutation) in the data to visual values (e.g., colors that indicate the type).
+Scales are
+[functions](https://observablehq.com/@mkfreeman/animated-scale-diagram) that
+map abstract values (e.g., a type of a point mutation) in the data to
+visual values (e.g., colors that indicate the type).
 
 By default, GenomeSpy configures scales automatically, based on the data type
-(e.g., `ordinal`), visual channel, and the data domain. The defaults may not
+(e.g., `"ordinal"`), visual channel, and the data domain. The defaults may not
 always be optimal, and you can configure them by yourself.
 
 ## Vega-Lite scales
@@ -31,21 +33,26 @@ Currently, the following scales are **not** supported: `"time"`, `"utc"`,
 
 ## GenomeSpy-specific scales
 
-GenomeSpy provides two scales that are not available in Vega-Lite.
+GenomeSpy provides two additional scales that are designed for molecular
+sequence data.
 
 ### Index scale
 
-The `index` scale allows for mapping index-based values such as nucleotide or
+The `"index"` scale allows for mapping index-based values such as nucleotide or
 amino-acid locations to positional visual channels. It has traits from both the
-continuous `linear` and the discrete `band` scale. It is linear and zoomable but
-maps indices to the range similarly to the band scale – each index has its own
-band.
+continuous `"linear"` and the discrete `"band"` scale. It is linear and zoomable
+but maps indices to the range similarly to the band scale – each index has its
+own band.
 
-The `index` scale is used by default when the field type is `index`.
+The indices must be zero-based, i.e., the counting must start from zero. The
+numbering of the axis labels can be adjusted to give an impression of, for
+example, one-based indexing.
+
+The index scale is used by default when the _field_ type is `"index"`.
 
 #### Point indices
 
-When only the primary positional channel is defined, marks such as `rect` fill
+When only the primary positional channel is defined, marks such as `"rect"` fill
 the whole band.
 
 <div><genome-spy-doc-embed height="100" spechidden="true">
@@ -80,7 +87,8 @@ the whole band.
 
 </genome-spy-doc-embed></div>
 
-Marks such as `point` that do not support the secondary positional channel are centered.
+Marks such as `"point"` that do not support the secondary positional channel are
+centered.
 
 <div><genome-spy-doc-embed height="100" spechidden="true">
 
@@ -102,7 +110,11 @@ Marks such as `point` that do not support the secondary positional channel are c
 
 #### Range indices
 
-TODO: Write something
+When the index scale is used with ranges, e.g., a `"rect"` mark that has both
+the `x` and `x2` channels defined, the ranges must be [half
+open](http://genome.ucsc.edu/blog/the-ucsc-genome-browser-coordinate-counting-systems/).
+For example, if a segment should cover the indices 2, 3, and 4, a half-open
+range would be defined as: x = 2 (inclusive), x2 = 5 (exclusive).
 
 TODO: Fix the bug: segment edges are placed at the center of the bands.
 
@@ -190,11 +202,11 @@ the label indices. (TODO: Consider another name like "labelIndexBase")
 
 ### Locus scale
 
-The `locus` scale is similar to the `index` scale, but provides a genome-aware
+The `"locus"` scale is similar to the `"index"` scale, but provides a genome-aware
 axis with concatenated chromosomes. To use the locus scale, a
 [genome](genomic-data/genomic-coordinates.md) must be specified.
 
-The `locus` scale is used by default when the field type is `locus`.
+The locus scale is used by default when the field type is `"locus"`.
 
 !!! note
 

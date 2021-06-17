@@ -21,11 +21,7 @@ The mark can be used to display structural variation and interactions, for examp
   "mark": "connection",
   "encoding": {
     "x": { "field": "x", "type": "index" },
-    "x2": { "field": "x2" },
-    "height": {
-      "expr": "abs(datum.x2 - datum.x)",
-      "type": "quantitative"
-    }
+    "x2": { "field": "x2" }
   }
 }
 ```
@@ -68,4 +64,38 @@ In addition to the standard [position](../encoding/index.md) channels and
 
 ## Examples
 
-TODO
+<div><genome-spy-doc-embed height="350">
+
+```json
+{
+  "width": 300,
+  "height": 300,
+  "data": {
+    "sequence": { "start": 0, "stop": 12, "as": "z" }
+  },
+  "transform": [
+    { "type": "formula", "expr": "datum.z / 12 * 3.141 * 2", "as": "theta" },
+    { "type": "formula", "expr": "cos(datum.theta)", "as": "x" },
+    { "type": "formula", "expr": "sin(datum.theta)", "as": "y" }
+  ],
+  "mark": {
+    "type": "connection",
+    "size": 10,
+    "size2": 0
+  },
+  "encoding": {
+    "x": { "datum": 0, "type": "quantitative" },
+    "x2": { "field": "x" },
+    "y": { "datum": 0, "type": "quantitative" },
+    "y2": { "field": "y" },
+    "color": {
+      "field": "theta",
+      "type": "quantitative",
+      "scale": { "scheme": "rainbow" }
+    },
+    "color2": { "value": "white" }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>

@@ -22,7 +22,7 @@ nav:
     - Introduction: "index.md"
     - Getting Started: "getting-started.md"
     - Grammar:
-          - Grammar of Graphics: "grammar/index.md"
+          - Visualization Grammar: "grammar/index.md"
           - Data Input: "grammar/data.md"
           - Transform:
                 - Data Transformation: "grammar/transform/index.md"

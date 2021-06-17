@@ -1,5 +1,8 @@
 # Visualizing a SEG file
 
+OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED
+OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED
+
 These examples visualize segmented data with two different visual encodings.
 
 The example data consists of segmentations for two samples. Each segment has a

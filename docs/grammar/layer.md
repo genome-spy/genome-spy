@@ -1,8 +1,78 @@
 # Layering Views
 
-Layer operator superimposes multiple views over each other.
+The `layer` operator superimposes multiple views over each other.
 
 ## Example
+
+<div><genome-spy-doc-embed height="250">
+
+```json
+{
+  "data": {
+    "values": [
+      { "a": "A", "b": 28 },
+      { "a": "B", "b": 55 },
+      { "a": "C", "b": 43 },
+      { "a": "D", "b": 91 },
+      { "a": "E", "b": 81 },
+      { "a": "F", "b": 53 },
+      { "a": "G", "b": 19 },
+      { "a": "H", "b": 87 },
+      { "a": "I", "b": 52 }
+    ]
+  },
+  "encoding": {
+    "x": {
+      "field": "a",
+      "type": "nominal",
+      "scale": { "padding": 0.1 }
+    },
+    "y": { "field": "b", "type": "quantitative" }
+  },
+  "layer": [
+    {
+      "name": "Bar",
+      "mark": "rect"
+    },
+    {
+      "name": "Label",
+      "mark": { "type": "text", "dy": -9 },
+      "encoding": {
+        "text": { "field": "b", "type": "quantitative" }
+      }
+    }
+  ]
+}
+```
+
+</genome-spy-doc-embed></div>
+
+To specify multiple layers, use the `layer` property:
+
+```json
+{
+  "layer": [
+    ...  // Single or layered view specifications
+  ]
+}
+```
+
+The provided array may contain both single view specifications and layered
+specifications. The encodings and data that are specified in a layer view
+propagate to its descendants. For example, in the above example, the "Bar" and
+"Label" views inherit the data and the encodings for the `x` and `y` channels
+from their parent, the layer view.
+
+## Resolve
+
+By default, layers share their scales and axes, unioning the data domains.
+
+## More examples
+
+### Lollipop plot
+
+This example layers two marks to create a composite mark, a lollipop. Yet
+another layer is used for the baseline.
 
 <div><genome-spy-doc-embed>
 
@@ -86,26 +156,3 @@ Layer operator superimposes multiple views over each other.
 ```
 
 </genome-spy-doc-embed></div>
-
-To specify multiple layers, use the `layer` property:
-
-```json
-{
-  "layer": [
-    ...  // Single or layered view specifications
-  ]
-}
-```
-
-The provided array may contain both single view specifications or layered
-specifications. In the lollipop plot **example** above, the layered root view
-contains the "Baseline" view and the layered "Arrows" view.
-
-The encodings and data that are specified in a layer view propagate to its
-descendants. For example, the "Arrow shafts" and "Arrowheads" views inherit
-the _sin function_ dataset and the encodings for channels `x`, `y`, and
-`color` from their parent, the "Arrows" view.
-
-## Resolve
-
-By default, layers share their scales and axes, unioning the data domains.

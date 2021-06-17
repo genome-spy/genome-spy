@@ -1,15 +1,19 @@
 # Introduction
 
 GenomeSpy is an interactive visualization tool for genomic and other data. It
-provides a [grammar](grammar/index.md) for mapping data to visual channels
-(position, color, etc.) and composing complex visualization from primitive
-graphical marks (points, rectangles, etc.). The visualization is rendered using
-WebGL, and thus, GenomeSpy is able to provide fluid interactions and smooth
-animations for datasets as large as a few million data points.
+provides a declarative [grammar](grammar/index.md) for mapping data to visual
+channels (position, color, etc.) and composing complex visualization from
+primitive graphical marks ([points](grammar/marks/point.md),
+[rectangles](grammar/marks/rect.md), etc.). The grammar is heavily inspired by
+[Vega-Lite](https://vega.github.io/vega-lite/).
 
-To facilitate data exploration and comparison of multiple samples, GenomeSpy
-supports [faceted](grammar/facet.md) visualizations and allows the user to
-filter and sort samples interactively.
+The visualizations are rendered using a carefully crafted WebGL-based engine,
+and thus, GenomeSpy is able to provide fluid interactions and smooth animations
+for datasets as large as a few million data points.
+
+To facilitate exploration of large cohorts of patients and (biological) samples,
+GenomeSpy supports aggregation and [interactive
+manipulation](grammar/samples.md) of large sample sets.
 
 # Example
 
