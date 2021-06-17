@@ -116,8 +116,6 @@ open](http://genome.ucsc.edu/blog/the-ucsc-genome-browser-coordinate-counting-sy
 For example, if a segment should cover the indices 2, 3, and 4, a half-open
 range would be defined as: x = 2 (inclusive), x2 = 5 (exclusive).
 
-TODO: Fix the bug: segment edges are placed at the center of the bands.
-
 <div><genome-spy-doc-embed height="100" spechidden="true">
 
 ```json
@@ -125,7 +123,7 @@ TODO: Fix the bug: segment edges are placed at the center of the bands.
   "data": {
     "values": [
       { "from": 0, "to": 2 },
-      { "from": 2, "to": 7 },
+      { "from": 2, "to": 5 },
       { "from": 8, "to": 9 },
       { "from": 10, "to": 13 }
     ]

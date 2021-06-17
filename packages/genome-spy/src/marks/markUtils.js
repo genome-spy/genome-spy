@@ -28,6 +28,10 @@ export function fixPositional(encoding, channel) {
                 // TODO: If the secondary channel duplicates the primary channel
                 // the data should be uploaded to the GPU only once.
             }
+        } else if (encoding[channel].type != "quantitative") {
+            const adjustment = (1 - (encoding[channel].band || 1)) / 2;
+            encoding[channel].band = adjustment;
+            encoding[secondary].band = -adjustment;
         }
     } else if (encoding[secondary]) {
         throw new Error(
