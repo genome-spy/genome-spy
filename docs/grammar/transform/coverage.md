@@ -1,6 +1,6 @@
 # Coverage
 
-The `coverage` transform computes
+The `"coverage"` transform computes
 [coverage](<https://en.wikipedia.org/wiki/Coverage_(genetics)>) for overlapping
 segments. The result is a new list of non-overlapping segments with the coverage
 values. The segments must be sorted by their start coordinates before passing
@@ -39,7 +39,7 @@ A new list of segments is produced:
 
 ## Interactive example
 
-The following example demonstrates both `coverage` and `pileup` transforms.
+The following example demonstrates both `"coverage"` and `"pileup"` transforms.
 
 <div><genome-spy-doc-embed>
 
@@ -60,9 +60,8 @@ The following example demonstrates both `coverage` and `pileup` transforms.
     }
   ],
   "resolve": { "scale": { "x": "shared" } },
-  "concat": [
+  "vconcat": [
     {
-      "styles": { "height": 100 },
       "transform": [
         {
           "type": "coverage",

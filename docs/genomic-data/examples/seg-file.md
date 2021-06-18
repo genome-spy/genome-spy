@@ -1,7 +1,9 @@
 # Visualizing a SEG file
 
-OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED
-OUTDATED OUTDATED OUTDATED OUTDATED OUTDATED
+!!! missing "Outdated information"
+
+    This example is currently broken because of recent changes made to
+    the [sample](../../grammar/samples.md) handling and [importing](../tracks.md).
 
 These examples visualize segmented data with two different visual encodings.
 
@@ -25,10 +27,6 @@ The following example uses a conventional heatmap
 ([`rect`](../../grammar/rect.md) mark) to display the segments. The color
 scale has been configured to match the [Integrative Genomics
 Viewer](http://software.broadinstitute.org/software/igv/home).
-
-<div class="embed-example">
-    <div class="embed-container" style="height: 100px"></div>
-    <div class="embed-spec">
 
 ```json
 {
@@ -65,9 +63,6 @@ Viewer](http://software.broadinstitute.org/software/igv/home).
 }
 ```
 
-  </div>
-</div>
-
 ## An advanced example: emphasizing focal segments
 
 The data contains focal segments that are short and barely visible. Although
@@ -79,11 +74,6 @@ The quantitative value is encoded as position (height) instead of color.
 Focal segments are extracted from the data using the
 [`filter`](../../grammar/transform/filter.md) transform and displayed using
 [`point`](../../grammar/mark/point.md) mark.
-
-<div class="embed-example hidden-spec">
-<div class="embed-container" style="height: 350px"></div>
-<div class="show-spec"><a href="#">Show specification</a></div>
-<div class="embed-spec">
 
 ```json
 {
@@ -170,6 +160,3 @@ Focal segments are extracted from the data using the
   ]
 }
 ```
-
-</div>
-</div>

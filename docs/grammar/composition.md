@@ -1,8 +1,11 @@
-# Composing Visualizations
+# Composing View
 
 GenomeSpy replicates the [hierarchical
 composition](https://vega.github.io/vega-lite/docs/composition.html) model of
-Vega-Lite.
+Vega-Lite. However, only the [concatenation](./concat.md) and
+[`"layer"`](./layer.md) operators are currently supported. GenomeSpy also
+provides a [sample faceting](./samples.md) operator that allows interactive
+exploration and analysis of up to thousands of samples.
 
 TODO: Explain how data and encoding descend in the hierarchy
 

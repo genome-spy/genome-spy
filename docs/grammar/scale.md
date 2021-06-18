@@ -22,7 +22,8 @@ The supported scales are: `"linear"`, `"pow"`, `"sqrt"`, `"symlog"`, `"log"`,
 scale is supported on quantitative channels such as `x` and `opacity`.
 
 Currently, the following scales are **not** supported: `"time"`, `"utc"`,
-`"quantile"`, `"bin-linear"`, `"bin-ordinal"`.
+`"quantile"`, `"bin-linear"`, `"bin-ordinal"`. Also, the `sort` property that
+allows for sorting the domain values is yet to be implemented.
 
 !!! note "Relation to Vega scales"
 
@@ -202,7 +203,7 @@ the label indices. (TODO: Consider another name like "labelIndexBase")
 
 The `"locus"` scale is similar to the `"index"` scale, but provides a genome-aware
 axis with concatenated chromosomes. To use the locus scale, a
-[genome](genomic-data/genomic-coordinates.md) must be specified.
+[genome](../genomic-data/genomic-coordinates.md) must be specified.
 
 The locus scale is used by default when the field type is `"locus"`.
 

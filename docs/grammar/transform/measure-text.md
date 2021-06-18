@@ -1,6 +1,6 @@
 # Measure Text
 
-The `measureText` transforms measures the length of a string in pixels. The
+The `"measureText"` transforms measures the length of a string in pixels. The
 measurement can be used in downstream layout computations.
 
 ## Parameters

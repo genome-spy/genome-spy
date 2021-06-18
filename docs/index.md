@@ -3,8 +3,8 @@
 GenomeSpy is an interactive visualization tool for genomic and other data. It
 provides a declarative [grammar](grammar/index.md) for mapping data to visual
 channels (position, color, etc.) and composing complex visualization from
-primitive graphical marks ([points](grammar/marks/point.md),
-[rectangles](grammar/marks/rect.md), etc.). The grammar is heavily inspired by
+primitive graphical marks ([points](grammar/mark/point.md),
+[rectangles](grammar/mark/rect.md), etc.). The grammar is heavily inspired by
 [Vega-Lite](https://vega.github.io/vega-lite/).
 
 The visualizations are rendered using a carefully crafted WebGL-based engine,

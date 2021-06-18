@@ -15,7 +15,7 @@ removing fields or data objects.
 
 ## Example
 
-The following example uses the [`filter`](filter.md) transform to retain
+The following example uses the [`"filter"`](filter.md) transform to retain
 only the rows that match the predicate [expression](../expressions.md).
 
 ```json

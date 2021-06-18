@@ -1,12 +1,14 @@
 # Genomic coordinates
 
+![Placeholder](../img/coordinate-linearization.svg){ align=right }
+
 To allow easy visualization of coordinate-based genomic data, GenomeSpy can
 concatenate the discrete chromosomes onto a single continuous linear axis.
 Concatenation needs the sizes and preferred order for the contigs or
 chromosomes. These are usually provided with a genome assembly.
 
-To activate support for genomic coordinates, add `genome` property with the
-name of the assembly to the root level configuration object:
+To activate support for genomic coordinates, add the `genome` property with the
+name of the assembly to the top level view specification:
 
 ```json
 {
@@ -20,19 +22,19 @@ name of the assembly to the root level configuration object:
 !!! warning "Only a single genome assembly"
 
     Currently, a visualization may have only a single globally configured
-    genome.  Different genomes for different scales (for x and y axes, for
+    genome.  Different genomes for different scales (for `x` and `y` axes, for
     example) will be supported in the future.
 
 ## Supported genomes
 
 By default, GenomeSpy loads genomes from the _genomespy.app_ website. The
-following assemblies are provided: `hg38`, `hg19`, `hg18`, `mm10`, `mm9`, and
-`dm6`.
+following assemblies are provided: `"hg38"`, `"hg19"`, `"hg18"`, `"mm10"`,
+`"mm9"`, and `"dm6"`.
 
 ## Custom genomes
 
 At minimum, a custom genome needs a list of contigs and their sizes, which
-can be loaded from a `chrom.sizes` file or provided inline.
+can be loaded from a `"chrom.sizes"` file or provided inline.
 [Cytoband](tracks.md#cytoband-track) and [Gene
 annotation](tracks.md#gene-annotations) tracks require additional files.
 
@@ -102,7 +104,10 @@ conveniently:
 ```
 
 The example above specifies that the chromosome and the intra-chromosomal
-position is read from the `Chr` and `Pos` fields, respectively.
+position is read from the `"Chr"` and `"Pos"` fields, respectively. The
+`"locus"` data type pairs the channel with a
+[`"locus"`](../grammar/scale.md#locus-scale) scale. However, you can also use the
+`field` property with the locus data type.
 
 !!! note "What happens under the hood"
 
@@ -122,7 +127,7 @@ The `offset` property allows for aligning and adjusting for different coordinate
 notations: zero or one based, closed or half-open. The offset is added to the
 final coordinate.
 
-GenomeSpy's [`locus` scale](../grammar/scale.md#locus-scale) expects
+GenomeSpy's [`"locus"`](../grammar/scale.md#locus-scale) scale expects
 **half-open**, **zero-based** coordinates.
 
 Read more about coordinates at the [UCSC Genome Browser

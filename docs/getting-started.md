@@ -43,6 +43,12 @@ The templates below load GenomeSpy from a content delivery network. Because
 the specification schema and the JavaScript API are not yet 100% stable, it is
 recommended to use a specific release.
 
+!!! warning "Outdated version"
+
+    This documentation is for an unreleased GenomeSpy version, and the `0.0.5`
+    version in the templates below is severely outdated. A new version will be
+    released soon. The Playground and Observable have more recent versions.
+
 #### Load the spec from a file
 
 This template loads the spec from the `spec.json` file.
