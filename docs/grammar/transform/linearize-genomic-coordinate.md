@@ -1,5 +1,7 @@
 # Linearize Genomic Coordinate
 
+![Placeholder](../../img/coordinate-linearization.svg){ align=right }
+
 TODO
 
 ## Parameters

@@ -140,7 +140,7 @@ export interface StackParams extends TransformParamsBase {
      * `"zero"` (default) starts stacking at 0.
      * `"center"` centers the values around zero.
      * `"normalize"` computes intra-stack percentages and normalizes the values to the range of `[0, 1]`.
-     * `"information"` computer a layout for sequence logo. The total height of the stack reflects
+     * `"information"` computes a layout for a sequence logo. The total height of the stack reflects
      * the group's information content.
      */
     offset?: "zero" | "center" | "normalize" | "information";

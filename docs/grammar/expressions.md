@@ -1,11 +1,11 @@
 # Expressions
 
 Expressions allow for defining predicates or computing new variables based on
-existing data. The expression language is based on JavaScript, but provides
-only a limited set of features, guaranteeing secure execution.
+existing data. The expression language is based on JavaScript, but provides only
+a limited set of features, guaranteeing secure execution.
 
-Expressions can be used with the [filter](transform/filter.md) and
-[formula](transform/formula.md) transforms.
+Expressions can be used with the [`"filter"`](transform/filter.md) and
+[`"formula"`](transform/formula.md) transforms.
 
 ## Usage
 

@@ -1,7 +1,7 @@
 # Pileup
 
-The `pileup` transform computes a piled up layout for overlapping segments. The
-computed lane can be used to position the segments in a visualization. The
+The `"pileup"` transform computes a piled up layout for overlapping segments.
+The computed lane can be used to position the segments in a visualization. The
 segments must be sorted by their start coordinates before passing them to the
 pileup transform.
 
@@ -42,7 +42,7 @@ A new field is added:
 
 ## Interactive example
 
-The following example demonstrates both `coverage` and `pileup` transforms.
+The following example demonstrates both `"coverage"` and `"pileup"` transforms.
 
 <div><genome-spy-doc-embed>
 
@@ -63,9 +63,8 @@ The following example demonstrates both `coverage` and `pileup` transforms.
     }
   ],
   "resolve": { "scale": { "x": "shared" } },
-  "concat": [
+  "vconcat": [
     {
-      "styles": { "height": 100 },
       "transform": [
         {
           "type": "coverage",

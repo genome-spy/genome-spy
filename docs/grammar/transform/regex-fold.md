@@ -1,6 +1,6 @@
 # Regex Fold
 
-The `regexFold` transform gathers columns into key-value pairs using a regular
+The `"regexFold"` transform gathers columns into key-value pairs using a regular
 expression.
 
 ## Parameters
@@ -27,7 +27,8 @@ Given the following data:
 }
 ```
 
-The matched columns are folded into new data rows. All others are left intact:
+The matched columns are folded into new data objects. All others are left
+intact:
 
 | SNP        | sample | VAF  |
 | ---------- | ------ | ---- |

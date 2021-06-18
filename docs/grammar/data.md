@@ -1,18 +1,18 @@
 # Data Input
 
-GenomeSpy inputs tabular data as _CSV_, _TSV_, or _JSON_ files. Currently, the
-only supported bioinformatic file format is non-indexed _FASTA_. Other formats
-such as _BED_ or _BigWig_ are not directly supported. They must be first
-converted into one of the above tabular formats.
+GenomeSpy inputs tabular data as `"csv"`, `"tsv"`, and `"json"` files.
+Currently, the only supported bioinformatic file format is non-indexed
+`"fasta"`. Other formats such as _BED_ or _BigWig_ are not directly supported.
+They must be first converted into one of the above tabular formats.
 
 GenomeSpy can load data from external files or use inline data. You
 can also use generators to generate data on the fly and modify them using
 [transforms](transform/index.md).
 
 The `data` property of the view specification describes a data source. The
-following example loads a tab-delimited file. By default, the format is
-inferred from the file extension. However, in bioinformatics, `.csv` files
-are often tab-delimited and the _TSV_ format must be specified explicitly.
+following example loads a tab-delimited file. By default, the format is inferred
+from the file extension. However, in bioinformatics, CSV files are often
+actually tab-delimited and the `"tsv"` format must be specified explicitly.
 
 ```json
 {
@@ -42,7 +42,7 @@ GenomeSpy is identical to Vega-Lite's
 
 ### FASTA
 
-The type of _FASTA_ format is `fasta` as shown in the example below:
+The type of _FASTA_ format is `"fasta"` as shown in the example below:
 
 ```json
 {
@@ -56,7 +56,7 @@ The type of _FASTA_ format is `fasta` as shown in the example below:
 }
 ```
 
-The FASTA loader produces data objects with two fields: `identifier` and
-`sequence`. With the [`flattenSequence`](transform/flatten-sequence.md)
+The FASTA loader produces data objects with two fields: `"identifier"` and
+`"sequence"`. With the [`"flattenSequence"`](transform/flatten-sequence.md)
 transform you can split the sequences into individual bases (one object per
 base) for easier visualization.

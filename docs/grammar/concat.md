@@ -88,6 +88,8 @@ the remaining space is distributed in proportions of 1:2.
 {
   "data": { "values": [{}] },
 
+  "spacing": 10,
+
   "hconcat": [
     {
       "width": { "px": 20 },
@@ -109,7 +111,8 @@ the remaining space is distributed in proportions of 1:2.
 
 The size may have both absolute (`px`) and proportional (`grow`) components.
 When views are nested, both the absolute and proportional sizes are added up.
-Thus, the width of the above example is `{ "px": 20, "grow": 3 }`.
+Thus, the width of the above example is `{ "px": 40, "grow": 3 }`. The spacing
+between the child views is added to the total absolute width.
 
 Views' size properties (`width` and `height`) accept both SizeDef objects and
 shorthands. The SizeDef objects contain either or both of `px` and `grow`

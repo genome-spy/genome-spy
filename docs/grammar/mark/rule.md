@@ -41,7 +41,8 @@ TODO, but in principle, the same as in the [rect](./rect.md) mark plus the follo
 `minLength`
 : Type: Number
 
-    The minimum length of the rule.
+    The minimum length of the rule in pixels. Use this property to ensure that
+    very short rules remain visible even when the user zooms out.
 
     **Default value:** `0`
 

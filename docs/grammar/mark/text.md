@@ -2,7 +2,7 @@
 
 Text mark displays each data item as text.
 
-<div><genome-spy-doc-embed height="200">
+<div><genome-spy-doc-embed height="150">
 
 ```json
 {
@@ -33,9 +33,9 @@ channels:
 `text`
 : Type: String
 
-    The text to display. The format of numeric data can be customized with
-    a [format specifier](https://github.com/d3/d3-format#locale_format) as
-    shown in the example above.
+    The text to display. The format of numeric data can be customized by
+    setting a [format specifier](https://github.com/d3/d3-format#locale_format)
+    to channel definition's `format` property.
 
     **Default value:** `""`
 
@@ -47,6 +47,38 @@ channels:
     **Default value:** `11`
 
 ## Properties
+
+`font`
+: Type: String
+
+    The font typeface. GenomeSpy uses [SDF](https://github.com/Chlumsky/msdfgen)
+    versions of [Google Fonts](https://fonts.google.com/). Check their
+    availability at the [A-Frame
+    Fonts](https://github.com/etiennepinchon/aframe-fonts/tree/master/fonts)
+    repository. The system fonts are **not** supported.
+
+    **Default value:** `"Lato"`
+
+`fontWeight`
+: Type: String | Number
+
+    The font weight. The following strings and numbers are valid values:
+    `"thin"` (`100`),
+    `"light"` (`300`),
+    `"regular"` (`400`),
+    `"normal"` (`400`),
+    `"medium"` (`500`),
+    `"bold"` (`700`),
+    `"black"` (`900`)
+
+    **Default value:** `"regular"`
+
+`fontStyle`
+: Type: String
+
+    The font style. Valid values: `"normal"` and `"italic"`.
+
+    **Default value:** `"normal"`
 
 `align`
 : Type: String
@@ -80,13 +112,20 @@ channels:
 
     **Default value:** `0`
 
+`angle`
+: Type: Number
+
+    The rotation angle in degrees.
+
+    **Default value:** `0`
+
 ## Examples
 
 ### Ranged text
 
 The `x2` and `y2` channels allow for positioning the text inside a segment. The
-text is either squeezed or hidden if it does not fit in the segment. The `squeeze`
-property controls the behavior.
+text is either squeezed (default) or hidden if it does not fit in the segment.
+The `squeeze` property controls the behavior.
 
 The example below has two layers: gray rectangles at the bottom and ranged
 text on the top. Try to zoom and pan to see how they behave!

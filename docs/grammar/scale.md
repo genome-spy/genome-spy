@@ -22,7 +22,8 @@ The supported scales are: `"linear"`, `"pow"`, `"sqrt"`, `"symlog"`, `"log"`,
 scale is supported on quantitative channels such as `x` and `opacity`.
 
 Currently, the following scales are **not** supported: `"time"`, `"utc"`,
-`"quantile"`, `"bin-linear"`, `"bin-ordinal"`.
+`"quantile"`, `"bin-linear"`, `"bin-ordinal"`. Also, the `sort` property that
+allows for sorting the domain values is yet to be implemented.
 
 !!! note "Relation to Vega scales"
 

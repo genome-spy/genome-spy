@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="250" height="100%" viewBox="0 0 812 534" version="1.1"
+	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve"
+	xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:1.5;">
+	<rect x="57.645" y="27.974" width="34.537" height="340.599" style="fill:#af98ce;"/>
+	<rect x="403.018" y="130.153" width="34.537" height="238.419" style="fill:#4db87e;"/>
+	<rect x="644.779" y="232.333" width="34.537" height="136.24" style="fill:#f96;"/>
+	<path d="M403.018,470.753l0,-34.06l-345.373,-0l0,34.06l345.373,-0Z" style="fill:#af98ce;"/>
+	<path d="M403.018,436.693l0,34.06l241.761,-0l0,-34.06l-241.761,-0Z" style="fill:#4db87e;"/>
+	<path d="M644.779,436.693l0,34.06l138.149,-0l0,-34.06l-138.149,-0Z" style="fill:#f96;"/>
+	<path d="M278.875,374.48l-14.006,28.153l-14.119,-28.097c7.046,7.017 21.108,6.989 28.125,-0.056Z" style="fill:#7f7f7f;"/>
+	<path d="M126.72,266.393l20.926,-0c30.852,-0 60.464,12.145 82.431,33.808c-0,0 -0,0.001 -0,0.001c21.489,21.192 33.912,49.845 34.747,79.931" style="fill:none;stroke:#7f7f7f;stroke-width:4.69px;"/>
+	<path d="M554.364,374.091l-13.197,28.542l-14.915,-27.683c7.243,6.814 21.299,6.384 28.112,-0.859Z" style="fill:#7f7f7f;"/>
+	<path d="M454.824,317.483l12.531,-0c19.633,-0 38.478,7.729 52.457,21.515c0,0 0.001,0 0.001,0c11.289,11.134 18.502,25.622 20.667,41.145" style="fill:none;stroke:#7f7f7f;stroke-width:4.69px;"/>
+	<path d="M745.185,374.508l-14.063,28.125l-14.062,-28.125c7.031,7.031 21.094,7.031 28.125,-0Z" style="fill:#7f7f7f;"/>
+	<path d="M696.585,334.513l0.001,-0c9.16,-0 17.944,3.638 24.421,10.115c6.477,6.477 10.115,15.261 10.115,24.421l0,11.084" style="fill:none;stroke:#7f7f7f;stroke-width:4.69px;"/>
+	<g transform="matrix(6.20905e-17,-1,1,6.0386e-17,-1376.01,-29.6354)">
+		<text x="-264.383px" y="1408.71px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">chr1</text>
+	</g>
+	<g transform="matrix(6.20905e-17,-1,1,6.0386e-17,-1081.73,366.827)">
+		<text x="80.99px" y="1459.8px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">chr2</text>
+	</g>
+	<g transform="matrix(6.20905e-17,-1,1,6.0386e-17,-874.025,642.648)">
+		<text x="305.721px" y="1493.86px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">chr3</text>
+	</g>
+	<g transform="matrix(6.20905e-17,-1,1,6.0386e-17,-1486.7,81.0594)">
+		<text x="-297.941px" y="1519.4px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">0</text>
+	</g>
+	<text x="47.217px" y="522.883px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">0</text>
+	<text x="382.162px" y="522.883px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">10</text>
+	<text x="623.923px" y="522.883px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">17</text>
+	<text x="762.073px" y="522.883px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">21</text>
+	<g transform="matrix(6.20905e-17,-1,1,6.0386e-17,-1141.33,426.432)">
+		<text x="47.432px" y="1519.4px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">0</text>
+	</g>
+	<g transform="matrix(6.20905e-17,-1,1,6.0386e-17,-899.57,668.193)">
+		<text x="289.193px" y="1519.4px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">0</text>
+	</g>
+	<g transform="matrix(6.20905e-17,-1,1,6.0386e-17,-902.911,188.013)">
+		<text x="47.432px" y="1280.99px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">7</text>
+	</g>
+	<g transform="matrix(6.20905e-17,-1,1,6.0386e-17,-1146.1,-259.54)">
+		<text x="-308.369px" y="1178.81px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">10</text>
+	</g>
+	<g transform="matrix(6.20905e-17,-1,1,6.0386e-17,-754.815,523.439)">
+		<text x="289.193px" y="1374.65px" style="font-family:'ArialMT', 'Arial', sans-serif;font-size:37.5px;">4</text>
+	</g>
+</svg>

@@ -1,6 +1,6 @@
 # Sample
 
-The `sample` transform takes a random sample of the data objects.
+The `"sample"` transform takes a random sample of the data objects.
 
 ## Parameters
 

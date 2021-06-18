@@ -1,7 +1,8 @@
 # Stack
 
-The `stack` transform computes a stacked layout. Stacked bar plots and [sequence
-logos](https://www.wikiwand.com/en/Sequence_logo) are some of its applications.
+The `"stack"` transform computes a stacked layout. Stacked bar plots and
+[sequence logos](https://www.wikiwand.com/en/Sequence_logo) are some of its
+applications.
 
 ## Parameters
 

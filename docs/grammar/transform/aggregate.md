@@ -1,6 +1,6 @@
 # Aggregate
 
-The `aggregate` transform is currently minimal – it adds a new `count` field
+The `"aggregate"` transform is currently minimal – it adds a new `count` field
 that contains the number of data items in a group. More aggregate operations
 will be added later.
 
