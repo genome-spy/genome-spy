@@ -476,6 +476,7 @@ export default class GenomeSpy {
             pixelValue[0] | (pixelValue[1] << 8) | (pixelValue[2] << 16);
 
         if (uniqueId == 0) {
+            this._currentHover = null;
             return;
         }
 
