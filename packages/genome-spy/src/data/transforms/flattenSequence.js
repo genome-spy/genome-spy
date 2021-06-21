@@ -18,7 +18,7 @@ export default class FlattenSequenceTransform extends FlowNode {
         super();
 
         const accessor = field(params.field ?? "sequence");
-        const [asSequence, asPos] = params.as ?? ["sequence", "pos"];
+        const [asPos, asSequence] = params.as ?? ["pos", "sequence"];
 
         /** @param {any[]} datum */
         this.handle = datum => {
@@ -30,8 +30,8 @@ export default class FlattenSequenceTransform extends FlowNode {
             const sequence = /** @type {string} */ (accessor(datum));
             for (let i = 0; i < sequence.length; i++) {
                 const newObject = Object.assign({}, template);
-                newObject[asSequence] = sequence.charAt(i);
                 newObject[asPos] = i;
+                newObject[asSequence] = sequence.charAt(i);
                 this._propagate(newObject);
             }
         };

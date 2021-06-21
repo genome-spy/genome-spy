@@ -213,10 +213,10 @@ export interface FlattenSequenceParams extends TransformParamsBase {
     field?: Field;
 
     /**
-     * Name of the fields where the flattened sequence letter and the
-     * zero-based index number are written to.
+     * Name of the fields where the zero-based index number and flattened
+     * sequence letter are written to.
      *
-     * **Default:** `["sequence", "pos"]`
+     * **Default:** `["pos", "sequence"]`
      */
     as?: [string, string];
 }

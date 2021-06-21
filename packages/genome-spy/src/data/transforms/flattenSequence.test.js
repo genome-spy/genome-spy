@@ -15,7 +15,7 @@ test("FlattenSequenece", () => {
             {
                 type: "flattenSequence",
                 field: "seq",
-                as: ["seq", "p"]
+                as: ["p", "seq"]
             },
             [
                 { identifier: "A", seq: "TCG" },
