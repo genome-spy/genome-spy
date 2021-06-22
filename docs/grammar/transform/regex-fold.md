@@ -20,7 +20,7 @@ Given the following data:
 
 ```json
 {
-  "type": "gather",
+  "type": "regexFold",
   "columnRegex": ["^(.*)\\.AF$"],
   "asValue": ["VAF"],
   "asKey": "sample"
