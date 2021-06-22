@@ -6,6 +6,17 @@ GenomeSpy is a genome visualization tool with a Vega-Lite inspired visualization
 
 The software is still work in progress. Documentation and examples of an early alpha version can be found at https://genomespy.app/
 
+# Contributing
+
+## Bootstrapping and running
+
+1. git clone git@github.com:tuner/genome-spy.git
+2. cd genome-spy
+3. lerna bootstrap
+4. npm start
+
+The `packages/genome-spy/static/examples` directory contains some random view specification that can be accessed through urls like `http://localhost:8080/?spec=examples/first.json`. The `packages/genome-spy/private/` directory is in `.gitignore` and served by the development server: `http://localhost:8080/?spec=private/foo.json`.
+
 # Legal stuff etc.
 
 Copyright (c) 2020 Kari Lavikka. See [LICENSE](LICENSE) for details.
