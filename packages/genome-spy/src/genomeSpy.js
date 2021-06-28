@@ -15,7 +15,6 @@ import {
 import UnitView from "./view/unitView";
 
 import WebGLHelper from "./gl/webGLHelper";
-import { parseSizeDef } from "./utils/layout/flexLayout";
 import Rectangle from "./utils/layout/rectangle";
 import DeferredViewRenderingContext from "./view/renderingContext/deferredViewRenderingContext";
 import LayoutRecorderViewRenderingContext from "./view/renderingContext/layoutRecorderViewRenderingContext";
@@ -100,6 +99,15 @@ export default class GenomeSpy {
          * @type {Map<string, (function(KeyboardEvent):void)[]>}
          */
         this._keyboardListeners = new Map();
+
+        /**
+         * Listers for exposed high-level events such as click on a mark instance.
+         * These should probably be in the View class and support bubbling through
+         * the hierarchy.
+         *
+         * @type {Map<string, (function({}):void)[]>}
+         */
+        this._eventListeners = new Map();
     }
 
     /**
@@ -436,6 +444,25 @@ export default class GenomeSpy {
                         wheelEvent.preventDefault();
                         return;
                     }
+                }
+
+                // TODO: Should be handled at the view level, not globally
+                if (event.type == "click") {
+                    const e = this._currentHover
+                        ? {
+                              type: event.type,
+                              viewPath: [
+                                  ...this._currentHover.mark.unitView.getAncestors()
+                              ]
+                                  .map(view => view.name)
+                                  .reverse(),
+                              datum: this._currentHover.datum
+                          }
+                        : null;
+
+                    this._eventListeners
+                        .get("click")
+                        ?.forEach(listener => listener(e));
                 }
 
                 dispatchEvent(event);

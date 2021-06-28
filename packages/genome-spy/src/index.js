@@ -65,13 +65,27 @@ export async function embed(el, spec, opt = {}) {
     }
 
     return {
-        // TODO: Should probably return a more stable API than the GenomeSpy object
-        genomeSpy,
-        finalize: () => {
+        finalize() {
             genomeSpy.destroy();
             while (element.firstChild) {
                 element.firstChild.remove();
             }
+        },
+
+        /**
+         * @param {string} type
+         * @param {function()} callback
+         */
+        addEventListener(type, callback) {
+            const listenersByType = genomeSpy._eventListeners;
+
+            let listeners = listenersByType.get(type);
+            if (!listeners) {
+                listeners = [];
+                listenersByType.set(type, listeners);
+            }
+
+            listeners.push(callback);
         }
     };
 }
