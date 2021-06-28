@@ -95,7 +95,7 @@ export default function scaleLocus() {
         );
         // Use higher display precision for smaller spans
         // TODO: max absolute value should be taken into account too. 2.00M vs 200M
-        const numberFormat = step < 100000 ? d3format(",") : d3format(".3s");
+        const numberFormat = step < 1e6 ? d3format(",") : d3format(".3s");
 
         /** @type {function(number):number} */
         const fixer = x => x - genome.toChromosome(x).continuousStart;

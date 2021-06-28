@@ -150,6 +150,9 @@ export default class AxisView extends LayerView {
     }
 
     _updateAxisData() {
+        // TODO: This could be a transform that generates ticks on the fly
+        // Would allow for unlimited customization.
+
         const channel = orient2channel(this.axisProps.orient);
         const scale = this.getScaleResolution(channel).getScale();
         const currentScaleDomain = scale.domain();
