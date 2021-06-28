@@ -53,7 +53,10 @@ export default class DecoratorView extends ContainerView {
         };
 
         ["mousedown", "wheel"].forEach(type =>
-            this.addEventListener(type, this.handleMouseEvent.bind(this))
+            this.addInteractionEventListener(
+                type,
+                this.handleMouseEvent.bind(this)
+            )
         );
     }
 

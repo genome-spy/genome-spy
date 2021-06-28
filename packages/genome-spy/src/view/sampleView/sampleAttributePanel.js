@@ -61,9 +61,12 @@ export class SampleAttributePanel extends ConcatView {
             scale: undefined
         }));
 
-        this.addEventListener("contextmenu", this.handleContextMenu.bind(this));
+        this.addInteractionEventListener(
+            "contextmenu",
+            this.handleContextMenu.bind(this)
+        );
 
-        this.addEventListener("mousemove", (coords, event) => {
+        this.addInteractionEventListener("mousemove", (coords, event) => {
             const sample = this._findSampleForMouseEvent(coords, event);
             if (sample) {
                 const attribute =

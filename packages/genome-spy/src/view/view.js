@@ -215,11 +215,14 @@ export default class View {
      * Add an "interaction" event listener that mimics DOM's event model inside
      * the view hierarchy.
      *
+     * This is intended for GenomeSpy's internal use. It allows the views to handle
+     * low level interactions such as dragging, wheeling, etc.
+     *
      * @param {string} type
      * @param {InteractionEventListener} listener
      * @param {boolean} [useCapture]
      */
-    addEventListener(type, listener, useCapture) {
+    addInteractionEventListener(type, listener, useCapture) {
         const listenersByType = useCapture
             ? this._capturingInteractionEventListeners
             : this._nonCapturingInteractionEventListeners;

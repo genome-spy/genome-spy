@@ -1,7 +1,7 @@
 /**
  * This class wraps a MouseEvent (or similar) and allows for
  * its propagation through the view hierarchy in a similar manner
- * as in DOM.
+ * as in the DOM.
  */
 export default class InteractionEvent {
     /**

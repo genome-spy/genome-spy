@@ -129,7 +129,7 @@ export default class SampleView extends ContainerView {
 
         this.attributeView = new SampleAttributePanel(this);
 
-        this.child.addEventListener(
+        this.child.addInteractionEventListener(
             "contextmenu",
             this._handleContextMenu.bind(this)
         );
@@ -188,12 +188,12 @@ export default class SampleView extends ContainerView {
         /** @type {number} Recorded so that peek can be offset correctly */
         this._lastMouseY = -1;
 
-        this.addEventListener("mousemove", (coords, event) => {
+        this.addInteractionEventListener("mousemove", (coords, event) => {
             // TODO: Should be reset to undefined on mouseout
             this._lastMouseY = event.point.y - coords.y;
         });
 
-        this.addEventListener(
+        this.addInteractionEventListener(
             "wheel",
             (coords, event) => {
                 const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
