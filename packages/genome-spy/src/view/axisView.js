@@ -1,6 +1,6 @@
 import { validTicks, tickValues, tickFormat, tickCount } from "../scale/ticks";
 import LayerView from "./layerView";
-import { isNumber, inrange } from "vega-util";
+import { isNumber } from "vega-util";
 import smoothstep from "../utils/smoothstep";
 import { shallowArrayEquals } from "../utils/arrayUtils";
 import { FlexDimensions } from "../utils/layout/flexLayout";
@@ -9,7 +9,7 @@ import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
 /**
- * @typedef {import("../spec/view").PositionalChannel} PositionalChannel
+ * @typedef {import("../spec/channel").PositionalChannel} PositionalChannel
  * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
  */
 
@@ -81,6 +81,8 @@ export default class AxisView extends LayerView {
         const genomeAxis = type == "locus";
 
         // TODO: Compute extent
+
+        /** @type {Axis | GenomeAxis} */
         const fullAxisProps = {
             ...(genomeAxis ? defaultGenomeAxisProps : defaultAxisProps),
             ...getDefaultAngleAndAlign(type, axisProps),
@@ -332,7 +334,9 @@ function getDefaultAngleAndAlign(type, axisProps) {
     const orient = axisProps.orient;
     const discrete = type == "nominal" || type == "ordinal";
 
+    /** @type {"left" | "center" | "right"} */
     let align = "center";
+    /** @type {"top" | "bottom" | "alphabetic" | "middle"} */
     let baseline = "middle";
 
     /** @type {number} */
@@ -590,6 +594,7 @@ export function createGenomeAxis(axisProps) {
     const axisSpec = createAxis(axisProps);
 
     if (axisProps.chromTicks || axisProps.chromLabels) {
+        /** @type {import("../spec/view").LayerSpec} */
         const chromLayerSpec = {
             // TODO: Configuration
             name: CHROM_LAYER_NAME,
