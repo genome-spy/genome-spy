@@ -412,9 +412,7 @@ function createAxis(axisProps) {
             angle: ap.labelAngle,
             baseline: ap.labelBaseline,
             [secondary + "Offset"]:
-                (ap.tickSize + ap.labelPadding) *
-                offsetDirection *
-                (main == "x" ? -1 : 1),
+                (ap.tickSize + ap.labelPadding) * offsetDirection,
             [secondary]: anchor,
             size: ap.labelFontSize,
             color: ap.labelColor,

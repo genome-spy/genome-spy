@@ -807,7 +807,7 @@ export default class Mark {
 
         // Note: we also handle xOffset/yOffset mark properties here
         const xOffset = (props.xOffset || 0) + pixelOffset;
-        const yOffset = (-props.yOffset || 0) + pixelOffset;
+        const yOffset = (props.yOffset || 0) + pixelOffset;
 
         /** @type {object} */
         let uniforms;
