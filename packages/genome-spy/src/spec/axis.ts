@@ -141,6 +141,23 @@ export interface BaseAxis<
     domain?: boolean;
 
     /**
+     * The stroke cap for the domain line's ending style. One of `"butt"`, `"round"` or `"square"`.
+     *
+     * __Default value:__ `"butt"`
+     */
+    domainCap?: "butt" | "round" | "square";
+
+    /**
+     * An array of alternating [stroke, space] lengths for dashed domain lines.
+     */
+    domainDash?: number[];
+
+    /**
+     * The pixel offset at which to start drawing with the domain dash array.
+     */
+    domainDashOffset?: number;
+
+    /**
      * Color of axis domain line.
      *
      * __Default value:__ `"gray"`.
@@ -163,11 +180,28 @@ export interface BaseAxis<
     ticks?: B;
 
     /**
+     * The stroke cap for the tick lines' ending style. One of `"butt"`, `"round"` or `"square"`.
+     *
+     * __Default value:__ `"butt"`
+     */
+    tickCap?: "butt" | "round" | "square";
+
+    /**
      * The color of the axis's tick.
      *
      * __Default value:__ `"gray"`
      */
     tickColor?: C;
+
+    /**
+     * An array of alternating [stroke, space] lengths for dashed tick mark lines.
+     */
+    tickDash?: number[];
+
+    /**
+     * The pixel offset at which to start drawing with the tick mark dash array.
+     */
+    tickDashOffset?: number;
 
     /**
      * The size in pixels of axis ticks.
@@ -192,6 +226,27 @@ export interface BaseAxis<
      * __Default value:__ `true`.
      */
     labels?: boolean;
+
+    /**
+     * Horizontal text alignment of axis tick labels, overriding the default setting for the current axis orientation.
+     */
+    labelAlign?: "left" | "center" | "right";
+
+    /**
+     * The rotation angle of the axis labels.
+     *
+     * __Default value:__ `-90` for nominal and ordinal fields; `0` otherwise.
+     *
+     * @minimum -360
+     * @maximum 360
+     */
+    labelAngle?: number;
+
+    /**
+     * Vertical text baseline of axis tick labels, overriding the default setting for the current axis orientation.
+     * One of `"alphabetic"` (default), `"top"`, `"middle"`, `"bottom"`.
+     */
+    labelBaseline?: "alphabetic" | "top" | "middle" | "bottom";
 
     /**
      * The color of the tick label, can be in hex color code or regular color name.

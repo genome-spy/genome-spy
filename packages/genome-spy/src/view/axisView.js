@@ -83,6 +83,7 @@ export default class AxisView extends LayerView {
         // TODO: Compute extent
         const fullAxisProps = {
             ...(genomeAxis ? defaultGenomeAxisProps : defaultAxisProps),
+            ...getDefaultAngleAndAlign(type, axisProps),
             ...axisProps
         };
 
@@ -277,9 +278,9 @@ function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
 }
 
 // Based on: https://vega.github.io/vega-lite/docs/axis.html
+// TODO: The defaults should be taken from config (theme)
 /** @type {Axis} */
 const defaultAxisProps = {
-    /** @type {number[] | string[] | boolean[]} */
     values: null,
 
     minExtent: 20,
@@ -289,7 +290,6 @@ const defaultAxisProps = {
     domain: true,
     domainWidth: 1,
     domainColor: "gray",
-    /** @type {number[]} */
     domainDash: null,
     domainDashOffset: 0,
     domainCap: "square", // Make 1px caps crisp
@@ -298,23 +298,22 @@ const defaultAxisProps = {
     tickSize: 5,
     tickWidth: 1,
     tickColor: "gray",
-    /** @type {number[]} */
     tickDash: null,
+    tickDashOffset: 0,
     tickCap: "square", // Make 1px caps crisp
 
     // TODO: tickBand
 
-    /** @type {number} */
     tickCount: null,
-    /** @type {number} */
     tickMinStep: null,
 
     labels: true,
+    labelAlign: "center",
+    labelBaseline: "middle",
     labelPadding: 4,
     labelFontSize: 10,
     labelLimit: 180, // TODO
     labelColor: "black",
-    /** @type { string } */
     format: null,
 
     titleColor: "black",
@@ -324,6 +323,50 @@ const defaultAxisProps = {
 
     // TODO: titleX, titleY, titleAngle, titleAlign, etc
 };
+
+/**
+ * @param {string} type
+ * @param {Axis} axisProps
+ */
+function getDefaultAngleAndAlign(type, axisProps) {
+    const orient = axisProps.orient;
+    const discrete = type == "nominal" || type == "ordinal";
+
+    let align = "center";
+    let baseline = "middle";
+
+    /** @type {number} */
+    let angle =
+        axisProps.labelAngle ??
+        ((orient == "top" || orient == "bottom") && discrete ? -90 : 0);
+
+    // TODO: Setting labelAngle of left or right axis to 90 or -90 should center the labels
+
+    switch (orient) {
+        case "left":
+            align = "right";
+            break;
+        case "right":
+            align = "left";
+            break;
+        case "top":
+        case "bottom":
+            if (Math.abs(angle) > 30) {
+                align = angle > 0 === (orient == "bottom") ? "left" : "right";
+                baseline = "middle";
+            } else {
+                baseline = orient == "top" ? "alphabetic" : "top";
+            }
+            break;
+        default:
+    }
+
+    return {
+        labelAlign: align,
+        labelAngle: angle,
+        labelBaseline: baseline
+    };
+}
 
 /**
  * @param {Axis} axisProps
@@ -361,20 +404,17 @@ function createAxis(axisProps) {
         mark: {
             type: "text",
             clip: false,
-            align:
-                main == "x" ? "center" : ap.orient == "left" ? "right" : "left",
-            baseline:
-                main == "y"
-                    ? "middle"
-                    : ap.orient == "bottom"
-                    ? "top"
-                    : "alphabetic",
-            ["d" + secondary]:
-                (ap.tickSize + ap.labelPadding) * offsetDirection,
+            align: ap.labelAlign,
+            angle: ap.labelAngle,
+            baseline: ap.labelBaseline,
+            [secondary + "Offset"]:
+                (ap.tickSize + ap.labelPadding) *
+                offsetDirection *
+                (main == "x" ? -1 : 1),
             [secondary]: anchor,
             size: ap.labelFontSize,
             color: ap.labelColor,
-            minBufferSize: 1500,
+            minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
             dynamicData: true
         },
         encoding: {
@@ -483,6 +523,7 @@ const defaultGenomeAxisProps = {
     chromLabelColor: "black",
     chromLabelAlign: "left",
     chromLabelPadding: 7
+    // TODO: chromLabelAngle
 };
 
 /**
