@@ -136,9 +136,18 @@ export default class Mark {
      * @returns {Record<string, any>}
      */
     getDefaultProperties() {
+        /*
+		// TODO: Enable this when caching issues are resolved
+		// Clip by default if zoomable
+        const clip = ["x", "y"]
+            .map(channel => this.unitView.getScaleResolution(channel))
+			.some(resolution => resolution?.isZoomable() ?? false);
+		*/
+        const clip = true;
+
         // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
         return {
-            clip: true,
+            clip,
             xOffset: 0,
             yOffset: 0,
 
@@ -171,14 +180,13 @@ export default class Mark {
             const defaults = this.getDefaultEncoding();
             const configured = this.unitView.getEncoding();
 
-            const channels = this.getSupportedChannels();
             const propertyValues = Object.fromEntries(
-                Object.entries(this.properties)
-                    .filter(
-                        ([prop, value]) =>
-                            channels.includes(prop) && value !== undefined
-                    )
-                    .map(([prop, value]) => [prop, { value }])
+                this.getSupportedChannels()
+                    .map(channel => [
+                        channel,
+                        { value: this.properties[channel] }
+                    ])
+                    .filter(entry => entry[1].value !== undefined)
             );
 
             const encoding = this.fixEncoding({
