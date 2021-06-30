@@ -9,10 +9,6 @@ import VERTEX_SHADER from "../gl/rule.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rule.fragment.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices";
 
-/**
- * Rule mark is just a special case of rect mark. However, it provides
- * a more straightforward configuration for rules.
- */
 export default class RuleMark extends Mark {
     /**
      * @param {import("../view/unitView").default} unitView
