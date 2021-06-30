@@ -46,8 +46,8 @@ void main(void) {
     sort(y, y2);
 
     // Clamp x to unit range to prevent precision artifacts when the scale is zoomed very close.
-    vec2 pos1 = vec2(clamp(x, 0.0, 1.0), y);
-    vec2 pos2 = vec2(clamp(x2, 0.0, 1.0), y2);
+    vec2 pos1 = vec2(clamp(x, 0.0 - uViewOffset.x, 1.0 - uViewOffset.x), y);
+    vec2 pos2 = vec2(clamp(x2, 0.0 - uViewOffset.x, 1.0 - uViewOffset.x), y2);
 
     vec2 size = pos2 - pos1;
 
