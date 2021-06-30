@@ -39,8 +39,6 @@ import { createProgram } from "../gl/webGLHelper";
 import SampleView from "../view/sampleView/sampleView";
 import AxisView from "../view/axisView";
 import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
-import refseqGeneTooltipHandler from "../utils/tooltip/refseqGeneTooltipHandler";
-import dataTooltipHandler from "../utils/tooltip/dataTooltipHandler";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -126,7 +124,8 @@ export default class Mark {
         if (this.isPickingParticipant()) {
             encoding.uniqueId = {
                 field: "_uniqueId", // TODO: Use constant
-                type: "nominal"
+                type: "nominal",
+                scale: null
             };
         }
 

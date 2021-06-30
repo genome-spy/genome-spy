@@ -7,7 +7,8 @@
   "encoding": {
     "x": {
       "field": "x",
-      "type": "quantitative"
+      "type": "quantitative",
+      "scale": { "zoom": true }
     },
     "y": {
       "field": "sin",
