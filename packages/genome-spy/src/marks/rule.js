@@ -17,6 +17,23 @@ export default class RuleMark extends Mark {
         super(unitView);
 
         this.dashTextureSize = 0;
+
+        Object.defineProperties(
+            this.defaultProperties,
+            Object.getOwnPropertyDescriptors({
+                x2: undefined,
+                y2: undefined,
+                size: 1,
+                color: "black",
+                opacity: 1.0,
+
+                minLength: 0.0,
+                /** @type {number[]} */
+                strokeDash: null,
+                strokeDashOffset: 0,
+                strokeCap: "butt"
+            })
+        );
     }
 
     getAttributes() {
@@ -35,24 +52,6 @@ export default class RuleMark extends Mark {
 
     getSupportedChannels() {
         return [...super.getSupportedChannels(), "x2", "y2", "size"];
-    }
-
-    getDefaultProperties() {
-        return {
-            ...super.getDefaultProperties(),
-
-            x2: undefined,
-            y2: undefined,
-            size: 1,
-            color: "black",
-            opacity: 1.0,
-
-            minLength: 0.0,
-            /** @type {number[]} */
-            strokeDash: null,
-            strokeDashOffset: 0,
-            strokeCap: "butt"
-        };
     }
 
     /**

@@ -11,6 +11,24 @@ export default class LinkMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
+
+        Object.defineProperties(
+            this.defaultProperties,
+            Object.getOwnPropertyDescriptors({
+                x: 0.0,
+                x2: undefined,
+                y: 0.0,
+                y2: undefined,
+                height: 1.0,
+                size: 1.0,
+                size2: undefined,
+                color: "black",
+                color2: undefined,
+                opacity: 1.0,
+
+                segments: 101 // Performance is affected more by the fill rate, i.e. number of pixels
+            })
+        );
     }
 
     getAttributes() {
@@ -40,25 +58,6 @@ export default class LinkMark extends Mark {
             "color2",
             "height"
         ];
-    }
-
-    getDefaultProperties() {
-        return {
-            ...super.getDefaultProperties(),
-
-            x: 0.0,
-            x2: undefined,
-            y: 0.0,
-            y2: undefined,
-            height: 1.0,
-            size: 1.0,
-            size2: undefined,
-            color: "black",
-            color2: undefined,
-            opacity: 1.0,
-
-            segments: 101 // Performance is affected more by the fill rate, i.e. number of pixels
-        };
     }
 
     /**

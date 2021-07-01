@@ -17,6 +17,31 @@ export default class PointMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
+
+        Object.defineProperties(
+            this.defaultProperties,
+            Object.getOwnPropertyDescriptors({
+                x: 0.5,
+                y: 0.5,
+                color: "#4c78a8",
+                opacity: 1.0,
+                size: 100.0,
+                semanticScore: 0.0, // TODO: Should be datum instead of value. But needs fixing.
+                shape: "circle",
+                strokeWidth: 0.0,
+                gradientStrength: 0.0,
+                dx: 0,
+                dy: 0,
+
+                /** TODO: Implement */
+                relativeSizing: false,
+
+                maxRelativePointDiameter: 0.8,
+                minAbsolutePointDiameter: 0,
+
+                semanticZoomFraction: 0.02
+            })
+        );
     }
 
     getAttributes() {
@@ -52,32 +77,6 @@ export default class PointMark extends Mark {
 
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
-    }
-
-    getDefaultProperties() {
-        return {
-            ...super.getDefaultProperties(),
-
-            x: 0.5,
-            y: 0.5,
-            color: "#4c78a8",
-            opacity: 1.0,
-            size: 100.0,
-            semanticScore: 0.0, // TODO: Should be datum instead of value. But needs fixing.
-            shape: "circle",
-            strokeWidth: 0.0,
-            gradientStrength: 0.0,
-            dx: 0,
-            dy: 0,
-
-            /** TODO: Implement */
-            relativeSizing: false,
-
-            maxRelativePointDiameter: 0.8,
-            minAbsolutePointDiameter: 0,
-
-            semanticZoomFraction: 0.02
-        };
     }
 
     initializeData() {

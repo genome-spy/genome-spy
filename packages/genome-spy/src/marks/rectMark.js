@@ -18,6 +18,23 @@ export default class RectMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
+
+        Object.defineProperties(
+            this.defaultProperties,
+            Object.getOwnPropertyDescriptors({
+                x2: undefined,
+                y2: undefined,
+                color: "#4c78a8",
+                opacity: 1.0,
+
+                minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
+                minHeight: 0.5,
+                minOpacity: 0.0,
+
+                tessellationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
+                tessellationTiles: 35 // TODO: Tiles per unit (bp)
+            })
+        );
     }
 
     getAttributes() {
@@ -35,24 +52,6 @@ export default class RectMark extends Mark {
 
     getSupportedChannels() {
         return [...super.getSupportedChannels(), "x2", "y2"];
-    }
-
-    getDefaultProperties() {
-        return {
-            ...super.getDefaultProperties(),
-
-            x2: undefined,
-            y2: undefined,
-            color: "#4c78a8",
-            opacity: 1.0,
-
-            minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
-            minHeight: 0.5,
-            minOpacity: 0.0,
-
-            tessellationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
-            tessellationTiles: 35 // TODO: Tiles per unit (bp)
-        };
     }
 
     /**

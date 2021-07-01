@@ -39,6 +39,7 @@ import { createProgram } from "../gl/webGLHelper";
 import SampleView from "../view/sampleView/sampleView";
 import AxisView from "../view/axisView";
 import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
+import coalesceProperties from "../utils/propertyCoalescer";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -54,6 +55,8 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
  * @callback DrawFunction
  * @param {number} offset
  * @param {number} count
+ *
+ * @typedef {import("../view/viewUtils").MarkConfig} MarkConfig
  */
 export default class Mark {
     /**
@@ -83,6 +86,45 @@ export default class Mark {
         this.rangeTextures = new Map();
 
         this.opaque = false;
+
+        // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
+        this.defaultProperties = {
+            get clip() {
+                // TODO: Cache once the scales have been resolved
+                // TODO: Only check channels that are used
+                // TODO: provide more fine-grained xClip and yClip props
+                return ["x", "y"]
+                    .map(channel => unitView.getScaleResolution(channel))
+                    .some(resolution => resolution?.isZoomable() ?? false);
+            },
+            xOffset: 0,
+            yOffset: 0,
+
+            /**
+             * Minimum size for WebGL buffers (number of data items).
+             * Allows for using bufferSubData to update graphics.
+             * This property is intended for internal usage.
+             */
+            minBufferSize: 0
+        };
+
+        /**
+         * A properties object that contains the configured mark properties or
+         * default values as fallback.
+         *
+         * TODO: Proper and comprehensive typings for mark properties
+         *
+         * @type {Partial<MarkConfig> & Record<string, any>}
+         * @readonly
+         */
+        this.properties = coalesceProperties(
+            typeof this.unitView.spec.mark == "object"
+                ? () =>
+                      /** @type {Record<string, any>} */ (this.unitView.spec
+                          .mark)
+                : () => /** @type {Record<string, any>} */ ({}),
+            () => this.defaultProperties
+        );
     }
 
     /**
@@ -133,34 +175,6 @@ export default class Mark {
     }
 
     /**
-     * @returns {Record<string, any>}
-     */
-    getDefaultProperties() {
-        /*
-		// TODO: Enable this when caching issues are resolved
-		// Clip by default if zoomable
-        const clip = ["x", "y"]
-            .map(channel => this.unitView.getScaleResolution(channel))
-			.some(resolution => resolution?.isZoomable() ?? false);
-		*/
-        const clip = true;
-
-        // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
-        return {
-            clip,
-            xOffset: 0,
-            yOffset: 0,
-
-            /**
-             * Minimum size for WebGL buffers (number of data items).
-             * Allows for using bufferSubData to update graphics.
-             * This property is intended for internal usage.
-             */
-            minBufferSize: 0
-        };
-    }
-
-    /**
      * Adds intelligent defaults etc to the encoding.
      *
      * @param {import("../spec/channel").Encoding} encoding
@@ -205,20 +219,6 @@ export default class Mark {
             }
 
             return encoding;
-        });
-    }
-
-    /**
-     * @returns {Partial<import("../view/viewUtils").MarkConfig> & Record<string, any>}
-     */
-    get properties() {
-        return getCachedOrCall(this, "properties", () => {
-            return {
-                ...this.getDefaultProperties(),
-                ...(typeof this.unitView.spec.mark == "object"
-                    ? this.unitView.spec.mark
-                    : {})
-            };
         });
     }
 

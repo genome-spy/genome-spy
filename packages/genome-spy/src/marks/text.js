@@ -38,6 +38,54 @@ export default class TextMark extends Mark {
     constructor(unitView) {
         super(unitView);
 
+        Object.defineProperties(
+            this.defaultProperties,
+            Object.getOwnPropertyDescriptors({
+                x: 0.5,
+                y: 0.5,
+                x2: undefined,
+                y2: undefined,
+                text: "",
+                size: 11.0,
+                color: "black",
+                opacity: 1.0,
+
+                // Use the built-in default
+                font: undefined,
+                fontStyle: undefined,
+                fontWeight: undefined,
+
+                align: "center",
+                baseline: "middle",
+                dx: 0,
+                dy: 0,
+                angle: 0,
+
+                /** When only primary channel is defined with band/locus scale */
+                fitToBand: false,
+
+                squeeze: true,
+                paddingX: 0,
+                paddingY: 0,
+                flushX: true,
+                flushY: true,
+
+                /** Stretch letters so that they can be used with sequence logos etc... */
+                logoLetters: false,
+
+                /** @type {number[]} Order: top, right, bottom, left */
+                viewportEdgeFadeWidth: [0, 0, 0, 0],
+
+                /** @type {number[]} Order: top, right, bottom, left */
+                viewportEdgeFadeDistance: [
+                    -Infinity,
+                    -Infinity,
+                    -Infinity,
+                    -Infinity
+                ]
+            })
+        );
+
         this.font = this.properties.font
             ? unitView.context.fontManager.getFont(
                   this.properties.font,
@@ -63,55 +111,6 @@ export default class TextMark extends Mark {
 
     getSupportedChannels() {
         return [...super.getSupportedChannels(), "x2", "y2", "size", "text"];
-    }
-
-    getDefaultProperties() {
-        return {
-            ...super.getDefaultProperties(),
-
-            x: 0.5,
-            y: 0.5,
-            x2: undefined,
-            y2: undefined,
-            text: "",
-            size: 11.0,
-            color: "black",
-            opacity: 1.0,
-
-            // Use the built-in default
-            font: undefined,
-            fontStyle: undefined,
-            fontWeight: undefined,
-
-            align: "center",
-            baseline: "middle",
-            dx: 0,
-            dy: 0,
-            angle: 0,
-
-            /** When only primary channel is defined with band/locus scale */
-            fitToBand: false,
-
-            squeeze: true,
-            paddingX: 0,
-            paddingY: 0,
-            flushX: true,
-            flushY: true,
-
-            /** Stretch letters so that they can be used with sequence logos etc... */
-            logoLetters: false,
-
-            /** @type {number[]} Order: top, right, bottom, left */
-            viewportEdgeFadeWidth: [0, 0, 0, 0],
-
-            /** @type {number[]} Order: top, right, bottom, left */
-            viewportEdgeFadeDistance: [
-                -Infinity,
-                -Infinity,
-                -Infinity,
-                -Infinity
-            ]
-        };
     }
 
     /**
