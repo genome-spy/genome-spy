@@ -15,7 +15,7 @@
     "geometricZoomBound": 10.5
   },
   "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
+    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
     "y": { "field": "y", "type": "quantitative" },
     "size": { "value": 200 },
     "opacity": { "value": 0.6 }

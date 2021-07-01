@@ -9,9 +9,7 @@
   "layer": [
     {
       "mark": {
-        "type": "rect",
-        "minWidth": 100,
-        "minHeight": 100
+        "type": "rect"
       },
 
       "encoding": {

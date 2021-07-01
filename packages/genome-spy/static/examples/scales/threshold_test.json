@@ -1,0 +1,41 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+  "data": {
+    "sequence": { "start": 0, "stop": 30 }
+  },
+  "mark": {
+    "type": "point",
+    "size": 500
+  },
+  "encoding": {
+    "x": {
+      "field": "data",
+      "type": "ordinal"
+    },
+    "size": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": {
+        "type": "threshold",
+        "domain": [5, 10, 15, 20, 25],
+        "range": [50, 100, 150, 200, 250, 300]
+      }
+    },
+    "color": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": {
+        "type": "threshold",
+        "domain": [5, 10, 15, 20, 25]
+      }
+    },
+    "shape": {
+      "field": "data",
+      "type": "ordinal",
+      "scale": {
+        "type": "threshold",
+        "domain": [5, 10, 15, 20, 25]
+      }
+    }
+  }
+}

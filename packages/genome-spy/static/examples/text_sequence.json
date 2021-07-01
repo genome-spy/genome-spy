@@ -1,0 +1,55 @@
+{
+  "width": "container",
+  "height": "container",
+
+  "data": {
+    "values": [
+      { "pos": 0, "base": "A" },
+      { "pos": 1, "base": "C" },
+      { "pos": 2, "base": "T" },
+      { "pos": 3, "base": "G" },
+      { "pos": 4, "base": "a" },
+      { "pos": 5, "base": "c" },
+      { "pos": 6, "base": "t" },
+      { "pos": 7, "base": "g" },
+      { "pos": 8, "base": "A" },
+      { "pos": 9, "base": "G" }
+    ]
+  },
+
+  "encoding": {
+    "x": { "field": "pos", "type": "index" }
+  },
+
+  "layer": [
+    {
+      "mark": "rect",
+
+      "encoding": {
+        "color": { "field": "pos", "type": "nominal" }
+      }
+    },
+    {
+      "mark": {
+        "type": "text",
+        "font": "Source Sans Pro",
+        "fontWeight": 700,
+        "size": 1000,
+        "squeeze": true,
+        "fitToBand": true,
+
+        "y": 0,
+        "y2": 1,
+        "paddingX": 0,
+        "paddingY": 0,
+
+        "logoLetters": true
+      },
+
+      "encoding": {
+        "x": { "field": "pos", "type": "index" },
+        "text": { "field": "base", "type": "nominal" }
+      }
+    }
+  ]
+}

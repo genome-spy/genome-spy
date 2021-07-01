@@ -7,7 +7,7 @@
     { "type": "formula", "expr": "datum.a + random() * 100", "as": "b" }
   ],
   "encoding": {
-    "x": { "field": "a", "type": "quantitative", "scale": { "zoom": true } },
+    "x": { "field": "a", "type": "quantitative" },
     "x2": { "field": "b" },
     "y": {
       "field": "data",
@@ -25,19 +25,7 @@
       }
     },
     {
-      "mark": {
-        "type": "text",
-        "align": "center",
-        "baseline": "middle",
-        "paddingX": 5
-      },
-      "encoding": {
-        "text": {
-          "expr": "'Hello ' + floor(datum.a)",
-          "type": "ordinal"
-        },
-        "size": { "value": 12 }
-      }
+      "mark": "point"
     }
   ]
 }

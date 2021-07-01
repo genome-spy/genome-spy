@@ -1,0 +1,68 @@
+{
+  "resolve": { "scale": { "x": "shared" } },
+
+  "vconcat": [
+    {
+      "height": 40,
+      "data": {
+        "values": [
+          { "from": 0, "to": 2 },
+          { "from": 2, "to": 7 },
+          { "from": 8, "to": 9 },
+          { "from": 10, "to": 13 }
+        ]
+      },
+      "encoding": {
+        "x": {
+          "field": "from",
+          "type": "index",
+          "scale": { "type": "index", "paddingInner": 0.3, "paddingOuter": 0.3 }
+        },
+        "x2": { "field": "to" }
+      },
+      "layer": [
+        {
+          "mark": "rect",
+          "encoding": {
+            "color": { "field": "from", "type": "nominal" }
+          }
+        },
+        {
+          "mark": "text",
+          "encoding": {
+            "text": {
+              "expr": "'[' + datum.from + ', ' + datum.to + ')'",
+              "type": "nominal"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "height": 40,
+      "data": {
+        "values": [0, 2, 4, 7, 8, 10, 12]
+      },
+      "encoding": {
+        "x": { "field": "data", "type": "index" }
+      },
+      "layer": [
+        {
+          "mark": "rect",
+          "encoding": {
+            "color": { "field": "data", "type": "nominal" }
+          }
+        },
+        {
+          "mark": "text",
+          "encoding": {
+            "text": {
+              "field": "data",
+              "type": "quantitative"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "data": { "sequence": { "start": -10, "stop": 10.1, "step": 0.5 } },
+  "transform": [
+    { "type": "formula", "expr": "datum.data / 1000", "as": "data" }
+  ],
+  "mark": "point",
+  "encoding": {
+    "x": { "field": "data", "type": "quantitative" },
+    "y": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": { "type": "symlog", "constant": 0.0001 }
+    }
+  }
+}

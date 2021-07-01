@@ -1,0 +1,29 @@
+{
+  "width": 600,
+  "height": 600,
+
+  "description": "Check that the rules align to the pixel grid perfectly",
+
+  "data": {
+    "sequence": { "start": 0, "stop": 601, "step": 10 }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "datum.data + 0.0", "as": "data" }
+  ],
+
+  "layer": [
+    {
+      "mark": { "type": "rule", "clip": false },
+      "encoding": {
+        "x": { "field": "data", "type": "quantitative" }
+      }
+    },
+    {
+      "mark": { "type": "rule", "clip": false },
+      "encoding": {
+        "y": { "field": "data", "type": "quantitative" }
+      }
+    }
+  ]
+}

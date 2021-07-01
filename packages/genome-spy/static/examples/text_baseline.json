@@ -1,0 +1,120 @@
+{
+  "data": { "values": ["The quick brown fox jumps over the lazy dog. ACTG"] },
+
+  "vconcat": [
+    {
+      "layer": [
+        {
+          "mark": "rule",
+          "encoding": {
+            "y": { "value": 0.5 },
+            "color": { "value": "gray" }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "top",
+            "clip": false,
+            "font": "Lato",
+            "fontWeight": 900
+          },
+
+          "encoding": {
+            "y": { "value": 0.5 },
+            "x": { "value": 0 },
+            "x2": { "value": 1 },
+            "size": { "value": 100 },
+            "text": { "field": "data", "type": "nominal" }
+          }
+        }
+      ]
+    },
+    {
+      "layer": [
+        {
+          "mark": "rule",
+          "encoding": {
+            "y": { "value": 0.5 },
+            "color": { "value": "gray" }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "middle",
+            "clip": false,
+            "font": "Indie Flower"
+          },
+
+          "encoding": {
+            "y": { "value": 0.5 },
+            "x": { "value": 0 },
+            "x2": { "value": 1 },
+            "size": { "value": 100 },
+            "text": { "field": "data", "type": "nominal" }
+          }
+        }
+      ]
+    },
+    {
+      "layer": [
+        {
+          "mark": "rule",
+          "encoding": {
+            "y": { "value": 0.5 },
+            "color": { "value": "gray" }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "baseline",
+            "clip": false,
+            "font": "Oswald"
+          },
+
+          "encoding": {
+            "y": { "value": 0.5 },
+            "x": { "value": 0 },
+            "x2": { "value": 1 },
+            "size": { "value": 100 },
+            "text": { "field": "data", "type": "nominal" }
+          }
+        }
+      ]
+    },
+    {
+      "layer": [
+        {
+          "mark": "rule",
+          "encoding": {
+            "y": { "value": 0.5 },
+            "color": { "value": "gray" }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "bottom",
+            "clip": false,
+            "font": "Oswald",
+            "fontWeight": "bold"
+          },
+
+          "encoding": {
+            "y": { "value": 0.5 },
+            "x": { "value": 0 },
+            "x2": { "value": 1 },
+            "size": { "value": 100 },
+            "text": { "field": "data", "type": "nominal" }
+          }
+        }
+      ]
+    }
+  ]
+}

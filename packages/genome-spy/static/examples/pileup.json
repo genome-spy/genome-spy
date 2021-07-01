@@ -39,9 +39,8 @@
       "encoding": {
         "x": {
           "field": "start",
-          "type": "quantitative",
-          "axis": null,
-          "scale": { "zoom": true }
+          "type": "index",
+          "axis": null
         },
         "x2": { "field": "end" },
         "y": { "field": "coverage", "type": "quantitative" }
@@ -62,7 +61,7 @@
         "buildIndex": true
       },
       "encoding": {
-        "x": { "field": "start", "type": "quantitative" },
+        "x": { "field": "start", "type": "index" },
         "x2": { "field": "end" },
         "y": {
           "field": "lane",
