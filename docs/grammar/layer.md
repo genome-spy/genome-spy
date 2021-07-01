@@ -25,7 +25,8 @@ The `layer` operator superimposes multiple views over each other.
     "x": {
       "field": "a",
       "type": "nominal",
-      "scale": { "padding": 0.1 }
+      "scale": { "padding": 0.1 },
+      "axis": { "labelAngle": 0 }
     },
     "y": { "field": "b", "type": "quantitative" }
   },

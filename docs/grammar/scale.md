@@ -255,4 +255,4 @@ the `zoom` scale property to `true`. Example:
 }
 ```
 
-Both `index` and `locus` scales are zoomable by default.
+Both `"index"` and `"locus"` scales are zoomable by default.

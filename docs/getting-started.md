@@ -55,13 +55,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/genome-spy@0.1.1/dist/index.css"
+      href="https://unpkg.com/genome-spy@0.1.3/dist/index.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/genome-spy@0.1.1/dist/index.js"
+      src="https://unpkg.com/genome-spy@0.1.3/dist/index.js"
     ></script>
 
     <script>
@@ -81,13 +81,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/genome-spy@0.1.1/dist/index.css"
+      href="https://unpkg.com/genome-spy@0.1.3/dist/index.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/genome-spy@0.1.1/dist/index.js"
+      src="https://unpkg.com/genome-spy@0.1.3/dist/index.js"
     ></script>
 
     <script>
