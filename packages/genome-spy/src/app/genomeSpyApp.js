@@ -123,6 +123,8 @@ export default class GenomeSpyApp {
     _updateUrl() {
         const history = this.getSampleHandler().provenance.getActionHistory();
 
+        // TODO: Test https://github.com/101arrowz/fflate as a replacement for lzString
+
         let hash = "";
         if (history.length) {
             hash =
