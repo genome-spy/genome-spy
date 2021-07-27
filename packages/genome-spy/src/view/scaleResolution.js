@@ -346,6 +346,9 @@ export default class ScaleResolution {
             throw new Error("Not a zoomable scale!");
         }
 
+        // TODO: For animated zooming, consider eerp:
+        // https://twitter.com/FreyaHolmer/status/1068293398073929728
+
         this.getScale().domain(interval);
         this._notifyScaleObservers();
     }
