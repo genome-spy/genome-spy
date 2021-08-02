@@ -35,6 +35,7 @@ import { VISIT_STOP } from "./view/view";
 import Inertia, { makeEventTemplate } from "./utils/inertia";
 import refseqGeneTooltipHandler from "./utils/tooltip/refseqGeneTooltipHandler";
 import dataTooltipHandler from "./utils/tooltip/dataTooltipHandler";
+import SampleView from "./view/sampleView/sampleView";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -164,7 +165,6 @@ export default class GenomeSpy {
             }
         });
 
-        this._glHelper.addEventListener("resize", () => this.computeLayout());
         this._glHelper.addEventListener("render", () =>
             this.animator.requestRender()
         );
@@ -314,6 +314,16 @@ export default class GenomeSpy {
             }
         });
 
+        this.viewRoot.visit(view => {
+            // If no explicit sample were provided, extract it from data
+            // TODO: It would be great if this could be attached to the data flow,
+            // because now this is somewhat a hack and is incompatible with dynamic data
+            // loading in the future.
+            if (view instanceof SampleView) {
+                view.extractSamplesFromData();
+            }
+        });
+
         await graphicsInitialized;
 
         for (const view of unitViews) {
@@ -335,6 +345,12 @@ export default class GenomeSpy {
 
             this.computeLayout();
             this.animator.requestRender();
+
+            // Register resize listener after the initial layout computation to prevent
+            // incomplete layouts from accidentally polluting any caches related to sizes.
+            this._glHelper.addEventListener("resize", () =>
+                this.computeLayout()
+            );
 
             return true;
         } catch (reason) {

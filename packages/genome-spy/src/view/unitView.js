@@ -246,6 +246,10 @@ export default class UnitView extends ContainerView {
      *
      * TODO: Optimize! Now this performs redundant work if multiple views share the same collector.
      * Also, all relevant fields should be processed in one iteration: https://jsbench.me/y5kkqy52jo/1
+     * In fact, domain extraction could be a responsibility of the collector: As it handles data items,
+     * it extracts domains for all fields (and data types) that need extracted domains.
+     * Alternatively, extractor nodes could be added to the data flow, just like Vega does
+     * (with aggregate and extent).
      *
      * @param {string} channel
      * @returns {DomainArray}

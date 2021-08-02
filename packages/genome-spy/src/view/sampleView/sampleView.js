@@ -353,15 +353,20 @@ export default class SampleView extends ContainerView {
     }
 
     extractSamplesFromData() {
+        if (this._samples) {
+            return; // NOP
+        }
         // TODO: Call this from somewhere!
         const resolution = this.getScaleResolution("sample");
         if (resolution) {
-            return resolution.getConfiguredDomain().map((s, i) => ({
+            const samples = resolution.getDataDomain().map((s, i) => ({
                 id: s,
                 displayName: s,
                 indexNumber: i,
                 attributes: []
             }));
+
+            this._setSamples(samples);
         } else {
             throw new Error(
                 "No explicit sample data nor sample channels found!"
@@ -789,7 +794,13 @@ export default class SampleView extends ContainerView {
      * @param {import("../containerView").ResolutionType} resolutionType
      */
     getDefaultResolution(channel, resolutionType) {
-        return channel == "x" ? "shared" : "independent";
+        switch (channel) {
+            case "x":
+            case "sample":
+                return "shared";
+            default:
+                return "independent";
+        }
     }
 }
 

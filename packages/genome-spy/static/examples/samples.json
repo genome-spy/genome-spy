@@ -26,16 +26,19 @@
     }
   ],
 
-  "facet": {
-    "row": { "field": "sample" }
-  },
+  "samples": {},
 
   "spec": {
     "mark": "rect",
 
     "encoding": {
-      "y": { "expr": "1 / datum.x + 0.5", "type": "quantitative" },
-      "x": { "field": "from", "type": "quantitative" },
+      "sample": { "field": "sample", "type": "nominal" },
+      "y": {
+        "expr": "1 / datum.x + 0.5",
+        "type": "quantitative",
+        "axis": null
+      },
+      "x": { "field": "from", "type": "quantitative", "axis": null },
       "x2": { "field": "to" },
       "color": { "field": "x", "type": "nominal" }
     }
