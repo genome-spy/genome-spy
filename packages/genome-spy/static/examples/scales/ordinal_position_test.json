@@ -1,0 +1,30 @@
+{
+  "description": [
+    "Using ordinal scale to map values to arbitrary positions on the positional channels",
+    "This is mainly for GenomeSpy's internal use."
+  ],
+
+  "data": {
+    "sequence": {
+      "start": 0,
+      "stop": 5,
+      "step": 1,
+      "as": "x"
+    }
+  },
+
+  "mark": "point",
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": {
+      "field": "x",
+      "type": "nominal",
+      "scale": {
+        "type": "ordinal",
+        "domain": [0, 1, 2, 3, 4],
+        "range": [0.0, 0.05, 0.5, 0.95, 1.0]
+      }
+    }
+  }
+}

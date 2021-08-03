@@ -541,7 +541,7 @@ function getDefaultScaleType(channel, dataType) {
  * @param {string} channel
  */
 function applyLockedProperties(props, channel) {
-    if (isPositionalChannel(channel)) {
+    if (isPositionalChannel(channel) && props.type !== "ordinal") {
         props.range = [0, 1];
     }
 

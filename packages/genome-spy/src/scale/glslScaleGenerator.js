@@ -83,7 +83,7 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  *
  * @param {string} channel
  * @param {any} scale
- * @param {import("../spec/view").ChannelDef} encoding
+ * @param {import("../spec/channel").ChannelDef} encoding
  */
 // eslint-disable-next-line complexity
 export function generateScaleGlsl(channel, scale, encoding) {
@@ -252,7 +252,9 @@ export function generateScaleGlsl(channel, scale, encoding) {
         }
     } else if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
         const textureUniformName = RANGE_TEXTURE_PREFIX + primary;
-        glsl.push(`uniform sampler2D ${textureUniformName};`);
+        if (channel == primary) {
+            glsl.push(`uniform sampler2D ${textureUniformName};`);
+        }
         interpolate = `getDiscreteColor(${textureUniformName}, int(transformed)).r`;
     }
 
