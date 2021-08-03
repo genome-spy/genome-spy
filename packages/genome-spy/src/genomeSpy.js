@@ -165,10 +165,6 @@ export default class GenomeSpy {
             }
         });
 
-        this._glHelper.addEventListener("render", () =>
-            this.animator.requestRender()
-        );
-
         this.loadingMessageElement = document.createElement("div");
         this.loadingMessageElement.className = "loading-message";
         this.loadingMessageElement.innerHTML = `<div class="message">Loading<span class="ellipsis">...</span></div>`;
@@ -348,9 +344,11 @@ export default class GenomeSpy {
 
             // Register resize listener after the initial layout computation to prevent
             // incomplete layouts from accidentally polluting any caches related to sizes.
-            this._glHelper.addEventListener("resize", () =>
-                this.computeLayout()
-            );
+            this._glHelper.addEventListener("resize", () => {
+                this.computeLayout();
+                // Render immediately, without RAF
+                this.renderAll();
+            });
 
             return true;
         } catch (reason) {

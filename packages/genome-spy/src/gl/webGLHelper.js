@@ -81,7 +81,7 @@ export default class WebGLHelper {
         // TODO: Size should be observed only if the content is not absolutely sized
         this._resizeObserver = new ResizeObserver(entries => {
             this.invalidateSize();
-            this.render();
+            this._emit("resize");
         });
         this._resizeObserver.observe(this._container);
 
@@ -99,11 +99,6 @@ export default class WebGLHelper {
 
     _updateDpr() {
         this.dpr = window.devicePixelRatio;
-    }
-
-    render() {
-        this._emit("resize");
-        this._emit("render");
     }
 
     /**
