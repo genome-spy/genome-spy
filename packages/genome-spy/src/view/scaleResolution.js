@@ -32,9 +32,12 @@ export const INDEX = "index";
  * Resolution takes care of merging domains and scales from multiple views.
  * This class also provides some utility methods for zooming the scales etc..
  *
+ * TODO: This has grown a bit too fat. Consider splitting.
+ *
  * @typedef {import("./unitView").default} UnitView
  * @typedef {import("../encoder/encoder").VegaScale} VegaScale
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
+ * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
  */
 export default class ScaleResolution {
     /**
@@ -448,13 +451,13 @@ export default class ScaleResolution {
     }
 
     /**
-     * @param {number | import("../genome/genome").ChromosomalLocus} complex
+     * @param {number | ChromosomalLocus} complex
      */
     fromComplex(complex) {
         let value = complex;
         if (isChromosomalLocus(complex)) {
             const genome = this.getGenome();
-            value = genome.toContinuous(complex.chromosome, complex.pos);
+            value = genome.toContinuous(complex.chrom, complex.pos);
         }
 
         return value;

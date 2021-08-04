@@ -21,3 +21,15 @@ export interface GenomeConfig {
      */
     contigs?: Contig[];
 }
+
+export interface ChromosomalLocus {
+    /**
+     * The name of the chromosome. For example: "chr1", "CHR1", or "1".
+     */
+    chrom: string;
+
+    /**
+     * The zero-based position inside the chromosome or contig.
+     */
+    pos?: number;
+}

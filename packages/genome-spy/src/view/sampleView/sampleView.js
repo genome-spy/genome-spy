@@ -146,7 +146,7 @@ export default class SampleView extends ContainerView {
                 ? specifier.locus
                 : genome
                 ? genome.toContinuous(
-                      specifier.locus.chromosome,
+                      specifier.locus.chrom,
                       specifier.locus.pos
                   )
                 : error(

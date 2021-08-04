@@ -43,39 +43,54 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
 
     test("Maps continuous to chromosome and locus", () => {
         expect(g.toChromosomal(-1)).toBeUndefined();
-        expect(g.toChromosomal(0)).toEqual({ chromosome: "chr1", pos: 0 });
-        expect(g.toChromosomal(12)).toEqual({ chromosome: "chr2", pos: 2 });
-        expect(g.toChromosomal(29)).toEqual({ chromosome: "chr2", pos: 19 });
-        expect(g.toChromosomal(30)).toEqual({ chromosome: "chr3", pos: 0 });
-        expect(g.toChromosomal(62)).toEqual({ chromosome: "chrX", pos: 2 });
-        expect(g.toChromosomal(99)).toEqual({ chromosome: "chrX", pos: 39 });
+        expect(g.toChromosomal(0)).toEqual({ chrom: "chr1", pos: 0 });
+        expect(g.toChromosomal(12)).toEqual({ chrom: "chr2", pos: 2 });
+        expect(g.toChromosomal(29)).toEqual({ chrom: "chr2", pos: 19 });
+        expect(g.toChromosomal(30)).toEqual({ chrom: "chr3", pos: 0 });
+        expect(g.toChromosomal(62)).toEqual({ chrom: "chrX", pos: 2 });
+        expect(g.toChromosomal(99)).toEqual({ chrom: "chrX", pos: 39 });
         expect(g.toChromosomal(100)).toBeUndefined();
     });
 
     test("Maps continuous interval to chromosomal interval", () => {
         // Testing half-open intervals
         expect(g.toChromosomalInterval([0, 10])).toEqual([
-            { chromosome: "chr1", pos: 0 },
-            { chromosome: "chr1", pos: 10 }
+            { chrom: "chr1", pos: 0 },
+            { chrom: "chr1", pos: 10 }
         ]);
         expect(g.toChromosomalInterval([10, 100])).toEqual([
-            { chromosome: "chr2", pos: 0 },
-            { chromosome: "chrX", pos: 40 }
+            { chrom: "chr2", pos: 0 },
+            { chrom: "chrX", pos: 40 }
         ]);
     });
 
     test("Maps chromosomal interval to continuous interval", () => {
         expect(
             g.toContinuousInterval([
-                { chromosome: "chr1", pos: 0 },
-                { chromosome: "chr1", pos: 10 }
+                { chrom: "chr1", pos: 0 },
+                { chrom: "chr1", pos: 10 }
             ])
         ).toEqual([0, 10]);
         expect(
             g.toContinuousInterval([
-                { chromosome: "chr2", pos: 0 },
-                { chromosome: "chrX", pos: 40 }
+                { chrom: "chr1", pos: 1 },
+                { chrom: "chr1", pos: 9 }
             ])
+        ).toEqual([1, 9]);
+        expect(
+            g.toContinuousInterval([
+                { chrom: "chr2", pos: 0 },
+                { chrom: "chrX", pos: 40 }
+            ])
+        ).toEqual([10, 100]);
+    });
+
+    test("Maps chromosomal interval without positions to continuous interval", () => {
+        expect(
+            g.toContinuousInterval([{ chrom: "chr1" }, { chrom: "chr1" }])
+        ).toEqual([0, 10]);
+        expect(
+            g.toContinuousInterval([{ chrom: "chr2" }, { chrom: "chrX" }])
         ).toEqual([10, 100]);
     });
 
