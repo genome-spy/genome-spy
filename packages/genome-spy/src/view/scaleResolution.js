@@ -18,9 +18,13 @@ import {
     getDiscreteRange,
     isColorChannel,
     isDiscreteChannel,
-    isPositionalChannel
+    isPositionalChannel,
+    isValueDef
 } from "../encoder/encoder";
-import { isChromosomalLocus } from "../genome/genome";
+import {
+    isChromosomalLocus,
+    isChromosomalLocusInterval
+} from "../genome/genome";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
@@ -38,6 +42,9 @@ export const INDEX = "index";
  * @typedef {import("../encoder/encoder").VegaScale} VegaScale
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
+ *
+ * @typedef {import("../spec/scale").ScalarDomain} ScalarDomain
+ * @typedef {import("../spec/scale").ComplexDomain} ComplexDomain
  */
 export default class ScaleResolution {
     /**
@@ -78,6 +85,7 @@ export default class ScaleResolution {
     }
 
     /**
+     * Add a view to this resolution.
      * N.B. This is expected to be called in depth-first order
      *
      * @param {UnitView} view
@@ -166,6 +174,7 @@ export default class ScaleResolution {
                 props.type = getDefaultScaleType(this.channel, this.type);
             }
 
+            // Genomic coordinates need higher precision
             if (props.type == LOCUS && !("fp64" in props)) {
                 props.fp64 = true;
             }
@@ -425,6 +434,8 @@ export default class ScaleResolution {
         return genome;
     }
 
+    // TODO: Move the "complex" stuff into scaleLocus.
+
     /**
      * Inverts a value in range to a value on domain. Returns an object in
      * case of locus scale.
@@ -452,15 +463,25 @@ export default class ScaleResolution {
 
     /**
      * @param {number | ChromosomalLocus} complex
+     * @returns {number}
      */
     fromComplex(complex) {
-        let value = complex;
         if (isChromosomalLocus(complex)) {
             const genome = this.getGenome();
-            value = genome.toContinuous(complex.chrom, complex.pos);
+            return genome.toContinuous(complex.chrom, complex.pos);
         }
+        return complex;
+    }
 
-        return value;
+    /**
+     * @param {ScalarDomain | ComplexDomain} interval
+     * @returns {ScalarDomain}
+     */
+    fromComplexInterval(interval) {
+        if (this.type === "locus" && isChromosomalLocusInterval(interval)) {
+            return this.getGenome().toContinuousInterval(interval);
+        }
+        return /** @type {ScalarDomain} */ (interval);
     }
 
     _getViewPaths() {

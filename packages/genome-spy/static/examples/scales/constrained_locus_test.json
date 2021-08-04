@@ -1,0 +1,13 @@
+{
+  "genome": { "name": "hg38" },
+  "data": { "values": [{ "chr": 4, "pos": 50000000 }] },
+  "mark": "point",
+  "encoding": {
+    "x": {
+      "chrom": "chr",
+      "pos": "pos",
+      "type": "locus",
+      "scale": { "domain": [{ "chrom": "chr3" }, { "chrom": "chr6" }] }
+    }
+  }
+}

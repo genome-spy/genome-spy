@@ -1,6 +1,7 @@
 import { bisect } from "d3-array";
 import { tsvParseRows } from "d3-dsv";
 import { loader } from "vega-loader";
+import { isObject } from "vega-util";
 import { formatRange } from "./locusFormat";
 
 const defaultBaseUrl = "https://genomespy.app/data/genomes/";
@@ -233,7 +234,11 @@ export default class Genome {
      * @param {ChromosomalLocus[]} chromosomal
      */
     toContinuousInterval(chromosomal) {
-        const [a, b] = chromosomal;
+        let [a, b] = chromosomal;
+        if (!b) {
+            // A shortcut for a single chromosome. { domain: [{ chrom: "chr3" }] }
+            b = a;
+        }
 
         return [
             this.toContinuous(a.chrom, a.pos ?? 0),
@@ -287,5 +292,14 @@ export function parseChromSizes(chromSizesData) {
  * @return {value is ChromosomalLocus}
  */
 export function isChromosomalLocus(value) {
-    return "chrom" in value;
+    return isObject(value) && "chrom" in value;
+}
+
+/**
+ *
+ * @param {any[]} value
+ * @return {value is ChromosomalLocus[]}
+ */
+export function isChromosomalLocusInterval(value) {
+    return value.every(isChromosomalLocus);
 }

@@ -1,12 +1,22 @@
 /*!
  * Adapted from
  * https://github.com/vega/vega-lite/blob/master/src/scale.ts
- * 
+ *
  * Copyright (c) 2015-2018, University of Washington Interactive Data Lab
  * All rights reserved.
- * 
+ *
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
+
+import { ChromosomalLocus } from "./genome";
+
+export type ScalarDomain = number[] | string[] | boolean[];
+
+/**
+ * A complex domain that needs to be converted into a scalar domain before it
+ * is assigned to a scale.
+ */
+export type ComplexDomain = ChromosomalLocus[];
 
 export interface Scale {
     /**
@@ -31,7 +41,7 @@ export interface Scale {
      *
      * For _ordinal_ and _nominal_ fields, `domain` can be an array that lists valid input values.
      */
-    domain?: number[] | string[] | boolean[];
+    domain?: ScalarDomain | ComplexDomain;
 
     // Hide because we might not really need this.
     /**
@@ -200,9 +210,17 @@ export interface SchemeParams {
     count?: number;
 }
 
-export type ScaleInterpolate = 'rgb' | 'lab' | 'hcl' | 'hsl' | 'hsl-long' | 'hcl-long' | 'cubehelix' | 'cubehelix-long';
+export type ScaleInterpolate =
+    | "rgb"
+    | "lab"
+    | "hcl"
+    | "hsl"
+    | "hsl-long"
+    | "hcl-long"
+    | "cubehelix"
+    | "cubehelix-long";
 
 export interface ScaleInterpolateParams {
-    type: 'rgb' | 'cubehelix' | 'cubehelix-long';
+    type: "rgb" | "cubehelix" | "cubehelix-long";
     gamma?: number;
 }
