@@ -1,9 +1,18 @@
+/* eslint-disable max-depth */
+import { isObject } from "vega-util";
+
 /**
+ * Deep merge.
  *
- * @param  {object[]} objects
- * @param {string} propertyOf
- * @param {string[]} [skip]
- * @returns {object}
+ * A boolean true and an object are compatible. The object survives, the boolean is overwritten.
+ *
+ * TODO: Support arrays. Should accept identical arrays and complain about others.
+ *
+ * @param  {T[]} objects Objects to merge
+ * @param {string} propertyOf What are we merging? Used in warning messages
+ * @param {string[]} [skip] Fields to skip. TODO: Support nested fields.
+ * @returns {T}
+ * @template T
  */
 export default function mergeObjects(objects, propertyOf, skip) {
     skip = skip || [];
@@ -20,11 +29,23 @@ export default function mergeObjects(objects, propertyOf, skip) {
     /** @type {any} */
     const target = {};
 
+    /** @type {function(any, any):boolean} */
+    const compatible = (a, b) =>
+        a === b ||
+        (isPlainObject(a) && isPlainObject(b)) ||
+        (isPlainObject(a) && b === true) ||
+        (a === true && isObject(b));
+
     /** @param {any} obj */
     const merger = obj => {
+        // eslint-disable-next-line guard-for-in
         for (let prop in obj) {
-            if (!skip.includes(prop) && obj[prop] !== undefined) {
-                if (target[prop] !== undefined && target[prop] !== obj[prop]) {
+            const sourceValue = obj[prop];
+            if (!skip.includes(prop) && sourceValue !== undefined) {
+                if (
+                    target[prop] !== undefined &&
+                    !compatible(target[prop], sourceValue)
+                ) {
                     console.warn(
                         `Conflicting property ${prop} of ${propertyOf}: (${JSON.stringify(
                             target[prop]
@@ -33,7 +54,30 @@ export default function mergeObjects(objects, propertyOf, skip) {
                         )}). Using ${JSON.stringify(target[prop])}.`
                     );
                 } else {
-                    target[prop] = obj[prop];
+                    const targetValue = target[prop];
+
+                    if (isPlainObject(targetValue)) {
+                        if (isPlainObject(sourceValue)) {
+                            // Object merged to object
+                            target[prop] = mergeObjects(
+                                [targetValue, sourceValue],
+                                prop
+                            );
+                        }
+                    } else if (isPlainObject(sourceValue)) {
+                        if (
+                            !(targetValue === true || targetValue === undefined)
+                        ) {
+                            throw new Error(
+                                "Bug in merge! Target is: " + targetValue
+                            );
+                        }
+                        // Object replaces "true"
+                        target[prop] = mergeObjects([{}, sourceValue], prop);
+                    } else {
+                        // Scalar
+                        target[prop] = sourceValue;
+                    }
                 }
             }
         }
@@ -44,4 +88,12 @@ export default function mergeObjects(objects, propertyOf, skip) {
     }
 
     return target;
+}
+
+/**
+ *
+ * @param {any} x
+ */
+function isPlainObject(x) {
+    return isObject(x) && !Array.isArray(x);
 }

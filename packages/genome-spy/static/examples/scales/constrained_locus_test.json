@@ -1,13 +1,19 @@
 {
+  "description": "Constrain zoom extent and specify an initial domain",
+
   "genome": { "name": "hg38" },
-  "data": { "values": [{ "chr": 4, "pos": 50000000 }] },
+
+  "data": { "values": [{ "chr": 5, "pos": 50000000 }] },
   "mark": "point",
   "encoding": {
     "x": {
       "chrom": "chr",
       "pos": "pos",
       "type": "locus",
-      "scale": { "domain": [{ "chrom": "chr3" }, { "chrom": "chr6" }] }
+      "scale": {
+        "domain": [{ "chrom": "chr5" }],
+        "zoom": { "extent": [{ "chrom": "chr3" }, { "chrom": "chr6" }] }
+      }
     }
   }
 }

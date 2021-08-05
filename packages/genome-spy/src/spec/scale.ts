@@ -10,14 +10,6 @@
 
 import { ChromosomalLocus } from "./genome";
 
-export type ScalarDomain = number[] | string[] | boolean[];
-
-/**
- * A complex domain that needs to be converted into a scalar domain before it
- * is assigned to a scale.
- */
-export type ComplexDomain = ChromosomalLocus[];
-
 export interface Scale {
     /**
      * The type of scale.  Vega-Lite supports the following categories of scale types:
@@ -43,12 +35,25 @@ export interface Scale {
      */
     domain?: ScalarDomain | ComplexDomain;
 
-    // Hide because we might not really need this.
+    /**
+     * Inserts a single mid-point value into a two-element domain. The mid-point value must lie between the domain minimum and maximum values. This property can be useful for setting a midpoint for [diverging color scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise). The domainMid property is only intended for use with scales supporting continuous, piecewise domains.
+     */
+    domainMid?: number;
+
+    /**
+     * Sets the maximum value in the scale domain, overriding the `domain` property. This property is only intended for use with scales having continuous domains.
+     */
+    domainMax?: number;
+
+    /**
+     * Sets the minimum value in the scale domain, overriding the domain property. This property is only intended for use with scales having continuous domains.
+     */
+    domainMin?: number;
+
     /**
      * If true, reverses the order of the scale range.
-     * __Default value:__ `false`.
      *
-     * @hide
+     * __Default value:__ `false`.
      */
     reverse?: boolean;
 
@@ -186,9 +191,23 @@ export interface Scale {
     /**
      * The interpolation method for range values. By default, a general interpolator for numbers, dates, strings and colors (in HCL space) is used. For color ranges, this property allows interpolation in alternative color spaces. Legal values include `rgb`, `hsl`, `hsl-long`, `lab`, `hcl`, `hcl-long`, `cubehelix` and `cubehelix-long` ('-long' variants use longer paths in polar coordinate spaces). If object-valued, this property accepts an object with a string-valued _type_ property and an optional numeric _gamma_ property applicable to rgb and cubehelix interpolators. For more, see the [d3-interpolate documentation](https://github.com/d3/d3-interpolate).
      *
-     * * __Default value:__ `hcl`
+     * __Default value:__ `hcl`
      */
     interpolate?: ScaleInterpolate | ScaleInterpolateParams;
+
+    /**
+     * If `true` and the scale is used on a positional channel, it can bee zoomed and translated interactively.
+     */
+    zoom?: boolean | ZoomParams;
+
+    /**
+     * Use emulated 64bit floating points on the GPU to increase precision.
+     *
+     * Emulation has a performance cost when compared to the native 32bit processing, but the effect is negligible in the most cases.
+     *
+     * __Default value:__ `true` for `"locus"` scale, `false` for others.
+     */
+    fp64?: boolean;
 }
 
 export interface SchemeParams {
@@ -223,4 +242,17 @@ export type ScaleInterpolate =
 export interface ScaleInterpolateParams {
     type: "rgb" | "cubehelix" | "cubehelix-long";
     gamma?: number;
+}
+
+export type ScalarDomain = number[] | string[] | boolean[];
+
+/**
+ * A complex domain that needs to be converted into a scalar domain before it
+ * is assigned to a scale.
+ */
+export type ComplexDomain = ChromosomalLocus[];
+
+export interface ZoomParams {
+    /** The boundaries that limit the zoom and pan interactions. */
+    extent?: ScalarDomain | ComplexDomain;
 }
