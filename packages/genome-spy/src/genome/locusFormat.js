@@ -10,7 +10,7 @@ const numberFormat = d3format(",d");
  * @param {ChromosomalLocus} locus
  */
 export function formatLocus(locus) {
-    return locus.chromosome + ":" + numberFormat(Math.floor(locus.pos + 1));
+    return locus.chrom + ":" + numberFormat(Math.floor(locus.pos + 1));
 }
 
 /**
@@ -19,11 +19,11 @@ export function formatLocus(locus) {
  */
 export function formatRange(begin, end) {
     return (
-        begin.chromosome +
+        begin.chrom +
         ":" +
         numberFormat(Math.floor(begin.pos + 1)) +
         "-" +
-        (begin.chromosome != end.chromosome ? end.chromosome + ":" : "") +
+        (begin.chrom != end.chrom ? end.chrom + ":" : "") +
         numberFormat(Math.ceil(end.pos))
     );
 }

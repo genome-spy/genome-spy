@@ -1,17 +1,14 @@
 import { bisect } from "d3-array";
 import { tsvParseRows } from "d3-dsv";
 import { loader } from "vega-loader";
-import createDomain from "../utils/domainArray";
+import { isObject } from "vega-util";
 import { formatRange } from "./locusFormat";
 
 const defaultBaseUrl = "https://genomespy.app/data/genomes/";
 
 /**
  * @typedef {import("../spec/genome").GenomeConfig} GenomeConfig
- *
- * @typedef {object} ChromosomalLocus
- * @prop {string} chromosome
- * @prop {number} pos Zero-based index
+ * @typedef {import("../spec/genome").ChromosomalLocus} ChromosomalLocus
  *
  * @typedef {object} Chromosome
  * @prop {string} name
@@ -121,6 +118,8 @@ export default class Genome {
                 "chr" + plain,
                 "CHR" + plain,
                 "Chr" + plain,
+                // The number is a bit fragile because it depends on the order of the chromosomes.
+                // It probably works for autosomes, but X, Y, M, etc., not necessarily.
                 chrom.number,
                 "" + chrom.number,
                 plain,
@@ -185,7 +184,7 @@ export default class Genome {
         }
 
         return {
-            chromosome: chrom.name,
+            chrom: chrom.name,
             pos: Math.floor(continuousPos) - chrom.continuousStart
         };
     }
@@ -228,11 +227,26 @@ export default class Genome {
     }
 
     /**
+     * Returns a continuous interval. The optional position of the left end defaults to zero,
+     * the right end defaults to the size of the chromosome. Thus, the chromosome is inclusive
+     * when positions are omitted.
      *
      * @param {ChromosomalLocus[]} chromosomal
      */
     toContinuousInterval(chromosomal) {
-        return chromosomal.map(c => this.toContinuous(c.chromosome, c.pos));
+        let [a, b] = chromosomal;
+        if (!b) {
+            // A shortcut for a single chromosome. { domain: [{ chrom: "chr3" }] }
+            b = a;
+        }
+
+        return [
+            this.toContinuous(a.chrom, a.pos ?? 0),
+            this.toContinuous(
+                b.chrom,
+                b.pos ?? this.chromosomesByName.get(b.chrom)?.size
+            )
+        ];
     }
 
     /**
@@ -278,5 +292,14 @@ export function parseChromSizes(chromSizesData) {
  * @return {value is ChromosomalLocus}
  */
 export function isChromosomalLocus(value) {
-    return "chromosome" in value;
+    return isObject(value) && "chrom" in value;
+}
+
+/**
+ *
+ * @param {any[]} value
+ * @return {value is ChromosomalLocus[]}
+ */
+export function isChromosomalLocusInterval(value) {
+    return value.every(isChromosomalLocus);
 }

@@ -159,7 +159,7 @@ range would be defined as: x = 2 (inclusive), x2 = 5 (exclusive).
 
 The index scale expects zero-based indexing. However, it may be desirable to display
 the axis labels using one-based indexing. Use the `numberingOffset` property adjust
-the label indices. (TODO: Consider another name like "labelIndexBase")
+the label indices.
 
 <div><genome-spy-doc-embed height="100" spechidden="true">
 
@@ -214,6 +214,42 @@ The locus scale is used by default when the field type is `"locus"`.
     [linearizeGenomicCoordinate](../grammar/transform/linearize-genomic-coordinate.md)
     transform.
 
+#### Specifying the domain
+
+By default, the domain of the locus scale consists of the whole genome. However,
+You can specify a custom domain using either linearized or genomic coordinates.
+A genomic coordinate consists of a chromosome (`chrom`) and an optional position
+(`pos`). The left bound's position defaults to zero, whereas the right bound's
+position defaults to the size of the chromosome. Thus, the chromosomes are
+inclusive.
+
+For example, chromosomes 3, 4, and 5:
+
+```json
+[{ "chrom": "chr3" }, { "chrom": "chr5" }]
+```
+
+Only the chromosome 3:
+
+```json
+[{ "chrom": "chr3" }]
+```
+
+A specific region inside the chromosome 3:
+
+```json
+[
+  { "chrom": "chr3", "pos": 1000000 },
+  { "chrom": "chr3", "pos": 2000000 }
+]
+```
+
+Somewhere inside the chromosome 1:
+
+```json
+[1000000, 2000000]
+```
+
 #### Example
 
 <div><genome-spy-doc-embed height="80">
@@ -223,14 +259,21 @@ The locus scale is used by default when the field type is `"locus"`.
   "genome": { "name": "hg38" },
   "data": {
     "values": [
-      { "chrom": "chr1", "pos": 234567890 },
+      { "chrom": "chr3", "pos": 134567890 },
       { "chrom": "chr4", "pos": 123456789 },
       { "chrom": "chr9", "pos": 34567890 }
     ]
   },
   "mark": "point",
   "encoding": {
-    "x": { "chrom": "chrom", "pos": "pos", "type": "locus" },
+    "x": {
+      "chrom": "chrom",
+      "pos": "pos",
+      "type": "locus",
+      "scale": {
+        "domain": [{ "chrom": "chr3" }, { "chrom": "chr9" }]
+      }
+    },
     "size": { "value": 200 }
   }
 }
@@ -256,3 +299,21 @@ the `zoom` scale property to `true`. Example:
 ```
 
 Both `"index"` and `"locus"` scales are zoomable by default.
+
+### Zoom extent
+
+The zoom `extent` allows you to control how far the scale can be zoomed out or
+panned (translated). Zoom extent equals the scale domain by default, except for
+the `"locus"` scale, where it includes the whole genome. Example:
+
+```json
+{
+  ...,
+  "scale": {
+    "domain": [10, 20],
+    "zoom": {
+      "extent": [0, 30]
+    }
+  }
+}
+```

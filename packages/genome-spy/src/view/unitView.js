@@ -237,7 +237,12 @@ export default class UnitView extends ContainerView {
         const specDomain =
             channelDef && channelDef.scale && channelDef.scale.domain;
         if (specDomain) {
-            return createDomain(channelDef.type, specDomain);
+            const scaleResolution = this.getScaleResolution(channel);
+            return createDomain(
+                channelDef.type,
+                // Chrom/pos must be linearized first
+                scaleResolution.fromComplexInterval(specDomain)
+            );
         }
     }
 
