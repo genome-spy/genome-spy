@@ -228,10 +228,13 @@ export function linearizeLocusAccess(view) {
                     strip(chromPosDef.pos)
                 ].join("");
 
-                // Use spec directly because getEncoding() returns inherited props too.
+                // Prefer using the spec directly because getEncoding() returns inherited props too.
+                // TODO: I think this is not robust enough. Needs more work...
                 /** @type {any} */
                 const newFieldDef = {
-                    ...(view.spec.encoding?.[channel] || {}),
+                    ...(view.spec.encoding?.[channel] ??
+                        view.getEncoding()[channel] ??
+                        {}),
                     field: linearizedField
                 };
                 delete newFieldDef.chrom;
