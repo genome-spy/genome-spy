@@ -23,7 +23,7 @@
     "**/*-wc.js"
   ],
   "scripts": {
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "webpack --config webpack.prod.js",
     "start": "webpack-cli serve --progress --hot --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js",
     "buildSinglePage": "webpack --config webpack.singlepage.prod.js",
