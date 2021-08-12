@@ -16,7 +16,8 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/tuner/genome-spy"
+    "url": "github:tuner/genome-spy",
+    "directory": "packages/genome-spy"
   },
   "sideEffects": [
     "*.scss",
