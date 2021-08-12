@@ -5,8 +5,17 @@ import {
     isWebGL2,
     resizeFramebufferInfo
 } from "twgl.js";
-import { isArray } from "vega-util";
+import { isArray, isString } from "vega-util";
 import { getPlatformShaderDefines } from "./includes/fp64-utils";
+
+import { isDiscrete, isDiscretizing, isInterpolating } from "vega-scale";
+import {
+    createDiscreteColorTexture,
+    createDiscreteTexture,
+    createInterpolatedColorTexture,
+    createSchemeTexture
+} from "../scale/colorUtils";
+import { getDiscreteRangeMapper, isDiscreteChannel } from "../encoder/encoder";
 
 export default class WebGLHelper {
     /**
@@ -25,6 +34,11 @@ export default class WebGLHelper {
 
         /** @type {{ type: string, listener: function}[]} */
         this._listeners = [];
+
+        /** @type {WeakMap<import("../view/scaleResolution").default, WebGLTexture>} */
+        this.rangeTextures = new WeakMap();
+
+        // --------------------------------------------------------
 
         const canvas = document.createElement("canvas");
 
@@ -254,6 +268,106 @@ export default class WebGLHelper {
         gl.disable(gl.SCISSOR_TEST);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    /**
+     * Creates textures for color schemes and discrete/discretizing ranges.
+     * N.B. Discrete range textures need domain. Thus, this cannot be called
+     * before the final domains are resolved.
+     *
+     * TODO: This may be too specific to be included in WebGLHelper. Find a better place.
+     *
+     * @param {import("../view/scaleResolution").default} resolution
+     * @param {boolean} update Update the texture if it exists already.
+     */
+    createRangeTexture(resolution, update = false) {
+        if (!update && this.rangeTextures.has(resolution)) {
+            return;
+        }
+        // TODO: use setTextureFromArray() when updating textures
+
+        /**
+         * TODO: The count configuration logic etc should be combined
+         * with scale.js that configures d3 scales using vega specs
+         * @param {number} count
+         * @param {any} scale
+         * @returns {number}
+         */
+        function fixCount(count, scale) {
+            if (isDiscrete(scale.type)) {
+                return scale.domain().length;
+            } else if (scale.type == "threshold") {
+                return scale.domain().length + 1;
+            } else if (scale.type == "quantize") {
+                return count ?? 4;
+            } else if (scale.type == "quantile") {
+                return count ?? 4;
+            }
+            return count;
+        }
+
+        const channel = resolution.channel;
+
+        if (channel == "color") {
+            const props = resolution.getScaleProps();
+
+            const scale = resolution.getScale();
+
+            /** @type {WebGLTexture} */
+            let texture;
+
+            if (props.scheme) {
+                let count = isString(props.scheme)
+                    ? undefined
+                    : props.scheme.count;
+
+                count = fixCount(count, scale);
+
+                texture = createSchemeTexture(props.scheme, this.gl, count);
+            } else {
+                // No scheme, assume that colors are specified in the range
+
+                /** @type {any[]} */
+                const range = scale.range();
+
+                if (isInterpolating(scale.type)) {
+                    texture = createInterpolatedColorTexture(
+                        range,
+                        props.interpolate,
+                        this.gl
+                    );
+                } else {
+                    texture = createDiscreteColorTexture(
+                        range,
+                        this.gl,
+                        scale.domain().length
+                    );
+                }
+            }
+
+            this.rangeTextures.set(resolution, texture);
+        } else {
+            const scale = resolution.getScale();
+
+            if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
+                /** @type {function(any):number} Handle "shape" etc */
+                const mapper = isDiscreteChannel(channel)
+                    ? getDiscreteRangeMapper(channel)
+                    : x => x;
+
+                /** @type {any[]} */
+                const range = resolution.getScale().range();
+
+                this.rangeTextures.set(
+                    resolution,
+                    createDiscreteTexture(
+                        range.map(mapper),
+                        this.gl,
+                        scale.domain().length
+                    )
+                );
+            }
+        }
     }
 }
 

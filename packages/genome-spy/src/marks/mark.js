@@ -7,11 +7,10 @@ import {
     setUniformBlock,
     setUniforms
 } from "twgl.js";
-import { isDiscrete, isDiscretizing, isInterpolating } from "vega-scale";
+import { isDiscrete } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
 import createEncoders, {
-    getDiscreteRangeMapper,
-    isDiscreteChannel,
+    isChannelDefWithScale,
     isValueDef
 } from "../encoder/encoder";
 import {
@@ -28,13 +27,6 @@ import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
 import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher";
-import {
-    createDiscreteColorTexture,
-    createDiscreteTexture,
-    createInterpolatedColorTexture,
-    createSchemeTexture
-} from "../scale/colorUtils";
-import { isString } from "vega-util";
 import { createProgram } from "../gl/webGLHelper";
 import SampleView from "../view/sampleView/sampleView";
 import AxisView from "../view/axisView";
@@ -81,9 +73,6 @@ export default class Mark {
 
         /** @type {import("twgl.js").UniformBlockInfo} WebGL buffers */
         this.domainUniformInfo = undefined;
-
-        /** @type {Map<string, WebGLTexture>} */
-        this.rangeTextures = new Map();
 
         this.opaque = false;
 
@@ -250,108 +239,6 @@ export default class Mark {
     }
 
     /**
-     * Creates textures for color schemes and discrete/discretizing ranges.
-     * N.B. Discrete range textures need domain. Thus, this cannot be called
-     * before the final domains are resolved.
-     */
-    _createRangeTextures() {
-        /**
-         * TODO: The count configuration logic etc should be combined
-         * with scale.js that configures d3 scales using vega specs
-         * @param {number} count
-         * @param {any} scale
-         * @returns {number}
-         */
-        function fixCount(count, scale) {
-            if (isDiscrete(scale.type)) {
-                return scale.domain().length;
-            } else if (scale.type == "threshold") {
-                return scale.domain().length + 1;
-            } else if (scale.type == "quantize") {
-                return count ?? 4;
-            } else if (scale.type == "quantile") {
-                return count ?? 4;
-            }
-            return count;
-        }
-
-        // TODO: Identical and inherited schemes could be deduped
-
-        if (this.encoding.color && !isValueDef(this.encoding.color)) {
-            const resolution = this.unitView.getScaleResolution("color");
-            const props = resolution.getScaleProps();
-
-            const scale = resolution.getScale();
-
-            /** @type {WebGLTexture} */
-            let texture;
-
-            if (props.scheme) {
-                let count = isString(props.scheme)
-                    ? undefined
-                    : props.scheme.count;
-
-                count = fixCount(count, scale);
-
-                texture = createSchemeTexture(props.scheme, this.gl, count);
-            } else {
-                // No scheme, assume that colors are specified in the range
-
-                /** @type {any[]} */
-                const range = scale.range();
-
-                if (isInterpolating(scale.type)) {
-                    texture = createInterpolatedColorTexture(
-                        range,
-                        props.interpolate,
-                        this.gl
-                    );
-                } else {
-                    texture = createDiscreteColorTexture(
-                        range,
-                        this.gl,
-                        scale.domain().length
-                    );
-                }
-            }
-
-            this.rangeTextures.set("color", texture);
-        }
-
-        for (const [channel, channelDef] of Object.entries(this.encoding)) {
-            if (channel === "color" || isValueDef(channelDef)) {
-                continue;
-            }
-
-            const resolution = this.unitView.getScaleResolution(channel);
-            if (!resolution) {
-                continue;
-            }
-
-            const scale = resolution.getScale();
-
-            if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
-                /** @type {function(any):number} Handle "shape" etc */
-                const mapper = isDiscreteChannel(channel)
-                    ? getDiscreteRangeMapper(channel)
-                    : x => x;
-
-                /** @type {any[]} */
-                const range = resolution.getScale().range();
-
-                this.rangeTextures.set(
-                    channel,
-                    createDiscreteTexture(
-                        range.map(mapper),
-                        this.gl,
-                        scale.domain().length
-                    )
-                );
-            }
-        }
-    }
-
-    /**
      * Update WebGL buffers from the data
      */
     updateGraphicsData() {
@@ -492,8 +379,6 @@ export default class Mark {
                 "Domains"
             );
         }
-
-        this._createRangeTextures();
     }
 
     /**
@@ -612,6 +497,7 @@ export default class Mark {
      * @param {import("../view/rendering").GlobalRenderingOptions} options
      */
     prepareRender(options) {
+        const glHelper = this.glHelper;
         const gl = this.gl;
 
         if (!this.vertexArrayInfo) {
@@ -647,10 +533,16 @@ export default class Mark {
             setUniformBlock(gl, this.programInfo, this.domainUniformInfo);
         }
 
-        for (const [channel, texture] of this.rangeTextures.entries()) {
-            setUniforms(this.programInfo, {
-                [RANGE_TEXTURE_PREFIX + channel]: texture
-            });
+        for (const [channel, channelDef] of Object.entries(this.encoding)) {
+            if (isChannelDefWithScale(channelDef)) {
+                const resolution = this.unitView.getScaleResolution(channel);
+                const texture = glHelper.rangeTextures.get(resolution);
+                if (texture) {
+                    setUniforms(this.programInfo, {
+                        [RANGE_TEXTURE_PREFIX + channel]: texture
+                    });
+                }
+            }
         }
 
         if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
