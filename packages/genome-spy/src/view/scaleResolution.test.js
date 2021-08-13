@@ -191,6 +191,41 @@ describe("Scale resolution", () => {
             view.children[2].children[0].getScaleResolution("x")
         );
     });
+
+    test("Default resolution is configurable", async () => {
+        /** @type {import("../spec/view").LayerSpec} */
+        const spec = {
+            data: { values: [] },
+            encoding: {
+                x: { field: "data", type: "quantitative" },
+                y: { field: "data", type: "quantitative" }
+            },
+
+            resolve: {
+                scale: {
+                    // The hard default in LayerView is "shared".
+                    default: "independent",
+                    x: "shared"
+                },
+                axis: {
+                    // TODO: Implicit
+                    default: "independent"
+                }
+            },
+
+            layer: [{ mark: "point" }, { mark: "point" }]
+        };
+
+        const view = await createAndInitialize(spec, LayerView);
+
+        expect(view.children[0].getScaleResolution("x")).toBe(
+            view.children[1].getScaleResolution("x")
+        );
+
+        expect(view.children[0].getScaleResolution("y")).not.toBe(
+            view.children[1].getScaleResolution("y")
+        );
+    });
 });
 
 describe("Domain handling", () => {

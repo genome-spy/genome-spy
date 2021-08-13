@@ -142,7 +142,7 @@ export type ResolutionTarget = "scale" | "axis";
 export type ResolutionBehavior = "independent" | "shared" | "excluded";
 export interface ResolveSpec {
     resolve?: Partial<
-        Record<ResolutionTarget, Record<string, ResolutionBehavior>>
+        Record<ResolutionTarget, Record<"default" | string, ResolutionBehavior>>
     >;
 }
 

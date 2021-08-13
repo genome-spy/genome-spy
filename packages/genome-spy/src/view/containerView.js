@@ -134,7 +134,8 @@ export default class ContainerView extends View {
      */
     getConfiguredOrDefaultResolution(channel, resolutionType) {
         return (
-            this.getConfiguredResolution(channel, resolutionType) ||
+            this.getConfiguredResolution(channel, resolutionType) ??
+            this.getConfiguredResolution("default", resolutionType) ??
             this.getDefaultResolution(channel, resolutionType)
         );
     }

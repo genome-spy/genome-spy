@@ -210,7 +210,9 @@ export function isImportSpec(spec) {
  * @returns {typeof View}
  */
 export function getViewClass(spec) {
+    /** @type {typeof View} */
     let ViewClass;
+
     if (isImportSpec(spec)) {
         ViewClass = ImportView;
     } else if (isLayerSpec(spec)) {
@@ -231,7 +233,8 @@ export function getViewClass(spec) {
 
     if (!ViewClass) {
         throw new Error(
-            "Invalid spec, cannot figure out the view: " + JSON.stringify(spec)
+            "Invalid spec, cannot figure out the view type from the properties: " +
+                JSON.stringify([...Object.keys(spec)])
         );
     }
 
