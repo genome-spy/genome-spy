@@ -359,6 +359,7 @@ export default class Mark {
             if (error.detail) {
                 console.warn(error.detail);
             }
+            /** @type {Error & { view?: import("../view/view").default}} */
             const err = new Error(
                 "Cannot create shader program: " + error.message
             );

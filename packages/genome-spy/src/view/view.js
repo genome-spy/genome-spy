@@ -6,7 +6,7 @@ import {
     invalidatePrefix
 } from "../utils/propertyCacher";
 import { isNumber, span } from "vega-util";
-import { scaleLinear, scaleLog } from "d3-scale";
+import { scaleLog } from "d3-scale";
 import { isFieldDef, primaryChannel } from "../encoder/encoder";
 import { appendToBaseUrl } from "../utils/url";
 

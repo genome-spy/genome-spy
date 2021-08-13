@@ -4,7 +4,6 @@ import RuleMark from "../marks/rule";
 import LinkMark from "../marks/link";
 import TextMark from "../marks/text";
 
-import View from "./view";
 import ContainerView from "./containerView";
 import ScaleResolution from "./scaleResolution";
 import {
@@ -31,6 +30,7 @@ export const markTypes = {
 };
 
 /**
+ * @typedef {import("./view").default} View
  * @typedef {import("./layerView").default} LayerView
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  * @typedef {import("../encoder/accessor").Accessor} Accessor
@@ -82,8 +82,8 @@ export default class UnitView extends ContainerView {
     }
 
     /**
-     * @param {import("./view").default} child
-     * @param {import("./view").default} replacement
+     * @param {View} child
+     * @param {View} replacement
      */
     replaceChild(child, replacement) {
         const i = this.sampleAggregateViews.indexOf(child);

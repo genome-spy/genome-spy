@@ -8,7 +8,7 @@ import FacetView from "./facetView";
 import SampleView from "./sampleView/sampleView";
 import ConcatView from "./concatView";
 import DecoratorView from "./decoratorView";
-import { VISIT_SKIP, VISIT_STOP } from "./view";
+import View, { VISIT_SKIP, VISIT_STOP } from "./view";
 import { buildDataFlow } from "./flowBuilder";
 import { optimizeDataFlow } from "../data/flowOptimizer";
 import { isFieldDef, isValueDef } from "../encoder/encoder";
@@ -402,7 +402,7 @@ export async function initializeData(root, existingFlow) {
  * @param {View} view
  */
 export function findEncodedFields(view) {
-    /** @type {{view: View, channel: string, field: string, type: string}[]} */
+    /** @type {{view: UnitView, channel: string, field: string, type: string}[]} */
     const fieldInfos = [];
 
     view.visit(view => {

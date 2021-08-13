@@ -39,7 +39,6 @@ const SPACING = 10;
  * @typedef {import("../../utils/layout/flexLayout").LocSize} LocSize
  * @typedef {import("../view").default} View
  * @typedef {import("../layerView").default} LayerView
- * @typedef {import("../unitView").default} UnitView
  * @typedef {import("../decoratorView").default} DecoratorView
  * @typedef {import("../../data/dataFlow").default<View>} DataFlow
  * @typedef {import("../../data/sources/dynamicSource").default} DynamicSource
@@ -76,6 +75,7 @@ export default class SampleView extends ContainerView {
         this.stickySummaries = spec.stickySummaries ?? true;
 
         const View = getViewClass(spec.spec);
+        /** @type { UnitView | LayerView | DecoratorView } */
         this.child = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
             spec.spec,
             context,
@@ -141,17 +141,23 @@ export default class SampleView extends ContainerView {
                 specifier.path
             ));
 
-            const genome = this.getScaleResolution("x").getGenome();
-            const numericLocus = isNumber(specifier.locus)
-                ? specifier.locus
-                : genome
-                ? genome.toContinuous(
-                      specifier.locus.chrom,
-                      specifier.locus.pos
-                  )
-                : error(
-                      "Encountered a complex locus but no genome is available!"
-                  );
+            /** @type {number} */
+            let numericLocus;
+            if (isNumber(specifier.locus)) {
+                numericLocus = specifier.locus;
+            } else {
+                const genome = this.getScaleResolution("x").getGenome();
+                if (genome) {
+                    numericLocus = genome.toContinuous(
+                        specifier.locus.chrom,
+                        specifier.locus.pos
+                    );
+                } else {
+                    throw new Error(
+                        "Encountered a complex locus but no genome is available!"
+                    );
+                }
+            }
 
             /** @param {string} sampleId */
             const accessor = sampleId =>
@@ -210,6 +216,7 @@ export default class SampleView extends ContainerView {
                     // Only allow horizontal panning.
                     event.uiEvent = {
                         type: wheelEvent.type,
+                        // @ts-ignore
                         deltaX: wheelEvent.deltaX,
                         preventDefault: wheelEvent.preventDefault.bind(
                             wheelEvent
@@ -343,9 +350,10 @@ export default class SampleView extends ContainerView {
             new ProcessSample()
         );
 
-        collector.observers.push(collector =>
-            this._setSamples([...collector.getData()])
-        );
+        collector.observers.push(collector => {
+            const samples = /** @type {Sample[]} */ (collector.getData());
+            this._setSamples([...samples]);
+        });
 
         // Synchronize loading with other data
         const key = "samples " + this.getPathString();
@@ -387,7 +395,7 @@ export default class SampleView extends ContainerView {
                 viewportHeight,
                 {
                     canvasHeight: this._coords.height,
-                    groupSpacing: 5,
+                    groupSpacing: 5, // TODO: Configurable
                     summaryHeight
                 }
             );
@@ -398,7 +406,7 @@ export default class SampleView extends ContainerView {
                 viewportHeight,
                 {
                     sampleHeight: 35, // TODO: Configurable
-                    groupSpacing: 15,
+                    groupSpacing: 15, // TODO: Configurable
                     summaryHeight
                 }
             );
