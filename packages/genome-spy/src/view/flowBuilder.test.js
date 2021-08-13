@@ -7,6 +7,8 @@ import SequenceSource from "../data/sources/sequenceSource";
 import { buildDataFlow } from "./flowBuilder";
 import { create } from "./testUtils";
 import CloneTransform from "../data/transforms/clone";
+import LayerView from "./layerView";
+import UnitView from "./unitView";
 
 /**
  *
@@ -27,17 +29,20 @@ const mark = {
 };
 
 test("Trivial flow", () => {
-    const root = create({
-        data: { values: [3.141] },
-        transform: [
-            {
-                type: "formula",
-                expr: "datum.data * 2",
-                as: "x"
-            }
-        ],
-        mark
-    });
+    const root = create(
+        {
+            data: { values: [3.141] },
+            transform: [
+                {
+                    type: "formula",
+                    expr: "datum.data * 2",
+                    as: "x"
+                }
+            ],
+            mark
+        },
+        UnitView
+    );
 
     const flow = buildDataFlow(root);
     const dataSource = flow.dataSources[0];
@@ -51,30 +56,33 @@ test("Trivial flow", () => {
 });
 
 test("Branching flow", () => {
-    const root = create({
-        data: { values: [3.141] },
-        layer: [
-            {
-                transform: [
-                    {
-                        type: "formula",
-                        expr: "datum.data * 2",
-                        as: "x"
-                    }
-                ],
-                mark
-            },
-            {
-                transform: [
-                    {
-                        type: "filter",
-                        expr: "datum.data > 4"
-                    }
-                ],
-                mark
-            }
-        ]
-    });
+    const root = create(
+        {
+            data: { values: [3.141] },
+            layer: [
+                {
+                    transform: [
+                        {
+                            type: "formula",
+                            expr: "datum.data * 2",
+                            as: "x"
+                        }
+                    ],
+                    mark
+                },
+                {
+                    transform: [
+                        {
+                            type: "filter",
+                            expr: "datum.data > 4"
+                        }
+                    ],
+                    mark
+                }
+            ]
+        },
+        LayerView
+    );
 
     const dataSource = buildDataFlow(root).dataSources[0];
 
@@ -88,17 +96,20 @@ test("Branching flow", () => {
 });
 
 test("Nested data sources", () => {
-    const root = create({
-        data: { values: [1] },
-        transform: [{ type: "filter", expr: "datum.data > 0" }],
-        layer: [
-            {
-                data: { sequence: { start: 0, stop: 5 } },
-                transform: [{ type: "formula", expr: "3", as: "foo" }],
-                mark
-            }
-        ]
-    });
+    const root = create(
+        {
+            data: { values: [1] },
+            transform: [{ type: "filter", expr: "datum.data > 0" }],
+            layer: [
+                {
+                    data: { sequence: { start: 0, stop: 5 } },
+                    transform: [{ type: "formula", expr: "3", as: "foo" }],
+                    mark
+                }
+            ]
+        },
+        LayerView
+    );
 
     const dataSources = buildDataFlow(root).dataSources;
 

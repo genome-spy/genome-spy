@@ -5,26 +5,31 @@ import { create, createAndInitialize } from "./testUtils";
 import { toRegularArray as r } from "../utils/domainArray";
 import ConcatView from "./concatView";
 import PointMark from "../marks/pointMark";
+import View from "./view";
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", () => {
-        expect(() => create({})).toThrow();
+        // @ts-ignore
+        expect(() => create({}, View)).toThrow();
     });
 
     test("Parses a trivial spec", () => {
-        expect(create({ mark: "point" })).toBeInstanceOf(UnitView);
-        expect(create({ layer: [] })).toBeInstanceOf(LayerView);
+        expect(create({ mark: "point" }, View)).toBeInstanceOf(UnitView);
+        expect(create({ layer: [] }, View)).toBeInstanceOf(LayerView);
     });
 
     test("Parses a more comples spec", () => {
-        const view = create({
-            concat: [
-                {
-                    layer: [{ mark: "point" }, { mark: "rect" }]
-                },
-                { mark: "rect" }
-            ]
-        });
+        const view = create(
+            {
+                concat: [
+                    {
+                        layer: [{ mark: "point" }, { mark: "rect" }]
+                    },
+                    { mark: "rect" }
+                ]
+            },
+            ConcatView
+        );
 
         expect(view).toBeInstanceOf(ConcatView);
         expect(view.children[0]).toBeInstanceOf(LayerView);
@@ -44,7 +49,9 @@ describe("Trivial creations and initializations", () => {
             }
         };
 
-        expect(createAndInitialize(spec)).resolves.toBeInstanceOf(UnitView);
+        expect(createAndInitialize(spec, View)).resolves.toBeInstanceOf(
+            UnitView
+        );
     });
 });
 
@@ -71,7 +78,7 @@ describe("Test domain handling", () => {
             }
         };
 
-        return createAndInitialize(spec).then(view =>
+        return createAndInitialize(spec, UnitView).then(view =>
             expect(r(view.getConfiguredDomain("y"))).toEqual([0, 1000])
         );
     });
@@ -86,7 +93,7 @@ describe("Test domain handling", () => {
             }
         };
 
-        return createAndInitialize(spec).then(view =>
+        return createAndInitialize(spec, UnitView).then(view =>
             expect(r(view.extractDataDomain("x"))).toEqual([123, 123])
         );
     });
@@ -101,7 +108,7 @@ describe("Test domain handling", () => {
             }
         };
 
-        return createAndInitialize(spec).then(view =>
+        return createAndInitialize(spec, UnitView).then(view =>
             expect(r(view.extractDataDomain("y"))).toEqual([1, 3])
         );
     });
@@ -117,7 +124,7 @@ describe("Test domain handling", () => {
             }
         };
 
-        return createAndInitialize(spec).then(view =>
+        return createAndInitialize(spec, UnitView).then(view =>
             expect(r(view.extractDataDomain("y"))).toEqual([1, 5])
         );
     });
@@ -125,61 +132,79 @@ describe("Test domain handling", () => {
 
 describe("Utility methods", () => {
     test("BaseUrl is handled correctly", async () => {
-        createAndInitialize({
-            layer: []
-        }).then(view => expect(view.getBaseUrl()).toBeUndefined());
+        createAndInitialize(
+            {
+                layer: []
+            },
+            LayerView
+        ).then(view => expect(view.getBaseUrl()).toBeUndefined());
 
-        await createAndInitialize({
-            baseUrl: "blaa",
-            layer: []
-        }).then(view => expect(view.getBaseUrl()).toEqual("blaa"));
+        await createAndInitialize(
+            {
+                baseUrl: "blaa",
+                layer: []
+            },
+            LayerView
+        ).then(view => expect(view.getBaseUrl()).toEqual("blaa"));
 
-        await createAndInitialize({
-            baseUrl: "https://site.com",
-            layer: []
-        }).then(view => expect(view.getBaseUrl()).toEqual("https://site.com"));
+        await createAndInitialize(
+            {
+                baseUrl: "https://site.com",
+                layer: []
+            },
+            LayerView
+        ).then(view => expect(view.getBaseUrl()).toEqual("https://site.com"));
 
-        await createAndInitialize({
-            baseUrl: "https://site.com",
-            layer: [
-                {
-                    baseUrl: "blaa",
-                    layer: []
-                }
-            ]
-        }).then(view =>
+        await createAndInitialize(
+            {
+                baseUrl: "https://site.com",
+                layer: [
+                    {
+                        baseUrl: "blaa",
+                        layer: []
+                    }
+                ]
+            },
+            LayerView
+        ).then(view =>
             expect(view.children[0].getBaseUrl()).toEqual(
                 "https://site.com/blaa"
             )
         );
 
-        await createAndInitialize({
-            baseUrl: "https://site.com",
-            layer: [
-                {
-                    baseUrl: "https://another-site.com",
-                    layer: []
-                }
-            ]
-        }).then(view =>
+        await createAndInitialize(
+            {
+                baseUrl: "https://site.com",
+                layer: [
+                    {
+                        baseUrl: "https://another-site.com",
+                        layer: []
+                    }
+                ]
+            },
+            LayerView
+        ).then(view =>
             expect(view.children[0].getBaseUrl()).toEqual(
                 "https://another-site.com"
             )
         );
 
-        await createAndInitialize({
-            baseUrl: "https://site.com",
-            layer: [
-                {
-                    layer: [
-                        {
-                            baseUrl: "blaa",
-                            layer: []
-                        }
-                    ]
-                }
-            ]
-        }).then(view =>
+        await createAndInitialize(
+            {
+                baseUrl: "https://site.com",
+                layer: [
+                    {
+                        layer: [
+                            {
+                                baseUrl: "blaa",
+                                layer: []
+                            }
+                        ]
+                    }
+                ]
+            },
+            LayerView
+        ).then(view =>
             expect(view.children[0].children[0].getBaseUrl()).toEqual(
                 "https://site.com/blaa"
             )

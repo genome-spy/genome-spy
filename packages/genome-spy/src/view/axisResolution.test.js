@@ -1,4 +1,6 @@
+import LayerView from "./layerView";
 import { createAndInitialize } from "./testUtils";
+import UnitView from "./unitView";
 
 /** @type {import("../spec/view").LayerSpec} */
 const spec = {
@@ -43,7 +45,7 @@ describe("Axes resolve properly", () => {
             resolve: { scale: { y: "shared" }, axis: { y: "independent" } }
         };
 
-        const view = await createAndInitialize(independentSpec);
+        const view = await createAndInitialize(independentSpec, LayerView);
         const [r0, r1] = [0, 1].map(i =>
             view.children[i].getAxisResolution("y")
         );
@@ -54,55 +56,64 @@ describe("Axes resolve properly", () => {
     });
 
     test("Shared axes have joined titles", async () => {
-        const view = await createAndInitialize(sharedSpec);
+        const view = await createAndInitialize(sharedSpec, LayerView);
         expect(view.children[0].getAxisResolution("y").getTitle()).toEqual(
             "a, b"
         );
     });
 
     test("Title is taken from axis title, encoding title, and field name, in that order.", async () => {
-        let view = await createAndInitialize({
-            data: { values: [1] },
-            mark: "point",
-            encoding: {
-                x: { field: "a", type: "quantitative" },
-                y: {
-                    field: "a",
-                    type: "quantitative"
-                }
-            }
-        });
-        expect(view.getAxisResolution("y").getTitle()).toEqual("a");
-
-        view = await createAndInitialize({
-            data: { values: [1] },
-            mark: "point",
-            encoding: {
-                x: { field: "a", type: "quantitative" },
-                y: {
-                    field: "a",
-                    title: "x",
-                    type: "quantitative"
-                }
-            }
-        });
-        expect(view.getAxisResolution("y").getTitle()).toEqual("x");
-
-        view = await createAndInitialize({
-            data: { values: [1] },
-            mark: "point",
-            encoding: {
-                x: { field: "a", type: "quantitative" },
-                y: {
-                    field: "a",
-                    title: "x",
-                    type: "quantitative",
-                    axis: {
-                        title: "z"
+        let view = await createAndInitialize(
+            {
+                data: { values: [1] },
+                mark: "point",
+                encoding: {
+                    x: { field: "a", type: "quantitative" },
+                    y: {
+                        field: "a",
+                        type: "quantitative"
                     }
                 }
-            }
-        });
+            },
+            UnitView
+        );
+        expect(view.getAxisResolution("y").getTitle()).toEqual("a");
+
+        view = await createAndInitialize(
+            {
+                data: { values: [1] },
+                mark: "point",
+                encoding: {
+                    x: { field: "a", type: "quantitative" },
+                    y: {
+                        field: "a",
+                        title: "x",
+                        type: "quantitative"
+                    }
+                }
+            },
+            UnitView
+        );
+        expect(view.getAxisResolution("y").getTitle()).toEqual("x");
+
+        view = await createAndInitialize(
+            {
+                data: { values: [1] },
+                mark: "point",
+                encoding: {
+                    x: { field: "a", type: "quantitative" },
+                    y: {
+                        field: "a",
+                        title: "x",
+                        type: "quantitative",
+                        axis: {
+                            title: "z"
+                        }
+                    }
+                }
+            },
+            UnitView
+        );
         expect(view.getAxisResolution("y").getTitle()).toEqual("z");
     });
 

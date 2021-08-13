@@ -1,5 +1,7 @@
 import { createAndInitialize } from "./testUtils";
 import createDomain, { toRegularArray as r } from "../utils/domainArray";
+import LayerView from "./layerView";
+import UnitView from "./unitView";
 
 /** @type {import("../spec/view").LayerSpec} */
 const spec = {
@@ -41,7 +43,7 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
             .domain();
 
     test("Scales (domains) are shared and merged by default on layers", async () => {
-        const view = await createAndInitialize(spec);
+        const view = await createAndInitialize(spec, LayerView);
 
         expect(r(d(view))).toEqual([1, 5]);
         expect(r(d(view.children[0]))).toEqual([1, 5]);
@@ -58,28 +60,31 @@ describe("Scales resolve with with non-trivial hierarchy", () => {
             }
         };
 
-        const view = await createAndInitialize(independentSpec);
+        const view = await createAndInitialize(independentSpec, LayerView);
         expect(view.getScaleResolution("y")).toBeUndefined();
         expect(r(d(view.children[0]))).toEqual([1, 2]);
         expect(r(d(view.children[1]))).toEqual([4, 5]);
     });
 
     test("Channels with just values (no fields or scales) do not resolve", async () => {
-        const view = await createAndInitialize(spec);
+        const view = await createAndInitialize(spec, LayerView);
         expect(view.getScaleResolution("color")).toBeUndefined();
     });
 });
 
 describe("Domain handling", () => {
     test("Channels with quantitative fields include zero in their scale domain by default", async () => {
-        const view = await createAndInitialize({
-            data: { values: [2, 3] },
-            mark: "point",
-            encoding: {
-                x: { field: "data", type: "quantitative" },
-                y: { field: "data", type: "quantitative" }
-            }
-        });
+        const view = await createAndInitialize(
+            {
+                data: { values: [2, 3] },
+                mark: "point",
+                encoding: {
+                    x: { field: "data", type: "quantitative" },
+                    y: { field: "data", type: "quantitative" }
+                }
+            },
+            UnitView
+        );
 
         for (const channel of ["x", "y"]) {
             // Extract domain from data
@@ -97,22 +102,25 @@ describe("Domain handling", () => {
     });
 
     test("Channels with quantitative fields do not include zero in their scale domain if the domain has been defined explicitly", async () => {
-        const view = await createAndInitialize({
-            data: { values: [2, 3] },
-            mark: "point",
-            encoding: {
-                x: {
-                    field: "data",
-                    type: "quantitative",
-                    scale: { domain: [1, 4] }
-                },
-                y: {
-                    field: "data",
-                    type: "quantitative",
-                    scale: { domain: [1, 4] }
+        const view = await createAndInitialize(
+            {
+                data: { values: [2, 3] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "data",
+                        type: "quantitative",
+                        scale: { domain: [1, 4] }
+                    },
+                    y: {
+                        field: "data",
+                        type: "quantitative",
+                        scale: { domain: [1, 4] }
+                    }
                 }
-            }
-        });
+            },
+            UnitView
+        );
 
         const d = /** @param {string} channel*/ channel =>
             view
@@ -125,22 +133,25 @@ describe("Domain handling", () => {
     });
 
     test("Channels with quantitative fields do not include zero in their scale domain if zero is explicitly false", async () => {
-        const view = await createAndInitialize({
-            data: { values: [2, 3] },
-            mark: "point",
-            encoding: {
-                x: {
-                    field: "data",
-                    type: "quantitative",
-                    scale: { zero: false }
-                },
-                y: {
-                    field: "data",
-                    type: "quantitative",
-                    scale: { zero: false }
+        const view = await createAndInitialize(
+            {
+                data: { values: [2, 3] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "data",
+                        type: "quantitative",
+                        scale: { zero: false }
+                    },
+                    y: {
+                        field: "data",
+                        type: "quantitative",
+                        scale: { zero: false }
+                    }
                 }
-            }
-        });
+            },
+            UnitView
+        );
 
         for (const channel of ["x", "y"]) {
             // Extract domain from data
