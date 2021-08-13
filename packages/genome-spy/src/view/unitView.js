@@ -35,7 +35,7 @@ export const markTypes = {
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  * @typedef {import("../encoder/accessor").Accessor} Accessor
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
- * @typedef {import("./containerView").ResolutionType} ResolutionType
+ * @typedef {import("../spec/view").ResolutionTarget} ResolutionTarget
  * @typedef {import("./decoratorView").default} DecoratorView
  *
  */
@@ -119,7 +119,7 @@ export default class UnitView extends ContainerView {
      * Pulls scales and axes up in the view hierarcy according to the resolution rules.
      * TODO: legends
      *
-     * @param {ResolutionType} type
+     * @param {ResolutionTarget} type
      */
     resolve(type) {
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
@@ -145,8 +145,11 @@ export default class UnitView extends ContainerView {
             let view = this;
             while (
                 view.parent instanceof ContainerView &&
-                view.parent.getConfiguredOrDefaultResolution(channel, type) ==
-                    "shared"
+                ["shared", "excluded"].includes(
+                    view.parent.getConfiguredOrDefaultResolution(channel, type)
+                ) &&
+                view.getConfiguredOrDefaultResolution(channel, type) !=
+                    "excluded"
             ) {
                 // @ts-ignore
                 view = view.parent;
@@ -350,7 +353,8 @@ export default class UnitView extends ContainerView {
 
     /**
      * @param {string} channel
-     * @param {import("./containerView").ResolutionType} resolutionType
+     * @param {import("./containerView").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         // This affects the sample aggregate views.

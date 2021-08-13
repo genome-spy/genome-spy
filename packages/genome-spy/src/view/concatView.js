@@ -230,7 +230,8 @@ export default class ConcatView extends ContainerView {
 
     /**
      * @param {string} channel
-     * @param {import("./containerView").ResolutionType} resolutionType
+     * @param {import("./containerView").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         // TODO: Default to shared when working with genomic coordinates

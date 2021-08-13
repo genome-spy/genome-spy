@@ -27,7 +27,7 @@ export const VISIT_STOP = "VISIT_STOP";
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
  * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
  *
- * @typedef {import("./containerView").ResolutionType} ResolutionType
+ * @typedef {import("../spec/view").ResolutionTarget} ResolutionTarget
  * @typedef {import("./scaleResolution").default} ScaleResolution
  * @typedef {import("./axisResolution").default} AxisResolution
  *
@@ -346,7 +346,7 @@ export default class View {
     /**
      *
      * @param {string} channel
-     * @param {ResolutionType} type
+     * @param {ResolutionTarget} type
      */
     _getResolution(channel, type) {
         channel = primaryChannel(channel);

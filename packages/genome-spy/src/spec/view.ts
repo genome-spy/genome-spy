@@ -57,7 +57,7 @@ export interface DynamicOpacity {
 
 export type ViewOpacityDef = number | DynamicOpacity;
 
-export interface ViewSpecBase {
+export interface ViewSpecBase extends ResolveSpec {
     name?: string;
 
     height?: SizeDef | number | "container";
@@ -133,11 +133,17 @@ export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
     mark: string | MarkConfig;
 }
 
+export type ResolutionTarget = "scale" | "axis";
+
+/**
+ * `"independent"` and `"shared"` behave similarly to Vega-Lite.
+ * `"excluded"` behaves like `"shared"`, but is not pulled towards the root.
+ */
+export type ResolutionBehavior = "independent" | "shared" | "excluded";
 export interface ResolveSpec {
-    resolve?: {
-        scale: Record<string, "independent" | "shared">;
-        axis: Record<string, "independent" | "shared">;
-    };
+    resolve?: Partial<
+        Record<ResolutionTarget, Record<string, ResolutionBehavior>>
+    >;
 }
 
 export type ContainerSpec = (

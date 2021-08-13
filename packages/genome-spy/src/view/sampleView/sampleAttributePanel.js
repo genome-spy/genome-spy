@@ -406,7 +406,8 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {string} channel
-     * @param {import("../containerView").ResolutionType} resolutionType
+     * @param {import("../containerView").ResolutionTarget} resolutionType
+     * @returns {import("../../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         return "independent";
