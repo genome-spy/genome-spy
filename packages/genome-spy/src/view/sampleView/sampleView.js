@@ -25,6 +25,8 @@ import FlowNode from "../../data/flowNode";
 import { createChain } from "../flowBuilder";
 import ConcatView from "../concatView";
 import UnitView from "../unitView";
+import { GroupPanel } from "./groupPanel";
+import { invalidatePrefix } from "../../utils/propertyCacher";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -55,9 +57,8 @@ const SPACING = 10;
  * @prop {string} field
  * @prop {number | ChromosomalLocus} locus Locus on the domain
  *
- * @typedef {object} SampleLocation
- * @prop {string} sampleId
- * @prop {LocSize} location
+ * @typedef {import("./sampleViewTypes").SampleLocation} SampleLocation
+ * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
  */
 export default class SampleView extends ContainerView {
     /**
@@ -120,6 +121,8 @@ export default class SampleView extends ContainerView {
         this.sampleHandler = new SampleHandler();
 
         this.sampleHandler.provenance.addListener(() => {
+            this._updateGroupView();
+
             // TODO: Handle scroll offset instead
             this._peekState = 0;
 
@@ -127,7 +130,25 @@ export default class SampleView extends ContainerView {
             this.context.animator.requestRender();
         });
 
+        /** @type {ConcatView} */
+        this.peripheryView = new ConcatView(
+            {
+                resolve: {
+                    scale: { default: "independent" },
+                    axis: { default: "independent" }
+                },
+                hconcat: []
+            },
+            context,
+            this,
+            "periphery"
+        );
+
+        this.groupView = new GroupPanel(this);
+        this.peripheryView.addChild(this.groupView);
+
         this.attributeView = new SampleAttributePanel(this);
+        this.peripheryView.addChild(this.attributeView);
 
         this.child.addInteractionEventListener(
             "contextmenu",
@@ -210,6 +231,9 @@ export default class SampleView extends ContainerView {
                         this._scrollableHeight - this._coords.height
                     );
 
+                    this.context.animator.requestTransition(() =>
+                        this.groupView.updateRange()
+                    );
                     this.context.animator.requestRender();
 
                     // Replace the uiEvent to prevent decoratorView from zooming.
@@ -257,7 +281,7 @@ export default class SampleView extends ContainerView {
                     0,
                     childEffPad.right,
                     0,
-                    this.attributeView.getSize().width.px +
+                    this.peripheryView.getSize().width.px +
                         SPACING +
                         childEffPad.left
                 )
@@ -323,7 +347,7 @@ export default class SampleView extends ContainerView {
      */
     *[Symbol.iterator]() {
         yield this.child;
-        yield this.attributeView;
+        yield this.peripheryView;
     }
 
     /**
@@ -331,11 +355,12 @@ export default class SampleView extends ContainerView {
      * @param {import("../view").default} replacement
      */
     replaceChild(child, replacement) {
-        if (child !== this.child) {
+        const r = /** @type {UnitView | LayerView | DecoratorView} */ (replacement);
+        if (child === this.child) {
+            this.child = r;
+        } else {
             throw new Error("Not my child!");
         }
-
-        this.child = /** @type {UnitView | LayerView | DecoratorView} */ (replacement);
     }
 
     loadSamples() {
@@ -394,7 +419,7 @@ export default class SampleView extends ContainerView {
                 flattened,
                 viewportHeight,
                 {
-                    canvasHeight: this._coords.height,
+                    viewHeight: this._coords.height,
                     groupSpacing: 5, // TODO: Configurable
                     summaryHeight
                 }
@@ -418,47 +443,44 @@ export default class SampleView extends ContainerView {
             this._scrollableLocations = scrollableLocations;
 
             // TODO: Use groups to calculate
-            this._scrollableHeight = scrollableLocations.groupLocations
-                .map(d => d.location + d.size)
+            this._scrollableHeight = scrollableLocations.summaries
+                .map(d => d.locSize.location + d.locSize.size)
                 .reduce((a, b) => Math.max(a, b), 0);
 
-            /** @type {SampleLocation[]} */
-            const sampleLocations = [];
-            const fsamplel = fittedLocations.sampleLocations;
-            for (let i = 0; i < fsamplel.length; i++) {
-                const sampleId = fsamplel[i].sampleId;
-                sampleLocations.push({
-                    sampleId,
-                    location: interpolateLocSizes(
-                        fsamplel[i].location,
-                        translateLocSize(
-                            scrollableLocations.sampleLocations[i].location,
-                            offsetSource
-                        ),
-                        ratioSource
-                    )
-                });
-            }
-
-            /** @type {LocSize[]} */
-            const summaryLocations = [];
-            const fsuml = fittedLocations.groupLocations;
-            for (let i = 0; i < fsuml.length; i++) {
-                summaryLocations.push(
-                    interpolateLocSizes(
-                        fsuml[i],
-                        translateLocSize(
-                            scrollableLocations.groupLocations[i],
-                            offsetSource
-                        ),
-                        ratioSource
-                    )
-                );
-            }
+            /** @type {<K, T extends import("./sampleViewTypes").KeyAndLocation<K>>(fitted: T[], scrollable: T[]) => T[]} */
+            const makeInterpolatedLocations = (fitted, scrollable) => {
+                /** @type {any[]} */
+                const interactiveLocations = [];
+                for (let i = 0; i < fitted.length; i++) {
+                    const key = fitted[i].key;
+                    interactiveLocations.push({
+                        key,
+                        locSize: interpolateLocSizes(
+                            fitted[i].locSize,
+                            translateLocSize(
+                                scrollable[i].locSize,
+                                offsetSource
+                            ),
+                            ratioSource
+                        )
+                    });
+                }
+                return interactiveLocations;
+            };
 
             this._locations = {
-                samples: sampleLocations,
-                groups: summaryLocations
+                samples: makeInterpolatedLocations(
+                    fittedLocations.samples,
+                    scrollableLocations.samples
+                ),
+                summaries: makeInterpolatedLocations(
+                    fittedLocations.summaries,
+                    scrollableLocations.summaries
+                ),
+                groups: makeInterpolatedLocations(
+                    fittedLocations.groups,
+                    scrollableLocations.groups
+                )
             };
         }
 
@@ -471,17 +493,17 @@ export default class SampleView extends ContainerView {
     getSampleIdAt(pos) {
         const match = getSampleLocationAt(pos, this.getLocations().samples);
         if (match) {
-            return match.sampleId;
+            return match.key;
         }
     }
 
     /**
      * @param {number} pos
      */
-    getGroupAt(pos) {
-        const groups = this.getLocations().groups;
-        const groupIndex = groups.findIndex(locSize =>
-            locSizeEncloses(locSize, pos)
+    getSummaryAt(pos) {
+        const groups = this.getLocations().summaries;
+        const groupIndex = groups.findIndex(summaryLocation =>
+            locSizeEncloses(summaryLocation.locSize, pos)
         );
 
         return groupIndex >= 0
@@ -518,11 +540,11 @@ export default class SampleView extends ContainerView {
                 ...options,
                 sampleFacetRenderingOptions: {
                     locSize: scaleLocSize(
-                        sampleLocation.location,
+                        sampleLocation.locSize,
                         heightFactorSource
                     )
                 },
-                facetId: [sampleLocation.sampleId],
+                facetId: [sampleLocation.key],
                 clipRect
             });
         }
@@ -541,12 +563,20 @@ export default class SampleView extends ContainerView {
 
         const summaryHeight = this.summaryViews.getSize().height.px;
 
-        for (const [i, groupLocation] of this.getLocations().groups.entries()) {
+        for (const [
+            i,
+            summaryLocation
+        ] of this.getLocations().summaries.entries()) {
             const y = () => {
-                const gLoc = groupLocation.location;
+                const gLoc = summaryLocation.locSize.location;
                 let pos = coords.y + gLoc;
                 return this.stickySummaries
-                    ? pos + clamp(-gLoc, 0, groupLocation.size - summaryHeight)
+                    ? pos +
+                          clamp(
+                              -gLoc,
+                              0,
+                              summaryLocation.locSize.size - summaryHeight
+                          )
                     : pos;
             };
 
@@ -573,7 +603,7 @@ export default class SampleView extends ContainerView {
         this._coords = coords;
 
         const cols = mapToPixelCoords(
-            [this.attributeView.getSize().width, { grow: 1 }],
+            [this.peripheryView.getSize().width, { grow: 1 }],
             coords.width,
             { spacing: SPACING }
         );
@@ -585,7 +615,7 @@ export default class SampleView extends ContainerView {
                 width: location.size
             });
 
-        this.attributeView.render(context, toColumnCoords(cols[0]), options);
+        this.peripheryView.render(context, toColumnCoords(cols[0]), options);
         this.renderChild(context, toColumnCoords(cols[1]), options);
 
         this.renderSummaries(context, toColumnCoords(cols[1]), options);
@@ -609,9 +639,9 @@ export default class SampleView extends ContainerView {
 
         for (const sampleLocation of sampleLocations) {
             // TODO: Get rid of the map lookup
-            const index = sampleMap.get(sampleLocation.sampleId).indexNumber;
-            arr[index * 2 + 0] = sampleLocation.location.location / height;
-            arr[index * 2 + 1] = sampleLocation.location.size / height;
+            const index = sampleMap.get(sampleLocation.key).indexNumber;
+            arr[index * 2 + 0] = sampleLocation.locSize.location / height;
+            arr[index * 2 + 1] = sampleLocation.locSize.size / height;
         }
 
         const gl = this.context.glHelper.gl;
@@ -629,6 +659,34 @@ export default class SampleView extends ContainerView {
                 src: arr
             });
         }
+    }
+
+    _updateGroupView() {
+        this._locations = undefined;
+
+        const dynamicSource = /** @type {import("../../data/sources/dynamicSource").default} */ (this.context.dataFlow.findDataSourceByKey(
+            this.groupView
+        ));
+
+        dynamicSource.publishData(
+            this.getLocations().groups.map(g => ({
+                index: g.key.index,
+                name: g.key.group.name,
+                depth: g.key.depth
+            }))
+        );
+
+        // TODO: Get rid of the following. Should happen automatically:
+        this.groupView.getScaleResolution("x").reconfigure();
+        this.groupView.getScaleResolution("y").reconfigure();
+
+        this.groupView.updateRange();
+
+        // TODO: Get rid of the following. Should happen automatically:
+        peek([...this.getAncestors()]).visit(view =>
+            invalidatePrefix(view, "size")
+        );
+        this.context.glHelper.invalidateSize();
     }
 
     /**
@@ -650,6 +708,9 @@ export default class SampleView extends ContainerView {
                 this.context.animator.requestTransition(callback),
             onUpdate: value => {
                 this._peekState = Math.pow(value, 2);
+                this.context.animator.requestTransition(() =>
+                    this.groupView.updateRange()
+                );
                 this.context.animator.requestRender();
             },
             from: this._peekState
@@ -666,19 +727,19 @@ export default class SampleView extends ContainerView {
                     locSize.location + locSize.size / 2;
 
                 target = getCentroid(
-                    this._scrollableLocations.sampleLocations.find(
-                        sampleLocation => sampleLocation.sampleId == sampleId
-                    ).location
+                    this._scrollableLocations.samples.find(
+                        sampleLocation => sampleLocation.key == sampleId
+                    ).locSize
                 );
             } else {
                 // Match sample summaries
-                const groupInfo = this.getGroupAt(mouseY);
+                const groupInfo = this.getSummaryAt(mouseY);
                 if (groupInfo) {
+                    // TODO: Simplify now that target is available in groupLocations
                     target =
-                        this._scrollableLocations.groupLocations[
-                            groupInfo.index
-                        ].location -
-                        (groupInfo.location.location - mouseY);
+                        this._scrollableLocations.summaries[groupInfo.index]
+                            .locSize.location -
+                        (groupInfo.location.locSize.location - mouseY);
                 }
             }
 
@@ -799,7 +860,8 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {string} channel
-     * @param {import("../containerView").ResolutionType} resolutionType
+     * @param {import("../containerView").ResolutionTarget} resolutionType
+     * @returns {import("../../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         switch (channel) {
@@ -860,53 +922,69 @@ function extractAttributes(row) {
  * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
  * @param {number} viewportHeight
  * @param {object} object All measures are in pixels
- * @param {number} [object.canvasHeight] Height reserved for all the samples
+ * @param {number} [object.viewHeight] Height reserved for all the samples
  * @param {number} [object.sampleHeight] Height of single sample
  * @param {number} [object.groupSpacing] Space between groups
  * @param {number} [object.summaryHeight] Height of group summaries
  *
- * @returns {{sampleLocations: SampleLocation[], groupLocations: LocSize[]}}
  */
 function calculateLocations(
     flattenedGroupHierarchy,
     viewportHeight,
-    { canvasHeight, sampleHeight, groupSpacing = 5, summaryHeight = 0 }
+    { viewHeight = 0, sampleHeight = 0, groupSpacing = 5, summaryHeight = 0 }
 ) {
-    if (!canvasHeight && !sampleHeight) {
-        throw new Error("canvasHeight or sampleHeight must be provided!");
+    if (!viewHeight && !sampleHeight) {
+        throw new Error("viewHeight or sampleHeight must be provided!");
     }
 
-    const sampleGroups = flattenedGroupHierarchy
-        .map(
-            group =>
-                /** @type {import("../../sampleHandler/sampleHandler").SampleGroup} */ (peek(
-                    group
-                )).samples
-        )
+    /** @param {Group[]} path */
+    const getSampleGroup = path =>
+        /** @type {import("../../sampleHandler/sampleHandler").SampleGroup} */ (peek(
+            path
+        ));
+
+    const sampleGroupEntries = flattenedGroupHierarchy
+        .map(path => ({
+            path,
+            sampleGroup: getSampleGroup(path),
+            samples: getSampleGroup(path).samples
+        }))
         // Skip empty groups
-        .filter(samples => samples.length);
+        .filter(entry => entry.samples.length);
 
     /** @type {function(string[]):import("../../utils/layout/flexLayout").SizeDef} */
     const sizeDefGenerator = sampleHeight
-        ? group => ({ px: group.length * sampleHeight + summaryHeight })
+        ? group => ({
+              px: group.length * sampleHeight + summaryHeight,
+              grow: 0
+          })
         : group => ({ px: summaryHeight, grow: group.length });
 
-    const groupLocations = mapToPixelCoords(
-        sampleGroups.map(sizeDefGenerator),
-        canvasHeight || 0,
-        { spacing: groupSpacing }
-    );
+    /** @type {GroupLocation[]}} */
+    const groupLocations = [];
 
-    /** @type {{ sampleId: string, location: LocSize }[]} */
+    mapToPixelCoords(
+        sampleGroupEntries.map(entry => sizeDefGenerator(entry.samples)),
+        viewHeight,
+        { spacing: groupSpacing }
+    ).forEach((location, i) => {
+        groupLocations.push({
+            key: sampleGroupEntries[i].path,
+            locSize: location
+        });
+    });
+
+    /** @type {SampleLocation[]} */
     const sampleLocations = [];
 
-    for (const [gi, samples] of sampleGroups.entries()) {
+    for (const [gi, entry] of sampleGroupEntries.entries()) {
         const sizeDef = { grow: 1 };
+        const samples = entry.samples;
         mapToPixelCoords(
             samples.map(d => sizeDef),
-            Math.max(0, groupLocations[gi].size - summaryHeight),
+            Math.max(0, groupLocations[gi].locSize.size - summaryHeight),
             {
-                offset: groupLocations[gi].location + summaryHeight
+                offset: groupLocations[gi].locSize.location + summaryHeight
             }
         ).forEach((locSize, i) => {
             const { size, location } = locSize;
@@ -918,15 +996,62 @@ function calculateLocations(
             locSize.size = size - 2 * padding;
 
             sampleLocations.push({
-                sampleId: samples[i],
-                location: locSize
+                key: samples[i],
+                locSize: locSize
             });
         });
     }
 
+    function* extract() {
+        /** @type {{group: Group, locSize: LocSize, depth: number}[]} */
+        const stack = [];
+        for (const entry of groupLocations) {
+            const path = entry.key;
+            while (
+                stack.length <= path.length &&
+                stack.length &&
+                path[stack.length - 1] != stack[stack.length - 1].group
+            ) {
+                yield stack.pop();
+            }
+
+            for (let i = 0; i < stack.length; i++) {
+                const stackItem = stack[i];
+                stackItem.locSize.size =
+                    entry.locSize.location -
+                    stackItem.locSize.location +
+                    entry.locSize.size;
+            }
+
+            for (let i = stack.length; i < path.length; i++) {
+                stack.push({
+                    group: path[i],
+                    locSize: { ...entry.locSize },
+                    depth: stack.length
+                });
+            }
+        }
+        while (stack.length) {
+            yield stack.pop();
+        }
+    }
+
+    /** @type {import("./sampleViewTypes").HierarchicalGroupLocation[]} */
+    const groups = [...extract()]
+        .sort((a, b) => a.depth - b.depth)
+        .map((entry, index) => ({
+            key: {
+                index,
+                group: entry.group,
+                depth: entry.depth
+            },
+            locSize: entry.locSize
+        }));
+
     return {
-        sampleLocations,
-        groupLocations
+        samples: sampleLocations,
+        summaries: groupLocations,
+        groups
     };
 }
 
@@ -937,5 +1062,5 @@ function calculateLocations(
  */
 function getSampleLocationAt(pos, sampleLocations) {
     // TODO: Matching should be done without paddings
-    return sampleLocations.find(sl => locSizeEncloses(sl.location, pos));
+    return sampleLocations.find(sl => locSizeEncloses(sl.locSize, pos));
 }
