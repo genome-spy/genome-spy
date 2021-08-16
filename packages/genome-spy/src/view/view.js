@@ -7,8 +7,14 @@ import {
 } from "../utils/propertyCacher";
 import { isNumber, span } from "vega-util";
 import { scaleLog } from "d3-scale";
-import { isFieldDef, primaryChannel } from "../encoder/encoder";
+import {
+    isDiscreteChannel,
+    isFieldDef,
+    primaryChannel
+} from "../encoder/encoder";
 import { appendToBaseUrl } from "../utils/url";
+import { isDiscrete, isDiscretizing } from "vega-scale";
+import { peek } from "../utils/arrayUtils";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -125,18 +131,55 @@ export default class View {
         );
     }
 
+    /**
+     * @return {FlexDimensions}
+     */
     getSizeFromSpec() {
+        /**
+         *
+         * @param {"width" | "height"} dimension
+         * @return {SizeDef}
+         */
+        const handleSize = dimension => {
+            /** @type {SizeDef} */
+            let sizeDef;
+            let value = this.spec[dimension];
+
+            if (isStepSize(value)) {
+                const stepSize = value.step;
+
+                const scale = this.getScaleResolution(
+                    dimension == "width" ? "x" : "y"
+                )?.getScale();
+
+                if (scale) {
+                    // Note: this and all ancestral views need to be refreshed when the domain is changed.
+                    let steps = 0;
+                    if (isDiscrete(scale.type)) {
+                        steps = scale.domain().length;
+                    } else if (["locus", "index"].includes(scale.type)) {
+                        const domain = scale.domain();
+                        steps = peek(domain) - domain[0];
+                    } else {
+                        throw new Error(
+                            `Cannot use step-based size with "${scale.type}" scale!`
+                        );
+                    }
+                    sizeDef = { px: steps * stepSize, grow: 0 };
+                } else {
+                    throw new Error(
+                        "Cannot use 'step' size with missing scale!"
+                    );
+                }
+            } else {
+                sizeDef = (value && parseSizeDef(value)) || { px: 0, grow: 1 };
+            }
+            return sizeDef;
+        };
+
         return this._cache(
             "size/sizeFromSpec",
-            () =>
-                new FlexDimensions(
-                    (this.spec.width && parseSizeDef(this.spec.width)) || {
-                        grow: 1
-                    },
-                    (this.spec.height && parseSizeDef(this.spec.height)) || {
-                        grow: 1
-                    }
-                )
+            () => new FlexDimensions(handleSize("width"), handleSize("height"))
         );
     }
 
@@ -487,3 +530,10 @@ function createViewOpacityFunction(view) {
     }
     return parentOpacity => parentOpacity;
 }
+
+/**
+ *
+ * @param {any} size
+ * @return {size is import("../spec/view").Step}
+ */
+export const isStepSize = size => !!size?.step;

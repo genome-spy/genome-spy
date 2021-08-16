@@ -1,4 +1,5 @@
 import { isNumber } from "vega-util";
+import { isStepSize } from "../../view/view";
 
 /**
  *
@@ -17,7 +18,7 @@ import { isNumber } from "vega-util";
  * @prop {number} size
  *
  * @typedef {object} FlexOptions
- * @prop {number} [spacing] space between items in pixels
+ * @prop {number} [spacing] gap between items in pixels
  * @prop {number} [devicePixelRatio] allows for snapping to "retina" pixels.
  *      Default: `undefined`, which disables the snapping.
  * @prop {number} [offset] add the offset to all locations. Default: `0`.
@@ -145,11 +146,13 @@ export function isSizeDef(spec) {
 
 /**
  *
- * @param {"container" | number | SizeDef} size
+ * @param {"container" | number | SizeDef | import("../../spec/view").Step} size
  * @returns {SizeDef}
  */
 export function parseSizeDef(size) {
-    if (isSizeDef(size)) {
+    if (isStepSize(size)) {
+        throw new Error("parseSizeDef does not accept step-based sizes.");
+    } else if (isSizeDef(size)) {
         return size;
     } else if (isNumber(size)) {
         return { px: size, grow: 0 };

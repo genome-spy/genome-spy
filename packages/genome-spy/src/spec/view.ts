@@ -57,11 +57,15 @@ export interface DynamicOpacity {
 
 export type ViewOpacityDef = number | DynamicOpacity;
 
+export interface Step {
+    step: number;
+}
+
 export interface ViewSpecBase extends ResolveSpec {
     name?: string;
 
-    height?: SizeDef | number | "container";
-    width?: SizeDef | number | "container";
+    height?: SizeDef | number | Step | "container";
+    width?: SizeDef | number | Step | "container";
     /** Padding in pixels. Default: 0 */
     padding?: number;
 

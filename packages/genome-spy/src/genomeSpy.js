@@ -36,6 +36,7 @@ import Inertia, { makeEventTemplate } from "./utils/inertia";
 import refseqGeneTooltipHandler from "./utils/tooltip/refseqGeneTooltipHandler";
 import dataTooltipHandler from "./utils/tooltip/dataTooltipHandler";
 import SampleView from "./view/sampleView/sampleView";
+import { invalidatePrefix } from "./utils/propertyCacher";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -331,6 +332,11 @@ export default class GenomeSpy {
         for (const view of unitViews) {
             view.mark.finalizeGraphicsInitialization();
         }
+
+        // Invalidate cached sizes to ensure that step-based sizes are current.
+        // TODO: This should be done automatically when the domains of band/point scales are updated.
+        this.viewRoot.visit(view => invalidatePrefix(view, "size"));
+        this._glHelper.invalidateSize();
     }
 
     /**
