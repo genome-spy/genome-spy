@@ -109,7 +109,9 @@ export class FlexDimensions {
      */
     constructor(width, height) {
         // TODO: Consider making immutable
+        /** @readonly */
         this.width = width;
+        /** @readonly */
         this.height = height;
     }
 
@@ -119,10 +121,16 @@ export class FlexDimensions {
      * @param {import("./padding").default} padding
      */
     addPadding(padding) {
-        this.width.px = (this.width.px || 0) + padding.width;
-        this.height.px = (this.height.px || 0) + padding.height;
-
-        return this;
+        return new FlexDimensions(
+            {
+                px: (this.width.px || 0) + padding.width,
+                grow: this.width.grow
+            },
+            {
+                px: (this.height.px || 0) + padding.height,
+                grow: this.height.grow
+            }
+        );
     }
 }
 
