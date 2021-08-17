@@ -1,3 +1,5 @@
+#define PI 3.141593
+
 /** Offset in "unit" units */
 uniform vec2 uViewOffset;
 

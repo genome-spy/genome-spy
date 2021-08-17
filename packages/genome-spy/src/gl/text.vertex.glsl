@@ -12,19 +12,16 @@ uniform vec4 uViewportEdgeFadeDistance;
 uniform bool uSqueeze;
 uniform bool uLogoLetter;
 
-#ifdef x2_DEFINED
 // Width of the text (all letters)
 in float width;
 
+#ifdef x2_DEFINED
 uniform float uPaddingX;
 uniform int uAlignX; // -1, 0, 1 = left, center, right
 uniform bool uFlushX;
 #endif
 
 #ifdef y2_DEFINED
-// Height of the text (font size)
-in float height;
-
 uniform float uPaddingY;
 uniform int uAlignY; // -1, 0, 1 = top, middle, bottom 
 uniform bool uFlushY;
@@ -117,7 +114,11 @@ void main(void) {
 
     float scale = 1.0;
 
-    // TODO: !!!!!!!!!!!! Make ranged text compatible with rotated text !!!!!!!!!!!
+    // TODO: Support arbitrary angles
+	vec2 flushSize = (
+		(uAngle < 0.51 * PI && uAngle > 0.49 * PI) ||
+		(uAngle > -0.51 * PI && uAngle < -0.49 * PI)
+	) ? vec2(1.0, width) : vec2(width, 1.0);
 
 #ifdef x2_DEFINED
     float x2 = getScaled_x2();
@@ -130,7 +131,7 @@ void main(void) {
         float x2 = getScaled_x2();
         RangeResult result = positionInsideRange(
             min(x, x2), max(x, x2),
-            size.x * width / uViewportSize.x, uPaddingX / uViewportSize.x,
+            size.x * scale * flushSize.x / uViewportSize.x, uPaddingX / uViewportSize.x,
             uAlignX, uFlushX);
         
         x = result.pos;
@@ -152,7 +153,7 @@ void main(void) {
     } else {
         RangeResult result = positionInsideRange(
             min(pos.y, pos2.y), max(pos.y, pos2.y),
-            size.y * scale / uViewportSize.y, uPaddingY / uViewportSize.y,
+            size.y * scale * flushSize.y / uViewportSize.y, uPaddingY / uViewportSize.y,
             uAlignY, uFlushY);
         
         pos.y = result.pos;
