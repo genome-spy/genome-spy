@@ -1,3 +1,4 @@
+import { range } from "d3-array";
 import LayerView from "../layerView";
 
 /**
@@ -14,7 +15,7 @@ export class GroupPanel extends LayerView {
     constructor(sampleView) {
         super(
             {
-                width: { step: 20 },
+                width: { step: 22 },
 
                 data: { dynamicSource: true },
 
@@ -28,7 +29,7 @@ export class GroupPanel extends LayerView {
                     x: {
                         field: "depth",
                         type: "ordinal",
-                        scale: { paddingInner: 0.25 },
+                        scale: { paddingInner: 0.2272727 },
                         axis: null
                     },
                     y: {
@@ -36,24 +37,7 @@ export class GroupPanel extends LayerView {
                         type: "nominal",
                         scale: {
                             type: "ordinal",
-                            domain: [
-                                0,
-                                1,
-                                2,
-                                3,
-                                4,
-                                5,
-                                6,
-                                7,
-                                8,
-                                9,
-                                10,
-                                11,
-                                12,
-                                13,
-                                14,
-                                15
-                            ]
+                            domain: range(50) // Hack needed because domains are not (yet) sorted
                         },
                         axis: null
                     },

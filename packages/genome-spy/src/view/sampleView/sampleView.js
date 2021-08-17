@@ -27,6 +27,7 @@ import ConcatView from "../concatView";
 import UnitView from "../unitView";
 import { GroupPanel } from "./groupPanel";
 import { invalidatePrefix } from "../../utils/propertyCacher";
+import { createOrUpdateTexture } from "../../gl/webGLHelper";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -231,9 +232,14 @@ export default class SampleView extends ContainerView {
                         this._scrollableHeight - this._coords.height
                     );
 
+                    this.groupView.updateRange();
+                    /*
+					// Putting this to transition phase causes latency of one frame.
+					// TODO: Investigate why.
                     this.context.animator.requestTransition(() =>
                         this.groupView.updateRange()
-                    );
+					);
+					*/
                     this.context.animator.requestRender();
 
                     // Replace the uiEvent to prevent decoratorView from zooming.
@@ -645,20 +651,17 @@ export default class SampleView extends ContainerView {
         }
 
         const gl = this.context.glHelper.gl;
-        const options = {
-            internalFormat: gl.RG32F,
-            format: gl.RG,
-            height: 1
-        };
 
-        if (this.facetTexture) {
-            setTextureFromArray(gl, this.facetTexture, arr, options);
-        } else {
-            this.facetTexture = createTexture(gl, {
-                ...options,
-                src: arr
-            });
-        }
+        this.facetTexture = createOrUpdateTexture(
+            gl,
+            {
+                internalFormat: gl.RG32F,
+                format: gl.RG,
+                height: 1
+            },
+            arr,
+            this.facetTexture
+        );
     }
 
     _updateGroupView() {
