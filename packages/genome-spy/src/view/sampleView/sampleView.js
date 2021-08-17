@@ -122,7 +122,9 @@ export default class SampleView extends ContainerView {
         this.sampleHandler = new SampleHandler();
 
         this.sampleHandler.provenance.addListener(() => {
-            this._updateGroupView();
+            this._locations = undefined;
+
+            this.groupView.updateGroups(this.getLocations().groups);
 
             // TODO: Handle scroll offset instead
             this._peekState = 0;
@@ -138,7 +140,8 @@ export default class SampleView extends ContainerView {
                     scale: { default: "independent" },
                     axis: { default: "independent" }
                 },
-                hconcat: []
+                hconcat: [],
+                spacing: 0
             },
             context,
             this,
@@ -664,34 +667,6 @@ export default class SampleView extends ContainerView {
         );
     }
 
-    _updateGroupView() {
-        this._locations = undefined;
-
-        const dynamicSource = /** @type {import("../../data/sources/dynamicSource").default} */ (this.context.dataFlow.findDataSourceByKey(
-            this.groupView
-        ));
-
-        dynamicSource.publishData(
-            this.getLocations().groups.map(g => ({
-                index: g.key.index,
-                name: g.key.group.name,
-                depth: g.key.depth
-            }))
-        );
-
-        // TODO: Get rid of the following. Should happen automatically:
-        this.groupView.getScaleResolution("x").reconfigure();
-        this.groupView.getScaleResolution("y").reconfigure();
-
-        this.groupView.updateRange();
-
-        // TODO: Get rid of the following. Should happen automatically:
-        peek([...this.getAncestors()]).visit(view =>
-            invalidatePrefix(view, "size")
-        );
-        this.context.glHelper.invalidateSize();
-    }
-
     /**
      * @param {boolean} [open] open if true, close if false, toggle if undefined
      */
@@ -711,9 +686,7 @@ export default class SampleView extends ContainerView {
                 this.context.animator.requestTransition(callback),
             onUpdate: value => {
                 this._peekState = Math.pow(value, 2);
-                this.context.animator.requestTransition(() =>
-                    this.groupView.updateRange()
-                );
+                this.groupView.updateRange();
                 this.context.animator.requestRender();
             },
             from: this._peekState

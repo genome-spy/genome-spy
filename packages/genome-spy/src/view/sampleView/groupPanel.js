@@ -1,4 +1,6 @@
 import { range } from "d3-array";
+import { peek } from "../../utils/arrayUtils";
+import { invalidatePrefix } from "../../utils/propertyCacher";
 import LayerView from "../layerView";
 
 /**
@@ -29,7 +31,16 @@ export class GroupPanel extends LayerView {
                     x: {
                         field: "depth",
                         type: "ordinal",
-                        scale: { paddingInner: 0.2272727 },
+                        scale: {
+                            align: 0,
+                            padding: 0.2272727
+                        },
+                        /*
+                        axis: {
+                            title: null,
+                            domain: false
+						}
+						*/
                         axis: null
                     },
                     y: {
@@ -57,7 +68,8 @@ export class GroupPanel extends LayerView {
                             type: "text",
                             clip: true,
                             dynamicData: true,
-                            angle: -90
+                            angle: -90,
+                            paddingY: 5
                         },
                         encoding: {
                             text: { field: "name", type: "nominal" }
@@ -71,6 +83,7 @@ export class GroupPanel extends LayerView {
         );
 
         this.sampleView = sampleView;
+        this.groupLocations = undefined;
     }
 
     updateRange() {
@@ -81,7 +94,7 @@ export class GroupPanel extends LayerView {
         /** @type {number[]} */
         const yRange = [];
 
-        for (const g of this.sampleView.getLocations().groups) {
+        for (const g of this.groupLocations) {
             yRange.push(1 - (g.locSize.location + g.locSize.size) / viewHeight);
             yRange.push(1 - g.locSize.location / viewHeight);
         }
@@ -89,5 +102,36 @@ export class GroupPanel extends LayerView {
         //yRes.getScale().domain(yRange.map((x, i) => i));
         yRes.getScale().range(yRange);
         this.context.glHelper.createRangeTexture(yRes, true);
+    }
+
+    /**
+     *
+     * @param {import("./sampleViewTypes").HierarchicalGroupLocation[]} groupLocations
+     */
+    updateGroups(groupLocations) {
+        const dynamicSource = /** @type {import("../../data/sources/dynamicSource").default} */ (this.context.dataFlow.findDataSourceByKey(
+            this
+        ));
+
+        this.groupLocations = groupLocations;
+
+        const data = groupLocations.map(g => ({
+            index: g.key.index,
+            name: g.key.group.name,
+            depth: g.key.depth
+        }));
+
+        dynamicSource.publishData(data);
+
+        // TODO: Get rid of the following. Should happen automatically:
+        this.getScaleResolution("x").reconfigure();
+        this.getScaleResolution("y").reconfigure();
+
+        this.updateRange();
+
+        // TODO: Get rid of the following. Should happen automatically:
+        peek([...this.getAncestors()]).visit(view =>
+            invalidatePrefix(view, "size")
+        );
     }
 }
