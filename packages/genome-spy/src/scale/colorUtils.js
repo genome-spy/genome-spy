@@ -2,15 +2,16 @@ import { color as d3color } from "d3-color";
 import { range } from "d3-array";
 import { scheme as vegaScheme, interpolateColors } from "vega-scale";
 import { isString, isArray, isFunction } from "vega-util";
-import { createTexture } from "twgl.js";
 import { peek } from "../utils/arrayUtils";
+import { createOrUpdateTexture } from "../gl/webGLHelper";
 
 /**
  * @param {string | import("../spec/scale").SchemeParams} schemeParams
  * @param {WebGL2RenderingContext} gl
  * @param {number} [count]
+ * @param {WebGLTexture} [existingTexture]
  */
-export function createSchemeTexture(schemeParams, gl, count) {
+export function createSchemeTexture(schemeParams, gl, count, existingTexture) {
     const schemeName = isString(schemeParams)
         ? schemeParams
         : schemeParams.name;
@@ -28,13 +29,17 @@ export function createSchemeTexture(schemeParams, gl, count) {
                 extent,
                 count
             });
-            return createTexture(gl, {
-                minMag: gl.LINEAR,
-                format: gl.RGB,
-                src: textureData,
-                height: 1,
-                wrap: gl.CLAMP_TO_EDGE
-            });
+            return createOrUpdateTexture(
+                gl,
+                {
+                    minMag: gl.LINEAR,
+                    format: gl.RGB,
+                    height: 1,
+                    wrap: gl.CLAMP_TO_EDGE
+                },
+                textureData,
+                existingTexture
+            );
         } else if (isArray(scheme)) {
             return createDiscreteColorTexture(scheme, gl);
         } else {
@@ -47,11 +52,13 @@ export function createSchemeTexture(schemeParams, gl, count) {
  * @param {string[]} colors
  * @param {import("../spec/scale").ScaleInterpolate | import("../spec/scale").ScaleInterpolateParams} interpolateParams
  * @param {WebGL2RenderingContext} gl
+ * @param {WebGLTexture} [existingTexture]
  */
 export function createInterpolatedColorTexture(
     colors,
     interpolateParams = "rgb",
-    gl
+    gl,
+    existingTexture
 ) {
     const interpolator = interpolateColors(
         colors,
@@ -63,13 +70,17 @@ export function createInterpolatedColorTexture(
 
     // TODO: Reverse
     const textureData = interpolatorToTextureData(interpolator);
-    return createTexture(gl, {
-        minMag: gl.LINEAR,
-        format: gl.RGB,
-        src: textureData,
-        height: 1,
-        wrap: gl.CLAMP_TO_EDGE
-    });
+    return createOrUpdateTexture(
+        gl,
+        {
+            minMag: gl.LINEAR,
+            format: gl.RGB,
+            height: 1,
+            wrap: gl.CLAMP_TO_EDGE
+        },
+        textureData,
+        existingTexture
+    );
 }
 
 /**
@@ -79,8 +90,9 @@ export function createInterpolatedColorTexture(
  * @param {number[]} range
  * @param {WebGL2RenderingContext} gl
  * @param {number} [count]
+ * @param {WebGLTexture} [existingTexture]
  */
-export function createDiscreteTexture(range, gl, count) {
+export function createDiscreteTexture(range, gl, count, existingTexture) {
     const size = Math.max(range.length, count || 0);
     const textureData = new Float32Array(size);
 
@@ -88,13 +100,17 @@ export function createDiscreteTexture(range, gl, count) {
         textureData[i] = range[i % range.length];
     }
 
-    return createTexture(gl, {
-        minMag: gl.NEAREST,
-        format: gl.RED,
-        internalFormat: gl.R32F,
-        src: textureData,
-        height: 1
-    });
+    return createOrUpdateTexture(
+        gl,
+        {
+            minMag: gl.NEAREST,
+            format: gl.RED,
+            internalFormat: gl.R32F,
+            height: 1
+        },
+        textureData,
+        existingTexture
+    );
 }
 
 /**
@@ -103,15 +119,20 @@ export function createDiscreteTexture(range, gl, count) {
  * @param {string[]} colors
  * @param {WebGL2RenderingContext} gl
  * @param {number} [count]
+ * @param {WebGLTexture} [existingTexture]
  */
-export function createDiscreteColorTexture(colors, gl, count) {
+export function createDiscreteColorTexture(colors, gl, count, existingTexture) {
     const textureData = colorArrayToTextureData(colors, count);
-    return createTexture(gl, {
-        minMag: gl.NEAREST,
-        format: gl.RGB,
-        src: textureData,
-        height: 1
-    });
+    return createOrUpdateTexture(
+        gl,
+        {
+            minMag: gl.NEAREST,
+            format: gl.RGB,
+            height: 1
+        },
+        textureData,
+        existingTexture
+    );
 }
 
 /**
