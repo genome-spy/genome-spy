@@ -1,9 +1,11 @@
 import {
     addExtensionsToContext,
     createFramebufferInfo,
+    createTexture,
     getContext,
     isWebGL2,
-    resizeFramebufferInfo
+    resizeFramebufferInfo,
+    setTextureFromArray
 } from "twgl.js";
 import { isArray, isString } from "vega-util";
 import { getPlatformShaderDefines } from "./includes/fp64-utils";
@@ -281,10 +283,10 @@ export default class WebGLHelper {
      * @param {boolean} update Update the texture if it exists already.
      */
     createRangeTexture(resolution, update = false) {
-        if (!update && this.rangeTextures.has(resolution)) {
+        const existingTexture = this.rangeTextures.get(resolution);
+        if (!update && existingTexture) {
             return;
         }
-        // TODO: use setTextureFromArray() when updating textures
 
         /**
          * TODO: The count configuration logic etc should be combined
@@ -323,24 +325,30 @@ export default class WebGLHelper {
 
                 count = fixCount(count, scale);
 
-                texture = createSchemeTexture(props.scheme, this.gl, count);
+                texture = createSchemeTexture(
+                    props.scheme,
+                    this.gl,
+                    count,
+                    existingTexture
+                );
             } else {
                 // No scheme, assume that colors are specified in the range
 
-                /** @type {any[]} */
-                const range = scale.range();
+                const range = /** @type {any[]} */ (scale.range());
 
                 if (isInterpolating(scale.type)) {
                     texture = createInterpolatedColorTexture(
                         range,
                         props.interpolate,
-                        this.gl
+                        this.gl,
+                        existingTexture
                     );
                 } else {
                     texture = createDiscreteColorTexture(
                         range,
                         this.gl,
-                        scale.domain().length
+                        scale.domain().length,
+                        existingTexture
                     );
                 }
             }
@@ -355,15 +363,17 @@ export default class WebGLHelper {
                     ? getDiscreteRangeMapper(channel)
                     : x => x;
 
-                /** @type {any[]} */
-                const range = resolution.getScale().range();
+                const range = /** @type {any[]} */ (resolution
+                    .getScale()
+                    .range());
 
                 this.rangeTextures.set(
                     resolution,
                     createDiscreteTexture(
                         range.map(mapper),
                         this.gl,
-                        scale.domain().length
+                        scale.domain().length,
+                        existingTexture
                     )
                 );
             }
@@ -449,4 +459,22 @@ export function createProgram(gl, vertexShader, fragmentShader) {
         program,
         getProgramErrors
     };
+}
+
+/**
+ * @param {WebGLRenderingContext} gl
+ * @param {Omit<import("twgl.js").TextureOptions, "src">} options
+ * @param {number[] | ArrayBufferView} src
+ * @param {WebGLTexture} [texture]
+ */
+export function createOrUpdateTexture(gl, options, src, texture) {
+    if (texture) {
+        setTextureFromArray(gl, texture, src, options);
+    } else {
+        texture = createTexture(gl, {
+            ...options,
+            src
+        });
+    }
+    return texture;
 }
