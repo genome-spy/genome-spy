@@ -150,18 +150,9 @@ export default class DecoratorView extends ContainerView {
 
     getSize() {
         return this._cache("size/size", () => {
-            const size = this.getSizeFromSpec().addPadding(this.getPadding());
-            const padding = this.getAxisSizes();
-            return new FlexDimensions(
-                {
-                    grow: size.width.grow,
-                    px: (size.width.px || 0) + padding.width
-                },
-                {
-                    grow: size.height.grow,
-                    px: (size.height.px || 0) + padding.height
-                }
-            );
+            return this.getSizeFromSpec()
+                .addPadding(this.getPadding())
+                .addPadding(this.getAxisSizes());
         });
     }
 
