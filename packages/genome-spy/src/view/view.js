@@ -13,7 +13,7 @@ import {
     primaryChannel
 } from "../encoder/encoder";
 import { appendToBaseUrl } from "../utils/url";
-import { isDiscrete, isDiscretizing } from "vega-scale";
+import { isDiscrete, isDiscretizing, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils";
 
 // TODO: View classes have too many responsibilities. Come up with a way
@@ -165,6 +165,13 @@ export default class View {
                             `Cannot use step-based size with "${scale.type}" scale!`
                         );
                     }
+
+                    steps = bandSpace(
+                        steps,
+                        scale.paddingInner(),
+                        scale.paddingOuter()
+                    );
+
                     sizeDef = { px: steps * stepSize, grow: 0 };
                 } else {
                     throw new Error(
