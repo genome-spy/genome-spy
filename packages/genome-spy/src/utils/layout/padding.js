@@ -1,7 +1,8 @@
 /**
  * A class for handing paddings, borders, margins, etc.
  *
- * @typedef {"top" | "right" | "bottom" | "left" } Side
+ * @typedef {import("../../spec/view").Paddings} Paddings
+ * @typedef {import("../../spec/view").PaddingConfig} PaddingConfig
  */
 export default class Padding {
     /**
@@ -62,7 +63,7 @@ export default class Padding {
 
     /**
      *
-     * @param {any} config
+     * @param {PaddingConfig} config
      */
     static createFromConfig(config) {
         if (typeof config == "number") {
@@ -75,7 +76,7 @@ export default class Padding {
     }
 
     /**
-     * @param {Record<Side, number>} paddings
+     * @param {Paddings} paddings
      */
     static createFromRecord(paddings) {
         return new Padding(
