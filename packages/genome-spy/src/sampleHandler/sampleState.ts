@@ -2,12 +2,15 @@
  * Using typescript to define well, types. More convenient than using JSDoc
  */
 
+import { AttributeIdentifier } from "./sampleHandler";
+
 export type SampleId = string;
 
 export interface BaseGroup {
-    /** e.g., an attribute value that forms a group */
+    /** e.g., an attribute value that forms a group. Used as a key when identifying subgroups. */
     name: string;
 
+    /** A descriptive label for the group. May contain quantile intervals, etc. */
     label: string;
 }
 
@@ -23,7 +26,7 @@ export type Group = SampleGroup | GroupGroup;
 
 export interface GroupMetadata {
     /** e.g., an attribute that is used for partitioning */
-    name: string;
+    attribute: AttributeIdentifier;
 }
 
 export interface State {

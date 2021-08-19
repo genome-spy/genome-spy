@@ -203,7 +203,7 @@ export default class SampleHandler {
                 for (const sampleGroup of getSampleGroups(draftState)) {
                     operation(sampleGroup);
                 }
-                draftState.groups.push({ name: payload.attribute });
+                draftState.groups.push({ attribute: payload.attribute });
             });
             this.provenance.push(newState, action, notify);
         };

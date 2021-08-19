@@ -28,7 +28,6 @@ import { createChain } from "../flowBuilder";
 import ConcatView from "../concatView";
 import UnitView from "../unitView";
 import { GroupPanel } from "./groupPanel";
-import { invalidatePrefix } from "../../utils/propertyCacher";
 import { createOrUpdateTexture } from "../../gl/webGLHelper";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
@@ -421,31 +420,23 @@ export default class SampleView extends ContainerView {
     getLocations() {
         if (!this._locations) {
             const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
-            const viewportHeight = this._coords.height;
+            const groupAttributes = [null, ...this.sampleHandler.state.groups];
 
             const summaryHeight = this.summaryViews?.getSize().height.px ?? 0;
 
             // Locations squeezed into the viewport height
-            const fittedLocations = calculateLocations(
-                flattened,
-                viewportHeight,
-                {
-                    viewHeight: this._coords.height,
-                    groupSpacing: 5, // TODO: Configurable
-                    summaryHeight
-                }
-            );
+            const fittedLocations = calculateLocations(flattened, {
+                viewHeight: this._coords.height,
+                groupSpacing: 5, // TODO: Configurable
+                summaryHeight
+            });
 
             // Scrollable locations that are shown when "peek" activates
-            const scrollableLocations = calculateLocations(
-                flattened,
-                viewportHeight,
-                {
-                    sampleHeight: 35, // TODO: Configurable
-                    groupSpacing: 15, // TODO: Configurable
-                    summaryHeight
-                }
-            );
+            const scrollableLocations = calculateLocations(flattened, {
+                sampleHeight: 35, // TODO: Configurable
+                groupSpacing: 15, // TODO: Configurable
+                summaryHeight
+            });
 
             const offsetSource = () => -this._scrollOffset;
             const ratioSource = () => this._peekState;
@@ -479,6 +470,15 @@ export default class SampleView extends ContainerView {
                 return interactiveLocations;
             };
 
+            const groups = makeInterpolatedLocations(
+                fittedLocations.groups,
+                scrollableLocations.groups
+            );
+            groups.forEach(entry => {
+                entry.key.attributeLabel =
+                    groupAttributes[entry.key.depth]?.attribute.specifier;
+            });
+
             this._locations = {
                 samples: makeInterpolatedLocations(
                     fittedLocations.samples,
@@ -488,10 +488,7 @@ export default class SampleView extends ContainerView {
                     fittedLocations.summaries,
                     scrollableLocations.summaries
                 ),
-                groups: makeInterpolatedLocations(
-                    fittedLocations.groups,
-                    scrollableLocations.groups
-                )
+                groups
             };
         }
 
@@ -898,7 +895,6 @@ function extractAttributes(row) {
 
 /**
  * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
- * @param {number} viewportHeight
  * @param {object} object All measures are in pixels
  * @param {number} [object.viewHeight] Height reserved for all the samples
  * @param {number} [object.sampleHeight] Height of single sample
@@ -908,7 +904,6 @@ function extractAttributes(row) {
  */
 function calculateLocations(
     flattenedGroupHierarchy,
-    viewportHeight,
     { viewHeight = 0, sampleHeight = 0, groupSpacing = 5, summaryHeight = 0 }
 ) {
     if (!viewHeight && !sampleHeight) {
@@ -1032,7 +1027,8 @@ function calculateLocations(
                 index,
                 group: entry.group,
                 depth: entry.depth,
-                n: entry.n
+                n: entry.n,
+                attribute: undefined
             },
             locSize: entry.locSize
         }));

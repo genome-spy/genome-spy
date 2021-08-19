@@ -14,6 +14,7 @@ export interface GroupDetails {
     group: Group;
     depth: number;
     n: number;
+    attributeLabel: string;
 }
 
 export interface HierarchicalGroupLocation

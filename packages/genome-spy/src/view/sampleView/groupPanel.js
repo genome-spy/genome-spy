@@ -32,12 +32,12 @@ export class GroupPanel extends LayerView {
                     {
                         type: "formula",
                         as: "_NA",
-                        expr: "datum._name == 'null'"
+                        expr: "datum.label == null"
                     },
                     {
                         type: "formula",
                         as: "label",
-                        expr: "datum._name != 'null' ? datum._name : 'NA'"
+                        expr: "datum.label != null ? datum.label: 'NA'"
                     }
                 ],
 
@@ -148,6 +148,8 @@ export class GroupPanel extends LayerView {
             _index: g.key.index,
             _name: g.key.group.name,
             _depth: g.key.depth,
+            attribute: g.key.attributeLabel,
+            label: g.key.group.label,
             n: g.key.n
         }));
 
