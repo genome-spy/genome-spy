@@ -11,7 +11,9 @@ import {
     translateLocSize
 } from "../../utils/layout/flexLayout";
 import { SampleAttributePanel } from "./sampleAttributePanel";
-import SampleHandler from "../../sampleHandler/sampleHandler";
+import SampleHandler, {
+    isSampleGroup
+} from "../../sampleHandler/sampleHandler";
 import { peek } from "../../utils/arrayUtils";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
@@ -979,10 +981,14 @@ function calculateLocations(
     }
 
     function* extract() {
-        /** @type {{group: Group, locSize: LocSize, depth: number}[]} */
+        /** @type {{group: Group, locSize: LocSize, depth: number, n: number}[]} */
         const stack = [];
         for (const entry of groupLocations) {
             const path = entry.key;
+            const last = /** @type {import("../../sampleHandler/sampleState").SampleGroup} */ (peek(
+                path
+            ));
+
             while (
                 stack.length <= path.length &&
                 stack.length &&
@@ -1003,10 +1009,16 @@ function calculateLocations(
                 stack.push({
                     group: path[i],
                     locSize: { ...entry.locSize },
-                    depth: stack.length
+                    depth: stack.length,
+                    n: 0
                 });
             }
+
+            for (const group of stack) {
+                group.n += last.samples.length;
+            }
         }
+
         while (stack.length) {
             yield stack.pop();
         }
@@ -1019,7 +1031,8 @@ function calculateLocations(
             key: {
                 index,
                 group: entry.group,
-                depth: entry.depth
+                depth: entry.depth,
+                n: entry.n
             },
             locSize: entry.locSize
         }));

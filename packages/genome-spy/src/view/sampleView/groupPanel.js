@@ -22,14 +22,28 @@ export class GroupPanel extends LayerView {
                 data: { dynamicSource: true },
 
                 transform: [
-                    { type: "filter", expr: "datum.depth > 0" },
-                    { type: "formula", as: "_y1", expr: "datum.index * 2" },
-                    { type: "formula", as: "_y2", expr: "datum.index * 2 + 1" }
+                    { type: "filter", expr: "datum._depth > 0" },
+                    { type: "formula", as: "_y1", expr: "datum._index * 2" },
+                    {
+                        type: "formula",
+                        as: "_y2",
+                        expr: "datum._index * 2 + 1"
+                    },
+                    {
+                        type: "formula",
+                        as: "_NA",
+                        expr: "datum._name == 'null'"
+                    },
+                    {
+                        type: "formula",
+                        as: "label",
+                        expr: "datum._name != 'null' ? datum._name : 'NA'"
+                    }
                 ],
 
                 encoding: {
                     x: {
-                        field: "depth",
+                        field: "_depth",
                         type: "ordinal",
                         scale: {
                             align: 0,
@@ -37,8 +51,8 @@ export class GroupPanel extends LayerView {
                         },
                         /*
                         axis: {
-                            title: null,
-                            domain: false
+                            title: null
+                            //domain: false
 						}
 						*/
                         axis: null
@@ -48,7 +62,7 @@ export class GroupPanel extends LayerView {
                         type: "nominal",
                         scale: {
                             type: "ordinal",
-                            domain: range(50) // Hack needed because domains are not (yet) sorted
+                            domain: range(500) // Hack needed because domains are not (yet) sorted
                         },
                         axis: null
                     },
@@ -56,6 +70,7 @@ export class GroupPanel extends LayerView {
                 },
                 layer: [
                     {
+                        title: "Group",
                         mark: {
                             type: "rect",
                             clip: true,
@@ -69,10 +84,20 @@ export class GroupPanel extends LayerView {
                             clip: true,
                             dynamicData: true,
                             angle: -90,
-                            paddingY: 5
+                            paddingY: 5,
+                            tooltip: null
                         },
                         encoding: {
-                            text: { field: "name", type: "nominal" }
+                            text: { field: "label", type: "nominal" },
+                            opacity: {
+                                field: "_NA",
+                                type: "nominal",
+                                scale: {
+                                    type: "ordinal",
+                                    domain: [false, true],
+                                    range: [1.0, 0.3]
+                                }
+                            }
                         }
                     }
                 ]
@@ -87,6 +112,10 @@ export class GroupPanel extends LayerView {
     }
 
     updateRange() {
+        if (!this.groupLocations?.length) {
+            return;
+        }
+
         const viewHeight = this.sampleView?._coords.height ?? 0; // Fugly!!
 
         const yRes = this.getScaleResolution("y");
@@ -116,9 +145,10 @@ export class GroupPanel extends LayerView {
         this.groupLocations = groupLocations;
 
         const data = groupLocations.map(g => ({
-            index: g.key.index,
-            name: g.key.group.name,
-            depth: g.key.depth
+            _index: g.key.index,
+            _name: g.key.group.name,
+            _depth: g.key.depth,
+            n: g.key.n
         }));
 
         dynamicSource.publishData(data);

@@ -102,6 +102,7 @@ export default class SampleHandler {
             groups: [],
             rootGroup: {
                 name: "ROOT",
+                label: "Root",
                 samples
             }
         });

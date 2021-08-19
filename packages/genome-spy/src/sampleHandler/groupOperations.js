@@ -28,11 +28,13 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups) {
               .filter(entry => entry[1])
         : [...grouped];
 
+    const tempGroup = /** @type {unknown} */ (sampleGroup);
     // Transform SampleGroup into GroupGroup
-    const groupGroup = /** @type {GroupGroup} */ /** @type {unknown} */ (sampleGroup);
+    const groupGroup = /** @type {GroupGroup} */ (tempGroup);
 
     groupGroup.groups = sortedEntries.map(([name, samples]) => ({
         name: "" + name,
+        label: name,
         samples
     }));
 

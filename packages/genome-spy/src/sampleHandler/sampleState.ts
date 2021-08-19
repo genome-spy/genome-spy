@@ -7,6 +7,8 @@ export type SampleId = string;
 export interface BaseGroup {
     /** e.g., an attribute value that forms a group */
     name: string;
+
+    label: string;
 }
 
 export interface SampleGroup extends BaseGroup {
