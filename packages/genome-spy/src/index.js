@@ -4,8 +4,9 @@ import { loader as vegaLoader } from "vega-loader";
 import GenomeSpy from "./genomeSpy.js";
 import GenomeSpyApp from "./app/genomeSpyApp.js";
 import icon from "./img/bowtie.svg";
+import { html } from "lit";
 
-export { GenomeSpy, GenomeSpyApp, icon };
+export { GenomeSpy, GenomeSpyApp, icon, html };
 
 /**
  * Embeds GenomeSpy into the DOM
