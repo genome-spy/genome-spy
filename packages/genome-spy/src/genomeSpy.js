@@ -63,8 +63,9 @@ export default class GenomeSpy {
      *
      * @param {HTMLElement} container
      * @param {RootSpec} spec
+     * @param {import("./options").EmbedOptions} [options]
      */
-    constructor(container, spec) {
+    constructor(container, spec, options = {}) {
         this.container = container;
 
         /** Root level configuration object */
@@ -110,6 +111,13 @@ export default class GenomeSpy {
          * @type {Map<string, (function({}):void)[]>}
          */
         this._eventListeners = new Map();
+
+        /** @type {Record<string, import("./utils/tooltip/tooltipHandler").TooltipHandler>}> */
+        this.tooltipHandlers = {
+            default: dataTooltipHandler,
+            refseqgene: refseqGeneTooltipHandler,
+            ...(options.tooltipHandlers ?? {})
+        };
     }
 
     /**
@@ -571,14 +579,18 @@ export default class GenomeSpy {
                 }
 
                 const tooltipProps = mark.properties.tooltip;
-                if (tooltipProps?.handler) {
-                    // TODO: Create a proper handler registry
-                    if (tooltipProps.handler == "refseqgene") {
-                        return refseqGeneTooltipHandler(datum, mark);
-                    }
-                }
 
-                return dataTooltipHandler(datum, mark);
+                if (tooltipProps !== null) {
+                    const handlerName = tooltipProps?.handler ?? "default";
+                    const handler = this.tooltipHandlers[handlerName];
+                    if (!handler) {
+                        throw new Error(
+                            "No such tooltip handler: " + handlerName
+                        );
+                    }
+
+                    return handler(datum, mark, tooltipProps?.params);
+                }
             });
         }
     }

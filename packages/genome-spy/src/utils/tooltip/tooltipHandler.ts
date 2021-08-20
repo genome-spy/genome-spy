@@ -6,5 +6,7 @@ import Mark from "../../marks/mark";
  */
 export type TooltipHandler = (
     datum: Record<string, any>,
-    mark: Mark
+    mark: Mark,
+    /** Optional parameters from the view specification */
+    params?: Record<string, any>
 ) => Promise<TemplateResult>;

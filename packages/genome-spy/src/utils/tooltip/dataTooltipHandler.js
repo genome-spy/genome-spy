@@ -4,7 +4,7 @@ import formatObject from "../formatObject";
 /**
  * @type {import("./tooltipHandler").TooltipHandler}
  */
-export default async function dataTooltipHandler(datum, mark) {
+export default async function dataTooltipHandler(datum, mark, params) {
     /**
      * @param {string} key
      * @param {object} datum

@@ -23,8 +23,9 @@ export default class GenomeSpyApp {
      *
      * @param {HTMLElement} appContainerElement
      * @param {import("../spec/view").RootSpec} config
+     * @param {import("../options").EmbedOptions} options
      */
-    constructor(appContainerElement, config) {
+    constructor(appContainerElement, config, options = {}) {
         this.config = config;
 
         this.toolbarRef = createRef();
@@ -78,7 +79,8 @@ export default class GenomeSpyApp {
 
         this.genomeSpy = new GenomeSpy(
             elem("genome-spy-container"),
-            this.config
+            this.config,
+            options
         );
     }
 
