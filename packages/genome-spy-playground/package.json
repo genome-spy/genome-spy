@@ -15,7 +15,7 @@
     "@fortawesome/fontawesome-free": "^5.14.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.30",
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
-    "codemirror": "^5.56.0",
+    "codemirror": "^5.58.2",
     "genome-spy": "^0.3.0",
     "jsonlint-mod": "^1.7.5",
     "lit": "^2.0.0-rc.2",
