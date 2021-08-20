@@ -12,9 +12,9 @@ export { GenomeSpy, GenomeSpyApp, icon };
  *
  * @param {HTMLElement | string} el HTMLElement or a query selector
  * @param {object | string} spec a spec object or an url to a json spec
- * @param {object} [opt] options
+ * @param {import("./options.js").EmbedOptions} [options] options
  */
-export async function embed(el, spec, opt = {}) {
+export async function embed(el, spec, options = {}) {
     /** @type {HTMLElement} */
     let element;
 
@@ -49,14 +49,14 @@ export async function embed(el, spec, opt = {}) {
             specObject.padding = 10;
         }
 
-        if (opt.bare) {
-            genomeSpy = new GenomeSpy(element, specObject);
-            applyOptions(genomeSpy, opt);
+        if (options.bare) {
+            genomeSpy = new GenomeSpy(element, specObject, options);
+            applyOptions(genomeSpy, options);
             await genomeSpy.launch();
         } else {
-            const app = new GenomeSpyApp(element, specObject);
+            const app = new GenomeSpyApp(element, specObject, options);
             genomeSpy = app.genomeSpy;
-            applyOptions(genomeSpy, opt);
+            applyOptions(genomeSpy, options);
             await app.launch();
         }
     } catch (e) {

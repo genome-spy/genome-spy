@@ -33,8 +33,8 @@ import BmFontManager from "./fonts/bmFontManager";
 import fasta from "./data/formats/fasta";
 import { VISIT_STOP } from "./view/view";
 import Inertia, { makeEventTemplate } from "./utils/inertia";
-import refseqGeneTooltipHandler from "./utils/tooltip/refseqGeneTooltipHandler";
-import dataTooltipHandler from "./utils/tooltip/dataTooltipHandler";
+import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
+import dataTooltipHandler from "./tooltip/dataTooltipHandler";
 import SampleView from "./view/sampleView/sampleView";
 import { invalidatePrefix } from "./utils/propertyCacher";
 
@@ -62,13 +62,14 @@ export default class GenomeSpy {
     /**
      *
      * @param {HTMLElement} container
-     * @param {RootSpec} config
+     * @param {RootSpec} spec
+     * @param {import("./options").EmbedOptions} [options]
      */
-    constructor(container, config) {
+    constructor(container, spec, options = {}) {
         this.container = container;
 
         /** Root level configuration object */
-        this.config = config;
+        this.spec = spec;
 
         this.accessorFactory = new AccessorFactory();
 
@@ -110,6 +111,13 @@ export default class GenomeSpy {
          * @type {Map<string, (function({}):void)[]>}
          */
         this._eventListeners = new Map();
+
+        /** @type {Record<string, import("./tooltip/tooltipHandler").TooltipHandler>}> */
+        this.tooltipHandlers = {
+            default: dataTooltipHandler,
+            refseqgene: refseqGeneTooltipHandler,
+            ...(options.tooltipHandlers ?? {})
+        };
     }
 
     /**
@@ -204,9 +212,9 @@ export default class GenomeSpy {
     }
 
     async _prepareViewsAndData() {
-        if (this.config.genome) {
+        if (this.spec.genome) {
             this.genomeStore = new GenomeStore(this);
-            await this.genomeStore.initialize(this.config.genome);
+            await this.genomeStore.initialize(this.spec.genome);
         }
 
         /** @type {import("./view/viewContext").default} */
@@ -237,7 +245,7 @@ export default class GenomeSpy {
         };
 
         /** @type {import("./spec/view").ViewSpec & RootConfig} */
-        const rootSpec = this.config;
+        const rootSpec = this.spec;
 
         if (rootSpec.datasets) {
             this.registerNamedDataProvider(name => rootSpec.datasets[name]);
@@ -571,14 +579,18 @@ export default class GenomeSpy {
                 }
 
                 const tooltipProps = mark.properties.tooltip;
-                if (tooltipProps?.handler) {
-                    // TODO: Create a proper handler registry
-                    if (tooltipProps.handler == "refseqgene") {
-                        return refseqGeneTooltipHandler(datum, mark);
-                    }
-                }
 
-                return dataTooltipHandler(datum, mark);
+                if (tooltipProps !== null) {
+                    const handlerName = tooltipProps?.handler ?? "default";
+                    const handler = this.tooltipHandlers[handlerName];
+                    if (!handler) {
+                        throw new Error(
+                            "No such tooltip handler: " + handlerName
+                        );
+                    }
+
+                    return handler(datum, mark, tooltipProps?.params);
+                }
             });
         }
     }

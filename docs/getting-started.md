@@ -34,14 +34,19 @@ line:
 python3 -m http.server --bind 127.0.0.1
 ```
 
-By default, it serves files from the current working directory.
-Read more at https://docs.python.org/3/library/http.server.html
+By default, it serves files from the current working directory. See Python's
+[documentation](https://docs.python.org/3/library/http.server.html) for details.
 
 ### HTML template
 
 The templates below load GenomeSpy from a content delivery network. Because
 the specification schema and the JavaScript API are not yet 100% stable, it is
 recommended to use a specific release.
+
+!!! warning "Check the latest version!"
+
+    The versions in this documentation may be slightly out of date. Check the
+    latest version from [UNPKG](https://unpkg.com/genome-spy/).
 
 #### Load the spec from a file
 
@@ -55,17 +60,17 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/genome-spy@0.1.3/dist/index.css"
+      href="https://unpkg.com/genome-spy@0.1.9/dist/index.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/genome-spy@0.1.3/dist/index.js"
+      src="https://unpkg.com/genome-spy@0.1.9/dist/index.js"
     ></script>
 
     <script>
-      genomeSpyEmbed.embed(document.body, "spec.json");
+      genomeSpyEmbed.embed(document.body, "spec.json", {});
     </script>
   </body>
 </html>
@@ -81,13 +86,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/genome-spy@0.1.3/dist/index.css"
+      href="https://unpkg.com/genome-spy@0.1.9/dist/index.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/genome-spy@0.1.3/dist/index.js"
+      src="https://unpkg.com/genome-spy@0.1.9/dist/index.js"
     ></script>
 
     <script>
@@ -103,7 +108,7 @@ This template loads the spec from the `spec.json` file.
         }
       };
 
-      genomeSpyEmbed.embed(document.body, spec);
+      genomeSpyEmbed.embed(document.body, spec, {});
     </script>
   </body>
 </html>
@@ -111,5 +116,5 @@ This template loads the spec from the `spec.json` file.
 
 ## Using the GenomeSpy library in a web application
 
-The API is still unstable, but you may want to have a look at the [SegmentModel
-Spy](https://github.com/tuner/segment-model-spy) for an example.
+The [API](api.md) is still unstable, but you may want to have a look at the
+[SegmentModel Spy](https://github.com/tuner/segment-model-spy) for an example.
