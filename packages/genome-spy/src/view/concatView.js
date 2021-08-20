@@ -210,12 +210,12 @@ export default class ConcatView extends ContainerView {
     }
 
     /**
-     * Adds a child. Does NOT perform any initializations.
+     * Adds a child using a spec. Does NOT perform any initializations.
      * Returns the newly added view instance.
      *
      * @param {import("./viewUtils").ViewSpec} viewSpec
      */
-    addChild(viewSpec) {
+    addChildBySpec(viewSpec) {
         // TODO: Move to containerView
 
         // TODO: More robust solution. Will break in future when views can be removed
@@ -223,6 +223,27 @@ export default class ConcatView extends ContainerView {
 
         const View = getViewClass(viewSpec);
         const view = new View(viewSpec, this.context, this, "concat" + i);
+        this.children.push(view);
+
+        return view;
+    }
+
+    /**
+     * Adds a child. Does NOT perform any initializations.
+     * Returns the newly added view instance.
+     *
+     * @param {View} view
+     */
+    addChild(view) {
+        // TODO: Move to containerView
+
+        // TODO: More robust solution. Will break in future when views can be removed
+        const i = this.children.length;
+
+        if (!view.name) {
+            view.name = "concat" + i;
+        }
+        view.parent = this;
         this.children.push(view);
 
         return view;

@@ -1,4 +1,5 @@
-import { group, quantileSorted, sort as d3sort } from "d3-array";
+import { group, quantileSorted, range, sort as d3sort } from "d3-array";
+import { format as d3format } from "d3-format";
 import { isNumber } from "vega-util";
 
 /**
@@ -12,8 +13,13 @@ import { isNumber } from "vega-util";
  * @param {SampleGroup} sampleGroup
  * @param {function(any):any} accessor
  * @param {any[]} [groups] Explicitly specify the groups and their order
+ * @param {string[]} [labels] Custom labels for the groups
  */
-export function groupSamplesByAccessor(sampleGroup, accessor, groups) {
+export function groupSamplesByAccessor(sampleGroup, accessor, groups, labels) {
+    if (labels && !groups) {
+        throw new Error("Custom labels need explicit group order!");
+    }
+
     const grouped = /** @type {Map<any, string[]>} */ (group(
         sampleGroup.samples,
         accessor
@@ -28,11 +34,13 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups) {
               .filter(entry => entry[1])
         : [...grouped];
 
+    const tempGroup = /** @type {unknown} */ (sampleGroup);
     // Transform SampleGroup into GroupGroup
-    const groupGroup = /** @type {GroupGroup} */ /** @type {unknown} */ (sampleGroup);
+    const groupGroup = /** @type {GroupGroup} */ (tempGroup);
 
-    groupGroup.groups = sortedEntries.map(([name, samples]) => ({
+    groupGroup.groups = sortedEntries.map(([name, samples], i) => ({
         name: "" + name,
+        label: labels ? labels[i] : name,
         samples
     }));
 
@@ -45,16 +53,33 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups) {
  * @param {function(any):any} accessor
  */
 export function groupSamplesByQuartiles(sampleGroup, accessor) {
-    const quartiles = extractQuantiles(sampleGroup.samples, accessor, [
-        0.25,
-        0.5,
-        0.75
-    ]);
+    const format = d3format(".3~r");
+
+    const thresholds = uniq(
+        extractQuantiles(sampleGroup.samples, accessor, [0, 0.25, 0.5, 0.75, 1])
+    );
+
+    if (thresholds.length == 1) {
+        thresholds.push(thresholds[0]);
+    }
+
+    /** @param {number} i */
+    const formatInterval = i =>
+        `[${format(thresholds[i])}, ${format(thresholds[i + 1])}${
+            i < thresholds.length - 2 ? ")" : "]"
+        }`;
+
+    // TODO: Group ids should indicate if multiple identical thresholds were merged
+    const groupIds = range(thresholds.length - 1).reverse();
 
     groupSamplesByAccessor(
         sampleGroup,
-        createQuantileAccessor(accessor, quartiles),
-        [3, 2, 1, 0] // Decreasing order
+        createQuantileAccessor(
+            accessor,
+            thresholds.slice(1, thresholds.length - 1)
+        ),
+        groupIds,
+        groupIds.map(formatInterval)
     );
 }
 
@@ -74,7 +99,6 @@ function createQuantileAccessor(accessor, thresholds) {
         }
 
         for (let i = 0; i < thresholds.length; i++) {
-            // TODO: This cannot be correct...
             if (value < thresholds[i]) {
                 return i;
             }
@@ -99,4 +123,21 @@ function extractQuantiles(samples, accessor, pValues) {
     );
 
     return pValues.map(p => quantileSorted(values, p));
+}
+
+/**
+ * Returns unique values from a sorted array.
+ *
+ * @param {T[]} arr
+ * @returns {T[]}
+ * @template T
+ */
+function uniq(arr) {
+    const result = [arr[0]];
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i] != arr[i - 1]) {
+            result.push(arr[i]);
+        }
+    }
+    return result;
 }
