@@ -1,4 +1,4 @@
-import { debounce } from "../debounce";
+import { debounce } from "../utils/debounce";
 import { html } from "lit";
 
 /*
@@ -13,7 +13,7 @@ const symbolSummaryCache = new Map();
 /**
  * @type {import("./tooltipHandler").TooltipHandler}
  */
-export default async function refseqGeneTooltipHandler(datum, mark) {
+export default async function refseqGeneTooltipHandler(datum, mark, params) {
     const symbol = datum.symbol;
 
     let summary =

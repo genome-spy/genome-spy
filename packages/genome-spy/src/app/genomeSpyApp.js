@@ -23,8 +23,9 @@ export default class GenomeSpyApp {
      *
      * @param {HTMLElement} appContainerElement
      * @param {import("../spec/view").RootSpec} config
+     * @param {import("../options").EmbedOptions} options
      */
-    constructor(appContainerElement, config) {
+    constructor(appContainerElement, config, options = {}) {
         this.config = config;
 
         this.toolbarRef = createRef();
@@ -78,7 +79,8 @@ export default class GenomeSpyApp {
 
         this.genomeSpy = new GenomeSpy(
             elem("genome-spy-container"),
-            this.config
+            this.config,
+            options
         );
     }
 
@@ -110,7 +112,7 @@ export default class GenomeSpyApp {
         // Just trigger re-render. Need a way to broadcast this to all components.
         toolbar.appInitialized = true;
 
-        const title = asArray(this.genomeSpy.config.description ?? []);
+        const title = asArray(this.genomeSpy.spec.description ?? []);
 
         if (this.isFullPage() && title.length > 0) {
             document.title = "GenomeSpy - " + title;

@@ -20,7 +20,7 @@ export default class GenomeStore {
 
         return Promise.all(
             [...this.genomes.values()].map(genome =>
-                genome.load(this.genomeSpy.config.baseUrl)
+                genome.load(this.genomeSpy.spec.baseUrl)
             )
         );
     }
