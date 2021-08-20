@@ -37,10 +37,9 @@
     "webpack-merge": "^5.8.0"
   },
   "scripts": {
-    "bootstrap": "lerna bootstrap",
     "builddocs": "mkdir -p docs/app && cp packages/genome-spy-doc-embed/dist/* docs/app/ && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && mkdocs build",
     "test": "jest",
-    "start": "lerna run start --scope=genome-spy --stream",
+    "start": "npm run start -w genome-spy",
     "pretty-quick": "pretty-quick"
   },
   "workspaces": [
