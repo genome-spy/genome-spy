@@ -317,7 +317,8 @@ export class SampleAttributePanel extends ConcatView {
                 name: attribute,
                 accessor,
                 type: resolution.type,
-                scale: resolution.getScale()
+                scale: resolution.getScale(),
+                title: attribute
             };
         }
     }
