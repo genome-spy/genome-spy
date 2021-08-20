@@ -4,8 +4,6 @@ import { invalidatePrefix } from "../../utils/propertyCacher";
 import LayerView from "../layerView";
 
 /**
- * This special-purpose class takes care of rendering sample labels and metadata.
- *
  * @typedef {import("./sampleView").Sample} Sample
  * @typedef {import("../view").default} View
  *
@@ -18,6 +16,7 @@ export class GroupPanel extends LayerView {
         super(
             {
                 width: { step: 22 },
+                // TODO: Make step size, colors, font size, etc. configurable.
 
                 data: { dynamicSource: true },
 
@@ -52,11 +51,14 @@ export class GroupPanel extends LayerView {
                         /*
                         axis: {
                             title: null
-                            //domain: false
+                            domain: false
 						}
 						*/
                         axis: null
                     },
+                    // "Abuse" the ordinal scale on a positional channel.
+                    // Its range encodes the positions of the groups and it is updated dynamically
+                    // when the samples are peeked and scrolled.
                     y: {
                         field: "_y1",
                         type: "nominal",
@@ -128,8 +130,8 @@ export class GroupPanel extends LayerView {
             yRange.push(1 - g.locSize.location / viewHeight);
         }
 
-        //yRes.getScale().domain(yRange.map((x, i) => i));
         yRes.getScale().range(yRange);
+        // TODO: The texture should be updated implicitly when the range is modified
         this.context.glHelper.createRangeTexture(yRes, true);
     }
 

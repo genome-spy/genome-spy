@@ -1,6 +1,5 @@
-import { isNumber, error } from "vega-util";
-import { html } from "lit";
-import { createTexture, setTextureFromArray } from "twgl.js";
+import { isNumber, isString } from "vega-util";
+import { html, render } from "lit";
 import { findEncodedFields, getViewClass } from "../viewUtils";
 import ContainerView from "../containerView";
 import {
@@ -11,9 +10,7 @@ import {
     translateLocSize
 } from "../../utils/layout/flexLayout";
 import { SampleAttributePanel } from "./sampleAttributePanel";
-import SampleHandler, {
-    isSampleGroup
-} from "../../sampleHandler/sampleHandler";
+import SampleHandler from "../../sampleHandler/sampleHandler";
 import { peek } from "../../utils/arrayUtils";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
@@ -125,7 +122,7 @@ export default class SampleView extends ContainerView {
         this.sampleHandler.provenance.addListener(() => {
             this._locations = undefined;
 
-            this.groupView.updateGroups(this.getLocations().groups);
+            this.groupPanel.updateGroups(this.getLocations().groups);
 
             // TODO: Handle scroll offset instead
             this._peekState = 0;
@@ -149,11 +146,11 @@ export default class SampleView extends ContainerView {
             "periphery"
         );
 
-        this.groupView = new GroupPanel(this);
-        this.peripheryView.addChild(this.groupView);
+        this.groupPanel = new GroupPanel(this);
+        this.peripheryView.addChild(this.groupPanel);
 
-        this.attributeView = new SampleAttributePanel(this);
-        this.peripheryView.addChild(this.attributeView);
+        this.attributePanel = new SampleAttributePanel(this);
+        this.peripheryView.addChild(this.attributePanel);
 
         this.child.addInteractionEventListener(
             "contextmenu",
@@ -236,7 +233,7 @@ export default class SampleView extends ContainerView {
                         this._scrollableHeight - this._coords.height
                     );
 
-                    this.groupView.updateRange();
+                    this.groupPanel.updateRange();
                     /*
 					// Putting this to transition phase causes latency of one frame.
 					// TODO: Investigate why.
@@ -337,7 +334,7 @@ export default class SampleView extends ContainerView {
         /** @param {string} sampleId */
         this.sampleAccessor = sampleId => this.sampleMap.get(sampleId);
 
-        this.attributeView._setSamples(samples);
+        this.attributePanel._setSamples(samples);
 
         // Align size to four bytes
         this.facetTextureData = new Float32Array(
@@ -474,9 +471,25 @@ export default class SampleView extends ContainerView {
                 fittedLocations.groups,
                 scrollableLocations.groups
             );
+
+            const div = document.createElement("div");
+            // Perhaps this is not the right place to play with labels etc
             groups.forEach(entry => {
-                entry.key.attributeLabel =
-                    groupAttributes[entry.key.depth]?.attribute.specifier;
+                if (entry.key.depth == 0) return;
+
+                const attrId = groupAttributes[entry.key.depth].attribute;
+
+                const title = this.sampleHandler.getAttributeInfo(attrId).title;
+                if (!title) {
+                    entry.key.attributeLabel = "unknown";
+                } else if (isString(title)) {
+                    entry.key.attributeLabel = title;
+                } else {
+                    render(title, div);
+                    entry.key.attributeLabel = div.textContent
+                        .replace(/\s+/g, " ")
+                        .trim();
+                }
             });
 
             this._locations = {
@@ -685,7 +698,7 @@ export default class SampleView extends ContainerView {
                 this.context.animator.requestTransition(callback),
             onUpdate: value => {
                 this._peekState = Math.pow(value, 2);
-                this.groupView.updateRange();
+                this.groupPanel.updateRange();
                 this.context.animator.requestRender();
             },
             from: this._peekState
@@ -853,7 +866,7 @@ export default class SampleView extends ContainerView {
  * @param {number | ChromosomalLocus} locus
  */
 function locusToString(locus) {
-    return !isNumber(locus) && "chromosome" in locus
+    return !isNumber(locus) && "chrom" in locus
         ? formatLocus(locus)
         : "" + locus;
 }
@@ -1028,7 +1041,7 @@ function calculateLocations(
                 group: entry.group,
                 depth: entry.depth,
                 n: entry.n,
-                attribute: undefined
+                attributeLabel: undefined
             },
             locSize: entry.locSize
         }));
