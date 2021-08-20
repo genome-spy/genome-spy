@@ -1,7 +1,6 @@
-const merge = require("webpack-merge");
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const CleanWebpackPlugin = require("clean-webpack-plugin");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 module.exports = {
@@ -9,28 +8,35 @@ module.exports = {
     devtool: "source-map",
 
     plugins: [
-        new CleanWebpackPlugin(["dist"]),
+        new CleanWebpackPlugin(),
         new HtmlWebpackPlugin({
             title: "GenomeSpy Playground",
-            hash: true
+            hash: true,
         }),
-        new MiniCssExtractPlugin()
+        new MiniCssExtractPlugin(),
     ],
+    output: {
+        /**
+         * With zero configuration,
+         *   clean-webpack-plugin will remove files inside the directory below
+         */
+        path: path.resolve(process.cwd(), "dist"),
+    },
 
     module: {
         rules: [
             {
                 test: /\.(s*)css$/,
-                use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"]
+                use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"],
             },
             {
                 test: /\.(txt|[ct]sv|glsl)$/,
-                use: "raw-loader"
+                use: "raw-loader",
             },
             {
                 test: /\.(png|svg)$/,
-                use: "url-loader"
-            }
-        ]
-    }
+                use: "url-loader",
+            },
+        ],
+    },
 };
