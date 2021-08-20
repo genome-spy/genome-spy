@@ -340,6 +340,9 @@ export default class SampleView extends ContainerView {
         this.facetTextureData = new Float32Array(
             Math.ceil((samples.length * 2) / 4) * 4
         );
+
+        // Feed some initial dynamic data.
+        this.groupPanel.updateGroups([]);
     }
 
     /**
