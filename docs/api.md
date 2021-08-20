@@ -43,7 +43,7 @@ check the RefSeq gene track in
 [this notebook](https://observablehq.com/@tuner/annotation-tracks).
 
 Handlers are functions that receive the hovered mark's underlying datum and
-return a promise that resolves into a lit-html
+return a promise that resolves into a string, HTMLElement, or lit-html
 [TemplateResult](https://lit.dev/docs/libraries/standalone-templates/).
 
 The function signature:
@@ -54,7 +54,7 @@ export type TooltipHandler = (
   mark: Mark,
   /** Optional parameters from the view specification */
   params?: Record<string, any>
-) => Promise<TemplateResult>;
+) => Promise<string | TemplateResult | HTMLElement>;
 ```
 
 Use the `tooltipHandlers` option to register custom handlers or override the

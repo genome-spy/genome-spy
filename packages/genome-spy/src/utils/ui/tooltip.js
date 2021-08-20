@@ -117,7 +117,7 @@ export default class Tooltip {
     }
 
     /**
-     * @param {string | import("lit").TemplateResult} content
+     * @param {string | import("lit").TemplateResult | HTMLElement} content
      */
     setContent(content) {
         if (!content || !this.enabled || this._isPenalty()) {
@@ -146,7 +146,7 @@ export default class Tooltip {
      * Otherwise this is nop.
      *
      * @param {T} datum
-     * @param {function(T):Promise<import("lit").TemplateResult>} [converter]
+     * @param {function(T):Promise<string | HTMLElement | import("lit").TemplateResult>} [converter]
      * @template T
      */
     updateWithDatum(datum, converter) {
