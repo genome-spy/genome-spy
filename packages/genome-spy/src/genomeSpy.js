@@ -62,13 +62,13 @@ export default class GenomeSpy {
     /**
      *
      * @param {HTMLElement} container
-     * @param {RootSpec} config
+     * @param {RootSpec} spec
      */
-    constructor(container, config) {
+    constructor(container, spec) {
         this.container = container;
 
         /** Root level configuration object */
-        this.config = config;
+        this.spec = spec;
 
         this.accessorFactory = new AccessorFactory();
 
@@ -204,9 +204,9 @@ export default class GenomeSpy {
     }
 
     async _prepareViewsAndData() {
-        if (this.config.genome) {
+        if (this.spec.genome) {
             this.genomeStore = new GenomeStore(this);
-            await this.genomeStore.initialize(this.config.genome);
+            await this.genomeStore.initialize(this.spec.genome);
         }
 
         /** @type {import("./view/viewContext").default} */
@@ -237,7 +237,7 @@ export default class GenomeSpy {
         };
 
         /** @type {import("./spec/view").ViewSpec & RootConfig} */
-        const rootSpec = this.config;
+        const rootSpec = this.spec;
 
         if (rootSpec.datasets) {
             this.registerNamedDataProvider(name => rootSpec.datasets[name]);

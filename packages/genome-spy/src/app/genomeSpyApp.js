@@ -110,7 +110,7 @@ export default class GenomeSpyApp {
         // Just trigger re-render. Need a way to broadcast this to all components.
         toolbar.appInitialized = true;
 
-        const title = asArray(this.genomeSpy.config.description ?? []);
+        const title = asArray(this.genomeSpy.spec.description ?? []);
 
         if (this.isFullPage() && title.length > 0) {
             document.title = "GenomeSpy - " + title;
