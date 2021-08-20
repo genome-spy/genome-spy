@@ -31,12 +31,12 @@ contains the datum that the user interacted with.
 GenomeSpy provides two built-in tooltip handlers.
 
 The
-[`default`](https://github.com/tuner/genome-spy/blob/master/packages/genome-spy/src/utils/tooltip/dataTooltipHandler.js)
+[`default`](https://github.com/tuner/genome-spy/blob/master/packages/genome-spy/src/tooltip/dataTooltipHandler.js)
 handler displays the underlying datum's properties in a table. Property names
 starting with an underscore are omitted. The values are formatted nicely.
 
 The
-[`refseqgene`](https://github.com/tuner/genome-spy/blob/master/packages/genome-spy/src/utils/tooltip/refseqGeneTooltipHandler.js)
+[`refseqgene`](https://github.com/tuner/genome-spy/blob/master/packages/genome-spy/src/tooltip/refseqGeneTooltipHandler.js)
 handler fetches a summary description for a gene symbol using the
 [Entrez](https://www.ncbi.nlm.nih.gov/home/develop/api/) API. For an example,
 check the RefSeq gene track in

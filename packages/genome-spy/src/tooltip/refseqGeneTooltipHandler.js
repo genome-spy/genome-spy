@@ -1,4 +1,4 @@
-import { debounce } from "../debounce";
+import { debounce } from "../utils/debounce";
 import { html } from "lit";
 
 /*

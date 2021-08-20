@@ -34,8 +34,8 @@ line:
 python3 -m http.server --bind 127.0.0.1
 ```
 
-By default, it serves files from the current working directory.
-Read more at https://docs.python.org/3/library/http.server.html
+By default, it serves files from the current working directory. See Python's
+[documentation](https://docs.python.org/3/library/http.server.html) for details.
 
 ### HTML template
 
@@ -43,10 +43,10 @@ The templates below load GenomeSpy from a content delivery network. Because
 the specification schema and the JavaScript API are not yet 100% stable, it is
 recommended to use a specific release.
 
-!!! note "Check the latest version!"
+!!! warning "Check the latest version!"
 
-    This documentation may be slightly out of date. Check the latest version
-    from [UNPKG](https://unpkg.com/genome-spy/).
+    The versions in this documentation may be slightly out of date. Check the
+    latest version from [UNPKG](https://unpkg.com/genome-spy/).
 
 #### Load the spec from a file
 

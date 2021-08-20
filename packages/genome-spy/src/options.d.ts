@@ -1,4 +1,4 @@
-import { TooltipHandler } from "./utils/tooltip/tooltipHandler";
+import { TooltipHandler } from "./tooltip/tooltipHandler";
 
 export interface EmbedOptions {
     /** If true, don't display the toolbar. */

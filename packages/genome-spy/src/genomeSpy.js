@@ -33,8 +33,8 @@ import BmFontManager from "./fonts/bmFontManager";
 import fasta from "./data/formats/fasta";
 import { VISIT_STOP } from "./view/view";
 import Inertia, { makeEventTemplate } from "./utils/inertia";
-import refseqGeneTooltipHandler from "./utils/tooltip/refseqGeneTooltipHandler";
-import dataTooltipHandler from "./utils/tooltip/dataTooltipHandler";
+import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
+import dataTooltipHandler from "./tooltip/dataTooltipHandler";
 import SampleView from "./view/sampleView/sampleView";
 import { invalidatePrefix } from "./utils/propertyCacher";
 
@@ -112,7 +112,7 @@ export default class GenomeSpy {
          */
         this._eventListeners = new Map();
 
-        /** @type {Record<string, import("./utils/tooltip/tooltipHandler").TooltipHandler>}> */
+        /** @type {Record<string, import("./tooltip/tooltipHandler").TooltipHandler>}> */
         this.tooltipHandlers = {
             default: dataTooltipHandler,
             refseqgene: refseqGeneTooltipHandler,

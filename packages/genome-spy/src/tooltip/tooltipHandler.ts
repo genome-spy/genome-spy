@@ -1,5 +1,5 @@
 import { TemplateResult } from "lit";
-import Mark from "../../marks/mark";
+import Mark from "../marks/mark";
 
 /**
  * Converts a datum to tooltip (lit's TemplateResult).
