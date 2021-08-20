@@ -96,6 +96,8 @@ RangeResult positionInsideRange(float a, float b, float width, float padding,
             edge -= min(over, extra);
         }
 
+		// TODO: If the text spans the whole viewport, try to keep it centered if possible.
+
         pos = edge - padding;
     }
 

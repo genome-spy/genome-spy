@@ -10,6 +10,7 @@ import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
 import { buildDataFlow } from "../flowBuilder";
 import { NOMINAL, ORDINAL } from "../scaleResolution";
+import SampleView from "./sampleView";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -40,11 +41,11 @@ export class SampleAttributePanel extends ConcatView {
                 spacing: 1
             },
             sampleView.context,
-            sampleView,
+            undefined,
             "sampleAttributes"
         );
 
-        this.parent = sampleView;
+        this.sampleView = sampleView;
 
         // TODO: Optimize the following
         this.sampleHandler.addAttributeInfoSource(SAMPLE_ATTRIBUTE, attribute =>
@@ -56,7 +57,7 @@ export class SampleAttributePanel extends ConcatView {
         this.sampleHandler.addAttributeInfoSource(SAMPLE_NAME, attribute => ({
             name: "displayName",
             accessor: sampleId =>
-                this.parent.sampleAccessor(sampleId).displayName,
+                this.sampleView.sampleAccessor(sampleId).displayName,
             type: "nominal",
             scale: undefined
         }));
@@ -82,7 +83,7 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     get sampleHandler() {
-        return this.parent.sampleHandler;
+        return this.sampleView.sampleHandler;
     }
 
     getEncoding(whoIsAsking) {
@@ -98,7 +99,7 @@ export class SampleAttributePanel extends ConcatView {
     render(context, coords, options = {}) {
         super.render(context, coords, {
             ...options,
-            clipRect: this.parent._clipBySummary(coords)
+            clipRect: this.sampleView._clipBySummary(coords)
         });
     }
 
@@ -108,9 +109,11 @@ export class SampleAttributePanel extends ConcatView {
      * @param {import("../../utils/interactionEvent").default} event
      */
     _findSampleForMouseEvent(coords, event) {
-        const sampleId = this.parent.getSampleIdAt(event.point.y - coords.y);
+        const sampleId = this.sampleView.getSampleIdAt(
+            event.point.y - coords.y
+        );
 
-        return sampleId ? this.parent.sampleMap.get(sampleId) : undefined;
+        return sampleId ? this.sampleView.sampleMap.get(sampleId) : undefined;
     }
 
     /**
@@ -212,7 +215,7 @@ export class SampleAttributePanel extends ConcatView {
         const addedChildViews = [
             createLabelViewSpec(),
             ...this._createAttributeViewSpecs()
-        ].map(spec => this.addChild(spec));
+        ].map(spec => this.addChildBySpec(spec));
 
         for (const view of addedChildViews) {
             if (view instanceof UnitView) {
@@ -228,12 +231,12 @@ export class SampleAttributePanel extends ConcatView {
      * @param {string} attributeName
      */
     _getAttributeDef(attributeName) {
-        return this.parent.spec.samples?.attributes?.[attributeName];
+        return this.sampleView.spec.samples?.attributes?.[attributeName];
     }
 
     _getAttributeNames() {
         return this._cache("attributeNames", () => {
-            const samples = this.parent.getAllSamples();
+            const samples = this.sampleView.getAllSamples();
 
             // Find all attributes
             const attributes = samples
@@ -251,7 +254,7 @@ export class SampleAttributePanel extends ConcatView {
      * Builds views for attributes
      */
     _createAttributeViewSpecs() {
-        const samples = this.parent.getAllSamples();
+        const samples = this.sampleView.getAllSamples();
 
         return this._getAttributeNames().map(attributeName => {
             const attributeDef = this._getAttributeDef(attributeName);
@@ -302,7 +305,7 @@ export class SampleAttributePanel extends ConcatView {
 
             const attribute = nameMatch[1];
 
-            const sampleAccessor = this.parent.sampleAccessor;
+            const sampleAccessor = this.sampleView.sampleAccessor;
 
             /** @param {string} sampleId */
             const accessor = sampleId => {
@@ -314,7 +317,8 @@ export class SampleAttributePanel extends ConcatView {
                 name: attribute,
                 accessor,
                 type: resolution.type,
-                scale: resolution.getScale()
+                scale: resolution.getScale(),
+                title: attribute
             };
         }
     }
@@ -365,7 +369,7 @@ export class SampleAttributePanel extends ConcatView {
         /** @type {string[]} */
         const [sampleId, attribute] = JSON.parse(sampleAndAttribute);
 
-        const sample = this.parent.sampleMap.get(sampleId);
+        const sample = this.sampleView.sampleMap.get(sampleId);
 
         /**
          * @param {string} attribute
@@ -428,7 +432,7 @@ export class SampleAttributePanel extends ConcatView {
         for (const name of this._getAttributeNames()) {
             const info = this.getAttributeInfo(name);
             if (info.type == ORDINAL || info.type == NOMINAL) {
-                const sample = this.parent._samples.find(
+                const sample = this.sampleView._samples.find(
                     sample => sample.attributes[info.name] == command
                 );
 

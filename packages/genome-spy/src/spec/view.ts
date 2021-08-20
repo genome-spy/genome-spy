@@ -61,13 +61,19 @@ export interface Step {
     step: number;
 }
 
+export type Side = "top" | "right" | "bottom" | "left";
+
+export type Paddings = Partial<Record<Side, number>>;
+
+export type PaddingConfig = Paddings | number;
+
 export interface ViewSpecBase extends ResolveSpec {
     name?: string;
 
     height?: SizeDef | number | Step | "container";
     width?: SizeDef | number | Step | "container";
     /** Padding in pixels. Default: 0 */
-    padding?: number;
+    padding?: PaddingConfig;
 
     data?: Data;
     transform?: TransformParams[];

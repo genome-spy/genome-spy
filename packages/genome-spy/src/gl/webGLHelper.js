@@ -46,8 +46,15 @@ export default class WebGLHelper {
 
         container.appendChild(canvas);
 
-        /** @type {WebGL2RenderingContext} */
-        const gl = getContext(canvas);
+        // TODO: Consider using high-performance powerPreference:
+        // https://www.khronos.org/webgl/public-mailing-list/public_webgl/1912/msg00001.php
+
+        const gl = /** @type {WebGL2RenderingContext} */ (getContext(canvas, {
+            antialias: true,
+            // Disable depth writes. We don't use depth testing.
+            depth: false,
+            premultipliedAlpha: true
+        }));
 
         if (!gl) {
             throw new Error(
@@ -62,9 +69,6 @@ export default class WebGLHelper {
         }
 
         addExtensionsToContext(gl);
-
-        // Disable depth writes. We don't use depth testing.
-        gl.depthMask(false);
 
         // TODO: view background: https://vega.github.io/vega-lite/docs/spec.html#view-background
 

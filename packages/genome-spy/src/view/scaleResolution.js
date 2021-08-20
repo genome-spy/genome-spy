@@ -26,6 +26,7 @@ import {
     isChromosomalLocus,
     isChromosomalLocusInterval
 } from "../genome/genome";
+import { NominalDomain } from "../utils/domainArray";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
@@ -145,6 +146,7 @@ export default class ScaleResolution {
      * @returns {import("../spec/scale").Scale}
      */
     getScaleProps() {
+        // eslint-disable-next-line complexity
         return getCachedOrCall(this, "scaleProps", () => {
             const mergedProps = this._getMergedScaleProps();
             if (mergedProps === null || mergedProps.type == "null") {
@@ -158,6 +160,10 @@ export default class ScaleResolution {
                 ...mergedProps
             };
 
+            if (!props.type) {
+                props.type = getDefaultScaleType(this.channel, this.type);
+            }
+
             const domain =
                 this.getConfiguredDomain() ??
                 (this.type == LOCUS
@@ -168,6 +174,8 @@ export default class ScaleResolution {
 
             if (domain && domain.length > 0) {
                 props.domain = domain;
+            } else if (isDiscrete(props.type)) {
+                props.domain = new NominalDomain();
             }
 
             if (!props.domain && props.domainMid !== undefined) {
@@ -176,17 +184,17 @@ export default class ScaleResolution {
                 props.domain = [props.domainMin ?? 0, props.domainMax ?? 1];
             }
 
-            if (!props.type) {
-                props.type = getDefaultScaleType(this.channel, this.type);
-            }
-
             // Genomic coordinates need higher precision
             if (props.type == LOCUS && !("fp64" in props)) {
                 props.fp64 = true;
             }
 
             // Swap discrete y axis
-            if (this.channel == "y" && isDiscrete(props.type)) {
+            if (
+                this.channel == "y" &&
+                isDiscrete(props.type) &&
+                props.reverse == undefined
+            ) {
                 props.reverse = true;
             }
 

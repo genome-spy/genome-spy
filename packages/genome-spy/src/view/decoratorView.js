@@ -2,7 +2,6 @@ import ContainerView from "./containerView";
 import AxisView from "./axisView";
 import { getFlattenedViews } from "./viewUtils";
 import Padding from "../utils/layout/padding";
-import { FlexDimensions } from "../utils/layout/flexLayout";
 
 /**
  * @typedef {import("../spec/channel").PositionalChannel} PositionalChannel
