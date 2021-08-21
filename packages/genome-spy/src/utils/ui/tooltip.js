@@ -32,6 +32,7 @@ export default class Tooltip {
      * @param {boolean} visible
      */
     set visible(visible) {
+        debugger;
         if (visible != this._visible) {
             this.element.style.display = visible ? "block" : "none";
             this._visible = visible;
