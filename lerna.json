@@ -1,10 +1,13 @@
 {
-  "packages": ["packages/*"],
+	"packages": ["packages/*"],
+	"useWorkspaces": true,
   "version": "0.3.0",
   "command": {
-    "bootstrap": {
-      "hoist": true,
-      "forceLocal": true
+    "command": {
+      "publish": {
+        "conventionalCommits": true,
+        "yes": true
+      }
     }
   }
 }

@@ -10,10 +10,10 @@ The software is still work in progress. Documentation and examples of an early a
 
 ## Bootstrapping and running
 
-1. git clone git@github.com:tuner/genome-spy.git
-2. cd genome-spy
-3. lerna bootstrap
-4. npm start
+1. `git clone git@github.com:tuner/genome-spy.git`
+2. `cd genome-spy`
+3. `npm install` (use npm7!)
+4. `npm start`
 
 The `packages/genome-spy/static/examples` directory contains some random view specification that can be accessed through urls like `http://localhost:8080/?spec=examples/first.json`.
 
