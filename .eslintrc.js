@@ -14,6 +14,7 @@ module.exports = {
         "no-undefined": "off",
         "no-nested-ternary": "off",
         "dot-notation": "off",
-        "no-unused-vars": ["error", { args: "none" }]
+        "no-unused-vars": ["error", { args: "none" }],
+        "require-await": "warn"
     }
 };
