@@ -20,6 +20,7 @@
     "husky": "^7.0.1",
     "jest": "^25.0.0",
     "lerna": "^4.0.0",
+    "lint-staged": "^11.1.2",
     "mini-css-extract-plugin": "^2.2.0",
     "node-sass": "^6.0.1",
     "prettier": "^2.3.2",
@@ -43,14 +44,10 @@
     "test": "jest",
     "start": "npm run start -w genome-spy",
     "pretty-quick": "pretty-quick",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "pre-commit": "lint-staged"
   },
   "workspaces": [
     "./packages/*"
-  ],
-  "husky": {
-    "hooks": {
-      "pre-commit": "pretty-quick --staged"
-    }
-  }
+  ]
 }
