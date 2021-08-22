@@ -21,28 +21,29 @@ const FACET_CHANNELS = ["column", "row"];
 /**
  * @type {Record<FacetChannel, FacetChannel>}
  */
+// eslint-disable-next-line no-unused-vars
 const PERPENDICULAR_FACET_CHANNELS = {
     column: "row",
-    row: "column"
+    row: "column",
 };
 
 // https://vega.github.io/vega-lite/docs/header.html#labels
 // TODO: Configurable
 const headerConfig = {
     labelFontSize: 12,
-    labelColor: "black"
+    labelColor: "black",
 };
 
 /** @type {Record<FacetChannel, any>} */
 const headerConfigs = {
     column: {
         ...headerConfig,
-        labelAngle: 0
+        labelAngle: 0,
     },
     row: {
         ...headerConfig,
-        labelAngle: -90
-    }
+        labelAngle: -90,
+    },
 };
 
 /**
@@ -81,12 +82,9 @@ export default class FacetView extends ContainerView {
         this.spec = spec;
 
         const View = getViewClass(spec.spec);
-        this.child = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
-            spec.spec,
-            context,
-            this,
-            `facet`
-        ));
+        this.child = /** @type { UnitView | LayerView | DecoratorView } */ (
+            new View(spec.spec, context, this, `facet`)
+        );
 
         /**
          * Faceted views for displaying the facet labels
@@ -94,14 +92,14 @@ export default class FacetView extends ContainerView {
          * @type {Record<FacetChannel, UnitView>}
          */
         this._labelViews = Object.fromEntries(
-            FACET_CHANNELS.map(channel => [
+            FACET_CHANNELS.map((channel) => [
                 channel,
                 new UnitView(
                     createLabelViewSpec(headerConfigs[channel]),
                     this.context,
                     this,
                     `facetLabel-${channel}`
-                )
+                ),
             ])
         );
 
@@ -128,7 +126,9 @@ export default class FacetView extends ContainerView {
             throw new Error("Not my child!");
         }
 
-        this.child = /** @type {UnitView | LayerView | DecoratorView} */ (replacement);
+        this.child = /** @type {UnitView | LayerView | DecoratorView} */ (
+            replacement
+        );
     }
 
     transformData() {
@@ -149,7 +149,7 @@ export default class FacetView extends ContainerView {
         } else if (isFacetFieldDef(this.spec.facet)) {
             // TODO: Check "columns"
             facetMapping = {
-                column: this.spec.facet
+                column: this.spec.facet,
             };
         } else {
             throw new Error(
@@ -173,7 +173,7 @@ export default class FacetView extends ContainerView {
         } else if (isFacetFieldDef(this.spec.facet)) {
             // TODO: Check "columns"
             facetMapping = {
-                column: this.spec.facet
+                column: this.spec.facet,
             };
         } else {
             throw new Error(
@@ -203,7 +203,7 @@ export default class FacetView extends ContainerView {
             this._facetDimensions[channel] = {
                 accessor,
                 factors,
-                facetFieldDef
+                facetFieldDef,
             };
         }
     }
@@ -213,7 +213,7 @@ export default class FacetView extends ContainerView {
             const facetDimension = this._facetDimensions[channel];
             this._labelViews[channel].updateData(
                 facetDimension
-                    ? facetDimension.factors.map(d => ({ data: d }))
+                    ? facetDimension.factors.map((d) => ({ data: d }))
                     : []
             );
         }
@@ -235,7 +235,7 @@ export default class FacetView extends ContainerView {
         } else if (column && row) {
             const columnField = vegaField(column.facetFieldDef.field);
             const rowField = vegaField(row.facetFieldDef.field);
-            return /** @param {object} d */ d =>
+            return /** @param {object} d */ (d) =>
                 columnField(d) + "," + rowField(d);
         } else if (column) {
             return vegaField(column.facetFieldDef.field);
@@ -359,7 +359,7 @@ export default class FacetView extends ContainerView {
                 coords[channel == "column" ? "width" : "height"],
                 {
                     spacing,
-                    devicePixelRatio: window.devicePixelRatio
+                    devicePixelRatio: window.devicePixelRatio,
                 }
             );
         };
@@ -375,7 +375,7 @@ export default class FacetView extends ContainerView {
             nRows = Math.ceil(n / nCols);
         } else {
             /** @param {FacetDimension} facetDimension */
-            const getCount = facetDimension =>
+            const getCount = (facetDimension) =>
                 facetDimension ? facetDimension.factors.length : 1;
 
             nCols = getCount(this._facetDimensions.column);
@@ -467,18 +467,18 @@ function createLabelViewSpec(headerConfig) {
     /** @type {import("./viewUtils").UnitSpec} */
     const titleView = {
         data: {
-            values: []
+            values: [],
         },
         mark: {
             type: "text",
             clip: false,
-            angle: headerConfig.labelAngle
+            angle: headerConfig.labelAngle,
         },
         encoding: {
             text: { field: "data", type: "nominal" },
             size: { value: headerConfig.labelFontSize },
-            color: { value: headerConfig.labelColor }
-        }
+            color: { value: headerConfig.labelColor },
+        },
     };
 
     return titleView;

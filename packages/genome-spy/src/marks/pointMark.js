@@ -6,7 +6,7 @@ import VERTEX_SHADER from "../gl/point.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
 
 import Mark from "./mark";
-import SampleTransform, { sampleIterable } from "../data/transforms/sample";
+import { sampleIterable } from "../data/transforms/sample";
 
 /** @type {Record<string, import("../view/viewUtils").ChannelDef>} */
 const defaultEncoding = {};
@@ -39,7 +39,7 @@ export default class PointMark extends Mark {
                 maxRelativePointDiameter: 0.8,
                 minAbsolutePointDiameter: 0,
 
-                semanticZoomFraction: 0.02
+                semanticZoomFraction: 0.02,
             })
         );
     }
@@ -58,7 +58,7 @@ export default class PointMark extends Mark {
             "strokeWidth",
             "gradientStrength",
             "dx",
-            "dy"
+            "dy",
         ];
     }
 
@@ -71,7 +71,7 @@ export default class PointMark extends Mark {
             "strokeWidth",
             "gradientStrength",
             "dx",
-            "dy"
+            "dy",
         ];
     }
 
@@ -84,9 +84,8 @@ export default class PointMark extends Mark {
 
         // Semantic zooming is currently solely a feature of point mark.
         // Build a sorted sample that allows for computing p-quantiles
-        const semanticScoreAccessor = this.unitView.getAccessor(
-            "semanticScore"
-        );
+        const semanticScoreAccessor =
+            this.unitView.getAccessor("semanticScore");
         if (semanticScoreAccessor) {
             // n chosen using Stetson-Harrison
             // TODO: Throw on missing scores
@@ -113,7 +112,7 @@ export default class PointMark extends Mark {
         const builder = new PointVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            numItems: Math.max(itemCount, this.properties.minBufferSize || 0)
+            numItems: Math.max(itemCount, this.properties.minBufferSize || 0),
         });
 
         builder.addBatches(collector.facetBatches);
@@ -177,7 +176,7 @@ export default class PointMark extends Mark {
             uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),
             uScaleFactor: this._getGeometricScaleFactor(),
-            uSemanticThreshold: this.getSemanticThreshold()
+            uSemanticThreshold: this.getSemanticThreshold(),
         });
 
         setBuffersAndAttributes(
@@ -199,14 +198,14 @@ export default class PointMark extends Mark {
             const paddedDomain = zoomLinear(visibleDomain, null, 1.01);
 
             /** @param {any[]} facetId */
-            this._findIndices = facetId => {
+            this._findIndices = (facetId) => {
                 const data = this.unitView
                     .getCollector()
                     .facetBatches.get(facetId);
 
                 return [
                     bisect(data, paddedDomain[0]),
-                    bisect(data, paddedDomain[paddedDomain.length - 1])
+                    bisect(data, paddedDomain[paddedDomain.length - 1]),
                 ];
             };
         }

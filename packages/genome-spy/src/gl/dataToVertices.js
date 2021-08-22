@@ -3,7 +3,7 @@ import { format } from "d3-format";
 import { isString } from "vega-util";
 import { fp64ify } from "./includes/fp64-utils";
 import ArrayBuilder from "./arrayBuilder";
-import getMetrics, { SDF_PADDING } from "../fonts/bmFontMetrics";
+import { SDF_PADDING } from "../fonts/bmFontMetrics";
 import { peek } from "../utils/arrayUtils";
 import createBinningRangeIndexer from "../utils/binnedRangeIndex";
 
@@ -30,7 +30,7 @@ export class GeometryBuilder {
         encoders,
         numVertices = undefined,
         attributes = [],
-        buildXIndex = false
+        buildXIndex = false,
     }) {
         this.encoders = encoders;
         this._buildXIndex = buildXIndex;
@@ -66,13 +66,13 @@ export class GeometryBuilder {
             const f = ce.indexer
                 ? ce.indexer
                 : fp64
-                ? d => fp64ify(accessor(d), doubleArray)
+                ? (d) => fp64ify(accessor(d), doubleArray)
                 : accessor;
 
             this.variableBuilder.addConverter(channel, {
                 f,
                 numComponents: fp64 ? 2 : 1,
-                arrayReference: fp64 ? doubleArray : undefined
+                arrayReference: fp64 ? doubleArray : undefined,
             });
         }
 
@@ -95,7 +95,7 @@ export class GeometryBuilder {
             this.rangeMap.set(key, {
                 offset,
                 count: size,
-                xIndex: this.xIndexer?.getIndex()
+                xIndex: this.xIndexer?.getIndex(),
             });
         }
         this.lastOffset = index;
@@ -139,7 +139,7 @@ export class GeometryBuilder {
 
             this.xIndexer = createBinningRangeIndexer(50, [
                 xa(data[0]),
-                x2a(peek(data))
+                x2a(peek(data)),
             ]);
 
             let lastVertexCount = this.variableBuilder.vertexCount;
@@ -147,7 +147,7 @@ export class GeometryBuilder {
             /**
              * @param {any} datum
              */
-            this.addToXIndex = datum => {
+            this.addToXIndex = (datum) => {
                 let currentVertexCount = this.variableBuilder.vertexCount;
                 this.xIndexer(
                     xa(datum),
@@ -162,7 +162,7 @@ export class GeometryBuilder {
             /**
              * @param {any} datum
              */
-            this.addToXIndex = datum => {
+            this.addToXIndex = (datum) => {
                 //
             };
         }
@@ -186,7 +186,7 @@ export class GeometryBuilder {
             vertexCount: this.variableBuilder.vertexCount,
             /** Number of vertices allocated in buffers */
             allocatedVertices: this.allocatedVertices,
-            rangeMap: this.rangeMap
+            rangeMap: this.rangeMap,
         };
     }
 }
@@ -209,14 +209,14 @@ export class RectVertexBuilder extends GeometryBuilder {
         tessellationThreshold = Infinity,
         visibleRange = [-Infinity, Infinity],
         numItems,
-        buildXIndex = false
+        buildXIndex = false,
     }) {
         super({
             encoders,
             attributes,
             numVertices:
                 tessellationThreshold == Infinity ? numItems * 6 : undefined,
-            buildXIndex
+            buildXIndex,
         });
 
         this.visibleRange = visibleRange;
@@ -236,14 +236,16 @@ export class RectVertexBuilder extends GeometryBuilder {
             return;
         }
 
-        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
-            .encoders);
+        const e =
+            /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (
+                this.encoders
+            );
         const [lower, upper] = this.visibleRange;
 
         /**
          * @param {import("../encoder/encoder").Encoder} encoder
          */
-        const a = encoder => encoder.accessor || (x => 0);
+        const a = (encoder) => encoder.accessor || ((x) => 0);
 
         const xAccessor = a(e.x);
         const x2Accessor = a(e.x2);
@@ -322,14 +324,14 @@ export class RuleVertexBuilder extends GeometryBuilder {
         tessellationThreshold = Infinity,
         visibleRange = [-Infinity, Infinity],
         numItems,
-        buildXIndex
+        buildXIndex,
     }) {
         super({
             encoders,
             attributes,
             numVertices:
                 tessellationThreshold == Infinity ? numItems * 6 : undefined,
-            buildXIndex
+            buildXIndex,
         });
 
         this.visibleRange = visibleRange;
@@ -347,9 +349,7 @@ export class RuleVertexBuilder extends GeometryBuilder {
      * @param {object[]} data
      */
     addBatch(key, data, lo = 0, hi = data.length) {
-        const e = /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (this
-            .encoders);
-        const [lower, upper] = this.visibleRange; // TODO
+        //const [lower, upper] = this.visibleRange; // TODO
 
         this.prepareXIndexer(data);
 
@@ -396,7 +396,7 @@ export class PointVertexBuilder extends GeometryBuilder {
         super({
             encoders,
             attributes,
-            numVertices: numItems
+            numVertices: numItems,
         });
     }
 }
@@ -412,7 +412,7 @@ export class ConnectionVertexBuilder extends GeometryBuilder {
         super({
             encoders,
             attributes,
-            numVertices: numItems
+            numVertices: numItems,
         });
     }
 
@@ -446,13 +446,13 @@ export class TextVertexBuilder extends GeometryBuilder {
         fontMetrics,
         properties,
         numCharacters = undefined,
-        buildXIndex = false
+        buildXIndex = false,
     }) {
         super({
             encoders,
             attributes,
             numVertices: numCharacters * 6, // six vertices per quad (character)
-            buildXIndex
+            buildXIndex,
         });
 
         this.metadata = fontMetrics;
@@ -465,7 +465,7 @@ export class TextVertexBuilder extends GeometryBuilder {
         /** @type {function(any):any} */
         this.numberFormat = e.text.channelDef.format
             ? format(e.text.channelDef.format)
-            : d => d;
+            : (d) => d;
 
         this.updateVertexCoord = this.variableBuilder.createUpdater(
             "vertexCoord",

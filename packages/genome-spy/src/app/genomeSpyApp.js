@@ -3,7 +3,7 @@ import lzString from "lz-string";
 import GenomeSpy from "../genomeSpy";
 import "../styles/genome-spy-app.scss";
 import favIcon from "../img/genomespy-favicon.svg";
-import { html, render, nothing } from "lit";
+import { html, render } from "lit";
 
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
@@ -66,14 +66,14 @@ export default class GenomeSpyApp {
         }
 
         /** @param {string} className */
-        const elem = className =>
-            /** @type {HTMLElement} */ (this.appContainer.getElementsByClassName(
-                className
-            )[0]);
+        const elem = (className) =>
+            /** @type {HTMLElement} */ (
+                this.appContainer.getElementsByClassName(className)[0]
+            );
 
         this._renderTemplate();
 
-        elem("genome-spy-container").addEventListener("click", event => {
+        elem("genome-spy-container").addEventListener("click", (event) => {
             elem("search-input").blur();
         });
 
@@ -107,8 +107,9 @@ export default class GenomeSpyApp {
             this._updateUrl();
         });
 
-        const toolbar = /** @type {import("./toolbar-wc").default} */ (this
-            .toolbarRef.value);
+        const toolbar = /** @type {import("./toolbar-wc").default} */ (
+            this.toolbarRef.value
+        );
         // Just trigger re-render. Need a way to broadcast this to all components.
         toolbar.appInitialized = true;
 
@@ -166,10 +167,12 @@ export default class GenomeSpyApp {
         // TODO: provenance etc must be re-registered etc
         throw new Error("Broken");
 
+        /*
         this.config = config;
         // TODO: Preserve viewport
         this.genomeSpy.destroy();
         await this.launch();
+		*/
     }
 
     getSampleView() {
@@ -180,7 +183,7 @@ export default class GenomeSpyApp {
         /** @type {import("../view/sampleView/sampleView").default} */
         let sampleView;
 
-        this.genomeSpy.viewRoot.visit(view => {
+        this.genomeSpy.viewRoot.visit((view) => {
             if (view instanceof SampleView) {
                 sampleView = view;
                 return VISIT_STOP;

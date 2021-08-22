@@ -1,9 +1,4 @@
-import {
-    createBufferInfoFromArrays,
-    drawBufferInfo,
-    setBuffersAndAttributes,
-    setUniforms
-} from "twgl.js";
+import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices";
@@ -32,7 +27,7 @@ export default class RectMark extends Mark {
                 minOpacity: 0.0,
 
                 tessellationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
-                tessellationTiles: 35 // TODO: Tiles per unit (bp)
+                tessellationTiles: 35, // TODO: Tiles per unit (bp)
             })
         );
     }
@@ -46,7 +41,7 @@ export default class RectMark extends Mark {
             "y",
             "y2",
             "color",
-            "opacity"
+            "opacity",
         ];
     }
 
@@ -89,7 +84,7 @@ export default class RectMark extends Mark {
             encoders: this.encoders,
             attributes: this.getAttributes(),
             numItems,
-            buildXIndex: this.properties.buildIndex
+            buildXIndex: this.properties.buildIndex,
         });
 
         builder.addBatches(collector.facetBatches);
@@ -109,7 +104,7 @@ export default class RectMark extends Mark {
 
         setUniforms(this.programInfo, {
             uMinSize: [props.minWidth, props.minHeight], // in pixels
-            uMinOpacity: props.minOpacity
+            uMinOpacity: props.minOpacity,
         });
 
         setBuffersAndAttributes(
@@ -158,7 +153,7 @@ export default class RectMark extends Mark {
         const a2 = e.x2.accessor;
         if (data) {
             // TODO: Binary search
-            return data.find(d => x >= a(d) && x < a2(d));
+            return data.find((d) => x >= a(d) && x < a2(d));
         }
     }
 }

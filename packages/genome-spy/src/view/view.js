@@ -3,17 +3,13 @@ import Padding from "../utils/layout/padding";
 import {
     getCachedOrCall,
     initPropertyCache,
-    invalidatePrefix
+    invalidatePrefix,
 } from "../utils/propertyCacher";
 import { isNumber, span } from "vega-util";
 import { scaleLog } from "d3-scale";
-import {
-    isDiscreteChannel,
-    isFieldDef,
-    primaryChannel
-} from "../encoder/encoder";
+import { isFieldDef, primaryChannel } from "../encoder/encoder";
 import { appendToBaseUrl } from "../utils/url";
-import { isDiscrete, isDiscretizing, bandSpace } from "vega-scale";
+import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils";
 
 // TODO: View classes have too many responsibilities. Come up with a way
@@ -84,7 +80,7 @@ export default class View {
              * Channel-specific axis resolutions
              * @type {Record<string, import("./axisResolution").default>}
              */
-            axis: {}
+            axis: {},
         };
 
         /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
@@ -98,7 +94,7 @@ export default class View {
         initPropertyCache(this);
 
         /** @type {function(number):number} */
-        this._opacityFunction = parentOpacity => parentOpacity;
+        this._opacityFunction = (parentOpacity) => parentOpacity;
     }
 
     getPadding() {
@@ -140,7 +136,7 @@ export default class View {
          * @param {"width" | "height"} dimension
          * @return {SizeDef}
          */
-        const handleSize = dimension => {
+        const handleSize = (dimension) => {
             /** @type {SizeDef} */
             let sizeDef;
             let value = this.spec[dimension];
@@ -204,7 +200,7 @@ export default class View {
 
     getPathString() {
         return [...this.getAncestors()]
-            .map(v => v.name)
+            .map((v) => v.name)
             .reverse()
             .join("/");
     }
@@ -354,7 +350,7 @@ export default class View {
 
         const combined = {
             ...pe,
-            ...te
+            ...te,
         };
 
         for (const [channel, channelDef] of Object.entries(combined)) {
@@ -416,20 +412,18 @@ export default class View {
      * @param {string} channel
      */
     getScaleResolution(channel) {
-        return /** @type {ScaleResolution} */ (this._getResolution(
-            channel,
-            "scale"
-        ));
+        return /** @type {ScaleResolution} */ (
+            this._getResolution(channel, "scale")
+        );
     }
 
     /**
      * @param {string} channel
      */
     getAxisResolution(channel) {
-        return /** @type {AxisResolution} */ (this._getResolution(
-            channel,
-            "axis"
-        ));
+        return /** @type {AxisResolution} */ (
+            this._getResolution(channel, "axis")
+        );
     }
 
     /**
@@ -475,7 +469,7 @@ export default class View {
                 }
                 break;
             case "progeny":
-                this.visit(view => invalidatePrefix(view, key));
+                this.visit((view) => invalidatePrefix(view, key));
                 break;
             default:
         }
@@ -501,10 +495,10 @@ function createViewOpacityFunction(view) {
 
     if (opacityDef !== undefined) {
         if (isNumber(opacityDef)) {
-            return parentOpacity => parentOpacity * opacityDef;
+            return (parentOpacity) => parentOpacity * opacityDef;
         } else if (isDynamicOpacity(opacityDef)) {
             /** @type {function(string):any} */
-            const getScale = channel => {
+            const getScale = (channel) => {
                 const scale = view.getScaleResolution(channel)?.getScale();
                 // Only works on linear scales
                 if (["linear", "index", "locus"].includes(scale?.type)) {
@@ -527,7 +521,7 @@ function createViewOpacityFunction(view) {
                 .range(opacityDef.values)
                 .clamp(true);
 
-            return parentOpacity => {
+            return (parentOpacity) => {
                 const rangeSpan = 1000; //TODO: span(scale.range());
                 const unitsPerPixel = span(scale.domain()) / rangeSpan;
 
@@ -535,7 +529,7 @@ function createViewOpacityFunction(view) {
             };
         }
     }
-    return parentOpacity => parentOpacity;
+    return (parentOpacity) => parentOpacity;
 }
 
 /**
@@ -543,4 +537,4 @@ function createViewOpacityFunction(view) {
  * @param {any} size
  * @return {size is import("../spec/view").Step}
  */
-export const isStepSize = size => !!size?.step;
+export const isStepSize = (size) => !!size?.step;

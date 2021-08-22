@@ -16,15 +16,8 @@ const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 /** @type {Record<PositionalChannel, GeometricDimension>} */
 const CHANNEL_DIMENSIONS = {
     x: "width",
-    y: "height"
+    y: "height",
 };
-
-/**
- * @param {AxisOrient} slot
- */
-function orient2dimension(slot) {
-    return CHANNEL_DIMENSIONS[orient2channel(slot)];
-}
 
 /**
  * @param {PositionalChannel} channel
@@ -37,13 +30,13 @@ function getPerpendicularChannel(channel) {
 /** @type {Record<PositionalChannel, AxisOrient[]>} */
 const CHANNEL_ORIENTS = {
     x: ["bottom", "top"],
-    y: ["left", "right"]
+    y: ["left", "right"],
 };
 
 /** @type {Record<AxisOrient, PositionalChannel>} */
 const ORIENT_CHANNELS = Object.fromEntries(
     Object.entries(CHANNEL_ORIENTS)
-        .map(([channel, slots]) => slots.map(slot => [slot, channel]))
+        .map(([channel, slots]) => slots.map((slot) => [slot, channel]))
         .flat(1)
 );
 /**
@@ -86,7 +79,7 @@ export default class AxisView extends LayerView {
         const fullAxisProps = {
             ...(genomeAxis ? defaultGenomeAxisProps : defaultAxisProps),
             ...getDefaultAngleAndAlign(type, axisProps),
-            ...axisProps
+            ...axisProps,
         };
 
         super(
@@ -210,7 +203,7 @@ function getExtent(axisProps) {
     const mainChannel = orient2channel(axisProps.orient);
 
     /** @type {number} */
-    let extent = ((axisProps.ticks && axisProps.tickSize) || 0);
+    let extent = (axisProps.ticks && axisProps.tickSize) || 0;
 
     if (axisProps.labels) {
         extent += axisProps.labelPadding;
@@ -251,7 +244,7 @@ function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
      *
      * @param {number} length
      */
-    const tickSpacing = length => 25 + 60 * smoothstep(100, 700, length);
+    const tickSpacing = (length) => 25 + 60 * smoothstep(100, 700, length);
 
     let count = isNumber(axisProps.tickCount)
         ? axisProps.tickCount
@@ -267,15 +260,15 @@ function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
         shallowArrayEquals(
             values,
             oldTicks,
-            v => v,
-            d => d.value
+            (v) => v,
+            (d) => d.value
         )
     ) {
         return oldTicks;
     } else {
         const format = tickFormat(scale, count, axisProps.format);
 
-        return values.map(x => ({ value: x, label: format(x) }));
+        return values.map((x) => ({ value: x, label: format(x) }));
     }
 }
 
@@ -321,7 +314,7 @@ const defaultAxisProps = {
     titleColor: "black",
     titleFont: "sans-serif",
     titleFontSize: 10,
-    titlePadding: 3
+    titlePadding: 3,
 
     // TODO: titleX, titleY, titleAngle, titleAlign, etc
 };
@@ -368,7 +361,7 @@ function getDefaultAngleAndAlign(type, axisProps) {
     return {
         labelAlign: align,
         labelAngle: angle,
-        labelBaseline: baseline
+        labelBaseline: baseline,
     };
 }
 
@@ -399,8 +392,8 @@ function createAxis(axisProps) {
             strokeCap: ap.domainCap,
             color: ap.domainColor,
             [secondary]: anchor,
-            size: ap.domainWidth
-        }
+            size: ap.domainWidth,
+        },
     });
 
     const createLabels = () => ({
@@ -417,12 +410,12 @@ function createAxis(axisProps) {
             size: ap.labelFontSize,
             color: ap.labelColor,
             minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
-            dynamicData: true
+            dynamicData: true,
         },
         encoding: {
             [main]: { field: "value", type: "quantitative" },
-            text: { field: "label", type: "quantitative" }
-        }
+            text: { field: "label", type: "quantitative" },
+        },
     });
 
     const createTicks = () => ({
@@ -435,14 +428,14 @@ function createAxis(axisProps) {
             color: ap.tickColor,
             size: ap.tickWidth,
             minBufferSize: 300,
-            dynamicData: true
+            dynamicData: true,
         },
         encoding: {
             [secondary]: { value: anchor },
             [secondary + "2"]: {
-                value: anchor - (ap.tickSize / ap.extent) * (anchor ? 1 : -1)
-            }
-        }
+                value: anchor - (ap.tickSize / ap.extent) * (anchor ? 1 : -1),
+            },
+        },
     });
 
     const createTitle = () => ({
@@ -459,8 +452,8 @@ function createAxis(axisProps) {
             text: ap.title,
             color: ap.titleColor,
             [main]: 0.5,
-            [secondary]: 1 - anchor
-        }
+            [secondary]: 1 - anchor,
+        },
     });
 
     const createTicksAndLabels = () => {
@@ -468,9 +461,9 @@ function createAxis(axisProps) {
         const spec = {
             name: "ticks_and_labels",
             encoding: {
-                [main]: { field: "value", type: "quantitative" }
+                [main]: { field: "value", type: "quantitative" },
             },
-            layer: []
+            layer: [],
         };
 
         if (ap.ticks) {
@@ -490,7 +483,7 @@ function createAxis(axisProps) {
             getPerpendicularChannel(orient2channel(ap.orient))
         ]]: ap.extent,
         data: { dynamicCallbackSource: true },
-        layer: []
+        layer: [],
     };
 
     if (ap.domain) {
@@ -524,7 +517,7 @@ const defaultGenomeAxisProps = {
     chromLabelFontWeight: "normal",
     chromLabelColor: "black",
     chromLabelAlign: "left",
-    chromLabelPadding: 7
+    chromLabelPadding: 7,
     // TODO: chromLabelAngle
 };
 
@@ -554,8 +547,8 @@ export function createGenomeAxis(axisProps) {
                 anchor - (ap.chromTickSize / ap.extent) * (anchor ? 1 : -1),
             color: axisProps.chromTickColor,
             size: ap.chromTickWidth,
-            dynamicData: true
-        }
+            dynamicData: true,
+        },
     });
 
     const createLabels = () => ({
@@ -580,12 +573,12 @@ export function createGenomeAxis(axisProps) {
             clip: false,
             viewportEdgeFadeWidth: [0, 20, 0, 20],
             viewportEdgeFadeDistance: [undefined, -10, undefined, -20],
-            dynamicData: true
+            dynamicData: true,
         },
         encoding: {
             [main + "2"]: { field: "continuousEnd", type: "locus" },
-            text: { field: "name", type: "ordinal" }
-        }
+            text: { field: "name", type: "ordinal" },
+        },
     });
 
     // Create an ordinary axis
@@ -599,9 +592,9 @@ export function createGenomeAxis(axisProps) {
             data: { dynamicCallbackSource: true },
             encoding: {
                 // TODO: { chrom: "name", type: "locus" } // without pos = pos is 0
-                [main]: { field: "continuousStart", type: "locus", band: 0 }
+                [main]: { field: "continuousStart", type: "locus", band: 0 },
             },
-            layer: []
+            layer: [],
         };
 
         if (axisProps.chromTicks) {
@@ -612,17 +605,17 @@ export function createGenomeAxis(axisProps) {
             chromLayerSpec.layer.push(createLabels());
 
             axisSpec.layer
-                .filter(view => view.name == "ticks_and_labels")
-                .forEach(view =>
+                .filter((view) => view.name == "ticks_and_labels")
+                .forEach((view) =>
                     view.layer
-                        .filter(view => view.name == "labels")
-                        .forEach(view => {
+                        .filter((view) => view.name == "labels")
+                        .forEach((view) => {
                             view.mark.viewportEdgeFadeWidth = [0, 0, 0, 30];
                             view.mark.viewportEdgeFadeDistance = [
                                 undefined,
                                 undefined,
                                 undefined,
-                                40
+                                40,
                             ];
                         })
                 );

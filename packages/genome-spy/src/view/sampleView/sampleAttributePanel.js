@@ -10,13 +10,12 @@ import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
 import { buildDataFlow } from "../flowBuilder";
 import { NOMINAL, ORDINAL } from "../scaleResolution";
-import SampleView from "./sampleView";
 
 // TODO: Move to a more generic place
 const FieldType = {
     NOMINAL: "nominal",
     ORDINAL: "ordinal",
-    QUANTITATIVE: "quantitative"
+    QUANTITATIVE: "quantitative",
 };
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
@@ -38,7 +37,7 @@ export class SampleAttributePanel extends ConcatView {
             {
                 data: { dynamicSource: true },
                 hconcat: [], // Contents are added dynamically
-                spacing: 1
+                spacing: 1,
             },
             sampleView.context,
             undefined,
@@ -48,18 +47,20 @@ export class SampleAttributePanel extends ConcatView {
         this.sampleView = sampleView;
 
         // TODO: Optimize the following
-        this.sampleHandler.addAttributeInfoSource(SAMPLE_ATTRIBUTE, attribute =>
-            this.children
-                .map(this.getAttributeInfoFromView.bind(this))
-                .find(info => info && info.name == attribute.specifier)
+        this.sampleHandler.addAttributeInfoSource(
+            SAMPLE_ATTRIBUTE,
+            (attribute) =>
+                this.children
+                    .map(this.getAttributeInfoFromView.bind(this))
+                    .find((info) => info && info.name == attribute.specifier)
         );
 
-        this.sampleHandler.addAttributeInfoSource(SAMPLE_NAME, attribute => ({
+        this.sampleHandler.addAttributeInfoSource(SAMPLE_NAME, (attribute) => ({
             name: "displayName",
-            accessor: sampleId =>
+            accessor: (sampleId) =>
                 this.sampleView.sampleAccessor(sampleId).displayName,
             type: "nominal",
-            scale: undefined
+            scale: undefined,
         }));
 
         this.addInteractionEventListener(
@@ -75,7 +76,7 @@ export class SampleAttributePanel extends ConcatView {
                         this.getAttributeInfoFromView(event.target)?.name) ||
                     undefined;
                 const id = JSON.stringify([sample.id, attribute]);
-                this.context.updateTooltip(id, id =>
+                this.context.updateTooltip(id, (id) =>
                     Promise.resolve(this.sampleToTooltip(id))
                 );
             }
@@ -99,7 +100,7 @@ export class SampleAttributePanel extends ConcatView {
     render(context, coords, options = {}) {
         super.render(context, coords, {
             ...options,
-            clipRect: this.sampleView._clipBySummary(coords)
+            clipRect: this.sampleView._clipBySummary(coords),
         });
     }
 
@@ -141,9 +142,7 @@ export class SampleAttributePanel extends ConcatView {
             const attributeValue = sample.attributes[attribute.name];
             items.push(
                 ...generateAttributeContextMenu(
-                    html`
-                        Attribute: <strong>${attribute.name}</strong>
-                    `,
+                    html` Attribute: <strong>${attribute.name}</strong> `,
                     { type: SAMPLE_ATTRIBUTE, specifier: attribute.name },
                     attribute.type,
                     attributeValue,
@@ -173,21 +172,22 @@ export class SampleAttributePanel extends ConcatView {
         buildDataFlow(this, flow);
         // TODO: optimizeDataFlow(dataFlow);
 
-        const dynamicSource = /** @type {import("../../data/sources/dynamicSource").default} */ (flow.findDataSourceByKey(
-            this
-        ));
+        const dynamicSource =
+            /** @type {import("../../data/sources/dynamicSource").default} */ (
+                flow.findDataSourceByKey(this)
+            );
 
-        dynamicSource.visit(node => node.initialize());
+        dynamicSource.visit((node) => node.initialize());
 
         /** @type {Promise<import("../../marks/mark").default>[]} */
         const promises = [];
 
-        this.visit(view => {
+        this.visit((view) => {
             if (view instanceof UnitView) {
                 const mark = view.mark;
-                promises.push(mark.initializeGraphics().then(result => mark));
+                promises.push(mark.initializeGraphics().then((result) => mark));
 
-                flow.addObserver(collector => {
+                flow.addObserver((collector) => {
                     mark.initializeEncoders();
                     mark.initializeData(); // does faceting
                     mark.updateGraphicsData();
@@ -195,7 +195,7 @@ export class SampleAttributePanel extends ConcatView {
             }
         });
 
-        Promise.allSettled(promises).then(results => {
+        Promise.allSettled(promises).then((results) => {
             for (const result of results) {
                 if ("value" in result) {
                     result.value.finalizeGraphicsInitialization();
@@ -214,8 +214,8 @@ export class SampleAttributePanel extends ConcatView {
     _createViews() {
         const addedChildViews = [
             createLabelViewSpec(),
-            ...this._createAttributeViewSpecs()
-        ].map(spec => this.addChildBySpec(spec));
+            ...this._createAttributeViewSpecs(),
+        ].map((spec) => this.addChildBySpec(spec));
 
         for (const view of addedChildViews) {
             if (view instanceof UnitView) {
@@ -240,7 +240,7 @@ export class SampleAttributePanel extends ConcatView {
 
             // Find all attributes
             const attributes = samples
-                .flatMap(sample => Object.keys(sample.attributes))
+                .flatMap((sample) => Object.keys(sample.attributes))
                 .reduce(
                     (set, key) => set.add(key),
                     /** @type {Set<string>} */ (new Set())
@@ -256,7 +256,7 @@ export class SampleAttributePanel extends ConcatView {
     _createAttributeViewSpecs() {
         const samples = this.sampleView.getAllSamples();
 
-        return this._getAttributeNames().map(attributeName => {
+        return this._getAttributeNames().map((attributeName) => {
             const attributeDef = this._getAttributeDef(attributeName);
 
             // Ensure that attributes have a type
@@ -264,7 +264,9 @@ export class SampleAttributePanel extends ConcatView {
             if (!fieldType) {
                 switch (
                     inferType(
-                        samples.map(sample => sample.attributes[attributeName])
+                        samples.map(
+                            (sample) => sample.attributes[attributeName]
+                        )
                     )
                 ) {
                     case "integer":
@@ -278,7 +280,7 @@ export class SampleAttributePanel extends ConcatView {
 
             return createAttributeSpec(attributeName, {
                 ...(attributeDef || {}),
-                type: fieldType
+                type: fieldType,
             });
         });
     }
@@ -308,7 +310,7 @@ export class SampleAttributePanel extends ConcatView {
             const sampleAccessor = this.sampleView.sampleAccessor;
 
             /** @param {string} sampleId */
-            const accessor = sampleId => {
+            const accessor = (sampleId) => {
                 const sample = sampleAccessor(sampleId);
                 return sample.attributes[attribute];
             };
@@ -318,7 +320,7 @@ export class SampleAttributePanel extends ConcatView {
                 accessor,
                 type: resolution.type,
                 scale: resolution.getScale(),
-                title: attribute
+                title: attribute,
             };
         }
     }
@@ -344,20 +346,20 @@ export class SampleAttributePanel extends ConcatView {
         return [
             {
                 label: "Sort by name",
-                callback: () => dispatch(Actions.sortBy({ type: SAMPLE_NAME }))
+                callback: () => dispatch(Actions.sortBy({ type: SAMPLE_NAME })),
             },
             {
                 label: `Sample: ${sample.displayName}`,
-                type: "header"
+                type: "header",
             },
             {
                 label: "Retain",
-                callback: () => alert("TODO")
+                callback: () => alert("TODO"),
             },
             {
                 label: "Remove",
-                callback: () => alert("TODO")
-            }
+                callback: () => alert("TODO"),
+            },
         ];
     }
 
@@ -433,7 +435,7 @@ export class SampleAttributePanel extends ConcatView {
             const info = this.getAttributeInfo(name);
             if (info.type == ORDINAL || info.type == NOMINAL) {
                 const sample = this.sampleView._samples.find(
-                    sample => sample.attributes[info.name] == command
+                    (sample) => sample.attributes[info.name] == command
                 );
 
                 if (sample) {
@@ -465,16 +467,16 @@ function createAttributeSpec(attributeName, attributeDef) {
         width: attributeDef.width || 10,
         transform: [{ type: "filter", expr: `datum.${field} != null` }],
         mark: {
-            type: "rect"
+            type: "rect",
         },
         encoding: {
             facetIndex: { field: "indexNumber", type: "nominal" },
             color: {
                 field,
                 type: attributeDef.type,
-                scale: attributeDef.scale
-            }
-        }
+                scale: attributeDef.scale,
+            },
+        },
     };
 
     if (attributeDef.barScale && attributeDef.type == FieldType.QUANTITATIVE) {
@@ -482,7 +484,7 @@ function createAttributeSpec(attributeName, attributeDef) {
             field: `attributes["${attributeName}"]`,
             type: attributeDef.type,
             scale: attributeDef.barScale,
-            axis: null
+            axis: null,
         };
     }
 
@@ -501,7 +503,7 @@ function createLabelViewSpec() {
             align: "left",
             baseline: "middle",
             size: 11,
-            flushY: false
+            flushY: false,
         },
         encoding: {
             facetIndex: { field: "indexNumber", type: "nominal" },
@@ -509,8 +511,8 @@ function createLabelViewSpec() {
             x2: { value: 1 },
             y: { value: 0 },
             y2: { value: 1 },
-            text: { field: "displayName", type: "nominal" }
-        }
+            text: { field: "displayName", type: "nominal" },
+        },
     };
 
     return titleSpec;

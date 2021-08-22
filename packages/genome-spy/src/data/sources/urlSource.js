@@ -33,19 +33,20 @@ export default class UrlSource extends DataSource {
         const urls = Array.isArray(url) ? url : [url];
 
         /** @param {string} url */
-        const load = async url => {
+        const load = async (url) =>
             // TODO: Support chunked loading
-            return /** @type {string} */ (vegaLoader({
-                baseURL: this.baseUrl
-            })
-                .load(url)
-                .catch(e => {
-                    // TODO: Include baseurl in the error message. Should be normalized, however.
-                    throw new Error(
-                        `Cannot fetch: ${this.baseUrl}${url}: ${e.message}`
-                    );
-                }));
-        };
+            /** @type {string} */ (
+                vegaLoader({
+                    baseURL: this.baseUrl,
+                })
+                    .load(url)
+                    .catch((e) => {
+                        // TODO: Include baseurl in the error message. Should be normalized, however.
+                        throw new Error(
+                            `Cannot fetch: ${this.baseUrl}${url}: ${e.message}`
+                        );
+                    })
+            );
 
         /**
          * @param {string} text
@@ -66,7 +67,7 @@ export default class UrlSource extends DataSource {
 
         this.reset();
 
-        await Promise.all(urls.map(url => load(url).then(readAndParse)));
+        await Promise.all(urls.map((url) => load(url).then(readAndParse)));
 
         this.complete();
     }

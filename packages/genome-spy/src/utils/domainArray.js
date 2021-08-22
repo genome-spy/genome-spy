@@ -1,5 +1,3 @@
-import { shallowArrayEquals } from "./arrayUtils";
-
 /**
  * @typedef {boolean | number | string} scalar
  */
@@ -144,7 +142,7 @@ export class PiecewiseDomain extends DomainArray {
             );
         }
 
-        initialDomain.forEach(x => this.push(x));
+        initialDomain.forEach((x) => this.push(x));
     }
 
     /**
@@ -171,7 +169,7 @@ const domainTypes = {
     index: QuantitativeDomain,
     locus: QuantitativeDomain,
     nominal: NominalDomain,
-    ordinal: OrdinalDomain
+    ordinal: OrdinalDomain,
 };
 
 /**
@@ -221,6 +219,6 @@ function isPiecewiseArray(array) {
         array &&
         array.length > 0 &&
         array.length != 2 &&
-        array.every(x => typeof x === "number")
+        array.every((x) => typeof x === "number")
     );
 }

@@ -11,7 +11,7 @@ import Padding from "../utils/layout/padding";
 /** @type {Record<PositionalChannel, AxisOrient[]>} */
 const CHANNEL_ORIENTS = {
     x: ["bottom", "top"],
-    y: ["left", "right"]
+    y: ["left", "right"],
 };
 
 /**
@@ -48,10 +48,10 @@ export default class DecoratorView extends ContainerView {
             top: undefined,
             right: undefined,
             bottom: undefined,
-            left: undefined
+            left: undefined,
         };
 
-        ["mousedown", "wheel"].forEach(type =>
+        ["mousedown", "wheel"].forEach((type) =>
             this.addInteractionEventListener(
                 type,
                 this.handleMouseEvent.bind(this)
@@ -76,7 +76,9 @@ export default class DecoratorView extends ContainerView {
      *      selectively breaking the inheritance.
      */
     getEncoding(whoIsAsking) {
-        if (Object.values(this.axisViews).find(view => whoIsAsking === view)) {
+        if (
+            Object.values(this.axisViews).find((view) => whoIsAsking === view)
+        ) {
             // Prevent the axis views from inheriting any encodings
             return {};
         }
@@ -148,11 +150,11 @@ export default class DecoratorView extends ContainerView {
     }
 
     getSize() {
-        return this._cache("size/size", () => {
-            return this.getSizeFromSpec()
+        return this._cache("size/size", () =>
+            this.getSizeFromSpec()
                 .addPadding(this.getPadding())
-                .addPadding(this.getAxisSizes());
-        });
+                .addPadding(this.getAxisSizes())
+        );
     }
 
     /**
@@ -185,7 +187,7 @@ export default class DecoratorView extends ContainerView {
         this.child.render(context, childCoords, options);
 
         const entries = this._cache("axisViewEntries", () =>
-            Object.entries(this.axisViews).filter(e => !!e[1])
+            Object.entries(this.axisViews).filter((e) => !!e[1])
         );
 
         for (const [orient, view] of entries) {
@@ -233,8 +235,8 @@ export default class DecoratorView extends ContainerView {
      */
     _initializeAxes(channel, orients) {
         const resolutions = this._getResolutionParticipants()
-            .map(view => view.resolutions.axis[channel])
-            .filter(resolution => resolution);
+            .map((view) => view.resolutions.axis[channel])
+            .filter((resolution) => resolution);
 
         // First, fill the preferred slots
         for (const r of resolutions) {
@@ -253,7 +255,7 @@ export default class DecoratorView extends ContainerView {
                 this.axisViews[axisProps.orient] = new AxisView(
                     {
                         ...axisProps,
-                        title: r.getTitle()
+                        title: r.getTitle(),
                     },
                     r.scaleResolution.type,
                     this.context,
@@ -273,7 +275,7 @@ export default class DecoratorView extends ContainerView {
                         this.axisViews[slot] = new AxisView(
                             {
                                 ...axisProps,
-                                title: r.getTitle()
+                                title: r.getTitle(),
                             },
                             r.scaleResolution.type,
                             this.context,
@@ -337,7 +339,7 @@ export default class DecoratorView extends ContainerView {
                     y,
                     xDelta: 0,
                     yDelta: 0,
-                    zDelta: (wheelEvent.deltaY * wheelMultiplier) / 300
+                    zDelta: (wheelEvent.deltaY * wheelMultiplier) / 300,
                 });
             } else {
                 this._handleZoom(coords, {
@@ -345,7 +347,7 @@ export default class DecoratorView extends ContainerView {
                     y,
                     xDelta: -wheelEvent.deltaX * wheelMultiplier,
                     yDelta: 0,
-                    zDelta: 0
+                    zDelta: 0,
                 });
             }
         } else if (event.type == "mousedown" && event.uiEvent.button === 0) {
@@ -354,19 +356,21 @@ export default class DecoratorView extends ContainerView {
 
             let prevMouseEvent = mouseEvent;
 
-            const onMousemove = /** @param {MouseEvent} moveEvent */ moveEvent => {
+            const onMousemove = /** @param {MouseEvent} moveEvent */ (
+                moveEvent
+            ) => {
                 this._handleZoom(coords, {
                     x: prevMouseEvent.clientX,
                     y: prevMouseEvent.clientY,
                     xDelta: moveEvent.clientX - prevMouseEvent.clientX,
                     yDelta: moveEvent.clientY - prevMouseEvent.clientY,
-                    zDelta: 0
+                    zDelta: 0,
                 });
 
                 prevMouseEvent = moveEvent;
             };
 
-            const onMouseup = /** @param {MouseEvent} upEvent */ upEvent => {
+            const onMouseup = /** @param {MouseEvent} upEvent */ (upEvent) => {
                 document.removeEventListener("mousemove", onMousemove);
                 document.removeEventListener("mouseup", onMouseup);
             };
@@ -378,7 +382,9 @@ export default class DecoratorView extends ContainerView {
 
     isZoomable() {
         return this._cache("zoomable", () =>
-            Object.values(this._getZoomableResolutions()).some(set => set.size)
+            Object.values(this._getZoomableResolutions()).some(
+                (set) => set.size
+            )
         );
     }
 
@@ -387,11 +393,11 @@ export default class DecoratorView extends ContainerView {
             /** @type {Record<string, Set<import("./scaleResolution").default>>} */
             const resolutions = {
                 x: new Set(),
-                y: new Set()
+                y: new Set(),
             };
 
             // Find all resolutions (scales) that are candidates for zooming
-            this.child.visit(v => {
+            this.child.visit((v) => {
                 for (const [channel, resolutionSet] of Object.entries(
                     resolutions
                 )) {
@@ -432,7 +438,7 @@ export default class DecoratorView extends ContainerView {
 
             const delta = {
                 x: tp.x - p.x,
-                y: tp.y - p.y
+                y: tp.y - p.y,
             };
 
             for (const resolution of resolutionSet) {

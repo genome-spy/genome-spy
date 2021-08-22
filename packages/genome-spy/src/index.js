@@ -34,11 +34,9 @@ export async function embed(el, spec, options = {}) {
     let genomeSpy;
 
     try {
-        const specObject = /** @type {import("./spec/view").RootSpec} */ (isObject(
-            spec
-        )
-            ? spec
-            : await loadSpec(spec));
+        const specObject = /** @type {import("./spec/view").RootSpec} */ (
+            isObject(spec) ? spec : await loadSpec(spec)
+        );
 
         specObject.baseUrl = specObject.baseUrl || "";
 
@@ -61,6 +59,7 @@ export async function embed(el, spec, options = {}) {
             await app.launch();
         }
     } catch (e) {
+        // eslint-disable-next-line require-atomic-updates
         element.innerText = e.toString();
         console.error(e);
     }
@@ -87,7 +86,7 @@ export async function embed(el, spec, options = {}) {
             }
 
             listeners.push(callback);
-        }
+        },
     };
 }
 
@@ -125,12 +124,4 @@ export async function loadSpec(url) {
     }
 
     return spec;
-}
-
-/**
- *
- * @param {string} url
- */
-function isAbsoluteUrl(url) {
-    return /^(http|https)?:\/\//.test(url);
 }

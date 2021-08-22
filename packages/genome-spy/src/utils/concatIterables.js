@@ -5,7 +5,9 @@
 export default function concatIterables(...iterables) {
     if (iterables.length <= 0) {
         return {
-            *[Symbol.iterator]() {}
+            *[Symbol.iterator]() {
+                //
+            },
         };
     }
 
@@ -19,6 +21,6 @@ export default function concatIterables(...iterables) {
                 }
                 currentIterable = iterables.shift();
             } while (currentIterable);
-        }
+        },
     };
 }

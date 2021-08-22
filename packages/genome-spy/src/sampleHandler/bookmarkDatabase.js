@@ -27,8 +27,9 @@ export default class BookmarkDatabase {
 
             this._db = openDB(dbName, 1, {
                 upgrade(db, oldVersion, newVersion, transaction) {
+                    // eslint-disable-next-line no-unused-vars
                     const store = db.createObjectStore(BOOKMARKS_STORE, {
-                        keyPath: "name"
+                        keyPath: "name",
                     });
                 },
                 blocked() {
@@ -39,7 +40,7 @@ export default class BookmarkDatabase {
                 },
                 terminated() {
                     // …
-                }
+                },
             });
         }
 

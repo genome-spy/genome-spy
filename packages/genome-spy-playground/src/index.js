@@ -1,12 +1,9 @@
+/* eslint-disable no-invalid-this */
 import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
 
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import {
-    faColumns,
-    faQuestionCircle,
-    faDna
-} from "@fortawesome/free-solid-svg-icons";
+import { faColumns, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 
 import JsonLint from "jsonlint-mod";
 
@@ -60,8 +57,10 @@ function toggleLayout() {
 // https://codeburst.io/throttling-and-debouncing-in-javascript-b01cad5c8edf
 const debounce = (func, delay) => {
     let inDebounce;
-    return function() {
+    return function () {
+        // eslint-disable-next-line consistent-this
         const context = this;
+        // eslint-disable-next-line prefer-rest-params
         const args = arguments;
         clearTimeout(inDebounce);
         inDebounce = setTimeout(() => func.apply(context, args), delay);
@@ -95,9 +94,10 @@ async function update(force = false) {
         }
 
         // TODO: Fix possible race condition
+        // eslint-disable-next-line require-atomic-updates
         embedResult = await embed(genomeSpyContainerRef.value, parsedSpec, {
             bare: true,
-            namedDataProvider: getNamedData
+            namedDataProvider: getNamedData,
         });
     } catch (e) {
         console.log(e);
@@ -134,12 +134,12 @@ async function handleFiles(event) {
 
         const data = read(textContent, {
             type: inferFileType(textContent, file.name),
-            parse: "auto"
+            parse: "auto",
         });
 
         files[file.name] = {
             metadata: file,
-            data
+            data,
         };
 
         currentTab = file.name;
@@ -179,12 +179,12 @@ const toolbarTemplate = () => html`
     </div>
 `;
 
-const singleFileTemplate = f => {
+const singleFileTemplate = (f) => {
     const cols = Object.keys(f.data[0]);
     const rows = f.data.slice(0, 30);
 
     const alignments = cols.map(
-        col =>
+        (col) =>
             "text-align: " +
             (typeof f.data[0][col] === "number" ? "right" : "left")
     );
@@ -194,16 +194,13 @@ const singleFileTemplate = f => {
             <thead>
                 <tr>
                     ${cols.map(
-                        (c, i) =>
-                            html`
-                                <th style=${alignments[i]}>${c}</th>
-                            `
+                        (c, i) => html` <th style=${alignments[i]}>${c}</th> `
                     )}
                 </tr>
             </thead>
             <tbody>
                 ${rows.map(
-                    row => html`
+                    (row) => html`
                         <tr>
                             ${cols.map(
                                 (c, i) =>
@@ -236,7 +233,7 @@ const singleFileTemplate = f => {
 const fileTemplate = () => html`
     <ul class="tabs">
         ${Object.keys(files).map(
-            name =>
+            (name) =>
                 html`
                     <li
                         data-name=${name}
@@ -254,7 +251,7 @@ const fileTemplate = () => html`
 
     <div class="tab-pages">
         ${Object.keys(files).map(
-            name => html`
+            (name) => html`
                 <div class=${name == currentTab ? "selected" : ""}>
                     ${singleFileTemplate(files[name])}
                 </div>
@@ -274,7 +271,7 @@ const fileTemplate = () => html`
                 <div id="upload-button-wrapper">
                     <button
                         class="btn"
-                        @click=${e => {
+                        @click=${(e) => {
                             document.getElementById("fileInput").click();
                             e.preventDefault();
                             e.stopPropagation();
@@ -314,9 +311,7 @@ const layoutTemplate = () => html`
         <section id="genome-spy-pane">
             <div ${ref(genomeSpyContainerRef)}></div>
         </section>
-        <section id="file-pane">
-            ${fileTemplate()}
-        </section>
+        <section id="file-pane">${fileTemplate()}</section>
     </section>
 `;
 
@@ -339,8 +334,8 @@ codeMirror = CodeMirror.fromTextArea(
         indentUnit: 2,
         indentWithTabs: false,
         extraKeys: {
-            Tab: cm => cm.execCommand("insertSoftTab")
-        }
+            Tab: (cm) => cm.execCommand("insertSoftTab"),
+        },
         //keyMap: "vim"
     }
 );

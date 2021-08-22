@@ -1,5 +1,5 @@
 import clientPoint from "../point";
-import { html, render, TemplateResult } from "lit";
+import { html, render } from "lit";
 import { peek } from "../arrayUtils";
 
 export default class Tooltip {
@@ -153,17 +153,13 @@ export default class Tooltip {
         if (datum !== this._previousTooltipDatum) {
             this._previousTooltipDatum = datum;
             if (!converter) {
-                converter = d =>
-                    Promise.resolve(
-                        html`
-                            ${JSON.stringify(d)}
-                        `
-                    );
+                converter = (d) =>
+                    Promise.resolve(html` ${JSON.stringify(d)} `);
             }
 
             converter(datum)
-                .then(result => this.setContent(result))
-                .catch(error => {
+                .then((result) => this.setContent(result))
+                .catch((error) => {
                     if (error !== "debounced") {
                         throw error;
                     }

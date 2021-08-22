@@ -7,15 +7,18 @@ import { ref, createRef } from "lit/directives/ref.js";
  *
  * @param {string} url
  */
+// eslint-disable-next-line no-unused-vars
 async function fetchConf(url) {
-    const conf = await fetch(url, { credentials: "same-origin" }).then(res => {
-        if (res.ok) {
-            return res.json();
+    const conf = await fetch(url, { credentials: "same-origin" }).then(
+        (res) => {
+            if (res.ok) {
+                return res.json();
+            }
+            throw new Error(
+                `Could not load configuration: ${conf} \nReason: ${res.status} ${res.statusText}`
+            );
         }
-        throw new Error(
-            `Could not load configuration: ${conf} \nReason: ${res.status} ${res.statusText}`
-        );
-    });
+    );
 
     if (!conf.baseUrl) {
         const m = url.match(/^.*\//);
@@ -71,7 +74,7 @@ export class GenomeSpyDocEmbed extends LitElement {
     static get properties() {
         return {
             height: { type: String },
-            specHidden: { type: Boolean }
+            specHidden: { type: Boolean },
         };
     }
 
@@ -88,7 +91,7 @@ export class GenomeSpyDocEmbed extends LitElement {
             <div
                 class="embed-container"
                 style=${styleMap({
-                    height: this.height + "px"
+                    height: this.height + "px",
                 })}
                 ${ref(this.embedRef)}
             ></div>
@@ -97,7 +100,7 @@ export class GenomeSpyDocEmbed extends LitElement {
                       <div class="show-spec">
                           <a
                               href="#"
-                              @click=${event => {
+                              @click=${(event) => {
                                   this.specHidden = false;
                                   event.preventDefault();
                               }}
@@ -110,7 +113,7 @@ export class GenomeSpyDocEmbed extends LitElement {
             <div
                 class="embed-spec"
                 style=${styleMap({
-                    display: this.specHidden ? "none" : "block"
+                    display: this.specHidden ? "none" : "block",
                 })}
             >
                 <slot></slot>
@@ -122,11 +125,11 @@ export class GenomeSpyDocEmbed extends LitElement {
         const spec = this.shadowRoot
             .querySelector("slot")
             .assignedNodes()
-            .filter(el => el instanceof HTMLElement)[0]?.textContent;
+            .filter((el) => el instanceof HTMLElement)[0]?.textContent;
 
         if (spec) {
-            const observer = new IntersectionObserver(entries => {
-                entries.forEach(entry => {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
                     if (entry.isIntersecting) {
                         const container = entry.target;
 

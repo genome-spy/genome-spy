@@ -27,7 +27,7 @@ export default function createBinningRangeIndexer(size, domain) {
     const divisor = domainLength / size;
 
     /** @param {number} pos */
-    const getBin = pos =>
+    const getBin = (pos) =>
         clamp(Math.floor((pos - start) / divisor), 0, size - 1);
 
     /**
@@ -57,9 +57,10 @@ export default function createBinningRangeIndexer(size, domain) {
     /**
      * @type {Lookup}
      */
-    const lookup = (start, end) => {
-        return [startIndices[getBin(start)], endIndices[getBin(end)]];
-    };
+    const lookup = (start, end) => [
+        startIndices[getBin(start)],
+        endIndices[getBin(end)],
+    ];
 
     const getIndex = () => {
         for (let i = 1; i < endIndices.length; i++) {

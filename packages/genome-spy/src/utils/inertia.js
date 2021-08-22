@@ -122,12 +122,3 @@ export function makeEventTemplate(event) {
     }
     return template;
 }
-
-/**
- *
- * @param {MouseEvent} mouseEvent
- * @returns {mouseEvent is WheelEvent}
- */
-function isWheelEvent(mouseEvent) {
-    return mouseEvent.type == "wheel";
-}

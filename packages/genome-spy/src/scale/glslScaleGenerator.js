@@ -2,7 +2,7 @@ import {
     isContinuous,
     isDiscrete,
     isDiscretizing,
-    isInterpolating
+    isInterpolating,
 } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
 import { isArray, isBoolean, isNumber, isString } from "vega-util";
@@ -13,8 +13,7 @@ import {
     isColorChannel,
     isDatumDef,
     isDiscreteChannel,
-    isPositionalChannel,
-    primaryChannel
+    primaryChannel,
 } from "../encoder/encoder";
 import { peek } from "../utils/arrayUtils";
 
@@ -40,7 +39,7 @@ function splitScaleType(type) {
     }
     return {
         family: match[1] || "continuous",
-        transform: match[2]
+        transform: match[2],
     };
 }
 
@@ -125,7 +124,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
         makeFunctionCall.apply(null, [
             name + (fp64 ? "Fp64" : ""),
             "value",
-            ...args
+            ...args,
         ]);
 
     let functionCall;
@@ -329,7 +328,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
 
     glsl.push(`
 ${returnType} ${SCALE_FUNCTION_PREFIX}${channel}(${attributeType} value) {
-${scaleBody.map(x => `    ${x}\n`).join("")}
+${scaleBody.map((x) => `    ${x}\n`).join("")}
 }`);
 
     // A convenience getter for the scaled value
@@ -353,7 +352,7 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
 
     return {
         glsl: concatenated,
-        domainUniform
+        domainUniform,
     };
 }
 
@@ -417,7 +416,7 @@ function vectorize(value) {
  */
 function vectorizeCssColor(color) {
     const rgb = d3color(color).rgb();
-    return vectorize([rgb.r, rgb.g, rgb.b].map(x => x / 255));
+    return vectorize([rgb.r, rgb.g, rgb.b].map((x) => x / 255));
 }
 
 /**

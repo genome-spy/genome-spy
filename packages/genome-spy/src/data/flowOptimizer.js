@@ -1,5 +1,4 @@
-import { group } from "d3-array";
-import { BEHAVIOR_CLONES, BEHAVIOR_MODIFIES } from "./flowNode";
+import { BEHAVIOR_CLONES } from "./flowNode";
 import CloneTransform from "./transforms/clone";
 
 /**

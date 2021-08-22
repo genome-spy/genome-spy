@@ -1,4 +1,4 @@
-import { html, LitElement, nothing } from "lit";
+import { html, LitElement } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";
 import { guard } from "lit/directives/guard.js";
 import { zoomLinear } from "vega-util";
@@ -25,7 +25,7 @@ export default class SearchField extends LitElement {
 
     static get properties() {
         return {
-            genomeSpy: { type: Object }
+            genomeSpy: { type: Object },
         };
     }
 
@@ -56,8 +56,9 @@ export default class SearchField extends LitElement {
             case "KeyF":
                 if (!(event.metaKey || event.altKey || event.ctrlKey)) {
                     event.preventDefault();
-                    const input = /** @type {HTMLInputElement} */ (this.inputRef
-                        .value);
+                    const input = /** @type {HTMLInputElement} */ (
+                        this.inputRef.value
+                    );
                     input.focus();
                 }
                 break;
@@ -90,7 +91,7 @@ export default class SearchField extends LitElement {
     searchViews(term) {
         const collator = new Intl.Collator("en", {
             usage: "search",
-            sensitivity: "base"
+            sensitivity: "base",
         });
         for (const view of this.genomeSpy.getSearchableViews()) {
             const sa = view.getAccessor("search");
@@ -135,7 +136,7 @@ export default class SearchField extends LitElement {
             return;
         }
 
-        this.genomeSpy.viewRoot.visit(view => {
+        this.genomeSpy.viewRoot.visit((view) => {
             if (view instanceof SampleAttributePanel) {
                 view.handleVerboseCommand(term);
             }
@@ -173,7 +174,7 @@ export default class SearchField extends LitElement {
                     searchInput.focus();
                     searchInput.select();
                 })
-                .catch(reason => {
+                .catch((reason) => {
                     console.log(reason);
                     alert(reason);
                 });
@@ -189,8 +190,9 @@ export default class SearchField extends LitElement {
      * @param {string} term
      */
     _doExampleSearch(term) {
-        const searchInput = /** @type {HTMLInputElement} */ (this.inputRef
-            .value);
+        const searchInput = /** @type {HTMLInputElement} */ (
+            this.inputRef.value
+        );
 
         typeSlowly(term, searchInput).then(() => {
             searchInput.blur();
@@ -225,12 +227,7 @@ export default class SearchField extends LitElement {
             parts.push(html`
                 <p>Search <em>${viewTitle}</em> (${fieldString}). Examples:</p>
                 <ul>
-                    ${examples.map(
-                        example =>
-                            html`
-                                <li>${example}</li>
-                            `
-                    )}
+                    ${examples.map((example) => html` <li>${example}</li> `)}
                 </ul>
             `);
         }
@@ -267,7 +264,7 @@ customElements.define("genome-spy-search-field", SearchField);
  * @param {HTMLInputElement} element
  */
 function typeSlowly(text, element) {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         let i = 0;
         const delay = 700 / text.length + 30;
 
@@ -295,7 +292,7 @@ export function findGenomeScaleResolution(viewRoot) {
     /** @type {import("../view/scaleResolution").default} */
     let match;
 
-    viewRoot.visit(view => {
+    viewRoot.visit((view) => {
         for (const channel of ["x", "y"]) {
             const resolution = view.resolutions.scale[channel];
             if (
