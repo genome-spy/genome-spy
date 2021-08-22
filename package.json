@@ -42,7 +42,8 @@
     "builddocs": "mkdir -p docs/app && cp packages/genome-spy-doc-embed/dist/* docs/app/ && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && mkdocs build",
     "test": "jest",
     "start": "npm run start -w genome-spy",
-    "pretty-quick": "pretty-quick"
+    "pretty-quick": "pretty-quick",
+    "prepare": "husky install"
   },
   "workspaces": [
     "./packages/*"
