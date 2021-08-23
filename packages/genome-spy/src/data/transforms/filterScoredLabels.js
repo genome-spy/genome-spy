@@ -1,6 +1,6 @@
 import { bisector } from "d3-array";
 import FlowNode from "../flowNode";
-import { topKSlice } from "../../utils/topk";
+import { topKSlice } from "../../utils/topK";
 import ReservationMap from "../../utils/reservationMap";
 import { field } from "../../utils/field";
 
@@ -33,7 +33,9 @@ export default class FilterScoredLabelsTransform extends FlowNode {
         this.scoreAccessor = field(this.params.score);
         this.widthAccessor = field(this.params.width);
         /** @type {function(any):any} */
-        this.laneAccessor = this.params.lane ? field(this.params.lane) : d => 0;
+        this.laneAccessor = this.params.lane
+            ? field(this.params.lane)
+            : (d) => 0;
         this.padding = this.params.padding ?? 0;
 
         /** @type {Map<any, ReservationMap>} */
@@ -46,7 +48,7 @@ export default class FilterScoredLabelsTransform extends FlowNode {
         this.schedule = () => view.context.animator.requestTransition(callback);
 
         // Propagate when the domain changes
-        this.resolution.addScaleObserver(scale => this.schedule());
+        this.resolution.addScaleObserver((scale) => this.schedule());
 
         // Propagate when layout changes. Abusing a "private" method.
         // TODO: Provide another attachment point, in view context for example
@@ -74,9 +76,10 @@ export default class FilterScoredLabelsTransform extends FlowNode {
         super.reset();
 
         const scale = this.resolution.getScale();
-        const rangeSpan = this.resolution.views[0].coords?.[
-            this.channel == "x" ? "width" : "height"
-        ];
+        const rangeSpan =
+            this.resolution.views[0].coords?.[
+                this.channel == "x" ? "width" : "height"
+            ];
         if (!rangeSpan) {
             // The view size is not (yet) available
             return;
