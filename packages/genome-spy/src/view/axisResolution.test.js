@@ -1,6 +1,6 @@
-import LayerView from "./layerView";
 import { createAndInitialize } from "./testUtils";
 import UnitView from "./unitView";
+import View from "./view";
 
 /** @type {import("../spec/view").LayerSpec} */
 const spec = {
@@ -13,10 +13,10 @@ const spec = {
                 y: {
                     field: "a",
                     type: "quantitative",
-                    scale: { domain: [1, 2] }
+                    scale: { domain: [1, 2] },
                 },
-                color: { value: "red" }
-            }
+                color: { value: "red" },
+            },
         },
         {
             mark: "point",
@@ -25,28 +25,28 @@ const spec = {
                 y: {
                     field: "b",
                     type: "quantitative",
-                    scale: { domain: [4, 5] }
+                    scale: { domain: [4, 5] },
                 },
-                color: { value: "green" }
-            }
-        }
-    ]
+                color: { value: "green" },
+            },
+        },
+    ],
 };
 
 describe("Axes resolve properly", () => {
     const sharedSpec = {
         ...spec,
-        resolve: { scale: { y: "shared" }, axis: { y: "shared" } }
+        resolve: { scale: { y: "shared" }, axis: { y: "shared" } },
     };
 
     test("Independent axes are independent", async () => {
         const independentSpec = {
             ...spec,
-            resolve: { scale: { y: "shared" }, axis: { y: "independent" } }
+            resolve: { scale: { y: "shared" }, axis: { y: "independent" } },
         };
 
-        const view = await createAndInitialize(independentSpec, LayerView);
-        const [r0, r1] = [0, 1].map(i =>
+        const view = await createAndInitialize(independentSpec, View);
+        const [r0, r1] = [0, 1].map((i) =>
             view.children[i].getAxisResolution("y")
         );
 
@@ -56,7 +56,7 @@ describe("Axes resolve properly", () => {
     });
 
     test("Shared axes have joined titles", async () => {
-        const view = await createAndInitialize(sharedSpec, LayerView);
+        const view = await createAndInitialize(sharedSpec, View);
         expect(view.children[0].getAxisResolution("y").getTitle()).toEqual(
             "a, b"
         );
@@ -71,9 +71,9 @@ describe("Axes resolve properly", () => {
                     x: { field: "a", type: "quantitative" },
                     y: {
                         field: "a",
-                        type: "quantitative"
-                    }
-                }
+                        type: "quantitative",
+                    },
+                },
             },
             UnitView
         );
@@ -88,9 +88,9 @@ describe("Axes resolve properly", () => {
                     y: {
                         field: "a",
                         title: "x",
-                        type: "quantitative"
-                    }
-                }
+                        type: "quantitative",
+                    },
+                },
             },
             UnitView
         );
@@ -107,10 +107,10 @@ describe("Axes resolve properly", () => {
                         title: "x",
                         type: "quantitative",
                         axis: {
-                            title: "z"
-                        }
-                    }
-                }
+                            title: "z",
+                        },
+                    },
+                },
             },
             UnitView
         );
