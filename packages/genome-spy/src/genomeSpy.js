@@ -10,7 +10,7 @@ import {
     createView,
     resolveScalesAndAxes,
     addDecorators,
-    processImports
+    processImports,
 } from "./view/viewUtils";
 import UnitView from "./view/unitView";
 
@@ -116,7 +116,7 @@ export default class GenomeSpy {
         this.tooltipHandlers = {
             default: dataTooltipHandler,
             refseqgene: refseqGeneTooltipHandler,
-            ...(options.tooltipHandlers ?? {})
+            ...(options.tooltipHandlers ?? {}),
         };
     }
 
@@ -149,7 +149,7 @@ export default class GenomeSpy {
      */
     broadcast(type, payload) {
         const message = { type, payload };
-        this.viewRoot.visit(view => view.handleBroadcast(message));
+        this.viewRoot.visit((view) => view.handleBroadcast(message));
     }
 
     _prepareContainer() {
@@ -166,10 +166,10 @@ export default class GenomeSpy {
                 // TODO: Enforce the minimum size (in case of both absolute and growing components).
 
                 /** @param {import("./utils/layout/flexLayout").SizeDef} dim */
-                const f = dim => (dim.grow > 0 ? undefined : dim.px);
+                const f = (dim) => (dim.grow > 0 ? undefined : dim.px);
                 return {
                     width: f(size.width),
-                    height: f(size.height)
+                    height: f(size.height),
                 };
             }
         });
@@ -184,8 +184,9 @@ export default class GenomeSpy {
         this.loadingMessageElement
             .querySelector(".message")
             .addEventListener("transitionend", () => {
-                /** @type {HTMLElement} */ (this.loadingMessageElement).style.display =
-                    "none";
+                /** @type {HTMLElement} */ (
+                    this.loadingMessageElement
+                ).style.display = "none";
             });
     }
 
@@ -241,14 +242,14 @@ export default class GenomeSpy {
                     this._keyboardListeners.set(type, listeners);
                 }
                 listeners.push(listener);
-            }
+            },
         };
 
         /** @type {import("./spec/view").ViewSpec & RootConfig} */
         const rootSpec = this.spec;
 
         if (rootSpec.datasets) {
-            this.registerNamedDataProvider(name => rootSpec.datasets[name]);
+            this.registerNamedDataProvider((name) => rootSpec.datasets[name]);
         }
 
         // Create the view hierarchy
@@ -271,7 +272,7 @@ export default class GenomeSpy {
         // Collect all unit views to a list because they need plenty of initialization
         /** @type {UnitView[]} */
         const unitViews = [];
-        this.viewRoot.visit(view => {
+        this.viewRoot.visit((view) => {
             if (view instanceof UnitView) {
                 unitViews.push(view);
             }
@@ -282,18 +283,18 @@ export default class GenomeSpy {
         optimizeDataFlow(flow);
         this.broadcast("dataFlowBuilt", flow);
 
-        flow.dataSources.forEach(ds => console.log(ds.subtreeToString()));
+        flow.dataSources.forEach((ds) => console.log(ds.subtreeToString()));
 
         // Create encoders (accessors, scales and related metadata)
-        unitViews.forEach(view => view.mark.initializeEncoders());
+        unitViews.forEach((view) => view.mark.initializeEncoders());
 
         // Compile shaders, create or load textures, etc.
         const graphicsInitialized = Promise.all(
-            unitViews.map(view => view.mark.initializeGraphics())
+            unitViews.map((view) => view.mark.initializeGraphics())
         );
 
         for (const view of unitViews) {
-            flow.addObserver(collector => {
+            flow.addObserver((collector) => {
                 view.mark.initializeData();
                 // Update WebGL buffers
                 view.mark.updateGraphicsData();
@@ -308,18 +309,18 @@ export default class GenomeSpy {
         // Find all data sources and initiate loading
         flow.initialize();
         await Promise.all(
-            flow.dataSources.map(dataSource => dataSource.load())
+            flow.dataSources.map((dataSource) => dataSource.load())
         );
 
         // Now that all data have been loaded, the domains may need adjusting
-        this.viewRoot.visit(view => {
+        this.viewRoot.visit((view) => {
             for (const resolution of Object.values(view.resolutions.scale)) {
                 // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
                 resolution.reconfigure();
             }
         });
 
-        this.viewRoot.visit(view => {
+        this.viewRoot.visit((view) => {
             // If no explicit sample were provided, extract it from data
             // TODO: It would be great if this could be attached to the data flow,
             // because now this is somewhat a hack and is incompatible with dynamic data
@@ -331,7 +332,7 @@ export default class GenomeSpy {
 
         await graphicsInitialized;
 
-        this.viewRoot.visit(view => {
+        this.viewRoot.visit((view) => {
             for (const resolution of Object.values(view.resolutions.scale)) {
                 this._glHelper.createRangeTexture(resolution);
             }
@@ -343,7 +344,7 @@ export default class GenomeSpy {
 
         // Invalidate cached sizes to ensure that step-based sizes are current.
         // TODO: This should be done automatically when the domains of band/point scales are updated.
-        this.viewRoot.visit(view => invalidatePrefix(view, "size"));
+        this.viewRoot.visit((view) => invalidatePrefix(view, "size"));
         this._glHelper.invalidateSize();
     }
 
@@ -396,7 +397,7 @@ export default class GenomeSpy {
         // GenomeSpy class.
 
         /** @param {Event} event */
-        const listener = event => {
+        const listener = (event) => {
             if (this.layout && event instanceof MouseEvent) {
                 if (event.type == "mousemove") {
                     this.tooltip.handleMouseMove(event);
@@ -417,7 +418,7 @@ export default class GenomeSpy {
                 /**
                  * @param {MouseEvent} event
                  */
-                const dispatchEvent = event => {
+                const dispatchEvent = (event) => {
                     this.layout.dispatchInteractionEvent(
                         new InteractionEvent(point, event)
                     );
@@ -464,12 +465,12 @@ export default class GenomeSpy {
 
                         this._wheelInertia.setMomentum(
                             wheelEvent.deltaY * (wheelEvent.deltaMode ? 80 : 1),
-                            delta => {
+                            (delta) => {
                                 const e = new WheelEvent("wheel", {
                                     ...template,
                                     deltaMode: 0,
                                     deltaX: 0,
-                                    deltaY: delta
+                                    deltaY: delta,
                                 });
                                 dispatchEvent(e);
                             }
@@ -486,17 +487,17 @@ export default class GenomeSpy {
                         ? {
                               type: event.type,
                               viewPath: [
-                                  ...this._currentHover.mark.unitView.getAncestors()
+                                  ...this._currentHover.mark.unitView.getAncestors(),
                               ]
-                                  .map(view => view.name)
+                                  .map((view) => view.name)
                                   .reverse(),
-                              datum: this._currentHover.datum
+                              datum: this._currentHover.datum,
                           }
                         : null;
 
                     this._eventListeners
                         .get("click")
-                        ?.forEach(listener => listener(e));
+                        ?.forEach((listener) => listener(e));
                 }
 
                 dispatchEvent(event);
@@ -510,8 +511,8 @@ export default class GenomeSpy {
             "click",
             "mousemove",
             "gesturechange",
-            "contextmenu"
-        ].forEach(type => canvas.addEventListener(type, listener));
+            "contextmenu",
+        ].forEach((type) => canvas.addEventListener(type, listener));
 
         canvas.addEventListener("mousedown", () => {
             document.addEventListener(
@@ -523,7 +524,9 @@ export default class GenomeSpy {
         });
 
         // Prevent text selections etc while dragging
-        canvas.addEventListener("dragstart", event => event.stopPropagation());
+        canvas.addEventListener("dragstart", (event) =>
+            event.stopPropagation()
+        );
     }
 
     /**
@@ -550,16 +553,16 @@ export default class GenomeSpy {
             // millions of items.
             // TODO: Optimize by indexing or something
 
-            this.viewRoot.visit(view => {
+            this.viewRoot.visit((view) => {
                 if (view instanceof UnitView) {
                     if (view.mark.isPickingParticipant()) {
                         const accessor = view.mark.encoders.uniqueId.accessor;
-                        view.getCollector().visitData(d => {
+                        view.getCollector().visitData((d) => {
                             if (accessor(d) == uniqueId) {
                                 this._currentHover = {
                                     mark: view.mark,
                                     datum: d,
-                                    uniqueId
+                                    uniqueId,
                                 };
                             }
                         });
@@ -573,7 +576,7 @@ export default class GenomeSpy {
 
         if (this._currentHover) {
             const mark = this._currentHover.mark;
-            this.updateTooltip(this._currentHover.datum, async datum => {
+            this.updateTooltip(this._currentHover.datum, async (datum) => {
                 if (!mark.isPickingParticipant()) {
                     return;
                 }
@@ -646,10 +649,10 @@ export default class GenomeSpy {
         }
 
         this._renderingContext = new DeferredViewRenderingContext({
-            picking: false
+            picking: false,
         });
         this._pickingContext = new DeferredViewRenderingContext({
-            picking: true
+            picking: true,
         });
         const layoutRecorder = new LayoutRecorderViewRenderingContext({});
 
@@ -709,7 +712,7 @@ export default class GenomeSpy {
     getSearchableViews() {
         /** @type {UnitView[]} */
         const views = [];
-        this.viewRoot.visit(view => {
+        this.viewRoot.visit((view) => {
             if (view instanceof UnitView && view.getAccessor("search")) {
                 views.push(view);
             }

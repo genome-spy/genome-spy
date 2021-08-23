@@ -21,7 +21,7 @@ export default class DynamicSource extends DataSource {
 
         for (const d of iterable) {
             if (!wrap) {
-                wrap = typeof d != "object" ? x => ({ data: x }) : x => x;
+                wrap = typeof d != "object" ? (x) => ({ data: x }) : (x) => x;
             }
 
             this._propagate(wrap(d));

@@ -11,7 +11,7 @@
 /*
  * Constants and utilities for data.
  */
-import { FieldName } from "./view";
+import { FieldName } from "./channel";
 
 export type ParseValue =
     | null
@@ -167,7 +167,7 @@ export function isGenerator(data: Partial<Data>): data is Generator {
 export function isSequenceGenerator(
     data: Partial<Data>
 ): data is SequenceGenerator {
-    return !!data["sequence"];
+    return "sequence" in data;
 }
 export function isDynamicCallbackData(
     data: Partial<Data>
