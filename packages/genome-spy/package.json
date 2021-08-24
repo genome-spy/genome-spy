@@ -8,7 +8,7 @@
   "contributors": [],
   "license": "BSD-2-Clause",
   "version": "0.3.0",
-  "main": "dist/index.js",
+  "main": "dist/index.umd.js",
   "module": "src/index.js",
   "files": [
     "dist/",
@@ -27,9 +27,6 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
-    "start": "webpack-cli serve --progress --hot --config webpack.dev.js",
-    "webpackBuild": "webpack --config webpack.prod.js",
-    "buildSinglePage": "webpack --config webpack.singlepage.prod.js",
     "buildSchema": "ts-json-schema-generator -p src/spec/transform.ts > dist/genome-spy-schema.json"
   },
   "dependencies": {

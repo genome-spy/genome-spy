@@ -3,11 +3,10 @@
   "private": true,
   "version": "0.3.0",
   "description": "A playground for testing GenomeSpy visualizations",
-  "main": "dist/index.js",
-  "module": "src/index.js",
   "scripts": {
-    "start": "webpack-dev-server --progress --hot --config webpack.config.js",
-    "build": "webpack --config webpack.prod.js"
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
   },
   "author": "Kari Lavikka",
   "license": "BSD-2-Clause",
