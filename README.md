@@ -2,7 +2,7 @@
 
 ![Teaser](docs/img/teaser.png)
 
-GenomeSpy is a visualization toolkit for genomic (and other) data. It has a Vega-Lite inspired visualization grammar and high-performance WebGL-powered graphics.
+GenomeSpy is a visualization toolkit for genomic (and other) data. It has a [Vega-Lite](https://vega.github.io/vega-lite/) inspired visualization grammar and high-performance WebGL-powered graphics.
 
 The software is still work in progress. Documentation and examples of an early alpha version can be found at https://genomespy.app/
 
