@@ -1,0 +1,38 @@
+{
+  "data": {
+    "values": [
+      { "sample": "A", "x": 1 },
+      { "sample": "A", "x": 2 },
+      { "sample": "A", "x": 5 },
+      { "sample": "A", "x": 3 },
+      { "sample": "B", "x": 8 },
+      { "sample": "B", "x": 6 },
+      { "sample": "B", "x": 9 },
+      { "sample": "B", "x": 3 },
+      { "sample": "C", "x": 9 },
+      { "sample": "C", "x": 2 },
+      { "sample": "C", "x": 3 },
+      { "sample": "C", "x": 5 }
+    ]
+  },
+
+  "transform": [
+    {
+      "type": "stack",
+      "field": "x",
+      "groupby": ["sample"],
+      "offset": "normalize"
+    }
+  ],
+
+  "mark": "rect",
+
+  "encoding": {
+    "sample": { "field": "sample", "type": "nominal" },
+    "y": { "datum": 0, "type": "quantitative" },
+    "y2": { "datum": 1 },
+    "x": { "field": "y0", "type": "quantitative" },
+    "x2": { "field": "y1", "type": "quantitative" },
+    "color": { "field": "x", "type": "nominal" }
+  }
+}

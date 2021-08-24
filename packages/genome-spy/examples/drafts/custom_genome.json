@@ -1,0 +1,29 @@
+{
+  "genome": {
+    "contigs": [
+      { "name": "first", "size": 30000 },
+      { "name": "second", "size": 20000 },
+      { "name": "third", "size": 10000 }
+    ]
+  },
+  "concat": [
+    {
+      "data": {
+        "values": [
+          { "chr": "first", "pos": 5000 },
+          { "chr": "second", "pos": 5000 },
+          { "chr": "second", "pos": 7000 }
+        ]
+      },
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "chrom": "chr",
+          "pos": "pos",
+          "type": "quantitative"
+        }
+      }
+    },
+    { "import": { "name": "genomeAxis" } }
+  ]
+}

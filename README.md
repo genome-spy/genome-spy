@@ -17,7 +17,7 @@ The software is still work in progress. Documentation and examples of an early a
 3. `npm install` (use npm7!)
 4. `npm start`
 
-The `packages/genome-spy/static/examples` directory contains some random view specification that can be accessed through urls like `http://localhost:8080/?spec=examples/first.json`.
+The `packages/genome-spy/examples` directory contains some random view specification that can be accessed through urls like `http://localhost:8080/?spec=examples/first.json`.
 
 The `packages/genome-spy/private/` directory is in `.gitignore` and served by the development server: `http://localhost:8080/?spec=private/foo.json`. Use it for experiments that should not go into version control.
 

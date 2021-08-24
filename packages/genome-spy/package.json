@@ -24,7 +24,7 @@
     "**/*-wc.js"
   ],
   "scripts": {
-    "dev": "vite",
+    "dev": "node dev-server.js",
     "build": "vite build",
     "serve": "vite preview",
     "buildSchema": "ts-json-schema-generator -p src/spec/transform.ts > dist/genome-spy-schema.json"
