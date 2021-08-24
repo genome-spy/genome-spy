@@ -2,6 +2,8 @@
 
 ![Teaser](docs/img/teaser.png)
 
+![npm version](https://img.shields.io/npm/v/genome-spy)
+
 GenomeSpy is a visualization toolkit for genomic (and other) data. It has a [Vega-Lite](https://vega.github.io/vega-lite/) inspired visualization grammar and high-performance WebGL-powered graphics.
 
 The software is still work in progress. Documentation and examples of an early alpha version can be found at https://genomespy.app/

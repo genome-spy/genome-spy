@@ -41,12 +41,14 @@ By default, it serves files from the current working directory. See Python's
 
 The templates below load GenomeSpy from a content delivery network. Because
 the specification schema and the JavaScript API are not yet 100% stable, it is
-recommended to use a specific release.
+recommended to use a specific version.
 
 !!! warning "Check the latest version!"
 
-    The versions in this documentation may be slightly out of date. Check the
-    latest version from [UNPKG](https://unpkg.com/genome-spy/).
+    The versions in the examples below may be slightly out of date. The current
+    version is:
+
+    ![npm version](https://img.shields.io/npm/v/genome-spy)
 
 #### Load the spec from a file
 
@@ -98,14 +100,14 @@ This template loads the spec from the `spec.json` file.
     <script>
       const spec = {
         data: {
-          sequence: { start: 0, stop: 6.284, step: 0.39269908169, as: "x" }
+          sequence: { start: 0, stop: 6.284, step: 0.39269908169, as: "x" },
         },
         transform: [{ type: "formula", expr: "sin(datum.x)", as: "sin" }],
         mark: "point",
         encoding: {
           x: { field: "x", type: "quantitative" },
-          y: { field: "sin", type: "quantitative" }
-        }
+          y: { field: "sin", type: "quantitative" },
+        },
       };
 
       genomeSpyEmbed.embed(document.body, spec, {});
