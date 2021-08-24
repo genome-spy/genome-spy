@@ -1,3 +1,5 @@
+@use 'sass:math';
+
 $basic-spacing: 10px;
 
 $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
@@ -74,8 +76,8 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         }
 
         > .title {
-            padding-bottom: $basic-spacing / 2;
-            margin-bottom: $basic-spacing / 2;
+            padding-bottom: math.div($basic-spacing, 2);
+            margin-bottom: math.div($basic-spacing, 2);
             border-bottom: 1px dashed darken($background-color, 25%);
         }
 
