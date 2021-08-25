@@ -1,12 +1,12 @@
 module.exports = {
     env: {
         browser: true,
-        es6: true
+        es6: true,
     },
     extends: ["eslint:recommended", "prettier"],
     parserOptions: {
-        ecmaVersion: 2020,
-        sourceType: "module"
+        ecmaVersion: 2021,
+        sourceType: "module",
     },
     rules: {
         "no-new-func": "off",
@@ -15,6 +15,6 @@ module.exports = {
         "no-nested-ternary": "off",
         "dot-notation": "off",
         "no-unused-vars": ["error", { args: "none" }],
-        "require-await": "warn"
-    }
+        "require-await": "warn",
+    },
 };
