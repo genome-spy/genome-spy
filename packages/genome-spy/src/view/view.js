@@ -22,6 +22,9 @@ export const VISIT_SKIP = "VISIT_SKIP";
 /** Stop further visits */
 export const VISIT_STOP = "VISIT_STOP";
 
+/** @type {function(number):number} */
+const defaultOpacityFunction = (parentOpacity) => parentOpacity;
+
 /**
  * @typedef {import("./viewUtils").ViewSpec} ViewSpec
  * @typedef {import("./viewUtils").ChannelDef} ChannelDef
@@ -94,7 +97,7 @@ export default class View {
         initPropertyCache(this);
 
         /** @type {function(number):number} */
-        this._opacityFunction = (parentOpacity) => parentOpacity;
+        this.opacityFunction = defaultOpacityFunction;
     }
 
     getPadding() {
@@ -195,7 +198,7 @@ export default class View {
      * @returns {number}
      */
     getEffectiveOpacity() {
-        return this._opacityFunction(this.parent?.getEffectiveOpacity() ?? 1.0);
+        return this.opacityFunction(this.parent?.getEffectiveOpacity() ?? 1.0);
     }
 
     getPathString() {
@@ -311,7 +314,14 @@ export default class View {
      * Called after all scales in the view hierarchy have been resolved.
      */
     onScalesResolved() {
-        this._opacityFunction = createViewOpacityFunction(this);
+        // Only set the opacity function once. The idea is to allow custom functions
+        // and prevent accidental overwrites.
+        if (
+            !this.opacityFunction ||
+            this.opacityFunction === defaultOpacityFunction
+        ) {
+            this.opacityFunction = createViewOpacityFunction(this);
+        }
     }
 
     /**

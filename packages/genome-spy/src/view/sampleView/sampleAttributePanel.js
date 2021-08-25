@@ -10,6 +10,9 @@ import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
 import { buildDataFlow } from "../flowBuilder";
 import { NOMINAL, ORDINAL } from "../scaleResolution";
+import { resolveScalesAndAxes } from "../viewUtils";
+import { easeQuadInOut } from "d3-ease";
+import { peek } from "../../utils/arrayUtils";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -20,6 +23,8 @@ const FieldType = {
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 const SAMPLE_NAME = "SAMPLE_NAME";
+
+const attributeViewRegex = /^attribute-(.*)$/;
 
 /**
  * This special-purpose class takes care of rendering sample labels and metadata.
@@ -38,13 +43,26 @@ export class SampleAttributePanel extends ConcatView {
                 data: { dynamicSource: true },
                 hconcat: [], // Contents are added dynamically
                 spacing: 1,
+                resolve: {
+                    scale: { default: "independent" },
+                    axis: { default: "independent" },
+                },
             },
             sampleView.context,
+            // TODO: fix parent
             undefined,
             "sampleAttributes"
         );
 
         this.sampleView = sampleView;
+
+        this._attributeHighlighState = {
+            /** Current opacity of attributes that are NOT hovered */
+            backgroundOpacity: 1.0,
+            /** @type {string} */
+            currentAttribute: undefined,
+            abortController: new AbortController(),
+        };
 
         // TODO: Optimize the following
         this.sampleHandler.addAttributeInfoSource(
@@ -69,18 +87,38 @@ export class SampleAttributePanel extends ConcatView {
         );
 
         this.addInteractionEventListener("mousemove", (coords, event) => {
+            const view = event.target;
             const sample = this._findSampleForMouseEvent(coords, event);
+            const attribute =
+                (view && this.getAttributeInfoFromView(view)?.name) ||
+                undefined;
+
             if (sample) {
-                const attribute =
-                    (event.target &&
-                        this.getAttributeInfoFromView(event.target)?.name) ||
-                    undefined;
                 const id = JSON.stringify([sample.id, attribute]);
                 this.context.updateTooltip(id, (id) =>
                     Promise.resolve(this.sampleToTooltip(id))
                 );
             }
+
+            this._handleAttributeHighlight(attribute);
         });
+
+        // TODO: Implement "mouseleave" event. Let's hack for now...
+        peek([...this.sampleView.getAncestors()]).addInteractionEventListener(
+            "mousemove",
+            (coords, event) => {
+                if (!this._attributeHighlighState.currentAttribute) {
+                    return;
+                }
+                for (const view of event.target.getAncestors()) {
+                    if (view == this) {
+                        return;
+                    }
+                }
+
+                this._handleAttributeHighlight(undefined);
+            }
+        );
     }
 
     get sampleHandler() {
@@ -105,6 +143,43 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     * @param {string} attribute
+     */
+    _handleAttributeHighlight(attribute) {
+        const state = this._attributeHighlighState;
+
+        if (attribute != state.currentAttribute) {
+            // Cancel the previous transition
+            state.abortController.abort();
+            state.abortController = new AbortController();
+            this.context.animator
+                .transition({
+                    from: state.backgroundOpacity,
+                    to: attribute ? 0.1 : 1.0,
+                    duration: attribute ? 1000 : 300,
+                    delay: attribute ? 500 : 0,
+                    onUpdate: (value) => {
+                        state.backgroundOpacity = value;
+                    },
+                    easingFunction: easeQuadInOut,
+                    signal: state.abortController.signal,
+                })
+                .catch((e) => {
+                    // nop
+                });
+
+            // Ensure that the view is rendered, regardless of the transition.
+            this.context.animator.requestRender();
+        }
+
+        if (attribute !== state.currentAttribute) {
+            //
+        }
+
+        state.currentAttribute = attribute;
+    }
+
+    /**
      * @param {import("../../utils/layout/rectangle").default} coords
      *      Coordinates of the view
      * @param {import("../../utils/interactionEvent").default} event
@@ -115,6 +190,16 @@ export class SampleAttributePanel extends ConcatView {
         );
 
         return sampleId ? this.sampleView.sampleMap.get(sampleId) : undefined;
+    }
+
+    /**
+     * @param {string} attribute
+     */
+    _getAttributeOpacity(attribute) {
+        const state = this._attributeHighlighState;
+        return attribute == state.currentAttribute
+            ? 1.0
+            : state.backgroundOpacity;
     }
 
     /**
@@ -212,18 +297,17 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     _createViews() {
-        const addedChildViews = [
-            createLabelViewSpec(),
-            ...this._createAttributeViewSpecs(),
-        ].map((spec) => this.addChildBySpec(spec));
+        this.addChildBySpec(createLabelViewSpec());
 
-        for (const view of addedChildViews) {
-            if (view instanceof UnitView) {
-                // TODO: Move initialization to viewUtils
-                view.resolve("scale");
-                view.resolve("axis");
-            }
+        for (const attribute of this._getAttributeNames()) {
+            const view = this.addChildBySpec(
+                this._createAttributeViewSpec(attribute)
+            );
+            view.opacityFunction = (parentOpacity) =>
+                parentOpacity * this._getAttributeOpacity(attribute);
         }
+
+        resolveScalesAndAxes(this);
     }
 
     /**
@@ -251,37 +335,32 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * Builds views for attributes
+     * Builds a view spec for attribute.
+     *
+     * @param {string} attribute
      */
-    _createAttributeViewSpecs() {
-        const samples = this.sampleView.getAllSamples();
+    _createAttributeViewSpec(attribute) {
+        const attributeDef = this._getAttributeDef(attribute);
 
-        return this._getAttributeNames().map((attributeName) => {
-            const attributeDef = this._getAttributeDef(attributeName);
-
-            // Ensure that attributes have a type
-            let fieldType = attributeDef ? attributeDef.type : undefined;
-            if (!fieldType) {
-                switch (
-                    inferType(
-                        samples.map(
-                            (sample) => sample.attributes[attributeName]
-                        )
-                    )
-                ) {
-                    case "integer":
-                    case "number":
-                        fieldType = FieldType.QUANTITATIVE;
-                        break;
-                    default:
-                        fieldType = FieldType.NOMINAL;
-                }
+        // Ensure that attributes have a type
+        let fieldType = attributeDef ? attributeDef.type : undefined;
+        if (!fieldType) {
+            const samples = this.sampleView.getAllSamples();
+            switch (
+                inferType(samples.map((sample) => sample.attributes[attribute]))
+            ) {
+                case "integer":
+                case "number":
+                    fieldType = FieldType.QUANTITATIVE;
+                    break;
+                default:
+                    fieldType = FieldType.NOMINAL;
             }
+        }
 
-            return createAttributeSpec(attributeName, {
-                ...(attributeDef || {}),
-                type: fieldType,
-            });
+        return createAttributeSpec(attribute, {
+            ...(attributeDef || {}),
+            type: fieldType,
         });
     }
 
@@ -300,7 +379,7 @@ export class SampleAttributePanel extends ConcatView {
      * @returns {import("../../sampleHandler/sampleHandler").AttributeInfo}
      */
     getAttributeInfoFromView(view) {
-        const nameMatch = view.name.match(/attribute-(.*)/);
+        const nameMatch = view.name.match(attributeViewRegex);
         if (nameMatch) {
             // Foolhardily assume that color is always used for encoding.
             const resolution = view.getScaleResolution("color");
@@ -477,6 +556,7 @@ function createAttributeSpec(attributeName, attributeDef) {
                 scale: attributeDef.scale,
             },
         },
+        opacity: 1,
     };
 
     if (attributeDef.barScale && attributeDef.type == FieldType.QUANTITATIVE) {

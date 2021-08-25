@@ -1,3 +1,5 @@
+import doTransition from "./transition";
+
 export default class Animator {
     /**
      *
@@ -46,7 +48,7 @@ export default class Animator {
     requestRender() {
         if (!this._renderRequested) {
             this._renderRequested = true;
-            window.requestAnimationFrame(timestamp => {
+            window.requestAnimationFrame((timestamp) => {
                 this._renderRequested = false;
 
                 const transitions = this.transitions;
@@ -63,5 +65,19 @@ export default class Animator {
         } else if (this._warn) {
             console.warn("Render already requested!");
         }
+    }
+
+    /**
+     * Initiates a transition with a `requestAnimationFrame` that is synced
+     * with this Animator instance.
+     *
+     * @param {import("./transition").TransitionOptions} options
+     */
+    transition(options) {
+        return doTransition({
+            requestAnimationFrame: (callback) =>
+                this.requestTransition(callback),
+            ...options,
+        });
     }
 }
