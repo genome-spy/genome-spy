@@ -143,7 +143,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {string} attribute
+     * Dim attributes that are not hovered
+     *
+     * @param {string} attribute The hovered attribute
      */
     _handleAttributeHighlight(attribute) {
         const state = this._attributeHighlighState;
@@ -155,14 +157,22 @@ export class SampleAttributePanel extends ConcatView {
             this.context.animator
                 .transition({
                     from: state.backgroundOpacity,
-                    to: attribute ? 0.1 : 1.0,
-                    duration: attribute ? 1000 : 300,
-                    delay: attribute ? 500 : 0,
                     onUpdate: (value) => {
                         state.backgroundOpacity = value;
                     },
                     easingFunction: easeQuadInOut,
                     signal: state.abortController.signal,
+                    ...(attribute
+                        ? {
+                              to: 0.1,
+                              duration: 1000,
+                              delay: state.backgroundOpacity < 1.0 ? 0 : 500,
+                          }
+                        : {
+                              to: 1.0,
+                              duration: 200,
+                              delay: 150,
+                          }),
                 })
                 .catch((e) => {
                     // nop
@@ -170,10 +180,6 @@ export class SampleAttributePanel extends ConcatView {
 
             // Ensure that the view is rendered, regardless of the transition.
             this.context.animator.requestRender();
-        }
-
-        if (attribute !== state.currentAttribute) {
-            //
         }
 
         state.currentAttribute = attribute;
