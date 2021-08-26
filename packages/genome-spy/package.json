@@ -8,7 +8,7 @@
   "contributors": [],
   "license": "BSD-2-Clause",
   "version": "0.3.0",
-  "main": "dist/index.umd.js",
+  "main": "dist/index.js",
   "module": "src/index.js",
   "files": [
     "dist/",
@@ -26,7 +26,7 @@
   "scripts": {
     "dev": "node dev-server.js",
     "build": "vite build",
-    "serve": "vite preview",
+    "prepublishOnly": "npm run build",
     "buildSchema": "ts-json-schema-generator -p src/spec/transform.ts > dist/genome-spy-schema.json"
   },
   "dependencies": {
