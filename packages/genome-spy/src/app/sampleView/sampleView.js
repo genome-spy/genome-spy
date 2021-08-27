@@ -646,6 +646,10 @@ export default class SampleView extends ContainerView {
      * @param {import("../../view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
+        if (!this.isVisible()) {
+            return;
+        }
+
         coords = coords.shrink(this.getPadding());
         context.pushView(this, coords);
 

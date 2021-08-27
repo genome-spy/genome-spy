@@ -189,6 +189,10 @@ export default class AxisView extends LayerView {
      * @param {import("./view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
+        if (!this.isVisible()) {
+            return;
+        }
+
         this.axisLength =
             coords[CHANNEL_DIMENSIONS[orient2channel(this.getOrient())]];
 

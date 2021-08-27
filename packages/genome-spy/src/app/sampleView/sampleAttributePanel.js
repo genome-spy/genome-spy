@@ -141,6 +141,10 @@ export class SampleAttributePanel extends ConcatView {
      * @param {import("../../view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
+        if (!this.isVisible()) {
+            return;
+        }
+
         super.render(context, coords, {
             ...options,
             clipRect: this.sampleView._clipBySummary(coords),

@@ -1,11 +1,15 @@
-import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
+import {
+    parseSizeDef,
+    FlexDimensions,
+    ZERO_FLEXDIMENSIONS,
+} from "../utils/layout/flexLayout";
 import Padding from "../utils/layout/padding";
 import {
     getCachedOrCall,
     initPropertyCache,
     invalidatePrefix,
 } from "../utils/propertyCacher";
-import { isNumber, span } from "vega-util";
+import { isNumber, isObject, span } from "vega-util";
 import { scaleLog } from "d3-scale";
 import { isFieldDef, getPrimaryChannel } from "../encoder/encoder";
 import { appendToBaseUrl } from "../utils/url";
@@ -127,7 +131,9 @@ export default class View {
      */
     getSize() {
         return this._cache("size/size", () =>
-            this.getSizeFromSpec().addPadding(this.getPadding())
+            this.isVisible()
+                ? this.getSizeFromSpec().addPadding(this.getPadding())
+                : ZERO_FLEXDIMENSIONS
         );
     }
 
@@ -188,6 +194,14 @@ export default class View {
             "size/sizeFromSpec",
             () => new FlexDimensions(handleSize("width"), handleSize("height"))
         );
+    }
+
+    isVisible() {
+        // TODO: setVisibilityFunction to get visibility from the state
+
+        return isViewDisplay(this.spec.display)
+            ? this.spec.display.display == "normal"
+            : this.spec.display ?? true;
     }
 
     /**
@@ -562,3 +576,10 @@ function createViewOpacityFunction(view) {
  * @return {size is import("../spec/view").Step}
  */
 export const isStepSize = (size) => !!size?.step;
+
+/**
+ *
+ * @param {boolean | import("../spec/view").ViewDisplay} x
+ * @returns {x is import("../spec/view").ViewDisplay}
+ */
+export const isViewDisplay = (x) => isObject(x) && "display" in x;
