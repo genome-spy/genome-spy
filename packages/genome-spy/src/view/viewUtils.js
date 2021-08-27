@@ -18,7 +18,7 @@ import { peek } from "../utils/arrayUtils";
 
 /**
  * @typedef {import("./viewContext").default} ViewContext
- * @typedef {import("../spec/view").MarkConfig} MarkConfig
+ * @typedef {import("../spec/mark").MarkConfig} MarkConfig
  * @typedef {import("../spec/channel").ChannelDef} ChannelDef
  * @typedef {import("../spec/view").ContainerSpec} ContainerSpec
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
@@ -32,8 +32,8 @@ import { peek } from "../utils/arrayUtils";
  * @typedef {VConcatSpec | HConcatSpec | ConcatSpec} AnyConcatSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
  * @typedef {import("../spec/view").ImportConfig} ImportConfig
- * @typedef {import("../spec/view").RootSpec} RootSpec
- * @typedef {import("../spec/view").RootConfig} RootConfig
+ * @typedef {import("../spec/root").RootSpec} RootSpec
+ * @typedef {import("../spec/root").RootConfig} RootConfig
  *
  * @typedef {import("../spec/channel").FacetFieldDef} FacetFieldDef
  * @typedef {import("../spec/view").FacetMapping} FacetMapping

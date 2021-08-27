@@ -437,11 +437,13 @@ export interface FlattenCompressedExonsParams extends TransformParamsBase {
 export type TransformParams =
     | AggregateParams
     | CollectParams
+    | CoverageParams
     | FlattenDelimitedParams
     | FormulaParams
     | FilterParams
     | FilterScoredLabelsParams
     | FlattenCompressedExonsParams
+    | FlattenSequenceParams
     | IdentifierParams
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams

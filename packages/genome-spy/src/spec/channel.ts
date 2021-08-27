@@ -6,8 +6,21 @@ export type FieldName = string;
 
 export type PositionalChannel = "x" | "y";
 
+export type SecondaryPositionalChannel = "x2" | "y2";
+
+export type Channel =
+    | PositionalChannel
+    | SecondaryPositionalChannel
+    | "color"
+    | "opacity"
+    | "size"
+    | "shape"
+    | "text"
+    | "size2"
+    | "color2";
+
 export interface ChannelDefBase {
-    title?: string;
+    title?: string | null;
 }
 
 export interface ValueDef extends ChannelDefBase {
@@ -26,7 +39,7 @@ export interface ChannelDefWithScale extends ChannelDefBase {
     band?: number;
 
     scale?: Scale;
-    axis?: Axis;
+    axis?: Axis | null;
 
     format?: string;
 
@@ -66,4 +79,4 @@ export type ChannelDef =
     | ChromPosDef
     | FacetFieldDef;
 
-export type Encoding = Record<string, ChannelDef>;
+export type Encoding = Partial<Record<Channel, ChannelDef | null>>;

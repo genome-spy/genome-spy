@@ -34,7 +34,7 @@ export async function embed(el, spec, options = {}) {
     let genomeSpy;
 
     try {
-        const specObject = /** @type {import("./spec/view").RootSpec} */ (
+        const specObject = /** @type {import("./spec/root").RootSpec} */ (
             isObject(spec) ? spec : await loadSpec(spec)
         );
 

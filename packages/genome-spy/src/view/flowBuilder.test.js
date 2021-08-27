@@ -22,10 +22,10 @@ function byPath(root, path) {
     return root;
 }
 
-/** @type {import("../spec/view").MarkConfig} */
+/** @type {import("../spec/mark").MarkConfig} */
 const mark = {
     type: "rect",
-    tooltip: null
+    tooltip: null,
 };
 
 test("Trivial flow", () => {
@@ -36,10 +36,10 @@ test("Trivial flow", () => {
                 {
                     type: "formula",
                     expr: "datum.data * 2",
-                    as: "x"
-                }
+                    as: "x",
+                },
             ],
-            mark
+            mark,
         },
         UnitView
     );
@@ -65,21 +65,21 @@ test("Branching flow", () => {
                         {
                             type: "formula",
                             expr: "datum.data * 2",
-                            as: "x"
-                        }
+                            as: "x",
+                        },
                     ],
-                    mark
+                    mark,
                 },
                 {
                     transform: [
                         {
                             type: "filter",
-                            expr: "datum.data > 4"
-                        }
+                            expr: "datum.data > 4",
+                        },
                     ],
-                    mark
-                }
-            ]
+                    mark,
+                },
+            ],
         },
         LayerView
     );
@@ -104,9 +104,9 @@ test("Nested data sources", () => {
                 {
                     data: { sequence: { start: 0, stop: 5 } },
                     transform: [{ type: "formula", expr: "3", as: "foo" }],
-                    mark
-                }
-            ]
+                    mark,
+                },
+            ],
         },
         LayerView
     );

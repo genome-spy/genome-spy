@@ -50,6 +50,10 @@ recommended to use a specific version.
 
     ![npm version](https://img.shields.io/npm/v/genome-spy)
 
+!!! warning "Stylesheet filename"
+
+    `index.css` was renamed to `style.css` in v0.4.0!
+
 #### Load the spec from a file
 
 This template loads the spec from the `spec.json` file.
@@ -62,13 +66,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/genome-spy@0.1.9/dist/index.css"
+      href="https://unpkg.com/genome-spy@0.4.0/dist/style.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/genome-spy@0.1.9/dist/index.js"
+      src="https://unpkg.com/genome-spy@0.4.0/dist/index.js"
     ></script>
 
     <script>
@@ -88,13 +92,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/genome-spy@0.1.9/dist/index.css"
+      href="https://unpkg.com/genome-spy@0.4.0/dist/style.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/genome-spy@0.1.9/dist/index.js"
+      src="https://unpkg.com/genome-spy@0.4.0/dist/index.js"
     ></script>
 
     <script>

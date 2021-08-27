@@ -1,42 +1,19 @@
 import { Data } from "./data";
 import { Scale } from "./scale";
 import { TransformParams } from "./transform";
-import { GenomeConfig } from "../genome/genome";
-import { SizeDef } from "../utils/layout/flexLayout";
 import { Encoding, FacetFieldDef, PositionalChannel } from "./channel";
-import { Tooltip } from "./tooltip";
+import { MarkConfig } from "./mark";
+
+export interface SizeDef {
+    /** Size in pixels */
+    px?: number;
+
+    /** Share of the remaining space */
+    grow?: number;
+}
 
 // TODO: Perhaps this should be in "utils"
 export type GeometricDimension = "width" | "height";
-export interface MarkConfig {
-    type: string;
-    /** Whether the mark should be clipped to the UnitView's rectangle.  */
-    clip?: boolean;
-    align?: string;
-    baseline?: string;
-    dx?: number;
-    dy?: number;
-    xOffset?: number;
-    yOffset?: number;
-    tooltip?: Tooltip;
-
-    dynamicData?: boolean;
-
-    /**
-     * Minimum size for WebGL buffers (number of data items).
-     * Allows for using bufferSubData to update graphics.
-     * This property is intended for internal usage.
-     */
-    minBufferSize?: number;
-
-    /**
-     * Builds and index for efficient rendering of subsets of the data.
-     * The data must be sorted by the x coordinate.
-     *
-     * TODO: This should be enabled automatically if the data are sorted.
-     */
-    buildIndex?: boolean;
-}
 
 export interface FacetMapping {
     column?: FacetFieldDef;
@@ -94,18 +71,13 @@ export interface ViewSpecBase extends ResolveSpec {
     opacity?: ViewOpacityDef;
 }
 
+export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
+    mark: string | MarkConfig;
+}
+
 export interface AggregateSamplesSpec {
     // TODO: Introduce a type (UnitSpec | LayerSpec) that can ba used in SampleView and here
     aggregateSamples?: (UnitSpec | LayerSpec)[];
-}
-export interface TableRowSpec extends ViewSpecBase {
-    center: ViewSpec;
-    left?: ViewSpec;
-    right?: ViewSpec;
-}
-
-export interface TableSpec extends ViewSpecBase {
-    table: TableRowSpec[];
 }
 
 export interface LayerSpec extends ViewSpecBase, AggregateSamplesSpec {
@@ -139,10 +111,6 @@ export interface SampleSpec extends ViewSpecBase {
     stickySummaries?: boolean;
 }
 
-export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
-    mark: string | MarkConfig;
-}
-
 export type ResolutionTarget = "scale" | "axis";
 
 /**
@@ -152,7 +120,7 @@ export type ResolutionTarget = "scale" | "axis";
 export type ResolutionBehavior = "independent" | "shared" | "excluded";
 export interface ResolveSpec {
     resolve?: Partial<
-        Record<ResolutionTarget, Record<"default" | string, ResolutionBehavior>>
+        Record<ResolutionTarget, Record<string, ResolutionBehavior>>
     >;
 }
 
@@ -163,8 +131,6 @@ export type ContainerSpec = (
     | VConcatSpec
     | HConcatSpec
     | ConcatSpec
-    | TableSpec
-    | TableRowSpec
     | UnitSpec
 ) &
     ResolveSpec;
@@ -176,9 +142,7 @@ export type ViewSpec =
     | SampleSpec
     | VConcatSpec
     | HConcatSpec
-    | ConcatSpec
-    | TableSpec
-    | TableRowSpec;
+    | ConcatSpec;
 
 export interface ImportConfig {
     name?: string;
@@ -205,23 +169,3 @@ export interface HConcatSpec extends ConcatBase {
 export interface ConcatSpec extends ConcatBase {
     concat: (ViewSpec | ImportSpec)[];
 }
-
-export interface RootConfig {
-    genome?: GenomeConfig;
-
-    /**
-     * A unique identifier that is used in storing state bookmarks to browser's
-     * IndexedDB. This is needed to make distinction between visualizations that
-     * are served from the same origin, i.e., the same host and port.
-     */
-    specId?: string;
-
-    baseUrl?: string;
-
-    /**
-     * https://vega.github.io/vega-lite/docs/data.html#datasets
-     */
-    datasets?: Record<string, any[]>;
-}
-
-export type RootSpec = ViewSpec & RootConfig;
