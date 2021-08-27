@@ -27,7 +27,8 @@
     "dev": "node dev-server.js",
     "build": "vite build",
     "prepublishOnly": "npm run build",
-    "buildSchema": "ts-json-schema-generator -p src/spec/transform.ts > dist/genome-spy-schema.json"
+    "checkSpec": "tsc --allowJs --checkJs --strict --noEmit --moduleResolution node --target es6 src/spec/root.ts",
+    "buildSchema": "ts-json-schema-generator --path 'src/spec/*.ts' --type ViewSpec > dist/genome-spy-schema.json"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.14.0",

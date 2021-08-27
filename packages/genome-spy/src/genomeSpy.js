@@ -43,8 +43,8 @@ import { invalidatePrefix } from "./utils/propertyCacher";
  * @typedef {import("./spec/view").ViewSpec} ViewSpec
  * @typedef {import("./spec/view").ImportSpec} ImportSpec
  * @typedef {import("./spec/view").VConcatSpec} TrackSpec
- * @typedef {import("./spec/view").RootSpec} RootSpec
- * @typedef {import("./spec/view").RootConfig} RootConfig
+ * @typedef {import("./spec/root").RootSpec} RootSpec
+ * @typedef {import("./spec/root").RootConfig} RootConfig
  */
 
 // Register scaleLocus to Vega-Scale.

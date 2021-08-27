@@ -63,6 +63,7 @@ export interface DsvDataFormat extends DataFormatBase {
 
 export interface JsonDataFormat extends DataFormatBase {
     type?: "json";
+
     /**
      * The JSON property containing the desired data.
      * This parameter can be used when the loaded JSON file may have surrounding structure or meta-data.
@@ -98,6 +99,7 @@ export interface DataBase {
      * An object that specifies the format for parsing the data.
      */
     format?: DataFormat;
+
     /**
      * Provide a placeholder name and bind data at runtime.
      */
@@ -106,10 +108,10 @@ export interface DataBase {
 
 export interface UrlData extends DataBase {
     /**
-     * An URL from which to load the data set. Use the `format.type` property
-     * to ensure the loaded data is correctly parsed.
+     * An URL or an array of URLs from which to load the data set.
+     * Use the `format.type` property to ensure the loaded data is correctly parsed.
      */
-    url: string;
+    url: string | string[];
 }
 
 export interface InlineData extends DataBase {

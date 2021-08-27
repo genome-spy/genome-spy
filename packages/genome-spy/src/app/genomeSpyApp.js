@@ -22,7 +22,7 @@ export default class GenomeSpyApp {
     /**
      *
      * @param {HTMLElement} appContainerElement
-     * @param {import("../spec/view").RootSpec} config
+     * @param {import("../spec/root").RootSpec} config
      * @param {import("../options").EmbedOptions} options
      */
     constructor(appContainerElement, config, options = {}) {
@@ -161,7 +161,7 @@ export default class GenomeSpyApp {
 
     /**
      *
-     * @param {import("../spec/view").RootSpec} config
+     * @param {import("../spec/root").RootSpec} config
      */
     async updateConfig(config) {
         // TODO: provenance etc must be re-registered etc
