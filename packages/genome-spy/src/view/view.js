@@ -403,6 +403,7 @@ export default class View {
      *
      * @param {string} channel
      * @param {ResolutionTarget} type
+     * @returns {ScaleResolution | AxisResolution}
      */
     _getResolution(channel, type) {
         channel = primaryChannel(channel);
@@ -411,8 +412,9 @@ export default class View {
         // eslint-disable-next-line consistent-this
         let view = this;
         do {
-            if (view.resolutions[type][channel]) {
-                return view.resolutions[type][channel];
+            const resolution = view.resolutions[type][channel];
+            if (resolution) {
+                return resolution;
             }
             view = view.parent;
         } while (view);
