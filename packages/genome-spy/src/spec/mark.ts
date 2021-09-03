@@ -1,14 +1,24 @@
 import { Tooltip } from "./tooltip";
 
+export type MarkType = "rect" | "point" | "rule" | "text" | "link";
+
+// TODO: Mark-specific configs
 export interface MarkConfig {
-    type: string;
+    // Channels.
+    x?: number;
+    x2?: number;
+    y?: number;
+    y2?: number;
+    color?: string;
+    color2?: string;
+    opacity?: number;
+    size?: number;
+    size2?: number;
+    shape?: string;
+    text?: string;
 
     /** Whether the mark should be clipped to the UnitView's rectangle.  */
     clip?: boolean;
-    align?: string;
-    baseline?: string;
-    dx?: number;
-    dy?: number;
     xOffset?: number;
     yOffset?: number;
 
@@ -31,6 +41,34 @@ export interface MarkConfig {
     minAbsolutePointDiameter?: number;
     semanticZoomFraction?: number;
 
+    // Text related stuff.
+    font?: string;
+    fontStyle?: "normal" | "italic";
+    fontWeight?:
+        | number
+        | "thin"
+        | "light"
+        | "regular"
+        | "normal"
+        | "medium"
+        | "bold"
+        | "black";
+    align?: "left" | "center" | "right";
+    baseline?: "top" | "middle" | "bottom" | "alphabetic";
+    dx?: number;
+    dy?: number;
+    fitToBand?: boolean;
+    angle?: number;
+    squeeze: boolean;
+    paddingX: number;
+    paddingY: number;
+    flushX: number;
+    flushY: number;
+    /** Stretch letters so that they can be used with sequence logos etc... */
+    logoLetters: boolean;
+    viewportEdgeFadeWidth: number[];
+    viewportEdgeFadeDistance: number[];
+
     // TODO: get rid of this
     dynamicData?: boolean;
 
@@ -48,4 +86,8 @@ export interface MarkConfig {
      * TODO: This should be enabled automatically if the data are sorted.
      */
     buildIndex?: boolean;
+}
+
+export interface MarkConfigAndType extends MarkConfig {
+    type: MarkType;
 }

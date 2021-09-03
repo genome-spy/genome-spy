@@ -2,7 +2,7 @@ import { Data } from "./data";
 import { Scale } from "./scale";
 import { TransformParams } from "./transform";
 import { Encoding, FacetFieldDef, PositionalChannel } from "./channel";
-import { MarkConfig } from "./mark";
+import { MarkConfigAndType, MarkType } from "./mark";
 
 export interface SizeDef {
     /** Size in pixels */
@@ -72,7 +72,7 @@ export interface ViewSpecBase extends ResolveSpec {
 }
 
 export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
-    mark: string | MarkConfig;
+    mark: MarkType | MarkConfigAndType;
 }
 
 export interface AggregateSamplesSpec {

@@ -5,19 +5,19 @@ import {
     createVertexArrayInfo,
     setAttribInfoBufferFromArray,
     setUniformBlock,
-    setUniforms
+    setUniforms,
 } from "twgl.js";
 import { isDiscrete } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
 import createEncoders, {
     isChannelDefWithScale,
-    isValueDef
+    isValueDef,
 } from "../encoder/encoder";
 import {
     DOMAIN_PREFIX,
     generateValueGlsl,
     generateScaleGlsl,
-    RANGE_TEXTURE_PREFIX
+    RANGE_TEXTURE_PREFIX,
 } from "../scale/glslScaleGenerator";
 import FP64 from "../gl/includes/fp64-arithmetic.glsl";
 import GLSL_COMMON from "../gl/includes/common.glsl";
@@ -77,14 +77,15 @@ export default class Mark {
         this.opaque = false;
 
         // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
+        /** @type {MarkConfig} */
         this.defaultProperties = {
             get clip() {
                 // TODO: Cache once the scales have been resolved
                 // TODO: Only check channels that are used
                 // TODO: provide more fine-grained xClip and yClip props
                 return ["x", "y"]
-                    .map(channel => unitView.getScaleResolution(channel))
-                    .some(resolution => resolution?.isZoomable() ?? false);
+                    .map((channel) => unitView.getScaleResolution(channel))
+                    .some((resolution) => resolution?.isZoomable() ?? false);
             },
             xOffset: 0,
             yOffset: 0,
@@ -94,7 +95,7 @@ export default class Mark {
              * Allows for using bufferSubData to update graphics.
              * This property is intended for internal usage.
              */
-            minBufferSize: 0
+            minBufferSize: 0,
         };
 
         /**
@@ -103,14 +104,15 @@ export default class Mark {
          *
          * TODO: Proper and comprehensive typings for mark properties
          *
-         * @type {Partial<MarkConfig> & Record<string, any>}
+         * @type {Partial<MarkConfig>}
          * @readonly
          */
         this.properties = coalesceProperties(
             typeof this.unitView.spec.mark == "object"
                 ? () =>
-                      /** @type {Record<string, any>} */ (this.unitView.spec
-                          .mark)
+                      /** @type {Record<string, any>} */ (
+                          this.unitView.spec.mark
+                      )
                 : () => /** @type {Record<string, any>} */ ({}),
             () => this.defaultProperties
         );
@@ -138,7 +140,7 @@ export default class Mark {
             "color",
             "opacity",
             "search",
-            "uniqueId"
+            "uniqueId",
         ];
     }
 
@@ -149,14 +151,14 @@ export default class Mark {
         /** @type {import("../spec/channel").Encoding} */
         const encoding = {
             sample: undefined,
-            uniqueId: undefined
+            uniqueId: undefined,
         };
 
         if (this.isPickingParticipant()) {
             encoding.uniqueId = {
                 field: "_uniqueId", // TODO: Use constant
                 type: "nominal",
-                scale: null
+                scale: null,
             };
         }
 
@@ -185,17 +187,17 @@ export default class Mark {
 
             const propertyValues = Object.fromEntries(
                 this.getSupportedChannels()
-                    .map(channel => [
+                    .map((channel) => [
                         channel,
-                        { value: this.properties[channel] }
+                        { value: this.properties[channel] },
                     ])
-                    .filter(entry => entry[1].value !== undefined)
+                    .filter((entry) => entry[1].value !== undefined)
             );
 
             const encoding = this.fixEncoding({
                 ...defaults,
                 ...propertyValues,
-                ...configured
+                ...configured,
             });
 
             for (const channel of Object.keys(encoding)) {
@@ -310,7 +312,7 @@ export default class Mark {
 
         const domainUniformBlock = this.domainUniforms.length
             ? "layout(std140) uniform Domains {\n" +
-              this.domainUniforms.map(u => `    ${u}\n`).join("") +
+              this.domainUniforms.map((u) => `    ${u}\n`).join("") +
               "};\n\n"
             : "";
 
@@ -322,10 +324,10 @@ export default class Mark {
             ...scaleCode,
             GLSL_SAMPLE_FACET,
             GLSL_PICKING_VERTEX,
-            vertexShader
+            vertexShader,
         ];
 
-        if (vertexParts.some(code => /[Ff]p64/.test(code))) {
+        if (vertexParts.some((code) => /[Ff]p64/.test(code))) {
             vertexParts.unshift(GLSL_SCALES_FP64);
             vertexParts.unshift(FP64);
         }
@@ -334,7 +336,7 @@ export default class Mark {
             ...extraHeaders,
             GLSL_COMMON,
             GLSL_PICKING_FRAGMENT,
-            fragmentShader
+            fragmentShader,
         ];
 
         const gl = this.gl;
@@ -394,7 +396,7 @@ export default class Mark {
                 gl.disableVertexAttribArray(i);
             }
 
-            Object.values(this.bufferInfo.attribs).forEach(attribInfo =>
+            Object.values(this.bufferInfo.attribs).forEach((attribInfo) =>
                 this.gl.deleteBuffer(attribInfo.buffer)
             );
             if (this.bufferInfo.indices) {
@@ -526,7 +528,9 @@ export default class Mark {
                         : scale.domain();
 
                     setter(
-                        scale.fp64 ? domain.map(x => fp64ify(x)).flat() : domain
+                        scale.fp64
+                            ? domain.map((x) => fp64ify(x)).flat()
+                            : domain
                     );
                 }
             }
@@ -540,7 +544,7 @@ export default class Mark {
                 const texture = glHelper.rangeTextures.get(resolution);
                 if (texture) {
                     setUniforms(this.programInfo, {
-                        [RANGE_TEXTURE_PREFIX + channel]: texture
+                        [RANGE_TEXTURE_PREFIX + channel]: texture,
                     });
                 }
             }
@@ -548,7 +552,7 @@ export default class Mark {
 
         if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
             setUniforms(this.programInfo, {
-                uSampleFacetTexture: this._findSampleView().facetTexture
+                uSampleFacetTexture: this._findSampleView().facetTexture,
             });
         }
 
@@ -559,13 +563,13 @@ export default class Mark {
             // TODO: Rendering of the mark should be completely skipped if it doesn't
             // participate picking
             uPickingEnabled:
-                (options.picking ?? false) && this.isPickingParticipant()
+                (options.picking ?? false) && this.isPickingParticipant(),
         });
 
         setUniforms(this.programInfo, {
             // left pos, left height, right pos, right height
             uSampleFacet: [0, 1, 0, 1],
-            uTransitionOffset: 0.0
+            uTransitionOffset: 0.0,
         });
 
         if (this.opaque || options.picking) {
@@ -645,7 +649,7 @@ export default class Mark {
         if (this.properties.buildIndex) {
             const scale = this.unitView.getScaleResolution("x")?.getScale();
 
-            drawWithRangeEntry = rangeEntry => {
+            drawWithRangeEntry = (rangeEntry) => {
                 if (scale && rangeEntry.xIndex) {
                     const domain = scale.domain();
                     const vertexIndices = rangeEntry.xIndex(
@@ -662,7 +666,7 @@ export default class Mark {
                 }
             };
         } else {
-            drawWithRangeEntry = rangeEntry =>
+            drawWithRangeEntry = (rangeEntry) =>
                 draw(rangeEntry.offset, rangeEntry.count);
         }
 
@@ -728,7 +732,7 @@ export default class Mark {
 
                 uViewScale = [
                     coords.width / clippedCoords.width,
-                    coords.height / clippedCoords.height
+                    coords.height / clippedCoords.height,
                 ];
 
                 yClipOffset = Math.max(0, coords.y2 - clipRect.y2);
@@ -741,13 +745,13 @@ export default class Mark {
                 coords.x,
                 logicalSize.height - clippedCoords.y2,
                 Math.max(0, clippedCoords.width),
-                Math.max(0, clippedCoords.height)
-            ].map(x => x * dpr);
+                Math.max(0, clippedCoords.height),
+            ].map((x) => x * dpr);
 
             // Because glViewport accepts only integers, we subtract the rounding
             // errors from xyOffsets to guarantee that graphics in clipped
             // and non-clipped viewports align correctly
-            const flooredCoords = physicalGlCoords.map(x => Math.floor(x));
+            const flooredCoords = physicalGlCoords.map((x) => Math.floor(x));
             const [xError, yError] = physicalGlCoords.map(
                 (x, i) => x - flooredCoords[i]
             );
@@ -761,9 +765,9 @@ export default class Mark {
             uniforms = {
                 uViewOffset: [
                     (xOffset + xClipOffset + xError) / clippedCoords.width,
-                    -(yOffset + yClipOffset - yError) / clippedCoords.height
+                    -(yOffset + yClipOffset - yError) / clippedCoords.height,
                 ],
-                uViewScale
+                uViewScale,
             };
         } else {
             // Viewport comprises of the full canvas
@@ -780,12 +784,12 @@ export default class Mark {
                 uViewOffset: [
                     (coords.x + xOffset) / logicalSize.width,
                     (logicalSize.height - coords.y - yOffset - coords.height) /
-                        logicalSize.height
+                        logicalSize.height,
                 ],
                 uViewScale: [
                     coords.width / logicalSize.width,
-                    coords.height / logicalSize.height
-                ]
+                    coords.height / logicalSize.height,
+                ],
             };
         }
 
@@ -793,7 +797,7 @@ export default class Mark {
         setUniforms(this.programInfo, uniforms);
 
         setUniforms(this.programInfo, {
-            uViewportSize: [coords.width, coords.height]
+            uViewportSize: [coords.width, coords.height],
         });
 
         // TODO: Optimize: don't set viewport and stuff if rect is outside clipRect or screen
