@@ -21,6 +21,8 @@ export default class RectMark extends Mark {
                 y2: undefined,
                 color: "#4c78a8",
                 opacity: 1.0,
+                strokeWidth: 0,
+                cornerRadius: 0.0,
 
                 minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
                 minHeight: 0.5,
@@ -69,10 +71,38 @@ export default class RectMark extends Mark {
         // TODO: Pop the previous buffers
     }
 
+    _isRoundedCorners() {
+        return ["", "TopLeft", "TopRight", "BottomLeft", "BottomRight"]
+            .map(
+                (c) =>
+                    /** @type {keyof import("../spec/mark").MarkConfig} */ (
+                        "cornerRadius" + c
+                    )
+            )
+            .some((c) => this.properties[c] > 0);
+    }
+
+    _isStroked() {
+        return this.properties.strokeWidth > 0;
+    }
+
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        /** @type {string[]} */
+        const defines = [];
+        if (this._isRoundedCorners()) {
+            defines.push("ROUNDED_CORNERS");
+        }
+        if (this._isStroked()) {
+            defines.push("STROKED");
+        }
+
+        this.createAndLinkShaders(
+            VERTEX_SHADER,
+            FRAGMENT_SHADER,
+            defines.map((d) => "#define " + d)
+        );
     }
 
     updateGraphicsData() {
@@ -105,6 +135,13 @@ export default class RectMark extends Mark {
         setUniforms(this.programInfo, {
             uMinSize: [props.minWidth, props.minHeight], // in pixels
             uMinOpacity: props.minOpacity,
+            uStrokeWidth: props.strokeWidth,
+            uCornerRadii: [
+                props.cornerRadiusTopRight ?? props.cornerRadius,
+                props.cornerRadiusBottomRight ?? props.cornerRadius,
+                props.cornerRadiusTopLeft ?? props.cornerRadius,
+                props.cornerRadiusBottomLeft ?? props.cornerRadius,
+            ],
         });
 
         setBuffersAndAttributes(

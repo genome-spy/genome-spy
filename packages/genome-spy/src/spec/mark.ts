@@ -29,6 +29,12 @@ export interface MarkConfig {
     minWidth?: number;
     minHeight?: number;
 
+    cornerRadius?: number;
+    cornerRadiusTopLeft?: number;
+    cornerRadiusTopRight?: number;
+    cornerRadiusBottomLeft?: number;
+    cornerRadiusBottomRight?: number;
+
     // Rule related stuff.
     minLength?: number;
     strokeDash?: number[];

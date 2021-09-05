@@ -12,7 +12,25 @@ uniform vec2 uMinSize;
 /** Minimum opacity for the size size clamping */
 uniform float uMinOpacity;
 
-flat out vec4 vColor;
+/** top-right, bottom-right, top-left, bottom-left */
+uniform vec4 uCornerRadii;
+
+/** Stroke width in pixels */
+uniform float uStrokeWidth;
+
+flat out lowp vec4 vFillColor;
+flat out lowp vec4 vStrokeColor;
+flat out float vHalfStrokeWidth;
+flat out vec4 vCornerRadii;
+
+
+#if defined(ROUNDED_CORNERS) || defined(STROKED)
+/** Position for SDF-strokes */
+out vec2 vPosInPixels;
+#endif
+
+/** Size of the rect in pixels */
+flat out vec2 vHalfSizeInPixels;
 
 /**
  * Clamps the minimumSize and returns an opacity that reflects the amount of clamping.
@@ -45,14 +63,15 @@ void main(void) {
     sort(x, x2);
     sort(y, y2);
 
-    // Clamp x to unit range to prevent precision artifacts when the scale is zoomed very close.
-	// TODO: Handle the right edge, ensure that this works with negative offsets.
-    vec2 pos1 = vec2(clamp(x, 0.0 - uViewOffset.x, 1.0), y);
-    vec2 pos2 = vec2(clamp(x2, 0.0 - uViewOffset.x, 1.0), y2);
+    // Clamp x to prevent precision artifacts when the scale is zoomed very close.
+	// TODO: clamp y as well
+	float clampMargin = 1.0;
+    vec2 pos1 = vec2(clamp(x, 0.0 - clampMargin, 1.0 + clampMargin), y);
+    vec2 pos2 = vec2(clamp(x2, 0.0 - clampMargin, 1.0 + clampMargin), y2);
 
     vec2 size = pos2 - pos1;
 
-    if (size.x <= 0.0 && size.y <= 0.0) {
+    if (size.x <= 0.0 || size.y <= 0.0) {
         // Early exit. May increase performance or not...
         gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
         return;
@@ -60,7 +79,7 @@ void main(void) {
 
     vec2 pos = pos1 + frac * size;
 
-    size.y /= getSampleFacetHeight(pos);
+    size.y *= getSampleFacetHeight(pos);
 
     float opa = getScaled_opacity() * uViewOpacity * max(uMinOpacity,
         clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
@@ -68,9 +87,26 @@ void main(void) {
 
     pos = applySampleFacet(pos);
 
-    gl_Position = unitToNdc(pos);
+#if defined(ROUNDED_CORNERS) || defined(STROKED)
+    // Add an extra pixel to stroke width to accommodate edge antialiasing
+    float aaPadding = 1.0 / uDevicePixelRatio;
 
-    vColor = vec4(getScaled_color() * opa, opa);
+	vec2 centeredFrac = frac - 0.5;
+	vec2 expand = centeredFrac * (uStrokeWidth + aaPadding) / uViewportSize;
+	pos += expand;
+
+	vec2 sizeInPixels = size * uViewportSize;
+	vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
+
+	vHalfSizeInPixels = sizeInPixels / 2.0;
+
+	vCornerRadii = min(uCornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
+	vHalfStrokeWidth = uStrokeWidth / 2.0;
+#endif
+
+    gl_Position = unitToNdc(pos);
+    vFillColor = vec4(getScaled_color() * opa, opa);
+	vStrokeColor = vec4(vec3(0.0), 1.0);
 
     setupPicking();
 }

@@ -37,3 +37,10 @@ vec4 pixelsToNdc(float x, float y) {
 float linearstep(float edge0, float edge1, float x) {
     return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 }
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
