@@ -11,7 +11,11 @@ export interface MarkConfig {
     y2?: number;
     color?: string;
     color2?: string;
+    fill?: string;
+    stroke?: string;
     opacity?: number;
+    fillOpacity?: number;
+    strokeOpacity?: number;
     size?: number;
     size2?: number;
     shape?: string;

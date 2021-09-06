@@ -12,7 +12,11 @@ export type Channel =
     | PositionalChannel
     | SecondaryPositionalChannel
     | "color"
+    | "fill"
+    | "stroke"
     | "opacity"
+    | "fillOpacity"
+    | "strokeOpacity"
     | "size"
     | "shape"
     | "text"
