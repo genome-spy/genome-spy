@@ -4,8 +4,9 @@ import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices";
 
 import Mark from "./mark";
-import { fixPositional } from "./markUtils";
+import { fixPositional, fixStroke } from "./markUtils";
 import { asArray } from "../utils/arrayUtils";
+import { isValueDef } from "../encoder/encoder";
 
 export default class RectMark extends Mark {
     /**
@@ -20,6 +21,7 @@ export default class RectMark extends Mark {
                 x2: undefined,
                 y2: undefined,
                 color: "#4c78a8",
+                stroke: "black",
                 opacity: 1.0,
                 strokeWidth: 0,
                 cornerRadius: 0.0,
@@ -43,12 +45,20 @@ export default class RectMark extends Mark {
             "y",
             "y2",
             "color",
+            "stroke",
+            "strokeWidth",
             "opacity",
         ];
     }
 
     getSupportedChannels() {
-        return [...super.getSupportedChannels(), "x2", "y2"];
+        return [
+            ...super.getSupportedChannels(),
+            "x2",
+            "y2",
+            "stroke",
+            "strokeWidth",
+        ];
     }
 
     /**
@@ -59,6 +69,7 @@ export default class RectMark extends Mark {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
         fixPositional(encoding, "x");
         fixPositional(encoding, "y");
+        fixStroke(encoding);
 
         return encoding;
     }
@@ -83,7 +94,8 @@ export default class RectMark extends Mark {
     }
 
     _isStroked() {
-        return this.properties.strokeWidth > 0;
+        const sw = this.encoding.strokeWidth;
+        return !(isValueDef(sw) && !sw.value);
     }
 
     async initializeGraphics() {
@@ -135,7 +147,6 @@ export default class RectMark extends Mark {
         setUniforms(this.programInfo, {
             uMinSize: [props.minWidth, props.minHeight], // in pixels
             uMinOpacity: props.minOpacity,
-            uStrokeWidth: props.strokeWidth,
             uCornerRadii: [
                 props.cornerRadiusTopRight ?? props.cornerRadius,
                 props.cornerRadiusBottomRight ?? props.cornerRadius,

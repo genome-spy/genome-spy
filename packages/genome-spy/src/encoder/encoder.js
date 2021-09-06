@@ -92,14 +92,14 @@ export function createEncoder(channelDef, scale, accessor, channel) {
     let encoder;
 
     if (isValueDef(channelDef)) {
-        encoder = /** @type {Encoder} */ (datum => channelDef.value);
+        encoder = /** @type {Encoder} */ ((datum) => channelDef.value);
         encoder.constant = true;
         encoder.constantValue = true;
         encoder.accessor = undefined;
     } else if (accessor) {
         if (channel == "text") {
             // TODO: Define somewhere channels that don't use a scale
-            encoder = /** @type {Encoder} */ (datum => undefined);
+            encoder = /** @type {Encoder} */ ((datum) => undefined);
             encoder.accessor = accessor;
             encoder.constant = accessor.constant;
         } else {
@@ -109,13 +109,15 @@ export function createEncoder(channelDef, scale, accessor, channel) {
                 );
             }
 
-            encoder = /** @type {Encoder} */ (datum => scale(accessor(datum)));
+            encoder = /** @type {Encoder} */ (
+                (datum) => scale(accessor(datum))
+            );
 
             if (isDiscrete(scale.type)) {
                 // TODO: pass the found values back to the scale/resolution
                 const indexer = createIndexer();
                 indexer.addAll(scale.domain());
-                encoder.indexer = d => indexer(accessor(d));
+                encoder.indexer = (d) => indexer(accessor(d));
             }
 
             encoder.constant = accessor.constant;
@@ -132,8 +134,8 @@ export function createEncoder(channelDef, scale, accessor, channel) {
 
     // TODO: Modifier should be inverted too
     encoder.invert = scale
-        ? value => scale.invert(value)
-        : value => {
+        ? (value) => scale.invert(value)
+        : (value) => {
               throw new Error(
                   "No scale available, cannot invert: " +
                       JSON.stringify(channelDef)
@@ -144,7 +146,7 @@ export function createEncoder(channelDef, scale, accessor, channel) {
     encoder.channelDef = channelDef;
 
     /** @param {Encoder} target */
-    encoder.applyMetadata = target => {
+    encoder.applyMetadata = (target) => {
         for (const prop in encoder) {
             if (prop in encoder) {
                 target[prop] = encoder[prop];
@@ -220,7 +222,7 @@ export const secondaryChannels = {
     x: "x2",
     y: "y2",
     size: "size2",
-    color: "color2"
+    color: "color2",
 };
 
 /**
@@ -229,7 +231,7 @@ export const secondaryChannels = {
  * @type {Record<string, string>}
  */
 export const primaryChannels = Object.fromEntries(
-    Object.entries(secondaryChannels).map(entry => [entry[1], entry[0]])
+    Object.entries(secondaryChannels).map((entry) => [entry[1], entry[0]])
 );
 
 /**
@@ -286,7 +288,7 @@ export function isPositionalChannel(channel) {
  * @param {string} channel
  */
 export function isColorChannel(channel) {
-    return ["color", "fill"].includes(primaryChannel(channel));
+    return ["color", "fill", "stroke"].includes(primaryChannel(channel));
 }
 
 /**
@@ -316,7 +318,7 @@ export function getDiscreteRange(channel) {
                 "diamond",
                 "triangle-down",
                 "triangle-right",
-                "triangle-left"
+                "triangle-left",
             ];
         case "squeeze":
             return ["none", "top", "right", "bottom", "left"];
@@ -337,7 +339,7 @@ export function getDiscreteRangeMapper(channel) {
         getDiscreteRange(channel).map((value, i) => [value, i])
     );
 
-    return value => {
+    return (value) => {
         const mapped = valueMap.get(value);
         if (mapped !== undefined) {
             return mapped;

@@ -15,9 +15,6 @@ uniform float uMinOpacity;
 /** top-right, bottom-right, top-left, bottom-left */
 uniform vec4 uCornerRadii;
 
-/** Stroke width in pixels */
-uniform float uStrokeWidth;
-
 flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
 flat out float vHalfStrokeWidth;
@@ -90,23 +87,24 @@ void main(void) {
 #if defined(ROUNDED_CORNERS) || defined(STROKED)
     // Add an extra pixel to stroke width to accommodate edge antialiasing
     float aaPadding = 1.0 / uDevicePixelRatio;
+    float strokeWidth = getScaled_strokeWidth();
 
-	vec2 centeredFrac = frac - 0.5;
-	vec2 expand = centeredFrac * (uStrokeWidth + aaPadding) / uViewportSize;
-	pos += expand;
+    vec2 centeredFrac = frac - 0.5;
+    vec2 expand = centeredFrac * (strokeWidth + aaPadding) / uViewportSize;
+    pos += expand;
 
-	vec2 sizeInPixels = size * uViewportSize;
-	vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
+    vec2 sizeInPixels = size * uViewportSize;
+    vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
 
-	vHalfSizeInPixels = sizeInPixels / 2.0;
+    vHalfSizeInPixels = sizeInPixels / 2.0;
 
-	vCornerRadii = min(uCornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
-	vHalfStrokeWidth = uStrokeWidth / 2.0;
+    vCornerRadii = min(uCornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
+    vHalfStrokeWidth = strokeWidth / 2.0;
+    vStrokeColor = vec4(getScaled_stroke() * opa, opa);
 #endif
 
     gl_Position = unitToNdc(pos);
     vFillColor = vec4(getScaled_color() * opa, opa);
-	vStrokeColor = vec4(vec3(0.0), 1.0);
 
     setupPicking();
 }

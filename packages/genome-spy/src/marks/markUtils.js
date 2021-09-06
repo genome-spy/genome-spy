@@ -1,4 +1,4 @@
-import { secondaryChannel } from "../encoder/encoder";
+import { isValueDef, secondaryChannel } from "../encoder/encoder";
 
 /**
  * @param {Record<string, import("../view/view").ChannelDef>} encoding
@@ -11,7 +11,7 @@ export function fixPositional(encoding, channel) {
             if (encoding[channel].type == "quantitative") {
                 // Bar plot, anchor the other end to zero
                 encoding[secondary] = {
-                    datum: 0
+                    datum: 0,
                 };
             } else {
                 // Must make copies because the definition may be shared with other views/marks
@@ -41,5 +41,14 @@ export function fixPositional(encoding, channel) {
         // Nothing specified, fill the whole viewport
         encoding[channel] = { value: 0 };
         encoding[secondary] = { value: 1 };
+    }
+}
+
+/**
+ * @param {Record<string, import("../view/view").ChannelDef>} encoding
+ */
+export function fixStroke(encoding) {
+    if (isValueDef(encoding.stroke) && encoding.stroke.value === null) {
+        encoding.strokeWidth = { value: 0 };
     }
 }

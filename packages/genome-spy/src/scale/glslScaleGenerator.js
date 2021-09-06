@@ -63,6 +63,14 @@ export function generateValueGlsl(channel, value) {
         }
     } else if (isBoolean(value)) {
         vec = vectorize(value ? 1 : 0);
+    } else if (value === null) {
+        if (isColorChannel(channel)) {
+            vec = vectorize([0, 0, 0]);
+        } else {
+            throw new Error(
+                `null value is not supported on the "${channel}" chanel.`
+            );
+        }
     } else {
         vec = vectorize(value);
     }
@@ -200,7 +208,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
     // TODO: Reverse
     const range =
         isInterpolating(scale.type) ||
-        (isContinuous(scale.type) && channel === "color")
+        (isContinuous(scale.type) && isColorChannel(channel))
             ? [0, 1]
             : scale.range
             ? scale.range()

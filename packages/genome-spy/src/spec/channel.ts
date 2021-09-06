@@ -17,6 +17,7 @@ export type Channel =
     | "opacity"
     | "fillOpacity"
     | "strokeOpacity"
+    | "strokeWidth"
     | "size"
     | "shape"
     | "text"
