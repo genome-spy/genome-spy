@@ -72,15 +72,14 @@ export interface MarkConfig {
     dy?: number;
     fitToBand?: boolean;
     angle?: number;
-    squeeze: boolean;
-    paddingX: number;
-    paddingY: number;
-    flushX: number;
-    flushY: number;
+    paddingX?: number;
+    paddingY?: number;
+    flushX?: number;
+    flushY?: number;
     /** Stretch letters so that they can be used with sequence logos etc... */
-    logoLetters: boolean;
-    viewportEdgeFadeWidth: number[];
-    viewportEdgeFadeDistance: number[];
+    logoLetters?: boolean;
+    viewportEdgeFadeWidth?: number[];
+    viewportEdgeFadeDistance?: number[];
 
     // TODO: get rid of this
     dynamicData?: boolean;

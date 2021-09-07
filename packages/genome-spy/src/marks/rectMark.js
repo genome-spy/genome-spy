@@ -7,6 +7,7 @@ import Mark from "./mark";
 import { fixFill, fixPositional, fixStroke } from "./markUtils";
 import { asArray } from "../utils/arrayUtils";
 import { isValueDef } from "../encoder/encoder";
+import { getCachedOrCall } from "../utils/propertyCacher";
 
 export default class RectMark extends Mark {
     /**
@@ -28,7 +29,7 @@ export default class RectMark extends Mark {
 
                 minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
                 minHeight: 0.5,
-                minOpacity: 0.0,
+                minOpacity: 1.0,
 
                 tessellationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
                 tessellationTiles: 35, // TODO: Tiles per unit (bp)
@@ -63,6 +64,21 @@ export default class RectMark extends Mark {
             "strokeOpacity",
             "strokeWidth",
         ];
+    }
+
+    get opaque() {
+        return (
+            getCachedOrCall(
+                this,
+                "opaque",
+                () =>
+                    !this._isRoundedCorners() &&
+                    !this._isStroked() &&
+                    isValueDef(this.encoding.fillOpacity) &&
+                    this.encoding.fillOpacity.value == 1.0 &&
+                    this.properties.minOpacity == 1.0
+            ) && this.unitView.getEffectiveOpacity() == 1
+        );
     }
 
     /**
