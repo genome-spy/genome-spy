@@ -4,7 +4,7 @@ import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices";
 
 import Mark from "./mark";
-import { fixPositional, fixStroke } from "./markUtils";
+import { fixFill, fixPositional, fixStroke } from "./markUtils";
 import { asArray } from "../utils/arrayUtils";
 import { isValueDef } from "../encoder/encoder";
 
@@ -20,10 +20,10 @@ export default class RectMark extends Mark {
             Object.getOwnPropertyDescriptors({
                 x2: undefined,
                 y2: undefined,
+                filled: true,
                 color: "#4c78a8",
-                stroke: "black",
                 opacity: 1.0,
-                strokeWidth: 0,
+                strokeWidth: 3,
                 cornerRadius: 0.0,
 
                 minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
@@ -44,10 +44,11 @@ export default class RectMark extends Mark {
             "x2",
             "y",
             "y2",
-            "color",
+            "fill",
             "stroke",
+            "fillOpacity",
+            "strokeOpacity",
             "strokeWidth",
-            "opacity",
         ];
     }
 
@@ -56,7 +57,10 @@ export default class RectMark extends Mark {
             ...super.getSupportedChannels(),
             "x2",
             "y2",
+            "fill",
             "stroke",
+            "fillOpacity",
+            "strokeOpacity",
             "strokeWidth",
         ];
     }
@@ -69,7 +73,13 @@ export default class RectMark extends Mark {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
         fixPositional(encoding, "x");
         fixPositional(encoding, "y");
-        fixStroke(encoding);
+
+        fixStroke(encoding, this.properties.filled);
+        fixFill(encoding, this.properties.filled);
+
+        // TODO: Function for getting rid of extras. Also should validate that all attributes are defined
+        delete encoding.color;
+        delete encoding.opacity;
 
         return encoding;
     }

@@ -21,6 +21,9 @@ export interface MarkConfig {
     shape?: string;
     text?: string;
 
+    /** Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`) */
+    filled?: boolean;
+
     /** Whether the mark should be clipped to the UnitView's rectangle.  */
     clip?: boolean;
     xOffset?: number;

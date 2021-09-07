@@ -1,8 +1,14 @@
 import { isValueDef, secondaryChannel } from "../encoder/encoder";
 
 /**
- * @param {Record<string, import("../view/view").ChannelDef>} encoding
- * @param {string} channel
+ *
+ * @typedef {import("../spec/channel").Encoding} Encoding
+ * @typedef {import("../spec/channel").Channel} Channel
+ */
+
+/**
+ * @param {Encoding} encoding
+ * @param {Channel} channel
  */
 export function fixPositional(encoding, channel) {
     const secondary = secondaryChannel(channel);
@@ -45,10 +51,45 @@ export function fixPositional(encoding, channel) {
 }
 
 /**
- * @param {Record<string, import("../view/view").ChannelDef>} encoding
+ * @param {import("../spec/channel").Encoding} encoding
+ * @param {boolean} filled
  */
-export function fixStroke(encoding) {
+export function fixStroke(encoding, filled) {
+    if (!encoding.stroke) {
+        if (filled) {
+            encoding.stroke = { value: null };
+        } else {
+            encoding.stroke = encoding.color;
+            // TODO: Whattabout default strokeWidth?
+        }
+    }
+
     if (isValueDef(encoding.stroke) && encoding.stroke.value === null) {
         encoding.strokeWidth = { value: 0 };
+    }
+
+    if (!encoding.strokeOpacity) {
+        encoding.strokeOpacity = encoding.opacity;
+    }
+}
+
+/**
+ * @param {import("../spec/channel").Encoding} encoding
+ * @param {boolean} filled
+ */
+export function fixFill(encoding, filled) {
+    if (!encoding.fill) {
+        encoding.fill = encoding.color;
+        if (!filled && !encoding.fillOpacity) {
+            encoding.fillOpacity = { value: 0 };
+        }
+    }
+
+    if (!encoding.fillOpacity) {
+        if (filled) {
+            encoding.fillOpacity = encoding.opacity;
+        } else {
+            encoding.fillOpacity = { value: 0 };
+        }
     }
 }

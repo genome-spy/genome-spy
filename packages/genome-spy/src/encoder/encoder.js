@@ -38,6 +38,8 @@ import createIndexer from "../utils/indexer";
     )} D3Scale
  * 
  * @typedef {D3Scale & ScaleMetadata} VegaScale
+ * 
+ * @typedef {import("../spec/channel").Channel} Channel
  */
 
 /**
@@ -48,8 +50,8 @@ import createIndexer from "../utils/indexer";
  * TODO: This method should have a test. But how to mock Mark...
  *
  * @param {import("../marks/mark").default} mark
- * @param {Record<string, import("../view/viewUtils").ChannelDef>} [encoding] Taken from the mark if not provided
- * @returns {Record<string, Encoder>}
+ * @param {import("../spec/channel").Encoding} [encoding] Taken from the mark if not provided
+ * @returns {Record<Channel, Encoder>}
  */
 export default function createEncoders(mark, encoding) {
     /** @type {Record<string, Encoder>} */
@@ -84,7 +86,7 @@ export default function createEncoders(mark, encoding) {
  * @param {import("../view/viewUtils").ChannelDef} channelDef
  * @param {any} scale
  * @param {import("./accessor").Accessor} accessor
- * @param {string} channel
+ * @param {Channel} channel
  * @returns {Encoder}
  */
 export function createEncoder(channelDef, scale, accessor, channel) {
@@ -216,7 +218,7 @@ export function isExprDef(channelDef) {
 /**
  * Map primary channels to secondarys
  *
- * @type {Record<string, string>}
+ * @type {Partial<Record<Channel, Channel>>}
  */
 export const secondaryChannels = {
     x: "x2",
@@ -245,7 +247,7 @@ export function isSecondaryChannel(channel) {
 /**
  * Return the matching secondary channel or throws if one does not exist.
  *
- * @param {string} primaryChannel
+ * @param {Channel} primaryChannel
  */
 export function secondaryChannel(primaryChannel) {
     const secondary = secondaryChannels[primaryChannel];
@@ -269,7 +271,7 @@ export function primaryChannel(maybeSecondary) {
 /**
  * Returns an array that contains the given channel and its secondary channel if one exists.
  *
- * @param {string} channel
+ * @param {Channel} channel
  */
 export function channelWithSecondarys(channel) {
     return secondaryChannels[channel]
@@ -285,7 +287,7 @@ export function isPositionalChannel(channel) {
 }
 
 /**
- * @param {string} channel
+ * @param {Channel} channel
  */
 export function isColorChannel(channel) {
     return ["color", "fill", "stroke"].includes(primaryChannel(channel));
@@ -294,7 +296,7 @@ export function isColorChannel(channel) {
 /**
  * Returns true if the channel has a discrete range.
  *
- * @param {string} channel
+ * @param {Channel} channel
  */
 export function isDiscreteChannel(channel) {
     return ["shape", "squeeze"].includes(channel);
@@ -303,7 +305,7 @@ export function isDiscreteChannel(channel) {
 /**
  * Returns valid discrete values for a discrete channel.
  *
- * @param {string} channel
+ * @param {Channel} channel
  * @returns {any[]}
  */
 export function getDiscreteRange(channel) {
@@ -320,14 +322,12 @@ export function getDiscreteRange(channel) {
                 "triangle-right",
                 "triangle-left",
             ];
-        case "squeeze":
-            return ["none", "top", "right", "bottom", "left"];
         default:
     }
 }
 
 /**
- * @param {string} channel
+ * @param {Channel} channel
  * @returns {function(any):number}
  */
 export function getDiscreteRangeMapper(channel) {

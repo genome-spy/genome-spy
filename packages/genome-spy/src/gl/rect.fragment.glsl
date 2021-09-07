@@ -12,16 +12,16 @@ flat in vec4 vCornerRadii;
 out lowp vec4 fragColor;
 
 vec4 distanceToColor(float d) {
-	if (vHalfStrokeWidth > 0.0) {
-		// Distance to stroke's edge. Negative inside the stroke.
-		float sd = abs(d) - vHalfStrokeWidth;
-		return mix(
-			vStrokeColor,
-			d <= 0.0 ? vFillColor : vec4(0.0),
-			distanceToRatio(sd));
-	} else {
-		return vFillColor * distanceToRatio(-d);
-	}
+    if (vHalfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - vHalfStrokeWidth;
+        return mix(
+            vStrokeColor,
+            d <= 0.0 ? vFillColor : vec4(0.0),
+            distanceToRatio(sd));
+    } else {
+        return vFillColor * distanceToRatio(-d);
+    }
 }
 
 // Source: https://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
@@ -41,20 +41,20 @@ void main(void) {
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED)
 #ifdef ROUNDED_CORNERS
-	// Distance from rectangle's edge in pixels. Negative inside the rectangle.
-	float d = sdRoundedBox(vPosInPixels, vHalfSizeInPixels, vCornerRadii);
+    // Distance from rectangle's edge in pixels. Negative inside the rectangle.
+    float d = sdRoundedBox(vPosInPixels, vHalfSizeInPixels, vCornerRadii);
 #else
-	float d = sdSharpBox(vPosInPixels, vHalfSizeInPixels);
+    float d = sdSharpBox(vPosInPixels, vHalfSizeInPixels);
 #endif
 
-	fragColor = distanceToColor(d);
+    fragColor = distanceToColor(d);
 
-	if (fragColor.a == 0.0) {
-		discard;
-	}
+    if (fragColor.a == 0.0) {
+        discard;
+    }
 #else
-	// The trivial, non-decorated case
-	fragColor = vFillColor;
+    // The trivial, non-decorated case
+    fragColor = vFillColor;
 #endif
 
     if (uPickingEnabled) {

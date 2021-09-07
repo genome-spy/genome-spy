@@ -78,7 +78,8 @@ void main(void) {
 
     size.y *= getSampleFacetHeight(pos);
 
-    float opa = getScaled_opacity() * uViewOpacity * max(uMinOpacity,
+    // Clamp to minimum size, optionally compensate with opacity
+    float opaFactor = uViewOpacity * max(uMinOpacity,
         clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
         clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
 
@@ -88,6 +89,7 @@ void main(void) {
     // Add an extra pixel to stroke width to accommodate edge antialiasing
     float aaPadding = 1.0 / uDevicePixelRatio;
     float strokeWidth = getScaled_strokeWidth();
+    float strokeOpacity = getScaled_strokeOpacity() * opaFactor;
 
     vec2 centeredFrac = frac - 0.5;
     vec2 expand = centeredFrac * (strokeWidth + aaPadding) / uViewportSize;
@@ -100,11 +102,13 @@ void main(void) {
 
     vCornerRadii = min(uCornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
     vHalfStrokeWidth = strokeWidth / 2.0;
-    vStrokeColor = vec4(getScaled_stroke() * opa, opa);
+    vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
 #endif
 
     gl_Position = unitToNdc(pos);
-    vFillColor = vec4(getScaled_color() * opa, opa);
+
+    float fillOpacity = getScaled_fillOpacity() * opaFactor;
+    vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);
 
     setupPicking();
 }
