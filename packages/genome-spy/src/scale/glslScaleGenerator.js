@@ -28,6 +28,10 @@ export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
 const FLT_MAX = 3.402823466e38;
 
 /**
+ * @typedef {import("../spec/channel").Channel} Channel
+ */
+
+/**
  * Splits a vega-scale type (e.g., linear, sequential-linear) to components.
  *
  * @param {string} type
@@ -45,7 +49,7 @@ function splitScaleType(type) {
 
 /**
  *
- * @param {string} channel
+ * @param {Channel} channel
  * @param {number | number[] | string | boolean} value
  */
 export function generateValueGlsl(channel, value) {
@@ -88,7 +92,7 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
 
 /**
  *
- * @param {string} channel
+ * @param {Channel} channel
  * @param {any} scale
  * @param {import("../spec/channel").ChannelDef} encoding
  */

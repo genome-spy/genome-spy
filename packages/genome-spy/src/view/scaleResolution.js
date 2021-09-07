@@ -8,7 +8,7 @@ import {
     panPow,
     zoomPow,
     isArray,
-    isObject
+    isObject,
 } from "vega-util";
 import { isDiscrete, isContinuous } from "vega-scale";
 
@@ -20,11 +20,11 @@ import {
     getDiscreteRange,
     isColorChannel,
     isDiscreteChannel,
-    isPositionalChannel
+    isPositionalChannel,
 } from "../encoder/encoder";
 import {
     isChromosomalLocus,
-    isChromosomalLocusInterval
+    isChromosomalLocusInterval,
 } from "../genome/genome";
 import { NominalDomain } from "../utils/domainArray";
 
@@ -52,7 +52,7 @@ export const INDEX = "index";
  */
 export default class ScaleResolution {
     /**
-     * @param {string} channel
+     * @param {import("../spec/channel").Channel} channel
      */
     constructor(channel) {
         this.channel = channel;
@@ -130,9 +130,10 @@ export default class ScaleResolution {
         return getCachedOrCall(this, "mergedScaleProps", () => {
             const propArray = this.views
                 .map(
-                    view => /** @type {Scale} */ (this._getEncoding(view).scale)
+                    (view) =>
+                        /** @type {Scale} */ (this._getEncoding(view).scale)
                 )
-                .filter(props => props !== undefined);
+                .filter((props) => props !== undefined);
 
             // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
             return mergeObjects(propArray, "scale", ["domain"]);
@@ -157,7 +158,7 @@ export default class ScaleResolution {
 
             const props = {
                 ...this._getDefaultScaleProperties(this.type),
-                ...mergedProps
+                ...mergedProps,
             };
 
             if (!props.type) {
@@ -225,7 +226,7 @@ export default class ScaleResolution {
      * @return { DomainArray }
      */
     getConfiguredDomain() {
-        return this._reduceDomains(view =>
+        return this._reduceDomains((view) =>
             view.getConfiguredDomain(this.channel)
         );
     }
@@ -237,7 +238,7 @@ export default class ScaleResolution {
      */
     getDataDomain() {
         // TODO: Optimize: extract domain only once if the views share the data
-        return this._reduceDomains(view =>
+        return this._reduceDomains((view) =>
             view.extractDataDomain(this.channel)
         );
     }
@@ -358,7 +359,7 @@ export default class ScaleResolution {
             newDomain = clampRange(newDomain, ...this._zoomExtent);
         }
 
-        if ([0, 1].some(i => newDomain[i] != oldDomain[i])) {
+        if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             scale.domain(newDomain);
             this._notifyScaleObservers();
             return true;
@@ -525,7 +526,7 @@ export default class ScaleResolution {
     }
 
     _getViewPaths() {
-        return this.views.map(v => v.getPathString()).join(", ");
+        return this.views.map((v) => v.getPathString()).join(", ");
     }
 
     /**
@@ -538,7 +539,7 @@ export default class ScaleResolution {
     _reduceDomains(domainAccessor) {
         const domains = this.views
             .map(domainAccessor)
-            .filter(domain => !!domain);
+            .filter((domain) => !!domain);
 
         if (domains.length) {
             return domains.reduce((acc, curr) => acc.extendAll(curr));
@@ -585,7 +586,7 @@ function getDefaultScaleType(channel, dataType) {
         search: ["null", undefined, undefined],
         text: ["null", "null", "null"],
         dx: [undefined, undefined, "null"],
-        dy: [undefined, undefined, "null"]
+        dy: [undefined, undefined, "null"],
     };
 
     const type = defaults[channel]
