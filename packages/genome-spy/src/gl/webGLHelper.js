@@ -5,7 +5,7 @@ import {
     getContext,
     isWebGL2,
     resizeFramebufferInfo,
-    setTextureFromArray
+    setTextureFromArray,
 } from "twgl.js";
 import { isArray, isString } from "vega-util";
 import { getPlatformShaderDefines } from "./includes/fp64-utils";
@@ -15,9 +15,13 @@ import {
     createDiscreteColorTexture,
     createDiscreteTexture,
     createInterpolatedColorTexture,
-    createSchemeTexture
+    createSchemeTexture,
 } from "../scale/colorUtils";
-import { getDiscreteRangeMapper, isDiscreteChannel } from "../encoder/encoder";
+import {
+    getDiscreteRangeMapper,
+    isColorChannel,
+    isDiscreteChannel,
+} from "../encoder/encoder";
 
 export default class WebGLHelper {
     /**
@@ -49,12 +53,14 @@ export default class WebGLHelper {
         // TODO: Consider using high-performance powerPreference:
         // https://www.khronos.org/webgl/public-mailing-list/public_webgl/1912/msg00001.php
 
-        const gl = /** @type {WebGL2RenderingContext} */ (getContext(canvas, {
-            antialias: true,
-            // Disable depth writes. We don't use depth testing.
-            depth: false,
-            premultipliedAlpha: true
-        }));
+        const gl = /** @type {WebGL2RenderingContext} */ (
+            getContext(canvas, {
+                antialias: true,
+                // Disable depth writes. We don't use depth testing.
+                depth: false,
+                premultipliedAlpha: true,
+            })
+        );
 
         if (!gl) {
             throw new Error(
@@ -87,8 +93,8 @@ export default class WebGLHelper {
                 format: gl.RGBA,
                 type: gl.UNSIGNED_BYTE,
                 minMag: gl.LINEAR,
-                wrap: gl.CLAMP_TO_EDGE
-            }
+                wrap: gl.CLAMP_TO_EDGE,
+            },
         ];
         this._pickingBufferInfo = createFramebufferInfo(
             gl,
@@ -99,7 +105,7 @@ export default class WebGLHelper {
         this.adjustGl();
 
         // TODO: Size should be observed only if the content is not absolutely sized
-        this._resizeObserver = new ResizeObserver(entries => {
+        this._resizeObserver = new ResizeObserver((entries) => {
             this.invalidateSize();
             this._emit("resize");
         });
@@ -184,7 +190,7 @@ export default class WebGLHelper {
         logicalSize = logicalSize || this.getLogicalCanvasSize();
         return {
             width: logicalSize.width * this.dpr,
-            height: logicalSize.height * this.dpr
+            height: logicalSize.height * this.dpr,
         };
     }
 
@@ -199,7 +205,7 @@ export default class WebGLHelper {
         // TODO: The size should never be smaller than the minimum content size!
         const contentSize = this._sizeSource?.() ?? {
             width: undefined,
-            height: undefined
+            height: undefined,
         };
 
         const cs = window.getComputedStyle(this._container, null);
@@ -314,7 +320,7 @@ export default class WebGLHelper {
 
         const channel = resolution.channel;
 
-        if (channel == "color") {
+        if (isColorChannel(channel)) {
             const props = resolution.getScaleProps();
 
             const scale = resolution.getScale();
@@ -365,11 +371,11 @@ export default class WebGLHelper {
                 /** @type {function(any):number} Handle "shape" etc */
                 const mapper = isDiscreteChannel(channel)
                     ? getDiscreteRangeMapper(channel)
-                    : x => x;
+                    : (x) => x;
 
-                const range = /** @type {any[]} */ (resolution
-                    .getScale()
-                    .range());
+                const range = /** @type {any[]} */ (
+                    resolution.getScale().range()
+                );
 
                 this.rangeTextures.set(
                     resolution,
@@ -461,7 +467,7 @@ export function createProgram(gl, vertexShader, fragmentShader) {
 
     return {
         program,
-        getProgramErrors
+        getProgramErrors,
     };
 }
 
@@ -477,7 +483,7 @@ export function createOrUpdateTexture(gl, options, src, texture) {
     } else {
         texture = createTexture(gl, {
             ...options,
-            src
+            src,
         });
     }
     return texture;
