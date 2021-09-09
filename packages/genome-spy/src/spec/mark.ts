@@ -2,36 +2,15 @@ import { Tooltip } from "./tooltip";
 
 export type MarkType = "rect" | "point" | "rule" | "text" | "link";
 
-// TODO: Mark-specific configs
-export interface MarkConfig {
-    // Channels.
-    x?: number;
-    x2?: number;
-    y?: number;
-    y2?: number;
-    color?: string;
-    color2?: string;
+export interface FillAndStrokeProps {
     fill?: string;
-    stroke?: string;
-    opacity?: number;
     fillOpacity?: number;
+
+    stroke?: string;
     strokeOpacity?: number;
-    size?: number;
-    size2?: number;
-    shape?: string;
-    text?: string;
+}
 
-    /** Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`) */
-    filled?: boolean;
-
-    /** Whether the mark should be clipped to the UnitView's rectangle.  */
-    clip?: boolean;
-    xOffset?: number;
-    yOffset?: number;
-
-    tooltip?: Tooltip;
-
-    // Rect related stuff.
+export interface RectProps {
     minOpacity?: number;
     minWidth?: number;
     minHeight?: number;
@@ -41,20 +20,9 @@ export interface MarkConfig {
     cornerRadiusTopRight?: number;
     cornerRadiusBottomLeft?: number;
     cornerRadiusBottomRight?: number;
+}
 
-    // Rule related stuff.
-    minLength?: number;
-    strokeDash?: number[];
-    strokeDashOffset?: number[];
-    strokeCap?: "butt" | "square" | "round";
-
-    // Point related stuff.
-    strokeWidth?: number;
-    gradientStrength?: number;
-    minAbsolutePointDiameter?: number;
-    semanticZoomFraction?: number;
-
-    // Text related stuff.
+export interface TextProps {
     font?: string;
     fontStyle?: "normal" | "italic";
     fontWeight?:
@@ -80,6 +48,44 @@ export interface MarkConfig {
     logoLetters?: boolean;
     viewportEdgeFadeWidth?: number[];
     viewportEdgeFadeDistance?: number[];
+}
+
+// TODO: Mark-specific configs
+export interface MarkConfig extends RectProps, TextProps, FillAndStrokeProps {
+    // Channels.
+    x?: number;
+    x2?: number;
+    y?: number;
+    y2?: number;
+    color?: string;
+    color2?: string;
+    opacity?: number;
+    size?: number;
+    size2?: number;
+    shape?: string;
+    text?: string;
+
+    /** Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`) */
+    filled?: boolean;
+
+    /** Whether the mark should be clipped to the UnitView's rectangle.  */
+    clip?: boolean;
+    xOffset?: number;
+    yOffset?: number;
+
+    tooltip?: Tooltip;
+
+    // Rule related stuff.
+    minLength?: number;
+    strokeDash?: number[];
+    strokeDashOffset?: number[];
+    strokeCap?: "butt" | "square" | "round";
+
+    // Point related stuff.
+    strokeWidth?: number;
+    gradientStrength?: number;
+    minAbsolutePointDiameter?: number;
+    semanticZoomFraction?: number;
 
     // TODO: get rid of this
     dynamicData?: boolean;

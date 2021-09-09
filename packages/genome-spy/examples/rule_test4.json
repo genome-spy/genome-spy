@@ -4,8 +4,12 @@
 
   "description": "Check that the rules align to the pixel grid perfectly",
 
+  "view": {
+    "stroke": "#d0d0d0"
+  },
+
   "data": {
-    "sequence": { "start": 0, "stop": 601, "step": 10 }
+    "sequence": { "start": 0, "stop": 600, "step": 10 }
   },
 
   "transform": [
