@@ -78,7 +78,9 @@ export function fixStroke(encoding, filled) {
  * @param {boolean} filled
  */
 export function fixFill(encoding, filled) {
-    if (!encoding.fill) {
+    if (isValueDef(encoding.fill) && encoding.fill.value === null) {
+        encoding.fillOpacity = { value: 0 };
+    } else if (!encoding.fill) {
         encoding.fill = encoding.color;
         if (!filled && !encoding.fillOpacity) {
             encoding.fillOpacity = { value: 0 };
