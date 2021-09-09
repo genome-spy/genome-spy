@@ -32,9 +32,10 @@ float sdRoundedBox(vec2 p, vec2 b, vec4 r) {
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r.x;
 }
 
+// Not a true SDF. Makes the corners of strokes sharp and is faster.
 float sdSharpBox(vec2 p, vec2 b) {
     vec2 q = abs(p) - b;
-    return min(max(q.x, q.y), 0.0);
+    return max(q.x, q.y);
 }
 
 void main(void) {
