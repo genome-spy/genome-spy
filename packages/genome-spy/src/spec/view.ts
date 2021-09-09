@@ -2,7 +2,12 @@ import { Data } from "./data";
 import { Scale } from "./scale";
 import { TransformParams } from "./transform";
 import { Encoding, FacetFieldDef, PositionalChannel } from "./channel";
-import { MarkConfigAndType, MarkType } from "./mark";
+import {
+    FillAndStrokeProps,
+    MarkConfigAndType,
+    MarkType,
+    RectProps,
+} from "./mark";
 
 export interface SizeDef {
     /** Size in pixels */
@@ -44,6 +49,13 @@ export type Paddings = Partial<Record<Side, number>>;
 
 export type PaddingConfig = Paddings | number;
 
+export interface ViewConfig extends RectProps, FillAndStrokeProps {
+    // TODO: style?: string | string[];
+
+    // TODO: Move to FillAndStrokeProps or something
+    strokeWidth?: number;
+}
+
 export interface ViewSpecBase extends ResolveSpec {
     name?: string;
 
@@ -72,6 +84,7 @@ export interface ViewSpecBase extends ResolveSpec {
 }
 
 export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
+    view?: ViewConfig;
     mark: MarkType | MarkConfigAndType;
 }
 
@@ -81,6 +94,7 @@ export interface AggregateSamplesSpec {
 }
 
 export interface LayerSpec extends ViewSpecBase, AggregateSamplesSpec {
+    view?: ViewConfig;
     layer: (LayerSpec | UnitSpec)[];
 }
 

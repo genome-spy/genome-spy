@@ -2,6 +2,7 @@ import ContainerView from "./containerView";
 import AxisView from "./axisView";
 import { getFlattenedViews } from "./viewUtils";
 import Padding from "../utils/layout/padding";
+import UnitView from "./unitView";
 
 /**
  * @typedef {import("../spec/channel").PositionalChannel} PositionalChannel
@@ -43,6 +44,9 @@ export default class DecoratorView extends ContainerView {
         /** @type { import("./layerView").default | import("./unitView").default } */
         this.child = undefined;
 
+        /** @type {UnitView} */
+        this.backgroundView = undefined;
+
         /** @type {Record<AxisOrient, AxisView>} */
         this.axisViews = {
             top: undefined,
@@ -69,6 +73,19 @@ export default class DecoratorView extends ContainerView {
             this._initializeAxes(channel, orients)
         );
         this._invalidateCacheByPrefix("size/", "ancestors");
+
+        // TODO: Merge viewConfig from all descendants (when there are layers)
+        // TODO: Implement styles
+
+        const viewConfig = this.child.spec?.view;
+        if (viewConfig?.fill || viewConfig?.stroke) {
+            this.backgroundView = new UnitView(
+                createBackground(viewConfig),
+                this.context,
+                this,
+                "background"
+            );
+        }
     }
 
     /**
@@ -77,7 +94,10 @@ export default class DecoratorView extends ContainerView {
      */
     getEncoding(whoIsAsking) {
         if (
-            Object.values(this.axisViews).find((view) => whoIsAsking === view)
+            Object.values(this.axisViews).find(
+                (view) => whoIsAsking === view
+            ) ||
+            whoIsAsking == this.backgroundView
         ) {
             // Prevent the axis views from inheriting any encodings
             return {};
@@ -107,6 +127,9 @@ export default class DecoratorView extends ContainerView {
      */
     *[Symbol.iterator]() {
         yield this.child;
+        if (this.backgroundView) {
+            yield this.backgroundView;
+        }
         for (const view of Object.values(this.axisViews)) {
             if (view) {
                 yield view;
@@ -183,6 +206,10 @@ export default class DecoratorView extends ContainerView {
         const childCoords = coords.shrink(extents.add(this._getAxisOffsets()));
 
         this._childCoords = childCoords;
+
+        if (this.backgroundView) {
+            this.backgroundView.render(context, childCoords, options);
+        }
 
         this.child.render(context, childCoords, options);
 
@@ -454,4 +481,22 @@ export default class DecoratorView extends ContainerView {
 
         this.context.animator.requestRender();
     }
+}
+
+/**
+ * @param {import("../spec/view").ViewConfig} viewConfig
+ * @returns {import("../spec/view").UnitSpec}
+ */
+function createBackground(viewConfig) {
+    return {
+        data: { values: [{}] },
+        mark: {
+            fill: null,
+            strokeWidth: 1.0,
+            ...viewConfig,
+            type: "rect",
+            clip: false, // Shouldn't be needed
+            tooltip: null,
+        },
+    };
 }
