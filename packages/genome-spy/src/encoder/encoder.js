@@ -38,6 +38,8 @@ import createIndexer from "../utils/indexer";
     )} D3Scale
  * 
  * @typedef {D3Scale & ScaleMetadata} VegaScale
+ * 
+ * @typedef {import("../spec/channel").Channel} Channel
  */
 
 /**
@@ -48,8 +50,8 @@ import createIndexer from "../utils/indexer";
  * TODO: This method should have a test. But how to mock Mark...
  *
  * @param {import("../marks/mark").default} mark
- * @param {Record<string, import("../view/viewUtils").ChannelDef>} [encoding] Taken from the mark if not provided
- * @returns {Record<string, Encoder>}
+ * @param {import("../spec/channel").Encoding} [encoding] Taken from the mark if not provided
+ * @returns {Record<Channel, Encoder>}
  */
 export default function createEncoders(mark, encoding) {
     /** @type {Record<string, Encoder>} */
@@ -84,7 +86,7 @@ export default function createEncoders(mark, encoding) {
  * @param {import("../view/viewUtils").ChannelDef} channelDef
  * @param {any} scale
  * @param {import("./accessor").Accessor} accessor
- * @param {string} channel
+ * @param {Channel} channel
  * @returns {Encoder}
  */
 export function createEncoder(channelDef, scale, accessor, channel) {
@@ -92,14 +94,14 @@ export function createEncoder(channelDef, scale, accessor, channel) {
     let encoder;
 
     if (isValueDef(channelDef)) {
-        encoder = /** @type {Encoder} */ (datum => channelDef.value);
+        encoder = /** @type {Encoder} */ ((datum) => channelDef.value);
         encoder.constant = true;
         encoder.constantValue = true;
         encoder.accessor = undefined;
     } else if (accessor) {
         if (channel == "text") {
             // TODO: Define somewhere channels that don't use a scale
-            encoder = /** @type {Encoder} */ (datum => undefined);
+            encoder = /** @type {Encoder} */ ((datum) => undefined);
             encoder.accessor = accessor;
             encoder.constant = accessor.constant;
         } else {
@@ -109,13 +111,15 @@ export function createEncoder(channelDef, scale, accessor, channel) {
                 );
             }
 
-            encoder = /** @type {Encoder} */ (datum => scale(accessor(datum)));
+            encoder = /** @type {Encoder} */ (
+                (datum) => scale(accessor(datum))
+            );
 
             if (isDiscrete(scale.type)) {
                 // TODO: pass the found values back to the scale/resolution
                 const indexer = createIndexer();
                 indexer.addAll(scale.domain());
-                encoder.indexer = d => indexer(accessor(d));
+                encoder.indexer = (d) => indexer(accessor(d));
             }
 
             encoder.constant = accessor.constant;
@@ -132,8 +136,8 @@ export function createEncoder(channelDef, scale, accessor, channel) {
 
     // TODO: Modifier should be inverted too
     encoder.invert = scale
-        ? value => scale.invert(value)
-        : value => {
+        ? (value) => scale.invert(value)
+        : (value) => {
               throw new Error(
                   "No scale available, cannot invert: " +
                       JSON.stringify(channelDef)
@@ -144,7 +148,7 @@ export function createEncoder(channelDef, scale, accessor, channel) {
     encoder.channelDef = channelDef;
 
     /** @param {Encoder} target */
-    encoder.applyMetadata = target => {
+    encoder.applyMetadata = (target) => {
         for (const prop in encoder) {
             if (prop in encoder) {
                 target[prop] = encoder[prop];
@@ -214,13 +218,13 @@ export function isExprDef(channelDef) {
 /**
  * Map primary channels to secondarys
  *
- * @type {Record<string, string>}
+ * @type {Partial<Record<Channel, Channel>>}
  */
 export const secondaryChannels = {
     x: "x2",
     y: "y2",
     size: "size2",
-    color: "color2"
+    color: "color2",
 };
 
 /**
@@ -229,7 +233,7 @@ export const secondaryChannels = {
  * @type {Record<string, string>}
  */
 export const primaryChannels = Object.fromEntries(
-    Object.entries(secondaryChannels).map(entry => [entry[1], entry[0]])
+    Object.entries(secondaryChannels).map((entry) => [entry[1], entry[0]])
 );
 
 /**
@@ -243,7 +247,7 @@ export function isSecondaryChannel(channel) {
 /**
  * Return the matching secondary channel or throws if one does not exist.
  *
- * @param {string} primaryChannel
+ * @param {Channel} primaryChannel
  */
 export function secondaryChannel(primaryChannel) {
     const secondary = secondaryChannels[primaryChannel];
@@ -267,7 +271,7 @@ export function primaryChannel(maybeSecondary) {
 /**
  * Returns an array that contains the given channel and its secondary channel if one exists.
  *
- * @param {string} channel
+ * @param {Channel} channel
  */
 export function channelWithSecondarys(channel) {
     return secondaryChannels[channel]
@@ -283,16 +287,16 @@ export function isPositionalChannel(channel) {
 }
 
 /**
- * @param {string} channel
+ * @param {Channel} channel
  */
 export function isColorChannel(channel) {
-    return ["color", "fill"].includes(primaryChannel(channel));
+    return ["color", "fill", "stroke"].includes(primaryChannel(channel));
 }
 
 /**
  * Returns true if the channel has a discrete range.
  *
- * @param {string} channel
+ * @param {Channel} channel
  */
 export function isDiscreteChannel(channel) {
     return ["shape", "squeeze"].includes(channel);
@@ -301,7 +305,7 @@ export function isDiscreteChannel(channel) {
 /**
  * Returns valid discrete values for a discrete channel.
  *
- * @param {string} channel
+ * @param {Channel} channel
  * @returns {any[]}
  */
 export function getDiscreteRange(channel) {
@@ -316,16 +320,14 @@ export function getDiscreteRange(channel) {
                 "diamond",
                 "triangle-down",
                 "triangle-right",
-                "triangle-left"
+                "triangle-left",
             ];
-        case "squeeze":
-            return ["none", "top", "right", "bottom", "left"];
         default:
     }
 }
 
 /**
- * @param {string} channel
+ * @param {Channel} channel
  * @returns {function(any):number}
  */
 export function getDiscreteRangeMapper(channel) {
@@ -337,7 +339,7 @@ export function getDiscreteRangeMapper(channel) {
         getDiscreteRange(channel).map((value, i) => [value, i])
     );
 
-    return value => {
+    return (value) => {
         const mapped = valueMap.get(value);
         if (mapped !== undefined) {
             return mapped;

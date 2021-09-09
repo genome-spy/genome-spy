@@ -12,7 +12,7 @@ import { fixPositional } from "./markUtils";
 const alignments = {
     left: -1,
     center: 0,
-    right: 1
+    right: 1,
 };
 
 /** For GLSL uniforms */
@@ -20,7 +20,7 @@ const baselines = {
     top: -1,
     middle: 0,
     bottom: 1,
-    alphabetic: 1
+    alphabetic: 1,
 };
 
 /**
@@ -81,8 +81,8 @@ export default class TextMark extends Mark {
                     -Infinity,
                     -Infinity,
                     -Infinity,
-                    -Infinity
-                ]
+                    -Infinity,
+                ],
             })
         );
 
@@ -105,7 +105,7 @@ export default class TextMark extends Mark {
             "y2",
             "color",
             "size",
-            "opacity"
+            "opacity",
         ];
     }
 
@@ -158,9 +158,9 @@ export default class TextMark extends Mark {
             uAngle: (-props.angle / 180) * Math.PI,
 
             uViewportEdgeFadeWidth: props.viewportEdgeFadeWidth,
-            uViewportEdgeFadeDistance: props.viewportEdgeFadeDistance.map(d =>
+            uViewportEdgeFadeDistance: props.viewportEdgeFadeDistance.map((d) =>
                 d === undefined ? -Infinity : d
-            )
+            ),
         });
     }
 
@@ -175,7 +175,7 @@ export default class TextMark extends Mark {
         /** @type {function(any):any} */
         const numberFormat = encoding.text.format
             ? format(encoding.text.format)
-            : d => d;
+            : (d) => d;
         for (const d of data) {
             // TODO: Optimization: don't format twice (calculation and actual encoding)
             const value = numberFormat(accessor(d));
@@ -196,7 +196,7 @@ export default class TextMark extends Mark {
                 charCount,
                 this.properties.minBufferSize || 0
             ),
-            buildXIndex: this.properties.buildIndex
+            buildXIndex: this.properties.buildIndex,
         });
 
         builder.addBatches(collector.facetBatches);
@@ -224,7 +224,7 @@ export default class TextMark extends Mark {
         setUniforms(this.programInfo, {
             uTexture: this.font.texture,
             uSdfNumerator:
-                this.font.metrics.common.base / (this.glHelper.dpr / q)
+                this.font.metrics.common.base / (this.glHelper.dpr / q),
         });
 
         setBuffersAndAttributes(

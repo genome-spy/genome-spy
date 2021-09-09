@@ -87,7 +87,7 @@ export class GenomeSpyDocEmbed extends LitElement {
 
     render() {
         return html`
-            <link rel="stylesheet" href=${getBaseUrl() + "/app/main.css"} />
+            <link rel="stylesheet" href=${getBaseUrl() + "/app/style.css"} />
             <div
                 class="embed-container"
                 style=${styleMap({

@@ -11,11 +11,18 @@ export interface MarkConfig {
     y2?: number;
     color?: string;
     color2?: string;
+    fill?: string;
+    stroke?: string;
     opacity?: number;
+    fillOpacity?: number;
+    strokeOpacity?: number;
     size?: number;
     size2?: number;
     shape?: string;
     text?: string;
+
+    /** Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`) */
+    filled?: boolean;
 
     /** Whether the mark should be clipped to the UnitView's rectangle.  */
     clip?: boolean;
@@ -28,6 +35,12 @@ export interface MarkConfig {
     minOpacity?: number;
     minWidth?: number;
     minHeight?: number;
+
+    cornerRadius?: number;
+    cornerRadiusTopLeft?: number;
+    cornerRadiusTopRight?: number;
+    cornerRadiusBottomLeft?: number;
+    cornerRadiusBottomRight?: number;
 
     // Rule related stuff.
     minLength?: number;
@@ -59,15 +72,14 @@ export interface MarkConfig {
     dy?: number;
     fitToBand?: boolean;
     angle?: number;
-    squeeze: boolean;
-    paddingX: number;
-    paddingY: number;
-    flushX: number;
-    flushY: number;
+    paddingX?: number;
+    paddingY?: number;
+    flushX?: number;
+    flushY?: number;
     /** Stretch letters so that they can be used with sequence logos etc... */
-    logoLetters: boolean;
-    viewportEdgeFadeWidth: number[];
-    viewportEdgeFadeDistance: number[];
+    logoLetters?: boolean;
+    viewportEdgeFadeWidth?: number[];
+    viewportEdgeFadeDistance?: number[];
 
     // TODO: get rid of this
     dynamicData?: boolean;

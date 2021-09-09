@@ -4,8 +4,10 @@ import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices";
 
 import Mark from "./mark";
-import { fixPositional } from "./markUtils";
+import { fixFill, fixPositional, fixStroke } from "./markUtils";
 import { asArray } from "../utils/arrayUtils";
+import { isValueDef } from "../encoder/encoder";
+import { getCachedOrCall } from "../utils/propertyCacher";
 
 export default class RectMark extends Mark {
     /**
@@ -19,12 +21,15 @@ export default class RectMark extends Mark {
             Object.getOwnPropertyDescriptors({
                 x2: undefined,
                 y2: undefined,
+                filled: true,
                 color: "#4c78a8",
                 opacity: 1.0,
+                strokeWidth: 3,
+                cornerRadius: 0.0,
 
                 minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
                 minHeight: 0.5,
-                minOpacity: 0.0,
+                minOpacity: 1.0,
 
                 tessellationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
                 tessellationTiles: 35, // TODO: Tiles per unit (bp)
@@ -40,13 +45,40 @@ export default class RectMark extends Mark {
             "x2",
             "y",
             "y2",
-            "color",
-            "opacity",
+            "fill",
+            "stroke",
+            "fillOpacity",
+            "strokeOpacity",
+            "strokeWidth",
         ];
     }
 
     getSupportedChannels() {
-        return [...super.getSupportedChannels(), "x2", "y2"];
+        return [
+            ...super.getSupportedChannels(),
+            "x2",
+            "y2",
+            "fill",
+            "stroke",
+            "fillOpacity",
+            "strokeOpacity",
+            "strokeWidth",
+        ];
+    }
+
+    get opaque() {
+        return (
+            getCachedOrCall(
+                this,
+                "opaque",
+                () =>
+                    !this._isRoundedCorners() &&
+                    !this._isStroked() &&
+                    isValueDef(this.encoding.fillOpacity) &&
+                    this.encoding.fillOpacity.value == 1.0 &&
+                    this.properties.minOpacity == 1.0
+            ) && this.unitView.getEffectiveOpacity() == 1
+        );
     }
 
     /**
@@ -57,6 +89,13 @@ export default class RectMark extends Mark {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
         fixPositional(encoding, "x");
         fixPositional(encoding, "y");
+
+        fixStroke(encoding, this.properties.filled);
+        fixFill(encoding, this.properties.filled);
+
+        // TODO: Function for getting rid of extras. Also should validate that all attributes are defined
+        delete encoding.color;
+        delete encoding.opacity;
 
         return encoding;
     }
@@ -69,10 +108,39 @@ export default class RectMark extends Mark {
         // TODO: Pop the previous buffers
     }
 
+    _isRoundedCorners() {
+        return ["", "TopLeft", "TopRight", "BottomLeft", "BottomRight"]
+            .map(
+                (c) =>
+                    /** @type {keyof import("../spec/mark").MarkConfig} */ (
+                        "cornerRadius" + c
+                    )
+            )
+            .some((c) => this.properties[c] > 0);
+    }
+
+    _isStroked() {
+        const sw = this.encoding.strokeWidth;
+        return !(isValueDef(sw) && !sw.value);
+    }
+
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        /** @type {string[]} */
+        const defines = [];
+        if (this._isRoundedCorners()) {
+            defines.push("ROUNDED_CORNERS");
+        }
+        if (this._isStroked()) {
+            defines.push("STROKED");
+        }
+
+        this.createAndLinkShaders(
+            VERTEX_SHADER,
+            FRAGMENT_SHADER,
+            defines.map((d) => "#define " + d)
+        );
     }
 
     updateGraphicsData() {
@@ -105,6 +173,12 @@ export default class RectMark extends Mark {
         setUniforms(this.programInfo, {
             uMinSize: [props.minWidth, props.minHeight], // in pixels
             uMinOpacity: props.minOpacity,
+            uCornerRadii: [
+                props.cornerRadiusTopRight ?? props.cornerRadius,
+                props.cornerRadiusBottomRight ?? props.cornerRadius,
+                props.cornerRadiusTopLeft ?? props.cornerRadius,
+                props.cornerRadiusBottomLeft ?? props.cornerRadius,
+            ],
         });
 
         setBuffersAndAttributes(

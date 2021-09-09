@@ -15,7 +15,12 @@ Rect mark displays each data item as a rectangle.
     { "type": "formula", "as": "y", "expr": "random()" },
     { "type": "formula", "as": "y2", "expr": "datum.y + random() * 0.4" }
   ],
-  "mark": "rect",
+  "mark": {
+    "type": "rect",
+    "strokeWidth": 2,
+    "stroke": "#404040",
+    "cornerRadius": 5
+  },
   "encoding": {
     "x": { "field": "x", "type": "quantitative" },
     "x2": { "field": "x2" },
@@ -89,8 +94,9 @@ Rect mark supports the standard [position](../encoding/index.md) channels and
 
 ### Heatmap
 
-When used with `band` or `index` scales, the rectangles fill the whole bands
-when only the primary positional channel is defined.
+When used with [`"band"`](../scale.md) or [`"index"`](../scale.md#index-scale)
+scales, the rectangles fill the whole bands when only the primary positional
+channel is defined.
 
 <div><genome-spy-doc-embed>
 

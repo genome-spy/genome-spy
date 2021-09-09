@@ -28,6 +28,10 @@ export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
 const FLT_MAX = 3.402823466e38;
 
 /**
+ * @typedef {import("../spec/channel").Channel} Channel
+ */
+
+/**
  * Splits a vega-scale type (e.g., linear, sequential-linear) to components.
  *
  * @param {string} type
@@ -45,7 +49,7 @@ function splitScaleType(type) {
 
 /**
  *
- * @param {string} channel
+ * @param {Channel} channel
  * @param {number | number[] | string | boolean} value
  */
 export function generateValueGlsl(channel, value) {
@@ -63,6 +67,14 @@ export function generateValueGlsl(channel, value) {
         }
     } else if (isBoolean(value)) {
         vec = vectorize(value ? 1 : 0);
+    } else if (value === null) {
+        if (isColorChannel(channel)) {
+            vec = vectorize([0, 0, 0]);
+        } else {
+            throw new Error(
+                `null value is not supported on the "${channel}" chanel.`
+            );
+        }
     } else {
         vec = vectorize(value);
     }
@@ -80,7 +92,7 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
 
 /**
  *
- * @param {string} channel
+ * @param {Channel} channel
  * @param {any} scale
  * @param {import("../spec/channel").ChannelDef} encoding
  */
@@ -200,7 +212,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
     // TODO: Reverse
     const range =
         isInterpolating(scale.type) ||
-        (isContinuous(scale.type) && channel === "color")
+        (isContinuous(scale.type) && isColorChannel(channel))
             ? [0, 1]
             : scale.range
             ? scale.range()

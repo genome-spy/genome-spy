@@ -37,6 +37,7 @@ export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 
 /**
+ * @typedef {import("../spec/mark").MarkConfig} MarkConfig
  *
  * @typedef {import("../view/view").RenderingOptions} RenderingOptions
  * @typedef {object} _MarkRenderingOptions
@@ -48,7 +49,6 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
  * @param {number} offset
  * @param {number} count
  *
- * @typedef {import("../view/viewUtils").MarkConfig} MarkConfig
  */
 export default class Mark {
     /**
@@ -73,8 +73,6 @@ export default class Mark {
 
         /** @type {import("twgl.js").UniformBlockInfo} WebGL buffers */
         this.domainUniformInfo = undefined;
-
-        this.opaque = false;
 
         // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
         /** @type {MarkConfig} */
@@ -109,13 +107,14 @@ export default class Mark {
          */
         this.properties = coalesceProperties(
             typeof this.unitView.spec.mark == "object"
-                ? () =>
-                      /** @type {Record<string, any>} */ (
-                          this.unitView.spec.mark
-                      )
-                : () => /** @type {Record<string, any>} */ ({}),
+                ? () => /** @type {MarkConfig} */ (this.unitView.spec.mark)
+                : () => /** @type {MarkConfig} */ ({}),
             () => this.defaultProperties
         );
+    }
+
+    get opaque() {
+        return false;
     }
 
     /**

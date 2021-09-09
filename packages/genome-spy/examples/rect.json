@@ -8,26 +8,6 @@
 
   "layer": [
     {
-      "mark": {
-        "type": "rect"
-      },
-
-      "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative",
-          "scale": { "domain": [0, 1] }
-        },
-        "x2": { "field": "x2" },
-        "y": {
-          "field": "x",
-          "type": "quantitative",
-          "scale": { "domain": [0, 1] }
-        },
-        "y2": { "field": "x2" }
-      }
-    },
-    {
       "transform": [
         { "type": "regexFold", "columnRegex": ["^(x.?)$"], "asValue": ["z"] }
       ],
@@ -56,6 +36,29 @@
           }
         }
       ]
+    },
+    {
+      "mark": {
+        "type": "rect",
+        "strokeWidth": 5,
+        "cornerRadius": 20,
+        "stroke": "black"
+      },
+
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1] }
+        },
+        "x2": { "field": "x2" },
+        "y": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1] }
+        },
+        "y2": { "field": "x2" }
+      }
     }
   ]
 }

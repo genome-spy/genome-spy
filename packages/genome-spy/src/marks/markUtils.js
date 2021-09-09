@@ -1,8 +1,14 @@
-import { secondaryChannel } from "../encoder/encoder";
+import { isValueDef, secondaryChannel } from "../encoder/encoder";
 
 /**
- * @param {Record<string, import("../view/view").ChannelDef>} encoding
- * @param {string} channel
+ *
+ * @typedef {import("../spec/channel").Encoding} Encoding
+ * @typedef {import("../spec/channel").Channel} Channel
+ */
+
+/**
+ * @param {Encoding} encoding
+ * @param {Channel} channel
  */
 export function fixPositional(encoding, channel) {
     const secondary = secondaryChannel(channel);
@@ -11,7 +17,7 @@ export function fixPositional(encoding, channel) {
             if (encoding[channel].type == "quantitative") {
                 // Bar plot, anchor the other end to zero
                 encoding[secondary] = {
-                    datum: 0
+                    datum: 0,
                 };
             } else {
                 // Must make copies because the definition may be shared with other views/marks
@@ -41,5 +47,51 @@ export function fixPositional(encoding, channel) {
         // Nothing specified, fill the whole viewport
         encoding[channel] = { value: 0 };
         encoding[secondary] = { value: 1 };
+    }
+}
+
+/**
+ * @param {import("../spec/channel").Encoding} encoding
+ * @param {boolean} filled
+ */
+export function fixStroke(encoding, filled) {
+    if (!encoding.stroke) {
+        if (filled) {
+            encoding.stroke = { value: null };
+        } else {
+            encoding.stroke = encoding.color;
+            // TODO: Whattabout default strokeWidth?
+        }
+    }
+
+    if (isValueDef(encoding.stroke) && encoding.stroke.value === null) {
+        encoding.strokeWidth = { value: 0 };
+    }
+
+    if (!encoding.strokeOpacity) {
+        encoding.strokeOpacity = encoding.opacity;
+    }
+}
+
+/**
+ * @param {import("../spec/channel").Encoding} encoding
+ * @param {boolean} filled
+ */
+export function fixFill(encoding, filled) {
+    if (isValueDef(encoding.fill) && encoding.fill.value === null) {
+        encoding.fillOpacity = { value: 0 };
+    } else if (!encoding.fill) {
+        encoding.fill = encoding.color;
+        if (!filled && !encoding.fillOpacity) {
+            encoding.fillOpacity = { value: 0 };
+        }
+    }
+
+    if (!encoding.fillOpacity) {
+        if (filled) {
+            encoding.fillOpacity = encoding.opacity;
+        } else {
+            encoding.fillOpacity = { value: 0 };
+        }
     }
 }
