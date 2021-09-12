@@ -38,9 +38,26 @@ float linearstep(float edge0, float edge1, float x) {
     return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 }
 
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
 /**
  * Specialized linearstep for doing antialiasing
  */
 float distanceToRatio(float d) {
 	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : vec4(0.0),
+            distanceToRatio(sd));
+    } else {
+        return fill * distanceToRatio(-d);
+    }
 }
