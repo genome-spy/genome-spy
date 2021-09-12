@@ -23,6 +23,10 @@ vec2 npc() {
     return gl_PointCoord * 2.0 - 1.0;
 }
 
+// The distance functions are partially based on:
+// http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+// However, these are not true distance functions, because the corners need to be sharp.
+
 float circle() {
     return length(npc()) - 1.0;
 }
@@ -32,10 +36,7 @@ float square() {
     return max(pos.x, pos.y) - 1.0;
 }
 
-// Triangle, cross, and diamond are based on:
-// http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
-
-float sdEquilateralTriangle(bool flip, bool swap) {
+float equilateralTriangle(bool flip, bool swap) {
     vec2 p = npc();
     if (swap) {
         p.xy = p.yx;
@@ -43,18 +44,14 @@ float sdEquilateralTriangle(bool flip, bool swap) {
     if (flip) {
         p.y = -p.y;
     }
-    p.y += 0.25;
 
-    const float k = sqrt(3.0);
-    p.x = abs(p.x) - 1.0;
-    p.y = p.y + 1.0 / k;
-    if (p.x + k * p.y > 0.) {
-        p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.;
-    }
-    p.x -= clamp(p.x, -2.0, 0.0);
-    return -length(p) * sign(p.y);
+    float r = 1.0;
+    float k = sqrt(3.0);
+    float kr = k * r;
+    //p.y -= kr * 2.0 / 3.0;
+    p.y -= kr / 2.0;
+    return max((abs(p.x) * k + p.y) / 2.0, -p.y - kr);
 }
-
 
 float sdCross() {
     const float r = 0.0;
@@ -92,7 +89,7 @@ void main() {
         dist = square();
 
     } else if (vShape == TRIANGLE_UP) {
-        dist = sdEquilateralTriangle(true, false);
+        dist = equilateralTriangle(true, false);
 
     } else if (vShape == CROSS) {
         dist = sdCross();
@@ -101,13 +98,13 @@ void main() {
         dist = sdRhombus();
 
     } else if (vShape == TRIANGLE_DOWN) {
-        dist = sdEquilateralTriangle(false, false);
+        dist = equilateralTriangle(false, false);
 
     } else if (vShape == TRIANGLE_RIGHT) {
-        dist = sdEquilateralTriangle(false, true);
+        dist = equilateralTriangle(false, true);
 
     } else if (vShape == TRIANGLE_LEFT) {
-        dist = sdEquilateralTriangle(true, true);
+        dist = equilateralTriangle(true, true);
 
     } else {
         dist = 0.0;
