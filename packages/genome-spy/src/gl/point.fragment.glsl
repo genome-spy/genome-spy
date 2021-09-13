@@ -53,16 +53,14 @@ float equilateralTriangle(bool flip, bool swap) {
     return max((abs(p.x) * k + p.y) / 2.0, -p.y - kr);
 }
 
-float sdCross() {
-    const float r = 0.0;
-    const vec2 b = vec2(1.0, 0.4);
-
+float crossShape() {
+	float r = 1.0;
     vec2 p = abs(npc());
-    p = (p.y > p.x) ? p.yx : p.xy;
-    vec2  q = p - b;
-    float k = max(q.y, q.x);
-    vec2  w = (k > 0.0) ? q : vec2(b.y - p.x, -k);
-    return sign(k) * length(max(w, 0.0)) + r;
+
+	vec2 b = vec2(0.4, 1.0) * r;
+    vec2 v = abs(p) - b.xy;
+    vec2 h = abs(p) - b.yx;
+    return min(max(v.x, v.y), max(h.x, h.y));
 }
 
 float ndot(vec2 a, vec2 b) {
@@ -92,7 +90,7 @@ void main() {
         dist = equilateralTriangle(true, false);
 
     } else if (vShape == CROSS) {
-        dist = sdCross();
+        dist = crossShape();
 
     } else if (vShape == DIAMOND) {
         dist = sdRhombus();
