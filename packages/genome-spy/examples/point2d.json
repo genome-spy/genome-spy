@@ -4,12 +4,15 @@
   "height": 200,
   "width": 200,
   "data": { "url": "data/cars.json" },
-  "mark": "point",
+  "mark": {
+    "type": "point",
+    "filled": false,
+    "opacity": 0.7,
+    "size": 30
+  },
   "encoding": {
     "x": { "field": "Horsepower", "type": "quantitative" },
     "y": { "field": "Miles_per_Gallon", "type": "quantitative" },
-    "color": { "field": "Origin", "type": "nominal" },
-    "size": { "value": 50 },
-    "opacity": { "value": 0.7 }
+    "color": { "field": "Origin", "type": "nominal" }
   }
 }

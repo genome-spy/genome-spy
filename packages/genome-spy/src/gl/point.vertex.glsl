@@ -14,10 +14,12 @@ uniform float uMaxPointSize;
 uniform float uZoomLevel;
 uniform float uSemanticThreshold;
 
-flat out float vSize;
-flat out lowp vec4 vColor;
+flat out float vRadius;
+flat out float vRadiusWithMargin;
+flat out lowp vec4 vFillColor;
+flat out lowp vec4 vStrokeColor;
 flat out lowp float vShape;
-flat out lowp float vStrokeWidth;
+flat out lowp float vHalfStrokeWidth;
 flat out lowp float vGradientStrength;
 
 
@@ -70,31 +72,42 @@ void main(void) {
 
     gl_Position = unitToNdc(applySampleFacet(pos));
 
-    vSize = sqrt(size) *
+    float strokeWidth = getScaled_strokeWidth();
+
+    float diameter = sqrt(size) *
         uScaleFactor *
         semanticThresholdFactor *
-        getDownscaleFactor(pos) *
-        uDevicePixelRatio;
+        getDownscaleFactor(pos);
 
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.
-    float opacity = getScaled_opacity() * uViewOpacity;
-    const float sizeLimit = 2.0;
-    if (vSize < sizeLimit) {
+    float opacity = uViewOpacity;
+    const float minDiameter = 1.0;
+    if (diameter < minDiameter) {
         // We do some "cheap" gamma correction here. It breaks on dark background, though.
         // First we take a square of the size and then apply "gamma" of 1.5.
-        opacity *= pow(vSize / sizeLimit, 2.5);
-        vSize = sizeLimit;
+        opacity *= pow(diameter / minDiameter, 2.5);
+        diameter = minDiameter;
     }
-    opacity *= semanticThresholdFactor;
 
-    gl_PointSize = vSize;
+	float fillOpa = getScaled_fillOpacity() * opacity;
+	float strokeOpa = getScaled_strokeOpacity() * opacity;
 
     vShape = getScaled_shape();
-    vStrokeWidth = getScaled_strokeWidth();
+
+	float aaPadding = 1.0 / uDevicePixelRatio;
+	// sqrt(3.0) ensures that the angles of equilateral triangles have enough room
+	float margin = strokeWidth * (vShape == 0.0 ? 1.0 : sqrt(3.0)) + aaPadding;
+    gl_PointSize = (diameter + margin) * uDevicePixelRatio;
+
+	vRadius = diameter / 2.0;
+	vRadiusWithMargin = vRadius + margin / 2.0;
+
+    vHalfStrokeWidth = strokeWidth / 2.0;
     vGradientStrength = getScaled_gradientStrength();
 
-    vColor = vec4(getScaled_color(), opacity); // Premultiplied in fragment shader
+    vFillColor = vec4(getScaled_fill() * fillOpa, fillOpa);
+    vStrokeColor = vec4(getScaled_stroke() * strokeOpa, strokeOpa);
 
     setupPicking();
 }

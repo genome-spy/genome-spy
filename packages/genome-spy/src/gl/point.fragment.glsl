@@ -1,10 +1,13 @@
-const lowp vec3 white = vec3(1.0);
-const lowp vec3 black = vec3(0.0);
+const lowp vec4 white = vec4(1.0);
+const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
 
-flat in lowp vec4 vColor;
-flat in float vSize;
+flat in float vRadius;
+flat in float vRadiusWithMargin;
+
+flat in lowp vec4 vFillColor;
+flat in lowp vec4 vStrokeColor;
 flat in lowp float vShape;
-flat in lowp float vStrokeWidth;
+flat in lowp float vHalfStrokeWidth;
 flat in lowp float vGradientStrength;
 
 out lowp vec4 fragColor;
@@ -62,66 +65,52 @@ float diamond(vec2 p, float r) {
 }
 
 void main() {
-    float dist;
+    float d;
 
 	/** Normalized point coord */
-    vec2 p = gl_PointCoord * 2.0 - 1.0;
-	float r = 1.0;
+    vec2 p = (2.0 * gl_PointCoord - 1.0) * vRadiusWithMargin;
+	float r = vRadius;
     
     // We could also use textures here. Could even be faster, because we have plenty of branching here.
     if (vShape == CIRCLE) {
-        dist = circle(p, r);
+        d = circle(p, r);
 
     } else if (vShape == SQUARE) {
-        dist = square(p, r);
+        d = square(p, r);
 
     } else if (vShape == TRIANGLE_UP) {
-        dist = equilateralTriangle(p, r, true, false);
+        d = equilateralTriangle(p, r, true, false);
 
     } else if (vShape == CROSS) {
-        dist = crossShape(p, r);
+        d = crossShape(p, r);
 
     } else if (vShape == DIAMOND) {
-        dist = diamond(p, r);
+        d = diamond(p, r);
 
     } else if (vShape == TRIANGLE_DOWN) {
-        dist = equilateralTriangle(p, r, false, false);
+        d = equilateralTriangle(p, r, false, false);
 
     } else if (vShape == TRIANGLE_RIGHT) {
-        dist = equilateralTriangle(p, r, false, true);
+        d = equilateralTriangle(p, r, false, true);
 
     } else if (vShape == TRIANGLE_LEFT) {
-        dist = equilateralTriangle(p, r, true, true);
+        d = equilateralTriangle(p, r, true, true);
 
     } else {
-        dist = 0.0;
+        d = 0.0;
     }
 
-    if (dist > 0.3)
-        discard;
+	if (!uPickingEnabled) {
+		// Stuble radial gradient
+		lowp vec4 fillColor = vFillColor; //mix(vColor, white, -d * vGradientStrength);
 
-    lowp vec3 strokeColor = mix(vColor.rgb, black, 0.3); 
-    // Stuble radial gradient
-    lowp vec3 fillColor = mix(vColor.rgb, white, -dist * vGradientStrength);
+		fragColor = distanceToColor(d, fillColor, vStrokeColor, vHalfStrokeWidth);
 
-    float pixelWidth = 2.0 / vSize;
-
-    if (vStrokeWidth > 0.0) {
-        float strokeWidth = vStrokeWidth * uDevicePixelRatio * pixelWidth; // TODO: Move computation to vertex shader
-
-        lowp float strokeFraction = linearstep(-strokeWidth, -strokeWidth - pixelWidth, dist);
-        lowp float alpha = linearstep(0., -pixelWidth, dist) * vColor.a;
-
-        fragColor = vec4(mix(strokeColor, fillColor, strokeFraction) * alpha, alpha);
-
-    } else {
-        lowp float alpha = linearstep(0., -pixelWidth, dist) * vColor.a;
-
-        fragColor = vec4(fillColor * alpha, alpha);
-    }
-
-    if (uPickingEnabled) {
+	} else if (d - vHalfStrokeWidth <= 0.0) {
         fragColor = vPickingColor;
+
+	} else {
+		discard;
     }
 }
 
