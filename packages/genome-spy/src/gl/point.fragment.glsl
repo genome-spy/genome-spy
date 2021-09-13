@@ -18,26 +18,21 @@ const float TRIANGLE_DOWN = 5.0;
 const float TRIANGLE_RIGHT = 6.0;
 const float TRIANGLE_LEFT = 7.0;
 
-/** Normalized point coord */
-vec2 npc() {
-    return gl_PointCoord * 2.0 - 1.0;
-}
 
-// The distance functions are partially based on:
+// The distance functions are inspired by:
 // http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 // However, these are not true distance functions, because the corners need to be sharp.
 
-float circle() {
-    return length(npc()) - 1.0;
+float circle(vec2 p, float r) {
+    return length(p) - r;
 }
 
-float square() {
-    vec2 pos = abs(npc());
-    return max(pos.x, pos.y) - 1.0;
+float square(vec2 p, float r) {
+    p = abs(p);
+    return max(p.x, p.y) - r;
 }
 
-float equilateralTriangle(bool flip, bool swap) {
-    vec2 p = npc();
+float equilateralTriangle(vec2 p, float r, bool flip, bool swap) {
     if (swap) {
         p.xy = p.yx;
     }
@@ -45,7 +40,6 @@ float equilateralTriangle(bool flip, bool swap) {
         p.y = -p.y;
     }
 
-    float r = 1.0;
     float k = sqrt(3.0);
     float kr = k * r;
     //p.y -= kr * 2.0 / 3.0;
@@ -53,9 +47,8 @@ float equilateralTriangle(bool flip, bool swap) {
     return max((abs(p.x) * k + p.y) / 2.0, -p.y - kr);
 }
 
-float crossShape() {
-	float r = 1.0;
-    vec2 p = abs(npc());
+float crossShape(vec2 p, float r) {
+    p = abs(p);
 
 	vec2 b = vec2(0.4, 1.0) * r;
     vec2 v = abs(p) - b.xy;
@@ -63,39 +56,42 @@ float crossShape() {
     return min(max(v.x, v.y), max(h.x, h.y));
 }
 
-float diamond() {
-	float r = 1.0;
-    vec2 p = abs(npc());
+float diamond(vec2 p, float r) {
+    p = abs(p);
     return (max(abs(p.x - p.y), abs(p.x + p.y)) - r) / sqrt(2.0);
 }
 
 void main() {
     float dist;
+
+	/** Normalized point coord */
+    vec2 p = gl_PointCoord * 2.0 - 1.0;
+	float r = 1.0;
     
     // We could also use textures here. Could even be faster, because we have plenty of branching here.
     if (vShape == CIRCLE) {
-        dist = circle();
+        dist = circle(p, r);
 
     } else if (vShape == SQUARE) {
-        dist = square();
+        dist = square(p, r);
 
     } else if (vShape == TRIANGLE_UP) {
-        dist = equilateralTriangle(true, false);
+        dist = equilateralTriangle(p, r, true, false);
 
     } else if (vShape == CROSS) {
-        dist = crossShape();
+        dist = crossShape(p, r);
 
     } else if (vShape == DIAMOND) {
-        dist = diamond();
+        dist = diamond(p, r);
 
     } else if (vShape == TRIANGLE_DOWN) {
-        dist = equilateralTriangle(false, false);
+        dist = equilateralTriangle(p, r, false, false);
 
     } else if (vShape == TRIANGLE_RIGHT) {
-        dist = equilateralTriangle(false, true);
+        dist = equilateralTriangle(p, r, false, true);
 
     } else if (vShape == TRIANGLE_LEFT) {
-        dist = equilateralTriangle(true, true);
+        dist = equilateralTriangle(p, r, true, true);
 
     } else {
         dist = 0.0;
