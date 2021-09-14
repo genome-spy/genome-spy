@@ -89,13 +89,15 @@ void main(void) {
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.
     float opacity = uViewOpacity;
-    const float minDiameter = 1.0;
-    if (diameter < minDiameter) {
-        // We do some "cheap" gamma correction here. It breaks on dark background, though.
-        // First we take a square of the size and then apply "gamma" of 1.5.
-        opacity *= pow(diameter / minDiameter, 2.5);
-        diameter = minDiameter;
-    }
+	if (strokeWidth <= 0.0 || uInwardStroke) {
+		const float minDiameter = 1.0;
+		if (diameter < minDiameter) {
+			// We do some "cheap" gamma correction here. It breaks on dark background, though.
+			// First we take a square of the size and then apply "gamma" of 1.5.
+			opacity *= pow(diameter / minDiameter, 2.5);
+			diameter = minDiameter;
+		}
+	}
 
 	float fillOpa = getScaled_fillOpacity() * opacity;
 	float strokeOpa = getScaled_strokeOpacity() * opacity;
