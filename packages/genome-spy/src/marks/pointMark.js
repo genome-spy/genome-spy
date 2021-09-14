@@ -36,8 +36,7 @@ export default class PointMark extends Mark {
                 dy: 0,
                 angle: 0,
 
-                maxRelativePointDiameter: 0.8,
-                minAbsolutePointDiameter: 0,
+                sampleFacetPadding: 0.1,
 
                 semanticZoomFraction: 0.02,
             })
@@ -138,8 +137,7 @@ export default class PointMark extends Mark {
         setUniforms(this.programInfo, {
             uInwardStroke: props.inwardStroke,
             uGradientStrength: props.fillGradientStrength,
-            uMaxRelativePointDiameter: props.maxRelativePointDiameter,
-            uMinAbsolutePointDiameter: props.minAbsolutePointDiameter,
+            uMaxRelativePointDiameter: 1 - 2 * props.sampleFacetPadding,
         });
     }
 

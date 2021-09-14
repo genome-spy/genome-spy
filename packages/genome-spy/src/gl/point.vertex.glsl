@@ -9,8 +9,6 @@ uniform bool uInwardStroke;
 
 /** Maximum size of the largest point as the fraction of the height of the (faceted) view */
 uniform lowp float uMaxRelativePointDiameter;
-/** Minimum width/height in pixels of the largest point */
-uniform lowp float uMinAbsolutePointDiameter;
 
 /** Scale factor for geometric zoom */
 uniform float uScaleFactor;
@@ -50,10 +48,7 @@ float getDownscaleFactor(vec2 pos) {
         uViewportSize.y *
         uMaxRelativePointDiameter;
 
-    // Points should not be visible on zero-height bands.
-    float minimum = linearstep(0.0, 0.5, sampleFacetHeight) * uMinAbsolutePointDiameter;
-
-    return max(minimum, min(maxPointDiameter, factor)) / maxPointDiameter;
+    return clamp(0.0, maxPointDiameter, factor) / maxPointDiameter;
 }
 
 // TODO: Move this into common.glsl or something

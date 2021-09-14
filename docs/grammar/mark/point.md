@@ -43,15 +43,15 @@ channels:
 
     **Default value:** `"circle"`
 
-`gradientStrength`
+## Properties
+
+`fillGradientStrength`
 : Type: Number
 
     Gradient strength controls the amount of the gradient eye-candy effect.
     Valid values are between `0` and `1`.
 
     **Default value:** `0`
-
-## Properties
 
 `geometricZoomBound`
 : Type: Number
@@ -62,25 +62,15 @@ channels:
 
     **Default value:** `0`
 
-`maxRelativePointDiameter`
+`sampleFacetPadding`
 : Type: Number
 
-    When a faceted visualization (Sample Track) has tens or hundreds of subgroups,
-    the individual views may be smaller than the diameter of the point marks.
-    `maxRelativePointDiameter` property adjusts the scaling so that the
-    largest possible point in the data is no larger than the specified fraction
-    of the view height.
+    Padding between sample facet's upper/lower edge and the maximum point size. This property
+    controls how tightly points are squeezed when facet's height is smaller than the maximum
+    point size. The unit is a proportion of facet's height. The value must be between `0`
+    and `0.5`. This property has no effect when sample faceting is not used.
 
-    **Default value:** `0.8`
-
-`minAbsolutePointDiameter`
-: Type: Number
-
-    The `minAbsolutePointDiameter` property works in concert with `maxRelativePointDiameter`.
-    The property specifies in pixels the absolute lower limit of the diameter of
-    the largest possible point in the data.
-
-    **Default value:** `0.0`
+    **Default value:** `0.1`
 
 ## Examples
 
