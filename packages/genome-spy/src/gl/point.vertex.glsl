@@ -85,7 +85,7 @@ void main(void) {
     // no flickering etc.
     float opacity = uViewOpacity;
 	if (strokeWidth <= 0.0 || uInwardStroke) {
-		const float minDiameter = 1.0;
+		float minDiameter = 1.0 / uDevicePixelRatio;
 		if (diameter < minDiameter) {
 			// We do some "cheap" gamma correction here. It breaks on dark background, though.
 			// First we take a square of the size and then apply "gamma" of 1.5.
