@@ -1,11 +1,18 @@
-const lowp vec3 white = vec3(1.0);
-const lowp vec3 black = vec3(0.0);
+const lowp vec4 white = vec4(1.0);
+const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
 
-flat in lowp vec4 vColor;
-flat in float vSize;
+uniform bool uInwardStroke;
+uniform float uGradientStrength;
+
+flat in float vRadius;
+flat in float vRadiusWithPadding;
+
+flat in lowp vec4 vFillColor;
+flat in lowp vec4 vStrokeColor;
 flat in lowp float vShape;
-flat in lowp float vStrokeWidth;
-flat in lowp float vGradientStrength;
+flat in lowp float vHalfStrokeWidth;
+
+flat in mat2 vRotationMatrix;
 
 out lowp vec4 fragColor;
 
@@ -18,126 +25,99 @@ const float TRIANGLE_DOWN = 5.0;
 const float TRIANGLE_RIGHT = 6.0;
 const float TRIANGLE_LEFT = 7.0;
 
-/** Normalized point coord */
-vec2 npc() {
-    return gl_PointCoord * 2.0 - 1.0;
-}
 
-float circle() {
-    return length(npc()) - 1.0;
-}
-
-float square() {
-    vec2 pos = abs(npc());
-    return max(pos.x, pos.y) - 1.0;
-}
-
-// Triangle, cross, and diamond are based on:
+// The distance functions are inspired by:
 // http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+// However, these are not true distance functions, because the corners need to be sharp.
 
-float sdEquilateralTriangle(bool flip, bool swap) {
-    vec2 p = npc();
+float circle(vec2 p, float r) {
+    return length(p) - r;
+}
+
+float square(vec2 p, float r) {
+    p = abs(p);
+    return max(p.x, p.y) - r;
+}
+
+float equilateralTriangle(vec2 p, float r, bool flip, bool swap) {
     if (swap) {
         p.xy = p.yx;
     }
     if (flip) {
         p.y = -p.y;
     }
-    p.y += 0.25;
 
-    const float k = sqrt(3.0);
-    p.x = abs(p.x) - 1.0;
-    p.y = p.y + 1.0 / k;
-    if (p.x + k * p.y > 0.) {
-        p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.;
-    }
-    p.x -= clamp(p.x, -2.0, 0.0);
-    return -length(p) * sign(p.y);
+    float k = sqrt(3.0);
+    float kr = k * r;
+    //p.y -= kr * 2.0 / 3.0;
+    p.y -= kr / 2.0;
+    return max((abs(p.x) * k + p.y) / 2.0, -p.y - kr);
 }
 
+float crossShape(vec2 p, float r) {
+    p = abs(p);
 
-float sdCross() {
-    const float r = 0.0;
-    const vec2 b = vec2(1.0, 0.4);
-
-    vec2 p = abs(npc());
-    p = (p.y > p.x) ? p.yx : p.xy;
-    vec2  q = p - b;
-    float k = max(q.y, q.x);
-    vec2  w = (k > 0.0) ? q : vec2(b.y - p.x, -k);
-    return sign(k) * length(max(w, 0.0)) + r;
+	vec2 b = vec2(0.4, 1.0) * r;
+    vec2 v = abs(p) - b.xy;
+    vec2 h = abs(p) - b.yx;
+    return min(max(v.x, v.y), max(h.x, h.y));
 }
 
-float ndot(vec2 a, vec2 b) {
-    return a.x * b.x - a.y * b.y;
-}
-
-float sdRhombus() {
-    const vec2 b = vec2(1.0);
-
-    vec2 q = abs(npc());
-    float h = clamp((-2.0 * ndot(q, b) + ndot(b, b)) / dot(b, b), -1.0, 1.0);
-    float d = length(q - 0.5 * b * vec2(1.0 - h, 1.0 + h));
-    return d * sign(q.x * b.y + q.y * b.x - b.x * b.y);
+float diamond(vec2 p, float r) {
+    p = abs(p);
+    return (max(abs(p.x - p.y), abs(p.x + p.y)) - r) / sqrt(2.0);
 }
 
 void main() {
-    float dist;
-    
+    float d;
+
+	/** Normalized point coord */
+    vec2 p = vRotationMatrix * (2.0 * gl_PointCoord - 1.0) * vRadiusWithPadding;
+	float r = vRadius;
+
     // We could also use textures here. Could even be faster, because we have plenty of branching here.
     if (vShape == CIRCLE) {
-        dist = circle();
+        d = circle(p, r);
 
     } else if (vShape == SQUARE) {
-        dist = square();
+        d = square(p, r);
 
     } else if (vShape == TRIANGLE_UP) {
-        dist = sdEquilateralTriangle(true, false);
+        d = equilateralTriangle(p, r, true, false);
 
     } else if (vShape == CROSS) {
-        dist = sdCross();
+        d = crossShape(p, r);
 
     } else if (vShape == DIAMOND) {
-        dist = sdRhombus();
+        d = diamond(p, r);
 
     } else if (vShape == TRIANGLE_DOWN) {
-        dist = sdEquilateralTriangle(false, false);
+        d = equilateralTriangle(p, r, false, false);
 
     } else if (vShape == TRIANGLE_RIGHT) {
-        dist = sdEquilateralTriangle(false, true);
+        d = equilateralTriangle(p, r, false, true);
 
     } else if (vShape == TRIANGLE_LEFT) {
-        dist = sdEquilateralTriangle(true, true);
+        d = equilateralTriangle(p, r, true, true);
 
     } else {
-        dist = 0.0;
+        d = 0.0;
     }
 
-    if (dist > 0.3)
-        discard;
+	if (!uPickingEnabled) {
+		lowp vec4 fillColor = mix(vFillColor, white, -d * uGradientStrength / vRadius);
 
-    lowp vec3 strokeColor = mix(vColor.rgb, black, 0.3); 
-    // Stuble radial gradient
-    lowp vec3 fillColor = mix(vColor.rgb, white, -dist * vGradientStrength);
+		fragColor = distanceToColor(
+			d + (uInwardStroke ? vHalfStrokeWidth : 0.0),
+			fillColor,
+			vStrokeColor,
+			vHalfStrokeWidth);
 
-    float pixelWidth = 2.0 / vSize;
-
-    if (vStrokeWidth > 0.0) {
-        float strokeWidth = vStrokeWidth * uDevicePixelRatio * pixelWidth; // TODO: Move computation to vertex shader
-
-        lowp float strokeFraction = linearstep(-strokeWidth, -strokeWidth - pixelWidth, dist);
-        lowp float alpha = linearstep(0., -pixelWidth, dist) * vColor.a;
-
-        fragColor = vec4(mix(strokeColor, fillColor, strokeFraction) * alpha, alpha);
-
-    } else {
-        lowp float alpha = linearstep(0., -pixelWidth, dist) * vColor.a;
-
-        fragColor = vec4(fillColor * alpha, alpha);
-    }
-
-    if (uPickingEnabled) {
+	} else if (d - vHalfStrokeWidth <= 0.0) {
         fragColor = vPickingColor;
+
+	} else {
+		discard;
     }
 }
 

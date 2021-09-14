@@ -43,15 +43,15 @@ channels:
 
     **Default value:** `"circle"`
 
-`gradientStrength`
+## Properties
+
+`fillGradientStrength`
 : Type: Number
 
     Gradient strength controls the amount of the gradient eye-candy effect.
     Valid values are between `0` and `1`.
 
     **Default value:** `0`
-
-## Properties
 
 `geometricZoomBound`
 : Type: Number
@@ -62,71 +62,60 @@ channels:
 
     **Default value:** `0`
 
-`maxRelativePointDiameter`
+`sampleFacetPadding`
 : Type: Number
 
-    When a faceted visualization (Sample Track) has tens or hundreds of subgroups,
-    the individual views may be smaller than the diameter of the point marks.
-    `maxRelativePointDiameter` property adjusts the scaling so that the
-    largest possible point in the data is no larger than the specified fraction
-    of the view height.
+    Padding between sample facet's upper/lower edge and the maximum point size. This property
+    controls how tightly points are squeezed when facet's height is smaller than the maximum
+    point size. The unit is a proportion of facet's height. The value must be between `0`
+    and `0.5`. This property has no effect when sample faceting is not used.
 
-    **Default value:** `0.8`
-
-`minAbsolutePointDiameter`
-: Type: Number
-
-    The `minAbsolutePointDiameter` property works in concert with `maxRelativePointDiameter`.
-    The property specifies in pixels the absolute lower limit of the diameter of
-    the largest possible point in the data.
-
-    **Default value:** `0.0`
+    **Default value:** `0.1`
 
 ## Examples
 
 ### Plenty of points
 
 The example below demonstrates how points can be varied by using
-`shape`, `color`, `size`, `strokeWidth`, and `gradientStrength` channels.
+`shape`, `fill`, `size`, `strokeWidth`, and `angle` channels.
 
 <div><genome-spy-doc-embed>
 
 ```json
 {
   "data": {
-    "sequence": { "start": 0, "stop": 200, "as": "z" }
+    "sequence": { "start": 0, "stop": 160, "as": "z" }
   },
 
   "transform": [
-    { "type": "formula", "expr": "datum.z % 10", "as": "y" },
-    { "type": "formula", "expr": "floor(datum.z / 10)", "as": "x" }
+    { "type": "formula", "expr": "datum.z % 20", "as": "x" },
+    { "type": "formula", "expr": "floor(datum.z / 20)", "as": "y" }
   ],
 
-  "mark": "point",
+  "mark": {
+    "type": "point",
+    "stroke": "black"
+  },
 
   "encoding": {
-    "x": { "field": "x", "type": "nominal", "axis": null },
-    "y": { "field": "y", "type": "nominal", "axis": null },
+    "x": { "field": "x", "type": "ordinal", "axis": null },
+    "y": { "field": "y", "type": "ordinal", "axis": null },
     "shape": { "field": "x", "type": "nominal" },
-    "color": {
-      "expr": "datum.x + datum.y",
-      "type": "quantitative",
-      "scale": { "scheme": "sinebow" }
-    },
+    "fill": { "field": "x", "type": "nominal" },
     "size": {
-      "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))",
+      "field": "x",
       "type": "quantitative",
-      "scale": { "range": [0, 700] }
+      "scale": { "type": "pow", "exponent": 2, "range": [0, 900] }
     },
     "strokeWidth": {
       "field": "y",
       "type": "quantitative",
       "scale": { "range": [0, 4] }
     },
-    "gradientStrength": {
-      "field": "x",
+    "angle": {
+      "field": "y",
       "type": "quantitative",
-      "scale": { "range": [0, 1] }
+      "scale": { "range": [0, -45] }
     }
   }
 }

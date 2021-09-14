@@ -7,6 +7,7 @@ import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
 
 import Mark from "./mark";
 import { sampleIterable } from "../data/transforms/sample";
+import { fixFill, fixStroke } from "./markUtils";
 
 /** @type {Record<string, import("../view/viewUtils").ChannelDef>} */
 const defaultEncoding = {};
@@ -24,20 +25,18 @@ export default class PointMark extends Mark {
                 x: 0.5,
                 y: 0.5,
                 color: "#4c78a8",
+                filled: true,
                 opacity: 1.0,
                 size: 100.0,
                 semanticScore: 0.0, // TODO: Should be datum instead of value. But needs fixing.
                 shape: "circle",
-                strokeWidth: 0.0,
-                gradientStrength: 0.0,
+                strokeWidth: 2.0,
+                fillGradientStrength: 0.0,
                 dx: 0,
                 dy: 0,
+                angle: 0,
 
-                /** TODO: Implement */
-                relativeSizing: false,
-
-                maxRelativePointDiameter: 0.8,
-                minAbsolutePointDiameter: 0,
+                sampleFacetPadding: 0.1,
 
                 semanticZoomFraction: 0.02,
             })
@@ -46,19 +45,23 @@ export default class PointMark extends Mark {
 
     getAttributes() {
         return [
+            "inwardStroke",
             "uniqueId",
             "facetIndex",
             "x",
             "y",
             "size",
-            "color",
-            "opacity",
             "semanticScore",
             "shape",
             "strokeWidth",
             "gradientStrength",
             "dx",
             "dy",
+            "fill",
+            "stroke",
+            "fillOpacity",
+            "strokeOpacity",
+            "angle",
         ];
     }
 
@@ -72,11 +75,31 @@ export default class PointMark extends Mark {
             "gradientStrength",
             "dx",
             "dy",
+            "fill",
+            "stroke",
+            "fillOpacity",
+            "strokeOpacity",
+            "angle",
         ];
     }
 
     getDefaultEncoding() {
         return { ...super.getDefaultEncoding(), ...defaultEncoding };
+    }
+
+    /**
+     * @param {import("../spec/channel").Encoding} encoding
+     * @returns {import("../spec/channel").Encoding}
+     */
+    fixEncoding(encoding) {
+        fixStroke(encoding, this.properties.filled);
+        fixFill(encoding, this.properties.filled);
+
+        // TODO: Function for getting rid of extras. Also should validate that all attributes are defined
+        delete encoding.color;
+        delete encoding.opacity;
+
+        return encoding;
     }
 
     initializeData() {
@@ -103,6 +126,19 @@ export default class PointMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+    }
+
+    finalizeGraphicsInitialization() {
+        super.finalizeGraphicsInitialization();
+
+        this.gl.useProgram(this.programInfo.program);
+
+        const props = this.properties;
+        setUniforms(this.programInfo, {
+            uInwardStroke: props.inwardStroke,
+            uGradientStrength: props.fillGradientStrength,
+            uMaxRelativePointDiameter: 1 - 2 * props.sampleFacetPadding,
+        });
     }
 
     updateGraphicsData() {
@@ -172,8 +208,6 @@ export default class PointMark extends Mark {
         super.prepareRender(options);
 
         setUniforms(this.programInfo, {
-            uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
-            uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),
             uScaleFactor: this._getGeometricScaleFactor(),
             uSemanticThreshold: this.getSemanticThreshold(),

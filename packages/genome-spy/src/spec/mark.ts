@@ -62,6 +62,13 @@ export interface MarkConfig extends RectProps, TextProps, FillAndStrokeProps {
     opacity?: number;
     size?: number;
     size2?: number;
+
+    /**
+     * One of `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`,
+     * `"triangle-down"`, `"triangle-right"`, or `"triangle-left"`.
+     *
+     * **Default value:** `"circle"`
+     */
     shape?: string;
     text?: string;
 
@@ -82,10 +89,44 @@ export interface MarkConfig extends RectProps, TextProps, FillAndStrokeProps {
     strokeCap?: "butt" | "square" | "round";
 
     // Point related stuff.
+
+    /**
+     * Should the stroke only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
+     * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
+     * geometric zoom, etc.
+     *
+     * **Default value:** `false`
+     */
+    inwardStroke?: boolean;
     strokeWidth?: number;
-    gradientStrength?: number;
-    minAbsolutePointDiameter?: number;
+
+    /**
+     * Gradient strength controls the amount of the gradient eye-candy effect in the fill color.
+     * Valid values are between 0 and 1.
+     *
+     * **Default value:** `0`
+     */
+    fillGradientStrength?: number;
+
+    /**
+     * Padding between sample facet's upper/lower edge and the maximum point size. This property
+     * controls how tightly points are squeezed when facet's height is smaller than the maximum
+     * point size. The unit is a proportion of facet's height. The value must be between `0`
+     * and `0.5`. This property has no effect when sample faceting is not used.
+     *
+     * **Default value:** `0.1`
+     */
+    sampleFacetPadding?: number;
+
     semanticZoomFraction?: number;
+
+    /**
+     * Enables geometric zooming. The value is the base two logarithmic zoom level where the maximum
+     * point size is reached.
+     *
+     * **Default value:** `0`
+     */
+    geometricZoomBound?: number;
 
     // TODO: get rid of this
     dynamicData?: boolean;

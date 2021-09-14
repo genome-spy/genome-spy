@@ -11,19 +11,6 @@ flat in vec4 vCornerRadii;
 
 out lowp vec4 fragColor;
 
-vec4 distanceToColor(float d) {
-    if (vHalfStrokeWidth > 0.0) {
-        // Distance to stroke's edge. Negative inside the stroke.
-        float sd = abs(d) - vHalfStrokeWidth;
-        return mix(
-            vStrokeColor,
-            d <= 0.0 ? vFillColor : vec4(0.0),
-            distanceToRatio(sd));
-    } else {
-        return vFillColor * distanceToRatio(-d);
-    }
-}
-
 // Source: https://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 float sdRoundedBox(vec2 p, vec2 b, vec4 r) {
     r.xy = p.x > 0.0 ? r.xy : r.zw;
@@ -48,7 +35,7 @@ void main(void) {
     float d = sdSharpBox(vPosInPixels, vHalfSizeInPixels);
 #endif
 
-    fragColor = distanceToColor(d);
+    fragColor = distanceToColor(d, vFillColor, vStrokeColor, vHalfStrokeWidth);
 
     if (fragColor.a == 0.0) {
         discard;
