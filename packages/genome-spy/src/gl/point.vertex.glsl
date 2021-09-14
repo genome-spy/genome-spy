@@ -1,5 +1,12 @@
 precision mediump float;
 
+/**
+ * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
+ * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
+ * geometric zoom, etc.
+ */
+uniform bool uInwardStroke;
+
 /** Maximum size of the largest point as the fraction of the height of the (faceted) view */
 uniform lowp float uMaxRelativePointDiameter;
 /** Minimum width/height in pixels of the largest point */
@@ -109,7 +116,7 @@ void main(void) {
 	float aaPadding = 1.0 / uDevicePixelRatio;
 	float rotationPadding = (diameter * roomForRotation) - diameter;
 	// sqrt(3.0) ensures that the angles of equilateral triangles have enough room
-	float strokePadding = strokeWidth * (circle ? 1.0 : sqrt(3.0));
+	float strokePadding = uInwardStroke ? 0.0 : strokeWidth * (circle ? 1.0 : sqrt(3.0));
 	float padding = rotationPadding + strokePadding + aaPadding;
     gl_PointSize = (diameter + padding) * uDevicePixelRatio;
 

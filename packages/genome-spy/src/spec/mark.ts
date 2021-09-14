@@ -82,6 +82,13 @@ export interface MarkConfig extends RectProps, TextProps, FillAndStrokeProps {
     strokeCap?: "butt" | "square" | "round";
 
     // Point related stuff.
+
+    /**
+     * Should the stroke only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
+     * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
+     * geometric zoom, etc.
+     */
+    inwardStroke?: boolean;
     strokeWidth?: number;
     gradientStrength?: number;
     minAbsolutePointDiameter?: number;

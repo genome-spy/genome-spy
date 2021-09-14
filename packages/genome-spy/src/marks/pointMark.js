@@ -46,6 +46,7 @@ export default class PointMark extends Mark {
 
     getAttributes() {
         return [
+            "inwardStroke",
             "uniqueId",
             "facetIndex",
             "x",
@@ -128,6 +129,19 @@ export default class PointMark extends Mark {
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
+    finalizeGraphicsInitialization() {
+        super.finalizeGraphicsInitialization();
+
+        this.gl.useProgram(this.programInfo.program);
+
+        const props = this.properties;
+        setUniforms(this.programInfo, {
+            uInwardStroke: props.inwardStroke,
+            uMaxRelativePointDiameter: props.maxRelativePointDiameter,
+            uMinAbsolutePointDiameter: props.minAbsolutePointDiameter,
+        });
+    }
+
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
         const itemCount = collector.getItemCount();
@@ -195,8 +209,6 @@ export default class PointMark extends Mark {
         super.prepareRender(options);
 
         setUniforms(this.programInfo, {
-            uMaxRelativePointDiameter: this.properties.maxRelativePointDiameter,
-            uMinAbsolutePointDiameter: this.properties.minAbsolutePointDiameter,
             uMaxPointSize: this._getMaxPointSize(),
             uScaleFactor: this._getGeometricScaleFactor(),
             uSemanticThreshold: this.getSemanticThreshold(),
