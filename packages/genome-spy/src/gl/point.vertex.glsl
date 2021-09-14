@@ -27,7 +27,6 @@ flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
 flat out lowp float vShape;
 flat out lowp float vHalfStrokeWidth;
-flat out lowp float vGradientStrength;
 flat out mat2 vRotationMatrix;
 
 
@@ -124,7 +123,6 @@ void main(void) {
 	vRadiusWithPadding = vRadius + padding / 2.0;
 
     vHalfStrokeWidth = strokeWidth / 2.0;
-    vGradientStrength = getScaled_gradientStrength();
 
     vFillColor = vec4(getScaled_fill() * fillOpa, fillOpa);
     vStrokeColor = vec4(getScaled_stroke() * strokeOpa, strokeOpa);

@@ -31,7 +31,7 @@ export default class PointMark extends Mark {
                 semanticScore: 0.0, // TODO: Should be datum instead of value. But needs fixing.
                 shape: "circle",
                 strokeWidth: 2.0,
-                gradientStrength: 0.0,
+                fillGradientStrength: 0.0,
                 dx: 0,
                 dy: 0,
                 angle: 0,
@@ -137,6 +137,7 @@ export default class PointMark extends Mark {
         const props = this.properties;
         setUniforms(this.programInfo, {
             uInwardStroke: props.inwardStroke,
+            uGradientStrength: props.fillGradientStrength,
             uMaxRelativePointDiameter: props.maxRelativePointDiameter,
             uMinAbsolutePointDiameter: props.minAbsolutePointDiameter,
         });

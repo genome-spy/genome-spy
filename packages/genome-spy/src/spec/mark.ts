@@ -87,10 +87,19 @@ export interface MarkConfig extends RectProps, TextProps, FillAndStrokeProps {
      * Should the stroke only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
      * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
      * geometric zoom, etc.
+     *
+     * **Default value:** `false`
      */
     inwardStroke?: boolean;
     strokeWidth?: number;
-    gradientStrength?: number;
+
+    /**
+     * Gradient strength controls the amount of the gradient eye-candy effect in the fill color.
+     * Valid values are between 0 and 1.
+     *
+     * **Default value:** `0`
+     */
+    fillGradientStrength?: number;
     minAbsolutePointDiameter?: number;
     semanticZoomFraction?: number;
 

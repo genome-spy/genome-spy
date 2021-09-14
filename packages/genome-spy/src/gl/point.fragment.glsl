@@ -2,6 +2,7 @@ const lowp vec4 white = vec4(1.0);
 const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
 
 uniform bool uInwardStroke;
+uniform float uGradientStrength;
 
 flat in float vRadius;
 flat in float vRadiusWithPadding;
@@ -10,7 +11,6 @@ flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
 flat in lowp float vShape;
 flat in lowp float vHalfStrokeWidth;
-flat in lowp float vGradientStrength;
 
 flat in mat2 vRotationMatrix;
 
@@ -105,8 +105,7 @@ void main() {
     }
 
 	if (!uPickingEnabled) {
-		// TODO: Stuble radial gradient
-		lowp vec4 fillColor = vFillColor; //mix(vColor, white, -d * vGradientStrength);
+		lowp vec4 fillColor = mix(vFillColor, white, -d * uGradientStrength / vRadius);
 
 		fragColor = distanceToColor(
 			d + (uInwardStroke ? vHalfStrokeWidth : 0.0),
