@@ -77,46 +77,45 @@ channels:
 ### Plenty of points
 
 The example below demonstrates how points can be varied by using
-`shape`, `color`, `size`, `strokeWidth`, and `gradientStrength` channels.
+`shape`, `fill`, `size`, `strokeWidth`, and `angle` channels.
 
 <div><genome-spy-doc-embed>
 
 ```json
 {
   "data": {
-    "sequence": { "start": 0, "stop": 200, "as": "z" }
+    "sequence": { "start": 0, "stop": 160, "as": "z" }
   },
 
   "transform": [
-    { "type": "formula", "expr": "datum.z % 10", "as": "y" },
-    { "type": "formula", "expr": "floor(datum.z / 10)", "as": "x" }
+    { "type": "formula", "expr": "datum.z % 20", "as": "x" },
+    { "type": "formula", "expr": "floor(datum.z / 20)", "as": "y" }
   ],
 
-  "mark": "point",
+  "mark": {
+    "type": "point",
+    "stroke": "black"
+  },
 
   "encoding": {
-    "x": { "field": "x", "type": "nominal", "axis": null },
-    "y": { "field": "y", "type": "nominal", "axis": null },
+    "x": { "field": "x", "type": "ordinal", "axis": null },
+    "y": { "field": "y", "type": "ordinal", "axis": null },
     "shape": { "field": "x", "type": "nominal" },
-    "color": {
-      "expr": "datum.x + datum.y",
-      "type": "quantitative",
-      "scale": { "scheme": "sinebow" }
-    },
+    "fill": { "field": "x", "type": "nominal" },
     "size": {
-      "expr": "-sqrt(pow(datum.x - 9, 2) + pow(datum.y - 4.5, 2))",
+      "field": "x",
       "type": "quantitative",
-      "scale": { "range": [0, 700] }
+      "scale": { "type": "pow", "exponent": 2, "range": [0, 900] }
     },
     "strokeWidth": {
       "field": "y",
       "type": "quantitative",
       "scale": { "range": [0, 4] }
     },
-    "gradientStrength": {
-      "field": "x",
+    "angle": {
+      "field": "y",
       "type": "quantitative",
-      "scale": { "range": [0, 1] }
+      "scale": { "range": [0, -45] }
     }
   }
 }
