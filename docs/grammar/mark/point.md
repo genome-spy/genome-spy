@@ -115,7 +115,7 @@ The example below demonstrates how points can be varied by using
     "angle": {
       "field": "y",
       "type": "quantitative",
-      "scale": { "range": [0, -45] }
+      "scale": { "range": [0, 45] }
     }
   }
 }

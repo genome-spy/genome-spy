@@ -103,7 +103,7 @@ void main(void) {
 	bool circle = vShape == 0.0;
 
 	float angleInDegrees = getScaled_angle();
-	float angle = angleInDegrees * PI / 180.0;
+	float angle = -angleInDegrees * PI / 180.0;
     float sinTheta = sin(angle);
     float cosTheta = cos(angle);
     vRotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
