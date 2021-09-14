@@ -46,6 +46,13 @@ channels:
 
     **Default value:** `11`
 
+`angle`
+: Type: Number
+
+    The rotation angle in degrees.
+
+    **Default value:** `0`
+
 ## Properties
 
 `font`
@@ -109,13 +116,6 @@ channels:
 
     Offset of the x coordinate in pixels. The offset is applied after
     the viewport scaling and translation.
-
-    **Default value:** `0`
-
-`angle`
-: Type: Number
-
-    The rotation angle in degrees.
 
     **Default value:** `0`
 

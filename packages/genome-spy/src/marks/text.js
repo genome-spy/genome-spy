@@ -106,11 +106,19 @@ export default class TextMark extends Mark {
             "color",
             "size",
             "opacity",
+            "angle",
         ];
     }
 
     getSupportedChannels() {
-        return [...super.getSupportedChannels(), "x2", "y2", "size", "text"];
+        return [
+            ...super.getSupportedChannels(),
+            "x2",
+            "y2",
+            "size",
+            "text",
+            "angle",
+        ];
     }
 
     /**

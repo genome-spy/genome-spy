@@ -457,6 +457,8 @@ export default class ScaleResolution {
             props.range = getDiscreteRange(channel);
         } else if (channel == "size") {
             props.range = [0, 400]; // TODO: Configurable default. This is currently optimized for points.
+        } else if (channel == "angle") {
+            props.range = [0, 360];
         }
 
         return props;
@@ -587,6 +589,7 @@ function getDefaultScaleType(channel, dataType) {
         text: ["null", "null", "null"],
         dx: [undefined, undefined, "null"],
         dy: [undefined, undefined, "null"],
+        angle: [undefined, undefined, "linear"],
     };
 
     const type = defaults[channel]

@@ -22,7 +22,8 @@ export type Channel =
     | "shape"
     | "text"
     | "size2"
-    | "color2";
+    | "color2"
+    | "angle";
 
 export interface ChannelDefBase {
     title?: string | null;

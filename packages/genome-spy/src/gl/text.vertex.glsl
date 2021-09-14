@@ -1,7 +1,6 @@
 uniform float uSdfNumerator;
 
 uniform vec2 uD; // dx & dy
-uniform float uAngle;
 
 in mediump vec2 vertexCoord;
 in lowp vec2 textureCoord;
@@ -116,10 +115,13 @@ void main(void) {
 
     float scale = 1.0;
 
+	float angleInDegrees = getScaled_angle();
+	float angle = -angleInDegrees * PI / 180.0;
+	
     // TODO: Support arbitrary angles
 	vec2 flushSize = (
-		(uAngle < 0.51 * PI && uAngle > 0.49 * PI) ||
-		(uAngle > -0.51 * PI && uAngle < -0.49 * PI)
+		(angle < 0.51 * PI && angle > 0.49 * PI) ||
+		(angle > -0.51 * PI && angle < -0.49 * PI)
 	) ? vec2(1.0, width) : vec2(width, 1.0);
 
 #ifdef x2_DEFINED
@@ -182,8 +184,8 @@ void main(void) {
         }
     }
 
-    float sinTheta = sin(uAngle);
-    float cosTheta = cos(uAngle);
+    float sinTheta = sin(angle);
+    float cosTheta = cos(angle);
     mat2 rotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
 
     // Position of the character vertex in relation to the text origo
