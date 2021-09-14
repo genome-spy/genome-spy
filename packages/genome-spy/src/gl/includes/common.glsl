@@ -61,16 +61,3 @@ vec4 distanceToColor(float d, vec4 fill, vec4 stroke, float halfStrokeWidth) {
         return fill * distanceToRatio(-d);
     }
 }
-
-vec4 distanceToColor2(float d, vec4 fill, vec4 stroke, float halfStrokeWidth) {
-    if (halfStrokeWidth > 0.0) {
-        // Distance to stroke's edge. Negative inside the stroke.
-        float sd = abs(d) - halfStrokeWidth;
-        return mix(
-            stroke,
-            d <= 0.0 ? fill : (vec4(0.0, 0.0, 0.0, 0.2) * distanceToRatio(-d - 1.0)),
-            distanceToRatio(sd));
-    } else {
-        return fill * distanceToRatio(-d);
-    }
-}
