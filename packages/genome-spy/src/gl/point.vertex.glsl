@@ -15,12 +15,13 @@ uniform float uZoomLevel;
 uniform float uSemanticThreshold;
 
 flat out float vRadius;
-flat out float vRadiusWithMargin;
+flat out float vRadiusWithPadding;
 flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
 flat out lowp float vShape;
 flat out lowp float vHalfStrokeWidth;
 flat out lowp float vGradientStrength;
+flat out mat2 vRotationMatrix;
 
 
 float computeSemanticThresholdFactor() {
@@ -95,13 +96,25 @@ void main(void) {
 
     vShape = getScaled_shape();
 
+	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
+	bool circle = vShape == 0.0;
+
+	float angleInDegrees = getScaled_angle();
+	float angle = angleInDegrees * PI / 180.0;
+    float sinTheta = sin(angle);
+    float cosTheta = cos(angle);
+    vRotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
+	float roomForRotation = circle ? 1.0 : sin(mod(angle, PI / 2.0) + PI / 4.0) / sin(PI / 4.0);
+
 	float aaPadding = 1.0 / uDevicePixelRatio;
+	float rotationPadding = (diameter * roomForRotation) - diameter;
 	// sqrt(3.0) ensures that the angles of equilateral triangles have enough room
-	float margin = strokeWidth * (vShape == 0.0 ? 1.0 : sqrt(3.0)) + aaPadding;
-    gl_PointSize = (diameter + margin) * uDevicePixelRatio;
+	float strokePadding = strokeWidth * (circle ? 1.0 : sqrt(3.0));
+	float padding = rotationPadding + strokePadding + aaPadding;
+    gl_PointSize = (diameter + padding) * uDevicePixelRatio;
 
 	vRadius = diameter / 2.0;
-	vRadiusWithMargin = vRadius + margin / 2.0;
+	vRadiusWithPadding = vRadius + padding / 2.0;
 
     vHalfStrokeWidth = strokeWidth / 2.0;
     vGradientStrength = getScaled_gradientStrength();

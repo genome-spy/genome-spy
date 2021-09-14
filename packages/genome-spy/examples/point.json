@@ -27,6 +27,11 @@
       "field": "y",
       "type": "quantitative",
       "scale": { "range": [0, 4] }
+    },
+    "angle": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "range": [0, -45] }
     }
   }
 }

@@ -2,13 +2,15 @@ const lowp vec4 white = vec4(1.0);
 const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
 
 flat in float vRadius;
-flat in float vRadiusWithMargin;
+flat in float vRadiusWithPadding;
 
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
 flat in lowp float vShape;
 flat in lowp float vHalfStrokeWidth;
 flat in lowp float vGradientStrength;
+
+flat in mat2 vRotationMatrix;
 
 out lowp vec4 fragColor;
 
@@ -68,9 +70,9 @@ void main() {
     float d;
 
 	/** Normalized point coord */
-    vec2 p = (2.0 * gl_PointCoord - 1.0) * vRadiusWithMargin;
+    vec2 p = vRotationMatrix * (2.0 * gl_PointCoord - 1.0) * vRadiusWithPadding;
 	float r = vRadius;
-    
+
     // We could also use textures here. Could even be faster, because we have plenty of branching here.
     if (vShape == CIRCLE) {
         d = circle(p, r);
@@ -101,7 +103,7 @@ void main() {
     }
 
 	if (!uPickingEnabled) {
-		// Stuble radial gradient
+		// TODO: Stuble radial gradient
 		lowp vec4 fillColor = vFillColor; //mix(vColor, white, -d * vGradientStrength);
 
 		fragColor = distanceToColor(d, fillColor, vStrokeColor, vHalfStrokeWidth);

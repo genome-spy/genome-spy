@@ -34,6 +34,7 @@ export default class PointMark extends Mark {
                 gradientStrength: 0.0,
                 dx: 0,
                 dy: 0,
+                angle: 0,
 
                 maxRelativePointDiameter: 0.8,
                 minAbsolutePointDiameter: 0,
@@ -60,6 +61,7 @@ export default class PointMark extends Mark {
             "stroke",
             "fillOpacity",
             "strokeOpacity",
+            "angle",
         ];
     }
 
@@ -77,6 +79,7 @@ export default class PointMark extends Mark {
             "stroke",
             "fillOpacity",
             "strokeOpacity",
+            "angle",
         ];
     }
 
