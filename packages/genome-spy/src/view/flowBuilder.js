@@ -13,7 +13,7 @@ import {
     isDatumDef,
     isFieldDef,
     isPositionalChannel,
-    primaryChannel
+    primaryChannel,
 } from "../encoder/encoder";
 import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
 import { isAggregateSamplesSpec } from "./viewUtils";
@@ -26,6 +26,8 @@ import NamedSource, { isNamedData } from "../data/sources/namedSource";
  * @typedef {import("./view").default} View
  * @typedef {import("../data/flowNode").default} FlowNode
  * @typedef {import("../data/dataFlow").default<View>} DataFlow
+ * @typedef {import("../spec/channel").Channel} Channel
+ * @typedef {import("../spec/channel").Encoding} Encoding
  *
  * @param {View} root
  * @param {DataFlow<View>} [existingFlow] Add data flow
@@ -51,8 +53,10 @@ export function buildDataFlow(root, existingFlow) {
      */
     function appendNode(node, onMissingParent = () => undefined) {
         if (!currentNode) {
-            throw onMissingParent() ||
-                new Error("Cannot append data flow node, no parent exist!");
+            throw (
+                onMissingParent() ||
+                new Error("Cannot append data flow node, no parent exist!")
+            );
         }
         currentNode.addChild(node);
         currentNode = node;
@@ -106,7 +110,7 @@ export function buildDataFlow(root, existingFlow) {
     }
 
     /** @param {View} view */
-    const processView = view => {
+    const processView = (view) => {
         nodeStack.push(currentNode);
 
         if (view.spec.data) {
@@ -154,7 +158,7 @@ export function buildDataFlow(root, existingFlow) {
                 sort: getCompareParamsForView(
                     view,
                     linearize?.rewrittenEncoding
-                )
+                ),
             });
 
             appendNode(collector);
@@ -167,13 +171,13 @@ export function buildDataFlow(root, existingFlow) {
     };
 
     /** @param {View} view */
-    processView.postOrder = view => {
+    processView.postOrder = (view) => {
         currentNode = nodeStack.pop();
     };
 
     root.visit(processView);
 
-    postProcessOps.forEach(op => op());
+    postProcessOps.forEach((op) => op());
 
     return dataFlow;
 }
@@ -189,15 +193,16 @@ export function linearizeLocusAccess(view) {
     /** @type {FlowNode[]} */
     const transforms = [];
 
-    /** @type {Record<string, import("../spec/channel").ChannelDef>} */
+    /** @type {Encoding} */
     const rewrittenEncoding = {};
 
-    /** @type {{channel: string, chromPosDef: import("../spec/channel").ChromPosDef}[]} */
+    /** @type {{ channel: Channel, chromPosDef: import("../spec/channel").ChromPosDef}[]} */
     const channelsAndChromPosDefs = [];
 
     // Optimize the number of transforms. Use only a single transform for positions
     // that share the chromosome field and channel.
-    for (const [channel, channelDef] of Object.entries(view.getEncoding())) {
+    for (const [c, channelDef] of Object.entries(view.getEncoding())) {
+        const channel = /** @type {Channel} */ (c);
         if (isPositionalChannel(channel) && isChromPosDef(channelDef)) {
             channelsAndChromPosDefs.push({ channel, chromPosDef: channelDef });
         }
@@ -207,8 +212,8 @@ export function linearizeLocusAccess(view) {
     // Have to use multi-level grouping.
     const grouped = group(
         channelsAndChromPosDefs,
-        d => /** @type {"x" | "y"} */ (primaryChannel(d.channel)),
-        d => d.chromPosDef.chrom
+        (d) => /** @type {"x" | "y"} */ (primaryChannel(d.channel)),
+        (d) => d.chromPosDef.chrom
     );
 
     for (const [primaryChan, chromAndStuff] of grouped.entries()) {
@@ -217,15 +222,17 @@ export function linearizeLocusAccess(view) {
             const pos = [];
             /** @type {string[]} */
             const as = [];
+            /** @type {number[]} */
+            const offset = [];
 
             for (const { channel, chromPosDef } of chanChromPos) {
                 /** @param {string} str */
-                const strip = str => str.replace(/[^A-Za-z0-9_]/g, "");
+                const strip = (str) => str.replace(/[^A-Za-z0-9_]/g, "");
                 const linearizedField = [
                     "_linearized_",
                     strip(chromPosDef.chrom),
                     "_",
-                    strip(chromPosDef.pos)
+                    strip(chromPosDef.pos),
                 ].join("");
 
                 // Prefer using the spec directly because getEncoding() returns inherited props too.
@@ -235,7 +242,7 @@ export function linearizeLocusAccess(view) {
                     ...(view.spec.encoding?.[channel] ??
                         view.getEncoding()[channel] ??
                         {}),
-                    field: linearizedField
+                    field: linearizedField,
                 };
                 delete newFieldDef.chrom;
                 delete newFieldDef.pos;
@@ -246,6 +253,7 @@ export function linearizeLocusAccess(view) {
                 rewrittenEncoding[channel] = newFieldDef;
 
                 pos.push(chromPosDef.pos);
+                offset.push(chromPosDef.offset ?? 0);
                 as.push(linearizedField);
             }
 
@@ -256,7 +264,8 @@ export function linearizeLocusAccess(view) {
                         channel: primaryChan,
                         chrom: chrom,
                         pos,
-                        as
+                        offset,
+                        as,
                     },
                     view
                 )
@@ -275,11 +284,11 @@ export function linearizeLocusAccess(view) {
               rewrite: () => {
                   view.spec.encoding = {
                       ...view.spec.encoding,
-                      ...rewrittenEncoding
+                      ...rewrittenEncoding,
                   };
                   // This is so ugly...
                   invalidate(view.mark, "encoding");
-              }
+              },
           }
         : undefined;
 }
@@ -349,6 +358,6 @@ export function createChain(dataSource, ...transforms) {
     return {
         dataSource,
         collector,
-        loadAndCollect
+        loadAndCollect,
     };
 }

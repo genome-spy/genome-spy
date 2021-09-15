@@ -68,8 +68,29 @@ export interface ExprDef extends ChannelDefWithScale {
 }
 export interface ChromPosDef extends ChannelDefWithScale {
     type: "locus";
+
+    /**
+     * The field having the chromosome or contig.
+     */
     chrom: FieldName;
+
+    /**
+     * The field having an intra-chromosomal position.
+     */
     pos?: FieldName;
+
+    /**
+     * An offset or offsets that allow for adjusting the numbering base. The offset
+     * is subtracted from the positions.
+     *
+     * GenomeSpy uses internally zero-based indexing with half-open intervals.
+     * UCSC-based formats (BED, etc.) generally use this scheme. However, for example,
+     * VCF files use one-based indexing and must be adjusted by setting the offset to
+     * `1`.
+     *
+     * **Default:** `0`
+     */
+    offset?: number;
 }
 
 export interface FacetFieldDef extends ChannelDefBase {

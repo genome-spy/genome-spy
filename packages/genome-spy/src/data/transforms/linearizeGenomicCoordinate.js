@@ -33,7 +33,7 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
         }
 
         const chromAccessor = field(params.chrom);
-        const posAccessors = asArray(params.pos).map(pos => field(pos));
+        const posAccessors = asArray(params.pos).map((pos) => field(pos));
         const as = asArray(params.as);
 
         if (posAccessors.length != as.length) {
@@ -42,16 +42,35 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
             );
         }
 
+        const offsetParam = asArray(params.offset);
+
+        /** @type {number[]} */
+        let posOffsets;
+
+        if (offsetParam.length == 0) {
+            posOffsets = new Array(posAccessors.length).fill(0);
+        } else if (offsetParam.length == 1) {
+            posOffsets = new Array(posAccessors.length).fill(offsetParam[0]);
+        } else if (offsetParam.length == posAccessors.length) {
+            posOffsets = offsetParam;
+        } else {
+            throw new Error(
+                `Invalid "offset" parameter: ${JSON.stringify(params.offset)}!`
+            );
+        }
+
         const setter = new Function(
             "datum",
-            "offset",
+            "chromOffset",
             "posAccessors",
             as
                 .map(
                     (a, i) =>
                         `datum[${JSON.stringify(
                             a
-                        )}] = offset + +posAccessors[${i}](datum);`
+                        )}] = chromOffset + +posAccessors[${i}](datum) - ${
+                            posOffsets[i]
+                        };`
                 )
                 .join("\n")
         );
@@ -61,7 +80,7 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
         let chromOffset = 0;
 
         /** @param {string | number} chrom */
-        const getChromOffset = chrom => {
+        const getChromOffset = (chrom) => {
             if (chrom !== lastChrom) {
                 chromOffset = genome.cumulativeChromPositions.get(chrom);
                 if (chromOffset === undefined) {
@@ -74,7 +93,7 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
         };
 
         /** @param {Record<string, any>} datum */
-        this.handle = datum => {
+        this.handle = (datum) => {
             setter(datum, getChromOffset(chromAccessor(datum)), posAccessors);
             this._propagate(datum);
         };
