@@ -144,43 +144,6 @@ export interface DynamicData extends DataBase {
     dynamicSource: boolean;
 }
 
-export function isUrlData(data: Partial<Data>): data is UrlData {
-    return "url" in data;
-}
-
-export function isInlineData(data: Partial<Data>): data is InlineData {
-    return "values" in data;
-}
-
-export function isNamedData(data: Partial<Data>): data is NamedData {
-    return (
-        !!data["name"] &&
-        !isUrlData(data) &&
-        !isInlineData(data) &&
-        !isGenerator(data) &&
-        !isDynamicData(data)
-    );
-}
-
-export function isGenerator(data: Partial<Data>): data is Generator {
-    return data && isSequenceGenerator(data);
-}
-
-export function isSequenceGenerator(
-    data: Partial<Data>
-): data is SequenceGenerator {
-    return "sequence" in data;
-}
-export function isDynamicCallbackData(
-    data: Partial<Data>
-): data is DynamicCallbackData {
-    return "dynamicCallbackSource" in data;
-}
-
-export function isDynamicData(data: Partial<Data>): data is DynamicData {
-    return "dynamicSource" in data;
-}
-
 export type Generator = SequenceGenerator;
 
 export interface GeneratorBase {
