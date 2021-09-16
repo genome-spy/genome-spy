@@ -3,7 +3,7 @@ import {
     createTexture,
     drawBufferInfo,
     setBuffersAndAttributes,
-    setUniforms
+    setUniforms,
 } from "twgl.js";
 import VERTEX_SHADER from "../gl/rule.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rule.fragment.glsl";
@@ -31,7 +31,7 @@ export default class RuleMark extends Mark {
                 /** @type {number[]} */
                 strokeDash: null,
                 strokeDashOffset: 0,
-                strokeCap: "butt"
+                strokeCap: "butt",
             })
         );
     }
@@ -46,10 +46,13 @@ export default class RuleMark extends Mark {
             "y2",
             "size",
             "color",
-            "opacity"
+            "opacity",
         ];
     }
 
+    /**
+     * @returns {import("../spec/channel").Channel[]}
+     */
     getSupportedChannels() {
         return [...super.getSupportedChannels(), "x2", "y2", "size"];
     }
@@ -113,7 +116,7 @@ export default class RuleMark extends Mark {
                 internalFormat: gl.R8,
                 format: gl.RED,
                 src: textureData,
-                height: 1
+                height: 1,
             });
             this.dashTextureSize = textureData.length; // Not needed with WebGL2
         }
@@ -129,7 +132,7 @@ export default class RuleMark extends Mark {
             encoders: this.encoders,
             attributes: this.getAttributes(),
             numItems: Math.max(itemCount, this.properties.minBufferSize || 0),
-            buildXIndex: this.properties.buildIndex
+            buildXIndex: this.properties.buildIndex,
         });
 
         builder.addBatches(collector.facetBatches);
@@ -151,13 +154,13 @@ export default class RuleMark extends Mark {
             uDashTextureSize: this.dashTextureSize,
             uStrokeCap: ["butt", "square", "round"].indexOf(
                 this.properties.strokeCap
-            )
+            ),
         });
 
         if (this.dashTexture) {
             setUniforms(this.programInfo, {
                 uDashTexture: this.dashTexture,
-                uStrokeDashOffset: this.properties.strokeDashOffset
+                uStrokeDashOffset: this.properties.strokeDashOffset,
             });
         }
 
@@ -197,7 +200,7 @@ function createDashTextureArray(pattern) {
     if (
         pattern.length == 0 ||
         pattern.length % 2 ||
-        pattern.findIndex(s => Math.round(s) != s || s < 1 || s > 1000) >= 0
+        pattern.findIndex((s) => Math.round(s) != s || s < 1 || s > 1000) >= 0
     ) {
         throw new Error(
             "Invalid stroke dash pattern: " + JSON.stringify(pattern)

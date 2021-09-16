@@ -38,6 +38,9 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 
 /**
  * @typedef {import("../spec/mark").MarkConfig} MarkConfig
+ * @typedef {import("../spec/channel").Channel} Channel
+ * @typedef {import("../spec/channel").Encoding} Encoding
+ * @typedef {import("../spec/channel").ValueDef} ValueDef
  *
  * @typedef {import("../view/view").RenderingOptions} RenderingOptions
  * @typedef {object} _MarkRenderingOptions
@@ -130,6 +133,9 @@ export default class Mark {
         throw new Error("Not implemented!");
     }
 
+    /**
+     * @returns {Channel[]}
+     */
     getSupportedChannels() {
         return [
             "sample",
@@ -144,10 +150,10 @@ export default class Mark {
     }
 
     /**
-     * @returns {import("../spec/channel").Encoding}
+     * @returns {Encoding}
      */
     getDefaultEncoding() {
-        /** @type {import("../spec/channel").Encoding} */
+        /** @type {Encoding} */
         const encoding = {
             sample: undefined,
             uniqueId: undefined,
@@ -167,8 +173,8 @@ export default class Mark {
     /**
      * Adds intelligent defaults etc to the encoding.
      *
-     * @param {import("../spec/channel").Encoding} encoding
-     * @returns {import("../spec/channel").Encoding}
+     * @param {Encoding} encoding
+     * @returns {Encoding}
      */
     fixEncoding(encoding) {
         return encoding;
@@ -177,19 +183,31 @@ export default class Mark {
     /**
      * Returns the encoding spec supplemented with mark's default encodings
      *
-     * @returns {import("../spec/channel").Encoding}
+     * @returns {Encoding}
      */
     get encoding() {
         return getCachedOrCall(this, "encoding", () => {
             const defaults = this.getDefaultEncoding();
             const configured = this.unitView.getEncoding();
 
+            /** @type {(property: string) => ValueDef} */
+            const propToValueDef = (property) => {
+                const value =
+                    this.properties[/** @type {keyof MarkConfig} */ (property)];
+                // TODO: Use isScalar ... but... tooltip breaks if type guard is used
+                return { value };
+                //}
+            };
+
             const propertyValues = Object.fromEntries(
                 this.getSupportedChannels()
-                    .map((channel) => [
-                        channel,
-                        { value: this.properties[channel] },
-                    ])
+                    .map(
+                        (channel) =>
+                            /** @type {[Channel, ValueDef]} */ ([
+                                channel,
+                                propToValueDef(channel),
+                            ])
+                    )
                     .filter((entry) => entry[1].value !== undefined)
             );
 
@@ -286,7 +304,15 @@ export default class Mark {
             extraHeaders.push(`#define ${sampleFacetMode}`);
         }
 
-        for (const channel of attributes) {
+        for (const attribute of attributes) {
+            /** @type {Channel} */
+            let channel;
+            if (attribute in this.encoding) {
+                channel = /** @type {Channel} */ (attribute);
+            } else {
+                continue;
+            }
+
             const channelDef = this.encoding[channel];
 
             if (!channelDef) {

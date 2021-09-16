@@ -23,7 +23,14 @@ export type Channel =
     | "text"
     | "size2"
     | "color2"
-    | "angle";
+    | "angle"
+    | "sample"
+    | "uniqueId"
+    | "search"
+    | "facetIndex"
+    | "semanticScore"
+    | "dx"
+    | "dy";
 
 export interface ChannelDefBase {
     title?: string | null;

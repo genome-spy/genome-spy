@@ -1,3 +1,5 @@
+import { isBoolean, isNumber, isString } from "vega-util";
+
 /** A set of typical NA values */
 export const NAs = new Set(["", "NA", ".", "-"]);
 
@@ -8,7 +10,15 @@ export const NAs = new Set(["", "NA", ".", "-"]);
  */
 export function inferNumeric(values) {
     return values
-        .filter(value => typeof value == "string")
-        .filter(value => !NAs.has(value))
-        .every(value => /^[+-]?\d+(\.\d*)?$/.test(value));
+        .filter((value) => typeof value == "string")
+        .filter((value) => !NAs.has(value))
+        .every((value) => /^[+-]?\d+(\.\d*)?$/.test(value));
+}
+
+/**
+ * @param {any} value
+ * @returns {value is string | number | boolean}
+ */
+export function isScalar(value) {
+    return isString(value) || isNumber(value) || isBoolean(value);
 }

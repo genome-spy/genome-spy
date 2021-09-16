@@ -65,6 +65,9 @@ export default class PointMark extends Mark {
         ];
     }
 
+    /**
+     * @returns {import("../spec/channel").Channel[]}
+     */
     getSupportedChannels() {
         return [
             ...super.getSupportedChannels(),
@@ -72,7 +75,6 @@ export default class PointMark extends Mark {
             "semanticScore",
             "shape",
             "strokeWidth",
-            "gradientStrength",
             "dx",
             "dy",
             "fill",

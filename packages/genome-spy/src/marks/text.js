@@ -110,6 +110,9 @@ export default class TextMark extends Mark {
         ];
     }
 
+    /**
+     * @returns {import("../spec/channel").Channel[]}
+     */
     getSupportedChannels() {
         return [
             ...super.getSupportedChannels(),

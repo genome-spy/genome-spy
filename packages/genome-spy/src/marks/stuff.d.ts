@@ -1,0 +1,15 @@
+// TODO: Find a better place for this
+
+// Source: https://fettblog.eu/typescript-better-object-keys/
+
+type ObjectKeys<T> = T extends object
+    ? (keyof T)[]
+    : T extends number
+    ? []
+    : T extends Array<any> | string
+    ? string[]
+    : never;
+
+interface ObjectConstructor {
+    keys<T>(o: T): ObjectKeys<T>;
+}
