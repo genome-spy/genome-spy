@@ -1,4 +1,4 @@
-import { isValueDef, secondaryChannel } from "../encoder/encoder";
+import { isValueDef, getSecondaryChannel } from "../encoder/encoder";
 
 /**
  *
@@ -11,7 +11,7 @@ import { isValueDef, secondaryChannel } from "../encoder/encoder";
  * @param {Channel} channel
  */
 export function fixPositional(encoding, channel) {
-    const secondary = secondaryChannel(channel);
+    const secondary = getSecondaryChannel(channel);
     if (encoding[channel]) {
         if (!encoding[secondary]) {
             if (encoding[channel].type == "quantitative") {
@@ -59,7 +59,10 @@ export function fixStroke(encoding, filled) {
         if (filled) {
             encoding.stroke = { value: null };
         } else {
-            encoding.stroke = encoding.color;
+            encoding.stroke = {
+                resolutionChannel: "color",
+                ...encoding.color,
+            };
             // TODO: Whattabout default strokeWidth?
         }
     }
@@ -69,7 +72,10 @@ export function fixStroke(encoding, filled) {
     }
 
     if (!encoding.strokeOpacity) {
-        encoding.strokeOpacity = encoding.opacity;
+        encoding.strokeOpacity = {
+            resolutionChannel: "opacity",
+            ...encoding.opacity,
+        };
     }
 }
 
@@ -81,7 +87,10 @@ export function fixFill(encoding, filled) {
     if (isValueDef(encoding.fill) && encoding.fill.value === null) {
         encoding.fillOpacity = { value: 0 };
     } else if (!encoding.fill) {
-        encoding.fill = encoding.color;
+        encoding.fill = {
+            resolutionChannel: "color",
+            ...encoding.color,
+        };
         if (!filled && !encoding.fillOpacity) {
             encoding.fillOpacity = { value: 0 };
         }
@@ -89,7 +98,10 @@ export function fixFill(encoding, filled) {
 
     if (!encoding.fillOpacity) {
         if (filled) {
-            encoding.fillOpacity = encoding.opacity;
+            encoding.fillOpacity = {
+                resolutionChannel: "opacity",
+                ...encoding.opacity,
+            };
         } else {
             encoding.fillOpacity = { value: 0 };
         }

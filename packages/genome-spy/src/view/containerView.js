@@ -110,7 +110,7 @@ export default class ContainerView extends View {
     }
 
     /**
-     * @param {string} channel
+     * @param {import("../spec/channel").Channel | "default"} channel
      * @param {ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}
      */
@@ -119,7 +119,7 @@ export default class ContainerView extends View {
     }
 
     /**
-     * @param {string} channel
+     * @param {import("../spec/channel").Channel} channel
      * @param {ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}
      */
@@ -128,7 +128,7 @@ export default class ContainerView extends View {
     }
 
     /**
-     * @param {string} channel
+     * @param {import("../spec/channel").Channel} channel
      * @param {ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}
      */

@@ -1,4 +1,5 @@
 import { isString } from "vega-util";
+import { getChannelDefWithScale } from "../encoder/encoder";
 import { peek } from "../utils/arrayUtils";
 import coalesce from "../utils/coalesce";
 
@@ -15,12 +16,12 @@ export default class AxisResolution {
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {import("./unitView").default[]} The involved views */
-        this.views = [];
+        /** @type {import("./scaleResolution").ResolutionMember[]} The involved views */
+        this.members = [];
     }
 
     get scaleResolution() {
-        return peek(this.views)?.getScaleResolution(this.channel);
+        return peek(this.members)?.view.getScaleResolution(this.channel);
     }
 
     /**
@@ -28,8 +29,9 @@ export default class AxisResolution {
      * scales have been resolved.
      *
      * @param {UnitView} view
+     * @param {import("../spec/channel").Channel} channel TODO: Do something for this
      */
-    pushUnitView(view) {
+    pushUnitView(view, channel) {
         const newScaleResolution = view.getScaleResolution(this.channel);
 
         if (!newScaleResolution) {
@@ -43,13 +45,14 @@ export default class AxisResolution {
             throw new Error("Shared axes must have a shared scale!");
         }
 
-        this.views.push(view);
+        this.members.push({ view, channel });
     }
 
     getAxisProps() {
         return getCachedOrCall(this, "axisProps", () => {
-            const propArray = this.views.map(
-                (view) => this._getEncoding(view).axis
+            const propArray = this.members.map(
+                (member) =>
+                    getChannelDefWithScale(member.view, member.channel).axis
             );
 
             if (
@@ -71,12 +74,12 @@ export default class AxisResolution {
     }
 
     getTitle() {
-        /** @param {UnitView} view} */
-        const computeTitle = (view) => {
-            const channelDef =
-                /** @type {import("../spec/channel").ChannelDefWithScale} */ (
-                    this._getEncoding(view)
-                );
+        /** @param {import("./scaleResolution").ResolutionMember} member} */
+        const computeTitle = (member) => {
+            const channelDef = getChannelDefWithScale(
+                member.view,
+                member.channel
+            );
 
             // Retain nulls as they indicate that no title should be shown
             return coalesce(
@@ -88,16 +91,8 @@ export default class AxisResolution {
             );
         };
 
-        return [...new Set(this.views.map(computeTitle).filter(isString))].join(
-            ", "
-        );
-    }
-
-    /**
-     *
-     * @param {UnitView} view
-     */
-    _getEncoding(view) {
-        return view.mark.encoding[this.channel];
+        return [
+            ...new Set(this.members.map(computeTitle).filter(isString)),
+        ].join(", ");
     }
 }

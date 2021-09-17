@@ -56,8 +56,19 @@ export interface ChannelDefWithScale extends ChannelDefBase {
 
     format?: string;
 
-    /** Use emulated 64 bit floating points to increase GPU rendering precision */
+    /**
+     * Use emulated 64 bit floating points to increase precision of scales
+     * computed on the GPU. By default, 32 bit floats are used.
+     */
     fp64?: boolean;
+
+    /**
+     * Use an alternative channel for scale resolution.
+     *
+     * This is mainly for internal use and allows using `color` channel to resolve
+     * `fill` and `stroke` channels under certain circumstances.
+     */
+    resolutionChannel?: Channel;
 }
 
 export interface FieldDef extends ChannelDefWithScale {

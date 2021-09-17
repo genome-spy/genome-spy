@@ -1,7 +1,7 @@
 import { Data } from "./data";
 import { Scale } from "./scale";
 import { TransformParams } from "./transform";
-import { Encoding, FacetFieldDef, PositionalChannel } from "./channel";
+import { Channel, Encoding, FacetFieldDef, PositionalChannel } from "./channel";
 import {
     FillAndStrokeProps,
     MarkConfigAndType,
@@ -132,9 +132,13 @@ export type ResolutionTarget = "scale" | "axis";
  * `"excluded"` behaves like `"shared"`, but is not pulled towards the root.
  */
 export type ResolutionBehavior = "independent" | "shared" | "excluded";
+
 export interface ResolveSpec {
     resolve?: Partial<
-        Record<ResolutionTarget, Record<string, ResolutionBehavior>>
+        Record<
+            ResolutionTarget,
+            Partial<Record<Channel | "default", ResolutionBehavior>>
+        >
     >;
 }
 

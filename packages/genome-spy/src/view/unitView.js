@@ -10,7 +10,9 @@ import {
     isSecondaryChannel,
     secondaryChannels,
     isPositionalChannel,
-    isChannelDefWithScale
+    isChannelDefWithScale,
+    primaryPositionalChannels,
+    getPrimaryChannel,
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 import AxisResolution from "./axisResolution";
@@ -26,10 +28,11 @@ export const markTypes = {
     rect: RectMark,
     rule: RuleMark,
     link: LinkMark,
-    text: TextMark
+    text: TextMark,
 };
 
 /**
+ * @typedef {import("../spec/channel").Channel} Channel
  * @typedef {import("./view").default} View
  * @typedef {import("./layerView").default} LayerView
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
@@ -124,20 +127,18 @@ export default class UnitView extends ContainerView {
     resolve(type) {
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
 
-        for (const [channel, channelDef] of Object.entries(
-            this.mark.encoding
-        )) {
-            if (type == "axis" && !isPositionalChannel(channel)) {
-                continue;
-            }
+        const encoding = this.mark.encoding;
 
-            if (isSecondaryChannel(channel)) {
-                // TODO: Secondary channels should be pulled up as "primarys".
-                // Example: The titles of both y and y2 should be shown on the y axis
-                continue;
-            }
-
+        for (const [channel, channelDef] of Object.entries(encoding)) {
             if (!isChannelDefWithScale(channelDef)) {
+                continue;
+            }
+
+            let targetChannel = getPrimaryChannel(
+                channelDef.resolutionChannel ?? channel
+            );
+
+            if (type == "axis" && !isPositionalChannel(targetChannel)) {
                 continue;
             }
 
@@ -146,29 +147,32 @@ export default class UnitView extends ContainerView {
             while (
                 view.parent instanceof ContainerView &&
                 ["shared", "excluded"].includes(
-                    view.parent.getConfiguredOrDefaultResolution(channel, type)
+                    view.parent.getConfiguredOrDefaultResolution(
+                        targetChannel,
+                        type
+                    )
                 ) &&
-                view.getConfiguredOrDefaultResolution(channel, type) !=
+                view.getConfiguredOrDefaultResolution(targetChannel, type) !=
                     "excluded"
             ) {
                 // @ts-ignore
                 view = view.parent;
             }
 
-            if (!view.resolutions[type][channel]) {
-                view.resolutions[type][channel] =
+            if (!view.resolutions[type][targetChannel]) {
+                view.resolutions[type][targetChannel] =
                     type == "scale"
-                        ? new ScaleResolution(channel)
-                        : new AxisResolution(channel);
+                        ? new ScaleResolution(targetChannel)
+                        : new AxisResolution(targetChannel);
             }
 
-            view.resolutions[type][channel].pushUnitView(this);
+            view.resolutions[type][targetChannel].pushUnitView(this, channel);
         }
     }
 
     /**
      *
-     * @param {string} channel
+     * @param {import("./view").Channel} channel
      */
     getAccessor(channel) {
         return this._cache("accessor/" + channel, () => {
@@ -205,7 +209,7 @@ export default class UnitView extends ContainerView {
     }
 
     /**
-     * @param {string} channel A primary channel
+     * @param {Channel} channel A primary channel
      */
     _validateDomainQuery(channel) {
         if (isSecondaryChannel(channel)) {
@@ -231,7 +235,7 @@ export default class UnitView extends ContainerView {
     /**
      * Returns the domain of the specified channel of this domain/mark.
      *
-     * @param {string} channel A primary channel
+     * @param {Channel} channel A primary channel
      * @returns {DomainArray}
      */
     getConfiguredDomain(channel) {
@@ -240,7 +244,9 @@ export default class UnitView extends ContainerView {
         const specDomain =
             channelDef && channelDef.scale && channelDef.scale.domain;
         if (specDomain) {
-            const scaleResolution = this.getScaleResolution(channel);
+            const scaleResolution = this.getScaleResolution(
+                channelDef.resolutionChannel ?? channel
+            );
             return createDomain(
                 channelDef.type,
                 // Chrom/pos must be linearized first
@@ -259,24 +265,23 @@ export default class UnitView extends ContainerView {
      * Alternatively, extractor nodes could be added to the data flow, just like Vega does
      * (with aggregate and extent).
      *
-     * @param {string} channel
+     * @param {Channel} channel
      * @returns {DomainArray}
      */
     extractDataDomain(channel) {
         const channelDef = this._validateDomainQuery(channel);
         const type = channelDef.type;
 
-        /** @param {string} channel */
-        const extract = channel => {
+        /** @param {Channel} channel */
+        const extract = (channel) => {
             /** @type {DomainArray} */
             let domain;
 
             const encodingSpec = this.mark.encoding[channel];
 
             if (encodingSpec) {
-                const accessor = this.context.accessorFactory.createAccessor(
-                    encodingSpec
-                );
+                const accessor =
+                    this.context.accessorFactory.createAccessor(encodingSpec);
                 if (accessor) {
                     domain = createDomain(type);
 
@@ -285,7 +290,7 @@ export default class UnitView extends ContainerView {
                     } else {
                         const collector = this.getCollector();
                         if (collector?.completed) {
-                            collector.visitData(d =>
+                            collector.visitData((d) =>
                                 domain.extend(accessor(d))
                             );
                         }
@@ -309,14 +314,16 @@ export default class UnitView extends ContainerView {
     }
 
     getZoomLevel() {
-        /** @param {string} channel */
-        const getZoomLevel = channel => {
+        /** @param {Channel} channel */
+        const getZoomLevel = (channel) => {
             // TODO: Replace this with optional chaining (?.) when webpack can handle it
             const resolution = this.getScaleResolution(channel);
             return resolution ? resolution.getZoomLevel() : 1.0;
         };
 
-        return ["x", "y"].map(getZoomLevel).reduce((a, c) => a * c, 1);
+        return primaryPositionalChannels
+            .map(getZoomLevel)
+            .reduce((a, c) => a * c, 1);
     }
 
     _initializeAggregateViews() {
@@ -325,26 +332,24 @@ export default class UnitView extends ContainerView {
             for (const sumSpec of this.spec.aggregateSamples) {
                 sumSpec.transform = [
                     ...(sumSpec.transform ?? []),
-                    { type: "mergeFacets" }
+                    { type: "mergeFacets" },
                 ];
 
                 sumSpec.encoding = {
                     ...(sumSpec.encoding ?? {}),
-                    sample: null
+                    sample: null,
                 };
 
                 const View = getViewClass(sumSpec);
-                const summaryView = /** @type { UnitView | LayerView | DecoratorView } */ (new View(
-                    sumSpec,
-                    this.context,
-                    this,
-                    "summaryView"
-                ));
+                const summaryView =
+                    /** @type { UnitView | LayerView | DecoratorView } */ (
+                        new View(sumSpec, this.context, this, "summaryView")
+                    );
 
                 /**
                  * @param {View} [whoIsAsking]
                  */
-                summaryView.getFacetFields = whoIsAsking => undefined;
+                summaryView.getFacetFields = (whoIsAsking) => undefined;
 
                 this.sampleAggregateViews.push(summaryView);
             }

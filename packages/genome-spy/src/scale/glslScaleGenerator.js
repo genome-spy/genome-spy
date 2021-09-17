@@ -13,7 +13,7 @@ import {
     isColorChannel,
     isDatumDef,
     isDiscreteChannel,
-    primaryChannel,
+    getPrimaryChannel,
 } from "../encoder/encoder";
 import { peek } from "../utils/arrayUtils";
 
@@ -98,7 +98,7 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  */
 // eslint-disable-next-line complexity
 export function generateScaleGlsl(channel, scale, encoding) {
-    const primary = primaryChannel(channel);
+    const primary = getPrimaryChannel(channel);
     const attributeName = ATTRIBUTE_PREFIX + channel;
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeName = RANGE_PREFIX + primary;

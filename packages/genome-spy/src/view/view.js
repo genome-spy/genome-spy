@@ -7,7 +7,7 @@ import {
 } from "../utils/propertyCacher";
 import { isNumber, span } from "vega-util";
 import { scaleLog } from "d3-scale";
-import { isFieldDef, primaryChannel } from "../encoder/encoder";
+import { isFieldDef, getPrimaryChannel } from "../encoder/encoder";
 import { appendToBaseUrl } from "../utils/url";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils";
@@ -408,7 +408,7 @@ export default class View {
      * @returns {ScaleResolution | AxisResolution}
      */
     _getResolution(channel, type) {
-        channel = primaryChannel(channel);
+        channel = getPrimaryChannel(channel);
 
         /** @type {import("./view").default } */
         // eslint-disable-next-line consistent-this

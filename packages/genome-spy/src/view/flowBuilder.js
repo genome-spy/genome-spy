@@ -13,7 +13,7 @@ import {
     isDatumDef,
     isFieldDef,
     isPositionalChannel,
-    primaryChannel,
+    getPrimaryChannel,
 } from "../encoder/encoder";
 import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
 import { isAggregateSamplesSpec } from "./viewUtils";
@@ -212,7 +212,7 @@ export function linearizeLocusAccess(view) {
     // Have to use multi-level grouping.
     const grouped = group(
         channelsAndChromPosDefs,
-        (d) => /** @type {"x" | "y"} */ (primaryChannel(d.channel)),
+        (d) => /** @type {"x" | "y"} */ (getPrimaryChannel(d.channel)),
         (d) => d.chromPosDef.chrom
     );
 

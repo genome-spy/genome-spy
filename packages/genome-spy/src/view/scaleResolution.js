@@ -17,10 +17,13 @@ import createScale, { configureScale } from "../scale/scale";
 
 import { invalidate, getCachedOrCall } from "../utils/propertyCacher";
 import {
+    getChannelDefWithScale,
     getDiscreteRange,
     isColorChannel,
     isDiscreteChannel,
     isPositionalChannel,
+    isSecondaryChannel,
+    primaryPositionalChannels,
 } from "../encoder/encoder";
 import {
     isChromosomalLocus,
@@ -40,11 +43,13 @@ export const INDEX = "index";
  *
  * TODO: This has grown a bit too fat. Consider splitting.
  *
+ * @typedef {{view: import("./unitView").default, channel: Channel}} ResolutionMember
  * @typedef {import("./unitView").default} UnitView
  * @typedef {import("../encoder/encoder").VegaScale} VegaScale
  * @typedef {import("../utils/domainArray").DomainArray} DomainArray
  * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
  *
+ * @typedef {import("../spec/channel").Channel} Channel
  * @typedef {import("../spec/scale").Scale} Scale
  * @typedef {import("../spec/scale").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale").ComplexDomain} ComplexDomain
@@ -52,12 +57,12 @@ export const INDEX = "index";
  */
 export default class ScaleResolution {
     /**
-     * @param {import("../spec/channel").Channel} channel
+     * @param {Channel} channel
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {import("./unitView").default[]} The involved views */
-        this.views = [];
+        /** @type {ResolutionMember[]} The involved views */
+        this.members = [];
         /** @type {string} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
@@ -96,12 +101,13 @@ export default class ScaleResolution {
      * N.B. This is expected to be called in depth-first order
      *
      * @param {UnitView} view
+     * @param {import("./view").Channel} channel
      */
-    pushUnitView(view) {
-        const type = this._getEncoding(view).type;
+    pushUnitView(view, channel) {
+        const type = getChannelDefWithScale(view, channel).type;
         if (!this.type) {
             this.type = type;
-        } else if (type !== this.type) {
+        } else if (type !== this.type && !isSecondaryChannel(channel)) {
             // TODO: Include a reference to the layer
             throw new Error(
                 `Can not use shared scale for different data types: ${this.type} vs. ${type}. Use "resolve: independent" for channel ${this.channel}`
@@ -110,7 +116,7 @@ export default class ScaleResolution {
             // TODO: Use the same merging logic as in: https://github.com/vega/vega-lite/blob/master/src/scale.ts
         }
 
-        this.views.push(view);
+        this.members.push({ view, channel });
     }
 
     /**
@@ -128,10 +134,11 @@ export default class ScaleResolution {
      */
     _getMergedScaleProps() {
         return getCachedOrCall(this, "mergedScaleProps", () => {
-            const propArray = this.views
+            const propArray = this.members
                 .map(
-                    (view) =>
-                        /** @type {Scale} */ (this._getEncoding(view).scale)
+                    (member) =>
+                        getChannelDefWithScale(member.view, member.channel)
+                            .scale
                 )
                 .filter((props) => props !== undefined);
 
@@ -190,7 +197,7 @@ export default class ScaleResolution {
                 props.fp64 = true;
             }
 
-            // Swap discrete y axis
+            // Reverse discrete y axis
             if (
                 this.channel == "y" &&
                 isDiscrete(props.type) &&
@@ -226,8 +233,10 @@ export default class ScaleResolution {
      * @return { DomainArray }
      */
     getConfiguredDomain() {
-        return this._reduceDomains((view) =>
-            view.getConfiguredDomain(this.channel)
+        return this._reduceDomains((member) =>
+            isSecondaryChannel(member.channel)
+                ? undefined
+                : member.view.getConfiguredDomain(member.channel)
         );
     }
 
@@ -238,8 +247,10 @@ export default class ScaleResolution {
      */
     getDataDomain() {
         // TODO: Optimize: extract domain only once if the views share the data
-        return this._reduceDomains((view) =>
-            view.extractDataDomain(this.channel)
+        return this._reduceDomains((member) =>
+            isSecondaryChannel(member.channel)
+                ? undefined
+                : member.view.extractDataDomain(member.channel)
         );
     }
 
@@ -287,8 +298,7 @@ export default class ScaleResolution {
     }
 
     isZoomable() {
-        //return isContinuous(this.getScale().type);
-        if (this.channel != "x" && this.channel != "y") {
+        if (!primaryPositionalChannels.includes(this.channel)) {
             return false;
         }
 
@@ -421,14 +431,6 @@ export default class ScaleResolution {
     }
 
     /**
-     *
-     * @param {UnitView} view
-     */
-    _getEncoding(view) {
-        return view.mark.encoding[this.channel];
-    }
-
-    /**
      * TODO: These actually depend on the mark, so this is clearly a wrong place.
      * And besides, these should be configurable (themeable)
      *
@@ -470,7 +472,7 @@ export default class ScaleResolution {
         }
 
         // TODO: Support multiple assemblies
-        const genome = this.views[0].context.genomeStore?.getGenome();
+        const genome = this.members[0].view.context.genomeStore?.getGenome();
         if (!genome) {
             throw new Error("No genome has been defined!");
         }
@@ -528,18 +530,18 @@ export default class ScaleResolution {
     }
 
     _getViewPaths() {
-        return this.views.map((v) => v.getPathString()).join(", ");
+        return this.members.map((v) => v.view.getPathString()).join(", ");
     }
 
     /**
      * Iterate all participanting views and reduce (union) their domains using an accessor.
      * Accessor may return the an explicitly configured domain or a domain extracted from the data.
      *
-     * @param {function(UnitView):DomainArray} domainAccessor
+     * @param {function(ResolutionMember):DomainArray} domainAccessor
      * @returns {DomainArray}
      */
     _reduceDomains(domainAccessor) {
-        const domains = this.views
+        const domains = this.members
             .map(domainAccessor)
             .filter((domain) => !!domain);
 
@@ -551,14 +553,14 @@ export default class ScaleResolution {
 
 /**
  *
- * @param {string} channel
+ * @param {Channel} channel
  * @param {string} dataType
  */
 function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
 
     if ([INDEX, LOCUS].includes(dataType)) {
-        if ("xy".includes(channel)) {
+        if (primaryPositionalChannels.includes(channel)) {
             return dataType;
         } else {
             // TODO: Also explicitly set scales should be validated
@@ -569,7 +571,7 @@ function getDefaultScaleType(channel, dataType) {
     }
 
     /**
-     * @type {Object.<string, string[]>}
+     * @type {Partial<Record<Channel, string[]>>}
      * Default types: nominal, ordinal, quantitative.
      * undefined = incompatible, "null" = disabled (pass-thru)
      */
@@ -580,9 +582,13 @@ function getDefaultScaleType(channel, dataType) {
         y: ["band", "band", "linear"],
         size: [undefined, "point", "linear"],
         opacity: [undefined, "point", "linear"],
+        fillOpacity: [undefined, "point", "linear"],
+        strokeOpacity: [undefined, "point", "linear"],
         color: ["ordinal", "ordinal", "linear"],
+        fill: ["ordinal", "ordinal", "linear"],
+        stroke: ["ordinal", "ordinal", "linear"],
+        strokeWidth: [undefined, undefined, "linear"],
         shape: ["ordinal", "ordinal", undefined],
-        squeeze: ["ordinal", "ordinal", undefined],
         sample: ["null", "null", undefined],
         semanticScore: [undefined, undefined, "null"],
         search: ["null", undefined, undefined],

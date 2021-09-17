@@ -77,7 +77,7 @@ export default class FilterScoredLabelsTransform extends FlowNode {
 
         const scale = this.resolution.getScale();
         const rangeSpan =
-            this.resolution.views[0].coords?.[
+            this.resolution.members[0].view.coords?.[
                 this.channel == "x" ? "width" : "height"
             ];
         if (!rangeSpan) {

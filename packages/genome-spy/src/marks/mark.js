@@ -322,8 +322,13 @@ export default class Mark {
             if (isValueDef(channelDef)) {
                 scaleCode.push(generateValueGlsl(channel, channelDef.value));
             } else {
+                const resolutionChannel =
+                    (isChannelDefWithScale(channelDef) &&
+                        channelDef.resolutionChannel) ||
+                    channel;
+
                 const scale = this.unitView
-                    .getScaleResolution(channel)
+                    .getScaleResolution(resolutionChannel)
                     .getScale();
 
                 const generated = generateScaleGlsl(channel, scale, channelDef);
@@ -548,7 +553,15 @@ export default class Mark {
                 const channel = /** @type {Channel} */ (
                     uniform.substring(DOMAIN_PREFIX.length)
                 );
-                const resolution = this.unitView.getScaleResolution(channel);
+
+                const channelDef = this.encoding[channel];
+                const resolutionChannel =
+                    (isChannelDefWithScale(channelDef) &&
+                        channelDef.resolutionChannel) ||
+                    channel;
+                const resolution =
+                    this.unitView.getScaleResolution(resolutionChannel);
+
                 if (resolution) {
                     const scale = resolution.getScale();
                     const domain = isDiscrete(scale.type)
@@ -568,7 +581,14 @@ export default class Mark {
 
         for (const [channel, channelDef] of Object.entries(this.encoding)) {
             if (isChannelDefWithScale(channelDef)) {
-                const resolution = this.unitView.getScaleResolution(channel);
+                const resolutionChannel =
+                    (isChannelDefWithScale(channelDef) &&
+                        channelDef.resolutionChannel) ||
+                    channel;
+
+                const resolution =
+                    this.unitView.getScaleResolution(resolutionChannel);
+
                 const texture = glHelper.rangeTextures.get(resolution);
                 if (texture) {
                     setUniforms(this.programInfo, {

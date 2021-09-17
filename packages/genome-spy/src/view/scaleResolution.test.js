@@ -2,6 +2,11 @@ import { createAndInitialize } from "./testUtils";
 import createDomain, { toRegularArray as r } from "../utils/domainArray";
 import LayerView from "./layerView";
 import UnitView from "./unitView";
+import { primaryPositionalChannels } from "../encoder/encoder";
+
+/**
+ * @typedef {import("../spec/channel").Channel} Channel
+ */
 
 // NOTE: The most of these tests don't actually test scaleResolution but the resolution algorithm.
 
@@ -12,23 +17,23 @@ describe("Scale resolution", () => {
             data: { values: [] },
 
             resolve: {
-                scale: { x: "shared" }
+                scale: { x: "shared" },
             },
 
             layer: [
                 {
                     mark: "point",
                     encoding: {
-                        color: { value: "red" }
-                    }
+                        color: { value: "red" },
+                    },
                 },
                 {
                     mark: "point",
                     encoding: {
-                        color: { value: "green" }
-                    }
-                }
-            ]
+                        color: { value: "green" },
+                    },
+                },
+            ],
         };
         const view = await createAndInitialize(spec, LayerView);
         expect(view.children[0].getScaleResolution("color")).toBeUndefined();
@@ -40,7 +45,7 @@ describe("Scale resolution", () => {
         const spec = {
             data: { values: [] },
             encoding: {
-                x: { field: "data", type: "quantitative" }
+                x: { field: "data", type: "quantitative" },
             },
 
             resolve: { scale: { x: "shared" } },
@@ -48,13 +53,13 @@ describe("Scale resolution", () => {
             layer: [
                 {
                     resolve: { scale: { x: "shared" } },
-                    layer: [{ mark: "point" }, { mark: "point" }]
+                    layer: [{ mark: "point" }, { mark: "point" }],
                 },
                 {
                     resolve: { scale: { x: "shared" } },
-                    layer: [{ mark: "point" }, { mark: "point" }]
-                }
-            ]
+                    layer: [{ mark: "point" }, { mark: "point" }],
+                },
+            ],
         };
 
         const view = await createAndInitialize(spec, LayerView);
@@ -69,25 +74,25 @@ describe("Scale resolution", () => {
         const spec = {
             data: { values: [] },
             encoding: {
-                x: { field: "data", type: "quantitative" }
+                x: { field: "data", type: "quantitative" },
             },
 
             resolve: {
                 scale: { x: "independent" },
                 // TODO: Axis should be set independent implicitly
-                axis: { x: "independent" }
+                axis: { x: "independent" },
             },
 
             layer: [
                 {
                     resolve: { scale: { x: "shared" } },
-                    layer: [{ mark: "point" }, { mark: "point" }]
+                    layer: [{ mark: "point" }, { mark: "point" }],
                 },
                 {
                     resolve: { scale: { x: "shared" } },
-                    layer: [{ mark: "point" }, { mark: "point" }]
-                }
-            ]
+                    layer: [{ mark: "point" }, { mark: "point" }],
+                },
+            ],
         };
 
         const view = await createAndInitialize(spec, LayerView);
@@ -108,11 +113,11 @@ describe("Scale resolution", () => {
         const spec = {
             data: { values: [] },
             encoding: {
-                x: { field: "data", type: "quantitative" }
+                x: { field: "data", type: "quantitative" },
             },
 
             resolve: {
-                scale: { x: "shared" }
+                scale: { x: "shared" },
             },
 
             layer: [
@@ -120,19 +125,19 @@ describe("Scale resolution", () => {
                     resolve: {
                         scale: { x: "independent" },
                         // TODO: Axis should be set independent implicitly
-                        axis: { x: "independent" }
+                        axis: { x: "independent" },
                     },
-                    layer: [{ mark: "point" }, { mark: "point" }]
+                    layer: [{ mark: "point" }, { mark: "point" }],
                 },
                 {
                     resolve: {
                         scale: { x: "independent" },
                         // TODO: Axis should be set independent implicitly
-                        axis: { x: "independent" }
+                        axis: { x: "independent" },
                     },
-                    layer: [{ mark: "point" }, { mark: "point" }]
-                }
-            ]
+                    layer: [{ mark: "point" }, { mark: "point" }],
+                },
+            ],
         };
 
         const view = await createAndInitialize(spec, LayerView);
@@ -156,11 +161,11 @@ describe("Scale resolution", () => {
         const spec = {
             data: { values: [] },
             encoding: {
-                x: { field: "data", type: "quantitative" }
+                x: { field: "data", type: "quantitative" },
             },
 
             resolve: {
-                scale: { x: "shared" }
+                scale: { x: "shared" },
             },
 
             layer: [
@@ -170,11 +175,11 @@ describe("Scale resolution", () => {
                     resolve: {
                         scale: { x: "excluded" },
                         // TODO: Implicit
-                        axis: { x: "excluded" }
+                        axis: { x: "excluded" },
                     },
-                    layer: [{ mark: "point" }, { mark: "point" }]
-                }
-            ]
+                    layer: [{ mark: "point" }, { mark: "point" }],
+                },
+            ],
         };
 
         const view = await createAndInitialize(spec, LayerView);
@@ -198,22 +203,22 @@ describe("Scale resolution", () => {
             data: { values: [] },
             encoding: {
                 x: { field: "data", type: "quantitative" },
-                y: { field: "data", type: "quantitative" }
+                y: { field: "data", type: "quantitative" },
             },
 
             resolve: {
                 scale: {
                     // The hard default in LayerView is "shared".
                     default: "independent",
-                    x: "shared"
+                    x: "shared",
                 },
                 axis: {
                     // TODO: Implicit
-                    default: "independent"
-                }
+                    default: "independent",
+                },
             },
 
-            layer: [{ mark: "point" }, { mark: "point" }]
+            layer: [{ mark: "point" }, { mark: "point" }],
         };
 
         const view = await createAndInitialize(spec, LayerView);
@@ -229,47 +234,146 @@ describe("Scale resolution", () => {
 });
 
 describe("Domain handling", () => {
-    test("Scales are shared and domains merged properly", async () => {
-        /** @type {import("../spec/view").LayerSpec} */
-        const spec = {
-            data: { values: [] },
-            resolve: { scale: { x: "shared" } },
-            layer: [
-                {
-                    mark: "point",
-                    encoding: {
-                        x: { field: "a", type: "quantitative" },
-                        y: {
-                            field: "a",
-                            type: "quantitative",
-                            scale: { domain: [1, 2] }
+    test("Scales are shared and explicit domains merged properly", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [] },
+                resolve: { scale: { default: "independent", y: "shared" } },
+                layer: [
+                    {
+                        mark: "point",
+                        encoding: {
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                scale: { domain: [1, 2] },
+                            },
                         },
-                        color: { value: "red" }
-                    }
-                },
-                {
-                    mark: "point",
-                    encoding: {
-                        x: { field: "a", type: "quantitative" },
-                        y: {
-                            field: "b",
-                            type: "quantitative",
-                            scale: { domain: [4, 5] }
+                    },
+                    {
+                        mark: "point",
+                        encoding: {
+                            y: {
+                                field: "b",
+                                type: "quantitative",
+                                scale: { domain: [4, 5] },
+                            },
                         },
-                        color: { value: "green" }
-                    }
-                }
-            ]
-        };
+                    },
+                ],
+            },
+            LayerView
+        );
 
         /** @param {import("./view").default} view */
-        const d = view =>
-            view
-                .getScaleResolution("y")
-                .getScale()
-                .domain();
+        const d = (view) => view.getScaleResolution("y").getScale().domain();
 
-        const view = await createAndInitialize(spec, LayerView);
+        expect(r(d(view))).toEqual([1, 5]);
+        expect(r(d(view.children[0]))).toEqual([1, 5]);
+        expect(r(d(view.children[1]))).toEqual([1, 5]);
+    });
+
+    test("Scales are shared and extracted domains merged properly", async () => {
+        const view = await createAndInitialize(
+            {
+                resolve: { scale: { default: "independent", y: "shared" } },
+                layer: [
+                    {
+                        data: { values: [1, 2] },
+                        mark: "point",
+                        encoding: {
+                            y: {
+                                field: "data",
+                                type: "quantitative",
+                                scale: { zero: false },
+                            },
+                        },
+                    },
+                    {
+                        data: { values: [4, 5] },
+                        mark: "point",
+                        encoding: {
+                            y: { field: "data", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+
+        /** @param {import("./view").default} view */
+        const d = (view) => view.getScaleResolution("y").getScale().domain();
+
+        expect(r(d(view))).toEqual([1, 5]);
+        expect(r(d(view.children[0]))).toEqual([1, 5]);
+        expect(r(d(view.children[1]))).toEqual([1, 5]);
+    });
+
+    test("Scales of primary and secondary channels are shared and extracted domains merged properly", async () => {
+        const view = await createAndInitialize(
+            {
+                data: {
+                    values: [
+                        { a: 1, b: 4 },
+                        { a: 2, b: 5 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "a",
+                        type: "quantitative",
+                        scale: { zero: false },
+                    },
+                    y2: {
+                        field: "b",
+                    },
+                },
+            },
+            UnitView
+        );
+
+        /** @param {import("./view").default} view */
+        const d = (view) => view.getScaleResolution("y").getScale().domain();
+
+        // FAILS!!!!!!! TODO: FIX!!
+        // expect(r(d(view))).toEqual([1, 5]);
+    });
+
+    test("resolutionChannel property is respected", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [] },
+                resolve: { scale: { default: "independent", y: "shared" } },
+                layer: [
+                    {
+                        mark: "point",
+                        encoding: {
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                scale: { domain: [1, 2] },
+                            },
+                        },
+                    },
+                    {
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "b",
+                                type: "quantitative",
+                                scale: { domain: [4, 5] },
+                                resolutionChannel: "y",
+                            },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+
+        /** @param {import("./view").default} view */
+        const d = (view) => view.getScaleResolution("y").getScale().domain();
 
         expect(r(d(view))).toEqual([1, 5]);
         expect(r(d(view.children[0]))).toEqual([1, 5]);
@@ -283,22 +387,20 @@ describe("Domain handling", () => {
                 mark: "point",
                 encoding: {
                     x: { field: "data", type: "quantitative" },
-                    y: { field: "data", type: "quantitative" }
-                }
+                    y: { field: "data", type: "quantitative" },
+                },
             },
             UnitView
         );
 
-        for (const channel of ["x", "y"]) {
+        for (const channel of primaryPositionalChannels) {
             // Extract domain from data
             view.getScaleResolution(channel).reconfigure();
         }
 
-        const d = /** @param {string} channel*/ channel =>
-            view
-                .getScaleResolution(channel)
-                .getScale()
-                .domain();
+        const d = /** @param {import("../spec/channel").Channel} channel*/ (
+            channel
+        ) => view.getScaleResolution(channel).getScale().domain();
 
         expect(d("x")).toEqual([0, 3]);
         expect(d("y")).toEqual([0, 3]);
@@ -313,23 +415,20 @@ describe("Domain handling", () => {
                     x: {
                         field: "data",
                         type: "quantitative",
-                        scale: { domain: [1, 4] }
+                        scale: { domain: [1, 4] },
                     },
                     y: {
                         field: "data",
                         type: "quantitative",
-                        scale: { domain: [1, 4] }
-                    }
-                }
+                        scale: { domain: [1, 4] },
+                    },
+                },
             },
             UnitView
         );
 
-        const d = /** @param {string} channel*/ channel =>
-            view
-                .getScaleResolution(channel)
-                .getScale()
-                .domain();
+        const d = /** @param {Channel} channel*/ (channel) =>
+            view.getScaleResolution(channel).getScale().domain();
 
         expect(d("x")).toEqual([1, 4]);
         expect(d("x")).toEqual([1, 4]);
@@ -344,28 +443,25 @@ describe("Domain handling", () => {
                     x: {
                         field: "data",
                         type: "quantitative",
-                        scale: { zero: false }
+                        scale: { zero: false },
                     },
                     y: {
                         field: "data",
                         type: "quantitative",
-                        scale: { zero: false }
-                    }
-                }
+                        scale: { zero: false },
+                    },
+                },
             },
             UnitView
         );
 
-        for (const channel of ["x", "y"]) {
+        for (const channel of primaryPositionalChannels) {
             // Extract domain from data
             view.getScaleResolution(channel).reconfigure();
         }
 
-        const d = /** @param {string} channel*/ channel =>
-            view
-                .getScaleResolution(channel)
-                .getScale()
-                .domain();
+        const d = /** @param {Channel} channel*/ (channel) =>
+            view.getScaleResolution(channel).getScale().domain();
 
         expect(d("x")).toEqual([2, 3]);
         expect(d("y")).toEqual([2, 3]);

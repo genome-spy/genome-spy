@@ -51,10 +51,10 @@ import createIndexer from "../utils/indexer";
  *
  * @param {import("../marks/mark").default} mark
  * @param {import("../spec/channel").Encoding} [encoding] Taken from the mark if not provided
- * @returns {Record<Channel, Encoder>}
+ * @returns {Partial<Record<Channel, Encoder>>}
  */
 export default function createEncoders(mark, encoding) {
-    /** @type {Record<string, Encoder>} */
+    /** @type {Partial<Record<Channel, Encoder>>} */
     const encoders = {};
 
     if (!encoding) {
@@ -67,7 +67,9 @@ export default function createEncoders(mark, encoding) {
         }
 
         const resolution = mark.unitView.getScaleResolution(
-            primaryChannel(channel)
+            (isChannelDefWithScale(channelDef) &&
+                channelDef.resolutionChannel) ||
+                channel
         );
 
         encoders[channel] = createEncoder(
@@ -200,6 +202,19 @@ export function isChannelDefWithScale(channelDef) {
 }
 
 /**
+ * @param {import("../view/unitView").default} view
+ * @param {Channel} channel
+ */
+export function getChannelDefWithScale(view, channel) {
+    const channelDef = view.mark.encoding[channel];
+    if (isChannelDefWithScale(channelDef)) {
+        return channelDef;
+    } else {
+        throw new Error("Not a channel def with scale!");
+    }
+}
+
+/**
  * @param {import("../spec/channel").ChannelDef} channelDef
  * @returns {channelDef is import("../spec/channel").ChromPosDef}
  */
@@ -254,7 +269,7 @@ export function isSecondaryChannel(channel) {
  *
  * @param {Channel} primaryChannel
  */
-export function secondaryChannel(primaryChannel) {
+export function getSecondaryChannel(primaryChannel) {
     const secondary = secondaryChannels[primaryChannel];
     if (secondary) {
         return secondary;
@@ -269,7 +284,7 @@ export function secondaryChannel(primaryChannel) {
  *
  * @param {Channel} maybeSecondary
  */
-export function primaryChannel(maybeSecondary) {
+export function getPrimaryChannel(maybeSecondary) {
     return primaryChannels[maybeSecondary] || maybeSecondary;
 }
 
@@ -278,7 +293,7 @@ export function primaryChannel(maybeSecondary) {
  *
  * @param {Channel} channel
  */
-export function channelWithSecondarys(channel) {
+export function getChannelWithSecondarys(channel) {
     return secondaryChannels[channel]
         ? [channel, secondaryChannels[channel]]
         : [channel];
@@ -288,14 +303,14 @@ export function channelWithSecondarys(channel) {
  * @param {Channel} channel
  */
 export function isPositionalChannel(channel) {
-    return primaryPositionalChannels.includes(primaryChannel(channel));
+    return primaryPositionalChannels.includes(getPrimaryChannel(channel));
 }
 
 /**
  * @param {Channel} channel
  */
 export function isColorChannel(channel) {
-    return ["color", "fill", "stroke"].includes(primaryChannel(channel));
+    return ["color", "fill", "stroke"].includes(getPrimaryChannel(channel));
 }
 
 /**
