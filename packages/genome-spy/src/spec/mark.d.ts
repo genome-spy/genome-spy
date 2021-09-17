@@ -39,8 +39,20 @@ export interface TextProps {
     paddingY?: number;
     flushX?: boolean;
     flushY?: boolean;
-    /** Stretch letters so that they can be used with sequence logos etc... */
+
+    /**
+     * If the `squeeze` property is true and secondary positional channels (`x2` and/or `y2`)
+     * are used, the text is scaled to fit mark's width and/or height.
+     *
+     * **Default value:** `true`
+     */
+    squeeze?: boolean;
+
+    /**
+     * Stretch letters so that they can be used with sequence logos etc...
+     */
     logoLetters?: boolean;
+
     viewportEdgeFadeWidth?: number[];
     viewportEdgeFadeDistance?: number[];
 }

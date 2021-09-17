@@ -157,16 +157,16 @@ export default class TextMark extends Mark {
         setUniforms(this.programInfo, {
             uPaddingX: props.paddingX,
             uPaddingY: props.paddingY,
-            uFlushX: props.flushX ? 1 : 0,
-            uFlushY: props.flushY ? 1 : 0,
+            uFlushX: !!props.flushX,
+            uFlushY: !!props.flushY,
 
             uAlignX: alignments[props.align],
             uAlignY: baselines[props.baseline],
 
-            uLogoLetter: props.logoLetters ? 1 : 0,
-
             uD: [props.dx, -props.dy],
-            uAngle: (-props.angle / 180) * Math.PI,
+
+            uLogoLetter: !!props.logoLetters,
+            uSqueeze: !!props.squeeze,
 
             uViewportEdgeFadeWidth: props.viewportEdgeFadeWidth,
             uViewportEdgeFadeDistance: props.viewportEdgeFadeDistance.map((d) =>
