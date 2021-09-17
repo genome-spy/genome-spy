@@ -417,7 +417,7 @@ export default class DecoratorView extends ContainerView {
 
     _getZoomableResolutions() {
         return this._cache("zoomableResolutions", () => {
-            /** @type {Record<string, Set<import("./scaleResolution").default>>} */
+            /** @type {Record<import("../spec/channel").PositionalChannel, Set<import("./scaleResolution").default>>} */
             const resolutions = {
                 x: new Set(),
                 y: new Set(),

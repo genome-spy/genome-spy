@@ -609,7 +609,7 @@ function getDefaultScaleType(channel, dataType) {
 
 /**
  * @param {import("../spec/scale").Scale} props
- * @param {string} channel
+ * @param {import("../spec/channel").Channel} channel
  */
 function applyLockedProperties(props, channel) {
     if (isPositionalChannel(channel) && props.type !== "ordinal") {

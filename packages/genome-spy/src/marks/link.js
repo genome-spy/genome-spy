@@ -19,14 +19,13 @@ export default class LinkMark extends Mark {
                 x2: undefined,
                 y: 0.0,
                 y2: undefined,
-                height: 1.0,
                 size: 1.0,
                 size2: undefined,
                 color: "black",
                 color2: undefined,
                 opacity: 1.0,
 
-                segments: 101 // Performance is affected more by the fill rate, i.e. number of pixels
+                segments: 101, // Performance is affected more by the fill rate, i.e. number of pixels
             })
         );
     }
@@ -44,10 +43,11 @@ export default class LinkMark extends Mark {
             "height",
             "color",
             "color2",
-            "opacity"
+            "opacity",
         ];
     }
 
+    /** @return {import("../spec/channel").Channel[]} */
     getSupportedChannels() {
         return [
             ...super.getSupportedChannels(),
@@ -56,7 +56,6 @@ export default class LinkMark extends Mark {
             "size",
             "size2",
             "color2",
-            "height"
         ];
     }
 
@@ -89,7 +88,7 @@ export default class LinkMark extends Mark {
         const builder = new ConnectionVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
-            numItems: itemCount
+            numItems: itemCount,
         });
 
         builder.addBatches(collector.facetBatches);
@@ -98,7 +97,7 @@ export default class LinkMark extends Mark {
 
         vertexData.arrays.strip = {
             data: createStrip(this.properties.segments),
-            numComponents: 2
+            numComponents: 2,
         };
 
         this.rangeMap = vertexData.rangeMap;
@@ -106,7 +105,7 @@ export default class LinkMark extends Mark {
         this.arrays = Object.fromEntries(
             Object.entries(vertexData.arrays).map(([k, v]) => [
                 k,
-                { ...v, data: undefined }
+                { ...v, data: undefined },
             ])
         );
 

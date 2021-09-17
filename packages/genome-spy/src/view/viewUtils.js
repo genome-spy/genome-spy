@@ -102,7 +102,7 @@ export function isSampleSpec(spec) {
 /**
  *
  * @param {ViewSpec} spec
- * @returns {spec is import("../spec/view").SummarizeSamplesSpec}
+ * @returns {spec is import("../spec/view").AggregateSamplesSpec}
  */
 export function isAggregateSamplesSpec(spec) {
     return (

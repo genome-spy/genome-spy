@@ -216,6 +216,11 @@ export function isExprDef(channelDef) {
 }
 
 /**
+ * @type {Channel[]}
+ */
+export const primaryPositionalChannels = ["x", "y"];
+
+/**
  * Map primary channels to secondarys
  *
  * @type {Partial<Record<Channel, Channel>>}
@@ -230,7 +235,7 @@ export const secondaryChannels = {
 /**
  * Map secondary channels to primaries
  *
- * @type {Record<string, string>}
+ * @type {Record<Channel, Channel>}
  */
 export const primaryChannels = Object.fromEntries(
     Object.entries(secondaryChannels).map((entry) => [entry[1], entry[0]])
@@ -262,7 +267,7 @@ export function secondaryChannel(primaryChannel) {
  * Finds the primary channel for the provided channel, which may be
  * the primary or secondary.
  *
- * @param {string} maybeSecondary
+ * @param {Channel} maybeSecondary
  */
 export function primaryChannel(maybeSecondary) {
     return primaryChannels[maybeSecondary] || maybeSecondary;
@@ -280,10 +285,10 @@ export function channelWithSecondarys(channel) {
 }
 
 /**
- * @param {string} channel
+ * @param {Channel} channel
  */
 export function isPositionalChannel(channel) {
-    return ["x", "y"].includes(primaryChannel(channel));
+    return primaryPositionalChannels.includes(primaryChannel(channel));
 }
 
 /**

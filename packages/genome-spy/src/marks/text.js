@@ -7,6 +7,7 @@ import { TextVertexBuilder } from "../gl/dataToVertices";
 
 import Mark from "./mark";
 import { fixPositional } from "./markUtils";
+import { primaryPositionalChannels } from "../encoder/encoder";
 
 /** For GLSL uniforms */
 const alignments = {
@@ -131,7 +132,7 @@ export default class TextMark extends Mark {
     fixEncoding(encoding) {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
 
-        for (const channel of ["x", "y"]) {
+        for (const channel of primaryPositionalChannels) {
             if (this.properties.fitToBand) {
                 fixPositional(encoding, channel);
             }
@@ -154,7 +155,6 @@ export default class TextMark extends Mark {
 
         // TODO: Use uniform block.
         setUniforms(this.programInfo, {
-            uSqueeze: props.squeeze ? 1 : 0,
             uPaddingX: props.paddingX,
             uPaddingY: props.paddingY,
             uFlushX: props.flushX ? 1 : 0,

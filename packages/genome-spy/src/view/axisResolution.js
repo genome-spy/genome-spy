@@ -11,7 +11,7 @@ import { getCachedOrCall } from "../utils/propertyCacher";
  */
 export default class AxisResolution {
     /**
-     * @param {string} channel
+     * @param {import("../spec/channel").Channel} channel
      */
     constructor(channel) {
         this.channel = channel;
@@ -49,31 +49,34 @@ export default class AxisResolution {
     getAxisProps() {
         return getCachedOrCall(this, "axisProps", () => {
             const propArray = this.views.map(
-                view => this._getEncoding(view).axis
+                (view) => this._getEncoding(view).axis
             );
 
             if (
                 propArray.length > 0 &&
-                propArray.some(props => props === null)
+                propArray.some((props) => props === null)
             ) {
                 // No axis whatsoever is wanted
                 return null;
             } else {
-                return /** @type { import("../spec/axis").Axis} */ (mergeObjects(
-                    propArray.filter(props => props !== undefined),
-                    "axis",
-                    ["title"]
-                ));
+                return /** @type { import("../spec/axis").Axis} */ (
+                    mergeObjects(
+                        propArray.filter((props) => props !== undefined),
+                        "axis",
+                        ["title"]
+                    )
+                );
             }
         });
     }
 
     getTitle() {
         /** @param {UnitView} view} */
-        const computeTitle = view => {
-            const channelDef = /** @type {import("../spec/channel").ChannelDefWithScale} */ (this._getEncoding(
-                view
-            ));
+        const computeTitle = (view) => {
+            const channelDef =
+                /** @type {import("../spec/channel").ChannelDefWithScale} */ (
+                    this._getEncoding(view)
+                );
 
             // Retain nulls as they indicate that no title should be shown
             return coalesce(

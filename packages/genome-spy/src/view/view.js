@@ -26,8 +26,9 @@ export const VISIT_STOP = "VISIT_STOP";
 const defaultOpacityFunction = (parentOpacity) => parentOpacity;
 
 /**
- * @typedef {import("./viewUtils").ViewSpec} ViewSpec
- * @typedef {import("./viewUtils").ChannelDef} ChannelDef
+ * @typedef {import("../spec/channel").Channel} Channel
+ * @typedef {import("../spec/channel").ChannelDef} ChannelDef
+ * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("./viewUtils").ViewContext} ViewContext
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
  * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
@@ -352,12 +353,13 @@ export default class View {
      *
      * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
      *      selectively breaking the inheritance.
-     * @return {Object.<string, ChannelDef>}
+     * @return {import("../spec/channel").Encoding}
      */
     getEncoding(whoIsAsking) {
         const pe = this.parent ? this.parent.getEncoding(this) : {};
         const te = this.spec.encoding || {};
 
+        /** @type {import("../spec/channel").Encoding} */
         const combined = {
             ...pe,
             ...te,
@@ -401,7 +403,7 @@ export default class View {
 
     /**
      *
-     * @param {string} channel
+     * @param {Channel} channel
      * @param {ResolutionTarget} type
      * @returns {ScaleResolution | AxisResolution}
      */
@@ -421,7 +423,7 @@ export default class View {
     }
 
     /**
-     * @param {string} channel
+     * @param {Channel} channel
      */
     getScaleResolution(channel) {
         return /** @type {ScaleResolution} */ (
@@ -430,7 +432,7 @@ export default class View {
     }
 
     /**
-     * @param {string} channel
+     * @param {Channel} channel
      */
     getAxisResolution(channel) {
         return /** @type {AxisResolution} */ (
@@ -509,7 +511,7 @@ function createViewOpacityFunction(view) {
         if (isNumber(opacityDef)) {
             return (parentOpacity) => parentOpacity * opacityDef;
         } else if (isDynamicOpacity(opacityDef)) {
-            /** @type {function(string):any} */
+            /** @type {function(Channel):any} */
             const getScale = (channel) => {
                 const scale = view.getScaleResolution(channel)?.getScale();
                 // Only works on linear scales

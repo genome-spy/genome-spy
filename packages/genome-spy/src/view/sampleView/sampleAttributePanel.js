@@ -27,11 +27,12 @@ const SAMPLE_NAME = "SAMPLE_NAME";
 const attributeViewRegex = /^attribute-(.*)$/;
 
 /**
- * This special-purpose class takes care of rendering sample labels and metadata.
- *
  * @typedef {import("./sampleView").Sample} Sample
  * @typedef {import("../view").default} View
- *
+ */
+
+/**
+ * This special-purpose class takes care of rendering sample labels and metadata.
  */
 export class SampleAttributePanel extends ConcatView {
     /**
@@ -125,6 +126,10 @@ export class SampleAttributePanel extends ConcatView {
         return this.sampleView.sampleHandler;
     }
 
+    /**
+     * @param {View} whoIsAsking
+     * @returns {import("../../spec/channel").Encoding}
+     */
     getEncoding(whoIsAsking) {
         // Block all inheritance
         return {};

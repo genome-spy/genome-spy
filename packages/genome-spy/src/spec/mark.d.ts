@@ -1,3 +1,4 @@
+import { Align, Baseline, FontStyle, FontWeight } from "./font";
 import { Tooltip } from "./tooltip";
 
 export type MarkType = "rect" | "point" | "rule" | "text" | "link";
@@ -11,7 +12,9 @@ export interface FillAndStrokeProps {
 }
 
 export interface RectProps {
+    // TODO: Rename to minCompensatedOpacity or something like that
     minOpacity?: number;
+
     minWidth?: number;
     minHeight?: number;
 
@@ -24,26 +27,18 @@ export interface RectProps {
 
 export interface TextProps {
     font?: string;
-    fontStyle?: "normal" | "italic";
-    fontWeight?:
-        | number
-        | "thin"
-        | "light"
-        | "regular"
-        | "normal"
-        | "medium"
-        | "bold"
-        | "black";
-    align?: "left" | "center" | "right";
-    baseline?: "top" | "middle" | "bottom" | "alphabetic";
+    fontStyle?: FontStyle;
+    fontWeight?: FontWeight;
+    align?: Align;
+    baseline?: Baseline;
     dx?: number;
     dy?: number;
     fitToBand?: boolean;
     angle?: number;
     paddingX?: number;
     paddingY?: number;
-    flushX?: number;
-    flushY?: number;
+    flushX?: boolean;
+    flushY?: boolean;
     /** Stretch letters so that they can be used with sequence logos etc... */
     logoLetters?: boolean;
     viewportEdgeFadeWidth?: number[];
@@ -75,7 +70,7 @@ export interface MarkConfig extends RectProps, TextProps, FillAndStrokeProps {
     /** Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`) */
     filled?: boolean;
 
-    /** Whether the mark should be clipped to the UnitView's rectangle.  */
+    /** Should the mark be clipped to the UnitView's rectangle.  */
     clip?: boolean;
     xOffset?: number;
     yOffset?: number;
@@ -85,7 +80,7 @@ export interface MarkConfig extends RectProps, TextProps, FillAndStrokeProps {
     // Rule related stuff.
     minLength?: number;
     strokeDash?: number[];
-    strokeDashOffset?: number[];
+    strokeDashOffset?: number;
     strokeCap?: "butt" | "square" | "round";
 
     // Point related stuff.
@@ -107,6 +102,15 @@ export interface MarkConfig extends RectProps, TextProps, FillAndStrokeProps {
      * **Default value:** `0`
      */
     fillGradientStrength?: number;
+
+    // Link related stuff
+
+    /**
+     * Number of segments in the bézier curve. Affects the rendering quality and speed.
+     *
+     * **Default value:* `101`
+     */
+    segments?: number;
 
     /**
      * Padding between sample facet's upper/lower edge and the maximum point size. This property

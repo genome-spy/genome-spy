@@ -84,7 +84,7 @@ export default class Mark {
                 // TODO: Cache once the scales have been resolved
                 // TODO: Only check channels that are used
                 // TODO: provide more fine-grained xClip and yClip props
-                return ["x", "y"]
+                return /** @type {Channel[]} */ (["x", "y"])
                     .map((channel) => unitView.getScaleResolution(channel))
                     .some((resolution) => resolution?.isZoomable() ?? false);
             },
@@ -544,7 +544,10 @@ export default class Mark {
             for (const [uniform, setter] of Object.entries(
                 this.domainUniformInfo.setters
             )) {
-                const channel = uniform.substring(DOMAIN_PREFIX.length);
+                // TODO: isChannel()
+                const channel = /** @type {Channel} */ (
+                    uniform.substring(DOMAIN_PREFIX.length)
+                );
                 const resolution = this.unitView.getScaleResolution(channel);
                 if (resolution) {
                     const scale = resolution.getScale();
