@@ -393,7 +393,7 @@ export class SampleAttributePanel extends ConcatView {
         const nameMatch = view.name.match(attributeViewRegex);
         if (nameMatch) {
             // Foolhardily assume that color is always used for encoding.
-            const resolution = view.getScaleResolution("fill");
+            const resolution = view.getScaleResolution("color");
 
             const attribute = nameMatch[1];
 
