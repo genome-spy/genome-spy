@@ -315,11 +315,8 @@ export default class UnitView extends ContainerView {
 
     getZoomLevel() {
         /** @param {Channel} channel */
-        const getZoomLevel = (channel) => {
-            // TODO: Replace this with optional chaining (?.) when webpack can handle it
-            const resolution = this.getScaleResolution(channel);
-            return resolution ? resolution.getZoomLevel() : 1.0;
-        };
+        const getZoomLevel = (channel) =>
+            this.getScaleResolution(channel)?.getZoomLevel() ?? 1.0;
 
         return primaryPositionalChannels
             .map(getZoomLevel)
