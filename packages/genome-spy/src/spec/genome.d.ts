@@ -12,7 +12,7 @@ export interface GenomeConfig {
     /**
      * Base url of data files: chromsizes, cytobands, and gene annotations.
      *
-     * **Default:** https://genomespy.app/data/genomes/
+     * **Default:** `"https://genomespy.app/data/genomes/"`
      */
     baseUrl?: string;
 
@@ -24,7 +24,7 @@ export interface GenomeConfig {
 
 export interface ChromosomalLocus {
     /**
-     * The name of the chromosome. For example: "chr1", "CHR1", or "1".
+     * The name of the chromosome. For example: `"chr1"`, `"CHR1"`, or `"1"`.
      */
     chrom: string;
 
