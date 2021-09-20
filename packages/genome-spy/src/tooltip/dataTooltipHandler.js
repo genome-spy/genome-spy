@@ -14,6 +14,8 @@ export default async function dataTooltipHandler(datum, mark, params) {
             if (encoder?.accessor?.fields.includes(key)) {
                 switch (channel) {
                     case "color":
+                    case "fill":
+                    case "stroke":
                         return html`
                             <span
                                 class="color-legend"
@@ -53,7 +55,5 @@ export default async function dataTooltipHandler(datum, mark, params) {
           `
         : "";
 
-    return html`
-        ${title}${table}
-    `;
+    return html`${title}${table}`;
 }
