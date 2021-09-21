@@ -648,12 +648,18 @@ export default class GenomeSpy {
             return;
         }
 
-        this._renderingContext = new DeferredViewRenderingContext({
-            picking: false,
-        });
-        this._pickingContext = new DeferredViewRenderingContext({
-            picking: true,
-        });
+        this._renderingContext = new DeferredViewRenderingContext(
+            {
+                picking: false,
+            },
+            this._glHelper
+        );
+        this._pickingContext = new DeferredViewRenderingContext(
+            {
+                picking: true,
+            },
+            this._glHelper
+        );
         const layoutRecorder = new LayoutRecorderViewRenderingContext({});
 
         root.render(
@@ -672,16 +678,7 @@ export default class GenomeSpy {
     }
 
     renderAll() {
-        // TODO: Move gl stuff to renderingContext
-        const gl = this._glHelper.gl;
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        this._glHelper.clearAll();
-
-        if (this.viewRoot) {
-            this._renderingContext.renderDeferred();
-        }
+        this._renderingContext.renderDeferred();
 
         this._dirtyPickingBuffer = true;
     }
@@ -691,21 +688,7 @@ export default class GenomeSpy {
             return;
         }
 
-        const gl = this._glHelper.gl;
-
-        gl.bindFramebuffer(
-            gl.FRAMEBUFFER,
-            this._glHelper._pickingBufferInfo.framebuffer
-        );
-
-        this._glHelper.clearAll();
-
-        if (this.viewRoot) {
-            this._pickingContext.renderDeferred();
-        }
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
+        this._pickingContext.renderDeferred();
         this._dirtyPickingBuffer = false;
     }
 

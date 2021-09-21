@@ -14,9 +14,12 @@ import ViewRenderingContext from "./viewRenderingContext";
 export default class DeferredViewRenderingContext extends ViewRenderingContext {
     /**
      * @param {import("../rendering").GlobalRenderingOptions} globalOptions
+     * @param {import("../../gl/webGLHelper").default} webGLHelper
      */
-    constructor(globalOptions) {
+    constructor(globalOptions, webGLHelper) {
         super(globalOptions);
+
+        this.webGLHelper = webGLHelper;
 
         /**
          * @type {DeferredRenderingRequest[]}
@@ -58,7 +61,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
                 mark,
                 callback,
                 coords: this.coords,
-                clipRect: options.clipRect
+                clipRect: options.clipRect,
             });
         }
     }
@@ -72,6 +75,20 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
             this._buildBatch();
         }
 
+        if (this.batch.length == 0) {
+            return;
+        }
+
+        const gl = this.webGLHelper.gl;
+        const picking = this.globalOptions.picking;
+
+        gl.bindFramebuffer(
+            gl.FRAMEBUFFER,
+            picking ? this.webGLHelper._pickingBufferInfo.framebuffer : null
+        );
+
+        this.webGLHelper.clearAll();
+
         for (const view of this.views) {
             view.onBeforeRender();
         }
@@ -79,6 +96,10 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
         // Execute the batch
         for (const op of this.batch) {
             op();
+        }
+
+        if (picking) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         }
     }
 
@@ -100,19 +121,19 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
         /**
          * @type {function(function():void):(function():void)}
          */
-        const ifEnabled = op => () => {
+        const ifEnabled = (op) => () => {
             if (enabled) op();
         };
 
         /**
          * @type {function(function():void):(function():void)}
          */
-        const ifEnabledAndVisible = op => () => {
+        const ifEnabledAndVisible = (op) => () => {
             if (enabled && viewportVisible) op();
         };
 
         // Group by marks in order to minimize program changes
-        const requestByMark = group(this.buffer, request => request.mark);
+        const requestByMark = group(this.buffer, (request) => request.mark);
 
         for (const [mark, requests] of requestByMark.entries()) {
             if (!mark.isReady()) {
