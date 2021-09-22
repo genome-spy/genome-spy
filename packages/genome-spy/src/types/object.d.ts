@@ -1,5 +1,3 @@
-// TODO: Find a better place for this
-
 type ObjectKeys<T> = T extends object
     ? (keyof T)[]
     : T extends number
@@ -18,5 +16,6 @@ interface ObjectConstructor {
     ): T extends ArrayLike<infer U>
         ? [string, U][]
         : { [K in keyof T]: [K, T[K]] }[keyof T][];
+
     values<T>(o: T): T extends ArrayLike<infer U> ? U[] : T[keyof T][];
 }
