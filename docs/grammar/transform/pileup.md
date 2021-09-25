@@ -95,13 +95,12 @@ The following example demonstrates both `"coverage"` and `"pileup"` transforms.
         "x2": { "field": "end" },
         "y": {
           "field": "lane",
-          "type": "ordinal",
+          "type": "index",
           "scale": {
-            "type": "band",
             "padding": 0.2,
-            "reverse": true
-          },
-          "axis": null
+            "reverse": true,
+            "zoom": false
+          }
         }
       }
     }

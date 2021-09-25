@@ -149,7 +149,7 @@ channel is defined.
   ],
   "mark": "rect",
   "encoding": {
-    "x": { "field": "x", "type": "index", "band": 0.9 },
+    "x": { "field": "x", "type": "index", "scale": { "padding": 0.1 } },
     "y": { "field": "y", "type": "quantitative" },
     "y2": { "datum": 0 },
     "color": {

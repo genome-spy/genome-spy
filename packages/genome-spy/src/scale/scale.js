@@ -23,7 +23,7 @@ import {
     zoomLinear,
     zoomLog,
     zoomPow,
-    zoomSymlog
+    zoomSymlog,
 } from "vega-util";
 
 import {
@@ -53,12 +53,15 @@ import {
     scale as getScale,
     scheme as getScheme,
     scaleImplicit,
-    quantizeInterpolator
+    quantizeInterpolator,
 } from "vega-scale";
 
 import { range as sequence } from "d3-array";
 
 import { interpolate, interpolateRound } from "d3-interpolate";
+
+const Locus = "locus";
+const Index = "index";
 
 var DEFAULT_COUNT = 5;
 
@@ -68,13 +71,13 @@ function includeZero(scale) {
 }
 
 function includePad(type) {
-    return isContinuous(type) && type !== Sequential;
+    return isContinuous(type) && ![Sequential, Index, Locus].includes(type);
 }
 
 function ensureLogger(logger) {
     return (
         logger || {
-            warn: (msg, ...rest) => console.warn(msg, ...rest)
+            warn: (msg, ...rest) => console.warn(msg, ...rest),
         }
     );
 }
@@ -103,13 +106,13 @@ var SKIP = toSet([
     "interpolate",
     "interpolateGamma",
     "zoom",
-    "fp64"
+    "fp64",
 ]);
 
 export function configureScale(_, scale, logger) {
     logger = ensureLogger(logger);
 
-    for (const key in _)
+    for (const key in _) {
         if (!SKIP[key]) {
             // padding is a scale property for band/point but not others
             if (key === "padding" && includePad(scale.type)) continue;
@@ -118,6 +121,7 @@ export function configureScale(_, scale, logger) {
                 ? scale[key](_[key])
                 : logger.warn("Unsupported scale property: " + key);
         }
+    }
 
     configureRange(
         scale,
@@ -278,7 +282,7 @@ function domainCheck(type, domain, logger) {
         // sum signs of domain values
         // if all pos or all neg, abs(sum) === domain.length
         var s = Math.abs(
-            domain.reduce(function(s, v) {
+            domain.reduce(function (s, v) {
                 return s + (v < 0 ? -1 : v > 0 ? 1 : 0);
             }, 0)
         );

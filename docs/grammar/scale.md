@@ -39,11 +39,11 @@ sequence data.
 
 ### Index scale
 
-The `"index"` scale allows for mapping index-based values such as nucleotide or
+The `"index"` scale allows mapping index-based values such as nucleotide or
 amino-acid locations to positional visual channels. It has traits from both the
 continuous `"linear"` and the discrete `"band"` scale. It is linear and zoomable
-but maps indices to the range similarly to the band scale – each index has its
-own band.
+but maps indices to the range like the band scale does – each index has its own
+band. Properties such as `padding` work just as in the band scale.
 
 The indices must be zero-based, i.e., the counting must start from zero. The
 numbering of the axis labels can be adjusted to give an impression of, for
