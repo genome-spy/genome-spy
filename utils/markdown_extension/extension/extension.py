@@ -33,7 +33,7 @@ class MyPreprocessor(Preprocessor):
 
         properties = type['properties']
         for (property, value) in properties.items():
-            if len(value.get('enum', [])) == 1:
+            if value.get('const', "") != "":
                 # Skip contants such as types of transforms
                 continue
 
@@ -42,10 +42,9 @@ class MyPreprocessor(Preprocessor):
                 dt = dt + ' <span class="required">Required</span>'
             lines.append(dt)
 
-            for description_line in value.get('description', 'TODO').split('\n\n'):
-                lines.append(':   ' + description_line)
-
-            lines.append('')
+            for lineno, description_line in enumerate(value.get('description', 'TODO').split('\n\n')):
+                lines.append((':   ' if lineno == 0 else '    ') + description_line)
+                lines.append('')
 
         return lines
 

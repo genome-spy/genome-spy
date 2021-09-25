@@ -1,8 +1,8 @@
-# Transforms
+# Data transformation
 
-Transforms allow for building a pipeline that modifies the data before the data
-objects are mapped into marks. They may filter or derive data, adding or
-removing fields or data objects.
+With transforms, you can build a pipeline that modifies the data before the
+objects are mapped to marks. For example, they may filter or derive data, adding
+or removing fields or data objects.
 
 !!! warning "Departure from Vega-Lite"
 

@@ -2,6 +2,10 @@ site_name: GenomeSpy Docs
 theme:
     name: material
     custom_dir: custom_theme/
+    features:
+      - navigation.indexes
+    palette:
+        primary: indigo
 markdown_extensions:
     - markdown.extensions.def_list
     - pymdownx.magiclink
@@ -22,10 +26,10 @@ nav:
     - Introduction: "index.md"
     - Getting Started: "getting-started.md"
     - Grammar:
-          - Visualization Grammar: "grammar/index.md"
+          - "grammar/index.md"
           - Data Input: "grammar/data.md"
           - Transform:
-                - Data Transformation: "grammar/transform/index.md"
+                - "grammar/transform/index.md"
                 - Aggregate: "grammar/transform/aggregate.md"
                 - Collect: "grammar/transform/collect.md"
                 - Coverage: "grammar/transform/coverage.md"
@@ -50,9 +54,9 @@ nav:
                 - Rule: "grammar/mark/rule.md"
                 - Text: "grammar/mark/text.md"
           - View Composition:
-                - Composing Views: "grammar/composition.md"
-                - Concat: "grammar/concat.md"
-                - Layer: "grammar/layer.md"
+                - "grammar/composition/index.md"
+                - Concat: "grammar/composition/concat.md"
+                - Layer: "grammar/composition/layer.md"
                 - Samples: "grammar/samples.md"
           - Scales: "grammar/scale.md"
           - Importing Views: "grammar/import.md"
