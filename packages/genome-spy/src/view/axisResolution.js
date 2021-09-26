@@ -1,5 +1,11 @@
 import { isString } from "vega-util";
-import { getChannelDefWithScale } from "../encoder/encoder";
+import {
+    getChannelDefWithScale,
+    getPrimaryChannel,
+    isExprDef,
+    isFieldDef,
+    isSecondaryChannel,
+} from "../encoder/encoder";
 import { peek } from "../utils/arrayUtils";
 import coalesce from "../utils/coalesce";
 
@@ -82,17 +88,48 @@ export default class AxisResolution {
             );
 
             // Retain nulls as they indicate that no title should be shown
-            return coalesce(
-                channelDef.axis === null ? null : undefined,
-                channelDef.axis?.title,
-                channelDef.title,
-                channelDef.field,
-                channelDef.expr
-            );
+
+            return {
+                member,
+                explicitTitle: coalesce(
+                    channelDef.axis?.title,
+                    channelDef.title
+                ),
+                implicitTitle: coalesce(
+                    isFieldDef(channelDef) ? channelDef.field : undefined,
+                    isExprDef(channelDef) ? channelDef.expr : undefined
+                ),
+            };
         };
 
-        return [
-            ...new Set(this.members.map(computeTitle).filter(isString)),
-        ].join(", ");
+        const titles = this.members.map(computeTitle);
+
+        // Skip implicit secondary channel titles if the primary channel has an explicit title
+        const filteredTitles = titles.filter((title) => {
+            if (
+                isSecondaryChannel(title.member.channel) &&
+                !title.explicitTitle
+            ) {
+                const primaryChannel = getPrimaryChannel(title.member.channel);
+                return (
+                    titles.find(
+                        (title2) =>
+                            title2.member.view == title.member.view &&
+                            title2.member.channel == primaryChannel
+                    )?.explicitTitle === undefined
+                );
+            }
+            return true;
+        });
+
+        const uniqueTitles = new Set(
+            filteredTitles
+                .map((title) =>
+                    coalesce(title.explicitTitle, title.implicitTitle)
+                )
+                .filter(isString)
+        );
+
+        return uniqueTitles.size ? [...uniqueTitles].join(", ") : null;
     }
 }

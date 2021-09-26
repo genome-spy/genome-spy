@@ -65,7 +65,7 @@ describe("Axes resolve properly", () => {
     test("Title is taken from axis title, encoding title, and field name, in that order.", async () => {
         let view = await createAndInitialize(
             {
-                data: { values: [1] },
+                data: { values: [] },
                 mark: "point",
                 encoding: {
                     x: { field: "a", type: "quantitative" },
@@ -81,7 +81,7 @@ describe("Axes resolve properly", () => {
 
         view = await createAndInitialize(
             {
-                data: { values: [1] },
+                data: { values: [] },
                 mark: "point",
                 encoding: {
                     x: { field: "a", type: "quantitative" },
@@ -98,7 +98,7 @@ describe("Axes resolve properly", () => {
 
         view = await createAndInitialize(
             {
-                data: { values: [1] },
+                data: { values: [] },
                 mark: "point",
                 encoding: {
                     x: { field: "a", type: "quantitative" },
@@ -117,5 +117,84 @@ describe("Axes resolve properly", () => {
         expect(view.getAxisResolution("y").getTitle()).toEqual("z");
     });
 
-    test.todo("Test legend titles when legends are implemented");
+    test("Primary and secondary channels are included in the title", async () => {
+        let view = await createAndInitialize(
+            {
+                data: { values: [] },
+                mark: "rule",
+                encoding: {
+                    x: { field: "a", type: "quantitative" },
+                    x2: { field: "b" },
+                },
+            },
+            UnitView
+        );
+        expect(view.getAxisResolution("x").getTitle()).toEqual("a, b");
+    });
+
+    test("Secondary channel's field name is hidden if primary channel has an explicit title", async () => {
+        let view = await createAndInitialize(
+            {
+                data: { values: [] },
+                mark: "rule",
+                encoding: {
+                    x: { field: "a", type: "quantitative", title: "foo" },
+                    x2: { field: "b" },
+                },
+            },
+            UnitView
+        );
+        expect(view.getAxisResolution("x").getTitle()).toEqual("foo");
+
+        let view2 = await createAndInitialize(
+            {
+                data: { values: [] },
+                mark: "rule",
+                encoding: {
+                    x: {
+                        field: "a",
+                        type: "quantitative",
+                        axis: { title: "foo" },
+                    },
+                    x2: { field: "b" },
+                },
+            },
+            UnitView
+        );
+        expect(view2.getAxisResolution("x").getTitle()).toEqual("foo");
+
+        let view3 = await createAndInitialize(
+            {
+                data: { values: [] },
+                mark: "rule",
+                encoding: {
+                    x: {
+                        field: "a",
+                        type: "quantitative",
+                        axis: { title: "foo" },
+                    },
+                    x2: { field: "b", title: "bar" },
+                },
+            },
+            UnitView
+        );
+        expect(view3.getAxisResolution("x").getTitle()).toEqual("foo, bar");
+
+        let view4 = await createAndInitialize(
+            {
+                data: { values: [] },
+                mark: "rule",
+                encoding: {
+                    x: {
+                        field: "a",
+                        type: "quantitative",
+                        title: null,
+                    },
+                    x2: { field: "b" },
+                },
+            },
+            UnitView
+        );
+        expect(view4.getAxisResolution("x").getTitle()).toBeNull();
+    });
 });
