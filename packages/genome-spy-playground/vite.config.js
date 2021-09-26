@@ -3,6 +3,7 @@ import rawPlugin from "vite-raw-plugin";
 
 export default defineConfig({
     root: "src",
+    base: "",
     plugins: [
         rawPlugin({
             fileRegex: /\.(txt|glsl)$/,
