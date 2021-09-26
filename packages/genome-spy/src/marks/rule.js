@@ -66,6 +66,12 @@ export default class RuleMark extends Mark {
         // TODO: Write test for this mess
         if (encoding.x && encoding.y && encoding.x2 && encoding.y2) {
             // Everything is defined
+        } else if (encoding.x && encoding.x2 && !encoding.y) {
+            encoding.y = { value: 0.5 };
+            encoding.y2 = encoding.y;
+        } else if (encoding.y && encoding.y2 && !encoding.x) {
+            encoding.x = { value: 0.5 };
+            encoding.x2 = encoding.x;
         } else if (encoding.x && !encoding.y) {
             // Vertical rule
             encoding.y = { value: 0 };
