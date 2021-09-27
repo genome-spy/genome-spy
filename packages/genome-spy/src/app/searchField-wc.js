@@ -136,6 +136,7 @@ export default class SearchField extends LitElement {
             return;
         }
 
+        // TODO: A proper api for registering searchable stuff
         this.genomeSpy.viewRoot.visit((view) => {
             if (view instanceof SampleAttributePanel) {
                 view.handleVerboseCommand(term);

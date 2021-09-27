@@ -521,21 +521,44 @@ export class SampleAttributePanel extends ConcatView {
      */
     handleVerboseCommand(command) {
         // TODO: Provide an easier access to the attribute data
+        const searchKey = command;
+
         for (const name of this._getAttributeNames()) {
             const info = this.getAttributeInfo(name);
             if (info.type == ORDINAL || info.type == NOMINAL) {
                 const sample = this.sampleView._samples.find(
-                    (sample) => sample.attributes[info.name] == command
+                    (sample) => sample.attributes[info.name] == searchKey
                 );
 
                 if (sample) {
-                    this.sampleHandler.dispatch(
+                    /** @type {import("../../sampleHandler/provenance").Action[]} */
+                    const actions = [];
+
+                    // Undo the previous action if we are filtering a by the same nominal attribute
+                    const lastAction = peek(
+                        this.sampleHandler.provenance.nodes
+                    )?.action;
+                    if (
+                        lastAction &&
+                        lastAction.type == Actions.FILTER_BY_NOMINAL &&
+                        lastAction.payload?.action == "retain" &&
+                        lastAction.payload?.attribute.type ==
+                            SAMPLE_ATTRIBUTE &&
+                        lastAction.payload?.attribute.specifier == name &&
+                        lastAction.payload?.values.length == 1
+                    ) {
+                        actions.push(Actions.undo());
+                    }
+
+                    actions.push(
                         Actions.filterByNominal(
                             { type: SAMPLE_ATTRIBUTE, specifier: name },
                             "retain",
-                            [command]
+                            [searchKey]
                         )
                     );
+
+                    this.sampleHandler.dispatchBatch(actions);
                     return true;
                 }
             }
