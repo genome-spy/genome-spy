@@ -104,8 +104,12 @@ export default class Provenance {
         this.currentNodeIndex = 0;
     }
 
+    get currentNode() {
+        return this.nodes[this.currentNodeIndex];
+    }
+
     get state() {
-        return this.nodes[this.currentNodeIndex].state;
+        return this.currentNode.state;
     }
 
     /**
@@ -177,10 +181,10 @@ export default class Provenance {
     getActionHistory() {
         return this.nodes
             .slice(1, this.currentNodeIndex + 1)
-            .map(d => d.action);
+            .map((d) => d.action);
     }
 
     getFullActionHistory() {
-        return this.nodes.map(d => d.action);
+        return this.nodes.map((d) => d.action);
     }
 }

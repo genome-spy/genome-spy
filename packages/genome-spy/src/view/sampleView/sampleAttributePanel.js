@@ -535,9 +535,8 @@ export class SampleAttributePanel extends ConcatView {
                     const actions = [];
 
                     // Undo the previous action if we are filtering a by the same nominal attribute
-                    const lastAction = peek(
-                        this.sampleHandler.provenance.nodes
-                    )?.action;
+                    const lastAction =
+                        this.sampleHandler.provenance.currentNode?.action;
                     if (
                         lastAction &&
                         lastAction.type == Actions.FILTER_BY_NOMINAL &&
