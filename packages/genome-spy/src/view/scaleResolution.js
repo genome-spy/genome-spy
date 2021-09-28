@@ -30,6 +30,8 @@ import {
     isChromosomalLocusInterval,
 } from "../genome/genome";
 import { NominalDomain } from "../utils/domainArray";
+import { easeQuadInOut } from "d3-ease";
+import { interpolateZoom } from "d3-interpolate";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
@@ -382,17 +384,60 @@ export default class ScaleResolution {
      * Immediately zooms to the given interval.
      *
      * @param {number[]} interval
+     * @param {number} [duration] an approximate duration for transition. Zero duration zooms immediately.
      */
-    zoomTo(interval) {
+    async zoomTo(interval, duration = 700) {
         if (!this.isZoomable()) {
             throw new Error("Not a zoomable scale!");
         }
 
+        const animator = this.members[0]?.view.context.animator;
+
         // TODO: For animated zooming, consider eerp:
         // https://twitter.com/FreyaHolmer/status/1068293398073929728
 
-        this.getScale().domain(interval);
-        this._notifyScaleObservers();
+        const scale = this.getScale();
+        const from = /** @type {number[]} */ (scale.domain());
+        const to = interval;
+
+        if (duration > 0 && from.length == 2) {
+            const fw = from[1] - from[0];
+            const fc = from[0] + fw / 2;
+
+            const tw = to[1] - to[0];
+            const tc = to[0] + tw / 2;
+
+            /*
+            await animator.transition({
+                duration,
+                easingFunction: easeExpInOut,
+                onUpdate: (t) => {
+                    const w = eerp(fw, tw, t);
+                    const wt = (fw - w) / (fw - tw);
+                    const c = wt * tc + (1 - wt) * fc;
+                    scale.domain([c - w / 2, c + w / 2]);
+                    this._notifyScaleObservers();
+                },
+            });
+            */
+            const interpolator = interpolateZoom.rho(0.7)(
+                [fc, 0, fw],
+                [tc, 0, tw]
+            );
+            await animator.transition({
+                duration: (duration * interpolator.duration) / 10000,
+                easingFunction: easeQuadInOut,
+                onUpdate: (t) => {
+                    const [c, , w] = interpolator(t);
+                    scale.domain([c - w / 2, c + w / 2]);
+                    this._notifyScaleObservers();
+                },
+            });
+        } else {
+            scale.domain(interval);
+            animator?.requestRender();
+            this._notifyScaleObservers();
+        }
     }
 
     /**

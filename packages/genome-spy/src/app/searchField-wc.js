@@ -108,9 +108,9 @@ export default class SearchField extends LitElement {
 
             for (const d of view.getCollector()?.getData()) {
                 if (collator.compare(sa(d), term) === 0) {
+                    // TODO: zoomLog for log scales, etc
                     const interval = zoomLinear([xa(d), x2a(d)], null, 1.2);
                     xResolution.zoomTo(interval);
-                    view.context.animator.requestRender();
                     return true;
                 }
             }
@@ -127,7 +127,6 @@ export default class SearchField extends LitElement {
             const interval = this._genome.parseInterval(term);
             if (interval) {
                 this._genomeResolution.zoomTo(interval);
-                this.genomeSpy.animator.requestRender();
                 return;
             }
         }
