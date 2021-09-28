@@ -18,9 +18,15 @@ export default class SearchField extends LitElement {
         this.genomeSpy = undefined;
 
         /** @type {function():string} */
-        this.getFormattedDomain = () => "";
+        this.getDefaultValue = () => "";
 
         this._keyListener = this._onKeyDown.bind(this);
+
+        this._focused = false;
+    }
+
+    get _inputField() {
+        return /** @type {HTMLInputElement} */ (this.inputRef.value);
     }
 
     static get properties() {
@@ -74,7 +80,7 @@ export default class SearchField extends LitElement {
             this._genomeResolution = genomeResolution;
             this._genome = this.genomeSpy.genomeStore.getGenome();
 
-            this.getFormattedDomain = () =>
+            this.getDefaultValue = () =>
                 this._genome.formatInterval(
                     genomeResolution.getScale().domain()
                 );
@@ -123,25 +129,38 @@ export default class SearchField extends LitElement {
      */
     // eslint-disable-next-line require-await
     async search(term) {
-        if (this._genomeResolution && this._genome) {
-            const interval = this._genome.parseInterval(term);
-            if (interval) {
-                this._genomeResolution.zoomTo(interval);
-                this.genomeSpy.animator.requestRender();
+        // eslint-disable-next-line require-await
+        const doSearch = async () => {
+            if (this._genomeResolution && this._genome) {
+                const interval = this._genome.parseInterval(term);
+                if (interval) {
+                    // TODO: Await
+                    this._genomeResolution.zoomTo(interval);
+                    this.genomeSpy.animator.requestRender();
+                    return;
+                }
+            }
+
+            if (this.searchViews(term)) {
+                // TODO: Await
                 return;
             }
-        }
 
-        if (this.searchViews(term)) {
-            return;
-        }
+            // TODO: A proper api for registering searchable stuff
+            this.genomeSpy.viewRoot.visit((view) => {
+                if (view instanceof SampleAttributePanel) {
+                    // TODO: Await
+                    view.handleVerboseCommand(term);
+                }
+            });
+        };
 
-        // TODO: A proper api for registering searchable stuff
-        this.genomeSpy.viewRoot.visit((view) => {
-            if (view instanceof SampleAttributePanel) {
-                view.handleVerboseCommand(term);
-            }
-        });
+        await doSearch();
+
+        // Directly modifying the HTMLElement. Should be done through the template
+        // but it doesn't quite work when the template-provided value wasn't changed...
+        this._inputField.value = this.getDefaultValue();
+        this.requestUpdate();
     }
 
     /**
@@ -155,10 +174,21 @@ export default class SearchField extends LitElement {
         }
     }
 
-    /** @param {FocusEvent} event */
+    /**
+     * @param {FocusEvent} event
+     */
     _onSearchFocused(event) {
         const searchInput = /** @type {HTMLInputElement} */ (event.target);
-        searchInput.select();
+        switch (event.type) {
+            case "focus":
+                this._focused = true;
+                searchInput.select();
+                break;
+            case "blur":
+                this._focused = false;
+                break;
+            default:
+        }
     }
 
     /**
@@ -191,12 +221,8 @@ export default class SearchField extends LitElement {
      * @param {string} term
      */
     _doExampleSearch(term) {
-        const searchInput = /** @type {HTMLInputElement} */ (
-            this.inputRef.value
-        );
-
-        typeSlowly(term, searchInput).then(() => {
-            searchInput.blur();
+        typeSlowly(term, this._inputField).then(() => {
+            this._inputField.blur();
             this.search(term);
         });
     }
@@ -240,15 +266,35 @@ export default class SearchField extends LitElement {
         `;
     }
 
+    /**
+     * @param {Map<string, any>} changedProperties
+     */
+    updated(changedProperties) {
+        if (this._focused) {
+            this._inputField.select();
+        }
+    }
+
     render() {
         return html`
             <div class="search">
                 <input
                     type="text"
                     class="search-input"
-                    .value=${this.getFormattedDomain()}
+                    .value=${this.getDefaultValue()}
+                    @mousedown=${
+                        /** @param {MouseEvent} event */ (event) => {
+                            if (!this._focused) {
+                                // Do some hacking to get consistent selection behavior
+                                this._inputField.focus();
+                                event.preventDefault();
+                                event.stopPropagation();
+                            }
+                        }
+                    }
                     @keydown=${this._onSearchKeyDown.bind(this)}
                     @focus=${this._onSearchFocused}
+                    @blur=${this._onSearchFocused}
                     ${ref(this.inputRef)}
                 />
                 ${guard([123], () => this._getSearchHelp())}
