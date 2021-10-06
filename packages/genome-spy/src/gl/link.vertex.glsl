@@ -1,3 +1,8 @@
+uniform float uSagittaScaleFactor;
+
+/** Make very small arcs visible */
+uniform float uMinSagittaLength;
+
 in vec2 strip;
 
 out vec4 vColor;
@@ -7,9 +12,6 @@ out float vSize;
 
 /** The distance from the line center to the direction of normal in pixels */
 out float vNormalLengthInPixels;
-
-/** Make very small arcs visible */
-const float minSagittaLength = 1.5;
 
 void main(void) {
     float pixelSize = 1.0 / uDevicePixelRatio;
@@ -23,8 +25,8 @@ void main(void) {
     vec2 chordNormal = vec2(-unitChordVector.y, unitChordVector.x);
 
     float sagitta = max(
-        length(chordVector) / 2.0,
-        minSagittaLength * uDevicePixelRatio
+        length(chordVector) / 2.0 * uSagittaScaleFactor,
+        uMinSagittaLength
     );
 
     bool compress = false;

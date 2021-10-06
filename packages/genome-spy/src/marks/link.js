@@ -1,4 +1,4 @@
-import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
+import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
 import VERTEX_SHADER from "../gl/link.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/link.fragment.glsl";
 import { ConnectionVertexBuilder } from "../gl/dataToVertices";
@@ -26,6 +26,8 @@ export default class LinkMark extends Mark {
                 opacity: 1.0,
 
                 segments: 101, // Performance is affected more by the fill rate, i.e. number of pixels
+                sagittaScaleFactor: 1.0,
+                minSagittaLength: 1.5,
             })
         );
     }
@@ -79,6 +81,19 @@ export default class LinkMark extends Mark {
         await super.initializeGraphics();
 
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+    }
+
+    finalizeGraphicsInitialization() {
+        super.finalizeGraphicsInitialization();
+        this.gl.useProgram(this.programInfo.program);
+
+        const props = this.properties;
+
+        // TODO: Use uniform block.
+        setUniforms(this.programInfo, {
+            uSagittaScaleFactor: props.sagittaScaleFactor,
+            uMinSagittaLength: props.minSagittaLength,
+        });
     }
 
     updateGraphicsData() {

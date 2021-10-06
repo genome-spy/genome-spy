@@ -321,6 +321,20 @@ export interface LinkProps extends SecondaryPositionProps {
     segments?: number;
 
     /**
+     * Scaling factor of the arc's sagitta. The default value `1.0` produces roughly circular arcs.
+     *
+     * **Default value:** `1.0`
+     */
+    sagittaScaleFactor?: number;
+
+    /**
+     * Minimum length of the arc's sagitta. Makes very short links more clearly visible.
+     *
+     * **Default value:** `1.5`
+     */
+    minSagittaLength?: number;
+
+    /**
      * TODO
      */
     color2?: string;
