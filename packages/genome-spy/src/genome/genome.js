@@ -108,7 +108,7 @@ export default class Genome {
                 index: i,
                 number: i + 1,
                 // eslint-disable-next-line no-bitwise
-                odd: !(i & 1)
+                odd: !(i & 1),
             };
 
             this.chromosomes.push(chrom);
@@ -123,7 +123,7 @@ export default class Genome {
                 chrom.number,
                 "" + chrom.number,
                 plain,
-                chrom.name
+                chrom.name,
             ]) {
                 this.cumulativeChromPositions.set(name, pos);
                 this.chromosomesByName.set(name, chrom);
@@ -185,7 +185,7 @@ export default class Genome {
 
         return {
             chrom: chrom.name,
-            pos: Math.floor(continuousPos) - chrom.continuousStart
+            pos: Math.floor(continuousPos) - chrom.continuousStart,
         };
     }
 
@@ -245,7 +245,7 @@ export default class Genome {
             this.toContinuous(
                 b.chrom,
                 b.pos ?? this.chromosomesByName.get(b.chrom)?.size
-            )
+            ),
         ];
     }
 
@@ -269,7 +269,7 @@ export default class Genome {
 
             return [
                 this.toContinuous(startChr, startIndex - 1),
-                this.toContinuous(endChr, endIndex)
+                this.toContinuous(endChr, endIndex),
             ];
         }
     }
@@ -282,7 +282,7 @@ export default class Genome {
 export function parseChromSizes(chromSizesData) {
     // TODO: Support other organisms too
     return tsvParseRows(chromSizesData)
-        .filter(row => /^chr[0-9A-Z]+$/.test(row[0]))
+        .filter((row) => /^chr[0-9A-Z]+$/.test(row[0]))
         .map(([name, size]) => ({ name, size: parseInt(size) }));
 }
 

@@ -11,7 +11,7 @@
  */
 export default function coalesceProperties(...sources) {
     const handler = {
-        get: function(target, prop, receiver) {
+        get: function (target, prop, receiver) {
             for (const source of sources) {
                 const props = source();
                 const value = props[prop];
@@ -22,7 +22,7 @@ export default function coalesceProperties(...sources) {
             return undefined;
         },
 
-        has: function(target, prop, receiver) {
+        has: function (target, prop, receiver) {
             for (const source of sources) {
                 const props = source();
                 if (prop in props) {
@@ -30,7 +30,7 @@ export default function coalesceProperties(...sources) {
                 }
             }
             return false;
-        }
+        },
     };
 
     return new Proxy({}, handler);

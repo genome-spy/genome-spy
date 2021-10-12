@@ -15,12 +15,12 @@ GCGTGC----TTAAGACATGCAAGTCGGACGA-TCG------GCTTCG---GCCGGTAGT
         {
             identifier: "A",
             sequence:
-                "--------------------------AGAGTTTGATCCTGGCTCAGGGTGAACGCTGGCGGCGTGC----TTAAGACATGCAAGTCGAACGG-CCT------TCTTCG-G-AAGGC-AGT---------------------------------"
+                "--------------------------AGAGTTTGATCCTGGCTCAGGGTGAACGCTGGCGGCGTGC----TTAAGACATGCAAGTCGAACGG-CCT------TCTTCG-G-AAGGC-AGT---------------------------------",
         },
         {
             identifier: "B",
             sequence:
-                "--------------------------AGAGTTTGATCATGGCTCAGGGTGAACGCTGGCGGCGTGC----TTAAGACATGCAAGTCGGACGA-TCG------GCTTCG---GCCGGTAGT---------------------------------"
-        }
+                "--------------------------AGAGTTTGATCATGGCTCAGGGTGAACGCTGGCGGCGTGC----TTAAGACATGCAAGTCGGACGA-TCG------GCTTCG---GCCGGTAGT---------------------------------",
+        },
     ]);
 });

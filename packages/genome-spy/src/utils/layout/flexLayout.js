@@ -51,8 +51,8 @@ export function mapToPixelCoords(
     /** @type {function(number):number} x */
     const round =
         devicePixelRatio !== undefined
-            ? x => Math.round(x * devicePixelRatio) / devicePixelRatio
-            : x => x;
+            ? (x) => Math.round(x * devicePixelRatio) / devicePixelRatio
+            : (x) => x;
 
     /** @type {LocSize[]} */
     const results = [];
@@ -98,7 +98,7 @@ export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
  * @param {SizeDef[]} items
  */
 export function isStretching(items) {
-    return items.some(size => size.grow);
+    return items.some((size) => size.grow);
 }
 
 export class FlexDimensions {
@@ -124,11 +124,11 @@ export class FlexDimensions {
         return new FlexDimensions(
             {
                 px: (this.width.px || 0) + padding.width,
-                grow: this.width.grow
+                grow: this.width.grow,
             },
             {
                 px: (this.height.px || 0) + padding.height,
-                grow: this.height.grow
+                grow: this.height.grow,
             }
         );
     }
@@ -208,7 +208,7 @@ export function interpolateLocSizes(from, to, ratio) {
                 default:
                     return r * to.size + (1 - r) * from.size;
             }
-        }
+        },
     };
 }
 
@@ -228,7 +228,7 @@ export function translateLocSize(locSize, offset) {
 
         get size() {
             return locSize.size;
-        }
+        },
     };
 }
 
@@ -248,7 +248,7 @@ export function scaleLocSize(locSize, factor) {
 
         get size() {
             return locSize.size * fn();
-        }
+        },
     };
 }
 

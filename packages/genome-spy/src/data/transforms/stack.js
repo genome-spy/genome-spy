@@ -43,20 +43,20 @@ export default class StackTransform extends FlowNode {
             ? compare(params.sort.field, params.sort.order)
             : undefined;
 
-        const valueAccessor = params.field ? field(params.field) : d => 1;
+        const valueAccessor = params.field ? field(params.field) : (d) => 1;
 
-        const groupFields = params.groupby.map(f => field(f));
+        const groupFields = params.groupby.map((f) => field(f));
 
-        const groups = d3groups(this.buffer, row =>
-            groupFields.map(f => f(row)).join()
-        ).map(a => a[1]);
+        const groups = d3groups(this.buffer, (row) =>
+            groupFields.map((f) => f(row)).join()
+        ).map((a) => a[1]);
 
         /** @type {(datum: any) => boolean} */
-        let inclusionPredicate = datum => true;
+        let inclusionPredicate = (datum) => true;
 
         if (params.baseField) {
             const baseAccessor = field(params.baseField);
-            inclusionPredicate = datum => baseAccessor(datum) !== null;
+            inclusionPredicate = (datum) => baseAccessor(datum) !== null;
         }
 
         /** @type {(value: number, sum: number) => number} */
@@ -86,7 +86,7 @@ export default class StackTransform extends FlowNode {
 
                         const gaps = d3sum(
                             values,
-                            d => +!inclusionPredicate(d)
+                            (d) => +!inclusionPredicate(d)
                         );
                         const total = d3sum(values, accessor);
                         const nonGaps = total - gaps;

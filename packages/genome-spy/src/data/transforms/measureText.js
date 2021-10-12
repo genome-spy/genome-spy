@@ -31,7 +31,7 @@ export default class MeasureTextTransform extends FlowNode {
          *
          * @param {any} datum
          */
-        this.handle = datum => {
+        this.handle = (datum) => {
             const text = accessor(datum);
             if (text !== undefined) {
                 datum[as] = metrics.measureWidth(text, size);

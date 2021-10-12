@@ -42,14 +42,14 @@ export default class NamedSource extends DataSource {
         /**
          * @param {any} x
          */
-        let wrap = x => x;
+        let wrap = (x) => x;
 
         if (Array.isArray(data)) {
             if (data.length > 0) {
                 // TODO: Should check the whole array and abort if types are heterogeneous
                 if (typeof data[0] != "object") {
                     // Wrap scalars to objects
-                    wrap = d => ({ data: d });
+                    wrap = (d) => ({ data: d });
                 }
             }
         } else {

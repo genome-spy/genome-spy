@@ -21,11 +21,11 @@ export default class FlattenSequenceTransform extends FlowNode {
         const [asPos, asSequence] = params.as ?? ["pos", "sequence"];
 
         /** @param {any[]} datum */
-        this.handle = datum => {
+        this.handle = (datum) => {
             // TODO: Use code generation
             const template = Object.assign({}, datum, {
                 [asSequence]: "",
-                [asPos]: 0
+                [asPos]: 0,
             });
             const sequence = /** @type {string} */ (accessor(datum));
             for (let i = 0; i < sequence.length; i++) {

@@ -10,18 +10,14 @@ test("Scale with defaults works as expected", () => {
 });
 
 test("Scale scales correctly with custom domain and range", () => {
-    const scale = scaleIndex()
-        .domain([0, 10])
-        .range([100, 200]);
+    const scale = scaleIndex().domain([0, 10]).range([100, 200]);
 
     expect(scale(0)).toEqual(100);
     expect(scale(10)).toEqual(200);
 });
 
 test("Invert works as expected", () => {
-    const scale = scaleIndex()
-        .domain([0, 10])
-        .range([100, 200]);
+    const scale = scaleIndex().domain([0, 10]).range([100, 200]);
 
     expect(scale.invert(scale(0))).toEqual(0);
     expect(scale.invert(scale(5))).toEqual(5);
@@ -42,27 +38,21 @@ test("domain() clamps the minimum domain span to one", () => {
 });
 
 test("ticks() produces integer values", () => {
-    const scale = scaleIndex()
-        .domain([0, 5])
-        .numberingOffset(0);
+    const scale = scaleIndex().domain([0, 5]).numberingOffset(0);
 
     expect(scale.ticks(5)).toEqual([0, 1, 2, 3, 4]);
     expect(scale.ticks(100)).toEqual([0, 1, 2, 3, 4]);
 });
 
 test("ticks() take numberingOffset into account", () => {
-    const scale = scaleIndex()
-        .domain([10, 15])
-        .numberingOffset(1);
+    const scale = scaleIndex().domain([10, 15]).numberingOffset(1);
 
     // The ticks have been offset so that nice labels can be generated (5, 10, 15, ...)
     expect(scale.ticks(5)).toEqual([10, 11, 12, 13, 14]);
 });
 
 test("tickFormat() takes numberingOffset into account", () => {
-    const scale = scaleIndex()
-        .domain([10, 15])
-        .numberingOffset(1);
+    const scale = scaleIndex().domain([10, 15]).numberingOffset(1);
 
     const format = scale.tickFormat(5);
 

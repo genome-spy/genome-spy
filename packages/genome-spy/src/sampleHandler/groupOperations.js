@@ -20,18 +20,20 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, labels) {
         throw new Error("Custom labels need explicit group order!");
     }
 
-    const grouped = /** @type {Map<any, string[]>} */ (group(
-        sampleGroup.samples,
-        accessor
-    ));
+    const grouped = /** @type {Map<any, string[]>} */ (
+        group(sampleGroup.samples, accessor)
+    );
 
     const sortedEntries = groups
         ? groups
-              .map(groupTerm => /** @type {[any, string[]]} */ ([
-                  groupTerm,
-                  grouped.get(groupTerm)
-              ]))
-              .filter(entry => entry[1])
+              .map(
+                  (groupTerm) =>
+                      /** @type {[any, string[]]} */ ([
+                          groupTerm,
+                          grouped.get(groupTerm),
+                      ])
+              )
+              .filter((entry) => entry[1])
         : [...grouped];
 
     const tempGroup = /** @type {unknown} */ (sampleGroup);
@@ -41,7 +43,7 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, labels) {
     groupGroup.groups = sortedEntries.map(([name, samples], i) => ({
         name: "" + name,
         label: labels ? labels[i] : name,
-        samples
+        samples,
     }));
 
     delete sampleGroup.samples;
@@ -64,7 +66,7 @@ export function groupSamplesByQuartiles(sampleGroup, accessor) {
     }
 
     /** @param {number} i */
-    const formatInterval = i =>
+    const formatInterval = (i) =>
         `[${format(thresholds[i])}, ${format(thresholds[i + 1])}${
             i < thresholds.length - 2 ? ")" : "]"
         }`;
@@ -92,7 +94,7 @@ export function groupSamplesByQuartiles(sampleGroup, accessor) {
  */
 function createQuantileAccessor(accessor, thresholds) {
     /** @param {any} datum */
-    const quantileAccessor = datum => {
+    const quantileAccessor = (datum) => {
         const value = accessor(datum);
         if (!isNumber(value) || isNaN(value)) {
             return undefined;
@@ -119,10 +121,10 @@ function createQuantileAccessor(accessor, thresholds) {
  */
 function extractQuantiles(samples, accessor, pValues) {
     const values = d3sort(
-        samples.map(accessor).filter(x => isNumber(x) && !isNaN(x))
+        samples.map(accessor).filter((x) => isNumber(x) && !isNaN(x))
     );
 
-    return pValues.map(p => quantileSorted(values, p));
+    return pValues.map((p) => quantileSorted(values, p));
 }
 
 /**

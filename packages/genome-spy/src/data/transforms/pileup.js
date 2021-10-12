@@ -57,7 +57,7 @@ export default class PileupTransform extends FlowNode {
             let lastStart = Infinity;
 
             /** @param {Record<string, any>} datum */
-            this.handle = datum => {
+            this.handle = (datum) => {
                 const start = startAccessor(datum);
                 if (start < lastStart) {
                     // Reset if encountered a new chromosome...
@@ -109,7 +109,7 @@ export default class PileupTransform extends FlowNode {
             let maxLane = 0;
 
             /** @param {Record<string, any>} datum */
-            this.handle = datum => {
+            this.handle = (datum) => {
                 const start = startAccessor(datum);
                 while (
                     ends.size &&

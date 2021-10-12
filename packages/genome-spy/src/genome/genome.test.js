@@ -6,7 +6,7 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
         { name: "chr1", size: 10 },
         { name: "chr2", size: 20 },
         { name: "chr3", size: 30 },
-        { name: "chrX", size: 40 }
+        { name: "chrX", size: 40 },
     ];
 
     const g = new Genome({ name: "random", contigs: chromosomes });
@@ -56,11 +56,11 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
         // Testing half-open intervals
         expect(g.toChromosomalInterval([0, 10])).toEqual([
             { chrom: "chr1", pos: 0 },
-            { chrom: "chr1", pos: 10 }
+            { chrom: "chr1", pos: 10 },
         ]);
         expect(g.toChromosomalInterval([10, 100])).toEqual([
             { chrom: "chr2", pos: 0 },
-            { chrom: "chrX", pos: 40 }
+            { chrom: "chrX", pos: 40 },
         ]);
     });
 
@@ -68,19 +68,19 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
         expect(
             g.toContinuousInterval([
                 { chrom: "chr1", pos: 0 },
-                { chrom: "chr1", pos: 10 }
+                { chrom: "chr1", pos: 10 },
             ])
         ).toEqual([0, 10]);
         expect(
             g.toContinuousInterval([
                 { chrom: "chr1", pos: 1 },
-                { chrom: "chr1", pos: 9 }
+                { chrom: "chr1", pos: 9 },
             ])
         ).toEqual([1, 9]);
         expect(
             g.toContinuousInterval([
                 { chrom: "chr2", pos: 0 },
-                { chrom: "chrX", pos: 40 }
+                { chrom: "chrX", pos: 40 },
             ])
         ).toEqual([10, 100]);
     });
@@ -103,7 +103,7 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
             continuousStart: 10,
             continuousEnd: 30,
             continuousInterval: [10, 30],
-            odd: false
+            odd: false,
         });
     });
 });
@@ -116,7 +116,7 @@ describe("C. elegans genome, chromosome names prefixed with 'chr'", () => {
         { name: "chrIV", size: 17493829 },
         { name: "chrV", size: 20924180 },
         { name: "chrX", size: 17718942 },
-        { name: "chrM", size: 13794 }
+        { name: "chrM", size: 13794 },
     ];
 
     const g = new Genome({ name: "random", contigs: chromosomes });

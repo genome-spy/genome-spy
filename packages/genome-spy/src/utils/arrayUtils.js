@@ -7,8 +7,8 @@
  * @template A, B, T
  */
 export function shallowArrayEquals(a, b, aAccessor, bAccessor) {
-    aAccessor = aAccessor || (x => x);
-    bAccessor = bAccessor || (x => x);
+    aAccessor = aAccessor || ((x) => x);
+    bAccessor = bAccessor || ((x) => x);
     return (
         a.length == b.length &&
         a.every((s, i) => aAccessor(a[i]) === bAccessor(b[i]))
@@ -25,7 +25,7 @@ export function isHomogeneous(a) {
     }
 
     const first = a[0];
-    return a.every(x => x === first);
+    return a.every((x) => x === first);
 }
 
 /**

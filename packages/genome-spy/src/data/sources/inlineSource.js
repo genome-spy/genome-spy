@@ -31,7 +31,7 @@ export default class InlineSource extends DataSource {
 
         let data = [];
 
-        let wrap = x => x;
+        let wrap = (x) => x;
 
         if (Array.isArray(values)) {
             if (values.length > 0) {
@@ -39,7 +39,7 @@ export default class InlineSource extends DataSource {
                 // TODO: Should check the whole array and abort if types are heterogeneous
                 if (typeof values[0] != "object") {
                     // Wrap scalars to objects
-                    wrap = d => ({ data: d });
+                    wrap = (d) => ({ data: d });
                 }
             }
         } else if (typeof values == "object") {

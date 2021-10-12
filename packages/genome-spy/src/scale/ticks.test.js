@@ -12,13 +12,13 @@
 
 import { validTicks } from "./ticks";
 
-test("validTicks uses count correctly", function() {
+test("validTicks uses count correctly", function () {
     var data = [0, 1, 2, 3, 4, 5, 6, 7];
 
-    var identity = function(x) {
+    var identity = function (x) {
         return x;
     };
-    identity.range = function() {
+    identity.range = function () {
         return [0, 10];
     };
 

@@ -108,7 +108,7 @@ export function getContextInfo(gl) {
         vendor,
         renderer,
         version: gl.getParameter(GL_VERSION),
-        shadingLanguageVersion: gl.getParameter(GL_SHADING_LANGUAGE_VERSION)
+        shadingLanguageVersion: gl.getParameter(GL_SHADING_LANGUAGE_VERSION),
     };
     return gpuInfo;
 }

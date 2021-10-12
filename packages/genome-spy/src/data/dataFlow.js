@@ -83,7 +83,7 @@ export default class DataFlow {
      */
     addCollector(collector, key) {
         this._collectorsByHost.set(key, collector);
-        collector.observers.push(collector =>
+        collector.observers.push((collector) =>
             this._relayObserverCallback(collector, key)
         );
     }
@@ -103,7 +103,7 @@ export default class DataFlow {
      */
     initialize() {
         for (const ds of this.dataSources) {
-            ds.visit(node => node.initialize());
+            ds.visit((node) => node.initialize());
         }
     }
 }

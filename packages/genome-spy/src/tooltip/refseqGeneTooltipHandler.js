@@ -27,12 +27,8 @@ export default async function refseqGeneTooltipHandler(datum, mark, params) {
                 <strong>${summary.name}</strong>
                 ${summary.description}
             </div>
-            <p class="summary">
-                ${summary.summary}
-            </p>
-            <p class="source">
-                Source: NCBI RefSeq Gene
-            </p>
+            <p class="summary">${summary.summary}</p>
+            <p class="source">Source: NCBI RefSeq Gene</p>
         `;
     } else {
         return null;
@@ -52,7 +48,7 @@ async function fetchGeneSummary(symbol) {
     const searchResult = await fetch(
         `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=gene&term=${symbol}[GENE]&sort=relevance&retmode=json`,
         opts
-    ).then(res => res.json());
+    ).then((res) => res.json());
 
     // TODO: Handle failed searchs
     const id = searchResult.esearchresult.idlist[0];
@@ -61,7 +57,7 @@ async function fetchGeneSummary(symbol) {
         const summaryResult = await fetch(
             `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=gene&id=${id}&retmode=json`,
             opts
-        ).then(res => res.json());
+        ).then((res) => res.json());
 
         const summary = summaryResult.result[id];
         return summary;

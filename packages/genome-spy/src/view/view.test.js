@@ -23,10 +23,10 @@ describe("Trivial creations and initializations", () => {
             {
                 concat: [
                     {
-                        layer: [{ mark: "point" }, { mark: "rect" }]
+                        layer: [{ mark: "point" }, { mark: "rect" }],
                     },
-                    { mark: "rect" }
-                ]
+                    { mark: "rect" },
+                ],
             },
             ConcatView
         );
@@ -45,8 +45,8 @@ describe("Trivial creations and initializations", () => {
             mark: "point",
             encoding: {
                 x: { field: "data", type: "quantitative" },
-                y: { field: "data", type: "quantitative" }
-            }
+                y: { field: "data", type: "quantitative" },
+            },
         };
 
         expect(createAndInitialize(spec, View)).resolves.toBeInstanceOf(
@@ -60,8 +60,8 @@ describe("Test domain handling", () => {
         values: [
             { a: 1, b: 3 },
             { a: 2, b: 4 },
-            { a: 3, b: 5 }
-        ]
+            { a: 3, b: 5 },
+        ],
     };
 
     test("Uses domain from the scale properties", () => {
@@ -73,12 +73,12 @@ describe("Test domain handling", () => {
                 y: {
                     field: "a",
                     type: "quantitative",
-                    scale: { domain: [0, 1000] }
-                }
-            }
+                    scale: { domain: [0, 1000] },
+                },
+            },
         };
 
-        return createAndInitialize(spec, UnitView).then(view =>
+        return createAndInitialize(spec, UnitView).then((view) =>
             expect(r(view.getConfiguredDomain("y"))).toEqual([0, 1000])
         );
     });
@@ -89,11 +89,11 @@ describe("Test domain handling", () => {
             mark: "point",
             encoding: {
                 x: { datum: 123, type: "quantitative" },
-                y: { field: "a", type: "quantitative" }
-            }
+                y: { field: "a", type: "quantitative" },
+            },
         };
 
-        return createAndInitialize(spec, UnitView).then(view =>
+        return createAndInitialize(spec, UnitView).then((view) =>
             expect(r(view.extractDataDomain("x"))).toEqual([123, 123])
         );
     });
@@ -104,11 +104,11 @@ describe("Test domain handling", () => {
             mark: "point",
             encoding: {
                 x: { field: "a", type: "quantitative" },
-                y: { field: "a", type: "quantitative" }
-            }
+                y: { field: "a", type: "quantitative" },
+            },
         };
 
-        return createAndInitialize(spec, UnitView).then(view =>
+        return createAndInitialize(spec, UnitView).then((view) =>
             expect(r(view.extractDataDomain("y"))).toEqual([1, 3])
         );
     });
@@ -120,11 +120,11 @@ describe("Test domain handling", () => {
             encoding: {
                 x: { field: "a", type: "quantitative" },
                 y: { field: "a", type: "quantitative" },
-                y2: { field: "b", type: "quantitative" }
-            }
+                y2: { field: "b", type: "quantitative" },
+            },
         };
 
-        return createAndInitialize(spec, UnitView).then(view =>
+        return createAndInitialize(spec, UnitView).then((view) =>
             expect(r(view.extractDataDomain("y"))).toEqual([1, 5])
         );
     });
@@ -134,26 +134,26 @@ describe("Utility methods", () => {
     test("BaseUrl is handled correctly", async () => {
         createAndInitialize(
             {
-                layer: []
+                layer: [],
             },
             LayerView
-        ).then(view => expect(view.getBaseUrl()).toBeUndefined());
+        ).then((view) => expect(view.getBaseUrl()).toBeUndefined());
 
         await createAndInitialize(
             {
                 baseUrl: "blaa",
-                layer: []
+                layer: [],
             },
             LayerView
-        ).then(view => expect(view.getBaseUrl()).toEqual("blaa"));
+        ).then((view) => expect(view.getBaseUrl()).toEqual("blaa"));
 
         await createAndInitialize(
             {
                 baseUrl: "https://site.com",
-                layer: []
+                layer: [],
             },
             LayerView
-        ).then(view => expect(view.getBaseUrl()).toEqual("https://site.com"));
+        ).then((view) => expect(view.getBaseUrl()).toEqual("https://site.com"));
 
         await createAndInitialize(
             {
@@ -161,12 +161,12 @@ describe("Utility methods", () => {
                 layer: [
                     {
                         baseUrl: "blaa",
-                        layer: []
-                    }
-                ]
+                        layer: [],
+                    },
+                ],
             },
             LayerView
-        ).then(view =>
+        ).then((view) =>
             expect(view.children[0].getBaseUrl()).toEqual(
                 "https://site.com/blaa"
             )
@@ -178,12 +178,12 @@ describe("Utility methods", () => {
                 layer: [
                     {
                         baseUrl: "https://another-site.com",
-                        layer: []
-                    }
-                ]
+                        layer: [],
+                    },
+                ],
             },
             LayerView
-        ).then(view =>
+        ).then((view) =>
             expect(view.children[0].getBaseUrl()).toEqual(
                 "https://another-site.com"
             )
@@ -197,14 +197,14 @@ describe("Utility methods", () => {
                         layer: [
                             {
                                 baseUrl: "blaa",
-                                layer: []
-                            }
-                        ]
-                    }
-                ]
+                                layer: [],
+                            },
+                        ],
+                    },
+                ],
             },
             LayerView
-        ).then(view =>
+        ).then((view) =>
             expect(view.children[0].children[0].getBaseUrl()).toEqual(
                 "https://site.com/blaa"
             )

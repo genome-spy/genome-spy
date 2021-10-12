@@ -24,20 +24,20 @@ export default function generateAttributeContextMenu(
     let items = [
         {
             label: title,
-            type: "header"
-        }
+            type: "header",
+        },
     ];
 
     /**
      * @param {import("../../sampleHandler/provenance").Action} action
      * @returns {MenuItem}
      */
-    const actionToItem = action => {
+    const actionToItem = (action) => {
         const info = provenance.getActionInfo(action);
         return {
             label: info.title,
             icon: info.icon,
-            callback: () => dispatch(action)
+            callback: () => dispatch(action),
         };
     };
 

@@ -139,7 +139,7 @@ export default class Rectangle {
         }
 
         /** @param {Prop} prop */
-        const map = prop => {
+        const map = (prop) => {
             const v = props[prop];
             return typeof v == "number"
                 ? constant(v)
@@ -276,7 +276,7 @@ export default class Rectangle {
     normalizePoint(x, y) {
         return {
             x: (x - this.x) / this.width,
-            y: (y - this.y) / this.height
+            y: (y - this.y) / this.height,
         };
     }
 }

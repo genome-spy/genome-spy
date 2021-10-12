@@ -6,9 +6,9 @@ export function escapeHtml(str) {
         "<": "&lt;",
         ">": "&gt;",
         '"': "&quot;",
-        "'": "&#039;"
+        "'": "&#039;",
     };
-    return str.replace(/[&<>"']/g, m => map[m]);
+    return str.replace(/[&<>"']/g, (m) => map[m]);
 }
 
 export function decodeHtml(str) {
@@ -17,7 +17,7 @@ export function decodeHtml(str) {
         "&lt;": "<",
         "&gt;": ">",
         "&quot;": '"',
-        "&#039;": "'"
+        "&#039;": "'",
     };
-    return str.replace(/&amp;|&lt;|&gt;|&quot;|&#039;/g, m => map[m]);
+    return str.replace(/&amp;|&lt;|&gt;|&quot;|&#039;/g, (m) => map[m]);
 }

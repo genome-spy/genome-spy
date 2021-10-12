@@ -12,7 +12,7 @@ export default function createIndexer() {
     const values = new Map();
 
     /** @param {T} value */
-    const indexer = value => {
+    const indexer = (value) => {
         let index = values.get(value);
         if (index === undefined) {
             index = counter++;
@@ -22,14 +22,14 @@ export default function createIndexer() {
     };
 
     /** @param {Iterable<T>} iterable */
-    indexer.addAll = iterable => {
+    indexer.addAll = (iterable) => {
         for (const value of iterable) {
             indexer(value);
         }
     };
 
     /** @param {number} value */
-    indexer.invert = value => {
+    indexer.invert = (value) => {
         for (const entry of values.entries()) {
             if (entry[1] == value) {
                 return entry[0];

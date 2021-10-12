@@ -4,7 +4,7 @@ import {
     faInfoCircle,
     faQuestionCircle,
     faExpandArrowsAlt,
-    faArrowsAltV
+    faArrowsAltV,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField-wc";
 import { asArray } from "../utils/arrayUtils";
@@ -24,7 +24,7 @@ export default class Toolbar extends LitElement {
     static get properties() {
         return {
             app: { type: Object },
-            appInitialized: { type: Boolean }
+            appInitialized: { type: Boolean },
         };
     }
 

@@ -31,7 +31,7 @@ export default class FlattenCompressedExonsTransform extends FlowNode {
          *
          * @param {any} datum
          */
-        this.handle = datum => {
+        this.handle = (datum) => {
             let upper = startAccessor(datum);
             let lower = upper;
 

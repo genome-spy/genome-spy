@@ -17,8 +17,8 @@ import { isObject } from "vega-util";
 export default function mergeObjects(objects, propertyOf, skip) {
     skip = skip || [];
 
-    if (objects.some(d => d === null)) {
-        if (objects.every(d => d === null)) {
+    if (objects.some((d) => d === null)) {
+        if (objects.every((d) => d === null)) {
             return null;
         } else {
             console.warn(objects);
@@ -37,7 +37,7 @@ export default function mergeObjects(objects, propertyOf, skip) {
         (a === true && isObject(b));
 
     /** @param {any} obj */
-    const merger = obj => {
+    const merger = (obj) => {
         // eslint-disable-next-line guard-for-in
         for (let prop in obj) {
             const sourceValue = obj[prop];

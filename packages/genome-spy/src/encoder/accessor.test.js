@@ -5,7 +5,7 @@ const af = new AccessorFactory();
 const datum = {
     a: 1,
     b: 2,
-    "x.c": 3
+    "x.c": 3,
 };
 
 test("Creates a field accessor", () => {
@@ -35,9 +35,10 @@ test("Returns undefined on incomplete encoding spec", () => {
 
 test("Registers and creates a custom accessor", () => {
     const af = new AccessorFactory();
-    af.register(encoding => {
+    af.register((encoding) => {
         if (encoding.iddqd && encoding.idkfa) {
-            return datum => `${datum[encoding.iddqd]}-${datum[encoding.idkfa]}`;
+            return (datum) =>
+                `${datum[encoding.iddqd]}-${datum[encoding.idkfa]}`;
         }
     });
 

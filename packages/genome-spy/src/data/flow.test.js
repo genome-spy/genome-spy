@@ -12,8 +12,8 @@ describe("Test flow graphs", () => {
         source.dispatch();
 
         expect(collector.getData()).toEqual(
-            [0, 1, 2, 3, 4].map(d => ({
-                data: d
+            [0, 1, 2, 3, 4].map((d) => ({
+                data: d,
             }))
         );
     });
@@ -30,14 +30,14 @@ describe("Test flow graphs", () => {
         expect(collector1.getData()).not.toBe(collector2._data);
 
         expect(collector1.getData()).toEqual(
-            [0, 1, 2, 3, 4].map(d => ({
-                data: d
+            [0, 1, 2, 3, 4].map((d) => ({
+                data: d,
             }))
         );
 
         expect(collector2.getData()).toEqual(
-            [0, 1, 2, 3, 4].map(d => ({
-                data: d
+            [0, 1, 2, 3, 4].map((d) => ({
+                data: d,
             }))
         );
     });
@@ -46,12 +46,12 @@ describe("Test flow graphs", () => {
         const source = new SynchronousSequenceSource(10);
         const filter = new FilterTransform({
             type: "filter",
-            expr: "datum.data < 5"
+            expr: "datum.data < 5",
         });
         const formula = new FormulaTransform({
             type: "formula",
             expr: "datum.data * 2",
-            as: "data"
+            as: "data",
         });
         const collector = new Collector();
 
@@ -59,12 +59,12 @@ describe("Test flow graphs", () => {
         filter.addChild(formula);
         formula.addChild(collector);
 
-        source.visit(node => node.initialize());
+        source.visit((node) => node.initialize());
         source.dispatch();
 
         expect(collector.getData()).toEqual(
-            [0, 2, 4, 6, 8].map(d => ({
-                data: d
+            [0, 2, 4, 6, 8].map((d) => ({
+                data: d,
             }))
         );
     });

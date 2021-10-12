@@ -19,7 +19,7 @@ export default function scaleLocus() {
      * @param {Genome} [_]
      * @deprecated
      */
-    scale.genome = function(_) {
+    scale.genome = function (_) {
         if (arguments.length) {
             genome = _;
             return scale;
@@ -32,7 +32,7 @@ export default function scaleLocus() {
      * @param {number} count
      * @returns {number[]}
      */
-    scale.ticks = count => {
+    scale.ticks = (count) => {
         if (!genome) {
             return [];
         }
@@ -42,8 +42,8 @@ export default function scaleLocus() {
 
         const [minChrom, maxChrom] = [
             domain[0],
-            Math.min(domain[1], genome.totalSize - 1)
-        ].map(x => genome.toChromosome(x));
+            Math.min(domain[1], genome.totalSize - 1),
+        ].map((x) => genome.toChromosome(x));
 
         const step = Math.max(1, tickStep(domain[0], domain[1], count));
 
@@ -98,9 +98,9 @@ export default function scaleLocus() {
         const numberFormat = step < 1e6 ? d3format(",") : d3format(".3s");
 
         /** @type {function(number):number} */
-        const fixer = x => x - genome.toChromosome(x).continuousStart;
+        const fixer = (x) => x - genome.toChromosome(x).continuousStart;
 
-        return /** @param {number} x */ x =>
+        return /** @param {number} x */ (x) =>
             numberFormat(fixer(x) + numberingOffset);
     };
 

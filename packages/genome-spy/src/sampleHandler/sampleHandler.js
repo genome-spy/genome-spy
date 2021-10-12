@@ -8,12 +8,12 @@ import {
     filterQuantitative,
     filterNominal,
     filterUndefined,
-    wrapAccessorForComparison
+    wrapAccessorForComparison,
 } from "./sampleOperations";
 import Provenance from "./provenance";
 import {
     groupSamplesByAccessor,
-    groupSamplesByQuartiles
+    groupSamplesByQuartiles,
 } from "./groupOperations";
 
 /**
@@ -52,7 +52,7 @@ export default class SampleHandler {
         /** @type {Provenance<State>} */
         this.provenance = new Provenance();
 
-        this.provenance.addActionInfoSource(action =>
+        this.provenance.addActionInfoSource((action) =>
             Actions.getActionInfo(action, this)
         );
     }
@@ -103,8 +103,8 @@ export default class SampleHandler {
             rootGroup: {
                 name: "ROOT",
                 label: "Root",
-                samples
-            }
+                samples,
+            },
         });
     }
 
@@ -128,7 +128,7 @@ export default class SampleHandler {
         const flattenedHierarchy = [];
 
         /** @param {Group} group */
-        const recurse = group => {
+        const recurse = (group) => {
             pathStack.push(group);
             if (isGroupGroup(group)) {
                 // WTF type guard not workin!
@@ -174,18 +174,18 @@ export default class SampleHandler {
          * @param {State} [state] State to use, defaults to the current state.
          *      Use for mutations!
          */
-        const getSampleGroups = state =>
-            /** @type {SampleGroup[]} */ (this.getFlattenedGroupHierarchy(
-                state
-            ).map(path => peek(path)));
+        const getSampleGroups = (state) =>
+            /** @type {SampleGroup[]} */ (
+                this.getFlattenedGroupHierarchy(state).map((path) => peek(path))
+            );
 
         /**
          * Applies an operation to each group of samples.
          * @param {function(string[]):string[]} operation What to do for each group.
          *      Takes an array of sample ids and returns a new filtered and/or permuted array.
          */
-        const applyToSamples = operation => {
-            const newState = produce(this.state, draftState => {
+        const applyToSamples = (operation) => {
+            const newState = produce(this.state, (draftState) => {
                 for (const sampleGroup of getSampleGroups(draftState)) {
                     sampleGroup.samples = operation(sampleGroup.samples);
                 }
@@ -198,8 +198,8 @@ export default class SampleHandler {
          * @param {function(SampleGroup):void} operation What to do for each group.
          *      Operations modify the groups in place
          */
-        const applyToGroups = operation => {
-            const newState = produce(this.state, draftState => {
+        const applyToGroups = (operation) => {
+            const newState = produce(this.state, (draftState) => {
                 for (const sampleGroup of getSampleGroups(draftState)) {
                     operation(sampleGroup);
                 }
@@ -213,7 +213,7 @@ export default class SampleHandler {
                 this.provenance.undo();
                 return;
             case Actions.SORT_BY:
-                applyToSamples(samples =>
+                applyToSamples((samples) =>
                     sort(
                         samples,
                         wrapAccessorForComparison(
@@ -225,12 +225,12 @@ export default class SampleHandler {
                 );
                 break;
             case Actions.RETAIN_FIRST_OF_EACH:
-                applyToSamples(samples =>
+                applyToSamples((samples) =>
                     retainFirstOfEach(samples, getAccessor())
                 );
                 break;
             case Actions.FILTER_BY_QUANTITATIVE:
-                applyToSamples(samples =>
+                applyToSamples((samples) =>
                     filterQuantitative(
                         samples,
                         getAccessor(),
@@ -240,7 +240,7 @@ export default class SampleHandler {
                 );
                 break;
             case Actions.FILTER_BY_NOMINAL:
-                applyToSamples(samples =>
+                applyToSamples((samples) =>
                     filterNominal(
                         samples,
                         getAccessor(),
@@ -250,17 +250,17 @@ export default class SampleHandler {
                 );
                 break;
             case Actions.REMOVE_UNDEFINED:
-                applyToSamples(samples =>
+                applyToSamples((samples) =>
                     filterUndefined(samples, getAccessor())
                 );
                 break;
             case Actions.GROUP_BY_NOMINAL:
-                applyToGroups(sampleGroup =>
+                applyToGroups((sampleGroup) =>
                     groupSamplesByAccessor(sampleGroup, getAccessor())
                 );
                 break;
             case Actions.GROUP_TO_QUARTILES:
-                applyToGroups(sampleGroup =>
+                applyToGroups((sampleGroup) =>
                     groupSamplesByQuartiles(sampleGroup, getAccessor())
                 );
                 break;

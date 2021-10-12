@@ -14,9 +14,9 @@ async function collectSource(source) {
 }
 
 test("InlineSource propagates an object", async () => {
-    expect(
-        await collectSource(new InlineSource({ values: { x: 1 } }))
-    ).toEqual([{ x: 1 }]);
+    expect(await collectSource(new InlineSource({ values: { x: 1 } }))).toEqual(
+        [{ x: 1 }]
+    );
 });
 
 test("InlineSource propagates an array of objects", async () => {
@@ -28,7 +28,7 @@ test("InlineSource propagates an array of objects", async () => {
 test("InlineSource wraps scalars to objects", async () => {
     expect(await collectSource(new InlineSource({ values: [1, 2] }))).toEqual([
         { data: 1 },
-        { data: 2 }
+        { data: 2 },
     ]);
 });
 
@@ -38,8 +38,8 @@ test("InlineSource parses a string", async () => {
             new InlineSource({
                 values: "a\n1\n2\n3",
                 format: {
-                    type: "csv"
-                }
+                    type: "csv",
+                },
             })
         )
     ).toEqual([{ a: 1 }, { a: 2 }, { a: 3 }]);
@@ -49,7 +49,7 @@ test("InlineSource throws on a string and a missing format specifier", () => {
     expect(
         () =>
             new InlineSource({
-                values: "a\n1\n2\n3"
+                values: "a\n1\n2\n3",
             })
     ).toThrow();
 });

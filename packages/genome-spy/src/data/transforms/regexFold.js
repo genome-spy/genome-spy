@@ -20,7 +20,7 @@ export default class RegexFoldTransform extends FlowNode {
         super();
 
         const columnRegex = asArray(params.columnRegex).map(
-            re => new RegExp(re)
+            (re) => new RegExp(re)
         );
         // TODO: Consider using named groups
         const as = asArray(params.asValue);
@@ -47,7 +47,7 @@ export default class RegexFoldTransform extends FlowNode {
         /**
          * @param {any} datum
          */
-        const detectColumns = datum => {
+        const detectColumns = (datum) => {
             const colNames = Object.keys(datum);
 
             /** @type {Map<string, string[]>} */
@@ -71,35 +71,37 @@ export default class RegexFoldTransform extends FlowNode {
             sampleAttrs = [...sampleColMap.entries()];
 
             includedColumns = colNames.filter(
-                colName =>
-                    !columnRegex.some(re => re.test(colName)) &&
+                (colName) =>
+                    !columnRegex.some((re) => re.test(colName)) &&
                     !(skipRegex && skipRegex.test(colName))
             );
 
             const props = [
                 ...includedColumns.map(
-                    prop =>
+                    (prop) =>
                         JSON.stringify(prop) +
                         ": datum[" +
                         JSON.stringify(prop) +
                         "]"
                 ),
                 JSON.stringify(sampleKey) + ": sampleId",
-                ...as.map(a => JSON.stringify(a) + ": null")
+                ...as.map((a) => JSON.stringify(a) + ": null"),
             ];
 
             // eslint-disable-next-line no-new-func
-            create = /** @type {any} */ (new Function(
-                "datum",
-                "sampleId",
-                "return {\n" + props.join(",\n") + "\n};"
-            ));
+            create = /** @type {any} */ (
+                new Function(
+                    "datum",
+                    "sampleId",
+                    "return {\n" + props.join(",\n") + "\n};"
+                )
+            );
         };
 
         /**
          * @param {any} datum
          */
-        const doRegexFold = datum => {
+        const doRegexFold = (datum) => {
             if (!sampleAttrs) {
                 detectColumns(datum);
             }
@@ -117,7 +119,7 @@ export default class RegexFoldTransform extends FlowNode {
         /**
          * @param {any} datum
          */
-        const detectAndHandle = datum => {
+        const detectAndHandle = (datum) => {
             detectColumns(datum);
             doRegexFold(datum);
             this.handle = doRegexFold;
@@ -129,7 +131,7 @@ export default class RegexFoldTransform extends FlowNode {
          *
          * @param {import("../flowNode").FlowBatch} flowBatch
          */
-        this.beginBatch = flowBatch => {
+        this.beginBatch = (flowBatch) => {
             if (isFileBatch(flowBatch)) {
                 this.handle = detectAndHandle;
             }

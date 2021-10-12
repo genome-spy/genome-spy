@@ -55,7 +55,7 @@ export function validTicks(scale, ticks, count) {
         lo = range;
     }
 
-    ticks = ticks.filter(function(v) {
+    ticks = ticks.filter(function (v) {
         v = scale(v);
         return lo <= v && v <= hi;
     });
@@ -63,7 +63,7 @@ export function validTicks(scale, ticks, count) {
     if (count > 0 && ticks.length > 1) {
         var endpoints = [ticks[0], peek(ticks)];
         while (ticks.length > count && ticks.length >= 3) {
-            ticks = ticks.filter(function(_, i) {
+            ticks = ticks.filter(function (_, i) {
                 return !(i % 2);
             });
         }
@@ -104,7 +104,7 @@ function binValues(bins, count) {
 
     return stride < 2
         ? bins.slice()
-        : bins.filter(function(x, i) {
+        : bins.filter(function (x, i) {
               return !(i % stride);
           });
 }
@@ -139,7 +139,7 @@ export function tickFormat(scale, count, specifier) {
 }
 
 function filter(sourceFormat, targetFormat) {
-    return function(_) {
+    return function (_) {
         return sourceFormat(_) ? targetFormat(_) : "";
     };
 }
@@ -167,7 +167,7 @@ function variablePrecision(specifier) {
 }
 
 function trimZeroes(format, decimalChar) {
-    return function(x) {
+    return function (x) {
         var str = format(x),
             dec = str.indexOf(decimalChar),
             idx,

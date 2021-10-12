@@ -5,7 +5,7 @@ test("Merges non-conflicting properties", () => {
 
     expect(mergeObjects([{ a: [0, 1] }, { b: [2, 3] }], "test")).toEqual({
         a: [0, 1],
-        b: [2, 3]
+        b: [2, 3],
     });
 });
 
@@ -14,7 +14,7 @@ test("Skips conflicting properties", () => {
         mergeObjects(
             [
                 { a: 1, b: 2, c: 3 },
-                { b: 5, d: 4 }
+                { b: 5, d: 4 },
             ],
             "test"
         )

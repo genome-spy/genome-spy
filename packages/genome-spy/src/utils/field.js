@@ -18,10 +18,9 @@ import { field as vegaField, accessor } from "vega-util";
 export function field(fieldExpr, name = fieldExpr) {
     if (/^[A-Za-z0-9_]+$/.test(fieldExpr)) {
         // eslint-disable-next-line no-new-func
-        const fn = /** @type {import("vega-util").AccessorFn} */ (new Function(
-            "datum",
-            `return datum[${JSON.stringify(fieldExpr)}]`
-        ));
+        const fn = /** @type {import("vega-util").AccessorFn} */ (
+            new Function("datum", `return datum[${JSON.stringify(fieldExpr)}]`)
+        );
         return accessor(fn, [fieldExpr], name);
     } else {
         return vegaField(fieldExpr);

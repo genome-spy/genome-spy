@@ -27,7 +27,7 @@ export function createSchemeTexture(schemeParams, gl, count, existingTexture) {
             // TODO: Reverse
             const textureData = interpolatorToTextureData(scheme, {
                 extent,
-                count
+                count,
             });
             return createOrUpdateTexture(
                 gl,
@@ -35,7 +35,7 @@ export function createSchemeTexture(schemeParams, gl, count, existingTexture) {
                     minMag: gl.LINEAR,
                     format: gl.RGB,
                     height: 1,
-                    wrap: gl.CLAMP_TO_EDGE
+                    wrap: gl.CLAMP_TO_EDGE,
                 },
                 textureData,
                 existingTexture
@@ -76,7 +76,7 @@ export function createInterpolatedColorTexture(
             minMag: gl.LINEAR,
             format: gl.RGB,
             height: 1,
-            wrap: gl.CLAMP_TO_EDGE
+            wrap: gl.CLAMP_TO_EDGE,
         },
         textureData,
         existingTexture
@@ -106,7 +106,7 @@ export function createDiscreteTexture(range, gl, count, existingTexture) {
             minMag: gl.NEAREST,
             format: gl.RED,
             internalFormat: gl.R32F,
-            height: 1
+            height: 1,
         },
         textureData,
         existingTexture
@@ -128,7 +128,7 @@ export function createDiscreteColorTexture(colors, gl, count, existingTexture) {
         {
             minMag: gl.NEAREST,
             format: gl.RGB,
-            height: 1
+            height: 1,
         },
         textureData,
         existingTexture
@@ -153,8 +153,8 @@ function interpolatorToTextureData(
     const span = peek(extent) - start;
 
     const steps = range(count)
-        .map(x => x / (count - 1))
-        .map(x => start + x / span)
+        .map((x) => x / (count - 1))
+        .map((x) => start + x / span)
         .map(interpolator);
 
     if (reverse) {

@@ -7,12 +7,12 @@ test("FormulaTransform", () => {
     const t = new FormulaTransform({
         type: "formula",
         expr: "datum.a * 2",
-        as: "b"
+        as: "b",
     });
     t.initialize();
 
     expect(processData(t, data)).toEqual([
         { a: 2, b: 4 },
-        { a: 3, b: 6 }
+        { a: 3, b: 6 },
     ]);
 });

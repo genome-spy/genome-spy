@@ -23,13 +23,13 @@ export default class ProjectTransform extends FlowNode {
 
         // TODO: "If unspecified, all fields will be copied using their existing names."
 
-        const accessors = params.fields.map(f => field(f));
+        const accessors = params.fields.map((f) => field(f));
         const as = params.as ? params.as : accessors.map(accessorName);
 
         /**
          * @param {any} datum
          */
-        this.handle = datum => {
+        this.handle = (datum) => {
             /** @type {Record<string, any>} */
             const projected = {};
             for (let i = 0; i < accessors.length; i++) {

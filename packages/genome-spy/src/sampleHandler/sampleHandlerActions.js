@@ -7,7 +7,7 @@ import {
     faMedal,
     faObjectGroup,
     faCircle,
-    faTrashAlt
+    faTrashAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
 /**
@@ -38,7 +38,7 @@ const verboseOps = {
     lte: "less than or equal to",
     eq: "equal to",
     gte: "greater than or equal to",
-    gt: "greater than"
+    gt: "greater than",
 };
 
 /**
@@ -57,13 +57,10 @@ export function getActionInfo(action, sampleHandler) {
     const attributeInfo = sampleHandler.getAttributeInfo(payload.attribute);
     const attributeName = attributeInfo?.name;
     const attributeTitle =
-        attributeInfo?.title ||
-        html`
-            <em>${attributeName}</em>
-        `;
+        attributeInfo?.title || html` <em>${attributeName}</em> `;
 
     const template = {
-        attributeName // TODO: This may actually be unnecessary
+        attributeName, // TODO: This may actually be unnecessary
     };
 
     switch (action.type) {
@@ -71,16 +68,14 @@ export function getActionInfo(action, sampleHandler) {
             return {
                 ...template,
                 title: "Sort by sample name",
-                icon: faSortAmountDown
+                icon: faSortAmountDown,
             };
         case SORT_BY:
             return {
                 ...template,
                 title: "Sort by",
-                provenanceTitle: html`
-                    Sort by ${attributeTitle}
-                `,
-                icon: faSortAmountDown
+                provenanceTitle: html` Sort by ${attributeTitle} `,
+                icon: faSortAmountDown,
             };
         case RETAIN_FIRST_OF_EACH:
             return {
@@ -93,17 +88,15 @@ export function getActionInfo(action, sampleHandler) {
                     Retain first sample of each unique ${attributeTitle}
                 `,
 
-                icon: faMedal
+                icon: faMedal,
             };
         case FILTER_BY_NOMINAL: {
             /** @param {string | import("lit").TemplateResult} attr */
-            const makeTitle = attr => html`
+            const makeTitle = (attr) => html`
                 ${payload.action == "remove" ? "Remove" : "Retain"} samples
                 having
                 ${payload.values[0] === undefined || payload.values[0] === null
-                    ? html`
-                          undefined ${attr}
-                      `
+                    ? html` undefined ${attr} `
                     : html`
                           ${attr} =
                           <strong>${payload.values[0]}</strong>
@@ -112,31 +105,23 @@ export function getActionInfo(action, sampleHandler) {
 
             return {
                 ...template,
-                title: makeTitle(
-                    html`
-                        <em>${attributeName}</em>
-                    `
-                ),
+                title: makeTitle(html` <em>${attributeName}</em> `),
                 provenanceTitle: makeTitle(attributeTitle),
-                icon: payload.action == "remove" ? faTrashAlt : faFilter
+                icon: payload.action == "remove" ? faTrashAlt : faFilter,
             };
         }
         case FILTER_BY_QUANTITATIVE: {
             /** @param {string | import("lit").TemplateResult} attr */
-            const makeTitle = attr => html`
+            const makeTitle = (attr) => html`
                 Retain samples having ${attr} ${verboseOps[payload.operator]}
                 <strong>${attributeNumberFormat(payload.operand)}</strong>
             `;
 
             return {
                 ...template,
-                title: makeTitle(
-                    html`
-                        <em>${attributeName}</em>
-                    `
-                ),
+                title: makeTitle(html` <em>${attributeName}</em> `),
                 provenanceTitle: makeTitle(attributeTitle),
-                icon: faFilter
+                icon: faFilter,
             };
         }
         case REMOVE_UNDEFINED:
@@ -146,16 +131,14 @@ export function getActionInfo(action, sampleHandler) {
                 provenanceTitle: html`
                     Remove samples having missing ${attributeTitle}
                 `,
-                icon: faFilter
+                icon: faFilter,
             };
         case GROUP_BY_NOMINAL:
             return {
                 ...template,
                 title: "Group by",
-                provenanceTitle: html`
-                    Group by ${attributeTitle}
-                `,
-                icon: faObjectGroup
+                provenanceTitle: html` Group by ${attributeTitle} `,
+                icon: faObjectGroup,
             };
         case GROUP_TO_QUARTILES:
             return {
@@ -164,13 +147,13 @@ export function getActionInfo(action, sampleHandler) {
                 provenanceTitle: html`
                     Group to quartiles by ${attributeTitle}
                 `,
-                icon: faObjectGroup
+                icon: faObjectGroup,
             };
         default:
             return {
                 ...template,
                 title: JSON.stringify(action),
-                icon: faCircle
+                icon: faCircle,
             };
     }
 }
@@ -214,8 +197,8 @@ export function filterByQuantitative(attribute, operator, operand) {
         payload: {
             attribute,
             operator,
-            operand
-        }
+            operand,
+        },
     };
 }
 
@@ -230,8 +213,8 @@ export function filterByNominal(attribute, action, values) {
         payload: {
             attribute,
             action,
-            values
-        }
+            values,
+        },
     };
 }
 
@@ -241,7 +224,7 @@ export function filterByNominal(attribute, action, values) {
 export function removeUndefined(attribute) {
     return {
         type: REMOVE_UNDEFINED,
-        payload: { attribute }
+        payload: { attribute },
     };
 }
 
@@ -251,7 +234,7 @@ export function removeUndefined(attribute) {
 export function groupByNominal(attribute) {
     return {
         type: GROUP_BY_NOMINAL,
-        payload: { attribute }
+        payload: { attribute },
     };
 }
 
@@ -261,6 +244,6 @@ export function groupByNominal(attribute) {
 export function groupToQuartiles(attribute) {
     return {
         type: GROUP_TO_QUARTILES,
-        payload: { attribute }
+        payload: { attribute },
     };
 }

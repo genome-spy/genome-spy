@@ -14,15 +14,17 @@ export default function createCloner(template) {
     // TODO: Check that only properties, not methods get cloned
     const properties = Object.keys(template);
 
-    const cloner = /** @type {function(T):T} */ (new Function(
-        "source",
-        "return { " +
-            properties
-                .map(prop => JSON.stringify(prop))
-                .map(prop => `${prop}: source[${prop}]`)
-                .join(",\n") +
-            " };"
-    ));
+    const cloner = /** @type {function(T):T} */ (
+        new Function(
+            "source",
+            "return { " +
+                properties
+                    .map((prop) => JSON.stringify(prop))
+                    .map((prop) => `${prop}: source[${prop}]`)
+                    .join(",\n") +
+                " };"
+        )
+    );
 
     cloner.properties = properties;
 

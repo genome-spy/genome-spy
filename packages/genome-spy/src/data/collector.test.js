@@ -1,6 +1,6 @@
 import Collector from "./collector";
 
-const data = [1, 5, 2, 4, 3].map(x => ({ x }));
+const data = [1, 5, 2, 4, 3].map((x) => ({ x }));
 
 test("Collector collects data", () => {
     const collector = new Collector();
@@ -16,7 +16,7 @@ test("Collector collects data", () => {
 test("Collector collects and sorts data", () => {
     const collector = new Collector({
         type: "collect",
-        sort: { field: ["x"] }
+        sort: { field: ["x"] },
     });
 
     for (const d of data) {
@@ -24,14 +24,16 @@ test("Collector collects and sorts data", () => {
     }
     collector.complete();
 
-    expect([...collector.getData()]).toEqual([1, 2, 3, 4, 5].map(x => ({ x })));
+    expect([...collector.getData()]).toEqual(
+        [1, 2, 3, 4, 5].map((x) => ({ x }))
+    );
 });
 
 test("Collector collects, groups, and sorts data", () => {
     const collector = new Collector({
         type: "collect",
         sort: { field: ["x"] },
-        groupby: ["a", "b"]
+        groupby: ["a", "b"],
     });
 
     const data = [
@@ -40,7 +42,7 @@ test("Collector collects, groups, and sorts data", () => {
         { a: 1, b: 2, x: 3 },
         { a: 2, b: 1, x: 4 },
         { a: 2, b: 1, x: 5 },
-        { a: 2, b: 2, x: 6 }
+        { a: 2, b: 2, x: 6 },
     ];
 
     for (const d of data) {
@@ -50,12 +52,13 @@ test("Collector collects, groups, and sorts data", () => {
 
     const cd = [...collector.getData()];
 
-    expect(cd.map(d => ({ x: d.x }))).toEqual(
-        [1, 2, 3, 4, 5, 6].map(x => ({ x }))
+    expect(cd.map((d) => ({ x: d.x }))).toEqual(
+        [1, 2, 3, 4, 5, 6].map((x) => ({ x }))
     );
 
     /** @param {any[]} group*/
-    const getGroupX = group => collector.facetBatches.get(group).map(d => d.x);
+    const getGroupX = (group) =>
+        collector.facetBatches.get(group).map((d) => d.x);
 
     expect(getGroupX([1, 1])).toEqual([1]);
     expect(getGroupX([1, 2])).toEqual([2, 3]);
@@ -67,7 +70,7 @@ test("Collector collects, groups, and sorts data", () => {
             [1, 1],
             [1, 2],
             [2, 1],
-            [2, 2]
+            [2, 2],
         ])
     );
 });

@@ -65,10 +65,10 @@ export default class FlowNode {
         this._propagate = Function(
             "children",
             range(this.children.length)
-                .map(i => `const child${i} = children[${i}];`)
+                .map((i) => `const child${i} = children[${i}];`)
                 .join("\n") +
                 `return function propagate(datum) {${range(this.children.length)
-                    .map(i => `child${i}.handle(datum);`)
+                    .map((i) => `child${i}.handle(datum);`)
                     .join("\n")}}`
         )(this.children);
     }
@@ -205,7 +205,7 @@ export default class FlowNode {
      */
     subtreeToString(depth = 0) {
         const childTree = this.children
-            .map(child => child.subtreeToString(depth + 1))
+            .map((child) => child.subtreeToString(depth + 1))
             .join("");
         return (
             " ".repeat(depth * 2) +

@@ -12,7 +12,7 @@ const WEIGHTS = {
     normal: 400,
     medium: 500,
     bold: 700,
-    black: 900
+    black: 900,
 };
 
 /**
@@ -68,7 +68,7 @@ export default class BmFontManager {
          */
         this._defaultFontEntry = {
             metrics: getMetrics(latoRegular),
-            texture: this._createTextureNow(latoRegularBitmap)
+            texture: this._createTextureNow(latoRegularBitmap),
         };
     }
 
@@ -98,7 +98,7 @@ export default class BmFontManager {
             // Return and empty entry, load it asynchronously
             fontEntry = {
                 metrics: undefined,
-                texture: undefined
+                texture: undefined,
             };
             this._fonts.set(key, fontEntry);
 
@@ -144,7 +144,7 @@ export default class BmFontManager {
         let promise = this._fontPromises.get(url);
         if (!promise) {
             promise = fetch(url)
-                .then(response => {
+                .then((response) => {
                     if (!response.ok) {
                         throw new Error(
                             "Could not load font: " + response.status
@@ -152,8 +152,8 @@ export default class BmFontManager {
                     }
                     return response;
                 })
-                .then(response => response.json())
-                .then(json => getMetrics(/** @type {BMFont} */ (json)));
+                .then((response) => response.json())
+                .then((json) => getMetrics(/** @type {BMFont} */ (json)));
 
             this._fontPromises.set(url, promise);
         }
@@ -170,7 +170,7 @@ export default class BmFontManager {
         let promise = this._metadataPromises.get(dir);
         if (!promise) {
             promise = fetch(this.fontRepository + dir + "/METADATA.pb")
-                .then(response => {
+                .then((response) => {
                     if (!response.ok) {
                         throw new Error(
                             "Could not load font metadata: " + response.status
@@ -178,9 +178,9 @@ export default class BmFontManager {
                     }
                     return response;
                 })
-                .then(response => response.text())
-                .then(text => parseMetadataPb(text))
-                .catch(error => {
+                .then((response) => response.text())
+                .then((text) => parseMetadataPb(text))
+                .catch((error) => {
                     console.warn(error);
                     return undefined;
                 });
@@ -208,7 +208,7 @@ export default class BmFontManager {
                 gl,
                 {
                     src: bitmapUrl,
-                    min: gl.LINEAR
+                    min: gl.LINEAR,
                 },
                 (err, texture, source) => {
                     if (err) {
@@ -236,7 +236,7 @@ export default class BmFontManager {
                 gl,
                 {
                     src: bitmapUrl,
-                    min: gl.LINEAR
+                    min: gl.LINEAR,
                 },
                 (err, texture, source) => {
                     if (err) {
@@ -297,7 +297,7 @@ function parseMetadataPb(metadata) {
                 filename: undefined,
                 post_script_name: undefined,
                 full_name: undefined,
-                copyright: undefined
+                copyright: undefined,
             };
         }
 
@@ -338,7 +338,7 @@ function findFilename(metadataEntries, key) {
     for (const e of metadataEntries) {
         if (
             key.family.localeCompare(e.name, undefined, {
-                sensitivity: "accent"
+                sensitivity: "accent",
             }) != 0
         ) {
             continue;

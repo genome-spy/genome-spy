@@ -12,29 +12,26 @@ import { isNumber } from "vega-util";
  */
 export function wrapAccessorForComparison(accessor, attributeInfo) {
     /** @type {function(any):any} scale */
-    const createOrdinalLookup = scale =>
-        scale
-            .copy()
-            .range(range(0, scale.domain().length))
-            .unknown(-1);
+    const createOrdinalLookup = (scale) =>
+        scale.copy().range(range(0, scale.domain().length)).unknown(-1);
 
     /** @type {function(any):any} */
     let wrapper;
     switch (attributeInfo.type) {
         case "quantitative":
-            wrapper = x => (isNumber(x) && !isNaN(x) ? -x : -Infinity);
+            wrapper = (x) => (isNumber(x) && !isNaN(x) ? -x : -Infinity);
             break;
         case "ordinal":
             // Use the (specified) domain for ordering
             wrapper = createOrdinalLookup(attributeInfo.scale);
             break;
         case "nominal":
-            wrapper = x => x || "";
+            wrapper = (x) => x || "";
             break;
         default:
     }
 
-    return sampleId => wrapper(accessor(sampleId));
+    return (sampleId) => wrapper(accessor(sampleId));
 }
 
 /**
@@ -52,13 +49,13 @@ export function retainFirstOfEach(samples, accessor) {
     const included = new Set();
 
     /** @param {any} key */
-    const checkAndAdd = key => {
+    const checkAndAdd = (key) => {
         const has = included.has(key);
         included.add(key);
         return has;
     };
 
-    return samples.filter(sample => !checkAndAdd(accessor(sample)));
+    return samples.filter((sample) => !checkAndAdd(accessor(sample)));
 }
 
 /**
@@ -92,7 +89,7 @@ const COMPARISON_OPERATORS = {
     lte: (a, b) => a <= b,
     eq: (a, b) => a == b,
     gte: (a, b) => a >= b,
-    gt: (a, b) => a > b
+    gt: (a, b) => a > b,
 };
 
 /**
@@ -106,7 +103,7 @@ const COMPARISON_OPERATORS = {
  */
 export function filterQuantitative(samples, accessor, operator, operand) {
     const op = COMPARISON_OPERATORS[operator];
-    return samples.filter(sample => op(accessor(sample), operand));
+    return samples.filter((sample) => op(accessor(sample), operand));
 }
 
 /**
@@ -121,13 +118,13 @@ export function filterNominal(samples, accessor, action, values) {
     const valueSet = new Set(values);
 
     /** @type {function(any):boolean} */
-    const predicate = x => valueSet.has(x);
+    const predicate = (x) => valueSet.has(x);
 
     /** @type {function(boolean):boolean} */
     const maybeNegatedPredicate =
-        action == "remove" ? x => !predicate(x) : predicate;
+        action == "remove" ? (x) => !predicate(x) : predicate;
 
-    return samples.filter(sample => maybeNegatedPredicate(accessor(sample)));
+    return samples.filter((sample) => maybeNegatedPredicate(accessor(sample)));
 }
 
 /**
@@ -138,6 +135,6 @@ export function filterNominal(samples, accessor, action, values) {
  */
 export function filterUndefined(samples, accessor) {
     /** @type {function(any):boolean} */
-    const isValid = x => x !== undefined && x !== null;
-    return samples.filter(sample => isValid(accessor(sample)));
+    const isValid = (x) => x !== undefined && x !== null;
+    return samples.filter((sample) => isValid(accessor(sample)));
 }

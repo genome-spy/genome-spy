@@ -19,7 +19,7 @@ test("k-way merge merges multiple sorted arrays", () => {
     const sorted = arrays.flat().sort((a, b) => a.a - b.a);
 
     /** @type {function(any):number} */
-    const accessor = d => d.a;
+    const accessor = (d) => d.a;
 
     expect([...kWayMerge(arrays, accessor)]).toEqual(sorted);
 });

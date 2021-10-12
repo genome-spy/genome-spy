@@ -9,7 +9,7 @@ export default function createFunction(expr, global = {}) {
         blacklist: [],
         whitelist: ["datum"],
         globalvar: "global",
-        fieldvar: "datum"
+        fieldvar: "datum",
     });
 
     try {
@@ -23,7 +23,7 @@ export default function createFunction(expr, global = {}) {
             `"use strict"; return (${generatedCode.code});`
         );
 
-        const exprFunction = /** @param {object} x */ x => fn(x, global);
+        const exprFunction = /** @param {object} x */ (x) => fn(x, global);
         exprFunction.fields = generatedCode.fields;
         return exprFunction;
     } catch (e) {

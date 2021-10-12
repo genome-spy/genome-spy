@@ -9,7 +9,7 @@ describe("Encoder", () => {
         x: { value: 0 },
         y: { field: "a" },
         z: { datum: 2 },
-        size: { value: 5 }
+        size: { value: 5 },
     };
 
     const scaleLinear = vegaScale("linear");
@@ -17,7 +17,7 @@ describe("Encoder", () => {
     /** @type {Record<string, import("./encoder").VegaScale>} */
     const scales = {
         y: scaleLinear().domain([0, 10]),
-        z: scaleLinear().domain([0, 20])
+        z: scaleLinear().domain([0, 20]),
     };
 
     const accessorFactory = new AccessorFactory();
@@ -40,7 +40,7 @@ describe("Encoder", () => {
     const datum = {
         a: 5,
         b: 6,
-        c: "Pink Floyd"
+        c: "Pink Floyd",
     };
 
     test("Throws on a broken spec", () =>
@@ -51,7 +51,7 @@ describe("Encoder", () => {
     test("The encoder object contains all channels", () =>
         expect(
             ["x", "y", "z", "size"].every(
-                channel => typeof encoders[channel] === "function"
+                (channel) => typeof encoders[channel] === "function"
             )
         ).toBeTruthy());
 

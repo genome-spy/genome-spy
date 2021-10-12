@@ -15,7 +15,7 @@ import DataFlow from "../data/dataFlow";
 export function create(spec, viewClass, context = undefined) {
     const c = {
         ...(context || {}),
-        accessorFactory: new AccessorFactory()
+        accessorFactory: new AccessorFactory(),
     };
 
     const view = createView(spec, c);

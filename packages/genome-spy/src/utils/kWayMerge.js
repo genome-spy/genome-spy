@@ -7,7 +7,7 @@ import Heapify from "heapify";
  * @param {function(T):number} [accessor]
  * @template T
  */
-export default function* kWayMerge(arrays, accessor = x => +x) {
+export default function* kWayMerge(arrays, accessor = (x) => +x) {
     // https://www.wikiwand.com/en/K-way_merge_algorithm
 
     // This could be optimized by implementing a tournament tree or

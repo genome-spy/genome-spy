@@ -44,7 +44,9 @@ export default class ArrayBuilder {
         );
         const f = metadata.f;
         this.dataUpdaters.push(
-            metadata.arrayReference ? d => updater(f(d)) : d => updater(f(d))
+            metadata.arrayReference
+                ? (d) => updater(f(d))
+                : (d) => updater(f(d))
         );
     }
 
@@ -69,14 +71,14 @@ export default class ArrayBuilder {
 
         this.arrays[attributeName] = {
             data: array,
-            numComponents: numComponents
+            numComponents: numComponents,
         };
 
         if (numComponents == 1) {
             let pendingValue = 0;
 
             /** @param {number} value */
-            const valueUpdater = value => {
+            const valueUpdater = (value) => {
                 pendingValue = +value;
             };
 
@@ -89,10 +91,10 @@ export default class ArrayBuilder {
 
             /** @type {function(number[]):void} value */
             const arrayUpdater = arrayReference
-                ? value => {
+                ? (value) => {
                       // Nop. Pending value is updated through the array reference.
                   }
-                : value => {
+                : (value) => {
                       pendingArray = value;
                   };
 

@@ -3,7 +3,7 @@ import createCloner from "./cloner";
 const template = {
     a: 1,
     b: "xyzzy",
-    "3": "iddqd"
+    3: "iddqd",
 };
 
 test("Cloner clones object properly", () => {
@@ -15,7 +15,7 @@ test("Cloner clones object properly", () => {
     const another = {
         a: 2,
         b: "idkfa",
-        "3": "hello"
+        3: "hello",
     };
 
     expect(makeClone(another)).toEqual(another);

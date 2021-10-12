@@ -3,10 +3,10 @@
  */
 export default function scaleNull() {
     /** @param {any} x */
-    const scale = x => x;
+    const scale = (x) => x;
 
     /** @param {any} x */
-    scale.invert = x => x;
+    scale.invert = (x) => x;
 
     scale.copy = scaleNull;
 

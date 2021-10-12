@@ -6,12 +6,12 @@ test("Project", () => {
         {
             foo: "FOO",
             bar: "BAR",
-            baz: { a: "A" }
-        }
+            baz: { a: "A" },
+        },
     ];
 
     /** @param {import("./project").ProjectParams} params */
-    const p = params => processData(new ProjectTransform(params), data);
+    const p = (params) => processData(new ProjectTransform(params), data);
 
     expect(p({ type: "project", fields: ["bar"] })).toEqual([{ bar: "BAR" }]);
 
@@ -20,11 +20,11 @@ test("Project", () => {
     ).toEqual([{ xBar: "BAR", xFoo: "FOO" }]);
 
     expect(p({ type: "project", fields: ["baz.a"] })).toEqual([
-        { "baz.a": "A" }
+        { "baz.a": "A" },
     ]);
 
     expect(p({ type: "project", fields: ["baz.a"], as: ["a"] })).toEqual([
-        { a: "A" }
+        { a: "A" },
     ]);
 
     expect(() => p({ type: "project", fields: ["bar"], as: [] })).toThrow();

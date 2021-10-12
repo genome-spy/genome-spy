@@ -31,30 +31,35 @@ export default class CoverageTransform extends FlowNode {
         /** @type {function(any):string} */
         this.chromAccessor = params.chrom
             ? field(params.chrom)
-            : d => undefined;
+            : (d) => undefined;
         /** @type {function(any):number} */
-        this.weightAccessor = params.weight ? field(params.weight) : d => 1;
+        this.weightAccessor = params.weight ? field(params.weight) : (d) => 1;
 
         this.as = {
             coverage: params.as || "coverage",
             start: params.asStart || params.start,
             end: params.asEnd || params.end,
-            chrom: params.asChrom || params.chrom
+            chrom: params.asChrom || params.chrom,
         };
 
         // eslint-disable-next-line no-new-func
-        this.createSegment = /** @type {function} */ (new Function(
-            "start",
-            "end",
-            "coverage",
-            "chrom",
-            "return {" +
-                Object.entries(this.as)
-                    .filter(([param, prop]) => prop)
-                    .map(([param, prop]) => `${JSON.stringify(prop)}: ${param}`)
-                    .join(", ") +
-                "};"
-        ));
+        this.createSegment = /** @type {function} */ (
+            new Function(
+                "start",
+                "end",
+                "coverage",
+                "chrom",
+                "return {" +
+                    Object.entries(this.as)
+                        .filter(([param, prop]) => prop)
+                        .map(
+                            ([param, prop]) =>
+                                `${JSON.stringify(prop)}: ${param}`
+                        )
+                        .join(", ") +
+                    "};"
+            )
+        );
 
         // End pos as priority, weight as value
         this.ends = new Heapify(maxDepth, [], [], Float32Array, Float64Array);
@@ -143,7 +148,7 @@ export default class CoverageTransform extends FlowNode {
         };
 
         /** @param {Record<string, any>} datum */
-        this.handle = datum => {
+        this.handle = (datum) => {
             const start = startAccessor(datum);
 
             while (ends.size && ends.peekPriority() < start) {

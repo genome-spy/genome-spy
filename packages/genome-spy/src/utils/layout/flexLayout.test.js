@@ -2,7 +2,7 @@ import {
     mapToPixelCoords,
     getMinimumSize,
     isStretching,
-    parseSizeDef
+    parseSizeDef,
 } from "./flexLayout";
 
 test("parseSize", () => {
@@ -15,7 +15,7 @@ test("parseSize", () => {
 });
 
 test("Absolute sizes", () => {
-    const items = [10, 30, 20].map(x => ({ px: x }));
+    const items = [10, 30, 20].map((x) => ({ px: x }));
     const containerSize = 100;
 
     const mapped = mapToPixelCoords(items, containerSize);
@@ -26,7 +26,7 @@ test("Absolute sizes", () => {
 });
 
 test("Absolute sizes with spacing", () => {
-    const items = [10, 30, 20].map(x => ({ px: x }));
+    const items = [10, 30, 20].map((x) => ({ px: x }));
     const containerSize = 100;
 
     const mapped = mapToPixelCoords(items, containerSize, { spacing: 10 });
@@ -37,12 +37,12 @@ test("Absolute sizes with spacing", () => {
 });
 
 test("Absolute sizes with spacing, reversed", () => {
-    const items = [10, 30, 20].map(x => ({ px: x }));
+    const items = [10, 30, 20].map((x) => ({ px: x }));
     const containerSize = 100;
 
     const mapped = mapToPixelCoords(items, containerSize, {
         spacing: 10,
-        reverse: true
+        reverse: true,
     });
 
     expect(mapped[0]).toEqual({ location: 90, size: 10 });
@@ -51,12 +51,12 @@ test("Absolute sizes with spacing, reversed", () => {
 });
 
 test("Absolute sizes with spacing, reversed and insufficient containerSize", () => {
-    const items = [10, 30, 20].map(x => ({ px: x }));
+    const items = [10, 30, 20].map((x) => ({ px: x }));
     const containerSize = 0;
 
     const mapped = mapToPixelCoords(items, containerSize, {
         spacing: 10,
-        reverse: true
+        reverse: true,
     });
 
     expect(mapped[0]).toEqual({ location: 70, size: 10 });
@@ -65,7 +65,7 @@ test("Absolute sizes with spacing, reversed and insufficient containerSize", () 
 });
 
 test("Growing sizes", () => {
-    const items = [10, 20, 70].map(x => ({ grow: x }));
+    const items = [10, 20, 70].map((x) => ({ grow: x }));
     const containerSize = 200;
 
     const mapped = mapToPixelCoords(items, containerSize);
@@ -76,7 +76,7 @@ test("Growing sizes", () => {
 });
 
 test("Growing sizes with spacing", () => {
-    const items = [10, 20, 70].map(x => ({ grow: x }));
+    const items = [10, 20, 70].map((x) => ({ grow: x }));
     const containerSize = 220;
     const mapped = mapToPixelCoords(items, containerSize, { spacing: 10 });
 
@@ -101,7 +101,7 @@ test("Sizes having both absolute and growing components", () => {
         { px: 1 },
         { px: 2 },
         { px: 3, grow: 2 },
-        { px: 4, grow: 1 }
+        { px: 4, grow: 1 },
     ];
     const containerSize = 16;
     const mapped = mapToPixelCoords(items, containerSize);
@@ -125,7 +125,7 @@ test("Zero sizes return zero coords", () => {
 });
 
 test("Offset is added", () => {
-    const items = [10, 30, 20].map(x => ({ px: x }));
+    const items = [10, 30, 20].map((x) => ({ px: x }));
     const containerSize = 100;
 
     const mapped = mapToPixelCoords(items, containerSize, { offset: 5 });

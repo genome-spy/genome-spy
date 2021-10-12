@@ -1,6 +1,6 @@
 import createDomain, {
     toRegularArray as r,
-    PiecewiseDomain
+    PiecewiseDomain,
 } from "./domainArray";
 
 describe("Build quantitative domains", () => {
@@ -37,9 +37,9 @@ describe("Build quantitative domains", () => {
                 { x: undefined },
                 { x: NaN },
                 { x: 5 },
-                { x: 4 }
+                { x: 4 },
             ],
-            d => d.x
+            (d) => d.x
         );
         expect(r(b)).toEqual([1, 5]);
     });
@@ -105,9 +105,7 @@ describe("Build piecewise domains", () => {
 
     test("Does not throw when extending with existing value", () => {
         expect(r(createDomain("quantitative", [1, 2, 3]).extend(2))).toEqual([
-            1,
-            2,
-            3
+            1, 2, 3,
         ]);
     });
 });

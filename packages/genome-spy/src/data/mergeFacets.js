@@ -1,7 +1,7 @@
 import { isFieldDef } from "../encoder/encoder";
 import {
     isSampleGroup,
-    iterateGroupHierarcy
+    iterateGroupHierarcy,
 } from "../sampleHandler/sampleHandler";
 import { peek } from "../utils/arrayUtils";
 import { field } from "../utils/field";
@@ -36,7 +36,7 @@ export default class MergeSampleFacets extends FlowNode {
         for (const v of view.getAncestors()) {
             if (v instanceof SampleView) {
                 this.provenance = v.sampleHandler.provenance;
-                this.provenance.addListener(state =>
+                this.provenance.addListener((state) =>
                     animator.requestTransition(() => {
                         this.reset();
                         this._mergeAndPropagate(state);
@@ -98,9 +98,9 @@ export default class MergeSampleFacets extends FlowNode {
      * @param {import("../sampleHandler/sampleState").State} state
      */
     _mergeAndPropagate(state) {
-        const groupPaths = [
-            ...iterateGroupHierarcy(state.rootGroup)
-        ].filter(path => isSampleGroup(peek(path)));
+        const groupPaths = [...iterateGroupHierarcy(state.rootGroup)].filter(
+            (path) => isSampleGroup(peek(path))
+        );
 
         for (const [i, groupPath] of groupPaths.entries()) {
             const group = peek(groupPath);
@@ -119,7 +119,7 @@ export default class MergeSampleFacets extends FlowNode {
 
                 const iterator = kWayMerge(
                     samples.map(
-                        sample => collector.facetBatches.get([sample]) ?? []
+                        (sample) => collector.facetBatches.get([sample]) ?? []
                     ),
                     this.xAccessor
                 );
@@ -146,7 +146,7 @@ export default class MergeSampleFacets extends FlowNode {
     _updateScales() {
         /** @type {Set<import("../view/view").ScaleResolution>} */
         const resolutions = new Set();
-        this.view.visit(view => {
+        this.view.visit((view) => {
             if (view instanceof UnitView && view.mark.encoding.y) {
                 const resolution = view.getScaleResolution("y");
                 if (resolution) {

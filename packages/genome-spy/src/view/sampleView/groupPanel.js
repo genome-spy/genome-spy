@@ -26,18 +26,18 @@ export class GroupPanel extends LayerView {
                     {
                         type: "formula",
                         as: "_y2",
-                        expr: "datum._index * 2 + 1"
+                        expr: "datum._index * 2 + 1",
                     },
                     {
                         type: "formula",
                         as: "_NA",
-                        expr: "datum.label == null"
+                        expr: "datum.label == null",
                     },
                     {
                         type: "formula",
                         as: "label",
-                        expr: "datum.label != null ? datum.label: 'NA'"
-                    }
+                        expr: "datum.label != null ? datum.label: 'NA'",
+                    },
                 ],
 
                 encoding: {
@@ -46,7 +46,7 @@ export class GroupPanel extends LayerView {
                         type: "ordinal",
                         scale: {
                             align: 0,
-                            padding: 0.2272727
+                            padding: 0.2272727,
                         },
                         /*
                         axis: {
@@ -54,7 +54,7 @@ export class GroupPanel extends LayerView {
                             domain: false
 						}
 						*/
-                        axis: null
+                        axis: null,
                     },
                     // "Abuse" the ordinal scale on a positional channel.
                     // Its range encodes the positions of the groups and it is updated dynamically
@@ -64,11 +64,11 @@ export class GroupPanel extends LayerView {
                         type: "nominal",
                         scale: {
                             type: "ordinal",
-                            domain: range(500) // Hack needed because domains are not (yet) sorted
+                            domain: range(500), // Hack needed because domains are not (yet) sorted
                         },
-                        axis: null
+                        axis: null,
                     },
-                    y2: { field: "_y2" }
+                    y2: { field: "_y2" },
                 },
                 layer: [
                     {
@@ -77,8 +77,8 @@ export class GroupPanel extends LayerView {
                             type: "rect",
                             clip: true,
                             dynamicData: true,
-                            color: "#e8e8e8"
-                        }
+                            color: "#e8e8e8",
+                        },
                     },
                     {
                         mark: {
@@ -87,7 +87,7 @@ export class GroupPanel extends LayerView {
                             dynamicData: true,
                             angle: -90,
                             paddingY: 5,
-                            tooltip: null
+                            tooltip: null,
                         },
                         encoding: {
                             text: { field: "label", type: "nominal" },
@@ -97,12 +97,12 @@ export class GroupPanel extends LayerView {
                                 scale: {
                                     type: "ordinal",
                                     domain: [false, true],
-                                    range: [1.0, 0.3]
-                                }
-                            }
-                        }
-                    }
-                ]
+                                    range: [1.0, 0.3],
+                                },
+                            },
+                        },
+                    },
+                ],
             },
             sampleView.context,
             undefined,
@@ -140,19 +140,20 @@ export class GroupPanel extends LayerView {
      * @param {import("./sampleViewTypes").HierarchicalGroupLocation[]} groupLocations
      */
     updateGroups(groupLocations) {
-        const dynamicSource = /** @type {import("../../data/sources/dynamicSource").default} */ (this.context.dataFlow.findDataSourceByKey(
-            this
-        ));
+        const dynamicSource =
+            /** @type {import("../../data/sources/dynamicSource").default} */ (
+                this.context.dataFlow.findDataSourceByKey(this)
+            );
 
         this.groupLocations = groupLocations;
 
-        const data = groupLocations.map(g => ({
+        const data = groupLocations.map((g) => ({
             _index: g.key.index,
             _name: g.key.group.name,
             _depth: g.key.depth,
             attribute: g.key.attributeLabel,
             label: g.key.group.label,
-            n: g.key.n
+            n: g.key.n,
         }));
 
         dynamicSource.publishData(data);
@@ -164,7 +165,7 @@ export class GroupPanel extends LayerView {
         this.updateRange();
 
         // TODO: Get rid of the following. Should happen automatically:
-        peek([...this.getAncestors()]).visit(view =>
+        peek([...this.getAncestors()]).visit((view) =>
             invalidatePrefix(view, "size")
         );
     }

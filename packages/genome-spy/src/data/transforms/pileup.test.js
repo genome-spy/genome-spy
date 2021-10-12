@@ -18,10 +18,10 @@ const reads = [
     [11, 12],
     [15, 18],
     [16, 18],
-    [17, 18]
-].map(d => ({
+    [17, 18],
+].map((d) => ({
     start: d[0],
-    end: d[1]
+    end: d[1],
 }));
 
 const lanes = [0, 1, 2, 1, 0, 0, 1, 2, 0, 1, 2];
@@ -30,7 +30,7 @@ const lanes = [0, 1, 2, 1, 0, 0, 1, 2, 0, 1, 2];
 const params = {
     type: "pileup",
     start: "start",
-    end: "end"
+    end: "end",
 };
 
 /**
@@ -46,7 +46,7 @@ function pileupTransform(params, data) {
 test("Pileup transform produces correct pileup", () => {
     const piledUp = lanes.map((d, i) => ({
         ...reads[i],
-        lane: d
+        lane: d,
     }));
 
     expect(pileupTransform(params, reads)).toEqual(piledUp);
@@ -62,7 +62,7 @@ test("Pileup transform produces correct pileup with consecutive contigs", () => 
 
     const piledUp = repeatedLanes.map((d, i) => ({
         ...repeatedReads[i],
-        lane: d
+        lane: d,
     }));
 
     expect(pileupTransform(params, repeatedReads)).toEqual(piledUp);

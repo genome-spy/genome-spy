@@ -3,7 +3,7 @@ import { processData } from "../flowTestUtils";
 import IdentifierTransform, { BLOCK_SIZE, DEFAULT_AS } from "./identifier";
 
 test("An IdentifierTransform adds identifiers correctly", () => {
-    const data = range(BLOCK_SIZE * 2).map(x => ({ data: x }));
+    const data = range(BLOCK_SIZE * 2).map((x) => ({ data: x }));
 
     const identifiedData = processData(
         new IdentifierTransform({ type: "identifier" }),
@@ -17,16 +17,16 @@ test("An IdentifierTransform adds identifiers correctly", () => {
     expect(identifiedData[1]).toEqual({ data: 1, [DEFAULT_AS]: firstId + 1 });
     expect(identifiedData[BLOCK_SIZE]).toEqual({
         data: BLOCK_SIZE,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE
+        [DEFAULT_AS]: firstId + BLOCK_SIZE,
     });
     expect(identifiedData[BLOCK_SIZE + 1]).toEqual({
         data: BLOCK_SIZE + 1,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE + 1
+        [DEFAULT_AS]: firstId + BLOCK_SIZE + 1,
     });
 });
 
 test("Another transform instance adds identifiers correctly", () => {
-    const data = range(BLOCK_SIZE * 2).map(x => ({ data: x }));
+    const data = range(BLOCK_SIZE * 2).map((x) => ({ data: x }));
     // Another instance
     const identifiedData = processData(
         new IdentifierTransform({ type: "identifier" }),
@@ -40,16 +40,16 @@ test("Another transform instance adds identifiers correctly", () => {
     expect(identifiedData[1]).toEqual({ data: 1, [DEFAULT_AS]: firstId + 1 });
     expect(identifiedData[BLOCK_SIZE]).toEqual({
         data: BLOCK_SIZE,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE
+        [DEFAULT_AS]: firstId + BLOCK_SIZE,
     });
     expect(identifiedData[BLOCK_SIZE + 1]).toEqual({
         data: BLOCK_SIZE + 1,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE + 1
+        [DEFAULT_AS]: firstId + BLOCK_SIZE + 1,
     });
 });
 
 test("IdentifierTransform recycles allocated blocks", () => {
-    let data = range(BLOCK_SIZE * 2).map(x => ({ data: x }));
+    let data = range(BLOCK_SIZE * 2).map((x) => ({ data: x }));
 
     const transform = new IdentifierTransform({ type: "identifier" });
     let identifiedData = processData(transform, data);
@@ -59,10 +59,10 @@ test("IdentifierTransform recycles allocated blocks", () => {
     expect(identifiedData[0]).toEqual({ data: 0, [DEFAULT_AS]: firstId });
     expect(identifiedData[BLOCK_SIZE]).toEqual({
         data: BLOCK_SIZE,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE
+        [DEFAULT_AS]: firstId + BLOCK_SIZE,
     });
 
-    data = range(BLOCK_SIZE * 3).map(x => ({ data: x }));
+    data = range(BLOCK_SIZE * 3).map((x) => ({ data: x }));
 
     // Resetting the transform. It should now reuse the allocated blocks.
     transform.reset();
@@ -71,12 +71,12 @@ test("IdentifierTransform recycles allocated blocks", () => {
     expect(identifiedData[0]).toEqual({ data: 0, [DEFAULT_AS]: firstId });
     expect(identifiedData[BLOCK_SIZE]).toEqual({
         data: BLOCK_SIZE,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE
+        [DEFAULT_AS]: firstId + BLOCK_SIZE,
     });
 
     // ... and reserve one extra
     expect(identifiedData[BLOCK_SIZE * 2]).toEqual({
         data: BLOCK_SIZE * 2,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE * 2
+        [DEFAULT_AS]: firstId + BLOCK_SIZE * 2,
     });
 });

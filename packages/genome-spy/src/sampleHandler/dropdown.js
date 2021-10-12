@@ -22,7 +22,7 @@ export function toggleDropdown(event) {
         dropdown.classList.add("show");
         window.addEventListener(
             "click",
-            e => {
+            (e) => {
                 if (dropdown.classList.contains("show")) {
                     dropdown.classList.remove("show");
                     e.preventDefault();

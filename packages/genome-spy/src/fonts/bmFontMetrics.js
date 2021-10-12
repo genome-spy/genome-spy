@@ -103,6 +103,6 @@ export default function getMetrics(bmFont) {
         xHeight,
         capHeight,
         descent,
-        common: bmFont.common
+        common: bmFont.common,
     };
 }

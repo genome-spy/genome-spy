@@ -39,7 +39,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             this.svg.setAttributeNS(
                 null,
                 "viewBox",
-                ["x", "y", "width", "height"].map(a => viewBox[a]).join(" ")
+                ["x", "y", "width", "height"].map((a) => viewBox[a]).join(" ")
             );
         }
 
@@ -76,14 +76,14 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             height: this.coords.height,
             fill: "transparent",
             stroke: "black",
-            "stroke-width": 1
+            "stroke-width": 1,
         });
 
         const name = createNode("text", {
             x: this.coords.x + this.coords.width / 2,
             y: this.coords.y + this.coords.height / 2,
             "dominant-baseline": "middle",
-            "text-anchor": "middle"
+            "text-anchor": "middle",
         });
 
         name.textContent = mark.getType();

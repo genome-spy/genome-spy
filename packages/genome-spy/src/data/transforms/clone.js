@@ -13,11 +13,11 @@ export default class CloneTransform extends FlowNode {
         super();
 
         /** @param {any} datum */
-        const setupCloner = datum => {
+        const setupCloner = (datum) => {
             const clone = createCloner(datum);
 
             /** @param {any} datum */
-            this.handle = datum => this._propagate(clone(datum));
+            this.handle = (datum) => this._propagate(clone(datum));
 
             this.handle(datum);
         };
@@ -29,7 +29,7 @@ export default class CloneTransform extends FlowNode {
          *
          * @param {import("../flowNode").FlowBatch} [flowBatch]
          */
-        this.beginBatch = flowBatch => {
+        this.beginBatch = (flowBatch) => {
             if (isFileBatch(flowBatch)) {
                 // TODO: Only create new cloner if the props change
                 this.handle = setupCloner;

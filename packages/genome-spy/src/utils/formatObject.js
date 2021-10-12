@@ -11,9 +11,7 @@ const exponentNumberFormat = d3format(".4~e");
  */
 export default function formatObject(object) {
     if (object === null) {
-        return html`
-            <span class="na">NA</span>
-        `;
+        return html` <span class="na">NA</span> `;
     }
 
     if (isString(object)) {

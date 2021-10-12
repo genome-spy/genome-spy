@@ -25,7 +25,7 @@ export default class RegexExtractTransform extends FlowNode {
          *
          * @param {any} datum
          */
-        this.handle = datum => {
+        this.handle = (datum) => {
             const value = accessor(datum);
             if (isString(value)) {
                 const m = value.match(re);

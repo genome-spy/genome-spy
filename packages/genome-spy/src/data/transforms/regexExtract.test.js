@@ -18,13 +18,13 @@ describe("RegexExtractTransform", () => {
         type: "regexExtract",
         regex: "^(\\d+)-(\\d+)$",
         field: "a",
-        as: ["b", "c"]
+        as: ["b", "c"],
     };
 
     test("Valid config and input", () => {
         expect(transform(params, rows)).toEqual([
             { a: "12-34", b: "12", c: "34" },
-            { a: "23-45", b: "23", c: "45" }
+            { a: "23-45", b: "23", c: "45" },
         ]);
     });
 
@@ -34,7 +34,7 @@ describe("RegexExtractTransform", () => {
             type: "regexExtract",
             regex: "^(\\d+)-(\\d+)$",
             field: "a",
-            as: ["b", "c", "d"]
+            as: ["b", "c", "d"],
         };
 
         expect(() => transform(config2, rows)).toThrow();
@@ -59,7 +59,7 @@ describe("RegexExtractTransform", () => {
             [
                 { a: 123, b: undefined, c: undefined },
                 { a: "xyzzy", b: undefined, c: undefined },
-                { a: "12-34", b: "12", c: "34" }
+                { a: "12-34", b: "12", c: "34" },
             ]
         );
     });

@@ -3,7 +3,7 @@
  * fisheye d3-plugin (c) Mike Bostock
  * https://github.com/d3/d3-plugins/blob/master/fisheye/
  */
-export default function() {
+export default function () {
     let radius = 200;
     let distortion = 2;
     let k0 = 1,
@@ -32,7 +32,7 @@ export default function() {
     /**
      * @param {number} _
      */
-    fisheye.radius = function(_) {
+    fisheye.radius = function (_) {
         if (!arguments.length) return radius;
         radius = +_;
         return rescale();
@@ -41,7 +41,7 @@ export default function() {
     /**
      * @param {number} _
      */
-    fisheye.distortion = function(_) {
+    fisheye.distortion = function (_) {
         if (!arguments.length) return distortion;
         distortion = +_;
         return rescale();
@@ -50,7 +50,7 @@ export default function() {
     /**
      * @param {number} _
      */
-    fisheye.focus = function(_) {
+    fisheye.focus = function (_) {
         if (!arguments.length) return focus;
         focus = _;
         return fisheye;

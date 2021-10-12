@@ -23,7 +23,7 @@ export default class FlattenDelimitedTransform extends FlowNode {
 
         // TODO: Validate config. string elements, etc...
 
-        const accessors = asArray(params.field).map(f => field(f));
+        const accessors = asArray(params.field).map((f) => field(f));
         const separators = asArray(params.separator);
         const as = asArray(params.as || params.field);
 
@@ -37,8 +37,8 @@ export default class FlattenDelimitedTransform extends FlowNode {
         }
 
         /** @param {any[]} datum */
-        this.handle = datum => {
-            if (accessors.some(a => !a(datum))) return;
+        this.handle = (datum) => {
+            if (accessors.some((a) => !a(datum))) return;
 
             const splitFields = accessors.map((accessor, i) =>
                 accessor(datum).split(separators[i])
@@ -58,8 +58,8 @@ export default class FlattenDelimitedTransform extends FlowNode {
 }
 
 function validateSplit(splitFields, row) {
-    const splitLengths = splitFields.map(f => f.length);
-    if (!splitLengths.every(x => x == splitLengths[0])) {
+    const splitLengths = splitFields.map((f) => f.length);
+    if (!splitLengths.every((x) => x == splitLengths[0])) {
         throw new Error(
             "Mismatching number of elements in the fields to be split: " +
                 JSON.stringify(row)

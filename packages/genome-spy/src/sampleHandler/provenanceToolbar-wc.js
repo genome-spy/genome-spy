@@ -5,7 +5,7 @@ import {
     faRedo,
     faEllipsisH,
     faCircle,
-    faCheck
+    faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "./dropdown";
 
@@ -19,7 +19,7 @@ export default class ProvenanceButtons extends LitElement {
 
     static get properties() {
         return {
-            provenance: { type: Object }
+            provenance: { type: Object },
         };
     }
 
@@ -60,9 +60,7 @@ export default class ProvenanceButtons extends LitElement {
                             : ""}
                     >
                         ${index == 0 && !action
-                            ? html`
-                                  ${icon(faCheck).node[0]} The initial state
-                              `
+                            ? html` ${icon(faCheck).node[0]} The initial state `
                             : html`
                                   ${icon(info.icon || faCircle).node[0]}
                                   ${info.provenanceTitle || info.title}
@@ -91,7 +89,7 @@ export default class ProvenanceButtons extends LitElement {
         `;
 
         return html`
-            <div class="btn-group" @click=${e => e.stopPropagation()}>
+            <div class="btn-group" @click=${(e) => e.stopPropagation()}>
                 <button
                     class="tool-btn"
                     title="Backtrack samples (B)"

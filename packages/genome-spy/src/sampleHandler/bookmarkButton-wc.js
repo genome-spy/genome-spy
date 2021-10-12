@@ -23,7 +23,7 @@ class BookmarkButton extends LitElement {
         return {
             sampleHandler: { type: Object },
             sampleView: { type: Object },
-            bookmarkDatabase: { type: Object }
+            bookmarkDatabase: { type: Object },
         };
     }
 
@@ -52,7 +52,7 @@ class BookmarkButton extends LitElement {
                     name,
                     timestamp: Date.now(),
                     actions: this._provenance.getActionHistory(),
-                    zoom: complexDomain
+                    zoom: complexDomain,
                 })
                 .then(() => this.requestUpdate());
         }
@@ -75,7 +75,9 @@ class BookmarkButton extends LitElement {
                             ? resolution
                                   .getGenome()
                                   .toContinuousInterval(
-                                      /** @type {import("../genome/genome").ChromosomalLocus[]} */ (entry.zoom)
+                                      /** @type {import("../genome/genome").ChromosomalLocus[]} */ (
+                                          entry.zoom
+                                      )
                                   )
                             : /** @type {number[]} */ (entry.zoom)
                     );
@@ -90,9 +92,9 @@ class BookmarkButton extends LitElement {
 
     _getBookmarks() {
         return until(
-            this.bookmarkDatabase.getNames().then(names =>
+            this.bookmarkDatabase.getNames().then((names) =>
                 names.map(
-                    name =>
+                    (name) =>
                         html`
                             <li>
                                 <a @click=${() => this._loadBookmark(name)}
@@ -102,9 +104,7 @@ class BookmarkButton extends LitElement {
                         `
                 )
             ),
-            html`
-                Loading...
-            `
+            html` Loading... `
         );
     }
 

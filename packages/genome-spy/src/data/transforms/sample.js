@@ -90,7 +90,7 @@ export default class SampleTransform extends FlowNode {
 export function sampleIterable(n, iterable, accessor) {
     const sampler = new SampleTransform({
         type: "sample",
-        size: n
+        size: n,
     });
     for (const d of iterable) {
         sampler.handle(accessor(d));

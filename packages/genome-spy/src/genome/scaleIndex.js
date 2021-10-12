@@ -36,7 +36,7 @@ export default function scaleIndex() {
      *
      * @param {number} y
      */
-    scale.invert = function(y) {
+    scale.invert = function (y) {
         return ((y - range[0]) / rangeSpan) * domainSpan + domain[0];
     };
 
@@ -44,7 +44,7 @@ export default function scaleIndex() {
      *
      * @param {Iterable<number>} [_]
      */
-    scale.domain = function(_) {
+    scale.domain = function (_) {
         if (arguments.length) {
             domain = extent(_);
             domainSpan = domain[1] - domain[0];
@@ -66,7 +66,7 @@ export default function scaleIndex() {
      *
      * @param {Iterable<number>} [_]
      */
-    scale.range = function(_) {
+    scale.range = function (_) {
         if (arguments.length) {
             range = [..._];
             rangeSpan = range[1] - range[0];
@@ -80,7 +80,7 @@ export default function scaleIndex() {
      *
      * @param {number} [_]
      */
-    scale.numberingOffset = function(_) {
+    scale.numberingOffset = function (_) {
         if (arguments.length) {
             numberingOffset = _;
             return scale;
@@ -93,7 +93,7 @@ export default function scaleIndex() {
      *
      * @param {number} _
      */
-    scale.padding = function(_) {
+    scale.padding = function (_) {
         if (arguments.length) {
             paddingOuter = _;
             paddingInner = Math.min(1, _);
@@ -107,7 +107,7 @@ export default function scaleIndex() {
      *
      * @param {number} _
      */
-    scale.paddingInner = function(_) {
+    scale.paddingInner = function (_) {
         if (arguments.length) {
             paddingInner = Math.min(1, _);
             return scale;
@@ -120,7 +120,7 @@ export default function scaleIndex() {
      *
      * @param {number} _
      */
-    scale.paddingOuter = function(_) {
+    scale.paddingOuter = function (_) {
         if (arguments.length) {
             paddingOuter = _;
             return scale;
@@ -133,7 +133,7 @@ export default function scaleIndex() {
      *
      * @param {number} _
      */
-    scale.align = function(_) {
+    scale.align = function (_) {
         if (arguments.length) {
             align = Math.max(0, Math.min(1, _));
             return scale;
@@ -150,7 +150,7 @@ export default function scaleIndex() {
      * @param {number} count
      * @returns {number[]}
      */
-    scale.ticks = count => {
+    scale.ticks = (count) => {
         const align = /** @type {number} */ (scale.align());
         const offset = /** @type {number} */ (scale.numberingOffset());
         return d3ticks(
@@ -159,7 +159,7 @@ export default function scaleIndex() {
             Math.min(count, Math.ceil(domainSpan))
         )
             .filter(Number.isInteger)
-            .map(x => x - numberingOffset);
+            .map((x) => x - numberingOffset);
     };
 
     /**
@@ -167,7 +167,7 @@ export default function scaleIndex() {
      * @param {number} [count]
      * @param {string} [specifier]
      */
-    scale.tickFormat = function(count, specifier) {
+    scale.tickFormat = function (count, specifier) {
         if (specifier) {
             throw new Error(
                 "Index scale's tickFormat does not support a specifier!"
@@ -183,7 +183,8 @@ export default function scaleIndex() {
         // TODO: max absolute value should be taken into account too. 2.00M vs 200M
         const numberFormat = step < 100000 ? d3format(",") : d3format(".3s");
 
-        return /** @param {number} x */ x => numberFormat(x + numberingOffset);
+        return /** @param {number} x */ (x) =>
+            numberFormat(x + numberingOffset);
     };
 
     scale.copy = () =>

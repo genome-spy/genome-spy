@@ -9,7 +9,7 @@ export function debounce(func, wait, rejectOnDebounce = true) {
     let timeout;
 
     /** @type {(reason?: any) => void} */
-    let rejectPrevious = _ => undefined;
+    let rejectPrevious = (_) => undefined;
 
     /**
      * @param {T} args
@@ -18,7 +18,7 @@ export function debounce(func, wait, rejectOnDebounce = true) {
         return new Promise((resolve, reject) => {
             const later = () => {
                 clearTimeout(timeout);
-                rejectPrevious = _ => undefined;
+                rejectPrevious = (_) => undefined;
 
                 resolve(func(...args));
             };

@@ -4,7 +4,7 @@ import FlattenDelimitedTransform from "./flattenDelimited";
 const sampleData = [
     { id: 1, a: "q, w, e", b: "a-s-d" },
     { id: 2, a: "r, t, y", b: "f-g-h" },
-    { id: 3, a: "u", b: "j" }
+    { id: 3, a: "u", b: "j" },
 ];
 
 /**
@@ -21,7 +21,7 @@ describe("FlattenDelimited transform", () => {
         const config = {
             type: "flattenDelimited",
             field: "a",
-            separator: ", "
+            separator: ", ",
         };
 
         expect(transform(config, sampleData)).toEqual([
@@ -31,7 +31,7 @@ describe("FlattenDelimited transform", () => {
             { id: 2, a: "r", b: "f-g-h" },
             { id: 2, a: "t", b: "f-g-h" },
             { id: 2, a: "y", b: "f-g-h" },
-            { id: 3, a: "u", b: "j" }
+            { id: 3, a: "u", b: "j" },
         ]);
     });
 
@@ -41,7 +41,7 @@ describe("FlattenDelimited transform", () => {
             type: "flattenDelimited",
             field: ["a", "b"],
             as: ["a", "c"],
-            separator: [", ", "-"]
+            separator: [", ", "-"],
         };
 
         expect(transform(config, sampleData)).toEqual([
@@ -51,7 +51,7 @@ describe("FlattenDelimited transform", () => {
             { id: 2, a: "r", b: "f-g-h", c: "f" },
             { id: 2, a: "t", b: "f-g-h", c: "g" },
             { id: 2, a: "y", b: "f-g-h", c: "h" },
-            { id: 3, a: "u", b: "j", c: "j" }
+            { id: 3, a: "u", b: "j", c: "j" },
         ]);
     });
 
@@ -59,15 +59,15 @@ describe("FlattenDelimited transform", () => {
         const data = [
             {
                 a: "1-2",
-                b: "1-2-3"
-            }
+                b: "1-2-3",
+            },
         ];
 
         /** @type {import("./flattenDelimited").FlattenDelimitedParams} */
         const config = {
             type: "flattenDelimited",
             field: ["a", "b"],
-            separator: ["-", "-"]
+            separator: ["-", "-"],
         };
 
         expect(() => transform(config, data)).toThrow();
@@ -78,7 +78,7 @@ describe("FlattenDelimited transform", () => {
         const config = {
             type: "flattenDelimited",
             field: ["a", "b"],
-            separator: ["a"]
+            separator: ["a"],
         };
 
         expect(() => transform(config, sampleData)).toThrow();

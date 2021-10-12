@@ -4,7 +4,7 @@ import {
     mapToPixelCoords,
     getMinimumSize,
     parseSizeDef,
-    FlexDimensions
+    FlexDimensions,
 } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
 import Padding from "../utils/layout/padding";
@@ -54,15 +54,15 @@ export default class ConcatView extends ContainerView {
 
     _getFlexSizeDefs() {
         return this._cache("size/flexSizeDefs", () =>
-            this.children.map(view => view.getSize()[this.mainDimension])
+            this.children.map((view) => view.getSize()[this.mainDimension])
         );
     }
 
     _getEffectiveChildPaddings() {
         return this._cache("size/effectiveChildPaddings", () =>
             this.children
-                .map(view => view.getEffectivePadding())
-                .map(padding =>
+                .map((view) => view.getEffectivePadding())
+                .map((padding) =>
                     this.mainDimension == "height"
                         ? [padding.left, padding.right]
                         : [padding.top, padding.bottom]
@@ -111,22 +111,23 @@ export default class ConcatView extends ContainerView {
                 mainSizeDef = {
                     // Grows are summed to support sensible nesting of concatViews
                     grow: childMainSizeDefs
-                        .map(sizeDef => +sizeDef.grow)
+                        .map((sizeDef) => +sizeDef.grow)
                         .reduce((a, b) => a + b, 0),
                     px: getMinimumSize(childMainSizeDefs, {
-                        spacing: this.spec.spacing
-                    })
+                        spacing: this.spec.spacing,
+                    }),
                 };
             }
 
             const secondarySizeDef = (this.spec[this.secondaryDimension] &&
                 parseSizeDef(this.spec[this.secondaryDimension])) || {
-                grow: 1
+                grow: 1,
             };
 
-            return (this.mainDimension == "height"
-                ? new FlexDimensions(secondarySizeDef, mainSizeDef)
-                : new FlexDimensions(mainSizeDef, secondarySizeDef)
+            return (
+                this.mainDimension == "height"
+                    ? new FlexDimensions(secondarySizeDef, mainSizeDef)
+                    : new FlexDimensions(mainSizeDef, secondarySizeDef)
             ).addPadding(this.getPadding());
         });
     }
@@ -149,7 +150,7 @@ export default class ConcatView extends ContainerView {
             coords[this.mainDimension],
             {
                 spacing: this.spec.spacing,
-                devicePixelRatio: this.context.glHelper.dpr
+                devicePixelRatio: this.context.glHelper.dpr,
             }
         );
 
@@ -265,7 +266,7 @@ export default class ConcatView extends ContainerView {
  * @param {number[][]} paddings
  */
 function getMaxEffectivePaddings(paddings) {
-    return [0, 1].map(i =>
-        paddings.map(p => p[i]).reduce((a, c) => Math.max(a, c), 0)
+    return [0, 1].map((i) =>
+        paddings.map((p) => p[i]).reduce((a, c) => Math.max(a, c), 0)
     );
 }

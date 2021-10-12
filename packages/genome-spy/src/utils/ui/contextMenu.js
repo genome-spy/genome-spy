@@ -43,12 +43,10 @@ export default function contextMenu(options, mouseEvent) {
     const container = options.menuContainer || document.body;
 
     render(
-        options.items.map(item => {
+        options.items.map((item) => {
             switch (item.type) {
                 case "divider":
-                    return html`
-                        <div class="context-menu-divider"></div>
-                    `;
+                    return html` <div class="context-menu-divider"></div> `;
                 case "header":
                     return html`
                         <div class="context-menu-header">
@@ -101,7 +99,7 @@ export default function contextMenu(options, mouseEvent) {
     }
 
     container.addEventListener("click", () => clearMenu(), {
-        once: true
+        once: true,
     });
 
     const openedAt = performance.now();

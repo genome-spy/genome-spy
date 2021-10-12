@@ -15,11 +15,11 @@ test("FlattenSequenece", () => {
             {
                 type: "flattenSequence",
                 field: "seq",
-                as: ["p", "seq"]
+                as: ["p", "seq"],
             },
             [
                 { identifier: "A", seq: "TCG" },
-                { identifier: "B", seq: "AAT" }
+                { identifier: "B", seq: "AAT" },
             ]
         )
     ).toEqual([
@@ -28,6 +28,6 @@ test("FlattenSequenece", () => {
         { identifier: "A", seq: "G", p: 2 },
         { identifier: "B", seq: "A", p: 0 },
         { identifier: "B", seq: "A", p: 1 },
-        { identifier: "B", seq: "T", p: 2 }
+        { identifier: "B", seq: "T", p: 2 },
     ]);
 });

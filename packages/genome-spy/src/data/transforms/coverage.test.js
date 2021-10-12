@@ -27,10 +27,10 @@ test("Coverage transform produces correct coverage segments", () => {
         [11, 12],
         [15, 18],
         [16, 18],
-        [17, 18]
-    ].map(d => ({
+        [17, 18],
+    ].map((d) => ({
         start: d[0],
-        end: d[1]
+        end: d[1],
     }));
 
     const coverageSegments = [
@@ -44,18 +44,18 @@ test("Coverage transform produces correct coverage segments", () => {
         [13, 14, 1],
         [15, 16, 1],
         [16, 17, 2],
-        [17, 18, 3]
-    ].map(d => ({
+        [17, 18, 3],
+    ].map((d) => ({
         start: d[0],
         end: d[1],
-        coverage: d[2]
+        coverage: d[2],
     }));
 
     /** @type {CoverageParams} */
     const coverageConfig = {
         type: "coverage",
         start: "start",
-        end: "end"
+        end: "end",
     };
     expect(transform(coverageConfig, reads)).toEqual(coverageSegments);
 });
@@ -64,13 +64,13 @@ test("Coverage transform handles chromosomes", () => {
     const reads = [
         { chrom: "chr1", start: 0, end: 1 },
         { chrom: "chr2", start: 0, end: 1 },
-        { chrom: "chr3", start: 1, end: 3 }
+        { chrom: "chr3", start: 1, end: 3 },
     ];
 
     const coverageSegments = [
         { chrom: "chr1", start: 0, end: 1, coverage: 1 },
         { chrom: "chr2", start: 0, end: 1, coverage: 1 },
-        { chrom: "chr3", start: 1, end: 3, coverage: 1 }
+        { chrom: "chr3", start: 1, end: 3, coverage: 1 },
     ];
 
     /** @type {CoverageParams} */
@@ -78,7 +78,7 @@ test("Coverage transform handles chromosomes", () => {
         type: "coverage",
         chrom: "chrom",
         start: "start",
-        end: "end"
+        end: "end",
     };
 
     expect(transform(coverageConfig, reads)).toEqual(coverageSegments);
@@ -89,11 +89,11 @@ test("Coverage transform handles weights", () => {
         [0, 4, 1],
         [1, 3, 2],
         [2, 6, 3],
-        [8, 10, -1]
-    ].map(d => ({
+        [8, 10, -1],
+    ].map((d) => ({
         start: d[0],
         end: d[1],
-        weight: d[2]
+        weight: d[2],
     }));
 
     const coverageSegments = [
@@ -102,11 +102,11 @@ test("Coverage transform handles weights", () => {
         [2, 3, 6],
         [3, 4, 4],
         [4, 6, 3],
-        [8, 10, -1]
-    ].map(d => ({
+        [8, 10, -1],
+    ].map((d) => ({
         start: d[0],
         end: d[1],
-        coverage: d[2]
+        coverage: d[2],
     }));
 
     /** @type {CoverageParams} */
@@ -115,7 +115,7 @@ test("Coverage transform handles weights", () => {
         chrom: "chrom",
         start: "start",
         end: "end",
-        weight: "weight"
+        weight: "weight",
     };
 
     expect(transform(coverageConfig, reads)).toEqual(coverageSegments);

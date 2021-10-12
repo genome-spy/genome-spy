@@ -18,7 +18,7 @@ export default class AccessorFactory {
         /** @type {(function(ChannelDef):Accessor)[]} */
         this.accessorCreators = [];
 
-        this.register(channelDef => {
+        this.register((channelDef) => {
             if (isFieldDef(channelDef)) {
                 try {
                     /** @type {Accessor} */
@@ -32,13 +32,13 @@ export default class AccessorFactory {
             }
         });
 
-        this.register(channelDef =>
+        this.register((channelDef) =>
             isExprDef(channelDef)
                 ? createExpressionAccessor(channelDef.expr)
                 : undefined
         );
 
-        this.register(channelDef => {
+        this.register((channelDef) => {
             if (isDatumDef(channelDef)) {
                 /** @type {Accessor} */
                 const accessor = constant(channelDef.datum);

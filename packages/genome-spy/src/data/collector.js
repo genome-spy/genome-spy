@@ -74,7 +74,7 @@ export default class Collector extends FlowNode {
         const comparator = sort ? compare(sort.field, sort.order) : undefined;
 
         /** @param {any[]} data */
-        const sortData = data => {
+        const sortData = (data) => {
             if (comparator) {
                 data.sort(comparator);
             }
@@ -85,7 +85,7 @@ export default class Collector extends FlowNode {
                 throw new Error("TODO: Support faceted data!");
             }
 
-            const accessors = this.params.groupby.map(fieldName =>
+            const accessors = this.params.groupby.map((fieldName) =>
                 field(fieldName)
             );
             // @ts-ignore
@@ -137,7 +137,7 @@ export default class Collector extends FlowNode {
                                 yield data[i];
                             }
                         }
-                    }
+                    },
                 };
             }
         }

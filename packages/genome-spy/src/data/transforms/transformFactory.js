@@ -43,7 +43,7 @@ const transforms = {
     regexExtract: RegexExtractTransform,
     regexFold: RegexFoldTransform,
     sample: SampleTransform,
-    stack: StackTransform
+    stack: StackTransform,
 };
 
 /**
