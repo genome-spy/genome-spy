@@ -119,7 +119,7 @@ export default class SampleView extends ContainerView {
         this.sampleHandler.provenance.addListener(() => {
             this._locations = undefined;
 
-            this.groupPanel.updateGroups(this.getLocations().groups);
+            this.groupPanel.updateGroups();
 
             // TODO: Handle scroll offset instead
             this._peekState = 0;
@@ -211,6 +211,10 @@ export default class SampleView extends ContainerView {
 
         this._addBroadcastHandler("layout", () => {
             this._locations = undefined;
+        });
+
+        this._addBroadcastHandler("layoutComputed", () => {
+            this.groupPanel.updateRange();
         });
 
         this._scrollOffset = 0;
@@ -346,7 +350,7 @@ export default class SampleView extends ContainerView {
         );
 
         // Feed some initial dynamic data.
-        this.groupPanel.updateGroups([]);
+        this.groupPanel.updateGroups();
     }
 
     /**
@@ -425,6 +429,10 @@ export default class SampleView extends ContainerView {
 
     getLocations() {
         if (!this._locations) {
+            if (!this._coords) {
+                return;
+            }
+
             const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
             const groupAttributes = [null, ...this.sampleHandler.state.groups];
 

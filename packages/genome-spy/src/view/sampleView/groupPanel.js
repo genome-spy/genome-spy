@@ -110,11 +110,12 @@ export class GroupPanel extends LayerView {
         );
 
         this.sampleView = sampleView;
-        this.groupLocations = undefined;
     }
 
     updateRange() {
-        if (!this.groupLocations?.length) {
+        const groupLocations = this.sampleView.getLocations()?.groups;
+
+        if (!groupLocations?.length) {
             return;
         }
 
@@ -125,7 +126,7 @@ export class GroupPanel extends LayerView {
         /** @type {number[]} */
         const yRange = [];
 
-        for (const g of this.groupLocations) {
+        for (const g of groupLocations) {
             yRange.push(1 - (g.locSize.location + g.locSize.size) / viewHeight);
             yRange.push(1 - g.locSize.location / viewHeight);
         }
@@ -135,17 +136,13 @@ export class GroupPanel extends LayerView {
         this.context.glHelper.createRangeTexture(yRes, true);
     }
 
-    /**
-     *
-     * @param {import("./sampleViewTypes").HierarchicalGroupLocation[]} groupLocations
-     */
-    updateGroups(groupLocations) {
+    updateGroups() {
+        const groupLocations = this.sampleView.getLocations()?.groups ?? [];
+
         const dynamicSource =
             /** @type {import("../../data/sources/dynamicSource").default} */ (
                 this.context.dataFlow.findDataSourceByKey(this)
             );
-
-        this.groupLocations = groupLocations;
 
         const data = groupLocations.map((g) => ({
             _index: g.key.index,
@@ -162,7 +159,9 @@ export class GroupPanel extends LayerView {
         this.getScaleResolution("x").reconfigure();
         this.getScaleResolution("y").reconfigure();
 
-        this.updateRange();
+        if (groupLocations.length) {
+            this.updateRange();
+        }
 
         // TODO: Get rid of the following. Should happen automatically:
         peek([...this.getAncestors()]).visit((view) =>
