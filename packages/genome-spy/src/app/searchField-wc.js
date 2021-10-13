@@ -85,7 +85,8 @@ export default class SearchField extends LitElement {
                     genomeResolution.getScale().domain()
                 );
 
-            genomeResolution.addScaleObserver(
+            genomeResolution.addEventListener(
+                "domain",
                 debounce(() => this.requestUpdate(), 60, false)
             );
         }

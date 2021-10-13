@@ -43,6 +43,9 @@ export const INDEX = "index";
  *
  * TODO: This has grown a bit too fat. Consider splitting.
  *
+ * @typedef {import("./scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
+ * @implements {ScaleResolutionApi}
+ *
  * @typedef {{view: import("./unitView").default, channel: Channel}} ResolutionMember
  * @typedef {import("./unitView").default} UnitView
  * @typedef {import("../encoder/encoder").VegaScale} VegaScale
@@ -69,33 +72,48 @@ export default class ScaleResolution {
         /** @type {number[]} */
         this._zoomExtent = undefined;
 
-        /** @type {Set<function(VegaScale):void>} Observers that are called when the scale domain is changed */
-        this.scaleObservers = new Set();
+        /** @type {Set<import("./scaleResolutionApi").ScaleResolutionListener>} Observers that are called when the scale domain is changed */
+        this._domainListeners = new Set();
 
         /** @type {string} An optional unique identifier for the scale */
         this.name = undefined;
+
+        /** @type {VegaScale} */
+        this._scale = undefined;
     }
 
     /**
-     * Adds an observer that is called when the scale domain is changed,
-     * e.g., zoomed.
+     * Adds a listener that is called when the scale domain is changed,
+     * e.g., zoomed. The call is synchronous and happens before the views
+     * are rendered.
      *
-     * @param {function(VegaScale):void} observer function
+     * @param {"domain"} type
+     * @param {import("./scaleResolutionApi").ScaleResolutionListener} listener function
      */
-    addScaleObserver(observer) {
-        this.scaleObservers.add(observer);
+    addEventListener(type, listener) {
+        if (type != "domain") {
+            throw new Error("Unsupported event type: " + type);
+        }
+        this._domainListeners.add(listener);
     }
 
     /**
-     * @param {function():void} observer function
+     * @param {"domain"} type
+     * @param {import("./scaleResolutionApi").ScaleResolutionListener} listener function
      */
-    removeScaleObserver(observer) {
-        this.scaleObservers.delete(observer);
+    removeEventListener(type, listener) {
+        if (type != "domain") {
+            throw new Error("Unsupported event type: " + type);
+        }
+        this._domainListeners.delete(listener);
     }
 
-    _notifyScaleObservers() {
-        for (const observer of this.scaleObservers.values()) {
-            observer(this._scale);
+    _notifyDomainListeners() {
+        for (const listener of this._domainListeners.values()) {
+            listener({
+                type: "domain",
+                scaleResolution: this,
+            });
         }
     }
 
@@ -386,7 +404,7 @@ export default class ScaleResolution {
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             scale.domain(newDomain);
-            this._notifyScaleObservers();
+            this._notifyDomainListeners();
             return true;
         }
 
@@ -407,7 +425,7 @@ export default class ScaleResolution {
         // https://twitter.com/FreyaHolmer/status/1068293398073929728
 
         this.getScale().domain(interval);
-        this._notifyScaleObservers();
+        this._notifyDomainListeners();
     }
 
     /**
