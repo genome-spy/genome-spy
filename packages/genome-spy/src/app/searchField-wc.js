@@ -81,9 +81,7 @@ export default class SearchField extends LitElement {
             this._genome = this.genomeSpy.genomeStore.getGenome();
 
             this.getDefaultValue = () =>
-                this._genome.formatInterval(
-                    genomeResolution.getScale().domain()
-                );
+                this._genome.formatInterval(genomeResolution.getDomain());
 
             genomeResolution.addEventListener(
                 "domain",

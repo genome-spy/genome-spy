@@ -249,7 +249,9 @@ export interface ScaleInterpolateParams {
     gamma?: number;
 }
 
-export type ScalarDomain = number[] | string[] | boolean[];
+export type NumericDomain = number[];
+
+export type ScalarDomain = NumericDomain | string[] | boolean[];
 
 /**
  * A complex domain that needs to be converted into a scalar domain before it

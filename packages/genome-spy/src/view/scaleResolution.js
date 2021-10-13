@@ -57,6 +57,7 @@ export const INDEX = "index";
  *
  * @typedef {import("../spec/channel").Channel} Channel
  * @typedef {import("../spec/scale").Scale} Scale
+ * @typedef {import("../spec/scale").NumericDomain} NumericDomain
  * @typedef {import("../spec/scale").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale").ComplexDomain} ComplexDomain
  * @typedef {import("../spec/scale").ZoomParams} ZoomParams
@@ -333,6 +334,18 @@ export default class ScaleResolution {
         return scale;
     }
 
+    getDomain() {
+        return this.getScale().domain();
+    }
+
+    /**
+     * @returns {NumericDomain | ComplexDomain}
+     */
+    getComplexDomain() {
+        // @ts-ignore
+        return this.getDomain().map((x) => this.toComplex(x));
+    }
+
     isZoomable() {
         if (!primaryPositionalChannels.includes(this.channel)) {
             return false;
@@ -417,11 +430,11 @@ export default class ScaleResolution {
     /**
      * Immediately zooms to the given interval.
      *
-     * @param {number[]} interval
+     * @param {NumericDomain | ComplexDomain} domain
      * @param {boolean | number} [duration] an approximate duration for transition.
      *      Zero duration zooms immediately. Boolean `true` indicates a default duration.
      */
-    async zoomTo(interval, duration = false) {
+    async zoomTo(domain, duration = false) {
         if (isBoolean(duration)) {
             duration = duration ? 700 : 0;
         }
@@ -430,11 +443,14 @@ export default class ScaleResolution {
             throw new Error("Not a zoomable scale!");
         }
 
+        const to = this.fromComplexInterval(domain);
+
+        // TODO: Intersect the domain with zoom extent
+
         const animator = this.members[0]?.view.context.animator;
 
         const scale = this.getScale();
         const from = /** @type {number[]} */ (scale.domain());
-        const to = interval;
 
         if (duration > 0 && from.length == 2) {
             const fw = from[1] - from[0];
@@ -470,7 +486,7 @@ export default class ScaleResolution {
                 },
             });
         } else {
-            scale.domain(interval);
+            scale.domain(to);
             animator?.requestRender();
             this._notifyDomainListeners();
         }
@@ -579,7 +595,6 @@ export default class ScaleResolution {
     }
 
     /**
-     *
      * @param {number} value
      */
     toComplex(value) {
@@ -601,13 +616,13 @@ export default class ScaleResolution {
 
     /**
      * @param {ScalarDomain | ComplexDomain} interval
-     * @returns {ScalarDomain}
+     * @returns {number[]}
      */
     fromComplexInterval(interval) {
         if (this.type === "locus" && isChromosomalLocusInterval(interval)) {
             return this.getGenome().toContinuousInterval(interval);
         }
-        return /** @type {ScalarDomain} */ (interval);
+        return /** @type {number[]} */ (interval);
     }
 
     _getViewPaths() {
