@@ -467,3 +467,105 @@ describe("Domain handling", () => {
         expect(d("y")).toEqual([2, 3]);
     });
 });
+
+describe("Named scales", () => {
+    test("Resolution of shared scales with conflicting names fails with an exception", async () => {
+        return expect(
+            createAndInitialize(
+                {
+                    data: { values: [1, 2] },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "data",
+                                    type: "quantitative",
+                                    scale: { name: "scale_1" },
+                                },
+                            },
+                        },
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "data",
+                                    type: "quantitative",
+                                    scale: { name: "scale_2" },
+                                },
+                            },
+                        },
+                    ],
+                },
+                LayerView
+            )
+        ).rejects.toThrow(/conflicting/);
+    });
+
+    test("A name is properly registered to the ScaleResolution object", async () => {
+        expect(
+            await createAndInitialize(
+                {
+                    data: { values: [1, 2] },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "data",
+                                    type: "quantitative",
+                                    scale: { name: "scale_1" },
+                                },
+                            },
+                        },
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "data",
+                                    type: "quantitative",
+                                    scale: { name: "scale_1" },
+                                },
+                            },
+                        },
+                    ],
+                },
+                LayerView
+            ).then((view) => view.getScaleResolution("x"))
+        ).toHaveProperty("name", "scale_1");
+    });
+
+    test("The scale name must be unique among the scale resolutions", async () => {
+        return expect(
+            createAndInitialize(
+                {
+                    resolve: { scale: { x: "independent" } },
+                    data: { values: [1, 2] },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "data",
+                                    type: "quantitative",
+                                    scale: { name: "scale_1" },
+                                },
+                            },
+                        },
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "data",
+                                    type: "quantitative",
+                                    scale: { name: "scale_1" },
+                                },
+                            },
+                        },
+                    ],
+                },
+                LayerView
+            )
+        ).rejects.toThrow(/multiple/);
+    });
+});

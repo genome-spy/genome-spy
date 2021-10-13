@@ -107,6 +107,7 @@ var SKIP = toSet([
     "interpolateGamma",
     "zoom",
     "fp64",
+    "name",
 ]);
 
 export function configureScale(_, scale, logger) {

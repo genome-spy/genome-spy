@@ -71,6 +71,9 @@ export default class ScaleResolution {
 
         /** @type {Set<function(VegaScale):void>} Observers that are called when the scale domain is changed */
         this.scaleObservers = new Set();
+
+        /** @type {string} An optional unique identifier for the scale */
+        this.name = undefined;
     }
 
     /**
@@ -104,7 +107,19 @@ export default class ScaleResolution {
      * @param {import("./view").Channel} channel
      */
     pushUnitView(view, channel) {
-        const type = getChannelDefWithScale(view, channel).type;
+        const channelDef = getChannelDefWithScale(view, channel);
+        const type = channelDef.type;
+        const name = channelDef?.scale?.name;
+
+        if (name) {
+            if (this.name !== undefined && name != this.name) {
+                throw new Error(
+                    `Shared scales have conflicting names: "${name}" vs. "${this.name}"!`
+                );
+            }
+            this.name = name;
+        }
+
         if (!this.type) {
             this.type = type;
         } else if (type !== this.type && !isSecondaryChannel(channel)) {

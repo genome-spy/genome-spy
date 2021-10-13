@@ -287,6 +287,22 @@ export function resolveScalesAndAxes(root) {
             view.resolve("scale");
         }
     });
+
+    // Check that each scale resolution has a unique name
+    /** @type {Set<string>} */
+    const scaleNames = new Set();
+    root.visit((view) => {
+        for (const resolution of Object.values(view.resolutions.scale)) {
+            const name = resolution.name;
+            if (name && scaleNames.has(name)) {
+                throw new Error(
+                    `The same scale name "${name}" occurs in multiple scale resolutions!`
+                );
+            }
+            scaleNames.add(name);
+        }
+    });
+
     root.visit((view) => {
         if (view instanceof UnitView) {
             view.resolve("axis");
