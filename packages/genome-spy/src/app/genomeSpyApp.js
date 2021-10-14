@@ -1,4 +1,7 @@
-import lzString from "lz-string";
+import {
+    compressToEncodedURIComponent,
+    decompressFromEncodedURIComponent,
+} from "lz-string";
 
 import GenomeSpy from "../genomeSpy";
 import "../styles/genome-spy-app.scss";
@@ -130,9 +133,7 @@ export default class GenomeSpyApp {
 
         let hash = "";
         if (history.length) {
-            hash =
-                "#" +
-                lzString.compressToEncodedURIComponent(JSON.stringify(history));
+            hash = "#" + compressToEncodedURIComponent(JSON.stringify(history));
         }
 
         window.history.replaceState(
@@ -150,7 +151,7 @@ export default class GenomeSpyApp {
         const hash = window.location.hash;
         if (hash && hash.length > 0) {
             const history = JSON.parse(
-                lzString.decompressFromEncodedURIComponent(hash.substr(1))
+                decompressFromEncodedURIComponent(hash.substr(1))
             );
 
             if (Array.isArray(history)) {
