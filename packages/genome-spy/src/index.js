@@ -74,18 +74,28 @@ export async function embed(el, spec, options = {}) {
 
         /**
          * @param {string} type
-         * @param {function()} callback
+         * @param {(event: any) => void} listener
          */
-        addEventListener(type, callback) {
+        addEventListener(type, listener) {
             const listenersByType = genomeSpy._eventListeners;
 
             let listeners = listenersByType.get(type);
             if (!listeners) {
-                listeners = [];
+                listeners = new Set();
                 listenersByType.set(type, listeners);
             }
 
-            listeners.push(callback);
+            listeners.add(listener);
+        },
+
+        /**
+         * @param {string} type
+         * @param {(event: any) => void} listener
+         */
+        removeEventListener(type, listener) {
+            const listenersByType = genomeSpy._eventListeners;
+
+            listenersByType.get(type)?.delete(listener);
         },
 
         /**

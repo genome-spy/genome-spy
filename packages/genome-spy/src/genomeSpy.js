@@ -108,7 +108,7 @@ export default class GenomeSpy {
          * These should probably be in the View class and support bubbling through
          * the hierarchy.
          *
-         * @type {Map<string, (function({}):void)[]>}
+         * @type {Map<string, Set<(event: any) => void>>}
          */
         this._eventListeners = new Map();
 

@@ -17,12 +17,17 @@ api.<b>finalize</b>()
 Releases all resources and unregisters event listeners, etc.
 
 <a name="api_addEventListener" href="#api_addEventListener">#</a>
-api.<b>addEventListener</b>(<i>type</i>, <i>callback</i>)
+api.<b>addEventListener</b>(<i>type</i>, <i>listener</i>)
 
 Adds an event listener, which is called when the user interacts with a mark
 instance. Currently, only `"click"` events are supported. The callback receives
 an event object as its first (and only) parameter. Its `datum` property
 contains the datum that the user interacted with.
+
+<a name="api_removeEventListener" href="#api_removeEventListener">#</a>
+api.<b>removeEventListener</b>(<i>type</i>, <i>listener</i>)
+
+Removes a registered event listener.
 
 <a name="api_getScaleResolutionByName" href="#api_getScaleResolutionByName">#</a>
 api.<b>getScaleResolutionByName</b>(<i>name</i>)
