@@ -13,7 +13,7 @@ import { asArray } from "../utils/arrayUtils";
 import "../sampleHandler/provenanceToolbar-wc";
 import "../sampleHandler/bookmarkButton-wc";
 import "./toolbar-wc";
-import { createRef, ref } from "lit/directives/ref";
+import { createRef, ref } from "lit/directives/ref.js";
 
 /**
  * A simple wrapper for the GenomeSpy core.
