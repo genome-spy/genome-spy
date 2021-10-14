@@ -12,6 +12,11 @@ import { ChromosomalLocus } from "./genome";
 
 export interface Scale {
     /**
+     * The name of the scale. Names are optional but allow the scales to be referenced and found with the API.
+     */
+    name?: string;
+
+    /**
      * The type of scale.  Vega-Lite supports the following categories of scale types:
      *
      * 1) [**Continuous Scales**](https://vega.github.io/vega-lite/docs/scale.html#continuous) -- mapping continuous domains to continuous output ranges ([`"linear"`](https://vega.github.io/vega-lite/docs/scale.html#linear), [`"pow"`](https://vega.github.io/vega-lite/docs/scale.html#pow), [`"sqrt"`](https://vega.github.io/vega-lite/docs/scale.html#sqrt), [`"symlog"`](https://vega.github.io/vega-lite/docs/scale.html#symlog), [`"log"`](https://vega.github.io/vega-lite/docs/scale.html#log), [`"time"`](https://vega.github.io/vega-lite/docs/scale.html#time), [`"utc"`](https://vega.github.io/vega-lite/docs/scale.html#utc).
@@ -244,7 +249,9 @@ export interface ScaleInterpolateParams {
     gamma?: number;
 }
 
-export type ScalarDomain = number[] | string[] | boolean[];
+export type NumericDomain = number[];
+
+export type ScalarDomain = NumericDomain | string[] | boolean[];
 
 /**
  * A complex domain that needs to be converted into a scalar domain before it

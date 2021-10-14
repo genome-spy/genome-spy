@@ -9,6 +9,7 @@ import {
     zoomPow,
     isArray,
     isObject,
+    isBoolean,
 } from "vega-util";
 import { isDiscrete, isContinuous } from "vega-scale";
 
@@ -30,6 +31,8 @@ import {
     isChromosomalLocusInterval,
 } from "../genome/genome";
 import { NominalDomain } from "../utils/domainArray";
+import { easeQuadInOut } from "d3-ease";
+import { interpolateZoom } from "d3-interpolate";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
@@ -43,6 +46,9 @@ export const INDEX = "index";
  *
  * TODO: This has grown a bit too fat. Consider splitting.
  *
+ * @typedef {import("./scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
+ * @implements {ScaleResolutionApi}
+ *
  * @typedef {{view: import("./unitView").default, channel: Channel}} ResolutionMember
  * @typedef {import("./unitView").default} UnitView
  * @typedef {import("../encoder/encoder").VegaScale} VegaScale
@@ -51,6 +57,7 @@ export const INDEX = "index";
  *
  * @typedef {import("../spec/channel").Channel} Channel
  * @typedef {import("../spec/scale").Scale} Scale
+ * @typedef {import("../spec/scale").NumericDomain} NumericDomain
  * @typedef {import("../spec/scale").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale").ComplexDomain} ComplexDomain
  * @typedef {import("../spec/scale").ZoomParams} ZoomParams
@@ -69,30 +76,48 @@ export default class ScaleResolution {
         /** @type {number[]} */
         this._zoomExtent = undefined;
 
-        /** @type {Set<function(VegaScale):void>} Observers that are called when the scale domain is changed */
-        this.scaleObservers = new Set();
+        /** @type {Set<import("./scaleResolutionApi").ScaleResolutionListener>} Observers that are called when the scale domain is changed */
+        this._domainListeners = new Set();
+
+        /** @type {string} An optional unique identifier for the scale */
+        this.name = undefined;
+
+        /** @type {VegaScale} */
+        this._scale = undefined;
     }
 
     /**
-     * Adds an observer that is called when the scale domain is changed,
-     * e.g., zoomed.
+     * Adds a listener that is called when the scale domain is changed,
+     * e.g., zoomed. The call is synchronous and happens before the views
+     * are rendered.
      *
-     * @param {function(VegaScale):void} observer function
+     * @param {"domain"} type
+     * @param {import("./scaleResolutionApi").ScaleResolutionListener} listener function
      */
-    addScaleObserver(observer) {
-        this.scaleObservers.add(observer);
+    addEventListener(type, listener) {
+        if (type != "domain") {
+            throw new Error("Unsupported event type: " + type);
+        }
+        this._domainListeners.add(listener);
     }
 
     /**
-     * @param {function():void} observer function
+     * @param {"domain"} type
+     * @param {import("./scaleResolutionApi").ScaleResolutionListener} listener function
      */
-    removeScaleObserver(observer) {
-        this.scaleObservers.delete(observer);
+    removeEventListener(type, listener) {
+        if (type != "domain") {
+            throw new Error("Unsupported event type: " + type);
+        }
+        this._domainListeners.delete(listener);
     }
 
-    _notifyScaleObservers() {
-        for (const observer of this.scaleObservers.values()) {
-            observer(this._scale);
+    _notifyDomainListeners() {
+        for (const listener of this._domainListeners.values()) {
+            listener({
+                type: "domain",
+                scaleResolution: this,
+            });
         }
     }
 
@@ -104,7 +129,19 @@ export default class ScaleResolution {
      * @param {import("./view").Channel} channel
      */
     pushUnitView(view, channel) {
-        const type = getChannelDefWithScale(view, channel).type;
+        const channelDef = getChannelDefWithScale(view, channel);
+        const type = channelDef.type;
+        const name = channelDef?.scale?.name;
+
+        if (name) {
+            if (this.name !== undefined && name != this.name) {
+                throw new Error(
+                    `Shared scales have conflicting names: "${name}" vs. "${this.name}"!`
+                );
+            }
+            this.name = name;
+        }
+
         if (!this.type) {
             this.type = type;
         } else if (type !== this.type && !isSecondaryChannel(channel)) {
@@ -297,6 +334,18 @@ export default class ScaleResolution {
         return scale;
     }
 
+    getDomain() {
+        return this.getScale().domain();
+    }
+
+    /**
+     * @returns {NumericDomain | ComplexDomain}
+     */
+    getComplexDomain() {
+        // @ts-ignore
+        return this.getDomain().map((x) => this.toComplex(x));
+    }
+
     isZoomable() {
         if (!primaryPositionalChannels.includes(this.channel)) {
             return false;
@@ -371,7 +420,7 @@ export default class ScaleResolution {
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             scale.domain(newDomain);
-            this._notifyScaleObservers();
+            this._notifyDomainListeners();
             return true;
         }
 
@@ -381,18 +430,68 @@ export default class ScaleResolution {
     /**
      * Immediately zooms to the given interval.
      *
-     * @param {number[]} interval
+     * @param {NumericDomain | ComplexDomain} domain
+     * @param {boolean | number} [duration] an approximate duration for transition.
+     *      Zero duration zooms immediately. Boolean `true` indicates a default duration.
      */
-    zoomTo(interval) {
+    async zoomTo(domain, duration = false) {
+        if (isBoolean(duration)) {
+            duration = duration ? 700 : 0;
+        }
+
         if (!this.isZoomable()) {
             throw new Error("Not a zoomable scale!");
         }
 
-        // TODO: For animated zooming, consider eerp:
-        // https://twitter.com/FreyaHolmer/status/1068293398073929728
+        const to = this.fromComplexInterval(domain);
 
-        this.getScale().domain(interval);
-        this._notifyScaleObservers();
+        // TODO: Intersect the domain with zoom extent
+
+        const animator = this.members[0]?.view.context.animator;
+
+        const scale = this.getScale();
+        const from = /** @type {number[]} */ (scale.domain());
+
+        if (duration > 0 && from.length == 2) {
+            const fw = from[1] - from[0];
+            const fc = from[0] + fw / 2;
+
+            const tw = to[1] - to[0];
+            const tc = to[0] + tw / 2;
+
+            /*
+            await animator.transition({
+                duration,
+                easingFunction: easeExpInOut,
+                onUpdate: (t) => {
+                    const w = eerp(fw, tw, t);
+                    const wt = (fw - w) / (fw - tw);
+                    const c = wt * tc + (1 - wt) * fc;
+                    scale.domain([c - w / 2, c + w / 2]);
+                    this._notifyDomainListeners();
+                },
+            });
+            */
+            const interpolator = interpolateZoom.rho(0.7)(
+                [fc, 0, fw],
+                [tc, 0, tw]
+            );
+            await animator.transition({
+                duration: (duration / 1000) * interpolator.duration,
+                easingFunction: easeQuadInOut,
+                onUpdate: (t) => {
+                    const [c, , w] = interpolator(t);
+                    scale.domain([c - w / 2, c + w / 2]);
+                    this._notifyDomainListeners();
+                },
+            });
+            scale.domain(to);
+            this._notifyDomainListeners();
+        } else {
+            scale.domain(to);
+            animator?.requestRender();
+            this._notifyDomainListeners();
+        }
     }
 
     /**
@@ -498,7 +597,6 @@ export default class ScaleResolution {
     }
 
     /**
-     *
      * @param {number} value
      */
     toComplex(value) {
@@ -520,13 +618,13 @@ export default class ScaleResolution {
 
     /**
      * @param {ScalarDomain | ComplexDomain} interval
-     * @returns {ScalarDomain}
+     * @returns {number[]}
      */
     fromComplexInterval(interval) {
         if (this.type === "locus" && isChromosomalLocusInterval(interval)) {
             return this.getGenome().toContinuousInterval(interval);
         }
-        return /** @type {ScalarDomain} */ (interval);
+        return /** @type {number[]} */ (interval);
     }
 
     _getViewPaths() {

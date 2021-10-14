@@ -1,0 +1,15 @@
+{
+  "name": "genome-spy-embed-examples",
+  "private": true,
+  "version": "0.6.0",
+  "description": "Examples",
+  "scripts": {
+    "dev": "vite"
+  },
+  "author": "Kari Lavikka",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "genome-spy": "^0.6.0",
+    "lit": "^2.0.0-rc.2"
+  }
+}

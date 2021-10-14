@@ -24,6 +24,14 @@ instance. Currently, only `"click"` events are supported. The callback receives
 an event object as its first (and only) parameter. Its `datum` property
 contains the datum that the user interacted with.
 
+<a name="api_getScaleResolutionByName" href="#api_getScaleResolutionByName">#</a>
+api.<b>getScaleResolutionByName</b>(<i>name</i>)
+
+Returns a named _ScaleResolution_ object that allows for attaching event listeners
+and controlling the scale domain.
+
+TODO: Complete documentation for ScaleResolution
+
 ## Embed options
 
 ### Custom tooltip handlers
@@ -73,8 +81,8 @@ const options = {
       html`
         The datum has
         <strong>${Object.keys(datum).length}</strong> attributes!
-      `
-  }
+      `,
+  },
 };
 
 embed(container, spec, options);

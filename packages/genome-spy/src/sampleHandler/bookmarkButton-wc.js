@@ -38,12 +38,7 @@ class BookmarkButton extends LitElement {
     _addBookmark() {
         // TODO: Allow bookmarking regions of interest even if sampleView is not being used.
         const resolution = this.sampleView?.getScaleResolution("x");
-        const complexDomain =
-            resolution.type == "locus"
-                ? resolution
-                      .getGenome()
-                      .toChromosomalInterval(resolution.getScale().domain())
-                : undefined;
+        const complexDomain = resolution.getComplexDomain();
 
         const name = prompt("Please enter a name for the bookmark");
         if (name) {
@@ -70,17 +65,7 @@ class BookmarkButton extends LitElement {
                 this.sampleHandler.dispatchBatch(entry.actions);
                 if (this.sampleView && entry.zoom) {
                     const resolution = this.sampleView.getScaleResolution("x");
-                    resolution.zoomTo(
-                        resolution.type == "locus"
-                            ? resolution
-                                  .getGenome()
-                                  .toContinuousInterval(
-                                      /** @type {import("../genome/genome").ChromosomalLocus[]} */ (
-                                          entry.zoom
-                                      )
-                                  )
-                            : /** @type {number[]} */ (entry.zoom)
-                    );
+                    await resolution.zoomTo(entry.zoom);
                 }
             } catch (e) {
                 console.error(e);

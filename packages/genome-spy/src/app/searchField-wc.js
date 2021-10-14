@@ -81,11 +81,10 @@ export default class SearchField extends LitElement {
             this._genome = this.genomeSpy.genomeStore.getGenome();
 
             this.getDefaultValue = () =>
-                this._genome.formatInterval(
-                    genomeResolution.getScale().domain()
-                );
+                this._genome.formatInterval(genomeResolution.getDomain());
 
-            genomeResolution.addScaleObserver(
+            genomeResolution.addEventListener(
+                "domain",
                 debounce(() => this.requestUpdate(), 60, false)
             );
         }
@@ -94,7 +93,7 @@ export default class SearchField extends LitElement {
     /**
      * @param {string} term
      */
-    searchViews(term) {
+    async searchViews(term) {
         const collator = new Intl.Collator("en", {
             usage: "search",
             sensitivity: "base",
@@ -114,9 +113,9 @@ export default class SearchField extends LitElement {
 
             for (const d of view.getCollector()?.getData()) {
                 if (collator.compare(sa(d), term) === 0) {
+                    // TODO: zoomLog for log scales, etc
                     const interval = zoomLinear([xa(d), x2a(d)], null, 1.2);
-                    xResolution.zoomTo(interval);
-                    view.context.animator.requestRender();
+                    await xResolution.zoomTo(interval);
                     return true;
                 }
             }
@@ -134,25 +133,22 @@ export default class SearchField extends LitElement {
             if (this._genomeResolution && this._genome) {
                 const interval = this._genome.parseInterval(term);
                 if (interval) {
-                    // TODO: Await
                     this._genomeResolution.zoomTo(interval);
-                    this.genomeSpy.animator.requestRender();
                     return;
                 }
-            }
 
-            if (this.searchViews(term)) {
-                // TODO: Await
-                return;
-            }
-
-            // TODO: A proper api for registering searchable stuff
-            this.genomeSpy.viewRoot.visit((view) => {
-                if (view instanceof SampleAttributePanel) {
-                    // TODO: Await
-                    view.handleVerboseCommand(term);
+                if (await this.searchViews(term)) {
+                    return;
                 }
-            });
+
+                // TODO: A proper api for registering searchable stuff
+                this.genomeSpy.viewRoot.visit((view) => {
+                    if (view instanceof SampleAttributePanel) {
+                        // TODO: Await
+                        view.handleVerboseCommand(term);
+                    }
+                });
+            }
         };
 
         await doSearch();

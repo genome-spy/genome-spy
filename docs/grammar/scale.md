@@ -317,3 +317,17 @@ the `"locus"` scale, where it includes the whole genome. Example:
   }
 }
 ```
+
+## Named scales
+
+By giving the scale a name, it can be accessed through the
+[API](../api.md#api_getScaleResolutionByName).
+
+```json
+{
+  ...,
+  "scale": {
+    "name": "myScale"
+  }
+}
+```

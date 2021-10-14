@@ -702,6 +702,17 @@ export default class GenomeSpy {
         });
         return views;
     }
+
+    getNamedScaleResolutions() {
+        /** @type {Map<string, import("./view/scaleResolution").default>} */
+        const resolutions = new Map();
+        this.viewRoot.visit((view) => {
+            for (const resolution of Object.values(view.resolutions.scale)) {
+                resolutions.set(resolution.name, resolution);
+            }
+        });
+        return resolutions;
+    }
 }
 
 /**

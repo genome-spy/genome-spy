@@ -8,7 +8,7 @@ interface BookmarkEntry {
     actions: Action[];
     // TODO: Support complex views and zoomable y-axis etc.
     // Now we assume that there's a single shared scale resolution (x).
-    zoom?: (number | ChromosomalLocus)[];
+    zoom?: number[] | ChromosomalLocus[];
 }
 interface BookmarkDB extends DBSchema {
     bookmarks: {

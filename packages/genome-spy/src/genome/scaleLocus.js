@@ -41,7 +41,7 @@ export default function scaleLocus() {
         const numberingOffset = scale.numberingOffset();
 
         const [minChrom, maxChrom] = [
-            domain[0],
+            Math.max(domain[0], 0),
             Math.min(domain[1], genome.totalSize - 1),
         ].map((x) => genome.toChromosome(x));
 

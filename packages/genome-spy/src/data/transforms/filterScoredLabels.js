@@ -48,7 +48,7 @@ export default class FilterScoredLabelsTransform extends FlowNode {
         this.schedule = () => view.context.animator.requestTransition(callback);
 
         // Propagate when the domain changes
-        this.resolution.addScaleObserver((scale) => this.schedule());
+        this.resolution.addEventListener("domain", (scale) => this.schedule());
 
         // Propagate when layout changes. Abusing a "private" method.
         // TODO: Provide another attachment point, in view context for example

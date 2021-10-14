@@ -87,6 +87,14 @@ export async function embed(el, spec, options = {}) {
 
             listeners.push(callback);
         },
+
+        /**
+         * @param {string} name
+         * @returns {import("./view/scaleResolutionApi").ScaleResolutionApi}
+         */
+        getScaleResolutionByName(name) {
+            return genomeSpy.getNamedScaleResolutions().get(name);
+        },
     };
 }
 
