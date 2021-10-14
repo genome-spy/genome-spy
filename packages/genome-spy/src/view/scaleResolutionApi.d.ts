@@ -13,31 +13,28 @@ export type ScaleResolutionListener = (event: ScaleResolutionEvent) => void;
  * A public API for ScaleResolution
  */
 export interface ScaleResolutionApi {
-    addEventListener: (
-        type: "domain",
-        listener: ScaleResolutionListener
-    ) => void;
+    addEventListener(type: "domain", listener: ScaleResolutionListener): void;
 
-    removeEventListener: (
+    removeEventListener(
         type: "domain",
         listener: ScaleResolutionListener
-    ) => void;
+    ): void;
 
     /**
      * Returns the current, possible zoomed domain.
      */
-    getDomain: () => any[];
+    getDomain(): any[];
 
     /**
      * Returns the current, possible zoomed domain converted into complex objects
      * such as genomic coordinates.
      */
-    getComplexDomain: () => NumericDomain | ComplexDomain;
+    getComplexDomain(): NumericDomain | ComplexDomain;
 
-    isZoomable: () => boolean;
+    isZoomable(): boolean;
 
-    zoomTo: (
+    zoomTo(
         domain: number[] | ComplexDomain,
         duration?: boolean | number
-    ) => Promise<void>;
+    ): Promise<void>;
 }
