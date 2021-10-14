@@ -493,7 +493,11 @@ export default class GenomeSpy {
                                   .reverse(),
                               datum: this._currentHover.datum,
                           }
-                        : null;
+                        : {
+                              type: event.type,
+                              viewPath: null,
+                              datum: null,
+                          };
 
                     this._eventListeners
                         .get("click")
