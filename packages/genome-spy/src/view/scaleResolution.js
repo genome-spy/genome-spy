@@ -477,7 +477,7 @@ export default class ScaleResolution {
                 [tc, 0, tw]
             );
             await animator.transition({
-                duration: (duration * interpolator.duration) / 10000,
+                duration: (duration / 1000) * interpolator.duration,
                 easingFunction: easeQuadInOut,
                 onUpdate: (t) => {
                     const [c, , w] = interpolator(t);
@@ -485,6 +485,8 @@ export default class ScaleResolution {
                     this._notifyDomainListeners();
                 },
             });
+            scale.domain(to);
+            this._notifyDomainListeners();
         } else {
             scale.domain(to);
             animator?.requestRender();
