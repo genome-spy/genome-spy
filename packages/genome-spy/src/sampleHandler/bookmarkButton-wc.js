@@ -1,8 +1,9 @@
-import { html, LitElement, nothing } from "lit";
+import { html, LitElement, nothing, render } from "lit";
 import { until } from "lit/directives/until.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faBookmark } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "./dropdown";
+import createModal from "../utils/ui/modal";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -58,13 +59,60 @@ class BookmarkButton extends LitElement {
             }
         }
 
-        const name = prompt("Please enter a name for the bookmark");
-        if (name) {
-            bookmarkEntry.name = name;
-            this.bookmarkDatabase
-                .add(bookmarkEntry)
-                .then(() => this.requestUpdate());
-        }
+        const modal = createModal();
+
+        const save = () => {
+            if (bookmarkEntry.name) {
+                this.bookmarkDatabase.add(bookmarkEntry).then(() => {
+                    modal.close();
+                    this.requestUpdate();
+                });
+            } else {
+                alert("Name is missing!");
+            }
+        };
+
+        const template = html`
+            <div class="modal-title">Add bookmark</div>
+
+            <div class="modal-body" style="width: 400px">
+                <div class="gs-form-group">
+                    <label for="bookmark-title">Title</label>
+                    <input
+                        id="bookmark-title"
+                        type="text"
+                        required
+                        value=${bookmarkEntry.name}
+                        @change=${(/** @type {any} */ event) => {
+                            bookmarkEntry.name = event.target.value;
+                        }}
+                    />
+                </div>
+
+                <div class="gs-form-group">
+                    <label for="bookmark-notes">Notes</label>
+                    <textarea
+                        id="bookmark-notes"
+                        value=${bookmarkEntry.notes}
+                        @change=${(/** @type {any}} */ event) => {
+                            bookmarkEntry.notes = event.target.value.trim();
+                        }}
+                    ></textarea>
+                    <small
+                        >Notes will be shown when the bookmark is loaded.</small
+                    >
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button @click=${() => modal.close()}>Cancel</button>
+                <button @click=${save}>Save</button>
+            </div>
+        `;
+
+        render(template, modal.content);
+        // @ts-expect-error
+        modal.content.querySelector("#bookmark-title").focus();
     }
 
     /** @type {(name: string) => Promise<void>} */
@@ -95,6 +143,23 @@ class BookmarkButton extends LitElement {
                     }
                 }
                 await Promise.all(promises);
+
+                if (entry.notes?.length) {
+                    const modal = createModal();
+
+                    // TODO: Markdown support in notes
+                    const template = html`
+                        <div class="modal-title">${entry.name}</div>
+                        <div class="modal-body" style="max-width: 700px">
+                            ${entry.notes}
+                        </div>
+                        <div class="modal-buttons">
+                            <button @click=${() => modal.close()}>Close</button>
+                        </div>
+                    `;
+
+                    render(template, modal.content);
+                }
             } catch (e) {
                 console.error(e);
                 alert(`Cannot restore bookmark:\n${e}`);
