@@ -25,6 +25,7 @@ export default class BookmarkDatabase {
             // be a problem when the schema needs to be changed.
             const dbName = `GenomeSpy: ${this.specId}`;
 
+            // @ts-ignore
             this._db = openDB(dbName, 1, {
                 upgrade(db, oldVersion, newVersion, transaction) {
                     // eslint-disable-next-line no-unused-vars

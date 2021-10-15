@@ -5,10 +5,16 @@ import { Action } from "./provenance";
 interface BookmarkEntry {
     name: string;
     timestamp: number;
+
+    /**
+     * Provenance
+     */
     actions: Action[];
-    // TODO: Support complex views and zoomable y-axis etc.
-    // Now we assume that there's a single shared scale resolution (x).
-    zoom?: number[] | ChromosomalLocus[];
+
+    /**
+     * Domains of scales that are both zoomable and named
+     */
+    scaleDomains: Record<string, number[] | ChromosomalLocus[]>;
 }
 interface BookmarkDB extends DBSchema {
     bookmarks: {

@@ -63,6 +63,7 @@ export default class Toolbar extends LitElement {
         if (sampleHandler && this.app.bookmarkDatabase) {
             elements.push(html`
                 <genome-spy-bookmark-button
+                    .genomeSpy=${this.app.genomeSpy}
                     .sampleHandler=${sampleHandler}
                     .bookmarkDatabase=${this.app.bookmarkDatabase}
                     .sampleView=${sampleView}

@@ -12,7 +12,11 @@ import DecoratorView from "./decoratorView";
 import View, { VISIT_SKIP, VISIT_STOP } from "./view";
 import { buildDataFlow } from "./flowBuilder";
 import { optimizeDataFlow } from "../data/flowOptimizer";
-import { isFieldDef, isValueDef } from "../encoder/encoder";
+import {
+    isFieldDef,
+    isValueDef,
+    primaryPositionalChannels,
+} from "../encoder/encoder";
 import ContainerView from "./containerView";
 import { peek } from "../utils/arrayUtils";
 
@@ -309,6 +313,23 @@ export function resolveScalesAndAxes(root) {
         }
     });
     root.visit((view) => view.onScalesResolved());
+}
+
+/**
+ * Gives names to zoomable scales that have been pulled to the root. This allows
+ * the zoomed domains to be bookmarked without explicitly specifying the names.
+ * This only affects the trivial but common cases, e.g., a genome-browser-like
+ * view with a shared x scale.
+ *
+ * @param {View} root
+ */
+export function setImplicitScaleNames(root) {
+    for (const channel of primaryPositionalChannels) {
+        const resolution = root.getScaleResolution(channel);
+        if (resolution && !resolution.name && resolution.isZoomable()) {
+            resolution.name = `${channel}_at_root`;
+        }
+    }
 }
 
 /**

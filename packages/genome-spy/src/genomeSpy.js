@@ -11,6 +11,7 @@ import {
     resolveScalesAndAxes,
     addDecorators,
     processImports,
+    setImplicitScaleNames,
 } from "./view/viewUtils";
 import UnitView from "./view/unitView";
 
@@ -261,6 +262,7 @@ export default class GenomeSpy {
 
         // Resolve scales, i.e., if possible, pull them towards the root
         resolveScalesAndAxes(this.viewRoot);
+        setImplicitScaleNames(this.viewRoot);
 
         // Wrap unit or layer views that need axes
         this.viewRoot = addDecorators(this.viewRoot);

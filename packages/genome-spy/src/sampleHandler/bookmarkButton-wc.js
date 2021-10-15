@@ -8,6 +8,9 @@ class BookmarkButton extends LitElement {
     constructor() {
         super();
 
+        /** @type {import("../genomeSpy").default} */
+        this.genomeSpy = undefined;
+
         /** @type {import("./sampleHandler").default} */
         this.sampleHandler = undefined;
 
@@ -21,6 +24,7 @@ class BookmarkButton extends LitElement {
     static get properties() {
         // TODO: Use event-based dependency injection or something to get access to these
         return {
+            genomeSpy: { type: Object },
             sampleHandler: { type: Object },
             sampleView: { type: Object },
             bookmarkDatabase: { type: Object },
@@ -36,19 +40,29 @@ class BookmarkButton extends LitElement {
     }
 
     _addBookmark() {
-        // TODO: Allow bookmarking regions of interest even if sampleView is not being used.
-        const resolution = this.sampleView?.getScaleResolution("x");
-        const complexDomain = resolution.getComplexDomain();
+        /** @type {import("./databaseSchema").BookmarkEntry} */
+        const bookmarkEntry = {
+            name: undefined,
+            timestamp: Date.now(),
+            actions: this._provenance.getActionHistory(),
+            scaleDomains: {},
+        };
+
+        for (const [name, scaleResolution] of this.genomeSpy
+            .getNamedScaleResolutions()
+            .entries()) {
+            if (scaleResolution.isZoomable()) {
+                // TODO: Check if it's the initial zoom level
+                bookmarkEntry.scaleDomains[name] =
+                    scaleResolution.getComplexDomain();
+            }
+        }
 
         const name = prompt("Please enter a name for the bookmark");
         if (name) {
+            bookmarkEntry.name = name;
             this.bookmarkDatabase
-                .add({
-                    name,
-                    timestamp: Date.now(),
-                    actions: this._provenance.getActionHistory(),
-                    zoom: complexDomain,
-                })
+                .add(bookmarkEntry)
                 .then(() => this.requestUpdate());
         }
     }
@@ -63,10 +77,24 @@ class BookmarkButton extends LitElement {
 
             try {
                 this.sampleHandler.dispatchBatch(entry.actions);
-                if (this.sampleView && entry.zoom) {
-                    const resolution = this.sampleView.getScaleResolution("x");
-                    await resolution.zoomTo(entry.zoom);
+
+                /** @type {Promise<void>[]} */
+                const promises = [];
+                for (const [name, scaleDomain] of Object.entries(
+                    entry.scaleDomains ?? {}
+                )) {
+                    const scaleResolution = this.genomeSpy
+                        .getNamedScaleResolutions()
+                        .get(name);
+                    if (scaleResolution) {
+                        promises.push(scaleResolution.zoomTo(scaleDomain));
+                    } else {
+                        console.warn(
+                            `Cannot restore scale domain. Unknown name: ${name}`
+                        );
+                    }
                 }
+                await Promise.all(promises);
             } catch (e) {
                 console.error(e);
                 alert(`Cannot restore bookmark:\n${e}`);
