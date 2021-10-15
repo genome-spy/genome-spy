@@ -17,6 +17,7 @@ import "../sampleHandler/provenanceToolbar-wc";
 import "../sampleHandler/bookmarkButton-wc";
 import "./toolbar-wc";
 import { createRef, ref } from "lit/directives/ref.js";
+import { debounce } from "../utils/debounce";
 
 /**
  * A simple wrapper for the GenomeSpy core.
@@ -105,10 +106,21 @@ export default class GenomeSpyApp {
             return;
         }
 
-        this._replayProvenanceFromUrl();
+        await this._restoreStateFromUrl();
         this.getSampleHandler()?.provenance.addListener(() => {
-            this._updateUrl();
+            this._updateStateToUrl();
         });
+
+        const debouncedUpdateUrl = debounce(
+            () => this._updateStateToUrl(),
+            500,
+            false
+        );
+        for (const [, res] of this.genomeSpy.getNamedScaleResolutions()) {
+            if (res.isZoomable()) {
+                res.addEventListener("domain", debouncedUpdateUrl);
+            }
+        }
 
         const toolbar = /** @type {import("./toolbar-wc").default} */ (
             this.toolbarRef.value
@@ -126,15 +138,34 @@ export default class GenomeSpyApp {
     /**
      * Update provenance to url
      */
-    _updateUrl() {
-        const history = this.getSampleHandler().provenance.getActionHistory();
+    _updateStateToUrl() {
+        /** @type {import("./genomeSpyAppTypes").UrlHash} */
+        const hashData = {
+            actions: [],
+            scaleDomains: {},
+        };
+
+        const history = this.getSampleHandler()?.provenance.getActionHistory();
+        if (history?.length) {
+            hashData.actions = history;
+        }
+
+        // This is copypaste from bookmarks. TODO: consolidate
+        for (const [name, scaleResolution] of this.genomeSpy
+            .getNamedScaleResolutions()
+            .entries()) {
+            if (!scaleResolution.isZoomed()) {
+                hashData.scaleDomains[name] =
+                    scaleResolution.getComplexDomain();
+            }
+        }
 
         // TODO: Test https://github.com/101arrowz/fflate as a replacement for lzString
 
-        let hash = "";
-        if (history.length) {
-            hash = "#" + compressToEncodedURIComponent(JSON.stringify(history));
-        }
+        let hash =
+            hashData.actions.length || Object.keys(hashData.scaleDomains).length
+                ? "#" + compressToEncodedURIComponent(JSON.stringify(hashData))
+                : "";
 
         window.history.replaceState(
             undefined,
@@ -143,19 +174,45 @@ export default class GenomeSpyApp {
         );
     }
 
-    _replayProvenanceFromUrl() {
-        if (!this.getSampleHandler()) {
-            return;
-        }
-
+    async _restoreStateFromUrl() {
         const hash = window.location.hash;
         if (hash && hash.length > 0) {
-            const history = JSON.parse(
-                decompressFromEncodedURIComponent(hash.substr(1))
-            );
+            try {
+                /** @type {import("./genomeSpyAppTypes").UrlHash} */
+                const hashData = JSON.parse(
+                    decompressFromEncodedURIComponent(hash.substr(1))
+                );
 
-            if (Array.isArray(history)) {
-                this.getSampleHandler().dispatchBatch(history);
+                const sampleHandler = this.getSampleHandler();
+                if (sampleHandler && hashData.actions) {
+                    // This is copypaste from bookmarks. TODO: consolidate
+
+                    sampleHandler.provenance.activateState(0);
+                    sampleHandler.dispatchBatch(hashData.actions);
+                }
+
+                /** @type {Promise<void>[]} */
+                const promises = [];
+                for (const [name, scaleDomain] of Object.entries(
+                    hashData.scaleDomains ?? {}
+                )) {
+                    const scaleResolution = this.genomeSpy
+                        .getNamedScaleResolutions()
+                        .get(name);
+                    if (scaleResolution) {
+                        // @ts-ignore
+                        promises.push(scaleResolution.zoomTo(scaleDomain));
+                    } else {
+                        console.warn(
+                            `Cannot restore scale domain. Unknown name: ${name}`
+                        );
+                    }
+                }
+                await Promise.all(promises);
+            } catch (e) {
+                console.error(e);
+                alert(`Cannot restore state from URL:\n${e}`);
+                this.getSampleHandler()?.provenance.activateState(0);
             }
         }
     }

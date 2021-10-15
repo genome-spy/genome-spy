@@ -327,6 +327,7 @@ export function setImplicitScaleNames(root) {
     for (const channel of primaryPositionalChannels) {
         const resolution = root.getScaleResolution(channel);
         if (resolution && !resolution.name && resolution.isZoomable()) {
+            // TODO: Should actually check that the name is not already reserved
             resolution.name = `${channel}_at_root`;
         }
     }

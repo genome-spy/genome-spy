@@ -714,7 +714,9 @@ export default class GenomeSpy {
         const resolutions = new Map();
         this.viewRoot.visit((view) => {
             for (const resolution of Object.values(view.resolutions.scale)) {
-                resolutions.set(resolution.name, resolution);
+                if (resolution.name) {
+                    resolutions.set(resolution.name, resolution);
+                }
             }
         });
         return resolutions;

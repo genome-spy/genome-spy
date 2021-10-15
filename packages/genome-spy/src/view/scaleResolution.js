@@ -33,6 +33,7 @@ import {
 import { NominalDomain } from "../utils/domainArray";
 import { easeQuadInOut } from "d3-ease";
 import { interpolateZoom } from "d3-interpolate";
+import { shallowArrayEquals } from "../utils/arrayUtils";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
@@ -209,13 +210,7 @@ export default class ScaleResolution {
                 props.type = getDefaultScaleType(this.channel, this.type);
             }
 
-            const domain =
-                this.getConfiguredDomain() ??
-                (this.type == LOCUS
-                    ? this.getGenome().getExtent()
-                    : this.getDataDomain());
-
-            // TODO: intersect the domain with zoom extent (if it's defined)
+            const domain = this.getInitialDomain();
 
             if (domain && domain.length > 0) {
                 props.domain = domain;
@@ -262,6 +257,16 @@ export default class ScaleResolution {
 
             return props;
         });
+    }
+
+    getInitialDomain() {
+        // TODO: intersect the domain with zoom extent (if it's defined)
+        return (
+            this.getConfiguredDomain() ??
+            (this.type == LOCUS
+                ? this.getGenome().getExtent()
+                : this.getDataDomain())
+        );
     }
 
     /**
@@ -345,6 +350,18 @@ export default class ScaleResolution {
         return (
             this.getGenome()?.toChromosomalInterval(this.getDomain()) ??
             this.getDomain()
+        );
+    }
+
+    /**
+     * Return true if the scale is zoomable and the current domain differs from the initial domain.
+     *
+     * @returns true if zoomed
+     */
+    isZoomed() {
+        return (
+            this.isZoomable() &&
+            shallowArrayEquals(this.getInitialDomain(), this.getDomain())
         );
     }
 
