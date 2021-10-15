@@ -342,8 +342,10 @@ export default class ScaleResolution {
      * @returns {NumericDomain | ComplexDomain}
      */
     getComplexDomain() {
-        // @ts-ignore
-        return this.getDomain().map((x) => this.toComplex(x));
+        return (
+            this.getGenome()?.toChromosomalInterval(this.getDomain()) ??
+            this.getDomain()
+        );
     }
 
     isZoomable() {
