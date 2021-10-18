@@ -3,7 +3,7 @@ import { until } from "lit/directives/until.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faBookmark } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "./dropdown";
-import createModal from "../utils/ui/modal";
+import { createModal, messageBox } from "../utils/ui/modal";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -145,20 +145,7 @@ class BookmarkButton extends LitElement {
                 await Promise.all(promises);
 
                 if (entry.notes?.length) {
-                    const modal = createModal();
-
-                    // TODO: Markdown support in notes
-                    const template = html`
-                        <div class="modal-title">${entry.name}</div>
-                        <div class="modal-body" style="max-width: 700px">
-                            ${entry.notes}
-                        </div>
-                        <div class="modal-buttons">
-                            <button @click=${() => modal.close()}>Close</button>
-                        </div>
-                    `;
-
-                    render(template, modal.content);
+                    messageBox(entry.notes, entry.name);
                 }
             } catch (e) {
                 console.error(e);

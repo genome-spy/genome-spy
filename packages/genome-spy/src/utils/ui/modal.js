@@ -1,6 +1,6 @@
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 
-export default function createModal() {
+export function createModal() {
     const root = document.createElement("div");
     root.className = "genome-spy-modal";
 
@@ -30,4 +30,28 @@ export default function createModal() {
             root.classList.remove("visible");
         },
     };
+}
+
+/**
+ * @param {string | import("lit").TemplateResult | HTMLElement} content
+ * @param {string} title
+ */
+export function messageBox(content, title = undefined) {
+    const modal = createModal();
+
+    return new Promise((resolve, reject) => {
+        const template = html`
+            ${title ? html`<div class="modal-title">${title}</div>` : nothing}
+                <div class="modal-body" style="max-width: 700px">
+                    ${content}
+                </div>
+                <div class="modal-buttons">
+                    <button @click=${() => {
+                        modal.close();
+                        resolve();
+                    }}>Close</button>
+                </div>
+            </div>`;
+        render(template, modal.content);
+    });
 }
