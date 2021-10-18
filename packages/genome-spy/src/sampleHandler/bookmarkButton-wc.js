@@ -4,6 +4,7 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faBookmark } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "./dropdown";
 import { createModal, messageBox } from "../utils/ui/modal";
+import safeMarkdown from "../utils/safeMarkdown";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -100,7 +101,12 @@ class BookmarkButton extends LitElement {
                         }}
                     ></textarea>
                     <small
-                        >Notes will be shown when the bookmark is loaded.</small
+                        >Notes will be shown when the bookmark is loaded. You
+                        can use
+                        <a href="https://www.markdownguide.org/basic-syntax/"
+                            >markdown</a
+                        >
+                        for formatting.</small
                     >
                 </div>
             </div>
@@ -146,7 +152,7 @@ class BookmarkButton extends LitElement {
                 await Promise.all(promises);
 
                 if (entry.notes?.length) {
-                    messageBox(entry.notes, entry.name);
+                    messageBox(safeMarkdown(entry.notes), entry.name);
                 }
             } catch (e) {
                 console.error(e);

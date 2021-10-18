@@ -329,3 +329,11 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         color: #606060;
     }
 }
+
+.snarkdown {
+    br {
+        content: "A";
+        display: block;
+        margin-bottom: 0.5em;
+    }
+}
