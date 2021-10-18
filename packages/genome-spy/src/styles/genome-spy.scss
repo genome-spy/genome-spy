@@ -199,6 +199,8 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 }
 
 .genome-spy-modal {
+    z-index: 101;
+
     font-family: $font-family;
     font-size: 14px;
 

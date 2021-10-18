@@ -93,6 +93,7 @@ class BookmarkButton extends LitElement {
                     <label for="bookmark-notes">Notes</label>
                     <textarea
                         id="bookmark-notes"
+                        rows="3"
                         value=${bookmarkEntry.notes}
                         @change=${(/** @type {any}} */ event) => {
                             bookmarkEntry.notes = event.target.value.trim();
