@@ -255,6 +255,16 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         font-weight: bold;
     }
 
+    .modal-body {
+        > p:first-child {
+            margin-top: 0;
+        }
+
+        > p:last-child {
+            margin-bottom: 0;
+        }
+    }
+
     .modal-buttons {
         text-align: right;
 
