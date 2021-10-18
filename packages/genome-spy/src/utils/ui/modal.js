@@ -35,8 +35,10 @@ export function createModal() {
 /**
  * @param {string | import("lit").TemplateResult | HTMLElement} content
  * @param {string} title
+ * @param {boolean} [cancelButton] show cancelbutton
+ * @returns {Promise<boolean>}
  */
-export function messageBox(content, title = undefined) {
+export function messageBox(content, title = undefined, cancelButton = false) {
     const modal = createModal();
 
     return new Promise((resolve, reject) => {
@@ -46,10 +48,24 @@ export function messageBox(content, title = undefined) {
                     ${content}
                 </div>
                 <div class="modal-buttons">
+                    ${
+                        cancelButton
+                            ? html`
+                                  <button
+                                      @click=${() => {
+                                          modal.close();
+                                          resolve(false);
+                                      }}
+                                  >
+                                      Cancel
+                                  </button>
+                              `
+                            : nothing
+                    }
                     <button @click=${() => {
                         modal.close();
-                        resolve();
-                    }}>Close</button>
+                        resolve(true);
+                    }}>OK</button>
                 </div>
             </div>`;
         render(template, modal.content);

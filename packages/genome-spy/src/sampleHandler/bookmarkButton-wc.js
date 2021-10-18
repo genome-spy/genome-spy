@@ -1,10 +1,16 @@
 import { html, LitElement, nothing, render } from "lit";
 import { until } from "lit/directives/until.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faBookmark } from "@fortawesome/free-solid-svg-icons";
+import {
+    faBookmark,
+    faEllipsisV,
+    faTrash,
+    faPen,
+} from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "./dropdown";
 import { createModal, messageBox } from "../utils/ui/modal";
 import safeMarkdown from "../utils/safeMarkdown";
+import contextMenu from "../utils/ui/contextmenu";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -69,7 +75,7 @@ class BookmarkButton extends LitElement {
                     this.requestUpdate();
                 });
             } else {
-                alert("Name is missing!");
+                messageBox("Name is missing!", "Error");
             }
         };
 
@@ -162,20 +168,67 @@ class BookmarkButton extends LitElement {
         }
     }
 
+    /**
+     * @param {string} name
+     * @param {MouseEvent} event
+     */
+    _createContextMenu(name, event) {
+        event.stopPropagation();
+        contextMenu(
+            {
+                items: [
+                    {
+                        label: "Edit and replace",
+                        icon: faPen,
+                        callback: () => alert("TODO"),
+                    },
+                    {
+                        label: "Delete",
+                        icon: faTrash,
+                        callback: () =>
+                            messageBox(
+                                html`The bookmark <em>${name}</em> will be
+                                    deleted.`,
+                                "Are you sure?",
+                                true
+                            ).then(async (confirmed) => {
+                                if (confirmed) {
+                                    await this.bookmarkDatabase.delete(name);
+                                    this.requestUpdate();
+                                }
+                            }),
+                    },
+                ],
+            },
+            event
+        );
+    }
+
     _getBookmarks() {
         return until(
-            this.bookmarkDatabase.getNames().then((names) =>
-                names.map(
+            this.bookmarkDatabase.getNames().then((names) => {
+                const items = names.map(
                     (name) =>
                         html`
                             <li>
                                 <a @click=${() => this._loadBookmark(name)}
                                     >${name}</a
                                 >
+                                <a
+                                    class="context-menu-ellipsis"
+                                    @click=${(
+                                        /** @type {MouseEvent} */ event
+                                    ) => this._createContextMenu(name, event)}
+                                >
+                                    ${icon(faEllipsisV).node[0]}
+                                </a>
                             </li>
                         `
-                )
-            ),
+                );
+                return items.length
+                    ? [html`<div class="menu-divider"></div>`, ...items]
+                    : nothing;
+            }),
             html` Loading... `
         );
     }

@@ -56,6 +56,15 @@ export default class BookmarkDatabase {
         await db.put(BOOKMARKS_STORE, entry);
     }
 
+    /**
+     *
+     * @param {string} name
+     */
+    async delete(name) {
+        const db = await this._getDB();
+        db.delete(BOOKMARKS_STORE, name);
+    }
+
     async getNames() {
         const db = await this._getDB();
         return db.getAllKeys(BOOKMARKS_STORE);
