@@ -50,10 +50,24 @@ export default class BookmarkDatabase {
 
     /**
      * @param {import("./databaseSchema").BookmarkEntry} entry
+     * @param {import("./databaseSchema").BookmarkEntry} [entryToReplace]
      */
-    async add(entry) {
+    async put(entry, entryToReplace) {
         const db = await this._getDB();
-        await db.put(BOOKMARKS_STORE, entry);
+
+        const tx = db.transaction(BOOKMARKS_STORE, "readwrite");
+        try {
+            if (entryToReplace) {
+                await tx.store.delete(entryToReplace.name);
+                await tx.store.put(entry);
+            } else {
+                await tx.store.put(entry);
+            }
+            await tx.done;
+        } catch (error) {
+            tx.abort();
+            throw error;
+        }
     }
 
     /**

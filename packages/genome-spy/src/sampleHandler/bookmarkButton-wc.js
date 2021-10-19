@@ -47,49 +47,99 @@ class BookmarkButton extends LitElement {
         return this.sampleHandler?.provenance;
     }
 
-    _addBookmark() {
-        /** @type {import("./databaseSchema").BookmarkEntry} */
-        const bookmarkEntry = {
-            name: undefined,
-            timestamp: Date.now(),
-            actions: this._provenance.getActionHistory(),
-            scaleDomains: {},
-        };
+    /**
+     *
+     * @param {string} [name] Name of an existing entry that will be updated
+     */
+    async _addBookmark(name) {
+        const existingEntry = name
+            ? await this.bookmarkDatabase.get(name)
+            : undefined;
 
-        for (const [name, scaleResolution] of this.genomeSpy
+        const editing = !!existingEntry;
+
+        /** @type {import("./databaseSchema").BookmarkEntry} */
+        const bookmarkEntry = existingEntry
+            ? {
+                  ...existingEntry,
+                  timestamp: Date.now(),
+                  actions: this._provenance.getActionHistory(),
+                  scaleDomains: {},
+              }
+            : {
+                  name: undefined,
+                  timestamp: Date.now(),
+                  actions: this._provenance.getActionHistory(),
+                  scaleDomains: {},
+              };
+
+        for (const [scaleName, scaleResolution] of this.genomeSpy
             .getNamedScaleResolutions()
             .entries()) {
             if (scaleResolution.isZoomable()) {
                 // TODO: Check if it's the initial zoom level
-                bookmarkEntry.scaleDomains[name] =
+                bookmarkEntry.scaleDomains[scaleName] =
                     scaleResolution.getComplexDomain();
             }
         }
 
+        const isValid = () => !!bookmarkEntry.name;
+
         const modal = createModal();
 
-        const save = () => {
-            if (bookmarkEntry.name) {
-                this.bookmarkDatabase.add(bookmarkEntry).then(() => {
-                    modal.close();
-                    this.requestUpdate();
-                });
-            } else {
+        const save = async () => {
+            if (!isValid()) {
                 messageBox("Name is missing!", "Error");
+                return;
+            }
+
+            if (
+                (await this.bookmarkDatabase.get(bookmarkEntry.name)) &&
+                !(editing && bookmarkEntry.name == existingEntry.name)
+            ) {
+                if (
+                    !(await messageBox(
+                        html`A bookmark with the name
+                            <em>${bookmarkEntry.name}</em> already exists. It
+                            will be overwritten.`,
+                        "Bookmark already exists",
+                        true
+                    ))
+                ) {
+                    return;
+                }
+            }
+            try {
+                await this.bookmarkDatabase.put(bookmarkEntry, existingEntry);
+                modal.close();
+                this.requestUpdate();
+            } catch (error) {
+                messageBox("" + error, "Cannot save the bookmark!");
             }
         };
 
         const template = html`
-            <div class="modal-title">Add bookmark</div>
+            <div class="modal-title">
+                ${editing ? "Edit bookmark" : "Add bookmark"}
+            </div>
 
-            <div class="modal-body" style="width: 400px">
+            <div class="modal-body" style="width: 500px">
+                ${editing
+                    ? html`
+                          <p>
+                              The current visualization state will be updated to
+                              the bookmark you are editing.
+                          </p>
+                      `
+                    : nothing}
+
                 <div class="gs-form-group">
                     <label for="bookmark-title">Title</label>
                     <input
                         id="bookmark-title"
                         type="text"
                         required
-                        value=${bookmarkEntry.name}
+                        .value=${bookmarkEntry.name ?? ""}
                         @change=${(/** @type {any} */ event) => {
                             bookmarkEntry.name = event.target.value;
                         }}
@@ -100,8 +150,8 @@ class BookmarkButton extends LitElement {
                     <label for="bookmark-notes">Notes</label>
                     <textarea
                         id="bookmark-notes"
-                        rows="3"
-                        value=${bookmarkEntry.notes}
+                        rows="4"
+                        .value=${bookmarkEntry.notes ?? ""}
                         @change=${(/** @type {any}} */ event) => {
                             bookmarkEntry.notes = event.target.value.trim();
                         }}
@@ -180,7 +230,7 @@ class BookmarkButton extends LitElement {
                     {
                         label: "Edit and replace",
                         icon: faPen,
-                        callback: () => alert("TODO"),
+                        callback: () => this._addBookmark(name),
                     },
                     {
                         label: "Delete",
@@ -250,7 +300,7 @@ class BookmarkButton extends LitElement {
                 <ul class="dropdown-menu context-menu">
                     <li>
                         <a
-                            @click=${this._addBookmark}
+                            @click=${() => this._addBookmark()}
                             ?disabled=${this._provenance.isAtInitialState()}
                             >Add bookmark...</a
                         >
