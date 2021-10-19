@@ -188,6 +188,12 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         color: #888;
     }
 
+    a.context-menu-item {
+        svg:first-child {
+            width: 1em;
+            margin-right: 0.2em;
+        }
+    }
     a.context-menu-item:hover {
         background-color: #e0e0e0;
     }
