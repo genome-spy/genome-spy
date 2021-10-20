@@ -9,6 +9,7 @@ import {
 import { findGenomeScaleResolution } from "./searchField-wc";
 import { asArray } from "../utils/arrayUtils";
 import bowtie from "../img/bowtie.svg";
+import { messageBox } from "../utils/ui/modal";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -84,7 +85,13 @@ export default class Toolbar extends LitElement {
                 <button
                     class="tool-btn"
                     title="Show a description of the visualization"
-                    @click=${() => alert(description.join("\n"))}
+                    @click=${() =>
+                        messageBox(
+                            html`${description
+                                .slice(1)
+                                .map((line) => html`<p>${line}</p>`)}`,
+                            description[0]
+                        )}
                 >
                     ${icon(faInfoCircle).node[0]}
                 </button>

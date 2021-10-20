@@ -1,3 +1,6 @@
+@use "sass:math";
+@use "sass:color";
+
 $basic-spacing: 10px;
 
 .genome-spy-app {
@@ -218,6 +221,8 @@ $basic-spacing: 10px;
         }
 
         .dropdown-menu {
+            $hover-color: #e0e0e0;
+
             display: none;
             z-index: 1;
             position: absolute;
@@ -231,33 +236,76 @@ $basic-spacing: 10px;
             // TODO: Same as in context menu
             font-size: 13px;
 
-            a {
-                display: block;
-                padding: 4px $hPadding;
-                cursor: pointer;
-
-                &:hover {
-                    background-color: #e0e0e0;
-                }
-            }
-
-            a.active {
-                $tickSize: 5px;
-
-                background-color: #e0e0e0;
-                border-left: $tickSize solid #c0c0c0;
-                padding-left: $hPadding - $tickSize;
-            }
-
             padding: 7px 0;
 
             li {
+                position: relative;
                 padding: 0;
+
+                &:hover {
+                    background-color: $hover-color;
+                }
+            }
+
+            a:first-child {
+                padding: 4px $hPadding;
+            }
+
+            a {
+                display: block;
+                cursor: pointer;
+
+                &.active {
+                    $tickSize: 5px;
+
+                    background-color: #e0e0e0;
+                    border-left: $tickSize solid #c0c0c0;
+                    padding-left: $hPadding - $tickSize;
+                }
+            }
+
+            a.context-menu-ellipsis {
+                aspect-ratio: 1 / 1;
+                display: grid;
+                justify-content: center;
+                align-content: center;
+
+                position: absolute;
+                top: 1px;
+                right: $hPadding * 0.5;
+                bottom: 1px;
+                vertical-align: center;
+                max-height: 2em;
+
+                background-color: $hover-color;
+                border-radius: 3em;
+
+                color: #707070;
+
+                svg {
+                    margin: 0;
+                }
+
+                &:hover {
+                    background-color: color.scale(
+                        $hover-color,
+                        $lightness: 50%
+                    );
+                }
+            }
+
+            li:not(:hover) a.context-menu-ellipsis {
+                display: none;
             }
 
             svg {
                 margin-right: 3px;
                 width: 1em;
+            }
+
+            .menu-divider {
+                margin: 5px 0;
+                border-top: 1px solid #e0e0e0;
             }
         }
     }

@@ -1,4 +1,4 @@
-@use 'sass:math';
+@use "sass:math";
 
 $basic-spacing: 10px;
 
@@ -152,9 +152,8 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 }
 
-// TODO: Move inside .genome-spy
 // TODO: Make colors more "functional" and themable
-.context-menu {
+.gs-context-menu {
     position: fixed;
 
     padding: 7px 0;
@@ -172,7 +171,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
         padding: 0 15px;
         font-size: 13px;
-        line-height: 21px;
+        line-height: 22px;
 
         font-family: $font-family;
 
@@ -188,6 +187,12 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         color: #888;
     }
 
+    a.context-menu-item {
+        svg:first-child {
+            width: 1em;
+            margin-right: 0.2em;
+        }
+    }
     a.context-menu-item:hover {
         background-color: #e0e0e0;
     }
@@ -195,5 +200,178 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     .context-menu-divider {
         margin: 5px 0;
         border-top: 1px solid #e0e0e0;
+    }
+}
+
+.gs-modal {
+    z-index: 101;
+
+    font-family: $font-family;
+    font-size: 14px;
+
+    * {
+        box-sizing: border-box;
+    }
+
+    position: fixed;
+    inset: 0;
+
+    .backdrop {
+        position: absolute;
+        inset: 0;
+        background-color: rgb(75, 75, 75);
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    display: grid;
+    justify-content: center;
+    align-content: center;
+
+    .content {
+        z-index: 1;
+        box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
+        background: white;
+        border-radius: 3px;
+        min-width: 300px;
+        opacity: 0;
+        transform: translate(0, -15px);
+        transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    }
+
+    &.visible {
+        .backdrop {
+            opacity: 0.4;
+        }
+
+        .content {
+            transform: translate(0, 0);
+            opacity: 1;
+        }
+    }
+
+    .modal-body,
+    .modal-title,
+    .modal-buttons {
+        padding: $basic-spacing;
+    }
+
+    .modal-title {
+        font-weight: bold;
+    }
+
+    .modal-body {
+        > p:first-child {
+            margin-top: 0;
+        }
+
+        > p:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .modal-buttons {
+        text-align: right;
+
+        border-top: 1px solid #d0d0d0;
+
+        button {
+            display: inline-block;
+            padding: 4px 12px;
+            margin-bottom: 0;
+            font-size: 14px;
+            line-height: 20px;
+            color: #333333;
+            text-align: center;
+            text-shadow: 0 1px 1px rgb(255 255 255 / 75%);
+            vertical-align: middle;
+            cursor: pointer;
+            background-image: linear-gradient(to bottom, #ffffff, #e6e6e6);
+            border: 1px solid #cccccc;
+            border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1)
+                rgba(0, 0, 0, 0.25);
+            border-bottom-color: #b3b3b3;
+            border-radius: 4px;
+            box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%),
+                0 1px 2px rgb(0 0 0 / 5%);
+
+            &:hover {
+                background-image: linear-gradient(to bottom, #f8f8f8, #d8d8d8);
+            }
+
+            &:active {
+                border-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.2)
+                    rgba(0, 0, 0, 0.5);
+            }
+        }
+    }
+}
+
+.gs-form-group {
+    &:not(:first-child) {
+        margin-top: 0.5em;
+    }
+
+    label {
+        display: inline-block;
+        margin-bottom: 0.5em;
+    }
+
+    input[type="text"],
+    textarea {
+        display: block;
+        width: 100%;
+        padding: 0.375em 0.75em;
+        font-size: 1em;
+        font-family: $font-family;
+        line-height: 1.5;
+        color: #495057;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.25em;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+
+        &:invalid:not(:focus) {
+            border-color: red;
+            box-shadow: 0 0 5px 0px red;
+        }
+    }
+
+    small {
+        display: block;
+        margin-top: 0.25rem;
+        color: #606060;
+    }
+}
+
+.gs-alert {
+    display: flex;
+    align-items: center;
+
+    position: relative;
+    padding: 0.8em;
+    margin-bottom: 1em;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+
+    > svg:first-child {
+        width: 2em;
+        height: 2em;
+        margin-right: 0.8em;
+    }
+
+    &.warning {
+        color: #664d03;
+        background-color: #fff3cd;
+        border-color: #ffecb5;
+    }
+}
+
+.snarkdown {
+    br {
+        content: "A";
+        display: block;
+        margin-bottom: 0.5em;
     }
 }

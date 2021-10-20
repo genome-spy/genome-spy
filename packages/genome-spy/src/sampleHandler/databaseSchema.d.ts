@@ -6,15 +6,17 @@ interface BookmarkEntry {
     name: string;
     timestamp: number;
 
+    notes?: string;
+
     /**
      * Provenance
      */
-    actions: Action[];
+    actions?: Action[];
 
     /**
      * Domains of scales that are both zoomable and named
      */
-    scaleDomains: Record<string, number[] | ChromosomalLocus[]>;
+    scaleDomains?: Record<string, number[] | ChromosomalLocus[]>;
 }
 interface BookmarkDB extends DBSchema {
     bookmarks: {
