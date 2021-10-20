@@ -152,9 +152,8 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 }
 
-// TODO: Move inside .genome-spy
 // TODO: Make colors more "functional" and themable
-.context-menu {
+.gs-context-menu {
     position: fixed;
 
     padding: 7px 0;
@@ -204,7 +203,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 }
 
-.genome-spy-modal {
+.gs-modal {
     z-index: 101;
 
     font-family: $font-family;
@@ -343,6 +342,29 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         display: block;
         margin-top: 0.25rem;
         color: #606060;
+    }
+}
+
+.gs-alert {
+    display: flex;
+    align-items: center;
+
+    position: relative;
+    padding: 0.8em;
+    margin-bottom: 1em;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+
+    > svg:first-child {
+        width: 2em;
+        height: 2em;
+        margin-right: 0.8em;
+    }
+
+    &.warning {
+        color: #664d03;
+        background-color: #fff3cd;
+        border-color: #ffecb5;
     }
 }
 

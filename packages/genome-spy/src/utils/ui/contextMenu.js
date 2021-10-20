@@ -38,7 +38,7 @@ export default function contextMenu(options, mouseEvent) {
     clearMenu();
 
     const menuElement = document.createElement("div");
-    menuElement.className = "context-menu";
+    menuElement.className = "gs-context-menu";
 
     const container = options.menuContainer || document.body;
 

@@ -2,7 +2,7 @@ import { html, nothing, render } from "lit";
 
 export function createModal() {
     const root = document.createElement("div");
-    root.className = "genome-spy-modal";
+    root.className = "gs-modal";
 
     render(
         html`<div class="backdrop"></div>

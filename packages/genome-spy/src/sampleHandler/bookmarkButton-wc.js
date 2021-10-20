@@ -6,6 +6,7 @@ import {
     faEllipsisV,
     faTrash,
     faPen,
+    faExclamationCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "./dropdown";
 import { createModal, messageBox } from "../utils/ui/modal";
@@ -126,10 +127,11 @@ class BookmarkButton extends LitElement {
             <div class="modal-body" style="width: 500px">
                 ${editing
                     ? html`
-                          <p>
-                              The current visualization state will be updated to
-                              the bookmark you are editing.
-                          </p>
+                          <div class="gs-alert warning">
+                              ${icon(faExclamationCircle).node[0]} The current
+                              visualization state will be updated to the
+                              bookmark you are editing.
+                          </div>
                       `
                     : nothing}
 
@@ -297,7 +299,7 @@ class BookmarkButton extends LitElement {
                 >
                     ${icon(faBookmark).node[0]}
                 </button>
-                <ul class="dropdown-menu context-menu">
+                <ul class="dropdown-menu gs-context-menu">
                     <li>
                         <a
                             @click=${() => this._addBookmark()}
