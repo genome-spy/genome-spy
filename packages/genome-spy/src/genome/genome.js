@@ -220,7 +220,7 @@ export default class Genome {
         // Round the lower end
         const begin = this.toChromosomal(interval[0] + 0.5);
         // Because of the open upper bound, one is first subtracted from the upper bound and later added back.
-        const end = this.toChromosomal(interval[1] - 1);
+        const end = this.toChromosomal(interval[1] - 0.5);
         end.pos += 1;
 
         return [begin, end];
