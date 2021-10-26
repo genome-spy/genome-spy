@@ -19,23 +19,14 @@ import {
 /**
  * This class handles sample sorting, filtering, grouping, etc.
  *
- * @typedef {import("./sampleState").State} State
+ * @typedef {import("./sampleState").SampleHierarchy} State
  * @typedef {import("./sampleState").Group} Group
  * @typedef {import("./sampleState").SampleGroup} SampleGroup
  * @typedef {import("./sampleState").GroupGroup} GroupGroup
  *
- * @typedef {object} AttributeIdentifier An identifier for an abstract attribute.
- *      Allows for retrieving an accessor and information.
- * @prop {string} type
- * @prop {any} [specifier]
+ * @typedef {import("./types").AttributeIdentifier} AttributeIdentifier
  *
- * @typedef {object} AttributeInfo
- * @prop {string} name A concise name of the attribute
- * @prop {string | import("lit").TemplateResult} [title] A more detailed name
- *      with optional formatting.
- * @prop {function(string):any} accessor A function that maps a sampleId to an attribute value
- * @prop {string} type e.g., "quantitative"
- * @prop {any} scale
+ * @typedef {import("./types").AttributeInfo} AttributeInfo
  *
  * @typedef {(function(AttributeIdentifier):AttributeInfo)} AttributeInfoSource
  * @typedef {import("./provenance").Action} Action
@@ -44,7 +35,6 @@ import {
 export default class SampleHandler {
     constructor() {
         /**
-         *
          * @type {Record<string, AttributeInfoSource>}
          */
         this.attributeInfoSourcesByType = {};

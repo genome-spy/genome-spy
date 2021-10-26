@@ -83,7 +83,10 @@ export function sort(samples, accessor, descending = false) {
     });
 }
 
-/** @type {Record<ComparisonOperatorType, function(any, any):boolean>} */
+/**
+ * @type {Record<ComparisonOperatorType, (a: T, b: T) => boolean>}
+ * @template T
+ */
 const COMPARISON_OPERATORS = {
     lt: (a, b) => a < b,
     lte: (a, b) => a <= b,

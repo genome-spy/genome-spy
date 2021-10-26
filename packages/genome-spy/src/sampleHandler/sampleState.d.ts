@@ -29,7 +29,7 @@ export interface GroupMetadata {
     attribute: AttributeIdentifier;
 }
 
-export interface State {
+export interface SampleHierarchy {
     /** A stack of groups. Does not include the root. */
     groups: GroupMetadata[];
 

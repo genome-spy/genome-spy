@@ -95,7 +95,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     /**
-     * @param {import("../sampleHandler/sampleState").State} state
+     * @param {import("../sampleHandler/sampleState").SampleHierarchy} state
      */
     _mergeAndPropagate(state) {
         const groupPaths = [...iterateGroupHierarcy(state.rootGroup)].filter(

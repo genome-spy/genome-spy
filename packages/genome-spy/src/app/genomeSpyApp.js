@@ -18,6 +18,7 @@ import "../sampleHandler/bookmarkButton-wc";
 import "./toolbar-wc";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "../utils/debounce";
+import { configureStore } from "@reduxjs/toolkit";
 
 /**
  * A simple wrapper for the GenomeSpy core.
@@ -30,23 +31,19 @@ export default class GenomeSpyApp {
      * @param {import("../options").EmbedOptions} options
      */
     constructor(appContainerElement, config, options = {}) {
+        // eslint-disable-next-line consistent-this
+        const self = this;
+
         this.config = config;
+
+        this.store = configureStore({
+            reducer: {},
+        });
 
         this.toolbarRef = createRef();
 
         this.appContainer = appContainerElement;
-        if (this.isFullPage()) {
-            this.appContainer.style.margin = "0";
-            this.appContainer.style.padding = "0";
-            this.appContainer.style.overflow = "hidden";
-
-            setFavicon(favIcon);
-        } else {
-            this.appContainer.style.position = "relative";
-        }
-
-        // eslint-disable-next-line consistent-this
-        const self = this;
+        this._configureContainer();
 
         this.bookmarkDatabase =
             typeof config.specId == "string"
@@ -214,6 +211,18 @@ export default class GenomeSpyApp {
                 alert(`Cannot restore state from URL:\n${e}`);
                 this.getSampleHandler()?.provenance.activateState(0);
             }
+        }
+    }
+
+    _configureContainer() {
+        if (this.isFullPage()) {
+            this.appContainer.style.margin = "0";
+            this.appContainer.style.padding = "0";
+            this.appContainer.style.overflow = "hidden";
+
+            setFavicon(favIcon);
+        } else {
+            this.appContainer.style.position = "relative";
         }
     }
 
