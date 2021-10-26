@@ -10,15 +10,15 @@ import { html, render } from "lit";
 
 import { VISIT_STOP } from "../view/view";
 import SampleView from "../view/sampleView/sampleView";
-import BookmarkDatabase from "../sampleHandler/bookmarkDatabase";
+import BookmarkDatabase from "./bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
 
-import "../sampleHandler/provenanceToolbar-wc";
-import "../sampleHandler/bookmarkButton-wc";
+import "./provenanceToolbar-wc";
+import "./bookmarkButton-wc";
 import "./toolbar-wc";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "../utils/debounce";
-import { configureStore } from "@reduxjs/toolkit";
+import Provenance from "./provenance";
 
 /**
  * A simple wrapper for the GenomeSpy core.
@@ -36,9 +36,10 @@ export default class GenomeSpyApp {
 
         this.config = config;
 
-        this.store = configureStore({
-            reducer: {},
-        });
+        this.provenance = new Provenance();
+
+        // Fugly temp hack
+        window.provenance = this.provenance;
 
         this.toolbarRef = createRef();
 
@@ -103,10 +104,12 @@ export default class GenomeSpyApp {
             return;
         }
 
+        /*
         await this._restoreStateFromUrl();
         this.getSampleHandler()?.provenance.addListener(() => {
             this._updateStateToUrl();
         });
+        */
 
         const debouncedUpdateUrl = debounce(
             () => this._updateStateToUrl(),

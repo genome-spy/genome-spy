@@ -144,6 +144,11 @@ export class GroupPanel extends LayerView {
                 this.context.dataFlow.findDataSourceByKey(this)
             );
 
+        if (!dynamicSource) {
+            // Why this happens? TODO: Investigate
+            return;
+        }
+
         const data = groupLocations.map((g) => ({
             _index: g.key.index,
             _name: g.key.group.name,

@@ -5,7 +5,6 @@ import { inferType } from "vega-loader";
 
 import ConcatView from "../concatView";
 import UnitView from "../unitView";
-import * as Actions from "../../sampleHandler/sampleHandlerActions";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
 import { buildDataFlow } from "../flowBuilder";
@@ -66,7 +65,7 @@ export class SampleAttributePanel extends ConcatView {
         };
 
         // TODO: Optimize the following
-        this.sampleHandler.addAttributeInfoSource(
+        this.sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_ATTRIBUTE,
             (attribute) =>
                 this.children
@@ -74,13 +73,16 @@ export class SampleAttributePanel extends ConcatView {
                     .find((info) => info && info.name == attribute.specifier)
         );
 
-        this.sampleHandler.addAttributeInfoSource(SAMPLE_NAME, (attribute) => ({
-            name: "displayName",
-            accessor: (sampleId) =>
-                this.sampleView.sampleAccessor(sampleId).displayName,
-            type: "nominal",
-            scale: undefined,
-        }));
+        this.sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
+            SAMPLE_NAME,
+            (attribute) => ({
+                name: "displayName",
+                accessor: (sampleId) =>
+                    this.sampleView.sampleAccessor(sampleId).displayName,
+                type: "nominal",
+                scale: undefined,
+            })
+        );
 
         this.addInteractionEventListener(
             "contextmenu",
@@ -120,10 +122,6 @@ export class SampleAttributePanel extends ConcatView {
                 this._handleAttributeHighlight(undefined);
             }
         );
-    }
-
-    get sampleHandler() {
-        return this.sampleView.sampleHandler;
     }
 
     /**
@@ -200,7 +198,7 @@ export class SampleAttributePanel extends ConcatView {
             event.point.y - coords.y
         );
 
-        return sampleId ? this.sampleView.sampleMap.get(sampleId) : undefined;
+        return sampleId ? this.sampleView.getAllSamples()[sampleId] : undefined;
     }
 
     /**
@@ -228,7 +226,7 @@ export class SampleAttributePanel extends ConcatView {
             return;
         }
 
-        const dispatch = this.sampleHandler.dispatch.bind(this.sampleHandler);
+        const dispatch = this.sampleView.provenance.getDispatcher();
 
         /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         const items = [];
@@ -243,7 +241,7 @@ export class SampleAttributePanel extends ConcatView {
                     attribute.type,
                     attributeValue,
                     dispatch,
-                    this.sampleHandler.provenance
+                    this.sampleView
                 )
             );
         } else {
@@ -330,8 +328,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     _getAttributeNames() {
+        // TODO: Use reselect
         return this._cache("attributeNames", () => {
-            const samples = this.sampleView.getAllSamples();
+            const samples = Object.values(this.sampleView.getAllSamples());
 
             // Find all attributes
             const attributes = samples
@@ -356,7 +355,7 @@ export class SampleAttributePanel extends ConcatView {
         // Ensure that attributes have a type
         let fieldType = attributeDef ? attributeDef.type : undefined;
         if (!fieldType) {
-            const samples = this.sampleView.getAllSamples();
+            const samples = Object.values(this.sampleView.getAllSamples());
             switch (
                 inferType(samples.map((sample) => sample.attributes[attribute]))
             ) {
@@ -387,7 +386,7 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {View} view
-     * @returns {import("../../sampleHandler/sampleHandler").AttributeInfo}
+     * @returns {import("./types").AttributeInfo}
      */
     getAttributeInfoFromView(view) {
         const nameMatch = view.name.match(attributeViewRegex);
@@ -436,7 +435,7 @@ export class SampleAttributePanel extends ConcatView {
         return [
             {
                 label: "Sort by name",
-                callback: () => dispatch(Actions.sortBy({ type: SAMPLE_NAME })),
+                callback: () => dispatch(this.sampleView.actions.sortByName()),
             },
             {
                 label: `Sample: ${sample.displayName}`,
@@ -461,7 +460,7 @@ export class SampleAttributePanel extends ConcatView {
         /** @type {string[]} */
         const [sampleId, attribute] = JSON.parse(sampleAndAttribute);
 
-        const sample = this.sampleView.sampleMap.get(sampleId);
+        const sample = this.sampleView.getAllSamples()[sampleId];
 
         /**
          * @param {string} attribute
@@ -520,6 +519,13 @@ export class SampleAttributePanel extends ConcatView {
      * @returns {boolean} true of an action was dispatched
      */
     handleVerboseCommand(command) {
+        //
+    }
+
+    _handleVerboseCommand() {
+        const Actions = undefined;
+        const command = "";
+
         // TODO: Provide an easier access to the attribute data
         const searchKey = command;
 
@@ -531,15 +537,17 @@ export class SampleAttributePanel extends ConcatView {
                 );
 
                 if (sample) {
-                    /** @type {import("../../sampleHandler/provenance").Action[]} */
+                    /** @type {import("../../app/provenance").Action[]} */
                     const actions = [];
 
-                    // Undo the previous action if we are filtering a by the same nominal attribute
+                    // Undo the previous action if we are filtering by the same nominal attribute
                     const lastAction =
-                        this.sampleHandler.provenance.currentNode?.action;
+                        this.sampleView.provenance.currentNode?.action;
                     if (
                         lastAction &&
-                        lastAction.type == Actions.FILTER_BY_NOMINAL &&
+                        this.sampleView.actions.filterByNominal.match(
+                            lastAction
+                        ) &&
                         lastAction.payload?.action == "retain" &&
                         lastAction.payload?.attribute.type ==
                             SAMPLE_ATTRIBUTE &&

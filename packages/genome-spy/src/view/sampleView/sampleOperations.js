@@ -7,7 +7,7 @@ import { isNumber } from "vega-util";
  * and provides the correct order for ordinal data.
  *
  * @param {function(string):any} accessor
- * @param {import("./sampleHandler").AttributeInfo} attributeInfo
+ * @param {import("./types").AttributeInfo} attributeInfo
  * @returns {function(string):any}
  */
 export function wrapAccessorForComparison(accessor, attributeInfo) {

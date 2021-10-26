@@ -1,16 +1,14 @@
-import * as Actions from "../../sampleHandler/sampleHandlerActions";
-
 /**
  * @typedef {import("../../utils/ui/contextmenu").MenuItem} MenuItem
  */
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
- * @param {import("../../sampleHandler/sampleHandler").AttributeIdentifier} attribute
+ * @param {import("./types").AttributeIdentifier} attribute
  * @param {string} attributeType
  * @param {any} attributeValue
  * @param {function(object):void} dispatch
- * @param {import("../../sampleHandler/provenance").default<any>} provenance
+ * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
  */
 export default function generateAttributeContextMenu(
     title,
@@ -18,8 +16,10 @@ export default function generateAttributeContextMenu(
     attributeType,
     attributeValue,
     dispatch,
-    provenance
+    sampleView
 ) {
+    const actions = sampleView.actions;
+
     /** @type {MenuItem[]} */
     let items = [
         {
@@ -29,11 +29,11 @@ export default function generateAttributeContextMenu(
     ];
 
     /**
-     * @param {import("../../sampleHandler/provenance").Action} action
+     * @param {import("../../app/provenance").Action} action
      * @returns {MenuItem}
      */
     const actionToItem = (action) => {
-        const info = provenance.getActionInfo(action);
+        const info = sampleView.provenance.getActionInfo(action);
         return {
             label: info.title,
             icon: info.icon,
@@ -42,29 +42,45 @@ export default function generateAttributeContextMenu(
     };
 
     /**
-     * @param {import("../../sampleHandler/provenance").Action[]} actions
+     * @param {import("../../app/provenance").Action[]} actions
      */
     const addActions = (...actions) => items.push(...actions.map(actionToItem));
 
-    addActions(Actions.sortBy(attribute));
+    addActions(actions.sortBy({ attribute }));
 
     if (attributeType != "quantitative") {
         addActions(
-            Actions.groupByNominal(attribute),
-            Actions.retainFirstOfEach(attribute),
-            Actions.filterByNominal(attribute, "retain", [attributeValue]),
-            Actions.filterByNominal(attribute, "remove", [attributeValue])
+            actions.groupByNominal({ attribute }),
+            actions.retainFirstOfEach({ attribute }),
+            actions.filterByNominal({
+                attribute,
+                action: "retain",
+                values: [attributeValue],
+            }),
+            actions.filterByNominal({
+                attribute,
+                action: "remove",
+                values: [attributeValue],
+            })
         );
     } else {
-        addActions(Actions.groupToQuartiles(attribute));
+        addActions(actions.groupToQuartiles({ attribute }));
 
         if (isDefined(attributeValue)) {
             addActions(
-                Actions.filterByQuantitative(attribute, "gte", attributeValue),
-                Actions.filterByQuantitative(attribute, "lte", attributeValue)
+                actions.filterByQuantitative({
+                    attribute,
+                    operator: "gte",
+                    operand: attributeValue,
+                }),
+                actions.filterByQuantitative({
+                    attribute,
+                    operator: "lte",
+                    operand: attributeValue,
+                })
             );
         } else {
-            addActions(Actions.removeUndefined(attribute));
+            addActions(actions.removeUndefined({ attribute }));
         }
     }
 

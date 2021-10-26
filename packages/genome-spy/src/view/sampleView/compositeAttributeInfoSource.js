@@ -4,9 +4,9 @@
  */
 
 /**
- *
+ * TODO: Make this a function instead of a class
  */
-export default class AttributeInfoCollection {
+export default class CompositeAttributeInfoSource {
     constructor() {
         /**
          * @type {Record<string, AttributeInfoSource>}

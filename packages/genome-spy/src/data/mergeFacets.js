@@ -2,7 +2,8 @@ import { isFieldDef } from "../encoder/encoder";
 import {
     isSampleGroup,
     iterateGroupHierarcy,
-} from "../sampleHandler/sampleHandler";
+    sampleHierarchySelector,
+} from "../view/sampleView/sampleSlice";
 import { peek } from "../utils/arrayUtils";
 import { field } from "../utils/field";
 import kWayMerge from "../utils/kWayMerge";
@@ -35,11 +36,11 @@ export default class MergeSampleFacets extends FlowNode {
 
         for (const v of view.getAncestors()) {
             if (v instanceof SampleView) {
-                this.provenance = v.sampleHandler.provenance;
-                this.provenance.addListener((state) =>
+                this.provenance = v.provenance;
+                this.provenance.subscribe((state) =>
                     animator.requestTransition(() => {
                         this.reset();
-                        this._mergeAndPropagate(state);
+                        this._mergeAndPropagate(sampleHierarchySelector(state));
                         this.complete();
                     })
                 );
@@ -90,17 +91,19 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     complete() {
-        this._mergeAndPropagate(this.provenance.state);
+        this._mergeAndPropagate(
+            sampleHierarchySelector(this.provenance.getState())
+        );
         super.complete();
     }
 
     /**
-     * @param {import("../sampleHandler/sampleState").SampleHierarchy} state
+     * @param {import("../view/sampleView/sampleSlice").SampleHierarchy} sampleHierarchy
      */
-    _mergeAndPropagate(state) {
-        const groupPaths = [...iterateGroupHierarcy(state.rootGroup)].filter(
-            (path) => isSampleGroup(peek(path))
-        );
+    _mergeAndPropagate(sampleHierarchy) {
+        const groupPaths = [
+            ...iterateGroupHierarcy(sampleHierarchy.rootGroup),
+        ].filter((path) => isSampleGroup(peek(path)));
 
         for (const [i, groupPath] of groupPaths.entries()) {
             const group = peek(groupPath);

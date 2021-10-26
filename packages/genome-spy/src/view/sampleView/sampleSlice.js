@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { peek } from "../utils/arrayUtils";
+import { peek } from "../../utils/arrayUtils";
 import {
     groupSamplesByAccessor,
     groupSamplesByQuartiles,
@@ -7,6 +7,7 @@ import {
 import {
     filterNominal,
     filterQuantitative,
+    filterUndefined,
     retainFirstOfEach,
     sort,
     wrapAccessorForComparison,
@@ -26,22 +27,22 @@ import {
  */
 
 /**
- * @param {string[]} [samples]
  * @returns {SampleHierarchy}
  */
-function createInitialState(samples = []) {
+function createInitialState() {
     return {
+        sampleData: {},
         groups: [],
         rootGroup: {
             name: "ROOT",
             label: "Root",
-            samples,
+            samples: [],
         },
     };
 }
 
 /**
- * @param {import("./attributeInfoCollection").AttributeInfoSource} getAttributeInfo
+ * @param {import("./compositeAttributeInfoSource").AttributeInfoSource} getAttributeInfo
  */
 export function createSampleSlice(getAttributeInfo) {
     /**
@@ -53,16 +54,52 @@ export function createSampleSlice(getAttributeInfo) {
         getAttributeInfo(payload.attribute).accessor;
 
     return createSlice({
-        name: "samples",
+        name: "sampleView",
         initialState: createInitialState(),
         reducers: {
             setSamples: (
                 state,
                 /** @type {PayloadAction<import("./payloadTypes").SetSamples>} */ action
             ) => {
-                const newState = createInitialState(action.payload.samples);
-                state.groups = newState.groups;
-                state.rootGroup = newState.rootGroup;
+                const samples = action.payload.samples;
+
+                if (Object.keys(state.sampleData).length > 0) {
+                    throw new Error("Samples have already been set!");
+                }
+
+                if (
+                    samples.some(
+                        (sample) =>
+                            sample.id === undefined || sample.id === null
+                    )
+                ) {
+                    throw new Error(
+                        'The sample metadata contains missing sample ids or the "sample" column is missing!'
+                    );
+                }
+
+                if (
+                    new Set(samples.map((sample) => sample.id)).size !=
+                    samples.length
+                ) {
+                    throw new Error(
+                        "The sample metadata contains duplicate sample ids!"
+                    );
+                }
+
+                const samplesWithIndices = samples.map((sample, index) => ({
+                    ...sample,
+                    indexNumber: index,
+                }));
+
+                state.sampleData = Object.fromEntries(
+                    samplesWithIndices.map((sample) => [sample.id, sample])
+                );
+                state.rootGroup = {
+                    name: "ROOT",
+                    label: "Root",
+                    samples: samples.map((sample) => sample.id),
+                };
             },
 
             sortBy: (
@@ -125,6 +162,16 @@ export function createSampleSlice(getAttributeInfo) {
                 );
             },
 
+            removeUndefined: (
+                state,
+                /** @type {PayloadAction<import("./payloadTypes").RemoveUndefined>} */
+                action
+            ) => {
+                applyToSamples(state, (samples) =>
+                    filterUndefined(samples, getAccessor(action.payload))
+                );
+            },
+
             groupByNominal: (
                 state,
                 /** @type {PayloadAction<import("./payloadTypes").GroupByNominal>} */
@@ -156,36 +203,44 @@ export function createSampleSlice(getAttributeInfo) {
 
 /**
  * Applies an operation to each group of samples.
- * @param {SampleHierarchy} state
+ * @param {SampleHierarchy} sampleHierarchy
  * @param {function(string[]):string[]} operation What to do for each group.
  *      Takes an array of sample ids and returns a new filtered and/or permuted array.
  */
-function applyToSamples(state, operation) {
-    for (const sampleGroup of getSampleGroups(state)) {
+function applyToSamples(sampleHierarchy, operation) {
+    for (const sampleGroup of getSampleGroups(sampleHierarchy)) {
         sampleGroup.samples = operation(sampleGroup.samples);
     }
 }
 
 /**
  * Applies an operation to all SampleGroups.
- * @param {SampleHierarchy} state
+ * @param {SampleHierarchy} sampleHierarchy
  * @param {function(SampleGroup):void} operation What to do for each group.
  *      Operations modify the groups in place
  */
-function applyToGroups(state, operation) {
-    for (const sampleGroup of getSampleGroups(state)) {
+function applyToGroups(sampleHierarchy, operation) {
+    for (const sampleGroup of getSampleGroups(sampleHierarchy)) {
         operation(sampleGroup);
     }
 }
 
 /**
- * @param {SampleHierarchy} [state] State to use, defaults to the current state.
+ * @param {SampleHierarchy} [sampleHierarchy] State to use, defaults to the current state.
  *      Use for mutations!
  */
-function getSampleGroups(state) {
+function getSampleGroups(sampleHierarchy) {
     return /** @type {SampleGroup[]} */ (
-        getFlattenedGroupHierarchy(state).map((path) => peek(path))
+        getFlattenedGroupHierarchy(sampleHierarchy).map((path) => peek(path))
     );
+}
+
+/**
+ * @param {any} state
+ * @returns {SampleHierarchy}
+ */
+export function sampleHierarchySelector(state) {
+    return state.sampleView;
 }
 
 /**
@@ -196,7 +251,7 @@ function getSampleGroups(state) {
  * @param {SampleHierarchy} [state] State to use, defaults to the current state.
  *      Use for mutations!
  */
-function getFlattenedGroupHierarchy(state) {
+export function getFlattenedGroupHierarchy(state) {
     /** @type {Group[]} */
     const pathStack = [];
 

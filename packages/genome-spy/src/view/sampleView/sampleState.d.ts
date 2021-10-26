@@ -1,10 +1,21 @@
-/*
- * Using typescript to define well, types. More convenient than using JSDoc
- */
-
-import { AttributeIdentifier } from "./sampleHandler";
+import { AttributeIdentifier } from "./types";
 
 export type SampleId = string;
+
+/**
+ * Sample metadata
+ */
+export interface Sample {
+    id: string;
+
+    displayName: string;
+
+    /** For internal use, mainly for shaders */
+    indexNumber: number;
+
+    /** Arbitrary sample specific attributes */
+    attributes: Record<string, any>;
+}
 
 export interface BaseGroup {
     /** e.g., an attribute value that forms a group. Used as a key when identifying subgroups. */
@@ -30,8 +41,12 @@ export interface GroupMetadata {
 }
 
 export interface SampleHierarchy {
-    /** A stack of groups. Does not include the root. */
+    /** All known samples that are available for use */
+    sampleData: Record<string, Sample>;
+
+    /** Metadata for each hierarchy level. Does not include the root. */
     groups: GroupMetadata[];
 
+    /** The root of the hierarchy */
     rootGroup: Group;
 }

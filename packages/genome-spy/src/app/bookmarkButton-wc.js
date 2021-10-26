@@ -8,7 +8,7 @@ import {
     faPen,
     faExclamationCircle,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "./dropdown";
+import { toggleDropdown } from "../utils/ui/dropdown";
 import { createModal, messageBox } from "../utils/ui/modal";
 import safeMarkdown from "../utils/safeMarkdown";
 import contextMenu from "../utils/ui/contextmenu";
@@ -20,7 +20,7 @@ class BookmarkButton extends LitElement {
         /** @type {import("../genomeSpy").default} */
         this.genomeSpy = undefined;
 
-        /** @type {import("./sampleHandler").default} */
+        /** @type {import("../sampleHandler/sampleHandler").default} */
         this.sampleHandler = undefined;
 
         /** @type {import("../view/sampleView/sampleView").default} */
@@ -59,7 +59,7 @@ class BookmarkButton extends LitElement {
 
         const editing = !!existingEntry;
 
-        /** @type {import("./databaseSchema").BookmarkEntry} */
+        /** @type {import("../sampleHandler/databaseSchema").BookmarkEntry} */
         const bookmarkEntry = existingEntry
             ? {
                   ...existingEntry,

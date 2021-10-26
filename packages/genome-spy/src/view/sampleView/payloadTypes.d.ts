@@ -1,7 +1,8 @@
+import { Sample } from "./sampleState";
 import { AttributeIdentifier } from "./types";
 
 export interface SetSamples {
-    samples: string[];
+    samples: Sample[];
 }
 
 export interface PayloadWithAttribute {
