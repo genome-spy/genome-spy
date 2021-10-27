@@ -147,24 +147,21 @@ export default class SampleView extends ContainerView {
         /** @type {import("../../app/provenance").default<any>} Fugly temp hack */
         this.provenance = window.provenance;
 
-        this.provenance.subscribe((state) => {
-            const sampleHierarchy = sampleHierarchySelector(state);
-            if (!sampleHierarchy.sampleData?.ids) {
-                return;
-            }
+        this.provenance.subscribe(
+            watch(
+                (state) => sampleHierarchySelector(state).rootGroup,
+                (rootGroup) => {
+                    this._locations = undefined;
+                    this.groupPanel.updateGroups();
 
-            // TODO: Check if groups/samples have actually changed
-            this._locations = undefined;
+                    // TODO: Handle scroll offset instead
+                    this._peekState = 0;
 
-            // TODO: Watch
-            this.groupPanel.updateGroups();
-
-            // TODO: Handle scroll offset instead
-            this._peekState = 0;
-
-            //this.context.requestLayoutReflow();
-            //this.context.animator.requestRender();
-        });
+                    this.context.requestLayoutReflow();
+                    this.context.animator.requestRender();
+                }
+            )
+        );
 
         this.provenance.subscribe(
             watch(
@@ -420,9 +417,7 @@ export default class SampleView extends ContainerView {
     }
 
     get sampleHierarchy() {
-        return /** @type {import("./sampleState").SampleHierarchy} */ (
-            this.provenance.getState().sampleView
-        );
+        return sampleHierarchySelector(this.provenance.getState());
     }
 
     getLocations() {

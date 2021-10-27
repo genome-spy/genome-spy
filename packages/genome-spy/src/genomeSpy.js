@@ -227,7 +227,9 @@ export default class GenomeSpy {
             animator: this.animator,
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(this._glHelper),
-            requestLayoutReflow: this.computeLayout.bind(this),
+            requestLayoutReflow: () => {
+                // placeholder
+            },
             updateTooltip: this.updateTooltip.bind(this),
             contextMenu: this.contextMenu.bind(this),
             getNamedData: this.getNamedData.bind(this),
@@ -343,6 +345,9 @@ export default class GenomeSpy {
         for (const view of unitViews) {
             view.mark.finalizeGraphicsInitialization();
         }
+
+        // Allow layout computation
+        context.requestLayoutReflow = this.computeLayout.bind(this);
 
         // Invalidate cached sizes to ensure that step-based sizes are current.
         // TODO: This should be done automatically when the domains of band/point scales are updated.
