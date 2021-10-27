@@ -673,19 +673,21 @@ export default class SampleView extends ContainerView {
     }
 
     _updateFacetTexture() {
-        const sampleLocations = this.getLocations().samples;
-        const sampleData = this.sampleHierarchy.sampleData.entities;
         const arr = this.facetTextureData;
-
         arr.fill(0);
 
-        const height = this._coords.height;
+        const entities = this.sampleHierarchy.sampleData?.entities;
+        if (entities) {
+            const sampleLocations = this.getLocations().samples;
 
-        for (const sampleLocation of sampleLocations) {
-            // TODO: Get rid of the map lookup
-            const index = sampleData[sampleLocation.key].indexNumber;
-            arr[index * 2 + 0] = sampleLocation.locSize.location / height;
-            arr[index * 2 + 1] = sampleLocation.locSize.size / height;
+            const height = this._coords.height;
+
+            for (const sampleLocation of sampleLocations) {
+                // TODO: Get rid of the map lookup
+                const index = entities[sampleLocation.key].indexNumber;
+                arr[index * 2 + 0] = sampleLocation.locSize.location / height;
+                arr[index * 2 + 1] = sampleLocation.locSize.size / height;
+            }
         }
 
         const gl = this.context.glHelper.gl;
