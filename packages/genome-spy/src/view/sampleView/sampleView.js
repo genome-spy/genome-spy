@@ -437,7 +437,7 @@ export default class SampleView extends ContainerView {
 
             const sampleHierarchy = this.sampleHierarchy;
             const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
-            const groupAttributes = [null, ...sampleHierarchy.groups];
+            const groupAttributes = [null, ...sampleHierarchy.groupMetadata];
 
             const summaryHeight = this.summaryViews?.getSize().height.px ?? 0;
 

@@ -48,7 +48,7 @@ export interface SampleHierarchy {
     };
 
     /** Metadata for each hierarchy level. Does not include the root. */
-    groups: GroupMetadata[];
+    groupMetadata: GroupMetadata[];
 
     /** The root of the hierarchy */
     rootGroup: Group;

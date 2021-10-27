@@ -56,7 +56,7 @@ const SLICE_NAME = "sampleView";
 function createInitialState() {
     return {
         sampleData: undefined,
-        groups: [],
+        groupMetadata: [],
         rootGroup: {
             name: "ROOT",
             label: "Root",
@@ -218,6 +218,9 @@ export function createSampleSlice(getAttributeInfo) {
                         getAccessor(action.payload, state)
                     )
                 );
+                state.groupMetadata.push({
+                    attribute: action.payload.attribute,
+                });
             },
 
             [GROUP_TO_QUARTILES]: (
@@ -231,6 +234,9 @@ export function createSampleSlice(getAttributeInfo) {
                         getAccessor(action.payload, state)
                     )
                 );
+                state.groupMetadata.push({
+                    attribute: action.payload.attribute,
+                });
             },
         },
     });
