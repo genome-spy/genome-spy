@@ -1,7 +1,5 @@
 import { AttributeIdentifier } from "./types";
 
-export type SampleId = string;
-
 /**
  * Sample metadata
  */
@@ -16,6 +14,8 @@ export interface Sample {
     /** Arbitrary sample specific attributes */
     attributes: Record<string, any>;
 }
+
+export type SampleId = Sample["id"];
 
 export interface BaseGroup {
     /** e.g., an attribute value that forms a group. Used as a key when identifying subgroups. */
@@ -42,7 +42,10 @@ export interface GroupMetadata {
 
 export interface SampleHierarchy {
     /** All known samples that are available for use */
-    sampleData: Record<string, Sample>;
+    sampleData: {
+        ids: string[];
+        entities: Record<string, Sample>;
+    };
 
     /** Metadata for each hierarchy level. Does not include the root. */
     groups: GroupMetadata[];

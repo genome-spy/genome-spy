@@ -149,8 +149,7 @@ export default class SampleView extends ContainerView {
 
         this.provenance.subscribe((state) => {
             const sampleHierarchy = sampleHierarchySelector(state);
-            if (!Object.keys(sampleHierarchy.sampleData).length) {
-                // TODO: optimize. Object.keys is called on every state change
+            if (!sampleHierarchy.sampleData?.ids) {
                 return;
             }
 
@@ -171,8 +170,9 @@ export default class SampleView extends ContainerView {
             watch(
                 (state) => sampleHierarchySelector(state).sampleData,
                 (sampleData) => {
-                    const samples = Object.values(sampleData);
-                    if (!samples.length) {
+                    const samples =
+                        sampleData && Object.values(sampleData.entities);
+                    if (!samples) {
                         return;
                     }
 
@@ -370,7 +370,7 @@ export default class SampleView extends ContainerView {
      * Get all existing samples that are known to the SampleView
      */
     getAllSamples() {
-        return this.getSampleHierarchy().sampleData;
+        return this.getSampleHierarchy().sampleData.entities;
     }
 
     loadSamples() {
@@ -668,7 +668,7 @@ export default class SampleView extends ContainerView {
 
     _updateFacetTexture() {
         const sampleLocations = this.getLocations().samples;
-        const sampleData = this.getSampleHierarchy().sampleData;
+        const sampleData = this.getSampleHierarchy().sampleData.entities;
         const arr = this.facetTextureData;
 
         arr.fill(0);

@@ -31,7 +31,7 @@ import {
  */
 function createInitialState() {
     return {
-        sampleData: {},
+        sampleData: undefined,
         groups: [],
         rootGroup: {
             name: "ROOT",
@@ -63,7 +63,7 @@ export function createSampleSlice(getAttributeInfo) {
             ) => {
                 const samples = action.payload.samples;
 
-                if (Object.keys(state.sampleData).length > 0) {
+                if (state.sampleData) {
                     throw new Error("Samples have already been set!");
                 }
 
@@ -92,13 +92,17 @@ export function createSampleSlice(getAttributeInfo) {
                     indexNumber: index,
                 }));
 
-                state.sampleData = Object.fromEntries(
-                    samplesWithIndices.map((sample) => [sample.id, sample])
-                );
+                state.sampleData = {
+                    ids: samplesWithIndices.map((sample) => sample.id),
+                    entities: Object.fromEntries(
+                        samplesWithIndices.map((sample) => [sample.id, sample])
+                    ),
+                };
+
                 state.rootGroup = {
                     name: "ROOT",
                     label: "Root",
-                    samples: samples.map((sample) => sample.id),
+                    samples: state.sampleData.ids,
                 };
             },
 
