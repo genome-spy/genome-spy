@@ -77,8 +77,7 @@ export class SampleAttributePanel extends ConcatView {
             SAMPLE_NAME,
             (attribute) => ({
                 name: "displayName",
-                accessor: (sampleId) =>
-                    this.sampleView.sampleAccessor(sampleId).displayName,
+                accessor: (sampleId) => this.getSample(sampleId).displayName,
                 type: "nominal",
                 scale: undefined,
             })
@@ -189,16 +188,19 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     * @param {string} sampleId
+     */
+    getSample(sampleId) {
+        return this.sampleView.sampleHierarchy.sampleData?.entities[sampleId];
+    }
+
+    /**
      * @param {import("../../utils/layout/rectangle").default} coords
      *      Coordinates of the view
      * @param {import("../../utils/interactionEvent").default} event
      */
     _findSampleForMouseEvent(coords, event) {
-        const sampleId = this.sampleView.getSampleIdAt(
-            event.point.y - coords.y
-        );
-
-        return sampleId ? this.sampleView.getAllSamples()[sampleId] : undefined;
+        return this.sampleView.getSampleAt(event.point.y - coords.y);
     }
 
     /**
@@ -252,6 +254,8 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     * TODO: Attach this to state observer
+     *
      * @param {Sample[]} samples
      */
     _setSamples(samples) {
@@ -330,13 +334,13 @@ export class SampleAttributePanel extends ConcatView {
     _getAttributeNames() {
         // TODO: Use reselect
         return this._cache("attributeNames", () => {
-            const samples = Object.values(this.sampleView.getAllSamples());
+            const samples = this.sampleView.getSamples();
 
             // Find all attributes
             const attributes = samples
                 .flatMap((sample) => Object.keys(sample.attributes))
                 .reduce(
-                    (set, key) => set.add(key),
+                    (set, key) => set.add(/** @type {string} */ (key)),
                     /** @type {Set<string>} */ (new Set())
                 );
 
@@ -355,7 +359,7 @@ export class SampleAttributePanel extends ConcatView {
         // Ensure that attributes have a type
         let fieldType = attributeDef ? attributeDef.type : undefined;
         if (!fieldType) {
-            const samples = Object.values(this.sampleView.getAllSamples());
+            const samples = this.sampleView.getSamples();
             switch (
                 inferType(samples.map((sample) => sample.attributes[attribute]))
             ) {
@@ -396,17 +400,10 @@ export class SampleAttributePanel extends ConcatView {
 
             const attribute = nameMatch[1];
 
-            const sampleAccessor = this.sampleView.sampleAccessor;
-
-            /** @param {string} sampleId */
-            const accessor = (sampleId) => {
-                const sample = sampleAccessor(sampleId);
-                return sample.attributes[attribute];
-            };
-
             return {
                 name: attribute,
-                accessor,
+                accessor: (sampleId) =>
+                    this.getSample(sampleId).attributes[attribute],
                 type: resolution.type,
                 scale: resolution.getScale(),
                 title: attribute,
@@ -460,7 +457,7 @@ export class SampleAttributePanel extends ConcatView {
         /** @type {string[]} */
         const [sampleId, attribute] = JSON.parse(sampleAndAttribute);
 
-        const sample = this.sampleView.getAllSamples()[sampleId];
+        const sample = this.getSample(sampleId);
 
         /**
          * @param {string} attribute

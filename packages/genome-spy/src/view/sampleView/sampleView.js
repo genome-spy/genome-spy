@@ -32,6 +32,7 @@ import {
 } from "./sampleSlice";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
 import { watch } from "../../utils/state/watch";
+import { createSelector } from "@reduxjs/toolkit";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -318,6 +319,15 @@ export default class SampleView extends ContainerView {
         this.provenance.addReducer(sampleSlice.name, sampleSlice.reducer);
         this.actions = sampleSlice.actions;
 
+        const sampleSelector = createSelector(
+            (
+                /** @type {import("./sampleState").SampleHierarchy} */ sampleHierarchy
+            ) => sampleHierarchy.sampleData?.entities,
+            (entities) => entities && Object.values(entities)
+        );
+
+        this.getSamples = () => sampleSelector(this.sampleHierarchy);
+
         if (this.spec.samples.data) {
             this.loadSamples();
         } else {
@@ -366,13 +376,6 @@ export default class SampleView extends ContainerView {
         }
     }
 
-    /**
-     * Get all existing samples that are known to the SampleView
-     */
-    getAllSamples() {
-        return this.getSampleHierarchy().sampleData.entities;
-    }
-
     loadSamples() {
         if (!this.spec.samples.data) {
             throw new Error(
@@ -396,7 +399,7 @@ export default class SampleView extends ContainerView {
     }
 
     extractSamplesFromData() {
-        if (Object.keys(this.getAllSamples()).length > 0) {
+        if (this.getSamples()) {
             return; // NOP
         }
 
@@ -417,7 +420,7 @@ export default class SampleView extends ContainerView {
         }
     }
 
-    getSampleHierarchy() {
+    get sampleHierarchy() {
         return /** @type {import("./sampleState").SampleHierarchy} */ (
             this.provenance.getState().sampleView
         );
@@ -429,7 +432,7 @@ export default class SampleView extends ContainerView {
                 return;
             }
 
-            const sampleHierarchy = this.getSampleHierarchy();
+            const sampleHierarchy = this.sampleHierarchy;
             const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
             const groupAttributes = [null, ...sampleHierarchy.groups];
 
@@ -528,10 +531,10 @@ export default class SampleView extends ContainerView {
     /**
      * @param {number} pos
      */
-    getSampleIdAt(pos) {
+    getSampleAt(pos) {
         const match = getSampleLocationAt(pos, this.getLocations().samples);
         if (match) {
-            return match.key;
+            return this.sampleHierarchy.sampleData.entities[match.key];
         }
     }
 
@@ -668,7 +671,7 @@ export default class SampleView extends ContainerView {
 
     _updateFacetTexture() {
         const sampleLocations = this.getLocations().samples;
-        const sampleData = this.getSampleHierarchy().sampleData.entities;
+        const sampleData = this.sampleHierarchy.sampleData.entities;
         const arr = this.facetTextureData;
 
         arr.fill(0);
@@ -723,7 +726,7 @@ export default class SampleView extends ContainerView {
 
         if (this._peekState == 0) {
             const mouseY = this._lastMouseY;
-            const sampleId = this.getSampleIdAt(mouseY);
+            const sampleId = this.getSampleAt(mouseY)?.id;
 
             let target;
             if (sampleId) {
