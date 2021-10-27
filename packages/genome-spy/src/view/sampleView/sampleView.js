@@ -25,6 +25,7 @@ import { GroupPanel } from "./groupPanel";
 import { createOrUpdateTexture } from "../../gl/webGLHelper";
 import {
     createSampleSlice,
+    getActionInfo,
     getFlattenedGroupHierarchy,
     sampleHierarchySelector,
 } from "./sampleSlice";
@@ -309,10 +310,18 @@ export default class SampleView extends ContainerView {
             }
         });
 
-        const sampleSlice = createSampleSlice((attribute) =>
-            this.compositeAttributeInfoSource.getAttributeInfo(attribute)
-        );
+        const getAttributeInfo = (
+            /** @type {import("./types").AttributeInfo} */ attribute
+        ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
+
+        const sampleSlice = createSampleSlice(getAttributeInfo);
         this.provenance.addReducer(sampleSlice.name, sampleSlice.reducer);
+        this.provenance.addActionInfoSource(
+            (
+                /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ action
+            ) => getActionInfo(action, getAttributeInfo)
+        );
+
         this.actions = sampleSlice.actions;
 
         const sampleSelector = createSelector(
