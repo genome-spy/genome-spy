@@ -402,8 +402,10 @@ export class SampleAttributePanel extends ConcatView {
 
             return {
                 name: attribute,
-                accessor: (sampleId) =>
-                    this.getSample(sampleId).attributes[attribute],
+                accessor: (sampleId, sampleHierarchy) =>
+                    sampleHierarchy.sampleData.entities[sampleId].attributes[
+                        attribute
+                    ],
                 type: resolution.type,
                 scale: resolution.getScale(),
                 title: attribute,

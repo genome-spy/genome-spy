@@ -19,6 +19,7 @@ import {
  * @typedef {import("./sampleState").SampleGroup} SampleGroup
  * @typedef {import("./sampleState").GroupGroup} GroupGroup
  *
+ * @typedef {import("./payloadTypes").PayloadWithAttribute} PayloadWithAttribute
  */
 
 /**
@@ -48,10 +49,14 @@ export function createSampleSlice(getAttributeInfo) {
     /**
      * Returns an accessor to an abstract attribute.
      * TODO: Memoize
-     * @param {import("./payloadTypes").PayloadWithAttribute} payload
+     * @param {PayloadWithAttribute} payload
+     * @param {SampleHierarchy} sampleHierarchy
      */
-    const getAccessor = (payload) =>
-        getAttributeInfo(payload.attribute).accessor;
+    const getAccessor = (payload, sampleHierarchy) => {
+        const a = getAttributeInfo(payload.attribute).accessor;
+        return (/** @type {string} */ attribute) =>
+            a(attribute, sampleHierarchy);
+    };
 
     return createSlice({
         name: "sampleView",
@@ -114,7 +119,7 @@ export function createSampleSlice(getAttributeInfo) {
                     sort(
                         samples,
                         wrapAccessorForComparison(
-                            getAccessor(action.payload),
+                            getAccessor(action.payload, state),
                             getAttributeInfo(action.payload.attribute)
                         ),
                         false
@@ -132,7 +137,10 @@ export function createSampleSlice(getAttributeInfo) {
                 action
             ) => {
                 applyToSamples(state, (samples) =>
-                    retainFirstOfEach(samples, getAccessor(action.payload))
+                    retainFirstOfEach(
+                        samples,
+                        getAccessor(action.payload, state)
+                    )
                 );
             },
 
@@ -144,7 +152,7 @@ export function createSampleSlice(getAttributeInfo) {
                 applyToSamples(state, (samples) =>
                     filterQuantitative(
                         samples,
-                        getAccessor(action.payload),
+                        getAccessor(action.payload, state),
                         action.payload.operator,
                         action.payload.operand
                     )
@@ -159,7 +167,7 @@ export function createSampleSlice(getAttributeInfo) {
                 applyToSamples(state, (samples) =>
                     filterNominal(
                         samples,
-                        getAccessor(action.payload),
+                        getAccessor(action.payload, state),
                         action.payload.action,
                         action.payload.values
                     )
@@ -172,7 +180,7 @@ export function createSampleSlice(getAttributeInfo) {
                 action
             ) => {
                 applyToSamples(state, (samples) =>
-                    filterUndefined(samples, getAccessor(action.payload))
+                    filterUndefined(samples, getAccessor(action.payload, state))
                 );
             },
 
@@ -184,7 +192,7 @@ export function createSampleSlice(getAttributeInfo) {
                 applyToGroups(state, (sampleGroup) =>
                     groupSamplesByAccessor(
                         sampleGroup,
-                        getAccessor(action.payload)
+                        getAccessor(action.payload, state)
                     )
                 );
             },
@@ -197,7 +205,7 @@ export function createSampleSlice(getAttributeInfo) {
                 applyToGroups(state, (sampleGroup) =>
                     groupSamplesByQuartiles(
                         sampleGroup,
-                        getAccessor(action.payload)
+                        getAccessor(action.payload, state)
                     )
                 );
             },

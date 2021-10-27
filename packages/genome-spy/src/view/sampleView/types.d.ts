@@ -1,3 +1,5 @@
+import { SampleHierarchy } from "./sampleState";
+
 /**
  * An identifier for an abstract attribute. Allows for retrieving an accessor and information.
  */
@@ -14,7 +16,7 @@ export interface AttributeInfo {
     title?: string | import("lit").TemplateResult;
 
     /** Function that maps a sampleId to an attribute value */
-    accessor: (attribute: string) => any;
+    accessor: (attribute: string, sampleHierarchy: SampleHierarchy) => any;
 
     /** e.g., "quantitative" */
     type: string;
