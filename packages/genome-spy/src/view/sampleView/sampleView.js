@@ -10,11 +10,9 @@ import {
     translateLocSize,
 } from "../../utils/layout/flexLayout";
 import { SampleAttributePanel } from "./sampleAttributePanel";
-import { peek } from "../../utils/arrayUtils";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
 import Padding from "../../utils/layout/padding";
-import smoothstep from "../../utils/smoothstep";
 import transition from "../../utils/transition";
 import { easeCubicOut, easeExpOut } from "d3-ease";
 import clamp from "../../utils/clamp";
@@ -33,6 +31,7 @@ import {
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
 import { watch } from "../../utils/state/watch";
 import { createSelector } from "@reduxjs/toolkit";
+import { calculateLocations, getSampleLocationAt } from "./locations";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -925,159 +924,4 @@ function extractAttributes(row) {
     delete attributes.sample;
     delete attributes.displayName;
     return attributes;
-}
-
-/**
- * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
- * @param {object} object All measures are in pixels
- * @param {number} [object.viewHeight] Height reserved for all the samples
- * @param {number} [object.sampleHeight] Height of single sample
- * @param {number} [object.groupSpacing] Space between groups
- * @param {number} [object.summaryHeight] Height of group summaries
- *
- */
-function calculateLocations(
-    flattenedGroupHierarchy,
-    { viewHeight = 0, sampleHeight = 0, groupSpacing = 5, summaryHeight = 0 }
-) {
-    if (!viewHeight && !sampleHeight) {
-        throw new Error("viewHeight or sampleHeight must be provided!");
-    }
-
-    /** @param {Group[]} path */
-    const getSampleGroup = (path) =>
-        /** @type {import("./sampleSlice").SampleGroup} */ (peek(path));
-
-    const sampleGroupEntries = flattenedGroupHierarchy
-        .map((path) => ({
-            path,
-            sampleGroup: getSampleGroup(path),
-            samples: getSampleGroup(path).samples,
-        }))
-        // Skip empty groups
-        .filter((entry) => entry.samples.length);
-
-    /** @type {function(string[]):import("../../utils/layout/flexLayout").SizeDef} */
-    const sizeDefGenerator = sampleHeight
-        ? (group) => ({
-              px: group.length * sampleHeight + summaryHeight,
-              grow: 0,
-          })
-        : (group) => ({ px: summaryHeight, grow: group.length });
-
-    /** @type {GroupLocation[]}} */
-    const groupLocations = [];
-
-    mapToPixelCoords(
-        sampleGroupEntries.map((entry) => sizeDefGenerator(entry.samples)),
-        viewHeight,
-        { spacing: groupSpacing }
-    ).forEach((location, i) => {
-        groupLocations.push({
-            key: sampleGroupEntries[i].path,
-            locSize: location,
-        });
-    });
-
-    /** @type {SampleLocation[]} */
-    const sampleLocations = [];
-
-    for (const [gi, entry] of sampleGroupEntries.entries()) {
-        const sizeDef = { grow: 1 };
-        const samples = entry.samples;
-        mapToPixelCoords(
-            samples.map((d) => sizeDef),
-            Math.max(0, groupLocations[gi].locSize.size - summaryHeight),
-            {
-                offset: groupLocations[gi].locSize.location + summaryHeight,
-            }
-        ).forEach((locSize, i) => {
-            const { size, location } = locSize;
-
-            // TODO: Make padding configurable
-            const padding = size * 0.1 * smoothstep(15, 22, size);
-
-            locSize.location = location + padding;
-            locSize.size = size - 2 * padding;
-
-            sampleLocations.push({
-                key: samples[i],
-                locSize: locSize,
-            });
-        });
-    }
-
-    function* extract() {
-        /** @type {{group: Group, locSize: LocSize, depth: number, n: number}[]} */
-        const stack = [];
-        for (const entry of groupLocations) {
-            const path = entry.key;
-            const last = /** @type {import("./sampleSlice").SampleGroup} */ (
-                peek(path)
-            );
-
-            while (
-                stack.length <= path.length &&
-                stack.length &&
-                path[stack.length - 1] != stack[stack.length - 1].group
-            ) {
-                yield stack.pop();
-            }
-
-            for (let i = 0; i < stack.length; i++) {
-                const stackItem = stack[i];
-                stackItem.locSize.size =
-                    entry.locSize.location -
-                    stackItem.locSize.location +
-                    entry.locSize.size;
-            }
-
-            for (let i = stack.length; i < path.length; i++) {
-                stack.push({
-                    group: path[i],
-                    locSize: { ...entry.locSize },
-                    depth: stack.length,
-                    n: 0,
-                });
-            }
-
-            for (const group of stack) {
-                group.n += last.samples.length;
-            }
-        }
-
-        while (stack.length) {
-            yield stack.pop();
-        }
-    }
-
-    /** @type {import("./sampleViewTypes").HierarchicalGroupLocation[]} */
-    const groups = [...extract()]
-        .sort((a, b) => a.depth - b.depth)
-        .map((entry, index) => ({
-            key: {
-                index,
-                group: entry.group,
-                depth: entry.depth,
-                n: entry.n,
-                attributeLabel: undefined,
-            },
-            locSize: entry.locSize,
-        }));
-
-    return {
-        samples: sampleLocations,
-        summaries: groupLocations,
-        groups,
-    };
-}
-
-/**
- *
- * @param {number} pos Coordinate on unit scale
- * @param {SampleLocation[]} [sampleLocations]
- */
-function getSampleLocationAt(pos, sampleLocations) {
-    // TODO: Matching should be done without paddings
-    return sampleLocations.find((sl) => locSizeEncloses(sl.locSize, pos));
 }
