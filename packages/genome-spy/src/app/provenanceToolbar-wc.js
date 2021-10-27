@@ -1,11 +1,10 @@
-import { html, LitElement, nothing } from "lit";
+import { html, LitElement } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faUndo,
     faRedo,
     faEllipsisH,
     faCircle,
-    faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "../utils/ui/dropdown";
 
@@ -25,7 +24,7 @@ export default class ProvenanceButtons extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        this.provenance?.addListener(() => {
+        this.provenance.subscribe(() => {
             this.requestUpdate();
         });
     }
@@ -40,10 +39,6 @@ export default class ProvenanceButtons extends LitElement {
     }
 
     render() {
-        if (!this.provenance?.isInitialized()) {
-            return nothing;
-        }
-
         /**
          *
          * @param {any} action
@@ -55,16 +50,12 @@ export default class ProvenanceButtons extends LitElement {
                 <li>
                     <a
                         @click=${() => this.provenance.activateState(index)}
-                        class=${index == this.provenance.currentNodeIndex
+                        class=${index == this.provenance.getCurrentIndex()
                             ? "active"
                             : ""}
                     >
-                        ${index == 0 && !action
-                            ? html` ${icon(faCheck).node[0]} The initial state `
-                            : html`
-                                  ${icon(info.icon || faCircle).node[0]}
-                                  ${info.provenanceTitle || info.title}
-                              `}
+                        ${icon(info.icon || faCircle).node[0]}
+                        ${info.provenanceTitle || info.title}
                     </a>
                 </li>
             `;

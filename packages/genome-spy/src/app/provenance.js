@@ -12,7 +12,12 @@
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  */
 
-import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import {
+    combineReducers,
+    configureStore,
+    createReducer,
+} from "@reduxjs/toolkit";
+import undoable, { ActionCreators } from "redux-undo";
 
 /**
  * @typedef {object} ProvenanceNode
@@ -67,11 +72,22 @@ export default class Provenance {
      */
     addReducer(name, reducer) {
         this._reducers[name] = reducer;
-        this.store.replaceReducer(combineReducers(this._reducers));
+
+        this.store.replaceReducer(
+            undoable(
+                combineReducers({
+                    ...this._reducers,
+                    lastAction: actionRecorder,
+                }),
+                {
+                    ignoreInitialState: true,
+                }
+            )
+        );
     }
 
     /**
-     * @returns {any}
+     * @returns {import("redux-undo").StateWithHistory<any>}
      */
     getState() {
         return this.store.getState();
@@ -125,27 +141,28 @@ export default class Provenance {
     }
 
     isRedoable() {
-        return false;
+        return this.getState().future.length > 0;
     }
 
     redo() {
-        //
+        this.dispatch(ActionCreators.redo());
     }
 
     isUndoable() {
-        return false;
+        return this.getState().past.length > 0;
     }
 
     undo() {
-        //
+        this.dispatch(ActionCreators.undo());
     }
 
     isAtInitialState() {
-        return false;
+        return !this.isUndoable();
     }
 
     isEmpty() {
-        return false;
+        const state = this.getState();
+        return state.past.length + state.future.length <= 0;
     }
 
     /**
@@ -153,17 +170,36 @@ export default class Provenance {
      * @param {number} index
      */
     activateState(index) {
-        //
+        const current = this.getCurrentIndex();
+        if (index < current) {
+            this.dispatch(ActionCreators.jumpToPast(index));
+        } else if (index > current) {
+            this.dispatch(ActionCreators.jumpToFuture(index - current - 1));
+        }
+    }
+
+    getCurrentIndex() {
+        return this.getState().past.length;
     }
 
     /**
      * Returns the history up to the current node
      */
     getActionHistory() {
-        return [];
+        // TODO: Selector
+        const state = this.getState();
+        return [...state.past, state.present].map((entry) => entry.lastAction);
     }
 
     getFullActionHistory() {
-        return [];
+        // TODO: Selector
+        const state = this.getState();
+        return [...state.past, state.present, ...state.future].map(
+            (entry) => entry.lastAction
+        );
     }
 }
+
+const actionRecorder = createReducer(undefined, (builder) => {
+    builder.addDefaultCase((state, action) => action);
+});

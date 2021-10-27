@@ -22,6 +22,7 @@ import {
     faObjectGroup,
     faCircle,
     faTrashAlt,
+    faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
 /**
@@ -38,6 +39,7 @@ import {
  * @typedef {import("@reduxjs/toolkit").PayloadAction<P>} PayloadAction
  */
 
+const SET_SAMPLES = "setSamples";
 const SORT_BY_NAME = "sortByName";
 const SORT_BY = "sortBy";
 const RETAIN_FIRST_OF_EACH = "retainFirstOfEach";
@@ -85,7 +87,7 @@ export function createSampleSlice(getAttributeInfo) {
         name: SLICE_NAME,
         initialState: createInitialState(),
         reducers: {
-            setSamples: (
+            [SET_SAMPLES]: (
                 state,
                 /** @type {PayloadAction<import("./payloadTypes").SetSamples>} */ action
             ) => {
@@ -281,7 +283,7 @@ function getSampleGroups(sampleHierarchy) {
  * @returns {SampleHierarchy}
  */
 export function sampleHierarchySelector(state) {
-    return state[SLICE_NAME];
+    return state.present[SLICE_NAME];
 }
 
 /**
@@ -379,7 +381,8 @@ export function getActionInfo(action, getAttributeInfo) {
     // It would be great to have working payload typings here
     const payload = action.payload;
 
-    const attributeInfo = getAttributeInfo(payload.attribute);
+    const attributeInfo =
+        payload.attribute && getAttributeInfo(payload.attribute);
     const attributeName = attributeInfo?.name;
     const attributeTitle =
         attributeInfo?.title || html` <em>${attributeName}</em> `;
@@ -391,6 +394,12 @@ export function getActionInfo(action, getAttributeInfo) {
     const actionType = action.type.substring(SLICE_NAME.length + 1);
 
     switch (actionType) {
+        case SET_SAMPLES:
+            return {
+                ...template,
+                title: "The initial state",
+                icon: faCheck,
+            };
         case SORT_BY_NAME:
             return {
                 ...template,

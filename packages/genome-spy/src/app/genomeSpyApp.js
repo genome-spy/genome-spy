@@ -264,7 +264,7 @@ export default class GenomeSpyApp {
     }
 
     getSampleHandler() {
-        return this.getSampleView()?.sampleHandler;
+        // Nop
     }
 }
 

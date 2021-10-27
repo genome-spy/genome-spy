@@ -36,7 +36,7 @@ export default class Toolbar extends LitElement {
     _getToolButtons() {
         const sampleHandler = this.app.getSampleHandler();
         const sampleView = this.app.getSampleView();
-        const provenance = sampleHandler?.provenance;
+        const provenance = this.app.provenance;
 
         /** @type {(import("lit").TemplateResult | string)[]} */
         const elements = [];
