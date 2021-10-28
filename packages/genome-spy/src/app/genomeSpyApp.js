@@ -51,29 +51,38 @@ export default class GenomeSpyApp {
                 ? new BookmarkDatabase(config.specId)
                 : undefined;
 
-        this._renderTemplate = () => {
-            render(getAppBody(), self.appContainer);
-        };
+        render(
+            html`<div class="genome-spy-app">
+                <genome-spy-toolbar
+                    ${ref(self.toolbarRef)}
+                    .app=${self}
+                ></genome-spy-toolbar>
+                <div class="genome-spy-container"></div>
+            </div>`,
+            self.appContainer
+        );
 
-        function getAppBody() {
-            return html`
-                <div class="genome-spy-app">
-                    <genome-spy-toolbar
-                        ${ref(self.toolbarRef)}
-                        .app=${self}
-                    ></genome-spy-toolbar>
-                    <div class="genome-spy-container"></div>
-                </div>
-            `;
-        }
+        // Dependency injection
+        // TODO: Replace this with something standard-based when such a thing becomes available
+        self.appContainer
+            .querySelector(".genome-spy-app")
+            .addEventListener(
+                "query-dependency",
+                (
+                    /** @type {import("./genomeSpyAppTypes").DependencyQueryEvent} */ event
+                ) => {
+                    if (event.detail.name == "app") {
+                        event.detail.setter(self);
+                        event.stopPropagation();
+                    }
+                }
+            );
 
         /** @param {string} className */
         const elem = (className) =>
             /** @type {HTMLElement} */ (
                 this.appContainer.getElementsByClassName(className)[0]
             );
-
-        this._renderTemplate();
 
         elem("genome-spy-container").addEventListener("click", (event) => {
             elem("search-input").blur();
@@ -104,12 +113,10 @@ export default class GenomeSpyApp {
             return;
         }
 
-        /*
         await this._restoreStateFromUrl();
-        this.getSampleHandler()?.provenance.addListener(() => {
+        this.provenance.subscribe(() => {
             this._updateStateToUrl();
         });
-        */
 
         const debouncedUpdateUrl = debounce(
             () => this._updateStateToUrl(),
@@ -146,8 +153,8 @@ export default class GenomeSpyApp {
             scaleDomains: {},
         };
 
-        const history = this.getSampleHandler()?.provenance.getActionHistory();
-        if (history?.length) {
+        const history = this.provenance.getBookmarkableActionHistory();
+        if (history.length) {
             hashData.actions = history;
         }
 
@@ -184,12 +191,10 @@ export default class GenomeSpyApp {
                     decompressFromEncodedURIComponent(hash.substr(1))
                 );
 
-                const sampleHandler = this.getSampleHandler();
-                if (sampleHandler && hashData.actions) {
+                if (hashData.actions) {
                     // This is copypaste from bookmarks. TODO: consolidate
-
-                    sampleHandler.provenance.activateState(0);
-                    sampleHandler.dispatchBatch(hashData.actions);
+                    this.provenance.activateState(0);
+                    this.provenance.dispatch(hashData.actions);
                 }
 
                 /** @type {Promise<void>[]} */
@@ -213,7 +218,7 @@ export default class GenomeSpyApp {
             } catch (e) {
                 console.error(e);
                 alert(`Cannot restore state from URL:\n${e}`);
-                this.getSampleHandler()?.provenance.activateState(0);
+                this.provenance.activateState(0);
             }
         }
     }

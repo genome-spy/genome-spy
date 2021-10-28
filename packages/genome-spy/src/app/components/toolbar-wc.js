@@ -49,19 +49,19 @@ export default class Toolbar extends LitElement {
             );
         }
 
-        if (sampleHandler) {
+        if (sampleView) {
             elements.push(html`
                 <button
                     class="tool-btn"
                     title="Peek (E)"
-                    @click=${() => this.app.getSampleView()._togglePeek()}
+                    @click=${() => sampleView._togglePeek()}
                 >
                     ${icon(faArrowsAltV).node[0]}
                 </button>
             `);
         }
 
-        if (sampleHandler && this.app.bookmarkDatabase) {
+        if (this.app.bookmarkDatabase) {
             elements.push(html`
                 <genome-spy-bookmark-button
                     .genomeSpy=${this.app.genomeSpy}

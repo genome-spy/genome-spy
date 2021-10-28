@@ -16,12 +16,6 @@ export default class ProvenanceButtons extends LitElement {
         this.provenance = undefined;
     }
 
-    static get properties() {
-        return {
-            provenance: { type: Object },
-        };
-    }
-
     connectedCallback() {
         super.connectedCallback();
         this.provenance.subscribe(() => {

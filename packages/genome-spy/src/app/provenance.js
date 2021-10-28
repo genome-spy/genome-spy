@@ -1,7 +1,5 @@
 /**
- * @typedef {object} Action
- * @prop {string} type
- * @prop {any} [payload]
+ * @typedef {import("@reduxjs/toolkit").AnyAction} Action
  *
  * @typedef {object} ActionInfo
  * @prop {string | import("lit").TemplateResult} title A title shown in
@@ -18,13 +16,6 @@ import {
     createReducer,
 } from "@reduxjs/toolkit";
 import undoable, { ActionCreators } from "redux-undo";
-
-/**
- * @typedef {object} ProvenanceNode
- * @prop {S} state The full state
- * @prop {Action} [action] The action that changed the previous state to this state
- * @template S State
- */
 
 /**
  * Handles provenance, undo/redo, etc. In practice, this is a thin
@@ -51,7 +42,7 @@ export default class Provenance {
             reducer: {},
         });
 
-        /** @type {(function(Action):ActionInfo)[]} */
+        /** @type {((action: Action) => ActionInfo)[]} */
         this.actionInfoSources = [];
 
         /** @type {Set<(state: any) => void>} */
@@ -109,7 +100,7 @@ export default class Provenance {
 
     /**
      *
-     * @param {function(Action):ActionInfo} source
+     * @param {(action: Action) => ActionInfo} source
      */
     addActionInfoSource(source) {
         this.actionInfoSources.push(source);
@@ -129,15 +120,21 @@ export default class Provenance {
     }
 
     /**
-     * @param {import("@reduxjs/toolkit").AnyAction} action
+     * @param {Action | Action[]} action
      */
     dispatch(action) {
-        this.store.dispatch(action);
+        if (Array.isArray(action)) {
+            // TODO: Use middleware for batches
+            for (const a of action) {
+                this.store.dispatch(a);
+            }
+        } else {
+            this.store.dispatch(action);
+        }
     }
 
     getDispatcher() {
-        return (/** @type {import("@reduxjs/toolkit").AnyAction} */ action) =>
-            this.dispatch(action);
+        return (/** @type {Action} */ action) => this.dispatch(action);
     }
 
     isRedoable() {
@@ -184,6 +181,8 @@ export default class Provenance {
 
     /**
      * Returns the history up to the current node
+     *
+     * @returns {Action[]}
      */
     getActionHistory() {
         // TODO: Selector
@@ -191,12 +190,21 @@ export default class Provenance {
         return [...state.past, state.present].map((entry) => entry.lastAction);
     }
 
+    /**
+     * @returns {Action[]}
+     */
     getFullActionHistory() {
         // TODO: Selector
         const state = this.getState();
         return [...state.past, state.present, ...state.future].map(
             (entry) => entry.lastAction
         );
+    }
+
+    getBookmarkableActionHistory() {
+        // Skip the initial action (that sets samples)
+        // TODO: Come up with something more robust
+        return this.getActionHistory().slice(1);
     }
 }
 

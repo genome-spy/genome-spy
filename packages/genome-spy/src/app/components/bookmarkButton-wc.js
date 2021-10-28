@@ -12,40 +12,31 @@ import { toggleDropdown } from "../../utils/ui/dropdown";
 import { createModal, messageBox } from "../../utils/ui/modal";
 import safeMarkdown from "../../utils/safeMarkdown";
 import contextMenu from "../../utils/ui/contextmenu";
+import { queryDependency } from "../utils/dependency";
 
 class BookmarkButton extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../../genomeSpy").default} */
-        this.genomeSpy = undefined;
-
-        /** @type {import("../sampleHandler/sampleHandler").default} */
-        this.sampleHandler = undefined;
-
-        /** @type {import("../sampleView/sampleView").default} */
-        this.sampleView = undefined;
-
-        /** @type {import("../bookmarkDatabase").default} */
-        this.bookmarkDatabase = undefined;
+        /** @type {import("../genomeSpyApp").default} */
+        this.app = undefined;
     }
 
-    static get properties() {
-        // TODO: Use event-based dependency injection or something to get access to these
-        return {
-            genomeSpy: { type: Object },
-            sampleHandler: { type: Object },
-            sampleView: { type: Object },
-            bookmarkDatabase: { type: Object },
-        };
+    connectedCallback() {
+        super.connectedCallback();
+
+        this.dispatchEvent(
+            queryDependency(
+                "app",
+                (/** @type {import("../genomeSpyApp").default} */ app) => {
+                    this.app = app;
+                }
+            )
+        );
     }
 
     createRenderRoot() {
         return this;
-    }
-
-    get _provenance() {
-        return this.sampleHandler?.provenance;
     }
 
     /**
@@ -54,27 +45,27 @@ class BookmarkButton extends LitElement {
      */
     async _addBookmark(name) {
         const existingEntry = name
-            ? await this.bookmarkDatabase.get(name)
+            ? await this.app.bookmarkDatabase.get(name)
             : undefined;
 
         const editing = !!existingEntry;
 
-        /** @type {import("../sampleHandler/databaseSchema").BookmarkEntry} */
+        /** @type {import("../databaseSchema").BookmarkEntry} */
         const bookmarkEntry = existingEntry
             ? {
                   ...existingEntry,
                   timestamp: Date.now(),
-                  actions: this._provenance.getActionHistory(),
+                  actions: this.app.provenance.getActionHistory(),
                   scaleDomains: {},
               }
             : {
                   name: undefined,
                   timestamp: Date.now(),
-                  actions: this._provenance.getActionHistory(),
+                  actions: this.app.provenance.getActionHistory(),
                   scaleDomains: {},
               };
 
-        for (const [scaleName, scaleResolution] of this.genomeSpy
+        for (const [scaleName, scaleResolution] of this.app.genomeSpy
             .getNamedScaleResolutions()
             .entries()) {
             if (scaleResolution.isZoomable()) {
@@ -95,7 +86,7 @@ class BookmarkButton extends LitElement {
             }
 
             if (
-                (await this.bookmarkDatabase.get(bookmarkEntry.name)) &&
+                (await this.app.bookmarkDatabase.get(bookmarkEntry.name)) &&
                 !(editing && bookmarkEntry.name == existingEntry.name)
             ) {
                 if (
@@ -111,7 +102,10 @@ class BookmarkButton extends LitElement {
                 }
             }
             try {
-                await this.bookmarkDatabase.put(bookmarkEntry, existingEntry);
+                await this.app.bookmarkDatabase.put(
+                    bookmarkEntry,
+                    existingEntry
+                );
                 modal.close();
                 this.requestUpdate();
             } catch (error) {
@@ -182,21 +176,21 @@ class BookmarkButton extends LitElement {
 
     /** @type {(name: string) => Promise<void>} */
     async _loadBookmark(name) {
-        const entry = await this.bookmarkDatabase.get(name);
+        const entry = await this.app.bookmarkDatabase.get(name);
         if (entry) {
             // Return to the initial state
             // TODO: listeners should be suppressed during the visit to the initial state
-            this._provenance.activateState(0);
+            this.app.provenance.activateState(0);
 
             try {
-                this.sampleHandler.dispatchBatch(entry.actions);
+                this.app.provenance.dispatch(entry.actions);
 
                 /** @type {Promise<void>[]} */
                 const promises = [];
                 for (const [name, scaleDomain] of Object.entries(
                     entry.scaleDomains ?? {}
                 )) {
-                    const scaleResolution = this.genomeSpy
+                    const scaleResolution = this.app.genomeSpy
                         .getNamedScaleResolutions()
                         .get(name);
                     if (scaleResolution) {
@@ -215,7 +209,7 @@ class BookmarkButton extends LitElement {
             } catch (e) {
                 console.error(e);
                 alert(`Cannot restore bookmark:\n${e}`);
-                this._provenance.activateState(0);
+                this.app.provenance.activateState(0);
             }
         }
     }
@@ -245,7 +239,9 @@ class BookmarkButton extends LitElement {
                                 true
                             ).then(async (confirmed) => {
                                 if (confirmed) {
-                                    await this.bookmarkDatabase.delete(name);
+                                    await this.app.bookmarkDatabase.delete(
+                                        name
+                                    );
                                     this.requestUpdate();
                                 }
                             }),
@@ -258,7 +254,7 @@ class BookmarkButton extends LitElement {
 
     _getBookmarks() {
         return until(
-            this.bookmarkDatabase.getNames().then((names) => {
+            this.app.bookmarkDatabase.getNames().then((names) => {
                 const items = names.map(
                     (name) =>
                         html`
@@ -286,7 +282,7 @@ class BookmarkButton extends LitElement {
     }
 
     render() {
-        if (!this.bookmarkDatabase) {
+        if (!this.app.bookmarkDatabase) {
             return nothing;
         }
 
@@ -303,7 +299,7 @@ class BookmarkButton extends LitElement {
                     <li>
                         <a
                             @click=${() => this._addBookmark()}
-                            ?disabled=${this._provenance.isAtInitialState()}
+                            ?disabled=${this.app.provenance.isAtInitialState()}
                             >Add bookmark...</a
                         >
                     </li>
