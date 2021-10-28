@@ -15,6 +15,7 @@ import {
     configureStore,
     createReducer,
 } from "@reduxjs/toolkit";
+import { batchActions, enableBatching } from "redux-batched-actions";
 import undoable, { ActionCreators } from "redux-undo";
 
 /**
@@ -65,14 +66,16 @@ export default class Provenance {
         this._reducers[name] = reducer;
 
         this.store.replaceReducer(
-            undoable(
-                combineReducers({
-                    ...this._reducers,
-                    lastAction: actionRecorder,
-                }),
-                {
-                    ignoreInitialState: true,
-                }
+            enableBatching(
+                undoable(
+                    combineReducers({
+                        ...this._reducers,
+                        lastAction: actionRecorder,
+                    }),
+                    {
+                        ignoreInitialState: true,
+                    }
+                )
             )
         );
     }
@@ -124,13 +127,22 @@ export default class Provenance {
      */
     dispatch(action) {
         if (Array.isArray(action)) {
-            // TODO: Use middleware for batches
-            for (const a of action) {
-                this.store.dispatch(a);
-            }
+            this.store.dispatch(batchActions(action));
         } else {
             this.store.dispatch(action);
         }
+    }
+
+    /**
+     * Returns to the initial state and batches the bookmarked actions
+     *
+     * @param {Action[]} actions Bookmarked actions
+     */
+    dispatchBookmark(actions) {
+        this.dispatch([
+            ...(this.isUndoable() ? [ActionCreators.jumpToPast(0)] : []),
+            ...actions,
+        ]);
     }
 
     getDispatcher() {

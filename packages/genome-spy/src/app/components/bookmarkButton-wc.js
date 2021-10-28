@@ -178,12 +178,8 @@ class BookmarkButton extends LitElement {
     async _loadBookmark(name) {
         const entry = await this.app.bookmarkDatabase.get(name);
         if (entry) {
-            // Return to the initial state
-            // TODO: listeners should be suppressed during the visit to the initial state
-            this.app.provenance.activateState(0);
-
             try {
-                this.app.provenance.dispatch(entry.actions);
+                this.app.provenance.dispatchBookmark(entry.actions);
 
                 /** @type {Promise<void>[]} */
                 const promises = [];

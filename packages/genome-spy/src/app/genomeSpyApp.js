@@ -193,8 +193,7 @@ export default class GenomeSpyApp {
 
                 if (hashData.actions) {
                     // This is copypaste from bookmarks. TODO: consolidate
-                    this.provenance.activateState(0);
-                    this.provenance.dispatch(hashData.actions);
+                    this.provenance.dispatchBookmark(hashData.actions);
                 }
 
                 /** @type {Promise<void>[]} */
