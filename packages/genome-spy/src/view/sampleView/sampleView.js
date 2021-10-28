@@ -246,10 +246,6 @@ export default class SampleView extends ContainerView {
             this._locations = undefined;
         });
 
-        this._addBroadcastHandler("layoutComputed", () => {
-            this.groupPanel.updateRange();
-        });
-
         this._scrollOffset = 0;
         this._scrollableHeight = 0;
         this._peekState = 0; // [0, 1]
@@ -331,6 +327,7 @@ export default class SampleView extends ContainerView {
             (entities) => entities && Object.values(entities)
         );
 
+        /** Returns the samples as a flat array */
         this.getSamples = () => sampleSelector(this.sampleHierarchy);
 
         if (this.spec.samples.data) {

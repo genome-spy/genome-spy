@@ -110,6 +110,10 @@ export class GroupPanel extends LayerView {
         );
 
         this.sampleView = sampleView;
+
+        this._addBroadcastHandler("layoutComputed", () => {
+            this.updateRange();
+        });
     }
 
     updateRange() {
