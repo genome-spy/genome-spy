@@ -193,7 +193,7 @@ export function createSampleSlice(getAttributeInfo) {
                     filterNominal(
                         samples,
                         getAccessor(action.payload, state),
-                        action.payload.action,
+                        action.payload.remove ? "remove" : "retain",
                         action.payload.values
                     )
                 );
@@ -429,8 +429,7 @@ export function getActionInfo(action, getAttributeInfo) {
         case FILTER_BY_NOMINAL: {
             /** @param {string | import("lit").TemplateResult} attr */
             const makeTitle = (attr) => html`
-                ${payload.action == "remove" ? "Remove" : "Retain"} samples
-                having
+                ${payload.remove ? "Remove" : "Retain"} samples having
                 ${payload.values[0] === undefined || payload.values[0] === null
                     ? html` undefined ${attr} `
                     : html`
@@ -443,7 +442,7 @@ export function getActionInfo(action, getAttributeInfo) {
                 ...template,
                 title: makeTitle(html` <em>${attributeName}</em> `),
                 provenanceTitle: makeTitle(attributeTitle),
-                icon: payload.action == "remove" ? faTrashAlt : faFilter,
+                icon: payload.remove ? faTrashAlt : faFilter,
             };
         }
         case FILTER_BY_QUANTITATIVE: {

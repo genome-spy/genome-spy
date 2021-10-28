@@ -27,6 +27,8 @@ export interface FilterByQuantitative extends PayloadWithAttribute {
 }
 
 export interface FilterByNominal extends PayloadWithAttribute {
-    action: "retain" | "remove";
     values: any[];
+
+    /** Should the matching samples be removed instead of retained (default) */
+    remove?: boolean;
 }

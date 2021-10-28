@@ -54,12 +54,11 @@ export default function generateAttributeContextMenu(
             actions.retainFirstOfEach({ attribute }),
             actions.filterByNominal({
                 attribute,
-                action: "retain",
                 values: [attributeValue],
             }),
             actions.filterByNominal({
                 attribute,
-                action: "remove",
+                remove: true,
                 values: [attributeValue],
             })
         );
