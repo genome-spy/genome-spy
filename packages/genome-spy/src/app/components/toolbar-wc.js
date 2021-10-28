@@ -7,15 +7,15 @@ import {
     faArrowsAltV,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField-wc";
-import { asArray } from "../utils/arrayUtils";
-import bowtie from "../img/bowtie.svg";
-import { messageBox } from "../utils/ui/modal";
+import { asArray } from "../../utils/arrayUtils";
+import bowtie from "../../img/bowtie.svg";
+import { messageBox } from "../../utils/ui/modal";
 
 export default class Toolbar extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("./genomeSpyApp").default} */
+        /** @type {import("../genomeSpyApp").default} */
         this.app = undefined;
 
         /** Just to signal (and re-render) once GenomeSpy has been launched */

@@ -5,7 +5,7 @@ import UnitView from "./unitView";
 import ImportView from "./importView";
 import LayerView from "./layerView";
 import FacetView from "./facetView";
-import SampleView from "./sampleView/sampleView";
+import SampleView from "../app/sampleView/sampleView";
 import ConcatView from "./concatView";
 import DecoratorView from "./decoratorView";
 // eslint-disable-next-line no-unused-vars

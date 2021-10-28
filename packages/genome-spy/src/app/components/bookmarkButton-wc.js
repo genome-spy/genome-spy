@@ -8,25 +8,25 @@ import {
     faPen,
     faExclamationCircle,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "../utils/ui/dropdown";
-import { createModal, messageBox } from "../utils/ui/modal";
-import safeMarkdown from "../utils/safeMarkdown";
-import contextMenu from "../utils/ui/contextmenu";
+import { toggleDropdown } from "../../utils/ui/dropdown";
+import { createModal, messageBox } from "../../utils/ui/modal";
+import safeMarkdown from "../../utils/safeMarkdown";
+import contextMenu from "../../utils/ui/contextmenu";
 
 class BookmarkButton extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../genomeSpy").default} */
+        /** @type {import("../../genomeSpy").default} */
         this.genomeSpy = undefined;
 
         /** @type {import("../sampleHandler/sampleHandler").default} */
         this.sampleHandler = undefined;
 
-        /** @type {import("../view/sampleView/sampleView").default} */
+        /** @type {import("../sampleView/sampleView").default} */
         this.sampleView = undefined;
 
-        /** @type {import("./bookmarkDatabase").default} */
+        /** @type {import("../bookmarkDatabase").default} */
         this.bookmarkDatabase = undefined;
     }
 

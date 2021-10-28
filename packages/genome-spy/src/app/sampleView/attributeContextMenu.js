@@ -29,7 +29,7 @@ export default function generateAttributeContextMenu(
     ];
 
     /**
-     * @param {import("../../app/provenance").Action} action
+     * @param {import("../provenance").Action} action
      * @returns {MenuItem}
      */
     const actionToItem = (action) => {
@@ -42,7 +42,7 @@ export default function generateAttributeContextMenu(
     };
 
     /**
-     * @param {import("../../app/provenance").Action[]} actions
+     * @param {import("../provenance").Action[]} actions
      */
     const addActions = (...actions) => items.push(...actions.map(actionToItem));
 

@@ -1,7 +1,7 @@
 import { isNumber, isString } from "vega-util";
 import { html, render } from "lit";
-import { findEncodedFields, getViewClass } from "../viewUtils";
-import ContainerView from "../containerView";
+import { findEncodedFields, getViewClass } from "../../view/viewUtils";
+import ContainerView from "../../view/containerView";
 import {
     interpolateLocSizes,
     locSizeEncloses,
@@ -18,9 +18,9 @@ import { easeCubicOut, easeExpOut } from "d3-ease";
 import clamp from "../../utils/clamp";
 import createDataSource from "../../data/sources/dataSourceFactory";
 import FlowNode from "../../data/flowNode";
-import { createChain } from "../flowBuilder";
-import ConcatView from "../concatView";
-import UnitView from "../unitView";
+import { createChain } from "../../view/flowBuilder";
+import ConcatView from "../../view/concatView";
+import UnitView from "../../view/unitView";
 import { GroupPanel } from "./groupPanel";
 import { createOrUpdateTexture } from "../../gl/webGLHelper";
 import {
@@ -46,9 +46,9 @@ const SPACING = 10;
  * @typedef {import("./sampleState").Group} Group
  * @typedef {import("./sampleState").Sample} Sample
  * @typedef {import("../../utils/layout/flexLayout").LocSize} LocSize
- * @typedef {import("../view").default} View
- * @typedef {import("../layerView").default} LayerView
- * @typedef {import("../decoratorView").default} DecoratorView
+ * @typedef {import("../../view/view").default} View
+ * @typedef {import("../../view/layerView").default} LayerView
+ * @typedef {import("../../view/decoratorView").default} DecoratorView
  * @typedef {import("../../data/dataFlow").default<View>} DataFlow
  * @typedef {import("../../data/sources/dynamicSource").default} DynamicSource
  * @typedef {import("../../genome/genome").ChromosomalLocus} ChromosomalLocus
@@ -64,8 +64,8 @@ const SPACING = 10;
 export default class SampleView extends ContainerView {
     /**
      *
-     * @param {import("../viewUtils").SampleSpec} spec
-     * @param {import("../viewUtils").ViewContext} context
+     * @param {import("../../view/viewUtils").SampleSpec} spec
+     * @param {import("../../view/viewUtils").ViewContext} context
      * @param {ContainerView} parent
      * @param {string} name
      */
@@ -145,7 +145,7 @@ export default class SampleView extends ContainerView {
             this._handleContextMenu.bind(this)
         );
 
-        /** @type {import("../../app/provenance").default<any>} Fugly temp hack */
+        /** @type {import("../provenance").default<any>} Fugly temp hack */
         this.provenance = window.provenance;
 
         this.provenance.subscribe(
@@ -364,8 +364,8 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../view").default} child
-     * @param {import("../view").default} replacement
+     * @param {import("../../view/view").default} child
+     * @param {import("../../view/view").default} replacement
      */
     replaceChild(child, replacement) {
         const r = /** @type {UnitView | LayerView | DecoratorView} */ (
@@ -566,9 +566,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
      * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../view").RenderingOptions} [options]
+     * @param {import("../../view/view").RenderingOptions} [options]
      */
     renderChild(context, coords, options = {}) {
         const heightFactor = 1 / coords.height;
@@ -592,9 +592,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
      * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../view").RenderingOptions} [options]
+     * @param {import("../../view/view").RenderingOptions} [options]
      */
     renderSummaries(context, coords, options = {}) {
         options = {
@@ -631,9 +631,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
      * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../view").RenderingOptions} [options]
+     * @param {import("../../view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
@@ -871,7 +871,7 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {string} channel
-     * @param {import("../containerView").ResolutionTarget} resolutionType
+     * @param {import("../../view/containerView").ResolutionTarget} resolutionType
      * @returns {import("../../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {

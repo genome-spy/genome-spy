@@ -36,7 +36,7 @@ import { VISIT_STOP } from "./view/view";
 import Inertia, { makeEventTemplate } from "./utils/inertia";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler";
-import SampleView from "./view/sampleView/sampleView";
+import SampleView from "./app/sampleView/sampleView";
 import { invalidatePrefix } from "./utils/propertyCacher";
 
 /**

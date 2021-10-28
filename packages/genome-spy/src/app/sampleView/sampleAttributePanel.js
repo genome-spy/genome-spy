@@ -3,13 +3,13 @@ import { classMap } from "lit/directives/class-map.js";
 
 import { inferType } from "vega-loader";
 
-import ConcatView from "../concatView";
-import UnitView from "../unitView";
+import ConcatView from "../../view/concatView";
+import UnitView from "../../view/unitView";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
-import { buildDataFlow } from "../flowBuilder";
-import { NOMINAL, ORDINAL } from "../scaleResolution";
-import { resolveScalesAndAxes } from "../viewUtils";
+import { buildDataFlow } from "../../view/flowBuilder";
+import { NOMINAL, ORDINAL } from "../../view/scaleResolution";
+import { resolveScalesAndAxes } from "../../view/viewUtils";
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "../../utils/arrayUtils";
 
@@ -27,7 +27,7 @@ const attributeViewRegex = /^attribute-(.*)$/;
 
 /**
  * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("../view").default} View
+ * @typedef {import("../../view/view").default} View
  */
 
 /**
@@ -133,9 +133,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
      * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../view").RenderingOptions} [options]
+     * @param {import("../../view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         super.render(context, coords, {
@@ -500,7 +500,7 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {string} channel
-     * @param {import("../containerView").ResolutionTarget} resolutionType
+     * @param {import("../../view/containerView").ResolutionTarget} resolutionType
      * @returns {import("../../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
@@ -536,7 +536,7 @@ export class SampleAttributePanel extends ConcatView {
                 );
 
                 if (sample) {
-                    /** @type {import("../../app/provenance").Action[]} */
+                    /** @type {import("../provenance").Action[]} */
                     const actions = [];
 
                     // Undo the previous action if we are filtering by the same nominal attribute
@@ -580,7 +580,7 @@ export class SampleAttributePanel extends ConcatView {
 function createAttributeSpec(attributeName, attributeDef) {
     const field = `attributes["${attributeName}"]`;
 
-    /** @type {import("../viewUtils").UnitSpec} */
+    /** @type {import("../../view/viewUtils").UnitSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
         width: attributeDef.width || 10,
@@ -614,7 +614,7 @@ function createAttributeSpec(attributeName, attributeDef) {
 function createLabelViewSpec() {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
-    /** @type {import("../viewUtils").UnitSpec} */
+    /** @type {import("../../view/viewUtils").UnitSpec} */
     const titleSpec = {
         name: "sampleLabel",
         width: 140,

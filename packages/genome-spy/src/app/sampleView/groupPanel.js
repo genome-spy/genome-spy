@@ -1,11 +1,11 @@
 import { range } from "d3-array";
 import { peek } from "../../utils/arrayUtils";
 import { invalidatePrefix } from "../../utils/propertyCacher";
-import LayerView from "../layerView";
+import LayerView from "../../view/layerView";
 
 /**
  * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("../view").default} View
+ * @typedef {import("../../view/view").default} View
  *
  */
 export class GroupPanel extends LayerView {

@@ -3,11 +3,11 @@ import {
     isSampleGroup,
     iterateGroupHierarcy,
     sampleHierarchySelector,
-} from "../view/sampleView/sampleSlice";
+} from "../app/sampleView/sampleSlice";
 import { peek } from "../utils/arrayUtils";
 import { field } from "../utils/field";
 import kWayMerge from "../utils/kWayMerge";
-import SampleView from "../view/sampleView/sampleView";
+import SampleView from "../app/sampleView/sampleView";
 import UnitView from "../view/unitView";
 import Collector from "./collector";
 import FlowNode from "./flowNode";
@@ -98,7 +98,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     /**
-     * @param {import("../view/sampleView/sampleSlice").SampleHierarchy} sampleHierarchy
+     * @param {import("../app/sampleView/sampleSlice").SampleHierarchy} sampleHierarchy
      */
     _mergeAndPropagate(sampleHierarchy) {
         const groupPaths = [

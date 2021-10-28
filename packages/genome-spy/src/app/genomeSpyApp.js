@@ -9,13 +9,13 @@ import favIcon from "../img/genomespy-favicon.svg";
 import { html, render } from "lit";
 
 import { VISIT_STOP } from "../view/view";
-import SampleView from "../view/sampleView/sampleView";
+import SampleView from "./sampleView/sampleView";
 import BookmarkDatabase from "./bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
 
-import "./provenanceToolbar-wc";
-import "./bookmarkButton-wc";
-import "./toolbar-wc";
+import "./components/provenanceToolbar-wc";
+import "./components/bookmarkButton-wc";
+import "./components/toolbar-wc";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "../utils/debounce";
 import Provenance from "./provenance";
@@ -122,9 +122,10 @@ export default class GenomeSpyApp {
             }
         }
 
-        const toolbar = /** @type {import("./toolbar-wc").default} */ (
-            this.toolbarRef.value
-        );
+        const toolbar =
+            /** @type {import("./components/toolbar-wc").default} */ (
+                this.toolbarRef.value
+            );
         // Just trigger re-render. Need a way to broadcast this to all components.
         toolbar.appInitialized = true;
 
@@ -250,7 +251,7 @@ export default class GenomeSpyApp {
             return;
         }
 
-        /** @type {import("../view/sampleView/sampleView").default} */
+        /** @type {import("./sampleView/sampleView").default} */
         let sampleView;
 
         this.genomeSpy.viewRoot.visit((view) => {

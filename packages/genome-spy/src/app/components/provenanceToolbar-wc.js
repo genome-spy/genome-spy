@@ -6,13 +6,13 @@ import {
     faEllipsisH,
     faCircle,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "../utils/ui/dropdown";
+import { toggleDropdown } from "../../utils/ui/dropdown";
 
 export default class ProvenanceButtons extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("./provenance").default<any>} */
+        /** @type {import("../provenance").default<any>} */
         this.provenance = undefined;
     }
 
@@ -80,7 +80,10 @@ export default class ProvenanceButtons extends LitElement {
         `;
 
         return html`
-            <div class="btn-group" @click=${(e) => e.stopPropagation()}>
+            <div
+                class="btn-group"
+                @click=${(/** @type {MouseEvent} */ e) => e.stopPropagation()}
+            >
                 <button
                     class="tool-btn"
                     title="Backtrack samples (B)"

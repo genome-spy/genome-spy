@@ -371,7 +371,7 @@ const verboseOps = {
  *
  * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
  * @param {import("./compositeAttributeInfoSource").AttributeInfoSource} getAttributeInfo
- * @returns {import("../../app/provenance").ActionInfo}
+ * @returns {import("../provenance").ActionInfo}
  */
 export function getActionInfo(action, getAttributeInfo) {
     if (!action.type.startsWith(SLICE_NAME)) {

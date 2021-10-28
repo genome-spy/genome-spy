@@ -28,9 +28,9 @@ import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import { createProgram } from "../gl/webGLHelper";
-import SampleView from "../view/sampleView/sampleView";
+import SampleView from "../app/sampleView/sampleView";
 import AxisView from "../view/axisView";
-import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
+import { SampleAttributePanel } from "../app/sampleView/sampleAttributePanel";
 import coalesceProperties from "../utils/propertyCoalescer";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
