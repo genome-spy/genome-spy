@@ -268,10 +268,6 @@ export default class GenomeSpyApp {
 
         return sampleView;
     }
-
-    getSampleHandler() {
-        // Nop
-    }
 }
 
 /**

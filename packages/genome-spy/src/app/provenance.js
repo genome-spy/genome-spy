@@ -201,6 +201,10 @@ export default class Provenance {
         );
     }
 
+    /**
+     * Returns actions that can be bookmarked. The indices cannot be used
+     * to jump to a specific point in history.
+     */
     getBookmarkableActionHistory() {
         // Skip the initial action (that sets samples)
         // TODO: Come up with something more robust

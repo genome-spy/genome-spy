@@ -55,13 +55,13 @@ class BookmarkButton extends LitElement {
             ? {
                   ...existingEntry,
                   timestamp: Date.now(),
-                  actions: this.app.provenance.getActionHistory(),
+                  actions: this.app.provenance.getBookmarkableActionHistory(),
                   scaleDomains: {},
               }
             : {
                   name: undefined,
                   timestamp: Date.now(),
-                  actions: this.app.provenance.getActionHistory(),
+                  actions: this.app.provenance.getBookmarkableActionHistory(),
                   scaleDomains: {},
               };
 
