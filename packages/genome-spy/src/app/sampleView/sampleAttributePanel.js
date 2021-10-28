@@ -12,6 +12,7 @@ import { NOMINAL, ORDINAL } from "../../view/scaleResolution";
 import { resolveScalesAndAxes } from "../../view/viewUtils";
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "../../utils/arrayUtils";
+import { ActionCreators } from "redux-undo";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -518,53 +519,44 @@ export class SampleAttributePanel extends ConcatView {
      * @returns {boolean} true of an action was dispatched
      */
     handleVerboseCommand(command) {
-        //
-    }
-
-    _handleVerboseCommand() {
-        const Actions = undefined;
-        const command = "";
-
         // TODO: Provide an easier access to the attribute data
         const searchKey = command;
 
         for (const name of this._getAttributeNames()) {
             const info = this.getAttributeInfo(name);
             if (info.type == ORDINAL || info.type == NOMINAL) {
-                const sample = this.sampleView._samples.find(
-                    (sample) => sample.attributes[info.name] == searchKey
-                );
+                const sample = this.sampleView
+                    .getSamples()
+                    .find(
+                        (sample) => sample.attributes[info.name] == searchKey
+                    );
 
                 if (sample) {
-                    /** @type {import("../provenance").Action[]} */
-                    const actions = [];
+                    const action = this.sampleView.actions.filterByNominal({
+                        attribute: {
+                            type: SAMPLE_ATTRIBUTE,
+                            specifier: name,
+                        },
+                        values: [searchKey],
+                    });
 
-                    // Undo the previous action if we are filtering by the same nominal attribute
                     const lastAction =
-                        this.sampleView.provenance.currentNode?.action;
-                    if (
-                        lastAction &&
+                        this.sampleView.provenance.getState().present
+                            .lastAction;
+                    // Undo the previous action if we are filtering by the same nominal attribute
+                    const shouldUndo =
                         this.sampleView.actions.filterByNominal.match(
                             lastAction
                         ) &&
-                        lastAction.payload?.action == "retain" &&
-                        lastAction.payload?.attribute.type ==
-                            SAMPLE_ATTRIBUTE &&
-                        lastAction.payload?.attribute.specifier == name &&
-                        lastAction.payload?.values.length == 1
-                    ) {
-                        actions.push(Actions.undo());
-                    }
+                        !lastAction.payload.remove &&
+                        lastAction.payload.attribute.type == SAMPLE_ATTRIBUTE &&
+                        lastAction.payload.attribute.specifier == name &&
+                        lastAction.payload.values.length == 1;
 
-                    actions.push(
-                        Actions.filterByNominal(
-                            { type: SAMPLE_ATTRIBUTE, specifier: name },
-                            "retain",
-                            [searchKey]
-                        )
+                    this.sampleView.provenance.dispatch(
+                        shouldUndo ? [ActionCreators.undo(), action] : action
                     );
 
-                    this.sampleHandler.dispatchBatch(actions);
                     return true;
                 }
             }

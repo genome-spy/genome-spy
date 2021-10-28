@@ -1,3 +1,4 @@
+import { AnyAction } from "redux";
 import { AttributeIdentifier } from "./types";
 
 /**
@@ -52,4 +53,7 @@ export interface SampleHierarchy {
 
     /** The root of the hierarchy */
     rootGroup: Group;
+
+    // TODO: Extract this into a separate interface
+    lastAction?: AnyAction;
 }
