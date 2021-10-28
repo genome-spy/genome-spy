@@ -408,7 +408,7 @@ export class SampleAttributePanel extends ConcatView {
                     ],
                 type: resolution.type,
                 scale: resolution.getScale(),
-                title: attribute,
+                title: html`<em class="attribute">${attribute}</em>`,
             };
         }
     }

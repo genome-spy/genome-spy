@@ -225,7 +225,7 @@ export default class SampleView extends ContainerView {
                     name: specifier.field,
                     // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
                     title: html`
-                        <em>${specifier.field}</em>
+                        <em class="attribute">${specifier.field}</em>
                         <span class="viewTitle"
                             >(${view.spec.title || view.name})</span
                         >
