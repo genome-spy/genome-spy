@@ -1,7 +1,7 @@
 import { isFieldDef } from "../../encoder/encoder";
 import {
     isSampleGroup,
-    iterateGroupHierarcy,
+    iterateGroupHierarchy,
     sampleHierarchySelector,
 } from "./sampleSlice";
 import { peek } from "../../utils/arrayUtils";
@@ -102,7 +102,7 @@ export default class MergeSampleFacets extends FlowNode {
      */
     _mergeAndPropagate(sampleHierarchy) {
         const groupPaths = [
-            ...iterateGroupHierarcy(sampleHierarchy.rootGroup),
+            ...iterateGroupHierarchy(sampleHierarchy.rootGroup),
         ].filter((path) => isSampleGroup(peek(path)));
 
         for (const [i, groupPath] of groupPaths.entries()) {

@@ -343,12 +343,12 @@ export function isGroupGroup(group) {
  * @param {Group} group
  * @returns {Generator<Group[]>}
  */
-export function* iterateGroupHierarcy(group) {
+export function* iterateGroupHierarchy(group) {
     yield [group];
 
     if (isGroupGroup(group)) {
         for (const child of group.groups) {
-            for (const elem of iterateGroupHierarcy(child)) {
+            for (const elem of iterateGroupHierarchy(child)) {
                 yield [group, ...elem];
             }
         }
