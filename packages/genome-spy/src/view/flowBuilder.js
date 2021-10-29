@@ -25,7 +25,6 @@ import NamedSource, { isNamedData } from "../data/sources/namedSource";
 /**
  * @typedef {import("./view").default} View
  * @typedef {import("../data/flowNode").default} FlowNode
- * @typedef {import("../data/dataFlow").default<View>} DataFlow
  * @typedef {import("../spec/channel").Channel} Channel
  * @typedef {import("../spec/channel").Encoding} Encoding
  *

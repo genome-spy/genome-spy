@@ -1,25 +1,25 @@
-import { isFieldDef } from "../encoder/encoder";
+import { isFieldDef } from "../../encoder/encoder";
 import {
     isSampleGroup,
     iterateGroupHierarcy,
     sampleHierarchySelector,
-} from "../app/sampleView/sampleSlice";
-import { peek } from "../utils/arrayUtils";
-import { field } from "../utils/field";
-import kWayMerge from "../utils/kWayMerge";
-import SampleView from "../app/sampleView/sampleView";
-import UnitView from "../view/unitView";
-import Collector from "./collector";
-import FlowNode from "./flowNode";
+} from "./sampleSlice";
+import { peek } from "../../utils/arrayUtils";
+import { field } from "../../utils/field";
+import kWayMerge from "../../utils/kWayMerge";
+import SampleView from "./sampleView";
+import UnitView from "../../view/unitView";
+import Collector from "../../data/collector";
+import FlowNode from "../../data/flowNode";
 
 /** The number of samples in a facet */
 const SAMPLE_COUNT_VARIABLE = "sampleCount";
 
 /**
- * Merges sample facets by groups that have been formed in SampleHandler.
+ * Merges sample facets by groups that have been formed in SampleSlice.
  * Propagates the merged facets as new facets.
  *
- * @typedef {import("../view/view").default} View
+ * @typedef {import("../../view/view").default} View
  */
 export default class MergeSampleFacets extends FlowNode {
     /**
@@ -68,7 +68,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     /**
-     * @param {import("./flowNode").Datum} datum
+     * @param {import("../../data/flowNode").Datum} datum
      */
     handle(datum) {
         // NOP. Block propagation.
@@ -98,7 +98,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     /**
-     * @param {import("../app/sampleView/sampleSlice").SampleHierarchy} sampleHierarchy
+     * @param {import("./sampleSlice").SampleHierarchy} sampleHierarchy
      */
     _mergeAndPropagate(sampleHierarchy) {
         const groupPaths = [
@@ -147,7 +147,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     _updateScales() {
-        /** @type {Set<import("../view/view").ScaleResolution>} */
+        /** @type {Set<import("../../view/view").ScaleResolution>} */
         const resolutions = new Set();
         this.view.visit((view) => {
             if (view instanceof UnitView && view.mark.encoding.y) {

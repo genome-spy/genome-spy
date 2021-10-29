@@ -7,7 +7,6 @@ import FlattenDelimitedTransform from "./flattenDelimited";
 import FormulaTransform from "./formula";
 import LinearizeGenomicCoordinate from "./linearizeGenomicCoordinate";
 import MeasureTextTransform from "./measureText";
-import MergeSampleFacets from "../mergeFacets";
 import PileupTransform from "./pileup";
 import ProjectTransform from "./project";
 import RegexExtractTransform from "./regexExtract";
@@ -18,7 +17,12 @@ import FlattenSequenceTransform from "./flattenSequence";
 import AggregateTransform from "./aggregate";
 import IdentifierTransform from "./identifier";
 
+// TODO: MergeFacets should be added dynamically by the App
+import MergeSampleFacets from "../../app/sampleView/mergeFacets";
+
 /**
+ * TODO: Make this dynamic
+ *
  * @typedef {import("../../view/view").default} View
  * @typedef {import("../flowNode").default} FlowNode
  *
