@@ -35,7 +35,6 @@ import { VISIT_STOP } from "./view/view";
 import Inertia, { makeEventTemplate } from "./utils/inertia";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler";
-import SampleView from "./app/sampleView/sampleView";
 import { invalidatePrefix } from "./utils/propertyCacher";
 import { ViewFactory } from "./view/viewFactory";
 
@@ -341,15 +340,12 @@ export default class GenomeSpy {
             }
         });
 
-        this.viewRoot.visit((view) => {
-            // If no explicit sample were provided, extract it from data
-            // TODO: It would be great if this could be attached to the data flow,
-            // because now this is somewhat a hack and is incompatible with dynamic data
-            // loading in the future.
-            if (view instanceof SampleView) {
-                view.extractSamplesFromData();
-            }
-        });
+        // This event is needed by SampleView so that it can extract the sample ids
+        // from the data once they are loaded.
+        // TODO: It would be great if this could be attached to the data flow,
+        // because now this is somewhat a hack and is incompatible with dynamic data
+        // loading in the future.
+        this.broadcast("dataLoaded");
 
         await graphicsInitialized;
 

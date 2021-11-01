@@ -240,6 +240,10 @@ export default class SampleView extends ContainerView {
             }
         );
 
+        this._addBroadcastHandler("dataLoaded", () =>
+            this.extractSamplesFromData()
+        );
+
         this._addBroadcastHandler("layout", () => {
             this._locations = undefined;
         });
