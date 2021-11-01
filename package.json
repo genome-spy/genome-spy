@@ -26,9 +26,9 @@
     "regenerator-runtime": "^0.12.1",
     "sass": "^1.38.0",
     "ts-json-schema-generator": "^0.54.0",
-    "vite": "^2.5.0",
-    "vite-raw-plugin": "^1.0.1",
-    "typescript": "^4.3.5"
+    "typescript": "^4.3.5",
+    "vite": "^2.6.13",
+    "vite-raw-plugin": "^1.0.1"
   },
   "scripts": {
     "builddocs": "mkdir -p docs/app && cp packages/genome-spy-doc-embed/dist/* docs/app/ && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && mkdocs build",
