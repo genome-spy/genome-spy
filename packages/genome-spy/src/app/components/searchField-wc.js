@@ -22,6 +22,12 @@ export default class SearchField extends LitElement {
 
         this._keyListener = this._onKeyDown.bind(this);
 
+        this._documentClickListener = (/** @type {InputEvent} */ event) => {
+            if (event.target !== this._inputField) {
+                this._inputField?.blur();
+            }
+        };
+
         this._focused = false;
     }
 
@@ -40,12 +46,15 @@ export default class SearchField extends LitElement {
         this._initializeGenome();
 
         document.addEventListener("keydown", this._keyListener);
+        document.addEventListener("click", this._documentClickListener);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
 
         document.removeEventListener("keydown", this._keyListener);
+        document.removeEventListener("click", this._documentClickListener);
+
         // TODO: remove listener from resolutions
     }
 

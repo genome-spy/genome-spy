@@ -86,10 +86,6 @@ export default class GenomeSpyApp {
                 this.appContainer.getElementsByClassName(className)[0]
             );
 
-        elem("genome-spy-container").addEventListener("click", (event) => {
-            elem("search-input").blur();
-        });
-
         this.genomeSpy = new GenomeSpy(
             elem("genome-spy-container"),
             this.config,
