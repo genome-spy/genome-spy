@@ -1,4 +1,4 @@
-import { html, LitElement } from "lit";
+import { html, nothing, LitElement } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faUndo,
@@ -40,6 +40,10 @@ export default class ProvenanceButtons extends LitElement {
          */
         const makeDropdownItem = (action, index) => {
             const info = this.provenance.getActionInfo(action);
+            if (!info) {
+                // Skip Redux' internal actions
+                return nothing;
+            }
             return html`
                 <li>
                     <a
@@ -48,8 +52,8 @@ export default class ProvenanceButtons extends LitElement {
                             ? "active"
                             : ""}
                     >
-                        ${icon(info.icon || faCircle).node[0]}
-                        ${info.provenanceTitle || info.title}
+                        ${icon(info.icon ?? faCircle).node[0]}
+                        ${info.provenanceTitle ?? info.title}
                     </a>
                 </li>
             `;
