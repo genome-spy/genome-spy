@@ -16,7 +16,7 @@ import {
     getPrimaryChannel,
 } from "../encoder/encoder";
 import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
-import { isAggregateSamplesSpec } from "./viewUtils";
+import { isAggregateSamplesSpec } from "./viewFactory";
 import { group } from "d3-array";
 import IdentifierTransform from "../data/transforms/identifier";
 import { invalidate } from "../utils/propertyCacher";

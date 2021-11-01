@@ -1,12 +1,9 @@
-import { isObject, isString, isArray } from "vega-util";
+import { isObject, isString } from "vega-util";
 import { loader as vegaLoader } from "vega-loader";
 
 import UnitView from "./unitView";
 import ImportView from "./importView";
 import LayerView from "./layerView";
-import FacetView from "./facetView";
-import SampleView from "../app/sampleView/sampleView";
-import ConcatView from "./concatView";
 import DecoratorView from "./decoratorView";
 // eslint-disable-next-line no-unused-vars
 import View, { VISIT_SKIP, VISIT_STOP } from "./view";
@@ -43,79 +40,6 @@ import { peek } from "../utils/arrayUtils";
  * @typedef {import("../spec/view").FacetMapping} FacetMapping
  */
 
-/*
-// This breaks with Jest or Babel. Some classes mysteriously transform into undefined!
-const viewTypes = [
-    { prop: "import", guard: isImportSpec, viewClass: ImportView },
-    { prop: "layer", guard: isLayerSpec, viewClass: LayerView },
-    { prop: "facet", guard: isFacetSpec, viewClass: FacetView },
-    { prop: "sample", guard: isSampleSpec, viewClass: SampleView },
-    { prop: "mark", guard: isUnitSpec, viewClass: UnitView },
-    { prop: "vconcat", guard: isVConcatSpec, viewClass: ConcatView },
-    { prop: "hconcat", guard: isHConcatSpec, viewClass: ConcatView },
-    { prop: "concat", guard: isConcatSpec, viewClass: ConcatView }
-];
-*/
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is UnitSpec}
- */
-export function isUnitSpec(spec) {
-    return "mark" in spec && (isString(spec.mark) || isObject(spec.mark));
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is LayerSpec}
- */
-export function isLayerSpec(spec) {
-    return "layer" in spec && isObject(spec.layer);
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is LayerSpec}
- */
-export function isFacetSpec(spec) {
-    return (
-        "facet" in spec &&
-        isObject(spec.facet) &&
-        "spec" in spec &&
-        isObject(spec.spec)
-    );
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is SampleSpec}
- */
-export function isSampleSpec(spec) {
-    return (
-        "samples" in spec &&
-        isObject(spec.samples) &&
-        "spec" in spec &&
-        isObject(spec.spec)
-    );
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is import("../spec/view").AggregateSamplesSpec}
- */
-export function isAggregateSamplesSpec(spec) {
-    return (
-        spec &&
-        (isUnitSpec(spec) || isLayerSpec(spec)) &&
-        "aggregateSamples" in spec
-    );
-}
-
 /**
  *
  * @param {ChannelDef | FacetMapping} def
@@ -139,123 +63,11 @@ export function isFacetMapping(def) {
 
 /**
  *
- * @param {ViewSpec} spec
- * @returns {spec is ViewSpec}
- */
-export function isViewSpec(spec) {
-    const guards = [
-        isImportSpec,
-        isLayerSpec,
-        isFacetSpec,
-        isSampleSpec,
-        isUnitSpec,
-        isVConcatSpec,
-        isHConcatSpec,
-        isConcatSpec,
-    ];
-
-    const matches = guards.filter((guard) => guard(spec));
-
-    if (matches.length > 1) {
-        throw new Error("Ambiguous spec. Cannot create a view!");
-    }
-
-    return matches.length == 1;
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is VConcatSpec}
- */
-export function isVConcatSpec(spec) {
-    return "vconcat" in spec && isArray(spec.vconcat);
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is HConcatSpec}
- */
-export function isHConcatSpec(spec) {
-    return "hconcat" in spec && isArray(spec.hconcat);
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is ConcatSpec}
- */
-export function isConcatSpec(spec) {
-    return "concat" in spec && isArray(spec.concat);
-}
-
-/**
- *
  * @param {object} config
  * @returns {config is ImportConfig}
  */
 export function isImportConfig(config) {
     return "name" in config || "url" in config;
-}
-
-/**
- *
- * @param {object} spec
- * @returns {spec is ImportSpec}
- */
-export function isImportSpec(spec) {
-    return "import" in spec;
-}
-
-/**
- *
- * @param {ViewSpec | ImportSpec} spec
- * @returns {typeof View}
- */
-export function getViewClass(spec) {
-    /** @type {typeof View} */
-    let ViewClass;
-
-    if (isImportSpec(spec)) {
-        ViewClass = ImportView;
-    } else if (isLayerSpec(spec)) {
-        ViewClass = LayerView;
-    } else if (isFacetSpec(spec)) {
-        ViewClass = FacetView;
-    } else if (isSampleSpec(spec)) {
-        ViewClass = SampleView;
-    } else if (isUnitSpec(spec)) {
-        ViewClass = UnitView;
-    } else if (isVConcatSpec(spec)) {
-        ViewClass = ConcatView;
-    } else if (isHConcatSpec(spec)) {
-        ViewClass = ConcatView;
-    } else if (isConcatSpec(spec)) {
-        ViewClass = ConcatView;
-    }
-
-    if (!ViewClass) {
-        throw new Error(
-            "Invalid spec, cannot figure out the view type from the properties: " +
-                JSON.stringify([...Object.keys(spec)])
-        );
-    }
-
-    return ViewClass;
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @param {ViewContext} context
- */
-export function createView(spec, context) {
-    const ViewClass = getViewClass(spec);
-
-    return /** @type {View} */ (
-        new ViewClass(spec, context, null, spec.name || "root")
-    );
 }
 
 /**
@@ -466,8 +278,9 @@ export function findEncodedFields(view) {
 /**
  * @param {import("../spec/view").ImportSpec} spec
  * @param {string} baseUrl
+ * @param {ViewContext} viewContext
  */
-async function loadExternalViewSpec(spec, baseUrl) {
+async function loadExternalViewSpec(spec, baseUrl, viewContext) {
     if (!spec.import.url) {
         throw new Error(
             "Cannot import, not an import spec: " + JSON.stringify(spec)
@@ -485,7 +298,7 @@ async function loadExternalViewSpec(spec, baseUrl) {
         })
     );
 
-    if (isViewSpec(importedSpec)) {
+    if (viewContext.isViewSpec(importedSpec)) {
         importedSpec.baseUrl = url.match(/^[^?#]*\//)?.[0];
         return importedSpec;
     } else {
@@ -512,19 +325,21 @@ export async function processImports(viewRoot) {
     });
 
     for (const view of importViews) {
+        const context = view.context;
+
         // TODO: Parallelize using promises, don't use await
         const loadedSpec = await loadExternalViewSpec(
             view.spec,
-            view.getBaseUrl()
+            view.getBaseUrl(),
+            context
         );
 
-        const View = getViewClass(loadedSpec);
-        const importedView = new View(
+        // TODO: Let importSpec have a name
+        const importedView = context.createView(
             loadedSpec,
-            view.context,
             view.parent,
             view.name
-        ); // TODO: Let importSpec have a name
+        );
         view.parent.replaceChild(view, importedView);
 
         // Import recursively

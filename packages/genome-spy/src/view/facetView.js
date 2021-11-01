@@ -1,4 +1,4 @@
-import { getViewClass, isFacetFieldDef, isFacetMapping } from "./viewUtils";
+import { isFacetFieldDef, isFacetMapping } from "./viewUtils";
 import ContainerView from "./containerView";
 import UnitView from "./unitView";
 import { cross } from "d3-array";
@@ -81,9 +81,8 @@ export default class FacetView extends ContainerView {
 
         this.spec = spec;
 
-        const View = getViewClass(spec.spec);
         this.child = /** @type { UnitView | LayerView | DecoratorView } */ (
-            new View(spec.spec, context, this, `facet`)
+            context.createView(spec.spec, this, `facet`)
         );
 
         /**

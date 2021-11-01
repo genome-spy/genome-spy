@@ -7,18 +7,25 @@
  * @typedef {import("./viewContext").default} ViewContext
  */
 
-import { createView, resolveScalesAndAxes, initializeData } from "./viewUtils";
+import { resolveScalesAndAxes, initializeData } from "./viewUtils";
 import AccessorFactory from "../encoder/accessor";
 import DataFlow from "../data/dataFlow";
+import { ViewFactory } from "./viewFactory";
 
 /** @type {<V extends View>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext) => V} */
 export function create(spec, viewClass, context = undefined) {
+    const viewTypeRegistry = new ViewFactory();
+    /** @type {ViewContext} */
     const c = {
         ...(context || {}),
         accessorFactory: new AccessorFactory(),
+
+        createView: function (spec, parent, defaultName) {
+            return viewTypeRegistry.createView(spec, c, parent, defaultName);
+        },
     };
 
-    const view = createView(spec, c);
+    const view = c.createView(spec, null, "root");
 
     if (!(view instanceof viewClass)) {
         throw new Error("ViewClass and the spec do not match!");

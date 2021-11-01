@@ -16,7 +16,7 @@ import {
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 import AxisResolution from "./axisResolution";
-import { getViewClass, isAggregateSamplesSpec } from "./viewUtils";
+import { isAggregateSamplesSpec } from "./viewFactory";
 
 /**
  *
@@ -337,10 +337,9 @@ export default class UnitView extends ContainerView {
                     sample: null,
                 };
 
-                const View = getViewClass(sumSpec);
                 const summaryView =
                     /** @type { UnitView | LayerView | DecoratorView } */ (
-                        new View(sumSpec, this.context, this, "summaryView")
+                        this.context.createView(sumSpec, this, "summaryView")
                     );
 
                 /**

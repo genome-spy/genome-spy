@@ -9,7 +9,7 @@ import favIcon from "../img/genomespy-favicon.svg";
 import { html, render } from "lit";
 
 import { VISIT_STOP } from "../view/view";
-import SampleView from "./sampleView/sampleView";
+import SampleView, { isSampleSpec } from "./sampleView/sampleView";
 import BookmarkDatabase from "./bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
 
@@ -92,6 +92,12 @@ export default class GenomeSpyApp {
             elem("genome-spy-container"),
             this.config,
             options
+        );
+
+        this.genomeSpy.viewFactory.addViewType(
+            isSampleSpec,
+            (spec, context, parent, defaultName) =>
+                new SampleView(spec, context, parent, defaultName)
         );
     }
 

@@ -1,6 +1,6 @@
-import { isNumber, isString } from "vega-util";
+import { isNumber, isObject, isString } from "vega-util";
 import { html, render } from "lit";
-import { findEncodedFields, getViewClass } from "../../view/viewUtils";
+import { findEncodedFields } from "../../view/viewUtils";
 import ContainerView from "../../view/containerView";
 import {
     interpolateLocSizes,
@@ -79,10 +79,9 @@ export default class SampleView extends ContainerView {
         // TODO: Make this a function, not a class
         this.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
 
-        const View = getViewClass(spec.spec);
         /** @type { UnitView | LayerView | DecoratorView } */
         this.child = /** @type { UnitView | LayerView | DecoratorView } */ (
-            new View(spec.spec, context, this, `sampleFacet`)
+            context.createView(spec.spec, this, `sampleFacet`)
         );
 
         this.summaryViews = new ConcatView(
@@ -927,4 +926,18 @@ function extractAttributes(row) {
     delete attributes.sample;
     delete attributes.displayName;
     return attributes;
+}
+
+/**
+ *
+ * @param {import("../../spec/view").ViewSpec} spec
+ * @returns {spec is SampleSpec}
+ */
+export function isSampleSpec(spec) {
+    return (
+        "samples" in spec &&
+        isObject(spec.samples) &&
+        "spec" in spec &&
+        isObject(spec.spec)
+    );
 }

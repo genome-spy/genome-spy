@@ -1,4 +1,4 @@
-import { getViewClass, isHConcatSpec, isVConcatSpec } from "./viewUtils";
+import { isHConcatSpec, isVConcatSpec } from "./viewFactory";
 import ContainerView from "./containerView";
 import {
     mapToPixelCoords,
@@ -46,10 +46,9 @@ export default class ConcatView extends ContainerView {
             : spec.concat;
 
         /** @type { View[] } */
-        this.children = childSpecs.map((childSpec, i) => {
-            const View = getViewClass(childSpec);
-            return new View(childSpec, context, this, "concat" + i);
-        });
+        this.children = childSpecs.map((childSpec, i) =>
+            context.createView(childSpec, this, "concat" + i)
+        );
     }
 
     _getFlexSizeDefs() {
@@ -222,8 +221,7 @@ export default class ConcatView extends ContainerView {
         // TODO: More robust solution. Will break in future when views can be removed
         const i = this.children.length;
 
-        const View = getViewClass(viewSpec);
-        const view = new View(viewSpec, this.context, this, "concat" + i);
+        const view = this.context.createView(viewSpec, this, "concat" + i);
         this.children.push(view);
 
         return view;

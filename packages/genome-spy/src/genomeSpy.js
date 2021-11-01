@@ -7,7 +7,6 @@ import Tooltip from "./utils/ui/tooltip";
 
 import AccessorFactory from "./encoder/accessor";
 import {
-    createView,
     resolveScalesAndAxes,
     addDecorators,
     processImports,
@@ -38,6 +37,7 @@ import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler";
 import SampleView from "./app/sampleView/sampleView";
 import { invalidatePrefix } from "./utils/propertyCacher";
+import { ViewFactory } from "./view/viewFactory";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -73,6 +73,7 @@ export default class GenomeSpy {
         this.spec = spec;
 
         this.accessorFactory = new AccessorFactory();
+        this.viewFactory = new ViewFactory();
 
         /** @type {(function(string):object[])[]} */
         this.namedDataProviders = [];
@@ -119,6 +120,9 @@ export default class GenomeSpy {
             refseqgene: refseqGeneTooltipHandler,
             ...(options.tooltipHandlers ?? {}),
         };
+
+        /** @type {import("./view/view").default} */
+        this.viewRoot = undefined;
     }
 
     /**
@@ -219,6 +223,9 @@ export default class GenomeSpy {
             await this.genomeStore.initialize(this.spec.genome);
         }
 
+        // eslint-disable-next-line consistent-this
+        const self = this;
+
         /** @type {import("./view/viewContext").default} */
         const context = {
             dataFlow: new DataFlow(),
@@ -246,6 +253,17 @@ export default class GenomeSpy {
                 }
                 listeners.push(listener);
             },
+
+            isViewSpec: (spec) => self.viewFactory.isViewSpec(spec),
+
+            createView: function (spec, parent, defaultName) {
+                return self.viewFactory.createView(
+                    spec,
+                    context,
+                    parent,
+                    defaultName
+                );
+            },
         };
 
         /** @type {import("./spec/view").ViewSpec & RootConfig} */
@@ -256,8 +274,7 @@ export default class GenomeSpy {
         }
 
         // Create the view hierarchy
-        /** @type {import("./view/view").default} */
-        this.viewRoot = createView(rootSpec, context);
+        this.viewRoot = context.createView(rootSpec, null, "viewRoot");
 
         // Replace placeholder ImportViews with actual views.
         await processImports(this.viewRoot);
@@ -347,6 +364,7 @@ export default class GenomeSpy {
         }
 
         // Allow layout computation
+        // eslint-disable-next-line require-atomic-updates
         context.requestLayoutReflow = this.computeLayout.bind(this);
 
         // Invalidate cached sizes to ensure that step-based sizes are current.
