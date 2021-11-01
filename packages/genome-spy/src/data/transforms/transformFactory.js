@@ -17,9 +17,6 @@ import FlattenSequenceTransform from "./flattenSequence";
 import AggregateTransform from "./aggregate";
 import IdentifierTransform from "./identifier";
 
-// TODO: MergeFacets should be added dynamically by the App
-import MergeSampleFacets from "../../app/sampleView/mergeFacets";
-
 /**
  * TODO: Make this dynamic
  *
@@ -28,7 +25,7 @@ import MergeSampleFacets from "../../app/sampleView/mergeFacets";
  *
  * @type {Record<string, new (params: any, view?: View) => FlowNode>}
  */
-const transforms = {
+export const transforms = {
     aggregate: AggregateTransform,
     collect: Collector,
     coverage: CoverageTransform,
@@ -41,7 +38,6 @@ const transforms = {
     identifier: IdentifierTransform,
     linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
     measureText: MeasureTextTransform,
-    mergeFacets: MergeSampleFacets,
     pileup: PileupTransform,
     project: ProjectTransform,
     regexExtract: RegexExtractTransform,

@@ -20,6 +20,11 @@ import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "../utils/debounce";
 import Provenance from "./provenance";
 
+import MergeSampleFacets from "./sampleView/mergeFacets";
+import { transforms } from "../data/transforms/transformFactory";
+
+transforms.mergeFacets = MergeSampleFacets;
+
 /**
  * A simple wrapper for the GenomeSpy core.
  */
