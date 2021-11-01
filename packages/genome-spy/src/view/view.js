@@ -402,6 +402,16 @@ export default class View {
     }
 
     /**
+     * Returns a texture that has a mapping for the sample locations. This is implemented
+     * only in the SampleView of GenomeSpy App.
+     *
+     * @returns {WebGLTexture}
+     */
+    getSampleFacetTexture() {
+        return undefined;
+    }
+
+    /**
      *
      * @param {Channel} channel
      * @param {ResolutionTarget} type

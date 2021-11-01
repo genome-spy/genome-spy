@@ -867,6 +867,10 @@ export default class SampleView extends ContainerView {
         this.context.contextMenu({ items }, mouseEvent);
     }
 
+    getSampleFacetTexture() {
+        return this.facetTexture;
+    }
+
     /**
      * @param {string} channel
      * @param {import("../../view/containerView").ResolutionTarget} resolutionType

@@ -28,7 +28,6 @@ import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import { createProgram } from "../gl/webGLHelper";
-import SampleView from "../app/sampleView/sampleView";
 import AxisView from "../view/axisView";
 import { SampleAttributePanel } from "../app/sampleView/sampleAttributePanel";
 import coalesceProperties from "../utils/propertyCoalescer";
@@ -262,14 +261,6 @@ export default class Mark {
      */
     updateGraphicsData() {
         // override
-    }
-
-    _findSampleView() {
-        for (const view of this.unitView.getAncestors()) {
-            if (view instanceof SampleView) {
-                return view;
-            }
-        }
     }
 
     getSampleFacetMode() {
@@ -529,6 +520,7 @@ export default class Mark {
      *
      * @param {import("../view/rendering").GlobalRenderingOptions} options
      */
+    // eslint-disable-next-line complexity
     prepareRender(options) {
         const glHelper = this.glHelper;
         const gl = this.gl;
@@ -599,8 +591,17 @@ export default class Mark {
         }
 
         if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
+            /** @type {WebGLTexture} */
+            let facetTexture;
+            for (const view of this.unitView.getAncestors()) {
+                facetTexture = view.getSampleFacetTexture();
+                if (facetTexture) {
+                    break;
+                }
+            }
+
             setUniforms(this.programInfo, {
-                uSampleFacetTexture: this._findSampleView().facetTexture,
+                uSampleFacetTexture: facetTexture,
             });
         }
 
