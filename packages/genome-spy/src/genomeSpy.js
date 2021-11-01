@@ -703,7 +703,7 @@ export default class GenomeSpy {
     }
 
     renderAll() {
-        this._renderingContext.renderDeferred();
+        this._renderingContext?.renderDeferred();
 
         this._dirtyPickingBuffer = true;
     }
