@@ -1,4 +1,4 @@
-import { Group } from "../../sampleHandler/sampleHandler";
+import { Group } from "./sampleState";
 import { LocSize } from "../../utils/layout/flexLayout";
 
 export interface KeyAndLocation<T> {

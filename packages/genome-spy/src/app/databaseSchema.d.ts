@@ -1,6 +1,6 @@
 import { DBSchema } from "idb";
 import { ChromosomalLocus } from "../genome/genome";
-import { Action } from "./provenance";
+import { Action } from "../app/provenance";
 
 interface BookmarkEntry {
     name: string;

@@ -1,11 +1,11 @@
 import { range } from "d3-array";
 import { peek } from "../../utils/arrayUtils";
 import { invalidatePrefix } from "../../utils/propertyCacher";
-import LayerView from "../layerView";
+import LayerView from "../../view/layerView";
 
 /**
  * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("../view").default} View
+ * @typedef {import("../../view/view").default} View
  *
  */
 export class GroupPanel extends LayerView {
@@ -110,6 +110,10 @@ export class GroupPanel extends LayerView {
         );
 
         this.sampleView = sampleView;
+
+        this._addBroadcastHandler("layoutComputed", () => {
+            this.updateRange();
+        });
     }
 
     updateRange() {
@@ -143,6 +147,11 @@ export class GroupPanel extends LayerView {
             /** @type {import("../../data/sources/dynamicSource").default} */ (
                 this.context.dataFlow.findDataSourceByKey(this)
             );
+
+        if (!dynamicSource) {
+            // Why this happens? TODO: Investigate
+            return;
+        }
 
         const data = groupLocations.map((g) => ({
             _index: g.key.index,

@@ -1,24 +1,25 @@
-import { isFieldDef } from "../encoder/encoder";
+import { isFieldDef } from "../../encoder/encoder";
 import {
     isSampleGroup,
-    iterateGroupHierarcy,
-} from "../sampleHandler/sampleHandler";
-import { peek } from "../utils/arrayUtils";
-import { field } from "../utils/field";
-import kWayMerge from "../utils/kWayMerge";
-import SampleView from "../view/sampleView/sampleView";
-import UnitView from "../view/unitView";
-import Collector from "./collector";
-import FlowNode from "./flowNode";
+    iterateGroupHierarchy,
+    sampleHierarchySelector,
+} from "./sampleSlice";
+import { peek } from "../../utils/arrayUtils";
+import { field } from "../../utils/field";
+import kWayMerge from "../../utils/kWayMerge";
+import SampleView from "./sampleView";
+import UnitView from "../../view/unitView";
+import Collector from "../../data/collector";
+import FlowNode from "../../data/flowNode";
 
 /** The number of samples in a facet */
 const SAMPLE_COUNT_VARIABLE = "sampleCount";
 
 /**
- * Merges sample facets by groups that have been formed in SampleHandler.
+ * Merges sample facets by groups that have been formed in SampleSlice.
  * Propagates the merged facets as new facets.
  *
- * @typedef {import("../view/view").default} View
+ * @typedef {import("../../view/view").default} View
  */
 export default class MergeSampleFacets extends FlowNode {
     /**
@@ -35,11 +36,11 @@ export default class MergeSampleFacets extends FlowNode {
 
         for (const v of view.getAncestors()) {
             if (v instanceof SampleView) {
-                this.provenance = v.sampleHandler.provenance;
-                this.provenance.addListener((state) =>
+                this.provenance = v.provenance;
+                this.provenance.subscribe((state) =>
                     animator.requestTransition(() => {
                         this.reset();
-                        this._mergeAndPropagate(state);
+                        this._mergeAndPropagate(sampleHierarchySelector(state));
                         this.complete();
                     })
                 );
@@ -67,7 +68,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     /**
-     * @param {import("./flowNode").Datum} datum
+     * @param {import("../../data/flowNode").Datum} datum
      */
     handle(datum) {
         // NOP. Block propagation.
@@ -90,17 +91,19 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     complete() {
-        this._mergeAndPropagate(this.provenance.state);
+        this._mergeAndPropagate(
+            sampleHierarchySelector(this.provenance.getState())
+        );
         super.complete();
     }
 
     /**
-     * @param {import("../sampleHandler/sampleState").State} state
+     * @param {import("./sampleSlice").SampleHierarchy} sampleHierarchy
      */
-    _mergeAndPropagate(state) {
-        const groupPaths = [...iterateGroupHierarcy(state.rootGroup)].filter(
-            (path) => isSampleGroup(peek(path))
-        );
+    _mergeAndPropagate(sampleHierarchy) {
+        const groupPaths = [
+            ...iterateGroupHierarchy(sampleHierarchy.rootGroup),
+        ].filter((path) => isSampleGroup(peek(path)));
 
         for (const [i, groupPath] of groupPaths.entries()) {
             const group = peek(groupPath);
@@ -144,7 +147,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     _updateScales() {
-        /** @type {Set<import("../view/view").ScaleResolution>} */
+        /** @type {Set<import("../../view/view").ScaleResolution>} */
         const resolutions = new Set();
         this.view.visit((view) => {
             if (view instanceof UnitView && view.mark.encoding.y) {

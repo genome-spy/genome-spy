@@ -1,4 +1,4 @@
-import { getViewClass, isLayerSpec, isUnitSpec } from "./viewUtils";
+import { isLayerSpec, isUnitSpec } from "./viewFactory";
 import ContainerView from "./containerView";
 
 /**
@@ -20,11 +20,7 @@ export default class LayerView extends ContainerView {
         /** @type {(LayerView | import("./unitView").default)[]} */
         this.children = (spec.layer || []).map((childSpec, i) => {
             if (isLayerSpec(childSpec) || isUnitSpec(childSpec)) {
-                const View = getViewClass(childSpec);
-                const view = new View(childSpec, context, this, `layer${i}`);
-                return /** @type {LayerView | import("./unitView").default} */ (
-                    view
-                );
+                return context.createView(childSpec, this, "layer" + i);
             } else {
                 throw new Error(
                     "LayerView accepts only unit or layer specs as children!"

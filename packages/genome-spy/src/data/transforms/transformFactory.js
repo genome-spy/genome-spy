@@ -7,7 +7,6 @@ import FlattenDelimitedTransform from "./flattenDelimited";
 import FormulaTransform from "./formula";
 import LinearizeGenomicCoordinate from "./linearizeGenomicCoordinate";
 import MeasureTextTransform from "./measureText";
-import MergeSampleFacets from "../mergeFacets";
 import PileupTransform from "./pileup";
 import ProjectTransform from "./project";
 import RegexExtractTransform from "./regexExtract";
@@ -19,12 +18,14 @@ import AggregateTransform from "./aggregate";
 import IdentifierTransform from "./identifier";
 
 /**
+ * TODO: Make this dynamic
+ *
  * @typedef {import("../../view/view").default} View
  * @typedef {import("../flowNode").default} FlowNode
  *
  * @type {Record<string, new (params: any, view?: View) => FlowNode>}
  */
-const transforms = {
+export const transforms = {
     aggregate: AggregateTransform,
     collect: Collector,
     coverage: CoverageTransform,
@@ -37,7 +38,6 @@ const transforms = {
     identifier: IdentifierTransform,
     linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
     measureText: MeasureTextTransform,
-    mergeFacets: MergeSampleFacets,
     pileup: PileupTransform,
     project: ProjectTransform,
     regexExtract: RegexExtractTransform,

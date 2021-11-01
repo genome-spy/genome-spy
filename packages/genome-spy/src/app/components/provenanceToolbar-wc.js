@@ -1,31 +1,24 @@
-import { html, LitElement, nothing } from "lit";
+import { html, LitElement } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faUndo,
     faRedo,
     faEllipsisH,
     faCircle,
-    faCheck,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "./dropdown";
+import { toggleDropdown } from "../../utils/ui/dropdown";
 
 export default class ProvenanceButtons extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("./provenance").default<any>} */
+        /** @type {import("../provenance").default<any>} */
         this.provenance = undefined;
-    }
-
-    static get properties() {
-        return {
-            provenance: { type: Object },
-        };
     }
 
     connectedCallback() {
         super.connectedCallback();
-        this.provenance?.addListener(() => {
+        this.provenance.subscribe(() => {
             this.requestUpdate();
         });
     }
@@ -40,10 +33,6 @@ export default class ProvenanceButtons extends LitElement {
     }
 
     render() {
-        if (!this.provenance?.isInitialized()) {
-            return nothing;
-        }
-
         /**
          *
          * @param {any} action
@@ -55,16 +44,12 @@ export default class ProvenanceButtons extends LitElement {
                 <li>
                     <a
                         @click=${() => this.provenance.activateState(index)}
-                        class=${index == this.provenance.currentNodeIndex
+                        class=${index == this.provenance.getCurrentIndex()
                             ? "active"
                             : ""}
                     >
-                        ${index == 0 && !action
-                            ? html` ${icon(faCheck).node[0]} The initial state `
-                            : html`
-                                  ${icon(info.icon || faCircle).node[0]}
-                                  ${info.provenanceTitle || info.title}
-                              `}
+                        ${icon(info.icon || faCircle).node[0]}
+                        ${info.provenanceTitle || info.title}
                     </a>
                 </li>
             `;
@@ -89,7 +74,10 @@ export default class ProvenanceButtons extends LitElement {
         `;
 
         return html`
-            <div class="btn-group" @click=${(e) => e.stopPropagation()}>
+            <div
+                class="btn-group"
+                @click=${(/** @type {MouseEvent} */ e) => e.stopPropagation()}
+            >
                 <button
                     class="tool-btn"
                     title="Backtrack samples (B)"

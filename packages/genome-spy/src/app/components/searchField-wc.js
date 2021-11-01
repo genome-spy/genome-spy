@@ -3,10 +3,10 @@ import { createRef, ref } from "lit/directives/ref.js";
 import { guard } from "lit/directives/guard.js";
 import { zoomLinear } from "vega-util";
 
-import { SampleAttributePanel } from "../view/sampleView/sampleAttributePanel";
-import { sampleIterable } from "../data/transforms/sample";
-import { debounce } from "../utils/debounce";
-import { VISIT_STOP } from "../view/view";
+import { SampleAttributePanel } from "../sampleView/sampleAttributePanel";
+import { sampleIterable } from "../../data/transforms/sample";
+import { debounce } from "../../utils/debounce";
+import { VISIT_STOP } from "../../view/view";
 
 export default class SearchField extends LitElement {
     constructor() {
@@ -14,7 +14,7 @@ export default class SearchField extends LitElement {
 
         this.inputRef = createRef();
 
-        /** @type {import("../genomeSpy").default} */
+        /** @type {import("../../genomeSpy").default} */
         this.genomeSpy = undefined;
 
         /** @type {function():string} */

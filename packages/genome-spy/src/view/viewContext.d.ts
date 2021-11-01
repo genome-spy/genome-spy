@@ -1,5 +1,5 @@
 import { TemplateResult } from "lit";
-import View from "../view/view";
+import View from "./view";
 import DataFlow from "../data/dataFlow";
 import AccessorFactory from "../encoder/accessor";
 import WebGLHelper from "../gl/webGLHelper";
@@ -9,7 +9,12 @@ import { MenuOptions } from "../utils/ui/contextMenu";
 import BmFontManager from "../fonts/bmFontManager";
 import Mark from "../marks/mark";
 import { Datum } from "../data/flowNode";
+import { ViewSpec } from "../spec/view";
+import ContainerView from "./containerView";
 
+/**
+ * ViewContext provides essential data and interfaces to View classes.
+ */
 export default interface ViewContext {
     dataFlow: DataFlow<View>;
     accessorFactory: AccessorFactory;
@@ -42,4 +47,12 @@ export default interface ViewContext {
     ) => void;
 
     getNamedData: (name: string) => any[];
+
+    isViewSpec: (spec: any) => boolean;
+
+    createView: (
+        spec: ViewSpec,
+        parent?: ContainerView,
+        defaultName?: string
+    ) => View;
 }

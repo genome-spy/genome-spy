@@ -1,7 +1,7 @@
-import { isNumber, isString } from "vega-util";
+import { isNumber, isObject, isString } from "vega-util";
 import { html, render } from "lit";
-import { findEncodedFields, getViewClass } from "../viewUtils";
-import ContainerView from "../containerView";
+import { findEncodedFields } from "../../view/viewUtils";
+import ContainerView from "../../view/containerView";
 import {
     interpolateLocSizes,
     locSizeEncloses,
@@ -10,22 +10,29 @@ import {
     translateLocSize,
 } from "../../utils/layout/flexLayout";
 import { SampleAttributePanel } from "./sampleAttributePanel";
-import SampleHandler from "../../sampleHandler/sampleHandler";
-import { peek } from "../../utils/arrayUtils";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "../../genome/locusFormat";
 import Padding from "../../utils/layout/padding";
-import smoothstep from "../../utils/smoothstep";
 import transition from "../../utils/transition";
 import { easeCubicOut, easeExpOut } from "d3-ease";
 import clamp from "../../utils/clamp";
 import createDataSource from "../../data/sources/dataSourceFactory";
 import FlowNode from "../../data/flowNode";
-import { createChain } from "../flowBuilder";
-import ConcatView from "../concatView";
-import UnitView from "../unitView";
+import { createChain } from "../../view/flowBuilder";
+import ConcatView from "../../view/concatView";
+import UnitView from "../../view/unitView";
 import { GroupPanel } from "./groupPanel";
 import { createOrUpdateTexture } from "../../gl/webGLHelper";
+import {
+    createSampleSlice,
+    getActionInfo,
+    getFlattenedGroupHierarchy,
+    sampleHierarchySelector,
+} from "./sampleSlice";
+import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
+import { watch } from "../../utils/state/watch";
+import { createSelector } from "@reduxjs/toolkit";
+import { calculateLocations, getSampleLocationAt } from "./locations";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -36,20 +43,15 @@ const SPACING = 10;
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
  *
- * @typedef {import("../../sampleHandler/sampleState").Group} Group
+ * @typedef {import("./sampleState").Group} Group
+ * @typedef {import("./sampleState").Sample} Sample
  * @typedef {import("../../utils/layout/flexLayout").LocSize} LocSize
- * @typedef {import("../view").default} View
- * @typedef {import("../layerView").default} LayerView
- * @typedef {import("../decoratorView").default} DecoratorView
+ * @typedef {import("../../view/view").default} View
+ * @typedef {import("../../view/layerView").default} LayerView
+ * @typedef {import("../../view/decoratorView").default} DecoratorView
  * @typedef {import("../../data/dataFlow").default<View>} DataFlow
  * @typedef {import("../../data/sources/dynamicSource").default} DynamicSource
  * @typedef {import("../../genome/genome").ChromosomalLocus} ChromosomalLocus
- *
- * @typedef {object} Sample Sample metadata
- * @prop {string} id
- * @prop {string} displayName
- * @prop {number} indexNumber For internal user, mainly for shaders
- * @prop {Record<string, any>} attributes Arbitrary sample specific attributes
  *
  * @typedef {object} LocusSpecifier
  * @prop {string[]} path Relative path to the view
@@ -62,22 +64,26 @@ const SPACING = 10;
 export default class SampleView extends ContainerView {
     /**
      *
-     * @param {import("../viewUtils").SampleSpec} spec
-     * @param {import("../viewUtils").ViewContext} context
+     * @param {import("../../view/viewUtils").SampleSpec} spec
+     * @param {import("../../view/viewUtils").ViewContext} context
      * @param {ContainerView} parent
      * @param {string} name
+     * @param {import("../provenance").default<any>} provenance
      */
-    constructor(spec, context, parent, name) {
+    constructor(spec, context, parent, name, provenance) {
         super(spec, context, parent, name);
 
-        this.spec = spec;
+        this.provenance = provenance;
 
+        this.spec = spec;
         this.stickySummaries = spec.stickySummaries ?? true;
 
-        const View = getViewClass(spec.spec);
+        // TODO: Make this a function, not a class
+        this.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
+
         /** @type { UnitView | LayerView | DecoratorView } */
         this.child = /** @type { UnitView | LayerView | DecoratorView } */ (
-            new View(spec.spec, context, this, `sampleFacet`)
+            context.createView(spec.spec, this, `sampleFacet`)
         );
 
         this.summaryViews = new ConcatView(
@@ -114,20 +120,6 @@ export default class SampleView extends ContainerView {
         /** @type {Float32Array} */
         this.facetTextureData = undefined;
 
-        this.sampleHandler = new SampleHandler();
-
-        this.sampleHandler.provenance.addListener(() => {
-            this._locations = undefined;
-
-            this.groupPanel.updateGroups();
-
-            // TODO: Handle scroll offset instead
-            this._peekState = 0;
-
-            this.context.requestLayoutReflow();
-            this.context.animator.requestRender();
-        });
-
         /** @type {ConcatView} */
         this.peripheryView = new ConcatView(
             {
@@ -154,7 +146,46 @@ export default class SampleView extends ContainerView {
             this._handleContextMenu.bind(this)
         );
 
-        this.sampleHandler.addAttributeInfoSource(
+        this.provenance.subscribe(
+            watch(
+                (state) => sampleHierarchySelector(state).rootGroup,
+                (rootGroup) => {
+                    this._locations = undefined;
+                    this.groupPanel.updateGroups();
+
+                    // TODO: Handle scroll offset instead
+                    this._peekState = 0;
+
+                    this.context.requestLayoutReflow();
+                    this.context.animator.requestRender();
+                }
+            )
+        );
+
+        this.provenance.subscribe(
+            watch(
+                (state) => sampleHierarchySelector(state).sampleData,
+                (sampleData) => {
+                    const samples =
+                        sampleData && Object.values(sampleData.entities);
+                    if (!samples) {
+                        return;
+                    }
+
+                    this.attributePanel._setSamples(samples);
+
+                    // Align size to four bytes
+                    this.facetTextureData = new Float32Array(
+                        Math.ceil((samples.length * 2) / 4) * 4
+                    );
+
+                    // Feed some initial dynamic data.
+                    this.groupPanel.updateGroups();
+                }
+            )
+        );
+
+        this.compositeAttributeInfoSource.addAttributeInfoSource(
             VALUE_AT_LOCUS,
             (attribute) => {
                 const specifier = /** @type {LocusSpecifier} */ (
@@ -192,7 +223,7 @@ export default class SampleView extends ContainerView {
                     name: specifier.field,
                     // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
                     title: html`
-                        <em>${specifier.field}</em>
+                        <em class="attribute">${specifier.field}</em>
                         <span class="viewTitle"
                             >(${view.spec.title || view.name})</span
                         >
@@ -209,12 +240,12 @@ export default class SampleView extends ContainerView {
             }
         );
 
+        this._addBroadcastHandler("dataLoaded", () =>
+            this.extractSamplesFromData()
+        );
+
         this._addBroadcastHandler("layout", () => {
             this._locations = undefined;
-        });
-
-        this._addBroadcastHandler("layoutComputed", () => {
-            this.groupPanel.updateRange();
         });
 
         this._scrollOffset = 0;
@@ -277,6 +308,30 @@ export default class SampleView extends ContainerView {
             }
         });
 
+        const getAttributeInfo = (
+            /** @type {import("./types").AttributeInfo} */ attribute
+        ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
+
+        const sampleSlice = createSampleSlice(getAttributeInfo);
+        this.provenance.addReducer(sampleSlice.name, sampleSlice.reducer);
+        this.provenance.addActionInfoSource(
+            (
+                /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ action
+            ) => getActionInfo(action, getAttributeInfo)
+        );
+
+        this.actions = sampleSlice.actions;
+
+        const sampleSelector = createSelector(
+            (
+                /** @type {import("./sampleState").SampleHierarchy} */ sampleHierarchy
+            ) => sampleHierarchy.sampleData?.entities,
+            (entities) => entities && Object.values(entities)
+        );
+
+        /** Returns the samples as a flat array */
+        this.getSamples = () => sampleSelector(this.sampleHierarchy);
+
         if (this.spec.samples.data) {
             this.loadSamples();
         } else {
@@ -303,64 +358,6 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {Sample[]} samples
-     */
-    _setSamples(samples) {
-        if (this._samples) {
-            throw new Error("Samples have already been set!");
-        }
-
-        if (
-            samples.some(
-                (sample) => sample.id === undefined || sample.id === null
-            )
-        ) {
-            throw new Error(
-                'The sample metadata contains missing sample ids or the "sample" column is missing!'
-            );
-        }
-
-        if (
-            new Set(samples.map((sample) => sample.id)).size != samples.length
-        ) {
-            throw new Error(
-                "The sample metadata contains duplicate sample ids!"
-            );
-        }
-
-        samples = samples.map((sample, index) => ({
-            ...sample,
-            indexNumber: index,
-        }));
-
-        this._samples = samples;
-
-        this.sampleHandler.setSamples(samples.map((sample) => sample.id));
-
-        this.sampleMap = new Map(samples.map((sample) => [sample.id, sample]));
-
-        /** @param {string} sampleId */
-        this.sampleAccessor = (sampleId) => this.sampleMap.get(sampleId);
-
-        this.attributePanel._setSamples(samples);
-
-        // Align size to four bytes
-        this.facetTextureData = new Float32Array(
-            Math.ceil((samples.length * 2) / 4) * 4
-        );
-
-        // Feed some initial dynamic data.
-        this.groupPanel.updateGroups();
-    }
-
-    /**
-     * Get all existing samples that are known to the SampleView
-     */
-    getAllSamples() {
-        return this._samples;
-    }
-
-    /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
@@ -369,8 +366,8 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../view").default} child
-     * @param {import("../view").default} replacement
+     * @param {import("../../view/view").default} child
+     * @param {import("../../view/view").default} replacement
      */
     replaceChild(child, replacement) {
         const r = /** @type {UnitView | LayerView | DecoratorView} */ (
@@ -386,7 +383,7 @@ export default class SampleView extends ContainerView {
     loadSamples() {
         if (!this.spec.samples.data) {
             throw new Error(
-                "SampleView has no explicit sample metadata specified!"
+                "SampleView has no explicit sample metadata specified! Cannot load anything."
             );
         }
 
@@ -397,7 +394,7 @@ export default class SampleView extends ContainerView {
 
         collector.observers.push((collector) => {
             const samples = /** @type {Sample[]} */ (collector.getData());
-            this._setSamples([...samples]);
+            this.provenance.dispatch(this.actions.setSamples({ samples }));
         });
 
         // Synchronize loading with other data
@@ -406,10 +403,10 @@ export default class SampleView extends ContainerView {
     }
 
     extractSamplesFromData() {
-        if (this._samples) {
+        if (this.getSamples()) {
             return; // NOP
         }
-        // TODO: Call this from somewhere!
+
         const resolution = this.getScaleResolution("sample");
         if (resolution) {
             const samples = resolution.getDataDomain().map((s, i) => ({
@@ -419,12 +416,16 @@ export default class SampleView extends ContainerView {
                 attributes: [],
             }));
 
-            this._setSamples(samples);
+            this.provenance.dispatch(this.actions.setSamples({ samples }));
         } else {
             throw new Error(
                 "No explicit sample data nor sample channels found!"
             );
         }
+    }
+
+    get sampleHierarchy() {
+        return sampleHierarchySelector(this.provenance.getState());
     }
 
     getLocations() {
@@ -433,8 +434,9 @@ export default class SampleView extends ContainerView {
                 return;
             }
 
-            const flattened = this.sampleHandler.getFlattenedGroupHierarchy();
-            const groupAttributes = [null, ...this.sampleHandler.state.groups];
+            const sampleHierarchy = this.sampleHierarchy;
+            const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
+            const groupAttributes = [null, ...sampleHierarchy.groupMetadata];
 
             const summaryHeight = this.summaryViews?.getSize().height.px ?? 0;
 
@@ -496,7 +498,10 @@ export default class SampleView extends ContainerView {
 
                 const attrId = groupAttributes[entry.key.depth].attribute;
 
-                const title = this.sampleHandler.getAttributeInfo(attrId).title;
+                const title =
+                    this.compositeAttributeInfoSource.getAttributeInfo(
+                        attrId
+                    ).title;
                 if (!title) {
                     entry.key.attributeLabel = "unknown";
                 } else if (isString(title)) {
@@ -528,10 +533,10 @@ export default class SampleView extends ContainerView {
     /**
      * @param {number} pos
      */
-    getSampleIdAt(pos) {
+    getSampleAt(pos) {
         const match = getSampleLocationAt(pos, this.getLocations().samples);
         if (match) {
-            return match.key;
+            return this.sampleHierarchy.sampleData.entities[match.key];
         }
     }
 
@@ -563,9 +568,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
      * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../view").RenderingOptions} [options]
+     * @param {import("../../view/view").RenderingOptions} [options]
      */
     renderChild(context, coords, options = {}) {
         const heightFactor = 1 / coords.height;
@@ -589,9 +594,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
      * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../view").RenderingOptions} [options]
+     * @param {import("../../view/view").RenderingOptions} [options]
      */
     renderSummaries(context, coords, options = {}) {
         options = {
@@ -628,9 +633,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
      * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../view").RenderingOptions} [options]
+     * @param {import("../../view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         coords = coords.shrink(this.getPadding());
@@ -667,19 +672,21 @@ export default class SampleView extends ContainerView {
     }
 
     _updateFacetTexture() {
-        const sampleLocations = this.getLocations().samples;
-        const sampleMap = this.sampleMap;
         const arr = this.facetTextureData;
-
         arr.fill(0);
 
-        const height = this._coords.height;
+        const entities = this.sampleHierarchy.sampleData?.entities;
+        if (entities) {
+            const sampleLocations = this.getLocations().samples;
 
-        for (const sampleLocation of sampleLocations) {
-            // TODO: Get rid of the map lookup
-            const index = sampleMap.get(sampleLocation.key).indexNumber;
-            arr[index * 2 + 0] = sampleLocation.locSize.location / height;
-            arr[index * 2 + 1] = sampleLocation.locSize.size / height;
+            const height = this._coords.height;
+
+            for (const sampleLocation of sampleLocations) {
+                // TODO: Get rid of the map lookup
+                const index = entities[sampleLocation.key].indexNumber;
+                arr[index * 2 + 0] = sampleLocation.locSize.location / height;
+                arr[index * 2 + 1] = sampleLocation.locSize.size / height;
+            }
         }
 
         const gl = this.context.glHelper.gl;
@@ -723,7 +730,7 @@ export default class SampleView extends ContainerView {
 
         if (this._peekState == 0) {
             const mouseY = this._lastMouseY;
-            const sampleId = this.getSampleIdAt(mouseY);
+            const sampleId = this.getSampleAt(mouseY)?.id;
 
             let target;
             if (sampleId) {
@@ -812,7 +819,7 @@ export default class SampleView extends ContainerView {
                 ["rect", "rule"].includes(info.view.getMarkType())
             );
 
-        const dispatch = this.sampleHandler.dispatch.bind(this.sampleHandler);
+        const dispatch = this.provenance.getDispatcher();
 
         /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         let items = [
@@ -839,7 +846,7 @@ export default class SampleView extends ContainerView {
                 locus: complexX,
             };
 
-            /** @type {import("../../sampleHandler/sampleHandler").AttributeIdentifier} */
+            /** @type {import("./types").AttributeIdentifier} */
             const attribute = { type: VALUE_AT_LOCUS, specifier };
 
             if (i > 0) {
@@ -856,7 +863,7 @@ export default class SampleView extends ContainerView {
                     "quantitative", // TODO
                     undefined, // TODO
                     dispatch,
-                    this.sampleHandler.provenance
+                    this
                 )
             );
         }
@@ -864,9 +871,13 @@ export default class SampleView extends ContainerView {
         this.context.contextMenu({ items }, mouseEvent);
     }
 
+    getSampleFacetTexture() {
+        return this.facetTexture;
+    }
+
     /**
      * @param {string} channel
-     * @param {import("../containerView").ResolutionTarget} resolutionType
+     * @param {import("../../view/containerView").ResolutionTarget} resolutionType
      * @returns {import("../../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
@@ -925,159 +936,15 @@ function extractAttributes(row) {
 }
 
 /**
- * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
- * @param {object} object All measures are in pixels
- * @param {number} [object.viewHeight] Height reserved for all the samples
- * @param {number} [object.sampleHeight] Height of single sample
- * @param {number} [object.groupSpacing] Space between groups
- * @param {number} [object.summaryHeight] Height of group summaries
  *
+ * @param {import("../../spec/view").ViewSpec} spec
+ * @returns {spec is SampleSpec}
  */
-function calculateLocations(
-    flattenedGroupHierarchy,
-    { viewHeight = 0, sampleHeight = 0, groupSpacing = 5, summaryHeight = 0 }
-) {
-    if (!viewHeight && !sampleHeight) {
-        throw new Error("viewHeight or sampleHeight must be provided!");
-    }
-
-    /** @param {Group[]} path */
-    const getSampleGroup = (path) =>
-        /** @type {import("../../sampleHandler/sampleHandler").SampleGroup} */ (
-            peek(path)
-        );
-
-    const sampleGroupEntries = flattenedGroupHierarchy
-        .map((path) => ({
-            path,
-            sampleGroup: getSampleGroup(path),
-            samples: getSampleGroup(path).samples,
-        }))
-        // Skip empty groups
-        .filter((entry) => entry.samples.length);
-
-    /** @type {function(string[]):import("../../utils/layout/flexLayout").SizeDef} */
-    const sizeDefGenerator = sampleHeight
-        ? (group) => ({
-              px: group.length * sampleHeight + summaryHeight,
-              grow: 0,
-          })
-        : (group) => ({ px: summaryHeight, grow: group.length });
-
-    /** @type {GroupLocation[]}} */
-    const groupLocations = [];
-
-    mapToPixelCoords(
-        sampleGroupEntries.map((entry) => sizeDefGenerator(entry.samples)),
-        viewHeight,
-        { spacing: groupSpacing }
-    ).forEach((location, i) => {
-        groupLocations.push({
-            key: sampleGroupEntries[i].path,
-            locSize: location,
-        });
-    });
-
-    /** @type {SampleLocation[]} */
-    const sampleLocations = [];
-
-    for (const [gi, entry] of sampleGroupEntries.entries()) {
-        const sizeDef = { grow: 1 };
-        const samples = entry.samples;
-        mapToPixelCoords(
-            samples.map((d) => sizeDef),
-            Math.max(0, groupLocations[gi].locSize.size - summaryHeight),
-            {
-                offset: groupLocations[gi].locSize.location + summaryHeight,
-            }
-        ).forEach((locSize, i) => {
-            const { size, location } = locSize;
-
-            // TODO: Make padding configurable
-            const padding = size * 0.1 * smoothstep(15, 22, size);
-
-            locSize.location = location + padding;
-            locSize.size = size - 2 * padding;
-
-            sampleLocations.push({
-                key: samples[i],
-                locSize: locSize,
-            });
-        });
-    }
-
-    function* extract() {
-        /** @type {{group: Group, locSize: LocSize, depth: number, n: number}[]} */
-        const stack = [];
-        for (const entry of groupLocations) {
-            const path = entry.key;
-            const last =
-                /** @type {import("../../sampleHandler/sampleState").SampleGroup} */ (
-                    peek(path)
-                );
-
-            while (
-                stack.length <= path.length &&
-                stack.length &&
-                path[stack.length - 1] != stack[stack.length - 1].group
-            ) {
-                yield stack.pop();
-            }
-
-            for (let i = 0; i < stack.length; i++) {
-                const stackItem = stack[i];
-                stackItem.locSize.size =
-                    entry.locSize.location -
-                    stackItem.locSize.location +
-                    entry.locSize.size;
-            }
-
-            for (let i = stack.length; i < path.length; i++) {
-                stack.push({
-                    group: path[i],
-                    locSize: { ...entry.locSize },
-                    depth: stack.length,
-                    n: 0,
-                });
-            }
-
-            for (const group of stack) {
-                group.n += last.samples.length;
-            }
-        }
-
-        while (stack.length) {
-            yield stack.pop();
-        }
-    }
-
-    /** @type {import("./sampleViewTypes").HierarchicalGroupLocation[]} */
-    const groups = [...extract()]
-        .sort((a, b) => a.depth - b.depth)
-        .map((entry, index) => ({
-            key: {
-                index,
-                group: entry.group,
-                depth: entry.depth,
-                n: entry.n,
-                attributeLabel: undefined,
-            },
-            locSize: entry.locSize,
-        }));
-
-    return {
-        samples: sampleLocations,
-        summaries: groupLocations,
-        groups,
-    };
-}
-
-/**
- *
- * @param {number} pos Coordinate on unit scale
- * @param {SampleLocation[]} [sampleLocations]
- */
-function getSampleLocationAt(pos, sampleLocations) {
-    // TODO: Matching should be done without paddings
-    return sampleLocations.find((sl) => locSizeEncloses(sl.locSize, pos));
+export function isSampleSpec(spec) {
+    return (
+        "samples" in spec &&
+        isObject(spec.samples) &&
+        "spec" in spec &&
+        isObject(spec.spec)
+    );
 }

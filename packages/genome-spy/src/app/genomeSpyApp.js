@@ -9,15 +9,21 @@ import favIcon from "../img/genomespy-favicon.svg";
 import { html, render } from "lit";
 
 import { VISIT_STOP } from "../view/view";
-import SampleView from "../view/sampleView/sampleView";
-import BookmarkDatabase from "../sampleHandler/bookmarkDatabase";
+import SampleView, { isSampleSpec } from "./sampleView/sampleView";
+import BookmarkDatabase from "./bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
 
-import "../sampleHandler/provenanceToolbar-wc";
-import "../sampleHandler/bookmarkButton-wc";
-import "./toolbar-wc";
+import "./components/provenanceToolbar-wc";
+import "./components/bookmarkButton-wc";
+import "./components/toolbar-wc";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "../utils/debounce";
+import Provenance from "./provenance";
+
+import MergeSampleFacets from "./sampleView/mergeFacets";
+import { transforms } from "../data/transforms/transformFactory";
+
+transforms.mergeFacets = MergeSampleFacets;
 
 /**
  * A simple wrapper for the GenomeSpy core.
@@ -30,52 +36,55 @@ export default class GenomeSpyApp {
      * @param {import("../options").EmbedOptions} options
      */
     constructor(appContainerElement, config, options = {}) {
+        // eslint-disable-next-line consistent-this
+        const self = this;
+
         this.config = config;
+
+        this.provenance = new Provenance();
 
         this.toolbarRef = createRef();
 
         this.appContainer = appContainerElement;
-        if (this.isFullPage()) {
-            this.appContainer.style.margin = "0";
-            this.appContainer.style.padding = "0";
-            this.appContainer.style.overflow = "hidden";
-
-            setFavicon(favIcon);
-        } else {
-            this.appContainer.style.position = "relative";
-        }
-
-        // eslint-disable-next-line consistent-this
-        const self = this;
+        this._configureContainer();
 
         this.bookmarkDatabase =
             typeof config.specId == "string"
                 ? new BookmarkDatabase(config.specId)
                 : undefined;
 
-        this._renderTemplate = () => {
-            render(getAppBody(), self.appContainer);
-        };
+        render(
+            html`<div class="genome-spy-app">
+                <genome-spy-toolbar
+                    ${ref(self.toolbarRef)}
+                    .app=${self}
+                ></genome-spy-toolbar>
+                <div class="genome-spy-container"></div>
+            </div>`,
+            self.appContainer
+        );
 
-        function getAppBody() {
-            return html`
-                <div class="genome-spy-app">
-                    <genome-spy-toolbar
-                        ${ref(self.toolbarRef)}
-                        .app=${self}
-                    ></genome-spy-toolbar>
-                    <div class="genome-spy-container"></div>
-                </div>
-            `;
-        }
+        // Dependency injection
+        // TODO: Replace this with something standard-based when such a thing becomes available
+        self.appContainer
+            .querySelector(".genome-spy-app")
+            .addEventListener(
+                "query-dependency",
+                (
+                    /** @type {import("./genomeSpyAppTypes").DependencyQueryEvent} */ event
+                ) => {
+                    if (event.detail.name == "app") {
+                        event.detail.setter(self);
+                        event.stopPropagation();
+                    }
+                }
+            );
 
         /** @param {string} className */
         const elem = (className) =>
             /** @type {HTMLElement} */ (
                 this.appContainer.getElementsByClassName(className)[0]
             );
-
-        this._renderTemplate();
 
         elem("genome-spy-container").addEventListener("click", (event) => {
             elem("search-input").blur();
@@ -85,6 +94,18 @@ export default class GenomeSpyApp {
             elem("genome-spy-container"),
             this.config,
             options
+        );
+
+        this.genomeSpy.viewFactory.addViewType(
+            isSampleSpec,
+            (spec, context, parent, defaultName) =>
+                new SampleView(
+                    spec,
+                    context,
+                    parent,
+                    defaultName,
+                    this.provenance
+                )
         );
     }
 
@@ -107,7 +128,7 @@ export default class GenomeSpyApp {
         }
 
         await this._restoreStateFromUrl();
-        this.getSampleHandler()?.provenance.addListener(() => {
+        this.provenance.subscribe(() => {
             this._updateStateToUrl();
         });
 
@@ -122,9 +143,10 @@ export default class GenomeSpyApp {
             }
         }
 
-        const toolbar = /** @type {import("./toolbar-wc").default} */ (
-            this.toolbarRef.value
-        );
+        const toolbar =
+            /** @type {import("./components/toolbar-wc").default} */ (
+                this.toolbarRef.value
+            );
         // Just trigger re-render. Need a way to broadcast this to all components.
         toolbar.appInitialized = true;
 
@@ -145,8 +167,8 @@ export default class GenomeSpyApp {
             scaleDomains: {},
         };
 
-        const history = this.getSampleHandler()?.provenance.getActionHistory();
-        if (history?.length) {
+        const history = this.provenance.getBookmarkableActionHistory();
+        if (history.length) {
             hashData.actions = history;
         }
 
@@ -183,12 +205,9 @@ export default class GenomeSpyApp {
                     decompressFromEncodedURIComponent(hash.substr(1))
                 );
 
-                const sampleHandler = this.getSampleHandler();
-                if (sampleHandler && hashData.actions) {
+                if (hashData.actions) {
                     // This is copypaste from bookmarks. TODO: consolidate
-
-                    sampleHandler.provenance.activateState(0);
-                    sampleHandler.dispatchBatch(hashData.actions);
+                    this.provenance.dispatchBookmark(hashData.actions);
                 }
 
                 /** @type {Promise<void>[]} */
@@ -212,8 +231,20 @@ export default class GenomeSpyApp {
             } catch (e) {
                 console.error(e);
                 alert(`Cannot restore state from URL:\n${e}`);
-                this.getSampleHandler()?.provenance.activateState(0);
+                this.provenance.activateState(0);
             }
+        }
+    }
+
+    _configureContainer() {
+        if (this.isFullPage()) {
+            this.appContainer.style.margin = "0";
+            this.appContainer.style.padding = "0";
+            this.appContainer.style.overflow = "hidden";
+
+            setFavicon(favIcon);
+        } else {
+            this.appContainer.style.position = "relative";
         }
     }
 
@@ -238,7 +269,7 @@ export default class GenomeSpyApp {
             return;
         }
 
-        /** @type {import("../view/sampleView/sampleView").default} */
+        /** @type {import("./sampleView/sampleView").default} */
         let sampleView;
 
         this.genomeSpy.viewRoot.visit((view) => {
@@ -249,10 +280,6 @@ export default class GenomeSpyApp {
         });
 
         return sampleView;
-    }
-
-    getSampleHandler() {
-        return this.getSampleView()?.sampleHandler;
     }
 }
 

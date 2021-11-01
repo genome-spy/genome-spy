@@ -7,15 +7,15 @@ import {
     faArrowsAltV,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField-wc";
-import { asArray } from "../utils/arrayUtils";
-import bowtie from "../img/bowtie.svg";
-import { messageBox } from "../utils/ui/modal";
+import { asArray } from "../../utils/arrayUtils";
+import bowtie from "../../img/bowtie.svg";
+import { messageBox } from "../../utils/ui/modal";
 
 export default class Toolbar extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("./genomeSpyApp").default} */
+        /** @type {import("../genomeSpyApp").default} */
         this.app = undefined;
 
         /** Just to signal (and re-render) once GenomeSpy has been launched */
@@ -34,14 +34,14 @@ export default class Toolbar extends LitElement {
     }
 
     _getToolButtons() {
-        const sampleHandler = this.app.getSampleHandler();
         const sampleView = this.app.getSampleView();
-        const provenance = sampleHandler?.provenance;
+        const provenance = this.app.provenance;
 
         /** @type {(import("lit").TemplateResult | string)[]} */
         const elements = [];
 
-        if (provenance) {
+        // Check that there's an undoable state
+        if (provenance.getState().past) {
             elements.push(
                 html`
                     <genome-spy-provenance-buttons .provenance=${provenance} />
@@ -49,26 +49,21 @@ export default class Toolbar extends LitElement {
             );
         }
 
-        if (sampleHandler) {
+        if (sampleView) {
             elements.push(html`
                 <button
                     class="tool-btn"
                     title="Peek (E)"
-                    @click=${() => this.app.getSampleView()._togglePeek()}
+                    @click=${() => sampleView._togglePeek()}
                 >
                     ${icon(faArrowsAltV).node[0]}
                 </button>
             `);
         }
 
-        if (sampleHandler && this.app.bookmarkDatabase) {
+        if (this.app.bookmarkDatabase) {
             elements.push(html`
-                <genome-spy-bookmark-button
-                    .genomeSpy=${this.app.genomeSpy}
-                    .sampleHandler=${sampleHandler}
-                    .bookmarkDatabase=${this.app.bookmarkDatabase}
-                    .sampleView=${sampleView}
-                ></genome-spy-bookmark-button>
+                <genome-spy-bookmark-button></genome-spy-bookmark-button>
             `);
         }
 

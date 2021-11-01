@@ -3,16 +3,16 @@ import { classMap } from "lit/directives/class-map.js";
 
 import { inferType } from "vega-loader";
 
-import ConcatView from "../concatView";
-import UnitView from "../unitView";
-import * as Actions from "../../sampleHandler/sampleHandlerActions";
+import ConcatView from "../../view/concatView";
+import UnitView from "../../view/unitView";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import formatObject from "../../utils/formatObject";
-import { buildDataFlow } from "../flowBuilder";
-import { NOMINAL, ORDINAL } from "../scaleResolution";
-import { resolveScalesAndAxes } from "../viewUtils";
+import { buildDataFlow } from "../../view/flowBuilder";
+import { NOMINAL, ORDINAL } from "../../view/scaleResolution";
+import { resolveScalesAndAxes } from "../../view/viewUtils";
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "../../utils/arrayUtils";
+import { ActionCreators } from "redux-undo";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -28,7 +28,7 @@ const attributeViewRegex = /^attribute-(.*)$/;
 
 /**
  * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("../view").default} View
+ * @typedef {import("../../view/view").default} View
  */
 
 /**
@@ -66,7 +66,7 @@ export class SampleAttributePanel extends ConcatView {
         };
 
         // TODO: Optimize the following
-        this.sampleHandler.addAttributeInfoSource(
+        this.sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_ATTRIBUTE,
             (attribute) =>
                 this.children
@@ -74,13 +74,15 @@ export class SampleAttributePanel extends ConcatView {
                     .find((info) => info && info.name == attribute.specifier)
         );
 
-        this.sampleHandler.addAttributeInfoSource(SAMPLE_NAME, (attribute) => ({
-            name: "displayName",
-            accessor: (sampleId) =>
-                this.sampleView.sampleAccessor(sampleId).displayName,
-            type: "nominal",
-            scale: undefined,
-        }));
+        this.sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
+            SAMPLE_NAME,
+            (attribute) => ({
+                name: "displayName",
+                accessor: (sampleId) => this.getSample(sampleId).displayName,
+                type: "nominal",
+                scale: undefined,
+            })
+        );
 
         this.addInteractionEventListener(
             "contextmenu",
@@ -122,10 +124,6 @@ export class SampleAttributePanel extends ConcatView {
         );
     }
 
-    get sampleHandler() {
-        return this.sampleView.sampleHandler;
-    }
-
     /**
      * @param {View} whoIsAsking
      * @returns {import("../../spec/channel").Encoding}
@@ -136,9 +134,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {import("../renderingContext/viewRenderingContext").default} context
+     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
      * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../view").RenderingOptions} [options]
+     * @param {import("../../view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         super.render(context, coords, {
@@ -191,16 +189,19 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     * @param {string} sampleId
+     */
+    getSample(sampleId) {
+        return this.sampleView.sampleHierarchy.sampleData?.entities[sampleId];
+    }
+
+    /**
      * @param {import("../../utils/layout/rectangle").default} coords
      *      Coordinates of the view
      * @param {import("../../utils/interactionEvent").default} event
      */
     _findSampleForMouseEvent(coords, event) {
-        const sampleId = this.sampleView.getSampleIdAt(
-            event.point.y - coords.y
-        );
-
-        return sampleId ? this.sampleView.sampleMap.get(sampleId) : undefined;
+        return this.sampleView.getSampleAt(event.point.y - coords.y);
     }
 
     /**
@@ -228,7 +229,7 @@ export class SampleAttributePanel extends ConcatView {
             return;
         }
 
-        const dispatch = this.sampleHandler.dispatch.bind(this.sampleHandler);
+        const dispatch = this.sampleView.provenance.getDispatcher();
 
         /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         const items = [];
@@ -243,7 +244,7 @@ export class SampleAttributePanel extends ConcatView {
                     attribute.type,
                     attributeValue,
                     dispatch,
-                    this.sampleHandler.provenance
+                    this.sampleView
                 )
             );
         } else {
@@ -254,6 +255,8 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
+     * TODO: Attach this to state observer
+     *
      * @param {Sample[]} samples
      */
     _setSamples(samples) {
@@ -330,14 +333,15 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     _getAttributeNames() {
+        // TODO: Use reselect
         return this._cache("attributeNames", () => {
-            const samples = this.sampleView.getAllSamples();
+            const samples = this.sampleView.getSamples();
 
             // Find all attributes
             const attributes = samples
                 .flatMap((sample) => Object.keys(sample.attributes))
                 .reduce(
-                    (set, key) => set.add(key),
+                    (set, key) => set.add(/** @type {string} */ (key)),
                     /** @type {Set<string>} */ (new Set())
                 );
 
@@ -356,7 +360,7 @@ export class SampleAttributePanel extends ConcatView {
         // Ensure that attributes have a type
         let fieldType = attributeDef ? attributeDef.type : undefined;
         if (!fieldType) {
-            const samples = this.sampleView.getAllSamples();
+            const samples = this.sampleView.getSamples();
             switch (
                 inferType(samples.map((sample) => sample.attributes[attribute]))
             ) {
@@ -387,7 +391,7 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {View} view
-     * @returns {import("../../sampleHandler/sampleHandler").AttributeInfo}
+     * @returns {import("./types").AttributeInfo}
      */
     getAttributeInfoFromView(view) {
         const nameMatch = view.name.match(attributeViewRegex);
@@ -397,20 +401,15 @@ export class SampleAttributePanel extends ConcatView {
 
             const attribute = nameMatch[1];
 
-            const sampleAccessor = this.sampleView.sampleAccessor;
-
-            /** @param {string} sampleId */
-            const accessor = (sampleId) => {
-                const sample = sampleAccessor(sampleId);
-                return sample.attributes[attribute];
-            };
-
             return {
                 name: attribute,
-                accessor,
+                accessor: (sampleId, sampleHierarchy) =>
+                    sampleHierarchy.sampleData.entities[sampleId].attributes[
+                        attribute
+                    ],
                 type: resolution.type,
                 scale: resolution.getScale(),
-                title: attribute,
+                title: html`<em class="attribute">${attribute}</em>`,
             };
         }
     }
@@ -436,7 +435,7 @@ export class SampleAttributePanel extends ConcatView {
         return [
             {
                 label: "Sort by name",
-                callback: () => dispatch(Actions.sortBy({ type: SAMPLE_NAME })),
+                callback: () => dispatch(this.sampleView.actions.sortByName()),
             },
             {
                 label: `Sample: ${sample.displayName}`,
@@ -461,7 +460,7 @@ export class SampleAttributePanel extends ConcatView {
         /** @type {string[]} */
         const [sampleId, attribute] = JSON.parse(sampleAndAttribute);
 
-        const sample = this.sampleView.sampleMap.get(sampleId);
+        const sample = this.getSample(sampleId);
 
         /**
          * @param {string} attribute
@@ -502,7 +501,7 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {string} channel
-     * @param {import("../containerView").ResolutionTarget} resolutionType
+     * @param {import("../../view/containerView").ResolutionTarget} resolutionType
      * @returns {import("../../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
@@ -526,38 +525,38 @@ export class SampleAttributePanel extends ConcatView {
         for (const name of this._getAttributeNames()) {
             const info = this.getAttributeInfo(name);
             if (info.type == ORDINAL || info.type == NOMINAL) {
-                const sample = this.sampleView._samples.find(
-                    (sample) => sample.attributes[info.name] == searchKey
-                );
-
-                if (sample) {
-                    /** @type {import("../../sampleHandler/provenance").Action[]} */
-                    const actions = [];
-
-                    // Undo the previous action if we are filtering a by the same nominal attribute
-                    const lastAction =
-                        this.sampleHandler.provenance.currentNode?.action;
-                    if (
-                        lastAction &&
-                        lastAction.type == Actions.FILTER_BY_NOMINAL &&
-                        lastAction.payload?.action == "retain" &&
-                        lastAction.payload?.attribute.type ==
-                            SAMPLE_ATTRIBUTE &&
-                        lastAction.payload?.attribute.specifier == name &&
-                        lastAction.payload?.values.length == 1
-                    ) {
-                        actions.push(Actions.undo());
-                    }
-
-                    actions.push(
-                        Actions.filterByNominal(
-                            { type: SAMPLE_ATTRIBUTE, specifier: name },
-                            "retain",
-                            [searchKey]
-                        )
+                const sample = this.sampleView
+                    .getSamples()
+                    .find(
+                        (sample) => sample.attributes[info.name] == searchKey
                     );
 
-                    this.sampleHandler.dispatchBatch(actions);
+                if (sample) {
+                    const action = this.sampleView.actions.filterByNominal({
+                        attribute: {
+                            type: SAMPLE_ATTRIBUTE,
+                            specifier: name,
+                        },
+                        values: [searchKey],
+                    });
+
+                    const lastAction =
+                        this.sampleView.provenance.getState().present
+                            .lastAction;
+                    // Undo the previous action if we are filtering by the same nominal attribute
+                    const shouldUndo =
+                        this.sampleView.actions.filterByNominal.match(
+                            lastAction
+                        ) &&
+                        !lastAction.payload.remove &&
+                        lastAction.payload.attribute.type == SAMPLE_ATTRIBUTE &&
+                        lastAction.payload.attribute.specifier == name &&
+                        lastAction.payload.values.length == 1;
+
+                    this.sampleView.provenance.dispatch(
+                        shouldUndo ? [ActionCreators.undo(), action] : action
+                    );
+
                     return true;
                 }
             }
@@ -573,7 +572,7 @@ export class SampleAttributePanel extends ConcatView {
 function createAttributeSpec(attributeName, attributeDef) {
     const field = `attributes["${attributeName}"]`;
 
-    /** @type {import("../viewUtils").UnitSpec} */
+    /** @type {import("../../view/viewUtils").UnitSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
         width: attributeDef.width || 10,
@@ -607,7 +606,7 @@ function createAttributeSpec(attributeName, attributeDef) {
 function createLabelViewSpec() {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
-    /** @type {import("../viewUtils").UnitSpec} */
+    /** @type {import("../../view/viewUtils").UnitSpec} */
     const titleSpec = {
         name: "sampleLabel",
         width: 140,

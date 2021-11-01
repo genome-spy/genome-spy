@@ -7,7 +7,7 @@ import { isNumber } from "vega-util";
  * and provides the correct order for ordinal data.
  *
  * @param {function(string):any} accessor
- * @param {import("./sampleHandler").AttributeInfo} attributeInfo
+ * @param {import("./types").AttributeInfo} attributeInfo
  * @returns {function(string):any}
  */
 export function wrapAccessorForComparison(accessor, attributeInfo) {
@@ -83,7 +83,10 @@ export function sort(samples, accessor, descending = false) {
     });
 }
 
-/** @type {Record<ComparisonOperatorType, function(any, any):boolean>} */
+/**
+ * @type {Record<ComparisonOperatorType, (a: T, b: T) => boolean>}
+ * @template T
+ */
 const COMPARISON_OPERATORS = {
     lt: (a, b) => a < b,
     lte: (a, b) => a <= b,
