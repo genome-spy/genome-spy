@@ -68,12 +68,14 @@ export default class SampleView extends ContainerView {
      * @param {import("../../view/viewUtils").ViewContext} context
      * @param {ContainerView} parent
      * @param {string} name
+     * @param {import("../provenance").default<any>} provenance
      */
-    constructor(spec, context, parent, name) {
+    constructor(spec, context, parent, name, provenance) {
         super(spec, context, parent, name);
 
-        this.spec = spec;
+        this.provenance = provenance;
 
+        this.spec = spec;
         this.stickySummaries = spec.stickySummaries ?? true;
 
         // TODO: Make this a function, not a class
@@ -143,9 +145,6 @@ export default class SampleView extends ContainerView {
             "contextmenu",
             this._handleContextMenu.bind(this)
         );
-
-        /** @type {import("../provenance").default<any>} Fugly temp hack */
-        this.provenance = window.provenance;
 
         this.provenance.subscribe(
             watch(

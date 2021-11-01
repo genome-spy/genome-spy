@@ -38,9 +38,6 @@ export default class GenomeSpyApp {
 
         this.provenance = new Provenance();
 
-        // Fugly temp hack
-        window.provenance = this.provenance;
-
         this.toolbarRef = createRef();
 
         this.appContainer = appContainerElement;
@@ -97,7 +94,13 @@ export default class GenomeSpyApp {
         this.genomeSpy.viewFactory.addViewType(
             isSampleSpec,
             (spec, context, parent, defaultName) =>
-                new SampleView(spec, context, parent, defaultName)
+                new SampleView(
+                    spec,
+                    context,
+                    parent,
+                    defaultName,
+                    this.provenance
+                )
         );
     }
 
