@@ -201,6 +201,11 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         margin: 5px 0;
         border-top: 1px solid #e0e0e0;
     }
+
+    .operator {
+        // Make less/greater-than-or-equal symbols clearer
+        font-size: 125%;
+    }
 }
 
 .gs-modal {

@@ -359,11 +359,11 @@ const attributeNumberFormat = d3format(".4");
 
 /** @type {Record<string, string>} */
 const verboseOps = {
-    lt: "less than",
-    lte: "less than or equal to",
-    eq: "equal to",
-    gte: "greater than or equal to",
-    gt: "greater than",
+    lt: "<",
+    lte: "\u2264",
+    eq: "=",
+    gte: "\u2265",
+    gt: ">",
 };
 
 /**
@@ -433,7 +433,7 @@ export function getActionInfo(action, getAttributeInfo) {
                 ${payload.values[0] === undefined || payload.values[0] === null
                     ? html` undefined ${attr} `
                     : html`
-                          ${attr} =
+                          ${attr} <span class="operator">=</span>
                           <strong>${payload.values[0]}</strong>
                       `}
             `;
@@ -448,7 +448,8 @@ export function getActionInfo(action, getAttributeInfo) {
         case FILTER_BY_QUANTITATIVE: {
             /** @param {string | import("lit").TemplateResult} attr */
             const makeTitle = (attr) => html`
-                Retain samples having ${attr} ${verboseOps[payload.operator]}
+                Retain samples having ${attr}
+                <span class="operator">${verboseOps[payload.operator]}</span>
                 <strong>${attributeNumberFormat(payload.operand)}</strong>
             `;
 
