@@ -39,6 +39,8 @@ export default class Provenance {
         /** @type {import("redux").ReducersMapObject} */
         this._reducers = {};
 
+        // TODO: The actual store could be outside of Provenance so that it could
+        // also include non-undoable reducers
         this.store = configureStore({
             reducer: {},
         });
@@ -65,19 +67,19 @@ export default class Provenance {
     addReducer(name, reducer) {
         this._reducers[name] = reducer;
 
-        this.store.replaceReducer(
-            enableBatching(
-                undoable(
-                    combineReducers({
-                        ...this._reducers,
-                        lastAction: actionRecorder,
-                    }),
-                    {
-                        ignoreInitialState: true,
-                    }
-                )
-            )
+        const undoed = undoable(
+            combineReducers({
+                ...this._reducers,
+                lastAction: actionRecorder,
+            }),
+            {
+                ignoreInitialState: true,
+                filter: (action, currentState, previousHistory) =>
+                    !action.type.startsWith("@@redux/REPLACE"),
+            }
         );
+
+        this.store.replaceReducer(enableBatching(undoed));
     }
 
     /**
