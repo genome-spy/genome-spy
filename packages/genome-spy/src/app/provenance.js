@@ -190,7 +190,7 @@ export default class Provenance {
     }
 
     getCurrentIndex() {
-        return this.getState().past.length;
+        return this.getState().past?.length;
     }
 
     /**
@@ -201,7 +201,10 @@ export default class Provenance {
     getActionHistory() {
         // TODO: Selector
         const state = this.getState();
-        return [...state.past, state.present].map((entry) => entry.lastAction);
+        return (
+            state.present &&
+            [...state.past, state.present].map((entry) => entry.lastAction)
+        );
     }
 
     /**
@@ -222,7 +225,7 @@ export default class Provenance {
     getBookmarkableActionHistory() {
         // Skip the initial action (that sets samples)
         // TODO: Come up with something more robust
-        return this.getActionHistory().slice(1);
+        return this.getActionHistory()?.slice(1);
     }
 }
 

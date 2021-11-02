@@ -173,7 +173,7 @@ export default class GenomeSpyApp {
         };
 
         const history = this.provenance.getBookmarkableActionHistory();
-        if (history.length) {
+        if (history?.length) {
             hashData.actions = history;
         }
 
@@ -206,7 +206,7 @@ export default class GenomeSpyApp {
                 /** @type {import("./genomeSpyAppTypes").UrlHash} */
                 const hashData = decompressFromUrlHash(hash);
 
-                if (hashData.actions) {
+                if (hashData.actions?.length) {
                     // This is copypaste from bookmarks. TODO: consolidate
                     this.provenance.dispatchBookmark(hashData.actions);
                 }
