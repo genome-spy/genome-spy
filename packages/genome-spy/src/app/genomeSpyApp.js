@@ -22,6 +22,7 @@ import Provenance from "./provenance";
 
 import MergeSampleFacets from "./sampleView/mergeFacets";
 import { transforms } from "../data/transforms/transformFactory";
+import { messageBox } from "../utils/ui/modal";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -124,9 +125,16 @@ export default class GenomeSpyApp {
         }
 
         await this._restoreStateFromUrl();
+
         this.provenance.subscribe(() => {
             this._updateStateToUrl();
         });
+
+        window.addEventListener(
+            "hashchange",
+            () => this._restoreStateFromUrl(),
+            false
+        );
 
         const debouncedUpdateUrl = debounce(
             () => this._updateStateToUrl(),
@@ -226,7 +234,10 @@ export default class GenomeSpyApp {
                 await Promise.all(promises);
             } catch (e) {
                 console.error(e);
-                alert(`Cannot restore state from URL:\n${e}`);
+                messageBox(
+                    html`<p>Cannot restore state from URL:</p>
+                        <p>${e}</p>`
+                );
                 this.provenance.activateState(0);
             }
         }
