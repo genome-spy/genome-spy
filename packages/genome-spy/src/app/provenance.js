@@ -83,10 +83,17 @@ export default class Provenance {
     }
 
     /**
-     * @returns {import("redux-undo").StateWithHistory<any>}
+     * Is provenance (undo/redo) enabled
      */
-    getState() {
-        return this.store.getState();
+    isEnabled() {
+        return !!this.getPresentState();
+    }
+
+    /**
+     * Returns the *present* state, i.e., the one having provenance info.
+     */
+    getPresentState() {
+        return this.store.getState().present;
     }
 
     /**
@@ -152,7 +159,7 @@ export default class Provenance {
     }
 
     isRedoable() {
-        return this.getState().future.length > 0;
+        return this.isEnabled() && this.store.getState().future.length > 0;
     }
 
     redo() {
@@ -160,7 +167,7 @@ export default class Provenance {
     }
 
     isUndoable() {
-        return this.getState().past.length > 0;
+        return this.isEnabled() && this.store.getState().past.length > 0;
     }
 
     undo() {
@@ -172,8 +179,10 @@ export default class Provenance {
     }
 
     isEmpty() {
-        const state = this.getState();
-        return state.past.length + state.future.length <= 0;
+        const state = this.store.getState();
+        return (
+            !this.isEnabled() || state.past.length + state.future.length <= 0
+        );
     }
 
     /**
@@ -190,7 +199,7 @@ export default class Provenance {
     }
 
     getCurrentIndex() {
-        return this.getState().past?.length;
+        return this.store.getState().past?.length;
     }
 
     /**
@@ -200,7 +209,7 @@ export default class Provenance {
      */
     getActionHistory() {
         // TODO: Selector
-        const state = this.getState();
+        const state = this.store.getState();
         return (
             state.present &&
             [...state.past, state.present].map((entry) => entry.lastAction)
@@ -212,7 +221,7 @@ export default class Provenance {
      */
     getFullActionHistory() {
         // TODO: Selector
-        const state = this.getState();
+        const state = this.store.getState();
         return [...state.past, state.present, ...state.future].map(
             (entry) => entry.lastAction
         );

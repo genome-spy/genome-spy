@@ -3,6 +3,7 @@ import {
     isSampleGroup,
     iterateGroupHierarchy,
     sampleHierarchySelector,
+    SAMPLE_SLICE_NAME,
 } from "./sampleSlice";
 import { peek } from "../../utils/arrayUtils";
 import { field } from "../../utils/field";
@@ -92,7 +93,7 @@ export default class MergeSampleFacets extends FlowNode {
 
     complete() {
         this._mergeAndPropagate(
-            sampleHierarchySelector(this.provenance.getState())
+            this.provenance.getPresentState()[SAMPLE_SLICE_NAME]
         );
         super.complete();
     }

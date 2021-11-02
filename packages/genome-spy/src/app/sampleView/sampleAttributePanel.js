@@ -541,8 +541,7 @@ export class SampleAttributePanel extends ConcatView {
                     });
 
                     const lastAction =
-                        this.sampleView.provenance.getState().present
-                            .lastAction;
+                        this.sampleView.provenance.getPresentState().lastAction;
                     // Undo the previous action if we are filtering by the same nominal attribute
                     const shouldUndo =
                         this.sampleView.actions.filterByNominal.match(

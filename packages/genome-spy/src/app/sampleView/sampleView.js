@@ -28,6 +28,7 @@ import {
     getActionInfo,
     getFlattenedGroupHierarchy,
     sampleHierarchySelector,
+    SAMPLE_SLICE_NAME,
 } from "./sampleSlice";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
 import { watch } from "../../utils/state/watch";
@@ -425,7 +426,7 @@ export default class SampleView extends ContainerView {
     }
 
     get sampleHierarchy() {
-        return sampleHierarchySelector(this.provenance.getState());
+        return this.provenance.getPresentState()[SAMPLE_SLICE_NAME];
     }
 
     getLocations() {

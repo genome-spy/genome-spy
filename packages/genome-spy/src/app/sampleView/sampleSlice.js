@@ -50,7 +50,7 @@ const REMOVE_UNDEFINED = "removeUndefined";
 const GROUP_BY_NOMINAL = "groupByNominal";
 const GROUP_TO_QUARTILES = "groupToQuartiles";
 
-const SLICE_NAME = "sampleView";
+export const SAMPLE_SLICE_NAME = "sampleView";
 
 /**
  * @returns {SampleHierarchy}
@@ -84,7 +84,7 @@ export function createSampleSlice(getAttributeInfo) {
     };
 
     return createSlice({
-        name: SLICE_NAME,
+        name: SAMPLE_SLICE_NAME,
         initialState: createInitialState(),
         reducers: {
             [SET_SAMPLES]: (
@@ -283,7 +283,7 @@ function getSampleGroups(sampleHierarchy) {
  * @returns {SampleHierarchy}
  */
 export function sampleHierarchySelector(state) {
-    return state.present[SLICE_NAME];
+    return state.present[SAMPLE_SLICE_NAME];
 }
 
 /**
@@ -374,7 +374,7 @@ const verboseOps = {
  * @returns {import("../provenance").ActionInfo}
  */
 export function getActionInfo(action, getAttributeInfo) {
-    if (!action.type.startsWith(SLICE_NAME)) {
+    if (!action.type.startsWith(SAMPLE_SLICE_NAME)) {
         return;
     }
 
@@ -391,7 +391,7 @@ export function getActionInfo(action, getAttributeInfo) {
         attributeName, // TODO: This may actually be unnecessary
     };
 
-    const actionType = action.type.substring(SLICE_NAME.length + 1);
+    const actionType = action.type.substring(SAMPLE_SLICE_NAME.length + 1);
 
     switch (actionType) {
         case SET_SAMPLES:
