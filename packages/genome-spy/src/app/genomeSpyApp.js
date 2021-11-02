@@ -23,6 +23,7 @@ import Provenance from "./provenance";
 import MergeSampleFacets from "./sampleView/mergeFacets";
 import { transforms } from "../data/transforms/transformFactory";
 import { messageBox } from "../utils/ui/modal";
+import { crc32hex } from "./utils/crc32";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -186,11 +187,9 @@ export default class GenomeSpyApp {
             }
         }
 
-        // TODO: Test https://github.com/101arrowz/fflate as a replacement for lzString
-
         let hash =
             hashData.actions.length || Object.keys(hashData.scaleDomains).length
-                ? "#" + compressToEncodedURIComponent(JSON.stringify(hashData))
+                ? compressToUrlHash(hashData)
                 : "";
 
         window.history.replaceState(
@@ -205,9 +204,7 @@ export default class GenomeSpyApp {
         if (hash && hash.length > 0) {
             try {
                 /** @type {import("./genomeSpyAppTypes").UrlHash} */
-                const hashData = JSON.parse(
-                    decompressFromEncodedURIComponent(hash.substr(1))
-                );
+                const hashData = decompressFromUrlHash(hash);
 
                 if (hashData.actions) {
                     // This is copypaste from bookmarks. TODO: consolidate
@@ -235,7 +232,7 @@ export default class GenomeSpyApp {
             } catch (e) {
                 console.error(e);
                 messageBox(
-                    html`<p>Cannot restore state from URL:</p>
+                    html`<p>Cannot restore the state from the URL:</p>
                         <p>${e}</p>`
                 );
                 this.provenance.activateState(0);
@@ -301,4 +298,30 @@ function setFavicon(favImg) {
     setFavicon.setAttribute("rel", "shortcut icon");
     setFavicon.setAttribute("href", favImg);
     headTitle.appendChild(setFavicon);
+}
+
+/**
+ * @param {any} value
+ */
+function compressToUrlHash(value) {
+    const compressed = compressToEncodedURIComponent(JSON.stringify(value));
+    return "#" + compressed + crc32hex(compressed);
+}
+
+/**
+ * @param {string} hash
+ */
+function decompressFromUrlHash(hash) {
+    if (!hash || hash.length < 10) {
+        throw new Error("The state string is too short.");
+    }
+
+    const compressed = hash.slice(1, -8);
+    const checksum = hash.slice(-8);
+
+    if (crc32hex(compressed) !== checksum) {
+        throw new Error("The state string is corrupted.");
+    }
+
+    return JSON.parse(decompressFromEncodedURIComponent(compressed));
 }
