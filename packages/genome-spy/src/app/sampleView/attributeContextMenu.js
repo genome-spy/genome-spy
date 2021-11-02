@@ -49,9 +49,14 @@ export default function generateAttributeContextMenu(
     addActions(actions.sortBy({ attribute }));
 
     if (attributeType != "quantitative") {
+        if (attributeType != "identifier") {
+            addActions(
+                actions.groupByNominal({ attribute }),
+                actions.retainFirstOfEach({ attribute })
+            );
+        }
+
         addActions(
-            actions.groupByNominal({ attribute }),
-            actions.retainFirstOfEach({ attribute }),
             actions.filterByNominal({
                 attribute,
                 values: [attributeValue],

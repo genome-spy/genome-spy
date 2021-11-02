@@ -40,13 +40,11 @@ import {
  */
 
 const SET_SAMPLES = "setSamples";
-const SORT_BY_NAME = "sortByName";
 const SORT_BY = "sortBy";
 const RETAIN_FIRST_OF_EACH = "retainFirstOfEach";
 const FILTER_BY_NOMINAL = "filterByNominal";
 const FILTER_BY_QUANTITATIVE = "filterByQuantitative";
 const REMOVE_UNDEFINED = "removeUndefined";
-//const REMOVE_BY_ID = "removeById";
 const GROUP_BY_NOMINAL = "groupByNominal";
 const GROUP_TO_QUARTILES = "groupToQuartiles";
 
@@ -150,10 +148,6 @@ export function createSampleSlice(getAttributeInfo) {
                         false
                     )
                 );
-            },
-
-            [SORT_BY_NAME]: (state) => {
-                alert("TODO");
             },
 
             [RETAIN_FIRST_OF_EACH]: (
@@ -399,12 +393,6 @@ export function getActionInfo(action, getAttributeInfo) {
                 ...template,
                 title: "The initial state",
                 icon: faCheck,
-            };
-        case SORT_BY_NAME:
-            return {
-                ...template,
-                title: "Sort by sample name",
-                icon: faSortAmountDown,
             };
         case SORT_BY:
             return {

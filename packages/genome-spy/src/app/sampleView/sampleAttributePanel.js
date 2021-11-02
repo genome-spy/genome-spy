@@ -77,8 +77,8 @@ export class SampleAttributePanel extends ConcatView {
         this.sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_NAME,
             (attribute) => ({
-                name: "displayName",
-                accessor: (sampleId) => this.getSample(sampleId).displayName,
+                name: "sample",
+                accessor: (sampleId) => sampleId,
                 type: "nominal",
                 scale: undefined,
             })
@@ -241,7 +241,7 @@ export class SampleAttributePanel extends ConcatView {
             const attributeValue = sample.attributes[attribute.name];
             items.push(
                 ...generateAttributeContextMenu(
-                    html` Attribute: <strong>${attribute.name}</strong> `,
+                    html`Attribute: <strong>${attribute.name}</strong>`,
                     { type: SAMPLE_ATTRIBUTE, specifier: attribute.name },
                     attribute.type,
                     attributeValue,
@@ -250,7 +250,17 @@ export class SampleAttributePanel extends ConcatView {
                 )
             );
         } else {
-            items.push(...this.generateSampleContextMenu(sample, dispatch));
+            //items.push(...this.generateSampleContextMenu(sample, dispatch));
+            items.push(
+                ...generateAttributeContextMenu(
+                    html`Sample: <strong>${sample.displayName}</strong>`,
+                    { type: SAMPLE_NAME },
+                    "identifier",
+                    sample.id,
+                    dispatch,
+                    this.sampleView
+                )
+            );
         }
 
         this.context.contextMenu({ items }, mouseEvent);
@@ -424,34 +434,6 @@ export class SampleAttributePanel extends ConcatView {
         return this.getAttributeInfoFromView(
             this._findViewForAttribute(attribute)
         );
-    }
-
-    /**
-     * TODO: Move to a separate file
-     *
-     * @param {Sample} sample
-     * @param {function(object):void} dispatch
-     * @returns {import("../../utils/ui/contextMenu").MenuItem[]}
-     */
-    generateSampleContextMenu(sample, dispatch) {
-        return [
-            {
-                label: "Sort by name",
-                callback: () => dispatch(this.sampleView.actions.sortByName()),
-            },
-            {
-                label: `Sample: ${sample.displayName}`,
-                type: "header",
-            },
-            {
-                label: "Retain",
-                callback: () => alert("TODO"),
-            },
-            {
-                label: "Remove",
-                callback: () => alert("TODO"),
-            },
-        ];
     }
 
     /**

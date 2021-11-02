@@ -425,6 +425,9 @@ export default class SampleView extends ContainerView {
         }
     }
 
+    /**
+     * @returns {import("./sampleState").SampleHierarchy}
+     */
     get sampleHierarchy() {
         return this.provenance.getPresentState()[SAMPLE_SLICE_NAME];
     }
