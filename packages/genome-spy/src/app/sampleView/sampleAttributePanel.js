@@ -113,9 +113,11 @@ export class SampleAttributePanel extends ConcatView {
                 if (!this._attributeHighlighState.currentAttribute) {
                     return;
                 }
-                for (const view of event.target.getAncestors()) {
-                    if (view == this) {
-                        return;
+                if (event.target) {
+                    for (const view of event.target.getAncestors()) {
+                        if (view == this) {
+                            return;
+                        }
                     }
                 }
 
