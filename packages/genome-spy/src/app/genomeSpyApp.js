@@ -1,8 +1,3 @@
-import {
-    compressToEncodedURIComponent,
-    decompressFromEncodedURIComponent,
-} from "lz-string";
-
 import GenomeSpy from "../genomeSpy";
 import "../styles/genome-spy-app.scss";
 import favIcon from "../img/genomespy-favicon.svg";
@@ -23,7 +18,8 @@ import Provenance from "./provenance";
 import MergeSampleFacets from "./sampleView/mergeFacets";
 import { transforms } from "../data/transforms/transformFactory";
 import { messageBox } from "../utils/ui/modal";
-import { crc32hex } from "./utils/crc32";
+import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
+import { restoreBookmark } from "./bookmark";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -199,43 +195,19 @@ export default class GenomeSpyApp {
         );
     }
 
-    async _restoreStateFromUrl() {
+    _restoreStateFromUrl() {
         const hash = window.location.hash;
         if (hash && hash.length > 0) {
             try {
                 /** @type {import("./genomeSpyAppTypes").UrlHash} */
-                const hashData = decompressFromUrlHash(hash);
-
-                if (hashData.actions?.length) {
-                    // This is copypaste from bookmarks. TODO: consolidate
-                    this.provenance.dispatchBookmark(hashData.actions);
-                }
-
-                /** @type {Promise<void>[]} */
-                const promises = [];
-                for (const [name, scaleDomain] of Object.entries(
-                    hashData.scaleDomains ?? {}
-                )) {
-                    const scaleResolution = this.genomeSpy
-                        .getNamedScaleResolutions()
-                        .get(name);
-                    if (scaleResolution) {
-                        // @ts-ignore
-                        promises.push(scaleResolution.zoomTo(scaleDomain));
-                    } else {
-                        console.warn(
-                            `Cannot restore scale domain. Unknown name: ${name}`
-                        );
-                    }
-                }
-                await Promise.all(promises);
+                const entry = decompressFromUrlHash(hash);
+                restoreBookmark(entry, this);
             } catch (e) {
                 console.error(e);
                 messageBox(
-                    html`<p>Cannot restore the state from the URL:</p>
+                    html`<p>Cannot restore the state:</p>
                         <p>${e}</p>`
                 );
-                this.provenance.activateState(0);
             }
         }
     }
@@ -298,30 +270,4 @@ function setFavicon(favImg) {
     setFavicon.setAttribute("rel", "shortcut icon");
     setFavicon.setAttribute("href", favImg);
     headTitle.appendChild(setFavicon);
-}
-
-/**
- * @param {any} value
- */
-function compressToUrlHash(value) {
-    const compressed = compressToEncodedURIComponent(JSON.stringify(value));
-    return "#" + compressed + crc32hex(compressed);
-}
-
-/**
- * @param {string} hash
- */
-function decompressFromUrlHash(hash) {
-    if (!hash || hash.length < 10) {
-        throw new Error("The state string is too short.");
-    }
-
-    const compressed = hash.slice(1, -8);
-    const checksum = hash.slice(-8);
-
-    if (crc32hex(compressed) !== checksum) {
-        throw new Error("The state string is corrupted.");
-    }
-
-    return JSON.parse(decompressFromEncodedURIComponent(compressed));
 }

@@ -7,12 +7,18 @@ import {
     faTrash,
     faPen,
     faExclamationCircle,
+    faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "../../utils/ui/dropdown";
-import { createModal, messageBox } from "../../utils/ui/modal";
-import safeMarkdown from "../../utils/safeMarkdown";
+import {
+    createCloseEvent,
+    createModal,
+    messageBox,
+} from "../../utils/ui/modal";
 import contextMenu from "../../utils/ui/contextmenu";
 import { queryDependency } from "../utils/dependency";
+import { compressToUrlHash } from "../utils/urlHash";
+import { restoreBookmark } from "../bookmark";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -178,35 +184,7 @@ class BookmarkButton extends LitElement {
     async _loadBookmark(name) {
         const entry = await this.app.bookmarkDatabase.get(name);
         if (entry) {
-            try {
-                this.app.provenance.dispatchBookmark(entry.actions);
-
-                /** @type {Promise<void>[]} */
-                const promises = [];
-                for (const [name, scaleDomain] of Object.entries(
-                    entry.scaleDomains ?? {}
-                )) {
-                    const scaleResolution = this.app.genomeSpy
-                        .getNamedScaleResolutions()
-                        .get(name);
-                    if (scaleResolution) {
-                        promises.push(scaleResolution.zoomTo(scaleDomain));
-                    } else {
-                        console.warn(
-                            `Cannot restore scale domain. Unknown name: ${name}`
-                        );
-                    }
-                }
-                await Promise.all(promises);
-
-                if (entry.notes?.length) {
-                    messageBox(safeMarkdown(entry.notes), entry.name);
-                }
-            } catch (e) {
-                console.error(e);
-                alert(`Cannot restore bookmark:\n${e}`);
-                this.app.provenance.activateState(0);
-            }
+            restoreBookmark(entry, this.app);
         }
     }
 
@@ -220,7 +198,7 @@ class BookmarkButton extends LitElement {
             {
                 items: [
                     {
-                        label: "Edit and replace",
+                        label: "Edit and replace...",
                         icon: faPen,
                         callback: () => this._addBookmark(name),
                     },
@@ -241,6 +219,11 @@ class BookmarkButton extends LitElement {
                                     this.requestUpdate();
                                 }
                             }),
+                    },
+                    {
+                        label: "Share...",
+                        icon: faShare,
+                        callback: () => this._showShareDialog(name),
                     },
                 ],
             },
@@ -303,6 +286,60 @@ class BookmarkButton extends LitElement {
                 </ul>
             </div>
         `;
+    }
+
+    /**
+     *
+     * @param {string} name
+     */
+    async _showShareDialog(name) {
+        const entry = await this.app.bookmarkDatabase.get(name);
+
+        const json = JSON.stringify(entry, undefined, 2);
+
+        const loc = window.location;
+        const url =
+            loc.origin + loc.pathname + loc.search + compressToUrlHash(entry);
+
+        const copyToClipboard = (/** @type {MouseEvent} */ event) =>
+            navigator.clipboard
+                .writeText(url)
+                .then(() => event.target.dispatchEvent(createCloseEvent()))
+                .catch(() => messageBox("Failed to copy!"));
+
+        messageBox(
+            html`
+                <div style="width: 600px">
+                    <div class="gs-form-group">
+                        <label for="bookmark-url">URL</label>
+                        <div class="copy-url">
+                            <input
+                                id="bookmark-url"
+                                type="text"
+                                .value=${url}
+                            />
+                            <button @click=${copyToClipboard}>Copy</button>
+                        </div>
+                        <small
+                            >The bookmark URL contains all the bookmarked data,
+                            including the possible notes, which will be shown
+                            when the URL is opened.</small
+                        >
+                    </div>
+                    <div class="gs-form-group">
+                        <label for="bookmark-json">JSON</label>
+                        <textarea id="bookmark-json" style="height: 250px">
+${json}</textarea
+                        >
+                        <small
+                            >The JSON-formatted bookmark is currently available
+                            for development purposes.</small
+                        >
+                    </div>
+                </div>
+            `,
+            "Share a bookmark"
+        );
     }
 }
 

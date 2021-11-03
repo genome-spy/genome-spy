@@ -1,10 +1,6 @@
-import { Action } from "./provenance";
-import { ComplexDomain, ScalarDomain } from "../spec/scale";
+import { BookmarkEntry } from "./databaseSchema";
 
-export interface UrlHash {
-    actions?: Action[];
-    scaleDomains?: Record<string, ScalarDomain | ComplexDomain>;
-}
+export type UrlHash = Partial<BookmarkEntry>;
 
 export interface DependencyQueryDetails {
     /** Name of the queried dependency */
