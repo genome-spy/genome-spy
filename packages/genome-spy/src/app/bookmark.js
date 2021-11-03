@@ -1,6 +1,6 @@
 import { html } from "lit";
 import safeMarkdown from "../utils/safeMarkdown";
-import { messageBox } from "../utils/ui/modal";
+import { messageBox } from "./utils/ui/modal";
 
 /**
  * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry

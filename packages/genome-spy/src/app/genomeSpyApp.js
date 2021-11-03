@@ -17,7 +17,7 @@ import Provenance from "./provenance";
 
 import MergeSampleFacets from "./sampleView/mergeFacets";
 import { transforms } from "../data/transforms/transformFactory";
-import { messageBox } from "../utils/ui/modal";
+import { messageBox } from "./utils/ui/modal";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
 import { restoreBookmark } from "./bookmark";
 

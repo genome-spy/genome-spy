@@ -9,12 +9,8 @@ import {
     faExclamationCircle,
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "../../utils/ui/dropdown";
-import {
-    createCloseEvent,
-    createModal,
-    messageBox,
-} from "../../utils/ui/modal";
+import { toggleDropdown } from "../utils/ui/dropdown";
+import { createCloseEvent, createModal, messageBox } from "../utils/ui/modal";
 import contextMenu from "../../utils/ui/contextmenu";
 import { queryDependency } from "../utils/dependency";
 import { compressToUrlHash } from "../utils/urlHash";

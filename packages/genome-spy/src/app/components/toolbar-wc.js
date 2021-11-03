@@ -9,7 +9,7 @@ import {
 import { findGenomeScaleResolution } from "./searchField-wc";
 import { asArray } from "../../utils/arrayUtils";
 import bowtie from "../../img/bowtie.svg";
-import { messageBox } from "../../utils/ui/modal";
+import { messageBox } from "../utils/ui/modal";
 
 export default class Toolbar extends LitElement {
     constructor() {
