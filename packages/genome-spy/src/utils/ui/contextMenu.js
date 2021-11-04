@@ -42,6 +42,8 @@ export default function contextMenu(options, mouseEvent) {
 
     const container = options.menuContainer || document.body;
 
+    // TODO: Keyboard navigation: https://web.dev/building-a-split-button-component/
+
     render(
         options.items.map((item) => {
             switch (item.type) {
