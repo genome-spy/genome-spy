@@ -120,7 +120,7 @@ export default class SearchField extends LitElement {
                 continue;
             }
 
-            for (const d of view.getCollector()?.getData()) {
+            for (const d of view.getCollector()?.getData() ?? []) {
                 if (collator.compare(sa(d), term) === 0) {
                     // TODO: zoomLog for log scales, etc
                     const interval = zoomLinear([xa(d), x2a(d)], null, 1.2);
@@ -338,10 +338,10 @@ function typeSlowly(text, element) {
 /**
  * Finds a scale resolution that has a zoomable locus scale
  *
- * @param {import("../view/view").default} viewRoot
+ * @param {import("../../view/view").default} viewRoot
  */
 export function findGenomeScaleResolution(viewRoot) {
-    /** @type {import("../view/scaleResolution").default} */
+    /** @type {import("../../view/scaleResolution").default} */
     let match;
 
     viewRoot.visit((view) => {
