@@ -1,19 +1,19 @@
-import { parse, codegen } from "vega-expression";
+import { parseExpression, codegenExpression } from "vega-expression";
 
 /**
  *
  * @param {string} expr
  */
 export default function createFunction(expr, global = {}) {
-    const cg = codegen({
-        blacklist: [],
-        whitelist: ["datum"],
+    const cg = codegenExpression({
+        forbidden: [],
+        allowed: ["datum"],
         globalvar: "global",
         fieldvar: "datum",
     });
 
     try {
-        const parsed = parse(expr);
+        const parsed = parseExpression(expr);
         const generatedCode = cg(parsed);
 
         // eslint-disable-next-line no-new-func
