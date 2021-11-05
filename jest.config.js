@@ -3,12 +3,12 @@
 
 module.exports = {
     transform: {
-        "^.+\\.(mjs|js)$": "babel-jest"
+        "^.+\\.(mjs|js)$": "babel-jest",
     },
     moduleFileExtensions: ["js", "mjs"],
 
     moduleNameMapper: {
-        "\\.(glsl|png|json)$": "<rootDir>/__mocks__/fileMock.js"
+        "\\.(glsl|png|json)$": "<rootDir>/__mocks__/fileMock.js",
     },
 
     // All imported modules in your tests should be mocked automatically
@@ -172,8 +172,8 @@ module.exports = {
 
     // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
     transformIgnorePatterns: [
-        "/node_modules/(?!(heapify|lit-html|lit-element|lit|@lit)/)"
-    ]
+        "/node_modules/(?!(heapify|lit-html|lit-element|lit|@lit|internmap|d3-[a-z]+)/)",
+    ],
 
     // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
     // unmockedModulePathPatterns: undefined,
