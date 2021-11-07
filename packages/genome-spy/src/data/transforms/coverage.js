@@ -1,8 +1,7 @@
-import Heapify from "heapify";
+import FlatQueue from "flatqueue";
+
 import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
-
-const maxDepth = 65536;
 
 /**
  * @typedef {import("../../spec/transform").CoverageParams} CoverageParams
@@ -62,7 +61,7 @@ export default class CoverageTransform extends FlowNode {
         );
 
         // End pos as priority, weight as value
-        this.ends = new Heapify(maxDepth, [], [], Float32Array, Float64Array);
+        this.ends = new FlatQueue();
     }
 
     reset() {
@@ -133,8 +132,9 @@ export default class CoverageTransform extends FlowNode {
 
         const flushQueue = () => {
             // Flush queue
-            while (ends.size) {
-                const edge = ends.peekPriority();
+            /** @type {number} */
+            let edge;
+            while ((edge = ends.peekValue()) !== undefined) {
                 pushSegment(prevEdge, edge, coverage);
                 prevEdge = edge;
                 coverage -= ends.pop();
@@ -151,8 +151,9 @@ export default class CoverageTransform extends FlowNode {
         this.handle = (datum) => {
             const start = startAccessor(datum);
 
-            while (ends.size && ends.peekPriority() < start) {
-                const edge = ends.peekPriority();
+            /** @type {number} */
+            let edge;
+            while ((edge = ends.peekValue()) !== undefined && edge < start) {
                 pushSegment(prevEdge, edge, coverage);
                 prevEdge = edge;
                 coverage -= ends.pop();

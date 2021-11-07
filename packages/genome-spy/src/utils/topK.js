@@ -1,46 +1,44 @@
-import Heapify from "heapify";
+import FlatQueue from "flatqueue";
 
 /**
  * Finds the top k
  *
  * Based on ideas at https://lemire.me/blog/2017/06/21/top-speed-for-top-k-queries/
  *
- * @param {any[]} data
+ * @param {T[]} data
  * @param {number} k
- * @param {function(any):number} priorityAccessor
+ * @param {(datum: T) => number} priorityAccessor
+ * @template T
  */
 export function topK(data, k, priorityAccessor) {
-    const queue = new Heapify(k + 1);
+    /** @type {FlatQueue<number>} */
+    const queue = new FlatQueue();
 
-    // +1 because there may be a bug in Heapify, breaks on zeros or something
-    // TODO: Investigate
-    const offset = 1;
-
-    /** @type {number} */
     let i;
-
     for (i = 0; i < k && i < data.length; i++) {
-        queue.push(i, offset + priorityAccessor(data[i]));
+        queue.push(i, priorityAccessor(data[i]));
     }
 
     for (; i < data.length; i++) {
-        const p = offset + priorityAccessor(data[i]);
-        if (p >= queue.peekPriority()) {
+        const p = priorityAccessor(data[i]);
+        if (p >= queue.peekValue()) {
             queue.push(i, p);
             queue.pop();
         }
     }
 
     const result = [];
-    while (queue.size) {
-        result.push(data[queue.pop()]);
+
+    let index;
+    while ((index = queue.pop()) !== undefined) {
+        result.push(data[index]);
     }
 
     return result.reverse();
 }
 
 /**
- * Takes an array of priorities and returns the top k indexes from the
+ * Takes an array of priorities and returns the top k indices from the
  * specified slice
  *
  * @param {number[]} priorities An array of priorities
@@ -49,32 +47,29 @@ export function topK(data, k, priorityAccessor) {
  * @param {number} [end] Exclusive. Default: priorities.length
  */
 export function topKSlice(priorities, k, start = 0, end = priorities.length) {
-    const queue = new Heapify(k + 1);
-
-    // +1 because there may be a bug in Heapify, breaks on zeros or something
-    // TODO: Investigate
-    const offset = 1;
+    /** @type {FlatQueue<number>} */
+    const queue = new FlatQueue();
 
     const sliceLength = end - start;
 
-    /** @type {number} */
     let i;
-
     for (i = 0; i < k && i < sliceLength; i++) {
-        queue.push(i, offset + priorities[start + i]);
+        queue.push(i, priorities[start + i]);
     }
 
     for (; i < sliceLength; i++) {
-        const p = offset + priorities[start + i];
-        if (p >= queue.peekPriority()) {
+        const p = priorities[start + i];
+        if (p >= queue.peekValue()) {
             queue.push(i, p);
             queue.pop();
         }
     }
 
     const result = [];
-    while (queue.size) {
-        result.push(start + queue.pop());
+
+    let index;
+    while ((index = queue.pop()) !== undefined) {
+        result.push(start + index);
     }
 
     return result.reverse();

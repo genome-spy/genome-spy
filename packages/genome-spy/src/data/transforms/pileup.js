@@ -1,5 +1,5 @@
 /* eslint-disable no-unmodified-loop-condition */
-import Heapify from "heapify";
+import FlatQueue from "flatqueue";
 import { isNumber } from "vega-util";
 import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
@@ -88,20 +88,12 @@ export default class PileupTransform extends FlowNode {
                 this._propagate(datum);
             };
         } else {
-            const ends = new Heapify(
-                maxDepth,
-                [],
-                [],
-                Uint16Array,
-                Float64Array
-            );
-            const freeLanes = new Heapify(
-                maxDepth,
-                [],
-                [],
-                Uint16Array,
-                Uint16Array
-            );
+            /** @type {FlatQueue<number>} */
+            const ends = new FlatQueue();
+
+            /** @type {FlatQueue<number>} */
+            const freeLanes = new FlatQueue();
+
             // Keep track of the last processed element. Flush the queues if the start
             // pos suddenly decreases. This happens when piling up consecutive chromosomes.
             let lastStart = -Infinity;
@@ -112,8 +104,8 @@ export default class PileupTransform extends FlowNode {
             this.handle = (datum) => {
                 const start = startAccessor(datum);
                 while (
-                    ends.size &&
-                    (ends.peekPriority() <= start || start < lastStart)
+                    ends.length &&
+                    (ends.peekValue() <= start || start < lastStart)
                 ) {
                     const freeLane = ends.pop();
                     freeLanes.push(freeLane, freeLane);

@@ -1,4 +1,4 @@
-import Heapify from "heapify";
+import FlatQueue from "flatqueue";
 
 /**
  * Returns an iterator that merges multiple sorted arrays.
@@ -16,10 +16,8 @@ export default function* kWayMerge(arrays, accessor = (x) => +x) {
 
     const k = arrays.length;
 
-    const heap = new Heapify(k);
-    const pointers = new Int32Array(k);
-
-    const validate = false;
+    const heap = new FlatQueue();
+    const pointers = new Array(k).fill(0);
 
     for (const [i, array] of arrays.entries()) {
         if (array.length) {
@@ -27,9 +25,8 @@ export default function* kWayMerge(arrays, accessor = (x) => +x) {
         }
     }
 
-    while (heap.size) {
-        const i = heap.pop();
-
+    let i = 0;
+    while ((i = heap.pop()) !== undefined) {
         const array = arrays[i];
         let pointer = pointers[i];
         const element = array[pointer++];
@@ -38,11 +35,6 @@ export default function* kWayMerge(arrays, accessor = (x) => +x) {
 
         if (pointer < array.length) {
             const newValue = accessor(array[pointer]);
-            if (validate && newValue < accessor(element)) {
-                throw new Error(
-                    "The input arrays to be merged are not in sorted order!"
-                );
-            }
             heap.push(i, newValue);
             pointers[i] = pointer;
         }
