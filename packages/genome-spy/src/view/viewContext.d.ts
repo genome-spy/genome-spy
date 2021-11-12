@@ -48,6 +48,8 @@ export default interface ViewContext {
 
     getNamedData: (name: string) => any[];
 
+    isViewVisible: (view: View) => boolean;
+
     isViewSpec: (spec: any) => boolean;
 
     createView: (

@@ -21,6 +21,8 @@ import { messageBox } from "./utils/ui/modal";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
 import { restoreBookmark } from "./bookmark";
 import StoreHelper from "./state/storeHelper";
+import { watch } from "./state/watch";
+import { viewSettingsSlice } from "./viewSettingsSlice";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -41,6 +43,7 @@ export default class GenomeSpyApp {
         this.config = config;
 
         this.storeHelper = new StoreHelper();
+        this.storeHelper.addReducer("viewSettings", viewSettingsSlice.reducer);
         this.provenance = new Provenance(this.storeHelper);
 
         this.toolbarRef = createRef();
@@ -103,6 +106,11 @@ export default class GenomeSpyApp {
                     this.provenance
                 )
         );
+
+        this.genomeSpy.viewVisibilityPredicate = (view) => {
+            const state = this.storeHelper.state;
+            return state.viewSettings?.viewVisibilities[view.name] ?? true;
+        };
     }
 
     toggleFullScreen() {
@@ -128,6 +136,24 @@ export default class GenomeSpyApp {
         this.storeHelper.subscribe(() => {
             this._updateStateToUrl();
         });
+
+        this.storeHelper.subscribe(
+            watch(
+                (state) => state.viewSettings?.viewVisibilities,
+                (viewVisibilities, oldViewVisibilities) => {
+                    // TODO: Optimize: only invalidate the affected views
+                    this.genomeSpy.viewRoot._invalidateCacheByPrefix(
+                        "size",
+                        "progeny"
+                    );
+
+                    const context = this.genomeSpy.viewRoot.context;
+                    context.requestLayoutReflow();
+                    context.animator.requestRender();
+                },
+                this.storeHelper.store.getState()
+            )
+        );
 
         window.addEventListener(
             "hashchange",

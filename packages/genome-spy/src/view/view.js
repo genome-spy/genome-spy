@@ -9,7 +9,7 @@ import {
     initPropertyCache,
     invalidatePrefix,
 } from "../utils/propertyCacher";
-import { isNumber, isObject, span } from "vega-util";
+import { isNumber, span } from "vega-util";
 import { scaleLog } from "d3-scale";
 import { isFieldDef, getPrimaryChannel } from "../encoder/encoder";
 import { appendToBaseUrl } from "../utils/url";
@@ -197,11 +197,7 @@ export default class View {
     }
 
     isVisible() {
-        // TODO: setVisibilityFunction to get visibility from the state
-
-        return isViewDisplay(this.spec.display)
-            ? this.spec.display.display == "normal"
-            : this.spec.display ?? true;
+        return this.context.isViewVisible(this);
     }
 
     /**
@@ -512,6 +508,10 @@ export default class View {
             default:
         }
     }
+
+    invalidateSizeCache() {
+        this._invalidateCacheByPrefix("size/", "ancestors");
+    }
 }
 
 /**
@@ -576,10 +576,3 @@ function createViewOpacityFunction(view) {
  * @return {size is import("../spec/view").Step}
  */
 export const isStepSize = (size) => !!size?.step;
-
-/**
- *
- * @param {boolean | import("../spec/view").ViewDisplay} x
- * @returns {x is import("../spec/view").ViewDisplay}
- */
-export const isViewDisplay = (x) => isObject(x) && "display" in x;

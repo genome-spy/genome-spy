@@ -30,6 +30,10 @@ export default class StoreHelper {
         });
     }
 
+    get state() {
+        return this.store.getState();
+    }
+
     /**
      *
      * @param {string} name

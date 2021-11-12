@@ -11,6 +11,9 @@ import { asArray } from "../../utils/arrayUtils";
 import bowtie from "../../img/bowtie.svg";
 import { messageBox } from "../utils/ui/modal";
 
+// Needed by Vite to register the web component !??
+import "./viewSettingsButton-wc";
+
 export default class Toolbar extends LitElement {
     constructor() {
         super();
@@ -48,6 +51,10 @@ export default class Toolbar extends LitElement {
                 `
             );
         }
+
+        elements.push(
+            html`<genome-spy-view-visibility></genome-spy-view-visibility>`
+        );
 
         if (sampleView) {
             elements.push(html`

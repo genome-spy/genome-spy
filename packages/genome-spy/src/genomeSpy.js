@@ -37,6 +37,7 @@ import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler";
 import { invalidatePrefix } from "./utils/propertyCacher";
 import { ViewFactory } from "./view/viewFactory";
+import { isObject } from "vega-util";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -81,6 +82,15 @@ export default class GenomeSpy {
 
         /** @type {GenomeStore} */
         this.genomeStore = undefined;
+
+        /**
+         * The
+         * @type {(view: import("./view/view").default) => boolean}
+         */
+        this.viewVisibilityPredicate = (view) =>
+            isViewDisplay(view.spec.display)
+                ? view.spec.display.display == "normal"
+                : view.spec.display ?? true;
 
         /** @type {DeferredViewRenderingContext} */
         this._renderingContext = undefined;
@@ -252,6 +262,8 @@ export default class GenomeSpy {
                 }
                 listeners.push(listener);
             },
+
+            isViewVisible: self.viewVisibilityPredicate,
 
             isViewSpec: (spec) => self.viewFactory.isViewSpec(spec),
 
@@ -756,3 +768,10 @@ function createMessageBox(container, message) {
     messageBox.appendChild(messageText);
     container.appendChild(messageBox);
 }
+
+/**
+ *
+ * @param {boolean | import("./spec/view").ViewDisplay} x
+ * @returns {x is import("./spec/view").ViewDisplay}
+ */
+export const isViewDisplay = (x) => isObject(x) && "display" in x;

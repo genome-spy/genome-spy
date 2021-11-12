@@ -491,6 +491,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         margin-bottom: 0.5em;
     }
 }
+
 .copy-url {
     position: relative;
 
@@ -503,5 +504,15 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         bottom: $pad;
 
         box-shadow: 0 0 $pad * 0.5 $pad * 0.4 white;
+    }
+}
+
+label.checkbox {
+    display: flex;
+    align-items: center;
+
+    input[type="checkbox"] {
+        flex: none;
+        margin-right: 0.5em;
     }
 }
