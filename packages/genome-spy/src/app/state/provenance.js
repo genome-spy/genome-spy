@@ -62,6 +62,11 @@ export default class Provenance {
     addReducer(name, reducer) {
         this._reducers[name] = reducer;
 
+        const filterAction = (/** @type {Action} */ action) =>
+            Object.keys(this._reducers).some((key) =>
+                action.type.startsWith(key)
+            );
+
         this._reducer = undoable(
             combineReducers({
                 ...this._reducers,
@@ -69,8 +74,7 @@ export default class Provenance {
             }),
             {
                 ignoreInitialState: true,
-                filter: (action, currentState, previousHistory) =>
-                    !action.type.startsWith("@@redux/REPLACE"),
+                filter: filterAction,
             }
         );
 
