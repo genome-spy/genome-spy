@@ -3,6 +3,7 @@ import AxisView from "./axisView";
 import { getFlattenedViews } from "./viewUtils";
 import Padding from "../utils/layout/padding";
 import UnitView from "./unitView";
+import { ZERO_FLEXDIMENSIONS } from "../utils/layout/flexLayout";
 
 /**
  * @typedef {import("../spec/channel").PositionalChannel} PositionalChannel
@@ -174,9 +175,11 @@ export default class DecoratorView extends ContainerView {
 
     getSize() {
         return this._cache("size/size", () =>
-            this.getSizeFromSpec()
-                .addPadding(this.getPadding())
-                .addPadding(this.getAxisSizes())
+            this.child.isVisible()
+                ? this.getSizeFromSpec()
+                      .addPadding(this.getPadding())
+                      .addPadding(this.getAxisSizes())
+                : ZERO_FLEXDIMENSIONS
         );
     }
 
