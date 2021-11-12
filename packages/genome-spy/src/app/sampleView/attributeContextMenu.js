@@ -33,7 +33,7 @@ export default function generateAttributeContextMenu(
      * @returns {MenuItem}
      */
     const actionToItem = (action) => {
-        const info = sampleView.app.provenance.getActionInfo(action);
+        const info = sampleView.provenance.getActionInfo(action);
         return {
             label: info.title,
             icon: info.icon,
