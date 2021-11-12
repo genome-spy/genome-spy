@@ -13,13 +13,14 @@ import "./components/bookmarkButton-wc";
 import "./components/toolbar-wc";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "../utils/debounce";
-import Provenance from "./provenance";
+import Provenance from "./state/provenance";
 
 import MergeSampleFacets from "./sampleView/mergeFacets";
 import { transforms } from "../data/transforms/transformFactory";
 import { messageBox } from "./utils/ui/modal";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
 import { restoreBookmark } from "./bookmark";
+import StoreHelper from "./state/storeHelper";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -39,7 +40,8 @@ export default class GenomeSpyApp {
 
         this.config = config;
 
-        this.provenance = new Provenance();
+        this.storeHelper = new StoreHelper();
+        this.provenance = new Provenance(this.storeHelper);
 
         this.toolbarRef = createRef();
 
@@ -123,7 +125,7 @@ export default class GenomeSpyApp {
 
         await this._restoreStateFromUrl();
 
-        this.provenance.subscribe(() => {
+        this.storeHelper.subscribe(() => {
             this._updateStateToUrl();
         });
 

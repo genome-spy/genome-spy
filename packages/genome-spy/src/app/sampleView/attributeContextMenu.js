@@ -29,11 +29,11 @@ export default function generateAttributeContextMenu(
     ];
 
     /**
-     * @param {import("../provenance").Action} action
+     * @param {import("../state/provenance").Action} action
      * @returns {MenuItem}
      */
     const actionToItem = (action) => {
-        const info = sampleView.provenance.getActionInfo(action);
+        const info = sampleView.app.provenance.getActionInfo(action);
         return {
             label: info.title,
             icon: info.icon,
@@ -42,7 +42,7 @@ export default function generateAttributeContextMenu(
     };
 
     /**
-     * @param {import("../provenance").Action[]} actions
+     * @param {import("../state/provenance").Action[]} actions
      */
     const addActions = (...actions) => items.push(...actions.map(actionToItem));
 

@@ -3,7 +3,7 @@ import { openDB } from "idb";
 const BOOKMARKS_STORE = "bookmarks";
 
 /**
- * @typedef {import("./provenance").Action} Action
+ * @typedef {import("./state/provenance").Action} Action
  */
 export default class BookmarkDatabase {
     /**

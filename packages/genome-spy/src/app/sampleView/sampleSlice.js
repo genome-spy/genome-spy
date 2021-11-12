@@ -277,7 +277,7 @@ function getSampleGroups(sampleHierarchy) {
  * @returns {SampleHierarchy}
  */
 export function sampleHierarchySelector(state) {
-    return state.present[SAMPLE_SLICE_NAME];
+    return state.provenance.present[SAMPLE_SLICE_NAME];
 }
 
 /**
@@ -365,7 +365,7 @@ const verboseOps = {
  *
  * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
  * @param {import("./compositeAttributeInfoSource").AttributeInfoSource} getAttributeInfo
- * @returns {import("../provenance").ActionInfo}
+ * @returns {import("../state/provenance").ActionInfo}
  */
 export function getActionInfo(action, getAttributeInfo) {
     if (!action.type.startsWith(SAMPLE_SLICE_NAME)) {

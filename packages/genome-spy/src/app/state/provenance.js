@@ -10,12 +10,7 @@
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  */
 
-import {
-    combineReducers,
-    configureStore,
-    createReducer,
-} from "@reduxjs/toolkit";
-import { batchActions, enableBatching } from "redux-batched-actions";
+import { combineReducers, createReducer } from "@reduxjs/toolkit";
 import undoable, { ActionCreators } from "redux-undo";
 
 /**
@@ -35,28 +30,28 @@ import undoable, { ActionCreators } from "redux-undo";
  * @template S State
  */
 export default class Provenance {
-    constructor() {
-        /** @type {import("redux").ReducersMapObject} */
-        this._reducers = {};
+    /**
+     *
+     * @param {import("./storeHelper").default} storeHelper
+     */
+    constructor(storeHelper) {
+        this.storeHelper = storeHelper;
 
-        // TODO: The actual store could be outside of Provenance so that it could
-        // also include non-undoable reducers
-        this.store = configureStore({
-            reducer: {},
-        });
+        /**
+         * Undoable reducers
+         * @type {import("redux").ReducersMapObject}
+         */
+        this._reducers = {};
 
         /** @type {((action: Action) => ActionInfo)[]} */
         this.actionInfoSources = [];
 
-        /** @type {Set<(state: any) => void>} */
-        this._listeners = new Set();
+        /** @type {import("redux").Reducer} */
+        this._reducer = undefined;
 
-        this.store.subscribe(() => {
-            const state = this.store.getState();
-            for (const listener of this._listeners) {
-                listener(state);
-            }
-        });
+        storeHelper.addReducer("provenance", (state, action) =>
+            this._reducer ? this._reducer(state, action) : state ?? {}
+        );
     }
 
     /**
@@ -67,7 +62,7 @@ export default class Provenance {
     addReducer(name, reducer) {
         this._reducers[name] = reducer;
 
-        const undoed = undoable(
+        this._reducer = undoable(
             combineReducers({
                 ...this._reducers,
                 lastAction: actionRecorder,
@@ -79,7 +74,24 @@ export default class Provenance {
             }
         );
 
-        this.store.replaceReducer(enableBatching(undoed));
+        // Set the initial state. Need to hack a bit because we aren't replacing
+        // the Store's reducer.
+        this.storeHelper.dispatch({
+            type:
+                "@@redux/REPLACE" +
+                Math.random().toString(36).substring(7).split("").join("."),
+        });
+    }
+
+    get _storeState() {
+        return this.storeHelper.store.getState();
+    }
+
+    /**
+     * @returns {import("redux-undo").StateWithHistory<S & { lastAction: Action }>}
+     */
+    get _provenanceState() {
+        return this._storeState.provenance;
     }
 
     /**
@@ -93,21 +105,7 @@ export default class Provenance {
      * Returns the *present* state, i.e., the one having provenance info.
      */
     getPresentState() {
-        return this.store.getState().present;
-    }
-
-    /**
-     * @param {(state: any) => void} listener
-     */
-    subscribe(listener) {
-        this._listeners.add(listener);
-    }
-
-    /**
-     * @param {(state: any) => void} listener
-     */
-    unsubscribe(listener) {
-        this._listeners.delete(listener);
+        return this._provenanceState.present;
     }
 
     /**
@@ -132,46 +130,31 @@ export default class Provenance {
     }
 
     /**
-     * @param {Action | Action[]} action
-     */
-    dispatch(action) {
-        if (Array.isArray(action)) {
-            this.store.dispatch(batchActions(action));
-        } else {
-            this.store.dispatch(action);
-        }
-    }
-
-    /**
      * Returns to the initial state and batches the bookmarked actions
      *
      * @param {Action[]} actions Bookmarked actions
      */
     dispatchBookmark(actions) {
-        this.dispatch([
+        this.storeHelper.dispatch([
             ...(this.isUndoable() ? [ActionCreators.jumpToPast(0)] : []),
             ...actions,
         ]);
     }
 
-    getDispatcher() {
-        return (/** @type {Action} */ action) => this.dispatch(action);
-    }
-
     isRedoable() {
-        return this.isEnabled() && this.store.getState().future.length > 0;
+        return this.isEnabled() && this._provenanceState.future.length > 0;
     }
 
     redo() {
-        this.dispatch(ActionCreators.redo());
+        this.storeHelper.dispatch(ActionCreators.redo());
     }
 
     isUndoable() {
-        return this.isEnabled() && this.store.getState().past.length > 0;
+        return this.isEnabled() && this._provenanceState.past.length > 0;
     }
 
     undo() {
-        this.dispatch(ActionCreators.undo());
+        this.storeHelper.dispatch(ActionCreators.undo());
     }
 
     isAtInitialState() {
@@ -179,7 +162,7 @@ export default class Provenance {
     }
 
     isEmpty() {
-        const state = this.store.getState();
+        const state = this._provenanceState;
         return (
             !this.isEnabled() || state.past.length + state.future.length <= 0
         );
@@ -192,14 +175,16 @@ export default class Provenance {
     activateState(index) {
         const current = this.getCurrentIndex();
         if (index < current) {
-            this.dispatch(ActionCreators.jumpToPast(index));
+            this.storeHelper.dispatch(ActionCreators.jumpToPast(index));
         } else if (index > current) {
-            this.dispatch(ActionCreators.jumpToFuture(index - current - 1));
+            this.storeHelper.dispatch(
+                ActionCreators.jumpToFuture(index - current - 1)
+            );
         }
     }
 
     getCurrentIndex() {
-        return this.store.getState().past?.length;
+        return this._provenanceState.past?.length;
     }
 
     /**
@@ -209,7 +194,7 @@ export default class Provenance {
      */
     getActionHistory() {
         // TODO: Selector
-        const state = this.store.getState();
+        const state = this._provenanceState;
         return (
             state.present &&
             [...state.past, state.present].map((entry) => entry.lastAction)
@@ -221,7 +206,7 @@ export default class Provenance {
      */
     getFullActionHistory() {
         // TODO: Selector
-        const state = this.store.getState();
+        const state = this._provenanceState;
         return [...state.past, state.present, ...state.future].map(
             (entry) => entry.lastAction
         );

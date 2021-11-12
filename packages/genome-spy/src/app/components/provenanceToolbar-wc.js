@@ -12,13 +12,13 @@ export default class ProvenanceButtons extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../provenance").default<any>} */
+        /** @type {import("../state/provenance").default<any>} */
         this.provenance = undefined;
     }
 
     connectedCallback() {
         super.connectedCallback();
-        this.provenance.subscribe(() => {
+        this.provenance.storeHelper.subscribe(() => {
             this.requestUpdate();
         });
     }

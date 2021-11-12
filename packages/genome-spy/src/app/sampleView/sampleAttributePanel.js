@@ -231,7 +231,7 @@ export class SampleAttributePanel extends ConcatView {
             return;
         }
 
-        const dispatch = this.sampleView.provenance.getDispatcher();
+        const dispatch = this.sampleView.provenance.storeHelper.getDispatcher();
 
         /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         const items = [];
@@ -536,7 +536,7 @@ export class SampleAttributePanel extends ConcatView {
                         lastAction.payload.attribute.specifier == name &&
                         lastAction.payload.values.length == 1;
 
-                    this.sampleView.provenance.dispatch(
+                    this.sampleView.provenance.storeHelper.dispatch(
                         shouldUndo ? [ActionCreators.undo(), action] : action
                     );
 

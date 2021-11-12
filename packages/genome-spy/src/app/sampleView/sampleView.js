@@ -31,7 +31,7 @@ import {
     SAMPLE_SLICE_NAME,
 } from "./sampleSlice";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
-import { watch } from "../../utils/state/watch";
+import { watch } from "../state/watch";
 import { createSelector } from "@reduxjs/toolkit";
 import { calculateLocations, getSampleLocationAt } from "./locations";
 
@@ -69,7 +69,7 @@ export default class SampleView extends ContainerView {
      * @param {import("../../view/viewUtils").ViewContext} context
      * @param {ContainerView} parent
      * @param {string} name
-     * @param {import("../provenance").default<any>} provenance
+     * @param {import("../state/provenance").default<any>} provenance
      */
     constructor(spec, context, parent, name, provenance) {
         super(spec, context, parent, name);
@@ -147,7 +147,7 @@ export default class SampleView extends ContainerView {
             this._handleContextMenu.bind(this)
         );
 
-        this.provenance.subscribe(
+        this.provenance.storeHelper.subscribe(
             watch(
                 (state) => sampleHierarchySelector(state).rootGroup,
                 (rootGroup) => {
@@ -163,7 +163,7 @@ export default class SampleView extends ContainerView {
             )
         );
 
-        this.provenance.subscribe(
+        this.provenance.storeHelper.subscribe(
             watch(
                 (state) => sampleHierarchySelector(state).sampleData,
                 (sampleData) => {
@@ -395,7 +395,9 @@ export default class SampleView extends ContainerView {
 
         collector.observers.push((collector) => {
             const samples = /** @type {Sample[]} */ (collector.getData());
-            this.provenance.dispatch(this.actions.setSamples({ samples }));
+            this.provenance.storeHelper.dispatch(
+                this.actions.setSamples({ samples })
+            );
         });
 
         // Synchronize loading with other data
@@ -417,7 +419,9 @@ export default class SampleView extends ContainerView {
                 attributes: [],
             }));
 
-            this.provenance.dispatch(this.actions.setSamples({ samples }));
+            this.provenance.storeHelper.dispatch(
+                this.actions.setSamples({ samples })
+            );
         } else {
             throw new Error(
                 "No explicit sample data nor sample channels found!"
@@ -823,7 +827,7 @@ export default class SampleView extends ContainerView {
                 ["rect", "rule"].includes(info.view.getMarkType())
             );
 
-        const dispatch = this.provenance.getDispatcher();
+        const dispatch = this.provenance.storeHelper.getDispatcher();
 
         /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         let items = [
