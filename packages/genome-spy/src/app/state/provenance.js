@@ -10,12 +10,12 @@
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  */
 
-import { combineReducers, createReducer } from "@reduxjs/toolkit";
+import { combineReducers } from "@reduxjs/toolkit";
 import undoable, { ActionCreators } from "redux-undo";
 
 /**
  * Handles provenance, undo/redo, etc. In practice, this is a thin
- * wrapper around Redux store. Provides some practical methods.
+ * wrapper around Redux store and redux-undo. Provides some practical methods.
  *
  * This is somewhat inspired by:
  *     Z. T. Cutler, K. Gadhave and A. Lex,
@@ -32,7 +32,7 @@ import undoable, { ActionCreators } from "redux-undo";
 export default class Provenance {
     /**
      *
-     * @param {import("./storeHelper").default} storeHelper
+     * @param {import("./storeHelper").default<{provenance?: import("redux-undo").StateWithHistory<S>}>} storeHelper
      */
     constructor(storeHelper) {
         this.storeHelper = storeHelper;
@@ -66,6 +66,15 @@ export default class Provenance {
             Object.keys(this._reducers).some((key) =>
                 action.type.startsWith(key)
             );
+
+        /**
+         * Stores the latest action into the state so that it can be shown
+         * in the provenance menu.
+         *
+         * @type {import("redux").Reducer}
+         */
+        const actionRecorder = (state, action) =>
+            filterAction(action) ? action : state ?? null;
 
         this._reducer = undoable(
             combineReducers({
@@ -226,7 +235,3 @@ export default class Provenance {
         return this.getActionHistory()?.slice(1);
     }
 }
-
-const actionRecorder = createReducer(undefined, (builder) => {
-    builder.addDefaultCase((state, action) => action);
-});

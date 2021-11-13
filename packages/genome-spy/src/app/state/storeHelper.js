@@ -2,9 +2,13 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { batchActions, enableBatching } from "redux-batched-actions";
 
 /**
+ * @typedef {import("@reduxjs/toolkit").AnyAction} Action
+ */
+
+/**
  * Provides some convenience stuff for redux store
  *
- * @typedef {import("@reduxjs/toolkit").AnyAction} Action
+ * @template T
  */
 export default class StoreHelper {
     /**
@@ -31,7 +35,7 @@ export default class StoreHelper {
     }
 
     get state() {
-        return this.store.getState();
+        return /** @type {T} */ (this.store.getState());
     }
 
     /**
