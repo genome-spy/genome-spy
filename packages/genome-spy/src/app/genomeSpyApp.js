@@ -42,8 +42,11 @@ export default class GenomeSpyApp {
 
         this.config = config;
 
+        /** @type {StoreHelper<import("./state").State>} */
         this.storeHelper = new StoreHelper();
         this.storeHelper.addReducer("viewSettings", viewSettingsSlice.reducer);
+
+        /** @type {Provenance<import("./sampleView/sampleState").SampleHierarchy>} */
         this.provenance = new Provenance(this.storeHelper);
 
         this.toolbarRef = createRef();
@@ -109,7 +112,10 @@ export default class GenomeSpyApp {
 
         this.genomeSpy.viewVisibilityPredicate = (view) => {
             const state = this.storeHelper.state;
-            return state.viewSettings?.viewVisibilities[view.name] ?? true;
+            return (
+                state.viewSettings?.viewVisibilities[view.name] ??
+                view.isVisibleInSpec()
+            );
         };
     }
 

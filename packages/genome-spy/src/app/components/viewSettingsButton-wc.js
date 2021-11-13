@@ -1,6 +1,7 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faSlidersH } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, html } from "lit";
+import { findViewsHavingUniqueNames } from "../../view/viewUtils";
 import { queryDependency } from "../utils/dependency";
 import { toggleDropdown } from "../utils/ui/dropdown";
 import { viewSettingsSlice } from "../viewSettingsSlice";
@@ -51,37 +52,45 @@ class ViewSettingsButton extends LitElement {
         const checked = /** @type {HTMLInputElement} */ (event.target).checked;
 
         this.app.storeHelper.dispatch(
-            viewSettingsSlice.actions.setVisibility({
-                name: view.name,
-                visibility: checked,
-            })
+            checked != view.isVisibleInSpec()
+                ? viewSettingsSlice.actions.setVisibility({
+                      name: view.name,
+                      visibility: checked,
+                  })
+                : viewSettingsSlice.actions.restoreDefaultVisibility(view.name)
         );
+
+        // Just to be sure...
+        this.requestUpdate();
 
         event.stopPropagation();
     }
 
     makeToggles() {
-        /** @type {import("lit").TemplateResult[]} */
-        const toggles = [];
+        /* @type {import("lit").TemplateResult[]} */
+        //let toggles = [];
 
-        this.app.genomeSpy.viewRoot.visit((view) => {
-            if (view.name) {
-                toggles.push(
-                    html`<li>
-                        <label class="checkbox"
-                            ><input
-                                type="checkbox"
-                                @change=${(/** @type {UIEvent} */ event) =>
-                                    this.handleCheckboxClick(event, view)}
-                            />
-                            ${view.getPathString()}</label
-                        >
-                    </li>`
-                );
-            }
-        });
+        const viewsHavingUniqueName = findViewsHavingUniqueNames(
+            this.app.genomeSpy.viewRoot
+        );
 
-        return toggles;
+        const visibilities =
+            this.app.storeHelper.state.viewSettings.viewVisibilities;
+
+        return viewsHavingUniqueName.map(
+            (view) => html`<li>
+                <label class="checkbox"
+                    ><input
+                        type="checkbox"
+                        ?checked=${visibilities[view.name] ??
+                        view.isVisibleInSpec()}
+                        @change=${(/** @type {UIEvent} */ event) =>
+                            this.handleCheckboxClick(event, view)}
+                    />
+                    ${view.getPathString()}</label
+                >
+            </li>`
+        );
     }
 
     render() {

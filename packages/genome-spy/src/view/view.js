@@ -200,6 +200,10 @@ export default class View {
         return this.context.isViewVisible(this);
     }
 
+    isVisibleInSpec() {
+        return true;
+    }
+
     /**
      * Returns the effective opacity of this view, e.g., view's opacity multiplied
      * by opacities of its ancestors.

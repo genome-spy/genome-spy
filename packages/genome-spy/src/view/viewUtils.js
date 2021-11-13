@@ -16,6 +16,7 @@ import {
 } from "../encoder/encoder";
 import ContainerView from "./containerView";
 import { peek } from "../utils/arrayUtils";
+import { rollup } from "d3-array";
 
 /**
  * @typedef {import("./viewContext").default} ViewContext
@@ -386,4 +387,31 @@ export function findDescendantsByPath(root, name) {
     });
 
     return descendants;
+}
+
+/**
+ *
+ * @param {View} root
+ */
+export function findViewsHavingUniqueNames(root) {
+    /** @type {View[]} */
+    const descendants = [];
+
+    root.visit((view) => {
+        descendants.push(view);
+    });
+
+    const uniqueNames = new Set(
+        [
+            ...rollup(
+                descendants,
+                (views) => views.length,
+                (view) => view.name
+            ),
+        ]
+            .filter(([name, count]) => count == 1 && name !== undefined)
+            .map(([name, count]) => name)
+    );
+
+    return descendants.filter((view) => uniqueNames.has(view.name));
 }

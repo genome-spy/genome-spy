@@ -21,5 +21,11 @@ export const viewSettingsSlice = createSlice({
             state.viewVisibilities[action.payload.name] =
                 action.payload.visibility;
         },
+        restoreDefaultVisibility: (
+            state,
+            /** @type {PayloadAction<string>} */ action
+        ) => {
+            delete state.viewVisibilities[action.payload];
+        },
     },
 });
