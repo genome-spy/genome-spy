@@ -37,8 +37,8 @@ export default class MergeSampleFacets extends FlowNode {
 
         for (const v of view.getAncestors()) {
             if (v instanceof SampleView) {
-                this.provenance = v.app;
-                this.provenance.subscribe((state) =>
+                this.provenance = v.provenance;
+                this.provenance.storeHelper.subscribe((state) =>
                     animator.requestTransition(() => {
                         this.reset();
                         this._mergeAndPropagate(sampleHierarchySelector(state));
