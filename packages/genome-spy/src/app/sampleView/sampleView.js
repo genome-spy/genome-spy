@@ -343,6 +343,10 @@ export default class SampleView extends ContainerView {
 
     getEffectivePadding() {
         return this._cache("size/effectivePadding", () => {
+            const peripheryPadding = this.peripheryView.isVisible()
+                ? this.peripheryView.getSize().width.px + SPACING
+                : 0;
+
             const childEffPad = this.child.getEffectivePadding();
 
             // TODO: Top / bottom axes
@@ -351,9 +355,7 @@ export default class SampleView extends ContainerView {
                     0,
                     childEffPad.right,
                     0,
-                    this.peripheryView.getSize().width.px +
-                        SPACING +
-                        childEffPad.left
+                    childEffPad.left + peripheryPadding
                 )
             );
         });
@@ -662,7 +664,12 @@ export default class SampleView extends ContainerView {
         this._coords = coords;
 
         const cols = mapToPixelCoords(
-            [this.peripheryView.getSize().width, { grow: 1 }],
+            [
+                this.peripheryView.isVisible()
+                    ? this.peripheryView.getSize().width
+                    : { px: 0 },
+                { grow: 1 },
+            ],
             coords.width,
             { spacing: SPACING }
         );
