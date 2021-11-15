@@ -202,7 +202,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
             }
         }
 
-        $hPadding: 13px;
+        $vPadding: 13px;
 
         .dropdown {
             position: relative;
@@ -224,6 +224,10 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
         .dropdown-menu {
             $hover-color: #e0e0e0;
+            $hPadding: 7px;
+
+            overflow: auto;
+            max-height: calc(100vh - 60px);
 
             display: none;
             z-index: 1;
@@ -238,19 +242,19 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
             // TODO: Same as in context menu
             font-size: 13px;
 
-            padding: 7px 0;
+            padding: $hPadding 0;
 
             li {
                 position: relative;
                 padding: 0;
 
-                &:hover {
+                & > a:hover {
                     background-color: $hover-color;
                 }
             }
 
             a:first-child {
-                padding: 4px $hPadding;
+                padding: 4px $vPadding;
             }
 
             a {
@@ -262,7 +266,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
                     background-color: #e0e0e0;
                     border-left: $tickSize solid #c0c0c0;
-                    padding-left: $hPadding - $tickSize;
+                    padding-left: $vPadding - $tickSize;
                 }
             }
 
@@ -274,7 +278,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
                 position: absolute;
                 top: 1px;
-                right: $hPadding * 0.5;
+                right: $vPadding * 0.5;
                 bottom: 1px;
                 vertical-align: center;
                 max-height: 2em;
@@ -308,6 +312,28 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
             .menu-divider {
                 margin: 5px 0;
                 border-top: 1px solid #e0e0e0;
+            }
+
+            ul {
+                padding-left: 1.5em;
+                list-style: none;
+            }
+
+            > li > ul {
+                padding-left: 0;
+            }
+
+            label {
+                padding: 1px $hPadding;
+
+                &:hover {
+                    background-color: $hover-color;
+                }
+            }
+
+            .unchecked label {
+                // TODO: Theme color
+                color: #aaa;
             }
         }
     }

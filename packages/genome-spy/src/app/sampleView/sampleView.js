@@ -84,7 +84,7 @@ export default class SampleView extends ContainerView {
 
         /** @type { UnitView | LayerView | DecoratorView } */
         this.child = /** @type { UnitView | LayerView | DecoratorView } */ (
-            context.createView(spec.spec, this, `sampleFacet`)
+            context.createView(spec.spec, this, "sample-facets")
         );
 
         this.summaryViews = new ConcatView(
@@ -124,6 +124,7 @@ export default class SampleView extends ContainerView {
         /** @type {ConcatView} */
         this.peripheryView = new ConcatView(
             {
+                title: "Sidebar",
                 resolve: {
                     scale: { default: "independent" },
                     axis: { default: "independent" },
@@ -133,7 +134,7 @@ export default class SampleView extends ContainerView {
             },
             context,
             this,
-            "periphery"
+            "sample-sidebar"
         );
 
         this.groupPanel = new GroupPanel(this);
@@ -446,7 +447,10 @@ export default class SampleView extends ContainerView {
             const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
             const groupAttributes = [null, ...sampleHierarchy.groupMetadata];
 
-            const summaryHeight = this.summaryViews?.getSize().height.px ?? 0;
+            const summaryHeight =
+                (this.summaryViews.isVisible() &&
+                    this.summaryViews?.getSize().height.px) ??
+                0;
 
             // Locations squeezed into the viewport height
             const fittedLocations = calculateLocations(flattened, {

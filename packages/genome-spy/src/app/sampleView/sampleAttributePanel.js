@@ -41,6 +41,7 @@ export class SampleAttributePanel extends ConcatView {
     constructor(sampleView) {
         super(
             {
+                title: "Sample metadata",
                 data: { dynamicSource: true },
                 hconcat: [], // Contents are added dynamically
                 spacing: 1,
@@ -52,7 +53,7 @@ export class SampleAttributePanel extends ConcatView {
             sampleView.context,
             // TODO: fix parent
             undefined,
-            "sampleAttributes"
+            "sample-metadata"
         );
 
         this.sampleView = sampleView;

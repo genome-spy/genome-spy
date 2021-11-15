@@ -393,7 +393,7 @@ export function findDescendantsByPath(root, name) {
  *
  * @param {View} root
  */
-export function findViewsHavingUniqueNames(root) {
+export function findUniqueViewNames(root) {
     /** @type {View[]} */
     const descendants = [];
 
@@ -401,7 +401,7 @@ export function findViewsHavingUniqueNames(root) {
         descendants.push(view);
     });
 
-    const uniqueNames = new Set(
+    return new Set(
         [
             ...rollup(
                 descendants,
@@ -412,6 +412,9 @@ export function findViewsHavingUniqueNames(root) {
             .filter(([name, count]) => count == 1 && name !== undefined)
             .map(([name, count]) => name)
     );
-
-    return descendants.filter((view) => uniqueNames.has(view.name));
 }
+
+/**
+ * @param {string} name
+ */
+export const isCustomViewName = (name) => !/^(layer|concat)\d+$/.test(name);
