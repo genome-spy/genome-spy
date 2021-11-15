@@ -1,6 +1,7 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faSlidersH } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, html, nothing } from "lit";
+import { live } from "lit/directives/live.js";
 import AxisView from "../../view/axisView";
 import DecoratorView from "../../view/decoratorView";
 import { VISIT_SKIP } from "../../view/view";
@@ -135,7 +136,7 @@ class ViewSettingsButton extends LitElement {
                     ><input
                         type="checkbox"
                         ?disabled=${!uniqueNames.has(view.name)}
-                        ?checked=${checked}
+                        .checked=${live(checked)}
                         @change=${(/** @type {UIEvent} */ event) =>
                             this.handleCheckboxClick(event, view)}
                     />${view.spec.title ?? view.name}
