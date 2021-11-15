@@ -564,6 +564,7 @@ function createAttributeSpec(attributeName, attributeDef) {
     const attributeSpec = {
         name: `attribute-${attributeName}`,
         title: attributeName,
+        visible: attributeDef.visible ?? true,
         width: attributeDef.width ?? 10,
         transform: [{ type: "filter", expr: `datum.${field} != null` }],
         mark: {

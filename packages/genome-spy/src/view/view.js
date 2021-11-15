@@ -201,7 +201,7 @@ export default class View {
     }
 
     isVisibleInSpec() {
-        return true;
+        return this.spec.visible ?? true;
     }
 
     /**

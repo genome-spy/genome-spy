@@ -56,29 +56,6 @@ export interface ViewConfig extends RectProps, FillAndStrokeProps {
     strokeWidth?: number;
 }
 
-/**
- * Modes:
- * `"normal"`: the view is visible.
- * `"none"`: the view is removed from the layout and is not rendered.
- */
-export type DisplayMode = "normal" | "none"; // TODO: magicLens
-
-export interface ViewDisplay {
-    /**
-     * The default display mode.
-     *
-     * **Default:** `"normal"`
-     */
-    display: DisplayMode;
-
-    /**
-     * Is the display mode configurable in the UI.
-     *
-     * **Default:** `false`
-     */
-    configurable?: boolean;
-}
-
 export interface ViewSpecBase extends ResolveSpec {
     name?: string;
 
@@ -113,15 +90,13 @@ export interface ViewSpecBase extends ResolveSpec {
     opacity?: ViewOpacityDef;
 
     /**
-     * Display mode of the view. Either a boolean or a `ViewDisplay` object
-     * that allows for more fine-grained configuration. A `true` indicates a
-     * visible view and `false` a hidden that is removed from the layout and
-     * not rendered.
+     * Visibility of the view. An invisible view is removed from the layout
+     * and not rendered.
      *
      * **Default:** `true`
      */
     // TODO: Detach invisible views from the data flow.
-    display?: boolean | ViewDisplay;
+    visible?: boolean;
 }
 
 export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
@@ -152,6 +127,7 @@ export interface SampleAttributeDef {
     scale?: Scale;
     barScale?: Scale;
     width?: number;
+    visible?: boolean;
 }
 
 export interface SampleDef {

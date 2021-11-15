@@ -110,13 +110,10 @@ export default class GenomeSpyApp {
                 )
         );
 
-        this.genomeSpy.viewVisibilityPredicate = (view) => {
-            const state = this.storeHelper.state;
-            return (
-                state.viewSettings?.visibilities[view.name] ??
-                view.isVisibleInSpec()
-            );
-        };
+        const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
+        this.genomeSpy.viewVisibilityPredicate = (view) =>
+            this.storeHelper.state.viewSettings?.visibilities[view.name] ??
+            originalPredicate(view);
     }
 
     toggleFullScreen() {

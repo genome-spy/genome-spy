@@ -37,7 +37,6 @@ import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler";
 import { invalidatePrefix } from "./utils/propertyCacher";
 import { ViewFactory } from "./view/viewFactory";
-import { isObject } from "vega-util";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -84,13 +83,12 @@ export default class GenomeSpy {
         this.genomeStore = undefined;
 
         /**
-         * The
+         * View visibility is checked using a predicate that can be overridden
+         * for more dynamic visibility management.
+         *
          * @type {(view: import("./view/view").default) => boolean}
          */
-        this.viewVisibilityPredicate = (view) =>
-            isViewDisplay(view.spec.display)
-                ? view.spec.display.display == "normal"
-                : view.spec.display ?? true;
+        this.viewVisibilityPredicate = (view) => view.isVisibleInSpec();
 
         /** @type {DeferredViewRenderingContext} */
         this._renderingContext = undefined;
@@ -768,10 +766,3 @@ function createMessageBox(container, message) {
     messageBox.appendChild(messageText);
     container.appendChild(messageBox);
 }
-
-/**
- *
- * @param {boolean | import("./spec/view").ViewDisplay} x
- * @returns {x is import("./spec/view").ViewDisplay}
- */
-export const isViewDisplay = (x) => isObject(x) && "display" in x;
