@@ -563,7 +563,8 @@ function createAttributeSpec(attributeName, attributeDef) {
     /** @type {import("../../view/viewUtils").UnitSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
-        width: attributeDef.width || 10,
+        title: attributeName,
+        width: attributeDef.width ?? 10,
         transform: [{ type: "filter", expr: `datum.${field} != null` }],
         mark: {
             type: "rect",
@@ -596,7 +597,8 @@ function createLabelViewSpec() {
 
     /** @type {import("../../view/viewUtils").UnitSpec} */
     const titleSpec = {
-        name: "sampleLabel",
+        name: "metadata-sample-name",
+        title: "Sample name",
         width: 140,
         mark: {
             type: "text",
