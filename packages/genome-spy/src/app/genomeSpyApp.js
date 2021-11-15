@@ -113,7 +113,7 @@ export default class GenomeSpyApp {
         this.genomeSpy.viewVisibilityPredicate = (view) => {
             const state = this.storeHelper.state;
             return (
-                state.viewSettings?.viewVisibilities[view.name] ??
+                state.viewSettings?.visibilities[view.name] ??
                 view.isVisibleInSpec()
             );
         };
@@ -137,16 +137,11 @@ export default class GenomeSpyApp {
             return;
         }
 
-        await this._restoreStateFromUrl();
-
-        this.storeHelper.subscribe(() => {
-            this._updateStateToUrl();
-        });
-
         this.storeHelper.subscribe(
             watch(
-                (state) => state.viewSettings?.viewVisibilities,
-                (viewVisibilities, oldViewVisibilities) => {
+                (/** @type {import("./state").State} */ state) =>
+                    state.viewSettings?.visibilities,
+                (_viewVisibilities, _oldViewVisibilities) => {
                     // TODO: Optimize: only invalidate the affected views
                     this.genomeSpy.viewRoot._invalidateCacheByPrefix(
                         "size",
@@ -160,6 +155,12 @@ export default class GenomeSpyApp {
                 this.storeHelper.store.getState()
             )
         );
+
+        await this._restoreStateFromUrl();
+
+        this.storeHelper.subscribe(() => {
+            this._updateStateToUrl();
+        });
 
         window.addEventListener(
             "hashchange",
@@ -217,8 +218,15 @@ export default class GenomeSpyApp {
             }
         }
 
+        const viewSettings = this.storeHelper.state.viewSettings;
+        if (Object.keys(viewSettings.visibilities).length) {
+            hashData.viewSettings = viewSettings;
+        }
+
         let hash =
-            hashData.actions.length || Object.keys(hashData.scaleDomains).length
+            hashData.actions.length ||
+            Object.keys(hashData.scaleDomains).length ||
+            hashData.viewSettings
                 ? compressToUrlHash(hashData)
                 : "";
 

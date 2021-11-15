@@ -1,5 +1,6 @@
 import { DBSchema } from "idb";
 import { ChromosomalLocus } from "../genome/genome";
+import { ViewSettings } from "./state";
 import { Action } from "./state/provenance";
 
 interface BookmarkEntry {
@@ -17,6 +18,11 @@ interface BookmarkEntry {
      * Domains of scales that are both zoomable and named
      */
     scaleDomains?: Record<string, number[] | ChromosomalLocus[]>;
+
+    /**
+     * Settings such as view visibilities
+     */
+    viewSettings?: ViewSettings;
 }
 interface BookmarkDB extends DBSchema {
     bookmarks: {

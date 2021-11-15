@@ -67,6 +67,11 @@ class BookmarkButton extends LitElement {
                   scaleDomains: {},
               };
 
+        const viewSettings = this.app.storeHelper.state.viewSettings;
+        if (Object.keys(viewSettings.visibilities).length) {
+            bookmarkEntry.viewSettings = viewSettings;
+        }
+
         for (const [scaleName, scaleResolution] of this.app.genomeSpy
             .getNamedScaleResolutions()
             .entries()) {

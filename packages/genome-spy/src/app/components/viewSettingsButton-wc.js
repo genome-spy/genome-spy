@@ -104,7 +104,7 @@ class ViewSettingsButton extends LitElement {
 
     renderToggles() {
         const visibilities =
-            this.app.storeHelper.state.viewSettings.viewVisibilities;
+            this.app.storeHelper.state.viewSettings.visibilities;
 
         const viewRoot = this.app.genomeSpy.viewRoot;
         const uniqueNames = findUniqueViewNames(viewRoot);

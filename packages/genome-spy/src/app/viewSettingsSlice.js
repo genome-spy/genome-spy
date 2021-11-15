@@ -5,9 +5,9 @@ import { createSlice } from "@reduxjs/toolkit";
  * @typedef {import("@reduxjs/toolkit").PayloadAction<P>} PayloadAction
  */
 
+/** @type {import("./state").ViewSettings} */
 const initialState = {
-    /** @type {Record<string, boolean>} */
-    viewVisibilities: {},
+    visibilities: {},
 };
 
 export const viewSettingsSlice = createSlice({
@@ -18,14 +18,27 @@ export const viewSettingsSlice = createSlice({
             state,
             /** @type {PayloadAction<{name: string, visibility: boolean}>} */ action
         ) => {
-            state.viewVisibilities[action.payload.name] =
-                action.payload.visibility;
+            state.visibilities[action.payload.name] = action.payload.visibility;
         },
+
         restoreDefaultVisibility: (
             state,
             /** @type {PayloadAction<string>} */ action
         ) => {
-            delete state.viewVisibilities[action.payload];
+            delete state.visibilities[action.payload];
         },
+
+        restoreDefaultVisibilities: (
+            state,
+            /** @type {PayloadAction<string>} */ action
+        ) => initialState,
+
+        setViewSettings: (
+            _state,
+            /** @type {PayloadAction<import("./state").ViewSettings>} */ action
+        ) => ({
+            ...initialState,
+            ...(action.payload ? action.payload : {}),
+        }),
     },
 });

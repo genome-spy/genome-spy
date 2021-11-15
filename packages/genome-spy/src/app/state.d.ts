@@ -7,7 +7,7 @@ export interface ViewSettings {
      * unique within the whole view specification. Only entries that differ
      * from the configured default visibility should be included.
      */
-    viewVisibilities: Record<string, boolean>;
+    visibilities: Record<string, boolean>;
 }
 
 export interface State {

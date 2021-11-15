@@ -1,6 +1,7 @@
 import { html } from "lit";
 import safeMarkdown from "../utils/safeMarkdown";
 import { messageBox } from "./utils/ui/modal";
+import { viewSettingsSlice } from "./viewSettingsSlice";
 
 /**
  * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
@@ -9,6 +10,10 @@ import { messageBox } from "./utils/ui/modal";
 export async function restoreBookmark(entry, app) {
     try {
         app.provenance.dispatchBookmark(entry.actions);
+
+        app.storeHelper.dispatch(
+            viewSettingsSlice.actions.setViewSettings(entry.viewSettings)
+        );
 
         /** @type {Promise<void>[]} */
         const promises = [];
