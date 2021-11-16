@@ -32,8 +32,12 @@ class ViewSettingsButton extends LitElement {
             (_old, _new) => {
                 this.updateToggles();
                 this.requestUpdate();
+
+                this.style.display = this.nestedPaths ? "block" : "none";
             }
         );
+
+        this.style.display = "none";
     }
 
     connectedCallback() {
