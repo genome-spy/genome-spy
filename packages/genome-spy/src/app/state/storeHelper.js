@@ -52,14 +52,14 @@ export default class StoreHelper {
     }
 
     /**
-     * @param {(state: any) => void} listener
+     * @param {(state: T) => void} listener
      */
     subscribe(listener) {
         this._listeners.add(listener);
     }
 
     /**
-     * @param {(state: any) => void} listener
+     * @param {(state: T) => void} listener
      */
     unsubscribe(listener) {
         this._listeners.delete(listener);

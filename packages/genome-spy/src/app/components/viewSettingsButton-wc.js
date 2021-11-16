@@ -7,6 +7,7 @@ import DecoratorView from "../../view/decoratorView";
 import LayerView from "../../view/layerView";
 import { VISIT_SKIP } from "../../view/view";
 import { findUniqueViewNames, isCustomViewName } from "../../view/viewUtils";
+import { watch } from "../state/watch";
 import { queryDependency } from "../utils/dependency";
 import { nestPaths } from "../utils/nestPaths";
 import { toggleDropdown } from "../utils/ui/dropdown";
@@ -24,6 +25,15 @@ class ViewSettingsButton extends LitElement {
 
         /** @type {import("../utils/nestPaths").NestedItem<View>} */
         this.nestedPaths = undefined;
+
+        this.sateWatcher = watch(
+            (/** @type {import("../state").State} */ state) =>
+                state.viewSettings?.visibilities,
+            (_old, _new) => {
+                this.updateToggles();
+                this.requestUpdate();
+            }
+        );
     }
 
     connectedCallback() {
@@ -37,6 +47,12 @@ class ViewSettingsButton extends LitElement {
                 }
             )
         );
+
+        this.app.storeHelper.subscribe(this.sateWatcher);
+    }
+
+    disconnectedCallback() {
+        this.app.storeHelper.unsubscribe(this.sateWatcher);
     }
 
     createRenderRoot() {
@@ -47,11 +63,7 @@ class ViewSettingsButton extends LitElement {
      * @param {UIEvent} event
      */
     toolButtonClicked(event) {
-        const visible = toggleDropdown(event);
-        if (visible) {
-            this.updateToggles();
-            this.requestUpdate();
-        }
+        toggleDropdown(event);
     }
 
     /**
