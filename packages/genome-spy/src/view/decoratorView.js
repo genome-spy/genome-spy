@@ -496,6 +496,7 @@ export default class DecoratorView extends ContainerView {
  */
 function createBackground(viewConfig) {
     return {
+        configurableVisibility: false,
         data: { values: [{}] },
         mark: {
             fill: null,
