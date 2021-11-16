@@ -1,13 +1,25 @@
 import { defineConfig } from "vite";
 import rawPlugin from "vite-raw-plugin";
 import minifyHTML from "rollup-plugin-minify-html-literals";
+import glsl from "rollup-plugin-glsl";
 
 export default defineConfig({
     root: "src",
     plugins: [
-        rawPlugin({
-            fileRegex: /\.glsl$/,
-        }),
+        // Don't minify
+        {
+            ...rawPlugin({
+                fileRegex: /\.glsl$/,
+            }),
+            apply: "serve",
+        },
+        // Please minify
+        {
+            ...glsl({
+                include: "**/*.glsl",
+            }),
+            apply: "build",
+        },
     ],
     build: {
         outDir: "../dist",
