@@ -9,7 +9,9 @@ import { viewSettingsSlice } from "./viewSettingsSlice";
  */
 export async function restoreBookmark(entry, app) {
     try {
-        app.provenance.dispatchBookmark(entry.actions);
+        if (entry.actions) {
+            app.provenance.dispatchBookmark(entry.actions);
+        }
 
         app.storeHelper.dispatch(
             viewSettingsSlice.actions.setViewSettings(entry.viewSettings)
