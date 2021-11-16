@@ -97,6 +97,15 @@ export interface ViewSpecBase extends ResolveSpec {
      */
     // TODO: Detach invisible views from the data flow.
     visible?: boolean;
+
+    /**
+     * Is the visibility configurable interactively from the App.
+     * Configurability requires that the view has an explicitly specified name
+     * that is *unique* in within the view specification.
+     *
+     * **Default:** `false` for children of `layer`, `true` for others.
+     */
+    configurableVisibility?: boolean;
 }
 
 export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {

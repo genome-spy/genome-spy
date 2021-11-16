@@ -4,6 +4,7 @@ import { LitElement, html, nothing } from "lit";
 import { live } from "lit/directives/live.js";
 import AxisView from "../../view/axisView";
 import DecoratorView from "../../view/decoratorView";
+import LayerView from "../../view/layerView";
 import { VISIT_SKIP } from "../../view/view";
 import { findUniqueViewNames, isCustomViewName } from "../../view/viewUtils";
 import { queryDependency } from "../utils/dependency";
@@ -92,7 +93,8 @@ class ViewSettingsButton extends LitElement {
             .filter(
                 (view) =>
                     !(view instanceof DecoratorView) &&
-                    isCustomViewName(view.name)
+                    isCustomViewName(view.name) &&
+                    isConfigurable(view)
             )
             .map((view) =>
                 [...view.getAncestors()]
@@ -135,7 +137,8 @@ class ViewSettingsButton extends LitElement {
                 <label class="checkbox"
                     ><input
                         type="checkbox"
-                        ?disabled=${!uniqueNames.has(view.name)}
+                        ?disabled=${!uniqueNames.has(view.name) ||
+                        !isConfigurable(view)}
                         .checked=${live(checked)}
                         @change=${(/** @type {UIEvent} */ event) =>
                             this.handleCheckboxClick(event, view)}
@@ -173,5 +176,9 @@ class ViewSettingsButton extends LitElement {
         `;
     }
 }
+
+const isConfigurable = (/** @type {View} */ view) =>
+    view.spec.configurableVisibility ??
+    !(view.parent && view.parent instanceof LayerView);
 
 customElements.define("genome-spy-view-visibility", ViewSettingsButton);
