@@ -28,13 +28,8 @@ class ViewSettingsButton extends LitElement {
 
         this.sateWatcher = watch(
             (/** @type {import("../state").State} */ state) =>
-                state.viewSettings?.visibilities,
-            (_old, _new) => {
-                this.updateToggles();
-                this.requestUpdate();
-
-                this.style.display = this.nestedPaths ? "block" : "none";
-            }
+                state.viewSettings,
+            (_old, viewSettings) => this.requestUpdate()
         );
 
         this.style.display = "none";
@@ -51,6 +46,14 @@ class ViewSettingsButton extends LitElement {
                 }
             )
         );
+
+        this.app.addInitializationListener(() => {
+            this.updateToggles();
+            this.requestUpdate();
+            this.style.display = this.nestedPaths.children.length
+                ? "block"
+                : "none";
+        });
 
         this.app.storeHelper.subscribe(this.sateWatcher);
     }
@@ -100,6 +103,9 @@ class ViewSettingsButton extends LitElement {
 
     updateToggles() {
         const viewRoot = this.app.genomeSpy.viewRoot;
+        if (!viewRoot) {
+            return;
+        }
 
         /** @type {View[]} */
         const views = [];

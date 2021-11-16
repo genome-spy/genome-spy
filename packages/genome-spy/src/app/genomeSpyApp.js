@@ -49,6 +49,9 @@ export default class GenomeSpyApp {
         /** @type {Provenance<import("./sampleView/sampleState").SampleHierarchy>} */
         this.provenance = new Provenance(this.storeHelper);
 
+        /** @type {(() => void)[]} */
+        this._initializationListeners = [];
+
         this.toolbarRef = createRef();
 
         this.appContainer = appContainerElement;
@@ -114,6 +117,17 @@ export default class GenomeSpyApp {
         this.genomeSpy.viewVisibilityPredicate = (view) =>
             this.storeHelper.state.viewSettings?.visibilities[view.name] ??
             originalPredicate(view);
+    }
+
+    /**
+     * @param {() => void} listener
+     */
+    addInitializationListener(listener) {
+        if (this._initializationListeners) {
+            this._initializationListeners.push(listener);
+        } else {
+            listener();
+        }
     }
 
     toggleFullScreen() {
@@ -195,6 +209,11 @@ export default class GenomeSpyApp {
         if (this.isFullPage() && title.length > 0) {
             document.title = "GenomeSpy - " + title;
         }
+
+        for (const listener of this._initializationListeners) {
+            listener();
+        }
+        this._initializationListeners = undefined;
     }
 
     /**
@@ -241,6 +260,9 @@ export default class GenomeSpyApp {
         );
     }
 
+    /**
+     * @returns {boolean} `true` if restored successfully
+     */
     _restoreStateFromUrl() {
         const hash = window.location.hash;
         if (hash && hash.length > 0) {
@@ -248,6 +270,7 @@ export default class GenomeSpyApp {
                 /** @type {import("./genomeSpyAppTypes").UrlHash} */
                 const entry = decompressFromUrlHash(hash);
                 restoreBookmark(entry, this);
+                return true;
             } catch (e) {
                 console.error(e);
                 messageBox(
@@ -256,6 +279,7 @@ export default class GenomeSpyApp {
                 );
             }
         }
+        return false;
     }
 
     _configureContainer() {
