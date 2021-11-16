@@ -15,6 +15,7 @@ export class GroupPanel extends LayerView {
     constructor(sampleView) {
         super(
             {
+                title: "Groups",
                 width: { step: 22 },
                 // TODO: Make step size, colors, font size, etc. configurable.
 
@@ -106,7 +107,7 @@ export class GroupPanel extends LayerView {
             },
             sampleView.context,
             undefined,
-            "sampleGroups"
+            "sample-groups"
         );
 
         this.sampleView = sampleView;

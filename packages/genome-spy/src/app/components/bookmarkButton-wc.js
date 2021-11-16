@@ -67,6 +67,11 @@ class BookmarkButton extends LitElement {
                   scaleDomains: {},
               };
 
+        const viewSettings = this.app.storeHelper.state.viewSettings;
+        if (Object.keys(viewSettings.visibilities).length) {
+            bookmarkEntry.viewSettings = viewSettings;
+        }
+
         for (const [scaleName, scaleResolution] of this.app.genomeSpy
             .getNamedScaleResolutions()
             .entries()) {
@@ -270,7 +275,7 @@ class BookmarkButton extends LitElement {
                 >
                     ${icon(faBookmark).node[0]}
                 </button>
-                <ul class="dropdown-menu gs-context-menu">
+                <ul class="gs-context-menu gs-dropdown-menu">
                     <li>
                         <a
                             @click=${() => this._addBookmark()}

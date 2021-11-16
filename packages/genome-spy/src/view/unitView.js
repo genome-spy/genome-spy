@@ -103,6 +103,10 @@ export default class UnitView extends ContainerView {
      * @param {import("./view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
+        if (!this.isVisible()) {
+            return;
+        }
+
         coords = coords.shrink(this.getPadding());
 
         this.coords = coords;

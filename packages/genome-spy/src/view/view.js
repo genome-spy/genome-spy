@@ -1,4 +1,8 @@
-import { parseSizeDef, FlexDimensions } from "../utils/layout/flexLayout";
+import {
+    parseSizeDef,
+    FlexDimensions,
+    ZERO_FLEXDIMENSIONS,
+} from "../utils/layout/flexLayout";
 import Padding from "../utils/layout/padding";
 import {
     getCachedOrCall,
@@ -127,7 +131,9 @@ export default class View {
      */
     getSize() {
         return this._cache("size/size", () =>
-            this.getSizeFromSpec().addPadding(this.getPadding())
+            this.isVisible()
+                ? this.getSizeFromSpec().addPadding(this.getPadding())
+                : ZERO_FLEXDIMENSIONS
         );
     }
 
@@ -188,6 +194,14 @@ export default class View {
             "size/sizeFromSpec",
             () => new FlexDimensions(handleSize("width"), handleSize("height"))
         );
+    }
+
+    isVisible() {
+        return this.context.isViewVisible(this);
+    }
+
+    isVisibleInSpec() {
+        return this.spec.visible ?? true;
     }
 
     /**
@@ -497,6 +511,10 @@ export default class View {
                 break;
             default:
         }
+    }
+
+    invalidateSizeCache() {
+        this._invalidateCacheByPrefix("size/", "ancestors");
     }
 }
 

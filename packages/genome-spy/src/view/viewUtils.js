@@ -16,6 +16,7 @@ import {
 } from "../encoder/encoder";
 import ContainerView from "./containerView";
 import { peek } from "../utils/arrayUtils";
+import { rollup } from "d3-array";
 
 /**
  * @typedef {import("./viewContext").default} ViewContext
@@ -367,3 +368,53 @@ export function stackifyVisitor(visitor) {
 
     return stackified;
 }
+
+/**
+ * Finds the descendants having the given name. The root is included in the search.
+ *
+ * @param {View} root
+ * @param {string} name View name
+ * @returns {View[]}
+ */
+export function findDescendantsByPath(root, name) {
+    /** @type {View[]} */
+    const descendants = [];
+
+    root.visit((view) => {
+        if (view.name == name) {
+            descendants.push(view);
+        }
+    });
+
+    return descendants;
+}
+
+/**
+ *
+ * @param {View} root
+ */
+export function findUniqueViewNames(root) {
+    /** @type {View[]} */
+    const descendants = [];
+
+    root.visit((view) => {
+        descendants.push(view);
+    });
+
+    return new Set(
+        [
+            ...rollup(
+                descendants,
+                (views) => views.length,
+                (view) => view.name
+            ),
+        ]
+            .filter(([name, count]) => count == 1 && name !== undefined)
+            .map(([name, count]) => name)
+    );
+}
+
+/**
+ * @param {string} name
+ */
+export const isCustomViewName = (name) => !/^(layer|concat)\d+$/.test(name);

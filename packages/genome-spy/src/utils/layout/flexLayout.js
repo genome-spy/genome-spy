@@ -5,7 +5,7 @@ import { isStepSize } from "../../view/view";
  *
  * Layout calculation inspired by flexbox. The elements may have an
  * absolute size (in pixels) and a growth component for filling the
- * remaining space.
+ * remaining space. Spacing around zero-sized items are collapsed.
  *
  * Read more at https://css-tricks.com/flex-grow-is-weird/
  *
@@ -41,7 +41,7 @@ export function mapToPixelCoords(
     let totalGrow = 0;
 
     for (const size of items) {
-        totalPx += z(size.px) + spacing;
+        totalPx += z(size.px) + (isZeroSizeDef(size) ? 0 : spacing);
         totalGrow += z(size.grow);
     }
     totalPx -= spacing;
@@ -54,27 +54,78 @@ export function mapToPixelCoords(
             ? (x) => Math.round(x * devicePixelRatio) / devicePixelRatio
             : (x) => x;
 
+    /**
+     * Buffer zero-sized items so that their locations can be spread evenly.
+     * They can then be interpolated nicely.
+     * @type {SizeDef[]}
+     */
+    const zeroBuffer = [];
+
     /** @type {LocSize[]} */
     const results = [];
 
-    let x = reverse ? Math.max(containerSize, totalPx) : 0;
-    for (const size of items) {
-        const advance =
-            z(size.px) +
-            (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
-
-        if (reverse) {
-            x -= advance;
+    /**
+     * Spread evenly
+     *
+     * @param {boolean} inMiddle
+     */
+    const flushZeroBuffer = (inMiddle) => {
+        const n = zeroBuffer.length;
+        if (!n) {
+            return;
         }
 
-        results.push({ location: round(x) + offset, size: round(advance) });
+        const s = (inMiddle ? spacing : 0) * (reverse ? -1 : 1);
 
-        if (!reverse) {
-            x += advance + spacing;
+        x -= s;
+        for (let i = 0; i < n; i++) {
+            results.push({
+                location: x + ((i + 1) / (n + 1)) * s,
+                size: 0,
+            });
+        }
+        x += s;
+
+        zeroBuffer.length = 0;
+    };
+
+    let x = reverse ? Math.max(containerSize, totalPx) : 0 + offset;
+
+    // Handle a special case
+    if (items.length == 1 && isZeroSizeDef(items[0])) {
+        return [{ location: x, size: 0 }];
+    }
+
+    for (let i = 0; i < items.length; i++) {
+        const size = items[i];
+
+        if (isZeroSizeDef(size)) {
+            zeroBuffer.push(size);
         } else {
-            x -= spacing;
+            flushZeroBuffer(results.length > 0);
+
+            const advance =
+                z(size.px) +
+                (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
+
+            if (reverse) {
+                x -= advance;
+            }
+
+            results.push({ location: round(x), size: round(advance) });
+
+            if (!reverse) {
+                x += advance + spacing;
+            } else {
+                x -= spacing;
+            }
         }
     }
+
+    // Remove the last gap
+    x += reverse ? spacing : -spacing;
+
+    flushZeroBuffer(false);
 
     return results;
 }
@@ -88,7 +139,7 @@ export function mapToPixelCoords(
 export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
     let minimumSize = 0;
     for (const size of items) {
-        minimumSize += z(size.px) + spacing;
+        minimumSize += z(size.px) + (isZeroSizeDef(size) ? 0 : spacing);
     }
     return Math.max(0, minimumSize - spacing);
 }
@@ -132,6 +183,30 @@ export class FlexDimensions {
             }
         );
     }
+}
+
+/**
+ * A sizedef that takes no space at all.
+ *
+ * @type {SizeDef}
+ */
+export const ZERO_SIZEDEF = Object.freeze({
+    px: 0,
+    grow: 0,
+});
+
+export const ZERO_FLEXDIMENSIONS = new FlexDimensions(
+    ZERO_SIZEDEF,
+    ZERO_SIZEDEF
+);
+
+/**
+ * Is the sizeDef taking no space at all
+ *
+ * @param {SizeDef} sizeDef
+ */
+export function isZeroSizeDef(sizeDef) {
+    return !sizeDef.px && !sizeDef.grow;
 }
 
 /**

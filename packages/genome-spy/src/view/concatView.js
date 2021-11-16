@@ -51,48 +51,53 @@ export default class ConcatView extends ContainerView {
         );
     }
 
-    _getFlexSizeDefs() {
-        return this._cache("size/flexSizeDefs", () =>
-            this.children.map((view) => view.getSize()[this.mainDimension])
-        );
-    }
-
+    /*
     _getEffectiveChildPaddings() {
-        return this._cache("size/effectiveChildPaddings", () =>
-            this.children
+            return this.children
                 .map((view) => view.getEffectivePadding())
                 .map((padding) =>
                     this.mainDimension == "height"
                         ? [padding.left, padding.right]
                         : [padding.top, padding.bottom]
                 )
-        );
     }
+    */
 
     getEffectivePadding() {
         return this._cache("size/effectivePadding", () => {
-            if (!this.children.length) {
+            const visibleChildren = this.children.filter((view) =>
+                view.isVisible()
+            );
+
+            if (!visibleChildren.length) {
                 return this.getPadding();
             }
 
             // Max paddings along the secondary dimension
-            const maxPaddings = getMaxEffectivePaddings(
-                this._getEffectiveChildPaddings()
-            );
+
+            const paddings = visibleChildren
+                .map((view) => view.getEffectivePadding())
+                .map((padding) =>
+                    this.mainDimension == "height"
+                        ? [padding.left, padding.right]
+                        : [padding.top, padding.bottom]
+                );
+
+            const maxPaddings = getMaxEffectivePaddings(paddings);
 
             const effectiveChildPadding =
                 this.mainDimension == "height"
                     ? new Padding(
-                          this.children[0].getEffectivePadding().top,
+                          visibleChildren[0].getEffectivePadding().top,
                           maxPaddings[1],
-                          peek(this.children).getEffectivePadding().bottom,
+                          peek(visibleChildren).getEffectivePadding().bottom,
                           maxPaddings[0]
                       )
                     : new Padding(
                           maxPaddings[0],
-                          this.children[0].getEffectivePadding().left,
+                          visibleChildren[0].getEffectivePadding().left,
                           maxPaddings[1],
-                          peek(this.children).getEffectivePadding().right
+                          peek(visibleChildren).getEffectivePadding().right
                       );
 
             return this.getPadding().add(effectiveChildPadding);
@@ -106,7 +111,10 @@ export default class ConcatView extends ContainerView {
             if (this.spec[this.mainDimension]) {
                 mainSizeDef = parseSizeDef(this.spec[this.mainDimension]);
             } else {
-                const childMainSizeDefs = this._getFlexSizeDefs();
+                const childMainSizeDefs = this.children
+                    .filter((view) => view.isVisible())
+                    .map((view) => view.getSize()[this.mainDimension]);
+
                 mainSizeDef = {
                     // Grows are summed to support sensible nesting of concatViews
                     grow: childMainSizeDefs
@@ -137,6 +145,10 @@ export default class ConcatView extends ContainerView {
      * @param {import("./view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
+        if (!this.isVisible()) {
+            return;
+        }
+
         coords = coords.shrink(this.getPadding());
         context.pushView(this, coords);
 
@@ -144,8 +156,15 @@ export default class ConcatView extends ContainerView {
         // TODO: Figure out something. Perhaps the rectangles could be cached because
         // they are identical for each sample facet.
 
+        const visibleChildren = this.children.filter((view) =>
+            view.isVisible()
+        );
+        const childSizeDefs = visibleChildren.map(
+            (view) => view.getSize()[this.mainDimension]
+        );
+
         const mappedCoords = mapToPixelCoords(
-            this._getFlexSizeDefs(),
+            childSizeDefs,
             coords[this.mainDimension],
             {
                 spacing: this.spec.spacing,
@@ -154,12 +173,19 @@ export default class ConcatView extends ContainerView {
         );
 
         // Align the views.
-        const paddings = this._getEffectiveChildPaddings();
+        const paddings = visibleChildren
+            .map((view) => view.getEffectivePadding())
+            .map((padding) =>
+                this.mainDimension == "height"
+                    ? [padding.left, padding.right]
+                    : [padding.top, padding.bottom]
+            );
+
         const maxPaddings = getMaxEffectivePaddings(paddings);
 
-        for (let i = 0; i < this.children.length; i++) {
+        for (let i = 0; i < visibleChildren.length; i++) {
+            const view = visibleChildren[i];
             const flexCoords = mappedCoords[i];
-            const view = this.children[i];
 
             const pa = maxPaddings[0] - paddings[i][0];
             const pb = maxPaddings[1] - paddings[i][1];

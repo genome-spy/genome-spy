@@ -82,6 +82,14 @@ export default class GenomeSpy {
         /** @type {GenomeStore} */
         this.genomeStore = undefined;
 
+        /**
+         * View visibility is checked using a predicate that can be overridden
+         * for more dynamic visibility management.
+         *
+         * @type {(view: import("./view/view").default) => boolean}
+         */
+        this.viewVisibilityPredicate = (view) => view.isVisibleInSpec();
+
         /** @type {DeferredViewRenderingContext} */
         this._renderingContext = undefined;
         /** @type {DeferredViewRenderingContext} */
@@ -252,6 +260,8 @@ export default class GenomeSpy {
                 }
                 listeners.push(listener);
             },
+
+            isViewVisible: self.viewVisibilityPredicate,
 
             isViewSpec: (spec) => self.viewFactory.isViewSpec(spec),
 

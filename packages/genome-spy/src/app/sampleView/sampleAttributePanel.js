@@ -41,6 +41,7 @@ export class SampleAttributePanel extends ConcatView {
     constructor(sampleView) {
         super(
             {
+                title: "Sample metadata",
                 data: { dynamicSource: true },
                 hconcat: [], // Contents are added dynamically
                 spacing: 1,
@@ -52,7 +53,7 @@ export class SampleAttributePanel extends ConcatView {
             sampleView.context,
             // TODO: fix parent
             undefined,
-            "sampleAttributes"
+            "sample-metadata"
         );
 
         this.sampleView = sampleView;
@@ -141,6 +142,10 @@ export class SampleAttributePanel extends ConcatView {
      * @param {import("../../view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
+        if (!this.isVisible()) {
+            return;
+        }
+
         super.render(context, coords, {
             ...options,
             clipRect: this.sampleView._clipBySummary(coords),
@@ -558,7 +563,9 @@ function createAttributeSpec(attributeName, attributeDef) {
     /** @type {import("../../view/viewUtils").UnitSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
-        width: attributeDef.width || 10,
+        title: attributeName,
+        visible: attributeDef.visible ?? true,
+        width: attributeDef.width ?? 10,
         transform: [{ type: "filter", expr: `datum.${field} != null` }],
         mark: {
             type: "rect",
@@ -591,7 +598,8 @@ function createLabelViewSpec() {
 
     /** @type {import("../../view/viewUtils").UnitSpec} */
     const titleSpec = {
-        name: "sampleLabel",
+        name: "metadata-sample-name",
+        title: "Sample name",
         width: 140,
         mark: {
             type: "text",

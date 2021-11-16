@@ -61,7 +61,12 @@ export interface ViewSpecBase extends ResolveSpec {
 
     height?: SizeDef | number | Step | "container";
     width?: SizeDef | number | Step | "container";
-    /** Padding in pixels. Default: 0 */
+
+    /**
+     * Padding in pixels.
+     *
+     * **Default:* `0`
+     */
     padding?: PaddingConfig;
 
     data?: Data;
@@ -77,10 +82,30 @@ export interface ViewSpecBase extends ResolveSpec {
     baseUrl?: string;
 
     /**
-     * Opacity of the view and all its children. Default: `1.0`.
-     * TODO: Should be available only in Unit and Layer views.
+     * Opacity of the view and all its children.
+     *
+     * **Default:* `1.0`
      */
+    // TODO: Should be available only in Unit and Layer views.
     opacity?: ViewOpacityDef;
+
+    /**
+     * Visibility of the view. An invisible view is removed from the layout
+     * and not rendered.
+     *
+     * **Default:** `true`
+     */
+    // TODO: Detach invisible views from the data flow.
+    visible?: boolean;
+
+    /**
+     * Is the visibility configurable interactively from the App.
+     * Configurability requires that the view has an explicitly specified name
+     * that is *unique* in within the view specification.
+     *
+     * **Default:** `false` for children of `layer`, `true` for others.
+     */
+    configurableVisibility?: boolean;
 }
 
 export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
@@ -111,6 +136,7 @@ export interface SampleAttributeDef {
     scale?: Scale;
     barScale?: Scale;
     width?: number;
+    visible?: boolean;
 }
 
 export interface SampleDef {

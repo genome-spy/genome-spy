@@ -165,6 +165,8 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
     box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
 
+    cursor: default;
+
     .context-menu-item,
     .context-menu-header {
         display: block;
@@ -174,8 +176,6 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         line-height: 22px;
 
         font-family: $font-family;
-
-        cursor: pointer;
     }
 
     .context-menu-header {
@@ -193,6 +193,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
             margin-right: 0.2em;
         }
     }
+
     a.context-menu-item:hover {
         background-color: #e0e0e0;
     }

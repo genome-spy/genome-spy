@@ -81,7 +81,6 @@ export default class ContainerView extends View {
     }
 
     /**
-     *
      * @param {string[]} path An array of view names
      * @returns {View}
      */

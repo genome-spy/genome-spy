@@ -6,11 +6,12 @@
  *
  * @param {(state: S) => T} selector
  * @param {(value: T, oldValue: T) => void} listener
+ * @param {S} [initialState]
  * @template S, T
  */
-export function watch(selector, listener) {
+export function watch(selector, listener, initialState) {
     /** @type {T} */
-    let oldValue;
+    let oldValue = initialState && selector(initialState);
 
     return (/** @type {S} */ state) => {
         const value = selector(state);

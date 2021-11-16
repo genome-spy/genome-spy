@@ -3,6 +3,7 @@ const visibleDropdowns = new Set();
 
 /**
  * @param {UIEvent} event
+ * @return `true` if the dropdown was made visible
  */
 export function toggleDropdown(event) {
     const target = /** @type {HTMLElement} */ (event.currentTarget);
@@ -33,4 +34,6 @@ export function toggleDropdown(event) {
     } else {
         window.dispatchEvent(new MouseEvent("click"));
     }
+
+    return show;
 }

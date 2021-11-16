@@ -21,6 +21,8 @@ import { messageBox } from "./utils/ui/modal";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
 import { restoreBookmark } from "./bookmark";
 import StoreHelper from "./state/storeHelper";
+import { watch } from "./state/watch";
+import { viewSettingsSlice } from "./viewSettingsSlice";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -40,8 +42,15 @@ export default class GenomeSpyApp {
 
         this.config = config;
 
+        /** @type {StoreHelper<import("./state").State>} */
         this.storeHelper = new StoreHelper();
+        this.storeHelper.addReducer("viewSettings", viewSettingsSlice.reducer);
+
+        /** @type {Provenance<import("./sampleView/sampleState").SampleHierarchy>} */
         this.provenance = new Provenance(this.storeHelper);
+
+        /** @type {(() => void)[]} */
+        this._initializationListeners = [];
 
         this.toolbarRef = createRef();
 
@@ -103,6 +112,22 @@ export default class GenomeSpyApp {
                     this.provenance
                 )
         );
+
+        const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
+        this.genomeSpy.viewVisibilityPredicate = (view) =>
+            this.storeHelper.state.viewSettings?.visibilities[view.name] ??
+            originalPredicate(view);
+    }
+
+    /**
+     * @param {() => void} listener
+     */
+    addInitializationListener(listener) {
+        if (this._initializationListeners) {
+            this._initializationListeners.push(listener);
+        } else {
+            listener();
+        }
     }
 
     toggleFullScreen() {
@@ -122,6 +147,32 @@ export default class GenomeSpyApp {
         if (!result) {
             return;
         }
+
+        this.storeHelper.subscribe(
+            watch(
+                (/** @type {import("./state").State} */ state) =>
+                    state.viewSettings?.visibilities,
+                (_viewVisibilities, _oldViewVisibilities) => {
+                    // TODO: Optimize: only invalidate the affected views
+                    this.genomeSpy.viewRoot._invalidateCacheByPrefix(
+                        "size",
+                        "progeny"
+                    );
+
+                    // Terrible hack because summaryViews is not visitable
+                    // TODO: Refactor to fix the above
+                    this.getSampleView()?.summaryViews?._invalidateCacheByPrefix(
+                        "size",
+                        "self"
+                    );
+
+                    const context = this.genomeSpy.viewRoot.context;
+                    context.requestLayoutReflow();
+                    context.animator.requestRender();
+                },
+                this.storeHelper.store.getState()
+            )
+        );
 
         await this._restoreStateFromUrl();
 
@@ -158,6 +209,11 @@ export default class GenomeSpyApp {
         if (this.isFullPage() && title.length > 0) {
             document.title = "GenomeSpy - " + title;
         }
+
+        for (const listener of this._initializationListeners) {
+            listener();
+        }
+        this._initializationListeners = undefined;
     }
 
     /**
@@ -185,8 +241,15 @@ export default class GenomeSpyApp {
             }
         }
 
+        const viewSettings = this.storeHelper.state.viewSettings;
+        if (Object.keys(viewSettings.visibilities).length) {
+            hashData.viewSettings = viewSettings;
+        }
+
         let hash =
-            hashData.actions.length || Object.keys(hashData.scaleDomains).length
+            hashData.actions.length ||
+            Object.keys(hashData.scaleDomains).length ||
+            hashData.viewSettings
                 ? compressToUrlHash(hashData)
                 : "";
 
@@ -197,6 +260,9 @@ export default class GenomeSpyApp {
         );
     }
 
+    /**
+     * @returns {boolean} `true` if restored successfully
+     */
     _restoreStateFromUrl() {
         const hash = window.location.hash;
         if (hash && hash.length > 0) {
@@ -204,6 +270,7 @@ export default class GenomeSpyApp {
                 /** @type {import("./genomeSpyAppTypes").UrlHash} */
                 const entry = decompressFromUrlHash(hash);
                 restoreBookmark(entry, this);
+                return true;
             } catch (e) {
                 console.error(e);
                 messageBox(
@@ -212,6 +279,7 @@ export default class GenomeSpyApp {
                 );
             }
         }
+        return false;
     }
 
     _configureContainer() {
