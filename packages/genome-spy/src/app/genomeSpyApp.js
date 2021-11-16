@@ -145,6 +145,13 @@ export default class GenomeSpyApp {
                         "progeny"
                     );
 
+                    // Terrible hack because summaryViews is not visitable
+                    // TODO: Refactor to fix the above
+                    this.getSampleView()?.summaryViews?._invalidateCacheByPrefix(
+                        "size",
+                        "self"
+                    );
+
                     const context = this.genomeSpy.viewRoot.context;
                     context.requestLayoutReflow();
                     context.animator.requestRender();

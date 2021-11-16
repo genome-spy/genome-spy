@@ -450,7 +450,7 @@ export default class SampleView extends ContainerView {
             const groupAttributes = [null, ...sampleHierarchy.groupMetadata];
 
             const summaryHeight =
-                (this.summaryViews.isVisible() &&
+                (this.summaryViews?.isVisible() &&
                     this.summaryViews?.getSize().height.px) ??
                 0;
 
