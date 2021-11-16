@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/tuner/genome-spy/compare/v0.11.0...v0.12.0) (2021-11-16)
+
+
+### Bug Fixes
+
+* attribute context menu ([4a09a73](https://github.com/tuner/genome-spy/commit/4a09a737fbd880ccceef338f6fca724c4d889503))
+* properly access `storeHelper` in mergeFacets transform ([04e57e6](https://github.com/tuner/genome-spy/commit/04e57e65d9309a80fb1eb97a9833a74d33f6c0cd))
+* track undo states only for slices registered to provenance ([01ab1aa](https://github.com/tuner/genome-spy/commit/01ab1aab634de894abf9aba8568a7b9cadf793bb))
+
+
+### Features
+
+* configurable view visibilities ([#57](https://github.com/tuner/genome-spy/issues/57)) ([c99a828](https://github.com/tuner/genome-spy/commit/c99a828764403bb15cd43595bd70e74b48370742))
+
+
+
+
+
 # [0.11.0](https://github.com/tuner/genome-spy/compare/v0.10.0...v0.11.0) (2021-11-08)
 
 
