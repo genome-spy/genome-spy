@@ -159,7 +159,7 @@ class ViewSettingsButton extends LitElement {
                     ${icon(faSlidersH).node[0]}
                 </button>
                 <ul
-                    class="dropdown-menu gs-context-menu"
+                    class="gs-context-menu gs-dropdown-menu"
                     @click=${(/** @type {UIEvent} */ event) =>
                         event.stopPropagation()}
                 >

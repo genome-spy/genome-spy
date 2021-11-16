@@ -275,7 +275,7 @@ class BookmarkButton extends LitElement {
                 >
                     ${icon(faBookmark).node[0]}
                 </button>
-                <ul class="dropdown-menu gs-context-menu">
+                <ul class="gs-context-menu gs-dropdown-menu">
                     <li>
                         <a
                             @click=${() => this._addBookmark()}
