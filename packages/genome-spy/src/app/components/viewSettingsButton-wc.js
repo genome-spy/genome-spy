@@ -76,6 +76,12 @@ class ViewSettingsButton extends LitElement {
         event.stopPropagation();
     }
 
+    handleResetClick() {
+        this.app.storeHelper.dispatch(
+            viewSettingsSlice.actions.restoreDefaultVisibilities()
+        );
+    }
+
     updateToggles() {
         const viewRoot = this.app.genomeSpy.viewRoot;
 
@@ -166,7 +172,14 @@ class ViewSettingsButton extends LitElement {
                     @click=${(/** @type {UIEvent} */ event) =>
                         event.stopPropagation()}
                 >
+                    <!-- TODO: utility functions for menu items -->
                     <li class="context-menu-header">View visibility</li>
+                    <a
+                        class="context-menu-item"
+                        @click=${() => this.handleResetClick()}
+                        >Restore defaults</a
+                    >
+                    <li class="context-menu-divider"></li>
 
                     <li>
                         ${this.nestedPaths ? this.renderToggles() : nothing}
