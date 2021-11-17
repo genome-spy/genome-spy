@@ -18,12 +18,16 @@ in float width;
 uniform float uPaddingX;
 uniform int uAlignX; // -1, 0, 1 = left, center, right
 uniform bool uFlushX;
+#else
+const int uAlignX = 0;
 #endif
 
 #ifdef y2_DEFINED
 uniform float uPaddingY;
 uniform int uAlignY; // -1, 0, 1 = top, middle, bottom 
 uniform bool uFlushY;
+#else
+const int uAlignY = 0;
 #endif
 
 out vec2 vTexCoord;
@@ -107,6 +111,12 @@ RangeResult positionInsideRange(float a, float b, float width, float padding,
     return RangeResult(pos, scale);
 }
 
+vec2 calculateRotatedDimensions(float width, mat2 rotationMatrix) {
+    vec2 a = abs(rotationMatrix * vec2(width / 2.0, 0.5));
+    vec2 b = abs(rotationMatrix * vec2(width / 2.0, -0.5));
+    return vec2(max(a.x, b.x), max(a.y, b.y)) * 2.0;
+}
+
 void main(void) {
     float opacity = getScaled_opacity() * uViewOpacity;
     vec2 size = vec2(getScaled_size());
@@ -118,11 +128,11 @@ void main(void) {
 	float angleInDegrees = getScaled_angle();
 	float angle = -angleInDegrees * PI / 180.0;
 	
-    // TODO: Support arbitrary angles
-	vec2 flushSize = (
-		(angle < 0.51 * PI && angle > 0.49 * PI) ||
-		(angle > -0.51 * PI && angle < -0.49 * PI)
-	) ? vec2(1.0, width) : vec2(width, 1.0);
+    float sinTheta = sin(angle);
+    float cosTheta = cos(angle);
+    mat2 rotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
+
+    vec2 flushSize = calculateRotatedDimensions(width, rotationMatrix);
 
 #ifdef x2_DEFINED
     float x2 = getScaled_x2();
@@ -183,10 +193,6 @@ void main(void) {
             return;
         }
     }
-
-    float sinTheta = sin(angle);
-    float cosTheta = cos(angle);
-    mat2 rotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
 
     // Position of the character vertex in relation to the text origo
     vec2 charPos = rotationMatrix * (vertexCoord * size + uD);
