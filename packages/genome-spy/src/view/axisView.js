@@ -386,6 +386,9 @@ function createAxis(axisProps) {
 
     const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
 
+    /**
+     * @return {import("../spec/view").UnitSpec}
+     */
     const createDomain = () => ({
         name: "domain",
         data: { values: [0] },
@@ -400,6 +403,9 @@ function createAxis(axisProps) {
         },
     });
 
+    /**
+     * @return {import("../spec/view").UnitSpec}
+     */
     const createLabels = () => ({
         name: "labels",
         mark: {
@@ -422,6 +428,9 @@ function createAxis(axisProps) {
         },
     });
 
+    /**
+     * @return {import("../spec/view").UnitSpec}
+     */
     const createTicks = () => ({
         name: "ticks",
         mark: {
@@ -442,6 +451,9 @@ function createAxis(axisProps) {
         },
     });
 
+    /**
+     * @return {import("../spec/view").UnitSpec}
+     */
     const createTitle = () => ({
         name: "title",
         data: { values: [0] },
@@ -460,6 +472,9 @@ function createAxis(axisProps) {
         },
     });
 
+    /**
+     * @return {import("../spec/view").LayerSpec}
+     */
     const createTicksAndLabels = () => {
         /** @type {LayerSpec} */
         const spec = {
@@ -540,6 +555,9 @@ export function createGenomeAxis(axisProps) {
 
     const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
 
+    /**
+     * @return {import("../spec/view").UnitSpec}
+     */
     const createTicks = () => ({
         name: "chromosome_ticks",
         mark: {
@@ -555,6 +573,9 @@ export function createGenomeAxis(axisProps) {
         },
     });
 
+    /**
+     * @return {import("../spec/view").UnitSpec}
+     */
     const createLabels = () => ({
         name: "chromosome_labels",
         mark: {
@@ -608,20 +629,29 @@ export function createGenomeAxis(axisProps) {
         if (axisProps.chromLabels) {
             chromLayerSpec.layer.push(createLabels());
 
+            // TODO: Simplify the following mess
             axisSpec.layer
                 .filter((view) => view.name == "ticks_and_labels")
-                .forEach((view) =>
+                .forEach((/** @type {LayerSpec} */ view) =>
                     view.layer
                         .filter((view) => view.name == "labels")
-                        .forEach((view) => {
-                            view.mark.viewportEdgeFadeWidth = [0, 0, 0, 30];
-                            view.mark.viewportEdgeFadeDistance = [
-                                undefined,
-                                undefined,
-                                undefined,
-                                40,
-                            ];
-                        })
+                        .forEach(
+                            (
+                                /** @type {import("../spec/view").UnitSpec} */ view
+                            ) => {
+                                const mark =
+                                    /** @type {import("../spec/mark").MarkConfig} */ (
+                                        view.mark
+                                    );
+                                mark.viewportEdgeFadeWidth = [0, 0, 0, 30];
+                                mark.viewportEdgeFadeDistance = [
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    40,
+                                ];
+                            }
+                        )
                 );
         }
 
