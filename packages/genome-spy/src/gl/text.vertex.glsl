@@ -14,15 +14,17 @@ uniform bool uLogoLetter;
 // Width of the text (all letters)
 in float width;
 
+// x: -1, 0, 1 = left, center, right
+// y: -1, 0, 1 = top, middle, bottom 
+uniform ivec2 uAlign;
+
 #ifdef x2_DEFINED
 uniform float uPaddingX;
-uniform int uAlignX; // -1, 0, 1 = left, center, right
 uniform bool uFlushX;
 #endif
 
 #ifdef y2_DEFINED
 uniform float uPaddingY;
-uniform int uAlignY; // -1, 0, 1 = top, middle, bottom 
 uniform bool uFlushY;
 #endif
 
@@ -107,6 +109,30 @@ RangeResult positionInsideRange(float a, float b, float width, float padding,
     return RangeResult(pos, scale);
 }
 
+vec2 calculateRotatedDimensions(float width, mat2 rotationMatrix) {
+    vec2 a = abs(rotationMatrix * vec2(width / 2.0, 0.5));
+    vec2 b = abs(rotationMatrix * vec2(width / 2.0, -0.5));
+    return vec2(max(a.x, b.x), max(a.y, b.y)) * 2.0;
+}
+
+/** Needed when using ranged text */
+ivec2 fixAlignForAngle(ivec2 align, float angleInDegrees) {
+    float a = mod(angleInDegrees + 45.0, 360.0);
+    int x = align.x;
+    int y = -align.y;
+
+    // TODO: Optimize by avoiding branching
+    if (a < 90.0) {
+        return ivec2(x, y);
+    } else if (a < 180.0) {
+        return ivec2(y, -x);
+    } else if (a < 270.0) {
+        return ivec2(-x, y);
+    } else {
+        return ivec2(-y, x);
+    }
+}
+
 void main(void) {
     float opacity = getScaled_opacity() * uViewOpacity;
     vec2 size = vec2(getScaled_size());
@@ -118,11 +144,17 @@ void main(void) {
 	float angleInDegrees = getScaled_angle();
 	float angle = -angleInDegrees * PI / 180.0;
 	
-    // TODO: Support arbitrary angles
-	vec2 flushSize = (
-		(angle < 0.51 * PI && angle > 0.49 * PI) ||
-		(angle > -0.51 * PI && angle < -0.49 * PI)
-	) ? vec2(1.0, width) : vec2(width, 1.0);
+    float sinTheta = sin(angle);
+    float cosTheta = cos(angle);
+    mat2 rotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
+
+    vec2 flushSize = calculateRotatedDimensions(width, rotationMatrix);
+
+#if defined(x2_DEFINED) || defined(y2_DEFINED)
+    ivec2 align = fixAlignForAngle(uAlign, angleInDegrees);
+#else
+    ivec2 align = uAlign;
+#endif
 
 #ifdef x2_DEFINED
     float x2 = getScaled_x2();
@@ -136,7 +168,7 @@ void main(void) {
         RangeResult result = positionInsideRange(
             min(x, x2), max(x, x2),
             size.x * scale * flushSize.x / uViewportSize.x, uPaddingX / uViewportSize.x,
-            uAlignX, uFlushX);
+            align.x, uFlushX);
         
         x = result.pos;
         scale *= result.scale;
@@ -158,7 +190,7 @@ void main(void) {
         RangeResult result = positionInsideRange(
             min(pos.y, pos2.y), max(pos.y, pos2.y),
             size.y * scale * flushSize.y / uViewportSize.y, uPaddingY / uViewportSize.y,
-            uAlignY, uFlushY);
+            align.y, uFlushY);
         
         pos.y = result.pos;
         scale *= result.scale;
@@ -183,10 +215,6 @@ void main(void) {
             return;
         }
     }
-
-    float sinTheta = sin(angle);
-    float cosTheta = cos(angle);
-    mat2 rotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
 
     // Position of the character vertex in relation to the text origo
     vec2 charPos = rotationMatrix * (vertexCoord * size + uD);
