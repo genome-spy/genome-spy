@@ -14,20 +14,18 @@ uniform bool uLogoLetter;
 // Width of the text (all letters)
 in float width;
 
+// x: -1, 0, 1 = left, center, right
+// y: -1, 0, 1 = top, middle, bottom 
+uniform ivec2 uAlign;
+
 #ifdef x2_DEFINED
 uniform float uPaddingX;
-uniform int uAlignX; // -1, 0, 1 = left, center, right
 uniform bool uFlushX;
-#else
-const int uAlignX = 0;
 #endif
 
 #ifdef y2_DEFINED
 uniform float uPaddingY;
-uniform int uAlignY; // -1, 0, 1 = top, middle, bottom 
 uniform bool uFlushY;
-#else
-const int uAlignY = 0;
 #endif
 
 out vec2 vTexCoord;
@@ -146,7 +144,7 @@ void main(void) {
         RangeResult result = positionInsideRange(
             min(x, x2), max(x, x2),
             size.x * scale * flushSize.x / uViewportSize.x, uPaddingX / uViewportSize.x,
-            uAlignX, uFlushX);
+            uAlign.x, uFlushX);
         
         x = result.pos;
         scale *= result.scale;
@@ -168,7 +166,7 @@ void main(void) {
         RangeResult result = positionInsideRange(
             min(pos.y, pos2.y), max(pos.y, pos2.y),
             size.y * scale * flushSize.y / uViewportSize.y, uPaddingY / uViewportSize.y,
-            uAlignY, uFlushY);
+            uAlign.y, uFlushY);
         
         pos.y = result.pos;
         scale *= result.scale;

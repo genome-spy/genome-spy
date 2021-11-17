@@ -160,8 +160,7 @@ export default class TextMark extends Mark {
             uFlushX: !!props.flushX,
             uFlushY: !!props.flushY,
 
-            uAlignX: alignments[props.align],
-            uAlignY: baselines[props.baseline],
+            uAlign: [alignments[props.align], baselines[props.baseline]],
 
             uD: [props.dx, -props.dy],
 
