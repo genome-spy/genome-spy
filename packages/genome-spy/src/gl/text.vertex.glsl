@@ -115,6 +115,24 @@ vec2 calculateRotatedDimensions(float width, mat2 rotationMatrix) {
     return vec2(max(a.x, b.x), max(a.y, b.y)) * 2.0;
 }
 
+/** Needed when using ranged text */
+ivec2 fixAlignForAngle(ivec2 align, float angleInDegrees) {
+    float a = mod(angleInDegrees + 45.0, 360.0);
+    int x = align.x;
+    int y = -align.y;
+
+    // TODO: Optimize by avoiding branching
+    if (a < 90.0) {
+        return ivec2(x, y);
+    } else if (a < 180.0) {
+        return ivec2(y, -x);
+    } else if (a < 270.0) {
+        return ivec2(-x, y);
+    } else {
+        return ivec2(-y, x);
+    }
+}
+
 void main(void) {
     float opacity = getScaled_opacity() * uViewOpacity;
     vec2 size = vec2(getScaled_size());
@@ -132,6 +150,12 @@ void main(void) {
 
     vec2 flushSize = calculateRotatedDimensions(width, rotationMatrix);
 
+#if defined(x2_DEFINED) || defined(y2_DEFINED)
+    ivec2 align = fixAlignForAngle(uAlign, angleInDegrees);
+#else
+    ivec2 align = uAlign;
+#endif
+
 #ifdef x2_DEFINED
     float x2 = getScaled_x2();
 
@@ -144,7 +168,7 @@ void main(void) {
         RangeResult result = positionInsideRange(
             min(x, x2), max(x, x2),
             size.x * scale * flushSize.x / uViewportSize.x, uPaddingX / uViewportSize.x,
-            uAlign.x, uFlushX);
+            align.x, uFlushX);
         
         x = result.pos;
         scale *= result.scale;
@@ -166,7 +190,7 @@ void main(void) {
         RangeResult result = positionInsideRange(
             min(pos.y, pos2.y), max(pos.y, pos2.y),
             size.y * scale * flushSize.y / uViewportSize.y, uPaddingY / uViewportSize.y,
-            uAlign.y, uFlushY);
+            align.y, uFlushY);
         
         pos.y = result.pos;
         scale *= result.scale;
