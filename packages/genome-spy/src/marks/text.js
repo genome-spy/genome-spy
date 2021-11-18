@@ -74,16 +74,15 @@ export default class TextMark extends Mark {
                 /** Stretch letters so that they can be used with sequence logos etc... */
                 logoLetters: false,
 
-                /** @type {number[]} Order: top, right, bottom, left */
-                viewportEdgeFadeWidth: [0, 0, 0, 0],
+                viewportEdgeFadeWidthTop: 0,
+                viewportEdgeFadeWidthRight: 0,
+                viewportEdgeFadeWidthBottom: 0,
+                viewportEdgeFadeWidthLeft: 0,
 
-                /** @type {number[]} Order: top, right, bottom, left */
-                viewportEdgeFadeDistance: [
-                    -Infinity,
-                    -Infinity,
-                    -Infinity,
-                    -Infinity,
-                ],
+                viewportEdgeFadeDistanceTop: -Infinity,
+                viewportEdgeFadeDistanceRight: -Infinity,
+                viewportEdgeFadeDistanceBottom: -Infinity,
+                viewportEdgeFadeDistanceLeft: -Infinity,
             })
         );
 
@@ -167,10 +166,19 @@ export default class TextMark extends Mark {
             uLogoLetter: !!props.logoLetters,
             uSqueeze: !!props.squeeze,
 
-            uViewportEdgeFadeWidth: props.viewportEdgeFadeWidth,
-            uViewportEdgeFadeDistance: props.viewportEdgeFadeDistance.map((d) =>
-                d === undefined ? -Infinity : d
-            ),
+            uViewportEdgeFadeWidth: [
+                props.viewportEdgeFadeWidthTop,
+                props.viewportEdgeFadeWidthRight,
+                props.viewportEdgeFadeWidthBottom,
+                props.viewportEdgeFadeWidthLeft,
+            ],
+
+            uViewportEdgeFadeDistance: [
+                props.viewportEdgeFadeDistanceTop,
+                props.viewportEdgeFadeDistanceRight,
+                props.viewportEdgeFadeDistanceBottom,
+                props.viewportEdgeFadeDistanceLeft,
+            ],
         });
     }
 

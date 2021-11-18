@@ -25,6 +25,23 @@ export interface AngleProps {
      */
     angle?: number;
 }
+
+/**
+ * Specifies how mark should be faded at the viewport edges.
+ * This is mainly used to make axis labels pretty.
+ */
+export interface ViewportEdgeFadeProps {
+    viewportEdgeFadeWidthTop?: number;
+    viewportEdgeFadeWidthRight?: number;
+    viewportEdgeFadeWidthBottom?: number;
+    viewportEdgeFadeWidthLeft?: number;
+
+    viewportEdgeFadeDistanceTop?: number;
+    viewportEdgeFadeDistanceRight?: number;
+    viewportEdgeFadeDistanceBottom?: number;
+    viewportEdgeFadeDistanceLeft?: number;
+}
+
 export interface RectProps extends SecondaryPositionProps {
     /**
      * Clamps the minimum size-dependent opacity. The property does not affect the
@@ -127,7 +144,10 @@ export interface RuleProps extends SecondaryPositionProps {
     strokeCap?: "butt" | "square" | "round";
 }
 
-export interface TextProps extends SecondaryPositionProps, AngleProps {
+export interface TextProps
+    extends SecondaryPositionProps,
+        AngleProps,
+        ViewportEdgeFadeProps {
     /**
      * The text to display. The format of numeric data can be customized by
      * setting a [format specifier](https://github.com/d3/d3-format#locale_format)
@@ -247,16 +267,6 @@ export interface TextProps extends SecondaryPositionProps, AngleProps {
      * Stretch letters so that they can be used with [sequence logos](https://en.wikipedia.org/wiki/Sequence_logo), etc...
      */
     logoLetters?: boolean;
-
-    /**
-     * TODO
-     */
-    viewportEdgeFadeWidth?: number[];
-
-    /**
-     * TODO
-     */
-    viewportEdgeFadeDistance?: number[];
 }
 
 export interface PointProps extends AngleProps {
