@@ -331,9 +331,9 @@ function getDefaultAngleAndAlign(type, axisProps) {
     const orient = axisProps.orient;
     const discrete = type == "nominal" || type == "ordinal";
 
-    /** @type {"left" | "center" | "right"} */
+    /** @type {import("../spec/font").Align} */
     let align = "center";
-    /** @type {"top" | "bottom" | "alphabetic" | "middle"} */
+    /** @type {import("../spec/font").Baseline} */
     let baseline = "middle";
 
     /** @type {number} */
@@ -534,6 +534,7 @@ const defaultGenomeAxisProps = {
     chromLabels: true,
     chromLabelFontSize: 13,
     chromLabelFontWeight: "normal",
+    chromLabelFontStyle: "normal",
     chromLabelColor: "black",
     chromLabelAlign: "left",
     chromLabelPadding: 7,
@@ -550,15 +551,12 @@ export function createGenomeAxis(axisProps) {
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
 
-    const offsetDirection =
-        ap.orient == "bottom" || ap.orient == "right" ? 1 : -1;
-
     const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
 
     /**
      * @return {import("../spec/view").UnitSpec}
      */
-    const createTicks = () => ({
+    const createChromosomeTicks = () => ({
         name: "chromosome_ticks",
         mark: {
             type: "rule",
@@ -576,38 +574,114 @@ export function createGenomeAxis(axisProps) {
     /**
      * @return {import("../spec/view").UnitSpec}
      */
-    const createLabels = () => ({
-        name: "chromosome_labels",
-        mark: {
-            type: "text",
-            [secondary]: anchor,
-            size: ap.chromLabelFontSize,
-            color: ap.chromLabelColor,
-            align: axisProps.chromLabelAlign,
-            baseline:
-                main == "y"
-                    ? "middle"
-                    : ap.orient == "bottom"
-                    ? "alphabetic"
-                    : "top",
-            ["d" + secondary]:
-                ap.chromLabelPadding * offsetDirection +
-                ap.chromLabelFontSize * 0.73, // A hack to align baseline with other labels
-            // TODO: use alphabetic vertical-align for all horizontal labels
-            paddingX: 4,
-            clip: false,
-            viewportEdgeFadeWidth: [0, 20, 0, 20],
-            viewportEdgeFadeDistance: [undefined, -10, undefined, -20],
-            dynamicData: true,
-        },
-        encoding: {
-            [main + "2"]: { field: "continuousEnd", type: "locus" },
-            text: { field: "name", type: "ordinal" },
-        },
-    });
+    const createChromosomeLabels = () => {
+        /** @type {Partial<import("../spec/mark").MarkConfig>} */
+        let chromLabelMarkProps;
+        switch (ap.orient) {
+            case "top":
+                chromLabelMarkProps = {
+                    y: 0,
+                    angle: 0,
+                    paddingX: 4,
+                    dy: -ap.chromLabelPadding,
+                    viewportEdgeFadeWidthLeft: 20,
+                    viewportEdgeFadeWidthRight: 20,
+                    viewportEdgeFadeDistanceRight: -10,
+                    viewportEdgeFadeDistanceLeft: -20,
+                };
+                break;
+            case "bottom":
+                chromLabelMarkProps = {
+                    y: 1,
+                    angle: 0,
+                    paddingX: 4,
+                    dy: ap.chromLabelPadding + ap.chromLabelFontSize * 0.73, // A hack to align baseline with other labels
+                    viewportEdgeFadeWidthLeft: 20,
+                    viewportEdgeFadeWidthRight: 20,
+                    viewportEdgeFadeDistanceRight: -10,
+                    viewportEdgeFadeDistanceLeft: -20,
+                };
+                break;
+            case "left":
+                chromLabelMarkProps = {
+                    x: 1,
+                    angle: -90,
+                    paddingY: 4,
+                    dy: -ap.chromLabelPadding,
+                    viewportEdgeFadeWidthBottom: 20,
+                    viewportEdgeFadeWidthTop: 20,
+                    viewportEdgeFadeDistanceBottom: -20,
+                    viewportEdgeFadeDistanceTop: -10,
+                };
+                break;
+            case "right":
+                chromLabelMarkProps = {
+                    x: 0,
+                    angle: 90,
+                    align: "right",
+                    paddingY: 4,
+                    dy: -ap.chromLabelPadding,
+                };
+                break;
+            default:
+                chromLabelMarkProps = {};
+        }
+
+        /** @type {import("../spec/view").UnitSpec} */
+        const labels = {
+            name: "chromosome_labels",
+            mark: {
+                type: "text",
+                size: ap.chromLabelFontSize,
+                font: ap.chromLabelFont,
+                fontWeight: ap.chromLabelFontWeight,
+                fontStyle: ap.chromLabelFontStyle,
+                color: ap.chromLabelColor,
+                align: axisProps.chromLabelAlign,
+                baseline: "alphabetic",
+                clip: false,
+                dynamicData: true,
+                ...chromLabelMarkProps,
+            },
+            encoding: {
+                [main + "2"]: { field: "continuousEnd", type: "locus" },
+                text: { field: "name", type: "ordinal" },
+            },
+        };
+        return labels;
+    };
+
+    /** @type {Axis} */
+    let fixedAxisProps;
+    switch (ap.orient) {
+        case "bottom":
+        case "top":
+            fixedAxisProps = {};
+            break;
+        case "left":
+            fixedAxisProps = {
+                labelAngle: -90,
+                labelAlign: "center",
+                labelPadding: 6,
+            };
+            break;
+        case "right":
+            fixedAxisProps = {
+                labelAngle: 90,
+                labelAlign: "center",
+                labelPadding: 6,
+            };
+            break;
+        default:
+            fixedAxisProps = {};
+    }
 
     // Create an ordinary axis
-    const axisSpec = createAxis(axisProps);
+    const axisSpec = createAxis({
+        ...axisProps,
+        ...fixedAxisProps,
+        // TODO: Allow the user to override fixedAxisProps
+    });
 
     if (axisProps.chromTicks || axisProps.chromLabels) {
         /** @type {import("../spec/view").LayerSpec} */
@@ -623,11 +697,14 @@ export function createGenomeAxis(axisProps) {
         };
 
         if (axisProps.chromTicks) {
-            chromLayerSpec.layer.push(createTicks());
+            chromLayerSpec.layer.push(createChromosomeTicks());
         }
 
         if (axisProps.chromLabels) {
-            chromLayerSpec.layer.push(createLabels());
+            chromLayerSpec.layer.push(createChromosomeLabels());
+
+            /** @type {import("../spec/mark").MarkConfig} */
+            let labelMarkSpec;
 
             // TODO: Simplify the following mess
             axisSpec.layer
@@ -639,20 +716,23 @@ export function createGenomeAxis(axisProps) {
                             (
                                 /** @type {import("../spec/view").UnitSpec} */ view
                             ) => {
-                                const mark =
+                                labelMarkSpec =
                                     /** @type {import("../spec/mark").MarkConfig} */ (
                                         view.mark
                                     );
-                                mark.viewportEdgeFadeWidth = [0, 0, 0, 30];
-                                mark.viewportEdgeFadeDistance = [
-                                    undefined,
-                                    undefined,
-                                    undefined,
-                                    40,
-                                ];
                             }
                         )
                 );
+
+            if (labelMarkSpec) {
+                if (ap.orient == "top" || ap.orient == "bottom") {
+                    labelMarkSpec.viewportEdgeFadeWidthLeft = 30;
+                    labelMarkSpec.viewportEdgeFadeDistanceLeft = 40;
+                } else {
+                    labelMarkSpec.viewportEdgeFadeWidthBottom = 30;
+                    labelMarkSpec.viewportEdgeFadeDistanceBottom = 40;
+                }
+            }
         }
 
         axisSpec.layer.push(chromLayerSpec);

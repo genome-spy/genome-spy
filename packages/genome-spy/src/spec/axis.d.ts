@@ -1,4 +1,4 @@
-import { Align, Baseline, FontWeight } from "./font";
+import { Align, Baseline, FontStyle, FontWeight } from "./font";
 
 export interface GenomeAxis extends Axis {
     chromTicks?: boolean;
@@ -9,8 +9,10 @@ export interface GenomeAxis extends Axis {
     chromTickDashOffset?: number;
 
     chromLabels?: boolean;
+    chromLabelFont?: string;
     chromLabelFontSize?: number;
     chromLabelFontWeight?: FontWeight;
+    chromLabelFontStyle?: FontStyle;
     chromLabelColor?: string;
     chromLabelPadding?: number;
     chromLabelAlign?: Align;
