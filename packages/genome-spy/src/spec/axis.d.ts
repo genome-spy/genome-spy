@@ -1,3 +1,5 @@
+import { Align, Baseline, FontStyle, FontWeight } from "./font";
+
 export interface GenomeAxis extends Axis {
     chromTicks?: boolean;
     chromTickSize?: number;
@@ -7,11 +9,13 @@ export interface GenomeAxis extends Axis {
     chromTickDashOffset?: number;
 
     chromLabels?: boolean;
+    chromLabelFont?: string;
     chromLabelFontSize?: number;
-    chromLabelFontWeight?: string;
+    chromLabelFontWeight?: FontWeight;
+    chromLabelFontStyle?: FontStyle;
     chromLabelColor?: string;
     chromLabelPadding?: number;
-    chromLabelAlign?: string;
+    chromLabelAlign?: Align;
     // TODO: chromLabelPerpendicularPadding
 }
 
@@ -230,7 +234,7 @@ export interface BaseAxis<
     /**
      * Horizontal text alignment of axis tick labels, overriding the default setting for the current axis orientation.
      */
-    labelAlign?: "left" | "center" | "right";
+    labelAlign?: Align;
 
     /**
      * The rotation angle of the axis labels.
@@ -246,7 +250,7 @@ export interface BaseAxis<
      * Vertical text baseline of axis tick labels, overriding the default setting for the current axis orientation.
      * One of `"alphabetic"` (default), `"top"`, `"middle"`, `"bottom"`.
      */
-    labelBaseline?: "alphabetic" | "top" | "middle" | "bottom";
+    labelBaseline?: Baseline;
 
     /**
      * The color of the tick label, can be in hex color code or regular color name.
