@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.1](https://github.com/tuner/genome-spy/compare/v0.12.0...v0.12.1) (2021-11-18)
+
+
+### Bug Fixes
+
+* left/right alignment of rotated, ranged text ([#59](https://github.com/tuner/genome-spy/issues/59)) ([0c6104d](https://github.com/tuner/genome-spy/commit/0c6104d133609792ce02e9a545844fca7697d574))
+* vertical (orient: left/right) genome axis was rendered incorrectly ([#60](https://github.com/tuner/genome-spy/issues/60)) ([03e5383](https://github.com/tuner/genome-spy/commit/03e5383f4b117c6ef66bb40daac53da3ccafc410))
+
+
+
+
+
 # [0.12.0](https://github.com/tuner/genome-spy/compare/v0.11.0...v0.12.0) (2021-11-16)
 
 
