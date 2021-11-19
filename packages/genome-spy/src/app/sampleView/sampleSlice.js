@@ -351,7 +351,7 @@ export function* iterateGroupHierarchy(group) {
 
 const attributeNumberFormat = d3format(".4");
 
-/** @type {Record<string, string>} */
+/** @type {Record<import("./sampleOperations").ComparisonOperatorType, string>} */
 const verboseOps = {
     lt: "<",
     lte: "\u2264",
@@ -415,15 +415,31 @@ export function getActionInfo(action, getAttributeInfo) {
                 icon: faMedal,
             };
         case FILTER_BY_NOMINAL: {
+            const values =
+                /** @type {import("../../spec/channel").Scalar[]} */ (
+                    payload.values
+                );
+
+            const joinedValues =
+                values.length > 1
+                    ? html`{${values.map(
+                          (value, i) =>
+                              html`${i > 0 ? ", " : ""}<strong
+                                      >${value}</strong
+                                  >`
+                      )}}`
+                    : html`<strong>${values[0]}</strong>`;
+
             /** @param {string | import("lit").TemplateResult} attr */
             const makeTitle = (attr) => html`
                 ${payload.remove ? "Remove" : "Retain"} samples having
-                ${payload.values[0] === undefined || payload.values[0] === null
+                ${values[0] === undefined || values[0] === null
                     ? html` undefined ${attr} `
-                    : html`
-                          ${attr} <span class="operator">=</span>
-                          <strong>${payload.values[0]}</strong>
-                      `}
+                    : html`${attr}
+                      ${values.length > 1
+                          ? "in"
+                          : html`<span class="operator">=</span>`}
+                      ${joinedValues}`}
             `;
 
             return {

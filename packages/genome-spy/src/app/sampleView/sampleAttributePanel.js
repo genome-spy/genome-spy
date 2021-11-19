@@ -77,12 +77,7 @@ export class SampleAttributePanel extends ConcatView {
 
         this.sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_NAME,
-            (attribute) => ({
-                name: "sample",
-                accessor: (sampleId) => sampleId,
-                type: "nominal",
-                scale: undefined,
-            })
+            (attribute) => SAMPLE_NAME_ATTRIBUTE_INFO
         );
 
         this.addInteractionEventListener(
@@ -236,21 +231,17 @@ export class SampleAttributePanel extends ConcatView {
             return;
         }
 
-        const dispatch = this.sampleView.provenance.storeHelper.getDispatcher();
-
         /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         const items = [];
 
-        const attribute = this.getAttributeInfoFromView(event.target);
-        if (attribute) {
-            const attributeValue = sample.attributes[attribute.name];
+        const attributeInfo = this.getAttributeInfoFromView(event.target);
+        if (attributeInfo) {
+            const attributeValue = sample.attributes[attributeInfo.name];
             items.push(
                 ...generateAttributeContextMenu(
-                    html`Attribute: <strong>${attribute.name}</strong>`,
-                    { type: SAMPLE_ATTRIBUTE, specifier: attribute.name },
-                    attribute.type,
+                    html`Attribute: <strong>${attributeInfo.name}</strong>`,
+                    attributeInfo,
                     attributeValue,
-                    dispatch,
                     this.sampleView
                 )
             );
@@ -259,10 +250,8 @@ export class SampleAttributePanel extends ConcatView {
             items.push(
                 ...generateAttributeContextMenu(
                     html`Sample: <strong>${sample.displayName}</strong>`,
-                    { type: SAMPLE_NAME },
-                    "identifier",
+                    SAMPLE_NAME_ATTRIBUTE_INFO,
                     sample.id,
-                    dispatch,
                     this.sampleView
                 )
             );
@@ -416,17 +405,18 @@ export class SampleAttributePanel extends ConcatView {
             // Foolhardily assume that color is always used for encoding.
             const resolution = view.getScaleResolution("color");
 
-            const attribute = nameMatch[1];
+            const attributeName = nameMatch[1];
 
             return {
-                name: attribute,
+                name: attributeName,
+                attribute: { type: SAMPLE_ATTRIBUTE, specifier: attributeName },
                 accessor: (sampleId, sampleHierarchy) =>
                     sampleHierarchy.sampleData.entities[sampleId].attributes[
-                        attribute
+                        attributeName
                     ],
                 type: resolution.type,
                 scale: resolution.getScale(),
-                title: html`<em class="attribute">${attribute}</em>`,
+                title: html`<em class="attribute">${attributeName}</em>`,
             };
         }
     }
@@ -632,3 +622,12 @@ function isDefined(value) {
         value !== null
     );
 }
+
+/** @type {import("./types").AttributeInfo} */
+const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
+    name: "sample",
+    attribute: { type: SAMPLE_NAME },
+    accessor: (sampleId) => sampleId,
+    type: "identifier",
+    scale: undefined,
+});

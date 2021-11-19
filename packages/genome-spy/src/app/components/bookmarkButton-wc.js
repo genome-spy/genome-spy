@@ -171,8 +171,10 @@ class BookmarkButton extends LitElement {
             </div>
 
             <div class="modal-buttons">
-                <button @click=${() => modal.close()}>Cancel</button>
-                <button @click=${save}>Save</button>
+                <button class="btn-cancel" @click=${() => modal.close()}>
+                    Cancel
+                </button>
+                <button class="btn-primary" @click=${save}>Save</button>
             </div>
         `;
 
