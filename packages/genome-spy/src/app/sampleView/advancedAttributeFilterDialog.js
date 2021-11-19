@@ -175,7 +175,7 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     const operandChanged = (/** @type {UIEvent} */ event) => {
         const value = /** @type {HTMLInputElement} */ (event.target).value;
         operand =
-            value.length > 1
+            value.length > 0
                 ? +(/** @type {ComparisonOperatorType} */ (value))
                 : undefined;
 
