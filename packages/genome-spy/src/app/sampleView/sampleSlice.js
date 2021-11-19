@@ -351,7 +351,7 @@ export function* iterateGroupHierarchy(group) {
 
 const attributeNumberFormat = d3format(".4");
 
-/** @type {Record<string, string>} */
+/** @type {Record<import("./sampleOperations").ComparisonOperatorType, string>} */
 const verboseOps = {
     lt: "<",
     lte: "\u2264",

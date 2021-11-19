@@ -1,3 +1,4 @@
+import { ComparisonOperatorType } from "./sampleOperations";
 import { Sample } from "./sampleState";
 import { AttributeIdentifier } from "./types";
 
@@ -21,7 +22,7 @@ export interface GroupToQuartiles extends PayloadWithAttribute {}
 
 export interface FilterByQuantitative extends PayloadWithAttribute {
     /** The comparison operator */
-    operator: "lt" | "lte" | "eq" | "gte" | "gt";
+    operator: ComparisonOperatorType;
 
     operand: number;
 }

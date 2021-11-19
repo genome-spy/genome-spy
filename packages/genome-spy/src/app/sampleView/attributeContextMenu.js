@@ -3,7 +3,7 @@
  */
 
 import { faFilter } from "@fortawesome/free-solid-svg-icons";
-import { discreteAttributeFilterDialog } from "./advancedAttributeFilterDialog";
+import { advancedAttributeFilterDialog } from "./advancedAttributeFilterDialog";
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
@@ -92,12 +92,12 @@ export default function generateAttributeContextMenu(
         }
     }
 
-    if (type == "nominal" || type == "ordinal") {
+    if (type !== "identifier") {
         items.push({
             icon: faFilter,
             label: "Advanced filter...",
             callback: () =>
-                discreteAttributeFilterDialog(attributeInfo, sampleView),
+                advancedAttributeFilterDialog(attributeInfo, sampleView),
         });
     }
 

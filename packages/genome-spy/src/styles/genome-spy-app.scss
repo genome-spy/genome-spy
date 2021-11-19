@@ -460,7 +460,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 }
 
-$form-control-color: #495057;
+$form-control-color: #212529;
 $form-control-border-color: #ced4da;
 $form-control-border: 1px solid $form-control-border-color;
 
@@ -497,6 +497,8 @@ $form-control-border: 1px solid $form-control-border-color;
     }
 
     input[type="text"],
+    input[type="number"],
+    select,
     textarea {
         display: block;
         width: 100%;
@@ -515,6 +517,23 @@ $form-control-border: 1px solid $form-control-border-color;
             border-color: red;
             box-shadow: 0 0 5px 0px red;
         }
+
+        &:not(:last-child) {
+            margin-bottom: 10px;
+        }
+
+        &::placeholder {
+            color: #a0a0a0;
+        }
+    }
+
+    select {
+        // Copy-pasted from Bootstrap 5.1
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 16px 12px;
+        appearance: none;
     }
 
     small {

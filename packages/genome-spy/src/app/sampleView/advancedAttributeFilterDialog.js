@@ -2,11 +2,12 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faFilter, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 import { html, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
-import { isDiscrete } from "vega-scale";
+import { isContinuous, isDiscrete } from "vega-scale";
 import { createModal, messageBox } from "../utils/ui/modal";
 
 /**
  * @typedef {import("../../spec/channel").Scalar} Scalar
+ * @typedef {import("./sampleOperations").ComparisonOperatorType} ComparisonOperatorType
  */
 
 /**
@@ -14,8 +15,10 @@ import { createModal, messageBox } from "../utils/ui/modal";
  * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
  */
 export function advancedAttributeFilterDialog(attribute, sampleView) {
-    if (isDiscrete(attribute.scale.type)) {
+    if (isDiscrete(attribute.scale?.type)) {
         discreteAttributeFilterDialog(attribute, sampleView);
+    } else if (isContinuous(attribute.scale?.type)) {
+        quantitativeAttributeFilterDialog(attribute, sampleView);
     } else {
         messageBox("Not implemented (yet).");
     }
@@ -116,3 +119,99 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
 
     updateHtml();
 }
+
+/**
+ * @param {import("./types").AttributeInfo} attributeInfo
+ * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ */
+export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
+    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+
+    /** @type {ComparisonOperatorType} */
+    let operator = "lt";
+    /** @type {number} */
+    let operand;
+
+    const modal = createModal();
+
+    const templateTitle = html`
+        <div class="modal-title">Filter by <em>${attributeInfo.name}</em></div>
+    `;
+
+    const dispatchAndClose = (/** @type {boolean} */ remove) => {
+        dispatch(
+            sampleView.actions.filterByQuantitative({
+                attribute: attributeInfo.attribute,
+                operator,
+                operand,
+            })
+        );
+        modal.close();
+    };
+
+    const templateButtons = () => html` <div class="modal-buttons">
+        <button @click=${() => modal.close()}>Cancel</button>
+
+        <button
+            ?disabled=${typeof operand === "undefined"}
+            @click=${() => dispatchAndClose(false)}
+        >
+            ${icon(faFilter).node[0]} Retain
+        </button>
+    </div>`;
+
+    const operatorChanged = (/** @type {UIEvent} */ event) => {
+        const value = /** @type {HTMLInputElement} */ (event.target).value;
+        operator = /** @type {ComparisonOperatorType} */ (value);
+
+        updateHtml();
+    };
+
+    const operandChanged = (/** @type {UIEvent} */ event) => {
+        const value = /** @type {HTMLInputElement} */ (event.target).value;
+        operand =
+            value.length > 1
+                ? +(/** @type {ComparisonOperatorType} */ (value))
+                : undefined;
+
+        updateHtml();
+    };
+
+    const template = html`
+        <div class="gs-form-group">
+            <label
+                >Select samples where <em>${attributeInfo.name}</em> is</label
+            >
+            <select .value=${operator} @change=${operatorChanged}>
+                ${Object.entries(verboseOps).map(
+                    ([k, v]) => html`<option .value=${k}>${v}</option>`
+                )}
+            </select>
+            <input
+                type="number"
+                placeholder="Please enter a numeric value"
+                @input=${operandChanged}
+            />
+        </div>
+    `;
+
+    function updateHtml() {
+        render(
+            html`${templateTitle}
+                <div class="modal-body">${template}</div>
+                ${templateButtons()}`,
+            modal.content
+        );
+    }
+
+    updateHtml();
+}
+
+/** @type {Record<ComparisonOperatorType, string>} */
+const verboseOps = {
+    lt: "less than",
+    lte: "less than or equal to",
+    eq: "equal to",
+    gte: "greater than or equal to",
+    gt: "greater than",
+};
