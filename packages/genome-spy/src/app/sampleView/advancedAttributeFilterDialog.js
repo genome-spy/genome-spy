@@ -68,7 +68,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const templateButtons = () => html` <div class="modal-buttons">
-        <button @click=${() => modal.close()}>Cancel</button>
+        <button class="btn-cancel" @click=${() => modal.close()}>Cancel</button>
 
         <button
             ?disabled=${!selection.size}
@@ -90,7 +90,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     const template = html`<p>
             Please select one or more categories and choose an action.
         </p>
-        <ul class="gs-checkbox-list" @input=${updateChecked}>
+        <ul class="gs-checkbox-list" @input=${updateChecked} tabindex="0">
             ${scale.domain().map(
                 (value) =>
                     html`<li>
@@ -118,6 +118,10 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     }
 
     updateHtml();
+
+    /** @type {HTMLElement} */ (
+        modal.content.querySelector(".gs-checkbox-list input[type='checkbox']")
+    ).focus();
 }
 
 /**
@@ -150,9 +154,10 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const templateButtons = () => html` <div class="modal-buttons">
-        <button @click=${() => modal.close()}>Cancel</button>
+        <button class="btn-cancel" @click=${() => modal.close()}>Cancel</button>
 
         <button
+            class="btn-primary"
             ?disabled=${typeof operand === "undefined"}
             @click=${() => dispatchAndClose(false)}
         >
@@ -205,6 +210,8 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     }
 
     updateHtml();
+
+    modal.content.querySelector("select").focus();
 }
 
 /** @type {Record<ComparisonOperatorType, string>} */

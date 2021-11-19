@@ -10,6 +10,37 @@ export function createModal() {
     const root = document.createElement("div");
     root.className = "gs-modal";
 
+    const onKeyDown = (/** @type {KeyboardEvent} */ event) => {
+        switch (event.key) {
+            case "Escape": {
+                const button = /** @type {HTMLButtonElement} */ (
+                    root.querySelector(".btn-cancel")
+                );
+                button.click();
+                event.stopPropagation();
+                break;
+            }
+            case "Enter": {
+                if (
+                    /** @type {HTMLElement} */ (event.target)?.tagName ==
+                    "TEXTAREA"
+                ) {
+                    return;
+                }
+
+                const button = /** @type {HTMLButtonElement} */ (
+                    root.querySelector(".btn-primary")
+                );
+                button.click();
+                event.stopPropagation();
+                break;
+            }
+            default:
+        }
+    };
+
+    root.addEventListener("keydown", onKeyDown);
+
     render(
         html`<div class="backdrop"></div>
             <div class="content"></div>`,
