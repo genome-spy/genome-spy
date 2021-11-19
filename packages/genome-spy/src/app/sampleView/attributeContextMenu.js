@@ -2,23 +2,25 @@
  * @typedef {import("../../utils/ui/contextmenu").MenuItem} MenuItem
  */
 
+import { faFilter } from "@fortawesome/free-solid-svg-icons";
+import { discreteAttributeFilterDialog } from "./advancedAttributeFilterDialog";
+
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
- * @param {import("./types").AttributeIdentifier} attribute
- * @param {string} attributeType
- * @param {any} attributeValue
- * @param {function(object):void} dispatch
+ * @param {import("./types").AttributeInfo} attributeInfo
+ * @param {import("../../spec/channel").Scalar} attributeValue
  * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
  */
 export default function generateAttributeContextMenu(
     title,
-    attribute,
-    attributeType,
+    attributeInfo,
     attributeValue,
-    dispatch,
     sampleView
 ) {
     const actions = sampleView.actions;
+    const attribute = attributeInfo.attribute;
+
+    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
 
     /** @type {MenuItem[]} */
     let items = [
@@ -48,8 +50,10 @@ export default function generateAttributeContextMenu(
 
     addActions(actions.sortBy({ attribute }));
 
-    if (attributeType != "quantitative") {
-        if (attributeType != "identifier") {
+    const type = attributeInfo?.type ?? "identifier";
+
+    if (type != "quantitative") {
+        if (type != "identifier") {
             addActions(
                 actions.groupByNominal({ attribute }),
                 actions.retainFirstOfEach({ attribute })
@@ -75,17 +79,26 @@ export default function generateAttributeContextMenu(
                 actions.filterByQuantitative({
                     attribute,
                     operator: "gte",
-                    operand: attributeValue,
+                    operand: +attributeValue,
                 }),
                 actions.filterByQuantitative({
                     attribute,
                     operator: "lte",
-                    operand: attributeValue,
+                    operand: +attributeValue,
                 })
             );
         } else {
             addActions(actions.removeUndefined({ attribute }));
         }
+    }
+
+    if (type == "nominal" || type == "ordinal") {
+        items.push({
+            icon: faFilter,
+            label: "Advanced filter...",
+            callback: () =>
+                discreteAttributeFilterDialog(attributeInfo, sampleView),
+        });
     }
 
     return items;

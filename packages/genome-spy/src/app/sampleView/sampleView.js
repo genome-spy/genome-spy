@@ -189,9 +189,9 @@ export default class SampleView extends ContainerView {
 
         this.compositeAttributeInfoSource.addAttributeInfoSource(
             VALUE_AT_LOCUS,
-            (attribute) => {
+            (attributeIdentifier) => {
                 const specifier = /** @type {LocusSpecifier} */ (
-                    attribute.specifier
+                    attributeIdentifier.specifier
                 );
                 const view = /** @type {UnitView} */ (
                     this.findDescendantByPath(specifier.path)
@@ -221,8 +221,10 @@ export default class SampleView extends ContainerView {
                         specifier.field
                     ];
 
-                return {
+                /** @type {import("./types").AttributeInfo} */
+                const attributeInfo = {
                     name: specifier.field,
+                    attribute: attributeIdentifier,
                     // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
                     title: html`
                         <em class="attribute">${specifier.field}</em>
@@ -239,6 +241,8 @@ export default class SampleView extends ContainerView {
                     type: "quantitative",
                     scale: undefined,
                 };
+
+                return attributeInfo;
             }
         );
 
@@ -842,8 +846,6 @@ export default class SampleView extends ContainerView {
                 ["rect", "rule"].includes(info.view.getMarkType())
             );
 
-        const dispatch = this.provenance.storeHelper.getDispatcher();
-
         /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
         let items = [
             {
@@ -869,8 +871,11 @@ export default class SampleView extends ContainerView {
                 locus: complexX,
             };
 
-            /** @type {import("./types").AttributeIdentifier} */
-            const attribute = { type: VALUE_AT_LOCUS, specifier };
+            const attributeInfo =
+                this.compositeAttributeInfoSource.getAttributeInfo({
+                    type: VALUE_AT_LOCUS,
+                    specifier,
+                });
 
             if (i > 0) {
                 items.push({ type: "divider" });
@@ -882,10 +887,10 @@ export default class SampleView extends ContainerView {
                         <strong>${fieldInfo.field}</strong> (${fieldInfo.view
                             .spec.title || fieldInfo.view.spec.name})
                     `,
-                    attribute,
-                    "quantitative", // TODO
-                    undefined, // TODO
-                    dispatch,
+                    attributeInfo,
+                    // TODO: Get the value from data
+                    // But ability to remove undefined is useful too
+                    undefined,
                     this
                 )
             );

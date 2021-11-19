@@ -9,8 +9,13 @@ export interface AttributeIdentifier {
 }
 
 export interface AttributeInfo {
-    /** A concise name of the attribute */
+    /**
+     * A concise name of the attribute: TODO: Used for what?
+     * @deprecated Use attribute instead
+     */
     name: string;
+
+    attribute: AttributeIdentifier;
 
     /** More detailed name with optional formatting */
     title?: string | import("lit").TemplateResult;
@@ -21,5 +26,5 @@ export interface AttributeInfo {
     /** e.g., "quantitative" */
     type: string;
 
-    scale: any;
+    scale?: any;
 }
