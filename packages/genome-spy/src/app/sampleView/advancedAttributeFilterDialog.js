@@ -28,6 +28,11 @@ export function advancedAttributeFilterDialog(attribute, sampleView) {
 export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     const dispatch = sampleView.provenance.storeHelper.getDispatcher();
 
+    const scale =
+        /** @type {import("d3-scale").ScaleOrdinal<Scalar, Scalar>} */ (
+            attributeInfo.scale
+        );
+
     const modal = createModal();
 
     const templateTitle = html`
@@ -40,7 +45,8 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     const dispatchAndClose = (/** @type {boolean} */ remove) => {
         dispatch(
             sampleView.actions.filterByNominal({
-                values: [...selection],
+                // Sort the selection based on the domain. Otherwise they are in the selection order.
+                values: scale.domain().filter((value) => selection.has(value)),
                 attribute: attributeInfo.attribute,
                 remove,
             })
@@ -74,11 +80,6 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
             ${icon(faTrashAlt).node[0]} Remove
         </button>
     </div>`;
-
-    const scale =
-        /** @type {import("d3-scale").ScaleOrdinal<Scalar, Scalar>} */ (
-            attributeInfo.scale
-        );
 
     // TODO: Ensure that the attribute is mapped to a color channel
     const colorify = scale;
