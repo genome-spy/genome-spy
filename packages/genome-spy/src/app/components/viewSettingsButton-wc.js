@@ -134,8 +134,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     renderToggles() {
-        const visibilities =
-            this.app.storeHelper.state.viewSettings.visibilities;
+        const visibilities = this.getVisibilities();
 
         const viewRoot = this.app.genomeSpy.viewRoot;
         const uniqueNames = findUniqueViewNames(viewRoot);
@@ -180,6 +179,8 @@ class ViewSettingsButton extends LitElement {
     }
 
     render() {
+        const defaultVis = !Object.keys(this.getVisibilities()).length;
+
         return html`
             <div class="dropdown bookmark-dropdown">
                 <button
@@ -196,11 +197,15 @@ class ViewSettingsButton extends LitElement {
                 >
                     <!-- TODO: utility functions for menu items -->
                     <li class="context-menu-header">View visibility</li>
-                    <a
-                        class="context-menu-item"
-                        @click=${() => this.handleResetClick()}
-                        >Restore defaults</a
-                    >
+                    <li>
+                        ${defaultVis
+                            ? html`<span class="disabled-item"
+                                  >Restore defaults</span
+                              >`
+                            : html`<a @click=${() => this.handleResetClick()}
+                                  >Restore defaults</a
+                              >`}
+                    </li>
                     <li class="context-menu-divider"></li>
 
                     <li>
@@ -209,6 +214,10 @@ class ViewSettingsButton extends LitElement {
                 </ul>
             </div>
         `;
+    }
+
+    getVisibilities() {
+        return this.app.storeHelper.state.viewSettings.visibilities;
     }
 }
 

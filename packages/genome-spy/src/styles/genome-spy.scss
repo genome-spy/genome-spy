@@ -194,7 +194,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         }
     }
 
-    a.context-menu-item:hover {
+    a.context-menu-item:hover:not(.disabled) {
         background-color: #e0e0e0;
     }
 
