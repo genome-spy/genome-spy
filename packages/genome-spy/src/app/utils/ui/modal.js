@@ -1,4 +1,5 @@
 import { html, nothing, render } from "lit";
+import { SUPPRESS_TOOLTIP_CLASS_NAME } from "../../../utils/ui/tooltip";
 
 const CLOSE_EVENT_TYPE = "close-dialog";
 
@@ -52,6 +53,7 @@ export function createModal() {
             root.remove()
         );
         root.classList.remove("visible");
+        document.body.classList.remove(SUPPRESS_TOOLTIP_CLASS_NAME);
     };
 
     // Disable GenomeSpy's keyboard shortcuts while a modal is open
@@ -65,6 +67,7 @@ export function createModal() {
 
     // Trigger animation
     window.requestAnimationFrame(() => root.classList.add("visible"));
+    document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
 
     return {
         content: /** @type {HTMLDivElement} */ (root.querySelector(".content")),

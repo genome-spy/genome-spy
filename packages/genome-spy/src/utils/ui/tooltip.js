@@ -2,6 +2,8 @@ import clientPoint from "../point";
 import { html, render } from "lit";
 import { peek } from "../arrayUtils";
 
+export const SUPPRESS_TOOLTIP_CLASS_NAME = "gs-suppress-tooltip";
+
 export default class Tooltip {
     /**
      * @param {HTMLElement} container
