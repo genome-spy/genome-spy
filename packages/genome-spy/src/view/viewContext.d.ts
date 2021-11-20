@@ -5,7 +5,6 @@ import AccessorFactory from "../encoder/accessor";
 import WebGLHelper from "../gl/webGLHelper";
 import Animator from "../utils/animator";
 import GenomeStore from "../genome/genomeStore";
-import { MenuOptions } from "../utils/ui/contextMenu";
 import BmFontManager from "../fonts/bmFontManager";
 import Mark from "../marks/mark";
 import { Datum } from "../data/flowNode";
@@ -29,8 +28,6 @@ export default interface ViewContext {
         datum: T,
         converter?: (datum: T) => Promise<TemplateResult>
     ) => void;
-
-    contextMenu: (options: MenuOptions, mouseEvent: MouseEvent) => void;
 
     getCurrentHover: () => { mark: Mark; datum: Datum };
 

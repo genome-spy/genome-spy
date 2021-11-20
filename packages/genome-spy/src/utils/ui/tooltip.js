@@ -33,7 +33,7 @@ export default class Tooltip {
      */
     set visible(visible) {
         if (visible != this._visible) {
-            this.element.style.display = visible ? "block" : "none";
+            this.element.style.display = visible ? null : "none";
             this._visible = visible;
         }
     }

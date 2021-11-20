@@ -16,6 +16,8 @@ let currentlyOpenMenuElement;
  * @prop {Element} [menuContainer]
  */
 
+const MENU_OPEN_CLASS_NAME = "gs-opened-menu";
+
 /**
  * Returns true if a menu is visible
  */
@@ -27,6 +29,9 @@ function clearMenu() {
     if (currentlyOpenMenuElement) {
         currentlyOpenMenuElement.remove();
         currentlyOpenMenuElement = undefined;
+
+        // Hide tooltip
+        document.body.classList.remove(MENU_OPEN_CLASS_NAME);
     }
 }
 
@@ -89,6 +94,7 @@ export default function contextMenu(options, mouseEvent) {
     currentlyOpenMenuElement = menuElement;
 
     container.appendChild(menuElement);
+    document.body.classList.add(MENU_OPEN_CLASS_NAME);
 
     const rect = menuElement.getBoundingClientRect();
     if (rect.bottom > window.innerHeight) {

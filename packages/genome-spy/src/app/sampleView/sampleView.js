@@ -34,6 +34,7 @@ import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
 import { watch } from "../state/watch";
 import { createSelector } from "@reduxjs/toolkit";
 import { calculateLocations, getSampleLocationAt } from "./locations";
+import contextMenu from "../utils/ui/contextMenu";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -846,7 +847,7 @@ export default class SampleView extends ContainerView {
                 ["rect", "rule"].includes(info.view.getMarkType())
             );
 
-        /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
+        /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
         let items = [
             {
                 label: `Locus: ${locusToString(complexX)}`,
@@ -896,7 +897,7 @@ export default class SampleView extends ContainerView {
             );
         }
 
-        this.context.contextMenu({ items }, mouseEvent);
+        contextMenu({ items }, mouseEvent);
     }
 
     getSampleFacetTexture() {

@@ -19,7 +19,6 @@ export function toggleDropdown(event) {
 
     if (show) {
         visibleDropdowns.add(dropdown);
-
         dropdown.classList.add("show");
         window.addEventListener(
             "click",

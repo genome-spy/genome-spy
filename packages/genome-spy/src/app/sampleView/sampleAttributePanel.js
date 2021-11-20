@@ -13,6 +13,7 @@ import { resolveScalesAndAxes } from "../../view/viewUtils";
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "../../utils/arrayUtils";
 import { ActionCreators } from "redux-undo";
+import contextMenu from "../utils/ui/contextMenu";
 
 // TODO: Move to a more generic place
 const FieldType = {
@@ -231,7 +232,7 @@ export class SampleAttributePanel extends ConcatView {
             return;
         }
 
-        /** @type {import("../../utils/ui/contextMenu").MenuItem[]} */
+        /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
         const items = [];
 
         const attributeInfo = this.getAttributeInfoFromView(event.target);
@@ -257,7 +258,7 @@ export class SampleAttributePanel extends ConcatView {
             );
         }
 
-        this.context.contextMenu({ items }, mouseEvent);
+        contextMenu({ items }, mouseEvent);
     }
 
     /**

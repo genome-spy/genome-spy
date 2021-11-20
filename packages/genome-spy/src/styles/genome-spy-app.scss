@@ -228,6 +228,64 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 }
 
+// TODO: Make colors more "functional" and themable
+.gs-context-menu {
+    position: fixed;
+
+    padding: 7px 0;
+    background: #f6f6f6;
+    border: #e0e0e0;
+    border-radius: 2px;
+
+    z-index: 100;
+
+    box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
+
+    cursor: default;
+
+    .context-menu-item,
+    .context-menu-header {
+        display: block;
+
+        padding: 0 15px;
+        font-size: 13px;
+        line-height: 22px;
+
+        font-family: $font-family;
+    }
+
+    .context-menu-header {
+        font-size: 12px;
+        color: #777;
+    }
+
+    div.context-menu-item {
+        color: #888;
+    }
+
+    a.context-menu-item {
+        svg:first-child {
+            width: 1em;
+            margin-right: 0.2em;
+        }
+    }
+
+    a.context-menu-item:hover:not(.disabled) {
+        background-color: #e0e0e0;
+    }
+
+    .context-menu-divider {
+        margin: 5px 0;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .operator {
+        // Make less/greater-than-or-equal symbols clearer
+        font-size: 125%;
+        line-height: 0.8;
+    }
+}
+
 .gs-dropdown-menu {
     $vPadding: 13px;
 
@@ -603,4 +661,8 @@ label.checkbox {
         flex: none;
         margin-right: 0.5em;
     }
+}
+
+.gs-opened-menu .genome-spy .tooltip {
+    display: none;
 }

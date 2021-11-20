@@ -1,5 +1,5 @@
 /**
- * @typedef {import("../../utils/ui/contextmenu").MenuItem} MenuItem
+ * @typedef {import("../utils/ui/contextMenu").MenuItem} MenuItem
  */
 
 import { faFilter } from "@fortawesome/free-solid-svg-icons";
