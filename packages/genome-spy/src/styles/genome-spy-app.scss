@@ -230,6 +230,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
 $menu-hover-bg-color: #e0e0e0;
 $menu-item-h-padding: 15px;
+$menu-line-height: 22px;
 
 .gs-menu {
     margin: 0;
@@ -244,7 +245,7 @@ $menu-item-h-padding: 15px;
 
     cursor: default;
 
-    line-height: 22px;
+    line-height: $menu-line-height;
     font-size: 13px;
 
     font-family: $font-family;
@@ -326,17 +327,13 @@ $menu-item-h-padding: 15px;
 
     a.menu-ellipsis {
         padding: 0;
-        aspect-ratio: 1 / 1;
-        display: grid;
-        justify-content: center;
-        align-content: center;
+        display: flex;
+        align-items: center;
 
         position: absolute;
-        top: 1px;
+        top: 0px;
         right: $menu-item-h-padding * 0.5;
-        bottom: 1px;
-        vertical-align: center;
-        max-height: 2em;
+        height: $menu-line-height;
 
         background-color: $menu-hover-bg-color;
         border-radius: 3em;
@@ -345,6 +342,7 @@ $menu-item-h-padding: 15px;
 
         svg {
             margin: 0;
+            width: $menu-line-height;
         }
 
         &:hover {
