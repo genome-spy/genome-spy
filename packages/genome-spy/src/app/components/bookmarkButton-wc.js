@@ -245,7 +245,7 @@ class BookmarkButton extends LitElement {
                                     >${name}</a
                                 >
                                 <a
-                                    class="context-menu-ellipsis"
+                                    class="menu-ellipsis"
                                     @click=${(
                                         /** @type {MouseEvent} */ event
                                     ) => this._createContextMenu(name, event)}
@@ -277,11 +277,9 @@ class BookmarkButton extends LitElement {
                 >
                     ${icon(faBookmark).node[0]}
                 </button>
-                <ul class="gs-context-menu gs-dropdown-menu">
+                <ul class="gs-menu gs-dropdown-menu">
                     <li>
-                        <a
-                            @click=${() => this._addBookmark()}
-                            ?disabled=${this.app.provenance.isAtInitialState()}
+                        <a @click=${() => this._addBookmark()}
                             >Add bookmark...</a
                         >
                     </li>

@@ -41,8 +41,8 @@ function clearMenu() {
 export default function contextMenu(options, mouseEvent) {
     clearMenu();
 
-    const menuElement = document.createElement("div");
-    menuElement.className = "gs-context-menu";
+    const menuElement = document.createElement("ul");
+    menuElement.classList.add("gs-menu", "gs-context-menu");
 
     const container = options.menuContainer || document.body;
 
@@ -52,35 +52,40 @@ export default function contextMenu(options, mouseEvent) {
         options.items.map((item) => {
             switch (item.type) {
                 case "divider":
-                    return html` <div class="context-menu-divider"></div> `;
+                    return html` <li class="menu-divider"></li> `;
                 case "header":
                     return html`
-                        <div class="context-menu-header">
-                            ${item.label || "-"}
-                        </div>
+                        <li class="menu-header">${item.label || "-"}</li>
                     `;
                 default:
                     if (item.callback) {
                         return html`
-                            <a
-                                class="context-menu-item"
-                                @mouseup=${() => {
-                                    // Prevent accidental selection when the position of an overflowing menu has been adjusted
-                                    if (performance.now() - openedAt > 200) {
-                                        clearMenu();
-                                        item.callback();
-                                    }
-                                }}
-                            >
-                                ${item.icon ? icon(item.icon).node[0] : ""}
-                                ${item.label}</a
-                            >
+                            <li>
+                                <a
+                                    @mouseup=${() => {
+                                        // Prevent accidental selection when the position of an overflowing menu has been adjusted
+                                        if (
+                                            performance.now() - openedAt >
+                                            200
+                                        ) {
+                                            clearMenu();
+                                            item.callback();
+                                        }
+                                    }}
+                                >
+                                    ${item.icon ? icon(item.icon).node[0] : ""}
+                                    ${item.label}</a
+                                >
+                            </li>
                         `;
                     } else {
                         return html`
-                            <div class="context-menu-item">
-                                ${item.label || "-"}
-                            </div>
+                            <li>
+                                <span class="disabled-item">
+                                    ${item.icon ? icon(item.icon).node[0] : ""}
+                                    ${item.label || "-"}</span
+                                >
+                            </li>
                         `;
                     }
             }

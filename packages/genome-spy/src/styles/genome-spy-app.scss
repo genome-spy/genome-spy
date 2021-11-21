@@ -228,10 +228,11 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 }
 
-// TODO: Make colors more "functional" and themable
-.gs-context-menu {
-    position: fixed;
+$menu-hover-bg-color: #e0e0e0;
+$menu-item-h-padding: 15px;
 
+.gs-menu {
+    margin: 0;
     padding: 7px 0;
     background: #f6f6f6;
     border: #e0e0e0;
@@ -243,42 +244,55 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
     cursor: default;
 
-    .context-menu-item,
-    .context-menu-header {
+    line-height: 22px;
+    font-size: 13px;
+
+    font-family: $font-family;
+
+    li {
         display: block;
+        list-style: none;
+        position: relative;
+        padding: 0;
 
-        padding: 0 15px;
-        font-size: 13px;
-        line-height: 22px;
+        > a:first-child:hover {
+            background-color: $menu-hover-bg-color;
+        }
 
-        font-family: $font-family;
-    }
+        > span.disabled,
+        > a:first-child {
+            display: block;
 
-    .context-menu-header {
-        font-size: 12px;
-        color: #777;
-    }
-
-    div.context-menu-item {
-        color: #888;
-    }
-
-    a.context-menu-item {
-        svg:first-child {
-            width: 1em;
-            margin-right: 0.2em;
+            svg:first-child {
+                width: 1em;
+                margin-right: 0.2em;
+            }
         }
     }
 
-    a.context-menu-item:hover:not(.disabled) {
-        background-color: #e0e0e0;
-    }
-
-    .context-menu-divider {
+    .menu-divider {
         margin: 5px 0;
         border-top: 1px solid #e0e0e0;
     }
 
+    .menu-header,
+    li > span.disabled-item,
+    li > a {
+        padding-left: $menu-item-h-padding;
+        padding-right: $menu-item-h-padding;
+    }
+
+    .menu-header {
+        font-size: 12px;
+        color: #666;
+    }
+
+    li > .disabled-item {
+        color: #999;
+    }
+}
+
+.provenance-menu {
     .operator {
         // Make less/greater-than-or-equal symbols clearer
         font-size: 125%;
@@ -286,63 +300,32 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 }
 
+// TODO: Make colors more "functional" and themable
+.gs-context-menu {
+    position: fixed;
+    z-index: 100;
+}
+
 .gs-dropdown-menu {
-    $vPadding: 13px;
-
-    $hover-color: #e0e0e0;
-    $hPadding: 7px;
-
     overflow: auto;
+    position: absolute;
+
     max-height: calc(100vh - 60px);
 
     display: none;
     z-index: 1;
-    position: absolute;
     width: max-content;
-    background-color: #f8f8f8;
 
-    margin: 0;
-    padding-left: 0px;
-    list-style: none;
+    a.active {
+        $tickSize: 5px;
 
-    // TODO: Same as in context menu
-    font-size: 13px;
+        background-color: #e0e0e0;
+        border-left: $tickSize solid #c0c0c0;
+        padding-left: $menu-item-h-padding - $tickSize;
+    }
 
-    padding: $hPadding 0;
-
-    li {
-        position: relative;
+    a.menu-ellipsis {
         padding: 0;
-
-        & > a:hover {
-            background-color: $hover-color;
-        }
-    }
-
-    a:first-child,
-    span.disabled-item {
-        display: block;
-        padding: 4px $vPadding;
-    }
-
-    span.disabled-item {
-        color: #b0b0b0;
-    }
-
-    a {
-        display: block;
-        cursor: pointer;
-
-        &.active {
-            $tickSize: 5px;
-
-            background-color: #e0e0e0;
-            border-left: $tickSize solid #c0c0c0;
-            padding-left: $vPadding - $tickSize;
-        }
-    }
-
-    a.context-menu-ellipsis {
         aspect-ratio: 1 / 1;
         display: grid;
         justify-content: center;
@@ -350,12 +333,12 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
         position: absolute;
         top: 1px;
-        right: $vPadding * 0.5;
+        right: $menu-item-h-padding * 0.5;
         bottom: 1px;
         vertical-align: center;
         max-height: 2em;
 
-        background-color: $hover-color;
+        background-color: $menu-hover-bg-color;
         border-radius: 3em;
 
         color: #707070;
@@ -365,23 +348,18 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         }
 
         &:hover {
-            background-color: color.scale($hover-color, $lightness: 50%);
+            background-color: color.scale(
+                $menu-hover-bg-color,
+                $lightness: 30%
+            );
         }
     }
 
-    li:not(:hover) a.context-menu-ellipsis {
+    li:not(:hover) a.menu-ellipsis {
         display: none;
     }
 
-    svg {
-        margin-right: 3px;
-        width: 1em;
-    }
-
-    .menu-divider {
-        margin: 5px 0;
-        border-top: 1px solid #e0e0e0;
-    }
+    // Checkbox stuff --------------------
 
     ul {
         padding-left: 1.5em;
@@ -393,10 +371,10 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 
     label {
-        padding: 1px 14px;
+        padding: 0 $menu-item-h-padding;
 
         &:hover {
-            background-color: $hover-color;
+            background-color: $menu-hover-bg-color;
         }
     }
 

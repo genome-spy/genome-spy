@@ -191,12 +191,12 @@ class ViewSettingsButton extends LitElement {
                     ${icon(faSlidersH).node[0]}
                 </button>
                 <ul
-                    class="gs-context-menu gs-dropdown-menu"
+                    class="gs-menu gs-dropdown-menu"
                     @click=${(/** @type {UIEvent} */ event) =>
                         event.stopPropagation()}
                 >
                     <!-- TODO: utility functions for menu items -->
-                    <li class="context-menu-header">View visibility</li>
+                    <li class="menu-header">View visibility</li>
                     <li>
                         ${defaultVis
                             ? html`<span class="disabled-item"
@@ -206,7 +206,7 @@ class ViewSettingsButton extends LitElement {
                                   >Restore defaults</a
                               >`}
                     </li>
-                    <li class="context-menu-divider"></li>
+                    <li class="menu-divider"></li>
 
                     <li>
                         ${this.nestedPaths ? this.renderToggles() : nothing}
