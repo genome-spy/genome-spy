@@ -8,9 +8,7 @@ import SampleView, { isSampleSpec } from "./sampleView/sampleView";
 import BookmarkDatabase from "./bookmarkDatabase";
 import { asArray } from "../utils/arrayUtils";
 
-import "./components/provenanceToolbar-wc";
-import "./components/bookmarkButton-wc";
-import "./components/toolbar-wc";
+import "./components/toolbar";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "../utils/debounce";
 import Provenance from "./state/provenance";
@@ -197,10 +195,9 @@ export default class GenomeSpyApp {
             }
         }
 
-        const toolbar =
-            /** @type {import("./components/toolbar-wc").default} */ (
-                this.toolbarRef.value
-            );
+        const toolbar = /** @type {import("./components/toolbar").default} */ (
+            this.toolbarRef.value
+        );
         // Just trigger re-render. Need a way to broadcast this to all components.
         toolbar.appInitialized = true;
 

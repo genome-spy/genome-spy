@@ -6,13 +6,14 @@ import {
     faExpandArrowsAlt,
     faArrowsAltV,
 } from "@fortawesome/free-solid-svg-icons";
-import { findGenomeScaleResolution } from "./searchField-wc";
+import { findGenomeScaleResolution } from "./searchField";
 import { asArray } from "../../utils/arrayUtils";
 import bowtie from "../../img/bowtie.svg";
 import { messageBox } from "../utils/ui/modal";
 
-// Needed by Vite to register the web component !??
-import "./viewSettingsButton-wc";
+import "./viewSettingsButton";
+import "./provenanceToolbar";
+import "./bookmarkButton";
 
 export default class Toolbar extends LitElement {
     constructor() {

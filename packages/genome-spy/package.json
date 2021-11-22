@@ -19,10 +19,6 @@
     "url": "github:tuner/genome-spy",
     "directory": "packages/genome-spy"
   },
-  "sideEffects": [
-    "*.scss",
-    "**/*-wc.js"
-  ],
   "scripts": {
     "dev": "node dev-server.js",
     "build": "vite build",
