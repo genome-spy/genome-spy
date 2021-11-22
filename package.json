@@ -28,7 +28,7 @@
     "rollup-plugin-minify-html-literals": "^1.2.6",
     "sass": "^1.43.4",
     "ts-json-schema-generator": "^0.97.0",
-    "typescript": "^4.3.5",
+    "typescript": "^4.6.0-dev.20211122",
     "vite": "^2.6.13",
     "vite-raw-plugin": "^1.0.1"
   },
