@@ -134,7 +134,7 @@ export default class Toolbar extends LitElement {
         const genomeSpy = this.app.genomeSpy;
 
         return html`
-            <nav class="toolbar">
+            <nav class="gs-toolbar">
                 <a href="https://genomespy.app" target="_blank" class="logo">
                     <img title="GenomeSpy" alt="GenomeSpy" src="${bowtie}" />
                 </a>
