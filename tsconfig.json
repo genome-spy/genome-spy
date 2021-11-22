@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"genome-spy": [ "packages/genome-spy/src" ],
+			"genome-spy/*": [ "packages/genome-spy/src/*" ],
+		},
+        "module": "nodenext",
+        "allowJs": true,
+        "checkJs": true,
+        "noEmit": true,
+        "target": "esnext",
+        "strict": false,
+        "noImplicitAny": true,
+		"types": []
+	}
+}
