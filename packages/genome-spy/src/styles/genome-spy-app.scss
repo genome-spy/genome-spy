@@ -232,7 +232,7 @@ $menu-hover-bg-color: #e0e0e0;
 $menu-item-h-padding: 15px;
 $menu-line-height: 22px;
 
-.gs-menu {
+:is(.gs-menu, .gs-context-menu, .gs-dropdown-menu) {
     margin: 0;
     padding: 7px 0;
     background: #f6f6f6;

@@ -69,7 +69,7 @@ export default class ProvenanceButtons extends LitElement {
                 >
                     ${icon(faEllipsisH).node[0]}
                 </button>
-                <ol class="gs-menu gs-dropdown-menu provenance-menu">
+                <ol class="gs-dropdown-menu provenance-menu">
                     ${this.provenance
                         .getFullActionHistory()
                         .map(makeDropdownItem)}
