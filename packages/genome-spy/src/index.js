@@ -1,10 +1,11 @@
 import { isObject, isString } from "vega-util";
 import { loader as vegaLoader } from "vega-loader";
-
-import GenomeSpy from "./genomeSpy.js";
 import { html } from "lit-html";
 
-export { GenomeSpy, html };
+import GenomeSpy from "./genomeSpy.js";
+import icon from "./img/bowtie.svg";
+
+export { GenomeSpy, html, icon };
 
 /**
  * Embeds GenomeSpy into the DOM
