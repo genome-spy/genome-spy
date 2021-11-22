@@ -7,7 +7,7 @@
   },
   "contributors": [],
   "license": "BSD-2-Clause",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "main": "dist/index.js",
   "module": "src/index.js",
   "files": [

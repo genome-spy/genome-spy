@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.13.0](https://github.com/tuner/genome-spy/compare/v0.12.1...v0.13.0) (2021-11-22)
+
+
+### Bug Fixes
+
+* disable "Restore defaults" in view visibility menu when in default state ([41c059b](https://github.com/tuner/genome-spy/commit/41c059b848fa8ccfe9241455061178a2596beff5))
+* incorrect form validation in quantitative filtering dialog ([4a75ecd](https://github.com/tuner/genome-spy/commit/4a75ecda52cd3f395a6918059bcf76290eb3a49f))
+* suppress tooltip when a dropdown menu is open ([a84bcf5](https://github.com/tuner/genome-spy/commit/a84bcf5d7158875140da30043f127a99c1585e44))
+
+
+### Features
+
+* advanced filtering dialog for sample metadata and other attributes ([#61](https://github.com/tuner/genome-spy/issues/61)) ([3cc0b25](https://github.com/tuner/genome-spy/commit/3cc0b25a607726d1193a05d53ad6b663ccdd753f))
+
+
+
+
+
 ## [0.12.1](https://github.com/tuner/genome-spy/compare/v0.12.0...v0.12.1) (2021-11-18)
 
 
