@@ -46,6 +46,16 @@ export async function embed(el, spec, options = {}) {
             specObject.padding = 10;
         }
 
+        if (element == document.body) {
+            // Need to add a wrapper to make sizing behavior more stable
+            const wrapper = document.createElement("div");
+            wrapper.style.position = "fixed";
+            wrapper.style.inset = "0";
+            wrapper.style.overflow = "hidden";
+            element.appendChild(wrapper);
+            element = wrapper;
+        }
+
         genomeSpy = new GenomeSpy(element, specObject, options);
         applyOptions(genomeSpy, options);
         await genomeSpy.launch();
@@ -107,6 +117,10 @@ export async function embed(el, spec, options = {}) {
 function applyOptions(genomeSpy, opt) {
     if (opt.namedDataProvider) {
         genomeSpy.registerNamedDataProvider(opt.namedDataProvider);
+    }
+
+    if (opt.beforeLaunchCallback) {
+        opt.beforeLaunchCallback(genomeSpy);
     }
 }
 

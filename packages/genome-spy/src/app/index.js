@@ -1,19 +1,22 @@
 import { isObject, isString } from "vega-util";
 import { loader as vegaLoader } from "vega-loader";
 
-import GenomeSpy from "./genomeSpy.js";
-import GenomeSpyApp from "./app/genomeSpyApp.js";
-import icon from "./img/bowtie.svg";
+import GenomeSpy from "../genomeSpy.js";
+import GenomeSpyApp from "./genomeSpyApp.js";
+import icon from "../img/bowtie.svg";
 import { html } from "lit";
 
 export { GenomeSpy, GenomeSpyApp, icon, html };
 
 /**
- * Embeds GenomeSpy into the DOM
+ * Embeds GenomeSpyApp into the DOM
+ *
+ * This is largely copy-paste from `../index.js`.
+ * TODO: Consolidate
  *
  * @param {HTMLElement | string} el HTMLElement or a query selector
  * @param {object | string} spec a spec object or an url to a json spec
- * @param {import("./options.js").EmbedOptions} [options] options
+ * @param {import("../options.js").EmbedOptions} [options] options
  */
 export async function embed(el, spec, options = {}) {
     /** @type {HTMLElement} */
@@ -34,7 +37,7 @@ export async function embed(el, spec, options = {}) {
     let genomeSpy;
 
     try {
-        const specObject = /** @type {import("./spec/root").RootSpec} */ (
+        const specObject = /** @type {import("../spec/root").RootSpec} */ (
             isObject(spec) ? spec : await loadSpec(spec)
         );
 
@@ -48,16 +51,10 @@ export async function embed(el, spec, options = {}) {
             specObject.padding = 10;
         }
 
-        if (options.bare) {
-            genomeSpy = new GenomeSpy(element, specObject, options);
-            applyOptions(genomeSpy, options);
-            await genomeSpy.launch();
-        } else {
-            const app = new GenomeSpyApp(element, specObject, options);
-            genomeSpy = app.genomeSpy;
-            applyOptions(genomeSpy, options);
-            await app.launch();
-        }
+        const app = new GenomeSpyApp(element, specObject, options);
+        genomeSpy = app.genomeSpy;
+        applyOptions(genomeSpy, options);
+        await app.launch();
     } catch (e) {
         // eslint-disable-next-line require-atomic-updates
         element.innerText = e.toString();
@@ -100,7 +97,7 @@ export async function embed(el, spec, options = {}) {
 
         /**
          * @param {string} name
-         * @returns {import("./view/scaleResolutionApi").ScaleResolutionApi}
+         * @returns {import("../view/scaleResolutionApi").ScaleResolutionApi}
          */
         getScaleResolutionByName(name) {
             return genomeSpy.getNamedScaleResolutions().get(name);
@@ -110,7 +107,7 @@ export async function embed(el, spec, options = {}) {
 
 /**
  *
- * @param {import("./genomeSpy").default} genomeSpy
+ * @param {import("../genomeSpy").default} genomeSpy
  * @param {Record<string, any>} opt
  */
 function applyOptions(genomeSpy, opt) {
