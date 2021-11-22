@@ -3,7 +3,7 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { SUPPRESS_TOOLTIP_CLASS_NAME } from "../../../utils/ui/tooltip";
 
 /** @type {HTMLElement} */
-let currentlyOpenMenuElement;
+let backdropElement;
 
 /**
  * @typedef {Object} MenuItem
@@ -14,20 +14,19 @@ let currentlyOpenMenuElement;
  *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
- * @prop {Element} [menuContainer]
  */
 
 /**
  * Returns true if a menu is visible
  */
 export function isContextMenuOpen() {
-    return !!currentlyOpenMenuElement;
+    return !!backdropElement;
 }
 
 function clearMenu() {
-    if (currentlyOpenMenuElement) {
-        currentlyOpenMenuElement.remove();
-        currentlyOpenMenuElement = undefined;
+    if (backdropElement) {
+        backdropElement.remove();
+        backdropElement = undefined;
 
         // Hide tooltip
         document.body.classList.remove(SUPPRESS_TOOLTIP_CLASS_NAME);
@@ -41,10 +40,13 @@ function clearMenu() {
 export default function contextMenu(options, mouseEvent) {
     clearMenu();
 
+    backdropElement = document.createElement("div");
+    backdropElement.classList.add("gs-context-menu-backdrop");
+
     const menuElement = document.createElement("ul");
     menuElement.classList.add("gs-context-menu");
 
-    const container = options.menuContainer || document.body;
+    const container = document.body;
 
     // TODO: Keyboard navigation: https://web.dev/building-a-split-button-component/
 
@@ -95,9 +97,10 @@ export default function contextMenu(options, mouseEvent) {
 
     menuElement.style.left = mouseEvent.clientX + "px";
     menuElement.style.top = mouseEvent.clientY + "px";
-    currentlyOpenMenuElement = menuElement;
 
-    container.appendChild(menuElement);
+    container.appendChild(backdropElement);
+    backdropElement.appendChild(menuElement);
+
     document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
 
     const rect = menuElement.getBoundingClientRect();
@@ -110,12 +113,12 @@ export default function contextMenu(options, mouseEvent) {
             window.innerWidth - menuElement.offsetWidth - 10 + "px";
     }
 
-    container.addEventListener("click", () => clearMenu(), {
+    backdropElement.addEventListener("click", () => clearMenu(), {
         once: true,
     });
 
     const openedAt = performance.now();
-    container.addEventListener(
+    backdropElement.addEventListener(
         "mouseup",
         () => {
             if (performance.now() - openedAt > 500) {

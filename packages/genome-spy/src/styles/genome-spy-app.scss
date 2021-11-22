@@ -300,7 +300,12 @@ $menu-line-height: 22px;
     }
 }
 
-// TODO: Make colors more "functional" and themable
+.gs-context-menu-backdrop {
+    position: fixed;
+    z-index: 100;
+    inset: 0;
+}
+
 .gs-context-menu {
     position: fixed;
     z-index: 100;
