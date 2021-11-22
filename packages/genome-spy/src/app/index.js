@@ -2,9 +2,11 @@ import { isObject, isString } from "vega-util";
 import { loader as vegaLoader } from "vega-loader";
 
 import GenomeSpy from "./genomeSpy.js";
-import { html } from "lit-html";
+import GenomeSpyApp from "./app/genomeSpyApp.js";
+import icon from "./img/bowtie.svg";
+import { html } from "lit";
 
-export { GenomeSpy, html };
+export { GenomeSpy, GenomeSpyApp, icon, html };
 
 /**
  * Embeds GenomeSpy into the DOM
@@ -46,9 +48,16 @@ export async function embed(el, spec, options = {}) {
             specObject.padding = 10;
         }
 
-        genomeSpy = new GenomeSpy(element, specObject, options);
-        applyOptions(genomeSpy, options);
-        await genomeSpy.launch();
+        if (options.bare) {
+            genomeSpy = new GenomeSpy(element, specObject, options);
+            applyOptions(genomeSpy, options);
+            await genomeSpy.launch();
+        } else {
+            const app = new GenomeSpyApp(element, specObject, options);
+            genomeSpy = app.genomeSpy;
+            applyOptions(genomeSpy, options);
+            await app.launch();
+        }
     } catch (e) {
         // eslint-disable-next-line require-atomic-updates
         element.innerText = e.toString();
