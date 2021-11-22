@@ -1,5 +1,5 @@
 import { debounce } from "../utils/debounce";
-import { html } from "lit";
+import { html } from "lit-html";
 
 /*
  * https://www.ncbi.nlm.nih.gov/books/NBK25500/

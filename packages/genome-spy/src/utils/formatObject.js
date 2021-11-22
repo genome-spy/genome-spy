@@ -1,6 +1,6 @@
 import { isNumber, isString, isBoolean } from "vega-util";
 import { format as d3format } from "d3-format";
-import { html } from "lit";
+import { html } from "lit-html";
 
 const numberFormat = d3format(".4~r");
 const exponentNumberFormat = d3format(".4~e");

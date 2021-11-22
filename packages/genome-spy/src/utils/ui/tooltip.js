@@ -1,5 +1,5 @@
 import clientPoint from "../point";
-import { html, render } from "lit";
+import { html, render } from "lit-html";
 import { peek } from "../arrayUtils";
 
 export const SUPPRESS_TOOLTIP_CLASS_NAME = "gs-suppress-tooltip";
