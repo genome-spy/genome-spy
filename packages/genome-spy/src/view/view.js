@@ -482,6 +482,13 @@ export default class View {
     }
 
     /**
+     * Returns `true` if this view and its children supports picking.
+     */
+    isPickingSupported() {
+        return true;
+    }
+
+    /**
      * @param {any} key string
      * @param {function(key?):T} callable A function that produces a value to be cached
      * @returns {T}

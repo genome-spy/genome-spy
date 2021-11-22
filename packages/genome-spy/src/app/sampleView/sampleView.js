@@ -904,6 +904,10 @@ export default class SampleView extends ContainerView {
         return this.facetTexture;
     }
 
+    isPickingSupported() {
+        return false;
+    }
+
     /**
      * @param {string} channel
      * @param {import("../../view/containerView").ResolutionTarget} resolutionType

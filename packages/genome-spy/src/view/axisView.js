@@ -198,6 +198,10 @@ export default class AxisView extends LayerView {
 
         super.render(context, coords, options);
     }
+
+    isPickingSupported() {
+        return false;
+    }
 }
 
 /**

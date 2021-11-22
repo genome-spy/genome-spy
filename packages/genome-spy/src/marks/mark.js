@@ -28,8 +28,6 @@ import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import { createProgram } from "../gl/webGLHelper";
-import AxisView from "../view/axisView";
-import { SampleAttributePanel } from "../app/sampleView/sampleAttributePanel";
 import coalesceProperties from "../utils/propertyCoalescer";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
@@ -502,9 +500,8 @@ export default class Mark {
             return false;
         }
 
-        for (const v of this.unitView.getAncestors()) {
-            // TODO: Break dependencies
-            if (v instanceof AxisView || v instanceof SampleAttributePanel) {
+        for (const view of this.unitView.getAncestors()) {
+            if (!view.isPickingSupported()) {
                 return false;
             }
         }
