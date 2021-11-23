@@ -40,7 +40,8 @@
     "start": "npm run dev -w @genome-spy/app",
     "pretty-quick": "pretty-quick",
     "prepare": "husky install",
-    "pre-commit": "lint-staged"
+    "pre-commit": "lint-staged",
+    "version": "npm install && git add package-lock.json"
   },
   "workspaces": [
     "./packages/*"
