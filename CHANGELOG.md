@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.14.1](https://github.com/tuner/genome-spy/compare/v0.14.0...v0.14.1) (2021-11-23)
+
+
+### Bug Fixes
+
+* a dummy change. testing versioning/publishing ([efba81f](https://github.com/tuner/genome-spy/commit/efba81f769f38a8a11d1c68078d64d249c5e7c46))
+
+
+
+
+
 # [0.14.0](https://github.com/tuner/genome-spy/compare/v0.13.0...v0.14.0) (2021-11-23)
 
 
