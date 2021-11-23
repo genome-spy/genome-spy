@@ -16,13 +16,13 @@ async function createServer() {
     // Random examples
     app.use(
         "/examples",
-        express.static(path.join(__dirname, "../genome-spy/examples"))
+        express.static(path.join(__dirname, "../core/examples"))
     );
 
     // Files that must not go into git
     app.use(
         "/private",
-        express.static(path.join(__dirname, "../genome-spy/private"))
+        express.static(path.join(__dirname, "../core/private"))
     );
 
     app.use(vite.middlewares);
