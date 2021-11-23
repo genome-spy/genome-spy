@@ -27,12 +27,13 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.30",
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
     "@reduxjs/toolkit": "^1.6.2",
+    "genome-spy": "^0.13.0",
     "idb": "^6.1.5",
     "lit": "^2.0.2",
     "lz-string": "^1.4.4",
+    "mapsort": "^1.0.5",
     "redux-batched-actions": "^0.5.0",
     "redux-undo": "^1.0.1",
-    "snarkdown": "^2.0.0",
-    "genome-spy": "^0.13.0"
+    "snarkdown": "^2.0.0"
   }
 }
