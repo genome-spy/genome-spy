@@ -542,6 +542,10 @@ export class SampleAttributePanel extends ConcatView {
         }
         return false;
     }
+
+    isPickingSupported() {
+        return false;
+    }
 }
 
 /**

@@ -904,10 +904,6 @@ export default class SampleView extends ContainerView {
         return this.facetTexture;
     }
 
-    isPickingSupported() {
-        return false;
-    }
-
     /**
      * @param {string} channel
      * @param {import("@genome-spy/core/view/containerView").ResolutionTarget} resolutionType
