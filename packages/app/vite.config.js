@@ -18,7 +18,7 @@ export default defineConfig({
         lib: {
             formats: ["umd"],
             entry: "index.js",
-            name: "genomeSpyEmbed",
+            name: "genomeSpyApp",
             fileName: () => "index.js",
         },
         rollupOptions: {
