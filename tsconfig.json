@@ -2,8 +2,8 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {
-			"genome-spy": [ "packages/genome-spy/src" ],
-			"genome-spy/*": [ "packages/genome-spy/src/*" ],
+			"@genome-spy/core": [ "packages/core/src" ],
+			"@genome-spy/core/*": [ "packages/core/src/*" ]
 		},
 		"resolveJsonModule": true,
         "module": "nodenext",
