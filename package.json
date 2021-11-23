@@ -33,10 +33,11 @@
     "vite-raw-plugin": "^1.0.1"
   },
   "scripts": {
-    "builddocs": "mkdir -p docs/app && cp packages/genome-spy-doc-embed/dist/* docs/app/ && cp packages/genome-spy/dist/genome-spy-schema.json docs/genomespy-schema.json && mkdocs build",
+    "build": "npm -ws run build --if-present",
+    "builddocs": "mkdir -p docs/app && cp packages/doc-embed/dist/* docs/app/ && cp packages/core/dist/genome-spy-schema.json docs/genomespy-schema.json && mkdocs build",
     "lint": "eslint packages/*/src/",
     "test": "jest",
-    "start": "npm run dev -w genome-spy",
+    "start": "npm run dev -w @genome-spy/app",
     "pretty-quick": "pretty-quick",
     "prepare": "husky install",
     "pre-commit": "lint-staged"
