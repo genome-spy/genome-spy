@@ -54,9 +54,6 @@ vegaScale("null", scaleNull, []);
 
 vegaFormats("fasta", fasta);
 
-/**
- * The actual browser without any toolbars etc
- */
 export default class GenomeSpy {
     /**
      *
