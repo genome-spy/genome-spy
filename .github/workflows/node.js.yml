@@ -27,6 +27,6 @@ jobs:
         cache: 'npm'
     - run: npm ci
     - run: npm run lint
-    - run: npm run build --if-present
-    - run: npm -w genome-spy run checkSpec
+    - run: npm -ws run build --if-present
+    - run: npm -w @genome-spy/core run checkSpec
     - run: npm run test

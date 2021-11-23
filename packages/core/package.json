@@ -1,0 +1,53 @@
+{
+  "name": "@genome-spy/core",
+  "description": "GenomeSpy, a visualization grammar and a GPU-accelerated rendering engine for genomic (and other) data",
+  "author": {
+    "name": "Kari Lavikka",
+    "email": "kari.lavikka@helsinki.fi"
+  },
+  "contributors": [],
+  "license": "BSD-2-Clause",
+  "version": "0.13.0",
+  "main": "dist/index.js",
+  "module": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./*": "./src/*"
+  },
+  "files": [
+    "dist/",
+    "src/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "github:tuner/genome-spy",
+    "directory": "packages/core"
+  },
+  "scripts": {
+    "dev": "node dev-server.js",
+    "build": "vite build",
+    "prepublishOnly": "npm run build",
+    "checkSpec": "tsc --allowJs --checkJs --strict --noEmit --moduleResolution node --target es6 src/spec/root.d.ts",
+    "buildSchema": "ts-json-schema-generator --path 'src/spec/*.ts' --type ViewSpec > dist/genome-spy-schema.json"
+  },
+  "dependencies": {
+    "@types/d3-array": "^3.0.2",
+    "@types/d3-dsv": "^3.0.0",
+    "@types/d3-ease": "^3.0.0",
+    "@types/d3-format": "^3.0.1",
+    "@types/d3-interpolate": "^3.0.1",
+    "@types/d3-scale": "^4.0.2",
+    "d3-array": "^3.1.1",
+    "d3-color": "^3.0.1",
+    "d3-ease": "^3.0.1",
+    "d3-format": "^3.0.1",
+    "flatqueue": "^1.2.1",
+    "internmap": "^2.0.3",
+    "lit-html": "^2.0.2",
+    "twgl.js": "^4.19.1",
+    "vega-expression": "^5.0.0",
+    "vega-loader": "^4.4.0",
+    "vega-scale": "^7.1.1",
+    "vega-util": "^1.16.0"
+  }
+}

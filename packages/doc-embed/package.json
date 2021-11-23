@@ -1,0 +1,16 @@
+{
+  "name": "@genome-spy/doc-embed",
+  "private": true,
+  "version": "0.13.0",
+  "description": "Embeds GenomeSpy to documentation",
+  "author": "Kari Lavikka <kari.lavikka@helsinki.fi>",
+  "homepage": "",
+  "license": "BSD-2-Clause",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@genome-spy/core": "^0.13.0",
+    "lit": "^2.0.0-rc.2"
+  }
+}
