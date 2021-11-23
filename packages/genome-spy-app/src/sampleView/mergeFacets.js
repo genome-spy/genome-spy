@@ -1,17 +1,17 @@
-import { isFieldDef } from "../../encoder/encoder";
+import { isFieldDef } from "genome-spy/encoder/encoder";
 import {
     isSampleGroup,
     iterateGroupHierarchy,
     sampleHierarchySelector,
     SAMPLE_SLICE_NAME,
 } from "./sampleSlice";
-import { peek } from "../../utils/arrayUtils";
-import { field } from "../../utils/field";
-import kWayMerge from "../../utils/kWayMerge";
+import { peek } from "genome-spy/utils/arrayUtils";
+import { field } from "genome-spy/utils/field";
+import kWayMerge from "genome-spy/utils/kWayMerge";
 import SampleView from "./sampleView";
-import UnitView from "../../view/unitView";
-import Collector from "../../data/collector";
-import FlowNode from "../../data/flowNode";
+import UnitView from "genome-spy/view/unitView";
+import Collector from "genome-spy/data/collector";
+import FlowNode from "genome-spy/data/flowNode";
 
 /** The number of samples in a facet */
 const SAMPLE_COUNT_VARIABLE = "sampleCount";
@@ -20,7 +20,7 @@ const SAMPLE_COUNT_VARIABLE = "sampleCount";
  * Merges sample facets by groups that have been formed in SampleSlice.
  * Propagates the merged facets as new facets.
  *
- * @typedef {import("../../view/view").default} View
+ * @typedef {import("genome-spy/view/view").default} View
  */
 export default class MergeSampleFacets extends FlowNode {
     /**
@@ -69,7 +69,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     /**
-     * @param {import("../../data/flowNode").Datum} datum
+     * @param {import("genome-spy/data/flowNode").Datum} datum
      */
     handle(datum) {
         // NOP. Block propagation.
@@ -148,7 +148,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     _updateScales() {
-        /** @type {Set<import("../../view/view").ScaleResolution>} */
+        /** @type {Set<import("genome-spy/view/view").ScaleResolution>} */
         const resolutions = new Set();
         this.view.visit((view) => {
             if (view instanceof UnitView && view.mark.encoding.y) {

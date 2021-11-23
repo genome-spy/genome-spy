@@ -8,7 +8,7 @@ import { advancedAttributeFilterDialog } from "./advancedAttributeFilterDialog";
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
  * @param {import("./types").AttributeInfo} attributeInfo
- * @param {import("../../spec/channel").Scalar} attributeValue
+ * @param {import("genome-spy/spec/channel").Scalar} attributeValue
  * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
  */
 export default function generateAttributeContextMenu(

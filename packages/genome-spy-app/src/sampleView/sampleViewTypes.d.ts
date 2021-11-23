@@ -1,5 +1,5 @@
 import { Group } from "./sampleState";
-import { LocSize } from "../../utils/layout/flexLayout";
+import { LocSize } from "genome-spy/utils/layout/flexLayout";
 
 export interface KeyAndLocation<T> {
     key: T;

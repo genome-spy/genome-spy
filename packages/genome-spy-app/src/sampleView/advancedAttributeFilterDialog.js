@@ -6,7 +6,7 @@ import { isContinuous, isDiscrete } from "vega-scale";
 import { createModal, messageBox } from "../utils/ui/modal";
 
 /**
- * @typedef {import("../../spec/channel").Scalar} Scalar
+ * @typedef {import("genome-spy/spec/channel").Scalar} Scalar
  * @typedef {import("./sampleOperations").ComparisonOperatorType} ComparisonOperatorType
  */
 

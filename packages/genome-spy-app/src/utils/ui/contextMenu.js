@@ -1,6 +1,6 @@
 import { html, render } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { SUPPRESS_TOOLTIP_CLASS_NAME } from "../../../utils/ui/tooltip";
+import { SUPPRESS_TOOLTIP_CLASS_NAME } from "genome-spy/utils/ui/tooltip";
 
 /** @type {HTMLElement} */
 let backdropElement;

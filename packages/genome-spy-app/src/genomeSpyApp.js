@@ -1,20 +1,20 @@
-import GenomeSpy from "../genomeSpy";
-import "../styles/genome-spy-app.scss";
-import favIcon from "../img/genomespy-favicon.svg";
+import GenomeSpy from "genome-spy/genomeSpy";
+import "./styles/genome-spy-app.scss";
+import favIcon from "genome-spy/img/genomespy-favicon.svg";
 import { html, render } from "lit";
 
-import { VISIT_STOP } from "../view/view";
+import { VISIT_STOP } from "genome-spy/view/view";
 import SampleView, { isSampleSpec } from "./sampleView/sampleView";
 import BookmarkDatabase from "./bookmarkDatabase";
-import { asArray } from "../utils/arrayUtils";
+import { asArray } from "genome-spy/utils/arrayUtils";
 
 import "./components/toolbar";
 import { createRef, ref } from "lit/directives/ref.js";
-import { debounce } from "../utils/debounce";
+import { debounce } from "genome-spy/utils/debounce";
 import Provenance from "./state/provenance";
 
 import MergeSampleFacets from "./sampleView/mergeFacets";
-import { transforms } from "../data/transforms/transformFactory";
+import { transforms } from "genome-spy/data/transforms/transformFactory";
 import { messageBox } from "./utils/ui/modal";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
 import { restoreBookmark } from "./bookmark";
@@ -31,8 +31,8 @@ export default class GenomeSpyApp {
     /**
      *
      * @param {HTMLElement} appContainerElement
-     * @param {import("../spec/root").RootSpec} config
-     * @param {import("../options").EmbedOptions} options
+     * @param {import("genome-spy/spec/root").RootSpec} config
+     * @param {import("genome-spy/options").EmbedOptions} options
      */
     constructor(appContainerElement, config, options = {}) {
         // eslint-disable-next-line consistent-this
@@ -293,7 +293,7 @@ export default class GenomeSpyApp {
 
     /**
      *
-     * @param {import("../spec/root").RootSpec} config
+     * @param {import("genome-spy/spec/root").RootSpec} config
      */
     async updateConfig(config) {
         // TODO: provenance etc must be re-registered etc

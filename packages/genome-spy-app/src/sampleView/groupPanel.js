@@ -1,11 +1,11 @@
 import { range } from "d3-array";
-import { peek } from "../../utils/arrayUtils";
-import { invalidatePrefix } from "../../utils/propertyCacher";
-import LayerView from "../../view/layerView";
+import { peek } from "genome-spy/utils/arrayUtils";
+import { invalidatePrefix } from "genome-spy/utils/propertyCacher";
+import LayerView from "genome-spy/view/layerView";
 
 /**
  * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("../../view/view").default} View
+ * @typedef {import("genome-spy/view/view").default} View
  *
  */
 export class GroupPanel extends LayerView {
@@ -145,7 +145,7 @@ export class GroupPanel extends LayerView {
         const groupLocations = this.sampleView.getLocations()?.groups ?? [];
 
         const dynamicSource =
-            /** @type {import("../../data/sources/dynamicSource").default} */ (
+            /** @type {import("genome-spy/data/sources/dynamicSource").default} */ (
                 this.context.dataFlow.findDataSourceByKey(this)
             );
 

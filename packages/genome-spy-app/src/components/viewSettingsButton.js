@@ -2,11 +2,14 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faSlidersH } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, html, nothing } from "lit";
 import { live } from "lit/directives/live.js";
-import AxisView from "../../view/axisView";
-import DecoratorView from "../../view/decoratorView";
-import LayerView from "../../view/layerView";
-import { VISIT_SKIP } from "../../view/view";
-import { findUniqueViewNames, isCustomViewName } from "../../view/viewUtils";
+import AxisView from "genome-spy/view/axisView";
+import DecoratorView from "genome-spy/view/decoratorView";
+import LayerView from "genome-spy/view/layerView";
+import { VISIT_SKIP } from "genome-spy/view/view";
+import {
+    findUniqueViewNames,
+    isCustomViewName,
+} from "genome-spy/view/viewUtils";
 import { watch } from "../state/watch";
 import { queryDependency } from "../utils/dependency";
 import { nestPaths } from "../utils/nestPaths";
@@ -14,7 +17,7 @@ import { toggleDropdown } from "../utils/ui/dropdown";
 import { viewSettingsSlice } from "../viewSettingsSlice";
 
 /**
- * @typedef {import("../../view/view").default} View
+ * @typedef {import("genome-spy/view/view").default} View
  */
 class ViewSettingsButton extends LitElement {
     constructor() {
@@ -75,7 +78,7 @@ class ViewSettingsButton extends LitElement {
 
     /**
      * @param {UIEvent} event
-     * @param {import("../../view/view").default} view
+     * @param {import("genome-spy/view/view").default} view
      */
     handleCheckboxClick(event, view) {
         const checked = /** @type {HTMLInputElement} */ (event.target).checked;

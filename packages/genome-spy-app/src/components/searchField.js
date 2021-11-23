@@ -4,9 +4,9 @@ import { guard } from "lit/directives/guard.js";
 import { zoomLinear } from "vega-util";
 
 import { SampleAttributePanel } from "../sampleView/sampleAttributePanel";
-import { sampleIterable } from "../../data/transforms/sample";
-import { debounce } from "../../utils/debounce";
-import { VISIT_STOP } from "../../view/view";
+import { sampleIterable } from "genome-spy/data/transforms/sample";
+import { debounce } from "genome-spy/utils/debounce";
+import { VISIT_STOP } from "genome-spy/view/view";
 
 export default class SearchField extends LitElement {
     constructor() {
@@ -14,7 +14,7 @@ export default class SearchField extends LitElement {
 
         this.inputRef = createRef();
 
-        /** @type {import("../../genomeSpy").default} */
+        /** @type {import("genome-spy/genomeSpy").default} */
         this.genomeSpy = undefined;
 
         /** @type {function():string} */
@@ -338,10 +338,10 @@ function typeSlowly(text, element) {
 /**
  * Finds a scale resolution that has a zoomable locus scale
  *
- * @param {import("../../view/view").default} viewRoot
+ * @param {import("genome-spy/view/view").default} viewRoot
  */
 export function findGenomeScaleResolution(viewRoot) {
-    /** @type {import("../../view/scaleResolution").default} */
+    /** @type {import("genome-spy/view/scaleResolution").default} */
     let match;
 
     viewRoot.visit((view) => {

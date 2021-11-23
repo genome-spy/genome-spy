@@ -2,15 +2,15 @@
  * @typedef {import("./sampleState").Group} Group
  * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
  * @typedef {import("./sampleViewTypes").SampleLocation} SampleLocation
- * @typedef {import("../../utils/layout/flexLayout").LocSize} LocSize
+ * @typedef {import("genome-spy/utils/layout/flexLayout").LocSize} LocSize
  */
 
-import { peek } from "../../utils/arrayUtils";
+import { peek } from "genome-spy/utils/arrayUtils";
 import {
     locSizeEncloses,
     mapToPixelCoords,
-} from "../../utils/layout/flexLayout";
-import smoothstep from "../../utils/smoothstep";
+} from "genome-spy/utils/layout/flexLayout";
+import smoothstep from "genome-spy/utils/smoothstep";
 
 /**
  * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
@@ -42,7 +42,7 @@ export function calculateLocations(
         // Skip empty groups
         .filter((entry) => entry.samples.length);
 
-    /** @type {function(string[]):import("../../utils/layout/flexLayout").SizeDef} */
+    /** @type {function(string[]):import("genome-spy/utils/layout/flexLayout").SizeDef} */
     const sizeDefGenerator = sampleHeight
         ? (group) => ({
               px: group.length * sampleHeight + summaryHeight,

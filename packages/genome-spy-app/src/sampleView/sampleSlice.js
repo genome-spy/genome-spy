@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { peek } from "../../utils/arrayUtils";
+import { peek } from "genome-spy/utils/arrayUtils";
 import {
     groupSamplesByAccessor,
     groupSamplesByQuartiles,
@@ -416,7 +416,7 @@ export function getActionInfo(action, getAttributeInfo) {
             };
         case FILTER_BY_NOMINAL: {
             const values =
-                /** @type {import("../../spec/channel").Scalar[]} */ (
+                /** @type {import("genome-spy/spec/channel").Scalar[]} */ (
                     payload.values
                 );
 

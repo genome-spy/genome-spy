@@ -1,28 +1,28 @@
 import { isNumber, isObject, isString } from "vega-util";
 import { html, render } from "lit";
-import { findEncodedFields } from "../../view/viewUtils";
-import ContainerView from "../../view/containerView";
+import { findEncodedFields } from "genome-spy/view/viewUtils";
+import ContainerView from "genome-spy/view/containerView";
 import {
     interpolateLocSizes,
     locSizeEncloses,
     mapToPixelCoords,
     scaleLocSize,
     translateLocSize,
-} from "../../utils/layout/flexLayout";
+} from "genome-spy/utils/layout/flexLayout";
 import { SampleAttributePanel } from "./sampleAttributePanel";
 import generateAttributeContextMenu from "./attributeContextMenu";
-import { formatLocus } from "../../genome/locusFormat";
-import Padding from "../../utils/layout/padding";
-import transition from "../../utils/transition";
+import { formatLocus } from "genome-spy/genome/locusFormat";
+import Padding from "genome-spy/utils/layout/padding";
+import transition from "genome-spy/utils/transition";
 import { easeCubicOut, easeExpOut } from "d3-ease";
-import clamp from "../../utils/clamp";
-import createDataSource from "../../data/sources/dataSourceFactory";
-import FlowNode from "../../data/flowNode";
-import { createChain } from "../../view/flowBuilder";
-import ConcatView from "../../view/concatView";
-import UnitView from "../../view/unitView";
+import clamp from "genome-spy/utils/clamp";
+import createDataSource from "genome-spy/data/sources/dataSourceFactory";
+import FlowNode from "genome-spy/data/flowNode";
+import { createChain } from "genome-spy/view/flowBuilder";
+import ConcatView from "genome-spy/view/concatView";
+import UnitView from "genome-spy/view/unitView";
 import { GroupPanel } from "./groupPanel";
-import { createOrUpdateTexture } from "../../gl/webGLHelper";
+import { createOrUpdateTexture } from "genome-spy/gl/webGLHelper";
 import {
     createSampleSlice,
     getActionInfo,
@@ -47,13 +47,13 @@ const SPACING = 10;
  *
  * @typedef {import("./sampleState").Group} Group
  * @typedef {import("./sampleState").Sample} Sample
- * @typedef {import("../../utils/layout/flexLayout").LocSize} LocSize
- * @typedef {import("../../view/view").default} View
- * @typedef {import("../../view/layerView").default} LayerView
- * @typedef {import("../../view/decoratorView").default} DecoratorView
- * @typedef {import("../../data/dataFlow").default<View>} DataFlow
- * @typedef {import("../../data/sources/dynamicSource").default} DynamicSource
- * @typedef {import("../../genome/genome").ChromosomalLocus} ChromosomalLocus
+ * @typedef {import("genome-spy/utils/layout/flexLayout").LocSize} LocSize
+ * @typedef {import("genome-spy/view/view").default} View
+ * @typedef {import("genome-spy/view/layerView").default} LayerView
+ * @typedef {import("genome-spy/view/decoratorView").default} DecoratorView
+ * @typedef {import("genome-spy/data/dataFlow").default<View>} DataFlow
+ * @typedef {import("genome-spy/data/sources/dynamicSource").default} DynamicSource
+ * @typedef {import("genome-spy/genome/genome").ChromosomalLocus} ChromosomalLocus
  *
  * @typedef {object} LocusSpecifier
  * @prop {string[]} path Relative path to the view
@@ -66,8 +66,8 @@ const SPACING = 10;
 export default class SampleView extends ContainerView {
     /**
      *
-     * @param {import("../../view/viewUtils").SampleSpec} spec
-     * @param {import("../../view/viewUtils").ViewContext} context
+     * @param {import("genome-spy/view/viewUtils").SampleSpec} spec
+     * @param {import("genome-spy/view/viewUtils").ViewContext} context
      * @param {ContainerView} parent
      * @param {string} name
      * @param {import("../state/provenance").default<any>} provenance
@@ -375,8 +375,8 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../../view/view").default} child
-     * @param {import("../../view/view").default} replacement
+     * @param {import("genome-spy/view/view").default} child
+     * @param {import("genome-spy/view/view").default} replacement
      */
     replaceChild(child, replacement) {
         const r = /** @type {UnitView | LayerView | DecoratorView} */ (
@@ -574,7 +574,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../../utils/layout/rectangle").default} coords
+     * @param {import("genome-spy/utils/layout/rectangle").default} coords
      */
     _clipBySummary(coords) {
         if (this.stickySummaries && this.summaryViews.children.length) {
@@ -587,9 +587,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
-     * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../../view/view").RenderingOptions} [options]
+     * @param {import("genome-spy/view/renderingContext/viewRenderingContext").default} context
+     * @param {import("genome-spy/utils/layout/rectangle").default} coords
+     * @param {import("genome-spy/view/view").RenderingOptions} [options]
      */
     renderChild(context, coords, options = {}) {
         const heightFactor = 1 / coords.height;
@@ -613,9 +613,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
-     * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../../view/view").RenderingOptions} [options]
+     * @param {import("genome-spy/view/renderingContext/viewRenderingContext").default} context
+     * @param {import("genome-spy/utils/layout/rectangle").default} coords
+     * @param {import("genome-spy/view/view").RenderingOptions} [options]
      */
     renderSummaries(context, coords, options = {}) {
         options = {
@@ -652,9 +652,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
-     * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../../view/view").RenderingOptions} [options]
+     * @param {import("genome-spy/view/renderingContext/viewRenderingContext").default} context
+     * @param {import("genome-spy/utils/layout/rectangle").default} coords
+     * @param {import("genome-spy/view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         if (!this.isVisible()) {
@@ -744,7 +744,7 @@ export default class SampleView extends ContainerView {
             return;
         }
 
-        /** @type {import("../../utils/transition").TransitionOptions} */
+        /** @type {import("genome-spy/utils/transition").TransitionOptions} */
         const props = {
             requestAnimationFrame: (callback) =>
                 this.context.animator.requestTransition(callback),
@@ -824,9 +824,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("../../utils/layout/rectangle").default} coords
+     * @param {import("genome-spy/utils/layout/rectangle").default} coords
      *      Coordinates of the view
-     * @param {import("../../utils/interactionEvent").default} event
+     * @param {import("genome-spy/utils/interactionEvent").default} event
      */
     _handleContextMenu(coords, event) {
         // TODO: Allow for registering listeners
@@ -910,8 +910,8 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {string} channel
-     * @param {import("../../view/containerView").ResolutionTarget} resolutionType
-     * @returns {import("../../spec/view").ResolutionBehavior}
+     * @param {import("genome-spy/view/containerView").ResolutionTarget} resolutionType
+     * @returns {import("genome-spy/spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         switch (channel) {
@@ -945,7 +945,7 @@ class ProcessSample extends FlowNode {
 
     /**
      *
-     * @param {import("../../data/flowNode").Datum} datum
+     * @param {import("genome-spy/data/flowNode").Datum} datum
      */
     handle(datum) {
         this._propagate({
@@ -970,7 +970,7 @@ function extractAttributes(row) {
 
 /**
  *
- * @param {import("../../spec/view").ViewSpec} spec
+ * @param {import("genome-spy/spec/view").ViewSpec} spec
  * @returns {spec is SampleSpec}
  */
 export function isSampleSpec(spec) {

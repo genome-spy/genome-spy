@@ -1,5 +1,5 @@
 import { html } from "lit";
-import safeMarkdown from "../utils/safeMarkdown";
+import safeMarkdown from "genome-spy/utils/safeMarkdown";
 import { messageBox } from "./utils/ui/modal";
 import { viewSettingsSlice } from "./viewSettingsSlice";
 

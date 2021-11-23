@@ -1,9 +1,9 @@
 import { isObject, isString } from "vega-util";
 import { loader as vegaLoader } from "vega-loader";
 
-import GenomeSpy from "../genomeSpy.js";
+import GenomeSpy from "genome-spy/genomeSpy.js";
 import GenomeSpyApp from "./genomeSpyApp.js";
-import icon from "../img/bowtie.svg";
+import icon from "genome-spy/img/bowtie.svg";
 import { html } from "lit";
 
 export { GenomeSpy, GenomeSpyApp, icon, html };
@@ -11,12 +11,12 @@ export { GenomeSpy, GenomeSpyApp, icon, html };
 /**
  * Embeds GenomeSpyApp into the DOM
  *
- * This is largely copy-paste from `../index.js`.
+ * This is largely copy-paste from `genome-spy/src/index.js`.
  * TODO: Consolidate
  *
  * @param {HTMLElement | string} el HTMLElement or a query selector
  * @param {object | string} spec a spec object or an url to a json spec
- * @param {import("../options.js").EmbedOptions} [options] options
+ * @param {import("genome-spy/options.js").EmbedOptions} [options] options
  */
 export async function embed(el, spec, options = {}) {
     /** @type {HTMLElement} */
@@ -37,9 +37,10 @@ export async function embed(el, spec, options = {}) {
     let genomeSpy;
 
     try {
-        const specObject = /** @type {import("../spec/root").RootSpec} */ (
-            isObject(spec) ? spec : await loadSpec(spec)
-        );
+        const specObject =
+            /** @type {import("genome-spy/spec/root").RootSpec} */ (
+                isObject(spec) ? spec : await loadSpec(spec)
+            );
 
         specObject.baseUrl = specObject.baseUrl || "";
 
@@ -97,7 +98,7 @@ export async function embed(el, spec, options = {}) {
 
         /**
          * @param {string} name
-         * @returns {import("../view/scaleResolutionApi").ScaleResolutionApi}
+         * @returns {import("genome-spy/view/scaleResolutionApi").ScaleResolutionApi}
          */
         getScaleResolutionByName(name) {
             return genomeSpy.getNamedScaleResolutions().get(name);
@@ -107,7 +108,7 @@ export async function embed(el, spec, options = {}) {
 
 /**
  *
- * @param {import("../genomeSpy").default} genomeSpy
+ * @param {import("genome-spy/genomeSpy").default} genomeSpy
  * @param {Record<string, any>} opt
  */
 function applyOptions(genomeSpy, opt) {

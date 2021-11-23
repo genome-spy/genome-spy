@@ -1,0 +1,38 @@
+{
+  "name": "genome-spy-app",
+  "description": "GenomeSpy, a genome browser with WebGL and a grammar of graphics",
+  "author": {
+    "name": "Kari Lavikka",
+    "email": "kari.lavikka@helsinki.fi"
+  },
+  "contributors": [],
+  "license": "BSD-2-Clause",
+  "version": "0.13.0",
+  "main": "dist/index.js",
+  "files": [
+    "dist/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "github:tuner/genome-spy",
+    "directory": "packages/genome-spy-app"
+  },
+  "scripts": {
+    "dev": "node dev-server.js",
+    "build": "vite build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.14.0",
+    "@fortawesome/fontawesome-svg-core": "^1.2.30",
+    "@fortawesome/free-solid-svg-icons": "^5.14.0",
+    "@reduxjs/toolkit": "^1.6.2",
+    "idb": "^6.1.5",
+    "lit": "^2.0.2",
+    "lz-string": "^1.4.4",
+    "redux-batched-actions": "^0.5.0",
+    "redux-undo": "^1.0.1",
+    "snarkdown": "^2.0.0",
+    "genome-spy": "^0.13.0"
+  }
+}

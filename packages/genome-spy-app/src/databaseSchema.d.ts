@@ -1,5 +1,5 @@
 import { DBSchema } from "idb";
-import { ChromosomalLocus } from "../genome/genome";
+import { ChromosomalLocus } from "genome-spy/genome/genome";
 import { ViewSettings } from "./state";
 import { Action } from "./state/provenance";
 

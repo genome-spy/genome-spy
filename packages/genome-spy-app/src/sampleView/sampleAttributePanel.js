@@ -3,15 +3,15 @@ import { classMap } from "lit/directives/class-map.js";
 
 import { inferType } from "vega-loader";
 
-import ConcatView from "../../view/concatView";
-import UnitView from "../../view/unitView";
+import ConcatView from "genome-spy/view/concatView";
+import UnitView from "genome-spy/view/unitView";
 import generateAttributeContextMenu from "./attributeContextMenu";
-import formatObject from "../../utils/formatObject";
-import { buildDataFlow } from "../../view/flowBuilder";
-import { NOMINAL, ORDINAL } from "../../view/scaleResolution";
-import { resolveScalesAndAxes } from "../../view/viewUtils";
+import formatObject from "genome-spy/utils/formatObject";
+import { buildDataFlow } from "genome-spy/view/flowBuilder";
+import { NOMINAL, ORDINAL } from "genome-spy/view/scaleResolution";
+import { resolveScalesAndAxes } from "genome-spy/view/viewUtils";
 import { easeQuadInOut } from "d3-ease";
-import { peek } from "../../utils/arrayUtils";
+import { peek } from "genome-spy/utils/arrayUtils";
 import { ActionCreators } from "redux-undo";
 import contextMenu from "../utils/ui/contextMenu";
 
@@ -29,7 +29,7 @@ const attributeViewRegex = /^attribute-(.*)$/;
 
 /**
  * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("../../view/view").default} View
+ * @typedef {import("genome-spy/view/view").default} View
  */
 
 /**
@@ -125,7 +125,7 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {View} whoIsAsking
-     * @returns {import("../../spec/channel").Encoding}
+     * @returns {import("genome-spy/spec/channel").Encoding}
      */
     getEncoding(whoIsAsking) {
         // Block all inheritance
@@ -133,9 +133,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {import("../../view/renderingContext/viewRenderingContext").default} context
-     * @param {import("../../utils/layout/rectangle").default} coords
-     * @param {import("../../view/view").RenderingOptions} [options]
+     * @param {import("genome-spy/view/renderingContext/viewRenderingContext").default} context
+     * @param {import("genome-spy/utils/layout/rectangle").default} coords
+     * @param {import("genome-spy/view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         if (!this.isVisible()) {
@@ -199,9 +199,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {import("../../utils/layout/rectangle").default} coords
+     * @param {import("genome-spy/utils/layout/rectangle").default} coords
      *      Coordinates of the view
-     * @param {import("../../utils/interactionEvent").default} event
+     * @param {import("genome-spy/utils/interactionEvent").default} event
      */
     _findSampleForMouseEvent(coords, event) {
         return this.sampleView.getSampleAt(event.point.y - coords.y);
@@ -218,9 +218,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {import("../../utils/layout/rectangle").default} coords
+     * @param {import("genome-spy/utils/layout/rectangle").default} coords
      *      Coordinates of the view
-     * @param {import("../../utils/interactionEvent").default} event
+     * @param {import("genome-spy/utils/interactionEvent").default} event
      */
     handleContextMenu(coords, event) {
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
@@ -279,13 +279,13 @@ export class SampleAttributePanel extends ConcatView {
         // TODO: optimizeDataFlow(dataFlow);
 
         const dynamicSource =
-            /** @type {import("../../data/sources/dynamicSource").default} */ (
+            /** @type {import("genome-spy/data/sources/dynamicSource").default} */ (
                 flow.findDataSourceByKey(this)
             );
 
         dynamicSource.visit((node) => node.initialize());
 
-        /** @type {Promise<import("../../marks/mark").default>[]} */
+        /** @type {Promise<import("genome-spy/marks/mark").default>[]} */
         const promises = [];
 
         this.visit((view) => {
@@ -481,8 +481,8 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {string} channel
-     * @param {import("../../view/containerView").ResolutionTarget} resolutionType
-     * @returns {import("../../spec/view").ResolutionBehavior}
+     * @param {import("genome-spy/view/containerView").ResolutionTarget} resolutionType
+     * @returns {import("genome-spy/spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         return "independent";
@@ -546,12 +546,12 @@ export class SampleAttributePanel extends ConcatView {
 
 /**
  * @param {string} attributeName
- * @param {import("../../spec/view").SampleAttributeDef} attributeDef
+ * @param {import("genome-spy/spec/view").SampleAttributeDef} attributeDef
  */
 function createAttributeSpec(attributeName, attributeDef) {
     const field = `attributes["${attributeName}"]`;
 
-    /** @type {import("../../view/viewUtils").UnitSpec} */
+    /** @type {import("genome-spy/view/viewUtils").UnitSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
         title: attributeName,
@@ -587,7 +587,7 @@ function createAttributeSpec(attributeName, attributeDef) {
 function createLabelViewSpec() {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
-    /** @type {import("../../view/viewUtils").UnitSpec} */
+    /** @type {import("genome-spy/view/viewUtils").UnitSpec} */
     const titleSpec = {
         name: "metadata-sample-name",
         title: "Sample name",

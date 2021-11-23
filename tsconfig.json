@@ -5,6 +5,7 @@
 			"genome-spy": [ "packages/genome-spy/src" ],
 			"genome-spy/*": [ "packages/genome-spy/src/*" ],
 		},
+		"resolveJsonModule": true,
         "module": "nodenext",
         "allowJs": true,
         "checkJs": true,
