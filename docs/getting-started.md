@@ -48,7 +48,7 @@ recommended to use a specific version.
     The versions in the examples below may be slightly out of date. The current
     version is:
 
-    ![npm version](https://img.shields.io/npm/v/genome-spy)
+    ![npm version](https://img.shields.io/npm/v/@genome-spy/core)
 
 !!! warning "Stylesheet filename"
 
@@ -66,13 +66,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/genome-spy@0.4.0/dist/style.css"
+      href="https://unpkg.com/@genome-spy/core@0.14.0/dist/style.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/genome-spy@0.4.0/dist/index.js"
+      src="https://unpkg.com/@genome-spy/core@0.14.0/dist/index.js"
     ></script>
 
     <script>
@@ -92,13 +92,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/genome-spy@0.4.0/dist/style.css"
+      href="https://unpkg.com/@genome-spy/core@0.14.0/dist/style.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/genome-spy@0.4.0/dist/index.js"
+      src="https://unpkg.com/@genome-spy/core@0.14.0/dist/index.js"
     ></script>
 
     <script>
@@ -119,8 +119,3 @@ This template loads the spec from the `spec.json` file.
   </body>
 </html>
 ```
-
-## Using the GenomeSpy library in a web application
-
-The [API](api.md) is still unstable, but you may want to have a look at the
-[SegmentModel Spy](https://github.com/tuner/segment-model-spy) for an example.
