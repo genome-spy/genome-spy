@@ -2,11 +2,11 @@ import { isObject, isString } from "vega-util";
 import { loader as vegaLoader } from "vega-loader";
 
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
-import GenomeSpyApp from "./genomeSpyApp.js";
+import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
 
-export { GenomeSpy, GenomeSpyApp, icon, html };
+export { GenomeSpy, App as GenomeSpyApp, icon, html };
 
 /**
  * Embeds GenomeSpyApp into the DOM
@@ -52,7 +52,7 @@ export async function embed(el, spec, options = {}) {
             specObject.padding = 10;
         }
 
-        const app = new GenomeSpyApp(element, specObject, options);
+        const app = new App(element, specObject, options);
         genomeSpy = app.genomeSpy;
         applyOptions(genomeSpy, options);
         await app.launch();

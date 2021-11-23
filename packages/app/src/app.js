@@ -25,9 +25,9 @@ import { viewSettingsSlice } from "./viewSettingsSlice";
 transforms.mergeFacets = MergeSampleFacets;
 
 /**
- * A simple wrapper for the GenomeSpy core.
+ * A wrapper for the GenomeSpy core. Provides SampleView, provenance, a toolbar, etc.
  */
-export default class GenomeSpyApp {
+export default class App {
     /**
      *
      * @param {HTMLElement} appContainerElement
@@ -78,7 +78,7 @@ export default class GenomeSpyApp {
             .addEventListener(
                 "query-dependency",
                 (
-                    /** @type {import("./genomeSpyAppTypes").DependencyQueryEvent} */ event
+                    /** @type {import("./appTypes").DependencyQueryEvent} */ event
                 ) => {
                     if (event.detail.name == "app") {
                         event.detail.setter(self);
@@ -217,7 +217,7 @@ export default class GenomeSpyApp {
      * Update provenance to url
      */
     _updateStateToUrl() {
-        /** @type {import("./genomeSpyAppTypes").UrlHash} */
+        /** @type {import("./appTypes").UrlHash} */
         const hashData = {
             actions: [],
             scaleDomains: {},
@@ -264,7 +264,7 @@ export default class GenomeSpyApp {
         const hash = window.location.hash;
         if (hash && hash.length > 0) {
             try {
-                /** @type {import("./genomeSpyAppTypes").UrlHash} */
+                /** @type {import("./appTypes").UrlHash} */
                 const entry = decompressFromUrlHash(hash);
                 restoreBookmark(entry, this);
                 return true;

@@ -20,7 +20,7 @@ class BookmarkButton extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../genomeSpyApp").default} */
+        /** @type {import("../app").App} */
         this.app = undefined;
     }
 
@@ -30,7 +30,7 @@ class BookmarkButton extends LitElement {
         this.dispatchEvent(
             queryDependency(
                 "app",
-                (/** @type {import("../genomeSpyApp").default} */ app) => {
+                (/** @type {import("../app").App} */ app) => {
                     this.app = app;
                 }
             )

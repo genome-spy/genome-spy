@@ -5,7 +5,7 @@ import { viewSettingsSlice } from "./viewSettingsSlice";
 
 /**
  * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
- * @param {import("./genomeSpyApp").default} app
+ * @param {import("./app").App} app
  */
 export async function restoreBookmark(entry, app) {
     try {
