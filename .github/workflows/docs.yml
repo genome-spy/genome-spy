@@ -1,0 +1,25 @@
+name: Build and deploy docs
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install markdown mkdocs-material
+          pushd utils/markdown_extension/
+          python setup.py build
+          python setup.py install
+          popd
+      - name: Build the docs
+        run: mkdocs build
