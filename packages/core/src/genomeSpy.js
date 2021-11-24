@@ -130,7 +130,7 @@ export default class GenomeSpy {
 
     /**
      *
-     * @param {function(string):any[]} provider
+     * @param {(name: string) => any[]} provider
      */
     registerNamedDataProvider(provider) {
         this.namedDataProviders.unshift(provider);

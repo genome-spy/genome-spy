@@ -44,6 +44,7 @@ let previousStringifiedSpec = "";
 const layouts = ["stacked", "parallel", "full"];
 let layout = layouts[0];
 
+/** @type {Record<string, any>} */
 const files = {};
 
 /** @type {string} */
@@ -55,11 +56,11 @@ function toggleLayout() {
     window.dispatchEvent(new Event("resize"));
 }
 
+/**
+ * @param {string} name
+ */
 function getNamedData(name) {
-    const file = files[name];
-    if (file) {
-        return file.data;
-    }
+    return files[name]?.data;
 }
 
 async function update(force = false) {
@@ -83,20 +84,28 @@ async function update(force = false) {
 
         // TODO: Fix possible race condition
         // eslint-disable-next-line require-atomic-updates
-        embedResult = await embed(genomeSpyContainerRef.value, parsedSpec, {
-            bare: true,
-            namedDataProvider: getNamedData,
-        });
+        embedResult = await embed(
+            /** @type {HTMLElement} */ (genomeSpyContainerRef.value),
+            parsedSpec,
+            {
+                namedDataProvider: getNamedData,
+            }
+        );
     } catch (e) {
         console.log(e);
     }
 }
 
-// https://simon-schraeder.de/posts/filereader-async/
+/**
+ * https://simon-schraeder.de/posts/filereader-async/
+ *
+ * @param {File} file
+ * @returns {Promise<string>}
+ */
 function readFileAsync(file) {
     return new Promise((resolve, reject) => {
         let reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
+        reader.onload = () => resolve(/** @type {string} */ (reader.result));
         reader.onerror = reject;
         reader.readAsText(file);
     });
@@ -104,6 +113,7 @@ function readFileAsync(file) {
 
 /**
  * @param {string} contents
+ * @param {string} name
  */
 function inferFileType(contents, name) {
     if (/\.json$/.test(name)) {
@@ -137,8 +147,12 @@ async function handleFiles(event) {
     update(true);
 }
 
+/**
+ * @param {UIEvent} event
+ */
 function changeTab(event) {
-    const name = event.target.parentElement.dataset.name;
+    const target = /** @type {HTMLElement} */ (event.target);
+    const name = target.parentElement.dataset.name;
     currentTab = name;
 
     event.preventDefault();
@@ -259,7 +273,7 @@ const fileTemplate = () => html`
                 <div id="upload-button-wrapper">
                     <button
                         class="btn"
-                        @click=${(e) => {
+                        @click=${(/** @type {UIEvent} */ e) => {
                             document.getElementById("fileInput").click();
                             e.preventDefault();
                             e.stopPropagation();

@@ -113,15 +113,11 @@ export async function embed(el, spec, options = {}) {
 /**
  *
  * @param {import("./genomeSpy").default} genomeSpy
- * @param {Record<string, any>} opt
+ * @param {import("./options.js").EmbedOptions} options options
  */
-function applyOptions(genomeSpy, opt) {
-    if (opt.namedDataProvider) {
-        genomeSpy.registerNamedDataProvider(opt.namedDataProvider);
-    }
-
-    if (opt.beforeLaunchCallback) {
-        opt.beforeLaunchCallback(genomeSpy);
+function applyOptions(genomeSpy, options) {
+    if (options.namedDataProvider) {
+        genomeSpy.registerNamedDataProvider(options.namedDataProvider);
     }
 }
 
