@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.14.2](https://github.com/tuner/genome-spy/compare/v0.14.1...v0.14.2) (2021-11-24)
+
+
+### Bug Fixes
+
+* **playground:** indent selection with tab ([a01c2a8](https://github.com/tuner/genome-spy/commit/a01c2a85dcad66ea7c069b084d792870d9d682e9))
+
+
+
+
+
 ## [0.14.1](https://github.com/tuner/genome-spy/compare/v0.14.0...v0.14.1) (2021-11-23)
 
 
