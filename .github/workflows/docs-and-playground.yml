@@ -57,7 +57,7 @@ jobs:
           commit_message: ${{ github.event.head_commit.message }} (docs)
 
       - name: Kill ssh-agent (otherwise the following deploy fails)
-        run: ssh-agent -k
+        run: pkill ssh-agent || true
 
       - name: Deploy Playground
         uses: peaceiris/actions-gh-pages@v3
