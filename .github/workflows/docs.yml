@@ -38,7 +38,7 @@ jobs:
           npm -w @genome-spy/doc-embed run build
 
       - name: Build JSON schema
-        run: npm -w @genome-spy/core build:schema
+        run: npm -w @genome-spy/core run build:schema
         
       - name: Build the docs
         run: npm run build:docs
