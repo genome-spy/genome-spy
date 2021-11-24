@@ -34,7 +34,7 @@
   },
   "scripts": {
     "build": "npm -ws run build --if-present",
-    "builddocs": "mkdir -p docs/app && cp packages/doc-embed/dist/* docs/app/ && cp packages/core/dist/genome-spy-schema.json docs/genomespy-schema.json && mkdocs build",
+    "build:docs": "mkdir -p docs/app && cp packages/doc-embed/dist/* docs/app/ && cp packages/core/dist/genome-spy-schema.json docs/ && mkdocs build",
     "lint": "eslint packages/*/src/",
     "test": "jest",
     "start": "npm run dev -w @genome-spy/app",

@@ -52,7 +52,7 @@ class MyPreprocessor(Preprocessor):
 class GenomeSpyExtension(Extension):
     def __init__(self, **kwargs):
         self.config = {
-            'schemaPath' : [ 'docs/genomespy-schema.json', 'Path to schema']
+            'schemaPath' : [ 'docs/genome-spy-schema.json', 'Path to schema']
         }
         super(GenomeSpyExtension, self).__init__(**kwargs)
 
@@ -62,6 +62,6 @@ class GenomeSpyExtension(Extension):
                 schema = json.load(f)
         except IOError:
             logging.error('Cannot open ' + self.getConfig('schemaPath'))
-            return
+            raise
 
         md.preprocessors.register(MyPreprocessor(schema), 'GenomeSpy', 175)
