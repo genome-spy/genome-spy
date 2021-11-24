@@ -1,4 +1,4 @@
-name: Build and deploy docs
+name: Build and deploy docs and Playground
 
 on: [push]
 
@@ -36,6 +36,7 @@ jobs:
       - name: Build packages
         run: |
           npm -w @genome-spy/doc-embed run build
+          npm -w @genome-spy/playground run build
 
       - name: Build JSON schema
         run: npm -w @genome-spy/core run build:schema
@@ -54,3 +55,15 @@ jobs:
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: ${{ github.event.head_commit.message }} (docs)
+
+      - name: Deploy Playground
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          external_repository: genome-spy/genome-spy.github.io
+          publish_branch: master
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          publish_dir: ./packages/playground/dist
+          destination_dir: playground
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: ${{ github.event.head_commit.message }} (playground)
