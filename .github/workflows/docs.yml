@@ -47,6 +47,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           external_repository: genome-spy/genome-spy.github.io
+          publish_branch: master
           deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
           publish_dir: ./docs
           destination_dir: docs
