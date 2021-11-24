@@ -49,7 +49,7 @@ jobs:
           external_repository: genome-spy/genome-spy.github.io
           publish_branch: master
           deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          publish_dir: ./docs
+          publish_dir: ./site
           destination_dir: docs
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
