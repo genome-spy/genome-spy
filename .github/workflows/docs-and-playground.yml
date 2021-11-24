@@ -1,6 +1,8 @@
 name: Build and deploy docs and Playground
 
-on: [push]
+on:
+  release:
+    types: [released]
 
 jobs:
   build:
@@ -41,10 +43,10 @@ jobs:
       - name: Build JSON schema
         run: npm -w @genome-spy/core run build:schema
         
-      - name: Build the docs
+      - name: Build docs
         run: npm run build:docs
 
-      - name: Deploy the docs
+      - name: Deploy docs
         uses: peaceiris/actions-gh-pages@v3
         with:
           external_repository: genome-spy/genome-spy.github.io
