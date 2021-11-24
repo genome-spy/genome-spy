@@ -42,3 +42,14 @@ jobs:
         
       - name: Build the docs
         run: npm run build:docs
+
+      - name: Deploy the docs
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          external_repository: genome-spy/genome-spy.github.io
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          publish_dir: ./docs
+          destination_dir: docs
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: ${{ github.event.head_commit.message }} (docs)
