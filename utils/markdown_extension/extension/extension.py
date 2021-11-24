@@ -62,6 +62,6 @@ class GenomeSpyExtension(Extension):
                 schema = json.load(f)
         except IOError:
             logging.error('Cannot open ' + self.getConfig('schemaPath'))
-            return
+            raise
 
         md.preprocessors.register(MyPreprocessor(schema), 'GenomeSpy', 175)
