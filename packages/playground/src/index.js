@@ -27,6 +27,7 @@ import "./playground.scss";
 import "./codemirror-theme.scss";
 
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
+import { debounce } from "@genome-spy/core/utils/debounce";
 
 window.jsonlint = JsonLint;
 
@@ -53,19 +54,6 @@ function toggleLayout() {
     renderLayout();
     window.dispatchEvent(new Event("resize"));
 }
-
-// https://codeburst.io/throttling-and-debouncing-in-javascript-b01cad5c8edf
-const debounce = (func, delay) => {
-    let inDebounce;
-    return function () {
-        // eslint-disable-next-line consistent-this
-        const context = this;
-        // eslint-disable-next-line prefer-rest-params
-        const args = arguments;
-        clearTimeout(inDebounce);
-        inDebounce = setTimeout(() => func.apply(context, args), delay);
-    };
-};
 
 function getNamedData(name) {
     const file = files[name];
@@ -334,15 +322,20 @@ codeMirror = CodeMirror.fromTextArea(
         indentUnit: 2,
         indentWithTabs: false,
         extraKeys: {
-            Tab: (cm) => cm.execCommand("insertSoftTab"),
+            Tab: (cm) => {
+                if (cm.somethingSelected()) {
+                    cm.indentSelection("add");
+                } else {
+                    cm.execCommand("insertSoftTab");
+                }
+            },
         },
-        //keyMap: "vim"
     }
 );
 
 codeMirror.setSize("100%", "100%");
 
-const debouncedUpdate = debounce(() => update(), 500);
+const debouncedUpdate = debounce(() => update(), 500, false);
 
 codeMirror.on("change", debouncedUpdate);
 
