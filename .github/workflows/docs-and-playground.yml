@@ -56,6 +56,9 @@ jobs:
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: ${{ github.event.head_commit.message }} (docs)
 
+      - name: Kill ssh-agent (otherwise the following deploy fails)
+        run: ssh-agent -k
+
       - name: Deploy Playground
         uses: peaceiris/actions-gh-pages@v3
         with:
