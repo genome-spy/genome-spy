@@ -1,42 +1,25 @@
 /* eslint-disable no-invalid-this */
 import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
-
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faColumns, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-
-import JsonLint from "jsonlint-mod";
-
 import { read } from "vega-loader";
-
-import defaultSpec from "./defaultspec.json.txt";
-
-import CodeMirror from "codemirror/lib/codemirror.js";
-import "codemirror/mode/javascript/javascript.js";
-//import 'codemirror/keymap/vim.js';
-import "codemirror/addon/lint/lint";
-import "codemirror/addon/lint/json-lint.js";
-import "codemirror/addon/edit/matchbrackets.js";
-
-import "codemirror/lib/codemirror.css";
-import "codemirror/addon/lint/lint.css";
-
-import "codemirror/theme/neo.css";
-
-import "./playground.scss";
-import "./codemirror-theme.scss";
-
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
 import { debounce } from "@genome-spy/core/utils/debounce";
-
-window.jsonlint = JsonLint;
+import defaultSpec from "./defaultspec.json.txt";
+import "./codeEditor";
+import "./playground.scss";
 
 const STORAGE_KEY = "playgroundSpec";
 
 const genomeSpyContainerRef = createRef();
 
+/** @type {import("lit/directives/ref.js").Ref<import("./codeEditor").default>} */
+const editorRef = createRef();
+
+/** @type {any} TODO: Proper type */
 let embedResult;
-let codeMirror;
+
 let storedSpec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
 
 let previousStringifiedSpec = "";
@@ -64,7 +47,7 @@ function getNamedData(name) {
 }
 
 async function update(force = false) {
-    const value = codeMirror.getValue();
+    const value = editorRef.value?.value;
     window.localStorage.setItem(STORAGE_KEY, value);
 
     try {
@@ -304,11 +287,17 @@ const fileTemplate = () => html`
     </div>
 `;
 
+const debouncedUpdate = debounce(() => update(), 500, false);
+
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
         ${toolbarTemplate()}
         <section id="editor-pane">
-            <textarea class="editor">${storedSpec}</textarea>
+            <code-editor
+                ${ref(editorRef)}
+                @change=${debouncedUpdate}
+                .value=${storedSpec}
+            ></code-editor>
         </section>
         <section id="genome-spy-pane">
             <div ${ref(genomeSpyContainerRef)}></div>
@@ -322,35 +311,5 @@ function renderLayout() {
 }
 
 renderLayout();
-
-codeMirror = CodeMirror.fromTextArea(
-    document.querySelector("#editor-pane .editor"),
-    {
-        lineNumbers: true,
-        mode: "application/json",
-        lineWrapping: true,
-        gutters: ["CodeMirror-lint-markers"],
-        lint: true,
-        matchBrackets: true,
-        tabSize: 2,
-        indentUnit: 2,
-        indentWithTabs: false,
-        extraKeys: {
-            Tab: (cm) => {
-                if (cm.somethingSelected()) {
-                    cm.indentSelection("add");
-                } else {
-                    cm.execCommand("insertSoftTab");
-                }
-            },
-        },
-    }
-);
-
-codeMirror.setSize("100%", "100%");
-
-const debouncedUpdate = debounce(() => update(), 500, false);
-
-codeMirror.on("change", debouncedUpdate);
 
 update();

@@ -15,9 +15,8 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.30",
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
     "@genome-spy/core": "^0.14.2",
-    "codemirror": "^5.64.0",
-    "jsonlint-mod": "^1.7.5",
     "lit": "^2.0.2",
+    "monaco-editor": "^0.30.1",
     "vega-loader": "^4.4.0"
   }
 }
