@@ -6,6 +6,7 @@ import { faColumns, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
 import { debounce } from "@genome-spy/core/utils/debounce";
 import defaultSpec from "./defaultspec.json.txt";
+import packageJson from "../package.json";
 import "./codeEditor";
 import "./filePane";
 import "./playground.scss";
@@ -92,6 +93,11 @@ const toolbarTemplate = () => html`
             <span>Toggle layout</span>
         </button>
         <span class="spacer"></span>
+        <a
+            class="version"
+            href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
+            >v${packageJson.version}</a
+        >
         <a href="https://genomespy.app/docs/" target="_blank"
             >${icon(faQuestionCircle).node[0]} <span>Docs</span></a
         >
