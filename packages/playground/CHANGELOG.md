@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://github.com/tuner/genome-spy/compare/v0.14.2...v0.15.0) (2021-11-25)
+
+
+### Bug Fixes
+
+* **playground:** put genomespy into a scrollable viewport ([e43ea76](https://github.com/tuner/genome-spy/commit/e43ea76e1cb2f1cf11b9cd0e977ce05ffd4ae217))
+
+
+### Features
+
+* **playground:** add version number to toolbar ([e79551d](https://github.com/tuner/genome-spy/commit/e79551d1111e250dc94db4678a0822615d7864bb))
+* **playground:** replace CodeMirror 5 with Monaco ([#64](https://github.com/tuner/genome-spy/issues/64)) ([2f20957](https://github.com/tuner/genome-spy/commit/2f20957139385914091bd11ebc95510f80a3fad4))
+
+
+
+
+
 ## [0.14.2](https://github.com/tuner/genome-spy/compare/v0.14.1...v0.14.2) (2021-11-24)
 
 
