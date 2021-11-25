@@ -41,6 +41,10 @@ body {
             "toolbar"
             "genome-spy";
     }
+
+    > * {
+        position: relative;
+    }
 }
 
 #editor-pane {
@@ -48,14 +52,13 @@ body {
     min-width: 0;
     min-height: 0;
 
-    .CodeMirror {
-        height: 100%;
-        width: 100%;
-        background: none;
-    }
-
     .full & {
         display: none;
+    }
+
+    > code-editor {
+        position: absolute;
+        inset: 0;
     }
 }
 

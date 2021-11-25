@@ -4,23 +4,18 @@ import { ref, createRef } from "lit/directives/ref.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faColumns, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { read } from "vega-loader";
-//import * as monaco from "monaco-editor";
-import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
-import "monaco-editor/esm/vs/language/json/monaco.contribution.js";
-import "monaco-editor/esm/vs/editor/browser/controller/coreCommands.js";
-import "monaco-editor/esm/vs/editor/contrib/folding/folding.js";
-import "monaco-editor/esm/vs/editor/contrib/multicursor/multicursor.js";
-import "monaco-editor/esm/vs/editor/contrib/bracketMatching/bracketMatching.js";
-
-import "./userWorker";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
 import { debounce } from "@genome-spy/core/utils/debounce";
 import defaultSpec from "./defaultspec.json.txt";
+import "./codeEditor";
 import "./playground.scss";
 
 const STORAGE_KEY = "playgroundSpec";
 
 const genomeSpyContainerRef = createRef();
+
+/** @type {import("lit/directives/ref.js").Ref<import("./codeEditor").default>} */
+const editorRef = createRef();
 
 /** @type {any} TODO: Proper type */
 let embedResult;
@@ -38,9 +33,6 @@ const files = {};
 /** @type {string} */
 let currentTab;
 
-/** @type {monaco.editor.IStandaloneCodeEditor} */
-let editor;
-
 function toggleLayout() {
     layout = layouts[(layouts.indexOf(layout) + 1) % layouts.length];
     renderLayout();
@@ -55,7 +47,7 @@ function getNamedData(name) {
 }
 
 async function update(force = false) {
-    const value = editor.getValue();
+    const value = editorRef.value?.value;
     window.localStorage.setItem(STORAGE_KEY, value);
 
     try {
@@ -295,10 +287,18 @@ const fileTemplate = () => html`
     </div>
 `;
 
+const debouncedUpdate = debounce(() => update(), 500, false);
+
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
         ${toolbarTemplate()}
-        <section id="editor-pane"></section>
+        <section id="editor-pane">
+            <code-editor
+                ${ref(editorRef)}
+                @change=${debouncedUpdate}
+                .value=${storedSpec}
+            ></code-editor>
+        </section>
         <section id="genome-spy-pane">
             <div ${ref(genomeSpyContainerRef)}></div>
         </section>
@@ -311,22 +311,5 @@ function renderLayout() {
 }
 
 renderLayout();
-
-const editorPane = /** @type {HTMLElement} */ (
-    document.querySelector("#editor-pane")
-);
-editor = monaco.editor.create(editorPane, {
-    value: storedSpec,
-    language: "json",
-    minimap: { enabled: false },
-});
-
-const resizeObserver = new ResizeObserver((entries) => {
-    editor.layout();
-});
-resizeObserver.observe(editorPane);
-
-const debouncedUpdate = debounce(() => update(), 500, false);
-editor.getModel().onDidChangeContent(() => debouncedUpdate());
 
 update();
