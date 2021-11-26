@@ -33,15 +33,9 @@ export async function embed(el, spec, options = {}) {
     try {
         const specObject = isObject(spec) ? spec : await loadSpec(spec);
 
-        specObject.baseUrl = specObject.baseUrl || "";
-
-        if (!("width" in specObject)) {
-            specObject.width = "container";
-        }
-
-        if (!("padding" in specObject)) {
-            specObject.padding = 10;
-        }
+        specObject.baseUrl ??= "";
+        specObject.width ??= "container";
+        specObject.padding ??= 10;
 
         if (element == document.body) {
             // Need to add a wrapper to make sizing behavior more stable
