@@ -20,7 +20,7 @@ const editorRef = createRef();
 /** @type {Record<string, import("./filePane").FileEntry>} */
 const files = {};
 
-/** @type {any} TODO: Proper type */
+/** @type {import("@genome-spy/core/embedApi.js").EmbedResult} */
 let embedResult;
 
 let storedSpec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
