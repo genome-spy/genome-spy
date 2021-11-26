@@ -2,7 +2,10 @@ import { validTicks, tickValues, tickFormat, tickCount } from "../scale/ticks";
 import LayerView from "./layerView";
 import { isNumber } from "vega-util";
 import smoothstep from "../utils/smoothstep";
-import { shallowArrayEquals } from "../utils/arrayUtils";
+import {
+    shallowArrayEquals,
+    shallowArrayEqualsWithAccessors,
+} from "../utils/arrayUtils";
 import { FlexDimensions } from "../utils/layout/flexLayout";
 import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
 
@@ -265,7 +268,7 @@ function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
         : tickValues(scale, count);
 
     if (
-        shallowArrayEquals(
+        shallowArrayEqualsWithAccessors(
             values,
             oldTicks,
             (v) => v,

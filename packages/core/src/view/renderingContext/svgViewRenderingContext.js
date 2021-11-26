@@ -8,8 +8,12 @@ import ViewRenderingContext from "./viewRenderingContext";
  * @typedef {import("../view").default} View
  */
 export default class SvgViewRenderingContext extends ViewRenderingContext {
-    constructor() {
-        super();
+    /**
+     *
+     * @param {import("../rendering").GlobalRenderingOptions} globalOptions
+     */
+    constructor(globalOptions) {
+        super(globalOptions);
 
         /** @type {import("../../utils/layout/rectangle").default} */
         this.coords = undefined;
@@ -39,7 +43,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             this.svg.setAttributeNS(
                 null,
                 "viewBox",
-                ["x", "y", "width", "height"].map((a) => viewBox[a]).join(" ")
+                [viewBox.x, viewBox.y, viewBox.width, viewBox.height].join(" ")
             );
         }
 

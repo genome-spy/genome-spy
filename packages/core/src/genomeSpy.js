@@ -59,7 +59,7 @@ export default class GenomeSpy {
      *
      * @param {HTMLElement} container
      * @param {RootSpec} spec
-     * @param {import("./options").EmbedOptions} [options]
+     * @param {import("./embedApi").EmbedOptions} [options]
      */
     constructor(container, spec, options = {}) {
         this.container = container;

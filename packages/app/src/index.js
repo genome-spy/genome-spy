@@ -14,9 +14,7 @@ export { GenomeSpy, App as GenomeSpyApp, icon, html };
  * This is largely copy-paste from `genome-spy/src/index.js`.
  * TODO: Consolidate
  *
- * @param {HTMLElement | string} el HTMLElement or a query selector
- * @param {object | string} spec a spec object or an url to a json spec
- * @param {import("@genome-spy/core/options.js").EmbedOptions} [options] options
+ * @type {import("@genome-spy/core/embedApi").EmbedFunction}
  */
 export async function embed(el, spec, options = {}) {
     /** @type {HTMLElement} */
@@ -37,20 +35,11 @@ export async function embed(el, spec, options = {}) {
     let genomeSpy;
 
     try {
-        const specObject =
-            /** @type {import("@genome-spy/core/spec/root").RootSpec} */ (
-                isObject(spec) ? spec : await loadSpec(spec)
-            );
+        const specObject = isObject(spec) ? spec : await loadSpec(spec);
 
-        specObject.baseUrl = specObject.baseUrl || "";
-
-        if (!("width" in specObject)) {
-            specObject.width = "container";
-        }
-
-        if (!("padding" in specObject)) {
-            specObject.padding = 10;
-        }
+        specObject.baseUrl ??= "";
+        specObject.width ??= "container";
+        specObject.padding ??= 10;
 
         const app = new App(element, specObject, options);
         genomeSpy = app.genomeSpy;
@@ -70,10 +59,6 @@ export async function embed(el, spec, options = {}) {
             }
         },
 
-        /**
-         * @param {string} type
-         * @param {(event: any) => void} listener
-         */
         addEventListener(type, listener) {
             const listenersByType = genomeSpy._eventListeners;
 
@@ -86,20 +71,12 @@ export async function embed(el, spec, options = {}) {
             listeners.add(listener);
         },
 
-        /**
-         * @param {string} type
-         * @param {(event: any) => void} listener
-         */
         removeEventListener(type, listener) {
             const listenersByType = genomeSpy._eventListeners;
 
             listenersByType.get(type)?.delete(listener);
         },
 
-        /**
-         * @param {string} name
-         * @returns {import("@genome-spy/core/view/scaleResolutionApi").ScaleResolutionApi}
-         */
         getScaleResolutionByName(name) {
             return genomeSpy.getNamedScaleResolutions().get(name);
         },

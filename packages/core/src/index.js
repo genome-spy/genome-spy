@@ -10,9 +10,7 @@ export { GenomeSpy, html, icon };
 /**
  * Embeds GenomeSpy into the DOM
  *
- * @param {HTMLElement | string} el HTMLElement or a query selector
- * @param {object | string} spec a spec object or an url to a json spec
- * @param {import("./options.js").EmbedOptions} [options] options
+ * @type {import("./embedApi.js").EmbedFunction}
  */
 export async function embed(el, spec, options = {}) {
     /** @type {HTMLElement} */
@@ -33,19 +31,11 @@ export async function embed(el, spec, options = {}) {
     let genomeSpy;
 
     try {
-        const specObject = /** @type {import("./spec/root").RootSpec} */ (
-            isObject(spec) ? spec : await loadSpec(spec)
-        );
+        const specObject = isObject(spec) ? spec : await loadSpec(spec);
 
-        specObject.baseUrl = specObject.baseUrl || "";
-
-        if (!("width" in specObject)) {
-            specObject.width = "container";
-        }
-
-        if (!("padding" in specObject)) {
-            specObject.padding = 10;
-        }
+        specObject.baseUrl ??= "";
+        specObject.width ??= "container";
+        specObject.padding ??= 10;
 
         if (element == document.body) {
             // Need to add a wrapper to make sizing behavior more stable
@@ -74,10 +64,6 @@ export async function embed(el, spec, options = {}) {
             }
         },
 
-        /**
-         * @param {string} type
-         * @param {(event: any) => void} listener
-         */
         addEventListener(type, listener) {
             const listenersByType = genomeSpy._eventListeners;
 
@@ -90,20 +76,12 @@ export async function embed(el, spec, options = {}) {
             listeners.add(listener);
         },
 
-        /**
-         * @param {string} type
-         * @param {(event: any) => void} listener
-         */
         removeEventListener(type, listener) {
             const listenersByType = genomeSpy._eventListeners;
 
             listenersByType.get(type)?.delete(listener);
         },
 
-        /**
-         * @param {string} name
-         * @returns {import("./view/scaleResolutionApi").ScaleResolutionApi}
-         */
         getScaleResolutionByName(name) {
             return genomeSpy.getNamedScaleResolutions().get(name);
         },
@@ -113,7 +91,7 @@ export async function embed(el, spec, options = {}) {
 /**
  *
  * @param {import("./genomeSpy").default} genomeSpy
- * @param {import("./options.js").EmbedOptions} options options
+ * @param {import("./embedApi.js").EmbedOptions} options options
  */
 function applyOptions(genomeSpy, options) {
     if (options.namedDataProvider) {

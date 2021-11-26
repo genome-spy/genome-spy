@@ -32,7 +32,7 @@ export default class App {
      *
      * @param {HTMLElement} appContainerElement
      * @param {import("@genome-spy/core/spec/root").RootSpec} config
-     * @param {import("@genome-spy/core/options").EmbedOptions} options
+     * @param {import("@genome-spy/core/embedApi").EmbedOptions} options
      */
     constructor(appContainerElement, config, options = {}) {
         // eslint-disable-next-line consistent-this

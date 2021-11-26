@@ -6,6 +6,8 @@ const minimumDomainSpan = 1;
 /**
  * Creates a "index" scale, which works similarly to d3's band scale but the domain
  * consists of integer indexes.
+ *
+ * TODO: Specity typings in a separate file
  */
 export default function scaleIndex() {
     let domain = [0, 1];
@@ -131,7 +133,7 @@ export default function scaleIndex() {
 
     /**
      *
-     * @param {number} _
+     * @param {number} [_]
      */
     scale.align = function (_) {
         if (arguments.length) {
@@ -187,9 +189,12 @@ export default function scaleIndex() {
             numberFormat(x + numberingOffset);
     };
 
+    // TODO: Figure out how to specify types properly
+    /** @type {() => ReturnType<scaleIndex>} */
     scale.copy = () =>
         scaleIndex()
             .domain(domain)
+            // @ts-expect-error
             .range(range)
             .paddingInner(paddingInner)
             .paddingOuter(paddingOuter)

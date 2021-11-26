@@ -656,6 +656,7 @@ export default class Mark {
             // inferior performance. Based on profiling, this optimization gives
             // a significant performance boost.
             this.gl.uniform4f(
+                // @ts-expect-error
                 locationSetter.location, // TODO: Make a twgl pull request to fix typing
                 pos,
                 height,
