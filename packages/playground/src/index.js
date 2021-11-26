@@ -1,4 +1,3 @@
-/* eslint-disable no-invalid-this */
 import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
