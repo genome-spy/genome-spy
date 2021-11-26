@@ -47,6 +47,7 @@ export default class FlattenDelimitedTransform extends FlowNode {
             const flatLen = splitFields[0].length;
 
             for (let ri = 0; ri < flatLen; ri++) {
+                /** @type {import("../flowNode").Datum} */
                 const newRow = Object.assign({}, datum);
                 for (let fi = 0; fi < accessors.length; fi++) {
                     newRow[as[fi]] = splitFields[fi][ri];
@@ -57,6 +58,11 @@ export default class FlattenDelimitedTransform extends FlowNode {
     }
 }
 
+/**
+ *
+ * @param {any[]} splitFields
+ * @param {unknown} row
+ */
 function validateSplit(splitFields, row) {
     const splitLengths = splitFields.map((f) => f.length);
     if (!splitLengths.every((x) => x == splitLengths[0])) {

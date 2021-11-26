@@ -9,6 +9,10 @@
  */
 
 /* eslint-disable */
+// @ts-nocheck
+
+// This file is a mess
+// TODO: Fix types, etc.
 
 import { tickCount } from "./ticks";
 import {
@@ -131,6 +135,12 @@ export function configureScale(_, scale, logger) {
     );
 }
 
+/**
+ *
+ * @param {import("../spec/scale").Scale} _
+ * @param {*} logger
+ * @returns {import("../encoder/encoder").VegaScale}
+ */
 export default function createScale(_, logger) {
     const key = scaleKey(_);
     const scale = getScale(key);

@@ -395,6 +395,8 @@ export default class WebGLHelper {
  * Copy-pasted from twgl.js:
  * https://github.com/greggman/twgl.js/blob/master/src/programs.js
  * Copyright 2019 Gregg Tavares, MIT license
+ *
+ * @param {string} src
  */
 function addLineNumbersWithError(src, log = "", lineOffset = 0) {
     const errorRE = /ERROR:\s*\d+:(\d+)/gi;
@@ -426,7 +428,7 @@ function addLineNumbersWithError(src, log = "", lineOffset = 0) {
  * @param {WebGLShader} fragmentShader
  */
 export function createProgram(gl, vertexShader, fragmentShader) {
-    var program = gl.createProgram();
+    const program = gl.createProgram();
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);

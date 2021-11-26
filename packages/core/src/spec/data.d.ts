@@ -42,7 +42,7 @@ export interface DataFormatBase {
      * __Default value:__  The default format type is determined by the extension of the file URL.
      * If no extension is detected, `"json"` will be used by default.
      */
-    type?: "csv" | "tsv" | "dsv" | "json";
+    type?: DataFormatType;
 }
 
 export interface CsvDataFormat extends DataFormatBase {
@@ -73,9 +73,20 @@ export interface JsonDataFormat extends DataFormatBase {
     property?: string;
 }
 
-export type DataFormat = CsvDataFormat | DsvDataFormat | JsonDataFormat;
+/**
+ * Other data format, such as `"fasta"`
+ */
+export interface OtherDataFormat {
+    type: string;
+}
 
-export type DataFormatType = "json" | "csv" | "tsv" | "dsv";
+export type DataFormat =
+    | CsvDataFormat
+    | DsvDataFormat
+    | JsonDataFormat
+    | OtherDataFormat;
+
+export type DataFormatType = "json" | "csv" | "tsv" | "dsv" | string;
 
 export type DataSource =
     | UrlData

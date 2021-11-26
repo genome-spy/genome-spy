@@ -9,6 +9,10 @@
  */
 
 /* eslint-disable */
+// @ts-nocheck
+
+// This file is a mess
+// TODO: Fix types, etc.
 
 import { isLogarithmic } from "vega-scale";
 import { error, isNumber, isObject, isString, peek, span } from "vega-util";
@@ -16,8 +20,9 @@ import { format as numberFormat, formatSpecifier } from "d3-format";
 
 /**
  * Determine the tick count or interval function.
- * @param {Scale} scale - The scale for which to generate tick values.
- * @param {*} count - The desired tick count or interval specifier.
+ *
+ * @param {import("../encoder/encoder").VegaScale} scale - The scale for which to generate tick values.
+ * @param {number | {step: number, interval: number}} count - The desired tick count or interval specifier.
  * @param {number} minStep - The desired minimum step between tick values.
  * @return {*} - The tick count or interval function.
  */
@@ -39,7 +44,7 @@ export function tickCount(scale, count, minStep) {
 /**
  * Filter a set of candidate tick values, ensuring that only tick values
  * that lie within the scale range are included.
- * @param {Scale} scale - The scale for which to generate tick values.
+ * @param {import("../encoder/encoder").VegaScale} scale - The scale for which to generate tick values.
  * @param {Array<*>} ticks - The candidate tick values.
  * @param {*} count - The tick count or interval function.
  * @return {Array<*>} - The filtered tick values.
@@ -80,9 +85,9 @@ export function validTicks(scale, ticks, count) {
  * interval value. If the scale has a 'ticks' method, it will be used to
  * generate the ticks, with the count argument passed as a parameter. If the
  * scale lacks a 'ticks' method, the full scale domain will be returned.
- * @param {Scale} scale - The scale for which to generate tick values.
+ * @param {import("../encoder/encoder").VegaScale} scale - The scale for which to generate tick values.
  * @param {*} [count] - The approximate number of desired ticks.
- * @return {Array<*>} - The generated tick values.
+ * @return {any[]} - The generated tick values.
  */
 export function tickValues(scale, count) {
     return scale.bins
@@ -117,7 +122,7 @@ function binValues(bins, count) {
  * If the input scale is a logarithmic scale and the format specifier does not
  * indicate a desired decimal precision, a special variable precision formatter
  * that automatically trims trailing zeroes will be generated.
- * @param {Scale} scale - The scale for which to generate the label formatter.
+ * @param {import("../encoder/encoder").VegaScale} scale - The scale for which to generate the label formatter.
  * @param {*} [count] - The approximate number of desired ticks.
  * @param {string} [specifier] - The format specifier. Must be a legal d3
  *   specifier string (see https://github.com/d3/d3-format#formatSpecifier).

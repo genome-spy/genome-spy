@@ -43,7 +43,7 @@ export default class StackTransform extends FlowNode {
             ? compare(params.sort.field, params.sort.order)
             : undefined;
 
-        const valueAccessor = params.field ? field(params.field) : (d) => 1;
+        const valueAccessor = params.field ? field(params.field) : () => 1;
 
         const groupFields = params.groupby.map((f) => field(f));
 
@@ -52,7 +52,7 @@ export default class StackTransform extends FlowNode {
         ).map((a) => a[1]);
 
         /** @type {(datum: any) => boolean} */
-        let inclusionPredicate = (datum) => true;
+        let inclusionPredicate = (_datum) => true;
 
         if (params.baseField) {
             const baseAccessor = field(params.baseField);
@@ -108,7 +108,7 @@ export default class StackTransform extends FlowNode {
                 break;
             default:
                 offsetF = (value, sum) => value;
-                sumF = (values, accessor) => 1;
+                sumF = (_values, _accessor) => 1;
         }
 
         for (const group of groups) {

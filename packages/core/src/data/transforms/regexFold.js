@@ -48,7 +48,7 @@ export default class RegexFoldTransform extends FlowNode {
          * @param {any} datum
          */
         const detectColumns = (datum) => {
-            const colNames = Object.keys(datum);
+            const colNames = /** @type {string[]} */ (Object.keys(datum));
 
             /** @type {Map<string, string[]>} */
             const sampleColMap = new Map();

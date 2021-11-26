@@ -1,6 +1,6 @@
 /**
- *
- * @param  {...Iterable} iterables
+ * @param  {...Iterable<T>} iterables
+ * @template T
  */
 export default function concatIterables(...iterables) {
     if (iterables.length <= 0) {

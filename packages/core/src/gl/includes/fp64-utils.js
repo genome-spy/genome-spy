@@ -45,6 +45,9 @@ export function fp64LowPart(a) {
     return a - Math.fround(a);
 }
 
+/**
+ * @param {WebGLRenderingContext | WebGL2RenderingContext} gl
+ */
 export function getPlatformShaderDefines(gl) {
     const debugInfo = getContextInfo(gl);
 
@@ -94,6 +97,9 @@ const GL_RENDERER = 0x1f01;
 const GL_VERSION = 0x1f02;
 const GL_SHADING_LANGUAGE_VERSION = 0x8b8c;
 
+/**
+ * @param {WebGLRenderingContext | WebGL2RenderingContext} gl
+ */
 export function getContextInfo(gl) {
     const info = gl.getExtension("WEBGL_debug_renderer_info");
     const vendor = gl.getParameter(
@@ -113,6 +119,10 @@ export function getContextInfo(gl) {
     return gpuInfo;
 }
 
+/**
+ * @param {string} vendor
+ * @param {string} renderer
+ */
 function identifyGPUVendor(vendor, renderer) {
     if (vendor.match(/NVIDIA/i) || renderer.match(/NVIDIA/i)) {
         return "NVIDIA";

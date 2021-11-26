@@ -5,7 +5,7 @@ import createIndexer from "../utils/indexer";
  * @typedef {Object} EncoderMetadata
  * @prop {boolean} constant True if the accessor returns the same value for all objects
  * @prop {boolean} constantValue True the encoder returns a "value" without a scale
- * @prop {function} invert
+ * @prop {(value: import("../spec/channel").Scalar) => import("../spec/channel").Scalar} invert
  * @prop {VegaScale} [scale]
  * @prop {import("./accessor").Accessor} accessor 
  * @prop {function(any):number} [indexer] Converts ordinal values to index numbers
@@ -96,7 +96,8 @@ export function createEncoder(channelDef, scale, accessor, channel) {
     let encoder;
 
     if (isValueDef(channelDef)) {
-        encoder = /** @type {Encoder} */ ((datum) => channelDef.value);
+        const value = channelDef.value;
+        encoder = /** @type {Encoder} */ ((datum) => value);
         encoder.constant = true;
         encoder.constantValue = true;
         encoder.accessor = undefined;
@@ -153,6 +154,7 @@ export function createEncoder(channelDef, scale, accessor, channel) {
     encoder.applyMetadata = (target) => {
         for (const prop in encoder) {
             if (prop in encoder) {
+                // @ts-ignore
                 target[prop] = encoder[prop];
             }
         }
@@ -250,7 +252,7 @@ export const secondaryChannels = {
 /**
  * Map secondary channels to primaries
  *
- * @type {Record<Channel, Channel>}
+ * @type {Partial<Record<Channel, Channel>>}
  */
 export const primaryChannels = Object.fromEntries(
     Object.entries(secondaryChannels).map((entry) => [entry[1], entry[0]])

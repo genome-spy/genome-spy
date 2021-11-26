@@ -8,8 +8,9 @@
 export function getFormat(params) {
     const format = { ...params.format };
 
-    format.type = format.type || extractTypeFromUrl(params.url);
-    format.parse = format.parse || "auto";
+    format.type ??= isUrlData(params) && extractTypeFromUrl(params.url);
+    // @ts-expect-error
+    format.parse ??= "auto";
 
     if (!format.type) {
         throw new Error(
@@ -22,9 +23,13 @@ export function getFormat(params) {
 }
 
 /**
- * @param {string} url
+ * @param {string | string[]} url
  */
 export function extractTypeFromUrl(url) {
+    if (Array.isArray(url)) {
+        url = url[0];
+    }
+
     if (url) {
         return url.match(/\.(csv|tsv|json)/)?.[1];
     }
@@ -38,3 +43,36 @@ const scalarWrapper = (
 ) => ({ data: x });
 
 const nopWrapper = (/** @type {import("../flowNode").Datum} */ x) => x;
+
+/**
+ * @param {import("../../spec/data").DataFormat} dataFormat
+ * @return {dataFormat is import("../../spec/data").CsvDataFormat}
+ */
+export function isCsvDataFormat(dataFormat) {
+    return dataFormat.type == "csv" || dataFormat.type == "tsv";
+}
+
+/**
+ * @param {import("../../spec/data").DataFormat} dataFormat
+ * @return {dataFormat is import("../../spec/data").DsvDataFormat}
+ */
+export function isDsvDataFormat(dataFormat) {
+    return dataFormat.type == "dsv";
+}
+
+/**
+ * @param {import("../../spec/data").DataFormat} dataFormat
+ * @return {dataFormat is import("../../spec/data").JsonDataFormat}
+ */
+export function isJsonDataFormat(dataFormat) {
+    return dataFormat.type == "json";
+}
+
+/**
+ *
+ * @param {import("../../spec/data").DataSource} dataSource
+ * @return {dataSource is import("../../spec/data").UrlData}
+ */
+export function isUrlData(dataSource) {
+    return "url" in dataSource;
+}

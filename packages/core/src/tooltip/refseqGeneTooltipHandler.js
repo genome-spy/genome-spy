@@ -43,6 +43,7 @@ async function fetchGeneSummary(symbol) {
 
     console.log("Searching: " + symbol);
 
+    /** @type {RequestInit} */
     const opts = { mode: "cors" };
 
     const searchResult = await fetch(

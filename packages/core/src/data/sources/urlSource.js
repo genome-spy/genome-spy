@@ -40,7 +40,7 @@ export default class UrlSource extends DataSource {
                     baseURL: this.baseUrl,
                 })
                     .load(url)
-                    .catch((e) => {
+                    .catch((/** @type {Error} */ e) => {
                         // TODO: Include baseurl in the error message. Should be normalized, however.
                         throw new Error(
                             `Cannot fetch: ${this.baseUrl}${url}: ${e.message}`

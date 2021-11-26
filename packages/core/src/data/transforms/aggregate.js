@@ -49,6 +49,7 @@ export default class AggregateTransform extends FlowNode {
         const groupFieldAccessors = groupby.map((f) => field(f));
 
         // TODO: Fix case where no group fields are specified
+        // @ts-expect-error
         const groups = d3group(this.buffer, ...groupFieldAccessors);
 
         for (const [group, data] of iterateNestedMaps(groups)) {
