@@ -7,7 +7,7 @@ const minimumDomainSpan = 1;
  * Creates a "index" scale, which works similarly to d3's band scale but the domain
  * consists of integer indexes.
  *
- * TODO: Specity typings in a separate file
+ * @returns {import("./scaleIndex").ScaleIndex}
  */
 export default function scaleIndex() {
     let domain = [0, 1];
@@ -23,29 +23,20 @@ export default function scaleIndex() {
     /** The number of the first element. This affects the generated ticks and their labels. */
     let numberingOffset = 0;
 
-    /**
-     *
-     * @param {number} x
-     */
-    function scale(x) {
-        // In principle, the domain consists of integer indices. However,
-        // we accept real numbers so that items can be centered inside a band.
-        // TODO: paddingInner/paddingOuter/align. Now they are implemented in GLSL.
-        return ((x - domain[0]) / domainSpan) * rangeSpan + range[0];
-    }
+    const scaleFunction = (/** @type {number} */ x) =>
+        ((x - domain[0]) / domainSpan) * rangeSpan + range[0];
 
     /**
+     * In principle, the domain consists of integer indices. However,
+     * we accept real numbers so that items can be centered inside a band.
      *
-     * @param {number} y
+     * @type {import("./scaleIndex").ScaleIndex}
      */
-    scale.invert = function (y) {
-        return ((y - range[0]) / rangeSpan) * domainSpan + domain[0];
-    };
+    const scale = /** @type {any} */ (scaleFunction);
 
-    /**
-     *
-     * @param {Iterable<number>} [_]
-     */
+    scale.invert = (y) => ((y - range[0]) / rangeSpan) * domainSpan + domain[0];
+
+    // @ts-expect-error
     scale.domain = function (_) {
         if (arguments.length) {
             domain = extent(_);
@@ -64,10 +55,7 @@ export default function scaleIndex() {
         }
     };
 
-    /**
-     *
-     * @param {Iterable<number>} [_]
-     */
+    // @ts-expect-error
     scale.range = function (_) {
         if (arguments.length) {
             range = [..._];
@@ -78,10 +66,7 @@ export default function scaleIndex() {
         }
     };
 
-    /**
-     *
-     * @param {number} [_]
-     */
+    // @ts-expect-error
     scale.numberingOffset = function (_) {
         if (arguments.length) {
             numberingOffset = _;
@@ -91,10 +76,7 @@ export default function scaleIndex() {
         }
     };
 
-    /**
-     *
-     * @param {number} _
-     */
+    // @ts-expect-error
     scale.padding = function (_) {
         if (arguments.length) {
             paddingOuter = _;
@@ -105,10 +87,7 @@ export default function scaleIndex() {
         }
     };
 
-    /**
-     *
-     * @param {number} _
-     */
+    // @ts-expect-error
     scale.paddingInner = function (_) {
         if (arguments.length) {
             paddingInner = Math.min(1, _);
@@ -118,10 +97,7 @@ export default function scaleIndex() {
         }
     };
 
-    /**
-     *
-     * @param {number} _
-     */
+    // @ts-expect-error
     scale.paddingOuter = function (_) {
         if (arguments.length) {
             paddingOuter = _;
@@ -131,10 +107,7 @@ export default function scaleIndex() {
         }
     };
 
-    /**
-     *
-     * @param {number} [_]
-     */
+    // @ts-expect-error
     scale.align = function (_) {
         if (arguments.length) {
             align = Math.max(0, Math.min(1, _));
@@ -148,10 +121,6 @@ export default function scaleIndex() {
 
     scale.bandwidth = () => scale.step();
 
-    /**
-     * @param {number} count
-     * @returns {number[]}
-     */
     scale.ticks = (count) => {
         const align = /** @type {number} */ (scale.align());
         const offset = /** @type {number} */ (scale.numberingOffset());
@@ -164,12 +133,7 @@ export default function scaleIndex() {
             .map((x) => x - numberingOffset);
     };
 
-    /**
-     *
-     * @param {number} [count]
-     * @param {string} [specifier]
-     */
-    scale.tickFormat = function (count, specifier) {
+    scale.tickFormat = (count, specifier) => {
         if (specifier) {
             throw new Error(
                 "Index scale's tickFormat does not support a specifier!"
@@ -189,12 +153,9 @@ export default function scaleIndex() {
             numberFormat(x + numberingOffset);
     };
 
-    // TODO: Figure out how to specify types properly
-    /** @type {() => ReturnType<scaleIndex>} */
     scale.copy = () =>
         scaleIndex()
             .domain(domain)
-            // @ts-expect-error
             .range(range)
             .paddingInner(paddingInner)
             .paddingOuter(paddingOuter)

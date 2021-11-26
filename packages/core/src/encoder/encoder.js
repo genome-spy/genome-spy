@@ -37,7 +37,7 @@ import createIndexer from "../utils/indexer";
     import("d3-scale").ScalePoint<any>
     )} D3Scale
  * 
- * @typedef {D3Scale & ScaleMetadata} VegaScale
+ * @typedef {(D3Scale | import("../genome/scaleIndex").ScaleIndex | import("../genome/scaleLocus").ScaleLocus) & ScaleMetadata} VegaScale
  * 
  * @typedef {import("../spec/channel").Channel} Channel
  */
