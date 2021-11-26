@@ -1,4 +1,5 @@
 import DataSource from "./dataSource";
+import { makeWrapper } from "./dataUtils";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data
@@ -39,18 +40,13 @@ export default class NamedSource extends DataSource {
     loadSynchronously() {
         const data = this._getValues();
 
-        /**
-         * @param {any} x
-         */
+        /** @type {(x: any) => import("../flowNode").Datum} */
         let wrap = (x) => x;
 
         if (Array.isArray(data)) {
             if (data.length > 0) {
                 // TODO: Should check the whole array and abort if types are heterogeneous
-                if (typeof data[0] != "object") {
-                    // Wrap scalars to objects
-                    wrap = (d) => ({ data: d });
-                }
+                wrap = makeWrapper(data[0]);
             }
         } else {
             throw new Error(

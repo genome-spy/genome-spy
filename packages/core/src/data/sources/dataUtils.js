@@ -29,3 +29,12 @@ export function extractTypeFromUrl(url) {
         return url.match(/\.(csv|tsv|json)/)?.[1];
     }
 }
+
+export const makeWrapper = (/** @type {any} */ d) =>
+    typeof d != "object" ? scalarWrapper : nopWrapper;
+
+const scalarWrapper = (
+    /** @type {import("@genome-spy/core/spec/channel").Scalar} */ x
+) => ({ data: x });
+
+const nopWrapper = (/** @type {import("../flowNode").Datum} */ x) => x;

@@ -1,4 +1,5 @@
 import DataSource from "./dataSource";
+import { makeWrapper } from "./dataUtils";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data
@@ -21,7 +22,7 @@ export default class DynamicSource extends DataSource {
 
         for (const d of iterable) {
             if (!wrap) {
-                wrap = typeof d != "object" ? (x) => ({ data: x }) : (x) => x;
+                wrap = makeWrapper(d);
             }
 
             this._propagate(wrap(d));

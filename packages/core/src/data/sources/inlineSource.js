@@ -1,5 +1,5 @@
 import { read } from "vega-loader";
-import { getFormat } from "./dataUtils";
+import { getFormat, makeWrapper } from "./dataUtils";
 import DataSource from "./dataSource";
 
 /**
@@ -31,16 +31,14 @@ export default class InlineSource extends DataSource {
 
         let data = [];
 
+        /** @type {(x: any) => import("../flowNode").Datum} */
         let wrap = (x) => x;
 
         if (Array.isArray(values)) {
             if (values.length > 0) {
                 data = values;
                 // TODO: Should check the whole array and abort if types are heterogeneous
-                if (typeof values[0] != "object") {
-                    // Wrap scalars to objects
-                    wrap = (d) => ({ data: d });
-                }
+                wrap = makeWrapper(values[0]);
             }
         } else if (typeof values == "object") {
             data = [values];
