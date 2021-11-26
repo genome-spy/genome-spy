@@ -286,6 +286,7 @@ export function linearizeLocusAccess(view) {
                       ...rewrittenEncoding,
                   };
                   // This is so ugly...
+                  // @ts-ignore
                   invalidate(view.mark, "encoding");
               },
           }

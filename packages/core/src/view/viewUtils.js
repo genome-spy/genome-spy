@@ -292,7 +292,7 @@ async function loadExternalViewSpec(spec, baseUrl, viewContext) {
     const url = spec.import.url;
 
     const importedSpec = JSON.parse(
-        await loader.load(url).catch((e) => {
+        await loader.load(url).catch((/** @type {Error} */ e) => {
             throw new Error(
                 `Could not load imported view spec: ${url} \nReason: ${e.message}`
             );

@@ -178,7 +178,9 @@ export default class PointMark extends Mark {
         if (e.constant) {
             return e(null);
         } else {
-            return e.scale.range().reduce((a, b) => Math.max(a, b));
+            return /** @type {number[]} */ (e.scale.range()).reduce((a, b) =>
+                Math.max(a, b)
+            );
         }
     }
 
@@ -196,7 +198,8 @@ export default class PointMark extends Mark {
             } else if (p >= 1) {
                 return Infinity;
             } else {
-                return quantileSorted(this.sampledSemanticScores, p);
+                const scores = /** @type {any} */ (this.sampledSemanticScores);
+                return quantileSorted(/** @type {number[]} */ (scores), p);
             }
         } else {
             return -1;

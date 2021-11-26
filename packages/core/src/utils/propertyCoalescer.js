@@ -2,16 +2,19 @@
  * Coalesces properties. Allows for creating chains of defaults without
  * using object destructuring, which may generate piles of garbage for GC.
  *
- * Still WIP. TODO: Efficient computed defaults.
+ * Still WIP.
+ * TODO: Efficient computed defaults.
+ * TODO: Make sense of the types
  *
  * @param  {...function():T} sources
  * @returns {T}
  *
- * @template T
+ * @template {Record<string | symbol, any>} [T=object]
  */
 export default function coalesceProperties(...sources) {
+    /** @type {ProxyHandler<T>} */
     const handler = {
-        get: function (target, prop, receiver) {
+        get(_target, prop, _receiver) {
             for (const source of sources) {
                 const props = source();
                 const value = props[prop];
@@ -22,7 +25,8 @@ export default function coalesceProperties(...sources) {
             return undefined;
         },
 
-        has: function (target, prop, receiver) {
+        // @ts-ignore
+        has(target, prop, _receiver) {
             for (const source of sources) {
                 const props = source();
                 if (prop in props) {
@@ -33,5 +37,6 @@ export default function coalesceProperties(...sources) {
         },
     };
 
+    // @ts-ignore
     return new Proxy({}, handler);
 }
