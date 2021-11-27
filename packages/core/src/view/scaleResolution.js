@@ -34,6 +34,7 @@ import { NominalDomain } from "../utils/domainArray";
 import { easeQuadInOut } from "d3-ease";
 import { interpolateZoom } from "d3-interpolate";
 import { shallowArrayEquals } from "../utils/arrayUtils";
+import { isScaleLocus } from "../genome/scaleLocus";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
@@ -323,7 +324,7 @@ export default class ScaleResolution {
         const scale = createScale(props);
         this._scale = scale;
 
-        if (scale.type == "locus") {
+        if (isScaleLocus(scale)) {
             scale.genome(this.getGenome());
         }
 
@@ -400,13 +401,14 @@ export default class ScaleResolution {
         const oldDomain = scale.domain();
         let newDomain = [...oldDomain];
 
+        // @ts-expect-error
         const anchor = scale.invert(scaleAnchor);
 
         if (this.getScaleProps().reverse) {
             pan = -pan;
         }
 
-        // TODO: log, pow, symlog, ...
+        // TODO: symlog
         switch (scale.type) {
             case "linear":
             case "index":
@@ -419,22 +421,33 @@ export default class ScaleResolution {
                 newDomain = zoomLog(newDomain, anchor, scaleFactor);
                 break;
             case "pow":
-            case "sqrt":
-                newDomain = panPow(newDomain, pan || 0, scale.exponent());
+            case "sqrt": {
+                const powScale =
+                    /** @type {import("d3-scale").ScalePower<number, number>} */ (
+                        scale
+                    );
+                newDomain = panPow(newDomain, pan || 0, powScale.exponent());
                 newDomain = zoomPow(
                     newDomain,
                     anchor,
                     scaleFactor,
-                    scale.exponent()
+                    powScale.exponent()
                 );
                 break;
+            }
             default:
-                throw new Error("Unsupported scale type: " + scale.type);
+                throw new Error(
+                    "Zooming is not implemented for: " + scale.type
+                );
         }
 
         // TODO: Use the zoomTo method. Move clamping etc there.
         if (this._zoomExtent) {
-            newDomain = clampRange(newDomain, ...this._zoomExtent);
+            newDomain = clampRange(
+                newDomain,
+                this._zoomExtent[0],
+                this._zoomExtent[1]
+            );
         }
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
@@ -491,9 +504,8 @@ export default class ScaleResolution {
                 },
             });
             */
-            const interpolator = interpolateZoom.rho(0.7)(
-                [fc, 0, fw],
-                [tc, 0, tw]
+            const interpolator = interpolateZoom([fc, 0, fw], [tc, 0, tw]).rho(
+                0.7
             );
             await animator.transition({
                 duration: (duration / 1000) * interpolator.duration,
@@ -688,7 +700,7 @@ function getDefaultScaleType(channel, dataType) {
     }
 
     /**
-     * @type {Partial<Record<Channel, string[]>>}
+     * @type {Partial<Record<Channel, (string | undefined)[]>>}
      * Default types: nominal, ordinal, quantitative.
      * undefined = incompatible, "null" = disabled (pass-thru)
      */
@@ -739,10 +751,8 @@ function applyLockedProperties(props, channel) {
         props.range = [0, 1];
     }
 
-    if (channel == "opacity") {
-        if (isContinuous(props.type)) {
-            props.clamp = true;
-        }
+    if (channel == "opacity" && isContinuous(props.type)) {
+        props.clamp = true;
     }
 }
 

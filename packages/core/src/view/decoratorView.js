@@ -384,7 +384,10 @@ export default class DecoratorView extends ContainerView {
                     zDelta: 0,
                 });
             }
-        } else if (event.type == "mousedown" && event.uiEvent.button === 0) {
+        } else if (
+            event.type == "mousedown" &&
+            /** @type {MouseEvent} */ (event.uiEvent).button === 0
+        ) {
             const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
             mouseEvent.preventDefault();
 

@@ -7,14 +7,16 @@
  * https://mrale.ph/blog/2014/07/30/constructor-vs-objectcreate.html
  *
  * @param {T} template The template object that
- * @returns {function(T):T}
+ * @returns {(function(T):T) & { properties: string[] }}
  * @template T
  */
 export default function createCloner(template) {
     // TODO: Check that only properties, not methods get cloned
-    const properties = Object.keys(template);
+    const properties = /** @type {string[]} */ (
+        Object.keys(template).filter((k) => typeof k == "string")
+    );
 
-    const cloner = /** @type {function(T):T} */ (
+    const cloner = /** @type {(function(T):T) & { properties: string[] }} */ (
         new Function(
             "source",
             "return { " +

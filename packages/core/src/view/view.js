@@ -142,13 +142,10 @@ export default class View {
      */
     getSizeFromSpec() {
         /**
-         *
          * @param {"width" | "height"} dimension
          * @return {SizeDef}
          */
         const handleSize = (dimension) => {
-            /** @type {SizeDef} */
-            let sizeDef;
             let value = this.spec[dimension];
 
             if (isStepSize(value)) {
@@ -172,22 +169,27 @@ export default class View {
                         );
                     }
 
+                    // TODO: Type guards maybe?
+                    const _scale =
+                        /** @type {import("d3-scale").ScaleBand<any> | import("../genome/scaleLocus").ScaleLocus | import("../genome/scaleIndex").ScaleIndex} */ (
+                            scale
+                        );
+
                     steps = bandSpace(
                         steps,
-                        scale.paddingInner(),
-                        scale.paddingOuter()
+                        _scale.paddingInner(),
+                        _scale.paddingOuter()
                     );
 
-                    sizeDef = { px: steps * stepSize, grow: 0 };
+                    return { px: steps * stepSize, grow: 0 };
                 } else {
                     throw new Error(
                         "Cannot use 'step' size with missing scale!"
                     );
                 }
             } else {
-                sizeDef = (value && parseSizeDef(value)) || { px: 0, grow: 1 };
+                return (value && parseSizeDef(value)) ?? { px: 0, grow: 1 };
             }
-            return sizeDef;
         };
 
         return this._cache(

@@ -8,6 +8,7 @@ import {
 import VERTEX_SHADER from "../gl/rule.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rule.fragment.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices";
+import { isChannelDefWithScale } from "../encoder/encoder.js";
 
 export default class RuleMark extends Mark {
     /**
@@ -89,11 +90,21 @@ export default class RuleMark extends Mark {
             // Limited horizontal rule
             encoding.y2 = encoding.y;
         } else if (encoding.y && encoding.x) {
-            if (!encoding.x2 && encoding.y.type == "quantitative") {
+            if (
+                !encoding.x2 &&
+                isChannelDefWithScale(encoding.y) &&
+                encoding.y.type == "quantitative"
+            ) {
                 encoding.x2 = encoding.x;
+                // @ts-expect-error
                 encoding.y2 = { datum: 0 };
-            } else if (!encoding.y2 && encoding.x.type == "quantitative") {
+            } else if (
+                !encoding.y2 &&
+                isChannelDefWithScale(encoding.x) &&
+                encoding.x.type == "quantitative"
+            ) {
                 encoding.y2 = encoding.y;
+                // @ts-expect-error
                 encoding.x2 = { datum: 0 };
             } else {
                 throw new Error("A bug!"); // Should be unreachable

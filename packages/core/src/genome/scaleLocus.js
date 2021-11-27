@@ -99,3 +99,10 @@ export default function scaleLocus() {
 
     return scale;
 }
+
+/**
+ * @type {import("./scaleLocus").isScaleLocus}
+ */
+export function isScaleLocus(scale) {
+    return scale.type == "locus";
+}

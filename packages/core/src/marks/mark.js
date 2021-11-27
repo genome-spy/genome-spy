@@ -29,6 +29,7 @@ import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
 import { getCachedOrCall } from "../utils/propertyCacher";
 import { createProgram } from "../gl/webGLHelper";
 import coalesceProperties from "../utils/propertyCoalescer";
+import { isScalar } from "../utils/variableTools";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -191,9 +192,7 @@ export default class Mark {
             const propToValueDef = (property) => {
                 const value =
                     this.properties[/** @type {keyof MarkConfig} */ (property)];
-                // TODO: Use isScalar ... but... tooltip breaks if type guard is used
-                return { value };
-                //}
+                return isScalar(value) && { value };
             };
 
             const propertyValues = Object.fromEntries(

@@ -14,6 +14,7 @@ import {
     isDatumDef,
     isDiscreteChannel,
     getPrimaryChannel,
+    isChannelDefWithScale,
 } from "../encoder/encoder";
 import { peek } from "../utils/arrayUtils";
 
@@ -93,7 +94,7 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
 /**
  *
  * @param {Channel} channel
- * @param {any} scale
+ * @param {any} scale TODO: typing
  * @param {import("../spec/channel").ChannelDef} encoding
  */
 // eslint-disable-next-line complexity
@@ -184,7 +185,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
                 scale.paddingInner(),
                 scale.paddingOuter(),
                 scale.align(),
-                encoding.band ?? 0.5
+                (isChannelDefWithScale(encoding) && encoding.band) ?? 0.5
             );
             break;
 
@@ -329,7 +330,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
     }
 
     // 3. clamp
-    if (scale.clamp && scale.clamp()) {
+    if ("clamp" in scale && scale.clamp()) {
         scaleBody.push(
             `transformed = clampToRange(transformed, ${vectorizeRange(range)});`
         );

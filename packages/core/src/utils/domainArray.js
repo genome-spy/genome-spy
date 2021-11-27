@@ -195,14 +195,6 @@ export default function createDomain(type, initialDomain) {
 }
 
 /**
- *
- * @param {array} array
- */
-export function isDomainArray(array) {
-    return array instanceof DomainArray;
-}
-
-/**
  * For unit tests
  *
  * @param {DomainArray | any[]} domainArray

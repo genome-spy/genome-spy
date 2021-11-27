@@ -21,8 +21,9 @@ export default class AccessorFactory {
         this.register((channelDef) => {
             if (isFieldDef(channelDef)) {
                 try {
-                    /** @type {Accessor} */
-                    const accessor = field(channelDef.field);
+                    const accessor = /** @type {Accessor} */ (
+                        field(channelDef.field)
+                    );
                     accessor.constant = false;
                     accessor.fields = accessorFields(accessor);
                     return accessor;
@@ -40,8 +41,8 @@ export default class AccessorFactory {
 
         this.register((channelDef) => {
             if (isDatumDef(channelDef)) {
-                /** @type {Accessor} */
-                const accessor = constant(channelDef.datum);
+                const c = /** @type {any} */ (constant(channelDef.datum));
+                const accessor = /** @type {Accessor} */ (c);
                 accessor.constant = true; // Can be optimized downstream
                 accessor.fields = [];
                 return accessor;
@@ -75,8 +76,7 @@ export default class AccessorFactory {
  * @param {string} expr
  */
 function createExpressionAccessor(expr) {
-    /** @type {Accessor} */
-    const accessor = createFunction(expr);
+    const accessor = /** @type {Accessor} */ (createFunction(expr));
     accessor.constant = accessor.fields.length == 0; // Not bulletproof, eh
     return accessor;
 }
