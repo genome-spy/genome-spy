@@ -2,15 +2,15 @@
 
 BSD 2-Clause License
 
-Copyright (c) 2018-2019 Kari Lavikka
+Copyright (c) 2018-2021 Kari Lavikka
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
-* Redistributions of source code must retain the above copyright notice, this
+- Redistributions of source code must retain the above copyright notice, this
   list of conditions and the following disclaimer.
 
-* Redistributions in binary form must reproduce the above copyright notice,
+- Redistributions in binary form must reproduce the above copyright notice,
   this list of conditions and the following disclaimer in the documentation
   and/or other materials provided with the distribution.
 
@@ -35,15 +35,15 @@ All rights reserved.
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
-* Redistributions of source code must retain the above copyright notice, this
+- Redistributions of source code must retain the above copyright notice, this
   list of conditions and the following disclaimer.
 
-* Redistributions in binary form must reproduce the above copyright notice,
+- Redistributions in binary form must reproduce the above copyright notice,
   this list of conditions and the following disclaimer in the documentation
   and/or other materials provided with the distribution.
 
-* Neither the name of the University of Washington Interactive Data Lab
-  nor the names of its contributors may be used to endorse or promote products 
+- Neither the name of the University of Washington Interactive Data Lab
+  nor the names of its contributors may be used to endorse or promote products
   derived from this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -60,11 +60,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ### luma.gl
 
 Copyright (c) 2015 Uber Technologies, Inc.
-
-This software includes parts of PhiloGL (https://github.com/philogb/philogl)
-under MIT license. PhiloGL parts Copyright © 2013 Sencha Labs.
-
-This software includes adaptations of postprocessing code from THREE.js (https://github.com/mrdoob/three.js/) under MIT license. Additional attribution given in specific source files. THREE.js parts Copyright © 2010-2018 three.js authors.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
