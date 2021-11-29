@@ -263,7 +263,9 @@ export type SecondaryChromPosDef = ChromPosDefBase &
     TitleMixins &
     PositionMixins;
 
-export type ChromPosDef = SecondaryChromPosDef & TypeMixins<"locus">;
+export type ChromPosDef = SecondaryChromPosDef &
+    TypeMixins<"locus"> &
+    ScaleMixins;
 
 export type PositionDef<F extends Field> =
     | PositionFieldDef<F>
