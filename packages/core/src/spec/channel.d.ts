@@ -169,12 +169,14 @@ export type MarkPropFieldDef<
 
 export type MarkPropExprDef<T extends Type = Type> = ExprDef & TypeMixins<T>;
 
-export type MarkPropDatumDef = LegendMixins & ScaleDatumDef;
+export type MarkPropDatumDef<T extends Type> = LegendMixins &
+    ScaleDatumDef &
+    TypeMixins<T>;
 
 export type MarkPropFieldOrDatumOrExprDef<
     F extends Field,
     T extends Type = Type
-> = MarkPropFieldDef<F, T> | MarkPropDatumDef | MarkPropExprDef;
+> = MarkPropFieldDef<F, T> | MarkPropDatumDef<T> | MarkPropExprDef;
 
 export interface LegendMixins {
     /**
@@ -192,7 +194,7 @@ export type MarkPropDef<
     F extends Field,
     V extends Value,
     T extends Type = Type
-> = MarkPropFieldOrDatumOrExprDef<F, T> & ValueDef<V>;
+> = MarkPropFieldOrDatumOrExprDef<F, T> | ValueDef<V>;
 
 export type ColorDef<F extends Field> = MarkPropDef<F, string | null>;
 
