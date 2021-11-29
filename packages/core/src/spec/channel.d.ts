@@ -167,7 +167,9 @@ export type MarkPropFieldDef<
     T extends Type = Type
 > = ScaleFieldDef<F, T> & LegendMixins;
 
-export type MarkPropExprDef<T extends Type = Type> = ExprDef & TypeMixins<T>;
+export type MarkPropExprDef<T extends Type = Type> = ExprDef &
+    TypeMixins<T> &
+    ScaleMixins;
 
 export type MarkPropDatumDef<T extends Type> = LegendMixins &
     ScaleDatumDef &
