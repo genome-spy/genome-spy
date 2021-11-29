@@ -708,8 +708,6 @@ function getDefaultScaleType(channel, dataType) {
      * undefined = incompatible, "null" = disabled (pass-thru)
      */
     const defaults = {
-        uniqueId: ["null", undefined, undefined],
-        facetIndex: ["null", undefined, undefined],
         x: ["band", "band", "linear"],
         y: ["band", "band", "linear"],
         size: [undefined, "point", "linear"],
@@ -721,16 +719,24 @@ function getDefaultScaleType(channel, dataType) {
         stroke: ["ordinal", "ordinal", "linear"],
         strokeWidth: [undefined, undefined, "linear"],
         shape: ["ordinal", "ordinal", undefined],
-        sample: ["null", "null", undefined],
-        semanticScore: [undefined, undefined, "null"],
-        search: ["null", undefined, undefined],
-        text: ["null", "null", "null"],
         dx: [undefined, undefined, "null"],
         dy: [undefined, undefined, "null"],
         angle: [undefined, undefined, "linear"],
     };
 
-    const type = defaults[channel]
+    /** @type {Channel[]} */
+    const typelessChannels = [
+        "uniqueId",
+        "facetIndex",
+        "semanticScore",
+        "search",
+        "text",
+        "sample",
+    ];
+
+    const type = typelessChannels.includes(channel)
+        ? "null"
+        : defaults[channel]
         ? defaults[channel][[NOMINAL, ORDINAL, QUANTITATIVE].indexOf(dataType)]
         : dataType == QUANTITATIVE
         ? "linear"

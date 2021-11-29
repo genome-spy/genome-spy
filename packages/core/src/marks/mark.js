@@ -160,7 +160,6 @@ export default class Mark {
         if (this.isPickingParticipant()) {
             encoding.uniqueId = {
                 field: "_uniqueId", // TODO: Use constant
-                type: "nominal",
             };
         }
 

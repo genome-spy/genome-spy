@@ -1,5 +1,5 @@
 /*!
- * Partially basd on
+ * Partially based on
  * https://github.com/vega/vega-lite/blob/master/src/channeldef.ts
  *
  * Copyright (c) 2015-2018, University of Washington Interactive Data Lab
@@ -79,15 +79,14 @@ export interface FormatMixins {
     format?: string;
 }
 
-export type StringDatumDef<F extends Field = string> = DatumDef<F> &
-    FormatMixins;
+export type StringDatumDef<F extends Field> = DatumDef & FormatMixins;
 
 export type Type = "quantitative" | "ordinal" | "nominal" | "index" | "locus";
 
 export type TypeForShape = "ordinal" | "nominal";
 
 export interface TypeMixins<T extends Type> {
-    type?: T;
+    type: T;
 }
 
 export interface FieldDefBase<F> {
@@ -117,10 +116,8 @@ export type ScaleFieldDef<F extends Field, T extends Type> = TypedFieldDef<
 > &
     ScaleMixins;
 
-export type FieldDefWithoutScale<
-    F extends Field,
-    T extends Type = Type
-> = TypedFieldDef<F, T>;
+export type FieldDefWithoutScale<F extends Field> = FieldDefBase<F> &
+    TitleMixins;
 
 export interface ScaleMixins {
     /**
@@ -149,14 +146,11 @@ export interface ValueDef<V extends Scalar = Scalar> {
     value: V;
 }
 
-export interface DatumDef<F extends Field = string, V extends Scalar = Scalar>
-    extends Partial<TypeMixins<Type>>,
-        BandMixins,
-        TitleMixins {
+export interface DatumDef extends TitleMixins {
     /**
      * A constant value in data domain.
      */
-    datum?: V;
+    datum?: Scalar;
 }
 
 export interface ExprDef {
@@ -174,12 +168,12 @@ export type MarkPropFieldDef<
 
 export type MarkPropExprDef<T extends Type = Type> = ExprDef & TypeMixins<T>;
 
-export type MarkPropDatumDef<F extends Field> = LegendMixins & ScaleDatumDef<F>;
+export type MarkPropDatumDef = LegendMixins & ScaleDatumDef;
 
 export type MarkPropFieldOrDatumOrExprDef<
     F extends Field,
     T extends Type = Type
-> = MarkPropFieldDef<F, T> | MarkPropDatumDef<F> | MarkPropExprDef;
+> = MarkPropFieldDef<F, T> | MarkPropDatumDef | MarkPropExprDef;
 
 export interface LegendMixins {
     /**
@@ -205,15 +199,14 @@ export type SecondaryFieldDef<F extends Field> = FieldDefBase<F> & TitleMixins;
 
 export type NumericValueDef = ValueDef<number>;
 
-export type ScaleDatumDef<F extends Field = string> = ScaleMixins & DatumDef<F>;
+export type ScaleDatumDef = ScaleMixins & DatumDef;
 
-export type PositionDatumDefBase<F extends Field> = ScaleDatumDef<F>;
+export type PositionDatumDefBase = ScaleDatumDef & TypeMixins<Type>;
 
 export type PositionFieldDef<F extends Field> = PositionFieldDefBase<F> &
     PositionMixins;
 
-export type PositionDatumDef<F extends Field> = PositionDatumDefBase<F> &
-    PositionMixins;
+export type PositionDatumDef = PositionDatumDefBase & PositionMixins;
 
 export type PositionExprDef = ExprDef &
     PositionMixins &
@@ -236,7 +229,7 @@ export interface PositionMixins extends BandMixins {
 
 export type PositionFieldDefBase<F extends Field> = ScaleFieldDef<F, Type>;
 
-export interface ChromPosDefBase {
+export interface ChromPosDefBase extends BandMixins {
     /**
      * The field having the chromosome or contig.
      */
@@ -264,19 +257,20 @@ export interface ChromPosDefBase {
 export type SecondaryChromPosDef = ChromPosDefBase &
     TitleMixins &
     PositionMixins;
+
 export type ChromPosDef = SecondaryChromPosDef & TypeMixins<"locus">;
 
 export type PositionDef<F extends Field> =
     | PositionFieldDef<F>
     | ChromPosDef
-    | PositionDatumDef<F>
+    | PositionDatumDef
     | PositionExprDef
     | PositionValueDef;
 
 export type Position2Def<F extends Field> =
     | (SecondaryFieldDef<F> & BandMixins)
     | SecondaryChromPosDef
-    | DatumDef<F>
+    | (DatumDef & BandMixins)
     | (ExprDef & BandMixins)
     | PositionValueDef;
 
@@ -289,7 +283,7 @@ export type ShapeDef<F extends Field> = MarkPropDef<
 >;
 
 export interface StringFieldDef<F extends Field>
-    extends FieldDefWithoutScale<F, Type>,
+    extends FieldDefWithoutScale<F>,
         FormatMixins {}
 
 export type TextDef<F extends Field> = StringFieldDef<F> | StringDatumDef<F>;
@@ -298,7 +292,7 @@ export type ChannelDef<F extends Field = string> =
     Encoding<F>[keyof Encoding<F>];
 
 // TODO: Does this make sense?
-export type ChannelDefWithScale<F extends Field = string> = ScaleMixins;
+export type ChannelDefWithScale = ScaleMixins & TypeMixins<Type>;
 
 export interface Encoding<F extends Field = string> {
     /**
@@ -405,22 +399,22 @@ export interface Encoding<F extends Field = string> {
     /**
      * Facet identifier for interactive filtering, sorting, and grouping in the App.
      */
-    sample?: FieldDefWithoutScale<F, "nominal">;
+    sample?: FieldDefWithoutScale<F>;
 
     /**
      * For internal use
      */
     // TODO: proper type
-    uniqueId?: FieldDefWithoutScale<F, "nominal">;
+    uniqueId?: FieldDefWithoutScale<F>;
 
     // TODO: proper type
-    search?: FieldDefWithoutScale<F, "nominal">;
+    search?: FieldDefWithoutScale<F>;
 
     /**
      * For internal use
      */
     // TODO: proper type
-    facetIndex?: FieldDefWithoutScale<F, "nominal">;
+    facetIndex?: FieldDefWithoutScale<F>;
 
-    semanticScore?: FieldDefWithoutScale<F, "quantitative">;
+    semanticScore?: FieldDefWithoutScale<F>;
 }
