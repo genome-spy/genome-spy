@@ -5,6 +5,7 @@ import {
     isExprDef,
     isFieldDef,
     isSecondaryChannel,
+    isValueDef,
 } from "../encoder/encoder";
 import { peek } from "../utils/arrayUtils";
 import coalesce from "../utils/coalesce";
@@ -22,7 +23,7 @@ export default class AxisResolution {
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {import("./scaleResolution").ResolutionMember[]} The involved views */
+        /** @type {import("./scaleResolution").ResolutionMember<import("../spec/channel").PositionalChannel>[]} The involved views */
         this.members = [];
     }
 
@@ -35,7 +36,7 @@ export default class AxisResolution {
      * scales have been resolved.
      *
      * @param {UnitView} view
-     * @param {import("../spec/channel").Channel} channel TODO: Do something for this
+     * @param {import("../spec/channel").PositionalChannel} channel TODO: Do something for this
      */
     pushUnitView(view, channel) {
         const newScaleResolution = view.getScaleResolution(this.channel);
@@ -56,10 +57,10 @@ export default class AxisResolution {
 
     getAxisProps() {
         return getCachedOrCall(this, "axisProps", () => {
-            const propArray = this.members.map(
-                (member) =>
-                    getChannelDefWithScale(member.view, member.channel).axis
-            );
+            const propArray = this.members.map((member) => {
+                const channelDef = member.view.mark.encoding[member.channel];
+                return "axis" in channelDef && channelDef.axis;
+            });
 
             if (
                 propArray.length > 0 &&
@@ -86,6 +87,10 @@ export default class AxisResolution {
                 member.view,
                 member.channel
             );
+
+            if (isValueDef(channelDef)) {
+                return undefined;
+            }
 
             // Retain nulls as they indicate that no title should be shown
 

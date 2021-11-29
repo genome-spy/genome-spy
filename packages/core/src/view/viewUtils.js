@@ -37,8 +37,8 @@ import { rollup } from "d3-array";
  * @typedef {import("../spec/root").RootSpec} RootSpec
  * @typedef {import("../spec/root").RootConfig} RootConfig
  *
- * @typedef {import("../spec/channel").FacetFieldDef} FacetFieldDef
  * @typedef {import("../spec/view").FacetMapping} FacetMapping
+ * @typedef {import("../spec/channel").FacetFieldDef} FacetFieldDef
  */
 
 /**
@@ -253,14 +253,14 @@ export async function initializeData(root, existingFlow) {
  * @param {View} view
  */
 export function findEncodedFields(view) {
-    /** @type {{view: UnitView, channel: string, field: string, type: string}[]} */
+    /** @type {{view: UnitView, channel: import("../spec/channel").Channel, field: import("../spec/channel").Field, type: import("../spec/channel").Type}[]} */
     const fieldInfos = [];
 
     view.visit((view) => {
         if (view instanceof UnitView) {
             const encoding = view.getEncoding();
             for (const [channel, def] of Object.entries(encoding)) {
-                if (isFieldDef(def)) {
+                if (isFieldDef(def) && "type" in def) {
                     fieldInfos.push({
                         view,
                         channel,

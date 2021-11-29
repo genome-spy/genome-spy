@@ -6,7 +6,7 @@ import UnitView from "./unitView";
 import { ZERO_FLEXDIMENSIONS } from "../utils/layout/flexLayout";
 
 /**
- * @typedef {import("../spec/channel").PositionalChannel} PositionalChannel
+ * @typedef {import("../spec/channel").PrimaryPositionalChannel} PositionalChannel
  * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
  */
 
@@ -427,7 +427,7 @@ export default class DecoratorView extends ContainerView {
 
     _getZoomableResolutions() {
         return this._cache("zoomableResolutions", () => {
-            /** @type {Record<import("../spec/channel").PositionalChannel, Set<import("./scaleResolution").default>>} */
+            /** @type {Record<import("../spec/channel").PrimaryPositionalChannel, Set<import("./scaleResolution").default>>} */
             const resolutions = {
                 x: new Set(),
                 y: new Set(),

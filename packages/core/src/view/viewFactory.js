@@ -123,8 +123,10 @@ export function isLayerSpec(spec) {
 export function isFacetSpec(spec) {
     return (
         "facet" in spec &&
+        // @ts-expect-error
         isObject(spec.facet) &&
         "spec" in spec &&
+        // @ts-expect-error
         isObject(spec.spec)
     );
 }

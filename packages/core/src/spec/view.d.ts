@@ -1,7 +1,12 @@
 import { Data } from "./data";
 import { Scale } from "./scale";
 import { TransformParams } from "./transform";
-import { Channel, Encoding, FacetFieldDef, PositionalChannel } from "./channel";
+import {
+    Channel,
+    Encoding,
+    FacetFieldDef,
+    PrimaryPositionalChannel,
+} from "./channel";
 import {
     FillAndStrokeProps,
     MarkConfigAndType,
@@ -30,7 +35,7 @@ export interface FacetMapping {
  * The opacity is interpolated between the specified stops.
  */
 export interface DynamicOpacity {
-    channel?: PositionalChannel;
+    channel?: PrimaryPositionalChannel;
     /** Stops expressed as units (base pairs, for example) per pixel. */
     unitsPerPixel: number[];
     /** Opacity values that match the given stops. */
@@ -124,7 +129,7 @@ export interface LayerSpec extends ViewSpecBase, AggregateSamplesSpec {
 }
 
 export interface FacetSpec extends ViewSpecBase {
-    facet: FacetFieldDef | FacetMapping;
+    facet: any; //FacetMapping | FacetFieldDef
     spec: LayerSpec | UnitSpec;
     columns?: number;
     spacing?: number;
@@ -170,7 +175,7 @@ export interface ResolveSpec {
 
 export type ContainerSpec = (
     | LayerSpec
-    | FacetSpec
+    //    | FacetSpec
     | SampleSpec
     | VConcatSpec
     | HConcatSpec
@@ -182,7 +187,7 @@ export type ContainerSpec = (
 export type ViewSpec =
     | UnitSpec
     | LayerSpec
-    | FacetSpec
+    //    | FacetSpec
     | SampleSpec
     | VConcatSpec
     | HConcatSpec

@@ -161,7 +161,6 @@ export default class Mark {
             encoding.uniqueId = {
                 field: "_uniqueId", // TODO: Use constant
                 type: "nominal",
-                scale: null,
             };
         }
 

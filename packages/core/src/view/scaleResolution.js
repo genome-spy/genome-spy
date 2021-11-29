@@ -23,8 +23,8 @@ import {
     isColorChannel,
     isDiscreteChannel,
     isPositionalChannel,
+    isPrimaryPositionalChannel,
     isSecondaryChannel,
-    primaryPositionalChannels,
 } from "../encoder/encoder";
 import {
     isChromosomalLocus,
@@ -43,6 +43,15 @@ export const LOCUS = "locus"; // Humdum, should this be "genomic"?
 export const INDEX = "index";
 
 /**
+ * @template {Channel}[T=Channel]
+ * @typedef {{view: import("./unitView").default, channel: T}} ResolutionMember
+ * @typedef {import("./unitView").default} UnitView
+ * @typedef {import("../encoder/encoder").VegaScale} VegaScale
+ * @typedef {import("../utils/domainArray").DomainArray} DomainArray
+ * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
+ *
+ */
+/**
  * Resolution takes care of merging domains and scales from multiple views.
  * This class also provides some utility methods for zooming the scales etc..
  *
@@ -50,12 +59,6 @@ export const INDEX = "index";
  *
  * @typedef {import("./scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
  * @implements {ScaleResolutionApi}
- *
- * @typedef {{view: import("./unitView").default, channel: Channel}} ResolutionMember
- * @typedef {import("./unitView").default} UnitView
- * @typedef {import("../encoder/encoder").VegaScale} VegaScale
- * @typedef {import("../utils/domainArray").DomainArray} DomainArray
- * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
  *
  * @typedef {import("../spec/channel").Channel} Channel
  * @typedef {import("../spec/scale").Scale} Scale
@@ -367,7 +370,7 @@ export default class ScaleResolution {
     }
 
     isZoomable() {
-        if (!primaryPositionalChannels.includes(this.channel)) {
+        if (!isPrimaryPositionalChannel(this.channel)) {
             return false;
         }
 
@@ -689,7 +692,7 @@ function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
 
     if ([INDEX, LOCUS].includes(dataType)) {
-        if (primaryPositionalChannels.includes(channel)) {
+        if (isPrimaryPositionalChannel(channel)) {
             return dataType;
         } else {
             // TODO: Also explicitly set scales should be validated

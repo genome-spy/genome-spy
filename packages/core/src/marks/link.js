@@ -20,9 +20,7 @@ export default class LinkMark extends Mark {
                 y: 0.0,
                 y2: undefined,
                 size: 1.0,
-                size2: undefined,
                 color: "black",
-                color2: undefined,
                 opacity: 1.0,
 
                 segments: 101, // Performance is affected more by the fill rate, i.e. number of pixels
@@ -41,24 +39,15 @@ export default class LinkMark extends Mark {
             "y",
             "y2",
             "size",
-            "size2",
             "height",
             "color",
-            "color2",
             "opacity",
         ];
     }
 
     /** @return {import("../spec/channel").Channel[]} */
     getSupportedChannels() {
-        return [
-            ...super.getSupportedChannels(),
-            "x2",
-            "y2",
-            "size",
-            "size2",
-            "color2",
-        ];
+        return [...super.getSupportedChannels(), "x2", "y2", "size"];
     }
 
     /**

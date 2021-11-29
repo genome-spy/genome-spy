@@ -14,7 +14,7 @@ import {
     isDatumDef,
     isDiscreteChannel,
     getPrimaryChannel,
-    isChannelDefWithScale,
+    isValueDef,
 } from "../encoder/encoder";
 import { peek } from "../utils/arrayUtils";
 
@@ -95,10 +95,16 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  *
  * @param {Channel} channel
  * @param {any} scale TODO: typing
- * @param {import("../spec/channel").ChannelDef} encoding
+ * @param {import("../spec/channel").ChannelDef} channelDef
  */
 // eslint-disable-next-line complexity
-export function generateScaleGlsl(channel, scale, encoding) {
+export function generateScaleGlsl(channel, scale, channelDef) {
+    if (isValueDef(channelDef)) {
+        throw new Error(
+            `Cannot create scale for "value": ${JSON.stringify(channelDef)}`
+        );
+    }
+
     const primary = getPrimaryChannel(channel);
     const attributeName = ATTRIBUTE_PREFIX + channel;
     const domainUniformName = DOMAIN_PREFIX + primary;
@@ -185,7 +191,8 @@ export function generateScaleGlsl(channel, scale, encoding) {
                 scale.paddingInner(),
                 scale.paddingOuter(),
                 scale.align(),
-                (isChannelDefWithScale(encoding) && encoding.band) ?? 0.5
+                // @ts-expect-error TODO: fix typing
+                channelDef.band ?? 0.5
             );
             break;
 
@@ -205,7 +212,7 @@ export function generateScaleGlsl(channel, scale, encoding) {
             throw new Error(
                 `Unsupported scale type: ${
                     scale.type
-                }! ${channel}: ${JSON.stringify(encoding)}`
+                }! ${channel}: ${JSON.stringify(channelDef)}`
             );
     }
 
@@ -231,13 +238,13 @@ export function generateScaleGlsl(channel, scale, encoding) {
 
     /** @type {number} */
     let datum;
-    if (isDatumDef(encoding)) {
-        if (isNumber(encoding.datum)) {
-            datum = encoding.datum;
+    if (isDatumDef(channelDef)) {
+        if (isNumber(channelDef.datum)) {
+            datum = channelDef.datum;
         } else {
             throw new Error(
                 `Only quantitative datums are currently supported in the encoding definition: ${JSON.stringify(
-                    encoding
+                    channelDef
                 )}`
             );
         }

@@ -12,7 +12,7 @@ import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
 /**
- * @typedef {import("../spec/channel").PositionalChannel} PositionalChannel
+ * @typedef {import("../spec/channel").PrimaryPositionalChannel} PositionalChannel
  * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
  */
 

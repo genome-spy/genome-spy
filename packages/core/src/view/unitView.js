@@ -170,7 +170,18 @@ export default class UnitView extends ContainerView {
                         : new AxisResolution(targetChannel);
             }
 
-            view.resolutions[type][targetChannel].pushUnitView(this, channel);
+            // Looks silly, but keeps type checking happy
+            if (isPositionalChannel(channel)) {
+                view.resolutions[type][targetChannel].pushUnitView(
+                    this,
+                    channel
+                );
+            } else if (type == "scale") {
+                view.resolutions[type][targetChannel].pushUnitView(
+                    this,
+                    channel
+                );
+            }
         }
     }
 
