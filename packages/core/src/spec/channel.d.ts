@@ -12,6 +12,7 @@ import { Scale } from "./scale";
 import { Axis } from "./axis";
 
 export type Scalar = string | number | boolean;
+export type Value = Scalar | null;
 
 export type FieldName = string;
 export type Field = FieldName;
@@ -53,7 +54,7 @@ export interface TitleMixins {
     /**
      * A title for the field. If `null`, the title will be removed.
      */
-    title?: Text | null;
+    title?: string | null;
 }
 
 export interface BandMixins {
@@ -79,7 +80,7 @@ export interface FormatMixins {
     format?: string;
 }
 
-export type StringDatumDef<F extends Field> = DatumDef & FormatMixins;
+export type StringDatumDef = DatumDef & FormatMixins;
 
 export type Type = "quantitative" | "ordinal" | "nominal" | "index" | "locus";
 
@@ -139,7 +140,7 @@ export interface ScaleMixins {
     resolutionChannel?: Channel;
 }
 
-export interface ValueDef<V extends Scalar = Scalar> {
+export interface ValueDef<V extends Value = Scalar> {
     /**
      * A constant value in visual domain (e.g., `"red"` / `"#0099ff"`, values between `0` to `1` for opacity).
      */
@@ -189,7 +190,7 @@ export interface LegendMixins {
 
 export type MarkPropDef<
     F extends Field,
-    V extends Scalar,
+    V extends Value,
     T extends Type = Type
 > = MarkPropFieldOrDatumOrExprDef<F, T> & ValueDef<V>;
 
@@ -286,7 +287,7 @@ export interface StringFieldDef<F extends Field>
     extends FieldDefWithoutScale<F>,
         FormatMixins {}
 
-export type TextDef<F extends Field> = StringFieldDef<F> | StringDatumDef<F>;
+export type TextDef<F extends Field> = StringFieldDef<F> | StringDatumDef;
 
 export type ChannelDef<F extends Field = string> =
     Encoding<F>[keyof Encoding<F>];
