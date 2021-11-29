@@ -6,6 +6,7 @@ import ArrayBuilder from "./arrayBuilder";
 import { SDF_PADDING } from "../fonts/bmFontMetrics";
 import { peek } from "../utils/arrayUtils";
 import createBinningRangeIndexer from "../utils/binnedRangeIndex";
+import { isValueDef } from "../encoder/encoder";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
@@ -462,10 +463,15 @@ export class TextVertexBuilder extends GeometryBuilder {
 
         const e = encoders;
 
-        /** @type {function(any):any} */
-        this.numberFormat = e.text.channelDef.format
-            ? format(e.text.channelDef.format)
-            : (d) => d;
+        const channelDef =
+            /** @type {import("../spec/channel").TextDef<string>} */ (
+                e.text.channelDef
+            );
+        /** @type {(value: any) => string} */
+        this.numberFormat =
+            !isValueDef(channelDef) && channelDef.format
+                ? format(channelDef.format)
+                : (d) => d;
 
         this.updateVertexCoord = this.variableBuilder.createUpdater(
             "vertexCoord",

@@ -295,7 +295,7 @@ export function linearizeLocusAccess(view) {
 
 /**
  * @param {View} view
- * @param {Record<string, import("../spec/channel").ChannelDef>} [encoding]
+ * @param {Encoding} [encoding]
  * @returns {import("../spec/transform").CompareParams}
  */
 function getCompareParamsForView(view, encoding) {

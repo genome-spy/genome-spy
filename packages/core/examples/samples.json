@@ -32,7 +32,7 @@
     "mark": "rect",
 
     "encoding": {
-      "sample": { "field": "sample", "type": "nominal" },
+      "sample": { "field": "sample" },
       "y": {
         "expr": "1 / datum.x + 0.5",
         "type": "quantitative",

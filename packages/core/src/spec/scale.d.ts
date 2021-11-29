@@ -10,6 +10,22 @@
 
 import { ChromosomalLocus } from "./genome";
 
+export type ScaleType =
+    | "linear"
+    | "log"
+    | "pow"
+    | "sqrt"
+    | "symlog"
+    | "identity"
+    | "sequential"
+    | "quantize"
+    | "threshold"
+    | "ordinal"
+    | "point"
+    | "band"
+    | "index"
+    | "locus";
+
 export interface Scale {
     /**
      * The name of the scale. Names are optional but allow the scales to be referenced and found with the API.
@@ -27,7 +43,7 @@ export interface Scale {
      *
      * __Default value:__ please see the [scale type table](https://vega.github.io/vega-lite/docs/scale.html#type).
      */
-    type?: string; // ScaleType;
+    type?: ScaleType;
 
     /**
      * Customized domain values.

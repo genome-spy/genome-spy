@@ -23,8 +23,8 @@ import {
     isColorChannel,
     isDiscreteChannel,
     isPositionalChannel,
+    isPrimaryPositionalChannel,
     isSecondaryChannel,
-    primaryPositionalChannels,
 } from "../encoder/encoder";
 import {
     isChromosomalLocus,
@@ -43,6 +43,15 @@ export const LOCUS = "locus"; // Humdum, should this be "genomic"?
 export const INDEX = "index";
 
 /**
+ * @template {Channel}[T=Channel]
+ * @typedef {{view: import("./unitView").default, channel: T}} ResolutionMember
+ * @typedef {import("./unitView").default} UnitView
+ * @typedef {import("../encoder/encoder").VegaScale} VegaScale
+ * @typedef {import("../utils/domainArray").DomainArray} DomainArray
+ * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
+ *
+ */
+/**
  * Resolution takes care of merging domains and scales from multiple views.
  * This class also provides some utility methods for zooming the scales etc..
  *
@@ -50,12 +59,6 @@ export const INDEX = "index";
  *
  * @typedef {import("./scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
  * @implements {ScaleResolutionApi}
- *
- * @typedef {{view: import("./unitView").default, channel: Channel}} ResolutionMember
- * @typedef {import("./unitView").default} UnitView
- * @typedef {import("../encoder/encoder").VegaScale} VegaScale
- * @typedef {import("../utils/domainArray").DomainArray} DomainArray
- * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
  *
  * @typedef {import("../spec/channel").Channel} Channel
  * @typedef {import("../spec/scale").Scale} Scale
@@ -367,7 +370,7 @@ export default class ScaleResolution {
     }
 
     isZoomable() {
-        if (!primaryPositionalChannels.includes(this.channel)) {
+        if (!isPrimaryPositionalChannel(this.channel)) {
             return false;
         }
 
@@ -689,7 +692,7 @@ function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
 
     if ([INDEX, LOCUS].includes(dataType)) {
-        if (primaryPositionalChannels.includes(channel)) {
+        if (isPrimaryPositionalChannel(channel)) {
             return dataType;
         } else {
             // TODO: Also explicitly set scales should be validated
@@ -705,8 +708,6 @@ function getDefaultScaleType(channel, dataType) {
      * undefined = incompatible, "null" = disabled (pass-thru)
      */
     const defaults = {
-        uniqueId: ["null", undefined, undefined],
-        facetIndex: ["null", undefined, undefined],
         x: ["band", "band", "linear"],
         y: ["band", "band", "linear"],
         size: [undefined, "point", "linear"],
@@ -718,16 +719,24 @@ function getDefaultScaleType(channel, dataType) {
         stroke: ["ordinal", "ordinal", "linear"],
         strokeWidth: [undefined, undefined, "linear"],
         shape: ["ordinal", "ordinal", undefined],
-        sample: ["null", "null", undefined],
-        semanticScore: [undefined, undefined, "null"],
-        search: ["null", undefined, undefined],
-        text: ["null", "null", "null"],
         dx: [undefined, undefined, "null"],
         dy: [undefined, undefined, "null"],
         angle: [undefined, undefined, "linear"],
     };
 
-    const type = defaults[channel]
+    /** @type {Channel[]} */
+    const typelessChannels = [
+        "uniqueId",
+        "facetIndex",
+        "semanticScore",
+        "search",
+        "text",
+        "sample",
+    ];
+
+    const type = typelessChannels.includes(channel)
+        ? "null"
+        : defaults[channel]
         ? defaults[channel][[NOMINAL, ORDINAL, QUANTITATIVE].indexOf(dataType)]
         : dataType == QUANTITATIVE
         ? "linear"

@@ -23,7 +23,7 @@
     "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
     "y": { "field": "y", "type": "quantitative" },
     "opacity": { "field": "score", "type": "quantitative" },
-    "semanticScore": { "field": "score", "type": "quantitative" },
+    "semanticScore": { "field": "score" },
     "size": { "value": 100 }
   }
 }

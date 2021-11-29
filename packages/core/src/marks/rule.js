@@ -96,7 +96,6 @@ export default class RuleMark extends Mark {
                 encoding.y.type == "quantitative"
             ) {
                 encoding.x2 = encoding.x;
-                // @ts-expect-error
                 encoding.y2 = { datum: 0 };
             } else if (
                 !encoding.y2 &&
@@ -104,7 +103,6 @@ export default class RuleMark extends Mark {
                 encoding.x.type == "quantitative"
             ) {
                 encoding.y2 = encoding.y;
-                // @ts-expect-error
                 encoding.x2 = { datum: 0 };
             } else {
                 throw new Error("A bug!"); // Should be unreachable

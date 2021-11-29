@@ -85,7 +85,7 @@ export default function createEncoders(mark, encoding) {
 
 /**
  *
- * @param {import("../view/viewUtils").ChannelDef} channelDef
+ * @param {import("../spec/channel").ChannelDef} channelDef
  * @param {any} scale
  * @param {import("./accessor").Accessor} accessor
  * @param {Channel} channel
@@ -176,7 +176,7 @@ export function isValueDef(channelDef) {
 
 /**
  * @param {import("../spec/channel").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel").FieldDef}
+ * @returns {channelDef is import("../spec/channel").FieldDefBase<string>}
  */
 export function isFieldDef(channelDef) {
     return channelDef && "field" in channelDef;
@@ -195,6 +195,7 @@ export function isDatumDef(channelDef) {
  * @returns {channelDef is import("../spec/channel").ChannelDefWithScale}
  */
 export function isChannelDefWithScale(channelDef) {
+    // TODO: Not accurate, fix
     return (
         isFieldDef(channelDef) ||
         isDatumDef(channelDef) ||
@@ -233,20 +234,49 @@ export function isExprDef(channelDef) {
 }
 
 /**
- * @type {Channel[]}
+ * @type {import("../spec/channel").PrimaryPositionalChannel[]}
  */
 export const primaryPositionalChannels = ["x", "y"];
 
 /**
+ * @type {import("../spec/channel").SecondaryPositionalChannel[]}
+ */
+export const secondaryPositionalChannels = ["x2", "y2"];
+
+/**
+ * @type {import("../spec/channel").PositionalChannel[]}
+ */
+export const positionalChannels = [
+    ...primaryPositionalChannels,
+    ...secondaryPositionalChannels,
+];
+
+/**
+ * @param {Channel} channel
+ * @returns {channel is import("../spec/channel").PrimaryPositionalChannel}
+ */
+export function isPrimaryPositionalChannel(channel) {
+    // @ts-expect-error
+    return primaryPositionalChannels.includes(channel);
+}
+
+/**
+ * @param {Channel} channel
+ * @returns {channel is import("../spec/channel").PositionalChannel}
+ */
+export function isPositionalChannel(channel) {
+    // @ts-expect-error
+    return positionalChannels.includes(channel);
+}
+
+/**
  * Map primary channels to secondarys
  *
- * @type {Partial<Record<Channel, Channel>>}
+ * @type {Partial<Record<Channel, import("../spec/channel").SecondaryPositionalChannel>>}
  */
 export const secondaryChannels = {
     x: "x2",
     y: "y2",
-    size: "size2",
-    color: "color2",
 };
 
 /**
@@ -284,10 +314,10 @@ export function getSecondaryChannel(primaryChannel) {
  * Finds the primary channel for the provided channel, which may be
  * the primary or secondary.
  *
- * @param {Channel} maybeSecondary
+ * @param {Channel} channel
  */
-export function getPrimaryChannel(maybeSecondary) {
-    return primaryChannels[maybeSecondary] || maybeSecondary;
+export function getPrimaryChannel(channel) {
+    return primaryChannels[channel] ?? channel;
 }
 
 /**
@@ -299,13 +329,6 @@ export function getChannelWithSecondarys(channel) {
     return secondaryChannels[channel]
         ? [channel, secondaryChannels[channel]]
         : [channel];
-}
-
-/**
- * @param {Channel} channel
- */
-export function isPositionalChannel(channel) {
-    return primaryPositionalChannels.includes(getPrimaryChannel(channel));
 }
 
 /**

@@ -170,7 +170,18 @@ export default class UnitView extends ContainerView {
                         : new AxisResolution(targetChannel);
             }
 
-            view.resolutions[type][targetChannel].pushUnitView(this, channel);
+            // Looks silly, but keeps type checking happy
+            if (isPositionalChannel(channel)) {
+                view.resolutions[type][targetChannel].pushUnitView(
+                    this,
+                    channel
+                );
+            } else if (type == "scale") {
+                view.resolutions[type][targetChannel].pushUnitView(
+                    this,
+                    channel
+                );
+            }
         }
     }
 
@@ -223,14 +234,9 @@ export default class UnitView extends ContainerView {
         }
 
         const channelDef = this.mark.encoding[channel];
+        // TODO: Broken. Fix.
         if (!isChannelDefWithScale(channelDef)) {
             throw new Error("The channel has no scale, cannot get domain!");
-        }
-
-        const type = channelDef.type;
-        if (!type) {
-            throw new Error(`No data type for channel "${channel}"!`);
-            // TODO: Support defaults
         }
 
         return channelDef;
@@ -252,7 +258,7 @@ export default class UnitView extends ContainerView {
                 channelDef.resolutionChannel ?? channel
             );
             return createDomain(
-                channelDef.type,
+                channelDef.type ?? "nominal",
                 // Chrom/pos must be linearized first
                 scaleResolution.fromComplexInterval(specDomain)
             );
@@ -274,7 +280,7 @@ export default class UnitView extends ContainerView {
      */
     extractDataDomain(channel) {
         const channelDef = this._validateDomainQuery(channel);
-        const type = channelDef.type;
+        const type = channelDef.type ?? "nominal"; // TODO: Should check that this is a channel without scale
 
         /** @param {Channel} channel */
         const extract = (channel) => {

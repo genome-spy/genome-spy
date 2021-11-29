@@ -12,7 +12,7 @@ import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
 /**
- * @typedef {import("../spec/channel").PositionalChannel} PositionalChannel
+ * @typedef {import("../spec/channel").PrimaryPositionalChannel} PositionalChannel
  * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
  */
 
@@ -431,7 +431,7 @@ function createAxis(axisProps) {
         },
         encoding: {
             [main]: { field: "value", type: "quantitative" },
-            text: { field: "label", type: "quantitative" },
+            text: { field: "label" },
         },
     });
 
@@ -652,7 +652,7 @@ export function createGenomeAxis(axisProps) {
             },
             encoding: {
                 [main + "2"]: { field: "continuousEnd", type: "locus" },
-                text: { field: "name", type: "ordinal" },
+                text: { field: "name" },
             },
         };
         return labels;
