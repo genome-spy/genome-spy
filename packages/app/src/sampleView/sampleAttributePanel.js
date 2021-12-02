@@ -16,6 +16,7 @@ import { ActionCreators } from "redux-undo";
 import contextMenu from "../utils/ui/contextMenu";
 
 // TODO: Move to a more generic place
+/** @type {Record<string, import("@genome-spy/core/spec/channel").Type>} */
 const FieldType = {
     NOMINAL: "nominal",
     ORDINAL: "ordinal",
@@ -566,7 +567,7 @@ function createAttributeSpec(attributeName, attributeDef) {
             type: "rect",
         },
         encoding: {
-            facetIndex: { field: "indexNumber", type: "nominal" },
+            facetIndex: { field: "indexNumber" },
             color: {
                 field,
                 type: attributeDef.type,
@@ -581,7 +582,6 @@ function createAttributeSpec(attributeName, attributeDef) {
             field: `attributes["${attributeName}"]`,
             type: attributeDef.type,
             scale: attributeDef.barScale,
-            axis: null,
         };
     }
 
@@ -604,12 +604,12 @@ function createLabelViewSpec() {
             flushY: false,
         },
         encoding: {
-            facetIndex: { field: "indexNumber", type: "nominal" },
+            facetIndex: { field: "indexNumber" },
             x: { value: 0 },
             x2: { value: 1 },
             y: { value: 0 },
             y2: { value: 1 },
-            text: { field: "displayName", type: "nominal" },
+            text: { field: "displayName" },
         },
     };
 

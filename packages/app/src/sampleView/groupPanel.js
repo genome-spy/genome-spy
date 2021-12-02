@@ -91,7 +91,7 @@ export class GroupPanel extends LayerView {
                             tooltip: null,
                         },
                         encoding: {
-                            text: { field: "label", type: "nominal" },
+                            text: { field: "label" },
                             opacity: {
                                 field: "_NA",
                                 type: "nominal",
