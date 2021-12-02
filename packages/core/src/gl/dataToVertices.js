@@ -57,6 +57,8 @@ export class GeometryBuilder {
             const doubleArray = [0, 0];
             const fp64 = ce.scale.fp64;
 
+            const indexer = ce.indexer;
+
             /**
              * Discrete variables both numeric and strings must be "indexed",
              * 64 bit floats must be converted to vec2.
@@ -64,8 +66,8 @@ export class GeometryBuilder {
              *
              * @type {function(any):(number | number[])}
              */
-            const f = ce.indexer
-                ? ce.indexer
+            const f = indexer
+                ? (d) => indexer(accessor(d))
                 : fp64
                 ? (d) => fp64ify(accessor(d), doubleArray)
                 : accessor;

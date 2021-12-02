@@ -4,7 +4,6 @@ import {
     isDiscretizing,
     isInterpolating,
 } from "vega-scale";
-import { fp64ify } from "../gl/includes/fp64-utils";
 import { isArray, isBoolean, isNumber, isString } from "vega-util";
 import { color as d3color } from "d3-color";
 
@@ -236,20 +235,6 @@ export function generateScaleGlsl(channel, scale, channelDef) {
         );
     }
 
-    /** @type {number} */
-    let datum;
-    if (isDatumDef(channelDef)) {
-        if (isNumber(channelDef.datum)) {
-            datum = channelDef.datum;
-        } else {
-            throw new Error(
-                `Only quantitative datums are currently supported in the encoding definition: ${JSON.stringify(
-                    channelDef
-                )}`
-            );
-        }
-    }
-
     const returnType = isColorChannel(channel) ? "vec3" : "float";
 
     /**
@@ -277,14 +262,8 @@ export function generateScaleGlsl(channel, scale, channelDef) {
         interpolate = `getDiscreteColor(${textureUniformName}, int(transformed)).r`;
     }
 
-    // Declare the data: a variable or a constant datum (in domain).
-    if (datum !== undefined) {
-        // TODO: Datums could also be provided as uniforms, allowing for modifications
-        glsl.push(
-            `const highp ${attributeType} ${attributeName} = ${vectorize(
-                fp64 ? fp64ify(datum) : datum
-            )};`
-        );
+    if (isDatumDef(channelDef)) {
+        glsl.push(`uniform highp ${attributeType} ${attributeName};`);
     } else {
         glsl.push(`in highp ${attributeType} ${attributeName};`);
     }

@@ -11,6 +11,7 @@ import { isDiscrete } from "vega-scale";
 import { fp64ify } from "../gl/includes/fp64-utils";
 import createEncoders, {
     isChannelDefWithScale,
+    isDatumDef,
     isValueDef,
 } from "../encoder/encoder";
 import {
@@ -18,6 +19,7 @@ import {
     generateValueGlsl,
     generateScaleGlsl,
     RANGE_TEXTURE_PREFIX,
+    ATTRIBUTE_PREFIX,
 } from "../scale/glslScaleGenerator";
 import FP64 from "../gl/includes/fp64-arithmetic.glsl";
 import GLSL_COMMON from "../gl/includes/common.glsl";
@@ -397,6 +399,28 @@ export default class Mark {
                 this.programInfo,
                 "Domains"
             );
+        }
+
+        this.gl.useProgram(this.programInfo.program);
+
+        this._setDatums();
+    }
+
+    _setDatums() {
+        for (const [channel, channelDef] of Object.entries(this.encoding)) {
+            if (isDatumDef(channelDef)) {
+                const encoder = this.encoders[channel];
+
+                const datum = encoder.indexer
+                    ? encoder.indexer(channelDef.datum)
+                    : encoder.scale.fp64
+                    ? fp64ify(+channelDef.datum)
+                    : +channelDef.datum;
+
+                setUniforms(this.programInfo, {
+                    [ATTRIBUTE_PREFIX + channel]: datum,
+                });
+            }
         }
     }
 

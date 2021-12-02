@@ -17,7 +17,7 @@ import createIndexer from "../utils/indexer";
  *
  * @typedef {object} ScaleMetadata
  * @prop {string} type Scale type
- * @prop {boolean} fp64 Whether to use emulated 64 bit floating point in WebGL
+ * @prop {boolean} [fp64] Whether to use emulated 64 bit floating point in WebGL
  * 
  * @typedef {(
     import("d3-scale").ScaleContinuousNumeric<any, any> |
@@ -122,7 +122,7 @@ export function createEncoder(channelDef, scale, accessor, channel) {
                 // TODO: pass the found values back to the scale/resolution
                 const indexer = createIndexer();
                 indexer.addAll(scale.domain());
-                encoder.indexer = (d) => indexer(accessor(d));
+                encoder.indexer = indexer;
             }
 
             encoder.constant = accessor.constant;

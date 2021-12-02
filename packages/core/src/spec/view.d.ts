@@ -6,6 +6,7 @@ import {
     Encoding,
     FacetFieldDef,
     PrimaryPositionalChannel,
+    Type,
 } from "./channel";
 import {
     FillAndStrokeProps,
@@ -136,7 +137,7 @@ export interface FacetSpec extends ViewSpecBase {
 }
 
 export interface SampleAttributeDef {
-    type: string;
+    type: Type; // TODO: Omit index/locus
     /** Color scale (primary) */
     scale?: Scale;
     barScale?: Scale;
