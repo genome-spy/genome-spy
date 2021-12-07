@@ -1,10 +1,10 @@
 # GenomeSpy
 
-![Teaser](docs/img/teaser.png)
+![Teaser](https://raw.githubusercontent.com/genome-spy/genome-spy/master/docs/img/teaser.png)
 
 ![npm version](https://img.shields.io/npm/v/@genome-spy/core)
 
-GenomeSpy is a visualization toolkit for genomic (and other) data. It has a [Vega-Lite](https://vega.github.io/vega-lite/) inspired visualization grammar and high-performance WebGL-powered graphics rendering.
+GenomeSpy is a visualization toolkit for genomic (and other) data. It has a [Vega-Lite](https://vega.github.io/vega-lite/) inspired visualization grammar and high-performance, WebGL-powered graphics rendering.
 
 The software is still work in progress. Documentation and examples for the current version can be found at https://genomespy.app/
 
@@ -42,4 +42,9 @@ Copyright (c) 2019-2021 Kari Lavikka. See [LICENSE](LICENSE) for details.
 GenomeSpy is developed in [The Systems Biology of Drug Resistance in
 Cancer](https://www.helsinki.fi/en/researchgroups/systems-biology-of-drug-resistance-in-cancer) group at the University of Helsinki.
 
-This project has received funding from the European Union’s Horizon 2020 research and innovation programme under grant agreement No 667403 for HERCULES
+This project has received funding from the European Union’s Horizon 2020 research and innovation programme under grant agreement No 667403 for [HERCULES](https://project-hercules.eu/).
+
+Contains code from:
+
+- Vega and Vega-Lite ([LICENSE](https://github.com/vega/vega-lite/blob/master/LICENSE))
+- luma.gl ([LICENSE](https://github.com/visgl/luma.gl/blob/master/LICENSE))
