@@ -70,6 +70,8 @@ float scaleBand(float value, vec2 domainExtent, vec2 range,
 
     float n = domainExtent[1] - domainExtent[0];
 
+    paddingInner = int(n) > 1 ? paddingInner : 0.0;
+
     // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
     float step = (stop - start) / max(1.0, n - paddingInner + paddingOuter * 2.0);
     start += (stop - start - step * (n - paddingInner)) * align;
