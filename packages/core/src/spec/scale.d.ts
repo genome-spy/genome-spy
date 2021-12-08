@@ -11,6 +11,7 @@
 import { ChromosomalLocus } from "./genome";
 
 export type ScaleType =
+    | "null"
     | "linear"
     | "log"
     | "pow"

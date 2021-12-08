@@ -687,11 +687,12 @@ export default class ScaleResolution {
  *
  * @param {Channel} channel
  * @param {string} dataType
+ * @returns {import("../spec/scale").ScaleType}
  */
 function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
 
-    if ([INDEX, LOCUS].includes(dataType)) {
+    if (dataType == INDEX || dataType == LOCUS) {
         if (isPrimaryPositionalChannel(channel)) {
             return dataType;
         } else {
@@ -703,7 +704,7 @@ function getDefaultScaleType(channel, dataType) {
     }
 
     /**
-     * @type {Partial<Record<Channel, (string | undefined)[]>>}
+     * @type {Partial<Record<Channel, (import("../spec/scale").ScaleType | undefined)[]>>}
      * Default types: nominal, ordinal, quantitative.
      * undefined = incompatible, "null" = disabled (pass-thru)
      */
