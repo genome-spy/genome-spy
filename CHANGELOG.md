@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.16.0](https://github.com/tuner/genome-spy/compare/v0.15.0...v0.16.0) (2021-12-20)
+
+
+### Bug Fixes
+
+* paddingInner of glsl band scale when there's only a single band ([31005e1](https://github.com/tuner/genome-spy/commit/31005e18c95633f5587d5fff55df83acd6142c51))
+
+
+### Features
+
+* support categorical datums ([fc25855](https://github.com/tuner/genome-spy/commit/fc25855af07886cb31efce86f1c3a30d0e12fa94)), closes [#54](https://github.com/tuner/genome-spy/issues/54)
+
+
+
+
+
 # [0.15.0](https://github.com/tuner/genome-spy/compare/v0.14.2...v0.15.0) (2021-11-25)
 
 
