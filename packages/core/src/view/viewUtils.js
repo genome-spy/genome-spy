@@ -35,7 +35,6 @@ import { rollup } from "d3-array";
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
  * @typedef {import("../spec/view").ImportConfig} ImportConfig
  * @typedef {import("../spec/root").RootSpec} RootSpec
- * @typedef {import("../spec/root").RootConfig} RootConfig
  *
  * @typedef {import("../spec/view").FacetMapping} FacetMapping
  * @typedef {import("../spec/channel").FacetFieldDef} FacetFieldDef

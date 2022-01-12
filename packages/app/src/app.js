@@ -31,7 +31,7 @@ export default class App {
     /**
      *
      * @param {HTMLElement} appContainerElement
-     * @param {import("@genome-spy/core/spec/root").RootSpec} config
+     * @param {import("./spec/appSpec").AppRootSpec} config
      * @param {import("@genome-spy/core/embedApi").EmbedOptions} options
      */
     constructor(appContainerElement, config, options = {}) {
