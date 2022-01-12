@@ -1,6 +1,7 @@
 import { html, render } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip";
+import { computePosition, flip } from "@floating-ui/dom";
 
 /** @type {HTMLElement} */
 let backdropElement;
@@ -95,27 +96,22 @@ export default function contextMenu(options, mouseEvent) {
         menuElement
     );
 
-    menuElement.style.left = mouseEvent.clientX + "px";
-    menuElement.style.top = mouseEvent.clientY + "px";
-
     container.appendChild(backdropElement);
     backdropElement.appendChild(menuElement);
 
-    document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
-
-    const rect = menuElement.getBoundingClientRect();
-    if (rect.bottom > window.innerHeight) {
-        menuElement.style.top =
-            window.innerHeight - menuElement.offsetHeight - 10 + "px";
-    }
-    if (rect.right > window.innerWidth) {
-        menuElement.style.left =
-            window.innerWidth - menuElement.offsetWidth - 10 + "px";
-    }
+    computePosition(getVirtualElement(mouseEvent), menuElement, {
+        placement: "bottom-start",
+        middleware: [flip()],
+    }).then(({ x, y }) => {
+        menuElement.style.left = `${x}px`;
+        menuElement.style.top = `${y}px`;
+    });
 
     backdropElement.addEventListener("click", () => clearMenu(), {
         once: true,
     });
+
+    document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
 
     const openedAt = performance.now();
     backdropElement.addEventListener(
@@ -129,4 +125,24 @@ export default function contextMenu(options, mouseEvent) {
     );
 
     mouseEvent.preventDefault();
+}
+
+/**
+ * @param {{ clientX: number, clientY: number}} event
+ */
+function getVirtualElement(event) {
+    return {
+        getBoundingClientRect() {
+            return {
+                width: 0,
+                height: 0,
+                x: event.clientX,
+                y: event.clientY,
+                top: event.clientY,
+                left: event.clientX,
+                right: event.clientX,
+                bottom: event.clientY,
+            };
+        },
+    };
 }
