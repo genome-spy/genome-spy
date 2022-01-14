@@ -287,6 +287,27 @@ $menu-line-height: 22px;
         color: #666;
     }
 
+    li a.submenu-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        > * {
+            display: block;
+        }
+
+        // Make an arrow
+        &::after {
+            content: "";
+            width: 0;
+            height: 0;
+            border-top: 0.4em solid transparent;
+            border-bottom: 0.4em solid transparent;
+
+            border-left: 0.4em solid black;
+        }
+    }
+
     li > .disabled-item {
         color: #999;
     }
