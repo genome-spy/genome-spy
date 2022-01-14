@@ -27,7 +27,7 @@
     "rollup-plugin-glsl": "^1.3.0",
     "rollup-plugin-minify-html-literals": "^1.2.6",
     "sass": "^1.43.4",
-    "ts-json-schema-generator": "^0.97.0",
+    "ts-json-schema-generator": "^0.97.1-next.0",
     "typescript": "^4.6.0-dev.20211122",
     "vite": "^2.7.0",
     "vite-raw-plugin": "^1.0.1"

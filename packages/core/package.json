@@ -29,7 +29,7 @@
     "prepublishOnly": "npm run build && npm run build:schema",
     "test:tsc": "tsc -p tsconfig.json",
     "checkSpec": "tsc --allowJs --checkJs --strict --noEmit --moduleResolution node --target es6 src/spec/root.d.ts",
-    "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type ViewSpec > dist/genome-spy-schema.json"
+    "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/genome-spy-schema.json"
   },
   "dependencies": {
     "@types/d3-array": "^3.0.2",
