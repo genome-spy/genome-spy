@@ -31,7 +31,15 @@ export function isContextMenuOpen() {
     return !!backdropElement;
 }
 
-function clearMenu() {
+/**
+ * @param {UIEvent} [uiEvent]
+ */
+function clearMenu(uiEvent) {
+    if (uiEvent?.type == "contextmenu") {
+        uiEvent.preventDefault();
+        return;
+    }
+
     if (backdropElement) {
         backdropElement.remove();
         backdropElement = undefined;
@@ -73,6 +81,8 @@ const createSubmenu = (item, level) =>
             <a
                 class="submenu-item"
                 @click=${(/** @type {MouseEvent} */ event) =>
+                    event.stopPropagation()}
+                @mouseup=${(/** @type {MouseEvent} */ event) =>
                     event.stopPropagation()}
                 @mouseenter=${(/** @type {MouseEvent} */ event) =>
                     debouncer(() => {
