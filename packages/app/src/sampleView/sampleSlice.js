@@ -471,7 +471,7 @@ export function getActionInfo(action, getAttributeInfo) {
                 provenanceTitle: html`
                     Remove samples having missing ${attributeTitle}
                 `,
-                icon: faFilter,
+                icon: faTrashAlt,
             };
         case GROUP_BY_NOMINAL:
             return {

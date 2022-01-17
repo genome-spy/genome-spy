@@ -856,6 +856,8 @@ export default class SampleView extends ContainerView {
             { type: "divider" },
         ];
 
+        let previousContextTitle = "";
+
         for (const [i, fieldInfo] of fieldInfos.entries()) {
             let path = [...fieldInfo.view.getAncestors()];
             // takeUntil would be aweseome
@@ -878,23 +880,30 @@ export default class SampleView extends ContainerView {
                     specifier,
                 });
 
-            if (i > 0) {
-                items.push({ type: "divider" });
+            const contextTitle =
+                fieldInfo.view.spec.title || fieldInfo.view.spec.name;
+            if (contextTitle != previousContextTitle) {
+                if (i > 0) {
+                    items.push({ type: "divider" });
+                }
+                items.push({
+                    label: contextTitle,
+                    type: "header",
+                });
+                previousContextTitle = contextTitle;
             }
 
-            items.push(
-                ...generateAttributeContextMenu(
-                    html`
-                        <strong>${fieldInfo.field}</strong> (${fieldInfo.view
-                            .spec.title || fieldInfo.view.spec.name})
-                    `,
+            items.push({
+                label: fieldInfo.field,
+                submenu: generateAttributeContextMenu(
+                    null,
                     attributeInfo,
                     // TODO: Get the value from data
                     // But ability to remove undefined is useful too
                     undefined,
                     this
-                )
-            );
+                ),
+            });
         }
 
         contextMenu({ items }, mouseEvent);
