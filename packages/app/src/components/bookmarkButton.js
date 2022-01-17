@@ -3,7 +3,6 @@ import { until } from "lit/directives/until.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faBookmark,
-    faEllipsisV,
     faTrash,
     faPen,
     faExclamationCircle,
@@ -11,7 +10,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "../utils/ui/dropdown";
 import { createCloseEvent, createModal, messageBox } from "../utils/ui/modal";
-import contextMenu from "../utils/ui/contextMenu";
+import { dropdownMenu, menuItemToTemplate } from "../utils/ui/contextMenu";
 import { queryDependency } from "../utils/dependency";
 import { compressToUrlHash } from "../utils/urlHash";
 import { restoreBookmark } from "../bookmark";
@@ -20,7 +19,7 @@ class BookmarkButton extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../app").App} */
+        /** @type {import("../app").default} */
         this.app = undefined;
     }
 
@@ -30,7 +29,7 @@ class BookmarkButton extends LitElement {
         this.dispatchEvent(
             queryDependency(
                 "app",
-                (/** @type {import("../app").App} */ app) => {
+                (/** @type {import("../app").default} */ app) => {
                     this.app = app;
                 }
             )
@@ -197,7 +196,10 @@ class BookmarkButton extends LitElement {
      */
     _createContextMenu(name, event) {
         event.stopPropagation();
-        contextMenu(
+
+        const opener = /** @type {HTMLElement} */ (event.target).closest("li");
+
+        dropdownMenu(
             {
                 items: [
                     {
@@ -230,33 +232,26 @@ class BookmarkButton extends LitElement {
                     },
                 ],
             },
-            event
+            opener,
+            "right-start"
         );
     }
 
     _getBookmarks() {
         return until(
             this.app.bookmarkDatabase.getNames().then((names) => {
-                const items = names.map(
-                    (name) =>
-                        html`
-                            <li>
-                                <a @click=${() => this._loadBookmark(name)}
-                                    >${name}</a
-                                >
-                                <a
-                                    class="menu-ellipsis"
-                                    @click=${(
-                                        /** @type {MouseEvent} */ event
-                                    ) => this._createContextMenu(name, event)}
-                                >
-                                    ${icon(faEllipsisV).node[0]}
-                                </a>
-                            </li>
-                        `
-                );
+                const items = names.map((name) => ({
+                    label: name,
+                    callback: () => this._loadBookmark(name),
+                    ellipsisCallback: (/** @type {MouseEvent} */ event) =>
+                        this._createContextMenu(name, event),
+                }));
                 return items.length
-                    ? [html`<div class="menu-divider"></div>`, ...items]
+                    ? /** @type {import("../utils/ui/contextMenu").MenuItem[]} */ ([
+                          { type: "divider" },
+                          { label: "Local bookmarks", type: "header" },
+                          ...items,
+                      ]).map((item) => menuItemToTemplate(item))
                     : nothing;
             }),
             html` Loading... `

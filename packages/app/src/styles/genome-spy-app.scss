@@ -326,6 +326,38 @@ $menu-line-height: 22px;
     li > .disabled-item {
         color: #999;
     }
+
+    a.menu-ellipsis {
+        padding: 0;
+        display: flex;
+        align-items: center;
+
+        position: absolute;
+        top: 0px;
+        right: $menu-item-h-padding * 0.5;
+        height: $menu-line-height;
+
+        background-color: $menu-hover-bg-color;
+        border-radius: 3em;
+
+        color: #707070;
+
+        svg {
+            margin: 0;
+            width: $menu-line-height;
+        }
+
+        &:hover {
+            background-color: color.scale(
+                $menu-hover-bg-color,
+                $lightness: 30%
+            );
+        }
+    }
+
+    li:not(:hover) a.menu-ellipsis {
+        display: none;
+    }
 }
 
 .provenance-menu {
@@ -363,38 +395,6 @@ $menu-line-height: 22px;
         background-color: #e0e0e0;
         border-left: $tickSize solid #c0c0c0;
         padding-left: $menu-item-h-padding - $tickSize;
-    }
-
-    a.menu-ellipsis {
-        padding: 0;
-        display: flex;
-        align-items: center;
-
-        position: absolute;
-        top: 0px;
-        right: $menu-item-h-padding * 0.5;
-        height: $menu-line-height;
-
-        background-color: $menu-hover-bg-color;
-        border-radius: 3em;
-
-        color: #707070;
-
-        svg {
-            margin: 0;
-            width: $menu-line-height;
-        }
-
-        &:hover {
-            background-color: color.scale(
-                $menu-hover-bg-color,
-                $lightness: 30%
-            );
-        }
-    }
-
-    li:not(:hover) a.menu-ellipsis {
-        display: none;
     }
 
     // Checkbox stuff --------------------

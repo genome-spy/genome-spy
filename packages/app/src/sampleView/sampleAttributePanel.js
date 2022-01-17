@@ -13,7 +13,7 @@ import { resolveScalesAndAxes } from "@genome-spy/core/view/viewUtils";
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils";
 import { ActionCreators } from "redux-undo";
-import contextMenu from "../utils/ui/contextMenu";
+import { contextMenu } from "../utils/ui/contextMenu";
 
 // TODO: Move to a more generic place
 /** @type {Record<string, import("@genome-spy/core/spec/channel").Type>} */
