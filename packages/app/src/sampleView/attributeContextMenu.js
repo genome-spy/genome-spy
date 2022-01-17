@@ -23,12 +23,14 @@ export default function generateAttributeContextMenu(
     const dispatch = sampleView.provenance.storeHelper.getDispatcher();
 
     /** @type {MenuItem[]} */
-    let items = [
-        {
+    const items = [];
+
+    if (title) {
+        items.push({
             label: title,
             type: "header",
-        },
-    ];
+        });
+    }
 
     /**
      * @param {import("../state/provenance").Action} action

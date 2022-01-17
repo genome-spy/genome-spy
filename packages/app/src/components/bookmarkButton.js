@@ -283,9 +283,6 @@ class BookmarkButton extends LitElement {
                             >Add bookmark...</a
                         >
                     </li>
-                    <li>
-                        <a class="submenu-item"><span>Testing</span></a>
-                    </li>
                     ${this._getBookmarks()}
                 </ul>
             </div>

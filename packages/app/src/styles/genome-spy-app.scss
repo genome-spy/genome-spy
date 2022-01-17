@@ -255,7 +255,8 @@ $menu-line-height: 22px;
         position: relative;
         padding: 0;
 
-        > a:first-child:hover {
+        > a:first-child:hover,
+        &.active > a:first-child {
             background-color: $menu-hover-bg-color;
         }
 
@@ -267,6 +268,18 @@ $menu-line-height: 22px;
                 width: 1em;
                 margin-right: 0.2em;
             }
+        }
+    }
+
+    .context {
+        font-size: 0.9em;
+        color: #666;
+
+        &::before {
+            content: "(";
+        }
+        &::after {
+            content: ")";
         }
     }
 
@@ -305,6 +318,8 @@ $menu-line-height: 22px;
             border-bottom: 0.4em solid transparent;
 
             border-left: 0.4em solid black;
+
+            margin-left: 1em;
         }
     }
 

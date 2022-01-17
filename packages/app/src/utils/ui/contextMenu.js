@@ -2,20 +2,27 @@ import { html, render } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip";
 import { computePosition, flip } from "@floating-ui/dom";
-
-/** @type {HTMLElement} */
-let backdropElement;
+import { debounce } from "@genome-spy/core/utils/debounce";
 
 /**
  * @typedef {Object} MenuItem
  * @prop {string | import("lit").TemplateResult} [label]
  * @prop {function} [callback]
- * @prop {string} [type]
+ * @prop {"divider" | "header" | undefined} [type]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
+ * @prop {MenuItem[]} [submenu]
  *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
  */
+
+/** @type {HTMLElement} */
+let backdropElement;
+
+/** @type {HTMLElement[]} */
+const openLevels = [];
+
+const debouncer = debounce((/** @type {() => void}*/ fun) => fun(), 150, false);
 
 /**
  * Returns true if a menu is visible
@@ -35,85 +42,159 @@ function clearMenu() {
 }
 
 /**
- * @param {MenuOptions} options
- * @param {MouseEvent} mouseEvent
+ * @param {number} fromLevel
  */
-export default function contextMenu(options, mouseEvent) {
-    clearMenu();
+function clearSubmenus(fromLevel) {
+    if (fromLevel < 1) {
+        return;
+    }
 
-    backdropElement = document.createElement("div");
-    backdropElement.classList.add("gs-context-menu-backdrop");
+    for (let i = fromLevel; i < openLevels.length; i++) {
+        openLevels[i]?.remove();
+        openLevels[i] = undefined;
+    }
+    for (const li of openLevels[fromLevel - 1].querySelectorAll("li.active")) {
+        li.classList.remove("active");
+    }
+}
 
+const createDivider = () => html`<li class="menu-divider"></li>`;
+
+const createHeader = (/** @type {MenuItem} */ item) =>
+    html` <li class="menu-header">${item.label || "-"}</li> `;
+
+/**
+ * @param {MenuItem} item
+ * @param {number} level
+ */
+const createSubmenu = (item, level) =>
+    html`
+        <li>
+            <a
+                class="submenu-item"
+                @click=${(/** @type {MouseEvent} */ event) =>
+                    event.stopPropagation()}
+                @mouseenter=${(/** @type {MouseEvent} */ event) =>
+                    debouncer(() => {
+                        const li = /** @type {HTMLElement} */ (
+                            event.target
+                        ).closest("li");
+                        renderAndPositionSubmenu(item.submenu, li, level + 1);
+                        event.stopPropagation();
+                    })}
+                @mouseleave=${() => debouncer(() => clearSubmenus(level + 1))}
+                ><span>${item.label}</span></a
+            >
+        </li>
+    `;
+
+const createChoice = (/** @type {MenuItem} */ item) =>
+    html`
+        <li>
+            <a
+                @mouseup=${() => {
+                    clearMenu();
+                    item.callback();
+                }}
+            >
+                ${item.icon ? icon(item.icon).node[0] : ""} ${item.label}</a
+            >
+        </li>
+    `;
+
+const createDisabledItem = (/** @type {MenuItem} */ item) =>
+    html`
+        <li>
+            <span class="disabled-item">
+                ${item.icon ? icon(item.icon).node[0] : ""}
+                ${item.label || "-"}</span
+            >
+        </li>
+    `;
+
+/**
+ * @param {MenuItem[]} items
+ * @param {HTMLElement} openerElement
+ * @param {number} level
+ */
+function renderAndPositionSubmenu(items, openerElement, level) {
+    renderAndPositionMenu(items, openerElement, level);
+    openerElement.classList.add("active");
+}
+
+/**
+ *
+ * @param {MenuItem[]} items
+ * @param {{ getBoundingClientRect: () => DOMRect}} openerElement
+ * @param {number} level
+ */
+function renderAndPositionMenu(items, openerElement, level) {
     const menuElement = document.createElement("ul");
     menuElement.classList.add("gs-context-menu");
-
-    const container = document.body;
+    menuElement.addEventListener("mouseenter", () => {
+        debouncer(() => {
+            // nop. clear the debouncer.
+        });
+    });
 
     // TODO: Keyboard navigation: https://web.dev/building-a-split-button-component/
 
     render(
-        options.items.map((item) => {
+        items.map((item) => {
             switch (item.type) {
                 case "divider":
-                    return html` <li class="menu-divider"></li> `;
+                    return createDivider();
                 case "header":
-                    return html`
-                        <li class="menu-header">${item.label || "-"}</li>
-                    `;
+                    return createHeader(item);
                 default:
-                    if (item.callback) {
-                        return html`
-                            <li>
-                                <a
-                                    @mouseup=${() => {
-                                        // Prevent accidental selection when the position of an overflowing menu has been adjusted
-                                        if (
-                                            performance.now() - openedAt >
-                                            200
-                                        ) {
-                                            clearMenu();
-                                            item.callback();
-                                        }
-                                    }}
-                                >
-                                    ${item.icon ? icon(item.icon).node[0] : ""}
-                                    ${item.label}</a
-                                >
-                            </li>
-                        `;
+                    if (item.submenu) {
+                        return createSubmenu(item, level);
+                    } else if (item.callback) {
+                        return createChoice(item);
                     } else {
-                        return html`
-                            <li>
-                                <span class="disabled-item">
-                                    ${item.icon ? icon(item.icon).node[0] : ""}
-                                    ${item.label || "-"}</span
-                                >
-                            </li>
-                        `;
+                        return createDisabledItem(item);
                     }
             }
         }),
         menuElement
     );
 
-    container.appendChild(backdropElement);
     backdropElement.appendChild(menuElement);
+    clearSubmenus(level);
+    openLevels[level] = menuElement;
 
-    computePosition(getVirtualElement(mouseEvent), menuElement, {
-        placement: "bottom-start",
+    computePosition(openerElement, menuElement, {
+        placement: "right-start",
         middleware: [flip()],
     }).then(({ x, y }) => {
+        const first = /** @type {HTMLElement} */ (
+            menuElement.querySelector(":scope > li")
+        );
+        if (first) {
+            // Align items nicely
+            y -= first.getBoundingClientRect().top;
+        }
         menuElement.style.left = `${x}px`;
         menuElement.style.top = `${y}px`;
     });
+}
 
-    backdropElement.addEventListener("click", () => clearMenu(), {
-        once: true,
-    });
-
-    document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
+/**
+ * @param {MenuOptions} options
+ * @param {MouseEvent} mouseEvent
+ */
+export default function contextMenu(options, mouseEvent) {
+    clearMenu();
 
     const openedAt = performance.now();
+
+    const container = document.body;
+    backdropElement = document.createElement("div");
+    backdropElement.classList.add("gs-context-menu-backdrop");
+
+    backdropElement.addEventListener("click", clearMenu);
+    backdropElement.addEventListener("contextmenu", clearMenu);
+
     backdropElement.addEventListener(
         "mouseup",
         () => {
@@ -124,6 +205,12 @@ export default function contextMenu(options, mouseEvent) {
         { once: true }
     );
 
+    container.appendChild(backdropElement);
+
+    document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
+
+    renderAndPositionMenu(options.items, getVirtualElement(mouseEvent), 0);
+
     mouseEvent.preventDefault();
 }
 
@@ -132,6 +219,9 @@ export default function contextMenu(options, mouseEvent) {
  */
 function getVirtualElement(event) {
     return {
+        /**
+         * @returns {DOMRect}
+         */
         getBoundingClientRect() {
             return {
                 width: 0,
@@ -142,6 +232,7 @@ function getVirtualElement(event) {
                 left: event.clientX,
                 right: event.clientX,
                 bottom: event.clientY,
+                toJSON: undefined,
             };
         },
     };
