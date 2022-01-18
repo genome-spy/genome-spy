@@ -238,7 +238,19 @@ class BookmarkButton extends LitElement {
     }
 
     _getBookmarks() {
-        return until(
+        /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
+        const remoteMenuItems = this.app.remoteBookmarks.length
+            ? [
+                  { type: "divider" },
+                  { label: "Remote bookmarks", type: "header" },
+                  ...this.app.remoteBookmarks.map((entry) => ({
+                      label: entry.name,
+                      callback: () => restoreBookmark(entry, this.app),
+                  })),
+              ]
+            : [];
+
+        const localTemplate = until(
             this.app.bookmarkDatabase.getNames().then((names) => {
                 const items = names.map((name) => ({
                     label: name,
@@ -256,6 +268,10 @@ class BookmarkButton extends LitElement {
             }),
             html` Loading... `
         );
+
+        return html`${remoteMenuItems.map((item) =>
+            menuItemToTemplate(item)
+        )}${localTemplate}`;
     }
 
     render() {

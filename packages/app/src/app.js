@@ -1,3 +1,4 @@
+import { loader as vegaLoader } from "vega-loader";
 import GenomeSpy from "@genome-spy/core/genomeSpy";
 import "./styles/genome-spy-app.scss";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
@@ -55,10 +56,17 @@ export default class App {
         this.appContainer = appContainerElement;
         this._configureContainer();
 
+        /** Local bookmarks in the IndexedDB */
         this.bookmarkDatabase =
             typeof config.specId == "string"
                 ? new BookmarkDatabase(config.specId)
                 : undefined;
+
+        /**
+         * Remote bookmarks loaded from a URL
+         * @type {import("./databaseSchema").BookmarkEntry[]}
+         */
+        this.remoteBookmarks = undefined;
 
         render(
             html`<div class="genome-spy-app">
@@ -141,6 +149,15 @@ export default class App {
     }
 
     async launch() {
+        /** @type {Promise<import("./databaseSchema").BookmarkEntry[]>} */
+        const remoteBookmarkPromise = this.config.bookmarks?.remote
+            ? vegaLoader({ baseURL: this.config.baseUrl })
+                  .load(this.config.bookmarks.remote.url)
+                  .then((/** @type {string} */ str) =>
+                      Promise.resolve(JSON.parse(str))
+                  )
+            : Promise.resolve([]);
+
         const result = await this.genomeSpy.launch();
         if (!result) {
             return;
@@ -172,7 +189,15 @@ export default class App {
             )
         );
 
-        await this._restoreStateFromUrl();
+        try {
+            this.remoteBookmarks = await remoteBookmarkPromise;
+        } catch (e) {
+            throw new Error(`Cannot load remote bookmarks: ${e}`);
+        }
+
+        if (!this._restoreStateFromUrl()) {
+            // TODO: Restore default remote bookmark if configured
+        }
 
         this.storeHelper.subscribe(() => {
             this._updateStateToUrl();

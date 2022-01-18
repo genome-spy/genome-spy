@@ -19,7 +19,7 @@ export default class Toolbar extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../app").App} */
+        /** @type {import("../app").default} */
         this.app = undefined;
 
         /** Just to signal (and re-render) once GenomeSpy has been launched */
@@ -48,7 +48,9 @@ export default class Toolbar extends LitElement {
         if (provenance.isEnabled()) {
             elements.push(
                 html`
-                    <genome-spy-provenance-buttons .provenance=${provenance} />
+                    <genome-spy-provenance-buttons
+                        .provenance=${provenance}
+                    ></genome-spy-provenance-buttons>
                 `
             );
         }
