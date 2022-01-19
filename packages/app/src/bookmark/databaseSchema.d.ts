@@ -1,7 +1,7 @@
 import { DBSchema } from "idb";
 import { ChromosomalLocus } from "@genome-spy/core/genome/genome";
-import { ViewSettings } from "./state";
-import { Action } from "./state/provenance";
+import { ViewSettings } from "../state";
+import { Action } from "../state/provenance";
 
 export interface BookmarkEntry {
     name: string;

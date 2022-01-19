@@ -6,7 +6,7 @@ import { html, render } from "lit";
 
 import { VISIT_STOP } from "@genome-spy/core/view/view";
 import SampleView, { isSampleSpec } from "./sampleView/sampleView";
-import BookmarkDatabase from "./bookmarkDatabase";
+import BookmarkDatabase from "./bookmark/bookmarkDatabase";
 import { asArray } from "@genome-spy/core/utils/arrayUtils";
 
 import "./components/toolbar";
@@ -18,7 +18,7 @@ import MergeSampleFacets from "./sampleView/mergeFacets";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory";
 import { messageBox } from "./utils/ui/modal";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
-import { restoreBookmark } from "./bookmark";
+import { restoreBookmark } from "./bookmark/bookmark";
 import StoreHelper from "./state/storeHelper";
 import { watch } from "./state/watch";
 import { viewSettingsSlice } from "./viewSettingsSlice";
@@ -56,7 +56,10 @@ export default class App {
         this.appContainer = appContainerElement;
         this._configureContainer();
 
-        /** Local bookmarks in the IndexedDB */
+        /**
+         * Local bookmarks in the IndexedDB
+         * @type {BookmarkDatabase}
+         */
         this.bookmarkDatabase =
             typeof config.specId == "string"
                 ? new BookmarkDatabase(config.specId)
@@ -64,7 +67,7 @@ export default class App {
 
         /**
          * Remote bookmarks loaded from a URL
-         * @type {import("./databaseSchema").BookmarkEntry[]}
+         * @type {import("./bookmark/databaseSchema").BookmarkEntry[]}
          */
         this.remoteBookmarks = undefined;
 
@@ -149,7 +152,7 @@ export default class App {
     }
 
     async launch() {
-        /** @type {Promise<import("./databaseSchema").BookmarkEntry[]>} */
+        /** @type {Promise<import("./bookmark/databaseSchema").BookmarkEntry[]>} */
         const remoteBookmarkPromise = this.config.bookmarks?.remote
             ? vegaLoader({ baseURL: this.config.baseUrl })
                   .load(this.config.bookmarks.remote.url)

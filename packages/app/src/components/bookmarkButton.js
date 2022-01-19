@@ -13,7 +13,7 @@ import { createCloseEvent, createModal, messageBox } from "../utils/ui/modal";
 import { dropdownMenu, menuItemToTemplate } from "../utils/ui/contextMenu";
 import { queryDependency } from "../utils/dependency";
 import { compressToUrlHash } from "../utils/urlHash";
-import { restoreBookmark } from "../bookmark";
+import { restoreBookmark } from "../bookmark/bookmark";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -51,7 +51,7 @@ class BookmarkButton extends LitElement {
 
         const editing = !!existingEntry;
 
-        /** @type {import("../databaseSchema").BookmarkEntry} */
+        /** @type {import("../bookmark/databaseSchema").BookmarkEntry} */
         const bookmarkEntry = existingEntry
             ? {
                   ...existingEntry,

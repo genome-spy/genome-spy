@@ -4,13 +4,13 @@ import {
     faStepForward,
 } from "@fortawesome/free-solid-svg-icons";
 import { html, render } from "lit";
-import safeMarkdown from "./utils/safeMarkdown";
-import { createModal, messageBox } from "./utils/ui/modal";
-import { viewSettingsSlice } from "./viewSettingsSlice";
+import safeMarkdown from "../utils/safeMarkdown";
+import { createModal, messageBox } from "../utils/ui/modal";
+import { viewSettingsSlice } from "../viewSettingsSlice";
 
 /**
  * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
- * @param {import("./app").default} app
+ * @param {import("../app").default} app
  * @param {Partial<import("./databaseSchema").BookmarkEntry[]>} [entryCollection]
  *      An optional collection that contains the entry. Used for next/prev buttons.
  */
@@ -58,7 +58,7 @@ export async function restoreBookmark(entry, app, entryCollection) {
 /**
  *
  * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
- * @param {import("./app").default} app
+ * @param {import("../app").default} app
  * @param {Partial<import("./databaseSchema").BookmarkEntry[]>} [entryCollection]
  *      An optional collection that contains the entry. Used for next/prev buttons.
  */
