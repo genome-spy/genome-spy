@@ -145,7 +145,9 @@ export async function updateBookmarkInfoBox(entry, app, bookmarkDatabase) {
             ${icon(faChevronDown).node[0]}
         </button>
         <div class="modal-title">${title}</div>
-        <div class="modal-body" style="max-width: 700px">${content}</div>
+        <div class="modal-body markdown" style="max-width: 600px">
+            ${content}
+        </div>
         <div class="modal-buttons">${buttons}</div>
     `;
 
