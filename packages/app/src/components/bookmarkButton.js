@@ -13,7 +13,7 @@ import { createCloseEvent, createModal, messageBox } from "../utils/ui/modal";
 import { dropdownMenu, menuItemToTemplate } from "../utils/ui/contextMenu";
 import { queryDependency } from "../utils/dependency";
 import { compressToUrlHash } from "../utils/urlHash";
-import { restoreBookmark } from "../bookmark/bookmark";
+import { restoreBookmarkAndShowInfoBox } from "../bookmark/bookmark";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -192,7 +192,7 @@ class BookmarkButton extends LitElement {
     async _loadBookmark(bookmarkDatabase, name) {
         const entry = await bookmarkDatabase.get(name);
         if (entry) {
-            restoreBookmark(entry, this.app);
+            restoreBookmarkAndShowInfoBox(entry, this.app, bookmarkDatabase);
         }
     }
 
@@ -205,6 +205,18 @@ class BookmarkButton extends LitElement {
 
         const opener = /** @type {HTMLElement} */ (event.target).closest("li");
 
+        const deleteCallback = () =>
+            messageBox(
+                html`The bookmark <em>${name}</em> will be deleted.`,
+                "Are you sure?",
+                true
+            ).then(async (confirmed) => {
+                if (confirmed) {
+                    await this.app.localBookmarkDatabase.delete(name);
+                    this.requestUpdate();
+                }
+            });
+
         dropdownMenu(
             {
                 items: [
@@ -216,20 +228,7 @@ class BookmarkButton extends LitElement {
                     {
                         label: "Delete",
                         icon: faTrash,
-                        callback: () =>
-                            messageBox(
-                                html`The bookmark <em>${name}</em> will be
-                                    deleted.`,
-                                "Are you sure?",
-                                true
-                            ).then(async (confirmed) => {
-                                if (confirmed) {
-                                    await this.app.localBookmarkDatabase.delete(
-                                        name
-                                    );
-                                    this.requestUpdate();
-                                }
-                            }),
+                        callback: deleteCallback,
                     },
                     {
                         label: "Share...",
@@ -317,6 +316,7 @@ class BookmarkButton extends LitElement {
     }
 
     /**
+     * TODO: Refactor, show a dialog for any bookmark entry
      *
      * @param {string} name
      */

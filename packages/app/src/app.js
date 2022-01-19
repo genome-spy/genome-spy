@@ -18,7 +18,7 @@ import MergeSampleFacets from "./sampleView/mergeFacets";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory";
 import { messageBox } from "./utils/ui/modal";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
-import { restoreBookmark } from "./bookmark/bookmark";
+import { restoreBookmarkAndShowInfoBox } from "./bookmark/bookmark";
 import StoreHelper from "./state/storeHelper";
 import { watch } from "./state/watch";
 import { viewSettingsSlice } from "./viewSettingsSlice";
@@ -302,7 +302,7 @@ export default class App {
             try {
                 /** @type {import("./appTypes").UrlHash} */
                 const entry = decompressFromUrlHash(hash);
-                restoreBookmark(entry, this);
+                restoreBookmarkAndShowInfoBox(entry, this);
                 return true;
             } catch (e) {
                 console.error(e);

@@ -8,7 +8,14 @@ export function createCloseEvent() {
 }
 
 /**
+ * @typedef {object} Modal
+ * @prop {HTMLDivElement} content
+ * @prop {() => void} close
+ */
+
+/**
  * @param {"default" | "tour"} type
+ * @returns {Modal}
  */
 export function createModal(type = "default") {
     const root = document.createElement("div");

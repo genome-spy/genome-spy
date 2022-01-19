@@ -513,7 +513,7 @@ $menu-line-height: 22px;
             box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%),
                 0 1px 2px rgb(0 0 0 / 5%);
 
-            transition: color 0.1s;
+            transition: color 0.15s;
 
             &:hover:not(:disabled) {
                 background-image: linear-gradient(to bottom, #f8f8f8, #d8d8d8);
@@ -559,8 +559,8 @@ $menu-line-height: 22px;
 
             background: linear-gradient(
                 160deg,
-                transparent 60%,
-                rgba(0, 0, 0, 0.15)
+                transparent 70%,
+                rgba(0, 0, 0, 0.2)
             );
         }
 
