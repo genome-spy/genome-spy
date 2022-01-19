@@ -6,7 +6,7 @@ import { html, render } from "lit";
 
 import { VISIT_STOP } from "@genome-spy/core/view/view";
 import SampleView, { isSampleSpec } from "./sampleView/sampleView";
-import BookmarkDatabase from "./bookmark/bookmarkDatabase";
+import IDBBookmarkDatabase from "./bookmark/idbBookmarkDatabase";
 import { asArray } from "@genome-spy/core/utils/arrayUtils";
 
 import "./components/toolbar";
@@ -22,6 +22,7 @@ import { restoreBookmark } from "./bookmark/bookmark";
 import StoreHelper from "./state/storeHelper";
 import { watch } from "./state/watch";
 import { viewSettingsSlice } from "./viewSettingsSlice";
+import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -56,20 +57,22 @@ export default class App {
         this.appContainer = appContainerElement;
         this._configureContainer();
 
+        // TODO: A registry for different types of bookmark sources
+
         /**
          * Local bookmarks in the IndexedDB
-         * @type {BookmarkDatabase}
+         * @type {import("./bookmark/bookmarkDatabase").default}
          */
-        this.bookmarkDatabase =
+        this.localBookmarkDatabase =
             typeof config.specId == "string"
-                ? new BookmarkDatabase(config.specId)
+                ? new IDBBookmarkDatabase(config.specId)
                 : undefined;
 
         /**
          * Remote bookmarks loaded from a URL
-         * @type {import("./bookmark/databaseSchema").BookmarkEntry[]}
+         * @type {import("./bookmark/bookmarkDatabase").default}
          */
-        this.remoteBookmarks = undefined;
+        this.remoteBookmarkDatabase = undefined;
 
         render(
             html`<div class="genome-spy-app">
@@ -193,7 +196,12 @@ export default class App {
         );
 
         try {
-            this.remoteBookmarks = await remoteBookmarkPromise;
+            const remoteBookmarks = await remoteBookmarkPromise;
+            if (remoteBookmarks) {
+                this.remoteBookmarkDatabase = new SimpleBookmarkDatabase(
+                    remoteBookmarks
+                );
+            }
         } catch (e) {
             throw new Error(`Cannot load remote bookmarks: ${e}`);
         }

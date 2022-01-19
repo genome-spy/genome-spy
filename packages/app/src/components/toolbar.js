@@ -71,7 +71,7 @@ export default class Toolbar extends LitElement {
             `);
         }
 
-        if (this.app.bookmarkDatabase) {
+        if (this.app.localBookmarkDatabase) {
             elements.push(html`
                 <genome-spy-bookmark-button></genome-spy-bookmark-button>
             `);

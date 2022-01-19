@@ -1,95 +1,50 @@
-import { openDB } from "idb";
-
-const BOOKMARKS_STORE = "bookmarks";
-
 /**
- * @typedef {import("../state/provenance").Action} Action
+ * An abstract base class for bookmark databases
  */
 export default class BookmarkDatabase {
     /**
-     *
-     * @param {string} specId
+     * @returns true if this database implementation is mutable
      */
-    constructor(specId) {
-        this.specId = specId;
-
-        /** @type {import("idb").IDBPDatabase<import("./databaseSchema").BookmarkDB>} */
-        this._db = undefined;
-    }
-
-    // eslint-disable-next-line require-await
-    async _getDB() {
-        if (!this._db) {
-            // We create a different database for each spec. Rationale: if an origin
-            // uses multiple GenomeSpy versions, a single shared database would likely to
-            // be a problem when the schema needs to be changed.
-            const dbName = `GenomeSpy: ${this.specId}`;
-
-            // @ts-ignore
-            this._db = openDB(dbName, 1, {
-                upgrade(db, oldVersion, newVersion, transaction) {
-                    // eslint-disable-next-line no-unused-vars
-                    const store = db.createObjectStore(BOOKMARKS_STORE, {
-                        keyPath: "name",
-                    });
-                },
-                blocked() {
-                    // …
-                },
-                blocking() {
-                    // …
-                },
-                terminated() {
-                    // …
-                },
-            });
-        }
-
-        return this._db;
+    isReadonly() {
+        return true;
     }
 
     /**
      * @param {import("./databaseSchema").BookmarkEntry} entry
-     * @param {import("./databaseSchema").BookmarkEntry} [entryToReplace]
+     * @param {string} [nameToReplace]
      */
-    async put(entry, entryToReplace) {
-        const db = await this._getDB();
-
-        const tx = db.transaction(BOOKMARKS_STORE, "readwrite");
-        try {
-            if (entryToReplace) {
-                await tx.store.delete(entryToReplace.name);
-                await tx.store.put(entry);
-            } else {
-                await tx.store.put(entry);
-            }
-            await tx.done;
-        } catch (error) {
-            tx.abort();
-            throw error;
-        }
+    async put(entry, nameToReplace) {
+        this._checkReadonly();
+        // Not implemented
     }
 
     /**
-     *
      * @param {string} name
      */
     async delete(name) {
-        const db = await this._getDB();
-        db.delete(BOOKMARKS_STORE, name);
+        this._checkReadonly();
+        // Not implemented
     }
 
+    /**
+     * @returns {Promise<string[]>}
+     */
     async getNames() {
-        const db = await this._getDB();
-        return db.getAllKeys(BOOKMARKS_STORE);
+        return []; // Not implemented
     }
 
     /**
      *
      * @param {string} name
+     * @returns {Promise<import("./databaseSchema").BookmarkEntry>}
      */
     async get(name) {
-        const db = await this._getDB();
-        return db.get(BOOKMARKS_STORE, name);
+        return undefined;
+    }
+
+    _checkReadonly() {
+        if (this.isReadonly()) {
+            throw new Error("This bookmark");
+        }
     }
 }

@@ -46,7 +46,7 @@ class BookmarkButton extends LitElement {
      */
     async _addBookmark(name) {
         const existingEntry = name
-            ? await this.app.bookmarkDatabase.get(name)
+            ? await this.app.localBookmarkDatabase.get(name)
             : undefined;
 
         const editing = !!existingEntry;
@@ -92,7 +92,9 @@ class BookmarkButton extends LitElement {
             }
 
             if (
-                (await this.app.bookmarkDatabase.get(bookmarkEntry.name)) &&
+                (await this.app.localBookmarkDatabase.get(
+                    bookmarkEntry.name
+                )) &&
                 !(editing && bookmarkEntry.name == existingEntry.name)
             ) {
                 if (
@@ -108,9 +110,9 @@ class BookmarkButton extends LitElement {
                 }
             }
             try {
-                await this.app.bookmarkDatabase.put(
+                await this.app.localBookmarkDatabase.put(
                     bookmarkEntry,
-                    existingEntry
+                    existingEntry?.name
                 );
                 modal.close();
                 this.requestUpdate();
@@ -182,9 +184,13 @@ class BookmarkButton extends LitElement {
         modal.content.querySelector("#bookmark-title").focus();
     }
 
-    /** @type {(name: string) => Promise<void>} */
-    async _loadBookmark(name) {
-        const entry = await this.app.bookmarkDatabase.get(name);
+    /**
+     *
+     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
+     * @param {string} name
+     */
+    async _loadBookmark(bookmarkDatabase, name) {
+        const entry = await bookmarkDatabase.get(name);
         if (entry) {
             restoreBookmark(entry, this.app);
         }
@@ -218,7 +224,7 @@ class BookmarkButton extends LitElement {
                                 true
                             ).then(async (confirmed) => {
                                 if (confirmed) {
-                                    await this.app.bookmarkDatabase.delete(
+                                    await this.app.localBookmarkDatabase.delete(
                                         name
                                     );
                                     this.requestUpdate();
@@ -237,45 +243,51 @@ class BookmarkButton extends LitElement {
         );
     }
 
-    _getBookmarks() {
-        /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
-        const remoteMenuItems = this.app.remoteBookmarks.length
-            ? [
+    /**
+     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
+     * @param {string} databaseTitle
+     */
+    async _makeBookmarkMenuItems(bookmarkDatabase, databaseTitle) {
+        const names = await bookmarkDatabase.getNames();
+
+        const items = names.map((name) => ({
+            label: name,
+            callback: () => this._loadBookmark(bookmarkDatabase, name),
+            ellipsisCallback: bookmarkDatabase.isReadonly()
+                ? undefined
+                : (/** @type {MouseEvent} */ event) =>
+                      this._createContextMenu(name, event),
+        }));
+        return items.length
+            ? /** @type {import("../utils/ui/contextMenu").MenuItem[]} */ ([
                   { type: "divider" },
-                  { label: "Remote bookmarks", type: "header" },
-                  ...this.app.remoteBookmarks.map((entry) => ({
-                      label: entry.name,
-                      callback: () => restoreBookmark(entry, this.app),
-                  })),
-              ]
-            : [];
+                  { label: databaseTitle, type: "header" },
+                  ...items,
+              ]).map((item) => menuItemToTemplate(item))
+            : nothing;
+    }
 
-        const localTemplate = until(
-            this.app.bookmarkDatabase.getNames().then((names) => {
-                const items = names.map((name) => ({
-                    label: name,
-                    callback: () => this._loadBookmark(name),
-                    ellipsisCallback: (/** @type {MouseEvent} */ event) =>
-                        this._createContextMenu(name, event),
-                }));
-                return items.length
-                    ? /** @type {import("../utils/ui/contextMenu").MenuItem[]} */ ([
-                          { type: "divider" },
-                          { label: "Local bookmarks", type: "header" },
-                          ...items,
-                      ]).map((item) => menuItemToTemplate(item))
-                    : nothing;
-            }),
-            html` Loading... `
-        );
+    _getBookmarks() {
+        /**
+         * @param {import("../bookmark/bookmarkDatabase").default} db
+         * @param {string} title
+         */
+        const makeTemplate = (db, title) =>
+            db
+                ? until(
+                      this._makeBookmarkMenuItems(db, title),
+                      html`Loading...`
+                  )
+                : nothing;
 
-        return html`${remoteMenuItems.map((item) =>
-            menuItemToTemplate(item)
-        )}${localTemplate}`;
+        return [
+            makeTemplate(this.app.remoteBookmarkDatabase, "Remote bookmarks"),
+            makeTemplate(this.app.localBookmarkDatabase, "Local bookmarks"),
+        ];
     }
 
     render() {
-        if (!this.app.bookmarkDatabase) {
+        if (!this.app.localBookmarkDatabase) {
             return nothing;
         }
 
@@ -305,7 +317,7 @@ class BookmarkButton extends LitElement {
      * @param {string} name
      */
     async _showShareDialog(name) {
-        const entry = await this.app.bookmarkDatabase.get(name);
+        const entry = await this.app.localBookmarkDatabase.get(name);
 
         const json = JSON.stringify(entry, undefined, 2);
 
