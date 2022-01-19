@@ -15,6 +15,6 @@ module.exports = {
         "no-nested-ternary": "off",
         "dot-notation": "off",
         "no-unused-vars": ["error", { args: "none" }],
-        "require-await": "warn",
+        "require-await": "off",
     },
 };
