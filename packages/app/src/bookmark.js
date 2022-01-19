@@ -1,13 +1,20 @@
-import { html } from "lit";
+import { icon } from "@fortawesome/fontawesome-svg-core";
+import {
+    faStepBackward,
+    faStepForward,
+} from "@fortawesome/free-solid-svg-icons";
+import { html, render } from "lit";
 import safeMarkdown from "./utils/safeMarkdown";
-import { messageBox } from "./utils/ui/modal";
+import { createModal, messageBox } from "./utils/ui/modal";
 import { viewSettingsSlice } from "./viewSettingsSlice";
 
 /**
  * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
  * @param {import("./app").default} app
+ * @param {Partial<import("./databaseSchema").BookmarkEntry[]>} [entryCollection]
+ *      An optional collection that contains the entry. Used for next/prev buttons.
  */
-export async function restoreBookmark(entry, app) {
+export async function restoreBookmark(entry, app, entryCollection) {
     try {
         if (entry.actions) {
             app.provenance.dispatchBookmark(entry.actions);
@@ -35,8 +42,8 @@ export async function restoreBookmark(entry, app) {
         }
         await Promise.all(promises);
 
-        if (entry.notes?.length) {
-            messageBox(safeMarkdown(entry.notes), entry.name);
+        if (entry.notes?.length || entryCollection?.length) {
+            createOrUpdateMessageBox(entry, app, entryCollection);
         }
     } catch (e) {
         console.error(e);
@@ -46,4 +53,55 @@ export async function restoreBookmark(entry, app) {
         );
         app.provenance.activateState(0);
     }
+}
+
+/**
+ *
+ * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
+ * @param {import("./app").default} app
+ * @param {Partial<import("./databaseSchema").BookmarkEntry[]>} [entryCollection]
+ *      An optional collection that contains the entry. Used for next/prev buttons.
+ */
+function createOrUpdateMessageBox(entry, app, entryCollection) {
+    const entryIndex = entryCollection
+        ? entryCollection.findIndex((e) => e.name == entry.name)
+        : -1;
+    const tour = entryIndex >= 0;
+
+    const modal = createModal("tour");
+
+    return new Promise((resolve, reject) => {
+        const close = () => {
+            modal.close();
+            resolve(true);
+        };
+
+        const of = tour
+            ? ` ${entryIndex + 1} of ${entryCollection.length}`
+            : "";
+
+        const title = `Bookmark${of}: ${entry.name}`;
+
+        const content = safeMarkdown(entry.notes);
+
+        const buttons = tour
+            ? html`
+                  <button @click=${close}>Close</button>
+                  <button ?disabled=${entryIndex <= 0}>
+                      ${icon(faStepBackward).node[0]} Previous
+                  </button>
+                  <button ?disabled=${entryIndex >= entryCollection.length - 1}>
+                      Next ${icon(faStepForward).node[0]}
+                  </button>
+              `
+            : html` <button @click=${close}>Close</button> `;
+
+        const template = html`
+            <div class="modal-title">${title}</div>
+            <div class="modal-body" style="max-width: 700px">${content}</div>
+            <div class="modal-buttons">${buttons}</div>
+        `;
+
+        render(template, modal.content);
+    });
 }

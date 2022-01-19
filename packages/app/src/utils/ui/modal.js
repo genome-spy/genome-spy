@@ -7,9 +7,16 @@ export function createCloseEvent() {
     return new CustomEvent(CLOSE_EVENT_TYPE, { bubbles: true });
 }
 
-export function createModal() {
+/**
+ * @param {"default" | "tour"} type
+ */
+export function createModal(type = "default") {
     const root = document.createElement("div");
-    root.className = "gs-modal";
+    root.classList.add("gs-modal");
+
+    if (type != "default") {
+        root.classList.add(type);
+    }
 
     const onKeyDown = (/** @type {KeyboardEvent} */ event) => {
         switch (event.key) {

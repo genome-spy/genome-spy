@@ -532,10 +532,43 @@ $menu-line-height: 22px;
                 cursor: pointer;
             }
 
-            svg:first-child {
+            svg:first-child:not(:last-child) {
                 font-size: 85%;
                 margin-right: 0.3em;
             }
+
+            svg:last-child:not(:first-child) {
+                font-size: 85%;
+                margin-left: 0.3em;
+            }
+        }
+    }
+
+    &.tour {
+        pointer-events: none;
+
+        justify-content: right;
+        align-content: end;
+
+        &.visible .backdrop {
+            opacity: 1;
+        }
+
+        .backdrop {
+            pointer-events: none;
+
+            background: linear-gradient(
+                160deg,
+                transparent 60%,
+                rgba(0, 0, 0, 0.15)
+            );
+        }
+
+        .content {
+            pointer-events: all;
+            margin: $basic-spacing;
+            box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21),
+                0px 2px 5px 0px rgba(0, 0, 0, 0.21);
         }
     }
 }
