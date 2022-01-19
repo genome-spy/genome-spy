@@ -141,7 +141,7 @@ export async function updateBookmarkInfoBox(entry, app, bookmarkDatabase) {
             .classList.toggle("collapsed");
 
     const template = html`
-        <button class="collapse" @click=${toggleCollapse}>
+        <button title="Collapse" class="collapse" @click=${toggleCollapse}>
             ${icon(faChevronDown).node[0]}
         </button>
         <div class="modal-title">${title}</div>
