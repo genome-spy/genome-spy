@@ -287,9 +287,18 @@ class BookmarkButton extends LitElement {
     }
 
     render() {
-        if (!this.app.localBookmarkDatabase) {
+        if (
+            !this.app.localBookmarkDatabase &&
+            !this.app.remoteBookmarkDatabase
+        ) {
             return nothing;
         }
+
+        const add = this.app.localBookmarkDatabase
+            ? html` <li>
+                  <a @click=${() => this._addBookmark()}>Add bookmark...</a>
+              </li>`
+            : nothing;
 
         return html`
             <div class="dropdown bookmark-dropdown">
@@ -301,12 +310,7 @@ class BookmarkButton extends LitElement {
                     ${icon(faBookmark).node[0]}
                 </button>
                 <ul class="gs-dropdown-menu">
-                    <li>
-                        <a @click=${() => this._addBookmark()}
-                            >Add bookmark...</a
-                        >
-                    </li>
-                    ${this._getBookmarks()}
+                    ${add} ${this._getBookmarks()}
                 </ul>
             </div>
         `;
