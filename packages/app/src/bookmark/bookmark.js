@@ -1,5 +1,6 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
+    faChevronDown,
     faStepBackward,
     faStepForward,
 } from "@fortawesome/free-solid-svg-icons";
@@ -134,7 +135,15 @@ export async function updateBookmarkInfoBox(entry, app, bookmarkDatabase) {
           `
         : html` <button @click=${close}>Close</button> `;
 
+    const toggleCollapse = (/** @type {MouseEvent} */ event) =>
+        /** @type {HTMLElement} */ (event.target)
+            .closest(".gs-modal")
+            .classList.toggle("collapsed");
+
     const template = html`
+        <button class="collapse" @click=${toggleCollapse}>
+            ${icon(faChevronDown).node[0]}
+        </button>
         <div class="modal-title">${title}</div>
         <div class="modal-body" style="max-width: 700px">${content}</div>
         <div class="modal-buttons">${buttons}</div>

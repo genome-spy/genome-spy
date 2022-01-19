@@ -477,6 +477,7 @@ $menu-line-height: 22px;
 
     .modal-title {
         font-weight: bold;
+        padding-bottom: 0;
     }
 
     .modal-body {
@@ -569,6 +570,46 @@ $menu-line-height: 22px;
             margin: $basic-spacing;
             box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21),
                 0px 2px 5px 0px rgba(0, 0, 0, 0.21);
+        }
+
+        .modal-title {
+            padding-right: 3em;
+        }
+    }
+
+    .collapse {
+        position: absolute;
+        right: $basic-spacing;
+        top: $basic-spacing;
+        background: none;
+        border: none;
+        font-size: 1.1em;
+
+        border-radius: 2px;
+        cursor: pointer;
+
+        svg {
+            transition: transform 0.3s;
+        }
+
+        &:hover {
+            background-color: #e8e8e8;
+        }
+    }
+
+    &.collapsed {
+        > .content > :not(:is(.modal-title, .collapse)) {
+            display: none;
+        }
+
+        .modal-title {
+            padding-bottom: $basic-spacing;
+        }
+
+        .collapse {
+            svg {
+                transform: rotate(180deg);
+            }
         }
     }
 }
