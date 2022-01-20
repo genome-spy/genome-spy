@@ -42,35 +42,18 @@ class BookmarkButton extends LitElement {
         return this;
     }
 
-    /**
-     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
-     * @param {string} [name] Name of an existing entry that will be updated
-     */
-    async _addBookmark(bookmarkDatabase, name) {
-        const existingEntry = name
-            ? await bookmarkDatabase.get(name)
-            : undefined;
-
-        const editing = !!existingEntry;
-
+    _createBookmarkWithCurrentState() {
         /** @type {import("../bookmark/databaseSchema").BookmarkEntry} */
-        const bookmarkEntry = existingEntry
-            ? {
-                  ...existingEntry,
-                  timestamp: Date.now(),
-                  actions: this.app.provenance.getBookmarkableActionHistory(),
-                  scaleDomains: {},
-              }
-            : {
-                  name: undefined,
-                  timestamp: Date.now(),
-                  actions: this.app.provenance.getBookmarkableActionHistory(),
-                  scaleDomains: {},
-              };
+        const bookmark = {
+            name: undefined,
+            timestamp: Date.now(),
+            actions: this.app.provenance.getBookmarkableActionHistory(),
+            scaleDomains: {},
+        };
 
         const viewSettings = this.app.storeHelper.state.viewSettings;
         if (Object.keys(viewSettings.visibilities).length) {
-            bookmarkEntry.viewSettings = viewSettings;
+            bookmark.viewSettings = viewSettings;
         }
 
         for (const [scaleName, scaleResolution] of this.app.genomeSpy
@@ -79,23 +62,49 @@ class BookmarkButton extends LitElement {
             if (scaleResolution.isZoomable()) {
                 // TODO: Check if it's the initial zoom level
                 // Could be optimized in the bookmark entry
-                bookmarkEntry.scaleDomains[scaleName] =
+                bookmark.scaleDomains[scaleName] =
                     scaleResolution.getComplexDomain();
             }
         }
 
+        return bookmark;
+    }
+
+    async _shareCurrentState() {
+        const bookmark = this._createBookmarkWithCurrentState();
+        if (await showEnterBookmarkInfoDialog(undefined, bookmark, "share")) {
+            showShareBookmarkDialog(bookmark);
+        }
+    }
+
+    /**
+     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
+     * @param {string} [name] Name of an existing entry that will be updated
+     */
+    async _addBookmark(bookmarkDatabase, name) {
+        const existingBookmark = name
+            ? await bookmarkDatabase.get(name)
+            : undefined;
+
+        const editing = !!existingBookmark;
+
+        const bookmark = this._createBookmarkWithCurrentState();
+
+        bookmark.name ??= existingBookmark?.name;
+        bookmark.notes ??= existingBookmark?.notes;
+
         if (
             await showEnterBookmarkInfoDialog(
                 bookmarkDatabase,
-                bookmarkEntry,
-                editing
+                bookmark,
+                editing ? "edit" : "add"
             )
         ) {
             try {
-                await bookmarkDatabase.put(bookmarkEntry, existingEntry?.name);
+                await bookmarkDatabase.put(bookmark, existingBookmark?.name);
                 this.requestUpdate();
             } catch (error) {
-                messageBox("" + error, "Cannot save the bookmark!");
+                messageBox(`${error}`, "Cannot save the bookmark!");
             }
         }
     }
@@ -204,10 +213,6 @@ class BookmarkButton extends LitElement {
     render() {
         const localBookmarkDb = this.app.localBookmarkDatabase;
 
-        if (!localBookmarkDb && !this.app.remoteBookmarkDatabase) {
-            return nothing;
-        }
-
         const add = localBookmarkDb
             ? html` <li>
                   <a @click=${() => this._addBookmark(localBookmarkDb)}
@@ -216,23 +221,39 @@ class BookmarkButton extends LitElement {
               </li>`
             : nothing;
 
+        const bookmarkButtonTemplate =
+            localBookmarkDb || this.app.remoteBookmarkDatabase
+                ? html`
+                      <div class="dropdown bookmark-dropdown">
+                          <button
+                              class="tool-btn"
+                              title="Bookmarks"
+                              @click=${(/** @type {MouseEvent} */ event) => {
+                                  if (toggleDropdown(event)) {
+                                      // TODO: Use redux actions to save bookmarks
+                                      this.requestUpdate();
+                                  }
+                              }}
+                          >
+                              ${icon(faBookmark).node[0]}
+                          </button>
+                          <ul class="gs-dropdown-menu">
+                              ${add} ${this._getBookmarks()}
+                          </ul>
+                      </div>
+                  `
+                : nothing;
+
         return html`
-            <div class="dropdown bookmark-dropdown">
+            <div class="btn-group">
+                ${bookmarkButtonTemplate}
                 <button
                     class="tool-btn"
-                    title="Bookmarks"
-                    @click=${(/** @type {MouseEvent} */ event) => {
-                        if (toggleDropdown(event)) {
-                            // TODO: Use redux actions to save bookmarks
-                            this.requestUpdate();
-                        }
-                    }}
+                    title="Share"
+                    @click=${() => this._shareCurrentState()}
                 >
-                    ${icon(faBookmark).node[0]}
+                    ${icon(faShare).node[0]}
                 </button>
-                <ul class="gs-dropdown-menu">
-                    ${add} ${this._getBookmarks()}
-                </ul>
             </div>
         `;
     }

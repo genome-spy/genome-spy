@@ -724,6 +724,12 @@ $form-control-border: 1px solid $form-control-border-color;
         background-color: #fff3cd;
         border-color: #ffecb5;
     }
+
+    &.info {
+        color: #055160;
+        background-color: #cff4fc;
+        border-color: #b6effb;
+    }
 }
 
 .snarkdown {

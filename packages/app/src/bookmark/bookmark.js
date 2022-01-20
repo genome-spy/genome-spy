@@ -3,6 +3,8 @@ import {
     faBookmark,
     faChevronDown,
     faExclamationCircle,
+    faInfoCircle,
+    faShare,
     faStepBackward,
     faStepForward,
 } from "@fortawesome/free-solid-svg-icons";
@@ -72,7 +74,11 @@ export async function restoreBookmark(entry, app) {
  */
 export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
     await restoreBookmark(entry, app);
-    if (entry.notes || infoBox) {
+    if (
+        infoBox ||
+        entry.notes ||
+        (options.mode == "shared" && (entry.name || entry.notes))
+    ) {
         await showBookmarkInfoBox(entry, app, options);
     }
 }
@@ -127,7 +133,7 @@ export async function updateBookmarkInfoBox(entry, app, options) {
             await showEnterBookmarkInfoDialog(
                 app.localBookmarkDatabase,
                 entry,
-                false
+                "add"
             )
         ) {
             try {
@@ -233,14 +239,16 @@ ${json}</textarea
 /**
  * @param {import("./bookmarkDatabase").default} bookmarkDatabase
  * @param {import("./databaseSchema").BookmarkEntry} bookmark
- * @param {boolean} editing
+ * @param {"add" | "edit" | "share"} mode
  * @returns {Promise<boolean>} promise that resolves to true when the bookmark was saved
  */
-export function showEnterBookmarkInfoDialog(
-    bookmarkDatabase,
-    bookmark,
-    editing
-) {
+export function showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, mode) {
+    const title = {
+        add: "Add bookmark",
+        edit: "Edit bookmark",
+        share: "Share the current view state as a bookmark",
+    }[mode];
+
     /**
      *
      * @param {() => void} cancelCallback
@@ -248,17 +256,27 @@ export function showEnterBookmarkInfoDialog(
      * @returns
      */
     const makeTemplate = (cancelCallback, okCallback) => html`
-        <div class="modal-title">
-            ${editing ? "Edit bookmark" : "Add bookmark"}
-        </div>
+        <div class="modal-title">${title}</div>
 
         <div class="modal-body" style="width: 500px">
-            ${editing
+            ${mode == "edit"
                 ? html`
                       <div class="gs-alert warning">
                           ${icon(faExclamationCircle).node[0]} The current
                           visualization state will be updated to the bookmark
                           you are editing.
+                      </div>
+                  `
+                : nothing}
+            ${mode == "share"
+                ? html`
+                      <div class="gs-alert info">
+                          ${icon(faInfoCircle).node[0]}
+                          <span
+                              >You can add an optional title and notes, which
+                              will be shown to the recipient when the bookmark
+                              link is opened.</span
+                          >
                       </div>
                   `
                 : nothing}
@@ -268,10 +286,13 @@ export function showEnterBookmarkInfoDialog(
                 <input
                     id="bookmark-title"
                     type="text"
-                    required
+                    ?required=${mode == "add" || mode == "edit"}
                     .value=${bookmark.name ?? ""}
+                    .placeholder=${mode == "share"
+                        ? "Add an optional title"
+                        : ""}
                     @change=${(/** @type {any} */ event) => {
-                        bookmark.name = event.target.value;
+                        bookmark.name = trimString(event.target.value);
                     }}
                 />
             </div>
@@ -282,8 +303,9 @@ export function showEnterBookmarkInfoDialog(
                     id="bookmark-notes"
                     rows="4"
                     .value=${bookmark.notes ?? ""}
+                    .placeholder=${mode == "share" ? "... and notes" : ""}
                     @change=${(/** @type {any}} */ event) => {
-                        bookmark.notes = event.target.value.trim();
+                        bookmark.notes = trimString(event.target.value);
                     }}
                 ></textarea>
                 <small
@@ -299,7 +321,11 @@ export function showEnterBookmarkInfoDialog(
 
         <div class="modal-buttons">
             <button class="btn-cancel" @click=${cancelCallback}>Cancel</button>
-            <button class="btn-primary" @click=${okCallback}>Save</button>
+            <button class="btn-primary" @click=${okCallback}>
+                ${mode == "share"
+                    ? html`${icon(faShare).node[0]} Create a link`
+                    : "Save"}
+            </button>
         </div>
     `;
 
@@ -324,8 +350,9 @@ export function showEnterBookmarkInfoDialog(
             let ok = true;
 
             if (
-                (await bookmarkDatabase.get(bookmark.name)) &&
-                !(editing && bookmark.name == originalName)
+                bookmarkDatabase &&
+                !(mode && bookmark.name == originalName) &&
+                (await bookmarkDatabase.get(bookmark.name))
             ) {
                 ok = await messageBox(
                     html`A bookmark with the name
@@ -342,8 +369,29 @@ export function showEnterBookmarkInfoDialog(
             }
         };
 
-        render(makeTemplate(cancel, save), modal.content);
+        const share = () => {
+            modal.close();
+            resolve(true);
+        };
+
+        render(
+            makeTemplate(cancel, mode == "share" ? share : save),
+            modal.content
+        );
         // @ts-expect-error
         modal.content.querySelector("#bookmark-title").focus();
     });
+}
+
+/**
+ * @param {string} str
+ */
+function trimString(str) {
+    if (str !== undefined) {
+        str = str.trim();
+        if (str.length) {
+            return str;
+        }
+    }
+    return undefined;
 }

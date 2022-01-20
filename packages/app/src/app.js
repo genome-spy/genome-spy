@@ -203,7 +203,7 @@ export default class App {
 
         try {
             const remoteBookmarks = await remoteBookmarkPromise;
-            if (remoteBookmarks) {
+            if (remoteBookmarks.length) {
                 this.remoteBookmarkDatabase = new SimpleBookmarkDatabase(
                     remoteBookmarks
                 );
