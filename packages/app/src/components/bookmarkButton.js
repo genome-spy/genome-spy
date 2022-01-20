@@ -1,19 +1,21 @@
-import { html, LitElement, nothing, render } from "lit";
+import { html, LitElement, nothing } from "lit";
 import { until } from "lit/directives/until.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faBookmark,
     faTrash,
     faPen,
-    faExclamationCircle,
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "../utils/ui/dropdown";
-import { createCloseEvent, createModal, messageBox } from "../utils/ui/modal";
+import { messageBox } from "../utils/ui/modal";
 import { dropdownMenu, menuItemToTemplate } from "../utils/ui/contextMenu";
 import { queryDependency } from "../utils/dependency";
-import { compressToUrlHash } from "../utils/urlHash";
-import { restoreBookmarkAndShowInfoBox } from "../bookmark/bookmark";
+import {
+    restoreBookmarkAndShowInfoBox,
+    showEnterBookmarkInfoDialog,
+    showShareBookmarkDialog,
+} from "../bookmark/bookmark";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -41,12 +43,12 @@ class BookmarkButton extends LitElement {
     }
 
     /**
-     *
+     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
      * @param {string} [name] Name of an existing entry that will be updated
      */
-    async _addBookmark(name) {
+    async _addBookmark(bookmarkDatabase, name) {
         const existingEntry = name
-            ? await this.app.localBookmarkDatabase.get(name)
+            ? await bookmarkDatabase.get(name)
             : undefined;
 
         const editing = !!existingEntry;
@@ -76,112 +78,26 @@ class BookmarkButton extends LitElement {
             .entries()) {
             if (scaleResolution.isZoomable()) {
                 // TODO: Check if it's the initial zoom level
+                // Could be optimized in the bookmark entry
                 bookmarkEntry.scaleDomains[scaleName] =
                     scaleResolution.getComplexDomain();
             }
         }
 
-        const isValid = () => !!bookmarkEntry.name;
-
-        const modal = createModal();
-
-        const save = async () => {
-            if (!isValid()) {
-                messageBox("Name is missing!", "Error");
-                return;
-            }
-
-            if (
-                (await this.app.localBookmarkDatabase.get(
-                    bookmarkEntry.name
-                )) &&
-                !(editing && bookmarkEntry.name == existingEntry.name)
-            ) {
-                if (
-                    !(await messageBox(
-                        html`A bookmark with the name
-                            <em>${bookmarkEntry.name}</em> already exists. It
-                            will be overwritten.`,
-                        "Bookmark already exists",
-                        true
-                    ))
-                ) {
-                    return;
-                }
-            }
+        if (
+            await showEnterBookmarkInfoDialog(
+                bookmarkDatabase,
+                bookmarkEntry,
+                editing
+            )
+        ) {
             try {
-                await this.app.localBookmarkDatabase.put(
-                    bookmarkEntry,
-                    existingEntry?.name
-                );
-                modal.close();
+                await bookmarkDatabase.put(bookmarkEntry, existingEntry?.name);
                 this.requestUpdate();
             } catch (error) {
                 messageBox("" + error, "Cannot save the bookmark!");
             }
-        };
-
-        const template = html`
-            <div class="modal-title">
-                ${editing ? "Edit bookmark" : "Add bookmark"}
-            </div>
-
-            <div class="modal-body" style="width: 500px">
-                ${editing
-                    ? html`
-                          <div class="gs-alert warning">
-                              ${icon(faExclamationCircle).node[0]} The current
-                              visualization state will be updated to the
-                              bookmark you are editing.
-                          </div>
-                      `
-                    : nothing}
-
-                <div class="gs-form-group">
-                    <label for="bookmark-title">Title</label>
-                    <input
-                        id="bookmark-title"
-                        type="text"
-                        required
-                        .value=${bookmarkEntry.name ?? ""}
-                        @change=${(/** @type {any} */ event) => {
-                            bookmarkEntry.name = event.target.value;
-                        }}
-                    />
-                </div>
-
-                <div class="gs-form-group">
-                    <label for="bookmark-notes">Notes</label>
-                    <textarea
-                        id="bookmark-notes"
-                        rows="4"
-                        .value=${bookmarkEntry.notes ?? ""}
-                        @change=${(/** @type {any}} */ event) => {
-                            bookmarkEntry.notes = event.target.value.trim();
-                        }}
-                    ></textarea>
-                    <small
-                        >Notes will be shown when the bookmark is loaded. You
-                        can use
-                        <a href="https://www.markdownguide.org/basic-syntax/"
-                            >markdown</a
-                        >
-                        for formatting.</small
-                    >
-                </div>
-            </div>
-
-            <div class="modal-buttons">
-                <button class="btn-cancel" @click=${() => modal.close()}>
-                    Cancel
-                </button>
-                <button class="btn-primary" @click=${save}>Save</button>
-            </div>
-        `;
-
-        render(template, modal.content);
-        // @ts-expect-error
-        modal.content.querySelector("#bookmark-title").focus();
+        }
     }
 
     /**
@@ -199,10 +115,11 @@ class BookmarkButton extends LitElement {
     }
 
     /**
+     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
      * @param {string} name
      * @param {MouseEvent} event
      */
-    _createContextMenu(name, event) {
+    _createContextMenu(bookmarkDatabase, name, event) {
         event.stopPropagation();
 
         const opener = /** @type {HTMLElement} */ (event.target).closest("li");
@@ -214,34 +131,31 @@ class BookmarkButton extends LitElement {
                 true
             ).then(async (confirmed) => {
                 if (confirmed) {
-                    await this.app.localBookmarkDatabase.delete(name);
+                    await bookmarkDatabase.delete(name);
                     this.requestUpdate();
                 }
             });
 
-        dropdownMenu(
+        const items = [
             {
-                items: [
-                    {
-                        label: "Edit and replace...",
-                        icon: faPen,
-                        callback: () => this._addBookmark(name),
-                    },
-                    {
-                        label: "Delete",
-                        icon: faTrash,
-                        callback: deleteCallback,
-                    },
-                    {
-                        label: "Share...",
-                        icon: faShare,
-                        callback: () => this._showShareDialog(name),
-                    },
-                ],
+                label: "Edit and replace...",
+                icon: faPen,
+                callback: () => this._addBookmark(bookmarkDatabase, name),
             },
-            opener,
-            "right-start"
-        );
+            {
+                label: "Delete",
+                icon: faTrash,
+                callback: deleteCallback,
+            },
+            {
+                label: "Share...",
+                icon: faShare,
+                callback: async () =>
+                    showShareBookmarkDialog(await bookmarkDatabase.get(name)),
+            },
+        ];
+
+        dropdownMenu({ items }, opener, "right-start");
     }
 
     /**
@@ -257,7 +171,7 @@ class BookmarkButton extends LitElement {
             ellipsisCallback: bookmarkDatabase.isReadonly()
                 ? undefined
                 : (/** @type {MouseEvent} */ event) =>
-                      this._createContextMenu(name, event),
+                      this._createContextMenu(bookmarkDatabase, name, event),
         }));
         return items.length
             ? /** @type {import("../utils/ui/contextMenu").MenuItem[]} */ ([
@@ -288,16 +202,17 @@ class BookmarkButton extends LitElement {
     }
 
     render() {
-        if (
-            !this.app.localBookmarkDatabase &&
-            !this.app.remoteBookmarkDatabase
-        ) {
+        const localBookmarkDb = this.app.localBookmarkDatabase;
+
+        if (!localBookmarkDb && !this.app.remoteBookmarkDatabase) {
             return nothing;
         }
 
-        const add = this.app.localBookmarkDatabase
+        const add = localBookmarkDb
             ? html` <li>
-                  <a @click=${() => this._addBookmark()}>Add bookmark...</a>
+                  <a @click=${() => this._addBookmark(localBookmarkDb)}
+                      >Add bookmark...</a
+                  >
               </li>`
             : nothing;
 
@@ -315,61 +230,6 @@ class BookmarkButton extends LitElement {
                 </ul>
             </div>
         `;
-    }
-
-    /**
-     * TODO: Refactor, show a dialog for any bookmark entry
-     *
-     * @param {string} name
-     */
-    async _showShareDialog(name) {
-        const entry = await this.app.localBookmarkDatabase.get(name);
-
-        const json = JSON.stringify(entry, undefined, 2);
-
-        const loc = window.location;
-        const url =
-            loc.origin + loc.pathname + loc.search + compressToUrlHash(entry);
-
-        const copyToClipboard = (/** @type {MouseEvent} */ event) =>
-            navigator.clipboard
-                .writeText(url)
-                .then(() => event.target.dispatchEvent(createCloseEvent()))
-                .catch(() => messageBox("Failed to copy!"));
-
-        messageBox(
-            html`
-                <div style="width: 600px">
-                    <div class="gs-form-group">
-                        <label for="bookmark-url">URL</label>
-                        <div class="copy-url">
-                            <input
-                                id="bookmark-url"
-                                type="text"
-                                .value=${url}
-                            />
-                            <button @click=${copyToClipboard}>Copy</button>
-                        </div>
-                        <small
-                            >The bookmark URL contains all the bookmarked data,
-                            including the possible notes, which will be shown
-                            when the URL is opened.</small
-                        >
-                    </div>
-                    <div class="gs-form-group">
-                        <label for="bookmark-json">JSON</label>
-                        <textarea id="bookmark-json" style="height: 250px">
-${json}</textarea
-                        >
-                        <small
-                            >The JSON-formatted bookmark is currently available
-                            for development purposes.</small
-                        >
-                    </div>
-                </div>
-            `,
-            "Share a bookmark"
-        );
     }
 }
 
