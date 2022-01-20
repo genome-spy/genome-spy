@@ -221,7 +221,12 @@ class BookmarkButton extends LitElement {
                 <button
                     class="tool-btn"
                     title="Bookmarks"
-                    @click=${toggleDropdown}
+                    @click=${(/** @type {MouseEvent} */ event) => {
+                        if (toggleDropdown(event)) {
+                            // TODO: Use redux actions to save bookmarks
+                            this.requestUpdate();
+                        }
+                    }}
                 >
                     ${icon(faBookmark).node[0]}
                 </button>

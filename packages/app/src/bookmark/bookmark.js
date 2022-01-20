@@ -25,7 +25,7 @@ import { viewSettingsSlice } from "../viewSettingsSlice";
 let infoBox;
 
 /**
- * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
+ * @param {import("./databaseSchema").BookmarkEntry} entry
  * @param {import("../app").default} app
  */
 export async function restoreBookmark(entry, app) {
@@ -66,7 +66,7 @@ export async function restoreBookmark(entry, app) {
 }
 
 /**
- * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
+ * @param {import("./databaseSchema").BookmarkEntry} entry
  * @param {import("../app").default} app
  * @param {BookmarkInfoBoxOptions} [options]
  */
@@ -79,7 +79,7 @@ export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
 
 /**
  *
- * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
+ * @param {import("./databaseSchema").BookmarkEntry} entry
  * @param {import("../app").default} app
  * @param {BookmarkInfoBoxOptions} [options]
  */
@@ -91,7 +91,7 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
 
 /**
  *
- * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
+ * @param {import("./databaseSchema").BookmarkEntry} entry
  * @param {import("../app").default} app
  * @param {BookmarkInfoBoxOptions} [options]
  */
@@ -122,12 +122,29 @@ export async function updateBookmarkInfoBox(entry, app, options) {
         restoreBookmarkAndShowInfoBox(entry, app, options);
     };
 
+    const importBookmark = async () => {
+        if (
+            await showEnterBookmarkInfoDialog(
+                app.localBookmarkDatabase,
+                entry,
+                false
+            )
+        ) {
+            try {
+                await app.localBookmarkDatabase.put(entry);
+            } catch (e) {
+                console.warn(e);
+                messageBox(`Cannot import bookmark: ${e}`);
+            }
+        }
+    };
+
     const buttons = html` <button @click=${close}>
             ${options.mode == "tour" ? "End tour" : "Close"}
         </button>
-        ${options.mode == "shared"
+        ${options.mode == "shared" && app.localBookmarkDatabase
             ? html`
-                  <button @click=${() => alert("TODO")}>
+                  <button @click=${importBookmark}>
                       ${icon(faBookmark).node[0]} Import bookmark
                   </button>
               `

@@ -5,7 +5,7 @@ import { Action } from "../state/provenance";
 
 export interface BookmarkEntry {
     name: string;
-    timestamp: number;
+    timestamp?: number;
 
     notes?: string;
 
