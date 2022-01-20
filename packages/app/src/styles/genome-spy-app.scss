@@ -595,12 +595,30 @@ $menu-line-height: 22px;
         cursor: pointer;
 
         svg {
-            transition: transform 0.3s;
+            transition: transform 0.5s;
         }
 
         &:hover {
             background-color: #e8e8e8;
         }
+    }
+
+    &:not(.collapsed) .content:not(:hover) .collapse {
+        @keyframes move {
+            0% {
+                transform: translateY(0);
+            }
+            25% {
+                transform: translateY(-2px);
+            }
+            75% {
+                transform: translateY(2px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+        animation: move 0.25s 0.5s 3 linear;
     }
 
     &.collapsed {
