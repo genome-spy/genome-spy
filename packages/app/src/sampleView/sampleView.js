@@ -34,7 +34,7 @@ import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
 import { watch } from "../state/watch";
 import { createSelector } from "@reduxjs/toolkit";
 import { calculateLocations, getSampleLocationAt } from "./locations";
-import contextMenu from "../utils/ui/contextMenu";
+import { contextMenu } from "../utils/ui/contextMenu";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 

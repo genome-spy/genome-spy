@@ -1,19 +1,24 @@
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip";
 import { computePosition, flip } from "@floating-ui/dom";
 import { debounce } from "@genome-spy/core/utils/debounce";
+import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 
 /**
  * @typedef {Object} MenuItem
  * @prop {string | import("lit").TemplateResult} [label]
  * @prop {function} [callback]
+ * @prop {function} [ellipsisCallback]
  * @prop {"divider" | "header" | undefined} [type]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  * @prop {MenuItem[]} [submenu]
  *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
+ *
+ * @typedef {Object} VirtualElement
+ * @prop {() => DOMRect} getBoundingClientRect
  */
 
 /** @type {HTMLElement} */
@@ -109,6 +114,15 @@ const createChoice = (/** @type {MenuItem} */ item) =>
             >
                 ${item.icon ? icon(item.icon).node[0] : ""} ${item.label}</a
             >
+
+            ${item.ellipsisCallback
+                ? html` <a
+                      class="menu-ellipsis"
+                      @click=${item.ellipsisCallback}
+                  >
+                      ${icon(faEllipsisV).node[0]}
+                  </a>`
+                : nothing}
         </li>
     `;
 
@@ -123,22 +137,44 @@ const createDisabledItem = (/** @type {MenuItem} */ item) =>
     `;
 
 /**
+ * @param {MenuItem} item
+ * @param {number} level TODO: refactor this away
+ */
+export function menuItemToTemplate(item, level = 1) {
+    switch (item.type) {
+        case "divider":
+            return createDivider();
+        case "header":
+            return createHeader(item);
+        default:
+            if (item.submenu) {
+                return createSubmenu(item, level);
+            } else if (item.callback) {
+                return createChoice(item);
+            } else {
+                return createDisabledItem(item);
+            }
+    }
+}
+
+/**
  * @param {MenuItem[]} items
  * @param {HTMLElement} openerElement
  * @param {number} level
  */
 function renderAndPositionSubmenu(items, openerElement, level) {
-    renderAndPositionMenu(items, openerElement, level);
+    renderAndPositionMenu(items, openerElement, level, "right-start");
     openerElement.classList.add("active");
 }
 
 /**
  *
  * @param {MenuItem[]} items
- * @param {{ getBoundingClientRect: () => DOMRect}} openerElement
+ * @param {VirtualElement} openerElement
  * @param {number} level
+ * @param {import("@floating-ui/core").Placement} [placement]
  */
-function renderAndPositionMenu(items, openerElement, level) {
+function renderAndPositionMenu(items, openerElement, level, placement) {
     const menuElement = document.createElement("ul");
     menuElement.classList.add("gs-context-menu");
     menuElement.addEventListener("mouseenter", () => {
@@ -150,22 +186,7 @@ function renderAndPositionMenu(items, openerElement, level) {
     // TODO: Keyboard navigation: https://web.dev/building-a-split-button-component/
 
     render(
-        items.map((item) => {
-            switch (item.type) {
-                case "divider":
-                    return createDivider();
-                case "header":
-                    return createHeader(item);
-                default:
-                    if (item.submenu) {
-                        return createSubmenu(item, level);
-                    } else if (item.callback) {
-                        return createChoice(item);
-                    } else {
-                        return createDisabledItem(item);
-                    }
-            }
-        }),
+        items.map((item) => menuItemToTemplate(item, level)),
         menuElement
     );
 
@@ -174,7 +195,7 @@ function renderAndPositionMenu(items, openerElement, level) {
     openLevels[level] = menuElement;
 
     computePosition(openerElement, menuElement, {
-        placement: "right-start",
+        placement: placement ?? "right-start",
         middleware: [flip()],
     }).then(({ x, y }) => {
         const first = /** @type {HTMLElement} */ (
@@ -190,10 +211,14 @@ function renderAndPositionMenu(items, openerElement, level) {
 }
 
 /**
+ *
  * @param {MenuOptions} options
- * @param {MouseEvent} mouseEvent
+ * @param {HTMLElement | VirtualElement} openerElement
+ * @param {import("@floating-ui/core").Placement} [placement]
  */
-export default function contextMenu(options, mouseEvent) {
+export function dropdownMenu(options, openerElement, placement) {
+    placement ??= "bottom-start";
+
     clearMenu();
 
     const openedAt = performance.now();
@@ -219,19 +244,24 @@ export default function contextMenu(options, mouseEvent) {
 
     document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
 
-    renderAndPositionMenu(options.items, getVirtualElement(mouseEvent), 0);
+    renderAndPositionMenu(options.items, openerElement, 0, placement);
+}
 
+/**
+ * @param {MenuOptions} options
+ * @param {MouseEvent} mouseEvent
+ */
+export function contextMenu(options, mouseEvent) {
+    dropdownMenu(options, getVirtualElement(mouseEvent), "right-start");
     mouseEvent.preventDefault();
 }
 
 /**
  * @param {{ clientX: number, clientY: number}} event
+ * @returns {VirtualElement}
  */
 function getVirtualElement(event) {
     return {
-        /**
-         * @returns {DOMRect}
-         */
         getBoundingClientRect() {
             return {
                 width: 0,

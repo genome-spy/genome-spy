@@ -1,31 +1,37 @@
 import { openDB } from "idb";
+import BookmarkDatabase from "./bookmarkDatabase";
 
 const BOOKMARKS_STORE = "bookmarks";
 
 /**
- * @typedef {import("./state/provenance").Action} Action
+ * @typedef {import("../state/provenance").Action} Action
  */
-export default class BookmarkDatabase {
+
+/**
+ * A bookmark database based on IndexedDB
+ */
+export default class IDBBookmarkDatabase extends BookmarkDatabase {
     /**
      *
      * @param {string} specId
      */
     constructor(specId) {
+        super();
+
         this.specId = specId;
 
-        /** @type {import("idb").IDBPDatabase<import("./databaseSchema").BookmarkDB>} */
+        /** @type {Promise<import("idb").IDBPDatabase<import("./databaseSchema").BookmarkDB>>} */
         this._db = undefined;
     }
 
-    // eslint-disable-next-line require-await
     async _getDB() {
+        // TODO: Only create the initial database if a new bookmark is being added.
         if (!this._db) {
             // We create a different database for each spec. Rationale: if an origin
             // uses multiple GenomeSpy versions, a single shared database would likely to
             // be a problem when the schema needs to be changed.
             const dbName = `GenomeSpy: ${this.specId}`;
 
-            // @ts-ignore
             this._db = openDB(dbName, 1, {
                 upgrade(db, oldVersion, newVersion, transaction) {
                     // eslint-disable-next-line no-unused-vars
@@ -48,17 +54,21 @@ export default class BookmarkDatabase {
         return this._db;
     }
 
+    isReadonly() {
+        return false;
+    }
+
     /**
      * @param {import("./databaseSchema").BookmarkEntry} entry
-     * @param {import("./databaseSchema").BookmarkEntry} [entryToReplace]
+     * @param {string} [nameToReplace]
      */
-    async put(entry, entryToReplace) {
+    async put(entry, nameToReplace) {
         const db = await this._getDB();
 
         const tx = db.transaction(BOOKMARKS_STORE, "readwrite");
         try {
-            if (entryToReplace) {
-                await tx.store.delete(entryToReplace.name);
+            if (nameToReplace) {
+                await tx.store.delete(nameToReplace);
                 await tx.store.put(entry);
             } else {
                 await tx.store.put(entry);
@@ -71,7 +81,6 @@ export default class BookmarkDatabase {
     }
 
     /**
-     *
      * @param {string} name
      */
     async delete(name) {

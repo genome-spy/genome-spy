@@ -1,11 +1,11 @@
 import { DBSchema } from "idb";
 import { ChromosomalLocus } from "@genome-spy/core/genome/genome";
-import { ViewSettings } from "./state";
-import { Action } from "./state/provenance";
+import { ViewSettings } from "../state";
+import { Action } from "../state/provenance";
 
-interface BookmarkEntry {
+export interface BookmarkEntry {
     name: string;
-    timestamp: number;
+    timestamp?: number;
 
     notes?: string;
 
@@ -24,7 +24,8 @@ interface BookmarkEntry {
      */
     viewSettings?: ViewSettings;
 }
-interface BookmarkDB extends DBSchema {
+
+export interface BookmarkDB extends DBSchema {
     bookmarks: {
         value: BookmarkEntry;
         key: string;

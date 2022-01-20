@@ -1,3 +1,4 @@
+import { loader as vegaLoader } from "vega-loader";
 import GenomeSpy from "@genome-spy/core/genomeSpy";
 import "./styles/genome-spy-app.scss";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
@@ -5,7 +6,7 @@ import { html, render } from "lit";
 
 import { VISIT_STOP } from "@genome-spy/core/view/view";
 import SampleView, { isSampleSpec } from "./sampleView/sampleView";
-import BookmarkDatabase from "./bookmarkDatabase";
+import IDBBookmarkDatabase from "./bookmark/idbBookmarkDatabase";
 import { asArray } from "@genome-spy/core/utils/arrayUtils";
 
 import "./components/toolbar";
@@ -17,10 +18,14 @@ import MergeSampleFacets from "./sampleView/mergeFacets";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory";
 import { messageBox } from "./utils/ui/modal";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
-import { restoreBookmark } from "./bookmark";
+import {
+    restoreBookmark,
+    restoreBookmarkAndShowInfoBox,
+} from "./bookmark/bookmark";
 import StoreHelper from "./state/storeHelper";
 import { watch } from "./state/watch";
 import { viewSettingsSlice } from "./viewSettingsSlice";
+import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -55,10 +60,22 @@ export default class App {
         this.appContainer = appContainerElement;
         this._configureContainer();
 
-        this.bookmarkDatabase =
+        // TODO: A registry for different types of bookmark sources
+
+        /**
+         * Local bookmarks in the IndexedDB
+         * @type {import("./bookmark/bookmarkDatabase").default}
+         */
+        this.localBookmarkDatabase =
             typeof config.specId == "string"
-                ? new BookmarkDatabase(config.specId)
+                ? new IDBBookmarkDatabase(config.specId)
                 : undefined;
+
+        /**
+         * Remote bookmarks loaded from a URL
+         * @type {import("./bookmark/bookmarkDatabase").default}
+         */
+        this.remoteBookmarkDatabase = undefined;
 
         render(
             html`<div class="genome-spy-app">
@@ -141,6 +158,18 @@ export default class App {
     }
 
     async launch() {
+        /**
+         * Initiate async fetching of the remote bookmark entries.
+         * @type {Promise<import("./bookmark/databaseSchema").BookmarkEntry[]>}
+         */
+        const remoteBookmarkPromise = this.config.bookmarks?.remote
+            ? vegaLoader({ baseURL: this.config.baseUrl })
+                  .load(this.config.bookmarks.remote.url)
+                  .then((/** @type {string} */ str) =>
+                      Promise.resolve(JSON.parse(str))
+                  )
+            : Promise.resolve([]);
+
         const result = await this.genomeSpy.launch();
         if (!result) {
             return;
@@ -172,7 +201,18 @@ export default class App {
             )
         );
 
-        await this._restoreStateFromUrl();
+        try {
+            const remoteBookmarks = await remoteBookmarkPromise;
+            if (remoteBookmarks.length) {
+                this.remoteBookmarkDatabase = new SimpleBookmarkDatabase(
+                    remoteBookmarks
+                );
+            }
+        } catch (e) {
+            throw new Error(`Cannot load remote bookmarks: ${e}`);
+        }
+
+        await this._restoreStateFromUrlOrBookmark();
 
         this.storeHelper.subscribe(() => {
             this._updateStateToUrl();
@@ -211,6 +251,37 @@ export default class App {
             listener();
         }
         this._initializationListeners = undefined;
+    }
+
+    /**
+     * Restore state from url. If not restored, load a bookmark if requested in config.
+     */
+    async _restoreStateFromUrlOrBookmark() {
+        const restored = this._restoreStateFromUrl();
+        const remoteConf = this.config.bookmarks?.remote;
+        const remoteDb = this.remoteBookmarkDatabase;
+
+        if (!restored && remoteConf && remoteDb) {
+            const name =
+                remoteConf.initialBookmark ??
+                (remoteConf.tour && (await remoteDb.getNames())[0]);
+
+            if (name) {
+                const bookmark = await remoteDb.get(name);
+                if (!bookmark) {
+                    throw new Error(`No such bookmark: ${name}`);
+                }
+                if (remoteConf.tour) {
+                    await restoreBookmarkAndShowInfoBox(bookmark, this, {
+                        mode: "tour",
+                        database: remoteDb,
+                    });
+                } else {
+                    // Just load the state. Don't show the message box.
+                    await restoreBookmark(bookmark, this);
+                }
+            }
+        }
     }
 
     /**
@@ -266,7 +337,7 @@ export default class App {
             try {
                 /** @type {import("./appTypes").UrlHash} */
                 const entry = decompressFromUrlHash(hash);
-                restoreBookmark(entry, this);
+                restoreBookmarkAndShowInfoBox(entry, this, { mode: "shared" });
                 return true;
             } catch (e) {
                 console.error(e);
