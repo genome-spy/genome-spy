@@ -1,13 +1,21 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
+    faBookmark,
     faChevronDown,
     faStepBackward,
     faStepForward,
 } from "@fortawesome/free-solid-svg-icons";
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import safeMarkdown from "../utils/safeMarkdown";
 import { createModal, messageBox } from "../utils/ui/modal";
 import { viewSettingsSlice } from "../viewSettingsSlice";
+
+/**
+ * @typedef {object} BookmarkInfoBoxOptions
+ * @prop {import("./bookmarkDatabase").default} [database]
+ *      An optional bookmark database that contains the entry. Used for next/prev buttons.
+ * @prop {"default" | "tour" | "shared"} [mode]
+ */
 
 /**
  * @type {import("../utils/ui/modal").Modal}
@@ -58,17 +66,12 @@ export async function restoreBookmark(entry, app) {
 /**
  * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
  * @param {import("../app").default} app
- * @param {import("./bookmarkDatabase").default} [bookmarkDatabase]
- *      An optional collection that contains the entry. Used for next/prev buttons.
+ * @param {BookmarkInfoBoxOptions} [options]
  */
-export async function restoreBookmarkAndShowInfoBox(
-    entry,
-    app,
-    bookmarkDatabase
-) {
+export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
     await restoreBookmark(entry, app);
     if (entry.notes || infoBox) {
-        await showBookmarkInfoBox(entry, app, bookmarkDatabase);
+        await showBookmarkInfoBox(entry, app, options);
     }
 }
 
@@ -76,35 +79,35 @@ export async function restoreBookmarkAndShowInfoBox(
  *
  * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
  * @param {import("../app").default} app
- * @param {import("./bookmarkDatabase").default} [bookmarkDatabase]
- *      An optional collection that contains the entry. Used for next/prev buttons.
+ * @param {BookmarkInfoBoxOptions} [options]
  */
-export async function showBookmarkInfoBox(entry, app, bookmarkDatabase) {
+export async function showBookmarkInfoBox(entry, app, options = {}) {
     infoBox ??= createModal("tour");
 
-    await updateBookmarkInfoBox(entry, app, bookmarkDatabase);
+    await updateBookmarkInfoBox(entry, app, options);
 }
 
 /**
  *
  * @param {Partial<import("./databaseSchema").BookmarkEntry>} entry
  * @param {import("../app").default} app
- * @param {import("./bookmarkDatabase").default} [bookmarkDatabase]
- *      An optional collection that contains the entry. Used for next/prev buttons.
+ * @param {BookmarkInfoBoxOptions} [options]
  */
-export async function updateBookmarkInfoBox(entry, app, bookmarkDatabase) {
-    const names = bookmarkDatabase ? await bookmarkDatabase.getNames() : [];
+export async function updateBookmarkInfoBox(entry, app, options) {
+    const db = options.database;
+
+    const names = db ? await db.getNames() : [];
 
     const entryIndex = names.indexOf(entry.name);
 
-    const tour = entryIndex >= 0;
+    const of = db ? ` ${entryIndex + 1} of ${names.length}` : "";
+    const title = `${
+        options.mode == "shared" ? "Shared bookmark" : "Bookmark"
+    }${of}: ${entry.name ?? "Unnamed"}`;
 
-    const of = tour ? ` ${entryIndex + 1} of ${names.length}` : "";
-    const title = `${bookmarkDatabase ? "Bookmark" : "Shared link"}${of}: ${
-        entry.name
-    }`;
-
-    const content = entry.notes ? safeMarkdown(entry.notes) : "No notes";
+    const content = entry.notes
+        ? safeMarkdown(entry.notes)
+        : html`<span class="no-notes">No notes provided</span>`;
 
     const close = () => {
         infoBox?.close();
@@ -113,27 +116,34 @@ export async function updateBookmarkInfoBox(entry, app, bookmarkDatabase) {
 
     const jumpTo = async (/** @type {number} */ index) => {
         // TODO: Prevent double clicks, etc
-        const entry = await bookmarkDatabase.get(names[index]);
-        restoreBookmarkAndShowInfoBox(entry, app, bookmarkDatabase);
+        const entry = await db.get(names[index]);
+        restoreBookmarkAndShowInfoBox(entry, app, options);
     };
 
-    const buttons = tour
-        ? html`
-              <button @click=${close}>Close</button>
-              <button
-                  @click=${() => jumpTo(entryIndex - 1)}
-                  ?disabled=${entryIndex <= 0}
-              >
-                  ${icon(faStepBackward).node[0]} Previous
-              </button>
-              <button
-                  @click=${() => jumpTo(entryIndex + 1)}
-                  ?disabled=${entryIndex >= names.length - 1}
-              >
-                  Next ${icon(faStepForward).node[0]}
-              </button>
-          `
-        : html` <button @click=${close}>Close</button> `;
+    const buttons = html` <button @click=${close}>
+            ${options.mode == "tour" ? "End tour" : "Close"}
+        </button>
+        ${options.mode == "shared"
+            ? html`
+                  <button @click=${() => alert("TODO")}>
+                      ${icon(faBookmark).node[0]} Import bookmark
+                  </button>
+              `
+            : nothing}
+        ${db
+            ? html` <button
+                      @click=${() => jumpTo(entryIndex - 1)}
+                      ?disabled=${entryIndex <= 0}
+                  >
+                      ${icon(faStepBackward).node[0]} Previous
+                  </button>
+                  <button
+                      @click=${() => jumpTo(entryIndex + 1)}
+                      ?disabled=${entryIndex >= names.length - 1}
+                  >
+                      Next ${icon(faStepForward).node[0]}
+                  </button>`
+            : nothing}`;
 
     const toggleCollapse = (/** @type {MouseEvent} */ event) =>
         /** @type {HTMLElement} */ (event.target)

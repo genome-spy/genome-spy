@@ -5,9 +5,16 @@ export interface RemoteBookmarkConfig {
 
     /**
      * Should the user be shown a tour of the remote bookmarks when the visualization
-     * is launched?
+     * is launched? If the `initialBookmark` property is not defined, the tour starts
+     * from the first bookmark.
      */
     tour?: boolean;
+
+    /**
+     * Name of the bookmark that should be loaded as the initial state. A message box
+     * is shown only if the `tour` property is set to `true`.
+     */
+    initialBookmark?: string;
 }
 
 export interface BookmarkConfig {

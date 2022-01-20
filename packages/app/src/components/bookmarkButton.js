@@ -192,7 +192,9 @@ class BookmarkButton extends LitElement {
     async _loadBookmark(bookmarkDatabase, name) {
         const entry = await bookmarkDatabase.get(name);
         if (entry) {
-            restoreBookmarkAndShowInfoBox(entry, this.app, bookmarkDatabase);
+            restoreBookmarkAndShowInfoBox(entry, this.app, {
+                database: bookmarkDatabase,
+            });
         }
     }
 
