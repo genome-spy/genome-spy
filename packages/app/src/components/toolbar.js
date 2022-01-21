@@ -93,7 +93,7 @@ export default class Toolbar extends LitElement {
                             html`${description
                                 .slice(1)
                                 .map((line) => html`<p>${line}</p>`)}`,
-                            description[0]
+                            { title: description[0] }
                         )}
                 >
                     ${icon(faInfoCircle).node[0]}

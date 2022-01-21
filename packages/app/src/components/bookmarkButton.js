@@ -104,7 +104,7 @@ class BookmarkButton extends LitElement {
                 await bookmarkDatabase.put(bookmark, existingBookmark?.name);
                 this.requestUpdate();
             } catch (error) {
-                messageBox(`${error}`, "Cannot save the bookmark!");
+                messageBox(`${error}`, { title: "Cannot save the bookmark!" });
             }
         }
     }
@@ -134,11 +134,10 @@ class BookmarkButton extends LitElement {
         const opener = /** @type {HTMLElement} */ (event.target).closest("li");
 
         const deleteCallback = () =>
-            messageBox(
-                html`The bookmark <em>${name}</em> will be deleted.`,
-                "Are you sure?",
-                true
-            ).then(async (confirmed) => {
+            messageBox(html`The bookmark <em>${name}</em> will be deleted.`, {
+                title: "Are you sure?",
+                cancelButton: true,
+            }).then(async (confirmed) => {
                 if (confirmed) {
                     await bookmarkDatabase.delete(name);
                     this.requestUpdate();

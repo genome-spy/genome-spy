@@ -11,6 +11,7 @@ import {
 import { html, nothing, render } from "lit";
 import safeMarkdown from "../utils/safeMarkdown";
 import { createCloseEvent, createModal, messageBox } from "../utils/ui/modal";
+import { handleTabClick } from "../utils/ui/tabs";
 import { compressToUrlHash } from "../utils/urlHash";
 import { viewSettingsSlice } from "../viewSettingsSlice";
 
@@ -207,32 +208,41 @@ export function showShareBookmarkDialog(bookmark) {
 
     messageBox(
         html`
-            <div style="width: 600px">
-                <div class="gs-form-group">
-                    <label for="bookmark-url">URL</label>
-                    <div class="copy-url">
-                        <input id="bookmark-url" type="text" .value=${url} />
-                        <button @click=${copyToClipboard}>Copy</button>
+            <div class="gs-tabs" style="width: 600px">
+                <ul class="tabs" @click=${handleTabClick}>
+                    <li class="active-tab"><button>URL</button></li>
+                    <li><button>JSON</button></li>
+                </ul>
+                <div class="panes">
+                    <div class="gs-form-group active-tab">
+                        <label for="bookmark-url">Here's a link for you:</label>
+                        <div class="copy-url">
+                            <input
+                                id="bookmark-url"
+                                type="text"
+                                .value=${url}
+                            />
+                            <button @click=${copyToClipboard}>Copy</button>
+                        </div>
+                        <small
+                            >The bookmark URL contains all the bookmarked data,
+                            including the possible notes, which will be shown
+                            when the link is opened.</small
+                        >
                     </div>
-                    <small
-                        >The bookmark URL contains all the bookmarked data,
-                        including the possible notes, which will be shown when
-                        the URL is opened.</small
-                    >
-                </div>
-                <div class="gs-form-group">
-                    <label for="bookmark-json">JSON</label>
-                    <textarea id="bookmark-json" style="height: 250px">
+                    <div class="gs-form-group">
+                        <textarea id="bookmark-json" style="height: 250px">
 ${json}</textarea
-                    >
-                    <small
-                        >The JSON-formatted bookmark is currently available for
-                        development purposes.</small
-                    >
+                        >
+                        <small
+                            >The JSON-formatted bookmark is currently available
+                            for development purposes.</small
+                        >
+                    </div>
                 </div>
             </div>
         `,
-        "Share a bookmark"
+        { title: "Share a bookmark", okLabel: "Close" }
     );
 }
 
@@ -343,7 +353,7 @@ export function showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, mode) {
 
         const save = async () => {
             if (!isValid()) {
-                messageBox("Name is missing!", "Error");
+                messageBox("Name is missing!", { title: "Error" });
                 return;
             }
 
@@ -358,8 +368,7 @@ export function showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, mode) {
                     html`A bookmark with the name
                         <em>${bookmark.name}</em> already exists. It will be
                         overwritten.`,
-                    "Bookmark already exists",
-                    true
+                    { title: "Bookmark already exists", cancelButton: true }
                 );
             }
 

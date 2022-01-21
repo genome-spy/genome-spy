@@ -92,13 +92,22 @@ export function createModal(type = "default") {
 }
 
 /**
+ * @typedef {object} MessageBoxOptions
+ * @prop {string} [title]
+ * @prop {string} [okLabel]
+ * @prop {boolean} [cancelButton]
+ */
+
+/**
  * @param {string | import("lit").TemplateResult | HTMLElement} content
- * @param {string} title
- * @param {boolean} [cancelButton] show cancelbutton
+ * @param {MessageBoxOptions} [options]
  * @returns {Promise<boolean>}
  */
-export function messageBox(content, title = undefined, cancelButton = false) {
+export function messageBox(content, options = {}) {
     const modal = createModal();
+
+    const title = options.title;
+    options.okLabel ??= "OK";
 
     return new Promise((resolve, reject) => {
         const close = () => {
@@ -113,7 +122,7 @@ export function messageBox(content, title = undefined, cancelButton = false) {
                 </div>
                 <div class="modal-buttons">
                     ${
-                        cancelButton
+                        options.cancelButton
                             ? html`
                                   <button
                                       @click=${() => {
@@ -126,7 +135,7 @@ export function messageBox(content, title = undefined, cancelButton = false) {
                               `
                             : nothing
                     }
-                    <button @click=${close}>OK</button>
+                    <button @click=${close}>${options.okLabel}</button>
                 </div>
             </div>`;
         render(template, modal.content);

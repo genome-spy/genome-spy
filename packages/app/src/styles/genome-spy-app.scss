@@ -2,6 +2,7 @@
 @use "sass:color";
 
 $basic-spacing: 10px;
+$dialog-stroke-color: #d0d0d0;
 
 // https://css-tricks.com/snippets/css/system-font-stack/
 $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
@@ -493,7 +494,7 @@ $menu-line-height: 22px;
     .modal-buttons {
         text-align: right;
 
-        border-top: 1px solid #d0d0d0;
+        border-top: 1px solid $dialog-stroke-color;
 
         button {
             display: inline-block;
@@ -747,6 +748,57 @@ $form-control-border: 1px solid $form-control-border-color;
         color: #055160;
         background-color: #cff4fc;
         border-color: #b6effb;
+    }
+}
+
+.gs-tabs {
+    margin: 0;
+
+    .tabs {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin-top: 0;
+
+        &::after {
+            flex-grow: 1;
+            content: "";
+            display: block;
+            border-bottom: 1px solid $dialog-stroke-color;
+        }
+
+        button {
+            background-color: transparent;
+            align-items: center;
+            padding: 0.6em $basic-spacing;
+
+            border: 1px solid $dialog-stroke-color;
+
+            $radius: 5px;
+            border-top-left-radius: $radius;
+            border-top-right-radius: $radius;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+
+            cursor: pointer;
+        }
+
+        > li:not(:first-child) > button {
+            margin-left: -1px;
+        }
+
+        .active-tab button {
+            border-bottom-color: transparent;
+        }
+
+        :not(.active-tab) button {
+            border-color: transparent;
+            border-bottom-color: $dialog-stroke-color;
+        }
+    }
+
+    .panes > :not(.active-tab) {
+        display: none;
     }
 }
 
