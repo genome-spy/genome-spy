@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.17.1](https://github.com/tuner/genome-spy/compare/v0.17.0...v0.17.1) (2022-01-21)
+
+
+### Bug Fixes
+
+* **app:** bad usability of "Share bookmark" dialog ([325994c](https://github.com/tuner/genome-spy/commit/325994c05ade17f479b677403078d748ff8a1a12))
+
+
+
+
+
 # [0.17.0](https://github.com/tuner/genome-spy/compare/v0.16.0...v0.17.0) (2022-01-21)
 
 
