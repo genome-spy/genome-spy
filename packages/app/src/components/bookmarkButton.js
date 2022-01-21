@@ -205,7 +205,7 @@ class BookmarkButton extends LitElement {
                 : nothing;
 
         return [
-            makeTemplate(this.app.remoteBookmarkDatabase, "Remote bookmarks"),
+            makeTemplate(this.app.globalBookmarkDatabase, "Global bookmarks"),
             makeTemplate(this.app.localBookmarkDatabase, "Local bookmarks"),
         ];
     }
@@ -222,7 +222,7 @@ class BookmarkButton extends LitElement {
             : nothing;
 
         const bookmarkButtonTemplate =
-            localBookmarkDb || this.app.remoteBookmarkDatabase
+            localBookmarkDb || this.app.globalBookmarkDatabase
                 ? html`
                       <div class="dropdown bookmark-dropdown">
                           <button

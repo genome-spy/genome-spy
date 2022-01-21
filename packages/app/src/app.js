@@ -75,7 +75,7 @@ export default class App {
          * Remote bookmarks loaded from a URL
          * @type {import("./bookmark/bookmarkDatabase").default}
          */
-        this.remoteBookmarkDatabase = undefined;
+        this.globalBookmarkDatabase = undefined;
 
         render(
             html`<div class="genome-spy-app">
@@ -204,7 +204,7 @@ export default class App {
         try {
             const remoteBookmarks = await remoteBookmarkPromise;
             if (remoteBookmarks.length) {
-                this.remoteBookmarkDatabase = new SimpleBookmarkDatabase(
+                this.globalBookmarkDatabase = new SimpleBookmarkDatabase(
                     remoteBookmarks
                 );
             }
@@ -259,7 +259,7 @@ export default class App {
     async _restoreStateFromUrlOrBookmark() {
         const restored = this._restoreStateFromUrl();
         const remoteConf = this.config.bookmarks?.remote;
-        const remoteDb = this.remoteBookmarkDatabase;
+        const remoteDb = this.globalBookmarkDatabase;
 
         if (!restored && remoteConf && remoteDb) {
             const name =
