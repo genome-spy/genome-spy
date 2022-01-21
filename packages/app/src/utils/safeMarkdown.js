@@ -13,6 +13,12 @@ export default function safeMarkdown(markdown) {
     );
     doc.normalize();
     sanitize(doc.body);
+
+    for (const a of doc.querySelectorAll("a[href]")) {
+        a.setAttribute("target", "blank");
+        a.setAttribute("rel", "noopener noreferrer");
+    }
+
     const elem = doc.body.removeChild(doc.querySelector("body > div"));
     elem.className = "snarkdown";
 
