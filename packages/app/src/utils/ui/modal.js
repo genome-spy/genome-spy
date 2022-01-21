@@ -81,7 +81,9 @@ export function createModal(type = "default") {
 
     // Trigger animation
     window.requestAnimationFrame(() => root.classList.add("visible"));
-    document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
+    if (type != "tour") {
+        document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
+    }
 
     return {
         content: /** @type {HTMLDivElement} */ (root.querySelector(".content")),
