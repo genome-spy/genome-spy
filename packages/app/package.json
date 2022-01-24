@@ -14,7 +14,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "github:tuner/genome-spy",
+    "url": "github:genome-spy/genome-spy",
     "directory": "packages/app"
   },
   "scripts": {
