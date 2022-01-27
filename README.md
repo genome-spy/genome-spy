@@ -24,7 +24,7 @@ The [app](./packages/app/) builds upon the core, extending the visualization gra
 
 ### Bootstrapping and running
 
-1. `git clone git@github.com:tuner/genome-spy.git`
+1. `git clone git@github.com:genome-spy/genome-spy.git`
 2. `cd genome-spy`
 3. `npm install` (use npm7!)
 4. `npm start` (starts the App)
