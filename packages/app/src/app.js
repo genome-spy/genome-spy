@@ -314,7 +314,7 @@ export default class App {
             hashData.viewSettings = viewSettings;
         }
 
-        let hash =
+        const hash =
             hashData.actions.length ||
             Object.keys(hashData.scaleDomains).length ||
             hashData.viewSettings
@@ -362,22 +362,6 @@ export default class App {
         }
     }
 
-    /**
-     *
-     * @param {import("@genome-spy/core/spec/root").RootSpec} config
-     */
-    async updateConfig(config) {
-        // TODO: provenance etc must be re-registered etc
-        throw new Error("Broken");
-
-        /*
-        this.config = config;
-        // TODO: Preserve viewport
-        this.genomeSpy.destroy();
-        await this.launch();
-		*/
-    }
-
     getSampleView() {
         if (!this.genomeSpy?.viewRoot) {
             return;
@@ -403,8 +387,8 @@ export default class App {
  * @param {string} favImg
  */
 function setFavicon(favImg) {
-    let headTitle = document.querySelector("head");
-    let setFavicon = document.createElement("link");
+    const headTitle = document.querySelector("head");
+    const setFavicon = document.createElement("link");
     setFavicon.setAttribute("rel", "shortcut icon");
     setFavicon.setAttribute("href", favImg);
     headTitle.appendChild(setFavicon);
