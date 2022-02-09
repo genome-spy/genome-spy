@@ -139,9 +139,6 @@ export default class Toolbar extends LitElement {
                 <a href="https://genomespy.app" target="_blank" class="logo">
                     <img title="GenomeSpy" alt="GenomeSpy" src="${bowtie}" />
                 </a>
-                <div class="title">
-                    <span>GenomeSpy</span>
-                </div>
 
                 ${this.appInitialized &&
                 findGenomeScaleResolution(genomeSpy.viewRoot)

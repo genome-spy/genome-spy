@@ -8,6 +8,8 @@ $dialog-stroke-color: #d0d0d0;
 $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
+$font-size: 14px;
+
 .genome-spy-app {
     position: absolute;
     top: 0;
@@ -22,6 +24,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 
     font-family: $font-family;
+    font-size: $font-size;
 
     .genome-spy-container {
         position: relative;
@@ -62,26 +65,17 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         }
     }
 
-    .title {
-        display: none;
-        color: $foreground;
-        font-size: 18px;
-        font-weight: normal;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    }
-
     .vis-title {
         color: $foreground;
-        font-size: 14px;
         font-weight: normal;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
     .search-input {
+        font-size: 1em;
         background-color: darken($background, 5%);
         color: $foreground;
         border: 1px solid darken($background, 10%);
-        font-size: 14px;
         width: 260px;
         padding: 3px 6px;
         outline: none;
@@ -97,7 +91,6 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         position: absolute;
         border: none;
         background: #f6f6f6;
-        font-size: 14px;
         padding: $basic-spacing;
         z-index: 1000;
         visibility: hidden;
@@ -134,6 +127,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
     .tool-btn {
         padding: 0;
+        font-size: 1.15em;
 
         transition: color 0.15s;
 
@@ -165,7 +159,6 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         justify-content: center;
 
         > svg {
-            transform: scale(1.25);
             filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.3));
         }
 
@@ -427,7 +420,7 @@ $menu-line-height: 22px;
     z-index: 101;
 
     font-family: $font-family;
-    font-size: 14px;
+    font-size: $font-size;
 
     * {
         box-sizing: border-box;
@@ -502,7 +495,7 @@ $menu-line-height: 22px;
             display: inline-block;
             padding: 4px 12px;
             margin: 0;
-            font-size: 14px;
+            font-size: 1em;
             line-height: 20px;
             color: #333333;
             text-align: center;
@@ -770,6 +763,7 @@ $form-control-border: 1px solid $form-control-border-color;
         }
 
         button {
+            font-size: 1em;
             background-color: transparent;
             align-items: center;
             padding: 0.6em $basic-spacing;
