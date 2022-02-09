@@ -110,13 +110,17 @@ export default class Toolbar extends LitElement {
         elements.push(html`
             <span class="spacer"></span>
 
-            <button
-                class="tool-btn"
-                title="Fullscreen"
-                @click=${() => this.app.toggleFullScreen()}
-            >
-                ${icon(faExpandArrowsAlt).node[0]}
-            </button>
+            ${this.app.appContainer.requestFullscreen
+                ? html`
+                      <button
+                          class="tool-btn"
+                          title="Fullscreen"
+                          @click=${() => this.app.toggleFullScreen()}
+                      >
+                          ${icon(faExpandArrowsAlt).node[0]}
+                      </button>
+                  `
+                : nothing}
 
             <button
                 class="tool-btn"
