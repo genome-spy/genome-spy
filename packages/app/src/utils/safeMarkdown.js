@@ -1,11 +1,18 @@
 import snarkdown from "snarkdown";
+import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
+
+/**
+ * @typedef {object} SafeMarkdownOptions
+ * @prop {string} [baseUrl] Base URL for relative URLs
+ */
 
 /**
  * Adapted from: https://github.com/developit/snarkdown/issues/70#issuecomment-626863373
  *
  * @param {string} markdown
+ * @param {SafeMarkdownOptions} [options]
  */
-export default function safeMarkdown(markdown) {
+export default function safeMarkdown(markdown, options = {}) {
     const html = snarkdown(markdown);
     const doc = new DOMParser().parseFromString(
         `<!DOCTYPE html><html><body><div>${html}</div></body></html>`,
@@ -17,6 +24,17 @@ export default function safeMarkdown(markdown) {
     for (const a of doc.querySelectorAll("a[href]")) {
         a.setAttribute("target", "blank");
         a.setAttribute("rel", "noopener noreferrer");
+        a.setAttribute(
+            "href",
+            addBaseUrl(a.getAttribute("href"), options.baseUrl)
+        );
+    }
+
+    for (const img of doc.querySelectorAll("img[src]")) {
+        img.setAttribute(
+            "src",
+            addBaseUrl(img.getAttribute("src"), options.baseUrl)
+        );
     }
 
     const elem = doc.body.removeChild(doc.querySelector("body > div"));

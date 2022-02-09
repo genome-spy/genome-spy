@@ -115,7 +115,10 @@ export async function updateBookmarkInfoBox(entry, app, options) {
     }${of}: ${entry.name ?? "Unnamed"}`;
 
     const content = entry.notes
-        ? safeMarkdown(entry.notes)
+        ? safeMarkdown(entry.notes, {
+              // TODO: It's actually the bookmarkDatabase's url that should be used as a baseUrl
+              baseUrl: app.genomeSpy.spec.baseUrl,
+          })
         : html`<span class="no-notes">No notes provided</span>`;
 
     const close = () => {
