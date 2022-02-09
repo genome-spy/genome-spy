@@ -492,14 +492,16 @@ $menu-line-height: 22px;
     }
 
     .modal-buttons {
-        text-align: right;
+        display: flex;
+        justify-content: flex-end;
+        gap: $basic-spacing;
 
         border-top: 1px solid $dialog-stroke-color;
 
         button {
             display: inline-block;
             padding: 4px 12px;
-            margin-bottom: 0;
+            margin: 0;
             font-size: 14px;
             line-height: 20px;
             color: #333333;
