@@ -7,6 +7,9 @@
       ],
       "@genome-spy/core/*": [
         "packages/core/src/*"
+      ],
+      "@genome-spy/core/schema.json": [
+        "packages/core/dist/schema.json"
       ]
     },
     "resolveJsonModule": true,

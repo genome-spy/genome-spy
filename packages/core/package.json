@@ -12,7 +12,8 @@
   "module": "src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./*": "./src/*"
+    "./*": "./src/*",
+    "./schema.json": "./dist/schema.json"
   },
   "files": [
     "dist/",
@@ -25,11 +26,11 @@
   },
   "scripts": {
     "dev": "node dev-server.js",
-    "build": "vite build",
-    "prepublishOnly": "npm run build && npm run build:schema",
+    "build": "vite build && npm run build:schema",
+    "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json",
     "checkSpec": "tsc --allowJs --checkJs --strict --noEmit --moduleResolution node --target es6 src/spec/root.d.ts",
-    "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/genome-spy-schema.json"
+    "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/schema.json"
   },
   "dependencies": {
     "@types/d3-array": "^3.0.2",

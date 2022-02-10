@@ -5,10 +5,18 @@ import { faColumns, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
 import { debounce } from "@genome-spy/core/utils/debounce";
 import defaultSpec from "./defaultspec.json.txt";
+
+import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
+// Available after the core package has been built
+import schema from "@genome-spy/core/schema.json";
+
 import packageJson from "../package.json";
 import "./codeEditor";
 import "./filePane";
 import "./playground.scss";
+import addMarkdownProps from "./markdownProps";
+
+registerJsonSchema();
 
 const STORAGE_KEY = "playgroundSpec";
 
@@ -34,6 +42,20 @@ function toggleLayout() {
     layout = layouts[(layouts.indexOf(layout) + 1) % layouts.length];
     renderLayout();
     window.dispatchEvent(new Event("resize"));
+}
+
+function registerJsonSchema() {
+    addMarkdownProps(schema);
+    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+        validate: true,
+        schemas: [
+            {
+                uri: "http://myserver/foo-schema.json", // id of the first schema
+                fileMatch: ["*"], // associate with our model
+                schema,
+            },
+        ],
+    });
 }
 
 /**

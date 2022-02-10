@@ -10,6 +10,8 @@ import "monaco-editor/esm/vs/editor/browser/controller/coreCommands.js";
 import "monaco-editor/esm/vs/editor/contrib/folding/folding.js";
 import "monaco-editor/esm/vs/editor/contrib/multicursor/multicursor.js";
 import "monaco-editor/esm/vs/editor/contrib/bracketMatching/bracketMatching.js";
+import "monaco-editor/esm/vs/editor/contrib/hover/hover.js";
+
 // @ts-ignore
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 
