@@ -1,0 +1,5048 @@
+{
+  "$ref": "#/definitions/RootSpec",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AggregateParams": {
+      "additionalProperties": false,
+      "properties": {
+        "groupby": {
+          "description": "Which fields to use for grouping. Missing `groupby` results in a single group that includes all the data items.",
+          "items": {
+            "$ref": "#/definitions/Field"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "aggregate",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "Align": {
+      "enum": [
+        "left",
+        "center",
+        "right"
+      ],
+      "type": "string"
+    },
+    "Axis": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "description": "A boolean flag indicating if the domain (the axis baseline) should be included as part of the axis.\n\n__Default value:__ `true`",
+          "type": "boolean"
+        },
+        "domainCap": {
+          "description": "The stroke cap for the domain line's ending style. One of `\"butt\"`, `\"round\"` or `\"square\"`.\n\n__Default value:__ `\"butt\"`",
+          "enum": [
+            "butt",
+            "round",
+            "square"
+          ],
+          "type": "string"
+        },
+        "domainColor": {
+          "description": "Color of axis domain line.\n\n__Default value:__ `\"gray\"`.",
+          "type": "string"
+        },
+        "domainDash": {
+          "description": "An array of alternating [stroke, space] lengths for dashed domain lines.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "domainDashOffset": {
+          "description": "The pixel offset at which to start drawing with the domain dash array.",
+          "type": "number"
+        },
+        "domainWidth": {
+          "description": "Stroke width of axis domain line\n\n__Default value:__ `1`",
+          "type": "number"
+        },
+        "format": {
+          "description": "The format specifier pattern for axis labels. Must be a legal [d3-format](https://github.com/d3/d3-format#locale_format) specifier.",
+          "type": "string"
+        },
+        "labelAlign": {
+          "$ref": "#/definitions/Align",
+          "description": "Horizontal text alignment of axis tick labels, overriding the default setting for the current axis orientation."
+        },
+        "labelAngle": {
+          "description": "The rotation angle of the axis labels.\n\n__Default value:__ `-90` for nominal and ordinal fields; `0` otherwise.",
+          "maximum": 360,
+          "minimum": -360,
+          "type": "number"
+        },
+        "labelBaseline": {
+          "$ref": "#/definitions/Baseline",
+          "description": "Vertical text baseline of axis tick labels, overriding the default setting for the current axis orientation. One of `\"alphabetic\"` (default), `\"top\"`, `\"middle\"`, `\"bottom\"`."
+        },
+        "labelColor": {
+          "description": "The color of the tick label, can be in hex color code or regular color name.",
+          "type": "string"
+        },
+        "labelFont": {
+          "description": "The font of the tick label.",
+          "type": "string"
+        },
+        "labelFontSize": {
+          "description": "The font size of the label, in pixels.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "labelFontStyle": {
+          "description": "Font style of the title.",
+          "type": "string"
+        },
+        "labelFontWeight": {
+          "description": "Font weight of axis tick labels.",
+          "type": "string"
+        },
+        "labelLimit": {
+          "description": "Maximum allowed pixel width of axis tick labels.\n\n__Default value:__ `180`",
+          "type": "number"
+        },
+        "labelPadding": {
+          "description": "The padding, in pixels, between axis and text labels.\n\n__Default value:__ `2`",
+          "type": "number"
+        },
+        "labels": {
+          "description": "A boolean flag indicating if labels should be included as part of the axis.\n\n__Default value:__ `true`.",
+          "type": "boolean"
+        },
+        "maxExtent": {
+          "description": "The maximum extent in pixels that axis ticks and labels should use. This determines a maximum offset value for axis titles.\n\n__Default value:__ `undefined`.",
+          "type": "number"
+        },
+        "minExtent": {
+          "description": "The minimum extent in pixels that axis ticks and labels should use. This determines a minimum offset value for axis titles.\n\n__Default value:__ `30` for y-axis; `undefined` for x-axis.",
+          "type": "number"
+        },
+        "offset": {
+          "description": "The orthogonal offset in pixels by which to displace the axis from its position along the edge of the chart.",
+          "type": "number"
+        },
+        "orient": {
+          "$ref": "#/definitions/AxisOrient",
+          "description": "The orientation of the axis. One of `\"top\"`, `\"bottom\"`, `\"left\"` or `\"right\"`. The orientation can be used to further specialize the axis type (e.g., a y axis oriented for the right edge of the chart).\n\n__Default value:__ `\"bottom\"` for x-axes and `\"left\"` for y-axes."
+        },
+        "tickCap": {
+          "description": "The stroke cap for the tick lines' ending style. One of `\"butt\"`, `\"round\"` or `\"square\"`.\n\n__Default value:__ `\"butt\"`",
+          "enum": [
+            "butt",
+            "round",
+            "square"
+          ],
+          "type": "string"
+        },
+        "tickColor": {
+          "description": "The color of the axis's tick.\n\n__Default value:__ `\"gray\"`",
+          "type": "string"
+        },
+        "tickCount": {
+          "description": "A desired number of ticks, for axes visualizing quantitative scales. The resulting number may be different so that values are \"nice\" (multiples of `2`, `5`, `10`) and lie within the underlying scale's range.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "tickDash": {
+          "description": "An array of alternating [stroke, space] lengths for dashed tick mark lines.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "tickDashOffset": {
+          "description": "The pixel offset at which to start drawing with the tick mark dash array.",
+          "type": "number"
+        },
+        "tickMinStep": {
+          "description": "The minimum desired step between axis ticks, in terms of scale domain values. For example, a value of `1` indicates that ticks should not be less than 1 unit apart. If `tickMinStep` is specified, the `tickCount` value will be adjusted, if necessary, to enforce the minimum step value.",
+          "type": "number"
+        },
+        "tickSize": {
+          "description": "The size in pixels of axis ticks.\n\n__Default value:__ `5`",
+          "minimum": 0,
+          "type": "number"
+        },
+        "tickWidth": {
+          "description": "The width, in pixels, of ticks.\n\n__Default value:__ `1`",
+          "minimum": 0,
+          "type": "number"
+        },
+        "ticks": {
+          "description": "Boolean value that determines whether the axis should include ticks.\n\n__Default value:__ `true`",
+          "type": "boolean"
+        },
+        "title": {
+          "description": "A title for the axis (none by default).",
+          "type": "string"
+        },
+        "titleColor": {
+          "description": "Color of the title, can be in hex color code or regular color name.",
+          "type": "string"
+        },
+        "titleFont": {
+          "description": "Font of the title. (e.g., `\"Helvetica Neue\"`).",
+          "type": "string"
+        },
+        "titleFontSize": {
+          "description": "Font size of the title.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "titleFontStyle": {
+          "description": "Font style of the title.",
+          "type": "string"
+        },
+        "titleFontWeight": {
+          "description": "Font weight of the title. This can be either a string (e.g `\"bold\"`, `\"normal\"`) or a number (`100`, `200`, `300`, ..., `900` where `\"normal\"` = `400` and `\"bold\"` = `700`).",
+          "type": "string"
+        },
+        "titleOpacity": {
+          "description": "Opacity of the axis title.",
+          "type": "number"
+        },
+        "titlePadding": {
+          "description": "The padding, in pixels, between title and axis.",
+          "type": "number"
+        },
+        "values": {
+          "description": "Explicitly set the visible axis tick and label values.",
+          "items": {},
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "AxisOrient": {
+      "enum": [
+        "top",
+        "bottom",
+        "left",
+        "right"
+      ],
+      "type": "string"
+    },
+    "Baseline": {
+      "enum": [
+        "top",
+        "middle",
+        "bottom",
+        "alphabetic"
+      ],
+      "type": "string"
+    },
+    "Channel": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PositionalChannel"
+        },
+        {
+          "const": "color",
+          "type": "string"
+        },
+        {
+          "const": "fill",
+          "type": "string"
+        },
+        {
+          "const": "stroke",
+          "type": "string"
+        },
+        {
+          "const": "opacity",
+          "type": "string"
+        },
+        {
+          "const": "fillOpacity",
+          "type": "string"
+        },
+        {
+          "const": "strokeOpacity",
+          "type": "string"
+        },
+        {
+          "const": "strokeWidth",
+          "type": "string"
+        },
+        {
+          "const": "size",
+          "type": "string"
+        },
+        {
+          "const": "shape",
+          "type": "string"
+        },
+        {
+          "const": "text",
+          "type": "string"
+        },
+        {
+          "const": "angle",
+          "type": "string"
+        },
+        {
+          "const": "sample",
+          "type": "string"
+        },
+        {
+          "const": "uniqueId",
+          "type": "string"
+        },
+        {
+          "const": "search",
+          "type": "string"
+        },
+        {
+          "const": "facetIndex",
+          "type": "string"
+        },
+        {
+          "const": "semanticScore",
+          "type": "string"
+        },
+        {
+          "const": "dx",
+          "type": "string"
+        },
+        {
+          "const": "dy",
+          "type": "string"
+        }
+      ]
+    },
+    "ChromPosDef": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Axis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of axis's gridlines, ticks and labels. If `null`, the axis for the encoding channel will be removed.\n\n__Default value:__ If undefined, default [axis properties](https://vega.github.io/vega-lite/docs/axis.html) are applied.\n\n__See also:__ [`axis`](https://vega.github.io/vega-lite/docs/axis.html) documentation."
+        },
+        "band": {
+          "description": "Relative position on band scale. For example, the marks will be positioned at the beginning of the band if set to `0`, and at the middle of the band if set to `0.5`.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "chrom": {
+          "$ref": "#/definitions/FieldName",
+          "description": "The field having the chromosome or contig."
+        },
+        "offset": {
+          "description": "An offset or offsets that allow for adjusting the numbering base. The offset is subtracted from the positions.\n\nGenomeSpy uses internally zero-based indexing with half-open intervals. UCSC-based formats (BED, etc.) generally use this scheme. However, for example, VCF files use one-based indexing and must be adjusted by setting the offset to `1`.\n\n**Default:** `0`",
+          "type": "number"
+        },
+        "pos": {
+          "$ref": "#/definitions/FieldName",
+          "description": "The field having an intra-chromosomal position."
+        },
+        "resolutionChannel": {
+          "$ref": "#/definitions/Channel",
+          "description": "An alternative channel for scale resolution.\n\nThis is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances."
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of the channel's scale, which is the function that transforms values in the data domain (numbers, dates, strings, etc) to visual values (pixels, colors, sizes) of the encoding channels.\n\nIf `null`, the scale will be [disabled and the data value will be directly encoded](https://vega.github.io/vega-lite/docs/scale.html#disable).\n\n__Default value:__ If undefined, default [scale properties](https://vega.github.io/vega-lite/docs/scale.html) are applied.\n\n__See also:__ [`scale`](https://vega.github.io/vega-lite/docs/scale.html) documentation."
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "const": "locus",
+          "type": "string"
+        }
+      },
+      "required": [
+        "chrom",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ChromosomalLocus": {
+      "additionalProperties": false,
+      "properties": {
+        "chrom": {
+          "description": "The name of the chromosome. For example: `\"chr1\"`, `\"CHR1\"`, or `\"1\"`.",
+          "type": "string"
+        },
+        "pos": {
+          "description": "The zero-based position inside the chromosome or contig.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "chrom"
+      ],
+      "type": "object"
+    },
+    "CollectParams": {
+      "additionalProperties": false,
+      "properties": {
+        "groupby": {
+          "description": "Arranges the data into consecutive batches based on the groups. This is mainly intended for internal use so that faceted data can be handled as batches.",
+          "items": {
+            "$ref": "#/definitions/Field"
+          },
+          "type": "array"
+        },
+        "sort": {
+          "$ref": "#/definitions/CompareParams",
+          "description": "The sort order."
+        },
+        "type": {
+          "const": "collect",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "ColorDef<string>": {
+      "$ref": "#/definitions/MarkPropDef%3Cstring%2C(string%7Cnull)%3E"
+    },
+    "CompareParams": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/definitions/Field"
+              },
+              "type": "array"
+            },
+            {
+              "$ref": "#/definitions/Field"
+            }
+          ],
+          "description": "The field(s) to sort by"
+        },
+        "order": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/definitions/SortOrder"
+              },
+              "type": "array"
+            },
+            {
+              "$ref": "#/definitions/SortOrder"
+            }
+          ],
+          "description": "The order(s) to use: `\"ascending\"` (default), `\"descending\"`."
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "type": "object"
+    },
+    "ComplexDomain": {
+      "description": "A complex domain that needs to be converted into a scalar domain before it is assigned to a scale.",
+      "items": {
+        "$ref": "#/definitions/ChromosomalLocus"
+      },
+      "type": "array"
+    },
+    "ConcatSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "baseUrl": {
+          "type": "string"
+        },
+        "concat": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/ViewSpec"
+              },
+              {
+                "$ref": "#/definitions/ImportSpec"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "configurableVisibility": {
+          "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/Data"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A description of the view. Multiple lines can be provided as an array."
+        },
+        "encoding": {
+          "$ref": "#/definitions/Encoding"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "opacity": {
+          "$ref": "#/definitions/ViewOpacityDef",
+          "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+        },
+        "padding": {
+          "$ref": "#/definitions/PaddingConfig",
+          "description": "Padding in pixels.\n\n**Default:* `0`"
+        },
+        "resolve": {
+          "additionalProperties": false,
+          "properties": {
+            "axis": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            },
+            "scale": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "spacing": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "transform": {
+          "items": {
+            "$ref": "#/definitions/TransformParams"
+          },
+          "type": "array"
+        },
+        "visible": {
+          "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+          "type": "boolean"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "concat"
+      ],
+      "type": "object"
+    },
+    "Contig": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "size": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "size"
+      ],
+      "type": "object"
+    },
+    "CoverageParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "description": "The output field for the computed coverage.",
+          "type": "string"
+        },
+        "asChrom": {
+          "description": "The output field for the chromosome.\n\n**Default:** Same as `chrom`",
+          "type": "string"
+        },
+        "asEnd": {
+          "description": "The output field for the end coordinate.\n\n**Default:** Same as `end`",
+          "type": "string"
+        },
+        "asStart": {
+          "description": "The output field for the start coordinate.\n\n**Default:** Same as `start`",
+          "type": "string"
+        },
+        "chrom": {
+          "$ref": "#/definitions/Field",
+          "description": "An optional chromosome field that is passed through. TODO: groupby"
+        },
+        "end": {
+          "$ref": "#/definitions/Field",
+          "description": "The field representing the end coordinate of the segment (exclusive)."
+        },
+        "start": {
+          "$ref": "#/definitions/Field",
+          "description": "The field representing the start coordinate of the segment (inclusive)."
+        },
+        "type": {
+          "const": "coverage",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        },
+        "weight": {
+          "$ref": "#/definitions/Field",
+          "description": "A field representing an optional weight for the segment. Can be used with copy ratios, for example."
+        }
+      },
+      "required": [
+        "end",
+        "start",
+        "type"
+      ],
+      "type": "object"
+    },
+    "CsvDataFormat": {
+      "additionalProperties": false,
+      "properties": {
+        "parse": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Parse"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "If set to `null`, disable type inference based on the spec and only use type inference based on the data. Alternatively, a parsing directive object can be provided for explicit data types. Each property of the object corresponds to a field name, and the value to the desired data type (one of `\"number\"`, `\"boolean\"`, `\"date\"`, or null (do not parse the field)). For example, `\"parse\": {\"modified_on\": \"date\"}` parses the `modified_on` field in each input record a Date value.\n\nFor `\"date\"`, we parse data based using Javascript's [`Date.parse()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/parse). For Specific date formats can be provided (e.g., `{foo: \"date:'%m%d%Y'\"}`), using the [d3-time-format syntax](https://github.com/d3/d3-time-format#locale_format). UTC date format parsing is supported similarly (e.g., `{foo: \"utc:'%m%d%Y'\"}`). See more about [UTC time](https://vega.github.io/vega-lite/docs/timeunit.html#utc)"
+        },
+        "type": {
+          "description": "Type of input data: `\"json\"`, `\"csv\"`, `\"tsv\"`, `\"dsv\"`.\n\n__Default value:__  The default format type is determined by the extension of the file URL. If no extension is detected, `\"json\"` will be used by default.",
+          "enum": [
+            "csv",
+            "tsv"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Data": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/DataSource"
+        },
+        {
+          "$ref": "#/definitions/Generator"
+        }
+      ]
+    },
+    "DataFormat": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/CsvDataFormat"
+        },
+        {
+          "$ref": "#/definitions/DsvDataFormat"
+        },
+        {
+          "$ref": "#/definitions/JsonDataFormat"
+        },
+        {
+          "$ref": "#/definitions/OtherDataFormat"
+        }
+      ]
+    },
+    "DataSource": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/UrlData"
+        },
+        {
+          "$ref": "#/definitions/InlineData"
+        },
+        {
+          "$ref": "#/definitions/NamedData"
+        },
+        {
+          "$ref": "#/definitions/DynamicCallbackData"
+        },
+        {
+          "$ref": "#/definitions/DynamicData"
+        }
+      ]
+    },
+    "DsvDataFormat": {
+      "additionalProperties": false,
+      "properties": {
+        "delimiter": {
+          "description": "The delimiter between records. The delimiter must be a single character (i.e., a single 16-bit code unit); so, ASCII delimiters are fine, but emoji delimiters are not.",
+          "maxLength": 1,
+          "minLength": 1,
+          "type": "string"
+        },
+        "parse": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Parse"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "If set to `null`, disable type inference based on the spec and only use type inference based on the data. Alternatively, a parsing directive object can be provided for explicit data types. Each property of the object corresponds to a field name, and the value to the desired data type (one of `\"number\"`, `\"boolean\"`, `\"date\"`, or null (do not parse the field)). For example, `\"parse\": {\"modified_on\": \"date\"}` parses the `modified_on` field in each input record a Date value.\n\nFor `\"date\"`, we parse data based using Javascript's [`Date.parse()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/parse). For Specific date formats can be provided (e.g., `{foo: \"date:'%m%d%Y'\"}`), using the [d3-time-format syntax](https://github.com/d3/d3-time-format#locale_format). UTC date format parsing is supported similarly (e.g., `{foo: \"utc:'%m%d%Y'\"}`). See more about [UTC time](https://vega.github.io/vega-lite/docs/timeunit.html#utc)"
+        },
+        "type": {
+          "const": "dsv",
+          "description": "Type of input data: `\"json\"`, `\"csv\"`, `\"tsv\"`, `\"dsv\"`.\n\n__Default value:__  The default format type is determined by the extension of the file URL. If no extension is detected, `\"json\"` will be used by default.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "delimiter"
+      ],
+      "type": "object"
+    },
+    "DynamicCallbackData": {
+      "additionalProperties": false,
+      "properties": {
+        "dynamicCallbackSource": {
+          "description": "The View class has `getDynamicData()` methods that provides the data. This is intended for internal use.",
+          "type": "boolean"
+        },
+        "format": {
+          "$ref": "#/definitions/DataFormat",
+          "description": "An object that specifies the format for parsing the data."
+        },
+        "name": {
+          "description": "Provide a placeholder name and bind data at runtime.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dynamicCallbackSource"
+      ],
+      "type": "object"
+    },
+    "DynamicData": {
+      "additionalProperties": false,
+      "properties": {
+        "dynamicSource": {
+          "description": "For internal use.",
+          "type": "boolean"
+        },
+        "format": {
+          "$ref": "#/definitions/DataFormat",
+          "description": "An object that specifies the format for parsing the data."
+        },
+        "name": {
+          "description": "Provide a placeholder name and bind data at runtime.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dynamicSource"
+      ],
+      "type": "object"
+    },
+    "DynamicOpacity": {
+      "additionalProperties": false,
+      "description": "DynamicOpacity specifies a zoom-dependent behavior for view opacity. The opacity is interpolated between the specified stops.",
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/PrimaryPositionalChannel"
+        },
+        "unitsPerPixel": {
+          "description": "Stops expressed as units (base pairs, for example) per pixel.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "values": {
+          "description": "Opacity values that match the given stops.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "unitsPerPixel",
+        "values"
+      ],
+      "type": "object"
+    },
+    "Encoding": {
+      "additionalProperties": false,
+      "properties": {
+        "angle": {
+          "$ref": "#/definitions/NumericMarkPropDef%3Cstring%3E",
+          "description": "Rotation angle of point and text marks."
+        },
+        "color": {
+          "$ref": "#/definitions/ColorDef%3Cstring%3E",
+          "description": "Color of the marks – either fill or stroke color based on  the `filled` property of mark definition.\n\n_Note:_ 1) For fine-grained control over both fill and stroke colors of the marks, please use the `fill` and `stroke` channels. The `fill` or `stroke` encodings have higher precedence than `color`, thus may override the `color` encoding if conflicting encodings are specified. 2) See the scale documentation for more information about customizing [color scheme](https://vega.github.io/vega-lite/docs/scale.html#scheme)."
+        },
+        "dx": {
+          "$ref": "#/definitions/NumericMarkPropDef%3Cstring%3E"
+        },
+        "dy": {
+          "$ref": "#/definitions/NumericMarkPropDef%3Cstring%3E"
+        },
+        "facetIndex": {
+          "$ref": "#/definitions/FieldDefWithoutScale%3Cstring%3E",
+          "description": "For internal use"
+        },
+        "fill": {
+          "$ref": "#/definitions/ColorDef%3Cstring%3E",
+          "description": "Fill color of the marks.\n\n_Note:_ The `fill` encoding has higher precedence than `color`, thus may override the `color` encoding if conflicting encodings are specified."
+        },
+        "fillOpacity": {
+          "$ref": "#/definitions/NumericMarkPropDef%3Cstring%3E",
+          "description": "Fill opacity of the marks."
+        },
+        "opacity": {
+          "$ref": "#/definitions/NumericMarkPropDef%3Cstring%3E",
+          "description": "Opacity of the marks."
+        },
+        "sample": {
+          "$ref": "#/definitions/FieldDefWithoutScale%3Cstring%3E",
+          "description": "Facet identifier for interactive filtering, sorting, and grouping in the App."
+        },
+        "search": {
+          "$ref": "#/definitions/FieldDefWithoutScale%3Cstring%3E"
+        },
+        "semanticScore": {
+          "$ref": "#/definitions/FieldDefWithoutScale%3Cstring%3E"
+        },
+        "shape": {
+          "$ref": "#/definitions/ShapeDef%3Cstring%3E",
+          "description": "Shape of the mark.\n\nFor `point` marks the supported values include:\n- plotting shapes: `\"circle\"`, `\"square\"`, `\"cross\"`, `\"diamond\"`, `\"triangle-up\"`, `\"triangle-down\"`, `\"triangle-right\"`, or `\"triangle-left\"`.\n- centered directional shape `\"triangle\"`"
+        },
+        "size": {
+          "$ref": "#/definitions/NumericMarkPropDef%3Cstring%3E",
+          "description": "Size of the mark.\n- For `\"point\"` – the symbol size, or pixel area of the mark.\n- For `\"text\"` – the text's font size."
+        },
+        "stroke": {
+          "$ref": "#/definitions/ColorDef%3Cstring%3E",
+          "description": "Stroke color of the marks.\n\n_Note:_ The `stroke` encoding has higher precedence than `color`, thus may override the `color` encoding if conflicting encodings are specified."
+        },
+        "strokeOpacity": {
+          "$ref": "#/definitions/NumericMarkPropDef%3Cstring%3E",
+          "description": "Stroke opacity of the marks."
+        },
+        "strokeWidth": {
+          "$ref": "#/definitions/NumericMarkPropDef%3Cstring%3E",
+          "description": "Stroke width of the marks."
+        },
+        "text": {
+          "$ref": "#/definitions/TextDef%3Cstring%3E",
+          "description": "Text of the `text` mark."
+        },
+        "uniqueId": {
+          "$ref": "#/definitions/FieldDefWithoutScale%3Cstring%3E",
+          "description": "For internal use"
+        },
+        "x": {
+          "$ref": "#/definitions/PositionDef%3Cstring%3E",
+          "description": "X coordinates of the marks.\n\nThe `value` of this channel can be a number between zero and one."
+        },
+        "x2": {
+          "$ref": "#/definitions/Position2Def%3Cstring%3E",
+          "description": "X2 coordinates of the marks.\n\nThe `value` of this channel can be a number between zero and one."
+        },
+        "y": {
+          "$ref": "#/definitions/PositionDef%3Cstring%3E",
+          "description": "Y coordinates of the marks.\n\nThe `value` of this channel can be a number between zero and one."
+        },
+        "y2": {
+          "$ref": "#/definitions/Position2Def%3Cstring%3E",
+          "description": "Y2 coordinates of the marks.\n\nThe `value` of this channel can be a number between zero and one."
+        }
+      },
+      "type": "object"
+    },
+    "Field": {
+      "description": "The name of the field or a JavaScript expression for accessing nested properties. Dots and brackets in the field name must be escaped.",
+      "type": "string"
+    },
+    "FieldDefWithoutScale<string>": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "description": "__Required.__ A string defining the name of the field from which to pull a data value or an object defining iterated values from the [`repeat`](https://vega.github.io/vega-lite/docs/repeat.html) operator.\n\n__See also:__ [`field`](https://vega.github.io/vega-lite/docs/field.html) documentation.\n\n__Notes:__ 1)  Dots (`.`) and brackets (`[` and `]`) can be used to access nested objects (e.g., `\"field\": \"foo.bar\"` and `\"field\": \"foo['bar']\"`). If field names contain dots or brackets but are not nested, you can use `\\\\` to escape dots and brackets (e.g., `\"a\\\\.b\"` and `\"a\\\\[0\\\\]\"`). See more details about escaping in the [field documentation](https://vega.github.io/vega-lite/docs/field.html). 2) `field` is not required if `aggregate` is `count`.",
+          "type": "string"
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "FieldName": {
+      "type": "string"
+    },
+    "FilterParams": {
+      "additionalProperties": false,
+      "properties": {
+        "expr": {
+          "description": "An expression string. The data object is removed if the expression evaluates to false.",
+          "type": "string"
+        },
+        "type": {
+          "const": "filter",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expr",
+        "type"
+      ],
+      "type": "object"
+    },
+    "FilterScoredLabelsParams": {
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "description": "**Default:** `\"x\"`",
+          "enum": [
+            "x",
+            "y"
+          ],
+          "type": "string"
+        },
+        "lane": {
+          "$ref": "#/definitions/Field",
+          "description": "An optional field representing element's lane, e.g., if transcripts are shown using a piled up layout."
+        },
+        "padding": {
+          "description": "Padding (in pixels) around the element.\n\n**Default:** `0`",
+          "type": "number"
+        },
+        "pos": {
+          "$ref": "#/definitions/Field",
+          "description": "The field representing element's position on the domain."
+        },
+        "score": {
+          "$ref": "#/definitions/Field",
+          "description": "The field representing the score used for prioritization."
+        },
+        "type": {
+          "const": "filterScoredLabels",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        },
+        "width": {
+          "$ref": "#/definitions/Field",
+          "description": "The field representing element's width in pixels"
+        }
+      },
+      "required": [
+        "pos",
+        "score",
+        "type",
+        "width"
+      ],
+      "type": "object"
+    },
+    "FlattenCompressedExonsParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "description": "Field names for the flattened exons.\n\n**Default:** `[\"exonStart\", \"exonEnd\"]`",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "exons": {
+          "$ref": "#/definitions/Field",
+          "description": "The field containing the exons.\n\n**Default:** `\"exons\"`"
+        },
+        "start": {
+          "$ref": "#/definitions/Field",
+          "description": "Start coordinate of the gene body.\n\n**Default:** `\"start\"`"
+        },
+        "type": {
+          "const": "flattenCompressedExons",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "FlattenDelimitedParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "The output field name(s) for the flattened field.\n\n**Default:** the input fields."
+        },
+        "field": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/definitions/Field"
+              },
+              "type": "array"
+            },
+            {
+              "$ref": "#/definitions/Field"
+            }
+          ],
+          "description": "The field(s) to split and flatten"
+        },
+        "separator": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Separator(s) used on the field(s) TODO: Rename to delimiter"
+        },
+        "type": {
+          "const": "flattenDelimited",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "separator",
+        "type"
+      ],
+      "type": "object"
+    },
+    "FlattenSequenceParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "description": "Name of the fields where the zero-based index number and flattened sequence letter are written to.\n\n**Default:** `[\"pos\", \"sequence\"]`",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "field": {
+          "$ref": "#/definitions/Field",
+          "description": "The field to flatten.\n\n**Default:** `\"sequence\"`"
+        },
+        "type": {
+          "const": "flattenSequence",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "FontStyle": {
+      "enum": [
+        "normal",
+        "italic"
+      ],
+      "type": "string"
+    },
+    "FontWeight": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "const": "thin",
+          "type": "string"
+        },
+        {
+          "const": "light",
+          "type": "string"
+        },
+        {
+          "const": "regular",
+          "type": "string"
+        },
+        {
+          "const": "normal",
+          "type": "string"
+        },
+        {
+          "const": "medium",
+          "type": "string"
+        },
+        {
+          "const": "bold",
+          "type": "string"
+        },
+        {
+          "const": "black",
+          "type": "string"
+        }
+      ]
+    },
+    "FormulaParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "description": "The (new) field where the computed value is written to",
+          "type": "string"
+        },
+        "expr": {
+          "description": "An expression string",
+          "type": "string"
+        },
+        "type": {
+          "const": "formula",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "as",
+        "expr",
+        "type"
+      ],
+      "type": "object"
+    },
+    "Generator": {
+      "$ref": "#/definitions/SequenceGenerator"
+    },
+    "GenomeConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "baseUrl": {
+          "description": "Base url of data files: chromsizes, cytobands, and gene annotations.\n\n**Default:** `\"https://genomespy.app/data/genomes/\"`",
+          "type": "string"
+        },
+        "contigs": {
+          "description": "As an alternative for chromSizes, the contigs can be provided inline.",
+          "items": {
+            "$ref": "#/definitions/Contig"
+          },
+          "type": "array"
+        },
+        "name": {
+          "description": "Name of the genome assembly, e.g., `hg19` or `hg38`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "HConcatSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "baseUrl": {
+          "type": "string"
+        },
+        "configurableVisibility": {
+          "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/Data"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A description of the view. Multiple lines can be provided as an array."
+        },
+        "encoding": {
+          "$ref": "#/definitions/Encoding"
+        },
+        "hconcat": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/ViewSpec"
+              },
+              {
+                "$ref": "#/definitions/ImportSpec"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "opacity": {
+          "$ref": "#/definitions/ViewOpacityDef",
+          "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+        },
+        "padding": {
+          "$ref": "#/definitions/PaddingConfig",
+          "description": "Padding in pixels.\n\n**Default:* `0`"
+        },
+        "resolve": {
+          "additionalProperties": false,
+          "properties": {
+            "axis": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            },
+            "scale": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "spacing": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "transform": {
+          "items": {
+            "$ref": "#/definitions/TransformParams"
+          },
+          "type": "array"
+        },
+        "visible": {
+          "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+          "type": "boolean"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "hconcat"
+      ],
+      "type": "object"
+    },
+    "HandledTooltip": {
+      "additionalProperties": false,
+      "properties": {
+        "handler": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "handler"
+      ],
+      "type": "object"
+    },
+    "IdentifierParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "description": "**Default:** `\"_uniqueId\"`",
+          "type": "string"
+        },
+        "type": {
+          "const": "identifier",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "ImportConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ImportSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "import": {
+          "$ref": "#/definitions/ImportConfig"
+        }
+      },
+      "required": [
+        "import"
+      ],
+      "type": "object"
+    },
+    "InlineData": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/DataFormat",
+          "description": "An object that specifies the format for parsing the data."
+        },
+        "name": {
+          "description": "Provide a placeholder name and bind data at runtime.",
+          "type": "string"
+        },
+        "values": {
+          "$ref": "#/definitions/InlineDataset",
+          "description": "The full data set, included inline. This can be an array of objects or primitive values, an object, or a string. Arrays of primitive values are ingested as objects with a `data` property. Strings are parsed according to the specified format type."
+        }
+      },
+      "required": [
+        "values"
+      ],
+      "type": "object"
+    },
+    "InlineDataset": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "items": {
+            "type": "boolean"
+          },
+          "type": "array"
+        },
+        {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "JsonDataFormat": {
+      "additionalProperties": false,
+      "properties": {
+        "parse": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Parse"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "If set to `null`, disable type inference based on the spec and only use type inference based on the data. Alternatively, a parsing directive object can be provided for explicit data types. Each property of the object corresponds to a field name, and the value to the desired data type (one of `\"number\"`, `\"boolean\"`, `\"date\"`, or null (do not parse the field)). For example, `\"parse\": {\"modified_on\": \"date\"}` parses the `modified_on` field in each input record a Date value.\n\nFor `\"date\"`, we parse data based using Javascript's [`Date.parse()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/parse). For Specific date formats can be provided (e.g., `{foo: \"date:'%m%d%Y'\"}`), using the [d3-time-format syntax](https://github.com/d3/d3-time-format#locale_format). UTC date format parsing is supported similarly (e.g., `{foo: \"utc:'%m%d%Y'\"}`). See more about [UTC time](https://vega.github.io/vega-lite/docs/timeunit.html#utc)"
+        },
+        "property": {
+          "description": "The JSON property containing the desired data. This parameter can be used when the loaded JSON file may have surrounding structure or meta-data. For example `\"property\": \"values.features\"` is equivalent to retrieving `json.values.features` from the loaded JSON object.",
+          "type": "string"
+        },
+        "type": {
+          "const": "json",
+          "description": "Type of input data: `\"json\"`, `\"csv\"`, `\"tsv\"`, `\"dsv\"`.\n\n__Default value:__  The default format type is determined by the extension of the file URL. If no extension is detected, `\"json\"` will be used by default.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "LayerSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregateSamples": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/UnitSpec"
+              },
+              {
+                "$ref": "#/definitions/LayerSpec"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "configurableVisibility": {
+          "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/Data"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A description of the view. Multiple lines can be provided as an array."
+        },
+        "encoding": {
+          "$ref": "#/definitions/Encoding"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        },
+        "layer": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/LayerSpec"
+              },
+              {
+                "$ref": "#/definitions/UnitSpec"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "opacity": {
+          "$ref": "#/definitions/ViewOpacityDef",
+          "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+        },
+        "padding": {
+          "$ref": "#/definitions/PaddingConfig",
+          "description": "Padding in pixels.\n\n**Default:* `0`"
+        },
+        "resolve": {
+          "additionalProperties": false,
+          "properties": {
+            "axis": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            },
+            "scale": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "title": {
+          "type": "string"
+        },
+        "transform": {
+          "items": {
+            "$ref": "#/definitions/TransformParams"
+          },
+          "type": "array"
+        },
+        "view": {
+          "$ref": "#/definitions/ViewConfig"
+        },
+        "visible": {
+          "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+          "type": "boolean"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "type": "object"
+    },
+    "LinearizeGenomicCoordinateParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "The output field or fields for linearized coordinates."
+        },
+        "channel": {
+          "description": "Get the genome assembly from the scale of the channel.\n\n**Default:** `\"x\"`",
+          "enum": [
+            "x",
+            "y"
+          ],
+          "type": "string"
+        },
+        "chrom": {
+          "$ref": "#/definitions/Field",
+          "description": "The chromosome/contig field"
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "An offset or offsets that allow for adjusting the numbering base. The offset is subtracted from the positions.\n\nGenomeSpy uses internally zero-based indexing with half-open intervals. UCSC-based formats (BED, etc.) generally use this scheme. However, for example, VCF files use one-based indexing and must be adjusted by setting the offset to `1`.\n\n**Default:** `0`"
+        },
+        "pos": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Field"
+            },
+            {
+              "items": {
+                "$ref": "#/definitions/Field"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "The field or fields that contain intra-chromosomal positions"
+        },
+        "type": {
+          "const": "linearizeGenomicCoordinate",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "as",
+        "chrom",
+        "pos",
+        "type"
+      ],
+      "type": "object"
+    },
+    "MarkConfigAndType": {
+      "additionalProperties": false,
+      "properties": {
+        "align": {
+          "$ref": "#/definitions/Align",
+          "description": "The horizontal alignment of the text. One of `\"left\"`, `\"center\"`, or `\"right\"`.\n\n**Default value:** `\"left\"`"
+        },
+        "angle": {
+          "description": "The rotation angle in degrees.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "baseline": {
+          "$ref": "#/definitions/Baseline",
+          "description": "The vertical alignment of the text.  One of `\"top\"`, `\"middle\"`, `\"bottom\"`.\n\n**Default value:** `\"bottom\"`"
+        },
+        "buildIndex": {
+          "description": "Builds and index for efficient rendering of subsets of the data. The data must be sorted by the x coordinate.\n\nTODO: This should be enabled automatically if the data are sorted.",
+          "type": "boolean"
+        },
+        "clip": {
+          "description": "If true, the mark is clipped to the UnitView's rectangle. By default, clipping is enabled for marks that have zoomable positional scales.",
+          "type": "boolean"
+        },
+        "color": {
+          "type": "string"
+        },
+        "color2": {
+          "description": "TODO",
+          "type": "string"
+        },
+        "cornerRadius": {
+          "description": "Radius of the rounded corners.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "cornerRadiusBottomLeft": {
+          "description": "Radius of the bottom left rounded corner. Has higher precedence than `cornerRadius`.\n\n**Default value:** (None)",
+          "type": "number"
+        },
+        "cornerRadiusBottomRight": {
+          "description": "Radius of the bottom right rounded corner. Has higher precedence than `cornerRadius`.\n\n**Default value:** (None)",
+          "type": "number"
+        },
+        "cornerRadiusTopLeft": {
+          "description": "Radius of the top left rounded corner. Has higher precedence than `cornerRadius`.\n\n**Default value:** (None)",
+          "type": "number"
+        },
+        "cornerRadiusTopRight": {
+          "description": "Radius of the top right rounded corner. Has higher precedence than `cornerRadius`.\n\n**Default value:** (None)",
+          "type": "number"
+        },
+        "dx": {
+          "description": "The horizontal offset between the text and its anchor point, in pixels. Applied after the rotation by `angle`.",
+          "type": "number"
+        },
+        "dy": {
+          "description": "The vertical offset between the text and its anchor point, in pixels. Applied after the rotation by `angle`.",
+          "type": "number"
+        },
+        "dynamicData": {
+          "type": "boolean"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "fillGradientStrength": {
+          "description": "Gradient strength controls the amount of the gradient eye-candy effect in the fill color. Valid values are between 0 and 1.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "fillOpacity": {
+          "type": "number"
+        },
+        "filled": {
+          "description": "Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`).",
+          "type": "boolean"
+        },
+        "fitToBand": {
+          "description": "If true, sets the secondary positional channel that allows the text to be squeezed (see the `squeeze` property). Can be used when: 1) `\"band\"`, `\"index\"`, or `\"locus\"` scale is being used and 2) only the primary positional channel is specified.\n\n**Default value:** `false`",
+          "type": "boolean"
+        },
+        "flushX": {
+          "description": "If true, the text is kept inside the viewport when the range of `x` and `x2` intersect the viewport.",
+          "type": "boolean"
+        },
+        "flushY": {
+          "description": "If true, the text is kept inside the viewport when the range of `y` and `y2` intersect the viewport.",
+          "type": "boolean"
+        },
+        "font": {
+          "description": "The font typeface. GenomeSpy uses [SDF](https://github.com/Chlumsky/msdfgen) versions of [Google Fonts](https://fonts.google.com/). Check their availability at the [A-Frame Fonts](https://github.com/etiennepinchon/aframe-fonts/tree/master/fonts) repository. System fonts are **not** supported.\n\n**Default value:** `\"Lato\"`",
+          "type": "string"
+        },
+        "fontStyle": {
+          "$ref": "#/definitions/FontStyle",
+          "description": "The font style. Valid values: `\"normal\"` and `\"italic\"`.\n\n**Default value:** `\"normal\"`"
+        },
+        "fontWeight": {
+          "$ref": "#/definitions/FontWeight",
+          "description": "The font weight. The following strings and numbers are valid values: `\"thin\"` (`100`), `\"light\"` (`300`), `\"regular\"` (`400`), `\"normal\"` (`400`), `\"medium\"` (`500`), `\"bold\"` (`700`), `\"black\"` (`900`)\n\n**Default value:** `\"regular\"`"
+        },
+        "geometricZoomBound": {
+          "description": "Enables geometric zooming. The value is the base two logarithmic zoom level where the maximum point size is reached.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "inwardStroke": {
+          "description": "Should the stroke only grow inwards, e.g, the diameter/outline is not affected by the stroke width. Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with geometric zoom, etc.\n\n**Default value:** `false`",
+          "type": "boolean"
+        },
+        "logoLetters": {
+          "description": "Stretch letters so that they can be used with [sequence logos](https://en.wikipedia.org/wiki/Sequence_logo), etc...",
+          "type": "boolean"
+        },
+        "minBufferSize": {
+          "description": "Minimum size for WebGL buffers (number of data items). Allows for using `bufferSubData()` to update graphics.\n\nThis property is intended for internal use.",
+          "type": "number"
+        },
+        "minHeight": {
+          "description": "The minimum height of a rectangle in pixels. The property clamps rectangles' heights.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "minLength": {
+          "description": "The minimum length of the rule in pixels. Use this property to ensure that very short ranged rules remain visible even when the user zooms out.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "minOpacity": {
+          "description": "Clamps the minimum size-dependent opacity. The property does not affect the `opacity` channel. Valid values are between `0` and `1`.\n\nWhen a rectangle would be smaller than what is specified in `minHeight` and `minWidth`, it is faded out proportionally. Example: a rectangle would be rendered as one pixel wide, but `minWidth` clamps it to five pixels. The rectangle is actually rendered as five pixels wide, but its opacity is multiplied by 0.2. With this setting, you can limit the factor to, for example, 0.5 to keep the rectangles more clearly visible.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "minSagittaLength": {
+          "description": "Minimum length of the arc's sagitta. Makes very short links more clearly visible.\n\n**Default value:** `1.5`",
+          "type": "number"
+        },
+        "minWidth": {
+          "description": "The minimum width of a rectangle in pixels. The property clamps rectangles' widths when the viewport is zoomed out.\n\nThis property also reduces flickering of very narrow rectangles when zooming. The value should generally be at least one.\n\n**Default value:** `1`",
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "paddingX": {
+          "description": "The horizontal padding, in pixels, when the `x2` channel is used for ranged text.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "paddingY": {
+          "description": "The vertical padding, in pixels, when the `y2` channel is used for ranged text.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "sagittaScaleFactor": {
+          "description": "Scaling factor of the arc's sagitta. The default value `1.0` produces roughly circular arcs.\n\n**Default value:** `1.0`",
+          "type": "number"
+        },
+        "sampleFacetPadding": {
+          "description": "Padding between sample facet's upper/lower edge and the maximum point size. This property controls how tightly points are squeezed when facet's height is smaller than the maximum point size. The unit is a proportion of facet's height. The value must be between `0` and `0.5`. This property has no effect when sample faceting is not used.\n\n**Default value:** `0.1`",
+          "type": "number"
+        },
+        "segments": {
+          "description": "The number of segments in the bézier curve. Affects the rendering quality and performance. Use a higher value for a smoother curve.\n\n**Default value:* `101`",
+          "type": "number"
+        },
+        "semanticZoomFraction": {
+          "description": "TODO\n\n**Default value:** `0.02`",
+          "type": "number"
+        },
+        "shape": {
+          "description": "One of `\"circle\"`, `\"square\"`, `\"cross\"`, `\"diamond\"`, `\"triangle-up\"`, `\"triangle-down\"`, `\"triangle-right\"`, or `\"triangle-left\"`.\n\n**Default value:** `\"circle\"`",
+          "type": "string"
+        },
+        "size": {
+          "description": "The font size in pixels.\n\n**Default value:** `11`",
+          "type": "number"
+        },
+        "size2": {
+          "description": "TODO",
+          "type": "number"
+        },
+        "squeeze": {
+          "description": "If the `squeeze` property is true and secondary positional channels (`x2` and/or `y2`) are used, the text is scaled to fit mark's width and/or height.\n\n**Default value:** `true`",
+          "type": "boolean"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "strokeCap": {
+          "description": "The style of stroke ends. Available choices: `\"butt\"`, `\"round`\", and `\"square\"`.\n\n**Default value:** `\"butt\"`",
+          "enum": [
+            "butt",
+            "square",
+            "round"
+          ],
+          "type": "string"
+        },
+        "strokeDash": {
+          "description": "An array of of alternating stroke and gap lengths or `null` for solid strokes.\n\n**Default value:** `null`",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "strokeDashOffset": {
+          "description": "An offset for the stroke dash pattern.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "strokeOpacity": {
+          "type": "number"
+        },
+        "strokeWidth": {
+          "description": "The stroke width in pixels.",
+          "type": "number"
+        },
+        "text": {
+          "$ref": "#/definitions/Scalar",
+          "description": "The text to display. The format of numeric data can be customized by setting a [format specifier](https://github.com/d3/d3-format#locale_format) to channel definition's `format` property.\n\n**Default value:** `\"\"`"
+        },
+        "tooltip": {
+          "$ref": "#/definitions/Tooltip",
+          "description": "TODO"
+        },
+        "type": {
+          "$ref": "#/definitions/MarkType"
+        },
+        "viewportEdgeFadeDistanceBottom": {
+          "type": "number"
+        },
+        "viewportEdgeFadeDistanceLeft": {
+          "type": "number"
+        },
+        "viewportEdgeFadeDistanceRight": {
+          "type": "number"
+        },
+        "viewportEdgeFadeDistanceTop": {
+          "type": "number"
+        },
+        "viewportEdgeFadeWidthBottom": {
+          "type": "number"
+        },
+        "viewportEdgeFadeWidthLeft": {
+          "type": "number"
+        },
+        "viewportEdgeFadeWidthRight": {
+          "type": "number"
+        },
+        "viewportEdgeFadeWidthTop": {
+          "type": "number"
+        },
+        "x": {
+          "type": "number"
+        },
+        "x2": {
+          "type": "number"
+        },
+        "xOffset": {
+          "description": "Offsets of the `x` and `x2` coordinates in pixels. The offset is applied after the viewport scaling and translation.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "y2": {
+          "type": "number"
+        },
+        "yOffset": {
+          "description": "Offsets of the `y` and `y2` coordinates in pixels. The offset is applied after the viewport scaling and translation.\n\n**Default value:** `0`",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "MarkPropDatumDef<Type>": {
+      "additionalProperties": false,
+      "properties": {
+        "datum": {
+          "$ref": "#/definitions/Scalar",
+          "description": "A constant value in data domain."
+        },
+        "resolutionChannel": {
+          "$ref": "#/definitions/Channel",
+          "description": "An alternative channel for scale resolution.\n\nThis is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances."
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of the channel's scale, which is the function that transforms values in the data domain (numbers, dates, strings, etc) to visual values (pixels, colors, sizes) of the encoding channels.\n\nIf `null`, the scale will be [disabled and the data value will be directly encoded](https://vega.github.io/vega-lite/docs/scale.html#disable).\n\n__Default value:__ If undefined, default [scale properties](https://vega.github.io/vega-lite/docs/scale.html) are applied.\n\n__See also:__ [`scale`](https://vega.github.io/vega-lite/docs/scale.html) documentation."
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "$ref": "#/definitions/Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "MarkPropDatumDef<TypeForShape>": {
+      "additionalProperties": false,
+      "properties": {
+        "datum": {
+          "$ref": "#/definitions/Scalar",
+          "description": "A constant value in data domain."
+        },
+        "resolutionChannel": {
+          "$ref": "#/definitions/Channel",
+          "description": "An alternative channel for scale resolution.\n\nThis is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances."
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of the channel's scale, which is the function that transforms values in the data domain (numbers, dates, strings, etc) to visual values (pixels, colors, sizes) of the encoding channels.\n\nIf `null`, the scale will be [disabled and the data value will be directly encoded](https://vega.github.io/vega-lite/docs/scale.html#disable).\n\n__Default value:__ If undefined, default [scale properties](https://vega.github.io/vega-lite/docs/scale.html) are applied.\n\n__See also:__ [`scale`](https://vega.github.io/vega-lite/docs/scale.html) documentation."
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "$ref": "#/definitions/TypeForShape"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "MarkPropDef<string,(string|null),TypeForShape>": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MarkPropFieldOrDatumOrExprDef%3Cstring%2CTypeForShape%3E"
+        },
+        {
+          "$ref": "#/definitions/ValueDef%3C(string%7Cnull)%3E"
+        }
+      ]
+    },
+    "MarkPropDef<string,(string|null)>": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MarkPropFieldOrDatumOrExprDef%3Cstring%2CType%3E"
+        },
+        {
+          "$ref": "#/definitions/ValueDef%3C(string%7Cnull)%3E"
+        }
+      ]
+    },
+    "MarkPropDef<string,number>": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MarkPropFieldOrDatumOrExprDef%3Cstring%2CType%3E"
+        },
+        {
+          "$ref": "#/definitions/ValueDef%3Cnumber%3E"
+        }
+      ]
+    },
+    "MarkPropExprDef": {
+      "additionalProperties": false,
+      "properties": {
+        "expr": {
+          "description": "An expression. Properties of the data can be accessed through the `datum` object.",
+          "type": "string"
+        },
+        "resolutionChannel": {
+          "$ref": "#/definitions/Channel",
+          "description": "An alternative channel for scale resolution.\n\nThis is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances."
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of the channel's scale, which is the function that transforms values in the data domain (numbers, dates, strings, etc) to visual values (pixels, colors, sizes) of the encoding channels.\n\nIf `null`, the scale will be [disabled and the data value will be directly encoded](https://vega.github.io/vega-lite/docs/scale.html#disable).\n\n__Default value:__ If undefined, default [scale properties](https://vega.github.io/vega-lite/docs/scale.html) are applied.\n\n__See also:__ [`scale`](https://vega.github.io/vega-lite/docs/scale.html) documentation."
+        },
+        "type": {
+          "$ref": "#/definitions/Type"
+        }
+      },
+      "required": [
+        "expr",
+        "type"
+      ],
+      "type": "object"
+    },
+    "MarkPropFieldDef<string,Type>": {
+      "additionalProperties": false,
+      "description": "Field definition of a mark property, which can contain a legend.",
+      "properties": {
+        "field": {
+          "description": "__Required.__ A string defining the name of the field from which to pull a data value or an object defining iterated values from the [`repeat`](https://vega.github.io/vega-lite/docs/repeat.html) operator.\n\n__See also:__ [`field`](https://vega.github.io/vega-lite/docs/field.html) documentation.\n\n__Notes:__ 1)  Dots (`.`) and brackets (`[` and `]`) can be used to access nested objects (e.g., `\"field\": \"foo.bar\"` and `\"field\": \"foo['bar']\"`). If field names contain dots or brackets but are not nested, you can use `\\\\` to escape dots and brackets (e.g., `\"a\\\\.b\"` and `\"a\\\\[0\\\\]\"`). See more details about escaping in the [field documentation](https://vega.github.io/vega-lite/docs/field.html). 2) `field` is not required if `aggregate` is `count`.",
+          "type": "string"
+        },
+        "resolutionChannel": {
+          "$ref": "#/definitions/Channel",
+          "description": "An alternative channel for scale resolution.\n\nThis is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances."
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of the channel's scale, which is the function that transforms values in the data domain (numbers, dates, strings, etc) to visual values (pixels, colors, sizes) of the encoding channels.\n\nIf `null`, the scale will be [disabled and the data value will be directly encoded](https://vega.github.io/vega-lite/docs/scale.html#disable).\n\n__Default value:__ If undefined, default [scale properties](https://vega.github.io/vega-lite/docs/scale.html) are applied.\n\n__See also:__ [`scale`](https://vega.github.io/vega-lite/docs/scale.html) documentation."
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "$ref": "#/definitions/Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "MarkPropFieldDef<string,TypeForShape>": {
+      "additionalProperties": false,
+      "description": "Field definition of a mark property, which can contain a legend.",
+      "properties": {
+        "field": {
+          "description": "__Required.__ A string defining the name of the field from which to pull a data value or an object defining iterated values from the [`repeat`](https://vega.github.io/vega-lite/docs/repeat.html) operator.\n\n__See also:__ [`field`](https://vega.github.io/vega-lite/docs/field.html) documentation.\n\n__Notes:__ 1)  Dots (`.`) and brackets (`[` and `]`) can be used to access nested objects (e.g., `\"field\": \"foo.bar\"` and `\"field\": \"foo['bar']\"`). If field names contain dots or brackets but are not nested, you can use `\\\\` to escape dots and brackets (e.g., `\"a\\\\.b\"` and `\"a\\\\[0\\\\]\"`). See more details about escaping in the [field documentation](https://vega.github.io/vega-lite/docs/field.html). 2) `field` is not required if `aggregate` is `count`.",
+          "type": "string"
+        },
+        "resolutionChannel": {
+          "$ref": "#/definitions/Channel",
+          "description": "An alternative channel for scale resolution.\n\nThis is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances."
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of the channel's scale, which is the function that transforms values in the data domain (numbers, dates, strings, etc) to visual values (pixels, colors, sizes) of the encoding channels.\n\nIf `null`, the scale will be [disabled and the data value will be directly encoded](https://vega.github.io/vega-lite/docs/scale.html#disable).\n\n__Default value:__ If undefined, default [scale properties](https://vega.github.io/vega-lite/docs/scale.html) are applied.\n\n__See also:__ [`scale`](https://vega.github.io/vega-lite/docs/scale.html) documentation."
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "$ref": "#/definitions/TypeForShape"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "MarkPropFieldOrDatumOrExprDef<string,Type>": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MarkPropFieldDef%3Cstring%2CType%3E"
+        },
+        {
+          "$ref": "#/definitions/MarkPropDatumDef%3CType%3E"
+        },
+        {
+          "$ref": "#/definitions/MarkPropExprDef"
+        }
+      ]
+    },
+    "MarkPropFieldOrDatumOrExprDef<string,TypeForShape>": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MarkPropFieldDef%3Cstring%2CTypeForShape%3E"
+        },
+        {
+          "$ref": "#/definitions/MarkPropDatumDef%3CTypeForShape%3E"
+        },
+        {
+          "$ref": "#/definitions/MarkPropExprDef"
+        }
+      ]
+    },
+    "MarkType": {
+      "enum": [
+        "rect",
+        "point",
+        "rule",
+        "text",
+        "link"
+      ],
+      "type": "string"
+    },
+    "MeasureTextParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "type": "string"
+        },
+        "field": {
+          "$ref": "#/definitions/Field"
+        },
+        "fontSize": {
+          "type": "number"
+        },
+        "type": {
+          "const": "measureText",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "as",
+        "field",
+        "fontSize",
+        "type"
+      ],
+      "type": "object"
+    },
+    "MergeFacetsParams": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "mergeFacets",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "NamedData": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/DataFormat",
+          "description": "An object that specifies the format for parsing the data."
+        },
+        "name": {
+          "description": "Provide a placeholder name and bind data at runtime.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "NumericDomain": {
+      "items": {
+        "type": "number"
+      },
+      "type": "array"
+    },
+    "NumericMarkPropDef<string>": {
+      "$ref": "#/definitions/MarkPropDef%3Cstring%2Cnumber%3E"
+    },
+    "NumericValueDef": {
+      "$ref": "#/definitions/ValueDef%3Cnumber%3E"
+    },
+    "OtherDataFormat": {
+      "additionalProperties": false,
+      "description": "Other data format, such as `\"fasta\"`",
+      "properties": {
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "PaddingConfig": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Paddings"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "Paddings": {
+      "additionalProperties": false,
+      "properties": {
+        "bottom": {
+          "type": "number"
+        },
+        "left": {
+          "type": "number"
+        },
+        "right": {
+          "type": "number"
+        },
+        "top": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "Parse": {
+      "additionalProperties": {
+        "$ref": "#/definitions/ParseValue"
+      },
+      "type": "object"
+    },
+    "ParseValue": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "const": "string",
+          "type": "string"
+        },
+        {
+          "const": "boolean",
+          "type": "string"
+        },
+        {
+          "const": "date",
+          "type": "string"
+        },
+        {
+          "const": "number",
+          "type": "string"
+        }
+      ]
+    },
+    "PileupParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "description": "The output field name for the computed lane.\n\n**Default:** `\"lane\"`.",
+          "type": "string"
+        },
+        "end": {
+          "$ref": "#/definitions/Field",
+          "description": "The field representing the end coordinate of the segment (exclusive)."
+        },
+        "preference": {
+          "$ref": "#/definitions/Field",
+          "description": "An optional field indicating the preferred lane. Use together with the `preferredOrder` property."
+        },
+        "preferredOrder": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "items": {
+                "type": "boolean"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "The order of the lane preferences. The first element contains the value that should place the segment on the first lane and so forth. If the preferred lane is occupied, the first available lane is taken."
+        },
+        "spacing": {
+          "description": "The spacing between adjacent segments on the same lane in coordinate units.\n\n**Default:** `1`.",
+          "type": "number"
+        },
+        "start": {
+          "$ref": "#/definitions/Field",
+          "description": "The field representing the start coordinate of the segment (inclusive)."
+        },
+        "type": {
+          "const": "pileup",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "end",
+        "start",
+        "type"
+      ],
+      "type": "object"
+    },
+    "Position2Def<string>": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "band": {
+              "description": "Relative position on band scale. For example, the marks will be positioned at the beginning of the band if set to `0`, and at the middle of the band if set to `0.5`.",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "field": {
+              "description": "__Required.__ A string defining the name of the field from which to pull a data value or an object defining iterated values from the [`repeat`](https://vega.github.io/vega-lite/docs/repeat.html) operator.\n\n__See also:__ [`field`](https://vega.github.io/vega-lite/docs/field.html) documentation.\n\n__Notes:__ 1)  Dots (`.`) and brackets (`[` and `]`) can be used to access nested objects (e.g., `\"field\": \"foo.bar\"` and `\"field\": \"foo['bar']\"`). If field names contain dots or brackets but are not nested, you can use `\\\\` to escape dots and brackets (e.g., `\"a\\\\.b\"` and `\"a\\\\[0\\\\]\"`). See more details about escaping in the [field documentation](https://vega.github.io/vega-lite/docs/field.html). 2) `field` is not required if `aggregate` is `count`.",
+              "type": "string"
+            },
+            "title": {
+              "description": "A title for the field. If `null`, the title will be removed.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        {
+          "$ref": "#/definitions/SecondaryChromPosDef"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "band": {
+              "description": "Relative position on band scale. For example, the marks will be positioned at the beginning of the band if set to `0`, and at the middle of the band if set to `0.5`.",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "datum": {
+              "$ref": "#/definitions/Scalar",
+              "description": "A constant value in data domain."
+            },
+            "title": {
+              "description": "A title for the field. If `null`, the title will be removed.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "band": {
+              "description": "Relative position on band scale. For example, the marks will be positioned at the beginning of the band if set to `0`, and at the middle of the band if set to `0.5`.",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "expr": {
+              "description": "An expression. Properties of the data can be accessed through the `datum` object.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "expr"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/definitions/PositionValueDef"
+        }
+      ]
+    },
+    "PositionDatumDef": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Axis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of axis's gridlines, ticks and labels. If `null`, the axis for the encoding channel will be removed.\n\n__Default value:__ If undefined, default [axis properties](https://vega.github.io/vega-lite/docs/axis.html) are applied.\n\n__See also:__ [`axis`](https://vega.github.io/vega-lite/docs/axis.html) documentation."
+        },
+        "band": {
+          "description": "Relative position on band scale. For example, the marks will be positioned at the beginning of the band if set to `0`, and at the middle of the band if set to `0.5`.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "datum": {
+          "$ref": "#/definitions/Scalar",
+          "description": "A constant value in data domain."
+        },
+        "resolutionChannel": {
+          "$ref": "#/definitions/Channel",
+          "description": "An alternative channel for scale resolution.\n\nThis is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances."
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of the channel's scale, which is the function that transforms values in the data domain (numbers, dates, strings, etc) to visual values (pixels, colors, sizes) of the encoding channels.\n\nIf `null`, the scale will be [disabled and the data value will be directly encoded](https://vega.github.io/vega-lite/docs/scale.html#disable).\n\n__Default value:__ If undefined, default [scale properties](https://vega.github.io/vega-lite/docs/scale.html) are applied.\n\n__See also:__ [`scale`](https://vega.github.io/vega-lite/docs/scale.html) documentation."
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "$ref": "#/definitions/Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "PositionDef<string>": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PositionFieldDef%3Cstring%3E"
+        },
+        {
+          "$ref": "#/definitions/ChromPosDef"
+        },
+        {
+          "$ref": "#/definitions/PositionDatumDef"
+        },
+        {
+          "$ref": "#/definitions/PositionExprDef"
+        },
+        {
+          "$ref": "#/definitions/PositionValueDef"
+        }
+      ]
+    },
+    "PositionExprDef": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Axis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of axis's gridlines, ticks and labels. If `null`, the axis for the encoding channel will be removed.\n\n__Default value:__ If undefined, default [axis properties](https://vega.github.io/vega-lite/docs/axis.html) are applied.\n\n__See also:__ [`axis`](https://vega.github.io/vega-lite/docs/axis.html) documentation."
+        },
+        "band": {
+          "description": "Relative position on band scale. For example, the marks will be positioned at the beginning of the band if set to `0`, and at the middle of the band if set to `0.5`.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "expr": {
+          "description": "An expression. Properties of the data can be accessed through the `datum` object.",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/Type"
+        }
+      },
+      "required": [
+        "expr",
+        "type"
+      ],
+      "type": "object"
+    },
+    "PositionFieldDef<string>": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Axis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of axis's gridlines, ticks and labels. If `null`, the axis for the encoding channel will be removed.\n\n__Default value:__ If undefined, default [axis properties](https://vega.github.io/vega-lite/docs/axis.html) are applied.\n\n__See also:__ [`axis`](https://vega.github.io/vega-lite/docs/axis.html) documentation."
+        },
+        "band": {
+          "description": "Relative position on band scale. For example, the marks will be positioned at the beginning of the band if set to `0`, and at the middle of the band if set to `0.5`.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "field": {
+          "description": "__Required.__ A string defining the name of the field from which to pull a data value or an object defining iterated values from the [`repeat`](https://vega.github.io/vega-lite/docs/repeat.html) operator.\n\n__See also:__ [`field`](https://vega.github.io/vega-lite/docs/field.html) documentation.\n\n__Notes:__ 1)  Dots (`.`) and brackets (`[` and `]`) can be used to access nested objects (e.g., `\"field\": \"foo.bar\"` and `\"field\": \"foo['bar']\"`). If field names contain dots or brackets but are not nested, you can use `\\\\` to escape dots and brackets (e.g., `\"a\\\\.b\"` and `\"a\\\\[0\\\\]\"`). See more details about escaping in the [field documentation](https://vega.github.io/vega-lite/docs/field.html). 2) `field` is not required if `aggregate` is `count`.",
+          "type": "string"
+        },
+        "resolutionChannel": {
+          "$ref": "#/definitions/Channel",
+          "description": "An alternative channel for scale resolution.\n\nThis is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances."
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of the channel's scale, which is the function that transforms values in the data domain (numbers, dates, strings, etc) to visual values (pixels, colors, sizes) of the encoding channels.\n\nIf `null`, the scale will be [disabled and the data value will be directly encoded](https://vega.github.io/vega-lite/docs/scale.html#disable).\n\n__Default value:__ If undefined, default [scale properties](https://vega.github.io/vega-lite/docs/scale.html) are applied.\n\n__See also:__ [`scale`](https://vega.github.io/vega-lite/docs/scale.html) documentation."
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "$ref": "#/definitions/Type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "PositionValueDef": {
+      "$ref": "#/definitions/NumericValueDef"
+    },
+    "PositionalChannel": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PrimaryPositionalChannel"
+        },
+        {
+          "$ref": "#/definitions/SecondaryPositionalChannel"
+        }
+      ]
+    },
+    "PrimaryPositionalChannel": {
+      "enum": [
+        "x",
+        "y"
+      ],
+      "type": "string"
+    },
+    "ProjectParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "description": "New names for the projected fields. If omitted, the names of the source fields are used.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "fields": {
+          "description": "The fields to be projected.",
+          "items": {
+            "$ref": "#/definitions/Field"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "project",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fields",
+        "type"
+      ],
+      "type": "object"
+    },
+    "RegexExtractParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "The new field or an array of fields where the extracted values are written."
+        },
+        "field": {
+          "$ref": "#/definitions/Field",
+          "description": "The source field"
+        },
+        "regex": {
+          "description": "A valid JavaScript regular expression with at least one group. For example: `\"^Sample(\\\\d+)$\"`.\n\nRead more at: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions",
+          "type": "string"
+        },
+        "skipInvalidInput": {
+          "description": "Do not complain about invalid input. Just skip it and leave the new fields undefined on the affected datum.\n\n**Default:** `false`",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "regexExtract",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "as",
+        "field",
+        "regex",
+        "type"
+      ],
+      "type": "object"
+    },
+    "RegexFoldParams": {
+      "additionalProperties": false,
+      "properties": {
+        "asKey": {
+          "description": "**Default:** `\"sample\"`",
+          "type": "string"
+        },
+        "asValue": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "A new column name for the extracted values."
+        },
+        "columnRegex": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "A regular expression that matches to column names. The regex must have one capturing group that is used for extracting the key (e.g., a sample id) from the column name."
+        },
+        "skipRegex": {
+          "description": "An optional regex that matches to fields that should not be included in the new folded data objects.",
+          "type": "string"
+        },
+        "type": {
+          "const": "regexFold",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asValue",
+        "columnRegex",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ResolutionBehavior": {
+      "description": "`\"independent\"` and `\"shared\"` behave similarly to Vega-Lite. `\"excluded\"` behaves like `\"shared\"`, but is not pulled towards the root.",
+      "enum": [
+        "independent",
+        "shared",
+        "excluded"
+      ],
+      "type": "string"
+    },
+    "RootSpec": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "$schema": {
+              "type": "string"
+            },
+            "aggregateSamples": {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UnitSpec"
+                  },
+                  {
+                    "$ref": "#/definitions/LayerSpec"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "baseUrl": {
+              "type": "string"
+            },
+            "configurableVisibility": {
+              "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+              "type": "boolean"
+            },
+            "data": {
+              "$ref": "#/definitions/Data"
+            },
+            "datasets": {
+              "additionalProperties": {
+                "items": {},
+                "type": "array"
+              },
+              "description": "https://vega.github.io/vega-lite/docs/data.html#datasets",
+              "type": "object"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A description of the view. Multiple lines can be provided as an array."
+            },
+            "encoding": {
+              "$ref": "#/definitions/Encoding"
+            },
+            "genome": {
+              "$ref": "#/definitions/GenomeConfig"
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            },
+            "mark": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/MarkType"
+                },
+                {
+                  "$ref": "#/definitions/MarkConfigAndType"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "opacity": {
+              "$ref": "#/definitions/ViewOpacityDef",
+              "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+            },
+            "padding": {
+              "$ref": "#/definitions/PaddingConfig",
+              "description": "Padding in pixels.\n\n**Default:* `0`"
+            },
+            "resolve": {
+              "additionalProperties": false,
+              "properties": {
+                "axis": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                },
+                "scale": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "title": {
+              "type": "string"
+            },
+            "transform": {
+              "items": {
+                "$ref": "#/definitions/TransformParams"
+              },
+              "type": "array"
+            },
+            "view": {
+              "$ref": "#/definitions/ViewConfig"
+            },
+            "visible": {
+              "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+              "type": "boolean"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "mark"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "$schema": {
+              "type": "string"
+            },
+            "aggregateSamples": {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UnitSpec"
+                  },
+                  {
+                    "$ref": "#/definitions/LayerSpec"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "baseUrl": {
+              "type": "string"
+            },
+            "configurableVisibility": {
+              "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+              "type": "boolean"
+            },
+            "data": {
+              "$ref": "#/definitions/Data"
+            },
+            "datasets": {
+              "additionalProperties": {
+                "items": {},
+                "type": "array"
+              },
+              "description": "https://vega.github.io/vega-lite/docs/data.html#datasets",
+              "type": "object"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A description of the view. Multiple lines can be provided as an array."
+            },
+            "encoding": {
+              "$ref": "#/definitions/Encoding"
+            },
+            "genome": {
+              "$ref": "#/definitions/GenomeConfig"
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            },
+            "layer": {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/LayerSpec"
+                  },
+                  {
+                    "$ref": "#/definitions/UnitSpec"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "opacity": {
+              "$ref": "#/definitions/ViewOpacityDef",
+              "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+            },
+            "padding": {
+              "$ref": "#/definitions/PaddingConfig",
+              "description": "Padding in pixels.\n\n**Default:* `0`"
+            },
+            "resolve": {
+              "additionalProperties": false,
+              "properties": {
+                "axis": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                },
+                "scale": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "title": {
+              "type": "string"
+            },
+            "transform": {
+              "items": {
+                "$ref": "#/definitions/TransformParams"
+              },
+              "type": "array"
+            },
+            "view": {
+              "$ref": "#/definitions/ViewConfig"
+            },
+            "visible": {
+              "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+              "type": "boolean"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "layer"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "$schema": {
+              "type": "string"
+            },
+            "baseUrl": {
+              "type": "string"
+            },
+            "configurableVisibility": {
+              "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+              "type": "boolean"
+            },
+            "data": {
+              "$ref": "#/definitions/Data"
+            },
+            "datasets": {
+              "additionalProperties": {
+                "items": {},
+                "type": "array"
+              },
+              "description": "https://vega.github.io/vega-lite/docs/data.html#datasets",
+              "type": "object"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A description of the view. Multiple lines can be provided as an array."
+            },
+            "encoding": {
+              "$ref": "#/definitions/Encoding"
+            },
+            "genome": {
+              "$ref": "#/definitions/GenomeConfig"
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "opacity": {
+              "$ref": "#/definitions/ViewOpacityDef",
+              "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+            },
+            "padding": {
+              "$ref": "#/definitions/PaddingConfig",
+              "description": "Padding in pixels.\n\n**Default:* `0`"
+            },
+            "resolve": {
+              "additionalProperties": false,
+              "properties": {
+                "axis": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                },
+                "scale": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "samples": {
+              "$ref": "#/definitions/SampleDef"
+            },
+            "spec": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/LayerSpec"
+                },
+                {
+                  "$ref": "#/definitions/UnitSpec"
+                }
+              ]
+            },
+            "stickySummaries": {
+              "type": "boolean"
+            },
+            "title": {
+              "type": "string"
+            },
+            "transform": {
+              "items": {
+                "$ref": "#/definitions/TransformParams"
+              },
+              "type": "array"
+            },
+            "visible": {
+              "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+              "type": "boolean"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "samples",
+            "spec"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "$schema": {
+              "type": "string"
+            },
+            "baseUrl": {
+              "type": "string"
+            },
+            "configurableVisibility": {
+              "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+              "type": "boolean"
+            },
+            "data": {
+              "$ref": "#/definitions/Data"
+            },
+            "datasets": {
+              "additionalProperties": {
+                "items": {},
+                "type": "array"
+              },
+              "description": "https://vega.github.io/vega-lite/docs/data.html#datasets",
+              "type": "object"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A description of the view. Multiple lines can be provided as an array."
+            },
+            "encoding": {
+              "$ref": "#/definitions/Encoding"
+            },
+            "genome": {
+              "$ref": "#/definitions/GenomeConfig"
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "opacity": {
+              "$ref": "#/definitions/ViewOpacityDef",
+              "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+            },
+            "padding": {
+              "$ref": "#/definitions/PaddingConfig",
+              "description": "Padding in pixels.\n\n**Default:* `0`"
+            },
+            "resolve": {
+              "additionalProperties": false,
+              "properties": {
+                "axis": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                },
+                "scale": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "spacing": {
+              "type": "number"
+            },
+            "title": {
+              "type": "string"
+            },
+            "transform": {
+              "items": {
+                "$ref": "#/definitions/TransformParams"
+              },
+              "type": "array"
+            },
+            "vconcat": {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ViewSpec"
+                  },
+                  {
+                    "$ref": "#/definitions/ImportSpec"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "visible": {
+              "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+              "type": "boolean"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "vconcat"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "$schema": {
+              "type": "string"
+            },
+            "baseUrl": {
+              "type": "string"
+            },
+            "configurableVisibility": {
+              "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+              "type": "boolean"
+            },
+            "data": {
+              "$ref": "#/definitions/Data"
+            },
+            "datasets": {
+              "additionalProperties": {
+                "items": {},
+                "type": "array"
+              },
+              "description": "https://vega.github.io/vega-lite/docs/data.html#datasets",
+              "type": "object"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A description of the view. Multiple lines can be provided as an array."
+            },
+            "encoding": {
+              "$ref": "#/definitions/Encoding"
+            },
+            "genome": {
+              "$ref": "#/definitions/GenomeConfig"
+            },
+            "hconcat": {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ViewSpec"
+                  },
+                  {
+                    "$ref": "#/definitions/ImportSpec"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "opacity": {
+              "$ref": "#/definitions/ViewOpacityDef",
+              "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+            },
+            "padding": {
+              "$ref": "#/definitions/PaddingConfig",
+              "description": "Padding in pixels.\n\n**Default:* `0`"
+            },
+            "resolve": {
+              "additionalProperties": false,
+              "properties": {
+                "axis": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                },
+                "scale": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "spacing": {
+              "type": "number"
+            },
+            "title": {
+              "type": "string"
+            },
+            "transform": {
+              "items": {
+                "$ref": "#/definitions/TransformParams"
+              },
+              "type": "array"
+            },
+            "visible": {
+              "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+              "type": "boolean"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "hconcat"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "$schema": {
+              "type": "string"
+            },
+            "baseUrl": {
+              "type": "string"
+            },
+            "concat": {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ViewSpec"
+                  },
+                  {
+                    "$ref": "#/definitions/ImportSpec"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "configurableVisibility": {
+              "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+              "type": "boolean"
+            },
+            "data": {
+              "$ref": "#/definitions/Data"
+            },
+            "datasets": {
+              "additionalProperties": {
+                "items": {},
+                "type": "array"
+              },
+              "description": "https://vega.github.io/vega-lite/docs/data.html#datasets",
+              "type": "object"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A description of the view. Multiple lines can be provided as an array."
+            },
+            "encoding": {
+              "$ref": "#/definitions/Encoding"
+            },
+            "genome": {
+              "$ref": "#/definitions/GenomeConfig"
+            },
+            "height": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "opacity": {
+              "$ref": "#/definitions/ViewOpacityDef",
+              "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+            },
+            "padding": {
+              "$ref": "#/definitions/PaddingConfig",
+              "description": "Padding in pixels.\n\n**Default:* `0`"
+            },
+            "resolve": {
+              "additionalProperties": false,
+              "properties": {
+                "axis": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                },
+                "scale": {
+                  "additionalProperties": {
+                    "$ref": "#/definitions/ResolutionBehavior"
+                  },
+                  "properties": {
+                    "default": {
+                      "$ref": "#/definitions/ResolutionBehavior"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "spacing": {
+              "type": "number"
+            },
+            "title": {
+              "type": "string"
+            },
+            "transform": {
+              "items": {
+                "$ref": "#/definitions/TransformParams"
+              },
+              "type": "array"
+            },
+            "visible": {
+              "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+              "type": "boolean"
+            },
+            "width": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SizeDef"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/definitions/Step"
+                },
+                {
+                  "const": "container",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "concat"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SampleAttributeDef": {
+      "additionalProperties": false,
+      "properties": {
+        "barScale": {
+          "$ref": "#/definitions/Scale"
+        },
+        "scale": {
+          "$ref": "#/definitions/Scale",
+          "description": "Color scale (primary)"
+        },
+        "type": {
+          "$ref": "#/definitions/Type"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "width": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "SampleDef": {
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "additionalProperties": {
+            "$ref": "#/definitions/SampleAttributeDef"
+          },
+          "type": "object"
+        },
+        "data": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "type": "object"
+    },
+    "SampleParams": {
+      "additionalProperties": false,
+      "properties": {
+        "size": {
+          "description": "The maximum sample size.\n\n**Default:** `500`",
+          "type": "number"
+        },
+        "type": {
+          "const": "sample",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "SampleSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "baseUrl": {
+          "type": "string"
+        },
+        "configurableVisibility": {
+          "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/Data"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A description of the view. Multiple lines can be provided as an array."
+        },
+        "encoding": {
+          "$ref": "#/definitions/Encoding"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "opacity": {
+          "$ref": "#/definitions/ViewOpacityDef",
+          "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+        },
+        "padding": {
+          "$ref": "#/definitions/PaddingConfig",
+          "description": "Padding in pixels.\n\n**Default:* `0`"
+        },
+        "resolve": {
+          "additionalProperties": false,
+          "properties": {
+            "axis": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            },
+            "scale": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "samples": {
+          "$ref": "#/definitions/SampleDef"
+        },
+        "spec": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/LayerSpec"
+            },
+            {
+              "$ref": "#/definitions/UnitSpec"
+            }
+          ]
+        },
+        "stickySummaries": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        },
+        "transform": {
+          "items": {
+            "$ref": "#/definitions/TransformParams"
+          },
+          "type": "array"
+        },
+        "visible": {
+          "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+          "type": "boolean"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "samples",
+        "spec"
+      ],
+      "type": "object"
+    },
+    "Scalar": {
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "ScalarDomain": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/NumericDomain"
+        },
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "items": {
+            "type": "boolean"
+          },
+          "type": "array"
+        }
+      ]
+    },
+    "Scale": {
+      "additionalProperties": false,
+      "properties": {
+        "align": {
+          "description": "The alignment of the steps within the scale range.\n\nThis value must lie in the range `[0,1]`. A value of `0.5` indicates that the steps should be centered within the range. A value of `0` or `1` may be used to shift the bands to one side, say to position them adjacent to an axis.\n\n__Default value:__ `0.5`",
+          "type": "number"
+        },
+        "base": {
+          "description": "The logarithm base of the `log` scale (default `10`).",
+          "type": "number"
+        },
+        "bins": {
+          "description": "An array of bin boundaries over the scale domain. If provided, axes and legends will use the bin boundaries to inform the choice of tick marks and text labels.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "clamp": {
+          "description": "If `true`, values that exceed the data domain are clamped to either the minimum or maximum range value\n\n__Default value:__ derived from the [scale config](https://vega.github.io/vega-lite/docs/config.html#scale-config)'s `clamp` (`true` by default).",
+          "type": "boolean"
+        },
+        "constant": {
+          "description": "A constant determining the slope of the symlog function around zero. Only used for `symlog` scales.\n\n__Default value:__ `1`",
+          "type": "number"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScalarDomain"
+            },
+            {
+              "$ref": "#/definitions/ComplexDomain"
+            }
+          ],
+          "description": "Customized domain values.\n\nFor _quantitative_ fields, `domain` can take the form of a two-element array with minimum and maximum values.  [Piecewise scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise) can be created by providing a `domain` with more than two entries.\n\nFor _temporal_ fields, `domain` can be a two-element array minimum and maximum values, in the form of either timestamps or the [DateTime definition objects](https://vega.github.io/vega-lite/docs/types.html#datetime).\n\nFor _ordinal_ and _nominal_ fields, `domain` can be an array that lists valid input values."
+        },
+        "domainMax": {
+          "description": "Sets the maximum value in the scale domain, overriding the `domain` property. This property is only intended for use with scales having continuous domains.",
+          "type": "number"
+        },
+        "domainMid": {
+          "description": "Inserts a single mid-point value into a two-element domain. The mid-point value must lie between the domain minimum and maximum values. This property can be useful for setting a midpoint for [diverging color scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise). The domainMid property is only intended for use with scales supporting continuous, piecewise domains.",
+          "type": "number"
+        },
+        "domainMin": {
+          "description": "Sets the minimum value in the scale domain, overriding the domain property. This property is only intended for use with scales having continuous domains.",
+          "type": "number"
+        },
+        "exponent": {
+          "description": "The exponent of the `pow` scale.",
+          "type": "number"
+        },
+        "fp64": {
+          "description": "Use emulated 64bit floating points on the GPU to increase precision.\n\nEmulation has a performance cost when compared to the native 32bit processing, but the effect is negligible in the most cases.\n\n__Default value:__ `true` for `\"locus\"` scale, `false` for others.",
+          "type": "boolean"
+        },
+        "interpolate": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScaleInterpolate"
+            },
+            {
+              "$ref": "#/definitions/ScaleInterpolateParams"
+            }
+          ],
+          "description": "The interpolation method for range values. By default, a general interpolator for numbers, dates, strings and colors (in HCL space) is used. For color ranges, this property allows interpolation in alternative color spaces. Legal values include `rgb`, `hsl`, `hsl-long`, `lab`, `hcl`, `hcl-long`, `cubehelix` and `cubehelix-long` ('-long' variants use longer paths in polar coordinate spaces). If object-valued, this property accepts an object with a string-valued _type_ property and an optional numeric _gamma_ property applicable to rgb and cubehelix interpolators. For more, see the [d3-interpolate documentation](https://github.com/d3/d3-interpolate).\n\n__Default value:__ `hcl`"
+        },
+        "name": {
+          "description": "The name of the scale. Names are optional but allow the scales to be referenced and found with the API.",
+          "type": "string"
+        },
+        "nice": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "interval": {
+                  "type": "string"
+                },
+                "step": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "interval",
+                "step"
+              ],
+              "type": "object"
+            }
+          ],
+          "description": "Extending the domain so that it starts and ends on nice round values. This method typically modifies the scale’s domain, and may only extend the bounds to the nearest round value. Nicing is useful if the domain is computed from data and may be irregular. For example, for a domain of _[0.201479…, 0.996679…]_, a nice domain might be _[0.2, 1.0]_.\n\nFor quantitative scales such as linear, `nice` can be either a boolean flag or a number. If `nice` is a number, it will represent a desired tick count. This allows greater control over the step size used to extend the bounds, guaranteeing that the returned ticks will exactly cover the domain.\n\n__Default value:__ `true` for unbinned _quantitative_ fields; `false` otherwise."
+        },
+        "padding": {
+          "description": "For _[continuous](https://vega.github.io/vega-lite/docs/scale.html#continuous)_ scales, expands the scale domain to accommodate the specified number of pixels on each of the scale range. The scale range must represent pixels for this parameter to function as intended. Padding adjustment is performed prior to all other adjustments, including the effects of the `zero`, `nice`, `domainMin`, and `domainMax` properties.\n\nFor _[band](https://vega.github.io/vega-lite/docs/scale.html#band)_ scales, shortcut for setting `paddingInner` and `paddingOuter` to the same value.\n\nFor _[point](https://vega.github.io/vega-lite/docs/scale.html#point)_ scales, alias for `paddingOuter`.\n\n__Default value:__ For _continuous_ scales, derived from the [scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `continuousPadding`. For _band and point_ scales, see `paddingInner` and `paddingOuter`.  By default, Vega-Lite sets padding such that _width/height = number of unique values * step_.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "paddingInner": {
+          "description": "The inner padding (spacing) within each band step of band scales, as a fraction of the step size. This value must lie in the range [0,1].\n\nFor point scale, this property is invalid as point scales do not have internal band widths (only step sizes between bands).\n\n__Default value:__ derived from the [scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `bandPaddingInner`.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "paddingOuter": {
+          "description": "The outer padding (spacing) at the ends of the range of band and point scales, as a fraction of the step size. This value must lie in the range [0,1].\n\n__Default value:__ derived from the [scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `bandPaddingOuter` for band scales and `pointPadding` for point scales. By default, Vega-Lite sets outer padding such that _width/height = number of unique values * step_.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "range": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "The range of the scale. One of:\n\n- A string indicating a [pre-defined named scale range](https://vega.github.io/vega-lite/docs/scale.html#range-config) (e.g., example, `\"symbol\"`, or `\"diverging\"`).\n\n- For [continuous scales](https://vega.github.io/vega-lite/docs/scale.html#continuous), two-element array indicating  minimum and maximum values, or an array with more than two entries for specifying a [piecewise scale](https://vega.github.io/vega-lite/docs/scale.html#piecewise).\n\n- For [discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) and [discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales, an array of desired output values.\n\n__Notes:__\n\n1) For color scales you can also specify a color [`scheme`](https://vega.github.io/vega-lite/docs/scale.html#scheme) instead of `range`.\n\n2) Any directly specified `range` for `x` and `y` channels will be ignored. Range can be customized via the view's corresponding [size](https://vega.github.io/vega-lite/docs/size.html) (`width` and `height`)."
+        },
+        "reverse": {
+          "description": "If true, reverses the order of the scale range.\n\n__Default value:__ `false`.",
+          "type": "boolean"
+        },
+        "round": {
+          "description": "If `true`, rounds numeric output values to integers. This can be helpful for snapping to the pixel grid.\n\n__Default value:__ `false`.",
+          "type": "boolean"
+        },
+        "scheme": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/SchemeParams"
+            }
+          ],
+          "description": "A string indicating a color [scheme](https://vega.github.io/vega-lite/docs/scale.html#scheme) name (e.g., `\"category10\"` or `\"blues\"`) or a [scheme parameter object](https://vega.github.io/vega-lite/docs/scale.html#scheme-params).\n\nDiscrete color schemes may be used with [discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) or [discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales. Continuous color schemes are intended for use with color scales.\n\nFor the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference."
+        },
+        "type": {
+          "$ref": "#/definitions/ScaleType",
+          "description": "The type of scale.  Vega-Lite supports the following categories of scale types:\n\n1) [**Continuous Scales**](https://vega.github.io/vega-lite/docs/scale.html#continuous) -- mapping continuous domains to continuous output ranges ([`\"linear\"`](https://vega.github.io/vega-lite/docs/scale.html#linear), [`\"pow\"`](https://vega.github.io/vega-lite/docs/scale.html#pow), [`\"sqrt\"`](https://vega.github.io/vega-lite/docs/scale.html#sqrt), [`\"symlog\"`](https://vega.github.io/vega-lite/docs/scale.html#symlog), [`\"log\"`](https://vega.github.io/vega-lite/docs/scale.html#log), [`\"time\"`](https://vega.github.io/vega-lite/docs/scale.html#time), [`\"utc\"`](https://vega.github.io/vega-lite/docs/scale.html#utc).\n\n2) [**Discrete Scales**](https://vega.github.io/vega-lite/docs/scale.html#discrete) -- mapping discrete domains to discrete ([`\"ordinal\"`](https://vega.github.io/vega-lite/docs/scale.html#ordinal)) or continuous ([`\"band\"`](https://vega.github.io/vega-lite/docs/scale.html#band) and [`\"point\"`](https://vega.github.io/vega-lite/docs/scale.html#point)) output ranges.\n\n3) [**Discretizing Scales**](https://vega.github.io/vega-lite/docs/scale.html#discretizing) -- mapping continuous domains to discrete output ranges [`\"bin-ordinal\"`](https://vega.github.io/vega-lite/docs/scale.html#bin-ordinal), [`\"quantile\"`](https://vega.github.io/vega-lite/docs/scale.html#quantile), [`\"quantize\"`](https://vega.github.io/vega-lite/docs/scale.html#quantize) and [`\"threshold\"`](https://vega.github.io/vega-lite/docs/scale.html#threshold).\n\n__Default value:__ please see the [scale type table](https://vega.github.io/vega-lite/docs/scale.html#type)."
+        },
+        "zero": {
+          "description": "If `true`, ensures that a zero baseline value is included in the scale domain.\n\n__Default value:__ `true` for x and y channels if the quantitative field is not binned and no custom `domain` is provided; `false` otherwise.\n\n__Note:__ Log, time, and utc scales do not support `zero`.",
+          "type": "boolean"
+        },
+        "zoom": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/ZoomParams"
+            }
+          ],
+          "description": "If `true` and the scale is used on a positional channel, it can bee zoomed and translated interactively."
+        }
+      },
+      "type": "object"
+    },
+    "ScaleInterpolate": {
+      "enum": [
+        "rgb",
+        "lab",
+        "hcl",
+        "hsl",
+        "hsl-long",
+        "hcl-long",
+        "cubehelix",
+        "cubehelix-long"
+      ],
+      "type": "string"
+    },
+    "ScaleInterpolateParams": {
+      "additionalProperties": false,
+      "properties": {
+        "gamma": {
+          "type": "number"
+        },
+        "type": {
+          "enum": [
+            "rgb",
+            "cubehelix",
+            "cubehelix-long"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "ScaleType": {
+      "enum": [
+        "null",
+        "linear",
+        "log",
+        "pow",
+        "sqrt",
+        "symlog",
+        "identity",
+        "sequential",
+        "quantize",
+        "threshold",
+        "ordinal",
+        "point",
+        "band",
+        "index",
+        "locus"
+      ],
+      "type": "string"
+    },
+    "SchemeParams": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "description": "The number of colors to use in the scheme. This can be useful for scale types such as `\"quantize\"`, which use the length of the scale range to determine the number of discrete bins for the scale domain.",
+          "type": "number"
+        },
+        "extent": {
+          "description": "The extent of the color range to use. For example `[0.2, 1]` will rescale the color scheme such that color values in the range _[0, 0.2)_ are excluded from the scheme.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "name": {
+          "description": "A color scheme name for ordinal scales (e.g., `\"category10\"` or `\"blues\"`).\n\nFor the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "SecondaryChromPosDef": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Axis"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An object defining properties of axis's gridlines, ticks and labels. If `null`, the axis for the encoding channel will be removed.\n\n__Default value:__ If undefined, default [axis properties](https://vega.github.io/vega-lite/docs/axis.html) are applied.\n\n__See also:__ [`axis`](https://vega.github.io/vega-lite/docs/axis.html) documentation."
+        },
+        "band": {
+          "description": "Relative position on band scale. For example, the marks will be positioned at the beginning of the band if set to `0`, and at the middle of the band if set to `0.5`.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "chrom": {
+          "$ref": "#/definitions/FieldName",
+          "description": "The field having the chromosome or contig."
+        },
+        "offset": {
+          "description": "An offset or offsets that allow for adjusting the numbering base. The offset is subtracted from the positions.\n\nGenomeSpy uses internally zero-based indexing with half-open intervals. UCSC-based formats (BED, etc.) generally use this scheme. However, for example, VCF files use one-based indexing and must be adjusted by setting the offset to `1`.\n\n**Default:** `0`",
+          "type": "number"
+        },
+        "pos": {
+          "$ref": "#/definitions/FieldName",
+          "description": "The field having an intra-chromosomal position."
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "chrom"
+      ],
+      "type": "object"
+    },
+    "SecondaryPositionalChannel": {
+      "enum": [
+        "x2",
+        "y2"
+      ],
+      "type": "string"
+    },
+    "SequenceGenerator": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Provide a placeholder name and bind data at runtime.",
+          "type": "string"
+        },
+        "sequence": {
+          "$ref": "#/definitions/SequenceParams",
+          "description": "Generate a sequence of numbers."
+        }
+      },
+      "required": [
+        "sequence"
+      ],
+      "type": "object"
+    },
+    "SequenceParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "$ref": "#/definitions/FieldName",
+          "description": "The name of the generated sequence field.\n\n__Default value:__ `\"data\"`"
+        },
+        "start": {
+          "description": "The starting value of the sequence (inclusive).",
+          "type": "number"
+        },
+        "step": {
+          "description": "The step value between sequence entries.\n\n__Default value:__ `1`",
+          "type": "number"
+        },
+        "stop": {
+          "description": "The ending value of the sequence (exclusive).",
+          "type": "number"
+        }
+      },
+      "required": [
+        "start",
+        "stop"
+      ],
+      "type": "object"
+    },
+    "ShapeDef<string>": {
+      "$ref": "#/definitions/MarkPropDef%3Cstring%2C(string%7Cnull)%2CTypeForShape%3E"
+    },
+    "SizeDef": {
+      "additionalProperties": false,
+      "properties": {
+        "grow": {
+          "description": "Share of the remaining space",
+          "type": "number"
+        },
+        "px": {
+          "description": "Size in pixels",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SortOrder": {
+      "enum": [
+        "ascending",
+        "descending"
+      ],
+      "type": "string"
+    },
+    "StackParams": {
+      "additionalProperties": false,
+      "properties": {
+        "as": {
+          "description": "Fields to write the stacked values.\n\n**Default:** `[\"y0\", \"y1\"]`",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "baseField": {
+          "$ref": "#/definitions/Field",
+          "description": "The field that contains the base or amino acid. Used for information content calculation when the offset is `\"information\"`. The data items that have `null` in the baseField are considered gaps and they are taken into account when scaling the the locus' information content."
+        },
+        "cardinality": {
+          "description": "Cardinality, e.g., the number if distinct bases or amino acids. Used for information content calculation when the offset is `\"information\"`.\n\n**Default:** `4`;",
+          "type": "number"
+        },
+        "field": {
+          "$ref": "#/definitions/Field",
+          "description": "The field to stack. If no field is defined, a constant value of one is assumed."
+        },
+        "groupby": {
+          "description": "The fields to be used for forming groups for different stacks.",
+          "items": {
+            "$ref": "#/definitions/Field"
+          },
+          "type": "array"
+        },
+        "offset": {
+          "description": "How to offset the values in a stack. `\"zero\"` (default) starts stacking at 0. `\"center\"` centers the values around zero. `\"normalize\"` computes intra-stack percentages and normalizes the values to the range of `[0, 1]`. `\"information\"` computes a layout for a sequence logo. The total height of the stack reflects the group's information content.",
+          "enum": [
+            "zero",
+            "center",
+            "normalize",
+            "information"
+          ],
+          "type": "string"
+        },
+        "sort": {
+          "$ref": "#/definitions/CompareParams",
+          "description": "The sort order of data in each stack."
+        },
+        "type": {
+          "const": "stack",
+          "description": "The type of the transform to be applied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "as",
+        "groupby",
+        "type"
+      ],
+      "type": "object"
+    },
+    "Step": {
+      "additionalProperties": false,
+      "properties": {
+        "step": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "step"
+      ],
+      "type": "object"
+    },
+    "StringDatumDef": {
+      "additionalProperties": false,
+      "properties": {
+        "datum": {
+          "$ref": "#/definitions/Scalar",
+          "description": "A constant value in data domain."
+        },
+        "format": {
+          "description": "When used with the default `\"number\"` format type, the text formatting pattern for labels of guides (axes, legends, headers) and text marks.\n\n- If the format type is `\"number\"` (e.g., for quantitative fields), this is D3's [number format pattern](https://github.com/d3/d3-format#locale_format).\n\nSee the [format documentation](https://vega.github.io/vega-lite/docs/format.html) for more examples.",
+          "type": "string"
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "StringFieldDef<string>": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "description": "__Required.__ A string defining the name of the field from which to pull a data value or an object defining iterated values from the [`repeat`](https://vega.github.io/vega-lite/docs/repeat.html) operator.\n\n__See also:__ [`field`](https://vega.github.io/vega-lite/docs/field.html) documentation.\n\n__Notes:__ 1)  Dots (`.`) and brackets (`[` and `]`) can be used to access nested objects (e.g., `\"field\": \"foo.bar\"` and `\"field\": \"foo['bar']\"`). If field names contain dots or brackets but are not nested, you can use `\\\\` to escape dots and brackets (e.g., `\"a\\\\.b\"` and `\"a\\\\[0\\\\]\"`). See more details about escaping in the [field documentation](https://vega.github.io/vega-lite/docs/field.html). 2) `field` is not required if `aggregate` is `count`.",
+          "type": "string"
+        },
+        "format": {
+          "description": "When used with the default `\"number\"` format type, the text formatting pattern for labels of guides (axes, legends, headers) and text marks.\n\n- If the format type is `\"number\"` (e.g., for quantitative fields), this is D3's [number format pattern](https://github.com/d3/d3-format#locale_format).\n\nSee the [format documentation](https://vega.github.io/vega-lite/docs/format.html) for more examples.",
+          "type": "string"
+        },
+        "title": {
+          "description": "A title for the field. If `null`, the title will be removed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "TextDef<string>": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/StringFieldDef%3Cstring%3E"
+        },
+        {
+          "$ref": "#/definitions/StringDatumDef"
+        }
+      ]
+    },
+    "Tooltip": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/HandledTooltip"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "TransformParams": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/AggregateParams"
+        },
+        {
+          "$ref": "#/definitions/CollectParams"
+        },
+        {
+          "$ref": "#/definitions/CoverageParams"
+        },
+        {
+          "$ref": "#/definitions/FlattenDelimitedParams"
+        },
+        {
+          "$ref": "#/definitions/FormulaParams"
+        },
+        {
+          "$ref": "#/definitions/FilterParams"
+        },
+        {
+          "$ref": "#/definitions/FilterScoredLabelsParams"
+        },
+        {
+          "$ref": "#/definitions/FlattenCompressedExonsParams"
+        },
+        {
+          "$ref": "#/definitions/FlattenSequenceParams"
+        },
+        {
+          "$ref": "#/definitions/IdentifierParams"
+        },
+        {
+          "$ref": "#/definitions/LinearizeGenomicCoordinateParams"
+        },
+        {
+          "$ref": "#/definitions/MeasureTextParams"
+        },
+        {
+          "$ref": "#/definitions/MergeFacetsParams"
+        },
+        {
+          "$ref": "#/definitions/PileupParams"
+        },
+        {
+          "$ref": "#/definitions/ProjectParams"
+        },
+        {
+          "$ref": "#/definitions/RegexExtractParams"
+        },
+        {
+          "$ref": "#/definitions/RegexFoldParams"
+        },
+        {
+          "$ref": "#/definitions/SampleParams"
+        },
+        {
+          "$ref": "#/definitions/StackParams"
+        }
+      ]
+    },
+    "Type": {
+      "enum": [
+        "quantitative",
+        "ordinal",
+        "nominal",
+        "index",
+        "locus"
+      ],
+      "type": "string"
+    },
+    "TypeForShape": {
+      "enum": [
+        "ordinal",
+        "nominal"
+      ],
+      "type": "string"
+    },
+    "UnitSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregateSamples": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/UnitSpec"
+              },
+              {
+                "$ref": "#/definitions/LayerSpec"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "configurableVisibility": {
+          "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/Data"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A description of the view. Multiple lines can be provided as an array."
+        },
+        "encoding": {
+          "$ref": "#/definitions/Encoding"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        },
+        "mark": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/MarkType"
+            },
+            {
+              "$ref": "#/definitions/MarkConfigAndType"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "opacity": {
+          "$ref": "#/definitions/ViewOpacityDef",
+          "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+        },
+        "padding": {
+          "$ref": "#/definitions/PaddingConfig",
+          "description": "Padding in pixels.\n\n**Default:* `0`"
+        },
+        "resolve": {
+          "additionalProperties": false,
+          "properties": {
+            "axis": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            },
+            "scale": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "title": {
+          "type": "string"
+        },
+        "transform": {
+          "items": {
+            "$ref": "#/definitions/TransformParams"
+          },
+          "type": "array"
+        },
+        "view": {
+          "$ref": "#/definitions/ViewConfig"
+        },
+        "visible": {
+          "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+          "type": "boolean"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mark"
+      ],
+      "type": "object"
+    },
+    "UrlData": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/DataFormat",
+          "description": "An object that specifies the format for parsing the data."
+        },
+        "name": {
+          "description": "Provide a placeholder name and bind data at runtime.",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "An URL or an array of URLs from which to load the data set. Use the `format.type` property to ensure the loaded data is correctly parsed."
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "VConcatSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "baseUrl": {
+          "type": "string"
+        },
+        "configurableVisibility": {
+          "description": "Is the visibility configurable interactively from the App. Configurability requires that the view has an explicitly specified name that is *unique* in within the view specification.\n\n**Default:** `false` for children of `layer`, `true` for others.",
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/Data"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A description of the view. Multiple lines can be provided as an array."
+        },
+        "encoding": {
+          "$ref": "#/definitions/Encoding"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "opacity": {
+          "$ref": "#/definitions/ViewOpacityDef",
+          "description": "Opacity of the view and all its children.\n\n**Default:* `1.0`"
+        },
+        "padding": {
+          "$ref": "#/definitions/PaddingConfig",
+          "description": "Padding in pixels.\n\n**Default:* `0`"
+        },
+        "resolve": {
+          "additionalProperties": false,
+          "properties": {
+            "axis": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            },
+            "scale": {
+              "additionalProperties": {
+                "$ref": "#/definitions/ResolutionBehavior"
+              },
+              "properties": {
+                "default": {
+                  "$ref": "#/definitions/ResolutionBehavior"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "spacing": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "transform": {
+          "items": {
+            "$ref": "#/definitions/TransformParams"
+          },
+          "type": "array"
+        },
+        "vconcat": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/ViewSpec"
+              },
+              {
+                "$ref": "#/definitions/ImportSpec"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "visible": {
+          "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
+          "type": "boolean"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SizeDef"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/definitions/Step"
+            },
+            {
+              "const": "container",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "vconcat"
+      ],
+      "type": "object"
+    },
+    "ValueDef<(string|null)>": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "description": "A constant value in visual domain (e.g., `\"red\"` / `\"#0099ff\"`, values between `0` to `1` for opacity).",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "ValueDef<number>": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "description": "A constant value in visual domain (e.g., `\"red\"` / `\"#0099ff\"`, values between `0` to `1` for opacity).",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "ViewConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "cornerRadius": {
+          "description": "Radius of the rounded corners.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "cornerRadiusBottomLeft": {
+          "description": "Radius of the bottom left rounded corner. Has higher precedence than `cornerRadius`.\n\n**Default value:** (None)",
+          "type": "number"
+        },
+        "cornerRadiusBottomRight": {
+          "description": "Radius of the bottom right rounded corner. Has higher precedence than `cornerRadius`.\n\n**Default value:** (None)",
+          "type": "number"
+        },
+        "cornerRadiusTopLeft": {
+          "description": "Radius of the top left rounded corner. Has higher precedence than `cornerRadius`.\n\n**Default value:** (None)",
+          "type": "number"
+        },
+        "cornerRadiusTopRight": {
+          "description": "Radius of the top right rounded corner. Has higher precedence than `cornerRadius`.\n\n**Default value:** (None)",
+          "type": "number"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "fillOpacity": {
+          "type": "number"
+        },
+        "minHeight": {
+          "description": "The minimum height of a rectangle in pixels. The property clamps rectangles' heights.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "minOpacity": {
+          "description": "Clamps the minimum size-dependent opacity. The property does not affect the `opacity` channel. Valid values are between `0` and `1`.\n\nWhen a rectangle would be smaller than what is specified in `minHeight` and `minWidth`, it is faded out proportionally. Example: a rectangle would be rendered as one pixel wide, but `minWidth` clamps it to five pixels. The rectangle is actually rendered as five pixels wide, but its opacity is multiplied by 0.2. With this setting, you can limit the factor to, for example, 0.5 to keep the rectangles more clearly visible.\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "minWidth": {
+          "description": "The minimum width of a rectangle in pixels. The property clamps rectangles' widths when the viewport is zoomed out.\n\nThis property also reduces flickering of very narrow rectangles when zooming. The value should generally be at least one.\n\n**Default value:** `1`",
+          "type": "number"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "strokeOpacity": {
+          "type": "number"
+        },
+        "strokeWidth": {
+          "type": "number"
+        },
+        "x2": {
+          "type": "number"
+        },
+        "y2": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "ViewOpacityDef": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "$ref": "#/definitions/DynamicOpacity"
+        }
+      ]
+    },
+    "ViewSpec": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/UnitSpec"
+        },
+        {
+          "$ref": "#/definitions/LayerSpec"
+        },
+        {
+          "$ref": "#/definitions/SampleSpec"
+        },
+        {
+          "$ref": "#/definitions/VConcatSpec"
+        },
+        {
+          "$ref": "#/definitions/HConcatSpec"
+        },
+        {
+          "$ref": "#/definitions/ConcatSpec"
+        }
+      ]
+    },
+    "ZoomParams": {
+      "additionalProperties": false,
+      "properties": {
+        "extent": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScalarDomain"
+            },
+            {
+              "$ref": "#/definitions/ComplexDomain"
+            }
+          ],
+          "description": "The boundaries that limit the zoom and pan interactions."
+        }
+      },
+      "type": "object"
+    }
+  }
+}

@@ -52,7 +52,7 @@ class MyPreprocessor(Preprocessor):
 class GenomeSpyExtension(Extension):
     def __init__(self, **kwargs):
         self.config = {
-            'schemaPath' : [ 'docs/genome-spy-schema.json', 'Path to schema']
+            'schemaPath' : [ 'docs/schema.json', 'Path to schema']
         }
         super(GenomeSpyExtension, self).__init__(**kwargs)
 
