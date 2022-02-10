@@ -33,7 +33,7 @@
     "vite-raw-plugin": "^1.0.1"
   },
   "scripts": {
-    "build": "npm -ws run build --if-present",
+    "build": "lerna run build",
     "build:docs": "mkdir -p docs/app && cp packages/doc-embed/dist/* docs/app/ && cp packages/core/dist/genome-spy-schema.json docs/ && mkdocs build",
     "lint": "eslint packages/*/src/",
     "test": "jest",
