@@ -8,7 +8,7 @@ import defaultSpec from "./defaultspec.json.txt";
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 // Available after the core package has been built
-import schema from "@genome-spy/core/genome-spy-schema.json";
+import schema from "@genome-spy/core/schema.json";
 
 import packageJson from "../package.json";
 import "./codeEditor";

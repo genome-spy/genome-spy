@@ -8,8 +8,8 @@
       "@genome-spy/core/*": [
         "packages/core/src/*"
       ],
-      "@genome-spy/core/genome-spy-schema.json": [
-        "packages/core/dist/genome-spy-schema.json"
+      "@genome-spy/core/schema.json": [
+        "packages/core/dist/schema.json"
       ]
     },
     "resolveJsonModule": true,
