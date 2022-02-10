@@ -12,7 +12,8 @@
   "module": "src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./*": "./src/*"
+    "./*": "./src/*",
+    "./genome-spy-schema.json": "./dist/genome-spy-schema.json"
   },
   "files": [
     "dist/",
