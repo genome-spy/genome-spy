@@ -2,7 +2,7 @@ import { GenomeConfig } from "./genome";
 import { ViewSpec } from "./view";
 
 interface RootConfig {
-    $schema: string;
+    $schema?: string;
 
     genome?: GenomeConfig;
 
