@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.18.0](https://github.com/tuner/genome-spy/compare/v0.17.1...v0.18.0) (2022-02-10)
+
+
+### Bug Fixes
+
+* **app:** hide fullscreen button on unsupported browsers ([e2f2c2a](https://github.com/tuner/genome-spy/commit/e2f2c2a0ed81b3b9d5eb9df77b78b0b82b15b2d6))
+* **app:** make font and icon sizes consistent across browsers ([fb1f3d1](https://github.com/tuner/genome-spy/commit/fb1f3d1ec23b290ce8a00d394e0aeb9583f954f4))
+* **app:** make spacing of buttons consistent in modal dialogs ([b780c0a](https://github.com/tuner/genome-spy/commit/b780c0ae7a991f46506399d7c53e9f6af6722682))
+* **app:** relative URLs in bookmark notes now use spec's path as baseUrl ([4ccb433](https://github.com/tuner/genome-spy/commit/4ccb433d3663d189fa2bc29a1b7ee28e63925597))
+
+
+### Features
+
+* **playground:** validate spec using JSON schema ([#87](https://github.com/tuner/genome-spy/issues/87)) ([d6fc84c](https://github.com/tuner/genome-spy/commit/d6fc84c7c090931c96b8e571701249090a03f49e))
+
+
+
+
+
 ## [0.17.1](https://github.com/tuner/genome-spy/compare/v0.17.0...v0.17.1) (2022-01-21)
 
 

@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.18.0](https://github.com/genome-spy/genome-spy/compare/v0.17.1...v0.18.0) (2022-02-10)
+
+
+### Bug Fixes
+
+* **app:** relative URLs in bookmark notes now use spec's path as baseUrl ([4ccb433](https://github.com/genome-spy/genome-spy/commit/4ccb433d3663d189fa2bc29a1b7ee28e63925597))
+
+
+### Features
+
+* **playground:** validate spec using JSON schema ([#87](https://github.com/genome-spy/genome-spy/issues/87)) ([d6fc84c](https://github.com/genome-spy/genome-spy/commit/d6fc84c7c090931c96b8e571701249090a03f49e))
+
+
+
+
+
 # [0.17.0](https://github.com/tuner/genome-spy/compare/v0.16.0...v0.17.0) (2022-01-21)
 
 **Note:** Version bump only for package @genome-spy/core
