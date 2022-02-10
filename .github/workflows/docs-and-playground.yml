@@ -35,14 +35,14 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Build JSON schema
+        run: npm -w @genome-spy/core run build:schema
+        
       - name: Build packages
         run: |
           npm -w @genome-spy/doc-embed run build
           npm -w @genome-spy/playground run build
 
-      - name: Build JSON schema
-        run: npm -w @genome-spy/core run build:schema
-        
       - name: Build docs
         run: npm run build:docs
 
