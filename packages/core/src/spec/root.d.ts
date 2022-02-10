@@ -2,6 +2,8 @@ import { GenomeConfig } from "./genome";
 import { ViewSpec } from "./view";
 
 interface RootConfig {
+    $schema: string;
+
     genome?: GenomeConfig;
 
     baseUrl?: string;
