@@ -150,3 +150,38 @@ describe("C. elegans genome, chromosome names prefixed with 'chr'", () => {
         expect(g.toContinuous("III", 10)).toEqual(30351865);
     });
 });
+
+describe("Parse interval strings", () => {
+    const chromosomes = [
+        { name: "chr1", size: 1000 },
+        { name: "chr2", size: 2000 },
+        { name: "chr3", size: 3000 },
+        { name: "chrX", size: 4000 },
+    ];
+
+    const g = new Genome({ name: "random", contigs: chromosomes });
+
+    test("Parses a single chromosome, returns an interval spanning the chromosome", () => {
+        expect(g.parseInterval("chr2")).toEqual([1000, 3000]);
+    });
+
+    test("Returns undefined on unknown chromosome", () => {
+        expect(g.parseInterval("chrZ")).toBeUndefined();
+    });
+
+    test("Parses a single coordinate without a thousand separator", () => {
+        expect(g.parseInterval("chr2:1500")).toEqual([2499, 2500]);
+    });
+
+    test("Parses a single coordinate with a thousand separator", () => {
+        expect(g.parseInterval("chr2:1,500")).toEqual([2499, 2500]);
+    });
+
+    test("Parses an interval within a single chromosome", () => {
+        expect(g.parseInterval("chr2:1,500-1,700")).toEqual([2499, 2700]);
+    });
+
+    test("Parses an interval spanning multiple chromosomes", () => {
+        expect(g.parseInterval("chr2:1,500-chr3:1,500")).toEqual([2499, 4500]);
+    });
+});

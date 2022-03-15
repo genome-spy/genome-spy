@@ -240,6 +240,8 @@ export default class SearchField extends LitElement {
             <p>Focus to a specific range. Examples:</p>
             <ul>
                 <!-- TODO: Display only when using a genomic coordinate system-->
+                <li>chr8</li>
+                <li>chr8:21,445,873</li>
                 <li>chr8:21,445,873-24,623,697</li>
                 <li>chr4:166,014,727-chr15:23,731,397</li>
             </ul>

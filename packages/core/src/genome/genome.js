@@ -257,15 +257,27 @@ export default class Genome {
     parseInterval(str) {
         // TODO: consider changing [0-9XY] to support other species besides humans
         const matches = str.match(
-            /^(chr[0-9A-Z]+):([0-9,]+)-(?:(chr[0-9A-Z]+):)?([0-9,]+)$/
+            /^(chr[0-9A-Z]+)(?::([0-9,]+)(?:-(?:(chr[0-9A-Z]+):)?([0-9,]+))?)?$/
         );
 
         if (matches) {
             const startChr = matches[1];
+
+            if (matches.slice(2).every((x) => x === undefined)) {
+                const chrom = this.getChromosome(startChr);
+                if (chrom) {
+                    return [chrom.continuousStart, chrom.continuousEnd];
+                }
+                return;
+            }
+
             const endChr = matches[3] || startChr;
 
             const startIndex = parseInt(matches[2].replace(/,/g, ""));
-            const endIndex = parseInt(matches[4].replace(/,/g, ""));
+            const endIndex =
+                matches[4] !== undefined
+                    ? parseInt(matches[4].replace(/,/g, ""))
+                    : startIndex;
 
             return [
                 this.toContinuous(startChr, startIndex - 1),
