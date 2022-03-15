@@ -1,3 +1,4 @@
+import Collector from "./collector";
 import { BEHAVIOR_CLONES } from "./flowNode";
 import CloneTransform from "./transforms/clone";
 
@@ -31,6 +32,11 @@ export function validateLinks(node, parent = undefined) {
  * @param {FlowNode} node
  */
 export function removeRedundantCloneTransforms(node, cloneRequired = false) {
+    if (node instanceof Collector) {
+        // If an object is modified downstream of Collector, it must be cloned
+        cloneRequired = true;
+    }
+
     if (node instanceof CloneTransform) {
         if (cloneRequired) {
             cloneRequired = false;
