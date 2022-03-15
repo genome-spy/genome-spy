@@ -17,6 +17,7 @@ import {
 import createDomain from "../utils/domainArray";
 import AxisResolution from "./axisResolution";
 import { isAggregateSamplesSpec } from "./viewFactory";
+import { peek } from "../utils/arrayUtils";
 
 /**
  *
@@ -337,10 +338,13 @@ export default class UnitView extends ContainerView {
         if (isAggregateSamplesSpec(this.spec)) {
             // TODO: Support multiple
             for (const sumSpec of this.spec.aggregateSamples) {
-                sumSpec.transform = [
-                    ...(sumSpec.transform ?? []),
-                    { type: "mergeFacets" },
-                ];
+                const transform = sumSpec.transform ?? [];
+                if (transform.length && peek(transform).type != "collect") {
+                    // MergeFacets must be a direct child of Collector
+                    transform.push({ type: "collect" });
+                }
+                transform.push({ type: "mergeFacets" });
+                sumSpec.transform = transform;
 
                 sumSpec.encoding = {
                     ...(sumSpec.encoding ?? {}),

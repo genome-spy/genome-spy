@@ -59,7 +59,7 @@ export default class MergeSampleFacets extends FlowNode {
     initialize() {
         this.contextObject = Object.create(super.getGlobalObject());
 
-        const xChannelDef = this.view.parent.getEncoding()["x"];
+        const xChannelDef = this.view.getEncoding()["x"];
         if (isFieldDef(xChannelDef)) {
             this.xAccessor = field(xChannelDef.field);
         } else {

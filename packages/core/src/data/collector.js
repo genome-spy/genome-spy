@@ -27,7 +27,7 @@ export default class Collector extends FlowNode {
         /** @type {(function(Collector):void)[]} */
         this.observers = [];
 
-        /** @type {Map<any | any[], Data>} */
+        /** @type {Map<any | any[], Data>} TODO: proper type for key */
         this.facetBatches = undefined;
 
         this._init();
@@ -59,8 +59,6 @@ export default class Collector extends FlowNode {
      * @param {import("./flowBatch").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
-        // TODO: Propagate batches to children(?)
-
         if (isFacetBatch(flowBatch)) {
             this._data = [];
             this.facetBatches.set(asArray(flowBatch.facetId), this._data);
@@ -103,7 +101,14 @@ export default class Collector extends FlowNode {
         }
 
         if (this.children.length) {
-            for (const data of this.facetBatches.values()) {
+            for (const [key, data] of this.facetBatches.entries()) {
+                if (key) {
+                    /** @type {import("./flowBatch").FacetBatch} */
+                    const facetBatch = { type: "facet", facetId: key };
+                    for (const child of this.children) {
+                        child.beginBatch(facetBatch);
+                    }
+                }
                 for (const datum of data) {
                     this._propagate(datum);
                 }
