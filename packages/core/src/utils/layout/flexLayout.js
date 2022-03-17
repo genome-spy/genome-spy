@@ -133,7 +133,7 @@ export function mapToPixelCoords(
 /**
  * Returns the minimum size  (the sum of pixels sizes) for the flex items
  *
- * @param {SizeDef[]} items
+ * @param {Iterable<SizeDef>} items
  * @param {FlexOptions} [options]
  */
 export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
@@ -142,6 +142,21 @@ export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
         minimumSize += z(size.px) + (isZeroSizeDef(size) ? 0 : spacing);
     }
     return Math.max(0, minimumSize - spacing);
+}
+
+/**
+ * @param {Iterable<SizeDef>} items
+ * @returns {SizeDef}
+ */
+export function getLargestSize(items) {
+    let px = 0;
+    let grow = 0;
+    for (const s of items) {
+        px = Math.max(px, s.px ?? 0);
+        grow = Math.max(grow, s.grow ?? 0);
+    }
+
+    return { px, grow };
 }
 
 /**

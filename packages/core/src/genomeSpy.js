@@ -8,7 +8,6 @@ import Tooltip from "./utils/ui/tooltip";
 import AccessorFactory from "./encoder/accessor";
 import {
     resolveScalesAndAxes,
-    addDecorators,
     processImports,
     setImplicitScaleNames,
 } from "./view/viewUtils";
@@ -288,7 +287,7 @@ export default class GenomeSpy {
         setImplicitScaleNames(this.viewRoot);
 
         // Wrap unit or layer views that need axes
-        this.viewRoot = addDecorators(this.viewRoot);
+        //this.viewRoot = addDecorators(this.viewRoot);
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.

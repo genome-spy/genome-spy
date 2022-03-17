@@ -178,6 +178,7 @@ export type ContainerSpec = (
     | LayerSpec
     //    | FacetSpec
     | SampleSpec
+    | GridSpec
     | VConcatSpec
     | HConcatSpec
     | ConcatSpec
@@ -190,6 +191,7 @@ export type ViewSpec =
     | LayerSpec
     //    | FacetSpec
     | SampleSpec
+    | GridSpec
     | VConcatSpec
     | HConcatSpec
     | ConcatSpec;
@@ -218,4 +220,10 @@ export interface HConcatSpec extends ConcatBase {
 
 export interface ConcatSpec extends ConcatBase {
     concat: (ViewSpec | ImportSpec)[];
+}
+
+/** Temporary. Will eventually converted to an abstract view. */
+export interface GridSpec extends ConcatBase {
+    grid: (ViewSpec | ImportSpec)[];
+    columns?: number;
 }

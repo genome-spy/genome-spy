@@ -5,6 +5,7 @@ import UnitView from "./unitView";
 import ImportView from "./importView";
 import LayerView from "./layerView";
 import ConcatView from "./concatView";
+import GridView from "./gridView";
 import { isArray, isObject, isString } from "vega-util";
 
 /**
@@ -17,6 +18,7 @@ import { isArray, isObject, isString } from "vega-util";
  * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
  * @typedef {import("../spec/view").HConcatSpec} HConcatSpec
  * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
+ * @typedef {import("../spec/view").GridSpec} GridSpec
  * @typedef {VConcatSpec | HConcatSpec | ConcatSpec} AnyConcatSpec
  *
  * @typedef {(spec: ViewSpec) => boolean} specGuard
@@ -47,6 +49,7 @@ export class ViewFactory {
         this.addViewType(isVConcatSpec, makeDefaultFactory(ConcatView));
         this.addViewType(isHConcatSpec, makeDefaultFactory(ConcatView));
         this.addViewType(isConcatSpec, makeDefaultFactory(ConcatView));
+        this.addViewType(isGridSpec, makeDefaultFactory(GridView));
         //this.addViewType(isFacetSpec, makeDefaultFactory(FacetView));
     }
 
@@ -178,4 +181,13 @@ export function isHConcatSpec(spec) {
  */
 export function isConcatSpec(spec) {
     return "concat" in spec && isArray(spec.concat);
+}
+
+/**
+ *
+ * @param {ViewSpec} spec
+ * @returns {spec is GridSpec}
+ */
+export function isGridSpec(spec) {
+    return "grid" in spec && isArray(spec.grid);
 }
