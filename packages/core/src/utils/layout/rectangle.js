@@ -279,4 +279,8 @@ export default class Rectangle {
             y: (y - this.y) / this.height,
         };
     }
+
+    toString() {
+        return `Rectangle: x: ${this.x}, y: ${this.y}, width: ${this.width}, height: ${this.height}`;
+    }
 }
