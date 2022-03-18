@@ -6,7 +6,10 @@ import {
 } from "../utils/layout/flexLayout";
 import Grid from "../utils/layout/grid";
 import Rectangle from "../utils/layout/rectangle";
+import AxisView, { CHANNEL_ORIENTS } from "./axisView";
 import ContainerView from "./containerView";
+import LayerView from "./layerView";
+import UnitView from "./unitView";
 /**
  * @typedef {"row" | "column"} Direction
  * @typedef {import("./view").default} View
@@ -45,48 +48,119 @@ export default class GridView extends ContainerView {
          */
         this.children = [];
 
-        /**
-         * Axes for the scales
-         *
-         * @type {Map<import("./view").ScaleResolution, import("./axisView")>}
-         */
-        this.axisViews = new Map();
-
         /** @type { View[] } */
         this.children = spec.grid.map((childSpec, i) =>
             context.createView(childSpec, this, "grid" + i)
         );
 
+        this.uniqueChildren = new Set(this.children);
+
+        /** @type {import("./unitView").default[]} */
+        this.backgroundViews = this.children.map((child, i) => {
+            if (child instanceof UnitView || child instanceof LayerView) {
+                const viewConfig = child.spec?.view;
+                if (viewConfig?.fill || viewConfig?.stroke) {
+                    return new UnitView(
+                        createBackground(viewConfig),
+                        this.context,
+                        this,
+                        "background" + i
+                    );
+                }
+            }
+            return undefined;
+        });
+
         this.wrappingFacet = false;
 
         this.grid = new Grid(this.children.length, this.spec.columns);
+
+        /**
+         * @type {Record<import("../spec/axis").AxisOrient, AxisView[]>}
+         */
+        this.axisViews = {
+            top: [],
+            right: [],
+            bottom: [],
+            left: [],
+        };
+    }
+
+    onScalesResolved() {
+        for (let i = 0; i < this.children.length; i++) {
+            const child = this.children[i];
+            if (child instanceof UnitView) {
+                const r = child.getAxisResolution("x");
+
+                this.axisViews.left[i] = new AxisView(
+                    {
+                        orient: "left",
+                        title: r.getTitle(),
+                    },
+                    r.scaleResolution.type,
+                    this.context,
+                    this
+                );
+            }
+        }
     }
 
     /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
+        for (const backgroundView of this.backgroundViews) {
+            if (backgroundView) {
+                yield backgroundView;
+            }
+        }
+
+        for (const axisView of this.axisViews.left) {
+            if (axisView) {
+                yield axisView;
+            }
+        }
+
         for (const child of this.children) {
             yield child;
         }
     }
 
-    get colSizes() {
-        return this.grid.colIndices.map((col) =>
-            getLargestSize(
-                col.map((rowIndex) => this.children[rowIndex].getSize().width)
-            )
-        );
+    /**
+     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
+     *      selectively breaking the inheritance.
+     */
+    getEncoding(whoIsAsking) {
+        return this.uniqueChildren.has(whoIsAsking) ? super.getEncoding() : {};
     }
 
-    get rowSizes() {
-        return this.grid.rowIndices.map((row) =>
-            getLargestSize(
-                row.map(
-                    (columnIndex) => this.children[columnIndex].getSize().height
+    /**
+     * @param {Direction} direction
+     */
+    getSizes(direction) {
+        const orients = CHANNEL_ORIENTS[direction == "column" ? "y" : "x"];
+        const dim = direction == "column" ? "width" : "height";
+
+        /** @type {(indices: number[], side: 0 | 1) => number} */
+        const getMaxAxisSize = (indices, side) =>
+            indices
+                .map(
+                    (index) =>
+                        this.axisViews[orients[side]][
+                            index
+                        ]?.getPerpendicularSize() ?? 0
                 )
-            )
-        );
+                .reduce((a, b) => Math.max(a, b), 0);
+
+        return this.grid[
+            direction == "column" ? "colIndices" : "rowIndices"
+        ].map((col) => ({
+            axisBefore: getMaxAxisSize(col, 0),
+            axisAfter: getMaxAxisSize(col, 1),
+            view: getLargestSize(
+                col.map((rowIndex) => this.children[rowIndex].getSize()[dim])
+            ),
+        }));
     }
 
     /**
@@ -108,7 +182,7 @@ export default class GridView extends ContainerView {
      * @param {Direction} direction
      */
     #makeFlexItems(direction) {
-        const sizes = direction == "column" ? this.colSizes : this.rowSizes;
+        const sizes = this.getSizes(direction);
 
         /** @type {import("../utils/layout/flexLayout").SizeDef[]} */
         const items = [];
@@ -119,7 +193,7 @@ export default class GridView extends ContainerView {
         for (const [i, size] of sizes.entries()) {
             if (i > 0) {
                 // Spacing
-                items.push({ px: 5, grow: 0 });
+                items.push({ px: 10, grow: 0 });
             }
 
             if (i == 0 || this.wrappingFacet) {
@@ -128,10 +202,10 @@ export default class GridView extends ContainerView {
             }
 
             // Axis/padding
-            items.push(ZERO_SIZEDEF);
+            items.push({ px: size.axisBefore, grow: 0 });
 
             // View
-            items.push(size);
+            items.push(size.view);
 
             // Axis/padding
             items.push(ZERO_SIZEDEF);
@@ -223,6 +297,43 @@ export default class GridView extends ContainerView {
                 () => rowLocSize.size
             );
 
+            const backgroundView = this.backgroundViews[i];
+            if (backgroundView) {
+                backgroundView.render(context, childCoords, options);
+            }
+
+            const axisView = this.axisViews.left[i];
+            if (axisView) {
+                const props = axisView.axisProps;
+                const orient = props.orient;
+
+                /** @type {import("../utils/layout/rectangle").default} */
+                let axisCoords;
+
+                const ps = axisView.getPerpendicularSize();
+
+                if (orient == "bottom") {
+                    axisCoords = childCoords
+                        .translate(0, childCoords.height + props.offset)
+                        .modify({ height: ps });
+                } else if (orient == "top") {
+                    axisCoords = childCoords
+                        .translate(0, -ps - props.offset)
+                        .modify({ height: ps });
+                } else if (orient == "left") {
+                    axisCoords = childCoords
+                        .translate(-ps - props.offset, 0)
+                        .modify({ width: ps });
+                } else if (orient == "right") {
+                    axisCoords = childCoords
+                        .translate(childCoords.width + props.offset, 0)
+                        .modify({ width: ps });
+                }
+
+                // Axes have no faceted data, thus, pass undefined facetId
+                axisView.render(context, axisCoords);
+            }
+
             view.render(context, childCoords, options);
 
             console.log(`Render ${i} - ${childCoords}`);
@@ -240,4 +351,23 @@ export default class GridView extends ContainerView {
         // TODO: Default to shared when working with genomic coordinates
         return "independent";
     }
+}
+
+/**
+ * @param {import("../spec/view").ViewConfig} viewConfig
+ * @returns {import("../spec/view").UnitSpec}
+ */
+function createBackground(viewConfig) {
+    return {
+        configurableVisibility: false,
+        data: { values: [{}] },
+        mark: {
+            fill: null,
+            strokeWidth: 1.0,
+            ...viewConfig,
+            type: "rect",
+            clip: false, // Shouldn't be needed
+            tooltip: null,
+        },
+    };
 }

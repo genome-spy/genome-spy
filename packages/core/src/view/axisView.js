@@ -31,7 +31,7 @@ function getPerpendicularChannel(channel) {
 }
 
 /** @type {Record<PositionalChannel, AxisOrient[]>} */
-const CHANNEL_ORIENTS = {
+export const CHANNEL_ORIENTS = {
     x: ["bottom", "top"],
     y: ["left", "right"],
 };
