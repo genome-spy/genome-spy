@@ -55,7 +55,7 @@ export default class GridView extends ContainerView {
 
         this.uniqueChildren = new Set(this.children);
 
-        /** @type {import("./unitView").default[]} */
+        /**  @type {import("./unitView").default[]} */
         this.backgroundViews = this.children.map((child, i) => {
             if (child instanceof UnitView || child instanceof LayerView) {
                 const viewConfig = child.spec?.view;
@@ -76,6 +76,7 @@ export default class GridView extends ContainerView {
         this.grid = new Grid(this.children.length, this.spec.columns);
 
         /**
+         * Axes by child indices. May be sparse.
          * @type {Record<import("../spec/axis").AxisOrient, AxisView[]>}
          */
         this.axisViews = {
@@ -87,20 +88,35 @@ export default class GridView extends ContainerView {
     }
 
     onScalesResolved() {
+        super.onScalesResolved();
+
+        // Create axes
         for (let i = 0; i < this.children.length; i++) {
             const child = this.children[i];
             if (child instanceof UnitView) {
-                const r = child.getAxisResolution("x");
+                for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
+                    "x",
+                    "y",
+                ])) {
+                    const r = child.getAxisResolution(channel);
 
-                this.axisViews.left[i] = new AxisView(
-                    {
-                        orient: "left",
-                        title: r.getTitle(),
-                    },
-                    r.scaleResolution.type,
-                    this.context,
-                    this
-                );
+                    const props = r.getAxisProps();
+                    props.orient ??= channel == "x" ? "bottom" : "left";
+                    props.title ??= r.getTitle();
+
+                    if (!CHANNEL_ORIENTS[channel].includes(props.orient)) {
+                        throw new Error(
+                            `Invalid axis orientation for '${channel}' channel: ${props.orient}`
+                        );
+                    }
+
+                    this.axisViews[props.orient][i] = new AxisView(
+                        props,
+                        r.scaleResolution.type,
+                        this.context,
+                        this
+                    );
+                }
             }
         }
     }
@@ -115,10 +131,8 @@ export default class GridView extends ContainerView {
             }
         }
 
-        for (const axisView of this.axisViews.left) {
-            if (axisView) {
-                yield axisView;
-            }
+        for (const axisView of Object.values(this.axisViews).flat()) {
+            yield axisView;
         }
 
         for (const child of this.children) {
@@ -138,18 +152,27 @@ export default class GridView extends ContainerView {
      * @param {Direction} direction
      */
     getSizes(direction) {
-        const orients = CHANNEL_ORIENTS[direction == "column" ? "y" : "x"];
+        /** @type {import("../spec/axis").AxisOrient[]} */
+        const orients =
+            direction == "column" ? ["left", "right"] : ["top", "bottom"];
+
         const dim = direction == "column" ? "width" : "height";
 
-        /** @type {(indices: number[], side: 0 | 1) => number} */
+        /**
+         * @type {(indices: number[], side: 0 | 1) => number}
+         */
         const getMaxAxisSize = (indices, side) =>
             indices
-                .map(
-                    (index) =>
-                        this.axisViews[orients[side]][
-                            index
-                        ]?.getPerpendicularSize() ?? 0
-                )
+                .map((index) => {
+                    const axisView = this.axisViews[orients[side]][index];
+                    return axisView
+                        ? Math.max(
+                              axisView.getPerpendicularSize() +
+                                  axisView.axisProps.offset ?? 0,
+                              0
+                          )
+                        : 0;
+                })
                 .reduce((a, b) => Math.max(a, b), 0);
 
         return this.grid[
@@ -208,7 +231,7 @@ export default class GridView extends ContainerView {
             items.push(size.view);
 
             // Axis/padding
-            items.push(ZERO_SIZEDEF);
+            items.push({ px: size.axisAfter, grow: 0 });
 
             if (i == sizes.length - 1 || this.wrappingFacet) {
                 //Footer
@@ -255,31 +278,19 @@ export default class GridView extends ContainerView {
         coords = coords.shrink(this.getPadding());
         context.pushView(this, coords);
 
-        // This method produces piles of garbage when used with sample faceting.
-        // TODO: Figure out something. Perhaps the rectangles could be cached because
-        // they are identical for each sample facet.
-
-        /*
-        const visibleChildren = this.children.filter((view) =>
-            view.isVisible()
-        );
-        */
-        //const visibleChildren = this.children;
-
+        const flexOpts = {
+            devicePixelRatio: this.context.glHelper.dpr,
+        };
         const columnFlexCoords = mapToPixelCoords(
             this.#makeFlexItems("column"),
             coords.width,
-            {
-                devicePixelRatio: this.context.glHelper.dpr,
-            }
+            flexOpts
         );
 
         const rowFlexCoords = mapToPixelCoords(
             this.#makeFlexItems("row"),
             coords.height,
-            {
-                devicePixelRatio: this.context.glHelper.dpr,
-            }
+            flexOpts
         );
 
         for (let i = 0; i < this.children.length; i++) {
@@ -290,20 +301,32 @@ export default class GridView extends ContainerView {
                 columnFlexCoords[this.#getViewSlot("column", col)];
             const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
 
+            const viewSize = view.getSize();
+            const viewPadding = view.getPadding();
+
+            const x = colLocSize.location + viewPadding.left;
+            const y = rowLocSize.location + viewPadding.top;
+
+            const width =
+                (viewSize.width.grow ? colLocSize.size : viewSize.width.px) -
+                viewPadding.width;
+            const height =
+                (viewSize.height.grow ? rowLocSize.size : viewSize.height.px) -
+                viewPadding.height;
+
             const childCoords = new Rectangle(
-                () => coords.x + colLocSize.location,
-                () => coords.y + rowLocSize.location,
-                () => colLocSize.size,
-                () => rowLocSize.size
+                () => coords.x + x,
+                () => coords.y + y,
+                () => width,
+                () => height
             );
 
-            const backgroundView = this.backgroundViews[i];
-            if (backgroundView) {
-                backgroundView.render(context, childCoords, options);
-            }
+            this.backgroundViews[i]?.render(context, childCoords, options);
 
-            const axisView = this.axisViews.left[i];
-            if (axisView) {
+            const axisViews = Object.values(this.axisViews)
+                .map((arr) => arr[i])
+                .filter((v) => v !== undefined);
+            for (const axisView of axisViews) {
                 const props = axisView.axisProps;
                 const orient = props.orient;
 

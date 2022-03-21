@@ -70,7 +70,7 @@ export default class UnitView extends ContainerView {
 
         /**
          * Not nice! Inconsistent when faceting!
-         * TODO: Something. Perhaps a Map that has coords for each facet or something...
+         * TODO: Something. Maybe store only width/height
          * @type {import("../utils/layout/rectangle").default}
          */
         this.coords = undefined;
@@ -107,8 +107,6 @@ export default class UnitView extends ContainerView {
         if (!this.isVisible()) {
             return;
         }
-
-        coords = coords.shrink(this.getPadding());
 
         this.coords = coords;
 
