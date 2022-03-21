@@ -92,24 +92,6 @@ export default class DecoratorView extends ContainerView {
     /**
      * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
      *      selectively breaking the inheritance.
-     */
-    getEncoding(whoIsAsking) {
-        if (
-            Object.values(this.axisViews).find(
-                (view) => whoIsAsking === view
-            ) ||
-            whoIsAsking == this.backgroundView
-        ) {
-            // Prevent the axis views from inheriting any encodings
-            return {};
-        }
-
-        return super.getEncoding();
-    }
-
-    /**
-     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
-     *      selectively breaking the inheritance.
      * @return {function(object):any}
      */
     getFacetAccessor(whoIsAsking) {

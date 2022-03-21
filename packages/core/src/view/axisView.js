@@ -120,6 +120,8 @@ export default class AxisView extends LayerView {
             this.findChildByName(CHROM_LAYER_NAME).getDynamicDataSource = () =>
                 new DynamicCallbackSource(() => genome.chromosomes);
         }
+
+        this.blockEncodingInheritance = true;
     }
 
     getOrient() {

@@ -141,14 +141,6 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
-     *      selectively breaking the inheritance.
-     */
-    getEncoding(whoIsAsking) {
-        return this.uniqueChildren.has(whoIsAsking) ? super.getEncoding() : {};
-    }
-
-    /**
      * @param {Direction} direction
      */
     getSizes(direction) {

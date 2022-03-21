@@ -103,6 +103,12 @@ export default class View {
 
         /** @type {function(number):number} */
         this.opacityFunction = defaultOpacityFunction;
+
+        /**
+         * Don't inherit encodings from parent.
+         * TODO: Make configurable through spec. Allow more fine-grained control.
+         */
+        this.blockEncodingInheritance = false;
     }
 
     getPadding() {
@@ -367,12 +373,13 @@ export default class View {
      * encodings. However, this does not contain any defaults or inferred/adjusted/fixed
      * encodings. Those are available in Mark's encoding property.
      *
-     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
-     *      selectively breaking the inheritance.
      * @return {import("../spec/channel").Encoding}
      */
-    getEncoding(whoIsAsking) {
-        const pe = this.parent ? this.parent.getEncoding(this) : {};
+    getEncoding() {
+        const pe =
+            this.parent && !this.blockEncodingInheritance
+                ? this.parent.getEncoding()
+                : {};
         const te = this.spec.encoding || {};
 
         /** @type {import("../spec/channel").Encoding} */
