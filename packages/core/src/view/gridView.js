@@ -114,7 +114,8 @@ export default class GridView extends ContainerView {
                         props,
                         r.scaleResolution.type,
                         this.context,
-                        this
+                        // Note: Axisview has a unit/layerView as parent so that scale/axis resolutions are inherited correctly
+                        child
                     );
                 }
             }
