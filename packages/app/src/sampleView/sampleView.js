@@ -222,6 +222,18 @@ export default class SampleView extends ContainerView {
                         specifier.field
                     ];
 
+                // Find the channel and scale that matches the field
+                const [channel, channelDef] = Object.entries(
+                    view.getEncoding()
+                ).find(
+                    ([_channel, channelDef]) =>
+                        "field" in channelDef &&
+                        channelDef.field == specifier.field
+                );
+                const scale = channel
+                    ? view.getScaleResolution(channel)?.getScale()
+                    : undefined;
+
                 /** @type {import("./types").AttributeInfo} */
                 const attributeInfo = {
                     name: specifier.field,
@@ -238,9 +250,9 @@ export default class SampleView extends ContainerView {
                         >
                     `,
                     accessor,
-                    // TODO: Fix the following
-                    type: "quantitative",
-                    scale: undefined,
+                    // TODO: Ensure that there's a type even if it's missing from spec
+                    type: "type" in channelDef ? channelDef.type : undefined,
+                    scale,
                 };
 
                 return attributeInfo;
