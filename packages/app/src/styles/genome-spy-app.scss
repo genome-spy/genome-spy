@@ -715,6 +715,23 @@ $form-control-border: 1px solid $form-control-border-color;
         margin-top: 0.25rem;
         color: #606060;
     }
+
+    .threshold-flex {
+        display: flex;
+        gap: $basic-spacing;
+
+        &:not(:last-child) {
+            margin-bottom: $basic-spacing;
+        }
+
+        * {
+            margin-bottom: 0 !important; // TODO: without important
+        }
+
+        :first-child {
+            width: 5em;
+        }
+    }
 }
 
 .gs-alert {

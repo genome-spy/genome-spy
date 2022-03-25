@@ -2,8 +2,9 @@
  * @typedef {import("../utils/ui/contextMenu").MenuItem} MenuItem
  */
 
-import { faFilter } from "@fortawesome/free-solid-svg-icons";
+import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 import { advancedAttributeFilterDialog } from "./advancedAttributeFilterDialog";
+import groupByThresholdsDialog from "./groupByThresholdsDialog";
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
@@ -75,6 +76,11 @@ export default function generateAttributeContextMenu(
         );
     } else {
         addActions(actions.groupToQuartiles({ attribute }));
+        items.push({
+            icon: faObjectGroup,
+            label: "Group by thresholds...",
+            callback: () => groupByThresholdsDialog(attributeInfo, sampleView),
+        });
 
         if (isDefined(attributeValue)) {
             addActions(

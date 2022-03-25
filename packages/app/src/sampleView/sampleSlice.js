@@ -3,6 +3,7 @@ import { peek } from "@genome-spy/core/utils/arrayUtils";
 import {
     groupSamplesByAccessor,
     groupSamplesByQuartiles,
+    groupSamplesByThresholds,
 } from "./groupOperations";
 import {
     filterNominal,
@@ -46,7 +47,8 @@ const FILTER_BY_NOMINAL = "filterByNominal";
 const FILTER_BY_QUANTITATIVE = "filterByQuantitative";
 const REMOVE_UNDEFINED = "removeUndefined";
 const GROUP_BY_NOMINAL = "groupByNominal";
-const GROUP_TO_QUARTILES = "groupToQuartiles";
+const GROUP_BY_QUARTILES = "groupToQuartiles";
+const GROUP_BY_THRESHOLDS = "groupByThresholds";
 
 export const SAMPLE_SLICE_NAME = "sampleView";
 
@@ -219,7 +221,7 @@ export function createSampleSlice(getAttributeInfo) {
                 });
             },
 
-            [GROUP_TO_QUARTILES]: (
+            [GROUP_BY_QUARTILES]: (
                 state,
                 /** @type {PayloadAction<import("./payloadTypes").GroupToQuartiles>} */
                 action
@@ -228,6 +230,23 @@ export function createSampleSlice(getAttributeInfo) {
                     groupSamplesByQuartiles(
                         sampleGroup,
                         getAccessor(action.payload, state)
+                    )
+                );
+                state.groupMetadata.push({
+                    attribute: action.payload.attribute,
+                });
+            },
+
+            [GROUP_BY_THRESHOLDS]: (
+                state,
+                /** @type {PayloadAction<import("./payloadTypes").GroupByThresholds>} */
+                action
+            ) => {
+                applyToGroups(state, (sampleGroup) =>
+                    groupSamplesByThresholds(
+                        sampleGroup,
+                        getAccessor(action.payload, state),
+                        action.payload.thresholds
                     )
                 );
                 state.groupMetadata.push({
@@ -361,6 +380,17 @@ const verboseOps = {
 };
 
 /**
+ * @param {any[]} values
+ * @returns
+ */
+function joinValues(values) {
+    return values.length > 1
+        ? html`{${values.map(
+              (value, i) => html`${i > 0 ? ", " : ""}<strong>${value}</strong>`
+          )}}`
+        : html`<strong>${values[0]}</strong>`;
+}
+/**
  * Describes an action for displaying it in menus or provenance tracking.
  *
  * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
@@ -420,16 +450,6 @@ export function getActionInfo(action, getAttributeInfo) {
                     payload.values
                 );
 
-            const joinedValues =
-                values.length > 1
-                    ? html`{${values.map(
-                          (value, i) =>
-                              html`${i > 0 ? ", " : ""}<strong
-                                      >${value}</strong
-                                  >`
-                      )}}`
-                    : html`<strong>${values[0]}</strong>`;
-
             /** @param {string | import("lit").TemplateResult} attr */
             const makeTitle = (attr) => html`
                 ${payload.remove ? "Remove" : "Retain"} samples having
@@ -439,7 +459,7 @@ export function getActionInfo(action, getAttributeInfo) {
                       ${values.length > 1
                           ? "in"
                           : html`<span class="operator">=</span>`}
-                      ${joinedValues}`}
+                      ${joinValues(values)}`}
             `;
 
             return {
@@ -480,12 +500,27 @@ export function getActionInfo(action, getAttributeInfo) {
                 provenanceTitle: html` Group by ${attributeTitle} `,
                 icon: faObjectGroup,
             };
-        case GROUP_TO_QUARTILES:
+        case GROUP_BY_QUARTILES:
             return {
                 ...template,
-                title: "Group to quartiles",
+                title: "Group by quartiles",
                 provenanceTitle: html`
-                    Group to quartiles by ${attributeTitle}
+                    Group by quartiles on ${attributeTitle}
+                `,
+                icon: faObjectGroup,
+            };
+        case GROUP_BY_THRESHOLDS:
+            return {
+                ...template,
+                title: "Group by thresholds",
+                provenanceTitle: html`
+                    Group by thresholds
+                    {${joinValues(
+                        payload.thresholds.map(
+                            (t) => `${verboseOps[t.operator]} ${t.operand}`
+                        )
+                    )}}
+                    on ${attributeTitle}
                 `,
                 icon: faObjectGroup,
             };

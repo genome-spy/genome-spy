@@ -6,6 +6,13 @@ export interface SetSamples {
     samples: Sample[];
 }
 
+export type ThresholdOperator = "lt" | "lte";
+
+export interface Threshold {
+    operator: ThresholdOperator;
+    operand: number;
+}
+
 export interface PayloadWithAttribute {
     attribute: AttributeIdentifier;
 }
@@ -19,6 +26,10 @@ export interface RemoveUndefined extends PayloadWithAttribute {}
 export interface GroupByNominal extends PayloadWithAttribute {}
 
 export interface GroupToQuartiles extends PayloadWithAttribute {}
+
+export interface GroupByThresholds extends PayloadWithAttribute {
+    thresholds: Threshold[];
+}
 
 export interface FilterByQuantitative extends PayloadWithAttribute {
     /** The comparison operator */

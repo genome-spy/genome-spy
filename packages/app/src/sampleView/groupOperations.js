@@ -53,22 +53,17 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, labels) {
  *
  * @param {SampleGroup} sampleGroup
  * @param {function(any):any} accessor
+ * @param {import("./payloadTypes").Threshold[]} thresholds
  */
-export function groupSamplesByQuartiles(sampleGroup, accessor) {
+function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
     const format = d3format(".3~r");
-
-    const thresholds = uniq(
-        extractQuantiles(sampleGroup.samples, accessor, [0, 0.25, 0.5, 0.75, 1])
-    );
-
-    if (thresholds.length == 1) {
-        thresholds.push(thresholds[0]);
-    }
 
     /** @param {number} i */
     const formatInterval = (i) =>
-        `[${format(thresholds[i])}, ${format(thresholds[i + 1])}${
-            i < thresholds.length - 2 ? ")" : "]"
+        `${thresholds[i].operator == "lt" ? "[" : "("}${format(
+            thresholds[i].operand
+        )}, ${format(thresholds[i + 1].operand)}${
+            thresholds[i + 1].operator == "lte" ? "]" : ")"
         }`;
 
     // TODO: Group ids should indicate if multiple identical thresholds were merged
@@ -76,7 +71,7 @@ export function groupSamplesByQuartiles(sampleGroup, accessor) {
 
     groupSamplesByAccessor(
         sampleGroup,
-        createQuantileAccessor(
+        createThresholdAccessor(
             accessor,
             thresholds.slice(1, thresholds.length - 1)
         ),
@@ -86,22 +81,63 @@ export function groupSamplesByQuartiles(sampleGroup, accessor) {
 }
 
 /**
- * Returns an accessor that extracts a quantile-index (1-based) based
+ *
+ * @param {SampleGroup} sampleGroup
+ * @param {function(any):any} accessor
+ * @param {import("./payloadTypes").Threshold[]} thresholds
+ */
+export function groupSamplesByThresholds(sampleGroup, accessor, thresholds) {
+    groupSamplesByRawThresholds(sampleGroup, accessor, [
+        { operator: "lt", operand: -Infinity },
+        ...thresholds,
+        { operator: "lte", operand: Infinity },
+    ]);
+}
+
+/**
+ * @param {SampleGroup} sampleGroup
+ * @param {function(any):any} accessor
+ */
+export function groupSamplesByQuartiles(sampleGroup, accessor) {
+    const thresholds = uniq(
+        extractQuantiles(sampleGroup.samples, accessor, [0, 0.25, 0.5, 0.75, 1])
+    );
+
+    if (thresholds.length == 1) {
+        thresholds.push(thresholds[0]);
+    }
+
+    groupSamplesByRawThresholds(
+        sampleGroup,
+        accessor,
+        thresholds.map((t, i, a) => ({
+            operator: i == a.length - 1 ? "lte" : "lt",
+            operand: t,
+        }))
+    );
+}
+
+/**
+ * Returns an accessor that extracts a threshold-index (1-based) based
  * on the given thresholds.
  *
  * @param {function(any):any} accessor
- * @param {number[]} thresholds Must be in ascending order
+ * @param {import("./payloadTypes").Threshold[]} thresholds Must be in ascending order
  */
-function createQuantileAccessor(accessor, thresholds) {
+function createThresholdAccessor(accessor, thresholds) {
     /** @param {any} datum */
-    const quantileAccessor = (datum) => {
+    const thresholdAccessor = (datum) => {
         const value = accessor(datum);
         if (!isNumber(value) || isNaN(value)) {
             return undefined;
         }
 
         for (let i = 0; i < thresholds.length; i++) {
-            if (value < thresholds[i]) {
+            if (thresholds[i].operator == "lt") {
+                if (value < thresholds[i].operand) {
+                    return i;
+                }
+            } else if (value <= thresholds[i].operand) {
                 return i;
             }
         }
@@ -109,7 +145,7 @@ function createQuantileAccessor(accessor, thresholds) {
         return thresholds.length;
     };
 
-    return quantileAccessor;
+    return thresholdAccessor;
 }
 
 /**
