@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import coalesce from "./coalesce";
 
 test("Coalesce returns first defined value", () => {

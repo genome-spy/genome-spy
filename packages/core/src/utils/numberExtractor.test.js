@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import numberExtractor from "./numberExtractor";
 
 test("NumberExtractor parses delimited integers", () => {

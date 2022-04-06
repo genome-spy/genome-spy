@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import createIndexer from "./indexer";
 
 test("Index values one by one", () => {

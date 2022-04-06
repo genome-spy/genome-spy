@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import concatIterables from "./concatIterables";
 
 test("ConcatIterables yields all elements in the correct order", () => {

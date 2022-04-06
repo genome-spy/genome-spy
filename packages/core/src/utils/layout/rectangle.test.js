@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import Rectangle from "./rectangle";
 import Padding from "./padding";
 

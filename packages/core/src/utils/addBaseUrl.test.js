@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import addBaseUrl from "./addBaseUrl";
 
 test("addBaseUrl adds baseUrl when needed", () => {

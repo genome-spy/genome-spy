@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import scaleIndex from "./scaleIndex";
 
 test("Scale with defaults works as expected", () => {

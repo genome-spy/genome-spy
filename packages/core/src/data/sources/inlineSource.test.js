@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import Collector from "../collector";
 import InlineSource from "./inlineSource";
 

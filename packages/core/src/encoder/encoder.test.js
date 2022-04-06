@@ -1,3 +1,4 @@
+import { describe, expect, test } from "vitest";
 import AccessorFactory from "./accessor";
 import { scale as vegaScale } from "vega-scale";
 

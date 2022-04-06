@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import { range } from "d3-array";
 import { topK, topKSlice } from "./topK";
 

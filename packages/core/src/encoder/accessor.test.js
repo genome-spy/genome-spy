@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import AccessorFactory from "./accessor";
 
 const af = new AccessorFactory();

@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import SampleTransform from "./sample";
 import { extent } from "d3-array";
 import { createChain } from "../../view/flowBuilder";

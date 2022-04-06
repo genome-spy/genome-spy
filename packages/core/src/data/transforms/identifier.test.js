@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import { range } from "d3-array";
 import { processData } from "../flowTestUtils";
 import IdentifierTransform, { BLOCK_SIZE, DEFAULT_AS } from "./identifier";

@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import fasta from "./fasta";
 
 test("fasta", () => {

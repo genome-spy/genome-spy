@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import { getCachedOrCall, invalidate, invalidateAll } from "./propertyCacher";
 
 class TestClass {

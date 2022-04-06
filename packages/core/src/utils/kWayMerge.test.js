@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import kWayMerge from "./kWayMerge";
 
 test("k-way merge merges multiple sorted arrays", () => {

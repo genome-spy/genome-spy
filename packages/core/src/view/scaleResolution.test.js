@@ -1,3 +1,4 @@
+import { describe, expect, test } from "vitest";
 import { createAndInitialize } from "./testUtils";
 import createDomain, { toRegularArray as r } from "../utils/domainArray";
 import LayerView from "./layerView";
