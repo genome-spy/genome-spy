@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 /*!
  * Adapted from vega-encode:
  * https://github.com/vega/vega/blob/master/packages/vega-encode/test/scale-test.js

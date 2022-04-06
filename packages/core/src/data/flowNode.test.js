@@ -1,3 +1,4 @@
+import { describe, expect, test } from "vitest";
 import FlowNode from "./flowNode";
 import { validateLinks } from "./flowOptimizer";
 

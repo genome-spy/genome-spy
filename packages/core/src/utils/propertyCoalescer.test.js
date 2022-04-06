@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import coalesceProperties from "./propertyCoalescer";
 
 test("CoalesceProperties works as expected", () => {

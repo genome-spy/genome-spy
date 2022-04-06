@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import { crc32, crc32hex } from "./crc32";
 
 test("crc32 returns correct value for an ASCII string", () => {

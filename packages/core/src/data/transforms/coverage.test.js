@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import CoverageTransform from "./coverage";
 import { processData } from "../flowTestUtils";
 

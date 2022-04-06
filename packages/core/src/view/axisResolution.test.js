@@ -1,3 +1,4 @@
+import { describe, expect, test } from "vitest";
 import { createAndInitialize } from "./testUtils";
 import UnitView from "./unitView";
 import View from "./view";

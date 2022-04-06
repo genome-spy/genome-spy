@@ -1,3 +1,4 @@
+import { describe, expect, test } from "vitest";
 import Genome from "./genome";
 
 describe("Human genome, chromosome names prefixed with 'chr'", () => {

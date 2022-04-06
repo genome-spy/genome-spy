@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import mergeObjects from "./mergeObjects";
 
 test("Merges non-conflicting properties", () => {
