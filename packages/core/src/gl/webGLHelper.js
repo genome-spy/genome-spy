@@ -8,7 +8,6 @@ import {
     setTextureFromArray,
 } from "twgl.js";
 import { isArray, isString } from "vega-util";
-import { getPlatformShaderDefines } from "./includes/fp64-utils";
 
 import { isDiscrete, isDiscretizing, isInterpolating } from "vega-scale";
 import {
@@ -80,8 +79,6 @@ export default class WebGLHelper {
 
         // Always use pre-multiplied alpha
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
-        this._shaderDefines = getPlatformShaderDefines(gl);
 
         this.canvas = canvas;
         this.gl = gl;

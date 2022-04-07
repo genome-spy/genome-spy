@@ -1,3 +1,6 @@
+// High-precision hack for index/locus scales
+const float hpFactor = 65536.0;
+
 // Utils ------------
 
 vec3 getDiscreteColor(sampler2D s, int index) {
@@ -67,15 +70,37 @@ float scaleBand(float value, vec2 domainExtent, vec2 range,
     // TODO: reverse
     float start = range[0];
     float stop = range[1];
+    float rangeSpan = stop - start;
 
     float n = domainExtent[1] - domainExtent[0];
 
     paddingInner = int(n) > 1 ? paddingInner : 0.0;
 
     // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
-    float step = (stop - start) / max(1.0, n - paddingInner + paddingOuter * 2.0);
-    start += (stop - start - step * (n - paddingInner)) * align;
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
     return start + (value - domainExtent[0]) * step + bandwidth * band;
+}
+
+float scaleBandHp(vec2 value, vec3 domainExtent, vec2 range,
+                float paddingInner, float paddingOuter,
+                float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    paddingInner = int(n) > 1 ? paddingInner : 0.0;
+
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    return start + ((value[0] - domainStart[0]) * hpFactor + value[1] - domainStart[1]) * step + bandwidth * band;
 }

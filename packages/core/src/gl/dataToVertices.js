@@ -1,12 +1,15 @@
 import { InternMap } from "internmap";
 import { format } from "d3-format";
 import { isString } from "vega-util";
-import { fp64ify } from "./includes/fp64-utils";
 import ArrayBuilder from "./arrayBuilder";
 import { SDF_PADDING } from "../fonts/bmFontMetrics";
 import { peek } from "../utils/arrayUtils";
 import createBinningRangeIndexer from "../utils/binnedRangeIndex";
 import { isValueDef } from "../encoder/encoder";
+import {
+    isHighPrecisionScale,
+    splitHighPrecision,
+} from "../scale/glslScaleGenerator";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
@@ -55,7 +58,7 @@ export class GeometryBuilder {
             const accessor = ce.accessor;
 
             const doubleArray = [0, 0];
-            const fp64 = ce.scale.fp64;
+            const hp = isHighPrecisionScale(ce.scale.type);
 
             const indexer = ce.indexer;
 
@@ -68,14 +71,14 @@ export class GeometryBuilder {
              */
             const f = indexer
                 ? (d) => indexer(accessor(d))
-                : fp64
-                ? (d) => fp64ify(accessor(d), doubleArray)
+                : hp
+                ? (d) => splitHighPrecision(accessor(d), doubleArray)
                 : accessor;
 
             this.variableBuilder.addConverter(channel, {
                 f,
-                numComponents: fp64 ? 2 : 1,
-                arrayReference: fp64 ? doubleArray : undefined,
+                numComponents: hp ? 2 : 1,
+                arrayReference: hp ? doubleArray : undefined,
             });
         }
 

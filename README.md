@@ -47,4 +47,3 @@ This project has received funding from the European Union’s Horizon 2020 resea
 Contains code from:
 
 - Vega and Vega-Lite ([LICENSE](https://github.com/vega/vega-lite/blob/master/LICENSE))
-- luma.gl ([LICENSE](https://github.com/visgl/luma.gl/blob/master/LICENSE))

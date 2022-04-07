@@ -8,7 +8,6 @@ import {
     setUniforms,
 } from "twgl.js";
 import { isDiscrete } from "vega-scale";
-import { fp64ify } from "../gl/includes/fp64-utils";
 import createEncoders, {
     isChannelDefWithScale,
     isDatumDef,
@@ -20,11 +19,12 @@ import {
     generateScaleGlsl,
     RANGE_TEXTURE_PREFIX,
     ATTRIBUTE_PREFIX,
+    isHighPrecisionScale,
+    toHighPrecisionDomainUniform,
+    splitHighPrecision,
 } from "../scale/glslScaleGenerator";
-import FP64 from "../gl/includes/fp64-arithmetic.glsl";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
-import GLSL_SCALES_FP64 from "../gl/includes/scales_fp64.glsl";
 import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
 import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
@@ -345,11 +345,6 @@ export default class Mark {
             vertexShader,
         ];
 
-        if (vertexParts.some((code) => /[Ff]p64/.test(code))) {
-            vertexParts.unshift(GLSL_SCALES_FP64);
-            vertexParts.unshift(FP64);
-        }
-
         const fragmentParts = [
             ...extraHeaders,
             GLSL_COMMON,
@@ -413,8 +408,8 @@ export default class Mark {
 
                 const datum = encoder.indexer
                     ? encoder.indexer(channelDef.datum)
-                    : encoder.scale.fp64
-                    ? fp64ify(+channelDef.datum)
+                    : isHighPrecisionScale(encoder.scale.type)
+                    ? splitHighPrecision(+channelDef.datum)
                     : +channelDef.datum;
 
                 setUniforms(this.programInfo, {
@@ -579,8 +574,8 @@ export default class Mark {
                         : scale.domain();
 
                     setter(
-                        scale.fp64
-                            ? domain.map((x) => fp64ify(x)).flat()
+                        isHighPrecisionScale(scale.type)
+                            ? toHighPrecisionDomainUniform(domain)
                             : domain
                     );
                 }

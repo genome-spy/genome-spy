@@ -109,8 +109,8 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeName = RANGE_PREFIX + primary;
 
-    const fp64 = !!scale.fp64;
-    const attributeType = fp64 ? "vec2" : "float";
+    const hp = isHighPrecisionScale(scale.type);
+    const attributeType = hp ? "vec2" : "float";
 
     const domainLength = scale.domain ? scale.domain().length : undefined;
 
@@ -127,9 +127,6 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     glsl.push("");
 
     glsl.push(`#define ${channel}_DEFINED`);
-    if (fp64) {
-        glsl.push(`#define ${channel}_FP64`);
-    }
 
     const { transform } = splitScaleType(scale.type);
 
@@ -139,11 +136,7 @@ export function generateScaleGlsl(channel, scale, channelDef) {
      */
     const makeScaleCall = (name, ...args) =>
         // eslint-disable-next-line no-useless-call
-        makeFunctionCall.apply(null, [
-            name + (fp64 ? "Fp64" : ""),
-            "value",
-            ...args,
-        ]);
+        makeFunctionCall.apply(null, [name, "value", ...args]);
 
     let functionCall;
     switch (transform) {
@@ -181,6 +174,17 @@ export function generateScaleGlsl(channel, scale, channelDef) {
 
         case "index":
         case "locus":
+            functionCall = makeScaleCall(
+                "scaleBandHp",
+                "domain",
+                rangeName,
+                scale.paddingInner(),
+                scale.paddingOuter(),
+                scale.align(),
+                // @ts-expect-error TODO: fix typing
+                channelDef.band ?? 0.5
+            );
+            break;
         case "point":
         case "band":
             functionCall = makeScaleCall(
@@ -296,10 +300,13 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     if (functionCall) {
         const name = domainUniformName;
         if (usesDomain) {
-            const dtype = fp64 ? "vec4" : "vec2";
-            scaleBody.push(
-                `${dtype} domain = ${dtype}(${name}[slot], ${name}[slot + 1]);`
-            );
+            if (hp) {
+                scaleBody.push(`vec3 domain = ${name};`);
+            } else {
+                scaleBody.push(
+                    `vec2 domain = vec2(${name}[slot], ${name}[slot + 1]);`
+                );
+            }
         }
 
         scaleBody.push(`float transformed = ${functionCall};`);
@@ -344,9 +351,9 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
             isContinuous(scale.type) || isDiscretizing(scale.type)
                 ? domainLength
                 : 2;
-        domainUniform = `${
-            fp64 ? "vec2" : "float"
-        } ${domainUniformName}[${length}];`;
+        domainUniform = hp
+            ? `vec3 ${domainUniformName};`
+            : `float ${domainUniformName}[${length}];`;
     }
 
     return {
@@ -446,4 +453,31 @@ function makeFunctionCall(name, ...args) {
     }
 
     return `${name}(${fixedArgs.join(", ")})`;
+}
+
+/**
+ *
+ * @param {string} type
+ */
+export function isHighPrecisionScale(type) {
+    return type == "index" || type == "locus";
+}
+
+/**
+ * @param {number} x
+ * @param {number[]} [arr]
+ */
+export function splitHighPrecision(x, arr) {
+    const bs = 65536;
+    arr ??= [];
+    arr[0] = Math.floor(x / bs);
+    arr[1] = x % bs;
+    return arr;
+}
+
+/**
+ * @param {number[]} domain
+ */
+export function toHighPrecisionDomainUniform(domain) {
+    return [...splitHighPrecision(domain[0]), domain[1] - domain[0]];
 }

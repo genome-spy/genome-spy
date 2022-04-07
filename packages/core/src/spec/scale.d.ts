@@ -221,15 +221,6 @@ export interface Scale {
      * If `true` and the scale is used on a positional channel, it can bee zoomed and translated interactively.
      */
     zoom?: boolean | ZoomParams;
-
-    /**
-     * Use emulated 64bit floating points on the GPU to increase precision.
-     *
-     * Emulation has a performance cost when compared to the native 32bit processing, but the effect is negligible in the most cases.
-     *
-     * __Default value:__ `true` for `"locus"` scale, `false` for others.
-     */
-    fp64?: boolean;
 }
 
 export interface SchemeParams {

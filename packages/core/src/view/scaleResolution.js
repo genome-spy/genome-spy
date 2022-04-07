@@ -228,11 +228,6 @@ export default class ScaleResolution {
                 props.domain = [props.domainMin ?? 0, props.domainMax ?? 1];
             }
 
-            // Genomic coordinates need higher precision
-            if (props.type == LOCUS && !("fp64" in props)) {
-                props.fp64 = true;
-            }
-
             // Reverse discrete y axis
             if (
                 this.channel == "y" &&
@@ -330,11 +325,6 @@ export default class ScaleResolution {
         if (isScaleLocus(scale)) {
             scale.genome(this.getGenome());
         }
-
-        // Tag the scale and inform encoders and shaders that emulated
-        // 64bit floats should be used.
-        // N.B. the tag is lost upon scale.clone().
-        scale.fp64 = !!props.fp64;
 
         if (isContinuous(scale.type)) {
             this._zoomExtent = this._getZoomExtent();
