@@ -6,12 +6,11 @@ export default defineConfig({
     base: "",
     plugins: [
         rawPlugin({
-            fileRegex: /\.(txt|glsl)$/,
+            fileRegex: /\.glsl$/,
         }),
     ],
     build: {
         outDir: "../dist",
         emptyOutDir: true,
-        dedupe: ["lit", "vega-loader"],
     },
 });

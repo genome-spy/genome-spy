@@ -4,7 +4,7 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faColumns, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
 import { debounce } from "@genome-spy/core/utils/debounce";
-import defaultSpec from "./defaultspec.json.txt";
+import defaultSpec from "./defaultspec.json?raw";
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 // Available after the core package has been built
