@@ -12,7 +12,7 @@ in float side;
 /** Minimum rule length in pixels */
 uniform float uMinLength;
 
-uniform float uDashTextureSize;
+uniform mediump float uDashTextureSize;
 uniform lowp int uStrokeCap;
 
 flat out vec4 vColor;

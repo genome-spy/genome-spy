@@ -1,12 +1,12 @@
 #define PI 3.141593
 
 /** Offset in "unit" units */
-uniform vec2 uViewOffset;
+uniform mediump vec2 uViewOffset;
 
-uniform vec2 uViewScale;
+uniform mediump vec2 uViewScale;
 
 /** Size of the logical viewport in pixels, i.e., the view */
-uniform vec2 uViewportSize;
+uniform mediump vec2 uViewportSize;
 
 uniform lowp float uDevicePixelRatio;
 

@@ -352,8 +352,8 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
                 ? domainLength
                 : 2;
         domainUniform = hp
-            ? `vec3 ${domainUniformName};`
-            : `float ${domainUniformName}[${length}];`;
+            ? `highp vec3 ${domainUniformName};`
+            : `mediump float ${domainUniformName}[${length}];`;
     }
 
     return {

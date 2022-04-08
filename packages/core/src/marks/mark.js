@@ -334,7 +334,10 @@ export default class Mark {
               "};\n\n"
             : "";
 
+        const vertexPrecision = "precision highp float;\n";
+
         const vertexParts = [
+            vertexPrecision,
             ...extraHeaders,
             GLSL_COMMON,
             GLSL_SCALES,

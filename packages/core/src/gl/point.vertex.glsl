@@ -1,5 +1,3 @@
-precision mediump float;
-
 /**
  * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
  * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
