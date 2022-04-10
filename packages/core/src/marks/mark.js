@@ -622,7 +622,6 @@ export default class Mark {
         }
 
         setUniforms(this.programInfo, {
-            ONE: 1.0, // a hack needed by emulated 64 bit floats
             uDevicePixelRatio: this.glHelper.dpr,
             uViewOpacity: this.unitView.getEffectiveOpacity(),
             // TODO: Rendering of the mark should be completely skipped if it doesn't

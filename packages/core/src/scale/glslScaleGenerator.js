@@ -468,10 +468,15 @@ export function isHighPrecisionScale(type) {
  * @param {number[]} [arr]
  */
 export function splitHighPrecision(x, arr) {
-    const bs = 65536;
+    // Maximum precise index number is 2^(23 + 11) ~ 17G
+    // Higher number increases precision but makes zooming unstable
+    const bs = 2 ** 11;
+
+    const lo = x % bs;
+    const hi = Math.round(x - lo);
     arr ??= [];
-    arr[0] = Math.floor(x / bs);
-    arr[1] = x % bs;
+    arr[0] = hi;
+    arr[1] = lo;
     return arr;
 }
 

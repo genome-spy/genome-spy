@@ -1,5 +1,4 @@
-// High-precision hack for index/locus scales
-const float hpFactor = 65536.0;
+const float inf = 1.0 / 0.0;
 
 // Utils ------------
 
@@ -74,6 +73,7 @@ float scaleBand(float value, vec2 domainExtent, vec2 range,
 
     float n = domainExtent[1] - domainExtent[0];
 
+    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
     paddingInner = int(n) > 1 ? paddingInner : 0.0;
 
     // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
@@ -84,9 +84,10 @@ float scaleBand(float value, vec2 domainExtent, vec2 range,
     return start + (value - domainExtent[0]) * step + bandwidth * band;
 }
 
+// High precision variant of scaleBand for index/locus scales
 float scaleBandHp(vec2 value, vec3 domainExtent, vec2 range,
-                float paddingInner, float paddingOuter,
-                float align, float band) {
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
 
     // TODO: reverse
     float start = range[0];
@@ -96,11 +97,16 @@ float scaleBandHp(vec2 value, vec3 domainExtent, vec2 range,
     vec2 domainStart = domainExtent.xy;
     float n = domainExtent[2];
 
-    paddingInner = int(n) > 1 ? paddingInner : 0.0;
-
+    // The following computation is identical for every vertex. Could be done on the JS side.
     float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + ((value[0] - domainStart[0]) * hpFactor + value[1] - domainStart[1]) * step + bandwidth * band;
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float hi = max(value[0] - domainStart[0], -inf);
+    float lo = max(value[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
 }
