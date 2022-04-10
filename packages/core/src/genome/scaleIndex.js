@@ -24,7 +24,7 @@ export default function scaleIndex() {
     let numberingOffset = 0;
 
     const scaleFunction = (/** @type {number} */ x) =>
-        ((x - domain[0]) / domainSpan) * rangeSpan + range[0];
+        ((x + align - domain[0]) / domainSpan) * rangeSpan + range[0];
 
     /**
      * In principle, the domain consists of integer indices. However,
