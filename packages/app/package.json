@@ -7,7 +7,7 @@
   },
   "contributors": [],
   "license": "BSD-2-Clause",
-  "version": "0.19.0",
+  "version": "0.19.1",
   "main": "dist/index.js",
   "files": [
     "dist/"
@@ -27,7 +27,7 @@
     "@fortawesome/fontawesome-free": "^5.14.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.30",
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
-    "@genome-spy/core": "^0.19.0",
+    "@genome-spy/core": "^0.19.1",
     "@reduxjs/toolkit": "^1.6.2",
     "idb": "^6.1.5",
     "lit": "^2.0.2",

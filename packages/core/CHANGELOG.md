@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.19.1](https://github.com/genome-spy/genome-spy/compare/v0.19.0...v0.19.1) (2022-04-11)
+
+
+### Bug Fixes
+
+* **core:** fix the previous commit (snapping) ([a0341b0](https://github.com/genome-spy/genome-spy/commit/a0341b0b5bade7d32531d15a11bce9c6f640e52a))
+* **core:** snapping to point mark when zooming ([aaebdc2](https://github.com/genome-spy/genome-spy/commit/aaebdc261a9dbff9c3761835b08de2e0e30ffb52))
+* gets rid of fp64 gpu hack that fails on m1 macs ([2aade84](https://github.com/genome-spy/genome-spy/commit/2aade84b2c8cdab45af3cf69fbfb644318c4a6b6)), closes [#92](https://github.com/genome-spy/genome-spy/issues/92)
+
+
+
+
+
 # [0.19.0](https://github.com/genome-spy/genome-spy/compare/v0.18.1...v0.19.0) (2022-03-28)
 
 

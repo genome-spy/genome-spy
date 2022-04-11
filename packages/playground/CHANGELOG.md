@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.19.1](https://github.com/tuner/genome-spy/compare/v0.19.0...v0.19.1) (2022-04-11)
+
+
+### Bug Fixes
+
+* **playground:** import default spec properly. Fixes [#94](https://github.com/tuner/genome-spy/issues/94) ([0514a10](https://github.com/tuner/genome-spy/commit/0514a1045e1b06f990983ce51150ebd65c402325))
+
+
+
+
+
 # [0.19.0](https://github.com/tuner/genome-spy/compare/v0.18.1...v0.19.0) (2022-03-28)
 
 **Note:** Version bump only for package @genome-spy/playground
