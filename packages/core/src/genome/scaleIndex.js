@@ -34,7 +34,8 @@ export default function scaleIndex() {
      */
     const scale = /** @type {any} */ (scaleFunction);
 
-    scale.invert = (y) => ((y - range[0]) / rangeSpan) * domainSpan + domain[0];
+    scale.invert = (y) =>
+        ((y - range[0]) / rangeSpan) * domainSpan + domain[0] - align;
 
     // @ts-expect-error
     scale.domain = function (_) {

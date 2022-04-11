@@ -4,21 +4,37 @@ import scaleIndex from "./scaleIndex";
 test("Scale with defaults works as expected", () => {
     const scale = scaleIndex();
 
-    expect(scale(-1)).toEqual(-1);
-    expect(scale(0)).toEqual(0);
-    expect(scale(1)).toEqual(1);
-    expect(scale(2)).toEqual(2);
+    // Align is 0.5 by default
+    expect(scale(-1)).toEqual(-0.5);
+    expect(scale(0)).toEqual(0.5);
+    expect(scale(1)).toEqual(1.5);
+    expect(scale(2)).toEqual(2.5);
 });
 
 test("Scale scales correctly with custom domain and range", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]);
+    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.0);
 
     expect(scale(0)).toEqual(100);
     expect(scale(10)).toEqual(200);
 });
 
 test("Invert works as expected", () => {
-    const scale = scaleIndex().domain([0, 10]).range([100, 200]);
+    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.0);
+
+    expect(scale.invert(scale(0))).toEqual(0);
+    expect(scale.invert(scale(5))).toEqual(5);
+    expect(scale.invert(scale(10))).toEqual(10);
+});
+
+test("Scale scales correctly with custom domain, range, and align", () => {
+    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.5);
+
+    expect(scale(0)).toEqual(105);
+    expect(scale(10)).toEqual(205);
+});
+
+test("Invert works as expected with align", () => {
+    const scale = scaleIndex().domain([0, 10]).range([100, 200]).align(0.5);
 
     expect(scale.invert(scale(0))).toEqual(0);
     expect(scale.invert(scale(5))).toEqual(5);

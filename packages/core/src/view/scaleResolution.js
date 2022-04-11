@@ -395,10 +395,14 @@ export default class ScaleResolution {
         let newDomain = [...oldDomain];
 
         // @ts-expect-error
-        const anchor = scale.invert(scaleAnchor);
+        let anchor = scale.invert(scaleAnchor);
 
         if (this.getScaleProps().reverse) {
             pan = -pan;
+        }
+
+        if ("align" in scale) {
+            anchor += scale.align();
         }
 
         // TODO: symlog
