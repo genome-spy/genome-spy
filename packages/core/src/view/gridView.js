@@ -60,12 +60,15 @@ export default class GridView extends ContainerView {
             if (child instanceof UnitView || child instanceof LayerView) {
                 const viewConfig = child.spec?.view;
                 if (viewConfig?.fill || viewConfig?.stroke) {
-                    return new UnitView(
+                    const unitView = new UnitView(
                         createBackground(viewConfig),
                         this.context,
                         this,
                         "background" + i
                     );
+                    // TODO: Make configurable through spec:
+                    unitView.blockEncodingInheritance = true;
+                    return unitView;
                 }
             }
             return undefined;
