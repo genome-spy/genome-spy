@@ -32,6 +32,10 @@ import UnitView from "./unitView";
  * - And later on, brushing, legend(?)
  */
 export default class GridView extends ContainerView {
+    #columns = Infinity;
+
+    #spacing = 10;
+
     /**
      *
      * @param {import("./viewUtils").AnyConcatSpec} spec
@@ -44,7 +48,8 @@ export default class GridView extends ContainerView {
         super(spec, context, parent, name);
         this.spec = spec;
 
-        this.spacing = spec.spacing ?? 10;
+        this.#spacing = spec.spacing ?? 10;
+        this.#columns = columns;
 
         /**
          * The child views (no axes, titles, etc.)
@@ -52,8 +57,28 @@ export default class GridView extends ContainerView {
          */
         this.children = [];
 
-        this._createChildren();
+        /**
+         * Axes by child indices. May be sparse.
+         * @type {Record<import("../spec/axis").AxisOrient, AxisView[]>}
+         */
+        this.axisViews = {
+            top: [],
+            right: [],
+            bottom: [],
+            left: [],
+        };
 
+        this.wrappingFacet = false;
+
+        this._createChildren();
+        this._onChildrenModified();
+    }
+
+    _createChildren() {
+        // Override
+    }
+
+    _onChildrenModified() {
         this.uniqueChildren = new Set(this.children);
 
         /**  @type {import("./unitView").default[]} */
@@ -75,24 +100,7 @@ export default class GridView extends ContainerView {
             return undefined;
         });
 
-        this.wrappingFacet = false;
-
-        this.grid = new Grid(this.children.length, columns ?? Infinity);
-
-        /**
-         * Axes by child indices. May be sparse.
-         * @type {Record<import("../spec/axis").AxisOrient, AxisView[]>}
-         */
-        this.axisViews = {
-            top: [],
-            right: [],
-            bottom: [],
-            left: [],
-        };
-    }
-
-    _createChildren() {
-        // Override
+        this.grid = new Grid(this.children.length, this.#columns ?? Infinity);
     }
 
     onScalesResolved() {
@@ -107,7 +115,7 @@ export default class GridView extends ContainerView {
         // Create axes
         for (let i = 0; i < this.children.length; i++) {
             const child = this.children[i];
-            if (child instanceof UnitView) {
+            if (child instanceof UnitView || child instanceof LayerView) {
                 for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
                     "x",
                     "y",
@@ -239,7 +247,7 @@ export default class GridView extends ContainerView {
         for (const [i, size] of sizes.entries()) {
             if (i > 0) {
                 // Spacing
-                items.push({ px: this.spacing, grow: 0 });
+                items.push({ px: this.#spacing, grow: 0 });
             }
 
             if (i == 0 || this.wrappingFacet) {
@@ -278,7 +286,7 @@ export default class GridView extends ContainerView {
         for (const [i, size] of sizes.entries()) {
             if (i > 0) {
                 // Spacing
-                px += this.spacing;
+                px += this.#spacing;
             }
 
             if (i == 0 || this.wrappingFacet) {

@@ -48,7 +48,6 @@ export default class LayerView extends ContainerView {
             return;
         }
 
-        coords = coords.shrink(this.getPadding());
         context.pushView(this, coords);
 
         for (const child of this.children) {
