@@ -118,6 +118,10 @@ export default class GridView extends ContainerView {
                     }
 
                     const props = r.getAxisProps();
+                    if (props === null) {
+                        continue;
+                    }
+
                     props.orient ??= channel == "x" ? "bottom" : "left";
                     props.title ??= r.getTitle();
 
