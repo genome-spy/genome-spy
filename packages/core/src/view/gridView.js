@@ -94,6 +94,12 @@ export default class GridView extends ContainerView {
     onScalesResolved() {
         super.onScalesResolved();
 
+        if (Object.keys(this.resolutions.axis).length) {
+            throw new Error(
+                "ConcatView does not (currently) support shared axes!"
+            );
+        }
+
         // Create axes
         for (let i = 0; i < this.children.length; i++) {
             const child = this.children[i];
@@ -102,7 +108,10 @@ export default class GridView extends ContainerView {
                     "x",
                     "y",
                 ])) {
-                    const r = child.getAxisResolution(channel);
+                    const r = child.resolutions.axis[channel];
+                    if (!r) {
+                        continue;
+                    }
 
                     const props = r.getAxisProps();
                     props.orient ??= channel == "x" ? "bottom" : "left";
