@@ -124,9 +124,20 @@ export default class View {
      *
      * Effective padding allows for aligning views so that their content and
      * axes line up properly.
+     *
+     * @deprecated Use getOverhang
      */
     getEffectivePadding() {
         return this.getPadding();
+    }
+
+    /**
+     * Returns a padding that indicates how much axes and titles extend over the plot area.
+     *
+     * @returns {Padding}
+     */
+    getOverhang() {
+        return Padding.zero();
     }
 
     /**

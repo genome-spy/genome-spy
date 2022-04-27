@@ -5,6 +5,7 @@ import {
     ZERO_SIZEDEF,
 } from "../utils/layout/flexLayout";
 import Grid from "../utils/layout/grid";
+import Padding from "../utils/layout/padding";
 import Rectangle from "../utils/layout/rectangle";
 import AxisView, { CHANNEL_ORIENTS } from "./axisView";
 import ContainerView from "./containerView";
@@ -147,7 +148,7 @@ export default class GridView extends ContainerView {
     /**
      * @param {Direction} direction
      */
-    getSizes(direction) {
+    #getSizes(direction) {
         /** @type {import("../spec/axis").AxisOrient[]} */
         const orients =
             direction == "column" ? ["left", "right"] : ["top", "bottom"];
@@ -160,14 +161,23 @@ export default class GridView extends ContainerView {
         const getMaxAxisSize = (indices, side) =>
             indices
                 .map((index) => {
+                    // Axis view is only present for unit and layer views
                     const axisView = this.axisViews[orients[side]][index];
-                    return axisView
-                        ? Math.max(
-                              axisView.getPerpendicularSize() +
-                                  axisView.axisProps.offset ?? 0,
-                              0
-                          )
-                        : 0;
+                    if (axisView) {
+                        return Math.max(
+                            axisView.getPerpendicularSize() +
+                                axisView.axisProps.offset ?? 0,
+                            0
+                        );
+                    }
+
+                    // For views other than unit or layer, use overhang instead
+                    const overhang = this.children[index].getOverhang();
+                    if (direction == "column") {
+                        return side ? overhang.right : overhang.left;
+                    } else {
+                        return side ? overhang.bottom : overhang.top;
+                    }
                 })
                 .reduce((a, b) => Math.max(a, b), 0);
 
@@ -201,7 +211,7 @@ export default class GridView extends ContainerView {
      * @param {Direction} direction
      */
     #makeFlexItems(direction) {
-        const sizes = this.getSizes(direction);
+        const sizes = this.#getSizes(direction);
 
         /** @type {import("../utils/layout/flexLayout").SizeDef[]} */
         const items = [];
@@ -239,6 +249,46 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * @param {Direction} direction
+     * @return {import("../utils/layout/flexLayout").SizeDef}
+     */
+    #getFlexSize(direction) {
+        let grow = 0;
+        let px = 0;
+
+        const sizes = this.#getSizes(direction);
+
+        for (const [i, size] of sizes.entries()) {
+            if (i > 0) {
+                // Spacing
+                px += 10;
+            }
+
+            if (i == 0 || this.wrappingFacet) {
+                // Header
+                px += 0;
+            }
+
+            // Axis/padding
+            px += size.axisBefore;
+
+            // View
+            px += size.view.px ?? 0;
+            grow += size.view.grow ?? 0;
+
+            // Axis/padding
+            px += size.axisAfter;
+
+            if (i == sizes.length - 1 || this.wrappingFacet) {
+                //Footer
+                px += 0;
+            }
+        }
+
+        return { px, grow };
+    }
+
+    /**
      * Locates a view slot in FlexLayout
      *
      * @param {Direction} direction
@@ -253,10 +303,31 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * @return {Padding}
+     */
+    getOverhang() {
+        const cols = this.#getSizes("column");
+        const rows = this.#getSizes("row");
+
+        const p = new Padding(
+            rows.at(0).axisBefore,
+            cols.at(-1).axisAfter,
+            rows.at(-1).axisAfter,
+            cols.at(0).axisBefore
+        );
+        return p;
+    }
+
+    /**
      * @returns {FlexDimensions}
      */
     getSize() {
-        return new FlexDimensions({ px: 0, grow: 1 }, { px: 0, grow: 1 });
+        return new FlexDimensions(
+            this.#getFlexSize("column"),
+            this.#getFlexSize("row")
+        )
+            .subtractPadding(this.getOverhang())
+            .addPadding(this.getPadding());
     }
 
     /**
@@ -269,9 +340,7 @@ export default class GridView extends ContainerView {
             return;
         }
 
-        console.log("Grid - " + coords);
-
-        coords = coords.shrink(this.getPadding());
+        coords = coords.shrink(this.getPadding()); // TODO: Only applicable at view root
         context.pushView(this, coords);
 
         const flexOpts = {
@@ -298,7 +367,7 @@ export default class GridView extends ContainerView {
             const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
 
             const viewSize = view.getSize();
-            const viewPadding = view.getPadding();
+            const viewPadding = view.getPadding().subtract(view.getOverhang());
 
             const x = colLocSize.location + viewPadding.left;
             const y = rowLocSize.location + viewPadding.top;
@@ -354,8 +423,6 @@ export default class GridView extends ContainerView {
             }
 
             view.render(context, childCoords, options);
-
-            console.log(`Render ${i} - ${childCoords}`);
         }
 
         context.popView(this);
@@ -383,6 +450,7 @@ function createBackground(viewConfig) {
         mark: {
             fill: null,
             strokeWidth: 1.0,
+            fillOpacity: viewConfig.fill ? 1.0 : 0, // TODO: This should be handled at lower level
             ...viewConfig,
             type: "rect",
             clip: false, // Shouldn't be needed

@@ -187,13 +187,30 @@ export class FlexDimensions {
      * @param {import("./padding").default} padding
      */
     addPadding(padding) {
+        return this.#addPx(padding.width, padding.height);
+    }
+
+    /**
+     * Subtracts padding from absolute (px) dimensions
+     *
+     * @param {import("./padding").default} padding
+     */
+    subtractPadding(padding) {
+        return this.#addPx(-padding.width, -padding.height);
+    }
+
+    /**
+     * @param {number} width
+     * @param {number} height
+     */
+    #addPx(width, height) {
         return new FlexDimensions(
             {
-                px: (this.width.px || 0) + padding.width,
+                px: (this.width.px ?? 0) + width,
                 grow: this.width.grow,
             },
             {
-                px: (this.height.px || 0) + padding.height,
+                px: (this.height.px ?? 0) + height,
                 grow: this.height.grow,
             }
         );
