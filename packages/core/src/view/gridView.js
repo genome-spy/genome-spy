@@ -34,14 +34,17 @@ import UnitView from "./unitView";
 export default class GridView extends ContainerView {
     /**
      *
-     * @param {import("../spec/view").GridSpec} spec
+     * @param {import("./viewUtils").AnyConcatSpec} spec
      * @param {import("./viewUtils").ViewContext} context
      * @param {ContainerView} parent
      * @param {string} name
+     * @param {number} columns
      */
-    constructor(spec, context, parent, name) {
+    constructor(spec, context, parent, name, columns) {
         super(spec, context, parent, name);
         this.spec = spec;
+
+        this.spacing = spec.spacing ?? 10;
 
         /**
          * The child views (no axes, titles, etc.)
@@ -49,10 +52,7 @@ export default class GridView extends ContainerView {
          */
         this.children = [];
 
-        /** @type { View[] } */
-        this.children = spec.grid.map((childSpec, i) =>
-            context.createView(childSpec, this, "grid" + i)
-        );
+        this._createChildren();
 
         this.uniqueChildren = new Set(this.children);
 
@@ -77,7 +77,7 @@ export default class GridView extends ContainerView {
 
         this.wrappingFacet = false;
 
-        this.grid = new Grid(this.children.length, this.spec.columns);
+        this.grid = new Grid(this.children.length, columns ?? Infinity);
 
         /**
          * Axes by child indices. May be sparse.
@@ -89,6 +89,10 @@ export default class GridView extends ContainerView {
             bottom: [],
             left: [],
         };
+    }
+
+    _createChildren() {
+        // Override
     }
 
     onScalesResolved() {
@@ -231,7 +235,7 @@ export default class GridView extends ContainerView {
         for (const [i, size] of sizes.entries()) {
             if (i > 0) {
                 // Spacing
-                items.push({ px: 10, grow: 0 });
+                items.push({ px: this.spacing, grow: 0 });
             }
 
             if (i == 0 || this.wrappingFacet) {
@@ -270,7 +274,7 @@ export default class GridView extends ContainerView {
         for (const [i, size] of sizes.entries()) {
             if (i > 0) {
                 // Spacing
-                px += 10;
+                px += this.spacing;
             }
 
             if (i == 0 || this.wrappingFacet) {
