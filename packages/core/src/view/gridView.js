@@ -1,3 +1,4 @@
+/* eslint-disable max-depth */
 import {
     FlexDimensions,
     getLargestSize,
@@ -106,6 +107,10 @@ export default class GridView extends ContainerView {
     onScalesResolved() {
         super.onScalesResolved();
 
+        this.#createAxes();
+    }
+
+    #createAxes() {
         if (Object.keys(this.resolutions.axis).length) {
             throw new Error(
                 "ConcatView does not (currently) support shared axes!"
@@ -115,6 +120,57 @@ export default class GridView extends ContainerView {
         // Create axes
         for (let i = 0; i < this.children.length; i++) {
             const child = this.children[i];
+
+            /**
+             * @param {import("./view").AxisResolution} r
+             * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+             * @param {UnitView | LayerView} axisParent
+             */
+            const createAxis = (r, channel, axisParent) => {
+                const props = r.getAxisProps();
+                if (props === null) {
+                    return;
+                }
+
+                // Pick a default orient based on what is available
+                if (!props.orient) {
+                    for (const orient of CHANNEL_ORIENTS[channel]) {
+                        if (!this.axisViews[orient][i]) {
+                            props.orient = orient;
+                            break;
+                        }
+                    }
+                    if (!props.orient) {
+                        throw new Error(
+                            "No slots available for an axis! Perhaps a LayerView has more than two children?"
+                        );
+                    }
+                }
+
+                props.title ??= r.getTitle();
+
+                if (!CHANNEL_ORIENTS[channel].includes(props.orient)) {
+                    throw new Error(
+                        `Invalid axis orientation "${props.orient}" on channel "${channel}"!`
+                    );
+                }
+
+                if (this.axisViews[props.orient][i]) {
+                    throw new Error(
+                        `An axis with the orient "${props.orient}" already exists!`
+                    );
+                }
+
+                this.axisViews[props.orient][i] = new AxisView(
+                    props,
+                    r.scaleResolution.type,
+                    this.context,
+                    // Note: Axisview has a unit/layerView as parent so that scale/axis resolutions are inherited correctly
+                    axisParent
+                );
+            };
+
+            // Handle shared axes
             if (child instanceof UnitView || child instanceof LayerView) {
                 for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
                     "x",
@@ -125,27 +181,34 @@ export default class GridView extends ContainerView {
                         continue;
                     }
 
-                    const props = r.getAxisProps();
-                    if (props === null) {
-                        continue;
+                    createAxis(r, channel, child);
+                }
+            }
+
+            // Handle LayerView's possible independent axes
+            if (child instanceof LayerView) {
+                // First create axes that have an orient preference
+                for (const layerChild of child.children) {
+                    for (const [channel, r] of Object.entries(
+                        layerChild.resolutions.axis
+                    )) {
+                        const props = r.getAxisProps();
+                        if (props && props.orient) {
+                            createAxis(r, channel, layerChild);
+                        }
                     }
+                }
 
-                    props.orient ??= channel == "x" ? "bottom" : "left";
-                    props.title ??= r.getTitle();
-
-                    if (!CHANNEL_ORIENTS[channel].includes(props.orient)) {
-                        throw new Error(
-                            `Invalid axis orientation for '${channel}' channel: ${props.orient}`
-                        );
+                // Then create axes in a priority order
+                for (const layerChild of child.children) {
+                    for (const [channel, r] of Object.entries(
+                        layerChild.resolutions.axis
+                    )) {
+                        const props = r.getAxisProps();
+                        if (props && !props.orient) {
+                            createAxis(r, channel, layerChild);
+                        }
                     }
-
-                    this.axisViews[props.orient][i] = new AxisView(
-                        props,
-                        r.scaleResolution.type,
-                        this.context,
-                        // Note: Axisview has a unit/layerView as parent so that scale/axis resolutions are inherited correctly
-                        child
-                    );
                 }
             }
         }

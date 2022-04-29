@@ -81,12 +81,12 @@ export default class View {
         this.resolutions = {
             /**
              * Channel-specific scale resolutions
-             * @type {Record<string, import("./scaleResolution").default>}
+             * @type {Partial<Record<Channel, import("./scaleResolution").default>>}
              */
             scale: {},
             /**
              * Channel-specific axis resolutions
-             * @type {Record<string, import("./axisResolution").default>}
+             * @type {Partial<Record<import("../spec/channel").PrimaryPositionalChannel, import("./axisResolution").default>>}
              */
             axis: {},
         };
