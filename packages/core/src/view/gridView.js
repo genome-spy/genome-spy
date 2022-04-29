@@ -12,9 +12,15 @@ import AxisView, { CHANNEL_ORIENTS } from "./axisView";
 import ContainerView from "./containerView";
 import LayerView from "./layerView";
 import UnitView from "./unitView";
+
 /**
  * @typedef {"row" | "column"} Direction
  * @typedef {import("./view").default} View
+ *
+ * @typedef {object} GridChild
+ * @prop {View} view
+ * @prop {UnitView} background
+ * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes
  */
 
 /**
@@ -38,6 +44,13 @@ export default class GridView extends ContainerView {
     #spacing = 10;
 
     /**
+     * @type { GridChild[] }
+     */
+    #children = [];
+
+    #childSerial = 0;
+
+    /**
      *
      * @param {import("./viewUtils").AnyConcatSpec} spec
      * @param {import("./viewUtils").ViewContext} context
@@ -52,57 +65,66 @@ export default class GridView extends ContainerView {
         this.#spacing = spec.spacing ?? 10;
         this.#columns = columns;
 
-        /**
-         * The child views (no axes, titles, etc.)
-         * @type { View[] }
-         */
-        this.children = [];
-
-        /**
-         * Axes by child indices. May be sparse.
-         * @type {Record<import("../spec/axis").AxisOrient, AxisView[]>}
-         */
-        this.axisViews = {
-            top: [],
-            right: [],
-            bottom: [],
-            left: [],
-        };
+        this.#children = [];
 
         this.wrappingFacet = false;
 
         this._createChildren();
-        this._onChildrenModified();
     }
 
     _createChildren() {
         // Override
     }
 
-    _onChildrenModified() {
-        this.uniqueChildren = new Set(this.children);
+    /**
+     * @param {View} view
+     */
+    #appendChild(view) {
+        /** @type {GridChild} */
+        const gridChild = {
+            view,
+            background: undefined,
+            axes: {},
+        };
 
-        /**  @type {import("./unitView").default[]} */
-        this.backgroundViews = this.children.map((child, i) => {
-            if (child instanceof UnitView || child instanceof LayerView) {
-                /** @type {import("../spec/view").ViewBackground} */
-                const viewBackground = child.spec?.view;
-                if (viewBackground?.fill || viewBackground?.stroke) {
-                    const unitView = new UnitView(
-                        createBackground(viewBackground),
-                        this.context,
-                        this,
-                        "background" + i
-                    );
-                    // TODO: Make configurable through spec:
-                    unitView.blockEncodingInheritance = true;
-                    return unitView;
-                }
+        if (view instanceof UnitView || view instanceof LayerView) {
+            /** @type {import("../spec/view").ViewBackground} */
+            const viewBackground = view.spec?.view;
+            if (viewBackground?.fill || viewBackground?.stroke) {
+                const unitView = new UnitView(
+                    createBackground(viewBackground),
+                    this.context,
+                    this,
+                    "background" + this.#childSerial
+                );
+                // TODO: Make configurable through spec:
+                unitView.blockEncodingInheritance = true;
+                gridChild.background = unitView;
             }
-            return undefined;
-        });
+        }
 
-        this.grid = new Grid(this.children.length, this.#columns ?? Infinity);
+        this.#children.push(gridChild);
+
+        this.#childSerial++;
+    }
+
+    /**
+     * @param {View} view
+     */
+    appendChild(view) {
+        this.#appendChild(view);
+        this.grid = new Grid(this.#children.length, this.#columns ?? Infinity);
+    }
+
+    /**
+     * @param {View[]} views
+     */
+    setChildren(views) {
+        for (const view of views) {
+            this.#appendChild(view);
+        }
+
+        this.grid = new Grid(this.#children.length, this.#columns ?? Infinity);
     }
 
     onScalesResolved() {
@@ -119,8 +141,8 @@ export default class GridView extends ContainerView {
         }
 
         // Create axes
-        for (let i = 0; i < this.children.length; i++) {
-            const child = this.children[i];
+        for (const gridChild of this.#children) {
+            const { view, axes } = gridChild;
 
             /**
              * @param {import("./view").AxisResolution} r
@@ -136,7 +158,7 @@ export default class GridView extends ContainerView {
                 // Pick a default orient based on what is available
                 if (!props.orient) {
                     for (const orient of CHANNEL_ORIENTS[channel]) {
-                        if (!this.axisViews[orient][i]) {
+                        if (!axes[orient]) {
                             props.orient = orient;
                             break;
                         }
@@ -156,13 +178,13 @@ export default class GridView extends ContainerView {
                     );
                 }
 
-                if (this.axisViews[props.orient][i]) {
+                if (axes[props.orient]) {
                     throw new Error(
                         `An axis with the orient "${props.orient}" already exists!`
                     );
                 }
 
-                this.axisViews[props.orient][i] = new AxisView(
+                axes[props.orient] = new AxisView(
                     props,
                     r.scaleResolution.type,
                     this.context,
@@ -172,24 +194,24 @@ export default class GridView extends ContainerView {
             };
 
             // Handle shared axes
-            if (child instanceof UnitView || child instanceof LayerView) {
+            if (view instanceof UnitView || view instanceof LayerView) {
                 for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
                     "x",
                     "y",
                 ])) {
-                    const r = child.resolutions.axis[channel];
+                    const r = view.resolutions.axis[channel];
                     if (!r) {
                         continue;
                     }
 
-                    createAxis(r, channel, child);
+                    createAxis(r, channel, view);
                 }
             }
 
             // Handle LayerView's possible independent axes
-            if (child instanceof LayerView) {
+            if (view instanceof LayerView) {
                 // First create axes that have an orient preference
-                for (const layerChild of child.children) {
+                for (const layerChild of view.children) {
                     for (const [channel, r] of Object.entries(
                         layerChild.resolutions.axis
                     )) {
@@ -201,7 +223,7 @@ export default class GridView extends ContainerView {
                 }
 
                 // Then create axes in a priority order
-                for (const layerChild of child.children) {
+                for (const layerChild of view.children) {
                     for (const [channel, r] of Object.entries(
                         layerChild.resolutions.axis
                     )) {
@@ -219,18 +241,22 @@ export default class GridView extends ContainerView {
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
-        for (const backgroundView of this.backgroundViews) {
-            if (backgroundView) {
-                yield backgroundView;
+        for (const gridChild of this.#children) {
+            if (gridChild.background) {
+                yield gridChild.background;
             }
         }
 
-        for (const axisView of Object.values(this.axisViews).flat()) {
-            yield axisView;
+        for (const gridChild of this.#children) {
+            for (const axisView of Object.values(gridChild.axes)) {
+                if (axisView) {
+                    yield axisView;
+                }
+            }
         }
 
-        for (const child of this.children) {
-            yield child;
+        for (const gridChild of this.#children) {
+            yield gridChild.view;
         }
     }
 
@@ -251,7 +277,7 @@ export default class GridView extends ContainerView {
             indices
                 .map((index) => {
                     // Axis view is only present for unit and layer views
-                    const axisView = this.axisViews[orients[side]][index];
+                    const axisView = this.#children[index].axes[orients[side]];
                     if (axisView) {
                         return Math.max(
                             axisView.getPerpendicularSize() +
@@ -261,7 +287,7 @@ export default class GridView extends ContainerView {
                     }
 
                     // For views other than unit or layer, use overhang instead
-                    const overhang = this.children[index].getOverhang();
+                    const overhang = this.#children[index].view.getOverhang();
                     if (direction == "column") {
                         return side ? overhang.right : overhang.left;
                     } else {
@@ -276,7 +302,9 @@ export default class GridView extends ContainerView {
             axisBefore: getMaxAxisSize(col, 0),
             axisAfter: getMaxAxisSize(col, 1),
             view: getLargestSize(
-                col.map((rowIndex) => this.children[rowIndex].getSize()[dim])
+                col.map(
+                    (rowIndex) => this.#children[rowIndex].view.getSize()[dim]
+                )
             ),
         }));
     }
@@ -447,8 +475,8 @@ export default class GridView extends ContainerView {
             flexOpts
         );
 
-        for (let i = 0; i < this.children.length; i++) {
-            const view = this.children[i];
+        for (const [i, gridChild] of this.#children.entries()) {
+            const { view, axes, background } = gridChild;
 
             const [col, row] = this.grid.getCellCoords(i);
             const colLocSize =
@@ -475,14 +503,10 @@ export default class GridView extends ContainerView {
                 () => height
             );
 
-            this.backgroundViews[i]?.render(context, childCoords, options);
+            background?.render(context, childCoords, options);
 
-            const axisViews = Object.values(this.axisViews)
-                .map((arr) => arr[i])
-                .filter((v) => v !== undefined);
-            for (const axisView of axisViews) {
+            for (const [orient, axisView] of Object.entries(axes)) {
                 const props = axisView.axisProps;
-                const orient = props.orient;
 
                 /** @type {import("../utils/layout/rectangle").default} */
                 let axisCoords;

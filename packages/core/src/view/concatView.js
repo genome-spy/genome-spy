@@ -35,8 +35,11 @@ export default class ConcatView extends GridView {
             : isVConcatSpec(spec)
             ? spec.vconcat
             : spec.hconcat;
-        this.children = childSpecs.map((childSpec, i) =>
-            this.context.createView(childSpec, this, "grid" + i)
+
+        this.setChildren(
+            childSpecs.map((childSpec, i) =>
+                this.context.createView(childSpec, this, "grid" + i)
+            )
         );
     }
 }
