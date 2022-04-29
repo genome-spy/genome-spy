@@ -3,19 +3,11 @@ import { loader as vegaLoader } from "vega-loader";
 
 import UnitView from "./unitView";
 import ImportView from "./importView";
-import LayerView from "./layerView";
-import DecoratorView from "./decoratorView";
 // eslint-disable-next-line no-unused-vars
 import View, { VISIT_SKIP, VISIT_STOP } from "./view";
 import { buildDataFlow } from "./flowBuilder";
 import { optimizeDataFlow } from "../data/flowOptimizer";
-import {
-    isFieldDef,
-    isValueDef,
-    primaryPositionalChannels,
-} from "../encoder/encoder";
-import ContainerView from "./containerView";
-import { peek } from "../utils/arrayUtils";
+import { isFieldDef, primaryPositionalChannels } from "../encoder/encoder";
 import { rollup } from "d3-array";
 
 /**
@@ -143,90 +135,6 @@ export function setImplicitScaleNames(root) {
             resolution.name = `${channel}_at_root`;
         }
     }
-}
-
-/**
- * @param {View} root
- */
-export function addDecorators(root) {
-    let newRoot = root; // If the root is wrapped...
-
-    /** @param {ChannelDef} channelDef */
-    const hasDomain = (channelDef) => channelDef && !isValueDef(channelDef);
-
-    root.visit((view) => {
-        if (view instanceof LayerView || view instanceof UnitView) {
-            const encoding = view.getEncoding();
-            if (
-                view instanceof UnitView &&
-                !hasDomain(encoding.x) &&
-                !hasDomain(encoding.y)
-            ) {
-                // Don't wrap views that have no positional channels
-                // TODO: However, in future, views with borders or backgrounds should be wrapped always
-                // TODO: Also, views with "axis: null" need no wrapping.
-                // TODO: Handle LayerViews, they may have children with positional domains
-                return VISIT_SKIP;
-            }
-
-            const originalParent = view.parent;
-            const decorator = new DecoratorView(view.context, originalParent);
-            view.parent = decorator;
-            decorator.child = view;
-            decorator.name = view.name + "_decorator";
-
-            if (originalParent) {
-                if (originalParent instanceof ContainerView) {
-                    originalParent.replaceChild(view, decorator);
-                } else {
-                    // The situation is likely related to summaries of SampleView and the
-                    // hierarchy is inconsistent. Let's try to find the SampleView.
-
-                    /** @type {view} */
-                    let parent;
-                    root.visit(
-                        stackifyVisitor((needle, stack) => {
-                            if (needle === view) {
-                                parent = peek(stack);
-                                return VISIT_STOP;
-                            }
-                        })
-                    );
-
-                    if (parent instanceof ContainerView) {
-                        parent.replaceChild(view, decorator);
-                    } else {
-                        throw new Error(
-                            "Cannot find parent while decorating: " +
-                                view.getPathString()
-                        );
-                    }
-                }
-            }
-
-            decorator.resolutions = view.resolutions;
-            view.resolutions = { scale: {}, axis: {} };
-
-            decorator.spec.height = view.spec.height;
-            view.spec.height = "container";
-
-            decorator.spec.width = view.spec.width;
-            view.spec.width = "container";
-
-            decorator.spec.padding = view.spec.padding;
-            view.spec.padding = undefined;
-
-            if (view === root) {
-                newRoot = decorator;
-            }
-
-            decorator.initialize();
-
-            return VISIT_SKIP;
-        }
-    });
-
-    return newRoot;
 }
 
 /**

@@ -453,7 +453,7 @@ export default class GenomeSpy {
                  * @param {MouseEvent} event
                  */
                 const dispatchEvent = (event) => {
-                    this.layout.dispatchInteractionEvent(
+                    this.viewRoot.propagateInteractionEvent(
                         new InteractionEvent(point, event)
                     );
 

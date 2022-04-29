@@ -543,6 +543,16 @@ export default class View {
     invalidateSizeCache() {
         this._invalidateCacheByPrefix("size/", "ancestors");
     }
+
+    /**
+     * Broadcasts a message to views that include the given (x, y) point.
+     * This is mainly intended for mouse events.
+     *
+     * @param {import("../utils/interactionEvent").default} event
+     */
+    propagateInteractionEvent(event) {
+        // Subclasses must implement proper handling
+    }
 }
 
 /**

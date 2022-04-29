@@ -12,6 +12,7 @@ import AxisView, { CHANNEL_ORIENTS } from "./axisView";
 import ContainerView from "./containerView";
 import LayerView from "./layerView";
 import UnitView from "./unitView";
+import interactionToZoom from "./zoom";
 
 /**
  * @typedef {"row" | "column"} Direction
@@ -21,6 +22,7 @@ import UnitView from "./unitView";
  * @prop {View} view
  * @prop {UnitView} background
  * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes
+ * @prop {Rectangle} coords Coordinates of the view. Recorded for mouse tracking, etc.
  */
 
 /**
@@ -85,6 +87,7 @@ export default class GridView extends ContainerView {
             view,
             background: undefined,
             axes: {},
+            coords: Rectangle.ZERO,
         };
 
         if (view instanceof UnitView || view instanceof LayerView) {
@@ -503,6 +506,8 @@ export default class GridView extends ContainerView {
                 () => height
             );
 
+            gridChild.coords = childCoords;
+
             background?.render(context, childCoords, options);
 
             for (const [orient, axisView] of Object.entries(axes)) {
@@ -542,6 +547,85 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * @param {import("../utils/interactionEvent").default} event
+     */
+    propagateInteractionEvent(event) {
+        this.handleInteractionEvent(undefined, event, true);
+
+        if (event.stopped) {
+            return;
+        }
+
+        const pointedChild = this.#children.find((gridChild) =>
+            gridChild.coords.containsPoint(event.point.x, event.point.y)
+        );
+        const pointedView = pointedChild?.view;
+        if (pointedView) {
+            pointedView.propagateInteractionEvent(event);
+
+            if (
+                pointedView instanceof UnitView ||
+                pointedView instanceof LayerView
+            ) {
+                this.#handleChildInteractionEvent(event, pointedChild);
+            }
+        }
+
+        if (event.stopped) {
+            return;
+        }
+
+        this.handleInteractionEvent(undefined, event, false);
+    }
+
+    /**
+     * @param {import("../utils/interactionEvent").default} event
+     * @param {GridChild} gridChild
+     */
+    #handleChildInteractionEvent(event, gridChild) {
+        interactionToZoom(event, gridChild.coords, (zoomEvent) =>
+            this.#handleZoom(gridChild.coords, gridChild.view, zoomEvent)
+        );
+    }
+
+    /**
+     *
+     * @param {import("../utils/layout/rectangle").default} coords Coordinates
+     * @param {View} view
+     * @param {import("./zoom").ZoomEvent} zoomEvent
+     */
+    #handleZoom(coords, view, zoomEvent) {
+        for (const [channel, resolutionSet] of Object.entries(
+            getZoomableResolutions(view)
+        )) {
+            if (resolutionSet.size <= 0) {
+                continue;
+            }
+
+            const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
+            const tp = coords.normalizePoint(
+                zoomEvent.x + zoomEvent.xDelta,
+                zoomEvent.y + zoomEvent.yDelta
+            );
+
+            const delta = {
+                x: tp.x - p.x,
+                y: tp.y - p.y,
+            };
+
+            for (const resolution of resolutionSet) {
+                resolution.zoom(
+                    2 ** zoomEvent.zDelta,
+                    channel == "y" ? 1 - p[channel] : p[channel],
+                    channel == "x" ? delta.x : -delta.y
+                );
+            }
+        }
+
+        this.context.animator.requestRender();
+    }
+
+    /**
      * @param {string} channel
      * @param {import("./containerView").ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}
@@ -570,4 +654,45 @@ function createBackground(viewBackground) {
             tooltip: null,
         },
     };
+}
+
+/**
+ *
+ * @param {View} view
+ * @returns
+ */
+function getZoomableResolutions(view) {
+    /** @type {Record<import("../spec/channel").PrimaryPositionalChannel, Set<import("./scaleResolution").default>>} */
+    const resolutions = {
+        x: new Set(),
+        y: new Set(),
+    };
+
+    // Find all resolutions (scales) that are candidates for zooming
+    view.visit((v) => {
+        for (const [channel, resolutionSet] of Object.entries(resolutions)) {
+            const resolution = v.getScaleResolution(channel);
+            if (resolution && resolution.isZoomable()) {
+                resolutionSet.add(resolution);
+            }
+        }
+    });
+
+    return resolutions;
+}
+
+/**
+ *
+ * @param {View} view
+ */
+export function isClippedChildren(view) {
+    let clipped = true;
+
+    view.visit((v) => {
+        if (v instanceof UnitView) {
+            //
+        }
+    });
+
+    return clipped;
 }

@@ -31,6 +31,8 @@ export default class Rectangle {
         );
     }
 
+    static ZERO = Rectangle.create(0, 0, 0, 0);
+
     /**
      * @param {Prop} prop
      * @param {number | function():number} value

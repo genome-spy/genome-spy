@@ -11,6 +11,11 @@ import { Datum } from "../data/flowNode";
 import { ViewSpec } from "../spec/view";
 import ContainerView from "./containerView";
 
+export interface Hover {
+    mark: Mark;
+    datum: Datum;
+}
+
 /**
  * ViewContext provides essential data and interfaces to View classes.
  */
@@ -29,7 +34,7 @@ export default interface ViewContext {
         converter?: (datum: T) => Promise<TemplateResult>
     ) => void;
 
-    getCurrentHover: () => { mark: Mark; datum: Datum };
+    getCurrentHover: () => Hover;
 
     /**
      * Adds a keyboard event listener to the document. Cleanup is performed automatically

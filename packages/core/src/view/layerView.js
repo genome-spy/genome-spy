@@ -56,4 +56,19 @@ export default class LayerView extends ContainerView {
 
         context.popView(this);
     }
+
+    /**
+     * @param {import("../utils/interactionEvent").default} event
+     */
+    propagateInteractionEvent(event) {
+        this.handleInteractionEvent(undefined, event, true);
+        if (this.children.length) {
+            // Propagate to the top layer
+            this.children.at(-1).propagateInteractionEvent(event);
+        }
+        if (event.stopped) {
+            return;
+        }
+        this.handleInteractionEvent(undefined, event, false);
+    }
 }
