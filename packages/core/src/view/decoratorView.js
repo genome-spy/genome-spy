@@ -476,7 +476,7 @@ export default class DecoratorView extends ContainerView {
 }
 
 /**
- * @param {import("../spec/view").ViewConfig} viewConfig
+ * @param {import("../spec/view").ViewBackground} viewConfig
  * @returns {import("../spec/view").UnitSpec}
  */
 function createBackground(viewConfig) {

@@ -85,10 +85,11 @@ export default class GridView extends ContainerView {
         /**  @type {import("./unitView").default[]} */
         this.backgroundViews = this.children.map((child, i) => {
             if (child instanceof UnitView || child instanceof LayerView) {
-                const viewConfig = child.spec?.view;
-                if (viewConfig?.fill || viewConfig?.stroke) {
+                /** @type {import("../spec/view").ViewBackground} */
+                const viewBackground = child.spec?.view;
+                if (viewBackground?.fill || viewBackground?.stroke) {
                     const unitView = new UnitView(
-                        createBackground(viewConfig),
+                        createBackground(viewBackground),
                         this.context,
                         this,
                         "background" + i
@@ -528,18 +529,18 @@ export default class GridView extends ContainerView {
 }
 
 /**
- * @param {import("../spec/view").ViewConfig} viewConfig
+ * @param {import("../spec/view").ViewBackground} viewBackground
  * @returns {import("../spec/view").UnitSpec}
  */
-function createBackground(viewConfig) {
+function createBackground(viewBackground) {
     return {
         configurableVisibility: false,
         data: { values: [{}] },
         mark: {
             fill: null,
             strokeWidth: 1.0,
-            fillOpacity: viewConfig.fill ? 1.0 : 0, // TODO: This should be handled at lower level
-            ...viewConfig,
+            fillOpacity: viewBackground.fill ? 1.0 : 0, // TODO: This should be handled at lower level
+            ...viewBackground,
             type: "rect",
             clip: false, // Shouldn't be needed
             tooltip: null,
