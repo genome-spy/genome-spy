@@ -510,6 +510,12 @@ export default class GridView extends ContainerView {
 
             background?.render(context, childCoords, options);
 
+            // If clipped, the axes should be drawn on top of the marks (because clipping may not be pixel-perfect)
+            const clipped = isClippedChildren(view);
+            if (clipped) {
+                view.render(context, childCoords, options);
+            }
+
             for (const [orient, axisView] of Object.entries(axes)) {
                 const props = axisView.axisProps;
 
@@ -540,7 +546,9 @@ export default class GridView extends ContainerView {
                 axisView.render(context, axisCoords);
             }
 
-            view.render(context, childCoords, options);
+            if (!clipped) {
+                view.render(context, childCoords, options);
+            }
         }
 
         context.popView(this);
@@ -682,7 +690,6 @@ function getZoomableResolutions(view) {
 }
 
 /**
- *
  * @param {View} view
  */
 export function isClippedChildren(view) {
@@ -690,7 +697,7 @@ export function isClippedChildren(view) {
 
     view.visit((v) => {
         if (v instanceof UnitView) {
-            //
+            clipped &&= v.mark.properties.clip;
         }
     });
 
