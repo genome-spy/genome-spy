@@ -125,10 +125,9 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {View} whoIsAsking
      * @returns {import("@genome-spy/core/spec/channel").Encoding}
      */
-    getEncoding(whoIsAsking) {
+    getEncoding() {
         // Block all inheritance
         return {};
     }
@@ -205,7 +204,9 @@ export class SampleAttributePanel extends ConcatView {
      * @param {import("@genome-spy/core/utils/interactionEvent").default} event
      */
     _findSampleForMouseEvent(coords, event) {
-        return this.sampleView.getSampleAt(event.point.y - coords.y);
+        return this.sampleView.getSampleAt(
+            event.point.y - this.sampleView.childCoords.y
+        );
     }
 
     /**
@@ -268,7 +269,7 @@ export class SampleAttributePanel extends ConcatView {
      * @param {Sample[]} samples
      */
     _setSamples(samples) {
-        if (this.children.length) {
+        if (this.childCount) {
             throw new Error("Children are already created!");
             // TODO: Check whether the attributes match and update the views and data accordingly
         }
@@ -319,15 +320,22 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     _createViews() {
-        this.addChildBySpec(createLabelViewSpec());
+        /** @type {View[]} */
+        const views = [];
+
+        views.push(this.context.createView(createLabelViewSpec(), this));
 
         for (const attribute of this._getAttributeNames()) {
-            const view = this.addChildBySpec(
-                this._createAttributeViewSpec(attribute)
+            const view = this.context.createView(
+                this._createAttributeViewSpec(attribute),
+                this
             );
             view.opacityFunction = (parentOpacity) =>
                 parentOpacity * this._getAttributeOpacity(attribute);
+            views.push(view);
         }
+
+        this.setChildren(views);
 
         resolveScalesAndAxes(this);
     }

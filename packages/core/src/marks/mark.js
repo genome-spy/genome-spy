@@ -616,6 +616,10 @@ export default class Mark {
                 }
             }
 
+            if (!facetTexture) {
+                throw new Error("No facet texture available. This is bug.");
+            }
+
             setUniforms(this.programInfo, {
                 uSampleFacetTexture: facetTexture,
             });

@@ -124,7 +124,7 @@ export class GroupPanel extends LayerView {
             return;
         }
 
-        const viewHeight = this.sampleView?._coords.height ?? 0; // Fugly!!
+        const viewHeight = this.sampleView?.childCoords.height ?? 0;
 
         const yRes = this.getScaleResolution("y");
 

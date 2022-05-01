@@ -81,7 +81,7 @@ export default class GridView extends ContainerView {
     /**
      * @param {View} view
      */
-    #appendChild(view) {
+    #makeGridChild(view) {
         /** @type {GridChild} */
         const gridChild = {
             view,
@@ -106,8 +106,15 @@ export default class GridView extends ContainerView {
             }
         }
 
-        this.#children.push(gridChild);
+        return gridChild;
+    }
 
+    /**
+     * @param {View} view
+     */
+    #appendChild(view) {
+        view.parent ??= this;
+        this.#children.push(this.#makeGridChild(view));
         this.#childSerial++;
     }
 
@@ -128,6 +135,32 @@ export default class GridView extends ContainerView {
         }
 
         this.grid = new Grid(this.#children.length, this.#columns ?? Infinity);
+    }
+
+    /**
+     * @param {import("./view").default} child
+     * @param {import("./view").default} replacement
+     */
+    replaceChild(child, replacement) {
+        const i = this.#children.findIndex(
+            (gridChild) => gridChild.view == child
+        );
+        if (i >= 0) {
+            this.#children[i] = this.#makeGridChild(replacement);
+        } else {
+            throw new Error("Not my child view!");
+        }
+    }
+
+    /**
+     * Read-only view to children
+     */
+    get children() {
+        return this.#children.map((gridChild) => gridChild.view);
+    }
+
+    get childCount() {
+        return this.#children.length;
     }
 
     onScalesResolved() {
@@ -429,6 +462,10 @@ export default class GridView extends ContainerView {
         const cols = this.#getSizes("column");
         const rows = this.#getSizes("row");
 
+        if (!cols.length || !rows.length) {
+            return Padding.zero();
+        }
+
         const p = new Padding(
             rows.at(0).axisBefore,
             cols.at(-1).axisAfter,
@@ -575,7 +612,17 @@ export default class GridView extends ContainerView {
                 pointedView instanceof UnitView ||
                 pointedView instanceof LayerView
             ) {
-                this.#handleChildInteractionEvent(event, pointedChild);
+                interactionToZoom(
+                    event,
+                    pointedChild.coords,
+                    (zoomEvent) =>
+                        this.#handleZoom(
+                            pointedChild.coords,
+                            pointedChild.view,
+                            zoomEvent
+                        ),
+                    this.context.getCurrentHover()
+                );
             }
         }
 
@@ -584,16 +631,6 @@ export default class GridView extends ContainerView {
         }
 
         this.handleInteractionEvent(undefined, event, false);
-    }
-
-    /**
-     * @param {import("../utils/interactionEvent").default} event
-     * @param {GridChild} gridChild
-     */
-    #handleChildInteractionEvent(event, gridChild) {
-        interactionToZoom(event, gridChild.coords, (zoomEvent) =>
-            this.#handleZoom(gridChild.coords, gridChild.view, zoomEvent)
-        );
     }
 
     /**
