@@ -590,6 +590,7 @@ function createAttributeSpec(attributeName, attributeDef) {
             field: `attributes["${attributeName}"]`,
             type: attributeDef.type,
             scale: attributeDef.barScale,
+            axis: null,
         };
     }
 
