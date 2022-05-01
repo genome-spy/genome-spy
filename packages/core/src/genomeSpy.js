@@ -167,7 +167,9 @@ export default class GenomeSpy {
 
         this._glHelper = new WebGLHelper(this.container, () => {
             if (this.viewRoot) {
-                const size = this.viewRoot.getSize();
+                const size = this.viewRoot
+                    .getSize()
+                    .addPadding(this.viewRoot.getOverhang());
 
                 // If a dimension has an absolutely specified size (in pixels), use it for the canvas size.
                 // However, if the dimension has a growing component, the canvas should be fit to the
