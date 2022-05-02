@@ -112,29 +112,31 @@ export default class GridView extends ContainerView {
     /**
      * @param {View} view
      */
-    #appendChild(view) {
+    appendChild(view) {
         view.parent ??= this;
         this.#children.push(this.#makeGridChild(view));
         this.#childSerial++;
     }
 
-    /**
-     * @param {View} view
-     */
-    appendChild(view) {
-        this.#appendChild(view);
-        this.grid = new Grid(this.#children.length, this.#columns ?? Infinity);
+    get #visibleChildren() {
+        return this.#children.filter((gridChild) => gridChild.view.isVisible());
+    }
+
+    get #grid() {
+        return new Grid(
+            this.#visibleChildren.length,
+            this.#columns ?? Infinity
+        );
     }
 
     /**
      * @param {View[]} views
      */
     setChildren(views) {
+        //this.#children = []; // TODO: Check why this breaks summary track
         for (const view of views) {
-            this.#appendChild(view);
+            this.appendChild(view);
         }
-
-        this.grid = new Grid(this.#children.length, this.#columns ?? Infinity);
     }
 
     /**
@@ -281,17 +283,13 @@ export default class GridView extends ContainerView {
             if (gridChild.background) {
                 yield gridChild.background;
             }
-        }
 
-        for (const gridChild of this.#children) {
             for (const axisView of Object.values(gridChild.axes)) {
                 if (axisView) {
                     yield axisView;
                 }
             }
-        }
 
-        for (const gridChild of this.#children) {
             yield gridChild.view;
         }
     }
@@ -313,7 +311,8 @@ export default class GridView extends ContainerView {
             indices
                 .map((index) => {
                     // Axis view is only present for unit and layer views
-                    const axisView = this.#children[index].axes[orients[side]];
+                    const axisView =
+                        this.#visibleChildren[index].axes[orients[side]];
                     if (axisView) {
                         return Math.max(
                             axisView.getPerpendicularSize() +
@@ -323,7 +322,8 @@ export default class GridView extends ContainerView {
                     }
 
                     // For views other than unit or layer, use overhang instead
-                    const overhang = this.#children[index].view.getOverhang();
+                    const overhang =
+                        this.#visibleChildren[index].view.getOverhang();
                     if (direction == "column") {
                         return side ? overhang.right : overhang.left;
                     } else {
@@ -332,14 +332,15 @@ export default class GridView extends ContainerView {
                 })
                 .reduce((a, b) => Math.max(a, b), 0);
 
-        return this.grid[
+        return this.#grid[
             direction == "column" ? "colIndices" : "rowIndices"
         ].map((col) => ({
             axisBefore: getMaxAxisSize(col, 0),
             axisAfter: getMaxAxisSize(col, 1),
             view: getLargestSize(
                 col.map(
-                    (rowIndex) => this.#children[rowIndex].view.getSize()[dim]
+                    (rowIndex) =>
+                        this.#visibleChildren[rowIndex].view.getSize()[dim]
                 )
             ),
         }));
@@ -479,12 +480,14 @@ export default class GridView extends ContainerView {
      * @returns {FlexDimensions}
      */
     getSize() {
-        return new FlexDimensions(
-            this.#getFlexSize("column"),
-            this.#getFlexSize("row")
-        )
-            .subtractPadding(this.getOverhang())
-            .addPadding(this.getPadding());
+        return this._cache("size", () =>
+            new FlexDimensions(
+                this.#getFlexSize("column"),
+                this.#getFlexSize("row")
+            )
+                .subtractPadding(this.getOverhang())
+                .addPadding(this.getPadding())
+        );
     }
 
     /**
@@ -515,10 +518,15 @@ export default class GridView extends ContainerView {
             flexOpts
         );
 
-        for (const [i, gridChild] of this.#children.entries()) {
+        const grid = new Grid(
+            this.#visibleChildren.length,
+            this.#columns ?? Infinity
+        );
+
+        for (const [i, gridChild] of this.#visibleChildren.entries()) {
             const { view, axes, background } = gridChild;
 
-            const [col, row] = this.grid.getCellCoords(i);
+            const [col, row] = grid.getCellCoords(i);
             const colLocSize =
                 columnFlexCoords[this.#getViewSlot("column", col)];
             const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
@@ -601,7 +609,7 @@ export default class GridView extends ContainerView {
             return;
         }
 
-        const pointedChild = this.#children.find((gridChild) =>
+        const pointedChild = this.#visibleChildren.find((gridChild) =>
             gridChild.coords.containsPoint(event.point.x, event.point.y)
         );
         const pointedView = pointedChild?.view;
