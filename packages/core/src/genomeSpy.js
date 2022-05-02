@@ -16,7 +16,6 @@ import UnitView from "./view/unitView";
 import WebGLHelper from "./gl/webGLHelper";
 import Rectangle from "./utils/layout/rectangle";
 import DeferredViewRenderingContext from "./view/renderingContext/deferredViewRenderingContext";
-import LayoutRecorderViewRenderingContext from "./view/renderingContext/layoutRecorderViewRenderingContext";
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext";
 import InteractionEvent from "./utils/interactionEvent";
 import Point from "./utils/layout/point";
@@ -434,7 +433,7 @@ export default class GenomeSpy {
 
         /** @param {Event} event */
         const listener = (event) => {
-            if (this.layout && event instanceof MouseEvent) {
+            if (event instanceof MouseEvent) {
                 if (event.type == "mousemove") {
                     this.tooltip.handleMouseMove(event);
                     this._tooltipUpdateRequested = false;
@@ -687,19 +686,15 @@ export default class GenomeSpy {
             },
             this._glHelper
         );
-        const layoutRecorder = new LayoutRecorderViewRenderingContext({});
 
         root.render(
             new CompositeViewRenderingContext(
                 this._renderingContext,
-                this._pickingContext,
-                layoutRecorder
+                this._pickingContext
             ),
             // Canvas should now be sized based on the root view or the container
             Rectangle.create(0, 0, canvasSize.width, canvasSize.height)
         );
-
-        this.layout = layoutRecorder.getLayout();
 
         this.broadcast("layoutComputed");
     }
