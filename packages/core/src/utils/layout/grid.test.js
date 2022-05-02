@@ -1,3 +1,5 @@
+import { expect, test, describe } from "vitest";
+
 import Grid from "./grid";
 
 describe("Grid indexing", () => {
