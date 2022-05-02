@@ -35,6 +35,8 @@ import { watch } from "../state/watch";
 import { createSelector } from "@reduxjs/toolkit";
 import { calculateLocations, getSampleLocationAt } from "./locations";
 import { contextMenu } from "../utils/ui/contextMenu";
+import interactionToZoom from "@genome-spy/core/view/zoom";
+import Rectangle from "@genome-spy/core/utils/layout/rectangle";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -49,8 +51,6 @@ const SPACING = 10;
  * @typedef {import("./sampleState").Sample} Sample
  * @typedef {import("@genome-spy/core/utils/layout/flexLayout").LocSize} LocSize
  * @typedef {import("@genome-spy/core/view/view").default} View
- * @typedef {import("@genome-spy/core/view/layerView").default} LayerView
- * @typedef {import("@genome-spy/core/view/decoratorView").default} DecoratorView
  * @typedef {import("@genome-spy/core/data/dataFlow").default<View>} DataFlow
  * @typedef {import("@genome-spy/core/data/sources/dynamicSource").default} DynamicSource
  * @typedef {import("@genome-spy/core/genome/genome").ChromosomalLocus} ChromosomalLocus
@@ -83,8 +83,8 @@ export default class SampleView extends ContainerView {
         // TODO: Make this a function, not a class
         this.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
 
-        /** @type { UnitView | LayerView | DecoratorView } */
-        this.child = /** @type { UnitView | LayerView | DecoratorView } */ (
+        /** @type { UnitView | LayerView } */
+        this.child = /** @type { UnitView | LayerView } */ (
             context.createView(spec.spec, this, "sample-facets")
         );
 
@@ -103,9 +103,10 @@ export default class SampleView extends ContainerView {
          */
         this.child.visit((view) => {
             if (view instanceof UnitView) {
-                this.summaryViews.children.push(...view.sampleAggregateViews);
+                this.summaryViews.setChildren(view.sampleAggregateViews);
             }
         });
+        this.childCoords = Rectangle.ZERO;
 
         /**
          * There are to ways to manage how facets are drawn:
@@ -137,12 +138,12 @@ export default class SampleView extends ContainerView {
             this,
             "sample-sidebar"
         );
+        this.peripheryCoords = Rectangle.ZERO;
 
         this.groupPanel = new GroupPanel(this);
-        this.peripheryView.addChild(this.groupPanel);
-
         this.attributePanel = new SampleAttributePanel(this);
-        this.peripheryView.addChild(this.attributePanel);
+
+        this.peripheryView.setChildren([this.groupPanel, this.attributePanel]);
 
         this.child.addInteractionEventListener(
             "contextmenu",
@@ -276,7 +277,7 @@ export default class SampleView extends ContainerView {
 
         this.addInteractionEventListener("mousemove", (coords, event) => {
             // TODO: Should be reset to undefined on mouseout
-            this._lastMouseY = event.point.y - coords.y;
+            this._lastMouseY = event.point.y - this.childCoords.y;
         });
 
         this.addInteractionEventListener(
@@ -287,7 +288,7 @@ export default class SampleView extends ContainerView {
                     this._scrollOffset = clamp(
                         this._scrollOffset + wheelEvent.deltaY,
                         0,
-                        this._scrollableHeight - this._coords.height
+                        this._scrollableHeight - this.childCoords.height
                     );
 
                     this.groupPanel.updateRange();
@@ -358,24 +359,12 @@ export default class SampleView extends ContainerView {
         }
     }
 
-    getEffectivePadding() {
-        return this._cache("size/effectivePadding", () => {
-            const peripheryPadding = this.peripheryView.isVisible()
-                ? this.peripheryView.getSize().width.px + SPACING
-                : 0;
+    getOverhang() {
+        const peripherySize = this.peripheryView.isVisible()
+            ? this.peripheryView.getSize().width.px + SPACING
+            : 0;
 
-            const childEffPad = this.child.getEffectivePadding();
-
-            // TODO: Top / bottom axes
-            return this.getPadding().add(
-                new Padding(
-                    0,
-                    childEffPad.right,
-                    0,
-                    childEffPad.left + peripheryPadding
-                )
-            );
-        });
+        return new Padding(0, 0, 0, peripherySize);
     }
 
     /**
@@ -391,9 +380,7 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view").default} replacement
      */
     replaceChild(child, replacement) {
-        const r = /** @type {UnitView | LayerView | DecoratorView} */ (
-            replacement
-        );
+        const r = /** @type {UnitView | LayerView} */ (replacement);
         if (child === this.child) {
             this.child = r;
         } else {
@@ -458,7 +445,7 @@ export default class SampleView extends ContainerView {
 
     getLocations() {
         if (!this._locations) {
-            if (!this._coords) {
+            if (!this.childCoords?.height) {
                 return;
             }
 
@@ -473,7 +460,7 @@ export default class SampleView extends ContainerView {
 
             // Locations squeezed into the viewport height
             const fittedLocations = calculateLocations(flattened, {
-                viewHeight: this._coords.height,
+                viewHeight: this.childCoords.height,
                 groupSpacing: 5, // TODO: Configurable
                 summaryHeight,
             });
@@ -589,7 +576,7 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
      */
     _clipBySummary(coords) {
-        if (this.stickySummaries && this.summaryViews.children.length) {
+        if (this.stickySummaries && this.summaryViews.childCount) {
             const summaryHeight = this.summaryViews.getSize().height.px;
             return coords.modify({
                 y: () => coords.y + summaryHeight,
@@ -673,12 +660,7 @@ export default class SampleView extends ContainerView {
             return;
         }
 
-        coords = coords.shrink(this.getPadding());
         context.pushView(this, coords);
-
-        // Store coords for layout computations. Not pretty, but probably
-        // works because only a single instance of this view is rendered.
-        this._coords = coords;
 
         const cols = mapToPixelCoords(
             [
@@ -698,10 +680,12 @@ export default class SampleView extends ContainerView {
                 width: location.size,
             });
 
-        this.peripheryView.render(context, toColumnCoords(cols[0]), options);
-        this.renderChild(context, toColumnCoords(cols[1]), options);
+        this.peripheryCoords = toColumnCoords(cols[0]);
+        this.childCoords = toColumnCoords(cols[1]);
 
-        this.renderSummaries(context, toColumnCoords(cols[1]), options);
+        this.peripheryView.render(context, this.peripheryCoords, options);
+        this.renderChild(context, this.childCoords, options);
+        this.renderSummaries(context, this.childCoords, options);
 
         context.popView(this);
     }
@@ -719,7 +703,7 @@ export default class SampleView extends ContainerView {
         if (entities) {
             const sampleLocations = this.getLocations().samples;
 
-            const height = this._coords.height;
+            const height = this.childCoords.height;
 
             for (const sampleLocation of sampleLocations) {
                 // TODO: Get rid of the map lookup
@@ -800,10 +784,10 @@ export default class SampleView extends ContainerView {
             } else {
                 // TODO: Find closest sample instead
                 this._scrollOffset =
-                    (this._scrollableHeight - this._coords.height) / 2;
+                    (this._scrollableHeight - this.childCoords.height) / 2;
             }
 
-            if (this._scrollableHeight > this._coords.height) {
+            if (this._scrollableHeight > this.childCoords.height) {
                 transition({
                     ...props,
                     to: 1,
@@ -923,6 +907,60 @@ export default class SampleView extends ContainerView {
 
     getSampleFacetTexture() {
         return this.facetTexture;
+    }
+
+    /**
+     * @param {import("@genome-spy/core/utils/interactionEvent").default} event
+     */
+    propagateInteractionEvent(event) {
+        this.handleInteractionEvent(undefined, event, true);
+
+        if (event.stopped) {
+            return;
+        }
+
+        if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
+            interactionToZoom(
+                event,
+                this.childCoords,
+                (zoomEvent) =>
+                    this.#handleZoom(this.childCoords, this.child, zoomEvent),
+                this.context.getCurrentHover()
+            );
+        }
+
+        if (this.peripheryCoords.containsPoint(event.point.x, event.point.y)) {
+            this.peripheryView.propagateInteractionEvent(event);
+        }
+
+        if (event.stopped) {
+            return;
+        }
+
+        this.handleInteractionEvent(undefined, event, false);
+    }
+
+    /**
+     *
+     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords Coordinates
+     * @param {View} view
+     * @param {import("@genome-spy/core/view/zoom").ZoomEvent} zoomEvent
+     */
+    #handleZoom(coords, view, zoomEvent) {
+        const resolution = this.child.getScaleResolution("x");
+        if (!resolution || !resolution.isZoomable()) {
+            return;
+        }
+
+        const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
+        const tp = coords.normalizePoint(
+            zoomEvent.x + zoomEvent.xDelta,
+            zoomEvent.y + zoomEvent.yDelta
+        );
+
+        resolution.zoom(2 ** zoomEvent.zDelta, p.x, tp.x - p.x);
+
+        this.context.animator.requestRender();
     }
 
     /**

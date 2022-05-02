@@ -3,7 +3,6 @@ import { faSlidersH } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, html, nothing } from "lit";
 import { live } from "lit/directives/live.js";
 import AxisView from "@genome-spy/core/view/axisView";
-import DecoratorView from "@genome-spy/core/view/decoratorView";
 import LayerView from "@genome-spy/core/view/layerView";
 import { VISIT_SKIP } from "@genome-spy/core/view/view";
 import {
@@ -122,16 +121,9 @@ class ViewSettingsButton extends LitElement {
 
         const paths = views
             .filter(
-                (view) =>
-                    !(view instanceof DecoratorView) &&
-                    isCustomViewName(view.name) &&
-                    isConfigurable(view)
+                (view) => isCustomViewName(view.name) && isConfigurable(view)
             )
-            .map((view) =>
-                [...view.getAncestors()]
-                    .filter((view) => !(view instanceof DecoratorView))
-                    .reverse()
-            );
+            .map((view) => [...view.getAncestors()].reverse());
 
         this.nestedPaths = nestPaths(paths);
     }

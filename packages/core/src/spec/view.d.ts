@@ -55,7 +55,7 @@ export type Paddings = Partial<Record<Side, number>>;
 
 export type PaddingConfig = Paddings | number;
 
-export interface ViewConfig extends RectProps, FillAndStrokeProps {
+export interface ViewBackground extends RectProps, FillAndStrokeProps {
     // TODO: style?: string | string[];
 
     // TODO: Move to FillAndStrokeProps or something
@@ -115,7 +115,7 @@ export interface ViewSpecBase extends ResolveSpec {
 }
 
 export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
-    view?: ViewConfig;
+    view?: ViewBackground;
     mark: MarkType | MarkConfigAndType;
 }
 
@@ -125,7 +125,7 @@ export interface AggregateSamplesSpec {
 }
 
 export interface LayerSpec extends ViewSpecBase, AggregateSamplesSpec {
-    view?: ViewConfig;
+    view?: ViewBackground;
     layer: (LayerSpec | UnitSpec)[];
 }
 
@@ -218,4 +218,5 @@ export interface HConcatSpec extends ConcatBase {
 
 export interface ConcatSpec extends ConcatBase {
     concat: (ViewSpec | ImportSpec)[];
+    columns: number;
 }

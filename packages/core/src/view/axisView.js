@@ -31,7 +31,7 @@ function getPerpendicularChannel(channel) {
 }
 
 /** @type {Record<PositionalChannel, AxisOrient[]>} */
-const CHANNEL_ORIENTS = {
+export const CHANNEL_ORIENTS = {
     x: ["bottom", "top"],
     y: ["left", "right"],
 };
@@ -120,6 +120,8 @@ export default class AxisView extends LayerView {
             this.findChildByName(CHROM_LAYER_NAME).getDynamicDataSource = () =>
                 new DynamicCallbackSource(() => genome.chromosomes);
         }
+
+        this.blockEncodingInheritance = true;
     }
 
     getOrient() {

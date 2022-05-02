@@ -31,6 +31,8 @@ export default class Rectangle {
         );
     }
 
+    static ZERO = Rectangle.create(0, 0, 0, 0);
+
     /**
      * @param {Prop} prop
      * @param {number | function():number} value
@@ -278,5 +280,9 @@ export default class Rectangle {
             x: (x - this.x) / this.width,
             y: (y - this.y) / this.height,
         };
+    }
+
+    toString() {
+        return `Rectangle: x: ${this.x}, y: ${this.y}, width: ${this.width}, height: ${this.height}`;
     }
 }

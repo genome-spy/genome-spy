@@ -133,7 +133,7 @@ export function mapToPixelCoords(
 /**
  * Returns the minimum size  (the sum of pixels sizes) for the flex items
  *
- * @param {SizeDef[]} items
+ * @param {Iterable<SizeDef>} items
  * @param {FlexOptions} [options]
  */
 export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
@@ -142,6 +142,21 @@ export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
         minimumSize += z(size.px) + (isZeroSizeDef(size) ? 0 : spacing);
     }
     return Math.max(0, minimumSize - spacing);
+}
+
+/**
+ * @param {Iterable<SizeDef>} items
+ * @returns {SizeDef}
+ */
+export function getLargestSize(items) {
+    let px = 0;
+    let grow = 0;
+    for (const s of items) {
+        px = Math.max(px, s.px ?? 0);
+        grow = Math.max(grow, s.grow ?? 0);
+    }
+
+    return { px, grow };
 }
 
 /**
@@ -172,13 +187,30 @@ export class FlexDimensions {
      * @param {import("./padding").default} padding
      */
     addPadding(padding) {
+        return this.#addPx(padding.width, padding.height);
+    }
+
+    /**
+     * Subtracts padding from absolute (px) dimensions
+     *
+     * @param {import("./padding").default} padding
+     */
+    subtractPadding(padding) {
+        return this.#addPx(-padding.width, -padding.height);
+    }
+
+    /**
+     * @param {number} width
+     * @param {number} height
+     */
+    #addPx(width, height) {
         return new FlexDimensions(
             {
-                px: (this.width.px || 0) + padding.width,
+                px: (this.width.px ?? 0) + width,
                 grow: this.width.grow,
             },
             {
-                px: (this.height.px || 0) + padding.height,
+                px: (this.height.px ?? 0) + height,
                 grow: this.height.grow,
             }
         );

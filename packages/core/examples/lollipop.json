@@ -2,7 +2,7 @@
   "name": "The Root",
   "description": "Lollipop plot example",
 
-  "resolve": { "axis": { "y": "independent" } },
+  "view": { "stroke": "lightgray" },
 
   "layer": [
     {
@@ -10,7 +10,7 @@
       "data": { "values": [0] },
       "mark": "rule",
       "encoding": {
-        "y": { "field": "data", "type": "quantitative", "axis": null },
+        "y": { "field": "data", "type": "quantitative", "title": null },
         "color": { "value": "lightgray" }
       }
     },

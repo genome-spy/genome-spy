@@ -63,6 +63,19 @@ export default class Padding {
 
     /**
      *
+     * @param {Padding} padding padding to subtract
+     */
+    subtract(padding) {
+        return new Padding(
+            this.top - padding.top,
+            this.right - padding.right,
+            this.bottom - padding.bottom,
+            this.left - padding.left
+        );
+    }
+
+    /**
+     *
      * @param {PaddingConfig} config
      */
     static createFromConfig(config) {

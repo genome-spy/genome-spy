@@ -8,7 +8,6 @@ import Tooltip from "./utils/ui/tooltip";
 import AccessorFactory from "./encoder/accessor";
 import {
     resolveScalesAndAxes,
-    addDecorators,
     processImports,
     setImplicitScaleNames,
 } from "./view/viewUtils";
@@ -17,7 +16,6 @@ import UnitView from "./view/unitView";
 import WebGLHelper from "./gl/webGLHelper";
 import Rectangle from "./utils/layout/rectangle";
 import DeferredViewRenderingContext from "./view/renderingContext/deferredViewRenderingContext";
-import LayoutRecorderViewRenderingContext from "./view/renderingContext/layoutRecorderViewRenderingContext";
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext";
 import InteractionEvent from "./utils/interactionEvent";
 import Point from "./utils/layout/point";
@@ -36,6 +34,8 @@ import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler";
 import { invalidatePrefix } from "./utils/propertyCacher";
 import { ViewFactory } from "./view/viewFactory";
+import LayerView from "./view/layerView";
+import ImplicitRootView from "./view/implicitRootView";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -166,7 +166,9 @@ export default class GenomeSpy {
 
         this._glHelper = new WebGLHelper(this.container, () => {
             if (this.viewRoot) {
-                const size = this.viewRoot.getSize();
+                const size = this.viewRoot
+                    .getSize()
+                    .addPadding(this.viewRoot.getOverhang());
 
                 // If a dimension has an absolutely specified size (in pixels), use it for the canvas size.
                 // However, if the dimension has a growing component, the canvas should be fit to the
@@ -283,12 +285,19 @@ export default class GenomeSpy {
         // Replace placeholder ImportViews with actual views.
         await processImports(this.viewRoot);
 
+        if (
+            this.viewRoot instanceof UnitView ||
+            this.viewRoot instanceof LayerView
+        ) {
+            this.viewRoot = new ImplicitRootView(context, this.viewRoot);
+        }
+
         // Resolve scales, i.e., if possible, pull them towards the root
         resolveScalesAndAxes(this.viewRoot);
         setImplicitScaleNames(this.viewRoot);
 
         // Wrap unit or layer views that need axes
-        this.viewRoot = addDecorators(this.viewRoot);
+        //this.viewRoot = addDecorators(this.viewRoot);
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
@@ -424,7 +433,7 @@ export default class GenomeSpy {
 
         /** @param {Event} event */
         const listener = (event) => {
-            if (this.layout && event instanceof MouseEvent) {
+            if (event instanceof MouseEvent) {
                 if (event.type == "mousemove") {
                     this.tooltip.handleMouseMove(event);
                     this._tooltipUpdateRequested = false;
@@ -445,7 +454,7 @@ export default class GenomeSpy {
                  * @param {MouseEvent} event
                  */
                 const dispatchEvent = (event) => {
-                    this.layout.dispatchInteractionEvent(
+                    this.viewRoot.propagateInteractionEvent(
                         new InteractionEvent(point, event)
                     );
 
@@ -677,19 +686,15 @@ export default class GenomeSpy {
             },
             this._glHelper
         );
-        const layoutRecorder = new LayoutRecorderViewRenderingContext({});
 
         root.render(
             new CompositeViewRenderingContext(
                 this._renderingContext,
-                this._pickingContext,
-                layoutRecorder
+                this._pickingContext
             ),
             // Canvas should now be sized based on the root view or the container
             Rectangle.create(0, 0, canvasSize.width, canvasSize.height)
         );
-
-        this.layout = layoutRecorder.getLayout();
 
         this.broadcast("layoutComputed");
     }

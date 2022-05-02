@@ -40,7 +40,6 @@ export const markTypes = {
  * @typedef {import("../encoder/accessor").Accessor} Accessor
  * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
  * @typedef {import("../spec/view").ResolutionTarget} ResolutionTarget
- * @typedef {import("./decoratorView").default} DecoratorView
  *
  */
 export default class UnitView extends ContainerView {
@@ -64,13 +63,13 @@ export default class UnitView extends ContainerView {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
 
-        /** @type {(UnitView | LayerView | DecoratorView)[]} */
+        /** @type {(UnitView | LayerView)[]} */
         this.sampleAggregateViews = [];
         this._initializeAggregateViews();
 
         /**
          * Not nice! Inconsistent when faceting!
-         * TODO: Something. Perhaps a Map that has coords for each facet or something...
+         * TODO: Something. Maybe store only width/height
          * @type {import("../utils/layout/rectangle").default}
          */
         this.coords = undefined;
@@ -107,8 +106,6 @@ export default class UnitView extends ContainerView {
         if (!this.isVisible()) {
             return;
         }
-
-        coords = coords.shrink(this.getPadding());
 
         this.coords = coords;
 
@@ -364,6 +361,13 @@ export default class UnitView extends ContainerView {
                 this.sampleAggregateViews.push(summaryView);
             }
         }
+    }
+
+    /**
+     * @param {import("../utils/interactionEvent").default} event
+     */
+    propagateInteractionEvent(event) {
+        event.target = this;
     }
 
     /**

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
     mapToPixelCoords,
     getMinimumSize,
+    getLargestSize,
     isStretching,
     parseSizeDef,
 } from "./flexLayout";
@@ -288,6 +289,19 @@ describe("Utility fuctions", () => {
         expect(getMinimumSize(items)).toEqual(300);
 
         expect(getMinimumSize(items, { spacing: 10 })).toEqual(330);
+    });
+
+    test("getLargestSize", () => {
+        const items = [
+            { px: 100 },
+            { px: 0, grow: 0 },
+            { grow: 1 },
+            { grow: 9 },
+            { px: 200 },
+            { px: 50 },
+        ];
+
+        expect(getLargestSize(items)).toEqual({ px: 200, grow: 9 });
     });
 
     test("isStretching", () => {

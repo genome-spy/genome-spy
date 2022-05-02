@@ -81,12 +81,12 @@ export default class View {
         this.resolutions = {
             /**
              * Channel-specific scale resolutions
-             * @type {Record<string, import("./scaleResolution").default>}
+             * @type {Partial<Record<Channel, import("./scaleResolution").default>>}
              */
             scale: {},
             /**
              * Channel-specific axis resolutions
-             * @type {Record<string, import("./axisResolution").default>}
+             * @type {Partial<Record<import("../spec/channel").PrimaryPositionalChannel, import("./axisResolution").default>>}
              */
             axis: {},
         };
@@ -103,6 +103,12 @@ export default class View {
 
         /** @type {function(number):number} */
         this.opacityFunction = defaultOpacityFunction;
+
+        /**
+         * Don't inherit encodings from parent.
+         * TODO: Make configurable through spec. Allow more fine-grained control.
+         */
+        this.blockEncodingInheritance = false;
     }
 
     getPadding() {
@@ -112,15 +118,12 @@ export default class View {
     }
 
     /**
-     * Returns a computed, "effective" padding between the plot area and view's
-     * bounding box. The padding may include the configured padding, axes,
-     * peripheral views, etc.
+     * Returns a padding that indicates how much axes and titles extend over the plot area.
      *
-     * Effective padding allows for aligning views so that their content and
-     * axes line up properly.
+     * @returns {Padding}
      */
-    getEffectivePadding() {
-        return this.getPadding();
+    getOverhang() {
+        return Padding.zero();
     }
 
     /**
@@ -367,12 +370,13 @@ export default class View {
      * encodings. However, this does not contain any defaults or inferred/adjusted/fixed
      * encodings. Those are available in Mark's encoding property.
      *
-     * @param {View} [whoIsAsking] Passed to the immediate parent. Allows for
-     *      selectively breaking the inheritance.
      * @return {import("../spec/channel").Encoding}
      */
-    getEncoding(whoIsAsking) {
-        const pe = this.parent ? this.parent.getEncoding(this) : {};
+    getEncoding() {
+        const pe =
+            this.parent && !this.blockEncodingInheritance
+                ? this.parent.getEncoding()
+                : {};
         const te = this.spec.encoding || {};
 
         /** @type {import("../spec/channel").Encoding} */
@@ -524,6 +528,16 @@ export default class View {
 
     invalidateSizeCache() {
         this._invalidateCacheByPrefix("size/", "ancestors");
+    }
+
+    /**
+     * Broadcasts a message to views that include the given (x, y) point.
+     * This is mainly intended for mouse events.
+     *
+     * @param {import("../utils/interactionEvent").default} event
+     */
+    propagateInteractionEvent(event) {
+        // Subclasses must implement proper handling
     }
 }
 
