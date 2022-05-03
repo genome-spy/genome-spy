@@ -243,7 +243,7 @@ export default class SampleView extends ContainerView {
                     title: html`
                         <em class="attribute">${specifier.field}</em>
                         <span class="viewTitle"
-                            >(${view.spec.title || view.name})</span
+                            >(${view.getTitleText() ?? view.name})</span
                         >
                         at
                         <span class="locus"
@@ -877,7 +877,7 @@ export default class SampleView extends ContainerView {
                 });
 
             const contextTitle =
-                fieldInfo.view.spec.title || fieldInfo.view.spec.name;
+                fieldInfo.view.getTitleText() ?? fieldInfo.view.spec.name;
             if (contextTitle != previousContextTitle) {
                 if (i > 0) {
                     items.push({ type: "divider" });

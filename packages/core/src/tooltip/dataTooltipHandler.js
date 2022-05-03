@@ -47,10 +47,11 @@ export default async function dataTooltipHandler(datum, mark, params) {
         </table>
     `;
 
-    const title = mark.unitView.spec.title
+    const titleText = mark.unitView.getTitleText();
+    const title = titleText
         ? html`
               <div class="title">
-                  <strong>${mark.unitView.spec.title}</strong>
+                  <strong>${titleText}</strong>
               </div>
           `
         : "";

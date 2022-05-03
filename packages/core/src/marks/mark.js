@@ -749,7 +749,10 @@ export default class Mark {
                 }
             };
         } else {
-            const rangeEntry = rangeMapSource().get(options.facetId);
+            if (!rangeMapSource()) {
+                console.log("Kukkuu");
+            }
+            const rangeEntry = rangeMapSource()?.get(options.facetId);
             if (rangeEntry && rangeEntry.count) {
                 return function renderStatic() {
                     if (self.prepareSampleFacetRendering(options)) {

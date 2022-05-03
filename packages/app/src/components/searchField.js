@@ -248,7 +248,7 @@ export default class SearchField extends LitElement {
         `);
 
         for (const view of this.genomeSpy?.getSearchableViews() || []) {
-            const viewTitle = view.spec.title ?? view.spec.name;
+            const viewTitle = view.getTitleText() ?? view.spec.name;
             const a = view.getAccessor("search");
             const fieldString = a.fields.join(", "); // TODO: Field title
 
