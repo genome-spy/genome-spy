@@ -15,7 +15,11 @@ export class GroupPanel extends LayerView {
     constructor(sampleView) {
         super(
             {
-                title: "Groups",
+                title: {
+                    text: "Groups",
+                    orient: "none",
+                },
+
                 width: { step: 22 },
                 // TODO: Make step size, colors, font size, etc. configurable.
 

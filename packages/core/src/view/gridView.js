@@ -733,6 +733,33 @@ function createBackground(viewBackground) {
     };
 }
 
+/** @type {Omit<Required<import("../spec/title").Title>, "text" | "style">} */
+const BASE_TITLE_STYLE = {
+    anchor: "start",
+    frame: "group",
+    offset: 0,
+    orient: "top",
+    align: "center",
+    angle: 0,
+    baseline: "alphabetic",
+    dx: -10,
+    dy: 0,
+    color: undefined,
+    font: undefined,
+    fontSize: 12,
+    fontStyle: "normal",
+    fontWeight: "normal",
+};
+
+/** @type {Partial<import("../spec/title").Title>} */
+const TRACK_TITLE_STYLE = {
+    orient: "left",
+    angle: 0,
+    align: "right",
+    baseline: "middle",
+    fontSize: 12,
+};
+
 /**
  * @param {string | import("../spec/title").Title} title
  * @returns {import("../spec/view").UnitSpec}
@@ -749,25 +776,17 @@ function createTitle(title) {
         return;
     }
 
-    /** @type {Omit<Required<import("../spec/title").Title>, "text">} */
-    const defaultConfig = {
-        anchor: "start",
-        frame: "group",
-        offset: 0,
-        orient: "top",
-        align: "center",
-        angle: 0,
-        baseline: "alphabetic",
-        dx: -10,
-        dy: 0,
-        color: undefined,
-        font: undefined,
-        fontSize: 12,
-        fontStyle: "normal",
-        fontWeight: "normal",
-    };
+    /** @type {Partial<import("../spec/title").Title>} */
+    let config;
+    switch (titleSpec.style) {
+        case "track-title":
+            config = TRACK_TITLE_STYLE;
+            break;
+        default:
+            config = {};
+    }
 
-    const orient = titleSpec.orient ?? defaultConfig.orient;
+    const orient = titleSpec.orient ?? config.orient ?? BASE_TITLE_STYLE.orient;
 
     /** @type {Partial<import("../spec/title").Title>} */
     let orientConfig = {};
@@ -794,7 +813,12 @@ function createTitle(title) {
     }
 
     /** @type {import("../spec/title").Title} */
-    const spec = { ...defaultConfig, ...orientConfig, ...titleSpec };
+    const spec = {
+        ...BASE_TITLE_STYLE,
+        ...orientConfig,
+        ...config,
+        ...titleSpec,
+    };
 
     // TODO: group, offset
 
