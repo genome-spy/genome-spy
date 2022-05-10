@@ -99,7 +99,7 @@ export default class GridView extends ContainerView {
                 const unitView = new UnitView(
                     createBackground(viewBackground),
                     this.context,
-                    this,
+                    view,
                     "background" + this.#childSerial
                 );
                 // TODO: Make configurable through spec:
@@ -112,7 +112,7 @@ export default class GridView extends ContainerView {
                 const unitView = new UnitView(
                     title,
                     this.context,
-                    this,
+                    view,
                     "title" + this.#childSerial
                 );
                 // TODO: Make configurable through spec:
