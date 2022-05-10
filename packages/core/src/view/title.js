@@ -2,14 +2,14 @@ import { isString } from "vega-util";
 
 /** @type {Omit<Required<import("../spec/title").Title>, "text" | "style">} */
 const BASE_TITLE_STYLE = {
-    anchor: "start",
+    anchor: "middle",
     frame: "group",
     offset: 0,
     orient: "top",
-    align: "center",
+    align: undefined,
     angle: 0,
     baseline: "alphabetic",
-    dx: -10,
+    dx: 0,
     dy: 0,
     color: undefined,
     font: undefined,
@@ -21,10 +21,27 @@ const BASE_TITLE_STYLE = {
 /** @type {Partial<import("../spec/title").Title>} */
 const TRACK_TITLE_STYLE = {
     orient: "left",
+    anchor: "middle",
     angle: 0,
+    dx: -10,
+    dy: 0,
     align: "right",
     baseline: "middle",
     fontSize: 12,
+};
+
+/** @type {Record<import("../spec/title").TitleAnchor, number>} */
+const ANCHORS = {
+    start: 0,
+    middle: 0.5,
+    end: 1,
+};
+
+/** @type {Record<import("../spec/title").TitleAnchor, import("../spec/font").Align>} */
+const ANCHOR_TO_ALIGN = {
+    start: "left",
+    middle: "center",
+    end: "right",
 };
 
 /**
@@ -59,24 +76,24 @@ export default function createTitle(title) {
     let orientConfig = {};
     let xy = { x: 0, y: 0 };
 
-    //const anchors = ["start", "middle", "end"];
+    const anchorPos = ANCHORS[titleSpec.anchor ?? "middle"];
 
     switch (orient) {
         case "top":
-            xy = { x: 0.5, y: 1 };
+            xy = { x: anchorPos, y: 1 };
             orientConfig = { dy: -10, baseline: "alphabetic", angle: 0 };
             break;
         case "right":
-            xy = { x: 1, y: 0.5 };
-            orientConfig = { dx: -10, baseline: "alphabetic", angle: 90 };
+            xy = { x: 1, y: 1 - anchorPos };
+            orientConfig = { dy: -10, baseline: "alphabetic", angle: 90 };
             break;
         case "bottom":
-            xy = { x: 0.5, y: 0 };
+            xy = { x: anchorPos, y: 0 };
             orientConfig = { dy: 10, baseline: "top", angle: 0 };
             break;
         case "left":
-            xy = { x: 0, y: 0.5 };
-            orientConfig = { dx: -10, baseline: "alphabetic", angle: -90 };
+            xy = { x: 0, y: anchorPos };
+            orientConfig = { dy: -10, baseline: "alphabetic", angle: -90 };
             break;
         default:
     }
@@ -102,7 +119,7 @@ export default function createTitle(title) {
 
             text: spec.text,
 
-            align: spec.align,
+            align: spec.align ?? ANCHOR_TO_ALIGN[spec.anchor],
             angle: spec.angle,
             baseline: spec.baseline,
             dx: spec.dx,
