@@ -24,6 +24,7 @@ const TRACK_TITLE_STYLE = {
     anchor: "middle",
     align: "right",
     baseline: "middle",
+    angle: 0,
     fontSize: 12,
 };
 
@@ -68,18 +69,13 @@ export default function createTitle(title) {
         return;
     }
 
+    // TODO: Make these configurable
     /** @type {Partial<import("../spec/title").Title>} */
-    let config;
-    switch (titleSpec.style) {
-        case "track-title":
-            config = TRACK_TITLE_STYLE;
-            break;
-        case "overlay":
-            config = OVERLAY_TITLE_STYLE;
-            break;
-        default:
-            config = {};
-    }
+    const config =
+        {
+            "track-title": TRACK_TITLE_STYLE,
+            overlay: OVERLAY_TITLE_STYLE,
+        }[titleSpec.style] ?? {};
 
     // TODO: frame prop
 
