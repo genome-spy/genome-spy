@@ -4,7 +4,7 @@ import { isString } from "vega-util";
 const BASE_TITLE_STYLE = {
     anchor: "middle",
     frame: "group",
-    offset: 0,
+    offset: 10,
     orient: "top",
     align: undefined,
     angle: 0,
@@ -23,7 +23,7 @@ const TRACK_TITLE_STYLE = {
     orient: "left",
     anchor: "middle",
     angle: 0,
-    dx: -10,
+    dx: 0,
     dy: 0,
     align: "right",
     baseline: "middle",
@@ -70,6 +70,8 @@ export default function createTitle(title) {
             config = {};
     }
 
+    // TODO: frame prop
+
     const orient = titleSpec.orient ?? config.orient ?? BASE_TITLE_STYLE.orient;
 
     /** @type {Partial<import("../spec/title").Title>} */
@@ -81,19 +83,19 @@ export default function createTitle(title) {
     switch (orient) {
         case "top":
             xy = { x: anchorPos, y: 1 };
-            orientConfig = { dy: -10, baseline: "alphabetic", angle: 0 };
+            orientConfig = { baseline: "alphabetic", angle: 0 };
             break;
         case "right":
             xy = { x: 1, y: 1 - anchorPos };
-            orientConfig = { dy: -10, baseline: "alphabetic", angle: 90 };
+            orientConfig = { baseline: "alphabetic", angle: 90 };
             break;
         case "bottom":
             xy = { x: anchorPos, y: 0 };
-            orientConfig = { dy: 10, baseline: "top", angle: 0 };
+            orientConfig = { baseline: "top", angle: 0 };
             break;
         case "left":
             xy = { x: 0, y: anchorPos };
-            orientConfig = { dy: -10, baseline: "alphabetic", angle: -90 };
+            orientConfig = { baseline: "alphabetic", angle: -90 };
             break;
         default:
     }
@@ -106,7 +108,22 @@ export default function createTitle(title) {
         ...titleSpec,
     };
 
-    // TODO: group, offset
+    const offsets = { xOffset: 0, yOffset: 0 };
+    switch (orient) {
+        case "top":
+            offsets.yOffset = -spec.offset;
+            break;
+        case "right":
+            offsets.xOffset = spec.offset;
+            break;
+        case "bottom":
+            offsets.yOffset = spec.offset;
+            break;
+        case "left":
+            offsets.xOffset = -spec.offset;
+            break;
+        default:
+    }
 
     return {
         configurableVisibility: false,
@@ -115,7 +132,9 @@ export default function createTitle(title) {
             type: "text",
             tooltip: null,
             clip: false,
+
             ...xy,
+            ...offsets,
 
             text: spec.text,
 
