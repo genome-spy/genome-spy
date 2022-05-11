@@ -9,7 +9,7 @@ import {
     initPropertyCache,
     invalidatePrefix,
 } from "../utils/propertyCacher";
-import { isNumber, span } from "vega-util";
+import { isNumber, isString, span } from "vega-util";
 import { scaleLog } from "d3-scale";
 import { isFieldDef, getPrimaryChannel } from "../encoder/encoder";
 import { appendToBaseUrl } from "../utils/url";
@@ -492,6 +492,13 @@ export default class View {
      */
     isPickingSupported() {
         return true;
+    }
+
+    getTitleText() {
+        const title = this.spec.title;
+        if (title) {
+            return isString(title) ? title : title.text;
+        }
     }
 
     /**

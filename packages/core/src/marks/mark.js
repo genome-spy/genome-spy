@@ -749,7 +749,7 @@ export default class Mark {
                 }
             };
         } else {
-            const rangeEntry = rangeMapSource().get(options.facetId);
+            const rangeEntry = rangeMapSource()?.get(options.facetId);
             if (rangeEntry && rangeEntry.count) {
                 return function renderStatic() {
                     if (self.prepareSampleFacetRendering(options)) {

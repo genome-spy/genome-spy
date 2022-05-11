@@ -164,7 +164,7 @@ class ViewSettingsButton extends LitElement {
                         .checked=${live(checked)}
                         @change=${(/** @type {UIEvent} */ event) =>
                             this.handleCheckboxClick(event, view)}
-                    />${view.spec.title ?? view.name}
+                    />${view.getTitleText() ?? view.name}
                 </label>
                 ${childrenToHtml(item.children, checked)}
             </li>`;

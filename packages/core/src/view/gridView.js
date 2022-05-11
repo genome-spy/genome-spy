@@ -11,6 +11,7 @@ import Rectangle from "../utils/layout/rectangle";
 import AxisView, { CHANNEL_ORIENTS } from "./axisView";
 import ContainerView from "./containerView";
 import LayerView from "./layerView";
+import createTitle from "./title";
 import UnitView from "./unitView";
 import interactionToZoom from "./zoom";
 
@@ -20,8 +21,9 @@ import interactionToZoom from "./zoom";
  *
  * @typedef {object} GridChild
  * @prop {View} view
- * @prop {UnitView} background
+ * @prop {UnitView} [background]
  * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes
+ * @prop {UnitView} [title]
  * @prop {Rectangle} coords Coordinates of the view. Recorded for mouse tracking, etc.
  */
 
@@ -97,12 +99,25 @@ export default class GridView extends ContainerView {
                 const unitView = new UnitView(
                     createBackground(viewBackground),
                     this.context,
-                    this,
+                    view,
                     "background" + this.#childSerial
                 );
                 // TODO: Make configurable through spec:
                 unitView.blockEncodingInheritance = true;
                 gridChild.background = unitView;
+            }
+
+            const title = createTitle(view.spec.title);
+            if (title) {
+                const unitView = new UnitView(
+                    title,
+                    this.context,
+                    view,
+                    "title" + this.#childSerial
+                );
+                // TODO: Make configurable through spec:
+                unitView.blockEncodingInheritance = true;
+                gridChild.title = unitView;
             }
         }
 
@@ -291,6 +306,10 @@ export default class GridView extends ContainerView {
             }
 
             yield gridChild.view;
+
+            if (gridChild.title) {
+                yield gridChild.title;
+            }
         }
     }
 
@@ -524,7 +543,7 @@ export default class GridView extends ContainerView {
         );
 
         for (const [i, gridChild] of this.#visibleChildren.entries()) {
-            const { view, axes, background } = gridChild;
+            const { view, axes, background, title } = gridChild;
 
             const [col, row] = grid.getCellCoords(i);
             const colLocSize =
@@ -594,6 +613,11 @@ export default class GridView extends ContainerView {
             if (!clipped) {
                 view.render(context, childCoords, options);
             }
+
+            title?.render(context, childCoords, {
+                ...options,
+                clipRect: undefined, // Hack for SampleAttributePanel. TODO: Proper fix
+            });
         }
 
         context.popView(this);

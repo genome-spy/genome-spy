@@ -293,10 +293,10 @@ export class SampleAttributePanel extends ConcatView {
         this.visit((view) => {
             if (view instanceof UnitView) {
                 const mark = view.mark;
+                mark.initializeEncoders();
                 promises.push(mark.initializeGraphics().then((result) => mark));
 
                 flow.addObserver((collector) => {
-                    mark.initializeEncoders();
                     mark.initializeData(); // does faceting
                     mark.updateGraphicsData();
                 }, view);
@@ -317,6 +317,14 @@ export class SampleAttributePanel extends ConcatView {
         });
 
         dynamicSource.publishData(samples);
+
+        // A terrible hack to initialize data sources.
+        // TODO: Come up with a clean solution.
+        this.visit((view) => {
+            if (view.name.startsWith("title")) {
+                flow.findDataSourceByKey(view).load();
+            }
+        });
     }
 
     _createViews() {
@@ -567,7 +575,15 @@ function createAttributeSpec(attributeName, attributeDef) {
     /** @type {import("@genome-spy/core/view/viewUtils").UnitSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
-        title: attributeName,
+        title: {
+            text: attributeName,
+            orient: "bottom",
+            align: "right",
+            baseline: "middle",
+            offset: 5,
+            angle: -90,
+            fontSize: 11,
+        },
         visible: attributeDef.visible ?? true,
         width: attributeDef.width ?? 10,
         transform: [{ type: "filter", expr: `datum.${field} != null` }],
@@ -603,7 +619,13 @@ function createLabelViewSpec() {
     /** @type {import("@genome-spy/core/view/viewUtils").UnitSpec} */
     const titleSpec = {
         name: "metadata-sample-name",
-        title: "Sample name",
+        title: {
+            text: "Sample name",
+            orient: "bottom",
+            anchor: "start",
+            offset: 5,
+            fontSize: 11,
+        },
         width: 140,
         mark: {
             type: "text",

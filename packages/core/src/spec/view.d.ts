@@ -14,6 +14,7 @@ import {
     MarkType,
     RectProps,
 } from "./mark";
+import { Title } from "./title";
 
 export interface SizeDef {
     /** Size in pixels */
@@ -78,7 +79,7 @@ export interface ViewSpecBase extends ResolveSpec {
     data?: Data;
     transform?: TransformParams[];
     encoding?: Encoding;
-    title?: string;
+    title?: string | Title;
 
     /**
      * A description of the view. Multiple lines can be provided as an array.
