@@ -23,13 +23,13 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@floating-ui/dom": "^0.1.10",
+    "@floating-ui/dom": "^0.5.0",
     "@fortawesome/fontawesome-free": "^5.14.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.30",
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
     "@genome-spy/core": "^0.19.1",
     "@reduxjs/toolkit": "^1.6.2",
-    "idb": "^6.1.5",
+    "idb": "^7.0.1",
     "lit": "^2.0.2",
     "lz-string": "^1.4.4",
     "mapsort": "^1.0.5",
