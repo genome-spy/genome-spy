@@ -582,6 +582,7 @@ function createAttributeSpec(attributeName, attributeDef) {
             baseline: "middle",
             offset: 5,
             angle: -90,
+            dy: -0.5,
             fontSize: 11,
         },
         visible: attributeDef.visible ?? true,
@@ -589,6 +590,7 @@ function createAttributeSpec(attributeName, attributeDef) {
         transform: [{ type: "filter", expr: `datum.${field} != null` }],
         mark: {
             type: "rect",
+            xOffset: -0.5,
         },
         encoding: {
             facetIndex: { field: "indexNumber" },
