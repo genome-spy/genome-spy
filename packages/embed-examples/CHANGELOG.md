@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.20.0](https://github.com/tuner/genome-spy/compare/v0.19.1...v0.20.0) (2022-05-11)
+
+**Note:** Version bump only for package @genome-spy/embed-examples
+
+
+
+
+
 ## [0.19.1](https://github.com/tuner/genome-spy/compare/v0.19.0...v0.19.1) (2022-04-11)
 
 **Note:** Version bump only for package @genome-spy/embed-examples

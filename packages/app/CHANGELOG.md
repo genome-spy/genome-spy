@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.20.0](https://github.com/genome-spy/genome-spy/compare/v0.19.1...v0.20.0) (2022-05-11)
+
+
+### Bug Fixes
+
+* **app:** adjust attributes' offset to make rects crispier ([e2e178d](https://github.com/genome-spy/genome-spy/commit/e2e178dca2f11f4969becc1b58396e43f2eb36c6))
+* **app:** context menu didn't appear ([dadd57c](https://github.com/genome-spy/genome-spy/commit/dadd57c4f4059fe53ba51e69d3a9f447a104baa5))
+* **app:** padding issue ([847bb8d](https://github.com/genome-spy/genome-spy/commit/847bb8def3a4b0800774571ee19946307a1554b1)), closes [#97](https://github.com/genome-spy/genome-spy/issues/97)
+
+
+### Features
+
+* **core:** view titles ([#101](https://github.com/genome-spy/genome-spy/issues/101)) ([b14bd85](https://github.com/genome-spy/genome-spy/commit/b14bd85aa487619cf3b42f1e364a803ef65a8921))
+
+
+
+
+
 ## [0.19.1](https://github.com/genome-spy/genome-spy/compare/v0.19.0...v0.19.1) (2022-04-11)
 
 **Note:** Version bump only for package @genome-spy/app

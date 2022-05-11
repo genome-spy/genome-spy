@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.20.0](https://github.com/genome-spy/genome-spy/compare/v0.19.1...v0.20.0) (2022-05-11)
+
+
+### Features
+
+* **core:** view titles ([#101](https://github.com/genome-spy/genome-spy/issues/101)) ([b14bd85](https://github.com/genome-spy/genome-spy/commit/b14bd85aa487619cf3b42f1e364a803ef65a8921))
+
+
+
+
+
 ## [0.19.1](https://github.com/genome-spy/genome-spy/compare/v0.19.0...v0.19.1) (2022-04-11)
 
 
