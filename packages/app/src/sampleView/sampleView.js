@@ -51,6 +51,7 @@ const SPACING = 10;
  * @typedef {import("./sampleState").Sample} Sample
  * @typedef {import("@genome-spy/core/utils/layout/flexLayout").LocSize} LocSize
  * @typedef {import("@genome-spy/core/view/view").default} View
+ * @typedef {import("@genome-spy/core/view/layerView").default} LayerView
  * @typedef {import("@genome-spy/core/data/dataFlow").default<View>} DataFlow
  * @typedef {import("@genome-spy/core/data/sources/dynamicSource").default} DynamicSource
  * @typedef {import("@genome-spy/core/genome/genome").ChromosomalLocus} ChromosomalLocus
