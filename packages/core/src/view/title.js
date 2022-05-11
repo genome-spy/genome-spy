@@ -22,11 +22,19 @@ const BASE_TITLE_STYLE = {
 const TRACK_TITLE_STYLE = {
     orient: "left",
     anchor: "middle",
-    angle: 0,
-    dx: 0,
-    dy: 0,
     align: "right",
     baseline: "middle",
+    fontSize: 12,
+};
+
+/** @type {Partial<import("../spec/title").Title>} */
+const OVERLAY_TITLE_STYLE = {
+    orient: "top",
+    anchor: "start",
+    align: "left",
+    baseline: "top",
+    offset: -10,
+    dx: 10,
     fontSize: 12,
 };
 
@@ -66,21 +74,29 @@ export default function createTitle(title) {
         case "track-title":
             config = TRACK_TITLE_STYLE;
             break;
+        case "overlay":
+            config = OVERLAY_TITLE_STYLE;
+            break;
         default:
             config = {};
     }
 
     // TODO: frame prop
 
-    const orient = titleSpec.orient ?? config.orient ?? BASE_TITLE_STYLE.orient;
+    /** @type {import("../spec/title").Title} */
+    const preliminarySpec = {
+        ...BASE_TITLE_STYLE,
+        ...config,
+        ...titleSpec,
+    };
 
     /** @type {Partial<import("../spec/title").Title>} */
     let orientConfig = {};
     let xy = { x: 0, y: 0 };
 
-    const anchorPos = ANCHORS[titleSpec.anchor ?? "middle"];
+    const anchorPos = ANCHORS[preliminarySpec.anchor ?? "middle"];
 
-    switch (orient) {
+    switch (preliminarySpec.orient) {
         case "top":
             xy = { x: anchorPos, y: 1 };
             orientConfig = { baseline: "alphabetic", angle: 0 };
@@ -109,7 +125,7 @@ export default function createTitle(title) {
     };
 
     const offsets = { xOffset: 0, yOffset: 0 };
-    switch (orient) {
+    switch (preliminarySpec.orient) {
         case "top":
             offsets.yOffset = -spec.offset;
             break;
