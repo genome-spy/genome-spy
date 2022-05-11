@@ -828,7 +828,7 @@ export default class SampleView extends ContainerView {
         // TODO: Allow for registering listeners
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
 
-        const normalizedXPos = coords.normalizePoint(
+        const normalizedXPos = this.childCoords.normalizePoint(
             event.point.x,
             event.point.y
         ).x;
@@ -920,6 +920,8 @@ export default class SampleView extends ContainerView {
         }
 
         if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
+            this.child.propagateInteractionEvent(event);
+            // Hmm. Perhaps this could be attached to the child
             interactionToZoom(
                 event,
                 this.childCoords,
