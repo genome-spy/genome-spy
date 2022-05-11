@@ -361,9 +361,13 @@ export default class SampleView extends ContainerView {
     }
 
     getOverhang() {
-        const peripherySize = this.peripheryView.isVisible()
-            ? this.peripheryView.getSize().width.px + SPACING
+        let peripherySize = this.peripheryView.isVisible()
+            ? this.peripheryView.getSize().width.px
             : 0;
+
+        if (peripherySize) {
+            peripherySize += SPACING;
+        }
 
         return new Padding(0, 0, 0, peripherySize);
     }
