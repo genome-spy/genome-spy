@@ -1,6 +1,9 @@
 import { isNumber, isObject, isString } from "vega-util";
 import { html, render } from "lit";
-import { findEncodedFields } from "@genome-spy/core/view/viewUtils";
+import {
+    findEncodedFields,
+    findUniqueViewNames,
+} from "@genome-spy/core/view/viewUtils";
 import ContainerView from "@genome-spy/core/view/containerView";
 import {
     interpolateLocSizes,
@@ -841,12 +844,18 @@ export default class SampleView extends ContainerView {
         const complexX =
             this.getScaleResolution("x").invertToComplex(normalizedXPos);
 
+        const uniqueViewNames = findUniqueViewNames(
+            [...this.getAncestors()].at(-1)
+        );
+
         const fieldInfos = findEncodedFields(this.child)
             .filter((d) => !["sample", "x", "x2"].includes(d.channel))
             // TODO: A method to check if a mark covers a range (both x and x2 defined)
             .filter((info) =>
                 ["rect", "rule"].includes(info.view.getMarkType())
-            );
+            )
+            // TODO: Log a warning if the view name is not unique
+            .filter((info) => uniqueViewNames.has(info.view.name));
 
         /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
         let items = [
