@@ -545,21 +545,27 @@ export default class Mark {
      * and scales) and buffers.
      *
      * @param {import("../view/rendering").GlobalRenderingOptions} options
+     * @returns {(() => void)[]}
      */
     // eslint-disable-next-line complexity
     prepareRender(options) {
         const glHelper = this.glHelper;
         const gl = this.gl;
 
-        if (!this.vertexArrayInfo) {
-            this.vertexArrayInfo = createVertexArrayInfo(
-                this.gl,
-                this.programInfo,
-                this.bufferInfo
-            );
-        }
+        /** @type {(() => void)[]} */
+        const ops = [];
 
-        gl.useProgram(this.programInfo.program);
+        ops.push(() => {
+            if (!this.vertexArrayInfo) {
+                this.vertexArrayInfo = createVertexArrayInfo(
+                    this.gl,
+                    this.programInfo,
+                    this.bufferInfo
+                );
+            }
+
+            gl.useProgram(this.programInfo.program);
+        });
 
         if (this.domainUniformInfo) {
             // TODO: Only update the domains that have changed
@@ -582,19 +588,24 @@ export default class Mark {
 
                 if (resolution) {
                     const scale = resolution.getScale();
-                    const domain = isDiscrete(scale.type)
-                        ? [0, scale.domain().length]
-                        : scale.domain();
 
-                    setter(
-                        isHighPrecisionScale(scale.type)
-                            ? toHighPrecisionDomainUniform(domain)
-                            : domain
-                    );
+                    ops.push(() => {
+                        const domain = isDiscrete(scale.type)
+                            ? [0, scale.domain().length]
+                            : scale.domain();
+
+                        setter(
+                            isHighPrecisionScale(scale.type)
+                                ? toHighPrecisionDomainUniform(domain)
+                                : domain
+                        );
+                    });
                 }
             }
 
-            setUniformBlock(gl, this.programInfo, this.domainUniformInfo);
+            ops.push(() =>
+                setUniformBlock(gl, this.programInfo, this.domainUniformInfo)
+            );
         }
 
         for (const [channel, channelDef] of Object.entries(this.encoding)) {
@@ -609,53 +620,63 @@ export default class Mark {
 
                 const texture = glHelper.rangeTextures.get(resolution);
                 if (texture) {
-                    setUniforms(this.programInfo, {
-                        [RANGE_TEXTURE_PREFIX + channel]: texture,
-                    });
+                    ops.push(() =>
+                        setUniforms(this.programInfo, {
+                            [RANGE_TEXTURE_PREFIX + channel]: texture,
+                        })
+                    );
                 }
             }
         }
 
         if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
-            /** @type {WebGLTexture} */
-            let facetTexture;
-            for (const view of this.unitView.getAncestors()) {
-                facetTexture = view.getSampleFacetTexture();
-                if (facetTexture) {
-                    break;
+            ops.push(() => {
+                /** @type {WebGLTexture} */
+                let facetTexture;
+                for (const view of this.unitView.getAncestors()) {
+                    facetTexture = view.getSampleFacetTexture();
+                    if (facetTexture) {
+                        break;
+                    }
                 }
-            }
 
-            if (!facetTexture) {
-                throw new Error("No facet texture available. This is bug.");
-            }
+                if (!facetTexture) {
+                    throw new Error("No facet texture available. This is bug.");
+                }
 
-            setUniforms(this.programInfo, {
-                uSampleFacetTexture: facetTexture,
+                setUniforms(this.programInfo, {
+                    uSampleFacetTexture: facetTexture,
+                });
             });
         }
 
-        setUniforms(this.programInfo, {
-            // TODO: Rendering of the mark should be completely skipped if it doesn't
-            // participate picking
-            uPickingEnabled:
-                (options.picking ?? false) && this.isPickingParticipant(),
+        ops.push(() =>
+            setUniforms(this.programInfo, {
+                // TODO: Rendering of the mark should be completely skipped if it doesn't
+                // participate picking
+                uPickingEnabled:
+                    (options.picking ?? false) && this.isPickingParticipant(),
 
-            // left pos, left height, right pos, right height
-            uSampleFacet: [0, 1, 0, 1],
-            uTransitionOffset: 0.0,
-        });
+                // left pos, left height, right pos, right height
+                uSampleFacet: [0, 1, 0, 1],
+                uTransitionOffset: 0.0,
+            })
+        );
 
         // Note: the block is sent to GPU in setViewport(), which is repeated for each facet
-        setBlockUniforms(this.viewUniformInfo, {
-            uViewOpacity: this.unitView.getEffectiveOpacity(),
-        });
+        ops.push(() =>
+            setBlockUniforms(this.viewUniformInfo, {
+                uViewOpacity: this.unitView.getEffectiveOpacity(),
+            })
+        );
 
         if (this.opaque || options.picking) {
-            gl.disable(gl.BLEND);
+            ops.push(() => gl.disable(gl.BLEND));
         } else {
-            gl.enable(gl.BLEND);
+            ops.push(() => gl.enable(gl.BLEND));
         }
+
+        return ops;
     }
 
     /**

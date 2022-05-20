@@ -176,20 +176,26 @@ export default class RuleMark extends Mark {
      * @param {import("../view/rendering").GlobalRenderingOptions} options
      */
     prepareRender(options) {
-        super.prepareRender(options);
+        const ops = super.prepareRender(options);
 
         if (this.dashTexture) {
-            setUniforms(this.programInfo, {
-                uDashTexture: this.dashTexture,
-                uStrokeDashOffset: this.properties.strokeDashOffset,
-            });
+            ops.push(() =>
+                setUniforms(this.programInfo, {
+                    uDashTexture: this.dashTexture,
+                    uStrokeDashOffset: this.properties.strokeDashOffset,
+                })
+            );
         }
 
-        setBuffersAndAttributes(
-            this.gl,
-            this.programInfo,
-            this.vertexArrayInfo
+        ops.push(() =>
+            setBuffersAndAttributes(
+                this.gl,
+                this.programInfo,
+                this.vertexArrayInfo
+            )
         );
+
+        return ops;
     }
 
     /**

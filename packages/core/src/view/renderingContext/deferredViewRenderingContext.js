@@ -146,7 +146,9 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
             });
             // Change program, set common uniforms (mark properties, shared domains)
             this.batch.push(
-                ifEnabled(() => mark.prepareRender(this.globalOptions))
+                ...mark
+                    .prepareRender(this.globalOptions)
+                    .map((op) => ifEnabled(op))
             );
 
             /** @type {import("../../utils/layout/rectangle").default} */

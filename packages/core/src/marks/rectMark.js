@@ -188,13 +188,17 @@ export default class RectMark extends Mark {
      * @param {import("../view/rendering").GlobalRenderingOptions} options
      */
     prepareRender(options) {
-        super.prepareRender(options);
+        const ops = super.prepareRender(options);
 
-        setBuffersAndAttributes(
-            this.gl,
-            this.programInfo,
-            this.vertexArrayInfo
+        ops.push(() =>
+            setBuffersAndAttributes(
+                this.gl,
+                this.programInfo,
+                this.vertexArrayInfo
+            )
         );
+
+        return ops;
     }
 
     /**

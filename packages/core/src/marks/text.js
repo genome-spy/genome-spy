@@ -229,7 +229,7 @@ export default class TextMark extends Mark {
      * @param {import("../view/rendering").GlobalRenderingOptions} options
      */
     prepareRender(options) {
-        super.prepareRender(options);
+        const ops = super.prepareRender(options);
 
         let q = 0.35; // TODO: Ensure that this makes sense. Now chosen by trial & error
         if (this.properties.logoLetters) {
@@ -239,17 +239,23 @@ export default class TextMark extends Mark {
             q /= 2;
         }
 
-        setUniforms(this.programInfo, {
-            uTexture: this.font.texture,
-            uSdfNumerator:
-                this.font.metrics.common.base / (this.glHelper.dpr / q),
-        });
-
-        setBuffersAndAttributes(
-            this.gl,
-            this.programInfo,
-            this.vertexArrayInfo
+        ops.push(() =>
+            setUniforms(this.programInfo, {
+                uTexture: this.font.texture,
+                uSdfNumerator:
+                    this.font.metrics.common.base / (this.glHelper.dpr / q),
+            })
         );
+
+        ops.push(() =>
+            setBuffersAndAttributes(
+                this.gl,
+                this.programInfo,
+                this.vertexArrayInfo
+            )
+        );
+
+        return ops;
     }
 
     /**

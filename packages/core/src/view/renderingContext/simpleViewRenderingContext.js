@@ -55,7 +55,9 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
-        mark.prepareRender(this.globalOptions);
+        for (const op of mark.prepareRender(this.globalOptions)) {
+            op();
+        }
         mark.setViewport(this.coords, options.clipRect);
         mark.render(options)();
     }

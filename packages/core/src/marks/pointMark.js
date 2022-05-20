@@ -210,44 +210,51 @@ export default class PointMark extends Mark {
      * @param {import("../view/rendering").GlobalRenderingOptions} options
      */
     prepareRender(options) {
-        super.prepareRender(options);
+        const ops = super.prepareRender(options);
 
-        setUniforms(this.programInfo, {
-            uMaxPointSize: this._getMaxPointSize(),
-            uScaleFactor: this._getGeometricScaleFactor(),
-            uSemanticThreshold: this.getSemanticThreshold(),
-        });
+        ops.push(() =>
+            setUniforms(this.programInfo, {
+                uMaxPointSize: this._getMaxPointSize(),
+                uScaleFactor: this._getGeometricScaleFactor(),
+                uSemanticThreshold: this.getSemanticThreshold(),
+            })
+        );
 
-        setBuffersAndAttributes(
-            this.gl,
-            this.programInfo,
-            this.vertexArrayInfo
+        ops.push(() =>
+            setBuffersAndAttributes(
+                this.gl,
+                this.programInfo,
+                this.vertexArrayInfo
+            )
         );
 
         // Setup bisector that allows for searching the points that reside within the viewport.
         const xEncoder = this.encoders.x;
         if (xEncoder && !xEncoder.constant) {
             const bisect = bisector(xEncoder.accessor).left;
-            const visibleDomain = this.unitView
-                .getScaleResolution("x")
-                .getScale()
-                .domain();
+            const scale = this.unitView.getScaleResolution("x").getScale();
 
-            // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
-            const paddedDomain = zoomLinear(visibleDomain, null, 1.01);
+            ops.push(() => {
+                const visibleDomain = scale.domain();
 
-            /** @param {any[]} facetId */
-            this._findIndices = (facetId) => {
-                const data = this.unitView
-                    .getCollector()
-                    .facetBatches.get(facetId);
+                // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
+                const paddedDomain = zoomLinear(visibleDomain, null, 1.01);
 
-                return [
-                    bisect(data, paddedDomain[0]),
-                    bisect(data, paddedDomain[paddedDomain.length - 1]),
-                ];
-            };
+                /** @param {any[]} facetId */
+                this._findIndices = (facetId) => {
+                    const data = this.unitView
+                        .getCollector()
+                        .facetBatches.get(facetId);
+
+                    return [
+                        bisect(data, paddedDomain[0]),
+                        bisect(data, paddedDomain[paddedDomain.length - 1]),
+                    ];
+                };
+            });
         }
+
+        return ops;
     }
 
     /**
