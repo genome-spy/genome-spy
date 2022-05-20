@@ -146,6 +146,25 @@ export default class RectMark extends Mark {
         );
     }
 
+    finalizeGraphicsInitialization() {
+        super.finalizeGraphicsInitialization();
+
+        this.gl.useProgram(this.programInfo.program);
+
+        const props = this.properties;
+
+        setUniforms(this.programInfo, {
+            uMinSize: [props.minWidth, props.minHeight], // in pixels
+            uMinOpacity: props.minOpacity,
+            uCornerRadii: [
+                props.cornerRadiusTopRight ?? props.cornerRadius,
+                props.cornerRadiusBottomRight ?? props.cornerRadius,
+                props.cornerRadiusTopLeft ?? props.cornerRadius,
+                props.cornerRadiusBottomLeft ?? props.cornerRadius,
+            ],
+        });
+    }
+
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
         const numItems = collector.getItemCount();
@@ -170,19 +189,6 @@ export default class RectMark extends Mark {
      */
     prepareRender(options) {
         super.prepareRender(options);
-
-        const props = this.properties;
-
-        setUniforms(this.programInfo, {
-            uMinSize: [props.minWidth, props.minHeight], // in pixels
-            uMinOpacity: props.minOpacity,
-            uCornerRadii: [
-                props.cornerRadiusTopRight ?? props.cornerRadius,
-                props.cornerRadiusBottomRight ?? props.cornerRadius,
-                props.cornerRadiusTopLeft ?? props.cornerRadius,
-                props.cornerRadiusBottomLeft ?? props.cornerRadius,
-            ],
-        });
 
         setBuffersAndAttributes(
             this.gl,
