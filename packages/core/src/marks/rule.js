@@ -139,6 +139,20 @@ export default class RuleMark extends Mark {
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
     }
 
+    finalizeGraphicsInitialization() {
+        super.finalizeGraphicsInitialization();
+
+        this.gl.useProgram(this.programInfo.program);
+
+        const props = this.properties;
+
+        setUniforms(this.programInfo, {
+            uMinLength: props.minLength,
+            uDashTextureSize: this.dashTextureSize,
+            uStrokeCap: ["butt", "square", "round"].indexOf(props.strokeCap),
+        });
+    }
+
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
         const itemCount = collector.getItemCount();
@@ -163,14 +177,6 @@ export default class RuleMark extends Mark {
      */
     prepareRender(options) {
         super.prepareRender(options);
-
-        setUniforms(this.programInfo, {
-            uMinLength: this.properties.minLength,
-            uDashTextureSize: this.dashTextureSize,
-            uStrokeCap: ["butt", "square", "round"].indexOf(
-                this.properties.strokeCap
-            ),
-        });
 
         if (this.dashTexture) {
             setUniforms(this.programInfo, {
