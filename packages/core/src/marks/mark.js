@@ -650,13 +650,14 @@ export default class Mark {
             });
         }
 
+        // TODO: Rendering of the mark should be completely skipped if it doesn't
+        // participate picking
+        const picking =
+            (options.picking ?? false) && this.isPickingParticipant();
+
         ops.push(() =>
             setUniforms(this.programInfo, {
-                // TODO: Rendering of the mark should be completely skipped if it doesn't
-                // participate picking
-                uPickingEnabled:
-                    (options.picking ?? false) && this.isPickingParticipant(),
-
+                uPickingEnabled: picking,
                 // left pos, left height, right pos, right height
                 uSampleFacet: [0, 1, 0, 1],
                 uTransitionOffset: 0.0,
