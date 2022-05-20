@@ -81,7 +81,6 @@ export class GroupPanel extends LayerView {
                         mark: {
                             type: "rect",
                             clip: true,
-                            dynamicData: true,
                             color: "#e8e8e8",
                         },
                     },
@@ -89,7 +88,6 @@ export class GroupPanel extends LayerView {
                         mark: {
                             type: "text",
                             clip: true,
-                            dynamicData: true,
                             angle: -90,
                             paddingY: 5,
                             tooltip: null,

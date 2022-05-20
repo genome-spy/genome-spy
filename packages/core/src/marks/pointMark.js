@@ -156,7 +156,7 @@ export default class PointMark extends Mark {
         builder.addBatches(collector.facetBatches);
 
         const vertexData = builder.toArrays();
-        this.rangeMap = vertexData.rangeMap;
+        this.rangeMap.migrateEntries(vertexData.rangeMap);
         this.updateBufferInfo(vertexData);
     }
 
@@ -263,27 +263,23 @@ export default class PointMark extends Mark {
     render(options) {
         const gl = this.gl;
 
-        return this.createRenderCallback(
-            (offset, count) => {
-                // TODO: findIndices is rather slow. Consider a more coarse-grained, "tiled" solution.
-                const [lower, upper] = this._findIndices
-                    ? this._findIndices(options.facetId)
-                    : [0, count];
+        return this.createRenderCallback((offset, count) => {
+            // TODO: findIndices is rather slow. Consider a more coarse-grained, "tiled" solution.
+            const [lower, upper] = this._findIndices
+                ? this._findIndices(options.facetId)
+                : [0, count];
 
-                const length = upper - lower;
+            const length = upper - lower;
 
-                if (length) {
-                    drawBufferInfo(
-                        gl,
-                        this.vertexArrayInfo,
-                        gl.POINTS,
-                        length,
-                        offset + lower
-                    );
-                }
-            },
-            options,
-            () => this.rangeMap
-        );
+            if (length) {
+                drawBufferInfo(
+                    gl,
+                    this.vertexArrayInfo,
+                    gl.POINTS,
+                    length,
+                    offset + lower
+                );
+            }
+        }, options);
     }
 }

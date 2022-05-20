@@ -84,7 +84,7 @@ export class GeometryBuilder {
 
         this.lastOffset = 0;
 
-        /** @type {Map<any, RangeEntry>} keep track of sample locations within the vertex array */
+        /** @type {Map<any, RangeEntry>} keep track of facet locations within the vertex array */
         this.rangeMap = new InternMap([], JSON.stringify);
     }
 

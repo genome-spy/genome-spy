@@ -104,7 +104,7 @@ export default class LinkMark extends Mark {
             numComponents: 2,
         };
 
-        this.rangeMap = vertexData.rangeMap;
+        this.rangeMap.migrateEntries(vertexData.rangeMap);
 
         this.arrays = Object.fromEntries(
             Object.entries(vertexData.arrays).map(([k, v]) => [
@@ -124,45 +124,38 @@ export default class LinkMark extends Mark {
 
         // TODO: Vertical clipping in faceted view
 
-        return this.createRenderCallback(
-            (offset, count) => {
-                // We are using instanced drawing here.
-                // However, WebGL does not provide glDrawArraysInstancedBaseInstance and thus,
-                // we have to hack with offsets in vertexAttribPointer
-                // TODO: Use VAOs more intelligently to reduce WebGL calls
-                // TODO: Explore multiDrawArraysInstancedWEBGL
-                // There's also a promising extension draft:
-                // https://www.khronos.org/registry/webgl/extensions/WEBGL_draw_instanced_base_vertex_base_instance/
-                // (and https://www.khronos.org/registry/webgl/extensions/WEBGL_multi_draw_instanced_base_vertex_base_instance/)
+        return this.createRenderCallback((offset, count) => {
+            // We are using instanced drawing here.
+            // However, WebGL does not provide glDrawArraysInstancedBaseInstance and thus,
+            // we have to hack with offsets in vertexAttribPointer
+            // TODO: Use VAOs more intelligently to reduce WebGL calls
+            // TODO: Explore multiDrawArraysInstancedWEBGL
+            // There's also a promising extension draft:
+            // https://www.khronos.org/registry/webgl/extensions/WEBGL_draw_instanced_base_vertex_base_instance/
+            // (and https://www.khronos.org/registry/webgl/extensions/WEBGL_multi_draw_instanced_base_vertex_base_instance/)
 
-                this.gl.bindVertexArray(this.vertexArrayInfo.vertexArrayObject);
+            this.gl.bindVertexArray(this.vertexArrayInfo.vertexArrayObject);
 
-                for (const attribInfoObject of Object.entries(
-                    this.bufferInfo.attribs
-                )) {
-                    const [attribute, attribInfo] = attribInfoObject;
-                    if (
-                        attribInfo.buffer &&
-                        this.arrays[attribute].numComponents
-                    ) {
-                        attribInfo.offset =
-                            offset * this.arrays[attribute].numComponents * 4; // gl.FLOAT in bytes
-                    }
+            for (const attribInfoObject of Object.entries(
+                this.bufferInfo.attribs
+            )) {
+                const [attribute, attribInfo] = attribInfoObject;
+                if (attribInfo.buffer && this.arrays[attribute].numComponents) {
+                    attribInfo.offset =
+                        offset * this.arrays[attribute].numComponents * 4; // gl.FLOAT in bytes
                 }
-                setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+            }
+            setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
 
-                drawBufferInfo(
-                    gl,
-                    this.bufferInfo,
-                    gl.TRIANGLE_STRIP,
-                    (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
-                    0,
-                    count
-                );
-            },
-            options,
-            () => this.rangeMap
-        );
+            drawBufferInfo(
+                gl,
+                this.bufferInfo,
+                gl.TRIANGLE_STRIP,
+                (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
+                0,
+                count
+            );
+        }, options);
     }
 }
 

@@ -407,9 +407,6 @@ export interface MarkConfig
      */
     strokeWidth?: number;
 
-    // TODO: get rid of this
-    dynamicData?: boolean;
-
     /**
      * Minimum size for WebGL buffers (number of data items).
      * Allows for using `bufferSubData()` to update graphics.

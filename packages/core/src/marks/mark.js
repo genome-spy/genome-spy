@@ -33,6 +33,7 @@ import { getCachedOrCall } from "../utils/propertyCacher";
 import { createProgram } from "../gl/webGLHelper";
 import coalesceProperties from "../utils/propertyCoalescer";
 import { isScalar } from "../utils/variableTools";
+import { InternMap } from "internmap";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -80,6 +81,9 @@ export default class Mark {
 
         /** @type {import("twgl.js").UniformBlockInfo} WebGL buffers */
         this.viewUniformInfo = undefined;
+
+        /** @type {RangeMap<any>} keep track of facet locations within the vertex array */
+        this.rangeMap = new RangeMap();
 
         // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
         /** @type {MarkConfig} */
@@ -739,9 +743,8 @@ export default class Mark {
     /**
      * @param {DrawFunction} draw A function that draws a range of vertices
      * @param {import("./Mark").MarkRenderingOptions} options
-     * @param {function():Map<string, import("../gl/dataToVertices").RangeEntry>} rangeMapSource
      */
-    createRenderCallback(draw, options, rangeMapSource) {
+    createRenderCallback(draw, options) {
         // eslint-disable-next-line consistent-this
         const self = this;
 
@@ -772,25 +775,21 @@ export default class Mark {
                 draw(rangeEntry.offset, rangeEntry.count);
         }
 
-        if (this.properties.dynamicData) {
-            return function renderDynamic() {
-                const rangeEntry = rangeMapSource().get(options.facetId);
-                if (rangeEntry && rangeEntry.count) {
-                    if (self.prepareSampleFacetRendering(options)) {
-                        drawWithRangeEntry(rangeEntry);
-                    }
-                }
-            };
-        } else {
-            const rangeEntry = rangeMapSource()?.get(options.facetId);
-            if (rangeEntry && rangeEntry.count) {
-                return function renderStatic() {
-                    if (self.prepareSampleFacetRendering(options)) {
-                        drawWithRangeEntry(rangeEntry);
-                    }
-                };
-            }
-        }
+        const rangeEntry = this.rangeMap.get(options.facetId);
+
+        return options.sampleFacetRenderingOptions
+            ? function renderSampleFacetRange() {
+                  if (rangeEntry.count) {
+                      if (self.prepareSampleFacetRendering(options)) {
+                          drawWithRangeEntry(rangeEntry);
+                      }
+                  }
+              }
+            : function renderRange() {
+                  if (rangeEntry.count) {
+                      drawWithRangeEntry(rangeEntry);
+                  }
+              };
     }
 
     /**
@@ -919,5 +918,41 @@ export default class Mark {
      */
     findDatumAt(facetId, x) {
         // override
+    }
+}
+
+/**
+ * @augments {InternMap<K, import("../gl/dataToVertices").RangeEntry>}
+ * @template K
+ */
+class RangeMap extends InternMap {
+    constructor() {
+        super([], JSON.stringify);
+    }
+
+    /**
+     * @param {K} key
+     */
+    get(key) {
+        let value = super.get(key);
+        if (value === undefined) {
+            value = {
+                offset: 0,
+                count: 0,
+                xIndex: undefined,
+            };
+            super.set(key, value);
+        }
+        return value;
+    }
+
+    /**
+     *
+     * @param {Map<K, import("../gl/dataToVertices").RangeEntry>} anotherMap
+     */
+    migrateEntries(anotherMap) {
+        for (const [key, value] of anotherMap.entries()) {
+            Object.assign(this.get(key), value);
+        }
     }
 }

@@ -220,7 +220,7 @@ export default class TextMark extends Mark {
         builder.addBatches(collector.facetBatches);
 
         const vertexData = builder.toArrays();
-        this.rangeMap = vertexData.rangeMap;
+        this.rangeMap.migrateEntries(vertexData.rangeMap);
 
         this.updateBufferInfo(vertexData);
     }
@@ -273,8 +273,7 @@ export default class TextMark extends Mark {
                     count,
                     offset
                 ),
-            options,
-            () => this.rangeMap
+            options
         );
     }
 }

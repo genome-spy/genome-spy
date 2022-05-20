@@ -429,7 +429,6 @@ function createAxis(axisProps) {
             size: ap.labelFontSize,
             color: ap.labelColor,
             minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
-            dynamicData: true,
         },
         encoding: {
             [main]: { field: "value", type: "quantitative" },
@@ -450,7 +449,6 @@ function createAxis(axisProps) {
             color: ap.tickColor,
             size: ap.tickWidth,
             minBufferSize: 300,
-            dynamicData: true,
         },
         encoding: {
             [secondary]: { value: anchor },
@@ -576,7 +574,6 @@ export function createGenomeAxis(axisProps) {
                 anchor - (ap.chromTickSize / ap.extent) * (anchor ? 1 : -1),
             color: axisProps.chromTickColor,
             size: ap.chromTickWidth,
-            dynamicData: true,
         },
     });
 
@@ -649,7 +646,6 @@ export function createGenomeAxis(axisProps) {
                 align: axisProps.chromLabelAlign,
                 baseline: "alphabetic",
                 clip: false,
-                dynamicData: true,
                 ...chromLabelMarkProps,
             },
             encoding: {
