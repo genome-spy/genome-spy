@@ -1,18 +1,17 @@
 #define PI 3.141593
 
-/** Offset in "unit" units */
-uniform mediump vec2 uViewOffset;
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    uniform lowp float uViewOpacity;
+};
 
-uniform mediump vec2 uViewScale;
-
-/** Size of the logical viewport in pixels, i.e., the view */
-uniform mediump vec2 uViewportSize;
-
-uniform lowp float uDevicePixelRatio;
-
-// TODO: Views with opacity less than 1.0 should be rendered into a texture
-// that is rendered with the specified opacity.
-uniform lowp float uViewOpacity;
 
 /**
  * Maps a coordinate on the unit scale to a normalized device coordinate.

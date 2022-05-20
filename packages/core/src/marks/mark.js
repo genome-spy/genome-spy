@@ -4,6 +4,7 @@ import {
     createUniformBlockInfo,
     createVertexArrayInfo,
     setAttribInfoBufferFromArray,
+    setBlockUniforms,
     setUniformBlock,
     setUniforms,
 } from "twgl.js";
@@ -76,6 +77,9 @@ export default class Mark {
 
         /** @type {import("twgl.js").UniformBlockInfo} WebGL buffers */
         this.domainUniformInfo = undefined;
+
+        /** @type {import("twgl.js").UniformBlockInfo} WebGL buffers */
+        this.viewUniformInfo = undefined;
 
         // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
         /** @type {MarkConfig} */
@@ -399,6 +403,12 @@ export default class Mark {
             );
         }
 
+        this.viewUniformInfo = createUniformBlockInfo(
+            this.gl,
+            this.programInfo,
+            "View"
+        );
+
         this.gl.useProgram(this.programInfo.program);
 
         this._setDatums();
@@ -626,18 +636,19 @@ export default class Mark {
         }
 
         setUniforms(this.programInfo, {
-            uDevicePixelRatio: this.glHelper.dpr,
-            uViewOpacity: this.unitView.getEffectiveOpacity(),
             // TODO: Rendering of the mark should be completely skipped if it doesn't
             // participate picking
             uPickingEnabled:
                 (options.picking ?? false) && this.isPickingParticipant(),
-        });
 
-        setUniforms(this.programInfo, {
             // left pos, left height, right pos, right height
             uSampleFacet: [0, 1, 0, 1],
             uTransitionOffset: 0.0,
+        });
+
+        // Note: the block is sent to GPU in setViewport(), which is repeated for each facet
+        setBlockUniforms(this.viewUniformInfo, {
+            uViewOpacity: this.unitView.getEffectiveOpacity(),
         });
 
         if (this.opaque || options.picking) {
@@ -839,7 +850,7 @@ export default class Mark {
                 uViewScale,
             };
         } else {
-            // Viewport comprises of the full canvas
+            // Viewport comprises the full canvas
             gl.viewport(
                 0,
                 0,
@@ -862,15 +873,15 @@ export default class Mark {
             };
         }
 
-        // TODO: Optimization: Use uniform buffer object
-        setUniforms(this.programInfo, uniforms);
-
-        setUniforms(this.programInfo, {
+        setBlockUniforms(this.viewUniformInfo, {
+            ...uniforms,
             uViewportSize: [coords.width, coords.height],
+            uDevicePixelRatio: this.glHelper.dpr,
         });
 
-        // TODO: Optimize: don't set viewport and stuff if rect is outside clipRect or screen
+        setUniformBlock(this.gl, this.programInfo, this.viewUniformInfo);
 
+        // TODO: Optimize: don't set viewport and stuff if rect is outside clipRect or screen
         return clippedCoords.height > 0 && clippedCoords.width > 0;
     }
 
