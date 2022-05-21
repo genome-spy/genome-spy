@@ -416,6 +416,12 @@ export default class Mark {
         this.gl.useProgram(this.programInfo.program);
 
         this._setDatums();
+
+        setUniforms(this.programInfo, {
+            // left pos, left height, right pos, right height
+            uSampleFacet: [0, 1, 0, 1],
+            uTransitionOffset: 0.0,
+        });
     }
 
     _setDatums() {
@@ -659,19 +665,11 @@ export default class Mark {
         const picking =
             (options.picking ?? false) && this.isPickingParticipant();
 
-        ops.push(() =>
-            setUniforms(this.programInfo, {
-                uPickingEnabled: picking,
-                // left pos, left height, right pos, right height
-                uSampleFacet: [0, 1, 0, 1],
-                uTransitionOffset: 0.0,
-            })
-        );
-
         // Note: the block is sent to GPU in setViewport(), which is repeated for each facet
         ops.push(() =>
             setBlockUniforms(this.viewUniformInfo, {
                 uViewOpacity: this.unitView.getEffectiveOpacity(),
+                uPickingEnabled: picking,
             })
         );
 

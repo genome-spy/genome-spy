@@ -4,8 +4,6 @@
  * https://deck.gl/docs/developer-guide/custom-layers/picking
  */
 
-uniform bool uPickingEnabled;
-
 flat out highp vec4 vPickingColor;
 
 /**

@@ -9,7 +9,8 @@ uniform View {
     lowp float uDevicePixelRatio;
     // TODO: Views with opacity less than 1.0 should be rendered into a texture
     // that is rendered with the specified opacity.
-    uniform lowp float uViewOpacity;
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
 };
 
 
