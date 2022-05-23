@@ -8,7 +8,7 @@ import {
     setUniformBlock,
     setUniforms,
 } from "twgl.js";
-import { isDiscrete } from "vega-scale";
+import { isContinuous, isDiscrete } from "vega-scale";
 import createEncoders, {
     isChannelDefWithScale,
     isDatumDef,
@@ -749,29 +749,32 @@ export default class Mark {
         /** @type {function(import("../gl/dataToVertices").RangeEntry):void} rangeEntry */
         let drawWithRangeEntry;
 
-        if (this.properties.buildIndex) {
-            const scale = this.unitView.getScaleResolution("x")?.getScale();
+        const scale = this.unitView.getScaleResolution("x")?.getScale();
+        const continuous = scale && isContinuous(scale.type);
+        const domainStartOffset = ["index", "locus"].includes(scale?.type)
+            ? -1
+            : 0;
 
-            drawWithRangeEntry = (rangeEntry) => {
-                if (scale && rangeEntry.xIndex) {
-                    const domain = scale.domain();
-                    const vertexIndices = rangeEntry.xIndex(
-                        domain[0],
-                        domain[1]
-                    );
-                    const offset = vertexIndices[0];
-                    const count = vertexIndices[1] - offset;
-                    if (count > 0) {
-                        draw(offset, count);
-                    }
-                } else {
-                    draw(rangeEntry.offset, rangeEntry.count);
+        /** @type {[number, number]} Recycle to ease garbage collector's work */
+        const arr = [0, 0];
+
+        drawWithRangeEntry = (rangeEntry) => {
+            if (continuous && rangeEntry.xIndex) {
+                const domain = scale.domain();
+                const vertexIndices = rangeEntry.xIndex(
+                    domain[0] + domainStartOffset,
+                    domain[1],
+                    arr
+                );
+                const offset = vertexIndices[0];
+                const count = vertexIndices[1] - offset;
+                if (count > 0) {
+                    draw(offset, count);
                 }
-            };
-        } else {
-            drawWithRangeEntry = (rangeEntry) =>
+            } else {
                 draw(rangeEntry.offset, rangeEntry.count);
-        }
+            }
+        };
 
         const rangeEntry = this.rangeMap.get(options.facetId);
 

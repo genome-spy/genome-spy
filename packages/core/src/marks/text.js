@@ -214,7 +214,6 @@ export default class TextMark extends Mark {
                 charCount,
                 this.properties.minBufferSize || 0
             ),
-            buildXIndex: this.properties.buildIndex,
         });
 
         builder.addBatches(collector.facetBatches);

@@ -3,19 +3,19 @@ import { format } from "d3-format";
 import { isString } from "vega-util";
 import ArrayBuilder from "./arrayBuilder";
 import { SDF_PADDING } from "../fonts/bmFontMetrics";
-import { peek } from "../utils/arrayUtils";
-import createBinningRangeIndexer from "../utils/binnedRangeIndex";
+import { createBinningRangeIndexer } from "../utils/binnedIndex";
 import { isValueDef } from "../encoder/encoder";
 import {
     isHighPrecisionScale,
     splitHighPrecision,
 } from "../scale/glslScaleGenerator";
+import { isContinuous } from "vega-scale";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
  * @prop {number} offset in vertices
  * @prop {number} count in vertices
- * @prop {import("../utils/binnedRangeIndex").Lookup} xIndex
+ * @prop {import("../utils/binnedIndex").Lookup} xIndex
  *
  * @typedef {import("./arraybuilder").ConverterMetadata} Converter
  * @typedef {import("../encoder/encoder").Encoder} Encoder
@@ -28,16 +28,9 @@ export class GeometryBuilder {
      * @param {string[]} [object.attributes]
      * @param {number} [object.numVertices] If the number of data items is known, a
      *      preallocated TypedArray is used
-     * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
      */
-    constructor({
-        encoders,
-        numVertices = undefined,
-        attributes = [],
-        buildXIndex = false,
-    }) {
+    constructor({ encoders, numVertices = undefined, attributes = [] }) {
         this.encoders = encoders;
-        this._buildXIndex = buildXIndex;
 
         // Encoders for variable channels
         this.variableEncoders = Object.fromEntries(
@@ -121,32 +114,50 @@ export class GeometryBuilder {
      * @param {object[]} data
      */
     addBatch(key, data, lo = 0, hi = data.length) {
+        this.prepareXIndexer(data, lo, hi);
+
         for (let i = lo; i < hi; i++) {
-            this.variableBuilder.pushFromDatum(data[i]);
+            const d = data[i];
+            this.variableBuilder.pushFromDatum(d);
+            this.addToXIndex(d);
         }
 
         this.registerBatch(key);
     }
 
     /**
-     * @param {any[]} data
+     * @param {import("../data/flowNode").Data} data Domain, but specified using datums
+     * @param {number} [lo]
+     * @param {number} [hi]
      */
-    prepareXIndexer(data) {
-        if (!this._buildXIndex) {
+    prepareXIndexer(data, lo = 0, hi = lo + data.length) {
+        if (!data.length || hi - lo < 0) {
+            /**
+             * @param {import("../data/flowNode").Datum} datum
+             */
+            this.addToXIndex = (datum) => {
+                // nop
+            };
             return;
         }
 
-        const xe = this.variableEncoders.x;
-        const x2e = this.variableEncoders.x2;
+        /** @param {Encoder} encoder */
+        const getContinuousEncoder = (encoder) =>
+            encoder && isContinuous(encoder.scale?.type) && encoder;
 
-        if (xe && x2e) {
+        const xe = getContinuousEncoder(this.variableEncoders.x);
+        const x2e = getContinuousEncoder(this.variableEncoders.x2);
+
+        if (xe) {
             const xa = xe.accessor;
-            const x2a = x2e.accessor;
+            const x2a = x2e ? x2e.accessor : xa;
 
-            this.xIndexer = createBinningRangeIndexer(50, [
-                xa(data[0]),
-                x2a(peek(data)),
-            ]);
+            this.xIndexer = createBinningRangeIndexer(
+                50,
+                [xa(data[lo]), x2a(data[hi - 1])],
+                xa,
+                x2a
+            );
 
             let lastVertexCount = this.variableBuilder.vertexCount;
 
@@ -155,21 +166,16 @@ export class GeometryBuilder {
              */
             this.addToXIndex = (datum) => {
                 let currentVertexCount = this.variableBuilder.vertexCount;
-                this.xIndexer(
-                    xa(datum),
-                    x2a(datum),
-                    lastVertexCount,
-                    currentVertexCount
-                );
+                this.xIndexer(datum, lastVertexCount, currentVertexCount);
                 lastVertexCount = currentVertexCount;
             };
         } else {
             this.xIndexer = undefined;
             /**
-             * @param {any} datum
+             * @param {import("../data/flowNode").Datum} datum
              */
             this.addToXIndex = (datum) => {
-                //
+                // nop
             };
         }
     }
@@ -178,7 +184,7 @@ export class GeometryBuilder {
      * Add the datum to an index, which allows for efficient rendering of ranges
      * on the x axis. Must be called after a datum has been pushed to the ArrayBuilder.
      *
-     * @param {any} datum
+     * @param {import("../data/flowNode").Datum} datum
      */
     addToXIndex(datum) {
         //
@@ -207,7 +213,6 @@ export class RectVertexBuilder extends GeometryBuilder {
      *     If the rect is wider than the threshold, tessellate it into pieces
      * @param {number[]} [object.visibleRange]
      * @param {number} [object.numItems] Number of data items
-     * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
      */
     constructor({
         encoders,
@@ -215,14 +220,12 @@ export class RectVertexBuilder extends GeometryBuilder {
         tessellationThreshold = Infinity,
         visibleRange = [-Infinity, Infinity],
         numItems,
-        buildXIndex = false,
     }) {
         super({
             encoders,
             attributes,
             numVertices:
                 tessellationThreshold == Infinity ? numItems * 6 : undefined,
-            buildXIndex,
         });
 
         this.visibleRange = visibleRange;
@@ -256,7 +259,7 @@ export class RectVertexBuilder extends GeometryBuilder {
         const xAccessor = a(e.x);
         const x2Accessor = a(e.x2);
 
-        this.prepareXIndexer(data);
+        this.prepareXIndexer(data, lo, hi);
 
         const frac = [0, 0];
         this.updateFrac(frac);
@@ -322,7 +325,6 @@ export class RuleVertexBuilder extends GeometryBuilder {
      *     If the rule is wider than the threshold, tessellate it into pieces
      * @param {number[]} [object.visibleRange]
      * @param {number} [object.numItems] Number of data items
-     * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
      */
     constructor({
         encoders,
@@ -330,14 +332,12 @@ export class RuleVertexBuilder extends GeometryBuilder {
         tessellationThreshold = Infinity,
         visibleRange = [-Infinity, Infinity],
         numItems,
-        buildXIndex,
     }) {
         super({
             encoders,
             attributes,
             numVertices:
                 tessellationThreshold == Infinity ? numItems * 6 : undefined,
-            buildXIndex,
         });
 
         this.visibleRange = visibleRange;
@@ -357,7 +357,7 @@ export class RuleVertexBuilder extends GeometryBuilder {
     addBatch(key, data, lo = 0, hi = data.length) {
         //const [lower, upper] = this.visibleRange; // TODO
 
-        this.prepareXIndexer(data);
+        this.prepareXIndexer(data, lo, hi);
 
         for (let i = lo; i < hi; i++) {
             const d = data[i];
@@ -443,7 +443,6 @@ export class TextVertexBuilder extends GeometryBuilder {
      * @param {import("../fonts/bmFontMetrics").BMFontMetrics} object.fontMetrics
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters
-     * @param {boolean} [object.buildXIndex] True if data are sorted by the field mapped to x channel and should be indexed
      * @param {boolean} [object.logoLetters]
      */
     constructor({
@@ -452,13 +451,11 @@ export class TextVertexBuilder extends GeometryBuilder {
         fontMetrics,
         properties,
         numCharacters = undefined,
-        buildXIndex = false,
     }) {
         super({
             encoders,
             attributes,
             numVertices: numCharacters * 6, // six vertices per quad (character)
-            buildXIndex,
         });
 
         this.metadata = fontMetrics;
@@ -524,7 +521,7 @@ export class TextVertexBuilder extends GeometryBuilder {
         const textureCoord = [0, 0];
         this.updateTextureCoord(textureCoord);
 
-        this.prepareXIndexer(data);
+        this.prepareXIndexer(data, lo, hi);
 
         for (let i = lo; i < hi; i++) {
             const d = data[i];
@@ -624,7 +621,7 @@ export class TextVertexBuilder extends GeometryBuilder {
                 x += advance;
             }
 
-            this.addToXIndex(data);
+            this.addToXIndex(d);
         }
 
         this.registerBatch(key);

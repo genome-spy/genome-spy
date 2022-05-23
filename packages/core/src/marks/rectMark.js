@@ -174,7 +174,6 @@ export default class RectMark extends Mark {
             encoders: this.encoders,
             attributes: this.getAttributes(),
             numItems,
-            buildXIndex: this.properties.buildIndex,
         });
 
         builder.addBatches(collector.facetBatches);

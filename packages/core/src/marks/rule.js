@@ -161,7 +161,6 @@ export default class RuleMark extends Mark {
             encoders: this.encoders,
             attributes: this.getAttributes(),
             numItems: Math.max(itemCount, this.properties.minBufferSize || 0),
-            buildXIndex: this.properties.buildIndex,
         });
 
         builder.addBatches(collector.facetBatches);

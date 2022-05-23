@@ -1,6 +1,5 @@
 import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
-import { bisector, quantileSorted } from "d3-array";
-import { zoomLinear } from "vega-util";
+import { quantileSorted } from "d3-array";
 import { PointVertexBuilder } from "../gl/dataToVertices";
 import VERTEX_SHADER from "../gl/point.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
@@ -228,32 +227,6 @@ export default class PointMark extends Mark {
             )
         );
 
-        // Setup bisector that allows for searching the points that reside within the viewport.
-        const xEncoder = this.encoders.x;
-        if (xEncoder && !xEncoder.constant) {
-            const bisect = bisector(xEncoder.accessor).left;
-            const scale = this.unitView.getScaleResolution("x").getScale();
-
-            ops.push(() => {
-                const visibleDomain = scale.domain();
-
-                // A hack to include points that are just beyond the borders. TODO: Compute based on maxPointSize
-                const paddedDomain = zoomLinear(visibleDomain, null, 1.01);
-
-                /** @param {any[]} facetId */
-                this._findIndices = (facetId) => {
-                    const data = this.unitView
-                        .getCollector()
-                        .facetBatches.get(facetId);
-
-                    return [
-                        bisect(data, paddedDomain[0]),
-                        bisect(data, paddedDomain[paddedDomain.length - 1]),
-                    ];
-                };
-            });
-        }
-
         return ops;
     }
 
@@ -264,20 +237,13 @@ export default class PointMark extends Mark {
         const gl = this.gl;
 
         return this.createRenderCallback((offset, count) => {
-            // TODO: findIndices is rather slow. Consider a more coarse-grained, "tiled" solution.
-            const [lower, upper] = this._findIndices
-                ? this._findIndices(options.facetId)
-                : [0, count];
-
-            const length = upper - lower;
-
-            if (length) {
+            if (count) {
                 drawBufferInfo(
                     gl,
                     this.vertexArrayInfo,
                     gl.POINTS,
-                    length,
-                    offset + lower
+                    count,
+                    offset
                 );
             }
         }, options);

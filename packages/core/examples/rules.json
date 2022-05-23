@@ -31,13 +31,13 @@
     "x": {
       "field": "x",
       "type": "quantitative",
-      "scale": { "fp64": true, "zoom": true }
+      "scale": { "zoom": true }
     },
     "x2": { "field": "x2" },
     "y": {
       "field": "y",
       "type": "quantitative",
-      "scale": { "fp64": true, "zoom": true }
+      "scale": { "zoom": true }
     },
     "y2": { "field": "y2" },
     "size": {
