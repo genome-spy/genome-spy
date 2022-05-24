@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.21.0](https://github.com/genome-spy/genome-spy/compare/v0.20.0...v0.21.0) (2022-05-24)
+
+
+### Performance Improvements
+
+* more uniform optimizations ([6039d12](https://github.com/genome-spy/genome-spy/commit/6039d125447637a5bc89c4a21c436076b55bc82a))
+* optimize rect mark's uniforms ([2a6d587](https://github.com/genome-spy/genome-spy/commit/2a6d587df2328878fc0865dc15e35be78729158f))
+* optimize rendering pipeline ([c587bf5](https://github.com/genome-spy/genome-spy/commit/c587bf5648884d9ea9eb94c92642a495c9f6c52e))
+* optimize rendering pipeline, minor stuff ([8414998](https://github.com/genome-spy/genome-spy/commit/8414998882c1ae72ede0aadccc3f64181b717ad3))
+* optimize rule mark's uniforms ([826138f](https://github.com/genome-spy/genome-spy/commit/826138fc4ff5bc8dc2aad50dd9d5e2e1e6fd6d31))
+* replace x bisector with binned index ([7d05649](https://github.com/genome-spy/genome-spy/commit/7d0564940bf52f37e1294b7691dd7e01dcece9b4))
+* use uniform block for viewport stuff ([5079214](https://github.com/genome-spy/genome-spy/commit/50792149368c66d745e4cd65ae9ccc394cb8c7b1))
+
+
+
+
+
 # [0.20.0](https://github.com/genome-spy/genome-spy/compare/v0.19.1...v0.20.0) (2022-05-11)
 
 

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.21.0](https://github.com/tuner/genome-spy/compare/v0.20.0...v0.21.0) (2022-05-24)
+
+**Note:** Version bump only for package @genome-spy/playground
+
+
+
+
+
 # [0.20.0](https://github.com/tuner/genome-spy/compare/v0.19.1...v0.20.0) (2022-05-11)
 
 **Note:** Version bump only for package @genome-spy/playground
