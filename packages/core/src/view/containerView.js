@@ -109,6 +109,24 @@ export default class ContainerView extends View {
     }
 
     /**
+     *
+     * @param {string} name
+     */
+    findDescendantByName(name) {
+        /** @type {View} */
+        let view;
+
+        this.visit((v) => {
+            if (v.name == name) {
+                view = v;
+                return VISIT_STOP;
+            }
+        });
+
+        return view;
+    }
+
+    /**
      * @param {import("../spec/channel").Channel | "default"} channel
      * @param {ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}

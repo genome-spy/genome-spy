@@ -60,7 +60,7 @@ const SPACING = 10;
  * @typedef {import("@genome-spy/core/genome/genome").ChromosomalLocus} ChromosomalLocus
  *
  * @typedef {object} LocusSpecifier
- * @prop {string[]} path Relative path to the view
+ * @prop {string} view A unique name of the view
  * @prop {string} field
  * @prop {number | ChromosomalLocus} locus Locus on the domain
  *
@@ -200,7 +200,7 @@ export default class SampleView extends ContainerView {
                     attributeIdentifier.specifier
                 );
                 const view = /** @type {UnitView} */ (
-                    this.findDescendantByPath(specifier.path)
+                    this.findDescendantByName(specifier.view)
                 );
 
                 /** @type {number} */
@@ -869,17 +869,10 @@ export default class SampleView extends ContainerView {
         let previousContextTitle = "";
 
         for (const [i, fieldInfo] of fieldInfos.entries()) {
-            let path = [...fieldInfo.view.getAncestors()];
-            // takeUntil would be aweseome
-            path = path.slice(
-                0,
-                path.findIndex((v) => v === this)
-            );
-
             /** @type {LocusSpecifier} */
             const specifier = {
                 // TODO: Relative path
-                path: path.map((v) => v.name).reverse(),
+                view: fieldInfo.view.name,
                 field: fieldInfo.field,
                 locus: complexX,
             };
