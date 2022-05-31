@@ -91,7 +91,7 @@ export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
  * @param {BookmarkInfoBoxOptions} [options]
  */
 export async function showBookmarkInfoBox(entry, app, options = {}) {
-    infoBox ??= createModal("tour");
+    infoBox ??= createModal("tour", app.appContainer);
 
     await updateBookmarkInfoBox(entry, app, options);
 }

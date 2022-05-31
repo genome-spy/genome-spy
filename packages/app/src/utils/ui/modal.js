@@ -15,9 +15,10 @@ export function createCloseEvent() {
 
 /**
  * @param {"default" | "tour"} type
+ * @param {HTMLElement} [container]
  * @returns {Modal}
  */
-export function createModal(type = "default") {
+export function createModal(type = "default", container = document.body) {
     const root = document.createElement("div");
     root.classList.add("gs-modal");
 
@@ -79,7 +80,7 @@ export function createModal(type = "default") {
 
     root.addEventListener(CLOSE_EVENT_TYPE, close);
 
-    document.body.appendChild(root);
+    container.appendChild(root);
 
     // Trigger animation
     window.requestAnimationFrame(() => root.classList.add("visible"));
