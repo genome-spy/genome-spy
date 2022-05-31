@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.22.0](https://github.com/genome-spy/genome-spy/compare/v0.21.0...v0.22.0) (2022-05-31)
+
+
+### Bug Fixes
+
+* **app:** keyboard shortcuts during a bookmark tour ([33bcfaa](https://github.com/genome-spy/genome-spy/commit/33bcfaa2bcda7e14bdf2327f4cbcd3ff5347a9e1))
+* **app:** prevent warning when pressing esc in a dialog ([7b835ae](https://github.com/genome-spy/genome-spy/commit/7b835aee6118dc4c3f57d5c6be154e0f1c12c955))
+
+
+### Features
+
+* **app:** short urls to server-side bookmarks ([110a237](https://github.com/genome-spy/genome-spy/commit/110a2376d76527ad4d2d02d76a9b6fc8343fb822))
+* **app:** use a unique view name to identify an attribute (really!) ([185c110](https://github.com/genome-spy/genome-spy/commit/185c110c04887516c5d2a7da7b00f2c6be4f3414))
+
+
+
+
+
 # [0.21.0](https://github.com/genome-spy/genome-spy/compare/v0.20.0...v0.21.0) (2022-05-24)
 
 
