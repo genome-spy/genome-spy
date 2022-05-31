@@ -130,6 +130,8 @@ export async function updateBookmarkInfoBox(entry, app, options) {
         // TODO: Prevent double clicks, etc
         const entry = await db.get(names[index]);
         restoreBookmarkAndShowInfoBox(entry, app, options);
+        // Transfer focus so that keyboard shortcuts such as peek (e) are handled correctly
+        app.appContainer.querySelector("canvas").focus();
     };
 
     const importBookmark = async () => {

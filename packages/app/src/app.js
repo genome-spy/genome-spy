@@ -175,6 +175,11 @@ export default class App {
             return;
         }
 
+        // Make it focusable so that keyboard shortcuts can be caught
+        this.appContainer
+            .querySelector("canvas")
+            .setAttribute("tabindex", "-1");
+
         this.storeHelper.subscribe(
             watch(
                 (/** @type {import("./state").State} */ state) =>
