@@ -31,8 +31,10 @@ export function createModal(type = "default") {
                 const button = /** @type {HTMLButtonElement} */ (
                     root.querySelector(".btn-cancel")
                 );
-                button.click();
-                event.stopPropagation();
+                if (button) {
+                    button.click();
+                    event.stopPropagation();
+                }
                 break;
             }
             case "Enter": {
