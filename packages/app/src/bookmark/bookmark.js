@@ -197,13 +197,19 @@ export async function updateBookmarkInfoBox(entry, app, options) {
 
 /**
  * @param {import("./databaseSchema").BookmarkEntry} bookmark
+ * @param {boolean} global Is it a remote bookmark that should be shared with a short url
  */
-export function showShareBookmarkDialog(bookmark) {
+export function showShareBookmarkDialog(bookmark, global) {
     const json = JSON.stringify(bookmark, undefined, 2);
 
     const loc = window.location;
     const url =
-        loc.origin + loc.pathname + loc.search + compressToUrlHash(bookmark);
+        loc.origin +
+        loc.pathname +
+        loc.search +
+        (global
+            ? "#bookmark:" + bookmark.name.replaceAll(" ", "-")
+            : compressToUrlHash(bookmark));
 
     const copyToClipboard = (/** @type {MouseEvent} */ event) =>
         navigator.clipboard

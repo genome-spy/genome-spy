@@ -217,7 +217,11 @@ export default class App {
             throw new Error(`Cannot load remote bookmarks: ${e}`);
         }
 
-        await this._restoreStateFromUrlOrBookmark();
+        try {
+            await this._restoreStateFromUrlOrBookmark();
+        } catch (e) {
+            messageBox(e.toString());
+        }
 
         this.storeHelper.subscribe(() => {
             this._updateStateToUrl();
@@ -225,7 +229,10 @@ export default class App {
 
         window.addEventListener(
             "hashchange",
-            () => this._restoreStateFromUrl(),
+            () =>
+                this._restoreStateFromUrl().catch((e) =>
+                    messageBox(e.toString())
+                ),
             false
         );
 
@@ -262,10 +269,10 @@ export default class App {
      * Restore state from url. If not restored, load a bookmark if requested in config.
      */
     async _restoreStateFromUrlOrBookmark() {
-        const restored = this._restoreStateFromUrl();
         const remoteConf = this.config.bookmarks?.remote;
         const remoteDb = this.globalBookmarkDatabase;
 
+        const restored = await this._restoreStateFromUrl();
         if (!restored && remoteConf && remoteDb) {
             const name =
                 remoteConf.initialBookmark ??
@@ -334,10 +341,34 @@ export default class App {
     }
 
     /**
-     * @returns {boolean} `true` if restored successfully
+     * @returns {Promise<boolean>} `true` if restored successfully
      */
-    _restoreStateFromUrl() {
+    async _restoreStateFromUrl() {
         const hash = window.location.hash;
+        const bookmarkHashMatch = hash.match(/^#bookmark:(.+)$/)?.[1];
+        if (bookmarkHashMatch) {
+            const remoteConf = this.config.bookmarks?.remote;
+            const remoteDb = this.globalBookmarkDatabase;
+            if (remoteConf && remoteDb) {
+                const name = (await remoteDb.getNames()).find(
+                    (name) => name.replaceAll(" ", "-") == bookmarkHashMatch
+                );
+                if (!name) {
+                    throw new Error(`No such bookmark: ${bookmarkHashMatch}`);
+                } else {
+                    const bookmark = await remoteDb.get(name);
+                    if (!bookmark) {
+                        throw new Error(`No such bookmark: ${name}`);
+                    }
+                    await restoreBookmarkAndShowInfoBox(bookmark, this, {
+                        mode: "tour",
+                        database: remoteDb,
+                    });
+                    return true;
+                }
+            }
+        }
+
         if (hash && hash.length > 0) {
             try {
                 /** @type {import("./appTypes").UrlHash} */

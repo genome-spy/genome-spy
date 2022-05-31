@@ -73,7 +73,7 @@ class BookmarkButton extends LitElement {
     async _shareCurrentState() {
         const bookmark = this._createBookmarkWithCurrentState();
         if (await showEnterBookmarkInfoDialog(undefined, bookmark, "share")) {
-            showShareBookmarkDialog(bookmark);
+            showShareBookmarkDialog(bookmark, false);
         }
     }
 
@@ -144,24 +144,33 @@ class BookmarkButton extends LitElement {
                 }
             });
 
-        const items = [
-            {
+        /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
+        const items = [];
+
+        const global = bookmarkDatabase == this.app.globalBookmarkDatabase;
+
+        if (!global) {
+            items.push({
                 label: "Edit and replace...",
                 icon: faPen,
                 callback: () => this._addBookmark(bookmarkDatabase, name),
-            },
-            {
+            });
+            items.push({
                 label: "Delete",
                 icon: faTrash,
                 callback: deleteCallback,
-            },
-            {
-                label: "Share...",
-                icon: faShare,
-                callback: async () =>
-                    showShareBookmarkDialog(await bookmarkDatabase.get(name)),
-            },
-        ];
+            });
+        }
+
+        items.push({
+            label: "Share...",
+            icon: faShare,
+            callback: async () =>
+                showShareBookmarkDialog(
+                    await bookmarkDatabase.get(name),
+                    global
+                ),
+        });
 
         dropdownMenu({ items }, opener, "right-start");
     }
@@ -176,10 +185,8 @@ class BookmarkButton extends LitElement {
         const items = names.map((name) => ({
             label: name,
             callback: () => this._loadBookmark(bookmarkDatabase, name),
-            ellipsisCallback: bookmarkDatabase.isReadonly()
-                ? undefined
-                : (/** @type {MouseEvent} */ event) =>
-                      this._createContextMenu(bookmarkDatabase, name, event),
+            ellipsisCallback: (/** @type {MouseEvent} */ event) =>
+                this._createContextMenu(bookmarkDatabase, name, event),
         }));
         return items.length
             ? /** @type {import("../utils/ui/contextMenu").MenuItem[]} */ ([
@@ -204,8 +211,14 @@ class BookmarkButton extends LitElement {
                 : nothing;
 
         return [
-            makeTemplate(this.app.globalBookmarkDatabase, "Global bookmarks"),
-            makeTemplate(this.app.localBookmarkDatabase, "Local bookmarks"),
+            makeTemplate(
+                this.app.globalBookmarkDatabase,
+                "Bookmarks on the server"
+            ),
+            makeTemplate(
+                this.app.localBookmarkDatabase,
+                "Bookmarks in the web browser"
+            ),
         ];
     }
 
