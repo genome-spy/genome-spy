@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.22.1](https://github.com/genome-spy/genome-spy/compare/v0.22.0...v0.22.1) (2022-06-01)
+
+
+### Performance Improvements
+
+* **core:** semantic zoom on Apple Silicon GPU ([0a32f08](https://github.com/genome-spy/genome-spy/commit/0a32f081e531be21cbeef96b46ccffff5009a2a2))
+
+
+
+
+
 # [0.22.0](https://github.com/genome-spy/genome-spy/compare/v0.21.0...v0.22.0) (2022-05-31)
 
 
