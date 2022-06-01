@@ -63,6 +63,9 @@ void main(void) {
     float semanticThresholdFactor = computeSemanticThresholdFactor();
     if (semanticThresholdFactor <= 0.0) {
         gl_PointSize = 0.0;
+        // Place the vertex outside the viewport. The default (0, 0) makes this super-slow
+        // on Apple Silicon. Probably related to the tile-based GPU architecture.
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         // Exit early. MAY prevent some unnecessary calculations.
         return;
     }
