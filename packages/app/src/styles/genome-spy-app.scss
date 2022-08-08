@@ -632,6 +632,15 @@ $menu-line-height: 22px;
             }
         }
     }
+
+    a {
+        color: #5570a2;
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
 }
 
 $form-control-color: #212529;
