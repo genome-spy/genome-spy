@@ -287,6 +287,7 @@ export default class App {
                     await restoreBookmarkAndShowInfoBox(bookmark, this, {
                         mode: "tour",
                         database: remoteDb,
+                        afterTourBookmark: remoteConf.afterTourBookmark,
                     });
                 } else {
                     // Just load the state. Don't show the message box.

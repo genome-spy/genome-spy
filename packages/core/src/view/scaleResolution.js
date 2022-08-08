@@ -523,6 +523,27 @@ export default class ScaleResolution {
     }
 
     /**
+     * Resets the current domain to the initial one
+     *
+     * @returns true if the domain was changed
+     */
+    resetZoom() {
+        if (!this.isZoomable()) {
+            throw new Error("Not a zoomable scale!");
+        }
+
+        const oldDomain = this.getDomain();
+        const newDomain = this.getInitialDomain();
+
+        if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
+            this._scale.domain(newDomain);
+            this._notifyDomainListeners();
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Returns the zoom level with respect to the reference domain span (the original domain).
      *
      * In principle, this is highly specific to positional channels. However, zooming can

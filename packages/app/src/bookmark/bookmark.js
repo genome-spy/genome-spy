@@ -9,6 +9,7 @@ import {
     faStepForward,
 } from "@fortawesome/free-solid-svg-icons";
 import { html, nothing, render } from "lit";
+import { ActionCreators } from "redux-undo";
 import safeMarkdown from "../utils/safeMarkdown";
 import { createCloseEvent, createModal, messageBox } from "../utils/ui/modal";
 import { handleTabClick } from "../utils/ui/tabs";
@@ -20,12 +21,36 @@ import { viewSettingsSlice } from "../viewSettingsSlice";
  * @prop {import("./bookmarkDatabase").default} [database]
  *      An optional bookmark database that contains the entry. Used for next/prev buttons.
  * @prop {"default" | "tour" | "shared"} [mode]
+ * @prop {string} [afterTourBookmark] See `RemoteBookmarkConfig`
  */
 
 /**
  * @type {import("../utils/ui/modal").Modal}
  */
 let infoBox;
+
+/**
+ * Resets the provenance and scales to defaults.
+ * TODO: Move elsewhere since this could be useful for a "reset" button.
+ *
+ * @param {import("../app").default} app
+ */
+export function resetToDefaultState(app) {
+    for (const scaleResolution of app.genomeSpy
+        .getNamedScaleResolutions()
+        .values()) {
+        if (scaleResolution.isZoomable()) {
+            scaleResolution.resetZoom();
+        }
+    }
+
+    app.storeHelper.dispatch([
+        ...(app.provenance.isUndoable() ? [ActionCreators.jumpToPast(0)] : []),
+        // clearHistory clears the initial state too. TODO: Come up with something, maybe: https://github.com/omnidan/redux-undo#filtering-actions
+        //ActionCreators.clearHistory(),
+        viewSettingsSlice.actions.restoreDefaultVisibilities(),
+    ]);
+}
 
 /**
  * @param {import("./databaseSchema").BookmarkEntry} entry
@@ -121,9 +146,24 @@ export async function updateBookmarkInfoBox(entry, app, options) {
           })
         : html`<span class="no-notes">No notes provided</span>`;
 
-    const close = () => {
+    const close = async () => {
         infoBox?.close();
         infoBox = undefined;
+
+        if (options.mode == "tour") {
+            const atb = options.afterTourBookmark;
+            if (typeof atb == "string") {
+                const entry = await options.database.get(atb);
+                if (!entry) {
+                    throw new Error(`No such bookmark: ${atb}`);
+                }
+                restoreBookmark(entry, app);
+            } else if (atb === null) {
+                // Do nothing
+            } else {
+                resetToDefaultState(app);
+            }
+        }
     };
 
     const jumpTo = async (/** @type {number} */ index) => {

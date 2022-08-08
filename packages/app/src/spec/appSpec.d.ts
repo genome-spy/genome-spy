@@ -11,10 +11,17 @@ export interface RemoteBookmarkConfig {
     tour?: boolean;
 
     /**
-     * Name of the bookmark that should be loaded as the initial state. A message box
-     * is shown only if the `tour` property is set to `true`.
+     * Name of the bookmark that should be loaded as the initial state. The bookmark
+     * description dialog is shown only if the `tour` property is set to `true`.
      */
     initialBookmark?: string;
+
+    /**
+     * Name of the bookmark that should be loaded when the user ends the tour.
+     * If `null`, the dialog will be closed and the current state is retained.
+     * If undefined, the default state without any performed actions will be loaded.
+     */
+    afterTourBookmark?: string;
 }
 
 export interface BookmarkConfig {
