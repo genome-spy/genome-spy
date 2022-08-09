@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.23.0](https://github.com/genome-spy/genome-spy/compare/v0.22.1...v0.23.0) (2022-08-09)
+
+
+### Bug Fixes
+
+* **app:** improve link color in dialogs ([31d3aa8](https://github.com/genome-spy/genome-spy/commit/31d3aa8f941f3ea1a7914723facae1df160b2629))
+
+
+### Features
+
+* **app:** reset the state when bookmark tour ends ([8c1f00b](https://github.com/genome-spy/genome-spy/commit/8c1f00bafd34565cbc9af8b7120e0d9d3357b027))
+
+
+
+
+
 ## [0.22.1](https://github.com/genome-spy/genome-spy/compare/v0.22.0...v0.22.1) (2022-06-01)
 
 **Note:** Version bump only for package @genome-spy/app
