@@ -254,7 +254,7 @@ $menu-line-height: 22px;
             background-color: $menu-hover-bg-color;
         }
 
-        > span.disabled,
+        > span.disabled-item,
         > a:first-child {
             display: block;
 
@@ -287,6 +287,7 @@ $menu-line-height: 22px;
     li > a {
         padding-left: $menu-item-h-padding;
         padding-right: $menu-item-h-padding;
+        display: block;
     }
 
     .menu-header {

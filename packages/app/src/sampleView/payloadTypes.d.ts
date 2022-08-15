@@ -44,3 +44,7 @@ export interface FilterByNominal extends PayloadWithAttribute {
     /** Should the matching samples be removed instead of retained (default) */
     remove?: boolean;
 }
+
+export interface HarmonizeGroups extends PayloadWithAttribute {
+    attribute: AttributeIdentifier;
+}

@@ -21,6 +21,8 @@ export default function generateAttributeContextMenu(
     const actions = sampleView.actions;
     const attribute = attributeInfo.attribute;
 
+    const sampleHierarchy = sampleView.sampleHierarchy;
+
     const dispatch = sampleView.provenance.storeHelper.getDispatcher();
 
     /** @type {MenuItem[]} */
@@ -35,21 +37,23 @@ export default function generateAttributeContextMenu(
 
     /**
      * @param {import("../state/provenance").Action} action
+     * @param {boolean} [disabled]
      * @returns {MenuItem}
      */
-    const actionToItem = (action) => {
+    const actionToItem = (action, disabled) => {
         const info = sampleView.provenance.getActionInfo(action);
         return {
             label: info.title,
             icon: info.icon,
-            callback: () => dispatch(action),
+            callback: disabled ? undefined : () => dispatch(action),
         };
     };
 
     /**
      * @param {import("../state/provenance").Action[]} actions
      */
-    const addActions = (...actions) => items.push(...actions.map(actionToItem));
+    const addActions = (...actions) =>
+        items.push(...actions.map((action) => actionToItem(action)));
 
     addActions(actions.sortBy({ attribute }));
 
@@ -73,6 +77,15 @@ export default function generateAttributeContextMenu(
                 remove: true,
                 values: [attributeValue],
             })
+        );
+
+        items.push(
+            actionToItem(
+                actions.retainMatched({
+                    attribute,
+                }),
+                !sampleHierarchy.groupMetadata.length
+            )
         );
     } else {
         addActions(actions.groupToQuartiles({ attribute }));

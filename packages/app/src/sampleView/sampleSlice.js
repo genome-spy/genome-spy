@@ -49,6 +49,7 @@ const REMOVE_UNDEFINED = "removeUndefined";
 const GROUP_BY_NOMINAL = "groupByNominal";
 const GROUP_BY_QUARTILES = "groupToQuartiles";
 const GROUP_BY_THRESHOLDS = "groupByThresholds";
+const RETAIN_MATCHED = "retainMatched";
 
 export const SAMPLE_SLICE_NAME = "sampleView";
 
@@ -252,6 +253,52 @@ export function createSampleSlice(getAttributeInfo) {
                 state.groupMetadata.push({
                     attribute: action.payload.attribute,
                 });
+            },
+
+            [RETAIN_MATCHED]: (
+                state,
+                /** @type {PayloadAction<import("./payloadTypes").HarmonizeGroups>} */
+                action
+            ) => {
+                const accessor = getAccessor(action.payload, state);
+
+                /** @type {Set<any>[]} Attribute values in each group */
+                const valueSets = [];
+
+                for (const sampleGroup of getSampleGroups(state)) {
+                    // Skip empty groups because they always cause empty intersections
+                    if (sampleGroup.samples.length > 0) {
+                        /** @type {Set<any>} */
+                        const values = new Set();
+                        for (const sample of sampleGroup.samples) {
+                            values.add(accessor(sample));
+                        }
+                        valueSets.push(values);
+                    }
+                }
+
+                /** @type {any[]} Values that are present in all groups */
+                const intersectedValues = [];
+
+                for (const value of valueSets[0]) {
+                    let found = true;
+                    for (let i = 1; i < valueSets.length && found; i++) {
+                        found = valueSets[i].has(value);
+                    }
+
+                    if (found) {
+                        intersectedValues.push(value);
+                    }
+                }
+
+                applyToSamples(state, (samples) =>
+                    filterNominal(
+                        samples,
+                        accessor,
+                        "retain",
+                        intersectedValues
+                    )
+                );
             },
         },
     });
@@ -523,6 +570,19 @@ export function getActionInfo(action, getAttributeInfo) {
                     on ${attributeTitle}
                 `,
                 icon: faObjectGroup,
+            };
+        case RETAIN_MATCHED:
+            return {
+                ...template,
+                title: html`
+                    Retain group-wise matched samples using
+                    <em>${attributeName}</em>
+                `,
+                provenanceTitle: html`
+                    Retain group-wise matched samples using ${attributeTitle}
+                `,
+
+                icon: faFilter,
             };
         default:
             return {
