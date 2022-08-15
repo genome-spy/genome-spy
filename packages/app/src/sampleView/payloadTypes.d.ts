@@ -45,6 +45,6 @@ export interface FilterByNominal extends PayloadWithAttribute {
     remove?: boolean;
 }
 
-export interface HarmonizeGroups extends PayloadWithAttribute {
+export interface RetainMatched extends PayloadWithAttribute {
     attribute: AttributeIdentifier;
 }

@@ -257,7 +257,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [RETAIN_MATCHED]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").HarmonizeGroups>} */
+                /** @type {PayloadAction<import("./payloadTypes").RetainMatched>} */
                 action
             ) => {
                 const accessor = getAccessor(action.payload, state);
