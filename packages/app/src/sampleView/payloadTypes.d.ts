@@ -21,6 +21,11 @@ export interface SortBy extends PayloadWithAttribute {}
 
 export interface RetainFirstOfEach extends PayloadWithAttribute {}
 
+export interface RetainFirstNCategories extends PayloadWithAttribute {
+    /** Number of categories to retain */
+    n: number;
+}
+
 export interface RemoveUndefined extends PayloadWithAttribute {}
 
 export interface GroupByNominal extends PayloadWithAttribute {}

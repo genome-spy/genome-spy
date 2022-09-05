@@ -9,7 +9,8 @@ import {
     filterNominal,
     filterQuantitative,
     filterUndefined,
-    retainFirstOfEach,
+    retainFirstNCategories,
+    retainFirstOfEachCategory,
     sort,
     wrapAccessorForComparison,
 } from "./sampleOperations";
@@ -43,6 +44,7 @@ import {
 const SET_SAMPLES = "setSamples";
 const SORT_BY = "sortBy";
 const RETAIN_FIRST_OF_EACH = "retainFirstOfEach";
+const RETAIN_FIRST_N_CATEGORIES = "retainFirstNCategories";
 const FILTER_BY_NOMINAL = "filterByNominal";
 const FILTER_BY_QUANTITATIVE = "filterByQuantitative";
 const REMOVE_UNDEFINED = "removeUndefined";
@@ -155,13 +157,27 @@ export function createSampleSlice(getAttributeInfo) {
 
             [RETAIN_FIRST_OF_EACH]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").SortBy>} */
+                /** @type {PayloadAction<import("./payloadTypes").RetainFirstOfEach>} */
                 action
             ) => {
                 applyToSamples(state, (samples) =>
-                    retainFirstOfEach(
+                    retainFirstOfEachCategory(
                         samples,
                         getAccessor(action.payload, state)
+                    )
+                );
+            },
+
+            [RETAIN_FIRST_N_CATEGORIES]: (
+                state,
+                /** @type {PayloadAction<import("./payloadTypes").RetainFirstNCategories>} */
+                action
+            ) => {
+                applyToSamples(state, (samples) =>
+                    retainFirstNCategories(
+                        samples,
+                        getAccessor(action.payload, state),
+                        action.payload.n
                     )
                 );
             },
@@ -487,11 +503,25 @@ export function getActionInfo(action, getAttributeInfo) {
             return {
                 ...template,
                 title: html`
-                    Retain first sample of each unique
+                    Retain the first sample of each
                     <em>${attributeName}</em>
                 `,
                 provenanceTitle: html`
-                    Retain first sample of each unique ${attributeTitle}
+                    Retain the first sample of each ${attributeTitle}
+                `,
+
+                icon: faMedal,
+            };
+        case RETAIN_FIRST_N_CATEGORIES:
+            return {
+                ...template,
+                title: html`
+                    Retain first <strong>n</strong> categories of
+                    <em>${attributeName}</em>...
+                `,
+                provenanceTitle: html`
+                    Retain first <strong>${payload.n}</strong> categories of
+                    ${attributeTitle}
                 `,
 
                 icon: faMedal,

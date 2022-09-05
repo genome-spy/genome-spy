@@ -45,7 +45,7 @@ export function wrapAccessorForComparison(accessor, attributeInfo) {
  * @returns {T[]}
  * @template T
  */
-export function retainFirstOfEach(samples, accessor) {
+export function retainFirstOfEachCategory(samples, accessor) {
     const included = new Set();
 
     /** @param {any} key */
@@ -56,6 +56,28 @@ export function retainFirstOfEach(samples, accessor) {
     };
 
     return samples.filter((sample) => !checkAndAdd(accessor(sample)));
+}
+
+/**
+ *
+ * @param {T[]} samples
+ * @param {function(T):any} accessor
+ * @param {number} n How many categories to retain
+ * @returns {T[]}
+ * @template T
+ */
+export function retainFirstNCategories(samples, accessor, n) {
+    const included = new Set();
+
+    /** @param {any} key */
+    const checkAndAdd = (key) => {
+        if (included.size < n) {
+            included.add(key);
+        }
+        return included.has(key);
+    };
+
+    return samples.filter((sample) => checkAndAdd(accessor(sample)));
 }
 
 /**

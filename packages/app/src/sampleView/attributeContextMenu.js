@@ -5,6 +5,7 @@
 import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 import { advancedAttributeFilterDialog } from "./advancedAttributeFilterDialog";
 import groupByThresholdsDialog from "./groupByThresholdsDialog";
+import retainFirstNCategoriesDialog from "./retainFirstNCategoriesDialog";
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
@@ -38,14 +39,17 @@ export default function generateAttributeContextMenu(
     /**
      * @param {import("../state/provenance").Action} action
      * @param {boolean} [disabled]
+     * @param {function} [callback]
      * @returns {MenuItem}
      */
-    const actionToItem = (action, disabled) => {
+    const actionToItem = (action, disabled, callback) => {
         const info = sampleView.provenance.getActionInfo(action);
         return {
             label: info.title,
             icon: info.icon,
-            callback: disabled ? undefined : () => dispatch(action),
+            callback: disabled
+                ? undefined
+                : callback ?? (() => dispatch(action)),
         };
     };
 
@@ -64,6 +68,17 @@ export default function generateAttributeContextMenu(
             addActions(
                 actions.groupByNominal({ attribute }),
                 actions.retainFirstOfEach({ attribute })
+            );
+            items.push(
+                actionToItem(
+                    actions.retainFirstNCategories({
+                        attribute,
+                        n: undefined,
+                    }),
+                    false,
+                    () =>
+                        retainFirstNCategoriesDialog(attributeInfo, sampleView)
+                )
             );
         }
 
