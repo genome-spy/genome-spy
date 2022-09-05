@@ -10,7 +10,7 @@ async function createServer() {
     const app = express();
 
     const vite = await createViteServer({
-        server: { middlewareMode: "html" },
+        server: { middlewareMode: true },
     });
 
     // Random examples

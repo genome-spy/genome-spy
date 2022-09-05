@@ -22,9 +22,9 @@
     "sass": "^1.49.7",
     "ts-json-schema-generator": "^1.0.0",
     "typescript": "^4.6.0-dev.20211122",
-    "vite": "^2.8.0",
+    "vite": "^3.1.0",
     "vite-raw-plugin": "^1.0.1",
-    "vitest": "^0.12.4"
+    "vitest": "^0.23.1"
   },
   "scripts": {
     "build": "lerna run build",
