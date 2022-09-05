@@ -211,10 +211,15 @@ export function createSampleSlice(getAttributeInfo) {
                 /** @type {PayloadAction<import("./payloadTypes").GroupByNominal>} */
                 action
             ) => {
+                const domain = getAttributeInfo(
+                    action.payload.attribute
+                ).scale?.domain();
+
                 applyToGroups(state, (sampleGroup) =>
                     groupSamplesByAccessor(
                         sampleGroup,
-                        getAccessor(action.payload, state)
+                        getAccessor(action.payload, state),
+                        domain
                     )
                 );
                 state.groupMetadata.push({
