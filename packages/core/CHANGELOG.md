@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.24.0](https://github.com/genome-spy/genome-spy/compare/v0.23.0...v0.24.0) (2022-09-07)
+
+
+### Bug Fixes
+
+* **core:** point items disappeared when zooming close enough ([6969dd2](https://github.com/genome-spy/genome-spy/commit/6969dd2933d6247941ff75cb19292f89dc0bdacc))
+
+
+
+
+
 # [0.23.0](https://github.com/genome-spy/genome-spy/compare/v0.22.1...v0.23.0) (2022-08-09)
 
 

@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.24.0](https://github.com/tuner/genome-spy/compare/v0.23.0...v0.24.0) (2022-09-07)
+
+
+### Bug Fixes
+
+* **app:** order ordinal groups correctly ([344b761](https://github.com/tuner/genome-spy/commit/344b7616bcfb2822de831344e0a428accd74c8f2)), closes [#114](https://github.com/tuner/genome-spy/issues/114)
+* **core:** point items disappeared when zooming close enough ([6969dd2](https://github.com/tuner/genome-spy/commit/6969dd2933d6247941ff75cb19292f89dc0bdacc))
+
+
+### Features
+
+* **app:** add "Retain first n categories of xxx" action ([4debaf7](https://github.com/tuner/genome-spy/commit/4debaf719b2fbc41fa74dbdb215645041fb2c477)), closes [#108](https://github.com/tuner/genome-spy/issues/108)
+* **app:** add "retain group-wise matched samples" action ([1d1aeb4](https://github.com/tuner/genome-spy/commit/1d1aeb4b5dd12ac4ddc37f1c17499b116bb87b50)), closes [#113](https://github.com/tuner/genome-spy/issues/113)
+
+
+
+
+
 # [0.23.0](https://github.com/tuner/genome-spy/compare/v0.22.1...v0.23.0) (2022-08-09)
 
 
