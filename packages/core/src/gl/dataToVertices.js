@@ -131,13 +131,18 @@ export class GeometryBuilder {
      * @param {number} [hi]
      */
     prepareXIndexer(data, lo = 0, hi = lo + data.length) {
-        if (!data.length || hi - lo < 0) {
+        const disable = () => {
             /**
              * @param {import("../data/flowNode").Datum} datum
              */
             this.addToXIndex = (datum) => {
                 // nop
             };
+            this.xIndexer = undefined;
+        };
+
+        if (!data.length || hi - lo < 0) {
+            disable();
             return;
         }
 
@@ -152,31 +157,33 @@ export class GeometryBuilder {
             const xa = xe.accessor;
             const x2a = x2e ? x2e.accessor : xa;
 
-            this.xIndexer = createBinningRangeIndexer(
-                50,
-                [xa(data[lo]), x2a(data[hi - 1])],
-                xa,
-                x2a
-            );
+            /** @type {[number, number]} */
+            const dataDomain = [xa(data[lo]), x2a(data[hi - 1])];
 
-            let lastVertexCount = this.variableBuilder.vertexCount;
+            // No indexer for point domains that have zero extent
+            if (dataDomain[1] > dataDomain[0]) {
+                this.xIndexer = createBinningRangeIndexer(
+                    50,
+                    dataDomain,
+                    xa,
+                    x2a
+                );
 
-            /**
-             * @param {any} datum
-             */
-            this.addToXIndex = (datum) => {
-                let currentVertexCount = this.variableBuilder.vertexCount;
-                this.xIndexer(datum, lastVertexCount, currentVertexCount);
-                lastVertexCount = currentVertexCount;
-            };
+                let lastVertexCount = this.variableBuilder.vertexCount;
+
+                /**
+                 * @param {any} datum
+                 */
+                this.addToXIndex = (datum) => {
+                    let currentVertexCount = this.variableBuilder.vertexCount;
+                    this.xIndexer(datum, lastVertexCount, currentVertexCount);
+                    lastVertexCount = currentVertexCount;
+                };
+            } else {
+                disable();
+            }
         } else {
-            this.xIndexer = undefined;
-            /**
-             * @param {import("../data/flowNode").Datum} datum
-             */
-            this.addToXIndex = (datum) => {
-                // nop
-            };
+            disable();
         }
     }
 

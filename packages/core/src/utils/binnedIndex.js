@@ -13,11 +13,12 @@ const MIN_INTEGER = -(2 ** 31);
 
 /**
  * A binned index for (overlapping) ranges that are sorted by their start position.
+ * Each indexed range is associated with respective vertex indices.
  *
  * @param {number} size Number of bins
- * @param {[number, number]} domain
- * @param {(datum: T) => number} accessor
- * @param {(datum: T) => number} [accessor2]
+ * @param {[number, number]} domain Domain of positions
+ * @param {(datum: T) => number} accessor Accessor for range's start position
+ * @param {(datum: T) => number} [accessor2] Accessor for range's end position
  * @template T
  */
 export function createBinningRangeIndexer(
@@ -38,19 +39,32 @@ export function createBinningRangeIndexer(
     const domainLength = domain[1] - domain[0];
     const divisor = domainLength / size;
 
-    /** @param {number} pos */
-    const getBin = (pos) =>
-        clamp(Math.floor((pos - start) / divisor), 0, size - 1);
+    /**
+     * @param {number} pos
+     * @param {boolean} end
+     */
+    const getBin = (pos, end) => {
+        const unfloored = (pos - start) / divisor;
+        const floored = Math.floor(unfloored);
+
+        // Special handling for the end coordinate because we are using half-open ranges.
+        return clamp(
+            end && floored == unfloored ? floored - 1 : floored,
+            0,
+            size - 1
+        );
+    };
 
     /**
+     * Indexer for point items. Those have just a single coordinate.
      *
      * @param {T} datum
-     * @param {number} startIndex
-     * @param {number} endIndex
+     * @param {number} startVertexIndex
+     * @param {number} endVertexIndex
      */
-    function binningIndexer(datum, startIndex, endIndex) {
-        if (startIndex > lastIndex) {
-            lastIndex = startIndex;
+    function binningIndexer(datum, startVertexIndex, endVertexIndex) {
+        if (startVertexIndex > lastIndex) {
+            lastIndex = startVertexIndex;
         } else if (!unordered) {
             unordered = true;
             // TODO: Contextual info like view path
@@ -60,26 +74,27 @@ export function createBinningRangeIndexer(
         }
 
         const value = accessor(datum);
-        const bin = getBin(value);
+        const bin = getBin(value, false);
 
-        if (startIndices[bin] > startIndex) {
-            startIndices[bin] = startIndex;
+        if (startIndices[bin] > startVertexIndex) {
+            startIndices[bin] = startVertexIndex;
         }
 
-        if (endIndices[bin] < endIndex) {
-            endIndices[bin] = endIndex;
+        if (endIndices[bin] < endVertexIndex) {
+            endIndices[bin] = endVertexIndex;
         }
     }
 
     /**
+     * Indexer for ranged items. Those have both start and end coordinates.
      *
      * @param {T} datum
-     * @param {number} startIndex
-     * @param {number} endIndex
+     * @param {number} startVertexIndex
+     * @param {number} endVertexIndex
      */
-    function binningRangeIndexer(datum, startIndex, endIndex) {
-        if (startIndex > lastIndex) {
-            lastIndex = startIndex;
+    function binningRangeIndexer(datum, startVertexIndex, endVertexIndex) {
+        if (startVertexIndex > lastIndex) {
+            lastIndex = startVertexIndex;
         } else if (!unordered) {
             unordered = true;
             // TODO: Contextual info like view path
@@ -90,18 +105,18 @@ export function createBinningRangeIndexer(
 
         const start = accessor(datum);
         const end = accessor2(datum);
-        const startBin = getBin(start);
-        const endBin = getBin(end);
+        const startBin = getBin(start, false);
+        const endBin = getBin(end, true);
 
         // TODO: This loop could probably be done as a more efficient post processing
         // step.
         for (let bin = startBin; bin <= endBin; bin++) {
-            if (startIndices[bin] > startIndex) {
-                startIndices[bin] = startIndex;
+            if (startIndices[bin] > startVertexIndex) {
+                startIndices[bin] = startVertexIndex;
             }
 
-            if (endIndices[bin] < endIndex) {
-                endIndices[bin] = endIndex;
+            if (endIndices[bin] < endVertexIndex) {
+                endIndices[bin] = endVertexIndex;
             }
         }
     }
@@ -110,8 +125,13 @@ export function createBinningRangeIndexer(
      * @type {Lookup}
      */
     const lookup = (start, end, arr = [0, 0]) => {
-        arr[0] = startIndices[getBin(start)];
-        arr[1] = Math.max(endIndices[getBin(end)], arr[0]);
+        const startBin = getBin(start, false);
+        const endBin = getBin(end, true);
+        const startIndex = startIndices[startBin];
+        const endIndex = Math.max(endIndices[endBin], startIndex);
+
+        arr[0] = startIndex;
+        arr[1] = endIndex;
         return arr;
     };
 
