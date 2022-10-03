@@ -140,7 +140,11 @@ export default class LinkMark extends Mark {
                 this.bufferInfo.attribs
             )) {
                 const [attribute, attribInfo] = attribInfoObject;
-                if (attribInfo.buffer && this.arrays[attribute].numComponents) {
+                if (
+                    attribInfo.buffer &&
+                    attribInfo.numComponents &&
+                    attribInfo.divisor
+                ) {
                     attribInfo.offset =
                         offset * this.arrays[attribute].numComponents * 4; // gl.FLOAT in bytes
                 }

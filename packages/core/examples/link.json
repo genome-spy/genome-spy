@@ -5,7 +5,7 @@
 
   "transform": [
     { "type": "formula", "expr": "random() * 1000", "as": "x" },
-    { "type": "formula", "expr": "random() * 1000 + 200", "as": "x2" }
+    { "type": "formula", "expr": "datum.x + random() * 500", "as": "x2" }
   ],
 
   "mark": {
