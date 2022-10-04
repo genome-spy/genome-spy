@@ -82,6 +82,8 @@ export class GroupPanel extends LayerView {
                             type: "rect",
                             clip: true,
                             color: "#e8e8e8",
+                            cornerRadiusBottomLeft: 14,
+                            cornerRadiusTopLeft: 14,
                         },
                     },
                     {
