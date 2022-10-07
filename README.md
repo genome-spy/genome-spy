@@ -16,7 +16,7 @@ GenomeSpy is split into several [packages](./packages/), two of which are the mo
 
 The [core](./packages/core/) library provides the visualization grammar and a WebGL-powered rendering engine.
 
-### App
+### Cohort App
 
 The [app](./packages/app/) builds upon the core, extending the visualization grammar with support for faceting multiple (up to thousands of) patient samples. It provides a user interface for interactive analysis of the samples, which can be filtered, sorted, and grouped flexibly. A session handling with provenance, url hashes, and bookmarks is included.
 
@@ -37,13 +37,19 @@ If you want to use or develop the core library, launch a single-page app using: 
 
 ## About
 
-Copyright (c) 2019-2021 Kari Lavikka. See [LICENSE](LICENSE) for details.
+Copyright (c) 2019-2022 Kari Lavikka. See [LICENSE](LICENSE) for details.
 
 GenomeSpy is developed in [The Systems Biology of Drug Resistance in
-Cancer](https://www.helsinki.fi/en/researchgroups/systems-biology-of-drug-resistance-in-cancer) group at the University of Helsinki.
+Cancer](https://www.helsinki.fi/en/researchgroups/systems-biology-of-drug-resistance-in-cancer)
+group at the [University of Helsinki](https://www.helsinki.fi/en).
 
-This project has received funding from the European Union’s Horizon 2020 research and innovation programme under grant agreement No 667403 for [HERCULES](https://project-hercules.eu/).
+This project has received funding from the European Union's Horizon 2020
+research and innovation programme under grant agreement No. 965193
+([DECIDER](https://www.deciderproject.eu/)) and No. 667403
+([HERCULES](https://project-hercules.eu/)), the Sigrid Jusélius Foundation and
+the Cancer Foundation Finland.
 
 Contains code from:
 
 - Vega and Vega-Lite ([LICENSE](https://github.com/vega/vega-lite/blob/master/LICENSE))
+- TWGL ([LICENSE](https://github.com/greggman/twgl.js/blob/master/LICENSE.md))

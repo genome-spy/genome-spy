@@ -1,4 +1,4 @@
-# GenomeSpy App
+# GenomeSpy Cohort App
 
 ![Teaser](https://raw.githubusercontent.com/genome-spy/genome-spy/master/docs/img/app-teaser.png)
 
