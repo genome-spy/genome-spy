@@ -41,12 +41,6 @@ const spec = {
                     type: "nominal",
                     scale: {
                         padding: 0.1,
-                        // Domain has to be specified explicitly now.
-                        // TODO: Update domain upon data update
-                        domain: [
-                            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                            16, 17, 18, 19, 20,
-                        ],
                     },
                 },
                 y: {
@@ -86,7 +80,6 @@ const generateData = () => {
 
 const update = () => {
     api.updateNamedData("dynamicData", generateData());
-    // TODO: updateNamedData could call requestRender implicitly
 };
 
 const animate = () => {

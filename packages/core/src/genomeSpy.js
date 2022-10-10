@@ -137,7 +137,7 @@ export default class GenomeSpy {
     }
 
     /**
-     *
+     * TODO: Rename this method
      * @param {string} name
      */
     getNamedData(name) {
@@ -147,6 +147,31 @@ export default class GenomeSpy {
                 return data;
             }
         }
+    }
+
+    /**
+     *
+     * @param {string} name
+     * @param {import("./data/flowNode").Datum[]} data
+     */
+    updateNamedData(name, data) {
+        const namedSource =
+            this.viewRoot.context.dataFlow.findNamedDataSource(name);
+        if (!namedSource) {
+            throw new Error("No such named data source: " + name);
+        }
+
+        namedSource.dataSource.updateDynamicData(data);
+
+        // Scale domains may need adjustment.
+        // TODO: Refactor so that Collectors handle scale extents etc.
+        namedSource.host.visit((view) => {
+            for (const resolution of Object.values(view.resolutions.scale)) {
+                resolution.reconfigure();
+            }
+        });
+
+        this.animator.requestRender();
     }
 
     /**

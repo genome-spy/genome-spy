@@ -83,10 +83,13 @@ export default class DataFlow {
      * @param {string} name
      */
     findNamedDataSource(name) {
-        for (const dataSource of this._dataSourcesByHost.values()) {
+        for (const [host, dataSource] of this._dataSourcesByHost.entries()) {
             if (dataSource instanceof NamedSource) {
                 if (name == dataSource.identifier) {
-                    return dataSource;
+                    return {
+                        host,
+                        dataSource,
+                    };
                 }
             }
         }
