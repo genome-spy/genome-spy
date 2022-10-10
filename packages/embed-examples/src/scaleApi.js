@@ -1,6 +1,7 @@
 import { embed } from "@genome-spy/core";
 import { html, render } from "lit";
 
+/** @type {import("@genome-spy/core/spec/root").RootSpec} */
 const spec = {
     height: 50,
     genome: { name: "hg38" },
@@ -29,6 +30,9 @@ const spec = {
 const container = document.getElementById("container");
 const dashboard = document.getElementById("dashboard");
 
+/**
+ * @param {import("@genome-spy/core/view/scaleResolution").ScaleResolutionApi} genomeScale
+ */
 function updateDashboard(genomeScale) {
     render(
         html`
@@ -80,12 +84,12 @@ function updateDashboard(genomeScale) {
     );
 }
 
-embed(container, spec, { bare: true }).then((api) => {
-    const genomeScale = api.getScaleResolutionByName("genomeScale");
+const api = await embed(container, spec);
 
-    updateDashboard(genomeScale);
+const genomeScale = api.getScaleResolutionByName("genomeScale");
 
-    genomeScale.addEventListener("domain", (event) =>
-        updateDashboard(event.scaleResolution)
-    );
-});
+updateDashboard(genomeScale);
+
+genomeScale.addEventListener("domain", (event) =>
+    updateDashboard(event.scaleResolution)
+);

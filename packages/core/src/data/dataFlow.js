@@ -4,6 +4,8 @@
  * @typedef {import("./collector").default} Collector
  */
 
+import NamedSource from "./sources/namedSource";
+
 /**
  * @template H A key (string, object, whatever) that is used to retrieve
  *      data sources and collectors.
@@ -74,6 +76,20 @@ export default class DataFlow {
      */
     findDataSourceByKey(key) {
         return this._dataSourcesByHost.get(key);
+    }
+
+    /**
+     *
+     * @param {string} name
+     */
+    findNamedDataSource(name) {
+        for (const dataSource of this._dataSourcesByHost.values()) {
+            if (dataSource instanceof NamedSource) {
+                if (name == dataSource.identifier) {
+                    return dataSource;
+                }
+            }
+        }
     }
 
     /**
