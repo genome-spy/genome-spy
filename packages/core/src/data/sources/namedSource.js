@@ -10,6 +10,9 @@ export function isNamedData(data) {
 }
 
 export default class NamedSource extends DataSource {
+    /** @type {import("../flowNode").Datum[]} */
+    #dynamicData;
+
     /**
      * @param {import("../../spec/data").NamedData} params
      * @param {function(string):any[]} getNamedData
@@ -29,12 +32,31 @@ export default class NamedSource extends DataSource {
     }
 
     _getValues() {
+        if (this.#dynamicData) {
+            return this.#dynamicData;
+        }
+
         const data = this.getNamedData(this.params.name);
         if (data) {
             return data;
         } else {
-            throw new Error("Cannot find named data: " + this.params.name);
+            //throw new Error("Cannot find named data: " + this.params.name);
+            return [];
         }
+    }
+
+    /**
+     * @param {import("../flowNode").Datum[]} data
+     */
+    updateDynamicData(data) {
+        // TODO: Check that it's an array
+
+        // This is quite ugly now.
+        // TODO: Figure out how to handle the two approaches:
+        // (1) Update by looking up a named source
+        // (2) Update through the named data provider
+        this.#dynamicData = data;
+        this.loadSynchronously();
     }
 
     loadSynchronously() {

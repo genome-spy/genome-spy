@@ -1,6 +1,7 @@
 import { ScaleResolutionApi } from "./view/scaleResolutionApi";
 import { TooltipHandler } from "./tooltip/tooltipHandler";
 import { RootSpec } from "./spec/root";
+import { Datum } from "./data/flowNode";
 
 /**
  * Embeds GenomeSpy into the DOM
@@ -56,4 +57,9 @@ export interface EmbedResult {
      * listeners and controlling the scale domain.
      */
     getScaleResolutionByName: (name: string) => ScaleResolutionApi;
+
+    /**
+     * Updates a named dataset
+     */
+    updateNamedData: (name: string, data: Datum[]) => void;
 }

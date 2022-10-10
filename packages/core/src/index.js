@@ -86,6 +86,18 @@ export async function embed(el, spec, options = {}) {
         getScaleResolutionByName(name) {
             return genomeSpy.getNamedScaleResolutions().get(name);
         },
+
+        updateNamedData(name, data) {
+            const namedSource =
+                genomeSpy.viewRoot.context.dataFlow.findNamedDataSource(name);
+            if (!namedSource) {
+                throw new Error("No such named data source: " + name);
+            }
+
+            namedSource.updateDynamicData(data);
+
+            genomeSpy.animator.requestRender();
+        },
     };
 }
 
