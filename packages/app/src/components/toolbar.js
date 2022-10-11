@@ -4,7 +4,6 @@ import {
     faInfoCircle,
     faQuestionCircle,
     faExpandArrowsAlt,
-    faArrowsAltV,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField";
 import { asArray } from "@genome-spy/core/utils/arrayUtils";
@@ -38,7 +37,6 @@ export default class Toolbar extends LitElement {
     }
 
     _getToolButtons() {
-        const sampleView = this.app.getSampleView();
         const provenance = this.app.provenance;
 
         /** @type {(import("lit").TemplateResult | string)[]} */
@@ -58,18 +56,6 @@ export default class Toolbar extends LitElement {
         elements.push(
             html`<genome-spy-view-visibility></genome-spy-view-visibility>`
         );
-
-        if (sampleView) {
-            elements.push(html`
-                <button
-                    class="tool-btn"
-                    title="Peek (E)"
-                    @click=${() => sampleView._togglePeek()}
-                >
-                    ${icon(faArrowsAltV).node[0]}
-                </button>
-            `);
-        }
 
         elements.push(html`
             <genome-spy-bookmark-button></genome-spy-bookmark-button>

@@ -37,9 +37,10 @@ import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
 import { watch } from "../state/watch";
 import { createSelector } from "@reduxjs/toolkit";
 import { calculateLocations, getSampleLocationAt } from "./locations";
-import { contextMenu } from "../utils/ui/contextMenu";
+import { contextMenu, DIVIDER } from "../utils/ui/contextMenu";
 import interactionToZoom from "@genome-spy/core/view/zoom";
 import Rectangle from "@genome-spy/core/utils/layout/rectangle";
+import { faArrowsAltV } from "@fortawesome/free-solid-svg-icons";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -68,6 +69,8 @@ const SPACING = 10;
  * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
  */
 export default class SampleView extends ContainerView {
+    _peekState = 0;
+
     /**
      *
      * @param {import("@genome-spy/core/view/viewUtils").SampleSpec} spec
@@ -323,12 +326,12 @@ export default class SampleView extends ContainerView {
         // TODO: Check that the mouse pointer is inside the view (or inside the app instance)
         context.addKeyboardListener("keydown", (event) => {
             if (event.code == "KeyE" && !event.repeat) {
-                this._togglePeek();
+                this.togglePeek();
             }
         });
         context.addKeyboardListener("keyup", (event) => {
             if (event.code == "KeyE") {
-                this._togglePeek(false);
+                this.togglePeek(false);
             }
         });
 
@@ -738,7 +741,7 @@ export default class SampleView extends ContainerView {
     /**
      * @param {boolean} [open] open if true, close if false, toggle if undefined
      */
-    _togglePeek(open) {
+    togglePeek(open) {
         if (this._peekState > 0 && this._peekState < 1) {
             // Transition is going on
             return;
@@ -828,6 +831,27 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     *
+     * @returns {import("../utils/ui/contextMenu").MenuItem}
+     */
+    makePeekMenuItem() {
+        return {
+            ...(this._peekState == 0
+                ? {
+                      label: "Open closeup",
+                      callback: () => this.togglePeek(true),
+                  }
+                : {
+                      label: "Close closeup",
+                      callback: () => this.togglePeek(false),
+                  }),
+
+            icon: faArrowsAltV,
+            shortcut: "E",
+        };
+    }
+
+    /**
      * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
      *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent").default} event
@@ -859,11 +883,13 @@ export default class SampleView extends ContainerView {
 
         /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
         let items = [
+            this.makePeekMenuItem(),
+            DIVIDER,
             {
                 label: `Locus: ${locusToString(complexX)}`,
                 type: "header",
             },
-            { type: "divider" },
+            DIVIDER,
         ];
 
         let previousContextTitle = "";

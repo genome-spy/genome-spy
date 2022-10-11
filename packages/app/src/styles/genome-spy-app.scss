@@ -295,31 +295,46 @@ $menu-line-height: 22px;
         color: #666;
     }
 
-    li a.submenu-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    li {
+        > :is(a.submenu-item, a.choice-item) {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
 
-        > * {
-            display: block;
+            > * {
+                display: block;
+            }
         }
 
-        // Make an arrow
-        &::after {
-            content: "";
-            width: 0;
-            height: 0;
-            border-top: 0.4em solid transparent;
-            border-bottom: 0.4em solid transparent;
+        > a.submenu-item {
+            // Make an arrow
+            &::after {
+                content: "";
+                width: 0;
+                height: 0;
+                border-top: 0.4em solid transparent;
+                border-bottom: 0.4em solid transparent;
 
-            border-left: 0.4em solid black;
+                border-left: 0.4em solid black;
 
-            margin-left: 1em;
+                margin-left: 1em;
+            }
         }
-    }
 
-    li > .disabled-item {
-        color: #999;
+        .kbd-shortcut {
+            color: #666;
+            background-color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9em;
+            border: 1px solid #aaa;
+            border-bottom-width: 2px;
+            border-radius: 3px;
+            padding: 3px;
+            line-height: 0.7em;
+        }
+
+        > .disabled-item {
+            color: #999;
+        }
     }
 
     a.menu-ellipsis {

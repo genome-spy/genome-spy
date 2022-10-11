@@ -1,7 +1,7 @@
 import { html, nothing, render } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip";
-import { computePosition, flip } from "@floating-ui/dom";
+import { computePosition, flip, offset } from "@floating-ui/dom";
 import { debounce } from "@genome-spy/core/utils/debounce";
 import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 
@@ -9,6 +9,7 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
  * @typedef {Object} MenuItem
  * @prop {string | import("lit").TemplateResult} [label]
  * @prop {function} [callback]
+ * @prop {string} [shortcut] Shortcut key. Just for displaying.
  * @prop {function} [ellipsisCallback]
  * @prop {"divider" | "header" | undefined} [type]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
@@ -28,6 +29,11 @@ let backdropElement;
 const openLevels = [];
 
 const debouncer = debounce((/** @type {() => void}*/ fun) => fun(), 150, false);
+
+/** @type {MenuItem} */
+export const DIVIDER = {
+    type: "divider",
+};
 
 /**
  * Returns true if a menu is visible
@@ -107,13 +113,20 @@ const createChoice = (/** @type {MenuItem} */ item) =>
     html`
         <li>
             <a
+                class="choice-item"
                 @mouseup=${() => {
                     clearMenu();
                     item.callback();
                 }}
             >
-                ${item.icon ? icon(item.icon).node[0] : ""} ${item.label}</a
-            >
+                <span
+                    >${item.icon ? icon(item.icon).node[0] : ""}
+                    ${item.label}</span
+                >
+                ${item.shortcut
+                    ? html`<span class="kbd-shortcut">${item.shortcut}</span>`
+                    : nothing}
+            </a>
 
             ${item.ellipsisCallback
                 ? html` <a
@@ -196,7 +209,7 @@ function renderAndPositionMenu(items, openerElement, level, placement) {
 
     computePosition(openerElement, menuElement, {
         placement: placement ?? "right-start",
-        middleware: [flip()],
+        middleware: level ? [flip()] : [offset(2), flip()],
     }).then(({ x, y }) => {
         const first = /** @type {HTMLElement} */ (
             menuElement.querySelector(":scope > li")
