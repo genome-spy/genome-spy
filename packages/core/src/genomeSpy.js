@@ -165,11 +165,15 @@ export default class GenomeSpy {
 
         // Scale domains may need adjustment.
         // TODO: Refactor so that Collectors handle scale extents etc.
-        namedSource.host.visit((view) => {
-            for (const resolution of Object.values(view.resolutions.scale)) {
-                resolution.reconfigure();
-            }
-        });
+        for (const host of namedSource.hosts) {
+            host.visit((view) => {
+                for (const resolution of Object.values(
+                    view.resolutions.scale
+                )) {
+                    resolution.reconfigure();
+                }
+            });
+        }
 
         this.animator.requestRender();
     }
