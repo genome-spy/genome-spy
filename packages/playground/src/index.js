@@ -28,6 +28,9 @@ const editorRef = createRef();
 /** @type {Record<string, import("./filePane").FileEntry>} */
 const files = {};
 
+/** @type {Set<string>} */
+let missingFiles = new Set();
+
 /** @type {import("@genome-spy/core/embedApi.js").EmbedResult} */
 let embedResult;
 
@@ -62,10 +65,17 @@ function registerJsonSchema() {
  * @param {string} name
  */
 function getNamedData(name) {
-    return files[name]?.data;
+    let file = files[name];
+    if (!file) {
+        missingFiles.add(name);
+    }
+
+    return file?.data;
 }
 
 async function update(force = false) {
+    missingFiles = new Set();
+
     const value = editorRef.value?.value;
     window.localStorage.setItem(STORAGE_KEY, value);
 
@@ -93,6 +103,9 @@ async function update(force = false) {
                 namedDataProvider: getNamedData,
             }
         );
+
+        // To ensure that missing files are shown in file pane
+        renderLayout();
     } catch (e) {
         console.log(e);
     }
@@ -141,7 +154,11 @@ const layoutTemplate = () => html`
             <div ${ref(genomeSpyContainerRef)}></div>
         </section>
         <section id="file-pane">
-            <file-pane @upload=${update} .files=${files}></file-pane>
+            <file-pane
+                @upload=${update}
+                .files=${files}
+                .missingFiles=${missingFiles}
+            ></file-pane>
         </section>
     </section>
 `;

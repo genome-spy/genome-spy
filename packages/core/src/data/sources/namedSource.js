@@ -10,17 +10,20 @@ export function isNamedData(data) {
 }
 
 export default class NamedSource extends DataSource {
-    /** @type {import("../flowNode").Datum[]} */
-    #dynamicData;
+    /**
+     * Data that has been provided explicitly using the updateDynamicData method
+     * @type {any[]}
+     */
+    #explicitData;
 
     /**
      * @param {import("../../spec/data").NamedData} params
-     * @param {function(string):any[]} getNamedData
+     * @param {function(string):any[]} provider Function that retrieves a dataset using a name
      */
-    constructor(params, getNamedData) {
+    constructor(params, provider) {
         super();
 
-        this.getNamedData = getNamedData;
+        this.provider = provider;
         this.params = params;
     }
 
@@ -31,36 +34,20 @@ export default class NamedSource extends DataSource {
         return this.params.name;
     }
 
-    _getValues() {
-        if (this.#dynamicData) {
-            return this.#dynamicData;
-        }
-
-        const data = this.getNamedData(this.params.name);
-        if (data) {
-            return data;
-        } else {
-            //throw new Error("Cannot find named data: " + this.params.name);
-            return [];
-        }
-    }
-
     /**
-     * @param {import("../flowNode").Datum[]} data
+     * Update the named data. If data is omitted, a data provider is used instead.
+     *
+     * @param {import("../flowNode").Datum[]} [data]
      */
     updateDynamicData(data) {
-        // TODO: Check that it's an array
-
-        // This is quite ugly now.
-        // TODO: Figure out how to handle the two approaches:
-        // (1) Update by looking up a named source
-        // (2) Update through the named data provider
-        this.#dynamicData = data;
+        // TODO: Throw is data is undefined and the provider is unable to provide any data
+        this.#explicitData = data;
         this.loadSynchronously();
     }
 
     loadSynchronously() {
-        const data = this._getValues();
+        const data =
+            this.#explicitData ?? this.provider(this.params.name) ?? [];
 
         /** @type {(x: any) => import("../flowNode").Datum} */
         let wrap = (x) => x;

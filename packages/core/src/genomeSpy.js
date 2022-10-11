@@ -137,10 +137,9 @@ export default class GenomeSpy {
     }
 
     /**
-     * TODO: Rename this method
      * @param {string} name
      */
-    getNamedData(name) {
+    getNamedDataFromProvider(name) {
         for (const provider of this.namedDataProviders) {
             const data = provider(name);
             if (data) {
@@ -152,7 +151,7 @@ export default class GenomeSpy {
     /**
      *
      * @param {string} name
-     * @param {import("./data/flowNode").Datum[]} data
+     * @param {any[]} data
      */
     updateNamedData(name, data) {
         const namedSource =
@@ -170,6 +169,7 @@ export default class GenomeSpy {
                 for (const resolution of Object.values(
                     view.resolutions.scale
                 )) {
+                    // TODO: Only update domain
                     resolution.reconfigure();
                 }
             });
@@ -272,7 +272,7 @@ export default class GenomeSpy {
                 // placeholder
             },
             updateTooltip: this.updateTooltip.bind(this),
-            getNamedData: this.getNamedData.bind(this),
+            getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () => this._currentHover,
 
             addKeyboardListener: (type, listener) => {
