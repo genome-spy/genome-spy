@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.25.0](https://github.com/genome-spy/genome-spy/compare/v0.24.2...v0.25.0) (2022-10-12)
+
+
+### Features
+
+* **app:** activate closeup (peeking) from context menu ([9591960](https://github.com/genome-spy/genome-spy/commit/9591960302643e1505bd804f2a75e8433d47c14b)), closes [#129](https://github.com/genome-spy/genome-spy/issues/129)
+* **app:** round the left corners of group labels ([3efbc51](https://github.com/genome-spy/genome-spy/commit/3efbc518e90c4f55f33a504266f9667a1db3a7db))
+
+
+
+
+
 ## [0.24.2](https://github.com/genome-spy/genome-spy/compare/v0.24.1...v0.24.2) (2022-10-04)
 
 **Note:** Version bump only for package @genome-spy/app
