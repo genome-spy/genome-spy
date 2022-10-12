@@ -12,7 +12,7 @@ can also use generators to generate data on the fly and modify them using
 The `data` property of the view specification describes a data source. The
 following example loads a tab-delimited file. By default, the format is inferred
 from the file extension. However, in bioinformatics, CSV files are often
-actually tab-delimited and the `"tsv"` format must be specified explicitly.
+actually tab-delimited and the `"tsv"` format must be specified explicitly:
 
 ```json
 {
@@ -38,7 +38,30 @@ GenomeSpy is identical to Vega-Lite's
     specification also gives a significant performance boost to parsing
     performance.
 
-## Bioinformatic formats
+## Named Data Sources
+
+Data can be added or updated at runtime using the [API](../api.md). Data sources
+are referenced by a name, which is passed to the `updateNamedData` method:
+
+```json
+{
+  "name": "dynamicData"
+}
+```
+
+```js
+const api = await embed("#container", spec);
+api.updateNamedData("dynamicData", [
+  { x: 1, y: 2 },
+  { x: 2, y: 3 },
+]);
+```
+
+For practical examples, check the
+[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+package.
+
+## Bioinformatic Formats
 
 ### FASTA
 

@@ -48,7 +48,7 @@ export default interface ViewContext {
         listener: (event: KeyboardEvent) => void
     ) => void;
 
-    getNamedData: (name: string) => any[];
+    getNamedDataFromProvider: (name: string) => any[];
 
     isViewVisible: (view: View) => boolean;
 

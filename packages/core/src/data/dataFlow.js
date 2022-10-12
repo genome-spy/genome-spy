@@ -4,6 +4,8 @@
  * @typedef {import("./collector").default} Collector
  */
 
+import NamedSource from "./sources/namedSource";
+
 /**
  * @template H A key (string, object, whatever) that is used to retrieve
  *      data sources and collectors.
@@ -74,6 +76,43 @@ export default class DataFlow {
      */
     findDataSourceByKey(key) {
         return this._dataSourcesByHost.get(key);
+    }
+
+    /**
+     *
+     * @param {string} name
+     */
+    findNamedDataSource(name) {
+        /** @type {NamedSource} */
+        let namedSource;
+        /** @type {H[]} */
+        let hosts = [];
+
+        // Note: If a named sources with the same name are present at multiple locations in the
+        // view hierarchy, the should actually be exactly the same instance. It's arranged that
+        // way in the data flow optimization phase.
+
+        for (const [host, dataSource] of this._dataSourcesByHost.entries()) {
+            if (dataSource instanceof NamedSource) {
+                if (name == dataSource.identifier) {
+                    if (namedSource && namedSource !== dataSource) {
+                        // TODO: Write a test case for this and remove the runtime check.
+                        throw new Error(
+                            `Found multiple instances of named data: ${name}. Data flow optimization is broken (it's a bug).`
+                        );
+                    }
+                    namedSource = dataSource;
+                    hosts.push(host);
+                }
+            }
+        }
+
+        if (namedSource) {
+            return {
+                dataSource: namedSource,
+                hosts,
+            };
+        }
     }
 
     /**

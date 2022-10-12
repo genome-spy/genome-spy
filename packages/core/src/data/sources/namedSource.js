@@ -11,13 +11,19 @@ export function isNamedData(data) {
 
 export default class NamedSource extends DataSource {
     /**
-     * @param {import("../../spec/data").NamedData} params
-     * @param {function(string):any[]} getNamedData
+     * Data that has been provided explicitly using the updateDynamicData method
+     * @type {any[]}
      */
-    constructor(params, getNamedData) {
+    #explicitData;
+
+    /**
+     * @param {import("../../spec/data").NamedData} params
+     * @param {function(string):any[]} provider Function that retrieves a dataset using a name
+     */
+    constructor(params, provider) {
         super();
 
-        this.getNamedData = getNamedData;
+        this.provider = provider;
         this.params = params;
     }
 
@@ -28,17 +34,20 @@ export default class NamedSource extends DataSource {
         return this.params.name;
     }
 
-    _getValues() {
-        const data = this.getNamedData(this.params.name);
-        if (data) {
-            return data;
-        } else {
-            throw new Error("Cannot find named data: " + this.params.name);
-        }
+    /**
+     * Update the named data. If data is omitted, a data provider is used instead.
+     *
+     * @param {import("../flowNode").Datum[]} [data]
+     */
+    updateDynamicData(data) {
+        // TODO: Throw is data is undefined and the provider is unable to provide any data
+        this.#explicitData = data;
+        this.loadSynchronously();
     }
 
     loadSynchronously() {
-        const data = this._getValues();
+        const data =
+            this.#explicitData ?? this.provider(this.params.name) ?? [];
 
         /** @type {(x: any) => import("../flowNode").Datum} */
         let wrap = (x) => x;

@@ -1,43 +1,28 @@
 # JavaScript API
 
-The JavaScipt API is currently quite minimal.
+The public JavaScript API is currently quite minimal.
 
 ## Embedding
 
 See the [getting started](./getting-started.md) page.
 
-## Methods in the result object
+## The API
 
-The `embed` function returns a promise that resolves into an object that provides
-the current public API. The following methods are currently exposed:
+The `embed` function returns a promise that resolves into an object that
+provides the current public API. The API is documented in the [interface
+definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/embedApi.d.ts).
 
-<a name="api_finalize" href="#api_finalize">#</a>
-api.<b>finalize</b>()
-
-Releases all resources and unregisters event listeners, etc.
-
-<a name="api_addEventListener" href="#api_addEventListener">#</a>
-api.<b>addEventListener</b>(<i>type</i>, <i>listener</i>)
-
-Adds an event listener, which is called when the user interacts with a mark
-instance. Currently, only `"click"` events are supported. The callback receives
-an event object as its first (and only) parameter. Its `datum` property
-contains the datum that the user interacted with.
-
-<a name="api_removeEventListener" href="#api_removeEventListener">#</a>
-api.<b>removeEventListener</b>(<i>type</i>, <i>listener</i>)
-
-Removes a registered event listener.
-
-<a name="api_getScaleResolutionByName" href="#api_getScaleResolutionByName">#</a>
-api.<b>getScaleResolutionByName</b>(<i>name</i>)
-
-Returns a named _ScaleResolution_ object that allows for attaching event listeners
-and controlling the scale domain.
-
-TODO: Complete documentation for ScaleResolution
+For practical examples on using the API, check the
+[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+package.
 
 ## Embed options
+
+The `embed` function accepts an optional options object.
+
+### Named data provider
+
+See the API definition.
 
 ### Custom tooltip handlers
 

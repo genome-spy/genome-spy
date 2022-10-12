@@ -11,6 +11,7 @@ export { GenomeSpy, html, icon };
  * Embeds GenomeSpy into the DOM
  *
  * @type {import("./embedApi.js").EmbedFunction}
+ * @returns {Promise<import("./embedApi").EmbedResult>}
  */
 export async function embed(el, spec, options = {}) {
     /** @type {HTMLElement} */
@@ -85,6 +86,8 @@ export async function embed(el, spec, options = {}) {
         getScaleResolutionByName(name) {
             return genomeSpy.getNamedScaleResolutions().get(name);
         },
+
+        updateNamedData: genomeSpy.updateNamedData.bind(genomeSpy),
     };
 }
 

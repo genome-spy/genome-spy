@@ -226,6 +226,8 @@ ul.tabs {
 
 .tab-pages {
     > div {
+        font-size: 0.9rem;
+
         display: none;
 
         &.selected {
@@ -262,6 +264,25 @@ ul.tabs {
     }
 }
 
+.missing-files {
+    border: 1px solid orange;
+    border-radius: 0.5em;
+    padding: 0.8em;
+
+    > :first-child {
+        margin-top: 0;
+    }
+
+    > :last-child {
+        margin-bottom: 0;
+    }
+
+    ul {
+        font-family: monospace;
+        padding-left: 2em;
+    }
+}
+
 .upload-form {
     #upload-button-wrapper {
         display: flex;
@@ -271,7 +292,6 @@ ul.tabs {
     }
 
     p {
-        font-size: 0.9rem;
         color: #444;
     }
 

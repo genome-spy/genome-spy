@@ -1,4 +1,5 @@
-import { html, LitElement } from "lit";
+import { html, LitElement, nothing } from "lit";
+import { map } from "lit/directives/map.js";
 import { read } from "vega-loader";
 
 /**
@@ -10,14 +11,21 @@ import { read } from "vega-loader";
  *
  */
 export default class FilePane extends LitElement {
+    static properties = {
+        missingFiles: { type: Set, attribute: false },
+    };
+
     /** @type {string | undefined} */
-    _currentTab;
+    #currentTab;
 
     /** @type {Record<string, FileEntry>} */
     files;
 
     constructor() {
         super();
+
+        /** @type {Set<String>} */
+        this.missingFiles = new Set();
     }
 
     createRenderRoot() {
@@ -33,7 +41,7 @@ export default class FilePane extends LitElement {
                         html`
                             <li
                                 data-name=${name}
-                                class=${name == this._currentTab
+                                class=${name == this.#currentTab
                                     ? "selected"
                                     : ""}
                             >
@@ -46,7 +54,7 @@ export default class FilePane extends LitElement {
                             </li>
                         `
                 )}
-                <li class=${this._currentTab === undefined ? "selected" : ""}>
+                <li class=${this.#currentTab === undefined ? "selected" : ""}>
                     <a
                         href="#"
                         @click=${(/** @type {UIEvent} */ event) =>
@@ -61,14 +69,25 @@ export default class FilePane extends LitElement {
                 ${Object.keys(this.files).map(
                     (name) => html`
                         <div
-                            class=${name == this._currentTab ? "selected" : ""}
+                            class=${name == this.#currentTab ? "selected" : ""}
                         >
                             ${makeDataTable(this.files[name].data)}
                         </div>
                     `
                 )}
 
-                <div class=${this._currentTab === undefined ? "selected" : ""}>
+                <div class=${this.#currentTab === undefined ? "selected" : ""}>
+                    ${this.missingFiles.size
+                        ? html`<div class="missing-files">
+                              <p>Please add the following files:</p>
+                              <ul>
+                                  ${map(
+                                      this.missingFiles,
+                                      (name) => html`<li>${name}</li>`
+                                  )}
+                              </ul>
+                          </div>`
+                        : nothing}
                     ${makeUploadForm((event) => this._handleFiles(event))}
                 </div>
             </div>
@@ -96,7 +115,7 @@ export default class FilePane extends LitElement {
                 data,
             };
 
-            this._currentTab = file.name;
+            this.#currentTab = file.name;
         }
 
         this.requestUpdate();
@@ -109,7 +128,7 @@ export default class FilePane extends LitElement {
     _changeTab(event) {
         const target = /** @type {HTMLElement} */ (event.target);
         const name = target.parentElement.dataset.name;
-        this._currentTab = name;
+        this.#currentTab = name;
 
         event.preventDefault();
         this.requestUpdate();

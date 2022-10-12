@@ -17,9 +17,9 @@ export type EmbedFunction = (
 
 export interface EmbedOptions {
     /**
-     * A function that allows retrieval of named data sources.
-     *
-     * TODO: Support dynamic updates, i.e., pushing new data.
+     * A function that allows retrieval of named data. There are two ways to provide named data:
+     * 1. A data provider (this)
+     * 2. Explicit updates using the `updateNamedData` method (the other).
      */
     namedDataProvider?: (name: string) => any[];
 
@@ -52,8 +52,16 @@ export interface EmbedResult {
     removeEventListener: (type: string, listener: (event: any) => void) => void;
 
     /**
-     * Returns a named _ScaleResolution_ object that allows for attaching event
+     * Returns a named `ScaleResolution` object that allows for attaching event
      * listeners and controlling the scale domain.
      */
     getScaleResolutionByName: (name: string) => ScaleResolutionApi;
+
+    /**
+     * Updates a named dataset
+     *
+     * @param name data source to update
+     * @param data new data. If left undefined, the data is retrieved from a provider.
+     */
+    updateNamedData: (name: string, data?: any[]) => void;
 }

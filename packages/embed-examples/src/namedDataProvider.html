@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.scss" />
+    <title>Named Data Provider</title>
+</head>
+
+<body>
+    <h1>Named Data Provider (with dynamic updates)</h1>
+    <p>Data is fetched from a provider. Dynamic updates are signaled using <code>updateNamedData</code>.
+
+    <div id="container"></div>
+
+    <form id="form">
+        <p>Change the text to update data dynamically:</p>
+        <div>
+            <label for="A">A:</label>
+            <input type="text" id="A" value="Hello" />
+        </div>
+        <div>
+            <label for="B">B:</label>
+            <input type="text" id="B" value="World" />
+        </div>
+    </form>
+
+    <script type="module" src="/namedDataProvider.js"></script>
+</body>
+
+</html>
