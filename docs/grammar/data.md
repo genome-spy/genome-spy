@@ -57,6 +57,10 @@ api.updateNamedData("dynamicData", [
 ]);
 ```
 
+For practical examples, check the
+[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+package.
+
 ## Bioinformatic Formats
 
 ### FASTA
