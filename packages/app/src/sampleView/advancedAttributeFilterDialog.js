@@ -2,7 +2,7 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faFilter, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 import { html, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
-import { isContinuous, isDiscrete } from "vega-scale";
+import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import { createModal, messageBox } from "../utils/ui/modal";
 
 /**
@@ -15,9 +15,10 @@ import { createModal, messageBox } from "../utils/ui/modal";
  * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
  */
 export function advancedAttributeFilterDialog(attribute, sampleView) {
-    if (isDiscrete(attribute.scale?.type)) {
+    const type = attribute.scale?.type;
+    if (isDiscrete(type)) {
         discreteAttributeFilterDialog(attribute, sampleView);
-    } else if (isContinuous(attribute.scale?.type)) {
+    } else if (isContinuous(type) || isDiscretizing(type)) {
         quantitativeAttributeFilterDialog(attribute, sampleView);
     } else {
         messageBox("Not implemented (yet).");
