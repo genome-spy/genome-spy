@@ -40,7 +40,7 @@ import { calculateLocations, getSampleLocationAt } from "./locations";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu";
 import interactionToZoom from "@genome-spy/core/view/zoom";
 import Rectangle from "@genome-spy/core/utils/layout/rectangle";
-import { faArrowsAltV } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -840,13 +840,14 @@ export default class SampleView extends ContainerView {
                 ? {
                       label: "Open closeup",
                       callback: () => this.togglePeek(true),
+                      icon: faArrowsAltV,
                   }
                 : {
                       label: "Close closeup",
                       callback: () => this.togglePeek(false),
+                      icon: faXmark,
                   }),
 
-            icon: faArrowsAltV,
             shortcut: "E",
         };
     }
