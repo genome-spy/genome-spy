@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.25.1](https://github.com/tuner/genome-spy/compare/v0.25.0...v0.25.1) (2022-10-13)
+
+
+### Bug Fixes
+
+* **core:** disastrous performance on Safari ([544cb80](https://github.com/tuner/genome-spy/commit/544cb80ece4c81e97ef08a86f2033291b74a8e4f))
+
+
+
+
+
 # [0.25.0](https://github.com/tuner/genome-spy/compare/v0.24.2...v0.25.0) (2022-10-12)
 
 
