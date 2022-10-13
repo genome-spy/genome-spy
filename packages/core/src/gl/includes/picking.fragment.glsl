@@ -1,1 +1,1 @@
-flat in highp vec4 vPickingColor;
+in highp vec4 vPickingColor;

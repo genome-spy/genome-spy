@@ -2,8 +2,8 @@ uniform sampler2D uTexture;
 
 in vec2 vTexCoord;
 in float vEdgeFadeOpacity;
-flat in vec4 vColor;
-flat in float vSlope;
+in vec4 vColor;
+in float vSlope;
 
 out lowp vec4 fragColor;
 

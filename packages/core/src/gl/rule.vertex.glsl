@@ -15,10 +15,10 @@ uniform float uMinLength;
 uniform mediump float uDashTextureSize;
 uniform lowp int uStrokeCap;
 
-flat out vec4 vColor;
+out vec4 vColor;
 
 /** Stroke width */
-flat out float vSize;
+out float vSize;
 
 /** The distance from the line center to the direction of normal in pixels */
 out float vNormalLengthInPixels;

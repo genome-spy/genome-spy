@@ -17,13 +17,13 @@ uniform float uMaxPointSize;
 uniform float uZoomLevel;
 uniform float uSemanticThreshold;
 
-flat out float vRadius;
-flat out float vRadiusWithPadding;
-flat out lowp vec4 vFillColor;
-flat out lowp vec4 vStrokeColor;
-flat out lowp float vShape;
-flat out lowp float vHalfStrokeWidth;
-flat out mat2 vRotationMatrix;
+out float vRadius;
+out float vRadiusWithPadding;
+out lowp vec4 vFillColor;
+out lowp vec4 vStrokeColor;
+out lowp float vShape;
+out lowp float vHalfStrokeWidth;
+out mat2 vRotationMatrix;
 
 
 float computeSemanticThresholdFactor() {

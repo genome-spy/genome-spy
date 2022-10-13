@@ -15,10 +15,10 @@ uniform float uMinOpacity;
 /** top-right, bottom-right, top-left, bottom-left */
 uniform vec4 uCornerRadii;
 
-flat out lowp vec4 vFillColor;
-flat out lowp vec4 vStrokeColor;
-flat out float vHalfStrokeWidth;
-flat out vec4 vCornerRadii;
+out lowp vec4 vFillColor;
+out lowp vec4 vStrokeColor;
+out float vHalfStrokeWidth;
+out vec4 vCornerRadii;
 
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED)
@@ -27,7 +27,7 @@ out vec2 vPosInPixels;
 #endif
 
 /** Size of the rect in pixels */
-flat out vec2 vHalfSizeInPixels;
+out vec2 vHalfSizeInPixels;
 
 /**
  * Clamps the minimumSize and returns an opacity that reflects the amount of clamping.

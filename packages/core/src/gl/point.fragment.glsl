@@ -4,15 +4,15 @@ const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
 uniform bool uInwardStroke;
 uniform float uGradientStrength;
 
-flat in float vRadius;
-flat in float vRadiusWithPadding;
+in float vRadius;
+in float vRadiusWithPadding;
 
-flat in lowp vec4 vFillColor;
-flat in lowp vec4 vStrokeColor;
-flat in lowp float vShape;
-flat in lowp float vHalfStrokeWidth;
+in lowp vec4 vFillColor;
+in lowp vec4 vStrokeColor;
+in lowp float vShape;
+in lowp float vHalfStrokeWidth;
 
-flat in mat2 vRotationMatrix;
+in mat2 vRotationMatrix;
 
 out lowp vec4 fragColor;
 

@@ -2,12 +2,12 @@
 in vec2 vPosInPixels;
 #endif
 
-flat in vec2 vHalfSizeInPixels;
+in vec2 vHalfSizeInPixels;
 
-flat in lowp vec4 vFillColor;
-flat in lowp vec4 vStrokeColor;
-flat in float vHalfStrokeWidth;
-flat in vec4 vCornerRadii;
+in lowp vec4 vFillColor;
+in lowp vec4 vStrokeColor;
+in float vHalfStrokeWidth;
+in vec4 vCornerRadii;
 
 out lowp vec4 fragColor;
 

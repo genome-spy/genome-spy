@@ -4,7 +4,7 @@
  * https://deck.gl/docs/developer-guide/custom-layers/picking
  */
 
-flat out highp vec4 vPickingColor;
+out highp vec4 vPickingColor;
 
 /**
  * Passes the unique id to the fragment shader as a color if picking is enabled.

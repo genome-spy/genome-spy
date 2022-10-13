@@ -29,8 +29,8 @@ uniform bool uFlushY;
 #endif
 
 out vec2 vTexCoord;
-flat out vec4 vColor;
-flat out float vSlope;
+out vec4 vColor;
+out float vSlope;
 out float vEdgeFadeOpacity;
 
 struct RangeResult {
