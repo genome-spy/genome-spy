@@ -372,10 +372,10 @@ export function sampleHierarchySelector(state) {
  * flat hierarchies, i.e. each element is an array of groups and the
  * last group of each array is a SampleGroup which contains the samples.
  *
- * @param {SampleHierarchy} [state] State to use, defaults to the current state.
+ * @param {SampleHierarchy} [sampleHierarchy] State to use, defaults to the current state.
  *      Use for mutations!
  */
-export function getFlattenedGroupHierarchy(state) {
+export function getFlattenedGroupHierarchy(sampleHierarchy) {
     /** @type {Group[]} */
     const pathStack = [];
 
@@ -396,7 +396,7 @@ export function getFlattenedGroupHierarchy(state) {
         pathStack.pop();
     };
 
-    recurse(state.rootGroup);
+    recurse(sampleHierarchy.rootGroup);
 
     return flattenedHierarchy;
 }

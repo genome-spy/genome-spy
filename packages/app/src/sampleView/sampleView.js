@@ -454,6 +454,18 @@ export default class SampleView extends ContainerView {
         return this.provenance.getPresentState()[SAMPLE_SLICE_NAME];
     }
 
+    get leafSamples() {
+        // TODO: Memoize using createSelector or something
+        const sampleGroups =
+            /** @type {import("./sampleState").SampleGroup[]} */ (
+                getFlattenedGroupHierarchy(this.sampleHierarchy).map((path) =>
+                    path.at(-1)
+                )
+            );
+
+        return sampleGroups.map((sampleGroup) => sampleGroup.samples).flat();
+    }
+
     getLocations() {
         if (!this._locations) {
             if (!this.childCoords?.height) {

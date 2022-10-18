@@ -4,6 +4,7 @@ import { html, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import { createModal, messageBox } from "../utils/ui/modal";
+import "../components/histogram";
 
 /**
  * @typedef {import("@genome-spy/core/spec/channel").Scalar} Scalar
@@ -88,6 +89,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     // TODO: Ensure that the attribute is mapped to a color channel
     const colorify = scale;
 
+    // TODO: Provide only categories that are present in the current dataset, not the full scale domain
     const template = html`<p>
             Please select one or more categories and choose an action.
         </p>
@@ -174,19 +176,40 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const operandChanged = (/** @type {UIEvent} */ event) => {
-        const value = /** @type {HTMLInputElement} */ (event.target).value;
-        operand =
-            value.length > 0
-                ? +(/** @type {ComparisonOperatorType} */ (value))
-                : undefined;
+        const elem = /** @type {HTMLInputElement} */ (event.target);
+        const value = elem.value;
+        if (/^\d+(\.\d+)?$/.test(value)) {
+            operand = +value;
+            updateHtml();
+        }
+    };
 
+    const thresholdAdded = (
+        /** @type {import("../components/histogram").ThresholdEvent}*/ event
+    ) => {
+        if (typeof operand !== "number") {
+            operand = event.value;
+            updateHtml();
+        }
+    };
+
+    const thresholdAdjusted = (
+        /** @type {import("../components/histogram").ThresholdEvent}*/ event
+    ) => {
+        operand = event.value;
         updateHtml();
     };
 
-    const template = html`
+    const values = extractValues(
+        attributeInfo,
+        sampleView.leafSamples,
+        sampleView.sampleHierarchy
+    );
+
+    const template = () => html`
         <div class="gs-form-group">
             <label
-                >Select samples where <em>${attributeInfo.name}</em> is</label
+                >Retain samples where <em>${attributeInfo.name}</em> is</label
             >
             <select .value=${operator} @change=${operatorChanged}>
                 ${Object.entries(verboseOps).map(
@@ -194,17 +217,27 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
                 )}
             </select>
             <input
-                type="number"
+                type="text"
                 placeholder="Please enter a numeric value"
+                .value=${typeof operand == "number" ? "" + operand : ""}
                 @input=${operandChanged}
             />
+            <genome-spy-histogram
+                .values=${values}
+                .thresholds=${[operand].filter((o) => o !== undefined)}
+                .operators=${[operator]}
+                .colors=${["#1f77b4", "#ddd"]}
+                .showThresholdNumbers=${false}
+                @add=${thresholdAdded}
+                @adjust=${thresholdAdjusted}
+            ></genome-spy-histogram>
         </div>
     `;
 
     function updateHtml() {
         render(
             html`${templateTitle}
-                <div class="modal-body">${template}</div>
+                <div class="modal-body">${template()}</div>
                 ${templateButtons()}`,
             modal.content
         );
@@ -223,3 +256,17 @@ const verboseOps = {
     gte: "greater than or equal to",
     gt: "greater than",
 };
+
+/**
+ * Extract values for histogram
+ *
+ * @param {import("./types").AttributeInfo} attributeInfo
+ * @param {string[]} samples
+ * @param {import("./sampleSlice").SampleHierarchy} sampleHierarchy
+ */
+function extractValues(attributeInfo, samples, sampleHierarchy) {
+    const a = attributeInfo.accessor;
+    return /** @type {number[]} */ (
+        samples.map((sampleId) => a(sampleId, sampleHierarchy))
+    );
+}
