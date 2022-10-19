@@ -32,10 +32,12 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
     };
 
     const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn-cancel" @click=${() => modal.close()}>Cancel</button>
+        <button class="btn btn-cancel" @click=${() => modal.close()}>
+            Cancel
+        </button>
 
         <button
-            class="btn-primary"
+            class="btn btn-primary"
             ?disabled=${!validateThresholds(thresholds)}
             @click=${() => dispatchAndClose(false)}
         >

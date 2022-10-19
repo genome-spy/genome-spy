@@ -70,15 +70,19 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn-cancel" @click=${() => modal.close()}>Cancel</button>
+        <button class="btn btn-cancel" @click=${() => modal.close()}>
+            Cancel
+        </button>
 
         <button
+            class="btn"
             ?disabled=${!selection.size}
             @click=${() => dispatchAndClose(false)}
         >
             ${icon(faFilter).node[0]} Retain
         </button>
         <button
+            class="btn"
             ?disabled=${!selection.size}
             @click=${() => dispatchAndClose(true)}
         >
@@ -157,10 +161,12 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn-cancel" @click=${() => modal.close()}>Cancel</button>
+        <button class="btn btn-cancel" @click=${() => modal.close()}>
+            Cancel
+        </button>
 
         <button
-            class="btn-primary"
+            class="btn btn-primary"
             ?disabled=${typeof operand === "undefined"}
             @click=${() => dispatchAndClose(false)}
         >
