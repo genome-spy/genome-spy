@@ -506,54 +506,53 @@ $menu-line-height: 22px;
         gap: $basic-spacing;
 
         border-top: 1px solid $dialog-stroke-color;
+    }
 
-        button {
-            display: inline-block;
-            padding: 4px 12px;
-            margin: 0;
-            font-size: 1em;
-            line-height: 20px;
-            color: #333333;
-            text-align: center;
-            text-shadow: 0 1px 1px rgb(255 255 255 / 75%);
-            vertical-align: middle;
-            background-image: linear-gradient(to bottom, #ffffff, #e6e6e6);
-            border: 1px solid #cccccc;
-            border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1)
-                rgba(0, 0, 0, 0.25);
-            border-bottom-color: #b3b3b3;
-            border-radius: 4px;
-            box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%),
-                0 1px 2px rgb(0 0 0 / 5%);
+    button {
+        display: inline-block;
+        padding: 4px 12px;
+        margin: 0;
+        font-size: 1em;
+        line-height: 20px;
+        color: #333333;
+        text-align: center;
+        text-shadow: 0 1px 1px rgb(255 255 255 / 75%);
+        vertical-align: middle;
+        background-image: linear-gradient(to bottom, #ffffff, #e6e6e6);
+        border: 1px solid #cccccc;
+        border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
+        border-bottom-color: #b3b3b3;
+        border-radius: 4px;
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%),
+            0 1px 2px rgb(0 0 0 / 5%);
 
-            transition: color 0.15s;
+        transition: color 0.15s;
 
-            &:hover:not(:disabled) {
-                background-image: linear-gradient(to bottom, #f8f8f8, #d8d8d8);
-            }
+        &:hover:not(:disabled) {
+            background-image: linear-gradient(to bottom, #f8f8f8, #d8d8d8);
+        }
 
-            &:active {
-                border-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.2)
-                    rgba(0, 0, 0, 0.5);
-            }
+        &:active {
+            border-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.2)
+                rgba(0, 0, 0, 0.5);
+        }
 
-            &:disabled {
-                color: #a0a0a0;
-            }
+        &:disabled {
+            color: #a0a0a0;
+        }
 
-            &:not(:disabled) {
-                cursor: pointer;
-            }
+        &:not(:disabled) {
+            cursor: pointer;
+        }
 
-            svg:first-child:not(:last-child) {
-                font-size: 85%;
-                margin-right: 0.3em;
-            }
+        svg:first-child:not(:last-child) {
+            font-size: 85%;
+            margin-right: 0.3em;
+        }
 
-            svg:last-child:not(:first-child) {
-                font-size: 85%;
-                margin-left: 0.3em;
-            }
+        svg:last-child:not(:first-child) {
+            font-size: 85%;
+            margin-left: 0.3em;
         }
     }
 
@@ -756,8 +755,12 @@ $form-control-border: 1px solid $form-control-border-color;
             margin-bottom: 0 !important; // TODO: without important
         }
 
-        :first-child {
+        > :first-child {
             width: 5em;
+        }
+
+        > :last-child {
+            padding: 0 $basic-spacing;
         }
     }
 }

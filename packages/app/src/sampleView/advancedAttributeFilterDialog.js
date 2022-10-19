@@ -178,7 +178,7 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     const operandChanged = (/** @type {UIEvent} */ event) => {
         const elem = /** @type {HTMLInputElement} */ (event.target);
         const value = elem.value;
-        if (/^\d+(\.\d+)?$/.test(value)) {
+        if (/^\d+(\.(\d+)?)?$/.test(value)) {
             operand = +value;
             updateHtml();
         }

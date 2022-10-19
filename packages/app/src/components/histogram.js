@@ -243,7 +243,9 @@ class Histogram extends LitElement {
                               >
                                   <div
                                       class="histogram-knob"
-                                      @mousedown=${this.#knobMouseDown}
+                                      @mousedown=${(
+                                          /** @type {MouseEvent}*/ event
+                                      ) => this.#knobMouseDown(event, i)}
                                   >
                                       ${this.showThresholdNumbers
                                           ? i + 1
