@@ -4,6 +4,7 @@ import {
     groupSamplesByAccessor,
     groupSamplesByQuartiles,
     groupSamplesByThresholds,
+    removeGroup,
 } from "./groupOperations";
 import {
     filterNominal,
@@ -17,6 +18,7 @@ import {
 
 import { format as d3format } from "d3-format";
 import { html } from "lit";
+import { join } from "lit/directives/join.js";
 import {
     faSortAmountDown,
     faFilter,
@@ -51,6 +53,7 @@ const REMOVE_UNDEFINED = "removeUndefined";
 const GROUP_BY_NOMINAL = "groupByNominal";
 const GROUP_BY_QUARTILES = "groupToQuartiles";
 const GROUP_BY_THRESHOLDS = "groupByThresholds";
+const REMOVE_GROUP = "removeGroup";
 const RETAIN_MATCHED = "retainMatched";
 
 export const SAMPLE_SLICE_NAME = "sampleView";
@@ -274,6 +277,17 @@ export function createSampleSlice(getAttributeInfo) {
                 state.groupMetadata.push({
                     attribute: action.payload.attribute,
                 });
+            },
+
+            [REMOVE_GROUP]: (
+                state,
+                /** @type {PayloadAction<import("./payloadTypes").RemoveGroup>} */
+                action
+            ) => {
+                const root = state.rootGroup;
+                if (isGroupGroup(root)) {
+                    removeGroup(root, action.payload.path);
+                }
             },
 
             [RETAIN_MATCHED]: (
@@ -611,6 +625,20 @@ export function getActionInfo(action, getAttributeInfo) {
                     on ${attributeTitle}
                 `,
                 icon: faObjectGroup,
+            };
+        case REMOVE_GROUP:
+            return {
+                title: "Remove group",
+                provenanceTitle: html`
+                    Remove group
+                    ${join(
+                        /** @type {import("./payloadTypes").RemoveGroup} */ (
+                            payload
+                        ).path.map((name) => html`<strong>${name}</strong>`),
+                        " / "
+                    )}
+                `,
+                icon: faTrashAlt,
             };
         case RETAIN_MATCHED:
             return {

@@ -1,6 +1,7 @@
 import { group, quantileSorted, range, sort as d3sort } from "d3-array";
 import { format as d3format } from "d3-format";
 import { isNumber } from "vega-util";
+import { isGroupGroup } from "./sampleSlice";
 
 /**
  * @typedef {import("./sampleState").Group} Group
@@ -120,6 +121,37 @@ export function groupSamplesByQuartiles(sampleGroup, accessor) {
             operand: t,
         }))
     );
+}
+
+/**
+ *
+ * @param {GroupGroup} rootGroup
+ * @param {string[]} path An array of group names representing the path to the group.
+ *      The implicit ROOT group is excluded.
+ */
+export function removeGroup(rootGroup, path) {
+    if (path.length == 0) {
+        // Error!
+        return;
+    }
+
+    const index = rootGroup.groups.findIndex((group) => group.name == path[0]);
+
+    if (index < 0) {
+        // Error!
+        return;
+    }
+
+    if (path.length == 1) {
+        rootGroup.groups.splice(index, 1);
+    } else if (path.length > 1) {
+        const child = rootGroup.groups[index];
+        if (isGroupGroup(child)) {
+            removeGroup(child, [...path].splice(1));
+        } else {
+            // Error!
+        }
+    }
 }
 
 /**

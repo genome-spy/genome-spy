@@ -36,6 +36,13 @@ export interface GroupByThresholds extends PayloadWithAttribute {
     thresholds: Threshold[];
 }
 
+export interface RemoveGroup {
+    /**
+     * An array of group names that represent the path to the group.
+     * The implicit ROOT group is excluded. */
+    path: string[];
+}
+
 export interface FilterByQuantitative extends PayloadWithAttribute {
     /** The comparison operator */
     operator: ComparisonOperatorType;
