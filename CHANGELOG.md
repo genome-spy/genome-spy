@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.26.0](https://github.com/tuner/genome-spy/compare/v0.25.1...v0.26.0) (2022-10-24)
+
+
+### Features
+
+* **app:** add histogram to advanced filtering and grouping ([#134](https://github.com/tuner/genome-spy/issues/134)) ([fb9ae38](https://github.com/tuner/genome-spy/commit/fb9ae38e38e9c6c11439f3f946ad745e88ab7389))
+
+
+
+
+
 ## [0.25.1](https://github.com/tuner/genome-spy/compare/v0.25.0...v0.25.1) (2022-10-13)
 
 
