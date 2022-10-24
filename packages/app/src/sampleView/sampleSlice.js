@@ -372,10 +372,10 @@ export function sampleHierarchySelector(state) {
  * flat hierarchies, i.e. each element is an array of groups and the
  * last group of each array is a SampleGroup which contains the samples.
  *
- * @param {SampleHierarchy} [state] State to use, defaults to the current state.
+ * @param {SampleHierarchy} [sampleHierarchy] State to use, defaults to the current state.
  *      Use for mutations!
  */
-export function getFlattenedGroupHierarchy(state) {
+export function getFlattenedGroupHierarchy(sampleHierarchy) {
     /** @type {Group[]} */
     const pathStack = [];
 
@@ -396,7 +396,7 @@ export function getFlattenedGroupHierarchy(state) {
         pathStack.pop();
     };
 
-    recurse(state.rootGroup);
+    recurse(sampleHierarchy.rootGroup);
 
     return flattenedHierarchy;
 }
@@ -451,12 +451,10 @@ const verboseOps = {
  * @param {any[]} values
  * @returns
  */
-function joinValues(values) {
-    return values.length > 1
-        ? html`{${values.map(
-              (value, i) => html`${i > 0 ? ", " : ""}<strong>${value}</strong>`
-          )}}`
-        : html`<strong>${values[0]}</strong>`;
+function formatSet(values) {
+    return html`{${values.map(
+        (value, i) => html`${i > 0 ? ", " : ""}<strong>${value}</strong>`
+    )}}`;
 }
 /**
  * Describes an action for displaying it in menus or provenance tracking.
@@ -539,9 +537,9 @@ export function getActionInfo(action, getAttributeInfo) {
                     ? html` undefined ${attr} `
                     : html`${attr}
                       ${values.length > 1
-                          ? "in"
-                          : html`<span class="operator">=</span>`}
-                      ${joinValues(values)}`}
+                          ? html`in ${formatSet(values)}`
+                          : html`<span class="operator">=</span>
+                                <strong>${values[0]}</strong>`} `}
             `;
 
             return {
@@ -555,7 +553,13 @@ export function getActionInfo(action, getAttributeInfo) {
             /** @param {string | import("lit").TemplateResult} attr */
             const makeTitle = (attr) => html`
                 Retain samples having ${attr}
-                <span class="operator">${verboseOps[payload.operator]}</span>
+                <span class="operator"
+                    >${verboseOps[
+                        /** @type {import("./payloadTypes").FilterByQuantitative} */ (
+                            payload
+                        ).operator
+                    ]}</span
+                >
                 <strong>${attributeNumberFormat(payload.operand)}</strong>
             `;
 
@@ -597,11 +601,13 @@ export function getActionInfo(action, getAttributeInfo) {
                 title: "Group by thresholds",
                 provenanceTitle: html`
                     Group by thresholds
-                    {${joinValues(
-                        payload.thresholds.map(
+                    ${formatSet(
+                        /** @type {import("./payloadTypes").GroupByThresholds} */ (
+                            payload
+                        ).thresholds.map(
                             (t) => `${verboseOps[t.operator]} ${t.operand}`
                         )
-                    )}}
+                    )}
                     on ${attributeTitle}
                 `,
                 icon: faObjectGroup,

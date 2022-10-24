@@ -2,8 +2,10 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faFilter, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 import { html, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
-import { isContinuous, isDiscrete } from "vega-scale";
+import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import { createModal, messageBox } from "../utils/ui/modal";
+import { classMap } from "lit/directives/class-map.js";
+import "../components/histogram";
 
 /**
  * @typedef {import("@genome-spy/core/spec/channel").Scalar} Scalar
@@ -15,9 +17,10 @@ import { createModal, messageBox } from "../utils/ui/modal";
  * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
  */
 export function advancedAttributeFilterDialog(attribute, sampleView) {
-    if (isDiscrete(attribute.scale?.type)) {
+    const type = attribute.scale?.type;
+    if (isDiscrete(type)) {
         discreteAttributeFilterDialog(attribute, sampleView);
-    } else if (isContinuous(attribute.scale?.type)) {
+    } else if (isContinuous(type) || isDiscretizing(type)) {
         quantitativeAttributeFilterDialog(attribute, sampleView);
     } else {
         messageBox("Not implemented (yet).");
@@ -68,15 +71,19 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn-cancel" @click=${() => modal.close()}>Cancel</button>
+        <button class="btn btn-cancel" @click=${() => modal.close()}>
+            Cancel
+        </button>
 
         <button
+            class="btn"
             ?disabled=${!selection.size}
             @click=${() => dispatchAndClose(false)}
         >
             ${icon(faFilter).node[0]} Retain
         </button>
         <button
+            class="btn"
             ?disabled=${!selection.size}
             @click=${() => dispatchAndClose(true)}
         >
@@ -87,6 +94,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     // TODO: Ensure that the attribute is mapped to a color channel
     const colorify = scale;
 
+    // TODO: Provide only categories that are present in the current dataset, not the full scale domain
     const template = html`<p>
             Please select one or more categories and choose an action.
         </p>
@@ -154,10 +162,12 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn-cancel" @click=${() => modal.close()}>Cancel</button>
+        <button class="btn btn-cancel" @click=${() => modal.close()}>
+            Cancel
+        </button>
 
         <button
-            class="btn-primary"
+            class="btn btn-primary"
             ?disabled=${typeof operand === "undefined"}
             @click=${() => dispatchAndClose(false)}
         >
@@ -173,28 +183,70 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const operandChanged = (/** @type {UIEvent} */ event) => {
-        const value = /** @type {HTMLInputElement} */ (event.target).value;
-        operand =
-            value.length > 0
-                ? +(/** @type {ComparisonOperatorType} */ (value))
-                : undefined;
+        const elem = /** @type {HTMLInputElement} */ (event.target);
+        const value = elem.value;
+        if (/^\d+(\.(\d+)?)?$/.test(value)) {
+            operand = +value;
+            updateHtml();
+        }
+    };
 
+    const thresholdAdded = (
+        /** @type {import("../components/histogram").ThresholdEvent}*/ event
+    ) => {
+        if (typeof operand !== "number") {
+            operand = event.value;
+            updateHtml();
+        }
+    };
+
+    const thresholdAdjusted = (
+        /** @type {import("../components/histogram").ThresholdEvent}*/ event
+    ) => {
+        operand = event.value;
         updateHtml();
     };
 
-    const template = html`
+    const values = extractValues(
+        attributeInfo,
+        sampleView.leafSamples,
+        sampleView.sampleHierarchy
+    );
+
+    const template = () => html`
         <div class="gs-form-group">
             <label
-                >Select samples where <em>${attributeInfo.name}</em> is</label
+                >Retain samples where <em>${attributeInfo.name}</em> is</label
             >
-            <select .value=${operator} @change=${operatorChanged}>
+            <div class="btn-group" role="group">
                 ${Object.entries(verboseOps).map(
-                    ([k, v]) => html`<option .value=${k}>${v}</option>`
+                    ([k, v]) =>
+                        html`<button
+                            class=${classMap({
+                                btn: true,
+                                chosen: k == operator,
+                            })}
+                            .value=${k}
+                            @click=${operatorChanged}
+                            title="${v[1]}"
+                        >
+                            ${v[0]}
+                        </button>`
                 )}
-            </select>
+            </div>
+            <genome-spy-histogram
+                .values=${values}
+                .thresholds=${[operand].filter((o) => o !== undefined)}
+                .operators=${[operator]}
+                .colors=${["#1f77b4", "#ddd"]}
+                .showThresholdNumbers=${false}
+                @add=${thresholdAdded}
+                @adjust=${thresholdAdjusted}
+            ></genome-spy-histogram>
             <input
-                type="number"
-                placeholder="Please enter a numeric value"
+                type="text"
+                placeholder="... or enter a numeric value here"
+                .value=${typeof operand == "number" ? "" + operand : ""}
                 @input=${operandChanged}
             />
         </div>
@@ -203,7 +255,7 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     function updateHtml() {
         render(
             html`${templateTitle}
-                <div class="modal-body">${template}</div>
+                <div class="modal-body">${template()}</div>
                 ${templateButtons()}`,
             modal.content
         );
@@ -211,14 +263,30 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
 
     updateHtml();
 
-    modal.content.querySelector("select").focus();
+    /** @type {HTMLInputElement} */ (
+        modal.content.querySelector("input[type='text']")
+    )?.focus();
 }
 
-/** @type {Record<ComparisonOperatorType, string>} */
+/** @type {Record<ComparisonOperatorType, [string, string]>} */
 const verboseOps = {
-    lt: "less than",
-    lte: "less than or equal to",
-    eq: "equal to",
-    gte: "greater than or equal to",
-    gt: "greater than",
+    lt: ["<", "less than"],
+    lte: ["\u2264", "less than or equal to"],
+    eq: ["=", "equal to"],
+    gte: ["\u2265", "greater than or equal to"],
+    gt: [">", "greater than"],
 };
+
+/**
+ * Extract values for histogram
+ *
+ * @param {import("./types").AttributeInfo} attributeInfo
+ * @param {string[]} samples
+ * @param {import("./sampleSlice").SampleHierarchy} sampleHierarchy
+ */
+function extractValues(attributeInfo, samples, sampleHierarchy) {
+    const a = attributeInfo.accessor;
+    return /** @type {number[]} */ (
+        samples.map((sampleId) => a(sampleId, sampleHierarchy))
+    );
+}

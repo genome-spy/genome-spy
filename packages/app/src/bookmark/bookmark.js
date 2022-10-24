@@ -191,24 +191,26 @@ export async function updateBookmarkInfoBox(entry, app, options) {
         }
     };
 
-    const buttons = html` <button @click=${close}>
+    const buttons = html` <button class="btn" @click=${close}>
             ${options.mode == "tour" ? "End tour" : "Close"}
         </button>
         ${options.mode == "shared" && app.localBookmarkDatabase
             ? html`
-                  <button @click=${importBookmark}>
+                  <button class="btn" @click=${importBookmark}>
                       ${icon(faBookmark).node[0]} Import bookmark
                   </button>
               `
             : nothing}
         ${db
             ? html` <button
+                      class="btn"
                       @click=${() => jumpTo(entryIndex - 1)}
                       ?disabled=${entryIndex <= 0}
                   >
                       ${icon(faStepBackward).node[0]} Previous
                   </button>
                   <button
+                      class="btn"
                       @click=${() => jumpTo(entryIndex + 1)}
                       ?disabled=${entryIndex >= names.length - 1}
                   >
@@ -222,7 +224,7 @@ export async function updateBookmarkInfoBox(entry, app, options) {
             .classList.toggle("collapsed");
 
     const template = html`
-        <button title="Collapse" class="collapse" @click=${toggleCollapse}>
+        <button title="Collapse" class="btn collapse" @click=${toggleCollapse}>
             ${icon(faChevronDown).node[0]}
         </button>
         <div class="modal-title">${title}</div>
@@ -381,8 +383,10 @@ export function showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, mode) {
         </div>
 
         <div class="modal-buttons">
-            <button class="btn-cancel" @click=${cancelCallback}>Cancel</button>
-            <button class="btn-primary" @click=${okCallback}>
+            <button class="btn btn-cancel" @click=${cancelCallback}>
+                Cancel
+            </button>
+            <button class="btn btn-primary" @click=${okCallback}>
                 ${mode == "share"
                     ? html`${icon(faShare).node[0]} Create a link`
                     : "Save"}

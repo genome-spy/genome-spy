@@ -128,6 +128,7 @@ export function messageBox(content, options = {}) {
                         options.cancelButton
                             ? html`
                                   <button
+                                      class="btn"
                                       @click=${() => {
                                           modal.close();
                                           resolve(false);
@@ -138,7 +139,9 @@ export function messageBox(content, options = {}) {
                               `
                             : nothing
                     }
-                    <button @click=${close}>${options.okLabel}</button>
+                    <button class="btn" @click=${close}>${
+            options.okLabel
+        }</button>
                 </div>
             </div>`;
         render(template, modal.content);

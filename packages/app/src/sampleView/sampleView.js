@@ -40,7 +40,7 @@ import { calculateLocations, getSampleLocationAt } from "./locations";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu";
 import interactionToZoom from "@genome-spy/core/view/zoom";
 import Rectangle from "@genome-spy/core/utils/layout/rectangle";
-import { faArrowsAltV } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -454,6 +454,18 @@ export default class SampleView extends ContainerView {
         return this.provenance.getPresentState()[SAMPLE_SLICE_NAME];
     }
 
+    get leafSamples() {
+        // TODO: Memoize using createSelector or something
+        const sampleGroups =
+            /** @type {import("./sampleState").SampleGroup[]} */ (
+                getFlattenedGroupHierarchy(this.sampleHierarchy).map((path) =>
+                    path.at(-1)
+                )
+            );
+
+        return sampleGroups.map((sampleGroup) => sampleGroup.samples).flat();
+    }
+
     getLocations() {
         if (!this._locations) {
             if (!this.childCoords?.height) {
@@ -840,13 +852,14 @@ export default class SampleView extends ContainerView {
                 ? {
                       label: "Open closeup",
                       callback: () => this.togglePeek(true),
+                      icon: faArrowsAltV,
                   }
                 : {
                       label: "Close closeup",
                       callback: () => this.togglePeek(false),
+                      icon: faXmark,
                   }),
 
-            icon: faArrowsAltV,
             shortcut: "E",
         };
     }
