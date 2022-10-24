@@ -223,7 +223,8 @@ class Histogram extends LitElement {
         const barDivs = this.#computeBars().map(
             (b) =>
                 html`<div
-                    style="width: ${w}%; left: ${b.x}%; bottom: ${b.y}%; height: ${b.height}%; background-color: ${typeof b.group ==
+                    style="width: ${w +
+                    0.01}%; left: ${b.x}%; bottom: ${b.y}%; height: ${b.height}%; background-color: ${typeof b.group ==
                     "number"
                         ? this.colors[b.group % this.colors.length]
                         : "default"}"
