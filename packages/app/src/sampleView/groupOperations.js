@@ -1,6 +1,7 @@
 import { group, quantileSorted, range, sort as d3sort } from "d3-array";
 import { format as d3format } from "d3-format";
 import { isNumber } from "vega-util";
+import { isGroupGroup } from "./sampleSlice";
 
 /**
  * @typedef {import("./sampleState").Group} Group
@@ -13,10 +14,10 @@ import { isNumber } from "vega-util";
  * @param {SampleGroup} sampleGroup
  * @param {function(any):any} accessor
  * @param {any[]} [groups] Explicitly specify the groups and their order
- * @param {string[]} [labels] Custom labels for the groups
+ * @param {string[]} [titles] Custom titles for the groups
  */
-export function groupSamplesByAccessor(sampleGroup, accessor, groups, labels) {
-    if (labels && !groups) {
+export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
+    if (titles && !groups) {
         throw new Error("Custom labels need explicit group order!");
     }
 
@@ -42,7 +43,7 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, labels) {
 
     groupGroup.groups = sortedEntries.map(([name, samples], i) => ({
         name: "" + name,
-        label: labels ? labels[i] : name,
+        title: titles ? titles[i] : name,
         samples,
     }));
 
@@ -66,16 +67,21 @@ function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
             thresholds[i + 1].operator == "lte" ? "]" : ")"
         }`;
 
+    const groupName = (/** @type {number} */ groupIndex) =>
+        `Group ${groupIndex + 1}`;
+
     // TODO: Group ids should indicate if multiple identical thresholds were merged
     const groupIds = range(thresholds.length - 1).reverse();
 
+    const ta = createThresholdAccessor(
+        accessor,
+        thresholds.slice(1, thresholds.length - 1)
+    );
+
     groupSamplesByAccessor(
         sampleGroup,
-        createThresholdAccessor(
-            accessor,
-            thresholds.slice(1, thresholds.length - 1)
-        ),
-        groupIds,
+        (sample) => groupName(ta(sample)),
+        groupIds.map(groupName),
         groupIds.map(formatInterval)
     );
 }
@@ -118,7 +124,38 @@ export function groupSamplesByQuartiles(sampleGroup, accessor) {
 }
 
 /**
- * Returns an accessor that extracts a threshold-index (1-based) based
+ *
+ * @param {GroupGroup} rootGroup
+ * @param {string[]} path An array of group names representing the path to the group.
+ *      The implicit ROOT group is excluded.
+ */
+export function removeGroup(rootGroup, path) {
+    if (path.length == 0) {
+        // Error!
+        return;
+    }
+
+    const index = rootGroup.groups.findIndex((group) => group.name == path[0]);
+
+    if (index < 0) {
+        // Error!
+        return;
+    }
+
+    if (path.length == 1) {
+        rootGroup.groups.splice(index, 1);
+    } else if (path.length > 1) {
+        const child = rootGroup.groups[index];
+        if (isGroupGroup(child)) {
+            removeGroup(child, [...path].splice(1));
+        } else {
+            // Error!
+        }
+    }
+}
+
+/**
+ * Returns an accessor that extracts a group index (0-based) based
  * on the given thresholds.
  *
  * @param {function(any):any} accessor

@@ -2,6 +2,8 @@ import { range } from "d3-array";
 import { peek } from "@genome-spy/core/utils/arrayUtils";
 import { invalidatePrefix } from "@genome-spy/core/utils/propertyCacher";
 import LayerView from "@genome-spy/core/view/layerView";
+import { contextMenu } from "../utils/ui/contextMenu";
+import { iterateGroupHierarchy } from "./sampleSlice";
 
 /**
  * @typedef {import("./sampleView").Sample} Sample
@@ -35,13 +37,20 @@ export class GroupPanel extends LayerView {
                     },
                     {
                         type: "formula",
-                        as: "_NA",
-                        expr: "datum.label == null",
+                        as: "_title",
+                        // The following fails if title is zero (number).
+                        // TODO: Implement isValid() from https://github.com/vega/vega/tree/main/packages/vega-functions
+                        expr: "datum.title || datum.name",
                     },
                     {
                         type: "formula",
-                        as: "label",
-                        expr: "datum.label != null ? datum.label: 'NA'",
+                        as: "_NA",
+                        expr: "datum._title === null",
+                    },
+                    {
+                        type: "formula",
+                        as: "_title",
+                        expr: "datum._title !== null ? datum._title: 'NA'",
                     },
                 ],
 
@@ -95,7 +104,7 @@ export class GroupPanel extends LayerView {
                             tooltip: null,
                         },
                         encoding: {
-                            text: { field: "label" },
+                            text: { field: "_title" },
                             opacity: {
                                 field: "_NA",
                                 type: "nominal",
@@ -118,6 +127,50 @@ export class GroupPanel extends LayerView {
 
         this._addBroadcastHandler("layoutComputed", () => {
             this.updateRange();
+        });
+
+        this.addInteractionEventListener("contextmenu", (coords, event) => {
+            const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+            const hover = this.context.getCurrentHover();
+
+            if (!hover) {
+                return;
+            }
+
+            /** @type {import("./sampleState").Group} */
+            const group = hover.datum._rawGroup;
+
+            /** @type {import("./sampleState").Group[]} */
+            let foundPath;
+            for (const path of iterateGroupHierarchy(
+                this.sampleView.sampleHierarchy.rootGroup
+            )) {
+                if (path.at(-1) === group) {
+                    // Skip root
+                    foundPath = path.slice(1);
+                    break;
+                }
+            }
+
+            const action = sampleView.actions.removeGroup({
+                path: foundPath.map((group) => group.name),
+            });
+            const info = sampleView.provenance.getActionInfo(action);
+            const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+
+            contextMenu(
+                {
+                    items: [
+                        // TODO: Use actionToItem from attributeContextMenu.js
+                        {
+                            label: info.title,
+                            icon: info.icon,
+                            callback: () => dispatch(action),
+                        },
+                    ],
+                },
+                mouseEvent
+            );
         });
     }
 
@@ -160,10 +213,15 @@ export class GroupPanel extends LayerView {
 
         const data = groupLocations.map((g) => ({
             _index: g.key.index,
-            _name: g.key.group.name,
             _depth: g.key.depth,
+            _rawGroup: g.key.group,
             attribute: g.key.attributeLabel,
-            label: g.key.group.label,
+            // Name identifies a group
+            name: g.key.group.name,
+            // Title is shown in the vis, defaults to name
+            ...(g.key.group.name != g.key.group.title
+                ? { title: g.key.group.title }
+                : {}),
             n: g.key.n,
         }));
 

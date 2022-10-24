@@ -293,7 +293,10 @@ export interface StringFieldDef<F extends Field>
     extends FieldDefWithoutScale<F>,
         FormatMixins {}
 
-export type TextDef<F extends Field> = StringFieldDef<F> | StringDatumDef;
+export type TextDef<F extends Field> =
+    | StringFieldDef<F>
+    | StringDatumDef
+    | ExprDef;
 
 export type ChannelDef<F extends Field = string> =
     Encoding<F>[keyof Encoding<F>];
