@@ -163,7 +163,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
                     ? html`<small>
                           The operator specifies whether the upper endpoint of
                           the interval (<em>i.e.</em>, the group) is exclusive
-                          (<) or inclusive(${"\u2264"}).
+                          (&lt;) or inclusive(&le;).
                       </small>`
                     : nothing}
             </div>

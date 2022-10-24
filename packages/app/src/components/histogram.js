@@ -225,10 +225,10 @@ class Histogram extends LitElement {
             (b) =>
                 html`<div
                     style=${styleMap({
-                        width: `${w + 0.01}%`,
-                        left: `${b.x}%`,
-                        bottom: `${b.y}%`,
-                        height: `${b.height}%`,
+                        width: w + 0.01 + "%",
+                        left: b.x + "%",
+                        bottom: b.y + "%",
+                        height: b.height + "%",
                         backgroundColor:
                             typeof b.group == "number"
                                 ? this.colors[b.group % this.colors.length]
@@ -246,7 +246,9 @@ class Histogram extends LitElement {
                         return pos >= 0 && pos <= 100
                             ? html`<div
                                   class="histogram-threshold"
-                                  style="left: ${s(threshold)}%"
+                                  style=${styleMap({
+                                      left: s(threshold) + "%",
+                                  })}
                               >
                                   <div
                                       class="histogram-knob"
