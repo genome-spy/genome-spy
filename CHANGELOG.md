@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.26.1](https://github.com/tuner/genome-spy/compare/v0.26.0...v0.26.1) (2022-10-24)
+
+
+### Bug Fixes
+
+* **app:** histogram thresholds were broken after minification ([b67077f](https://github.com/tuner/genome-spy/commit/b67077f5152cd7c4aaa9a18e49482d548d744003))
+
+
+
+
+
 # [0.26.0](https://github.com/tuner/genome-spy/compare/v0.25.1...v0.26.0) (2022-10-24)
 
 
