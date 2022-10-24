@@ -451,12 +451,10 @@ const verboseOps = {
  * @param {any[]} values
  * @returns
  */
-function joinValues(values) {
-    return values.length > 1
-        ? html`{${values.map(
-              (value, i) => html`${i > 0 ? ", " : ""}<strong>${value}</strong>`
-          )}}`
-        : html`<strong>${values[0]}</strong>`;
+function formatSet(values) {
+    return html`{${values.map(
+        (value, i) => html`${i > 0 ? ", " : ""}<strong>${value}</strong>`
+    )}}`;
 }
 /**
  * Describes an action for displaying it in menus or provenance tracking.
@@ -539,9 +537,9 @@ export function getActionInfo(action, getAttributeInfo) {
                     ? html` undefined ${attr} `
                     : html`${attr}
                       ${values.length > 1
-                          ? "in"
-                          : html`<span class="operator">=</span>`}
-                      ${joinValues(values)}`}
+                          ? html`in ${formatSet(values)}`
+                          : html`<span class="operator">=</span>
+                                <strong>${values[0]}</strong>`} `}
             `;
 
             return {
@@ -555,7 +553,13 @@ export function getActionInfo(action, getAttributeInfo) {
             /** @param {string | import("lit").TemplateResult} attr */
             const makeTitle = (attr) => html`
                 Retain samples having ${attr}
-                <span class="operator">${verboseOps[payload.operator]}</span>
+                <span class="operator"
+                    >${verboseOps[
+                        /** @type {import("./payloadTypes").FilterByQuantitative} */ (
+                            payload
+                        ).operator
+                    ]}</span
+                >
                 <strong>${attributeNumberFormat(payload.operand)}</strong>
             `;
 
@@ -597,11 +601,13 @@ export function getActionInfo(action, getAttributeInfo) {
                 title: "Group by thresholds",
                 provenanceTitle: html`
                     Group by thresholds
-                    {${joinValues(
-                        payload.thresholds.map(
+                    ${formatSet(
+                        /** @type {import("./payloadTypes").GroupByThresholds} */ (
+                            payload
+                        ).thresholds.map(
                             (t) => `${verboseOps[t.operator]} ${t.operand}`
                         )
-                    )}}
+                    )}
                     on ${attributeTitle}
                 `,
                 icon: faObjectGroup,
