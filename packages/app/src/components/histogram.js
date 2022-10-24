@@ -4,6 +4,7 @@ import { scaleLinear } from "d3-scale";
 import clientPoint from "@genome-spy/core/utils/point";
 import clamp from "@genome-spy/core/utils/clamp";
 import { classMap } from "lit/directives/class-map.js";
+import { styleMap } from "lit/directives/style-map.js";
 
 class Histogram extends LitElement {
     static properties = {
@@ -223,11 +224,16 @@ class Histogram extends LitElement {
         const barDivs = this.#computeBars().map(
             (b) =>
                 html`<div
-                    style="width: ${w +
-                    0.01}%; left: ${b.x}%; bottom: ${b.y}%; height: ${b.height}%; background-color: ${typeof b.group ==
-                    "number"
-                        ? this.colors[b.group % this.colors.length]
-                        : "default"}"
+                    style=${styleMap({
+                        width: `${w + 0.01}%`,
+                        left: `${b.x}%`,
+                        bottom: `${b.y}%`,
+                        height: `${b.height}%`,
+                        backgroundColor:
+                            typeof b.group == "number"
+                                ? this.colors[b.group % this.colors.length]
+                                : "default",
+                    })}
                 ></div>`
         );
 
