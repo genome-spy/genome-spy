@@ -4,6 +4,7 @@ import { html, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import { createModal, messageBox } from "../utils/ui/modal";
+import { classMap } from "lit/directives/class-map.js";
 import "../components/histogram";
 
 /**
@@ -217,17 +218,22 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
             <label
                 >Retain samples where <em>${attributeInfo.name}</em> is</label
             >
-            <select .value=${operator} @change=${operatorChanged}>
+            <div class="btn-group" role="group">
                 ${Object.entries(verboseOps).map(
-                    ([k, v]) => html`<option .value=${k}>${v}</option>`
+                    ([k, v]) =>
+                        html`<button
+                            class=${classMap({
+                                btn: true,
+                                chosen: k == operator,
+                            })}
+                            .value=${k}
+                            @click=${operatorChanged}
+                            title="${v[1]}"
+                        >
+                            ${v[0]}
+                        </button>`
                 )}
-            </select>
-            <input
-                type="text"
-                placeholder="Please enter a numeric value"
-                .value=${typeof operand == "number" ? "" + operand : ""}
-                @input=${operandChanged}
-            />
+            </div>
             <genome-spy-histogram
                 .values=${values}
                 .thresholds=${[operand].filter((o) => o !== undefined)}
@@ -237,6 +243,12 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
                 @add=${thresholdAdded}
                 @adjust=${thresholdAdjusted}
             ></genome-spy-histogram>
+            <input
+                type="text"
+                placeholder="... or enter a numeric value here"
+                .value=${typeof operand == "number" ? "" + operand : ""}
+                @input=${operandChanged}
+            />
         </div>
     `;
 
@@ -251,16 +263,18 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
 
     updateHtml();
 
-    modal.content.querySelector("select").focus();
+    /** @type {HTMLInputElement} */ (
+        modal.content.querySelector("input[type='text']")
+    )?.focus();
 }
 
-/** @type {Record<ComparisonOperatorType, string>} */
+/** @type {Record<ComparisonOperatorType, [string, string]>} */
 const verboseOps = {
-    lt: "less than",
-    lte: "less than or equal to",
-    eq: "equal to",
-    gte: "greater than or equal to",
-    gt: "greater than",
+    lt: ["<", "less than"],
+    lte: ["\u2264", "less than or equal to"],
+    eq: ["=", "equal to"],
+    gte: ["\u2265", "greater than or equal to"],
+    gt: [">", "greater than"],
 };
 
 /**

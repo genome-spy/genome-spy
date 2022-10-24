@@ -556,6 +556,35 @@ $menu-line-height: 22px;
         }
     }
 
+    .btn-group {
+        display: flex;
+
+        // TODO: Extract to another class
+        font-size: 1.3em;
+
+        // TODO: This too
+        margin-bottom: $basic-spacing;
+
+        .btn {
+            flex-grow: 1;
+        }
+
+        .btn:not(:first-child) {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            margin-left: -1px;
+        }
+        .btn:not(:last-child) {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .btn.chosen {
+            background-image: linear-gradient(to bottom, #f0f0f0, #d8d8d8);
+            box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.3);
+        }
+    }
+
     &.tour {
         pointer-events: none;
 
