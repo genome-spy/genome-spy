@@ -491,11 +491,11 @@ $menu-line-height: 22px;
     }
 
     .modal-body {
-        > p:first-child {
+        > :first-child {
             margin-top: 0;
         }
 
-        > p:last-child {
+        > :last-child {
             margin-bottom: 0;
         }
     }
@@ -792,6 +792,10 @@ $form-control-border: 1px solid $form-control-border-color;
             padding: 0 $basic-spacing;
         }
     }
+}
+
+.group-by-thresholds-form {
+    width: 25em;
 }
 
 .gs-alert {

@@ -1,6 +1,6 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faObjectGroup, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import { createModal } from "../utils/ui/modal";
 
 /**
@@ -116,7 +116,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
 
     function updateHtml() {
         const template = html`
-            <div class="gs-form-group">
+            <div class="gs-form-group group-by-thresholds-form">
                 <label>Split into groups using the thresholds:</label>
 
                 <genome-spy-histogram
@@ -159,6 +159,13 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
                         </button>
                     </div>`
                 )}
+                ${thresholds.length
+                    ? html`<small>
+                          The operator specifies whether the upper endpoint of
+                          the interval (<em>i.e.</em>, the group) is exclusive
+                          (<) or inclusive(${"\u2264"}).
+                      </small>`
+                    : nothing}
             </div>
         `;
 
