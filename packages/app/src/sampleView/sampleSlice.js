@@ -64,7 +64,7 @@ function createInitialState() {
         groupMetadata: [],
         rootGroup: {
             name: "ROOT",
-            label: "Root",
+            title: "Root",
             samples: [],
         },
     };
@@ -134,7 +134,7 @@ export function createSampleSlice(getAttributeInfo) {
 
                 state.rootGroup = {
                     name: "ROOT",
-                    label: "Root",
+                    title: "Root",
                     samples: state.sampleData.ids,
                 };
             },

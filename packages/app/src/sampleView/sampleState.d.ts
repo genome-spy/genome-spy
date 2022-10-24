@@ -22,8 +22,8 @@ export interface BaseGroup {
     /** e.g., an attribute value that forms a group. Used as a key when identifying subgroups. */
     name: string;
 
-    /** A descriptive label for the group. May contain quantile intervals, etc. */
-    label: string;
+    /** A descriptive title for the group. May contain quantile intervals, etc. */
+    title: string;
 }
 
 export interface SampleGroup extends BaseGroup {

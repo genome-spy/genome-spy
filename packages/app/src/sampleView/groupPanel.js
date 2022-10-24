@@ -35,13 +35,20 @@ export class GroupPanel extends LayerView {
                     },
                     {
                         type: "formula",
-                        as: "_NA",
-                        expr: "datum.label == null",
+                        as: "_title",
+                        // The following fails if title is zero (number).
+                        // TODO: Implement isValid() from https://github.com/vega/vega/tree/main/packages/vega-functions
+                        expr: "datum.title || datum.name",
                     },
                     {
                         type: "formula",
-                        as: "label",
-                        expr: "datum.label != null ? datum.label: 'NA'",
+                        as: "_NA",
+                        expr: "datum._title === null",
+                    },
+                    {
+                        type: "formula",
+                        as: "_title",
+                        expr: "datum._title !== null ? datum._title: 'NA'",
                     },
                 ],
 
@@ -95,7 +102,7 @@ export class GroupPanel extends LayerView {
                             tooltip: null,
                         },
                         encoding: {
-                            text: { field: "label" },
+                            text: { field: "_title" },
                             opacity: {
                                 field: "_NA",
                                 type: "nominal",
@@ -160,10 +167,14 @@ export class GroupPanel extends LayerView {
 
         const data = groupLocations.map((g) => ({
             _index: g.key.index,
-            _name: g.key.group.name,
             _depth: g.key.depth,
             attribute: g.key.attributeLabel,
-            label: g.key.group.label,
+            // Name identifies a group
+            name: g.key.group.name,
+            // Title is shown in the vis, defaults to name
+            ...(g.key.group.name != g.key.group.title
+                ? { title: g.key.group.title }
+                : {}),
             n: g.key.n,
         }));
 
