@@ -46,7 +46,7 @@
     "d3-format": "^3.0.1",
     "flatqueue": "^2.0.3",
     "internmap": "^2.0.3",
-    "lit-html": "^2.0.2",
+    "lit-html": "^2.4.0",
     "twgl.js": "^4.19.1",
     "vega-expression": "^5.0.0",
     "vega-loader": "^4.4.0",
