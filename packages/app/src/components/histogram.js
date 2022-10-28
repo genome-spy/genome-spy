@@ -176,7 +176,7 @@ class Histogram extends LitElement {
             let count = 0;
             if (eq) {
                 for (let j = 0; j <= 1; j++) {
-                    count = countMatches(b, this.thresholds[0], j);
+                    count = countMatches(b, this.thresholds[0], j > 0);
                     if (count) {
                         bars.push({
                             x,
@@ -190,7 +190,6 @@ class Histogram extends LitElement {
             } else if (this.thresholds.length) {
                 for (let j = 0; j < thresholdsWithEndpoints.length - 1; j++) {
                     const k = fix(j);
-                    // TODO: Count exact matches when operator is "eq"
                     count = countWithin(
                         b,
                         thresholdsWithEndpoints[k],
@@ -210,7 +209,9 @@ class Histogram extends LitElement {
                 }
             } else {
                 count = b.length;
-                bars.push({ x, y, height: count * hFactor, group: null });
+                if (count) {
+                    bars.push({ x, y, height: count * hFactor, group: null });
+                }
             }
         }
 
@@ -333,7 +334,13 @@ function startDrag(event, callback, endCallback) {
  * @param {number} lo
  * @param {number} hi
  */
-function countWithin(values, lo, hi, loInclusive = true, hiInclusive = false) {
+export function countWithin(
+    values,
+    lo,
+    hi,
+    loInclusive = true,
+    hiInclusive = false
+) {
     /** @type {(x: number) => boolean} */
     const testLo = loInclusive ? (x) => x >= lo : (x) => x > lo;
 
@@ -364,7 +371,7 @@ function countMatches(values, operand, negate = false) {
     return negate ? values.length - n : n;
 }
 
-const defaultScheme = [
+export const defaultScheme = [
     "#1f77b4",
     "#ff7f0e",
     "#2ca02c",
