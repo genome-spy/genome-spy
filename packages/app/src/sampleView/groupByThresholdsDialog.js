@@ -1,7 +1,12 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faObjectGroup, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { html, nothing, render } from "lit";
+import { defaultScheme } from "../components/histogram";
 import { createModal } from "../utils/ui/modal";
+import {
+    createThresholdGroupAccessor,
+    formatThresholdInterval,
+} from "./groupOperations";
 
 /**
  * @param {import("./types").AttributeInfo} attributeInfo
@@ -115,6 +120,65 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
     );
 
     function updateHtml() {
+        const makeTable = () => {
+            /** @type {import("./payloadTypes").Threshold[]} */
+            const t = [
+                { operand: -Infinity, operator: "lt" },
+                ...thresholds,
+                { operand: Infinity, operator: "lte" },
+            ];
+
+            const a = createThresholdGroupAccessor((x) => x, t);
+            /** @type {number[]} */
+            const groupSizes = [];
+            for (let i = 1; i < t.length; i++) {
+                groupSizes.push(0);
+            }
+
+            for (const value of values) {
+                groupSizes[a(value) - 1]++;
+            }
+
+            const groups = [];
+            for (let i = 1; i < t.length; i++) {
+                groups.push({
+                    index: i - 1,
+                    name: i,
+                    interval: formatThresholdInterval(t[i - 1], t[i]),
+                    n: groupSizes[i - 1],
+                });
+            }
+
+            return html`<table class="threshold-groups">
+                <thead>
+                    <tr>
+                        <th>Group</th>
+                        <th>Interval</th>
+                        <th>n</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${groups.map(
+                        (g) => html`
+                            <tr>
+                                <td>
+                                    <span
+                                        class="group-color"
+                                        style="background-color: ${defaultScheme[
+                                            g.index
+                                        ]}"
+                                    ></span>
+                                    ${g.name}
+                                </td>
+                                <td>${g.interval}</td>
+                                <td>${g.n}</td>
+                            </tr>
+                        `
+                    )}
+                </tbody>
+            </table> `;
+        };
+
         const template = html`
             <div class="gs-form-group group-by-thresholds-form">
                 <label>Split into groups using the thresholds:</label>
@@ -161,10 +225,11 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
                 )}
                 ${thresholds.length
                     ? html`<small>
-                          The operator specifies whether the upper endpoint of
-                          the interval (<em>i.e.</em>, the group) is exclusive
-                          (&lt;) or inclusive(&le;).
-                      </small>`
+                              The operator specifies whether the upper endpoint
+                              of the interval (<em>i.e.</em>, the group) is
+                              exclusive (&lt;) or inclusive(&le;).
+                          </small>
+                          ${makeTable()}`
                     : nothing}
             </div>
         `;

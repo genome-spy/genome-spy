@@ -796,6 +796,27 @@ $form-control-border: 1px solid $form-control-border-color;
 
 .group-by-thresholds-form {
     width: 25em;
+
+    .group-color {
+        display: inline-block;
+        width: 0.7em;
+        height: 0.7em;
+    }
+
+    .threshold-groups {
+        margin-top: $basic-spacing;
+
+        text-align: left;
+        font-size: 90%;
+
+        :is(th, td) {
+            padding-right: 1em;
+
+            &:nth-child(2) {
+                min-width: 9em;
+            }
+        }
+    }
 }
 
 .gs-alert {

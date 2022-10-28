@@ -57,23 +57,13 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
  * @param {import("./payloadTypes").Threshold[]} thresholds
  */
 function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
-    const format = d3format(".3~r");
-
-    /** @param {number} i */
-    const formatInterval = (i) =>
-        `${thresholds[i].operator == "lt" ? "[" : "("}${format(
-            thresholds[i].operand
-        )}, ${format(thresholds[i + 1].operand)}${
-            thresholds[i + 1].operator == "lte" ? "]" : ")"
-        }`;
-
     const groupName = (/** @type {number} */ groupIndex) =>
         `Group ${groupIndex + 1}`;
 
     // TODO: Group ids should indicate if multiple identical thresholds were merged
     const groupIds = range(thresholds.length - 1).reverse();
 
-    const ta = createThresholdAccessor(
+    const ta = createThresholdGroupAccessor(
         accessor,
         thresholds.slice(1, thresholds.length - 1)
     );
@@ -82,7 +72,9 @@ function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
         sampleGroup,
         (sample) => groupName(ta(sample)),
         groupIds.map(groupName),
-        groupIds.map(formatInterval)
+        groupIds.map((i) =>
+            formatThresholdInterval(thresholds[i], thresholds[i + 1])
+        )
     );
 }
 
@@ -161,7 +153,7 @@ export function removeGroup(rootGroup, path) {
  * @param {function(any):any} accessor
  * @param {import("./payloadTypes").Threshold[]} thresholds Must be in ascending order
  */
-function createThresholdAccessor(accessor, thresholds) {
+export function createThresholdGroupAccessor(accessor, thresholds) {
     /** @param {any} datum */
     const thresholdAccessor = (datum) => {
         const value = accessor(datum);
@@ -216,3 +208,15 @@ function uniq(arr) {
     }
     return result;
 }
+
+const thresholdFormat = d3format(".3~r");
+
+/**
+ * TODO: Move to "utils" or something
+ * @param {import("./payloadTypes").Threshold} t1
+ * @param {import("./payloadTypes").Threshold} t2
+ */
+export const formatThresholdInterval = (t1, t2) =>
+    `${t1.operator == "lt" ? "[" : "("}${thresholdFormat(
+        t1.operand
+    )}, ${thresholdFormat(t2.operand)}${t2.operator == "lte" ? "]" : ")"}`;
