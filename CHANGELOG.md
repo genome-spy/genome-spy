@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.27.0](https://github.com/tuner/genome-spy/compare/v0.26.1...v0.27.0) (2022-11-03)
+
+
+### Features
+
+* **app:** add "remove group" action ([#135](https://github.com/tuner/genome-spy/issues/135)) ([4f9269e](https://github.com/tuner/genome-spy/commit/4f9269e37f286059878bb2cd27a95d2536a42c30))
+* **app:** add search field to categorical advanced filter ([6acfc89](https://github.com/tuner/genome-spy/commit/6acfc896051788c20c970e83e2ea9057648cb544)), closes [#136](https://github.com/tuner/genome-spy/issues/136)
+* **app:** show group sizes in "group by thresholds" dialog ([14d4a69](https://github.com/tuner/genome-spy/commit/14d4a691da14bff5c13341c12ab9d2ab20da1a31))
+
+
+
+
+
 ## [0.26.1](https://github.com/tuner/genome-spy/compare/v0.26.0...v0.26.1) (2022-10-24)
 
 

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.27.0](https://github.com/genome-spy/genome-spy/compare/v0.26.1...v0.27.0) (2022-11-03)
+
+
+### Features
+
+* **app:** add "remove group" action ([#135](https://github.com/genome-spy/genome-spy/issues/135)) ([4f9269e](https://github.com/genome-spy/genome-spy/commit/4f9269e37f286059878bb2cd27a95d2536a42c30))
+
+
+
+
+
 # [0.26.0](https://github.com/genome-spy/genome-spy/compare/v0.25.1...v0.26.0) (2022-10-24)
 
 **Note:** Version bump only for package @genome-spy/core
