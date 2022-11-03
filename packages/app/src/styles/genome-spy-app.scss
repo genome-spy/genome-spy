@@ -691,6 +691,26 @@ $form-control-color: #212529;
 $form-control-border-color: #ced4da;
 $form-control-border: 1px solid $form-control-border-color;
 
+.gs-checkbox-list-wrapper {
+    position: relative;
+
+    .search-note {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        justify-content: center;
+        align-content: center;
+
+        color: #808080;
+        font-size: 85%;
+
+        > * {
+            position: relative;
+            top: 0.7em;
+        }
+    }
+}
+
 .gs-checkbox-list {
     color: $form-control-color;
     border: $form-control-border;
@@ -711,9 +731,25 @@ $form-control-border: 1px solid $form-control-border-color;
     li {
         list-style: none;
     }
+
+    label.checkbox {
+        margin-bottom: 0;
+
+        &:hover {
+            background-color: #f4f4f4;
+        }
+    }
+
+    .hidden {
+        display: none;
+    }
 }
 
 .gs-form-group {
+    > p:first-child {
+        margin-top: 0;
+    }
+
     &:not(:first-child) {
         margin-top: 0.5em;
     }

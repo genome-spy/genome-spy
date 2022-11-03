@@ -1,7 +1,12 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faFilter, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
-import { html, render } from "lit";
+import {
+    faArrowUp,
+    faFilter,
+    faTrashAlt,
+} from "@fortawesome/free-solid-svg-icons";
+import { html, nothing, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
+import { repeat } from "lit/directives/repeat.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import { createModal, messageBox } from "../utils/ui/modal";
 import { classMap } from "lit/directives/class-map.js";
@@ -39,6 +44,25 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
             attributeInfo.scale
         );
 
+    const presentValues = new Set(
+        extractValues(
+            attributeInfo,
+            sampleView.leafSamples,
+            sampleView.sampleHierarchy
+        )
+    );
+
+    // Use domain to maintain a consistent order
+    const categories = scale
+        .domain()
+        .filter((value) => presentValues.has(value))
+        .map((value, index) => ({
+            index,
+            value,
+            stringValue: `${value}`,
+            lowerCaseValue: `${value}`.toLowerCase(),
+        }));
+
     const modal = createModal();
 
     const templateTitle = html`
@@ -47,6 +71,9 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
 
     /** @type {Set<Scalar>} */
     const selection = new Set();
+
+    /** Filter the listed categories */
+    let search = "";
 
     const dispatchAndClose = (/** @type {boolean} */ remove) => {
         dispatch(
@@ -60,14 +87,101 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
         modal.close();
     };
 
+    const getFilteredCategories = () =>
+        categories.filter(
+            (category) =>
+                search.length == 0 || category.lowerCaseValue.includes(search)
+        );
+
+    const updateSearch = (/** @type {InputEvent} */ event) => {
+        const input = /** @type {HTMLInputElement} */ (event.target);
+        search = input.value.toLowerCase();
+        updateHtml();
+    };
+
     const updateChecked = (/** @type {InputEvent} */ event) => {
         const checkbox = /** @type {HTMLInputElement} */ (event.target);
+        const category = categories[+checkbox.value].value;
         if (checkbox.checked) {
-            selection.add(checkbox.value);
+            selection.add(category);
         } else {
-            selection.delete(checkbox.value);
+            selection.delete(category);
         }
         updateHtml();
+    };
+
+    const handleSearchKeyDown = (/** @type {KeyboardEvent} */ event) => {
+        if (event.key == "ArrowDown") {
+            /** @type {HTMLInputElement} */ (
+                modal.content.querySelector(
+                    ".gs-checkbox-list li:first-child input[type='checkbox']"
+                )
+            )?.focus();
+            event.preventDefault();
+            event.stopPropagation();
+        } else if (event.key == "Enter") {
+            const categories = getFilteredCategories();
+            if (categories.length == 1) {
+                selection.add(categories[0].value);
+                updateHtml();
+            }
+            event.stopPropagation();
+        }
+    };
+
+    const focusSearch = () => {
+        /** @type {HTMLElement} */ (
+            modal.content.querySelector("input[type='text']")
+        ).focus();
+    };
+
+    const handleCheckboxKeyDown = (/** @type {KeyboardEvent} */ event) => {
+        const element = /** @type {HTMLInputElement} */ (event.target);
+
+        if (element.type != "checkbox") {
+            return;
+        }
+
+        if (event.key == "ArrowDown") {
+            /** @type {HTMLInputElement} */ (
+                element
+                    .closest("li")
+                    .nextElementSibling?.querySelector("input[type='checkbox']")
+            )?.focus();
+            event.preventDefault();
+        } else if (event.key == "ArrowUp") {
+            const previous = /** @type {HTMLInputElement} */ (
+                element
+                    .closest("li")
+                    .previousElementSibling?.querySelector(
+                        "input[type='checkbox']"
+                    )
+            );
+
+            if (previous) {
+                previous.focus();
+            } else {
+                focusSearch();
+            }
+            event.preventDefault();
+        } else if (event.key == "Esc") {
+            focusSearch();
+            event.stopPropagation();
+        } else if (event.key == "Tab" && !event.shiftKey) {
+            // Don't prevent default, let the browser move focus to the next focusable element
+            // after we have focused the last checkbox.
+            /** @type {HTMLInputElement} */ (
+                element
+                    .closest(".gs-checkbox-list")
+                    .querySelector("li:last-child input")
+            )?.focus();
+        } else if (event.key == "Tab" && event.shiftKey) {
+            /** @type {HTMLInputElement} */ (
+                element
+                    .closest(".gs-checkbox-list")
+                    .querySelector("li:first-child input")
+            )?.focus();
+        }
     };
 
     const templateButtons = () => html` <div class="modal-buttons">
@@ -94,42 +208,85 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     // TODO: Ensure that the attribute is mapped to a color channel
     const colorify = scale;
 
-    // TODO: Provide only categories that are present in the current dataset, not the full scale domain
-    const template = html`<p>
-            Please select one or more categories and choose an action.
-        </p>
-        <ul class="gs-checkbox-list" @input=${updateChecked} tabindex="0">
-            ${scale.domain().map(
-                (value) =>
-                    html`<li>
-                        <label class="checkbox">
-                            <span
-                                class="color"
-                                style=${styleMap({
-                                    backgroundColor: colorify(value).toString(),
-                                })}
-                            ></span>
-                            <input type="checkbox" .value=${value} />
-                            ${value}</label
-                        >
-                    </li>`
-            )}
-        </ul>`;
-
     function updateHtml() {
+        const filteredCats = getFilteredCategories();
+
+        const template = html`<div class="gs-form-group">
+            <p>Please select one or more categories and choose an action.</p>
+            <input
+                type="text"
+                placeholder="Type something to filter the list"
+                @keydown=${handleSearchKeyDown}
+                @input=${updateSearch}
+            />
+            <div class="gs-checkbox-list-wrapper">
+                <ul
+                    class="gs-checkbox-list"
+                    @input=${updateChecked}
+                    @keydown=${handleCheckboxKeyDown}
+                >
+                    ${repeat(
+                        filteredCats,
+                        (category) => category.value,
+                        (category) =>
+                            html`<li>
+                                <label class="checkbox">
+                                    <span
+                                        class="color"
+                                        style=${styleMap({
+                                            backgroundColor: colorify(
+                                                category.value
+                                            ).toString(),
+                                        })}
+                                    ></span>
+                                    <input
+                                        type="checkbox"
+                                        .checked=${selection.has(
+                                            category.value
+                                        )}
+                                        .value=${"" + category.index}
+                                    />
+                                    ${category.stringValue}
+                                </label>
+                            </li>`
+                    )}
+                </ul>
+                ${filteredCats.length == 0
+                    ? html`<div class="search-note">
+                          <div>Nothing found</div>
+                      </div>`
+                    : // check length of (all) categories to ensure there's room for the label
+                    filteredCats.length == 1 && categories.length > 1
+                    ? html`<div class="search-note">
+                          <div>
+                              ${icon(faArrowUp).node[0]} Hit enter to select the
+                              exact match
+                          </div>
+                      </div>`
+                    : nothing}
+            </div>
+            <small>
+                The number of selected categories:
+                <strong>${selection.size}</strong>
+            </small>
+        </div>`;
+
         render(
             html`${templateTitle}
                 <div class="modal-body">${template}</div>
                 ${templateButtons()}`,
             modal.content
         );
+
+        // Ensure that checkbox list's height stays constant when the list is filtered
+        const checkboxList = /** @type {HTMLElement} */ (
+            modal.content.querySelector(".gs-checkbox-list")
+        );
+        checkboxList.style.minHeight = `${checkboxList.offsetHeight}px`;
     }
 
     updateHtml();
-
-    /** @type {HTMLElement} */ (
-        modal.content.querySelector(".gs-checkbox-list input[type='checkbox']")
-    ).focus();
+    focusSearch();
 }
 
 /**
@@ -286,7 +443,7 @@ const verboseOps = {
  */
 function extractValues(attributeInfo, samples, sampleHierarchy) {
     const a = attributeInfo.accessor;
-    return /** @type {number[]} */ (
+    return /** @type {Scalar[]} */ (
         samples.map((sampleId) => a(sampleId, sampleHierarchy))
     );
 }
