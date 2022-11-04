@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.27.1](https://github.com/genome-spy/genome-spy/compare/v0.27.0...v0.27.1) (2022-11-04)
+
+
+### Bug Fixes
+
+* **app:** an exact search match wasn't clickable in advanced filter dialog ([88d81e3](https://github.com/genome-spy/genome-spy/commit/88d81e33aed2271fcd2142268f4c3be05ab34e52))
+* **app:** show GenomeSpy version in toolbar ([140b703](https://github.com/genome-spy/genome-spy/commit/140b703a208dc66d19ea875ba79e9718f144e3da))
+
+
+
+
+
 # [0.27.0](https://github.com/genome-spy/genome-spy/compare/v0.26.1...v0.27.0) (2022-11-03)
 
 
