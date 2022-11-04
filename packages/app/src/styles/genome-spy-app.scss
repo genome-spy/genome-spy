@@ -704,6 +704,8 @@ $form-control-border: 1px solid $form-control-border-color;
         color: #808080;
         font-size: 85%;
 
+        pointer-events: none;
+
         > * {
             position: relative;
             top: 0.7em;
