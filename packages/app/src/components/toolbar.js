@@ -10,6 +10,8 @@ import { asArray } from "@genome-spy/core/utils/arrayUtils";
 import bowtie from "@genome-spy/core/img/bowtie.svg";
 import { messageBox } from "../utils/ui/modal";
 
+import packageJson from "../../package.json";
+
 import "./viewSettingsButton";
 import "./provenanceToolbar";
 import "./bookmarkButton";
@@ -95,6 +97,12 @@ export default class Toolbar extends LitElement {
 
         elements.push(html`
             <span class="spacer"></span>
+
+            <a
+                class="version"
+                href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
+                >v${packageJson.version}</a
+            >
 
             ${this.app.appContainer.requestFullscreen
                 ? html`
