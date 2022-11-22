@@ -347,7 +347,10 @@ export function findGenomeScaleResolution(viewRoot) {
     let match;
 
     viewRoot.visit((view) => {
-        for (const channel of ["x", "y"]) {
+        for (const channel of /** @type {import("@genome-spy/core/spec/channel").PrimaryPositionalChannel[]} */ ([
+            "x",
+            "y",
+        ])) {
             const resolution = view.resolutions.scale[channel];
             if (
                 resolution &&
