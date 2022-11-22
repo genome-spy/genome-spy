@@ -333,7 +333,7 @@ export class SampleAttributePanel extends ConcatView {
 
         views.push(this.context.createView(createLabelViewSpec(), this));
 
-        for (const attribute of this._getAttributeNames()) {
+        for (const attribute of this.getAttributeNames()) {
             const view = this.context.createView(
                 this._createAttributeViewSpec(attribute),
                 this
@@ -356,7 +356,7 @@ export class SampleAttributePanel extends ConcatView {
         return this.sampleView.spec.samples?.attributes?.[attributeName];
     }
 
-    _getAttributeNames() {
+    getAttributeNames() {
         // TODO: Use reselect
         return this._cache("attributeNames", () => {
             const samples = this.sampleView.getSamples();
@@ -410,7 +410,7 @@ export class SampleAttributePanel extends ConcatView {
      */
     _findViewForAttribute(attribute) {
         // This is a bit fragile.. +1 is for skipping the sample label
-        return this.children[this._getAttributeNames().indexOf(attribute) + 1];
+        return this.children[this.getAttributeNames().indexOf(attribute) + 1];
     }
 
     /**
@@ -519,7 +519,7 @@ export class SampleAttributePanel extends ConcatView {
         // TODO: Provide an easier access to the attribute data
         const searchKey = command;
 
-        for (const name of this._getAttributeNames()) {
+        for (const name of this.getAttributeNames()) {
             const info = this.getAttributeInfo(name);
             if (info.type == ORDINAL || info.type == NOMINAL) {
                 const sample = this.sampleView

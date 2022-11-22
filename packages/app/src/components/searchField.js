@@ -14,8 +14,8 @@ export default class SearchField extends LitElement {
 
         this.inputRef = createRef();
 
-        /** @type {import("@genome-spy/core/genomeSpy").default} */
-        this.genomeSpy = undefined;
+        /** @type {import("../app").default} */
+        this.app = undefined;
 
         /** @type {function():string} */
         this.getDefaultValue = () => "";
@@ -31,13 +31,17 @@ export default class SearchField extends LitElement {
         this._focused = false;
     }
 
+    get genomeSpy() {
+        return this.app.genomeSpy;
+    }
+
     get _inputField() {
         return /** @type {HTMLInputElement} */ (this.inputRef.value);
     }
 
     static get properties() {
         return {
-            genomeSpy: { type: Object },
+            app: { type: Object },
         };
     }
 
@@ -264,6 +268,30 @@ export default class SearchField extends LitElement {
                     ${examples.map((example) => html` <li>${example}</li> `)}
                 </ul>
             `);
+        }
+
+        const attributePanel = this.app.getSampleView().attributePanel;
+        const categoricalInfos = attributePanel
+            .getAttributeNames()
+            .map((name) => attributePanel.getAttributeInfo(name))
+            .filter((info) => info.type == "nominal" || info.type == "ordinal")
+            .sort(() => 0.5 - Math.random())
+            .map(
+                (info) =>
+                    [...(info.scale?.domain() ?? [])].sort(
+                        () => 0.5 - Math.random()
+                    )[0]
+            )
+            .filter((value) => value !== undefined)
+            .slice(0, 3);
+
+        if (categoricalInfos.length) {
+            parts.push(html` <p>
+                    Filter samples by categorical attributes. Examples:
+                </p>
+                <ul>
+                    ${categoricalInfos.map((value) => html`<li>${value}</li>`)}
+                </ul>`);
         }
 
         return html`
