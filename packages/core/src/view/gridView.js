@@ -507,14 +507,14 @@ export default class GridView extends ContainerView {
      * @returns {FlexDimensions}
      */
     getSize() {
-        //return this._cache("size", () =>
-        return new FlexDimensions(
-            this.#getFlexSize("column"),
-            this.#getFlexSize("row")
-        )
-            .subtractPadding(this.getOverhang())
-            .addPadding(this.getPadding());
-        //);
+        return this._cache("size", () =>
+            new FlexDimensions(
+                this.#getFlexSize("column"),
+                this.#getFlexSize("row")
+            )
+                .subtractPadding(this.getOverhang())
+                .addPadding(this.getPadding())
+        );
     }
 
     /**
