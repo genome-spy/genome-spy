@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.28.1](https://github.com/tuner/genome-spy/compare/v0.28.0...v0.28.1) (2023-03-07)
+
+
+### Bug Fixes
+
+* **core:** fix a bug introduced in the previous commit ([f397ed5](https://github.com/tuner/genome-spy/commit/f397ed5fc22902b8b65966dcc49e45234eb21e66))
+
+
+
+
+
 # [0.28.0](https://github.com/tuner/genome-spy/compare/v0.27.1...v0.28.0) (2023-03-07)
 
 
