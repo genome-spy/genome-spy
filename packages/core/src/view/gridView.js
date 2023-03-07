@@ -431,9 +431,9 @@ export default class GridView extends ContainerView {
         let px = 0;
 
         const explicitSize =
-            (direction == "row" && this.spec.height) ||
+            (direction == "row" && this.spec.height) ??
             (direction == "column" && this.spec.width);
-        if (explicitSize !== undefined && explicitSize !== "") {
+        if (explicitSize || explicitSize === 0) {
             return parseSizeDef(explicitSize);
         }
 
@@ -507,14 +507,14 @@ export default class GridView extends ContainerView {
      * @returns {FlexDimensions}
      */
     getSize() {
-        return this._cache("size", () =>
-            new FlexDimensions(
-                this.#getFlexSize("column"),
-                this.#getFlexSize("row")
-            )
-                .subtractPadding(this.getOverhang())
-                .addPadding(this.getPadding())
-        );
+        //return this._cache("size", () =>
+        return new FlexDimensions(
+            this.#getFlexSize("column"),
+            this.#getFlexSize("row")
+        )
+            .subtractPadding(this.getOverhang())
+            .addPadding(this.getPadding());
+        //);
     }
 
     /**
