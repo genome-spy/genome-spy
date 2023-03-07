@@ -37,7 +37,7 @@ If you want to use or develop the core library, launch a single-page app using: 
 
 ## About
 
-Copyright (c) 2019-2022 Kari Lavikka. See [LICENSE](LICENSE) for details.
+Copyright (c) 2019-2023 Kari Lavikka. See [LICENSE](LICENSE) for details.
 
 GenomeSpy is developed in [The Systems Biology of Drug Resistance in
 Cancer](https://www.helsinki.fi/en/researchgroups/systems-biology-of-drug-resistance-in-cancer)
