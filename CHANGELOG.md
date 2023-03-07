@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.28.0](https://github.com/tuner/genome-spy/compare/v0.27.1...v0.28.0) (2023-03-07)
+
+
+### Bug Fixes
+
+* **core:** respect explicit GridView sizes ([2e4c6d9](https://github.com/tuner/genome-spy/commit/2e4c6d944cac3d6a2a039a4eb8941bbf8c289614)), closes [#117](https://github.com/tuner/genome-spy/issues/117)
+
+
+### Features
+
+* **app:** show filter-by-attribute examples in search help ([7c42c8e](https://github.com/tuner/genome-spy/commit/7c42c8e636b46e1bdbb649d674b944efeadea754)), closes [#126](https://github.com/tuner/genome-spy/issues/126)
+
+
+
+
+
 ## [0.27.1](https://github.com/tuner/genome-spy/compare/v0.27.0...v0.27.1) (2022-11-04)
 
 

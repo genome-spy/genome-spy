@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.28.0](https://github.com/genome-spy/genome-spy/compare/v0.27.1...v0.28.0) (2023-03-07)
+
+
+### Bug Fixes
+
+* **core:** respect explicit GridView sizes ([2e4c6d9](https://github.com/genome-spy/genome-spy/commit/2e4c6d944cac3d6a2a039a4eb8941bbf8c289614)), closes [#117](https://github.com/genome-spy/genome-spy/issues/117)
+
+
+
+
+
 # [0.27.0](https://github.com/genome-spy/genome-spy/compare/v0.26.1...v0.27.0) (2022-11-03)
 
 
