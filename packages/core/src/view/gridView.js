@@ -3,6 +3,7 @@ import {
     FlexDimensions,
     getLargestSize,
     mapToPixelCoords,
+    parseSizeDef,
     ZERO_SIZEDEF,
 } from "../utils/layout/flexLayout";
 import Grid from "../utils/layout/grid";
@@ -428,6 +429,13 @@ export default class GridView extends ContainerView {
     #getFlexSize(direction) {
         let grow = 0;
         let px = 0;
+
+        const explicitSize =
+            (direction == "row" && this.spec.height) ||
+            (direction == "column" && this.spec.width);
+        if (explicitSize !== undefined && explicitSize !== "") {
+            return parseSizeDef(explicitSize);
+        }
 
         const sizes = this.#getSizes(direction);
 
