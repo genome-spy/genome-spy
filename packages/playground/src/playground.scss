@@ -208,7 +208,7 @@ ul.tabs {
         display: block;
 
         margin: 0;
-        padding: $basic-spacing / 2 $basic-spacing;
+        padding: calc($basic-spacing / 2) $basic-spacing;
 
         border-bottom: 2px solid #eee;
 
