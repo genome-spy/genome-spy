@@ -3,7 +3,7 @@
     "packages/*"
   ],
   "useWorkspaces": true,
-  "version": "0.28.2",
+  "version": "0.28.3",
   "command": {
     "publish": {
       "conventionalCommits": true,
