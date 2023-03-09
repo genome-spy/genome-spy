@@ -1,74 +1,82 @@
 name: Build and deploy docs and Playground
 
 on:
-  release:
-    types: [released]
+    release:
+        types: [released]
 
 jobs:
-  build:
+    build:
+        runs-on: ubuntu-latest
 
-    runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v2
 
-    steps:
-      - uses: actions/checkout@v2
+            - name: Set up Python 3.x
+              uses: actions/setup-python@v2
+              with:
+                  python-version: "3.x"
 
-      - name: Set up Python 3.x
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
+            - name: Install Python dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install markdown mkdocs-material
+                  pushd utils/markdown_extension/
+                  python setup.py build
+                  python setup.py install
+                  popd
 
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install markdown mkdocs-material
-          pushd utils/markdown_extension/
-          python setup.py build
-          python setup.py install
-          popd
+            - name: Use Node.js 16.x
+              uses: actions/setup-node@v2
+              with:
+                  node-version: 16.x
+                  cache: "npm"
 
-      - name: Use Node.js 16.x
-        uses: actions/setup-node@v2
-        with:
-          node-version: 16.x
-          cache: 'npm'
+            - name: Install npm dependencies
+              run: npm ci
 
-      - name: Install npm dependencies
-        run: npm ci
+            - name: Build JSON schema
+              run: npm -w @genome-spy/core run build:schema
 
-      - name: Build JSON schema
-        run: npm -w @genome-spy/core run build:schema
-        
-      - name: Build packages
-        run: |
-          npm -w @genome-spy/doc-embed run build
-          npm -w @genome-spy/playground run build
+            - name: Build packages
+              run: |
+                  npm -w @genome-spy/doc-embed run build
+                  npm -w @genome-spy/playground run build
 
-      - name: Build docs
-        run: npm run build:docs
+            - name: (Debug) list embed dist files
+              run: ls -l packages/doc-embed/dist
 
-      - name: Deploy docs
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          external_repository: genome-spy/genome-spy.github.io
-          publish_branch: master
-          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          publish_dir: ./site
-          destination_dir: docs
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_message: ${{ github.event.head_commit.message }} (docs)
+            - name: Build docs
+              run: npm run build:docs
 
-      - name: Kill ssh-agent (otherwise the following deploy fails)
-        run: pkill ssh-agent || true
+            - name: (Debug) list embed in docs
+              run: ls -l docs/app
 
-      - name: Deploy Playground
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          external_repository: genome-spy/genome-spy.github.io
-          publish_branch: master
-          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          publish_dir: ./packages/playground/dist
-          destination_dir: playground
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_message: ${{ github.event.head_commit.message }} (playground)
+            - name: (Debug) list embed in dist
+              run: ls -l dist/app
+
+            - name: Deploy docs
+              uses: peaceiris/actions-gh-pages@v3
+              with:
+                  external_repository: genome-spy/genome-spy.github.io
+                  publish_branch: master
+                  deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+                  publish_dir: ./site
+                  destination_dir: docs
+                  user_name: "github-actions[bot]"
+                  user_email: "github-actions[bot]@users.noreply.github.com"
+                  commit_message: ${{ github.event.head_commit.message }} (docs)
+
+            - name: Kill ssh-agent (otherwise the following deploy fails)
+              run: pkill ssh-agent || true
+
+            - name: Deploy Playground
+              uses: peaceiris/actions-gh-pages@v3
+              with:
+                  external_repository: genome-spy/genome-spy.github.io
+                  publish_branch: master
+                  deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+                  publish_dir: ./packages/playground/dist
+                  destination_dir: playground
+                  user_name: "github-actions[bot]"
+                  user_email: "github-actions[bot]@users.noreply.github.com"
+                  commit_message: ${{ github.event.head_commit.message }} (playground)
