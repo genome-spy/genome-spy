@@ -42,17 +42,8 @@ jobs:
                   npm -w @genome-spy/doc-embed run build
                   npm -w @genome-spy/playground run build
 
-            - name: (Debug) list embed dist files
-              run: ls -l packages/doc-embed/dist
-
             - name: Build docs
               run: npm run build:docs
-
-            - name: (Debug) list embed in docs
-              run: ls -l docs/app
-
-            - name: (Debug) list embed in site
-              run: ls -l site/app
 
             - name: Deploy docs
               uses: peaceiris/actions-gh-pages@v3
