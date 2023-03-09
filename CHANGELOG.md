@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.28.2](https://github.com/tuner/genome-spy/compare/v0.28.1...v0.28.2) (2023-03-09)
+
+
+### Performance Improvements
+
+* **core:** re-enable caching of view size ([5f28392](https://github.com/tuner/genome-spy/commit/5f28392ea3938018098a6e041f80f208d1691f94))
+
+
+
+
+
 ## [0.28.1](https://github.com/tuner/genome-spy/compare/v0.28.0...v0.28.1) (2023-03-07)
 
 
