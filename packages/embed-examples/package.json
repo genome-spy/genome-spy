@@ -7,7 +7,7 @@
     "dev": "vite"
   },
   "author": "Kari Lavikka",
-  "license": "BSD-2-Clause",
+  "license": "MIT",
   "dependencies": {
     "@genome-spy/core": "^0.28.2",
     "lit": "^2.0.0-rc.2"

@@ -5,7 +5,7 @@
   "description": "Embeds GenomeSpy to documentation",
   "author": "Kari Lavikka <kari.lavikka@helsinki.fi>",
   "homepage": "",
-  "license": "BSD-2-Clause",
+  "license": "MIT",
   "scripts": {
     "build": "vite build"
   },

@@ -6,7 +6,7 @@
     "email": "kari.lavikka@helsinki.fi"
   },
   "contributors": [],
-  "license": "BSD-2-Clause",
+  "license": "MIT",
   "version": "0.28.2",
   "main": "dist/index.js",
   "files": [
