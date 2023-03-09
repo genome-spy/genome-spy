@@ -11,7 +11,7 @@ export { GenomeSpy, App as GenomeSpyApp, icon, html };
 /**
  * Embeds GenomeSpyApp into the DOM
  *
- * This is largely copy-paste from `genome-spy/src/index.js`.
+ * This is largely copy-paste from `genome-spy/src/index.js`
  * TODO: Consolidate
  *
  * @type {import("@genome-spy/core/embedApi").EmbedFunction}
