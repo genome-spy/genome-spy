@@ -30,15 +30,39 @@ The toolkit comprises two JavaScript libraries:
 Check the [Getting Started](getting-started.md) page to get started with
 GenomeSpy and make your own tailored visualizations.
 
-# Example
+## Example
 
-TODO: A simple example with some sensible, preferably genomic data.
+<div><genome-spy-doc-embed>
 
-<!--
-<div class="embed-example" data-url="data/examples/sampletrack.json" style="height: 300px"></div>
--->
+```json
+{
+  "data": {
+    "sequence": { "start": 0, "stop": 200000, "as": "x" }
+  },
+  "transform": [
+    { "type": "formula", "expr": "random() * 0.682", "as": "u" },
+    {
+      "type": "formula",
+      "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618 + sin(datum.x / 10000)",
+      "as": "y"
+    }
+  ],
+  "mark": {
+    "type": "point",
+    "geometricZoomBound": 10.5
+  },
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
+    "y": { "field": "y", "type": "quantitative" },
+    "size": { "value": 200 },
+    "opacity": { "value": 0.6 }
+  }
+}
+```
 
-# About
+</genome-spy-doc-embed></div>
+
+## About
 
 GenomeSpy is developed by [Kari Lavikka](https://twitter.com/KariLavikka) in
 [The Systems Biology of Drug Resistance in Cancer
