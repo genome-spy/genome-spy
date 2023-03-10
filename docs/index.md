@@ -68,3 +68,7 @@ GenomeSpy is developed by [Kari Lavikka](https://twitter.com/KariLavikka) in
 [The Systems Biology of Drug Resistance in Cancer
 group](https://www.helsinki.fi/en/researchgroups/systems-biology-of-drug-resistance-in-cancer)
 at the [University of Helsinki](https://helsinki.fi/).
+
+This project has received funding from the European Union's Horizon 2020
+Research and Innovation Programme under Grant agreement No. 667403 (HERCULES)
+and No. 965193 (DECIDER)
