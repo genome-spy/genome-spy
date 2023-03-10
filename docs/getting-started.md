@@ -1,12 +1,17 @@
-# Quick Start
+# Getting Started
+
+There are three ways to get quickly started with GenomeSpy visualizations: the
+Playground app, Observable notebooks, and embedding GenomeSpy on HTML pages.
+More advanced users can use GenomeSpy as a visualization library in web
+applications.
 
 ## Playground
 
 The easiest way to try out GenomeSpy is the [Playground
-app](https://genomespy.app/playground/), which allows you to experiment with
-different visualization specifications directly in the web browser. You can load
-data from publicly accessible web servers or your computer. The app is still
-rudimentary and does not support saving or sharing visualizations.
+](https://genomespy.app/playground/) app, which allows you to experiment with
+different visualization specifications directly in your web browser. You can
+load data from publicly accessible web servers or from your computer. The app is
+still rudimentary and does not support saving or sharing visualizations.
 
 ## Observable notebooks
 
@@ -50,10 +55,6 @@ recommended to use a specific version.
 
     ![npm version](https://img.shields.io/npm/v/@genome-spy/core)
 
-!!! warning "Stylesheet filename"
-
-    `index.css` was renamed to `style.css` in v0.4.0!
-
 #### Load the spec from a file
 
 This template loads the spec from the `spec.json` file.
@@ -66,13 +67,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/@genome-spy/core@0.14.0/dist/style.css"
+      href="https://unpkg.com/@genome-spy/core@0.28.x/dist/style.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/@genome-spy/core@0.14.0/dist/index.js"
+      src="https://unpkg.com/@genome-spy/core@0.28.x/dist/index.js"
     ></script>
 
     <script>
@@ -92,13 +93,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/@genome-spy/core@0.14.0/dist/style.css"
+      href="https://unpkg.com/@genome-spy/core@0.28.x/dist/style.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/@genome-spy/core@0.14.0/dist/index.js"
+      src="https://unpkg.com/@genome-spy/core@0.28.x/dist/index.js"
     ></script>
 
     <script>
@@ -119,3 +120,11 @@ This template loads the spec from the `spec.json` file.
   </body>
 </html>
 ```
+
+## Using GenomeSpy as a visualization library in web applications
+
+TODO
+
+Meanwhile, check the
+[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+package.

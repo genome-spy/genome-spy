@@ -59,7 +59,6 @@ nav:
                 - "grammar/composition/index.md"
                 - Concat: "grammar/composition/concat.md"
                 - Layer: "grammar/composition/layer.md"
-                - Samples: "grammar/samples.md"
           - Scales: "grammar/scale.md"
           - Importing Views: "grammar/import.md"
           - Expressions: "grammar/expressions.md"
@@ -70,5 +69,6 @@ nav:
           - Examples:
                 - SEG file: "genomic-data/examples/seg-file.md"
                 - ASCAT: "genomic-data/examples/ascat.md"
+    - Working with Multiple Samples: "multiple-samples.md"
     - JavaScript API: "api.md"
     - License: "license.md"

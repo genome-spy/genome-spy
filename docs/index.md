@@ -1,19 +1,34 @@
 # Introduction
 
-GenomeSpy is an interactive visualization tool for genomic and other data. It
-provides a declarative [grammar](grammar/index.md) for mapping data to visual
-channels (position, color, etc.) and composing complex visualization from
-primitive graphical marks ([points](grammar/mark/point.md),
+![Logo](../img/do-it-swiftly.svg){ align=right }
+
+GenomeSpy is a toolkit for interactive visualization of genomic and other data.
+It enables tailored visualizations by providing a declarative
+[grammar](grammar/index.md), which allows for mapping data to visual channels
+(position, color, etc.) and composing complex visualization from primitive
+graphical marks ([points](grammar/mark/point.md),
 [rectangles](grammar/mark/rect.md), etc.). The grammar is heavily inspired by
-[Vega-Lite](https://vega.github.io/vega-lite/).
+[Vega-Lite](https://vega.github.io/vega-lite/), providing partial compatibility
+and extending it with features essential in genome visualization.
 
 The visualizations are rendered using a carefully crafted WebGL-based engine,
-and thus, GenomeSpy is able to provide fluid interactions and smooth animations
-for datasets as large as a few million data points.
+enabling fluid interaction and smooth animation for datasets comprising several
+million data points. The high interactive performance is achieved using GPU
+[shader](https://en.wikipedia.org/wiki/Shader) programs for all
+[scale](grammar/scale.md) transformations and rendering of marks. However,
+shaders are an implementation detail hidden from the end users.
 
-To facilitate exploration of large cohorts of patients and (biological) samples,
-GenomeSpy supports aggregation and [interactive
-manipulation](grammar/samples.md) of large sample sets.
+The toolkit comprises two JavaScript libraries:
+
+1. The **core** library implements the visualization grammar and rendering engine
+   and can be embedded in web pages or applications.
+2. The **app** extends the core library with support for interactive analysis
+   of large sample collections. It broadens the grammar by introducing a facet
+   operator that repeats a visualization for multiple samples and provides
+   interactions for filtering, sorting, and grouping the sample collections.
+
+Check the [Getting Started](getting-started.md) page to get started with
+GenomeSpy and make your own tailored visualizations.
 
 # Example
 
