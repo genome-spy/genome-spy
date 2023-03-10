@@ -37,3 +37,11 @@
     color: #888;
     font-size: 80%;
 }
+
+.md-typeset {
+    line-height: 1.4;
+}
+
+.md-typeset :is(h1, h2) {
+    font-weight: normal;
+}
