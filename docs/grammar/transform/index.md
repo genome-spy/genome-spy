@@ -1,8 +1,9 @@
 # Data transformation
 
-With transforms, you can build a pipeline that modifies the data before the
-objects are mapped to marks. For example, they may filter or derive data, adding
-or removing fields or data objects.
+With transforms, you can build a pipeline that modifies the data before the data
+objects are mapped to mark instances. In an abstract sense, a transformation
+inputs a list of data items and outputs a list of new items that may be
+filtered, modified, or generated from the original items.
 
 !!! warning "Departure from Vega-Lite"
 

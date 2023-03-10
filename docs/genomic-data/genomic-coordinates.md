@@ -85,8 +85,9 @@ Cytobands and genome annotations cannot be provided inline.
 
 ## Encoding genomic coordinates
 
-When a genome has been specified, you can encode the genomic coordinates
-conveniently:
+When a genome assembly has been specified, you can encode the genomic
+coordinates conveniently by specifying the chromosome (`chrom`) and position
+(`pos`) fields as follows:
 
 ```json
 {
@@ -114,12 +115,13 @@ position is read from the `"Chr"` and `"Pos"` fields, respectively. The
     When the `chrom` and `pos` properties are used used in channel definitions,
     GenomeSpy inserts an implicit
     [linearizeGenomicCoordinate](../grammar/transform/linearize-genomic-coordinate.md)
-    transform into the data flow. The transform introduces a new field that
-    contains a linearized (concatenated) coordinate for the chromosome-position
-    pair. The channel definition is modified to use the new field.
+    transformation into the data flow. The transformation introduces a new field
+    that contains a linearized (concatenated) coordinate for the
+    chromosome-position pair. The channel definition is modified to use the new
+    field.
 
-    In some cases you may want to insert an explicit transform to the data flow
-    to have better control on its behavior.
+    In some cases you may want to insert an explicit transformation to the data
+    flow to have better control on its behavior.
 
 ## Coordinate counting
 

@@ -1,8 +1,10 @@
 # Linearize Genomic Coordinate
 
-![Placeholder](../../img/coordinate-linearization.svg){ align=right }
+![Linearization](../../img/coordinate-linearization.svg){ align=right }
 
-TODO
+The `linearizeGenomicCoordinate` transform maps the \(chromosome, position\)
+pairs into a linear coordinate space using the chromosome sizes of
+the current [genome assembly](../../genomic-data/genomic-coordinates.md).
 
 ## Parameters
 
