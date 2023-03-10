@@ -121,6 +121,13 @@ This template loads the spec from the `spec.json` file.
 </html>
 ```
 
+### Genomespy.app website examples
+
+The examples on the [genomespy.app](https://genomespy.app/) main page are stored
+in the [website-examples](https://github.com/genome-spy/website-examples) GitHub
+repository. You can clone the repository and launch the examples locally for
+further experimentation.
+
 ## Using GenomeSpy as a visualization library in web applications
 
 TODO
