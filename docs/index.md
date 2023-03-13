@@ -30,7 +30,9 @@ The toolkit comprises two JavaScript libraries:
 Check the [Getting Started](getting-started.md) page to get started with
 GenomeSpy and make your own tailored visualizations.
 
-## Example
+## An interactive example
+
+The example below is interactive. You can zoom in using the mouse wheel.
 
 <div><genome-spy-doc-embed>
 
