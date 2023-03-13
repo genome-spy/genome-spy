@@ -1,4 +1,4 @@
-# Genomic coordinates
+# Genomic Coordinates
 
 ![Placeholder](../img/coordinate-linearization.svg){ align=right }
 
@@ -21,9 +21,9 @@ name of the assembly to the top level view specification:
 
 !!! warning "Only a single genome assembly"
 
-    Currently, a visualization may have only a single globally configured
-    genome.  Different genomes for different scales (for `x` and `y` axes, for
-    example) will be supported in the future.
+    Currently, a visualization may have only a single globally configured genome
+    assembly. Different assemblies for different scales (for `x` and `y` axes,
+    for example) will be supported in the future.
 
 ## Supported genomes
 
@@ -104,21 +104,21 @@ coordinates conveniently by specifying the chromosome (`chrom`) and position
 }
 ```
 
-The example above specifies that the chromosome and the intra-chromosomal
-position is read from the `"Chr"` and `"Pos"` fields, respectively. The
-`"locus"` data type pairs the channel with a
-[`"locus"`](../grammar/scale.md#locus-scale) scale. However, you can also use the
-`field` property with the locus data type.
+The example above specifies that the _chromosome_ is read from the `"Chr"` field
+and the _intra-chromosomal position_ from the `"Pos"` field. The `"locus"` data
+type pairs the channel with a [`"locus"`](../grammar/scale.md#locus-scale)
+scale, which provides a chromosome-aware axis. However, you can also use the
+`field` property with the locus data type if the coordinate has already been
+linearized. The `offset` property is explained [below](#coordinate-counting).
 
 !!! note "What happens under the hood"
 
     When the `chrom` and `pos` properties are used used in channel definitions,
     GenomeSpy inserts an implicit
     [linearizeGenomicCoordinate](../grammar/transform/linearize-genomic-coordinate.md)
-    transformation into the data flow. The transformation introduces a new field
-    that contains a linearized (concatenated) coordinate for the
-    chromosome-position pair. The channel definition is modified to use the new
-    field.
+    transformation into the data flow. The transformation introduces a new
+    field with the linearized coordinate for the (chromosome, position) pair.
+    The channel definition is modified to use the new field.
 
     In some cases you may want to insert an explicit transformation to the data
     flow to have better control on its behavior.
@@ -134,3 +134,63 @@ GenomeSpy's [`"locus"`](../grammar/scale.md#locus-scale) scale expects
 
 Read more about coordinates at the [UCSC Genome Browser
 Blog](http://genome.ucsc.edu/blog/the-ucsc-genome-browser-coordinate-counting-systems/).
+
+## Examples
+
+### Point features
+
+<div><genome-spy-doc-embed height="80">
+
+```json
+{
+  "genome": { "name": "hg38" },
+  "data": {
+    "values": [
+      { "chrom": "chr3", "pos": 134567890 },
+      { "chrom": "chr4", "pos": 123456789 },
+      { "chrom": "chr9", "pos": 34567890 }
+    ]
+  },
+  "mark": "point",
+  "encoding": {
+    "x": {
+      "chrom": "chrom",
+      "pos": "pos",
+      "type": "locus"
+    }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+### Segment features
+
+<div><genome-spy-doc-embed height="80">
+
+```json
+{
+  "genome": { "name": "hg38" },
+  "data": {
+    "values": [
+      { "chrom": "chr3", "startpos": 100000000, "endpos": 140000000 },
+      { "chrom": "chr4", "startpos": 70000000, "endpos": 170000000 },
+      { "chrom": "chr9", "startpos": 50000000, "endpos": 70000000 }
+    ]
+  },
+  "mark": "rect",
+  "encoding": {
+    "x": {
+      "chrom": "chrom",
+      "pos": "startpos",
+      "type": "locus"
+    },
+    "x2": {
+      "chrom": "chrom",
+      "pos": "endpos"
+    }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
