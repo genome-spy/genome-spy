@@ -69,6 +69,9 @@ nav:
           - Examples:
                 - SEG file: "genomic-data/examples/seg-file.md"
                 - ASCAT: "genomic-data/examples/ascat.md"
-    - Working with Multiple Samples: "multiple-samples.md"
+    - Working with Sample Collections:
+          - "sample-collections/index.md"
+          - Visualizing: "sample-collections/visualizing.md"
+          - Analyzing: "sample-collections/analyzing.md"
     - JavaScript API: "api.md"
     - License: "license.md"

@@ -18,11 +18,12 @@ million data points. The high interactive performance is achieved using GPU
 [scale](grammar/scale.md) transformations and rendering of marks. However,
 shaders are an implementation detail hidden from the end users.
 
-The toolkit comprises two JavaScript libraries:
+The toolkit comprises two JavaScript packages:
 
-1. The **core** library implements the visualization grammar and rendering engine
-   and can be embedded in web pages or applications.
-2. The **app** extends the core library with support for interactive analysis
+1. The [**core**](grammar/index.md) library implements the visualization grammar
+   and rendering engine and can be embedded in web pages or applications.
+2. The [**app**](sample-collections/index.md) extends the core library with support
+   for interactive analysis
    of large sample collections. It broadens the grammar by introducing a facet
    operator that repeats a visualization for multiple samples and provides
    interactions for filtering, sorting, and grouping the sample collections.
