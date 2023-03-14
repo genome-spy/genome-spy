@@ -17,6 +17,10 @@ markdown_extensions:
     - attr_list
     - toc:
           permalink: true
+    - attr_list
+    - pymdownx.emoji:
+          emoji_index: !!python/name:materialx.emoji.twemoji
+          emoji_generator: !!python/name:materialx.emoji.to_svg
     - genomespy_extension
 extra_javascript:
     - app/index.js
@@ -27,7 +31,7 @@ repo_url: https://github.com/tuner/genome-spy
 nav:
     - Introduction: "index.md"
     - Getting Started: "getting-started.md"
-    - Grammar:
+    - Visualization Grammar:
           - "grammar/index.md"
           - Data Input: "grammar/data.md"
           - Transform:
