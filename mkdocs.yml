@@ -13,6 +13,7 @@ markdown_extensions:
     - pymdownx.magiclink
     - pymdownx.highlight
     - pymdownx.superfences
+    - pymdownx.keys
     - admonition
     - attr_list
     - toc:
