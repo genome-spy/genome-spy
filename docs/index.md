@@ -1,6 +1,6 @@
 # Introduction
 
-![Logo](../img/do-it-swiftly.svg){ align=right }
+![Logo](./img/do-it-swiftly.svg){ align=right }
 
 GenomeSpy is a toolkit for interactive visualization of genomic and other data.
 It enables tailored visualizations by providing a declarative
