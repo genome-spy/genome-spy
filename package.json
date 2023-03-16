@@ -12,7 +12,7 @@
     "eslint-config-prettier": "^8.5.0",
     "express": "^4.17.2",
     "husky": "^8.0.1",
-    "lerna": "^4.0.0",
+    "lerna": "^6.5.1",
     "lint-staged": "^12.4.1",
     "node-sass": "^7.0.1",
     "prettier": "^2.8.4",
