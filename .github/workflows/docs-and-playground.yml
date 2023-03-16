@@ -3,6 +3,7 @@ name: Build and deploy docs and Playground
 on:
     release:
         types: [released]
+    workflow_dispatch:
 
 jobs:
     build:
