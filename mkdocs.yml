@@ -3,18 +3,25 @@ theme:
     name: material
     custom_dir: custom_theme/
     features:
-      - navigation.indexes
+        - navigation.indexes
     palette:
         primary: indigo
+    font:
+        text: Lato
 markdown_extensions:
     - markdown.extensions.def_list
     - pymdownx.magiclink
     - pymdownx.highlight
     - pymdownx.superfences
+    - pymdownx.keys
     - admonition
     - attr_list
     - toc:
           permalink: true
+    - attr_list
+    - pymdownx.emoji:
+          emoji_index: !!python/name:materialx.emoji.twemoji
+          emoji_generator: !!python/name:materialx.emoji.to_svg
     - genomespy_extension
 extra_javascript:
     - app/index.js
@@ -25,7 +32,7 @@ repo_url: https://github.com/tuner/genome-spy
 nav:
     - Introduction: "index.md"
     - Getting Started: "getting-started.md"
-    - Grammar:
+    - Visualization Grammar:
           - "grammar/index.md"
           - Data Input: "grammar/data.md"
           - Transform:
@@ -57,7 +64,6 @@ nav:
                 - "grammar/composition/index.md"
                 - Concat: "grammar/composition/concat.md"
                 - Layer: "grammar/composition/layer.md"
-                - Samples: "grammar/samples.md"
           - Scales: "grammar/scale.md"
           - Importing Views: "grammar/import.md"
           - Expressions: "grammar/expressions.md"
@@ -68,5 +74,9 @@ nav:
           - Examples:
                 - SEG file: "genomic-data/examples/seg-file.md"
                 - ASCAT: "genomic-data/examples/ascat.md"
+    - Working with Sample Collections:
+          - "sample-collections/index.md"
+          - Visualizing: "sample-collections/visualizing.md"
+          - Analyzing: "sample-collections/analyzing.md"
     - JavaScript API: "api.md"
     - License: "license.md"

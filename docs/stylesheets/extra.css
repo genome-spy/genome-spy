@@ -21,10 +21,7 @@
 
 .md-typeset dl dd {
     margin-top: 0.5em;
-}
-
-.md-typeset dl {
-    line-height: 1.5em;
+    margin-bottom: 1em;
 }
 
 .md-typeset dl p {
@@ -36,4 +33,16 @@
     margin-left: 1em;
     color: #888;
     font-size: 80%;
+}
+
+.md-typeset {
+    line-height: 1.4;
+}
+
+.md-typeset :is(h1, h2) {
+    font-weight: normal;
+}
+
+.screenshot {
+    border-radius: 0.2rem;
 }
