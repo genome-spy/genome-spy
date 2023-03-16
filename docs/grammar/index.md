@@ -35,11 +35,13 @@ encoded into mark instances.
 ```json
 {
   "data": { "url": "sincos.csv" },
-  "transform": [{ "type": "formula", "expr": "datum.sin * 2", "as": "sin" }],
+  "transform": [
+    { "type": "formula", "expr": "abs(datum.sin)", "as": "abs(sin)" }
+  ],
   "mark": "point",
   "encoding": {
     "x": { "field": "x", "type": "quantitative" },
-    "y": { "field": "sin", "type": "quantitative" },
+    "y": { "field": "abs(sin)", "type": "quantitative" },
     "size": { "field": "x", "type": "quantitative" }
   }
 }
