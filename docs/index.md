@@ -23,10 +23,10 @@ The toolkit comprises two JavaScript packages:
 1. The [**core**](grammar/index.md) library implements the visualization grammar
    and rendering engine and can be embedded in web pages or applications.
 2. The [**app**](sample-collections/index.md) extends the core library with support
-   for interactive analysis
-   of large sample collections. It broadens the grammar by introducing a facet
-   operator that repeats a visualization for multiple samples and provides
-   interactions for filtering, sorting, and grouping the sample collections.
+   for interactive analysis of large sample collections. It broadens the grammar
+   by introducing a facet operator that repeats a visualization for multiple
+   samples. The app also provides interactions for filtering, sorting, and
+   grouping these samples.
 
 Check the [Getting Started](getting-started.md) page to get started with
 GenomeSpy and make your own tailored visualizations.
