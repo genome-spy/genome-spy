@@ -120,7 +120,10 @@ export default class Toolbar extends LitElement {
                 class="tool-btn"
                 title="Help"
                 @click=${() =>
-                    window.open("https://genomespy.app/docs/", "_blank")}
+                    window.open(
+                        "https://genomespy.app/docs/sample-collections/analyzing/",
+                        "_blank"
+                    )}
             >
                 ${icon(faQuestionCircle).node[0]}
             </button>
