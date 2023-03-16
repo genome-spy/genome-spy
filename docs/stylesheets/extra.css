@@ -42,3 +42,7 @@
 .md-typeset :is(h1, h2) {
     font-weight: normal;
 }
+
+.screenshot {
+    border-radius: 0.2rem;
+}
