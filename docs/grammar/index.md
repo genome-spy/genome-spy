@@ -8,19 +8,19 @@ such as [marks](mark/point.md), [transformations](transform/), and
 display the underlying data more effectively.
 
 The concept was first introduced in [The Grammar of
-Graphics](https://www.springer.com/gp/book/9780387245447) and developer further
+Graphics](https://www.springer.com/gp/book/9780387245447) and developed further
 in [ggplot2](https://ggplot2.tidyverse.org/) and
 [Vega-Lite](https://vega.github.io/vega-lite/).
 
-!!! note "A subset of Vega-Lite"
+!!! note "A dialect of Vega-Lite"
 
-    The visualization grammar of GenomeSpy is a subset and a dialect of
-    [Vega-Lite](https://vega.github.io/vega-lite/). However, the goals of
-    GenomeSpy and Vega-Lite are different – GenomeSpy is more domain specific
-    and is intended for visualization and analysis of large datasets that
-    contain genomic coordinates. GenomeSpy tries to faithfully follow
-    Vega-Lite's grammar where practical. Thus, this documentation has many
-    references to its documentation.
+    The visualization grammar of GenomeSpy is a dialect of
+    [Vega-Lite](https://vega.github.io/vega-lite/), providing partial
+    compatibility. However, the goals of GenomeSpy and Vega-Lite are different –
+    GenomeSpy is more domain-specific and primarily intended for the
+    visualization and analysis of large datasets containing genomic coordinates.
+    Nevertheless, GenomeSpy tries to follow Vega-Lite's grammar where practical,
+    and thus, this documentation has several references to its documentation.
 
 ## A single view specification
 
@@ -49,17 +49,63 @@ encoded into mark instances.
 
 </genome-spy-doc-embed></div>
 
-TODO: Document the supported properties. Meanwhile, have a look at Vega-Lite's
-[view specification](https://vega.github.io/vega-lite/docs/spec.html)
-documentation, as many of the properties (e.g., width/height, title, etc.) are
-supported in GenomeSpy.
+### Properties
 
-## More complex visualizations with view composition
+`data`
+: Specifies a [data source](./data.md). If omitted, the data source is inherited
+from the parent view.
+
+`transform`
+: An array of [transformations](./transform/index.md) applied to the data before
+visual encoding.
+
+`mark`
+: The graphical mark presenting the data objects.
+
+`encoding`
+: Specifies how data is encoded using the visual channels.
+
+`name`
+: An internal name that can be used for referring the view. For referencing purposes,
+the name should be unique within the whole view hierarchy.
+
+`width`
+: Width of the view. Check [child sizing](./composition/concat.md#child-sizing) for details.
+
+`height`
+: Height of the view. Check [child sizing](./composition/concat.md#child-sizing) for details.
+
+`padding`
+: Padding applied to the view. Accepts either a number reprenting pixels or a
+PaddingConfig. Example: `padding: { top: 10, right: 20, bottom: 10, left: 20 }`
+
+`title`
+: View title. Accepts a string or a
+[title specification](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/spec/title.d.ts)
+object. N.B.: Currently, GenomeSpy doesn't do bound calculation, and you need to
+manually specify proper `padding` for the view to ensure that the title is visible.
+
+`description`
+: A description of the view. Can be used for documentation. The description of the
+top-level view is shown in the toolbar of the [GenomeSpy _app_](../sample-collections/index.md).
+
+`baseUrl`
+: The base URL for relative [URL data sources](./data.md). The base URLs are
+inherited in the view hierarchy unless overridden with this property. By default,
+the top-level view's base URL equals to the visualization specification's base URL.
+
+`opacity`
+: TODO
+
+`visible`
+: The default visibility of the view. An invisible view is removed from the
+layout and not rendered. For context, see
+[toggleable view visibility](../sample-collections/visualizing.md#toggleable-view-visibility).
+
+## View composition for more complex visualizations
 
 View [composition](composition/index.md) allows for building more complex
-visualizations from multiple view specifications. For example, the
-[`layer`](composition/layer.md) operator enables creation of custom glyphs and
-the [concatenation](composition/concat.md) operators allow stacked layouts
+visualizations from multiple single-view specifications. For example, the
+[`layer`](composition/layer.md) operator allows creation of custom glyphs and
+the [concatenation](composition/concat.md) operators enables stacked layouts
 resembling genome browsers with multiple tracks.
-
-TODO: Write about inheritance of `data` and `encoding`.
