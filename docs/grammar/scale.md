@@ -1,20 +1,37 @@
 # Scale
 
 Scales are
-[functions](https://observablehq.com/@mkfreeman/animated-scale-diagram) that
-map abstract values (e.g., a type of a point mutation) in the data to
-visual values (e.g., colors that indicate the type).
+[functions](https://observablehq.com/@mkfreeman/animated-scale-diagram) that map
+abstract data values (e.g., a type of a point mutation) to visual values (e.g.,
+colors that indicate the type).
 
-By default, GenomeSpy configures scales automatically, based on the data type
-(e.g., `"ordinal"`), visual channel, and the data domain. The defaults may not
-always be optimal, and you can configure them by yourself.
+By default, GenomeSpy configures scales automatically based on the data type
+(e.g., `"ordinal"`), the visual channel, and the data domain. As the defaults
+may not always be optimal, the scales can be configured explicitly.
+
+```json title="Specifying a scale for a channel"
+{
+  "encoding": {
+    "y": {
+      "field": "impact",
+      "type": "quantitative",
+      "scale": {
+        "type": "linear",
+        "domain": [0, 1]
+      }
+    }
+  },
+  ...
+}
+
+```
 
 ## Vega-Lite scales
 
-GenomeSpy implements the majority of the [scale types of
+GenomeSpy implements most of the [scale types of
 Vega-Lite](https://vega.github.io/vega-lite/docs/scale.html). The aim is to
 replicate their behavior identically (unless stated otherwise) in GenomeSpy.
-Although that has not yet fully materialized, Vega-Lite's scale documentation
+Although that has yet to fully materialize, Vega-Lite's scale documentation
 generally applies to GenomeSpy as well.
 
 The supported scales are: `"linear"`, `"pow"`, `"sqrt"`, `"symlog"`, `"log"`,
@@ -22,15 +39,15 @@ The supported scales are: `"linear"`, `"pow"`, `"sqrt"`, `"symlog"`, `"log"`,
 scale is supported on quantitative channels such as `x` and `opacity`.
 
 Currently, the following scales are **not** supported: `"time"`, `"utc"`,
-`"quantile"`, `"bin-linear"`, `"bin-ordinal"`. Also, the `sort` property that
-allows for sorting the domain values is yet to be implemented.
+`"quantile"`, `"bin-linear"`, `"bin-ordinal"`.
 
 !!! note "Relation to Vega scales"
 
     In fact, GenomeSpy uses [Vega
     scales](https://vega.github.io/vega/docs/scales/), which are based on
     [d3-scale](https://github.com/d3/d3-scale). However, GenomeSpy has GPU-based
-    implementations for the actual scale transformations.
+    implementations for the actual scale transformations, ensuring high
+    rendering performance.
 
 ## GenomeSpy-specific scales
 
