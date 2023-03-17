@@ -110,11 +110,11 @@ An example of a metadata file (`samples.tsv`):
 
 #### Specifying data types of metadata attributes
 
-To adjust the data types and [scales](../grammar/scale.md) of the attributes,
-they can be specified explicitly using the `attributes` object, as shown in the
-example below:
+To adjust the data types, [scales](../grammar/scale.md), and default visibility
+of the attributes, they can be specified explicitly using the `attributes`
+object, as shown in the example below:
 
-```json
+```json title="Specifying a purity attribute"
 {
   "samples": {
     "data": { "url": "samples.tsv" },
@@ -124,7 +124,9 @@ example below:
         "scale": {
           "domain": [0, 1],
           "scheme": "yellowgreenblue"
-        }
+        },
+        "barScale": { },
+        "visible": false
       },
       ...
     }
@@ -132,6 +134,11 @@ example below:
   ...
 }
 ```
+
+The `scale` property specifies a scale for the `color` channel used to encode
+the values on the metadata heatmap. The optional `barScale` property enables
+positional encoding, changing the heatmap cells into a horizontal bar chart. The
+`visible` property configures the default visibility for the attribute.
 
 ### Aggregation
 
