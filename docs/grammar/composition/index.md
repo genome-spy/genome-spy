@@ -88,9 +88,8 @@ no sense with these data.
 ```json
 {
   "resolve": {
-    "scale": {
-      "y": "independent"
-    }
+    "scale": { "y": "independent" },
+    "axis": { "y": "independent" }
   },
   "layer": [
     {
