@@ -22,7 +22,7 @@ point mutations at genomic loci.
 
 ## Channels
 
-In addition to standard [position](../encoding/index.md) channels and
+In addition to standard [position](./index.md#channels) channels and
 `color`, `opacity`, and `strokeWidth` channels, point mark has the following
 channels:
 

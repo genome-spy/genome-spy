@@ -35,7 +35,7 @@ Rect mark displays each data item as a rectangle.
 
 ## Channels
 
-Rect mark supports the standard [position](../encoding/index.md) channels and
+Rect mark supports the standard [position](./index.md#channels) channels and
 `color` and `opacity` channels.
 
 ## Properties

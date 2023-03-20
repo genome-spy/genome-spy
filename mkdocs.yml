@@ -55,6 +55,7 @@ nav:
                 - Sample: "grammar/transform/sample.md"
                 - Stack: "grammar/transform/stack.md"
           - Graphical Marks:
+                - "grammar/mark/index.md"
                 - Link: "grammar/mark/link.md"
                 - Point: "grammar/mark/point.md"
                 - Rect: "grammar/mark/rect.md"

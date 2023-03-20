@@ -26,7 +26,7 @@ Text mark displays each data item as text.
 
 ## Channels
 
-In addition to standard [position](../encoding/index.md) channels and
+In addition to standard [position](./index.md#channels) channels and
 `color` and `opacity` channels, point mark has the following
 channels:
 

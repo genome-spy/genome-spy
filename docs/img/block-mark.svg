@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 743 187" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <g transform="matrix(0.823909,0,0,0.823909,-4444.21,-6968.43)">
+        <text x="6163.5px" y="8561.75px" style="font-family:'Arial-BoldMT', 'Arial', sans-serif;font-weight:700;font-size:62.527px;fill:rgb(62,140,182);">ABC</text>
+    </g>
+    <g transform="matrix(2.38874,0,0,1.32985,-15066,-11885.7)">
+        <rect x="6307.09" y="8952.76" width="47.244" height="70.866" style="fill:rgb(62,140,182);"/>
+    </g>
+    <g transform="matrix(0.884835,0,0,0.884835,-5890.02,-7885.84)">
+        <circle cx="6885.83" cy="8988.19" r="35.433" style="fill:rgb(62,140,182);"/>
+    </g>
+    <g transform="matrix(0.823909,0,0,0.823909,-4944.73,-7425.8)">
+        <path d="M6566.93,9118.11C6566.99,9092.9 6637.8,9094.49 6637.8,9094.49C6637.8,9094.49 6708.86,9095.03 6708.66,9070.87" style="fill:none;stroke:rgb(62,140,182);stroke-width:15.17px;"/>
+    </g>
+    <g transform="matrix(1,0,0,1,-717.876,-1696.64)">
+        <text x="1202.28px" y="1874.29px" style="font-family:'Lato-Regular', 'Lato', sans-serif;font-size:50px;fill:rgb(62,140,182);">link</text>
+    </g>
+    <g transform="matrix(1,0,0,1,-552.324,-1696.64)">
+        <text x="1198.48px" y="1874.29px" style="font-family:'Lato-Regular', 'Lato', sans-serif;font-size:50px;fill:rgb(62,140,182);">te<tspan x="1241.83px " y="1874.29px ">x</tspan>t</text>
+    </g>
+    <g transform="matrix(1,0,0,1,-870.94,-1696.64)">
+        <text x="1198.6px" y="1874.29px" style="font-family:'Lato-Regular', 'Lato', sans-serif;font-size:50px;fill:rgb(62,140,182);">rule</text>
+    </g>
+    <g transform="matrix(1,0,0,1,-1185.65,-1696.64)">
+        <text x="1197.9px" y="1874.29px" style="font-family:'Lato-Regular', 'Lato', sans-serif;font-size:50px;fill:rgb(62,140,182);">rect</text>
+    </g>
+    <g transform="matrix(1,0,0,1,-1039.28,-1696.64)">
+        <text x="1184.75px" y="1874.29px" style="font-family:'Lato-Regular', 'Lato', sans-serif;font-size:50px;fill:rgb(62,140,182);">point</text>
+    </g>
+    <g transform="matrix(1.14299,-0.133011,-0.133011,1.12373,-585.128,-1790.57)">
+        <path d="M992.534,1824.06L1094.26,1729.42" style="fill:none;stroke:rgb(62,140,182);stroke-width:14.58px;stroke-dasharray:29.16,14.58,0,0;"/>
+    </g>
+</svg>

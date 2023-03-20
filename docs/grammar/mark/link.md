@@ -36,7 +36,7 @@ example.
 
 ## Channels
 
-In addition to the standard [position](../encoding/index.md) channels and
+In addition to the standard [position](./index.md#channels) channels and
 `color` and `opacity` channels, link mark supports the following channels:
 
 `size`
