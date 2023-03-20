@@ -2,7 +2,7 @@
 
 GenomeSpy inputs tabular data as `"csv"`, `"tsv"`, and `"json"` files.
 Currently, the only supported bioinformatic file format is non-indexed
-`"fasta"`. Other formats such as _BED_ or _BigWig_ are not directly supported.
+[`"fasta"`](#fasta). Other formats such as _BED_ or _BigWig_ are not directly supported.
 They must be first converted into one of the above tabular formats.
 
 GenomeSpy can load data from external files or use inline data. You
@@ -37,6 +37,11 @@ GenomeSpy is identical to Vega-Lite's
     need to be specified explicitly. On the other hand, explicit type
     specification also gives a significant performance boost to parsing
     performance.
+
+!!! warning "Handling empty (NA) values"
+
+    Empty or missing values must be presented as **empty strings** instead of `NA`
+    that R writes by default. Otherwise type inference fails for numeric fields.
 
 ## Named Data Sources
 
