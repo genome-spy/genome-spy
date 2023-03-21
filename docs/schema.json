@@ -478,6 +478,9 @@
         "baseUrl": {
           "type": "string"
         },
+        "columns": {
+          "type": "number"
+        },
         "concat": {
           "items": {
             "anyOf": [
@@ -575,7 +578,14 @@
           "type": "number"
         },
         "title": {
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Title"
+            }
+          ]
         },
         "transform": {
           "items": {
@@ -606,7 +616,8 @@
         }
       },
       "required": [
-        "concat"
+        "concat",
+        "columns"
       ],
       "type": "object"
     },
@@ -933,6 +944,19 @@
           "description": "Y2 coordinates of the marks.\n\nThe `value` of this channel can be a number between zero and one."
         }
       },
+      "type": "object"
+    },
+    "ExprDef": {
+      "additionalProperties": false,
+      "properties": {
+        "expr": {
+          "description": "An expression. Properties of the data can be accessed through the `datum` object.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expr"
+      ],
       "type": "object"
     },
     "Field": {
@@ -1335,7 +1359,14 @@
           "type": "number"
         },
         "title": {
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Title"
+            }
+          ]
         },
         "transform": {
           "items": {
@@ -1624,7 +1655,14 @@
           "type": "object"
         },
         "title": {
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Title"
+            }
+          ]
         },
         "transform": {
           "items": {
@@ -1633,7 +1671,7 @@
           "type": "array"
         },
         "view": {
-          "$ref": "#/definitions/ViewConfig"
+          "$ref": "#/definitions/ViewBackground"
         },
         "visible": {
           "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
@@ -1790,9 +1828,6 @@
         "dy": {
           "description": "The vertical offset between the text and its anchor point, in pixels. Applied after the rotation by `angle`.",
           "type": "number"
-        },
-        "dynamicData": {
-          "type": "boolean"
         },
         "fill": {
           "type": "string"
@@ -2972,7 +3007,14 @@
               "type": "object"
             },
             "title": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/definitions/Title"
+                }
+              ]
             },
             "transform": {
               "items": {
@@ -2981,7 +3023,7 @@
               "type": "array"
             },
             "view": {
-              "$ref": "#/definitions/ViewConfig"
+              "$ref": "#/definitions/ViewBackground"
             },
             "visible": {
               "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
@@ -3137,7 +3179,14 @@
               "type": "object"
             },
             "title": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/definitions/Title"
+                }
+              ]
             },
             "transform": {
               "items": {
@@ -3146,7 +3195,7 @@
               "type": "array"
             },
             "view": {
-              "$ref": "#/definitions/ViewConfig"
+              "$ref": "#/definitions/ViewBackground"
             },
             "visible": {
               "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
@@ -3292,7 +3341,14 @@
               "type": "boolean"
             },
             "title": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/definitions/Title"
+                }
+              ]
             },
             "transform": {
               "items": {
@@ -3432,7 +3488,14 @@
               "type": "number"
             },
             "title": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/definitions/Title"
+                }
+              ]
             },
             "transform": {
               "items": {
@@ -3597,7 +3660,14 @@
               "type": "number"
             },
             "title": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/definitions/Title"
+                }
+              ]
             },
             "transform": {
               "items": {
@@ -3640,6 +3710,9 @@
             },
             "baseUrl": {
               "type": "string"
+            },
+            "columns": {
+              "type": "number"
             },
             "concat": {
               "items": {
@@ -3749,7 +3822,14 @@
               "type": "number"
             },
             "title": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/definitions/Title"
+                }
+              ]
             },
             "transform": {
               "items": {
@@ -3780,6 +3860,7 @@
             }
           },
           "required": [
+            "columns",
             "concat"
           ],
           "type": "object"
@@ -3947,7 +4028,14 @@
           "type": "boolean"
         },
         "title": {
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Title"
+            }
+          ]
         },
         "transform": {
           "items": {
@@ -4061,10 +4149,6 @@
         "exponent": {
           "description": "The exponent of the `pow` scale.",
           "type": "number"
-        },
-        "fp64": {
-          "description": "Use emulated 64bit floating points on the GPU to increase precision.\n\nEmulation has a performance cost when compared to the native 32bit processing, but the effect is negligible in the most cases.\n\n__Default value:__ `true` for `\"locus\"` scale, `false` for others.",
-          "type": "boolean"
         },
         "interpolate": {
           "anyOf": [
@@ -4499,8 +4583,114 @@
         },
         {
           "$ref": "#/definitions/StringDatumDef"
+        },
+        {
+          "$ref": "#/definitions/ExprDef"
         }
       ]
+    },
+    "Title": {
+      "additionalProperties": false,
+      "properties": {
+        "align": {
+          "$ref": "#/definitions/Align",
+          "description": "Horizontal text alignment for title text. One of `\"left\"`, `\"center\"`, or `\"right\"`."
+        },
+        "anchor": {
+          "$ref": "#/definitions/TitleAnchor",
+          "description": "The anchor position for placing the title and subtitle text. One of `\"start\"`, `\"middle\"`, or `\"end\"`. For example, with an orientation of top these anchor positions map to a left-, center-, or right-aligned title."
+        },
+        "angle": {
+          "description": "Angle in degrees of title and subtitle text.",
+          "type": "number"
+        },
+        "baseline": {
+          "$ref": "#/definitions/Baseline",
+          "description": "Vertical text baseline for title and subtitle text. One of `\"alphabetic\"` (default), `\"top\"`, `\"middle\"`, or `\"bottom\"`."
+        },
+        "color": {
+          "description": "Text color for title text.",
+          "type": "string"
+        },
+        "dx": {
+          "description": "Delta offset for title and subtitle text x-coordinate.",
+          "type": "number"
+        },
+        "dy": {
+          "description": "Delta offset for title and subtitle text y-coordinate.",
+          "type": "number"
+        },
+        "font": {
+          "description": "Font name for title text.",
+          "type": "string"
+        },
+        "fontSize": {
+          "description": "Font size in pixels for title text.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "fontStyle": {
+          "$ref": "#/definitions/FontStyle",
+          "description": "Font style for title text."
+        },
+        "fontWeight": {
+          "$ref": "#/definitions/FontWeight",
+          "description": "Font weight for title text. This can be either a string (e.g `\"bold\"`, `\"normal\"`) or a number (`100`, `200`, `300`, ..., `900` where `\"normal\"` = `400` and `\"bold\"` = `700`)."
+        },
+        "frame": {
+          "$ref": "#/definitions/TitleFrame",
+          "description": "The reference frame for the anchor position, one of `\"bounds\"` (to anchor relative to the full bounding box) or `\"group\"` (to anchor relative to the group width or height)."
+        },
+        "offset": {
+          "description": "The orthogonal offset in pixels by which to displace the title group from its position along the edge of the chart.",
+          "type": "number"
+        },
+        "orient": {
+          "$ref": "#/definitions/TitleOrient",
+          "description": "Default title orientation (`\"top\"`, `\"bottom\"`, `\"left\"`, or `\"right\"`)"
+        },
+        "style": {
+          "description": "A mark style property to apply to the title text mark. If not specified, a default style of `\"group-title\"` is applied.",
+          "type": "string"
+        },
+        "text": {
+          "description": "The title text.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "TitleAnchor": {
+      "enum": [
+        null,
+        "start",
+        "middle",
+        "end"
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "TitleFrame": {
+      "enum": [
+        "bounds",
+        "group"
+      ],
+      "type": "string"
+    },
+    "TitleOrient": {
+      "enum": [
+        "none",
+        "left",
+        "right",
+        "top",
+        "bottom"
+      ],
+      "type": "string"
     },
     "Tooltip": {
       "anyOf": [
@@ -4700,7 +4890,14 @@
           "type": "object"
         },
         "title": {
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Title"
+            }
+          ]
         },
         "transform": {
           "items": {
@@ -4709,7 +4906,7 @@
           "type": "array"
         },
         "view": {
-          "$ref": "#/definitions/ViewConfig"
+          "$ref": "#/definitions/ViewBackground"
         },
         "visible": {
           "description": "Visibility of the view. An invisible view is removed from the layout and not rendered.\n\n**Default:** `true`",
@@ -4859,7 +5056,14 @@
           "type": "number"
         },
         "title": {
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/Title"
+            }
+          ]
         },
         "transform": {
           "items": {
@@ -4936,7 +5140,7 @@
       ],
       "type": "object"
     },
-    "ViewConfig": {
+    "ViewBackground": {
       "additionalProperties": false,
       "properties": {
         "cornerRadius": {
