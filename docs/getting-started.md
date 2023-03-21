@@ -44,9 +44,14 @@ By default, it serves files from the current working directory. See Python's
 
 ### HTML template
 
-The templates below load GenomeSpy from a content delivery network. Because
-the specification schema and the JavaScript API are not yet 100% stable, it is
-recommended to use a specific version.
+The templates below load the GenomeSpy JavaScript library from a content
+delivery network. Because the specification schema and the JavaScript API are
+not yet 100% stable, it is recommended to use a specific version.
+
+The `embed` function initializes a visualization into the HTML element given as
+the first parameter using the specification given as the second parameter. The
+function returns a promise that resolves into an object that provides the
+current public API. For deails, see the [API Documentation](./api.md).
 
 !!! warning "Check the latest version!"
 
@@ -57,7 +62,7 @@ recommended to use a specific version.
 
 #### Load the spec from a file
 
-This template loads the spec from the `spec.json` file.
+This template loads the spec from a separate `spec.json` file.
 
 ```html
 <!DOCTYPE html>
@@ -67,13 +72,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/@genome-spy/core@0.28.x/dist/style.css"
+      href="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.28.x/dist/style.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/@genome-spy/core@0.28.x/dist/index.js"
+      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.28.x/dist/index.js"
     ></script>
 
     <script>
@@ -85,6 +90,8 @@ This template loads the spec from the `spec.json` file.
 
 #### Embed the spec in the HTML document
 
+You can alternatively provide the specification as a JavaScript object.
+
 ```html
 <!DOCTYPE html>
 <html>
@@ -93,13 +100,13 @@ This template loads the spec from the `spec.json` file.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://unpkg.com/@genome-spy/core@0.28.x/dist/style.css"
+      href="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.28.x/dist/style.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://unpkg.com/@genome-spy/core@0.28.x/dist/index.js"
+      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.28.x/dist/index.js"
     ></script>
 
     <script>
