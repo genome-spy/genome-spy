@@ -30,8 +30,6 @@ channels and the `color`, `opacity`, and `size` channels.
 
 ## Properties
 
-TODO, but in principle, the same as in the [rect](./rect.md) mark plus the following:
-
 `size`
 : Type: Number
 

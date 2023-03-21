@@ -10,9 +10,41 @@ be used to encode the data fields. By adjusting the encodings, you can present
 the same data in a wide range of visual forms, such as scatterplots, bar charts,
 and heatmaps.
 
+```json title="Example: Specifying the mark type"
+{
+  ...,
+  "mark": "rect"
+  ...,
+}
+```
+
+## Properties
+
+Marks also support various properties for controlling their appearance or
+behavior. The properties can be specified with an object that contains at least
+the `type` property:
+
+```json title="Example: Specifying the mark type and additional properties"
+{
+  ...,
+  "mark": {
+    "type": "rect",
+    "cornerRadius": 5
+  },
+  ...,
+}
+```
+
 ## Encoding
 
-```json title="An example of the encoding property"
+While mark properties are static, _i.e._, same for all mark instances, `encoding`
+allows for mapping data to the visual channels.
+
+It's worth noting that while all visual encoding channels are also available as
+static properties, not all properties can be used for encoding. Only certain
+properties are suitable for encoding data in a meaningful way.
+
+```json title="Example: Using of the encoding property"
 {
   ...,
   "mark": "rect",
