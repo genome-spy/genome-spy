@@ -36,23 +36,14 @@ example.
 
 ## Channels
 
-In addition to the standard [position](./index.md#channels) channels and
-`color` and `opacity` channels, link mark supports the following channels:
+In addition to the primary and secondary [position](./index.md#channels)
+channels and the `color` and `opacity` channels, link mark supports the following
+channels:
 
 `size`
 : Type: Number
 
     Stroke width of the starting point in pixels.
-
-`size2`
-: Type: Number
-
-    Stroke width of the end point in pixels. Same as `size` if left undefined.
-
-`color2`
-: Type: Number
-
-    Color of the end point. Same as `color` if left undefined.
 
 ## Properties
 
@@ -81,8 +72,7 @@ In addition to the standard [position](./index.md#channels) channels and
   ],
   "mark": {
     "type": "link",
-    "size": 10,
-    "size2": 0
+    "size": 7
   },
   "encoding": {
     "x": { "datum": 0, "type": "quantitative" },
@@ -93,8 +83,7 @@ In addition to the standard [position](./index.md#channels) channels and
       "field": "theta",
       "type": "quantitative",
       "scale": { "scheme": "rainbow" }
-    },
-    "color2": { "value": "white" }
+    }
   }
 }
 ```

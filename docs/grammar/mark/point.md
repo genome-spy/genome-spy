@@ -43,6 +43,22 @@ channels:
 
     **Default value:** `"circle"`
 
+`dx`
+: Type: Number
+
+    The horizontal offset between the text and its anchor point, in pixels.
+    Applied after the rotation by `angle`.
+
+    **Default value:** `0`
+
+`dy`
+: Type: Number
+
+    The vertical offset between the text and its anchor point, in pixels.
+    Applied after the rotation by `angle`.
+
+    **Default value:** `0`
+
 ## Properties
 
 `fillGradientStrength`
@@ -64,6 +80,8 @@ channels:
 
 `sampleFacetPadding`
 : Type: Number
+
+    A special property for the [GenomeSpy app](../../sample-collections/visualizing.md).
 
     Padding between sample facet's upper/lower edge and the maximum point size. This property
     controls how tightly points are squeezed when facet's height is smaller than the maximum
