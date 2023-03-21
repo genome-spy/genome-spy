@@ -10,10 +10,7 @@ SCHEMA SampleParams
 
 ```json
 {
-  ...
-  "transform": [
-    { "type": "sample", "size": 100 }
-  ],
-  ...
+  "type": "sample",
+  "size": 100
 }
 ```

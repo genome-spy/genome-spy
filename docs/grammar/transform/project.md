@@ -8,3 +8,10 @@ optionally renaming them. All other fields are removed.
 SCHEMA ProjectParams
 
 ## Example
+
+```json
+{
+  "type": "project",
+  "fields": ["lane", "start", "exons"]
+}
+```
