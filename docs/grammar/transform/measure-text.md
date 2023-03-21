@@ -3,6 +3,10 @@
 The `"measureText"` transforms measures the length of a string in pixels. The
 measurement can be used in downstream layout computations.
 
+For an usage example, check the [Annotation
+Tracks](https://observablehq.com/@tuner/annotation-tracks?collection=@tuner/genomespy)
+notebook.
+
 ## Parameters
 
 SCHEMA MeasureTextParams

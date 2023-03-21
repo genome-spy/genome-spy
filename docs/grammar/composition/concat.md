@@ -2,7 +2,8 @@
 
 The `vconcat` and `hconcat` composition operators place views side-by-side
 either vertically or horizontally. The `vconcat` is practical for building
-genomic visualizations with multiple tracks.
+genomic visualizations with multiple tracks. The `concat` operator with the
+`columns` property produces a wrapping grid layout.
 
 The spacing (in pixels) between concatenated views can be adjusted using the
 `spacing` property (Default: `10`).
@@ -10,6 +11,8 @@ The spacing (in pixels) between concatenated views can be adjusted using the
 ## Example
 
 ### Vertical
+
+Using `vconcat` for a vertical layout.
 
 <div><genome-spy-doc-embed>
 
@@ -42,6 +45,8 @@ The spacing (in pixels) between concatenated views can be adjusted using the
 
 ### Horizontal
 
+Using `hconcat` for a horizontal layout.
+
 <div><genome-spy-doc-embed height="200">
 
 ```json
@@ -63,6 +68,38 @@ The spacing (in pixels) between concatenated views can be adjusted using the
         "y": { "field": "cos", "type": "quantitative" }
       }
     }
+  ]
+}
+```
+
+</genome-spy-doc-embed></div>
+
+### Grid
+
+Using `concat` and `columns` for a grid layout. For simplicity, the same
+visualization is used for all panels in the grid.
+
+<div><genome-spy-doc-embed height="400">
+
+```json
+{
+  "data": { "url": "sincos.csv" },
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
+  },
+
+  "columns": 3,
+  "concat": [
+    { "mark": "point" },
+    { "mark": "point" },
+    { "mark": "point" },
+    { "mark": "point" },
+    { "mark": "point" },
+    { "mark": "point" },
+    { "mark": "point" },
+    { "mark": "point" },
+    { "mark": "point" }
   ]
 }
 ```

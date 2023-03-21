@@ -156,14 +156,14 @@ export interface StackParams extends TransformParamsBase {
      * Cardinality, e.g., the number if distinct bases or amino acids. Used for
      * information content calculation when the offset is `"information"`.
      *
-     * **Default:** `4`;
+     * **Default:** `4`
      */
     cardinality?: number;
 
     /**
      * The field that contains the base or amino acid. Used for
      * information content calculation when the offset is `"information"`.
-     * The data items that have `null` in the baseField are considered gaps
+     * The data objects that have `null` in the baseField are considered gaps
      * and they are taken into account when scaling the the locus' information
      * content.
      */

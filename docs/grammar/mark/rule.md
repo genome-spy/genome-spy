@@ -25,11 +25,10 @@ width or height of the view. Alternatively, they may have specific endpoints.
 
 ## Channels
 
-TODO, but in principle, the same as in the [rect](./rect.md) mark.
+Rule mark supports the primary and secondary [position](./index.md#channels)
+channels and the `color`, `opacity`, and `size` channels.
 
 ## Properties
-
-TODO, but in principle, the same as in the [rect](./rect.md) mark plus the following:
 
 `size`
 : Type: Number
@@ -69,6 +68,22 @@ TODO, but in principle, the same as in the [rect](./rect.md) mark plus the follo
 
     **Default value:** `"butt"`
 
+`xOffset`
+: Type: Number
+
+    Offsets of the `x` and `x2` coordinates in pixels. The offset is applied
+    after the viewport scaling and translation.
+
+    **Default value:** `0`
+
+`yOffset`
+: Type: Number
+
+    Offsets of the `y` and `y2` coordinates in pixels. The offset is applied
+    after the viewport scaling and translation.
+
+    **Default value:** `0`
+
 ## Examples
 
 ### Ranged rules
@@ -95,6 +110,79 @@ TODO, but in principle, the same as in the [rect](./rect.md) mark plus the follo
     "y": { "field": "y", "type": "nominal" },
     "x": { "field": "x", "type": "quantitative" },
     "x2": { "field": "x2" }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+### Plenty of diagonal rules
+
+<div><genome-spy-doc-embed height="350">
+
+```json
+{
+  "width": 300,
+  "height": 300,
+
+  "data": {
+    "sequence": { "start": 0, "stop": 50 }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "random()",
+      "as": "x"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.x + random() * 0.5 - 0.25",
+      "as": "x2"
+    },
+    {
+      "type": "formula",
+      "expr": "random()",
+      "as": "y"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.y + random() * 0.5 - 0.25",
+      "as": "y2"
+    },
+    {
+      "type": "formula",
+      "expr": "random()",
+      "as": "size"
+    }
+  ],
+
+  "mark": {
+    "type": "rule",
+    "strokeCap": "round"
+  },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative"
+    },
+    "x2": { "field": "x2" },
+    "y": {
+      "field": "y",
+      "type": "quantitative"
+    },
+    "y2": { "field": "y2" },
+    "size": {
+      "field": "size",
+      "type": "quantitative",
+      "scale": { "type": "pow", "range": [0, 10] }
+    },
+    "color": {
+      "field": "x",
+      "type": "nominal",
+      "scale": { "scheme": "category20" }
+    }
   }
 }
 ```

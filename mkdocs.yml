@@ -55,6 +55,7 @@ nav:
                 - Sample: "grammar/transform/sample.md"
                 - Stack: "grammar/transform/stack.md"
           - Graphical Marks:
+                - "grammar/mark/index.md"
                 - Link: "grammar/mark/link.md"
                 - Point: "grammar/mark/point.md"
                 - Rect: "grammar/mark/rect.md"
@@ -70,10 +71,7 @@ nav:
 
     - Working with Genomic Data:
           - Genomic Coordinates: "genomic-data/genomic-coordinates.md"
-          - Tracks: "genomic-data/tracks.md"
-          - Examples:
-                - SEG file: "genomic-data/examples/seg-file.md"
-                - ASCAT: "genomic-data/examples/ascat.md"
+          - Examples: "genomic-data/examples.md"
     - Working with Sample Collections:
           - "sample-collections/index.md"
           - Visualizing: "sample-collections/visualizing.md"
