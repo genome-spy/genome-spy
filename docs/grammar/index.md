@@ -75,6 +75,10 @@ the name should be unique within the whole view hierarchy.
 `height`
 : Height of the view. Check [child sizing](./composition/concat.md#child-sizing) for details.
 
+`view`
+: View background. An object with the following [`"rect"`](./mark/rect.md) mark's properties:
+`fill`, `stroke`, `strokeWidth`, `fillOpacity`, `strokeOpacity`, and `borderRadius`.
+
 `padding`
 : Padding applied to the view. Accepts either a number reprenting pixels or a
 PaddingConfig. Example: `padding: { top: 10, right: 20, bottom: 10, left: 20 }`
@@ -95,7 +99,7 @@ inherited in the view hierarchy unless overridden with this property. By default
 the top-level view's base URL equals to the visualization specification's base URL.
 
 `opacity`
-: TODO
+: Configures a static or dynamic opacity of the view. The latter enables semantic zooming. TODO: Elaborate.
 
 `visible`
 : The default visibility of the view. An invisible view is removed from the
