@@ -683,6 +683,11 @@ export default class SampleView extends ContainerView {
             return;
         }
 
+        if (!this.parent) {
+            // Usually padding is applied by GridView, but if this is the root view, we need to apply it here
+            coords = coords.shrink(this.getPadding());
+        }
+
         context.pushView(this, coords);
 
         const cols = mapToPixelCoords(
