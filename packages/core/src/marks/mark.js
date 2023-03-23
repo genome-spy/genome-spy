@@ -271,7 +271,16 @@ export default class Mark {
     getSampleFacetMode() {
         if (this.encoders.facetIndex) {
             return SAMPLE_FACET_TEXTURE;
-        } else if (this.unitView.getFacetAccessor()) {
+        } else if (
+            // If the UnitView is inside app's SampleView.
+            // TODO: This may break if non-faceted stuff is added to SampleView,
+            // e.g., view background or an x axis.
+            // This could also be more generic and work with other faceting views
+            // that will be available in the future.
+            [...this.unitView.getAncestors()].find(
+                (view) => "samples" in view.spec
+            )
+        ) {
             return SAMPLE_FACET_UNIFORM;
         }
     }
@@ -776,7 +785,14 @@ export default class Mark {
             }
         };
 
-        const rangeEntry = this.rangeMap.get(options.facetId);
+        // If is either faceted or non-faceted, not both.
+        // An undefined key with vertices means that the mark is non-faceted.
+        // In such case, the same non-faceted data is repeated for each facet.
+        const facetId =
+            this.rangeMap.get(undefined).count == 0
+                ? options.facetId
+                : undefined;
+        const rangeEntry = this.rangeMap.get(facetId);
 
         return options.sampleFacetRenderingOptions
             ? function renderSampleFacetRange() {
