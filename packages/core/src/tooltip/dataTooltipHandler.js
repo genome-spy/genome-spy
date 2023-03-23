@@ -30,20 +30,24 @@ export default async function dataTooltipHandler(datum, mark, params) {
         return "";
     };
 
+    const strippedEntries = Object.entries(datum).filter(
+        ([key, _value]) => !key.startsWith("_")
+    );
+
+    if (strippedEntries.length === 0) {
+        return;
+    }
+
     const table = html`
         <table class="attributes">
-            ${Object.entries(datum)
-                .filter(([key, value]) => !key.startsWith("_"))
-                .map(
-                    ([key, value]) => html`
-                        <tr>
-                            <th>${key}</th>
-                            <td>
-                                ${formatObject(value)} ${legend(key, datum)}
-                            </td>
-                        </tr>
-                    `
-                )}
+            ${strippedEntries.map(
+                ([key, value]) => html`
+                    <tr>
+                        <th>${key}</th>
+                        <td>${formatObject(value)} ${legend(key, datum)}</td>
+                    </tr>
+                `
+            )}
         </table>
     `;
 
