@@ -1,12 +1,10 @@
 import { Data } from "./data";
-import { Scale } from "./scale";
 import { TransformParams } from "./transform";
 import {
     Channel,
     Encoding,
     FacetFieldDef,
     PrimaryPositionalChannel,
-    Type,
 } from "./channel";
 import {
     FillAndStrokeProps,
@@ -15,6 +13,7 @@ import {
     RectProps,
 } from "./mark";
 import { Title } from "./title";
+import { SampleSpec } from "./sampleView";
 
 export interface SizeDef {
     /** Size in pixels */
@@ -135,27 +134,6 @@ export interface FacetSpec extends ViewSpecBase {
     spec: LayerSpec | UnitSpec;
     columns?: number;
     spacing?: number;
-}
-
-export interface SampleAttributeDef {
-    type: Type; // TODO: Omit index/locus
-    /** Color scale (primary) */
-    scale?: Scale;
-    barScale?: Scale;
-    width?: number;
-    visible?: boolean;
-}
-
-export interface SampleDef {
-    data?: Data;
-    attributes?: Record<string, SampleAttributeDef>;
-}
-
-export interface SampleSpec extends ViewSpecBase {
-    samples: SampleDef;
-    spec: LayerSpec | UnitSpec;
-
-    stickySummaries?: boolean;
 }
 
 export type ResolutionTarget = "scale" | "axis";

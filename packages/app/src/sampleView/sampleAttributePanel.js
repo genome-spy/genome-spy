@@ -46,7 +46,7 @@ export class SampleAttributePanel extends ConcatView {
                 title: "Sample metadata",
                 data: { dynamicSource: true },
                 hconcat: [], // Contents are added dynamically
-                spacing: 1,
+                spacing: sampleView.spec.samples.attributeSpacing ?? 1,
                 resolve: {
                     scale: { default: "independent" },
                     axis: { default: "independent" },
@@ -331,7 +331,12 @@ export class SampleAttributePanel extends ConcatView {
         /** @type {View[]} */
         const views = [];
 
-        views.push(this.context.createView(createLabelViewSpec(), this));
+        views.push(
+            this.context.createView(
+                createLabelViewSpec(this.sampleView.spec.samples),
+                this
+            )
+        );
 
         for (const attribute of this.getAttributeNames()) {
             const view = this.context.createView(
@@ -397,10 +402,14 @@ export class SampleAttributePanel extends ConcatView {
             }
         }
 
-        return createAttributeSpec(attribute, {
-            ...(attributeDef || {}),
-            type: fieldType,
-        });
+        return createAttributeSpec(
+            attribute,
+            {
+                ...(attributeDef || {}),
+                type: fieldType,
+            },
+            this.sampleView.spec.samples
+        );
     }
 
     /**
@@ -568,8 +577,9 @@ export class SampleAttributePanel extends ConcatView {
 /**
  * @param {string} attributeName
  * @param {import("@genome-spy/core/spec/view").SampleAttributeDef} attributeDef
+ * @param {import("@genome-spy/core/spec/view").SampleDef} sampleDef
  */
-function createAttributeSpec(attributeName, attributeDef) {
+function createAttributeSpec(attributeName, attributeDef, sampleDef) {
     const field = `attributes["${attributeName}"]`;
 
     /** @type {import("@genome-spy/core/view/viewUtils").UnitSpec} */
@@ -581,12 +591,16 @@ function createAttributeSpec(attributeName, attributeDef) {
             align: "right",
             baseline: "middle",
             offset: 5,
-            angle: -90,
+            angle: -90 + (sampleDef.attributeLabelAngle ?? 0),
             dy: -0.5,
-            fontSize: 11,
+
+            font: sampleDef.attributeLabelFont,
+            fontSize: sampleDef.attributeLabelFontSize ?? 11,
+            fontStyle: sampleDef.attributeLabelFontStyle,
+            fontWeight: sampleDef.attributeLabelFontWeight,
         },
         visible: attributeDef.visible ?? true,
-        width: attributeDef.width ?? 10,
+        width: attributeDef.width ?? sampleDef.attributeSize ?? 10,
         transform: [{ type: "filter", expr: `datum.${field} != null` }],
         mark: {
             type: "rect",
@@ -615,25 +629,35 @@ function createAttributeSpec(attributeName, attributeDef) {
     return attributeSpec;
 }
 
-function createLabelViewSpec() {
+/**
+ *
+ * @param {import("@genome-spy/core/spec/view").SampleDef} sampleDef
+ */
+function createLabelViewSpec(sampleDef) {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
     /** @type {import("@genome-spy/core/view/viewUtils").UnitSpec} */
     const titleSpec = {
         name: "metadata-sample-name",
         title: {
-            text: "Sample name",
+            text: sampleDef.labelTitleText ?? "Sample name",
             orient: "bottom",
             anchor: "start",
             offset: 5,
-            fontSize: 11,
+            font: sampleDef.attributeLabelFont,
+            fontSize: sampleDef.attributeLabelFontSize ?? 11,
+            fontStyle: sampleDef.attributeLabelFontStyle,
+            fontWeight: sampleDef.attributeLabelFontWeight,
         },
-        width: 140,
+        width: sampleDef.labelLength ?? 140,
         mark: {
             type: "text",
-            align: "left",
             baseline: "middle",
-            size: 11,
+            font: sampleDef.labelFont,
+            size: sampleDef.labelFontSize ?? 11,
+            fontStyle: sampleDef.labelFontStyle,
+            fontWeight: sampleDef.labelFontWeight,
+            align: sampleDef.labelAlign ?? "left",
             flushY: false,
         },
         encoding: {

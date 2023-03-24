@@ -140,6 +140,59 @@ the values on the metadata heatmap. The optional `barScale` property enables
 positional encoding, changing the heatmap cells into a horizontal bar chart. The
 `visible` property configures the default visibility for the attribute.
 
+### Adjusting font sizes, etc.
+
+The `samples` object can also be used to adjust the font sizes, etc. of the
+metadata attributes. For example, to increase the font sizes of the sample and
+attribute labels, use the following configuration:
+
+```json title="Adjusting font sizes"
+{
+  "samples": {
+    ...,
+    "labelFontSize": 12,
+    "attributeLabelFontSize": 10
+  },
+  ...
+}
+```
+
+The following properties allow for fine-grained control of the font styles:
+`labelFont`, `labelFontSize`, `labelFontWeight`, `labelFontStyle`, `labelAlign`,
+`attributeLabelFont`, `attributeLabelFontSize`, `attributeLabelFontWeight`, `attributeLabelFontStyle`.
+
+In addition, the following properties are supported:
+
+`labelTitleText`
+: The title of the sample labels.
+
+    **Default value:** `"Sample name"`
+
+`labelLength`
+: The space allocated for the sample labels in pixels.
+
+    **Default value:** `140`
+
+`labelAlign`
+: The horizontal alignment of the text. One of `"left"`, `"center"`, or `"right"`.
+
+    **Default value:** `"left"`
+
+`attributeSize`
+: Default size (width) of the metadata attribute columns. Can be configured per attribute using the `attributes` property.
+
+    **Default value:** `10`
+
+`attributeLabelAngle`
+: Angle to be added to the default label angle (-90).
+
+    **Default value:** `0`
+
+`attributeSpacing`
+: Spacing between attribute columns in pixels.
+
+    **Default value:** `1`
+
 ### Aggregation
 
 TODO
