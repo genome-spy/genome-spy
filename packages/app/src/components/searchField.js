@@ -270,28 +270,34 @@ export default class SearchField extends LitElement {
             `);
         }
 
-        const attributePanel = this.app.getSampleView().attributePanel;
-        const categoricalInfos = attributePanel
-            .getAttributeNames()
-            .map((name) => attributePanel.getAttributeInfo(name))
-            .filter((info) => info.type == "nominal" || info.type == "ordinal")
-            .sort(() => 0.5 - Math.random())
-            .map(
-                (info) =>
-                    [...(info.scale?.domain() ?? [])].sort(
-                        () => 0.5 - Math.random()
-                    )[0]
-            )
-            .filter((value) => value !== undefined)
-            .slice(0, 3);
+        const attributePanel = this.app.getSampleView()?.attributePanel;
+        if (attributePanel) {
+            const categoricalInfos = attributePanel
+                .getAttributeNames()
+                .map((name) => attributePanel.getAttributeInfo(name))
+                .filter(
+                    (info) => info.type == "nominal" || info.type == "ordinal"
+                )
+                .sort(() => 0.5 - Math.random())
+                .map(
+                    (info) =>
+                        [...(info.scale?.domain() ?? [])].sort(
+                            () => 0.5 - Math.random()
+                        )[0]
+                )
+                .filter((value) => value !== undefined)
+                .slice(0, 3);
 
-        if (categoricalInfos.length) {
-            parts.push(html` <p>
-                    Filter samples by categorical attributes. Examples:
-                </p>
-                <ul>
-                    ${categoricalInfos.map((value) => html`<li>${value}</li>`)}
-                </ul>`);
+            if (categoricalInfos.length) {
+                parts.push(html` <p>
+                        Filter samples by categorical attributes. Examples:
+                    </p>
+                    <ul>
+                        ${categoricalInfos.map(
+                            (value) => html`<li>${value}</li>`
+                        )}
+                    </ul>`);
+            }
         }
 
         return html`
