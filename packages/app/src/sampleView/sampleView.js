@@ -41,6 +41,7 @@ import { contextMenu, DIVIDER } from "../utils/ui/contextMenu";
 import interactionToZoom from "@genome-spy/core/view/zoom";
 import Rectangle from "@genome-spy/core/utils/layout/rectangle";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { createBackground } from "@genome-spy/core/view/gridView";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -151,6 +152,23 @@ export default class SampleView extends ContainerView {
         this.attributePanel = new SampleAttributePanel(this);
 
         this.peripheryView.setChildren([this.groupPanel, this.attributePanel]);
+
+        {
+            const viewBackground = this.spec.spec?.view;
+            if (viewBackground?.fill || viewBackground?.stroke) {
+                const unitView = new UnitView(
+                    createBackground(viewBackground),
+                    this.context,
+                    this,
+                    "sample-background"
+                );
+                // TODO: Make configurable through spec:
+                unitView.blockEncodingInheritance = true;
+                this.backgroundView = unitView;
+            } else {
+                this.backgroundView = undefined;
+            }
+        }
 
         this.child.addInteractionEventListener(
             "contextmenu",
@@ -382,6 +400,9 @@ export default class SampleView extends ContainerView {
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
+        if (this.backgroundView) {
+            yield this.backgroundView;
+        }
         yield this.child;
         yield this.peripheryView;
     }
@@ -620,7 +641,7 @@ export default class SampleView extends ContainerView {
         const clipRect = this._clipBySummary(coords);
 
         for (const sampleLocation of this.getLocations().samples) {
-            this.child.render(context, coords, {
+            const optionsWithFacet = {
                 ...options,
                 sampleFacetRenderingOptions: {
                     locSize: scaleLocSize(
@@ -630,7 +651,10 @@ export default class SampleView extends ContainerView {
                 },
                 facetId: [sampleLocation.key],
                 clipRect,
-            });
+            };
+
+            this.backgroundView?.render(context, coords, optionsWithFacet);
+            this.child.render(context, coords, optionsWithFacet);
         }
     }
 

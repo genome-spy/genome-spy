@@ -18,7 +18,7 @@ import { rollup } from "d3-array";
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
  * @typedef {import("../spec/view").FacetSpec} FacetSpec
- * @typedef {import("../spec/view").SampleSpec} SampleSpec
+ * @typedef {import("../spec/sampleView").SampleSpec} SampleSpec
  * @typedef {import("../spec/view").UnitSpec} UnitSpec
  * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
  * @typedef {import("../spec/view").HConcatSpec} HConcatSpec

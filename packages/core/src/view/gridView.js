@@ -729,7 +729,7 @@ export default class GridView extends ContainerView {
  * @param {import("../spec/view").ViewBackground} viewBackground
  * @returns {import("../spec/view").UnitSpec}
  */
-function createBackground(viewBackground) {
+export function createBackground(viewBackground) {
     return {
         configurableVisibility: false,
         data: { values: [{}] },
