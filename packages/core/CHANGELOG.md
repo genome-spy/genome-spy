@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.29.0](https://github.com/genome-spy/genome-spy/compare/v0.28.5...v0.29.0) (2023-03-24)
+
+
+### Bug Fixes
+
+* **app:** apply padding to SampleView when it's at root ([9f0f38c](https://github.com/genome-spy/genome-spy/commit/9f0f38c480399b32727f2e5e643f6b324c53cca9))
+* **app:** render view background in sample facets ([2c78625](https://github.com/genome-spy/genome-spy/commit/2c7862593ba4ab27bbe991790c7972758f6c37ef))
+* **core:** don't show tooltips for data objects with no properties ([01217cd](https://github.com/genome-spy/genome-spy/commit/01217cd5d9b7badad7bf3e4ec7b6be3524abfc52))
+* **core:** repeat non-faceted data in facet views ([ad71cf2](https://github.com/genome-spy/genome-spy/commit/ad71cf2bb68a1b700eeddfc9a10306c27bdb9f09))
+
+
+### Features
+
+* **app:** make sample and attribute labels configurable ([8ac82db](https://github.com/genome-spy/genome-spy/commit/8ac82dba87b322a2d2688f9f53a065f193feabe9))
+
+
+
+
+
 ## [0.28.3](https://github.com/genome-spy/genome-spy/compare/v0.28.2...v0.28.3) (2023-03-09)
 
 **Note:** Version bump only for package @genome-spy/core

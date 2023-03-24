@@ -1,7 +1,7 @@
 {
   "name": "@genome-spy/embed-examples",
   "private": true,
-  "version": "0.28.3",
+  "version": "0.29.0",
   "description": "Examples",
   "scripts": {
     "dev": "vite"
@@ -9,7 +9,7 @@
   "author": "Kari Lavikka",
   "license": "MIT",
   "dependencies": {
-    "@genome-spy/core": "^0.28.3",
+    "@genome-spy/core": "^0.29.0",
     "lit": "^2.0.0-rc.2"
   }
 }

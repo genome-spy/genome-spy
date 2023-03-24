@@ -7,7 +7,7 @@
   },
   "contributors": [],
   "license": "MIT",
-  "version": "0.28.3",
+  "version": "0.29.0",
   "main": "dist/index.js",
   "module": "src/index.js",
   "exports": {
