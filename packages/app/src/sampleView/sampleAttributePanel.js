@@ -576,8 +576,8 @@ export class SampleAttributePanel extends ConcatView {
 
 /**
  * @param {string} attributeName
- * @param {import("@genome-spy/core/spec/view").SampleAttributeDef} attributeDef
- * @param {import("@genome-spy/core/spec/view").SampleDef} sampleDef
+ * @param {import("@genome-spy/core/spec/sampleView").SampleAttributeDef} attributeDef
+ * @param {import("@genome-spy/core/spec/sampleView").SampleDef} sampleDef
  */
 function createAttributeSpec(attributeName, attributeDef, sampleDef) {
     const field = `attributes["${attributeName}"]`;
@@ -631,7 +631,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
 
 /**
  *
- * @param {import("@genome-spy/core/spec/view").SampleDef} sampleDef
+ * @param {import("@genome-spy/core/spec/sampleView").SampleDef} sampleDef
  */
 function createLabelViewSpec(sampleDef) {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
@@ -689,7 +689,7 @@ function isDefined(value) {
 const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
     name: "sample",
     attribute: { type: SAMPLE_NAME },
-    accessor: (sampleId) => sampleId,
+    accessor: (/** @type {string} */ sampleId) => sampleId,
     type: "identifier",
     scale: undefined,
 });

@@ -22,7 +22,7 @@ class ViewSettingsButton extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../app").App} */
+        /** @type {import("../app").default} */
         this.app = undefined;
 
         /** @type {import("../utils/nestPaths").NestedItem<View>} */
@@ -43,7 +43,7 @@ class ViewSettingsButton extends LitElement {
         this.dispatchEvent(
             queryDependency(
                 "app",
-                (/** @type {import("../app").App} */ app) => {
+                (/** @type {import("../app").default} */ app) => {
                     this.app = app;
                 }
             )
