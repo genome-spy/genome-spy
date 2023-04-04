@@ -94,14 +94,16 @@ export default function generateAttributeContextMenu(
             })
         );
 
-        items.push(
-            actionToItem(
-                actions.retainMatched({
-                    attribute,
-                }),
-                !sampleHierarchy.groupMetadata.length
-            )
-        );
+        if (type != "identifier") {
+            items.push(
+                actionToItem(
+                    actions.retainMatched({
+                        attribute,
+                    }),
+                    !sampleHierarchy.groupMetadata.length
+                )
+            );
+        }
     } else {
         addActions(actions.groupToQuartiles({ attribute }));
         items.push({
@@ -128,14 +130,12 @@ export default function generateAttributeContextMenu(
         }
     }
 
-    if (type !== "identifier") {
-        items.push({
-            icon: faFilter,
-            label: "Advanced filter...",
-            callback: () =>
-                advancedAttributeFilterDialog(attributeInfo, sampleView),
-        });
-    }
+    items.push({
+        icon: faFilter,
+        label: "Advanced filter...",
+        callback: () =>
+            advancedAttributeFilterDialog(attributeInfo, sampleView),
+    });
 
     return items;
 }

@@ -24,9 +24,11 @@ import "../components/histogram";
 export function advancedAttributeFilterDialog(attribute, sampleView) {
     const type = attribute.scale?.type;
     if (isDiscrete(type)) {
-        discreteAttributeFilterDialog(attribute, sampleView);
+        discreteScaleAttributeFilterDialog(attribute, sampleView);
     } else if (isContinuous(type) || isDiscretizing(type)) {
         quantitativeAttributeFilterDialog(attribute, sampleView);
+    } else if (attribute.type === "identifier") {
+        identifierAttributeFilterDialog(attribute, sampleView);
     } else {
         messageBox("Not implemented (yet).");
     }
@@ -36,13 +38,52 @@ export function advancedAttributeFilterDialog(attribute, sampleView) {
  * @param {import("./types").AttributeInfo} attributeInfo
  * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
  */
-export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
-    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+export function identifierAttributeFilterDialog(attributeInfo, sampleView) {
+    discreteAttributeFilterDialog(
+        sampleView.getSamples().map((sample) => sample.id),
+        attributeInfo,
+        sampleView
+    );
+}
 
+/**
+ * @param {import("./types").AttributeInfo} attributeInfo
+ * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ */
+export function discreteScaleAttributeFilterDialog(attributeInfo, sampleView) {
     const scale =
         /** @type {import("d3-scale").ScaleOrdinal<Scalar, Scalar>} */ (
             attributeInfo.scale
         );
+
+    const categoryToMarker = (/** @type {Scalar} */ value) => html`<span
+        class="color"
+        style=${styleMap({
+            backgroundColor: scale(value).toString(),
+        })}
+    ></span>`;
+
+    discreteAttributeFilterDialog(
+        scale.domain(),
+        attributeInfo,
+        sampleView,
+        categoryToMarker
+    );
+}
+
+/**
+ * @param {Scalar[]} categories
+ * @param {import("./types").AttributeInfo} attributeInfo
+ * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {(value: Scalar) => (import("lit").TemplateResult | typeof nothing)} [categoryToMarker]
+ */
+export function discreteAttributeFilterDialog(
+    categories,
+    attributeInfo,
+    sampleView,
+    categoryToMarker = (value) => nothing
+) {
+    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
 
     const presentValues = new Set(
         extractValues(
@@ -53,8 +94,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     );
 
     // Use domain to maintain a consistent order
-    const categories = scale
-        .domain()
+    const categoryObjects = categories
         .filter((value) => presentValues.has(value))
         .map((value, index) => ({
             index,
@@ -79,7 +119,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
         dispatch(
             sampleView.actions.filterByNominal({
                 // Sort the selection based on the domain. Otherwise they are in the selection order.
-                values: scale.domain().filter((value) => selection.has(value)),
+                values: categories.filter((value) => selection.has(value)),
                 attribute: attributeInfo.attribute,
                 remove,
             })
@@ -88,7 +128,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const getFilteredCategories = () =>
-        categories.filter(
+        categoryObjects.filter(
             (category) =>
                 search.length == 0 || category.lowerCaseValue.includes(search)
         );
@@ -101,7 +141,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
 
     const updateChecked = (/** @type {InputEvent} */ event) => {
         const checkbox = /** @type {HTMLInputElement} */ (event.target);
-        const category = categories[+checkbox.value].value;
+        const category = categoryObjects[+checkbox.value].value;
         if (checkbox.checked) {
             selection.add(category);
         } else {
@@ -205,9 +245,6 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
         </button>
     </div>`;
 
-    // TODO: Ensure that the attribute is mapped to a color channel
-    const colorify = scale;
-
     function updateHtml() {
         const filteredCats = getFilteredCategories();
 
@@ -231,14 +268,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
                         (category) =>
                             html`<li>
                                 <label class="checkbox">
-                                    <span
-                                        class="color"
-                                        style=${styleMap({
-                                            backgroundColor: colorify(
-                                                category.value
-                                            ).toString(),
-                                        })}
-                                    ></span>
+                                    ${categoryToMarker(category.value)}
                                     <input
                                         type="checkbox"
                                         .checked=${selection.has(
@@ -256,7 +286,7 @@ export function discreteAttributeFilterDialog(attributeInfo, sampleView) {
                           <div>Nothing found</div>
                       </div>`
                     : // check length of (all) categories to ensure there's room for the label
-                    filteredCats.length == 1 && categories.length > 1
+                    filteredCats.length == 1 && categoryObjects.length > 1
                     ? html`<div class="search-note">
                           <div>
                               ${icon(faArrowUp).node[0]} Hit enter to select the
