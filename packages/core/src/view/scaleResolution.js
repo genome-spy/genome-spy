@@ -220,6 +220,12 @@ export default class ScaleResolution {
                 props.domain = domain;
             } else if (isDiscrete(props.type)) {
                 props.domain = new NominalDomain();
+            } else if (props.scheme) {
+                // An initial domain is required when using a scheme.
+                // Otherwise configureScale() does something weird when the domain is set later,
+                // resulting in an interpolator between just two colors.
+                // TODO: Fix configureScale().
+                props.domain = [0, 1];
             }
 
             if (!props.domain && props.domainMid !== undefined) {

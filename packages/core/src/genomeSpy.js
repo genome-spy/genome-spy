@@ -378,6 +378,7 @@ export default class GenomeSpy {
         // Now that all data have been loaded, the domains may need adjusting
         this.viewRoot.visit((view) => {
             for (const resolution of Object.values(view.resolutions.scale)) {
+                // TODO: Don't reconfigure multiple times
                 // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
                 resolution.reconfigure();
             }
