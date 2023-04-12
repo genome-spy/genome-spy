@@ -463,26 +463,40 @@ export function isHighPrecisionScale(type) {
     return type == "index" || type == "locus";
 }
 
+// Maximum precise index number is 2^(23 + 11) ~ 17G
+// Higher number increases precision but makes zooming unstable
+const BS = 2 ** 11;
+const BM = BS - 1;
+
 /**
- * @param {number} x
+ * @param {number} x Must be an integer
  * @param {number[]} [arr]
  */
-export function splitHighPrecision(x, arr) {
-    // Maximum precise index number is 2^(23 + 11) ~ 17G
-    // Higher number increases precision but makes zooming unstable
-    const bs = 2 ** 11;
+export function splitHighPrecision(x, arr = []) {
+    // Using a bitmask is MUCH faster than using modulo (at least on Chrome 112)
+    // https://www.wikiwand.com/en/Modulo#Performance_issues
+    const lo = x & BM;
+    const hi = x - lo;
 
-    const lo = x % bs;
-    const hi = Math.round(x - lo);
-    arr ??= [];
     arr[0] = hi;
     arr[1] = lo;
+
     return arr;
+}
+
+/**
+ * @param {number} x
+ */
+function exactSplitHighPrecision(x) {
+    const lo = x % BS;
+    const hi = x - lo;
+
+    return [hi, lo];
 }
 
 /**
  * @param {number[]} domain
  */
 export function toHighPrecisionDomainUniform(domain) {
-    return [...splitHighPrecision(domain[0]), domain[1] - domain[0]];
+    return [...exactSplitHighPrecision(domain[0]), domain[1] - domain[0]];
 }
