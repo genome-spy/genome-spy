@@ -26,12 +26,13 @@
       "type": "quantitative",
       "scale": {
         "type": "threshold",
-        "domain": [5, 10, 15, 20, 25]
+        "domain": [5, 10, 15, 20, 25],
+        "scheme": "turbo"
       }
     },
     "shape": {
       "field": "data",
-      "type": "ordinal",
+      "type": "nominal",
       "scale": {
         "type": "threshold",
         "domain": [5, 10, 15, 20, 25]

@@ -326,47 +326,53 @@ export default class WebGLHelper {
             const props = resolution.getScaleProps();
 
             const scale = resolution.getScale();
+            const range = /** @type {any[]} */ (scale.range());
 
             /** @type {WebGLTexture} */
             let texture;
 
             if (props.scheme) {
-                let count = isString(props.scheme)
-                    ? undefined
-                    : props.scheme.count;
-
-                count = fixCount(count, scale);
-
-                texture = createSchemeTexture(
-                    props.scheme,
-                    this.gl,
-                    count,
-                    existingTexture
-                );
-            } else {
-                // No scheme, assume that colors are specified in the range
-
-                const range = /** @type {any[]} */ (scale.range());
-
-                // Interpolating or piecewise
-                if (
-                    isInterpolating(scale.type) ||
-                    (isContinuous(scale.type) && range.length > 2)
-                ) {
-                    texture = createInterpolatedColorTexture(
-                        range,
-                        props.interpolate,
-                        this.gl,
-                        existingTexture
-                    );
-                } else {
+                if (scale.type == "threshold" && range) {
+                    // Scale initialization may have configured the range. Let's use it.
                     texture = createDiscreteColorTexture(
                         range,
                         this.gl,
                         scale.domain().length,
                         existingTexture
                     );
+                } else {
+                    let count = isString(props.scheme)
+                        ? undefined
+                        : props.scheme.count;
+
+                    count = fixCount(count, scale);
+
+                    texture = createSchemeTexture(
+                        props.scheme,
+                        this.gl,
+                        count,
+                        existingTexture
+                    );
                 }
+            } else if (
+                // Interpolating
+                isInterpolating(scale.type) ||
+                // Or piecewise
+                (isContinuous(scale.type) && range.length > 2)
+            ) {
+                texture = createInterpolatedColorTexture(
+                    range,
+                    props.interpolate,
+                    this.gl,
+                    existingTexture
+                );
+            } else {
+                texture = createDiscreteColorTexture(
+                    range,
+                    this.gl,
+                    scale.domain().length,
+                    existingTexture
+                );
             }
 
             this.rangeTextures.set(resolution, texture);
