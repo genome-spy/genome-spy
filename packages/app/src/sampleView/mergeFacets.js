@@ -35,22 +35,22 @@ export default class MergeSampleFacets extends FlowNode {
 
         const animator = view.context.animator;
 
-        for (const v of view.getAncestors()) {
-            if (v instanceof SampleView) {
-                this.provenance = v.provenance;
-                this.provenance.storeHelper.subscribe((state) =>
-                    animator.requestTransition(() => {
-                        this.reset();
-                        this._mergeAndPropagate(sampleHierarchySelector(state));
-                        this.complete();
-                    })
-                );
-            }
-        }
+        this.provenance = findProvenance(view);
 
         if (!this.provenance) {
             throw new Error("No SampleView was found!");
         }
+
+        this.provenance.storeHelper.subscribe((state) => {
+            if (!this.#shouldUpdate) {
+                return;
+            }
+            animator.requestTransition(() => {
+                this.reset();
+                this._mergeAndPropagate(sampleHierarchySelector(state));
+                this.complete();
+            });
+        });
 
         /** @type {any} */
         this.contextObject = undefined;
@@ -76,6 +76,16 @@ export default class MergeSampleFacets extends FlowNode {
         // TODO: Optimize by preventing calling altogether
     }
 
+    get #shouldUpdate() {
+        // TODO: Should update only when the sample hierarchy changes.
+        // i.e., when groups or samples are added or removed. Reordering the
+        // the samples within a group should not trigger an update.
+        // TODO: Also check child visibilities. No need to propagate if
+        // the directly attached view is visible but all its children are
+        // invisible.
+        return this.view.isVisible();
+    }
+
     getGlobalObject() {
         return this.contextObject;
     }
@@ -92,6 +102,10 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     complete() {
+        if (!this.#shouldUpdate) {
+            return;
+        }
+
         this._mergeAndPropagate(
             this.provenance.getPresentState()[SAMPLE_SLICE_NAME]
         );
@@ -160,6 +174,17 @@ export default class MergeSampleFacets extends FlowNode {
         });
         for (const resolution of resolutions) {
             resolution.reconfigure();
+        }
+    }
+}
+
+/**
+ * @param {View} view
+ */
+function findProvenance(view) {
+    for (const v of view.getAncestors()) {
+        if (v instanceof SampleView) {
+            return v.provenance;
         }
     }
 }
