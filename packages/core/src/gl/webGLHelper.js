@@ -9,7 +9,12 @@ import {
 } from "twgl.js";
 import { isArray, isString } from "vega-util";
 
-import { isDiscrete, isDiscretizing, isInterpolating } from "vega-scale";
+import {
+    isContinuous,
+    isDiscrete,
+    isDiscretizing,
+    isInterpolating,
+} from "vega-scale";
 import {
     createDiscreteColorTexture,
     createDiscreteTexture,
@@ -343,7 +348,11 @@ export default class WebGLHelper {
 
                 const range = /** @type {any[]} */ (scale.range());
 
-                if (isInterpolating(scale.type)) {
+                // Interpolating or piecewise
+                if (
+                    isInterpolating(scale.type) ||
+                    (isContinuous(scale.type) && range.length > 2)
+                ) {
                     texture = createInterpolatedColorTexture(
                         range,
                         props.interpolate,

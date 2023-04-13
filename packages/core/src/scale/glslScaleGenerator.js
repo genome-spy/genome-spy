@@ -314,7 +314,7 @@ export function generateScaleGlsl(channel, scale, channelDef) {
         if (piecewise) {
             // TODO: Handle range correctly. Now this assumes unit range.
             scaleBody.push(
-                `transformed = (float(slot) + transformed) / (float(${name}.length()) - 1.0);`
+                `transformed = (float(slot) + transformed) / (float(${name}.length() - 1));`
             );
         }
     } else {

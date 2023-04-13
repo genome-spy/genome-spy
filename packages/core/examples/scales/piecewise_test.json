@@ -1,0 +1,26 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+  "description": "Piecewise color scale with more than three thresholds. Three thresholds = diverging scale.",
+  "data": {
+    "sequence": { "start": 0, "stop": 40 }
+  },
+  "mark": {
+    "type": "point",
+    "size": 500
+  },
+  "encoding": {
+    "x": {
+      "field": "data",
+      "type": "quantitative"
+    },
+    "color": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": {
+        "domain": [5, 10, 20, 30],
+        "range": ["green", "#0050f8", "#f6f6f6", "#ff3000"],
+        "clamp": true
+      }
+    }
+  }
+}
