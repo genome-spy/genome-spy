@@ -10,6 +10,8 @@
   "license": "MIT",
   "dependencies": {
     "@genome-spy/core": "^0.29.0",
+    "@gmod/indexedfasta": "^2.0.4",
+    "buffer": "^6.0.3",
     "lit": "^2.0.0-rc.2"
   }
 }
