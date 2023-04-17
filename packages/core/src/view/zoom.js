@@ -30,10 +30,10 @@ export default function interactionToZoom(event, coords, handleZoom, hover) {
 
         if (hover) {
             const e = hover.mark.encoders;
-            if (e.x && !e.x2) {
+            if (e.x && !e.x2 && !e.x.constantValue) {
                 x = +e.x(hover.datum) * coords.width + coords.x;
             }
-            if (e.y && !e.y2) {
+            if (e.y && !e.y2 && !e.y.constantValue) {
                 y = (1 - +e.y(hover.datum)) * coords.height + coords.y;
             }
         }
