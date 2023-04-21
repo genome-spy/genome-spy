@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.30.0](https://github.com/tuner/genome-spy/compare/v0.29.0...v0.30.0) (2023-04-21)
+
+
+### Bug Fixes
+
+* **app:** search field was broken when sample faceting was not used ([ec31702](https://github.com/tuner/genome-spy/commit/ec31702ce3a55d7343ec7628563d44ed55ef5c31))
+* **core:** don't snap zooming to marks with a constant value on x or y channel ([c43dcb4](https://github.com/tuner/genome-spy/commit/c43dcb4844acf983c515aa93c92256a767447e60))
+* **core:** inconsistency between d3 and shader on threshold scale and interpolated scheme ([6d3d55e](https://github.com/tuner/genome-spy/commit/6d3d55e872aa63759544eb5f5ecddfc39ea42d09))
+* **core:** incosistent color scheme when extracting domain from data ([ab523ad](https://github.com/tuner/genome-spy/commit/ab523ad9966be6daf917cd2da7d879429dbad8fc)), closes [#69](https://github.com/tuner/genome-spy/issues/69)
+* **core:** piecewise color scale with more than three thresholds ([a033ef3](https://github.com/tuner/genome-spy/commit/a033ef3c98c9e14adf98cd9d0343cc2ffcb5f225))
+
+
+### Features
+
+* **app:** add advanced filter for sample names ([2fa3a1b](https://github.com/tuner/genome-spy/commit/2fa3a1b2af8f7e8e11984072e4e28c25208d99a9))
+
+
+### Performance Improvements
+
+* **app:** disable mergeFacets when the attached view is hidden ([c1eb057](https://github.com/tuner/genome-spy/commit/c1eb057dc0838a4e8b7e4ec1729b77918c7940de)), closes [#107](https://github.com/tuner/genome-spy/issues/107)
+* **core:** use bitmask instead of modulo in `splitHighPrecision` ([0e502dd](https://github.com/tuner/genome-spy/commit/0e502ddccd8bd6973f4d198d65f8faf3c3a1c2da))
+
+
+
+
+
 # [0.29.0](https://github.com/tuner/genome-spy/compare/v0.28.5...v0.29.0) (2023-03-24)
 
 

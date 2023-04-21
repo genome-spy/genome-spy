@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.30.0](https://github.com/genome-spy/genome-spy/compare/v0.29.0...v0.30.0) (2023-04-21)
+
+
+### Bug Fixes
+
+* **app:** search field was broken when sample faceting was not used ([ec31702](https://github.com/genome-spy/genome-spy/commit/ec31702ce3a55d7343ec7628563d44ed55ef5c31))
+
+
+### Features
+
+* **app:** add advanced filter for sample names ([2fa3a1b](https://github.com/genome-spy/genome-spy/commit/2fa3a1b2af8f7e8e11984072e4e28c25208d99a9))
+
+
+### Performance Improvements
+
+* **app:** disable mergeFacets when the attached view is hidden ([c1eb057](https://github.com/genome-spy/genome-spy/commit/c1eb057dc0838a4e8b7e4ec1729b77918c7940de)), closes [#107](https://github.com/genome-spy/genome-spy/issues/107)
+
+
+
+
+
 # [0.29.0](https://github.com/genome-spy/genome-spy/compare/v0.28.5...v0.29.0) (2023-03-24)
 
 
