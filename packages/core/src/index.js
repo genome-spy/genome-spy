@@ -4,8 +4,9 @@ import { html } from "lit-html";
 
 import GenomeSpy from "./genomeSpy.js";
 import icon from "./img/bowtie.svg";
+import favIcon from "./img/genomespy-favicon.svg";
 
-export { GenomeSpy, html, icon };
+export { GenomeSpy, html, icon, favIcon };
 
 /**
  * Embeds GenomeSpy into the DOM
