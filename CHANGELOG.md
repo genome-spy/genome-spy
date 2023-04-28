@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.30.1](https://github.com/tuner/genome-spy/compare/v0.30.0...v0.30.1) (2023-04-28)
+
+
+### Bug Fixes
+
+* **core:** eliminate blurry edges in stretched sequence logo letters ([36365b3](https://github.com/tuner/genome-spy/commit/36365b31425179e774e07d7d196ec24cef466ed8))
+
+
+
+
+
 # [0.30.0](https://github.com/tuner/genome-spy/compare/v0.29.0...v0.30.0) (2023-04-21)
 
 
