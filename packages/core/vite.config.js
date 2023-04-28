@@ -25,10 +25,11 @@ export default defineConfig({
         outDir: "../dist",
         emptyOutDir: true,
         lib: {
-            formats: ["umd"],
+            formats: ["umd", "es"],
             entry: "index.js",
             name: "genomeSpyEmbed",
-            fileName: () => "index.js",
+            fileName: (format) =>
+                format == "umd" ? "index.js" : `index.${format}.js`,
         },
         rollupOptions: {
             plugins: [minifyHTML()],

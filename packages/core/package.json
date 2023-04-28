@@ -9,15 +9,17 @@
   "license": "MIT",
   "version": "0.30.0",
   "main": "dist/index.js",
-  "module": "src/index.js",
+  "module": "dist/index.es.js",
   "exports": {
-    ".": "./src/index.js",
-    "./*": "./src/*",
-    "./schema.json": "./dist/schema.json"
+    ".": {
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.js"
+    },
+    "./schema.json": "./dist/schema.json",
+    "./style.css": "./dist/style.css"
   },
   "files": [
-    "dist/",
-    "src/"
+    "dist/"
   ],
   "repository": {
     "type": "git",
