@@ -1,5 +1,5 @@
 import { bisector } from "d3-array";
-import FlowNode from "../flowNode";
+import FlowNode, { BEHAVIOR_COLLECTS } from "../flowNode";
 import { topKSlice } from "../../utils/topK";
 import ReservationMap from "../../utils/reservationMap";
 import { field } from "../../utils/field";
@@ -9,6 +9,10 @@ import { field } from "../../utils/field";
  * @typedef {import("../../view/view").default} View
  */
 export default class FilterScoredLabelsTransform extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_COLLECTS;
+    }
+
     /**
      *
      * @param {Params} params

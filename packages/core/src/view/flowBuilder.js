@@ -149,7 +149,7 @@ export function buildDataFlow(root, existingFlow) {
             }
 
             if (view.mark.isPickingParticipant()) {
-                // TODO: Add CloneTransform
+                appendTransform(new CloneTransform());
                 appendTransform(
                     new IdentifierTransform({ type: "identifier" })
                 );
@@ -260,6 +260,7 @@ export function linearizeLocusAccess(view) {
                 as.push(linearizedField);
             }
 
+            transforms.push(new CloneTransform());
             transforms.push(
                 new LinearizeGenomicCoordinate(
                     {

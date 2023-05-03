@@ -1,5 +1,4 @@
-import Collector from "./collector";
-import { BEHAVIOR_CLONES } from "./flowNode";
+import { BEHAVIOR_CLONES, BEHAVIOR_COLLECTS } from "./flowNode";
 import CloneTransform from "./transforms/clone";
 
 /**
@@ -32,8 +31,8 @@ export function validateLinks(node, parent = undefined) {
  * @param {FlowNode} node
  */
 export function removeRedundantCloneTransforms(node, cloneRequired = false) {
-    if (node instanceof Collector) {
-        // If an object is modified downstream of Collector, it must be cloned
+    if (node.behavior & BEHAVIOR_COLLECTS) {
+        // If an object is modified downstream of a collector, it must be cloned
         cloneRequired = true;
     }
 
@@ -55,10 +54,10 @@ export function removeRedundantCloneTransforms(node, cloneRequired = false) {
     }
 
     for (let i = 0, n = node.children.length; i < n; i++) {
-        // All but the last branch need defensive copies to prevent side effects
+        // Clone transforms must be preserved at branches
         removeRedundantCloneTransforms(
             node.children[i],
-            cloneRequired || i < n - 1
+            cloneRequired || n > 1
         );
     }
 }
@@ -70,6 +69,23 @@ export function removeRedundantCollectors() {
 export function combineAndPullCollectorsUp() {
     // TODO:
 }
+
+// TODO: Combine identical branches to prevent redundant work
+// Example:
+//
+//      --B--C--D
+//     /
+// --A----B--C--E
+//     \
+//      --F--G
+//
+// should become:
+//
+//              --D
+//             /
+// --A----B--C----E
+//     \
+//      --F--G
 
 /**
  * @param {import("./dataFlow").default<any>} dataFlow

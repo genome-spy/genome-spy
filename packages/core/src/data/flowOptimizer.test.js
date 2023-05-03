@@ -125,7 +125,7 @@ describe("removeRedundantCloneTransforms", () => {
         // All but the last branch needs cloning
         expect(branching.children[0]).toBe(a);
         expect(branching.children[1]).toBe(b);
-        expect(branching.children[2]).toBe(cl);
+        expect(branching.children[2]).toBe(c);
     });
 });
 

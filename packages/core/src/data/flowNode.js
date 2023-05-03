@@ -12,6 +12,12 @@ export const BEHAVIOR_CLONES = 1 << 0;
  */
 export const BEHAVIOR_MODIFIES = 1 << 1;
 
+/**
+ * The flow node collects data objects and may emit the to its children.
+ * The collected data objects must not be modified by downstream transforms.
+ */
+export const BEHAVIOR_COLLECTS = 1 << 2;
+
 const ROOT_CONTEXT_OBJECT = {};
 /**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.

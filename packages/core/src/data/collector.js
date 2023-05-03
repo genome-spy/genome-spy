@@ -2,7 +2,7 @@ import { InternMap } from "internmap";
 import { group } from "d3-array";
 import { compare } from "vega-util";
 import iterateNestedMaps from "../utils/iterateNestedMaps";
-import FlowNode, { isFacetBatch } from "./flowNode";
+import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode";
 import { field } from "../utils/field";
 import { asArray } from "../utils/arrayUtils";
 
@@ -16,6 +16,10 @@ import { asArray } from "../utils/arrayUtils";
  * @typedef {import("./flowNode").Data} Data
  */
 export default class Collector extends FlowNode {
+    get behavior() {
+        return BEHAVIOR_COLLECTS;
+    }
+
     /**
      * @param {CollectParams} [params]
      */
