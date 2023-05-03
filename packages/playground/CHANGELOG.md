@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.30.3](https://github.com/tuner/genome-spy/compare/v0.30.2...v0.30.3) (2023-05-03)
+
+**Note:** Version bump only for package @genome-spy/playground
+
+
+
+
+
 ## [0.30.2](https://github.com/tuner/genome-spy/compare/v0.30.1...v0.30.2) (2023-04-28)
 
 **Note:** Version bump only for package @genome-spy/playground
