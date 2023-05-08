@@ -25,7 +25,7 @@ export class GroupPanel extends LayerView {
                 width: { step: 22 },
                 // TODO: Make step size, colors, font size, etc. configurable.
 
-                data: { dynamicSource: true },
+                data: { name: null },
 
                 transform: [
                     { type: "filter", expr: "datum._depth > 0" },
@@ -202,7 +202,7 @@ export class GroupPanel extends LayerView {
         const groupLocations = this.sampleView.getLocations()?.groups ?? [];
 
         const dynamicSource =
-            /** @type {import("@genome-spy/core/data/sources/dynamicSource").default} */ (
+            /** @type {import("@genome-spy/core/data/sources/namedSource").default} */ (
                 this.context.dataFlow.findDataSourceByKey(this)
             );
 
@@ -225,7 +225,7 @@ export class GroupPanel extends LayerView {
             n: g.key.n,
         }));
 
-        dynamicSource.publishData(data);
+        dynamicSource.updateDynamicData(data);
 
         // TODO: Get rid of the following. Should happen automatically:
         this.getScaleResolution("x").reconfigure();

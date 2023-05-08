@@ -44,7 +44,7 @@ export class SampleAttributePanel extends ConcatView {
         super(
             {
                 title: "Sample metadata",
-                data: { dynamicSource: true },
+                data: { name: null },
                 hconcat: [], // Contents are added dynamically
                 spacing: sampleView.spec.samples.attributeSpacing ?? 1,
                 resolve: {
@@ -281,7 +281,7 @@ export class SampleAttributePanel extends ConcatView {
         // TODO: optimizeDataFlow(dataFlow);
 
         const dynamicSource =
-            /** @type {import("@genome-spy/core/data/sources/dynamicSource").default} */ (
+            /** @type {import("@genome-spy/core/data/sources/namedSource").default} */ (
                 flow.findDataSourceByKey(this)
             );
 
@@ -316,7 +316,7 @@ export class SampleAttributePanel extends ConcatView {
             // But also ensure that the cached batch is invalidated
         });
 
-        dynamicSource.publishData(samples);
+        dynamicSource.updateDynamicData(samples);
 
         // A terrible hack to initialize data sources.
         // TODO: Come up with a clean solution.
