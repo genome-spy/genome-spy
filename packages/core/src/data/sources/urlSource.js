@@ -19,7 +19,7 @@ export default class UrlSource extends DataSource {
         super();
 
         this.params = params;
-        this.baseUrl = view.getBaseUrl();
+        this.baseUrl = view?.getBaseUrl();
     }
 
     get identifier() {
