@@ -1,8 +1,8 @@
 import { isNumber } from "vega-util";
 
-import { shallowArrayEqualsWithAccessors } from "@genome-spy/core/utils/arrayUtils";
+import { shallowArrayEquals } from "../../../utils/arrayUtils";
 import DataSource from "../dataSource";
-import smoothstep from "@genome-spy/core/utils/smoothstep";
+import smoothstep from "../../../utils/smoothstep";
 import {
     validTicks,
     tickValues,
@@ -25,7 +25,7 @@ export default class AxisTickSource extends DataSource {
         this.axisProps = params.axis ?? {};
         this.view = view;
 
-        /** @type {TickDatum[]} */
+        /** @type {import("../../../utils/domainArray").scalar[]} */
         this.ticks = [];
 
         this.channel = this.params.channel;
@@ -73,26 +73,45 @@ export default class AxisTickSource extends DataSource {
             : 0;
     }
 
+    /**
+     * Recalculates ticks, propagates if necessary.
+     */
     #updateTickData() {
         const scale = this.scaleResolution.getScale();
+        const axisProps = this.axisProps;
+        const axisLength = this.#getAxisLength();
 
-        const oldTicks = this.ticks;
-        const newTicks = generateTicks(
-            this.axisProps,
-            scale,
-            this.#getAxisLength(),
-            oldTicks
-        );
+        /**
+         * Make ticks more dense in small plots
+         *
+         * @param {number} length
+         */
+        const tickSpacing = (length) => 25 + 60 * smoothstep(100, 700, length);
 
-        // If generateTicks returned a new array...
-        if (newTicks !== oldTicks) {
-            this.ticks = newTicks;
+        const requestedCount = isNumber(axisProps.tickCount)
+            ? axisProps.tickCount
+            : Math.round(axisLength / tickSpacing(axisLength));
+
+        const count = tickCount(scale, requestedCount, axisProps.tickMinStep);
+
+        const ticks = axisProps.values
+            ? validTicks(scale, axisProps.values, count)
+            : tickValues(scale, count);
+
+        if (!shallowArrayEquals(ticks, this.ticks)) {
+            this.ticks = ticks;
+
+            const format = tickFormat(
+                scale,
+                requestedCount,
+                this.axisProps.format
+            );
 
             this.reset();
             this.beginBatch({ type: "file" });
 
-            for (const tick of this.ticks) {
-                this._propagate(tick);
+            for (const tick of ticks) {
+                this._propagate({ value: tick, label: format(tick) });
             }
 
             this.complete();
@@ -101,50 +120,5 @@ export default class AxisTickSource extends DataSource {
 
     async load() {
         this.#updateTickData();
-    }
-}
-
-/**
- * @param {import("@genome-spy/core/spec/axis").Axis} axisProps
- * @param {any} scale
- * @param {number} axisLength Length of axis in pixels
- * @param {TickDatum[]} [oldTicks] Reuse the old data if the tick values are identical
- * @returns {TickDatum[]}
- *
- * @typedef {object} TickDatum
- * @prop {number} value
- * @prop {string} label
- */
-function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
-    /**
-     * Make ticks more dense in small plots
-     *
-     * @param {number} length
-     */
-    const tickSpacing = (length) => 25 + 60 * smoothstep(100, 700, length);
-
-    let count = isNumber(axisProps.tickCount)
-        ? axisProps.tickCount
-        : Math.round(axisLength / tickSpacing(axisLength));
-
-    count = tickCount(scale, count, axisProps.tickMinStep);
-
-    const values = axisProps.values
-        ? validTicks(scale, axisProps.values, count)
-        : tickValues(scale, count);
-
-    if (
-        shallowArrayEqualsWithAccessors(
-            values,
-            oldTicks,
-            (v) => v,
-            (d) => d.value
-        )
-    ) {
-        return oldTicks;
-    } else {
-        const format = tickFormat(scale, count, axisProps.format);
-
-        return values.map((x) => ({ value: x, label: format(x) }));
     }
 }
