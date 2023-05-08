@@ -25,8 +25,12 @@ export default class AxisTickSource extends DataSource {
         this.axisProps = params.axis ?? {};
         this.view = view;
 
-        /** @type {import("../../../utils/domainArray").scalar[]} */
-        this.ticks = [];
+        /**
+         * Undefined indicates uninitialized ticks.
+         *
+         * @type {import("../../../utils/domainArray").scalar[]}
+         */
+        this.ticks = undefined;
 
         this.channel = this.params.channel;
         if (this.channel !== "x" && this.channel !== "y") {
@@ -98,7 +102,7 @@ export default class AxisTickSource extends DataSource {
             ? validTicks(scale, axisProps.values, count)
             : tickValues(scale, count);
 
-        if (!shallowArrayEquals(ticks, this.ticks)) {
+        if (!this.ticks || !shallowArrayEquals(ticks, this.ticks)) {
             this.ticks = ticks;
 
             const format = tickFormat(
