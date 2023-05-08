@@ -193,7 +193,7 @@ export interface DynamicData {
     dynamic: DynamicDataParams;
 }
 
-export type DynamicDataParams = AxisTicksData;
+export type DynamicDataParams = AxisTicksData | AxisGenomeData;
 
 export interface AxisTicksData {
     type: "axisTicks";
@@ -202,5 +202,12 @@ export interface AxisTicksData {
     axis?: Axis;
 
     /** Which channel's scale domain to listen to */
+    channel: PrimaryPositionalChannel;
+}
+
+export interface AxisGenomeData {
+    type: "axisGenome";
+
+    /** Which channel's scale domain to use */
     channel: PrimaryPositionalChannel;
 }

@@ -2,6 +2,7 @@ import InlineSource, { isInlineData } from "./inlineSource";
 import UrlSource, { isUrlData } from "./urlSource";
 import SequenceSource, { isSequenceGenerator } from "./sequenceSource";
 import AxisTickSource from "./dynamic/axisTickSource";
+import AxisGenomeSource from "./dynamic/axisGenomeSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} params
@@ -35,9 +36,19 @@ function isDynamicData(params) {
 /**
  *
  * @param {import("../../spec/data").DynamicDataParams} params
+ * @returns {params is import("../../spec/data").AxisTicksData}
  */
 function isAxisTickSource(params) {
     return params?.type == "axisTicks";
+}
+
+/**
+ *
+ * @param {import("../../spec/data").DynamicDataParams} params
+ * @returns {params is import("../../spec/data").AxisGenomeData}
+ */
+function isAxisGenomeSource(params) {
+    return params?.type == "axisGenome";
 }
 
 /**
@@ -47,6 +58,8 @@ function isAxisTickSource(params) {
 function createDynamicDataSource(params, view) {
     if (isAxisTickSource(params)) {
         return new AxisTickSource(params, view);
+    } else if (isAxisGenomeSource(params)) {
+        return new AxisGenomeSource(params, view);
     }
 
     throw new Error(

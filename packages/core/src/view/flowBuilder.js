@@ -4,7 +4,6 @@ import createDataSource from "../data/sources/dataSourceFactory";
 import UnitView from "./unitView";
 import { BEHAVIOR_MODIFIES } from "../data/flowNode";
 import CloneTransform from "../data/transforms/clone";
-import { isDynamicCallbackData } from "../data/sources/dynamicCallbackSource";
 import DataFlow from "../data/dataFlow";
 import DataSource from "../data/sources/dataSource";
 import {
@@ -113,9 +112,7 @@ export function buildDataFlow(root, existingFlow) {
         nodeStack.push(currentNode);
 
         if (view.spec.data) {
-            const dataSource = isDynamicCallbackData(view.spec.data)
-                ? view.getDynamicDataSource()
-                : isNamedData(view.spec.data)
+            const dataSource = isNamedData(view.spec.data)
                 ? new NamedSource(
                       view.spec.data,
                       view,

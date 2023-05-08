@@ -1,6 +1,5 @@
 import LayerView from "./layerView";
 import { FlexDimensions } from "../utils/layout/flexLayout";
-import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
@@ -88,14 +87,6 @@ export default class AxisView extends LayerView {
         );
 
         this.axisProps = fullAxisProps;
-
-        if (genomeAxis) {
-            const channel = orient2channel(this.axisProps.orient);
-            const genome = this.getScaleResolution(channel).getGenome();
-            this.findChildByName(CHROM_LAYER_NAME).getDynamicDataSource = () =>
-                new DynamicCallbackSource(() => genome.chromosomes);
-        }
-
         this.blockEncodingInheritance = true;
     }
 
@@ -571,7 +562,12 @@ export function createGenomeAxis(axisProps) {
         const chromLayerSpec = {
             // TODO: Configuration
             name: CHROM_LAYER_NAME,
-            data: { dynamicCallbackSource: true },
+            data: {
+                dynamic: {
+                    type: "axisGenome",
+                    channel: orient2channel(ap.orient),
+                },
+            },
             encoding: {
                 // TODO: { chrom: "name", type: "locus" } // without pos = pos is 0
                 [main]: { field: "continuousStart", type: "locus", band: 0 },
