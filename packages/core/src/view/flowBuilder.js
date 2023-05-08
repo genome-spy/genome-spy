@@ -116,12 +116,12 @@ export function buildDataFlow(root, existingFlow) {
             const dataSource = isDynamicCallbackData(view.spec.data)
                 ? view.getDynamicDataSource()
                 : isNamedData(view.spec.data)
-                ? // TODO: Only one NamedSource instance per unique name should exists
-                  new NamedSource(
+                ? new NamedSource(
                       view.spec.data,
+                      view,
                       view.context.getNamedDataFromProvider
                   )
-                : createDataSource(view.spec.data, view.getBaseUrl());
+                : createDataSource(view.spec.data, view);
 
             currentNode = dataSource;
             dataFlow.addDataSource(dataSource, view);

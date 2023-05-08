@@ -427,7 +427,7 @@ export default class SampleView extends ContainerView {
         }
 
         const { dataSource, collector } = createChain(
-            createDataSource(this.spec.samples.data, this.getBaseUrl()),
+            createDataSource(this.spec.samples.data, this),
             new ProcessSample()
         );
 

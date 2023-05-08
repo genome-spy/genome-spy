@@ -13,13 +13,13 @@ export function isUrlData(data) {
 export default class UrlSource extends DataSource {
     /**
      * @param {import("../../spec/data").UrlData} params
-     * @param {string} [baseUrl]
+     * @param {import("../../view/view").default} view
      */
-    constructor(params, baseUrl) {
+    constructor(params, view) {
         super();
 
         this.params = params;
-        this.baseUrl = baseUrl;
+        this.baseUrl = view.getBaseUrl();
     }
 
     get identifier() {

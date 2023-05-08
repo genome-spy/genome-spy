@@ -4,15 +4,15 @@ import SequenceSource, { isSequenceGenerator } from "./sequenceSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} params
- * @param {string} [baseUrl]
+ * @param {import("../../view/view").default} view
  */
-export default function createDataSource(params, baseUrl) {
+export default function createDataSource(params, view) {
     if (isInlineData(params)) {
-        return new InlineSource(params);
+        return new InlineSource(params, view);
     } else if (isUrlData(params)) {
-        return new UrlSource(params, baseUrl);
+        return new UrlSource(params, view);
     } else if (isSequenceGenerator(params)) {
-        return new SequenceSource(params);
+        return new SequenceSource(params, view);
     }
 
     throw new Error(

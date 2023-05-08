@@ -18,9 +18,10 @@ export default class NamedSource extends DataSource {
 
     /**
      * @param {import("../../spec/data").NamedData} params
+     * @param {import("../../view/view").default} view
      * @param {function(string):any[]} provider Function that retrieves a dataset using a name
      */
-    constructor(params, provider) {
+    constructor(params, view, provider) {
         super();
 
         this.provider = provider;
