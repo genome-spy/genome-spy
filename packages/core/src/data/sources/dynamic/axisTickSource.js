@@ -61,14 +61,16 @@ export default class AxisTickSource extends DataSource {
      * They should all be the same, but some exotic configuration might break that assumption.
      */
     #getAxisLength() {
-        return this.scaleResolution.members
+        const lengths = this.scaleResolution.members
             .map(
                 (m) =>
-                    m.view.coords?.[
-                        this.channel === "x" ? "width" : "height"
-                    ] ?? 0
+                    m.view.coords?.[this.channel === "x" ? "width" : "height"]
             )
-            .reduce((a, b) => Math.min(a, b), 10000);
+            .filter((len) => len > 0);
+
+        return lengths.length
+            ? lengths.reduce((a, b) => Math.min(a, b), 10000)
+            : 0;
     }
 
     #updateTickData() {
