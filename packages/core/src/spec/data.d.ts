@@ -11,7 +11,8 @@
 /*
  * Constants and utilities for data.
  */
-import { FieldName } from "./channel";
+import { Axis } from "./axis";
+import { FieldName, PrimaryPositionalChannel } from "./channel";
 
 export type ParseValue =
     | null
@@ -148,13 +149,6 @@ export interface DynamicCallbackData extends DataBase {
     dynamicCallbackSource: boolean;
 }
 
-export interface DynamicData extends DataBase {
-    /**
-     * For internal use.
-     */
-    dynamicSource: boolean;
-}
-
 export type Generator = SequenceGenerator;
 
 export interface GeneratorBase {
@@ -193,4 +187,27 @@ export interface SequenceParams {
      * __Default value:__ `"data"`
      */
     as?: FieldName;
+}
+
+export interface DynamicData {
+    dynamic: DynamicDataParams;
+}
+
+export type DynamicDataParams = AxisTicksData | AxisGenomeData;
+
+export interface AxisTicksData {
+    type: "axisTicks";
+
+    /** Optional axis properties */
+    axis?: Axis;
+
+    /** Which channel's scale domain to listen to */
+    channel: PrimaryPositionalChannel;
+}
+
+export interface AxisGenomeData {
+    type: "axisGenome";
+
+    /** Which channel's scale domain to use */
+    channel: PrimaryPositionalChannel;
 }

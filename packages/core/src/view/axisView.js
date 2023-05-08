@@ -1,13 +1,5 @@
-import { validTicks, tickValues, tickFormat, tickCount } from "../scale/ticks";
 import LayerView from "./layerView";
-import { isNumber } from "vega-util";
-import smoothstep from "../utils/smoothstep";
-import {
-    shallowArrayEquals,
-    shallowArrayEqualsWithAccessors,
-} from "../utils/arrayUtils";
 import { FlexDimensions } from "../utils/layout/flexLayout";
-import DynamicCallbackSource from "../data/sources/dynamicCallbackSource";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
@@ -95,32 +87,6 @@ export default class AxisView extends LayerView {
         );
 
         this.axisProps = fullAxisProps;
-
-        /** Axis should be updated before next render */
-        this.axisUpdateRequested = true;
-
-        this._addBroadcastHandler("layout", () => {
-            this.axisUpdateRequested = true;
-        });
-
-        /** @type {any[]} */
-        this.previousScaleDomain = [];
-
-        /** @type {number} TODO: Take from scal*/
-        this.axisLength = undefined;
-
-        /** @type {TickDatum[]} */
-        this.ticks = [];
-
-        this.tickSource = new DynamicCallbackSource(() => this.ticks);
-
-        if (genomeAxis) {
-            const channel = orient2channel(this.axisProps.orient);
-            const genome = this.getScaleResolution(channel).getGenome();
-            this.findChildByName(CHROM_LAYER_NAME).getDynamicDataSource = () =>
-                new DynamicCallbackSource(() => genome.chromosomes);
-        }
-
         this.blockEncodingInheritance = true;
     }
 
@@ -144,64 +110,6 @@ export default class AxisView extends LayerView {
 
     getPerpendicularSize() {
         return getExtent(this.axisProps);
-    }
-
-    getDynamicDataSource() {
-        return this.tickSource;
-    }
-
-    _updateAxisData() {
-        // TODO: This could be a transform that generates ticks on the fly
-        // Would allow for unlimited customization.
-
-        const channel = orient2channel(this.axisProps.orient);
-        const scale = this.getScaleResolution(channel).getScale();
-        const currentScaleDomain = scale.domain();
-
-        if (
-            shallowArrayEquals(currentScaleDomain, this.previousScaleDomain) &&
-            !this.axisUpdateRequested
-        ) {
-            // TODO: Instead of scale comparison, register an observer to Resolution
-            return;
-        }
-        this.previousScaleDomain = currentScaleDomain;
-
-        const oldTicks = this.ticks;
-        const newTicks = generateTicks(
-            this.axisProps,
-            scale,
-            this.axisLength,
-            oldTicks
-        );
-
-        if (newTicks !== oldTicks) {
-            this.ticks = newTicks;
-            this.tickSource.loadSynchronously();
-        }
-
-        this.axisUpdateRequested = false;
-    }
-
-    onBeforeRender() {
-        super.onBeforeRender();
-        this._updateAxisData();
-    }
-
-    /**
-     * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./view").RenderingOptions} [options]
-     */
-    render(context, coords, options = {}) {
-        if (!this.isVisible()) {
-            return;
-        }
-
-        this.axisLength =
-            coords[CHANNEL_DIMENSIONS[orient2channel(this.getOrient())]];
-
-        super.render(context, coords, options);
     }
 
     isPickingSupported() {
@@ -238,51 +146,6 @@ function getExtent(axisProps) {
     );
 
     return extent;
-}
-
-/**
- * @param {Axis} axisProps
- * @param {any} scale
- * @param {number} axisLength Length of axis in pixels
- * @param {TickDatum[]} [oldTicks] Reuse the old data if the tick values are identical
- * @returns {TickDatum[]}
- *
- * @typedef {object} TickDatum
- * @prop {number} value
- * @prop {string} label
- */
-function generateTicks(axisProps, scale, axisLength, oldTicks = []) {
-    /**
-     * Make ticks more dense in small plots
-     *
-     * @param {number} length
-     */
-    const tickSpacing = (length) => 25 + 60 * smoothstep(100, 700, length);
-
-    let count = isNumber(axisProps.tickCount)
-        ? axisProps.tickCount
-        : Math.round(axisLength / tickSpacing(axisLength));
-
-    count = tickCount(scale, count, axisProps.tickMinStep);
-
-    const values = axisProps.values
-        ? validTicks(scale, axisProps.values, count)
-        : tickValues(scale, count);
-
-    if (
-        shallowArrayEqualsWithAccessors(
-            values,
-            oldTicks,
-            (v) => v,
-            (d) => d.value
-        )
-    ) {
-        return oldTicks;
-    } else {
-        const format = tickFormat(scale, count, axisProps.format);
-
-        return values.map((x) => ({ value: x, label: format(x) }));
-    }
 }
 
 // Based on: https://vega.github.io/vega-lite/docs/axis.html
@@ -508,7 +371,13 @@ function createAxis(axisProps) {
         [CHANNEL_DIMENSIONS[
             getPerpendicularChannel(orient2channel(ap.orient))
         ]]: ap.extent,
-        data: { dynamicCallbackSource: true },
+        data: {
+            dynamic: {
+                type: "axisTicks",
+                channel: orient2channel(ap.orient),
+                axis: axisProps,
+            },
+        },
         layer: [],
     };
 
@@ -693,7 +562,12 @@ export function createGenomeAxis(axisProps) {
         const chromLayerSpec = {
             // TODO: Configuration
             name: CHROM_LAYER_NAME,
-            data: { dynamicCallbackSource: true },
+            data: {
+                dynamic: {
+                    type: "axisGenome",
+                    channel: orient2channel(ap.orient),
+                },
+            },
             encoding: {
                 // TODO: { chrom: "name", type: "locus" } // without pos = pos is 0
                 [main]: { field: "continuousStart", type: "locus", band: 0 },

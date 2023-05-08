@@ -13,8 +13,9 @@ export function isInlineData(data) {
 export default class InlineSource extends DataSource {
     /**
      * @param {import("../../spec/data").InlineData} params
+     * @param {import("../../view/view").default} view
      */
-    constructor(params) {
+    constructor(params, view) {
         super();
 
         this.params = params;

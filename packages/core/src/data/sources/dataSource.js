@@ -2,6 +2,9 @@ import FlowNode from "../flowNode";
 
 export default class DataSource extends FlowNode {
     /**
+     * Returns a string that identifies a data source. Data sources with the
+     * same identifier can be merged.
+     *
      * @return {string}
      */
     get identifier() {

@@ -12,8 +12,9 @@ export default class SequenceSource extends DataSource {
     /**
      *
      * @param {import("../../spec/data").SequenceGenerator} params
+     * @param {import("../../view/view").default} view
      */
-    constructor(params) {
+    constructor(params, view) {
         super();
         this.sequence = params.sequence;
 
