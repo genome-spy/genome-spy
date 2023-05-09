@@ -37,7 +37,7 @@ const ORIENT_CHANNELS = Object.fromEntries(
 /**
  * @param {AxisOrient} slot
  */
-function orient2channel(slot) {
+export function orient2channel(slot) {
     return ORIENT_CHANNELS[slot];
 }
 
@@ -79,8 +79,8 @@ export default class AxisView extends LayerView {
 
         super(
             genomeAxis
-                ? createGenomeAxis(fullAxisProps)
-                : createAxis(fullAxisProps),
+                ? createGenomeAxis(fullAxisProps, type)
+                : createAxis(fullAxisProps, type),
             context,
             parent,
             `axis_${axisProps.orient}`
@@ -243,9 +243,10 @@ function getDefaultAngleAndAlign(type, axisProps) {
 
 /**
  * @param {Axis} axisProps
+ * @param {string} type
  * @returns {LayerSpec}
  */
-function createAxis(axisProps) {
+function createAxis(axisProps, type) {
     // TODO: Ensure that no channels except the positional ones are shared
 
     const ap = { ...axisProps, extent: getExtent(axisProps) };
@@ -294,7 +295,7 @@ function createAxis(axisProps) {
             minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
         },
         encoding: {
-            [main]: { field: "value", type: "quantitative" },
+            [main]: { field: "value", type },
             text: { field: "label" },
         },
     });
@@ -350,7 +351,7 @@ function createAxis(axisProps) {
         const spec = {
             name: "ticks_and_labels",
             encoding: {
-                [main]: { field: "value", type: "quantitative" },
+                [main]: { field: "value", type },
             },
             layer: [],
         };
@@ -368,13 +369,13 @@ function createAxis(axisProps) {
 
     /** @type {LayerSpec} */
     const axisSpec = {
-        [CHANNEL_DIMENSIONS[
-            getPerpendicularChannel(orient2channel(ap.orient))
-        ]]: ap.extent,
+        // Force the resolution towards the parent view even if it has "independent" behavior
+        resolve: { scale: { [main]: "forced" } },
+        [CHANNEL_DIMENSIONS[getPerpendicularChannel(main)]]: ap.extent,
         data: {
             dynamic: {
                 type: "axisTicks",
-                channel: orient2channel(ap.orient),
+                channel: main,
                 axis: axisProps,
             },
         },
@@ -419,9 +420,10 @@ const defaultGenomeAxisProps = {
 
 /**
  * @param {GenomeAxis} axisProps
+ * @param {string} type
  * @returns {LayerSpec}
  */
-export function createGenomeAxis(axisProps) {
+export function createGenomeAxis(axisProps, type) {
     const ap = { ...axisProps, extent: getExtent(axisProps) };
 
     const main = orient2channel(ap.orient);
@@ -518,7 +520,7 @@ export function createGenomeAxis(axisProps) {
                 ...chromLabelMarkProps,
             },
             encoding: {
-                [main + "2"]: { field: "continuousEnd", type: "locus" },
+                [main + "2"]: { field: "continuousEnd", type },
                 text: { field: "name" },
             },
         };
@@ -551,11 +553,14 @@ export function createGenomeAxis(axisProps) {
     }
 
     // Create an ordinary axis
-    const axisSpec = createAxis({
-        ...axisProps,
-        ...fixedAxisProps,
-        // TODO: Allow the user to override fixedAxisProps
-    });
+    const axisSpec = createAxis(
+        {
+            ...axisProps,
+            ...fixedAxisProps,
+            // TODO: Allow the user to override fixedAxisProps
+        },
+        type
+    );
 
     if (axisProps.chromTicks || axisProps.chromLabels) {
         /** @type {import("../spec/view").LayerSpec} */
@@ -570,7 +575,7 @@ export function createGenomeAxis(axisProps) {
             },
             encoding: {
                 // TODO: { chrom: "name", type: "locus" } // without pos = pos is 0
-                [main]: { field: "continuousStart", type: "locus", band: 0 },
+                [main]: { field: "continuousStart", type, band: 0 },
             },
             layer: [],
         };

@@ -94,8 +94,7 @@ the whole band.
       "mark": "text",
       "encoding": {
         "text": {
-          "field": "data",
-          "type": "quantitative"
+          "field": "data"
         }
       }
     }
@@ -161,8 +160,7 @@ range would be defined as: x = 2 (inclusive), x2 = 5 (exclusive).
       "mark": "text",
       "encoding": {
         "text": {
-          "expr": "'[' + datum.from + ', ' + datum.to + ')'",
-          "type": "nominal"
+          "expr": "'[' + datum.from + ', ' + datum.to + ')'"
         }
       }
     }
@@ -205,8 +203,7 @@ the label indices.
       "mark": "text",
       "encoding": {
         "text": {
-          "field": "data",
-          "type": "quantitative"
+          "field": "data"
         }
       }
     }
@@ -348,3 +345,77 @@ By giving the scale a name, it can be accessed through the
   }
 }
 ```
+
+## Axes
+
+Positional channels are usually annotated with axes, which are automatically
+generated based on the scale type. However, you can customize the axis by
+specifying the `axis` property in the encoding block.
+
+```json
+{
+  ...,
+  "encoding": {
+    "x": {
+      "field": "foo",
+      "type": "quantitative",
+      "axis": {
+        "title": "My axis title"
+      }
+    }
+  }
+}
+```
+
+GenomeSpy implements most of Vega-Lite's axis properties. See the [interface
+definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/spec/axis.d.ts)
+for supported properties. TODO: Write a proper documentation.
+
+!!! note "Grid lines"
+
+    Grid lines are hidden by default in GenomeSpy and can be enabled for each
+    view using the `grid` property. The default behavior will be configurable
+    once GenomeSpy supports themes.
+
+### Genome axis for loci
+
+The genome axis is a special axis for the `"locus"` scale. It displays
+chromosome names and the intra-chromosomal coordinates. You can adjust the style
+of the chromosome axis and grid using various parameters.
+
+<div><genome-spy-doc-embed height="150">
+
+```json
+{
+  "genome": { "name": "hg38" },
+  "data": { "values": [{}] },
+  "mark": "point",
+
+  "encoding": {
+    "x": {
+      "chrom": "a",
+      "pos": "b",
+      "type": "locus",
+
+      "axis": {
+        "chromTickColor": "#5F87F5",
+        "chromLabelColor": "#E16B67",
+
+        "grid": true,
+        "gridColor": "gray",
+        "gridOpacity": 0.5,
+        "gridDash": [1, 11],
+
+        "chromGrid": true,
+        "chromGridDash": [3, 3],
+        "chromGridColor": "#5F87F5",
+        "chromGridOpacity": 0.7,
+        "chromGridFillEven": "#BEFACC",
+        "chromGridFillOdd": "#FDFCE8"
+      }
+    }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>

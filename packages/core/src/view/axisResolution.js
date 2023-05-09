@@ -69,7 +69,7 @@ export default class AxisResolution {
                 // No axis whatsoever is wanted
                 return null;
             } else {
-                return /** @type { import("../spec/axis").Axis} */ (
+                return /** @type { import("../spec/axis").GenomeAxis} */ (
                     mergeObjects(
                         propArray.filter((props) => props !== undefined),
                         "axis",

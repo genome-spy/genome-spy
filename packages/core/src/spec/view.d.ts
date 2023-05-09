@@ -141,8 +141,14 @@ export type ResolutionTarget = "scale" | "axis";
 /**
  * `"independent"` and `"shared"` behave similarly to Vega-Lite.
  * `"excluded"` behaves like `"shared"`, but is not pulled towards the root.
+ * `"forced"` behaves like `"shared"`, but is forced towards the root even
+ * if the parent has `"independent"` behavior.
  */
-export type ResolutionBehavior = "independent" | "shared" | "excluded";
+export type ResolutionBehavior =
+    | "independent"
+    | "shared"
+    | "excluded"
+    | "forced";
 
 export interface ResolveSpec {
     resolve?: Partial<

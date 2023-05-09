@@ -9,6 +9,7 @@ import {
 import Grid from "../utils/layout/grid";
 import Padding from "../utils/layout/padding";
 import Rectangle from "../utils/layout/rectangle";
+import AxisGridView from "./axisGridView";
 import AxisView, { CHANNEL_ORIENTS } from "./axisView";
 import ContainerView from "./containerView";
 import LayerView from "./layerView";
@@ -24,6 +25,7 @@ import interactionToZoom from "./zoom";
  * @prop {View} view
  * @prop {UnitView} [background]
  * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes
+ * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisGridView>>} gridLines
  * @prop {UnitView} [title]
  * @prop {Rectangle} coords Coordinates of the view. Recorded for mouse tracking, etc.
  */
@@ -90,6 +92,7 @@ export default class GridView extends ContainerView {
             view,
             background: undefined,
             axes: {},
+            gridLines: {},
             coords: Rectangle.ZERO,
         };
 
@@ -190,13 +193,13 @@ export default class GridView extends ContainerView {
     #createAxes() {
         if (Object.keys(this.resolutions.axis).length) {
             throw new Error(
-                "ConcatView does not (currently) support shared axes!"
+                "GridView (concat, vconcat, hconcat) does not currently support shared axes!"
             );
         }
 
         // Create axes
         for (const gridChild of this.#children) {
-            const { view, axes } = gridChild;
+            const { view, axes, gridLines } = gridChild;
 
             /**
              * @param {import("./view").AxisResolution} r
@@ -242,9 +245,19 @@ export default class GridView extends ContainerView {
                     props,
                     r.scaleResolution.type,
                     this.context,
-                    // Note: Axisview has a unit/layerView as parent so that scale/axis resolutions are inherited correctly
+                    // Note: AxisView has a unit/layerView as parent so that scale/axis resolutions are inherited correctly
                     axisParent
                 );
+
+                if (props.grid || props.chromGrid) {
+                    gridLines[props.orient] = new AxisGridView(
+                        props,
+                        r.scaleResolution.type,
+                        this.context,
+                        // Note: AxisGridView has a unit/layerView as parent so that scale/axis resolutions are inherited correctly
+                        axisParent
+                    );
+                }
             };
 
             // Handle shared axes
@@ -288,6 +301,15 @@ export default class GridView extends ContainerView {
                     }
                 }
             }
+
+            // Axes are created after scales are resolved, so we need to resolve possible new scales here
+            [...Object.values(axes), ...Object.values(gridLines)].forEach((v) =>
+                v.visit((view) => {
+                    if (view instanceof UnitView) {
+                        view.resolve("scale");
+                    }
+                })
+            );
         }
     }
 
@@ -300,10 +322,11 @@ export default class GridView extends ContainerView {
                 yield gridChild.background;
             }
 
+            for (const gridLineView of Object.values(gridChild.gridLines)) {
+                yield gridLineView;
+            }
             for (const axisView of Object.values(gridChild.axes)) {
-                if (axisView) {
-                    yield axisView;
-                }
+                yield axisView;
             }
 
             yield gridChild.view;
@@ -555,7 +578,7 @@ export default class GridView extends ContainerView {
         );
 
         for (const [i, gridChild] of this.#visibleChildren.entries()) {
-            const { view, axes, background, title } = gridChild;
+            const { view, axes, gridLines, background, title } = gridChild;
 
             const [col, row] = grid.getCellCoords(i);
             const colLocSize =
@@ -585,6 +608,10 @@ export default class GridView extends ContainerView {
             gridChild.coords = childCoords;
 
             background?.render(context, childCoords, options);
+
+            for (const gridLineView of Object.values(gridLines)) {
+                gridLineView.render(context, childCoords, options);
+            }
 
             // If clipped, the axes should be drawn on top of the marks (because clipping may not be pixel-perfect)
             const clipped = isClippedChildren(view);

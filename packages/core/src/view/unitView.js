@@ -147,13 +147,15 @@ export default class UnitView extends ContainerView {
             // eslint-disable-next-line consistent-this
             let view = this;
             while (
-                view.parent instanceof ContainerView &&
-                ["shared", "excluded"].includes(
-                    view.parent.getConfiguredOrDefaultResolution(
-                        targetChannel,
-                        type
-                    )
-                ) &&
+                (view.getConfiguredOrDefaultResolution(targetChannel, type) ==
+                    "forced" ||
+                    (view.parent instanceof ContainerView &&
+                        ["shared", "excluded", "forced"].includes(
+                            view.parent.getConfiguredOrDefaultResolution(
+                                targetChannel,
+                                type
+                            )
+                        ))) &&
                 view.getConfiguredOrDefaultResolution(targetChannel, type) !=
                     "excluded"
             ) {

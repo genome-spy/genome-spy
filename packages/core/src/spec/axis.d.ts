@@ -17,6 +17,66 @@ export interface GenomeAxis extends Axis {
     chromLabelPadding?: number;
     chromLabelAlign?: Align;
     // TODO: chromLabelPerpendicularPadding
+
+    /**
+     * A boolean flag indicating if chromosome grid lines should be included as part of the axis.
+     *
+     * __Default value:__ `false`
+     */
+    chromGrid?: boolean;
+
+    /**
+     * Color of grid lines.
+     *
+     * __Default value:__ `lightgray`
+     */
+    chromGridColor?: string;
+
+    /**
+     * The stroke cap for the chromosome grid line's ending style. One of `"butt"`, `"round"` or `"square"`.
+     *
+     * __Default value:__ `"butt"`
+     */
+    chromGridCap?: "butt" | "round" | "square";
+
+    /**
+     * An array of alternating [stroke, space] lengths for dashed chromosome grid mark lines.
+     */
+
+    chromGridDash?: number[];
+
+    /**
+     * The pixel offset at which to start drawing with the chromosome grid mark dash array.
+     */
+    chromGridDashOffset?: number;
+
+    /**
+     * The opacity of the chromosome grid lines.
+     *
+     * __Default value:__ `1`
+     */
+    chromGridOpacity?: number;
+
+    /**
+     * Width of the chromosome grid lines.
+     *
+     * __Default value:__ `1`
+     */
+    chromGridWidth?: number;
+
+    /**
+     * Fill color of odd chromosomes.
+     *
+     * __Default value:__ (none)
+     */
+    chromGridFillOdd?: string;
+
+    /**
+     * Fill color of odd chromosomes.
+     *
+     * __Default value:__ (none)
+     */
+    chromGridFillEven?: string;
 }
 
 /*!
@@ -292,5 +352,51 @@ export interface BaseAxis<
      * __Default value:__ `2`
      */
 
-    labelPadding?: N;
+    labelPadding?: number;
+
+    /**
+     * A boolean flag indicating if grid lines should be included as part of the axis.
+     *
+     * __Default value:__ `false`
+     */
+    grid?: boolean;
+
+    /**
+     * Color of grid lines.
+     *
+     * __Default value:__ `lightgray`
+     */
+    gridColor?: string;
+
+    /**
+     * The stroke cap for the grid line's ending style. One of `"butt"`, `"round"` or `"square"`.
+     *
+     * __Default value:__ `"butt"`
+     */
+    gridCap?: "butt" | "round" | "square";
+
+    /**
+     * An array of alternating [stroke, space] lengths for dashed grid mark lines.
+     */
+
+    gridDash?: number[];
+
+    /**
+     * The pixel offset at which to start drawing with the grid mark dash array.
+     */
+    gridDashOffset?: number;
+
+    /**
+     * The opacity of the grid lines.
+     *
+     * __Default value:__ `1`
+     */
+    gridOpacity?: number;
+
+    /**
+     * Width of the grid lines.
+     *
+     * __Default value:__ `1`
+     */
+    gridWidth?: number;
 }
