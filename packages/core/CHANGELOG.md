@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.31.0](https://github.com/genome-spy/genome-spy/compare/v0.30.3...v0.31.0) (2023-05-09)
+
+
+### Features
+
+* axis grids ([b9533ad](https://github.com/genome-spy/genome-spy/commit/b9533ad77e61e135bdab9247a0d8512bed9178cd)), closes [#58](https://github.com/genome-spy/genome-spy/issues/58)
+
+
+
+
+
 ## [0.30.3](https://github.com/genome-spy/genome-spy/compare/v0.30.2...v0.30.3) (2023-05-03)
 
 
