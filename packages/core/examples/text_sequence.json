@@ -48,7 +48,7 @@
 
       "encoding": {
         "x": { "field": "pos", "type": "index" },
-        "text": { "field": "base", "type": "nominal" }
+        "text": { "field": "base" }
       }
     }
   ]

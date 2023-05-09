@@ -16,7 +16,7 @@ Text mark displays each data item as text.
   "encoding": {
     "x": { "field": "x", "type": "ordinal" },
     "color": { "field": "x", "type": "nominal" },
-    "text": { "field": "text", "type": "nominal" },
+    "text": { "field": "text" },
     "size": { "value": 100 }
   }
 }
@@ -224,8 +224,7 @@ text on the top. Try to zoom and pan to see how they behave!
       },
       "encoding": {
         "text": {
-          "expr": "'Hello ' + floor(datum.a)",
-          "type": "ordinal"
+          "expr": "'Hello ' + floor(datum.a)"
         },
         "size": { "value": 12 }
       }

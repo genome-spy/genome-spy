@@ -39,7 +39,7 @@ The `layer` operator superimposes multiple views over each other.
       "name": "Label",
       "mark": { "type": "text", "dy": -9 },
       "encoding": {
-        "text": { "field": "b", "type": "quantitative" }
+        "text": { "field": "b" }
       }
     }
   ]

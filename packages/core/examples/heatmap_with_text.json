@@ -43,10 +43,9 @@
         "paddingY": 3
       },
       "encoding": {
-        "text": { "field": "z", "type": "nominal", "format": ".2f" },
+        "text": { "field": "z", "format": ".2f" },
         "color": {
           "field": "z",
-          "type": "quantitative",
           "scale": {
             "type": "threshold",
             "domain": [0],

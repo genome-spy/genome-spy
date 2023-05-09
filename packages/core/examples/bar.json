@@ -29,7 +29,7 @@
     {
       "mark": { "type": "text", "dy": -9 },
       "encoding": {
-        "text": { "field": "b", "type": "quantitative" }
+        "text": { "field": "b" }
       }
     }
   ]
