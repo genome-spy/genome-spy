@@ -3,6 +3,7 @@ import UrlSource, { isUrlData } from "./urlSource";
 import SequenceSource, { isSequenceGenerator } from "./sequenceSource";
 import AxisTickSource from "./dynamic/axisTickSource";
 import AxisGenomeSource from "./dynamic/axisGenomeSource";
+import IndexedFastaSource from "./dynamic/indexedFastaSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} params
@@ -52,6 +53,15 @@ function isAxisGenomeSource(params) {
 }
 
 /**
+ *
+ * @param {import("../../spec/data").DynamicDataParams} params
+ * @returns {params is import("../../spec/data").IndexedFastaData}
+ */
+function isIndexedFastaSource(params) {
+    return params?.type == "indexedFasta";
+}
+
+/**
  * @param {import("../../spec/data").DynamicDataParams} params
  * @param {import("../../view/view").default} view
  */
@@ -60,6 +70,8 @@ function createDynamicDataSource(params, view) {
         return new AxisTickSource(params, view);
     } else if (isAxisGenomeSource(params)) {
         return new AxisGenomeSource(params, view);
+    } else if (isIndexedFastaSource(params)) {
+        return new IndexedFastaSource(params, view);
     }
 
     throw new Error(

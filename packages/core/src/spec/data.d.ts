@@ -193,7 +193,10 @@ export interface DynamicData {
     dynamic: DynamicDataParams;
 }
 
-export type DynamicDataParams = AxisTicksData | AxisGenomeData;
+export type DynamicDataParams =
+    | AxisTicksData
+    | AxisGenomeData
+    | IndexedFastaData;
 
 export interface AxisTicksData {
     type: "axisTicks";
@@ -210,4 +213,27 @@ export interface AxisGenomeData {
 
     /** Which channel's scale domain to use */
     channel: PrimaryPositionalChannel;
+}
+
+export interface IndexedFastaData {
+    type: "indexedFasta";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * Url of the fasta file.
+     */
+    url: string;
+
+    /**
+     * Url of the index file.
+     *
+     * __Default value:__ `url` + `".fai"`.
+     */
+    indexUrl?: string;
 }
