@@ -9,7 +9,7 @@ import favIcon from "./img/genomespy-favicon.svg";
 export { GenomeSpy, html, icon, favIcon };
 
 /**
- * Embeds GenomeSpy into the DOM.
+ * Embeds GenomeSpy into the DOM
  *
  * @type {import("./embedApi.js").EmbedFunction}
  * @returns {Promise<import("./embedApi").EmbedResult>}
