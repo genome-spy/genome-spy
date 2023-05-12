@@ -4,6 +4,7 @@ import SequenceSource, { isSequenceGenerator } from "./sequenceSource";
 import AxisTickSource from "./dynamic/axisTickSource";
 import AxisGenomeSource from "./dynamic/axisGenomeSource";
 import IndexedFastaSource from "./dynamic/indexedFastaSource";
+import BigWigSource from "./dynamic/bigWigSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} params
@@ -62,6 +63,15 @@ function isIndexedFastaSource(params) {
 }
 
 /**
+ *
+ * @param {import("../../spec/data").DynamicDataParams} params
+ * @returns {params is import("../../spec/data").BigWigData}
+ */
+function isBigWigSource(params) {
+    return params?.type == "bigwig";
+}
+
+/**
  * @param {import("../../spec/data").DynamicDataParams} params
  * @param {import("../../view/view").default} view
  */
@@ -72,6 +82,8 @@ function createDynamicDataSource(params, view) {
         return new AxisGenomeSource(params, view);
     } else if (isIndexedFastaSource(params)) {
         return new IndexedFastaSource(params, view);
+    } else if (isBigWigSource(params)) {
+        return new BigWigSource(params, view);
     }
 
     throw new Error(

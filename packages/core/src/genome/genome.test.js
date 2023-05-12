@@ -50,7 +50,11 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
         expect(g.toChromosomal(30)).toEqual({ chrom: "chr3", pos: 0 });
         expect(g.toChromosomal(62)).toEqual({ chrom: "chrX", pos: 2 });
         expect(g.toChromosomal(99)).toEqual({ chrom: "chrX", pos: 39 });
-        expect(g.toChromosomal(100)).toBeUndefined();
+
+        // Special handling for the end of the genome. Pos 40 does not exist in chrX
+        // but we need for the endpoint of half-open interval covering the whole genome.
+        expect(g.toChromosomal(100)).toEqual({ chrom: "chrX", pos: 40 });
+        expect(g.toChromosomal(101)).toBeUndefined();
     });
 
     // Testing half-open intervals
@@ -127,6 +131,40 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
             continuousInterval: [10, 30],
             odd: false,
         });
+    });
+
+    test("Splits a genomic interval into discrete chromosome intervals, single chromosome", () => {
+        expect(
+            g.toDiscreteChromosomeIntervals([
+                { chrom: "chr2", pos: 5 },
+                { chrom: "chr2", pos: 15 },
+            ])
+        ).toEqual([{ chrom: "chr2", startPos: 5, endPos: 15 }]);
+    });
+
+    test("Splits a genomic interval into discrete chromosome intervals, two chromosomes", () => {
+        expect(
+            g.toDiscreteChromosomeIntervals([
+                { chrom: "chr2", pos: 5 },
+                { chrom: "chr3", pos: 15 },
+            ])
+        ).toEqual([
+            { chrom: "chr2", startPos: 5, endPos: 20 },
+            { chrom: "chr3", startPos: 0, endPos: 15 },
+        ]);
+    });
+
+    test("Splits a genomic interval into discrete chromosome intervals, three chromosomes", () => {
+        expect(
+            g.toDiscreteChromosomeIntervals([
+                { chrom: "chr2", pos: 5 },
+                { chrom: "chrX", pos: 15 },
+            ])
+        ).toEqual([
+            { chrom: "chr2", startPos: 5, endPos: 20 },
+            { chrom: "chr3", startPos: 0, endPos: 30 },
+            { chrom: "chrX", startPos: 0, endPos: 15 },
+        ]);
     });
 });
 

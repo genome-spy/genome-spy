@@ -196,7 +196,8 @@ export interface DynamicData {
 export type DynamicDataParams =
     | AxisTicksData
     | AxisGenomeData
-    | IndexedFastaData;
+    | IndexedFastaData
+    | BigWigData;
 
 export interface AxisTicksData {
     type: "axisTicks";
@@ -236,4 +237,27 @@ export interface IndexedFastaData {
      * __Default value:__ `url` + `".fai"`.
      */
     indexUrl?: string;
+}
+
+export interface BigWigData {
+    type: "bigwig";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * Url of the BigWig file.
+     */
+    url: string;
+
+    /**
+     * The approximate minimum width of each data bin, in pixels.
+     *
+     * __Default value:__ `2`
+     */
+    pixelsPerBin?: number;
 }

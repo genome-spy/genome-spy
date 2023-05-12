@@ -21,6 +21,11 @@ const defaultBaseUrl = "https://genomespy.app/data/genomes/";
  * @prop {number} continuousEnd zero-based end, exclusive
  * @prop {number[]} continuousInterval
  * @prop {boolean} odd true if odd chrom number
+ *
+ * @typedef {object} DiscreteChromosomeInterval
+ * @prop {string} chrom
+ * @prop {number} startPos
+ * @prop {number} endPos
  */
 
 export default class Genome {
@@ -159,7 +164,9 @@ export default class Genome {
      * @param {number} continuousPos
      */
     toChromosome(continuousPos) {
-        if (continuousPos >= this.totalSize) {
+        // Position equal to the length is a special case needed because the intervals
+        // are half-open.
+        if (continuousPos > this.totalSize) {
             return; // TODO: Consider displaying a warning
         }
 
@@ -247,6 +254,45 @@ export default class Genome {
                 b.pos ?? this.chromosomesByName.get(b.chrom)?.size
             ),
         ];
+    }
+
+    /**
+     * Returns an array of discrete chromosome intervals that fall within the given interval.
+     *
+     * @param {[ChromosomalLocus, ChromosomalLocus]} interval
+     * @returns {DiscreteChromosomeInterval[]}
+     */
+    toDiscreteChromosomeIntervals(interval) {
+        const a = interval[0];
+        const b = interval[1];
+
+        const intervals = [];
+
+        if (a.chrom === b.chrom) {
+            intervals.push({ chrom: a.chrom, startPos: a.pos, endPos: b.pos });
+        } else {
+            const startIndex = this.chromosomes.findIndex(
+                (chrom) => chrom.name === a.chrom
+            );
+            const endIndex = this.chromosomes.findIndex(
+                (chrom) => chrom.name === b.chrom
+            );
+
+            intervals.push({
+                chrom: a.chrom,
+                startPos: a.pos,
+                endPos: this.chromosomes[startIndex].size,
+            });
+            for (let i = startIndex + 1; i < endIndex; i++) {
+                intervals.push({
+                    chrom: this.chromosomes[i].name,
+                    startPos: 0,
+                    endPos: this.chromosomes[i].size,
+                });
+            }
+            intervals.push({ chrom: b.chrom, startPos: 0, endPos: b.pos });
+        }
+        return intervals;
     }
 
     /**
