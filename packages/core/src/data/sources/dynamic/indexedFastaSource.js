@@ -3,7 +3,7 @@ import { IndexedFasta } from "@gmod/indexedfasta";
 import { RemoteFile } from "generic-filehandle";
 
 import SingleAxisDynamicSource from "./singleAxisDynamicSource";
-import { shallowArrayEquals } from "../../../utils/arrayUtils";
+import windowedMixin from "./windowedMixin";
 
 // Hack needed by @gmod/indexedfasta
 // TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
@@ -13,12 +13,9 @@ window.Buffer = Buffer;
 /**
  *
  */
-export default class IndexedFastaSource extends SingleAxisDynamicSource {
-    /**
-     * @type {number[]}
-     */
-    lastQuantizedInterval = [0, 0];
-
+export default class IndexedFastaSource extends windowedMixin(
+    SingleAxisDynamicSource
+) {
     /**
      * @param {import("../../../spec/data").IndexedFastaData} params
      * @param {import("../../../view/view").default} view
@@ -59,40 +56,28 @@ export default class IndexedFastaSource extends SingleAxisDynamicSource {
             return;
         }
 
-        // We get three consecutive windows. The idea is to immediately have some data to show
-        // to the user when they pan the view.
-        const quantizedInterval = [
-            Math.max(Math.floor(domain[0] / windowSize - 1) * windowSize, 0),
-            Math.min(
-                Math.ceil(domain[1] / windowSize + 1) * windowSize,
-                this.genome.totalSize
-            ),
-        ];
+        const quantizedInterval = this.quantizeInterval(domain, windowSize);
 
-        if (shallowArrayEquals(this.lastQuantizedInterval, quantizedInterval)) {
-            return;
-        }
+        if (this.checkAndUpdateLastInterval(quantizedInterval)) {
+            const discreteChromosomeIntervals =
+                this.genome.continuousToDiscreteChromosomeIntervals(
+                    quantizedInterval
+                );
 
-        this.lastQuantizedInterval = quantizedInterval;
-
-        const discreteChromosomeIntervals =
-            this.genome.continuousToDiscreteChromosomeIntervals(
-                quantizedInterval
+            // TODO: Error handling
+            const sequencesWithChrom = await Promise.all(
+                discreteChromosomeIntervals.map((d) =>
+                    this.fasta
+                        .getSequence(d.chrom, d.startPos, d.endPos)
+                        .then((sequence) => ({
+                            chrom: d.chrom,
+                            start: d.startPos,
+                            sequence,
+                        }))
+                )
             );
 
-        // TODO: Error handling
-        const sequencesWithChrom = await Promise.all(
-            discreteChromosomeIntervals.map((d) =>
-                this.fasta
-                    .getSequence(d.chrom, d.startPos, d.endPos)
-                    .then((sequence) => ({
-                        chrom: d.chrom,
-                        start: d.startPos,
-                        sequence,
-                    }))
-            )
-        );
-
-        this.publishData(sequencesWithChrom);
+            this.publishData(sequencesWithChrom);
+        }
     }
 }

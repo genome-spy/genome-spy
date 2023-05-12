@@ -2,18 +2,15 @@ import { BigWig } from "@gmod/bbi";
 import { RemoteFile } from "generic-filehandle";
 
 import { debounce } from "../../../utils/debounce";
-import { shallowArrayEquals } from "../../../utils/arrayUtils";
 import SingleAxisDynamicSource from "./singleAxisDynamicSource";
+import windowedMixin from "./windowedMixin";
 
 /**
  *
  */
-export default class BigWigSource extends SingleAxisDynamicSource {
-    /**
-     * @type {number[]}
-     */
-    lastQuantizedInterval = [0, 0];
-
+export default class BigWigSource extends windowedMixin(
+    SingleAxisDynamicSource
+) {
     /** @type {number[]} */
     reductionLevels = [];
 
@@ -86,20 +83,9 @@ export default class BigWigSource extends SingleAxisDynamicSource {
         // Using 5000 as a default to avoid too many requests.
         const windowSize = Math.max(reductionLevel * length, 5000);
 
-        // We get three consecutive windows. The idea is to immediately have some data to show
-        // to the user when they pan the view.
-        const quantizedInterval = [
-            Math.max(Math.floor(domain[0] / windowSize - 1) * windowSize, 0),
-            Math.min(
-                Math.ceil(domain[1] / windowSize + 1) * windowSize,
-                this.genome.totalSize
-            ),
-        ];
+        const quantizedInterval = this.quantizeInterval(domain, windowSize);
 
-        if (
-            !shallowArrayEquals(this.lastQuantizedInterval, quantizedInterval)
-        ) {
-            this.lastQuantizedInterval = quantizedInterval;
+        if (this.checkAndUpdateLastInterval(quantizedInterval)) {
             this.doDebouncedRequest(quantizedInterval, reductionLevel);
         }
     }
