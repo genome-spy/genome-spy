@@ -96,13 +96,12 @@ export default class BigWigSource extends SingleAxisDynamicSource {
             ),
         ];
 
-        if (shallowArrayEquals(this.lastQuantizedInterval, quantizedInterval)) {
-            return;
+        if (
+            !shallowArrayEquals(this.lastQuantizedInterval, quantizedInterval)
+        ) {
+            this.lastQuantizedInterval = quantizedInterval;
+            this.doDebouncedRequest(quantizedInterval, reductionLevel);
         }
-
-        this.lastQuantizedInterval = quantizedInterval;
-
-        this.doDebouncedRequest(quantizedInterval, reductionLevel);
     }
 
     /**
