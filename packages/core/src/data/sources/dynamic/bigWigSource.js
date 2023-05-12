@@ -2,7 +2,7 @@ import { BigWig } from "@gmod/bbi";
 import { RemoteFile } from "generic-filehandle";
 
 import { debounce } from "../../../utils/debounce";
-import { shallowArrayEquals } from "@genome-spy/core/utils/arrayUtils";
+import { shallowArrayEquals } from "../../../utils/arrayUtils";
 import SingleAxisDynamicSource from "./singleAxisDynamicSource";
 
 /**
@@ -69,9 +69,8 @@ export default class BigWigSource extends SingleAxisDynamicSource {
      * Listen to the domain change event and update data when the covered windows change.
      *
      * @param {number[]} domain Linearized domain
-     * @param {import("../../../spec/genome").ChromosomalLocus[]} complexDomain Chrom/Pos domain
      */
-    async onDomainChanged(domain, complexDomain) {
+    async onDomainChanged(domain) {
         const length = this.getAxisLength();
 
         // Header must be available to determine the reduction level
