@@ -2,47 +2,38 @@ import { Buffer } from "buffer";
 import { IndexedFasta } from "@gmod/indexedfasta";
 import { RemoteFile } from "generic-filehandle";
 
-import DataSource from "../dataSource";
+import SingleAxisDynamicSource from "./singleAxisDynamicSource";
+import { shallowArrayEquals } from "../../../utils/arrayUtils";
 
 // Hack needed by @gmod/indexedfasta
 // TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
 // @ts-ignore
 window.Buffer = Buffer;
 
-const windowSize = 7000;
-
 /**
  *
  */
-export default class IndexedFastaSource extends DataSource {
+export default class IndexedFastaSource extends SingleAxisDynamicSource {
     /**
-     * @type {import("../../../spec/genome").ChromosomalLocus[]}
+     * @type {number[]}
      */
-    #lastQuantizedDomain;
+    lastQuantizedInterval = [0, 0];
 
     /**
      * @param {import("../../../spec/data").IndexedFastaData} params
      * @param {import("../../../view/view").default} view
      */
     constructor(params, view) {
-        super();
+        /** @type {import("../../../spec/data").IndexedFastaData} */
+        const paramsWithDefaults = {
+            channel: "x",
+            windowSize: 7000,
+            ...params,
+        };
 
-        this.params = params;
-        this.view = view;
+        super(view, paramsWithDefaults.channel);
 
-        this.channel = this.params.channel ?? "x";
-        if (this.channel !== "x" && this.channel !== "y") {
-            throw new Error(
-                `Invalid channel: ${this.channel}. Must be "x" or "y"`
-            );
-        }
-
-        this.scaleResolution = this.view.getScaleResolution(this.channel);
-        if (!this.scaleResolution) {
-            throw new Error(
-                `No scale resolution found for channel "${this.channel}".`
-            );
-        }
+        this.params = paramsWithDefaults;
 
         if (!this.params.url) {
             throw new Error("No URL provided for IndexedFastaSource");
@@ -54,121 +45,54 @@ export default class IndexedFastaSource extends DataSource {
                 this.params.indexUrl ?? this.params.url + ".fai"
             ),
         });
-
-        this.scaleResolution.addEventListener("domain", (event) => {
-            this.handleDomainChange(
-                event.scaleResolution.getDomain(),
-                /** @type {import("../../../spec/genome").ChromosomalLocus[]} */ (
-                    event.scaleResolution.getComplexDomain()
-                )
-            );
-        });
-    }
-
-    #requestRender() {
-        // Awfully hacky way. Rendering should be requested by the collector.
-        // TODO: Fix
-        this.scaleResolution.members[0].view.context.animator.requestRender();
     }
 
     /**
      * Listen to the domain change event and update data when the covered windows change.
      *
      * @param {number[]} domain Linearized domain
-     * @param {import("../../../spec/genome").ChromosomalLocus[]} complexDomain Chrom/Pos domain
      */
-    async handleDomainChange(domain, complexDomain) {
-        // Note: window size must be smaller than the largest chromosome.
-        // In other words, the domain can comprise the maximum of 2 chromosomes.
+    async onDomainChanged(domain) {
+        const windowSize = this.params.windowSize;
+
         if (domain[1] - domain[0] > windowSize) {
             return;
         }
 
-        const uniqueChroms = [...new Set(complexDomain.map((d) => d.chrom))];
-        const firstChrom = uniqueChroms.at(0);
-        const lastChrom = uniqueChroms.at(-1);
-
-        const [start, end] = complexDomain;
-
-        // We get three consecutive windows
-        const startPos = Math.floor(start.pos / windowSize - 1) * windowSize;
-        const endPos = Math.ceil(end.pos / windowSize + 1) * windowSize;
-
-        const quantizedDomain = [
-            { chrom: firstChrom, pos: startPos },
-            { chrom: lastChrom, pos: endPos },
+        // We get three consecutive windows. The idea is to immediately have some data to show
+        // to the user when they pan the view.
+        const quantizedInterval = [
+            Math.max(Math.floor(domain[0] / windowSize - 1) * windowSize, 0),
+            Math.min(
+                Math.ceil(domain[1] / windowSize + 1) * windowSize,
+                this.genome.totalSize
+            ),
         ];
 
-        if (isIdenticalDomain(this.#lastQuantizedDomain, quantizedDomain)) {
+        if (shallowArrayEquals(this.lastQuantizedInterval, quantizedInterval)) {
             return;
         }
 
-        this.#lastQuantizedDomain = quantizedDomain;
+        this.lastQuantizedInterval = quantizedInterval;
 
-        // Handle two cases: 1) Domain is within one chromosome, 2) Domain spans two chromosomes
-        const sequences =
-            uniqueChroms.length == 1
-                ? [this.getSequence(firstChrom, Math.max(0, startPos), endPos)]
-                : [
-                      this.getSequence(
-                          firstChrom,
-                          Math.max(0, startPos),
-                          startPos + 3 * windowSize
-                      ),
-                      this.getSequence(
-                          lastChrom,
-                          Math.max(0, endPos - 3 * windowSize),
-                          endPos
-                      ),
-                  ];
+        const discreteChromosomeIntervals =
+            this.genome.continuousToDiscreteChromosomeIntervals(
+                quantizedInterval
+            );
 
-        // TODO: Propagate asynchronously. Needs some locking mechanism.
-        const resolvedSequences = await Promise.all(sequences);
+        // TODO: Error handling
+        const sequencesWithChrom = await Promise.all(
+            discreteChromosomeIntervals.map((d) =>
+                this.fasta
+                    .getSequence(d.chrom, d.startPos, d.endPos)
+                    .then((sequence) => ({
+                        chrom: d.chrom,
+                        start: d.startPos,
+                        sequence,
+                    }))
+            )
+        );
 
-        this.reset();
-        this.beginBatch({ type: "file" });
-
-        for (const d of resolvedSequences) {
-            this._propagate(d);
-        }
-
-        this.complete();
-        this.#requestRender();
+        this.publishData(sequencesWithChrom);
     }
-
-    async load() {
-        // TODO: Why is this needed? No dynamic data is shown without this.
-        this.reset();
-        this.complete();
-    }
-
-    /**
-     *
-     * @param {string} seqName
-     * @param {number} start
-     * @param {number} end
-     */
-    async getSequence(seqName, start, end) {
-        const sequence = await this.fasta.getSequence(seqName, start, end);
-        return {
-            chrom: seqName,
-            start,
-            sequence,
-        };
-    }
-}
-
-/**
- * @param {import("@genome-spy/core/spec/genome").ChromosomalLocus[]} domain1
- * @param {import("@genome-spy/core/spec/genome").ChromosomalLocus[]} domain2
- */
-function isIdenticalDomain(domain1, domain2) {
-    return (
-        domain1 &&
-        domain2 &&
-        domain1.length == domain2.length &&
-        domain1.every(
-            (d, i) => d.chrom == domain2[i].chrom && d.pos == domain2[i].pos
-        )
-    );
 }

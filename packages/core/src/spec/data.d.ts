@@ -237,6 +237,14 @@ export interface IndexedFastaData {
      * __Default value:__ `url` + `".fai"`.
      */
     indexUrl?: string;
+
+    /**
+     * Size of each chunk when fetching the fasta file. Data is only fetched
+     * when the length of the visible domain smaller than the window size.
+     *
+     * __Default value:__ `7000`
+     */
+    windowSize?: number;
 }
 
 export interface BigWigData {
