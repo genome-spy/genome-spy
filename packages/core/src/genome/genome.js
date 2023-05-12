@@ -296,6 +296,18 @@ export default class Genome {
     }
 
     /**
+     * Returns an array of discrete chromosome intervals that fall within the given interval.
+     *
+     * @param {number[]} continuousInterval
+     */
+    continuousToDiscreteChromosomeIntervals(continuousInterval) {
+        return this.toDiscreteChromosomeIntervals([
+            this.toChromosomal(continuousInterval[0]),
+            this.toChromosomal(continuousInterval[1]),
+        ]);
+    }
+
+    /**
      *
      * @param {string} str
      * @returns {[number, number]}

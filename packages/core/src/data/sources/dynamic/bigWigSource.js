@@ -1,14 +1,14 @@
 import { BigWig } from "@gmod/bbi";
 import { RemoteFile } from "generic-filehandle";
 
-import DataSource from "../dataSource";
 import { debounce } from "../../../utils/debounce";
 import { shallowArrayEquals } from "@genome-spy/core/utils/arrayUtils";
+import SingleAxisDynamicSource from "./singleAxisDynamicSource";
 
 /**
  *
  */
-export default class BigWigSource extends DataSource {
+export default class BigWigSource extends SingleAxisDynamicSource {
     /**
      * @type {number[]}
      */
@@ -25,28 +25,16 @@ export default class BigWigSource extends DataSource {
      * @param {import("../../../view/view").default} view
      */
     constructor(params, view) {
-        super();
-
         /** @type {import("../../../spec/data").BigWigData} */
-        this.params = {
+        const paramsWithDefaults = {
             pixelsPerBin: 2,
             channel: "x",
             ...params,
         };
 
-        this.view = view;
+        super(view, paramsWithDefaults.channel);
 
-        const channel = this.params.channel;
-        if (channel !== "x" && channel !== "y") {
-            throw new Error(`Invalid channel: ${channel}. Must be "x" or "y"`);
-        }
-
-        this.scaleResolution = this.view.getScaleResolution(channel);
-        if (!this.scaleResolution) {
-            throw new Error(
-                `No scale resolution found for channel "${channel}".`
-            );
-        }
+        this.params = paramsWithDefaults;
 
         if (!this.params.url) {
             throw new Error("No URL provided for IndexedFastaSource");
@@ -65,35 +53,16 @@ export default class BigWigSource extends DataSource {
         this.headerPromise = this.bbi.getHeader();
 
         this.headerPromise.then((header) => {
-            this.reductionLevels = header.zoomLevels
-                .map(
-                    (/** @type {{reductionLevel: number}} */ z) =>
-                        z.reductionLevel
-                )
+            this.reductionLevels = /** @type {{reductionLevel: number}[]} */ (
+                header.zoomLevels
+            )
+                .map((z) => z.reductionLevel)
                 .reverse();
+
             // Add the non-reduced level. Not sure if this is the best way to do it.
-            // The non-reduced bin size is not available in the header.
+            // Afaik, the non-reduced bin size is not available in the header.
             this.reductionLevels.push(1);
         });
-
-        this.scaleResolution.addEventListener("domain", (event) => {
-            this.handleDomainChange(
-                event.scaleResolution.getDomain(),
-                /** @type {import("../../../spec/genome").ChromosomalLocus[]} */ (
-                    event.scaleResolution.getComplexDomain()
-                )
-            );
-        });
-    }
-
-    #requestRender() {
-        // Awfully hacky way. Rendering should be requested by the collector.
-        // TODO: Fix
-        this.scaleResolution.members[0].view.context.animator.requestRender();
-    }
-
-    get #genome() {
-        return this.scaleResolution.getGenome();
     }
 
     /**
@@ -102,8 +71,12 @@ export default class BigWigSource extends DataSource {
      * @param {number[]} domain Linearized domain
      * @param {import("../../../spec/genome").ChromosomalLocus[]} complexDomain Chrom/Pos domain
      */
-    async handleDomainChange(domain, complexDomain) {
-        const length = this.#getAxisLength();
+    async onDomainChanged(domain, complexDomain) {
+        const length = this.getAxisLength();
+
+        // Header must be available to determine the reduction level
+        await this.headerPromise;
+
         const reductionLevel = findReductionLevel(
             domain,
             length,
@@ -111,16 +84,16 @@ export default class BigWigSource extends DataSource {
         );
 
         // The sensible minimum window size actually depends on the non-reduced data density...
+        // Using 5000 as a default to avoid too many requests.
         const windowSize = Math.max(reductionLevel * length, 5000);
 
-        const [start, end] = domain;
-
-        // We get three consecutive windows
+        // We get three consecutive windows. The idea is to immediately have some data to show
+        // to the user when they pan the view.
         const quantizedInterval = [
-            Math.max(Math.floor(start / windowSize - 1) * windowSize, 0),
+            Math.max(Math.floor(domain[0] / windowSize - 1) * windowSize, 0),
             Math.min(
-                Math.ceil(end / windowSize + 1) * windowSize,
-                this.#genome.totalSize - 1 // Last base is lost. TODO: Fix
+                Math.ceil(domain[1] / windowSize + 1) * windowSize,
+                this.genome.totalSize
             ),
         ];
 
@@ -150,21 +123,7 @@ export default class BigWigSource extends DataSource {
             return;
         }
 
-        this.reset();
-        this.beginBatch({ type: "file" });
-
-        for (const d of featureResponse.features) {
-            this._propagate(d);
-        }
-
-        this.complete();
-        this.#requestRender();
-    }
-
-    async load() {
-        // TODO: Fetch data for the initial domain
-        this.reset();
-        this.complete();
+        this.publishData(featureResponse.features);
     }
 
     /**
@@ -175,18 +134,13 @@ export default class BigWigSource extends DataSource {
     async getFeatures(interval, scale) {
         let requestId = ++this.lastRequestId;
 
-        // eslint-disable-next-line no-unused-vars
-        const header = await this.headerPromise;
-
         // TODO: Abort previous requests
         const abortController = new AbortController();
 
-        const g = this.#genome;
-        const discreteChromosomeIntervals = g.toDiscreteChromosomeIntervals([
-            g.toChromosomal(interval[0]),
-            g.toChromosomal(interval[1]),
-        ]);
+        const discreteChromosomeIntervals =
+            this.genome.continuousToDiscreteChromosomeIntervals(interval);
 
+        // TODO: Error handling
         const featuresWithChrom = await Promise.all(
             discreteChromosomeIntervals.map((d) =>
                 this.bbi
@@ -210,27 +164,6 @@ export default class BigWigSource extends DataSource {
             abort: () => abortController.abort(),
             features: featuresWithChrom.flat(), // TODO: Use batches, not flat
         };
-    }
-
-    /**
-     * Returns the length of the axis in pixels. Chooses the smallest of the views.
-     * They should all be the same, but some exotic configuration might break that assumption.
-     *
-     * TODO: Stolen from axisTickSource. Should be moved to a common place.
-     */
-    #getAxisLength() {
-        const lengths = this.scaleResolution.members
-            .map(
-                (m) =>
-                    m.view.coords?.[
-                        this.params.channel === "x" ? "width" : "height"
-                    ]
-            )
-            .filter((len) => len > 0);
-
-        return lengths.length
-            ? lengths.reduce((a, b) => Math.min(a, b), 10000)
-            : 0;
     }
 }
 
