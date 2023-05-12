@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@gmod/bbi": "^4.0.0",
+    "@gmod/bed": "^2.1.2",
     "@gmod/indexedfasta": "^2.0.4",
     "@types/d3-array": "^3.0.2",
     "@types/d3-dsv": "^3.0.0",
