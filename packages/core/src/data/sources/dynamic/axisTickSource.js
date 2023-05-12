@@ -79,6 +79,7 @@ export default class AxisTickSource extends SingleAxisDynamicSource {
     }
 
     async load() {
+        this.publishData([]); // TODO: Figure out why this is needed.
         this.onDomainChanged();
     }
 }
