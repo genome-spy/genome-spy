@@ -5,6 +5,7 @@ import AxisTickSource from "./dynamic/axisTickSource";
 import AxisGenomeSource from "./dynamic/axisGenomeSource";
 import IndexedFastaSource from "./dynamic/indexedFastaSource";
 import BigWigSource from "./dynamic/bigWigSource";
+import BigBedSource from "./dynamic/bigBedSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} params
@@ -72,6 +73,15 @@ function isBigWigSource(params) {
 }
 
 /**
+ *
+ * @param {import("../../spec/data").DynamicDataParams} params
+ * @returns {params is import("../../spec/data").BigBedData}
+ */
+function isBigBedSource(params) {
+    return params?.type == "bigbed";
+}
+
+/**
  * @param {import("../../spec/data").DynamicDataParams} params
  * @param {import("../../view/view").default} view
  */
@@ -84,6 +94,8 @@ function createDynamicDataSource(params, view) {
         return new IndexedFastaSource(params, view);
     } else if (isBigWigSource(params)) {
         return new BigWigSource(params, view);
+    } else if (isBigBedSource(params)) {
+        return new BigBedSource(params, view);
     }
 
     throw new Error(
