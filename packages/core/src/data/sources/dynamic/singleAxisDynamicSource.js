@@ -81,9 +81,16 @@ export default class SingleAxisDynamicSource extends DataSource {
     }
 
     async load() {
-        // TODO: Fetch data for the initial domain
         this.reset();
         this.complete();
+
+        // Load data for the initial domain
+        // TODO: This should be postponed until the layout is computed. Now the axis length is 0.
+        await this.onDomainChanged(
+            this.scaleResolution.getDomain(),
+            /** @type  {import("../../../spec/genome").ChromosomalLocus[]}*/
+            (this.scaleResolution.getComplexDomain())
+        );
     }
 
     /**

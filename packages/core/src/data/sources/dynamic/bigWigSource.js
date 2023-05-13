@@ -68,7 +68,8 @@ export default class BigWigSource extends windowedMixin(
      * @param {number[]} domain Linearized domain
      */
     async onDomainChanged(domain) {
-        const length = this.getAxisLength();
+        // TODO: Postpone the initial load until layout is computed and remove 700.
+        const length = this.getAxisLength() || 700;
 
         // Header must be available to determine the reduction level
         await this.headerPromise;
