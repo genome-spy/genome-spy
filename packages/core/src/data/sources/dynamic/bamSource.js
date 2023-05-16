@@ -13,6 +13,9 @@ export default class BamSource extends windowedMixin(SingleAxisDynamicSource) {
      * Some BAM files lack the "chr" prefix on their reference names. For example:
      * http://genome.ucsc.edu/goldenPath/help/examples/bamExample.bam
      *
+     * N.B. @SN AN records in SAM header may have alternative names for chromosomes.
+     * TODO: Explore their usage
+     *
      * @type {(chr: string) => string}
      */
     chrPrefixFixer = (chr) => chr;
