@@ -5,6 +5,7 @@ import BED from "@gmod/bed";
 import SingleAxisDynamicSource from "./singleAxisDynamicSource";
 import windowedMixin from "./windowedMixin";
 import { debounce } from "../../../utils/debounce";
+import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
 
 export default class BigBedSource extends windowedMixin(
     SingleAxisDynamicSource
@@ -36,7 +37,9 @@ export default class BigBedSource extends windowedMixin(
         }
 
         this.bbi = new BigBed({
-            filehandle: new RemoteFile(this.params.url),
+            filehandle: new RemoteFile(
+                addBaseUrl(this.params.url, this.view.getBaseUrl())
+            ),
         });
 
         this.doDebouncedRequest = debounce(

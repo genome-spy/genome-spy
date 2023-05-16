@@ -4,6 +4,7 @@ import { RemoteFile } from "generic-filehandle";
 import { debounce } from "../../../utils/debounce";
 import SingleAxisDynamicSource from "./singleAxisDynamicSource";
 import windowedMixin from "./windowedMixin";
+import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
 
 /**
  *
@@ -38,7 +39,9 @@ export default class BigWigSource extends windowedMixin(
         }
 
         this.bbi = new BigWig({
-            filehandle: new RemoteFile(this.params.url),
+            filehandle: new RemoteFile(
+                addBaseUrl(this.params.url, this.view.getBaseUrl())
+            ),
         });
 
         this.doDebouncedRequest = debounce(

@@ -4,6 +4,7 @@ import { RemoteFile } from "generic-filehandle";
 
 import SingleAxisDynamicSource from "./singleAxisDynamicSource";
 import windowedMixin from "./windowedMixin";
+import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
 
 // Hack needed by @gmod/indexedfasta
 // TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
@@ -36,11 +37,12 @@ export default class IndexedFastaSource extends windowedMixin(
             throw new Error("No URL provided for IndexedFastaSource");
         }
 
+        const withBase = (/** @type {string} */ uri) =>
+            new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+
         this.fasta = new IndexedFasta({
-            fasta: new RemoteFile(this.params.url),
-            fai: new RemoteFile(
-                this.params.indexUrl ?? this.params.url + ".fai"
-            ),
+            fasta: withBase(this.params.url),
+            fai: withBase(this.params.indexUrl ?? this.params.url + ".fai"),
         });
     }
 

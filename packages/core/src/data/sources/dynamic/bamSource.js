@@ -3,6 +3,7 @@ import { BamFile } from "@gmod/bam";
 
 import SingleAxisDynamicSource from "./singleAxisDynamicSource";
 import windowedMixin from "./windowedMixin";
+import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
 
 export default class BamSource extends windowedMixin(SingleAxisDynamicSource) {
     /** Keep track of the order of the requests */
@@ -36,9 +37,12 @@ export default class BamSource extends windowedMixin(SingleAxisDynamicSource) {
             throw new Error("No URL provided for BamSource");
         }
 
+        const withBase = (/** @type {string} */ uri) =>
+            new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+
         this.bam = new BamFile({
-            bamFilehandle: new RemoteFile(this.params.url),
-            baiFilehandle: new RemoteFile(
+            bamFilehandle: withBase(this.params.url),
+            baiFilehandle: withBase(
                 this.params.indexUrl ?? this.params.url + ".bai"
             ),
         });
