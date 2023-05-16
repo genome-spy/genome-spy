@@ -37,6 +37,7 @@
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/schema.json"
   },
   "dependencies": {
+    "@gmod/bam": "^1.1.18",
     "@gmod/bbi": "^4.0.0",
     "@gmod/bed": "^2.1.2",
     "@gmod/indexedfasta": "^2.0.4",

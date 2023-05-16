@@ -93,6 +93,10 @@ export default class Genome {
         }
     }
 
+    hasChrPrefix() {
+        return this.chromosomes.some((c) => c.name.startsWith("chr"));
+    }
+
     /**
      *
      * @param {Chromosome[]} chromSizes

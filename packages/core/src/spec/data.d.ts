@@ -198,7 +198,8 @@ export type DynamicDataParams =
     | AxisGenomeData
     | IndexedFastaData
     | BigWigData
-    | BigBedData;
+    | BigBedData
+    | BamData;
 
 export interface AxisTicksData {
     type: "axisTicks";
@@ -291,6 +292,37 @@ export interface BigBedData {
      * when the length of the visible domain smaller than the window size.
      *
      * __Default value:__ `1000000`
+     */
+    windowSize?: number;
+}
+
+export interface BamData {
+    type: "bam";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * Url of the BigBed file.
+     */
+    url: string;
+
+    /**
+     * Url of the index file.
+     *
+     * __Default value:__ `url` + `".bai"`.
+     */
+    indexUrl?: string;
+
+    /**
+     * Size of each chunk when fetching the BigBed file. Data is only fetched
+     * when the length of the visible domain smaller than the window size.
+     *
+     * __Default value:__ `10000`
      */
     windowSize?: number;
 }
