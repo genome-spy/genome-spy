@@ -34,7 +34,10 @@ nav:
     - Getting Started: "getting-started.md"
     - Visualization Grammar:
           - "grammar/index.md"
-          - Data Input: "grammar/data.md"
+          - Data Input:
+                - "grammar/data/index.md"
+                - Static data: "grammar/data/static.md"
+                - Dynamic data: "grammar/data/dynamic.md"
           - Transform:
                 - "grammar/transform/index.md"
                 - Aggregate: "grammar/transform/aggregate.md"

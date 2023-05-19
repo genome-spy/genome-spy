@@ -52,7 +52,7 @@ encoded into mark instances.
 ### Properties
 
 `data`
-: Specifies a [data source](./data.md). If omitted, the data source is inherited
+: Specifies a [data source](./data/index.md). If omitted, the data source is inherited
 from the parent view.
 
 `transform`
@@ -94,7 +94,7 @@ manually specify proper `padding` for the view to ensure that the title is visib
 top-level view is shown in the toolbar of the [GenomeSpy _app_](../sample-collections/index.md).
 
 `baseUrl`
-: The base URL for relative [URL data sources](./data.md). The base URLs are
+: The base URL for relative [URL data sources](./data/static.md). The base URLs are
 inherited in the view hierarchy unless overridden with this property. By default,
 the top-level view's base URL equals to the visualization specification's base URL.
 
