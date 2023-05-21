@@ -27,7 +27,7 @@
       "data": {
         "dynamic": {
           "type": "indexedFasta",
-          "url": "https://igv-genepattern-org.s3.amazonaws.com/genomes/seq/hg38/hg38.fa"
+          "url": "https://data.genomespy.app/genomes/hg38/hg38.fa"
         }
       },
       "transform": [

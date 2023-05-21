@@ -85,9 +85,10 @@ position of each nucleotide is computed using the
   "data": {
     "dynamic": {
       "type": "indexedFasta",
-      "url": "https://igv-genepattern-org.s3.amazonaws.com/genomes/seq/hg38/hg38.fa"
+      "url": "https://data.genomespy.app/genomes/hg38/hg38.fa"
     }
   },
+
   "transform": [
     {
       "type": "flattenSequence",
@@ -96,12 +97,23 @@ position of each nucleotide is computed using the
     },
     { "type": "formula", "expr": "datum.rawPos + datum.start", "as": "pos" }
   ],
+
   "encoding": {
+    "x": {
+      "chrom": "chrom",
+      "pos": "pos",
+      "type": "locus",
+      "scale": {
+        "domain": [
+          { "chrom": "chr7", "pos": 20003500 },
+          { "chrom": "chr7", "pos": 20003540 }
+        ]
+      }
+    },
     "color": {
       "field": "base",
       "type": "nominal",
       "scale": {
-        "type": "ordinal",
         "domain": ["A", "C", "T", "G", "a", "c", "t", "g", "N"],
         "range": [
           "#7BD56C",
@@ -113,17 +125,6 @@ position of each nucleotide is computed using the
           "#86BBF1",
           "#FFC56C",
           "#E0E0E0"
-        ]
-      }
-    },
-    "x": {
-      "chrom": "chrom",
-      "pos": "pos",
-      "type": "locus",
-      "scale": {
-        "domain": [
-          { "chrom": "chr7", "pos": 20003500 },
-          { "chrom": "chr7", "pos": 20003540 }
         ]
       }
     }
@@ -181,7 +182,7 @@ The example below shows the GC content of the human genome in 5-base windows.
   "data": {
     "dynamic": {
       "type": "bigwig",
-      "url": "https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.gc5Base.bw"
+      "url": "https://data.genomespy.app/genomes/hg38/hg38.gc5Base.bw"
     }
   },
 
