@@ -38,32 +38,7 @@ The chunks are provided as data objects with the following fields: `chrom`
 
 ### Parameters
 
-`url`
-: Type: `string`
-
-    The URL of the FASTA file.
-
-`indexUrl`
-: Type: `string`
-
-    The index URL of the FASTA file.
-
-    **Default value:** `url` + `".fai"`.
-
-`indexUrl` (optional)
-: Type: `string`
-
-    The index URL of the FASTA file.
-
-    **Default value:** `url` + `".fai"`.
-
-`windowSize` (optional)
-: Type: `number`
-
-    Size of each chunk when fetching the fasta file. Data is only fetched
-    when the length of the visible domain smaller than the window size.
-
-    **Default value:** `7000`.
+SCHEMA IndexedFastaData
 
 ### Example
 
@@ -169,7 +144,7 @@ source provides data objects with the following fields: `chrom` (string),
 
 ### Parameters
 
-TODO
+SCHEMA BigWigData
 
 ### Example
 
@@ -216,6 +191,8 @@ The `"bigbed"` source enables the retrieval of segmented data, such as annotated
 genomic regions stored in BigBed files.
 
 ### Parameters
+
+SCHEMA BigBedData
 
 ### Example
 
@@ -274,6 +251,14 @@ The data source is based on [GMOD](http://gmod.org/)'s
 
 Work in progress.
 
+### Parameters
+
+SCHEMA BamData
+
+### Example
+
+TODO
+
 The data source is based on [GMOD](http://gmod.org/)'s
 [bam-js](https://github.com/GMOD/bam-js) library.
 
@@ -287,7 +272,7 @@ according to your requirements. The data source generates data objects with
 
 ### Parameters
 
-TODO
+SCHEMA AxisTicksData
 
 ### Example
 
@@ -342,7 +327,7 @@ The data source generates data objects with the following fields: `name`, `size`
 
 ### Parameters
 
-TODO
+SCHEMA AxisGenomeData
 
 ### Example
 

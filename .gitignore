@@ -15,6 +15,7 @@ node_modules/
 **/static/examples/drafts/
 
 /docs/app/
+/docs/schema.json
 /docs/genome-spy-schema.json
 
 build/
