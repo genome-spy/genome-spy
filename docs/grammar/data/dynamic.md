@@ -249,7 +249,11 @@ The data source is based on [GMOD](http://gmod.org/)'s
 
 ## BAM
 
-Work in progress.
+The `"bam"` source is very much work in progress but has a low priority. It
+currently exposes the reads but no variants alleles, CIGARs, etc. Please send a
+message to [GitHub
+Discussions](https://github.com/genome-spy/genome-spy/discussions) if you are
+interested in this feature.
 
 ### Parameters
 
@@ -257,7 +261,106 @@ SCHEMA BamData
 
 ### Example
 
-TODO
+<div><genome-spy-doc-embed height="350" spechidden="true">
+
+```json
+{
+  "genome": { "name": "hg18" },
+
+  "data": {
+    "dynamic": {
+      "type": "bam",
+      "url": "https://data.genomespy.app/sample-data/bamExample.bam",
+      "windowSize": 30000
+    }
+  },
+
+  "resolve": { "scale": { "x": "shared" } },
+
+  "spacing": 5,
+
+  "vconcat": [
+    {
+      "view": { "stroke": "lightgray" },
+      "height": 40,
+
+      "transform": [
+        {
+          "type": "coverage",
+          "start": "start",
+          "end": "end",
+          "as": "coverage",
+          "chrom": "chrom"
+        }
+      ],
+      "mark": "rect",
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "axis": null
+        },
+        "x2": { "chrom": "chrom", "pos": "end" },
+        "y": { "field": "coverage", "type": "quantitative" }
+      }
+    },
+    {
+      "view": { "stroke": "lightgray" },
+
+      "transform": [
+        {
+          "type": "pileup",
+          "start": "start",
+          "end": "end",
+          "as": "_lane"
+        }
+      ],
+
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "axis": {},
+          "scale": {
+            "domain": [
+              { "chrom": "chr21", "pos": 33037317 },
+              { "chrom": "chr21", "pos": 33039137 }
+            ]
+          }
+        },
+        "x2": {
+          "chrom": "chrom",
+          "pos": "end"
+        },
+        "y": {
+          "field": "_lane",
+          "type": "index",
+          "scale": {
+            "domain": [0, 60],
+            "padding": 0.3,
+            "reverse": true,
+            "zoom": false
+          }
+        },
+        "color": {
+          "field": "strand",
+          "type": "nominal",
+          "scale": {
+            "domain": ["+", "-"],
+            "range": ["crimson", "orange"]
+          }
+        }
+      },
+
+      "mark": "rect"
+    }
+  ]
+}
+```
+
+</genome-spy-doc-embed></div>
 
 The data source is based on [GMOD](http://gmod.org/)'s
 [bam-js](https://github.com/GMOD/bam-js) library.
