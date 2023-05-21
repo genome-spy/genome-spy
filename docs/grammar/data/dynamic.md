@@ -10,8 +10,8 @@ especially useful for large datasets, such as whole-genome sequencing data.
     Dynamic data sources observe the scale domains of the view where the data
     source is specified. When the domain changes as a result of an user interaction,
     the data source invokes a request to fetch a new subset of the data. Dynamic
-    sources need a visual channel to be specified, which is used to determine the
-    scale to observe.
+    sources need the visual `channel` to be specified, which is used to determine the
+    scale to observe. For genomic data sources, the channel defaults to `"x"`.
 
 Dynamic data sources are specified using the `dynamic` property of the `data` object.
 Unlike in static data, the `type` of the data source must be specified explicitly:
@@ -28,16 +28,13 @@ Unlike in static data, the `type` of the data source must be specified explicitl
 }
 ```
 
-## Axis and genome ticks
-
 ## Indexed FASTA
 
-Indexed FASTA files enable fast random access to a reference sequence. The
-`"indexedFasta"` source loads the sequence as three consecutive chuncks that
-cover and flank the currently visible region (domain), allowing the user to
-rapidly pan the view. The chunks are provided as data objects with the following
-fields: `chrom` (string), `start` (integer), and `sequence` (string). The
-`sequence` field contains the sequence of the window as a string of nucleotides.
+The `"indexedFasta"` source enable fast random access to a reference sequence.
+It loads the sequence as three consecutive chuncks that cover and flank the
+currently visible region (domain), allowing the user to rapidly pan the view.
+The chunks are provided as data objects with the following fields: `chrom`
+(string), `start` (integer), and `sequence` (a string of bases).
 
 ### Parameters
 
@@ -71,12 +68,14 @@ fields: `chrom` (string), `start` (integer), and `sequence` (string). The
 ### Example
 
 The example below shows how to specify a sequence track using an indexed FASTA
-file. The sequence is split into separate data objects using the
+file. The sequence chunks are split into separate data objects using the
 [`"flattenSequence"`](../transform/flatten-sequence.md) transform, and the final
 position of each nucleotide is computed using the
-[`"formula"`](../transform/formula.md) transform.
+[`"formula"`](../transform/formula.md) transform. Please note that new data are
+fetched only when the user zooms into a region smaller than the window size
+(default: 7000 bp).
 
-<div><genome-spy-doc-embed height="60">
+<div><genome-spy-doc-embed height="60" spechidden="true">
 
 ```json
 {
@@ -160,19 +159,24 @@ The data source is based on [GMOD](http://gmod.org/)'s
 
 ## BigWig
 
-BigWig files are used to store dense, continuous data, such as coverage or other
-signal data. The `"bigwig"` source behaves similarly to the indexed FASTA
-source, loading the data in chunks that cover and flank the currently visible
-region. However, the window size automatically adapts to the zoom level, and
-data are fetched in higher resolution when zooming in.
+The `"bigwig"` source enables the retrieval of dense, continuous data, such as
+coverage or other signal data stored in BigWig files. It behaves similarly to
+the indexed FASTA source, loading the data in chunks that cover and flank the
+currently visible region. However, the window size automatically adapts to the
+zoom level, and data are fetched in higher resolution when zooming in. The data
+source provides data objects with the following fields: `chrom` (string),
+`start` (integer), `end` (integer), and `score` (number).
 
 ### Parameters
+
+TODO
 
 ### Example
 
 The example below shows the GC content of the human genome in 5-base windows.
+When you zoom in, the resolution of the data automatically increases.
 
-<div><genome-spy-doc-embed height="120">
+<div><genome-spy-doc-embed height="120" spechidden="true">
 
 ```json
 {
@@ -208,13 +212,16 @@ The data source is based on [GMOD](http://gmod.org/)'s
 
 ## BigBeg
 
+The `"bigbed"` source enables the retrieval of segmented data, such as annotated
+genomic regions stored in BigBed files.
+
 ### Parameters
 
 ### Example
 
 The example below displays "ENCODE Candidate Cis-Regulatory Elements (cCREs) combined from all cell types" dataset for the hg38 genome.
 
-<div><genome-spy-doc-embed height="70">
+<div><genome-spy-doc-embed height="70" spechidden="true">
 
 ```json
 {
@@ -269,3 +276,129 @@ Work in progress.
 
 The data source is based on [GMOD](http://gmod.org/)'s
 [bam-js](https://github.com/GMOD/bam-js) library.
+
+## Axis ticks
+
+The `"axisTicks"` data source generates a set of ticks for the specified channel.
+While GenomeSpy internally uses this data source for generating axis ticks, you
+also have the flexibility to employ it for creating fully customized axes
+according to your requirements. The data source generates data objects with
+`value` and `label` fields.
+
+### Parameters
+
+TODO
+
+### Example
+
+The example below generates approximately three ticks for the `x` axis.
+
+<div><genome-spy-doc-embed height="80" spechidden="true">
+
+```json
+{
+  "data": {
+    "dynamic": {
+      "type": "axisTicks",
+      "channel": "x",
+      "axis": {
+        "tickCount": 3
+      }
+    }
+  },
+
+  "mark": {
+    "type": "text",
+    "size": 20,
+    "clip": false
+  },
+
+  "encoding": {
+    "x": {
+      "field": "value",
+      "type": "quantitative",
+      "scale": {
+        "domain": [0, 10],
+        "zoom": true
+      }
+    },
+    "text": {
+      "field": "label"
+    }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+## Axis genome
+
+The `axisGenome` data source, in fact, does not dynamically update data.
+However, it provides a convenient access to the genome (chromosomes) of the
+given channel, allowing creation of customized chromosome ticks or annotations.
+The data source generates data objects with the following fields: `name`, `size`
+(in bp), `continuousStart` (linearized coordinate), `continuousEnd`, `odd`
+(boolean), and `number` (1-based index).
+
+### Parameters
+
+TODO
+
+### Example
+
+<div><genome-spy-doc-embed height="150" spechidden="true">
+
+```json
+{
+  "genome": { "name": "hg38" },
+
+  "data": {
+    "dynamic": {
+      "type": "axisGenome",
+      "channel": "x"
+    }
+  },
+
+  "encoding": {
+    "x": {
+      "field": "continuousStart",
+      "type": "locus"
+    },
+    "x2": {
+      "field": "continuousEnd"
+    },
+    "text": {
+      "field": "name"
+    }
+  },
+
+  "layer": [
+    {
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "datum.odd"
+        }
+      ],
+      "mark": {
+        "type": "rect",
+        "fill": "#f0f0f0"
+      }
+    },
+    {
+      "mark": {
+        "type": "text",
+        "size": 16,
+        "angle": -90,
+        "align": "right",
+        "baseline": "top",
+        "paddingX": 3,
+        "paddingY": 5,
+        "y": 1
+      }
+    }
+  ]
+}
+```
+
+</div></genome-spy-doc-embed>

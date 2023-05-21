@@ -16,7 +16,7 @@ following example loads a tab-delimited file. By default, the format is inferred
 from the file extension. However, in bioinformatics, CSV files are often
 actually tab-delimited, and the `"tsv"` format must be specified explicitly:
 
-```json
+```json title="Example: Loading static data from a URL"
 {
   "data": {
     "url": "fileWithTabs.csv",
@@ -92,7 +92,7 @@ The type of _FASTA_ format is `"fasta"` as shown in the example below:
 }
 ```
 
-The FASTA loader produces data objects with two fields: `"identifier"` and
-`"sequence"`. With the [`"flattenSequence"`](../transform/flatten-sequence.md)
+The FASTA loader produces data objects with two fields: `identifier` and
+`sequence`. With the [`"flattenSequence"`](../transform/flatten-sequence.md)
 transform you can split the sequences into individual bases (one object per
 base) for easier visualization.
