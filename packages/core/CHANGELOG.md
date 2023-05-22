@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.32.0](https://github.com/genome-spy/genome-spy/compare/v0.31.2...v0.32.0) (2023-05-22)
+
+
+### Features
+
+* **core:** lazy loading for indexed FASTA, BigWig, and BigBed ([#153](https://github.com/genome-spy/genome-spy/issues/153)) ([aeb20f2](https://github.com/genome-spy/genome-spy/commit/aeb20f21e5db97a9b7fca81f7fc4663c85129c78))
+
+
+
+
+
 ## [0.31.2](https://github.com/genome-spy/genome-spy/compare/v0.31.1...v0.31.2) (2023-05-09)
 
 **Note:** Version bump only for package @genome-spy/core
