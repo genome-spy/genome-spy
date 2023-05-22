@@ -1,0 +1,50 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "ENCODE Candidate Cis-Regulatory Elements (cCREs) combined from all cell types, hg38",
+
+  "height": 30,
+
+  "genome": {
+    "name": "hg38"
+  },
+
+  "view": {
+    "stroke": "lightgray"
+  },
+
+  "data": {
+    "dynamic": {
+      "type": "bigbed",
+      "url": "http://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb"
+    }
+  },
+
+  "transform": [],
+
+  "encoding": {
+    "x": {
+      "chrom": "chrom",
+      "pos": "chromStart",
+      "type": "locus"
+    },
+    "x2": {
+      "chrom": "chrom",
+      "pos": "chromEnd"
+    },
+    "color": {
+      "field": "ucscLabel",
+      "type": "nominal",
+      "scale": {
+        "domain": ["prom", "enhP", "enhD", "K4m3", "CTCF"],
+        "range": ["#FF0000", "#FFA700", "#FFCD00", "#FFAAAA", "#00B0F0"]
+      }
+    }
+  },
+
+  "mark": {
+    "type": "rect",
+    "minWidth": 0.5,
+    "minOpacity": 0.4
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "height": 30,
+
+  "genome": {
+    "name": "hg38"
+  },
+
+  "layer": [
+    {
+      "opacity": {
+        "unitsPerPixel": [5, 8],
+        "values": [0, 0.5]
+      },
+      "data": { "values": [{}] },
+      "mark": {
+        "type": "text",
+        "text": "Zoom in to see the reference sequence"
+      }
+    },
+    {
+      "opacity": {
+        "unitsPerPixel": [8, 5],
+        "values": [0, 1]
+      },
+      "data": {
+        "lazy": {
+          "type": "indexedFasta",
+          "url": "https://data.genomespy.app/genomes/hg38/hg38.fa"
+        }
+      },
+      "transform": [
+        {
+          "type": "flattenSequence",
+          "field": "sequence",
+          "as": ["rawPos", "base"]
+        },
+        {
+          "type": "formula",
+          "expr": "datum.rawPos + datum.start",
+          "as": "pos"
+        }
+      ],
+      "encoding": {
+        "color": {
+          "field": "base",
+          "type": "nominal",
+          "scale": {
+            "type": "ordinal",
+            "domain": ["A", "C", "T", "G", "a", "c", "t", "g", "N"],
+            "range": [
+              "#7BD56C",
+              "#FF9B9B",
+              "#86BBF1",
+              "#FFC56C",
+              "#7BD56C",
+              "#FF9B9B",
+              "#86BBF1",
+              "#FFC56C",
+              "#E0E0E0"
+            ]
+          }
+        },
+        "x": {
+          "chrom": "chrom",
+          "pos": "pos",
+          "type": "locus"
+        }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "rect",
+            "minWidth": 0.5,
+            "minOpacity": 0.2,
+            "tooltip": null
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "size": 13,
+            "fitToBand": true,
+            "paddingX": 1.5,
+            "paddingY": 1,
+            "opacity": 0.7,
+            "flushX": false,
+            "tooltip": null
+          },
+          "encoding": {
+            "color": { "value": "black" },
+            "text": { "field": "base" }
+          }
+        }
+      ]
+    }
+  ]
+}

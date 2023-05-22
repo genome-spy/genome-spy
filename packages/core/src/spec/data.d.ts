@@ -94,7 +94,7 @@ export type DataSource =
     | InlineData
     | NamedData
     | DynamicCallbackData
-    | DynamicData;
+    | LazyData;
 
 export type Data = DataSource | Generator;
 
@@ -189,11 +189,17 @@ export interface SequenceParams {
     as?: FieldName;
 }
 
-export interface DynamicData {
-    dynamic: DynamicDataParams;
+export interface LazyData {
+    lazy: LazyDataParams;
 }
 
-export type DynamicDataParams = AxisTicksData | AxisGenomeData;
+export type LazyDataParams =
+    | AxisTicksData
+    | AxisGenomeData
+    | IndexedFastaData
+    | BigWigData
+    | BigBedData
+    | BamData;
 
 export interface AxisTicksData {
     type: "axisTicks";
@@ -210,4 +216,113 @@ export interface AxisGenomeData {
 
     /** Which channel's scale domain to use */
     channel: PrimaryPositionalChannel;
+}
+
+export interface IndexedFastaData {
+    type: "indexedFasta";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * URL of the fasta file.
+     */
+    url: string;
+
+    /**
+     * URL of the index file.
+     *
+     * __Default value:__ `url` + `".fai"`.
+     */
+    indexUrl?: string;
+
+    /**
+     * Size of each chunk when fetching the fasta file. Data is only fetched
+     * when the length of the visible domain smaller than the window size.
+     *
+     * __Default value:__ `7000`
+     */
+    windowSize?: number;
+}
+
+export interface BigWigData {
+    type: "bigwig";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * URL of the BigWig file.
+     */
+    url: string;
+
+    /**
+     * The approximate minimum width of each data bin, in pixels.
+     *
+     * __Default value:__ `2`
+     */
+    pixelsPerBin?: number;
+}
+
+export interface BigBedData {
+    type: "bigbed";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * URL of the BigBed file.
+     */
+    url: string;
+
+    /**
+     * Size of each chunk when fetching the BigBed file. Data is only fetched
+     * when the length of the visible domain smaller than the window size.
+     *
+     * __Default value:__ `1000000`
+     */
+    windowSize?: number;
+}
+
+export interface BamData {
+    type: "bam";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * URL of the BigBed file.
+     */
+    url: string;
+
+    /**
+     * URL of the index file.
+     *
+     * __Default value:__ `url` + `".bai"`.
+     */
+    indexUrl?: string;
+
+    /**
+     * Size of each chunk when fetching the BigBed file. Data is only fetched
+     * when the length of the visible domain smaller than the window size.
+     *
+     * __Default value:__ `10000`
+     */
+    windowSize?: number;
 }

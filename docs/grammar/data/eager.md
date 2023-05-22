@@ -1,20 +1,22 @@
-# Data Input
+# Eager Data Sources
 
-GenomeSpy inputs tabular data as `"csv"`, `"tsv"`, and `"json"` files.
-Currently, the only supported bioinformatic file format is non-indexed
-[`"fasta"`](#fasta). Other formats such as _BED_ or _BigWig_ are not directly supported.
-They must be first converted into one of the above tabular formats.
+_Eager_ data sources load and process all available data during the
+initialization stage. They are suitable for small data sets as they do not
+support partial loading or loading in response to user interactions. However,
+eager data sources are often more flexible and straightforward than
+[lazy](lazy.md) ones.
 
-GenomeSpy can load data from external files or use inline data. You
-can also use generators to generate data on the fly and modify them using
-[transforms](transform/index.md).
+GenomeSpy inputs eager data as tabular `"csv"`, `"tsv"`, and `"json"` files or
+as non-indexed [`"fasta"`](#fasta) files. Data can be loaded from URLs or
+provided inline. You can also use generators to generate data on the fly and
+further modify them using [transforms](../transform/index.md).
 
 The `data` property of the view specification describes a data source. The
-following example loads a tab-delimited file. By default, the format is inferred
-from the file extension. However, in bioinformatics, CSV files are often
-actually tab-delimited and the `"tsv"` format must be specified explicitly:
+following example loads a tab-delimited file. By default, GenomeSpy infers the
+format from the file extension. However, in bioinformatics, CSV files are often
+actually tab-delimited, and you must specify the `"tsv"` explicitly:
 
-```json
+```json title="Example: Eagerly loading data from a URL"
 {
   "data": {
     "url": "fileWithTabs.csv",
@@ -43,26 +45,32 @@ GenomeSpy is identical to Vega-Lite's
     Empty or missing values must be presented as **empty strings** instead of `NA`
     that R writes by default. Otherwise type inference fails for numeric fields.
 
-## Named Data Sources
+## Named Data
 
-Data can be added or updated at runtime using the [API](../api.md). Data sources
-are referenced by a name, which is passed to the `updateNamedData` method:
+When embedding GenomeSpy in a web application or page, data can be added or
+updated at runtime using the [API](../../api.md). Data sources are referenced by a
+name, which is passed to the `updateNamedData` method:
 
 ```json
 {
-  "name": "dynamicData"
+    "data": {
+        "name": "myResults"
+    }
+    ...
 }
 ```
 
 ```js
 const api = await embed("#container", spec);
-api.updateNamedData("dynamicData", [
+api.updateNamedData("myResults", [
   { x: 1, y: 2 },
   { x: 2, y: 3 },
 ]);
 ```
 
-For practical examples, check the
+Although named data can be updated dynamically, it does not automatically
+respond to user interactions. For practical examples of dynamically updated
+named data, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
@@ -84,7 +92,7 @@ The type of _FASTA_ format is `"fasta"` as shown in the example below:
 }
 ```
 
-The FASTA loader produces data objects with two fields: `"identifier"` and
-`"sequence"`. With the [`"flattenSequence"`](transform/flatten-sequence.md)
+The FASTA loader produces data objects with two fields: `identifier` and
+`sequence`. With the [`"flattenSequence"`](../transform/flatten-sequence.md)
 transform you can split the sequences into individual bases (one object per
 base) for easier visualization.

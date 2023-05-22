@@ -79,7 +79,7 @@ data, and each sample gets its own track.
 Genomic data is commonly supplemented with metadata that contains various
 clinical and computational annotations. To show such metadata alongside the
 genomic data as a color-coded heat map, you can provide a
-[`data`](../grammar/data.md) source with sample identifiers and metadata
+[`data`](../grammar/data/static.md) source with sample identifiers and metadata
 columns.
 
 ```json title="Explicit sample identifiers"

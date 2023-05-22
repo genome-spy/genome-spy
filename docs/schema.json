@@ -70,6 +70,42 @@
           "description": "The format specifier pattern for axis labels. Must be a legal [d3-format](https://github.com/d3/d3-format#locale_format) specifier.",
           "type": "string"
         },
+        "grid": {
+          "description": "A boolean flag indicating if grid lines should be included as part of the axis.\n\n__Default value:__ `false`",
+          "type": "boolean"
+        },
+        "gridCap": {
+          "description": "The stroke cap for the grid line's ending style. One of `\"butt\"`, `\"round\"` or `\"square\"`.\n\n__Default value:__ `\"butt\"`",
+          "enum": [
+            "butt",
+            "round",
+            "square"
+          ],
+          "type": "string"
+        },
+        "gridColor": {
+          "description": "Color of grid lines.\n\n__Default value:__ `lightgray`",
+          "type": "string"
+        },
+        "gridDash": {
+          "description": "An array of alternating [stroke, space] lengths for dashed grid mark lines.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "gridDashOffset": {
+          "description": "The pixel offset at which to start drawing with the grid mark dash array.",
+          "type": "number"
+        },
+        "gridOpacity": {
+          "description": "The opacity of the grid lines.\n\n__Default value:__ `1`",
+          "type": "number"
+        },
+        "gridWidth": {
+          "description": "Width of the grid lines.\n\n__Default value:__ `1`",
+          "type": "number"
+        },
         "labelAlign": {
           "$ref": "#/definitions/Align",
           "description": "Horizontal text alignment of axis tick labels, overriding the default setting for the current axis orientation."
@@ -221,6 +257,24 @@
       },
       "type": "object"
     },
+    "AxisGenomeData": {
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/PrimaryPositionalChannel",
+          "description": "Which channel's scale domain to use"
+        },
+        "type": {
+          "const": "axisGenome",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "channel"
+      ],
+      "type": "object"
+    },
     "AxisOrient": {
       "enum": [
         "top",
@@ -230,6 +284,58 @@
       ],
       "type": "string"
     },
+    "AxisTicksData": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "$ref": "#/definitions/Axis",
+          "description": "Optional axis properties"
+        },
+        "channel": {
+          "$ref": "#/definitions/PrimaryPositionalChannel",
+          "description": "Which channel's scale domain to listen to"
+        },
+        "type": {
+          "const": "axisTicks",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "channel"
+      ],
+      "type": "object"
+    },
+    "BamData": {
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/PrimaryPositionalChannel",
+          "description": "Which channel's scale domain to monitor.\n\n__Default value:__ `\"x\"`"
+        },
+        "indexUrl": {
+          "description": "URL of the index file.\n\n__Default value:__ `url` + `\".bai\"`.",
+          "type": "string"
+        },
+        "type": {
+          "const": "bam",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL of the BigBed file.",
+          "type": "string"
+        },
+        "windowSize": {
+          "description": "Size of each chunk when fetching the BigBed file. Data is only fetched when the length of the visible domain smaller than the window size.\n\n__Default value:__ `10000`",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "url"
+      ],
+      "type": "object"
+    },
     "Baseline": {
       "enum": [
         "top",
@@ -238,6 +344,58 @@
         "alphabetic"
       ],
       "type": "string"
+    },
+    "BigBedData": {
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/PrimaryPositionalChannel",
+          "description": "Which channel's scale domain to monitor.\n\n__Default value:__ `\"x\"`"
+        },
+        "type": {
+          "const": "bigbed",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL of the BigBed file.",
+          "type": "string"
+        },
+        "windowSize": {
+          "description": "Size of each chunk when fetching the BigBed file. Data is only fetched when the length of the visible domain smaller than the window size.\n\n__Default value:__ `1000000`",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "url"
+      ],
+      "type": "object"
+    },
+    "BigWigData": {
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/PrimaryPositionalChannel",
+          "description": "Which channel's scale domain to monitor.\n\n__Default value:__ `\"x\"`"
+        },
+        "pixelsPerBin": {
+          "description": "The approximate minimum width of each data bin, in pixels.\n\n__Default value:__ `2`",
+          "type": "number"
+        },
+        "type": {
+          "const": "bigwig",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL of the BigWig file.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "url"
+      ],
+      "type": "object"
     },
     "Channel": {
       "anyOf": [
@@ -751,7 +909,7 @@
           "$ref": "#/definitions/DynamicCallbackData"
         },
         {
-          "$ref": "#/definitions/DynamicData"
+          "$ref": "#/definitions/LazyData"
         }
       ]
     },
@@ -804,27 +962,6 @@
       },
       "required": [
         "dynamicCallbackSource"
-      ],
-      "type": "object"
-    },
-    "DynamicData": {
-      "additionalProperties": false,
-      "properties": {
-        "dynamicSource": {
-          "description": "For internal use.",
-          "type": "boolean"
-        },
-        "format": {
-          "$ref": "#/definitions/DataFormat",
-          "description": "An object that specifies the format for parsing the data."
-        },
-        "name": {
-          "description": "Provide a placeholder name and bind data at runtime.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "dynamicSource"
       ],
       "type": "object"
     },
@@ -1461,6 +1598,36 @@
       ],
       "type": "object"
     },
+    "IndexedFastaData": {
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/PrimaryPositionalChannel",
+          "description": "Which channel's scale domain to monitor.\n\n__Default value:__ `\"x\"`"
+        },
+        "indexUrl": {
+          "description": "URL of the index file.\n\n__Default value:__ `url` + `\".fai\"`.",
+          "type": "string"
+        },
+        "type": {
+          "const": "indexedFasta",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL of the fasta file.",
+          "type": "string"
+        },
+        "windowSize": {
+          "description": "Size of each chunk when fetching the fasta file. Data is only fetched when the length of the visible domain smaller than the window size.\n\n__Default value:__ `7000`",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "url"
+      ],
+      "type": "object"
+    },
     "InlineData": {
       "additionalProperties": false,
       "properties": {
@@ -1699,6 +1866,40 @@
         "layer"
       ],
       "type": "object"
+    },
+    "LazyData": {
+      "additionalProperties": false,
+      "properties": {
+        "lazy": {
+          "$ref": "#/definitions/LazyDataParams"
+        }
+      },
+      "required": [
+        "lazy"
+      ],
+      "type": "object"
+    },
+    "LazyDataParams": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/AxisTicksData"
+        },
+        {
+          "$ref": "#/definitions/AxisGenomeData"
+        },
+        {
+          "$ref": "#/definitions/IndexedFastaData"
+        },
+        {
+          "$ref": "#/definitions/BigWigData"
+        },
+        {
+          "$ref": "#/definitions/BigBedData"
+        },
+        {
+          "$ref": "#/definitions/BamData"
+        }
+      ]
     },
     "LinearizeGenomicCoordinateParams": {
       "additionalProperties": false,
@@ -2873,11 +3074,12 @@
       "type": "object"
     },
     "ResolutionBehavior": {
-      "description": "`\"independent\"` and `\"shared\"` behave similarly to Vega-Lite. `\"excluded\"` behaves like `\"shared\"`, but is not pulled towards the root.",
+      "description": "`\"independent\"` and `\"shared\"` behave similarly to Vega-Lite. `\"excluded\"` behaves like `\"shared\"`, but is not pulled towards the root. `\"forced\"` behaves like `\"shared\"`, but is forced towards the root even if the parent has `\"independent\"` behavior.",
       "enum": [
         "independent",
         "shared",
-        "excluded"
+        "excluded",
+        "forced"
       ],
       "type": "string"
     },
@@ -3325,7 +3527,8 @@
               "type": "object"
             },
             "samples": {
-              "$ref": "#/definitions/SampleDef"
+              "$ref": "#/definitions/SampleDef",
+              "description": "Sample metadata definition. If the object is empty, the sample identifiers will be inferred from the data."
             },
             "spec": {
               "anyOf": [
@@ -3335,7 +3538,8 @@
                 {
                   "$ref": "#/definitions/UnitSpec"
                 }
-              ]
+              ],
+              "description": "The view specification to be repeated for each sample."
             },
             "stickySummaries": {
               "type": "boolean"
@@ -3871,19 +4075,23 @@
       "additionalProperties": false,
       "properties": {
         "barScale": {
-          "$ref": "#/definitions/Scale"
+          "$ref": "#/definitions/Scale",
+          "description": "An optional scale definition for mapping the attribute to the width of a metadata rectangle."
         },
         "scale": {
           "$ref": "#/definitions/Scale",
-          "description": "Color scale (primary)"
+          "description": "Scale definition for the (default) color channel"
         },
         "type": {
-          "$ref": "#/definitions/Type"
+          "$ref": "#/definitions/Type",
+          "description": "The attribute type. One of `\"nominal\"`, `\"ordinal\"`, or `\"quantitative\"`."
         },
         "visible": {
+          "description": "Whether the attribute is visible by default.",
           "type": "boolean"
         },
         "width": {
+          "description": "Width of the column in pixels.",
           "type": "number"
         }
       },
@@ -3895,14 +4103,72 @@
     "SampleDef": {
       "additionalProperties": false,
       "properties": {
+        "attributeLabelAngle": {
+          "description": "Angle to be added to the default label angle (-90).\n\n**Default value:** `0`",
+          "type": "number"
+        },
+        "attributeLabelFont": {
+          "description": "The font typeface. GenomeSpy uses [SDF](https://github.com/Chlumsky/msdfgen) versions of [Google Fonts](https://fonts.google.com/). Check their availability at the [A-Frame Fonts](https://github.com/etiennepinchon/aframe-fonts/tree/master/fonts) repository. System fonts are **not** supported.\n\n**Default value:** `\"Lato\"`",
+          "type": "string"
+        },
+        "attributeLabelFontSize": {
+          "description": "The font size in pixels.\n\n**Default value:** `11`",
+          "type": "number"
+        },
+        "attributeLabelFontStyle": {
+          "$ref": "#/definitions/FontStyle",
+          "description": "The font style. Valid values: `\"normal\"` and `\"italic\"`.\n\n**Default value:** `\"normal\"`"
+        },
+        "attributeLabelFontWeight": {
+          "$ref": "#/definitions/FontWeight",
+          "description": "The font weight. The following strings and numbers are valid values: `\"thin\"` (`100`), `\"light\"` (`300`), `\"regular\"` (`400`), `\"normal\"` (`400`), `\"medium\"` (`500`), `\"bold\"` (`700`), `\"black\"` (`900`)\n\n**Default value:** `\"regular\"`"
+        },
+        "attributeSize": {
+          "description": "Default size (width) of the metadata attribute columns. Can be configured per attribute using the `attributes` property.\n\n**Default value:** `10`",
+          "type": "number"
+        },
+        "attributeSpacing": {
+          "description": "Spacing between attribute columns in pixels.\n\n**Default value:** `1`",
+          "type": "number"
+        },
         "attributes": {
           "additionalProperties": {
             "$ref": "#/definitions/SampleAttributeDef"
           },
+          "description": "Explicitly specify the sample attributes.",
           "type": "object"
         },
         "data": {
-          "$ref": "#/definitions/Data"
+          "$ref": "#/definitions/Data",
+          "description": "Optional metadata about the samples."
+        },
+        "labelAlign": {
+          "$ref": "#/definitions/Align",
+          "description": "The horizontal alignment of the text. One of `\"left\"`, `\"center\"`, or `\"right\"`.\n\n**Default value:** `\"left\"`"
+        },
+        "labelFont": {
+          "description": "The font typeface. GenomeSpy uses [SDF](https://github.com/Chlumsky/msdfgen) versions of [Google Fonts](https://fonts.google.com/). Check their availability at the [A-Frame Fonts](https://github.com/etiennepinchon/aframe-fonts/tree/master/fonts) repository. System fonts are **not** supported.\n\n**Default value:** `\"Lato\"`",
+          "type": "string"
+        },
+        "labelFontSize": {
+          "description": "The font size in pixels.\n\n**Default value:** `11`",
+          "type": "number"
+        },
+        "labelFontStyle": {
+          "$ref": "#/definitions/FontStyle",
+          "description": "The font style. Valid values: `\"normal\"` and `\"italic\"`.\n\n**Default value:** `\"normal\"`"
+        },
+        "labelFontWeight": {
+          "$ref": "#/definitions/FontWeight",
+          "description": "The font weight. The following strings and numbers are valid values: `\"thin\"` (`100`), `\"light\"` (`300`), `\"regular\"` (`400`), `\"normal\"` (`400`), `\"medium\"` (`500`), `\"bold\"` (`700`), `\"black\"` (`900`)\n\n**Default value:** `\"regular\"`"
+        },
+        "labelLength": {
+          "description": "How much space in pixels to reserve for the labels.\n\n**Default:** `140`",
+          "type": "number"
+        },
+        "labelTitleText": {
+          "description": "Text in the label title\n\n**Default:** `\"Sample name\"`",
+          "type": "string"
         }
       },
       "type": "object"
@@ -3927,6 +4193,7 @@
     },
     "SampleSpec": {
       "additionalProperties": false,
+      "description": "A view specification for a SampleView. This is only functional in the GenomeSpy app.",
       "properties": {
         "baseUrl": {
           "type": "string"
@@ -4012,7 +4279,8 @@
           "type": "object"
         },
         "samples": {
-          "$ref": "#/definitions/SampleDef"
+          "$ref": "#/definitions/SampleDef",
+          "description": "Sample metadata definition. If the object is empty, the sample identifiers will be inferred from the data."
         },
         "spec": {
           "anyOf": [
@@ -4022,7 +4290,8 @@
             {
               "$ref": "#/definitions/UnitSpec"
             }
-          ]
+          ],
+          "description": "The view specification to be repeated for each sample."
         },
         "stickySummaries": {
           "type": "boolean"
@@ -4478,10 +4747,10 @@
         },
         "baseField": {
           "$ref": "#/definitions/Field",
-          "description": "The field that contains the base or amino acid. Used for information content calculation when the offset is `\"information\"`. The data items that have `null` in the baseField are considered gaps and they are taken into account when scaling the the locus' information content."
+          "description": "The field that contains the base or amino acid. Used for information content calculation when the offset is `\"information\"`. The data objects that have `null` in the baseField are considered gaps and they are taken into account when scaling the the locus' information content."
         },
         "cardinality": {
-          "description": "Cardinality, e.g., the number if distinct bases or amino acids. Used for information content calculation when the offset is `\"information\"`.\n\n**Default:** `4`;",
+          "description": "Cardinality, e.g., the number if distinct bases or amino acids. Used for information content calculation when the offset is `\"information\"`.\n\n**Default:** `4`",
           "type": "number"
         },
         "field": {

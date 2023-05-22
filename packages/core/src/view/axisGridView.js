@@ -98,7 +98,7 @@ function createRegularAxisGrid(axisProps, type) {
     return {
         name: "grid_lines",
         data: {
-            dynamic: {
+            lazy: {
                 type: "axisTicks",
                 channel,
                 axis: axisProps,
@@ -131,7 +131,7 @@ function createChromAxisGrid(axisProps, type) {
     return {
         name: "chromosome_lines",
         data: {
-            dynamic: {
+            lazy: {
                 type: "axisGenome",
                 channel,
             },
@@ -163,7 +163,7 @@ function createChromAxisFill(axisProps, type) {
     return {
         name: "chromosome_fill",
         data: {
-            dynamic: {
+            lazy: {
                 type: "axisGenome",
                 channel,
             },
