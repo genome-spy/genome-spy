@@ -39,8 +39,8 @@ nav:
           - "grammar/index.md"
           - Data Input:
                 - "grammar/data/index.md"
-                - Eager data: "grammar/data/eager.md"
-                - Lazy data: "grammar/data/lazy.md"
+                - Eager Data Sources: "grammar/data/eager.md"
+                - Lazy Data Sources: "grammar/data/lazy.md"
           - Transform:
                 - "grammar/transform/index.md"
                 - Aggregate: "grammar/transform/aggregate.md"
