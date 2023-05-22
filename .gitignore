@@ -7,6 +7,7 @@
 **/*.egg-info
 .Rproj.user
 
+.cache/
 .vscode/
 node_modules/
 
