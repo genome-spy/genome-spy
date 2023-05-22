@@ -373,7 +373,7 @@ function createAxis(axisProps, type) {
         resolve: { scale: { [main]: "forced" } },
         [CHANNEL_DIMENSIONS[getPerpendicularChannel(main)]]: ap.extent,
         data: {
-            dynamic: {
+            lazy: {
                 type: "axisTicks",
                 channel: main,
                 axis: axisProps,
@@ -568,7 +568,7 @@ export function createGenomeAxis(axisProps, type) {
             // TODO: Configuration
             name: CHROM_LAYER_NAME,
             data: {
-                dynamic: {
+                lazy: {
                     type: "axisGenome",
                     channel: orient2channel(ap.orient),
                 },

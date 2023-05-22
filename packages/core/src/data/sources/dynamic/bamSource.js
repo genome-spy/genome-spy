@@ -1,11 +1,11 @@
 import { RemoteFile } from "generic-filehandle";
 import { BamFile } from "@gmod/bam";
 
-import SingleAxisDynamicSource from "./singleAxisDynamicSource";
+import SingleAxisLazySource from "./singleAxisLazySource";
 import windowedMixin from "./windowedMixin";
 import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
 
-export default class BamSource extends windowedMixin(SingleAxisDynamicSource) {
+export default class BamSource extends windowedMixin(SingleAxisLazySource) {
     /** Keep track of the order of the requests */
     lastRequestId = 0;
 

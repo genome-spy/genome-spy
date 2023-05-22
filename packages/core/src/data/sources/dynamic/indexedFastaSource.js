@@ -2,7 +2,7 @@ import { Buffer } from "buffer";
 import { IndexedFasta } from "@gmod/indexedfasta";
 import { RemoteFile } from "generic-filehandle";
 
-import SingleAxisDynamicSource from "./singleAxisDynamicSource";
+import SingleAxisLazySource from "./singleAxisLazySource";
 import windowedMixin from "./windowedMixin";
 import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
 
@@ -15,7 +15,7 @@ window.Buffer = Buffer;
  *
  */
 export default class IndexedFastaSource extends windowedMixin(
-    SingleAxisDynamicSource
+    SingleAxisLazySource
 ) {
     /**
      * @param {import("../../../spec/data").IndexedFastaData} params

@@ -2,16 +2,14 @@ import { BigWig } from "@gmod/bbi";
 import { RemoteFile } from "generic-filehandle";
 
 import { debounce } from "../../../utils/debounce";
-import SingleAxisDynamicSource from "./singleAxisDynamicSource";
+import SingleAxisLazySource from "./singleAxisLazySource";
 import windowedMixin from "./windowedMixin";
 import addBaseUrl from "../../../utils/addBaseUrl";
 
 /**
  *
  */
-export default class BigWigSource extends windowedMixin(
-    SingleAxisDynamicSource
-) {
+export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
     /** @type {number[]} */
     reductionLevels = [];
 

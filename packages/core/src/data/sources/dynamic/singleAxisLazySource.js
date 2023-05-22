@@ -2,9 +2,9 @@ import UnitView from "@genome-spy/core/view/unitView";
 import DataSource from "../dataSource";
 
 /**
- * Base class for data sources that listen a domain and propagate data dynamically.
+ * Base class for data sources that listen a domain and propagate data lazily.
  */
-export default class SingleAxisDynamicSource extends DataSource {
+export default class SingleAxisLazySource extends DataSource {
     /**
      * @param {import("../../../view/view").default} view
      * @param {import("../../../spec/channel").PrimaryPositionalChannel} channel

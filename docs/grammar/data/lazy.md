@@ -1,25 +1,26 @@
-# Dynamic Data Sources
+# Lazy Data Sources
 
-_Dynamic data_ are loaded on-demand in response to user interactions. Unlike
-non-indexed [static](static.md) data, dynamic data sources offer the capability
-to retrieve and load data incrementally, as users navigate the genome. This is
-especially useful for large datasets, such as whole-genome sequencing data.
+_Lazy_ data sources load data on-demand in response to user interactions. Unlike
+[eager](eager.md) sources, most lazy data sources support indexing, which offers
+the capability to retrieve and load data partially and incrementally, as users
+navigate the genome. This is especially useful for very large datasets that are
+infeasible to load in their entirety.
 
 !!! note "How it works"
 
-    Dynamic data sources observe the scale domains of the view where the data
+    Lazy data sources observe the scale domains of the view where the data
     source is specified. When the domain changes as a result of an user interaction,
-    the data source invokes a request to fetch a new subset of the data. Dynamic
+    the data source invokes a request to fetch a new subset of the data. Lazy
     sources need the visual `channel` to be specified, which is used to determine the
     scale to observe. For genomic data sources, the channel defaults to `"x"`.
 
-Dynamic data sources are specified using the `dynamic` property of the `data` object.
-Unlike in static data, the `type` of the data source must be specified explicitly:
+Lazy data sources are specified using the `lazy` property of the `data` object.
+Unlike in eager data, the `type` of the data source must be specified explicitly:
 
-```json title="Example: Specifiying a dynamic data source"
+```json title="Example: Specifiying a lazy data source"
 {
   "data": {
-    "dynamic": {
+    "lazy": {
       "type": "bigbed",
       "url": "http://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb"
     }
@@ -57,7 +58,7 @@ fetched only when the user zooms into a region smaller than the window size
   "genome": { "name": "hg38" },
 
   "data": {
-    "dynamic": {
+    "lazy": {
       "type": "indexedFasta",
       "url": "https://data.genomespy.app/genomes/hg38/hg38.fa"
     }
@@ -159,7 +160,7 @@ When you zoom in, the resolution of the data automatically increases.
   "view": { "stroke": "lightgray" },
 
   "data": {
-    "dynamic": {
+    "lazy": {
       "type": "bigwig",
       "url": "https://data.genomespy.app/genomes/hg38/hg38.gc5Base.bw"
     }
@@ -206,7 +207,7 @@ The example below displays "ENCODE Candidate Cis-Regulatory Elements (cCREs) com
   "view": { "stroke": "lightgray" },
 
   "data": {
-    "dynamic": {
+    "lazy": {
       "type": "bigbed",
       "url": "http://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb"
     }
@@ -268,7 +269,7 @@ SCHEMA BamData
   "genome": { "name": "hg18" },
 
   "data": {
-    "dynamic": {
+    "lazy": {
       "type": "bam",
       "url": "https://data.genomespy.app/sample-data/bamExample.bam",
       "windowSize": 30000
@@ -386,7 +387,7 @@ The example below generates approximately three ticks for the `x` axis.
 ```json
 {
   "data": {
-    "dynamic": {
+    "lazy": {
       "type": "axisTicks",
       "channel": "x",
       "axis": {
@@ -441,7 +442,7 @@ SCHEMA AxisGenomeData
   "genome": { "name": "hg38" },
 
   "data": {
-    "dynamic": {
+    "lazy": {
       "type": "axisGenome",
       "channel": "x"
     }

@@ -19,8 +19,8 @@ export default function createDataSource(params, view) {
         return new UrlSource(params, view);
     } else if (isSequenceGenerator(params)) {
         return new SequenceSource(params, view);
-    } else if (isDynamicData(params)) {
-        return createDynamicDataSource(params.dynamic, view);
+    } else if (isLazyData(params)) {
+        return createDynamicDataSource(params.lazy, view);
     }
 
     throw new Error(
@@ -31,15 +31,15 @@ export default function createDataSource(params, view) {
 /**
  *
  * @param {Partial<import("../../spec/data").Data>} params
- * @returns {params is import("../../spec/data").DynamicData}
+ * @returns {params is import("../../spec/data").LazyData}
  */
-function isDynamicData(params) {
-    return "dynamic" in params;
+function isLazyData(params) {
+    return "lazy" in params;
 }
 
 /**
  *
- * @param {import("../../spec/data").DynamicDataParams} params
+ * @param {import("../../spec/data").LazyDataParams} params
  * @returns {params is import("../../spec/data").AxisTicksData}
  */
 function isAxisTickSource(params) {
@@ -48,7 +48,7 @@ function isAxisTickSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").DynamicDataParams} params
+ * @param {import("../../spec/data").LazyDataParams} params
  * @returns {params is import("../../spec/data").AxisGenomeData}
  */
 function isAxisGenomeSource(params) {
@@ -57,7 +57,7 @@ function isAxisGenomeSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").DynamicDataParams} params
+ * @param {import("../../spec/data").LazyDataParams} params
  * @returns {params is import("../../spec/data").IndexedFastaData}
  */
 function isIndexedFastaSource(params) {
@@ -66,7 +66,7 @@ function isIndexedFastaSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").DynamicDataParams} params
+ * @param {import("../../spec/data").LazyDataParams} params
  * @returns {params is import("../../spec/data").BigWigData}
  */
 function isBigWigSource(params) {
@@ -75,7 +75,7 @@ function isBigWigSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").DynamicDataParams} params
+ * @param {import("../../spec/data").LazyDataParams} params
  * @returns {params is import("../../spec/data").BigBedData}
  */
 function isBigBedSource(params) {
@@ -84,7 +84,7 @@ function isBigBedSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").DynamicDataParams} params
+ * @param {import("../../spec/data").LazyDataParams} params
  * @returns {params is import("../../spec/data").BamData}
  */
 function isBamSource(params) {
@@ -92,7 +92,7 @@ function isBamSource(params) {
 }
 
 /**
- * @param {import("../../spec/data").DynamicDataParams} params
+ * @param {import("../../spec/data").LazyDataParams} params
  * @param {import("../../view/view").default} view
  */
 function createDynamicDataSource(params, view) {

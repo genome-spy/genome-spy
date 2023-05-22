@@ -1,22 +1,22 @@
-# Static Data Sources
+# Eager Data Sources
 
-_Static data_ lacks indexing capabilities, rendering it incapable of being
-loaded partially or during subsequent user interactions. As a result, the
-entirety of the non-indexed static data must be loaded during the application
-startup. However, static data sources are often more flexible and
-straightforward than dynamic data sources.
+_Eager_ data sources load and process all available data during the
+initialization stage. They are suitable for small data sets as they do not
+support partial loading or loading in response to user interactions. However,
+eager data sources are often more flexible and straightforward than
+[lazy](lazy.md) ones.
 
-GenomeSpy inputs static data as tabular `"csv"`, `"tsv"`, and `"json"` files or
-as non-indexed [`"fasta"`](#fasta) files. Data can be loaded from external files or
+GenomeSpy inputs eager data as tabular `"csv"`, `"tsv"`, and `"json"` files or
+as non-indexed [`"fasta"`](#fasta) files. Data can be loaded from URLs or
 provided inline. You can also use generators to generate data on the fly and
-modify them using [transforms](../transform/index.md).
+further modify them using [transforms](../transform/index.md).
 
 The `data` property of the view specification describes a data source. The
-following example loads a tab-delimited file. By default, the format is inferred
-from the file extension. However, in bioinformatics, CSV files are often
-actually tab-delimited, and the `"tsv"` format must be specified explicitly:
+following example loads a tab-delimited file. By default, GenomeSpy infers the
+format from the file extension. However, in bioinformatics, CSV files are often
+actually tab-delimited, and you must specify the `"tsv"` explicitly:
 
-```json title="Example: Loading static data from a URL"
+```json title="Example: Eagerly loading data from a URL"
 {
   "data": {
     "url": "fileWithTabs.csv",

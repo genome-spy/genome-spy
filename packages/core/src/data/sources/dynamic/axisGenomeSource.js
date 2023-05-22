@@ -1,10 +1,10 @@
-import SingleAxisDynamicSource from "./singleAxisDynamicSource";
+import SingleAxisLazySource from "./singleAxisLazySource";
 
 /**
  * Propagates the genome (chromosome) data associated with the channel.
  * Can be used to generate a genome axis or fancy background grid.
  */
-export default class AxisGenomeSource extends SingleAxisDynamicSource {
+export default class AxisGenomeSource extends SingleAxisLazySource {
     /**
      * @param {import("../../../spec/data").AxisGenomeData} params
      * @param {import("../../../view/view").default} view

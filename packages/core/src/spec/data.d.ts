@@ -94,7 +94,7 @@ export type DataSource =
     | InlineData
     | NamedData
     | DynamicCallbackData
-    | DynamicData;
+    | LazyData;
 
 export type Data = DataSource | Generator;
 
@@ -189,11 +189,11 @@ export interface SequenceParams {
     as?: FieldName;
 }
 
-export interface DynamicData {
-    dynamic: DynamicDataParams;
+export interface LazyData {
+    lazy: LazyDataParams;
 }
 
-export type DynamicDataParams =
+export type LazyDataParams =
     | AxisTicksData
     | AxisGenomeData
     | IndexedFastaData
@@ -229,12 +229,12 @@ export interface IndexedFastaData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * Url of the fasta file.
+     * URL of the fasta file.
      */
     url: string;
 
     /**
-     * Url of the index file.
+     * URL of the index file.
      *
      * __Default value:__ `url` + `".fai"`.
      */
@@ -260,7 +260,7 @@ export interface BigWigData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * Url of the BigWig file.
+     * URL of the BigWig file.
      */
     url: string;
 
@@ -283,7 +283,7 @@ export interface BigBedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * Url of the BigBed file.
+     * URL of the BigBed file.
      */
     url: string;
 
@@ -307,12 +307,12 @@ export interface BamData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * Url of the BigBed file.
+     * URL of the BigBed file.
      */
     url: string;
 
     /**
-     * Url of the index file.
+     * URL of the index file.
      *
      * __Default value:__ `url` + `".bai"`.
      */

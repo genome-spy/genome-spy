@@ -314,7 +314,7 @@
           "description": "Which channel's scale domain to monitor.\n\n__Default value:__ `\"x\"`"
         },
         "indexUrl": {
-          "description": "Url of the index file.\n\n__Default value:__ `url` + `\".bai\"`.",
+          "description": "URL of the index file.\n\n__Default value:__ `url` + `\".bai\"`.",
           "type": "string"
         },
         "type": {
@@ -322,7 +322,7 @@
           "type": "string"
         },
         "url": {
-          "description": "Url of the BigBed file.",
+          "description": "URL of the BigBed file.",
           "type": "string"
         },
         "windowSize": {
@@ -357,7 +357,7 @@
           "type": "string"
         },
         "url": {
-          "description": "Url of the BigBed file.",
+          "description": "URL of the BigBed file.",
           "type": "string"
         },
         "windowSize": {
@@ -387,7 +387,7 @@
           "type": "string"
         },
         "url": {
-          "description": "Url of the BigWig file.",
+          "description": "URL of the BigWig file.",
           "type": "string"
         }
       },
@@ -909,7 +909,7 @@
           "$ref": "#/definitions/DynamicCallbackData"
         },
         {
-          "$ref": "#/definitions/DynamicData"
+          "$ref": "#/definitions/LazyData"
         }
       ]
     },
@@ -964,40 +964,6 @@
         "dynamicCallbackSource"
       ],
       "type": "object"
-    },
-    "DynamicData": {
-      "additionalProperties": false,
-      "properties": {
-        "dynamic": {
-          "$ref": "#/definitions/DynamicDataParams"
-        }
-      },
-      "required": [
-        "dynamic"
-      ],
-      "type": "object"
-    },
-    "DynamicDataParams": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/AxisTicksData"
-        },
-        {
-          "$ref": "#/definitions/AxisGenomeData"
-        },
-        {
-          "$ref": "#/definitions/IndexedFastaData"
-        },
-        {
-          "$ref": "#/definitions/BigWigData"
-        },
-        {
-          "$ref": "#/definitions/BigBedData"
-        },
-        {
-          "$ref": "#/definitions/BamData"
-        }
-      ]
     },
     "DynamicOpacity": {
       "additionalProperties": false,
@@ -1640,7 +1606,7 @@
           "description": "Which channel's scale domain to monitor.\n\n__Default value:__ `\"x\"`"
         },
         "indexUrl": {
-          "description": "Url of the index file.\n\n__Default value:__ `url` + `\".fai\"`.",
+          "description": "URL of the index file.\n\n__Default value:__ `url` + `\".fai\"`.",
           "type": "string"
         },
         "type": {
@@ -1648,7 +1614,7 @@
           "type": "string"
         },
         "url": {
-          "description": "Url of the fasta file.",
+          "description": "URL of the fasta file.",
           "type": "string"
         },
         "windowSize": {
@@ -1900,6 +1866,40 @@
         "layer"
       ],
       "type": "object"
+    },
+    "LazyData": {
+      "additionalProperties": false,
+      "properties": {
+        "lazy": {
+          "$ref": "#/definitions/LazyDataParams"
+        }
+      },
+      "required": [
+        "lazy"
+      ],
+      "type": "object"
+    },
+    "LazyDataParams": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/AxisTicksData"
+        },
+        {
+          "$ref": "#/definitions/AxisGenomeData"
+        },
+        {
+          "$ref": "#/definitions/IndexedFastaData"
+        },
+        {
+          "$ref": "#/definitions/BigWigData"
+        },
+        {
+          "$ref": "#/definitions/BigBedData"
+        },
+        {
+          "$ref": "#/definitions/BamData"
+        }
+      ]
     },
     "LinearizeGenomicCoordinateParams": {
       "additionalProperties": false,

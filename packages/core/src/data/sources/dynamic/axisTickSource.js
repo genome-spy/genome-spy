@@ -8,12 +8,12 @@ import {
     tickFormat,
     tickCount,
 } from "../../../scale/ticks";
-import SingleAxisDynamicSource from "./singleAxisDynamicSource";
+import SingleAxisLazySource from "./singleAxisLazySource";
 
 /**
  *
  */
-export default class AxisTickSource extends SingleAxisDynamicSource {
+export default class AxisTickSource extends SingleAxisLazySource {
     /**
      * @type {import("../../../spec/channel").Scalar[]}
      */
