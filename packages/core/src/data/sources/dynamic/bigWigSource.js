@@ -4,7 +4,7 @@ import { RemoteFile } from "generic-filehandle";
 import { debounce } from "../../../utils/debounce";
 import SingleAxisDynamicSource from "./singleAxisDynamicSource";
 import windowedMixin from "./windowedMixin";
-import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
+import addBaseUrl from "../../../utils/addBaseUrl";
 
 /**
  *
@@ -35,7 +35,7 @@ export default class BigWigSource extends windowedMixin(
         this.params = paramsWithDefaults;
 
         if (!this.params.url) {
-            throw new Error("No URL provided for IndexedFastaSource");
+            throw new Error("No URL provided for BigWigSource");
         }
 
         this.bbi = new BigWig({
@@ -71,11 +71,11 @@ export default class BigWigSource extends windowedMixin(
      * @param {number[]} domain Linearized domain
      */
     async onDomainChanged(domain) {
-        // TODO: Postpone the initial load until layout is computed and remove 700.
-        const length = this.getAxisLength() || 700;
-
         // Header must be available to determine the reduction level
         await this.headerPromise;
+
+        // TODO: Postpone the initial load until layout is computed and remove 700.
+        const length = this.getAxisLength() || 700;
 
         const reductionLevel = findReductionLevel(
             domain,

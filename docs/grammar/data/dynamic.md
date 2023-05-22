@@ -185,7 +185,7 @@ When you zoom in, the resolution of the data automatically increases.
 The data source is based on [GMOD](http://gmod.org/)'s
 [bbi-js](https://github.com/GMOD/bbi-js) library.
 
-## BigBeg
+## BigBed
 
 The `"bigbed"` source enables the retrieval of segmented data, such as annotated
 genomic regions stored in BigBed files.

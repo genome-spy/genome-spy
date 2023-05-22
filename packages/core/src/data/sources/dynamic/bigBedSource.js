@@ -33,7 +33,7 @@ export default class BigBedSource extends windowedMixin(
         this.params = paramsWithDefaults;
 
         if (!this.params.url) {
-            throw new Error("No URL provided for IndexedFastaSource");
+            throw new Error("No URL provided for BigBedSource");
         }
 
         this.bbi = new BigBed({

@@ -1,3 +1,4 @@
+import UnitView from "@genome-spy/core/view/unitView";
 import DataSource from "../dataSource";
 
 /**
@@ -13,8 +14,14 @@ export default class SingleAxisDynamicSource extends DataSource {
 
         this.view = view;
 
-        if (channel !== "x" && channel !== "y") {
-            throw new Error(`Invalid channel: ${channel}. Must be "x" or "y"`);
+        if (!channel) {
+            throw new Error(
+                `No channel has been specified for the dynamic data source. Must be either "x" or "y".`
+            );
+        } else if (channel !== "x" && channel !== "y") {
+            throw new Error(
+                `Invalid channel specified for the dynamic data source: ${channel}. Must be either "x" or "y"`
+            );
         }
 
         /** @type {import("../../../spec/channel").PrimaryPositionalChannel}  */
@@ -22,9 +29,16 @@ export default class SingleAxisDynamicSource extends DataSource {
 
         this.scaleResolution = this.view.getScaleResolution(channel);
         if (!this.scaleResolution) {
-            throw new Error(
-                `No scale resolution found for channel "${channel}".`
-            );
+            const sentences = [
+                `The dynamic data source cannot find a resolved scale for channel "${channel}".`,
+            ];
+            if (!(this.view instanceof UnitView)) {
+                sentences.push(
+                    `Make sure the view has a "shared" scale resolution as it is not a unit view.`
+                );
+            }
+
+            throw new Error(sentences.join(" "));
         }
 
         this.scaleResolution.addEventListener("domain", (event) => {
