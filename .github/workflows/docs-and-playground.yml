@@ -13,7 +13,7 @@ jobs:
             - uses: actions/checkout@v2
             - uses: awalsh128/cache-apt-pkgs-action@latest
               with:
-                  packages: libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev libz-dev
+                  packages: libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev
                   version: 1.0
 
             - name: Set up Python 3.x
