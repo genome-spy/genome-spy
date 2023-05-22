@@ -8,8 +8,9 @@ import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
 
 // Hack needed by @gmod/indexedfasta
 // TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
-// @ts-ignore
-window.Buffer = Buffer;
+if (typeof window !== "undefined") {
+    window.Buffer = Buffer;
+}
 
 /**
  *
