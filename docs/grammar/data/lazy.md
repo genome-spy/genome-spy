@@ -21,8 +21,8 @@ Unlike in eager data, the `type` of the data source must be specified explicitly
 {
   "data": {
     "lazy": {
-      "type": "bigbed",
-      "url": "http://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb"
+      "type": "bigwig",
+      "url": "https://data.genomespy.app/genomes/hg38/hg38.gc5Base.bw"
     }
   },
   ...
@@ -209,7 +209,7 @@ The example below displays "ENCODE Candidate Cis-Regulatory Elements (cCREs) com
   "data": {
     "lazy": {
       "type": "bigbed",
-      "url": "http://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb"
+      "url": "https://data.genomespy.app/sample-data/encodeCcreCombined.hg38.bb"
     }
   },
 
