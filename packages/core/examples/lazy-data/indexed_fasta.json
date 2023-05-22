@@ -25,7 +25,7 @@
         "values": [0, 1]
       },
       "data": {
-        "dynamic": {
+        "lazy": {
           "type": "indexedFasta",
           "url": "https://data.genomespy.app/genomes/hg38/hg38.fa"
         }
