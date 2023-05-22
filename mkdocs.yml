@@ -1,4 +1,5 @@
 site_name: GenomeSpy Docs
+site_url: https://genomespy.app/docs/
 theme:
     name: material
     custom_dir: custom_theme/
@@ -8,6 +9,8 @@ theme:
         primary: indigo
     font:
         text: Lato
+plugins:
+    - social
 markdown_extensions:
     - markdown.extensions.def_list
     - pymdownx.magiclink
