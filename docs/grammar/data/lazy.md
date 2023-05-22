@@ -251,8 +251,8 @@ The data source is based on [GMOD](http://gmod.org/)'s
 ## BAM
 
 The `"bam"` source is very much work in progress but has a low priority. It
-currently exposes the reads but no variants alleles, CIGARs, etc. Please send a
-message to [GitHub
+currently exposes the reads but provides no handling for variants alleles,
+CIGARs, etc. Please send a message to [GitHub
 Discussions](https://github.com/genome-spy/genome-spy/discussions) if you are
 interested in this feature.
 

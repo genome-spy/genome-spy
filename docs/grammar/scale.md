@@ -419,3 +419,10 @@ of the chromosome axis and grid using various parameters.
 ```
 
 </genome-spy-doc-embed></div>
+
+#### Fully customized axes
+
+You can also disable the genome axis and grid and specify a custom axis instead.
+The [`"axisGenome"`](data/lazy.md#axis-genome) data source provides the
+chromosomes and their sizes, which can be used to create a custom axes or grids
+for a view.
