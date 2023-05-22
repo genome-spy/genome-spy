@@ -40,6 +40,7 @@ jobs:
 
             - name: Build packages
               run: |
+                  npm -w @genome-spy/core run build
                   npm -w @genome-spy/doc-embed run build
                   npm -w @genome-spy/playground run build
 
