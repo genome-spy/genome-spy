@@ -166,7 +166,7 @@ class ViewSettingsButton extends LitElement {
                             this.handleCheckboxClick(event, view)}
                     />${view.getTitleText() ?? view.name}
                 </label>
-                ${childrenToHtml(item.children, checked)}
+                ${checked ? childrenToHtml(item.children, checked) : nothing}
             </li>`;
         };
 
