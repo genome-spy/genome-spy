@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.1](https://github.com/genome-spy/genome-spy/compare/v0.32.0...v0.32.1) (2023-05-23)
+
+
+### Bug Fixes
+
+* **app:** hide children of invisible views in the menu ([f28129d](https://github.com/genome-spy/genome-spy/commit/f28129d789751d545927f3049995ceef2103986c))
+
+
+
+
+
 # [0.32.0](https://github.com/genome-spy/genome-spy/compare/v0.31.2...v0.32.0) (2023-05-22)
 
 **Note:** Version bump only for package @genome-spy/app

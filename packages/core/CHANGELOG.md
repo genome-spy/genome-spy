@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.1](https://github.com/genome-spy/genome-spy/compare/v0.32.0...v0.32.1) (2023-05-23)
+
+
+### Bug Fixes
+
+* **core:** don't fetch lazy data for hidden views ([eaa0ce4](https://github.com/genome-spy/genome-spy/commit/eaa0ce46984784b143d5585a688770043a5e38f2))
+
+
+
+
+
 # [0.32.0](https://github.com/genome-spy/genome-spy/compare/v0.31.2...v0.32.0) (2023-05-22)
 
 
