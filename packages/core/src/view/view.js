@@ -54,7 +54,7 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * } Visitor
  *
  * @typedef {object} BroadcastMessage
- * @prop {string} type Broadcast type
+ * @prop {import("../genomeSpy").BroadcastEventType} type Broadcast type
  * @prop {any} [payload] Anything
  *
  * @typedef {import("./rendering").RenderingOptions} RenderingOptions
@@ -207,6 +207,19 @@ export default class View {
 
     isVisibleInSpec() {
         return this.spec.visible ?? true;
+    }
+
+    /**
+     * Returns the effective visibility of this view, e.g., whether this view
+     * and all its ancestors are visible.
+     *
+     * When doing a depth-first traversal on the view hierarchy, it's best to
+     * use `isConfiguredVisible()` instead of this method.
+     *
+     * @returns {boolean}
+     */
+    isVisible() {
+        return this.getAncestors().every((view) => view.isConfiguredVisible());
     }
 
     /**

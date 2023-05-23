@@ -41,14 +41,21 @@ export default class SingleAxisLazySource extends DataSource {
             throw new Error(sentences.join(" "));
         }
 
-        this.scaleResolution.addEventListener("domain", (event) => {
-            this.onDomainChanged(
-                event.scaleResolution.getDomain(),
-                /** @type {import("../../../spec/genome").ChromosomalLocus[]} */ (
-                    event.scaleResolution.getComplexDomain()
-                )
-            );
-        });
+        const fireDomainChanged = () => {
+            if (this.view.isVisible()) {
+                this.onDomainChanged(
+                    this.scaleResolution.getDomain(),
+                    /** @type {import("../../../spec/genome").ChromosomalLocus[]} */
+                    (this.scaleResolution.getComplexDomain())
+                );
+            }
+        };
+
+        this.scaleResolution.addEventListener("domain", fireDomainChanged);
+        this.view.context.addBroadcastListener(
+            "layoutComputed",
+            fireDomainChanged
+        );
     }
 
     /**
@@ -91,20 +98,13 @@ export default class SingleAxisLazySource extends DataSource {
      */
     requestRender() {
         // An awfully hacky way.
-        this.scaleResolution.members[0].view.context.animator.requestRender();
+        this.view.context.animator.requestRender();
     }
 
     async load() {
+        // Dummy initialization cycle. TODO: Figure out why this is needed.
         this.reset();
         this.complete();
-
-        // Load data for the initial domain
-        // TODO: This should be postponed until the layout is computed. Now the axis length is 0.
-        await this.onDomainChanged(
-            this.scaleResolution.getDomain(),
-            /** @type  {import("../../../spec/genome").ChromosomalLocus[]}*/
-            (this.scaleResolution.getComplexDomain())
-        );
     }
 
     /**

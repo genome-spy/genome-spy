@@ -46,6 +46,11 @@ import ImplicitRootView from "./view/implicitRootView";
  * @typedef {import("./spec/root").RootConfig} RootConfig
  */
 
+/**
+ * Events that are broadcasted to all views.
+ * @typedef {"dataFlowBuilt" | "dataLoaded" | "layout" | "layoutComputed"} BroadcastEventType
+ */
+
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
 vegaScale("index", scaleIndex, ["continuous"]);
@@ -96,7 +101,7 @@ export default class GenomeSpy {
 
         /**
          * Currently hovered mark and datum
-         * @type {{ mark: import("./marks/Mark").default, datum: import("./data/flowNode").Datum, uniqueId: number }}
+         * @type {{ mark: import("./marks/mark").default, datum: import("./data/flowNode").Datum, uniqueId: number }}
          */
         this._currentHover = undefined;
 
@@ -116,6 +121,12 @@ export default class GenomeSpy {
          * @type {Map<string, Set<(event: any) => void>>}
          */
         this._eventListeners = new Map();
+
+        /**
+         *
+         * @type {Map<string, Set<(event: any) => void>>}
+         */
+        this._extraBroadcastListeners = new Map();
 
         /** @type {Record<string, import("./tooltip/tooltipHandler").TooltipHandler>}> */
         this.tooltipHandlers = {
@@ -180,13 +191,16 @@ export default class GenomeSpy {
 
     /**
      * Broadcast a message to all views
-     *
-     * @param {string} type
+     
+     * @param {BroadcastEventType} type
      * @param {any} [payload]
      */
     broadcast(type, payload) {
         const message = { type, payload };
         this.viewRoot.visit((view) => view.handleBroadcast(message));
+        this._extraBroadcastListeners
+            .get(type)
+            ?.forEach((listener) => listener(message));
     }
 
     _prepareContainer() {
@@ -285,6 +299,25 @@ export default class GenomeSpy {
                     this._keyboardListeners.set(type, listeners);
                 }
                 listeners.push(listener);
+            },
+
+            addBroadcastListener(type, listener) {
+                const listenersByType = self._extraBroadcastListeners;
+
+                // Copy-paste code. TODO: Refactor into a helper function.
+                let listeners = listenersByType.get(type);
+                if (!listeners) {
+                    listeners = new Set();
+                    listenersByType.set(type, listeners);
+                }
+
+                listeners.add(listener);
+            },
+
+            removeBroadcastListener(type, listener) {
+                const listenersByType = self._extraBroadcastListeners;
+
+                listenersByType.get(type)?.delete(listener);
             },
 
             isViewConfiguredVisible: self.viewVisibilityPredicate,

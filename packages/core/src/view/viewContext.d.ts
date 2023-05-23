@@ -1,5 +1,5 @@
 import { TemplateResult } from "lit-html";
-import View from "./view";
+import View, { BroadcastMessage } from "./view";
 import DataFlow from "../data/dataFlow";
 import AccessorFactory from "../encoder/accessor";
 import WebGLHelper from "../gl/webGLHelper";
@@ -10,6 +10,7 @@ import Mark from "../marks/mark";
 import { Datum } from "../data/flowNode";
 import { ViewSpec } from "../spec/view";
 import ContainerView from "./containerView";
+import { BroadcastEventType } from "../genomeSpy";
 
 export interface Hover {
     mark: Mark;
@@ -46,6 +47,21 @@ export default interface ViewContext {
     addKeyboardListener: (
         type: "keydown" | "keyup",
         listener: (event: KeyboardEvent) => void
+    ) => void;
+
+    /**
+     * Registers a listener for broadcast messages.
+     * Typically broadcast messages are automatically broadcasted to all views.
+     * However, in some cases non-view components may be interested in these messages.
+     */
+    addBroadcastListener: (
+        type: BroadcastEventType,
+        listener: (message: BroadcastMessage) => void
+    ) => void;
+
+    removeBroadcastListener: (
+        type: BroadcastEventType,
+        listener: (message: BroadcastMessage) => void
     ) => void;
 
     getNamedDataFromProvider: (name: string) => any[];

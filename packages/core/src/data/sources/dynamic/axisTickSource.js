@@ -33,13 +33,6 @@ export default class AxisTickSource extends SingleAxisLazySource {
         super(view, paramsWithDefaults.channel);
 
         this.params = params;
-
-        // Now this depends on a "private" method of the view.
-        // TODO: Figure out a cleaner way to monitor changes in view coords.
-        this.scaleResolution.members[0]?.view._addBroadcastHandler(
-            "layoutComputed",
-            () => this.onDomainChanged()
-        );
     }
 
     async onDomainChanged() {
