@@ -138,7 +138,7 @@ export class SampleAttributePanel extends ConcatView {
      * @param {import("@genome-spy/core/view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
-        if (!this.isVisible()) {
+        if (!this.isConfiguredVisible()) {
             return;
         }
 

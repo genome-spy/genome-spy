@@ -287,7 +287,7 @@ export default class GenomeSpy {
                 listeners.push(listener);
             },
 
-            isViewVisible: self.viewVisibilityPredicate,
+            isViewConfiguredVisible: self.viewVisibilityPredicate,
 
             isViewSpec: (spec) => self.viewFactory.isViewSpec(spec),
 
@@ -551,9 +551,8 @@ export default class GenomeSpy {
                     const e = this._currentHover
                         ? {
                               type: event.type,
-                              viewPath: [
-                                  ...this._currentHover.mark.unitView.getAncestors(),
-                              ]
+                              viewPath: this._currentHover.mark.unitView
+                                  .getAncestors()
                                   .map((view) => view.name)
                                   .reverse(),
                               datum: this._currentHover.datum,

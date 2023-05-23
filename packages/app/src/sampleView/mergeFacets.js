@@ -83,7 +83,7 @@ export default class MergeSampleFacets extends FlowNode {
         // TODO: Also check child visibilities. No need to propagate if
         // the directly attached view is visible but all its children are
         // invisible.
-        return this.view.isVisible();
+        return this.view.isConfiguredVisible();
     }
 
     getGlobalObject() {

@@ -138,7 +138,9 @@ export default class GridView extends ContainerView {
     }
 
     get #visibleChildren() {
-        return this.#children.filter((gridChild) => gridChild.view.isVisible());
+        return this.#children.filter((gridChild) =>
+            gridChild.view.isConfiguredVisible()
+        );
     }
 
     get #grid() {
@@ -546,7 +548,7 @@ export default class GridView extends ContainerView {
      * @param {import("./view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
-        if (!this.isVisible()) {
+        if (!this.isConfiguredVisible()) {
             return;
         }
 

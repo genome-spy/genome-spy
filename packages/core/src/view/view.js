@@ -134,7 +134,7 @@ export default class View {
      */
     getSize() {
         return this._cache("size/size", () =>
-            this.isVisible()
+            this.isConfiguredVisible()
                 ? this.getSizeFromSpec().addPadding(this.getPadding())
                 : ZERO_FLEXDIMENSIONS
         );
@@ -201,8 +201,8 @@ export default class View {
         );
     }
 
-    isVisible() {
-        return this.context.isViewVisible(this);
+    isConfiguredVisible() {
+        return this.context.isViewConfiguredVisible(this);
     }
 
     isVisibleInSpec() {
@@ -222,19 +222,27 @@ export default class View {
     }
 
     getPathString() {
-        return [...this.getAncestors()]
+        return this.getAncestors()
             .map((v) => v.name)
             .reverse()
             .join("/");
     }
 
-    *getAncestors() {
+    /**
+     * Returns the ancestor views, starting with this view.
+     *
+     * @returns {View[]}
+     */
+    getAncestors() {
+        /** @type {View[]} */
+        const ancestors = [];
         // eslint-disable-next-line consistent-this
         let view = /** @type {View} */ (this);
         do {
-            yield view;
+            ancestors.push(view);
             view = view.parent;
         } while (view);
+        return ancestors;
     }
 
     /**

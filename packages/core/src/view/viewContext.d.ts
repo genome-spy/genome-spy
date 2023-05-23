@@ -50,7 +50,11 @@ export default interface ViewContext {
 
     getNamedDataFromProvider: (name: string) => any[];
 
-    isViewVisible: (view: View) => boolean;
+    /**
+     * Returns true if the view is configured to be visible.
+     * N.B. This does NOT consider ancestors' visibility.
+     */
+    isViewConfiguredVisible: (view: View) => boolean;
 
     isViewSpec: (spec: any) => boolean;
 

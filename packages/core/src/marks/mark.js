@@ -277,9 +277,7 @@ export default class Mark {
             // e.g., view background or an x axis.
             // This could also be more generic and work with other faceting views
             // that will be available in the future.
-            [...this.unitView.getAncestors()].find(
-                (view) => "samples" in view.spec
-            )
+            this.unitView.getAncestors().find((view) => "samples" in view.spec)
         ) {
             return SAMPLE_FACET_UNIFORM;
         }

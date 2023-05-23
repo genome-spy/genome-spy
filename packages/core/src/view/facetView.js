@@ -277,7 +277,7 @@ export default class FacetView extends ContainerView {
      * @param {import("./view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
-        if (!this.isVisible()) {
+        if (!this.isConfiguredVisible()) {
             return;
         }
 

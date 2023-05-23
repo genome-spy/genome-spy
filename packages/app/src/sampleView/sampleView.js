@@ -384,7 +384,7 @@ export default class SampleView extends ContainerView {
     }
 
     getOverhang() {
-        let peripherySize = this.peripheryView.isVisible()
+        let peripherySize = this.peripheryView.isConfiguredVisible()
             ? this.peripheryView.getSize().width.px
             : 0;
 
@@ -497,7 +497,7 @@ export default class SampleView extends ContainerView {
             const groupAttributes = [null, ...sampleHierarchy.groupMetadata];
 
             const summaryHeight =
-                (this.summaryViews?.isVisible() &&
+                (this.summaryViews?.isConfiguredVisible() &&
                     this.summaryViews?.getSize().height.px) ??
                 0;
 
@@ -702,7 +702,7 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
-        if (!this.isVisible()) {
+        if (!this.isConfiguredVisible()) {
             return;
         }
 
@@ -715,7 +715,7 @@ export default class SampleView extends ContainerView {
 
         const cols = mapToPixelCoords(
             [
-                this.peripheryView.isVisible()
+                this.peripheryView.isConfiguredVisible()
                     ? this.peripheryView.getSize().width
                     : { px: 0 },
                 { grow: 1 },
