@@ -232,6 +232,7 @@ function createAxisGrid(axisProps, type) {
         name: "grid_layers",
         resolve: {
             scale: {
+                [orient2channel(axisProps.orient)]: "forced",
                 fill: "independent",
                 opacity: "independent",
             },
