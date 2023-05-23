@@ -747,7 +747,7 @@ export default class Mark {
 
     /**
      * @param {DrawFunction} draw A function that draws a range of vertices
-     * @param {import("./Mark").MarkRenderingOptions} options
+     * @param {import("./mark").MarkRenderingOptions} options
      */
     createRenderCallback(draw, options) {
         // eslint-disable-next-line consistent-this

@@ -112,14 +112,14 @@ export default class RectMark extends Mark {
     }
 
     _isRoundedCorners() {
-        return ["", "TopLeft", "TopRight", "BottomLeft", "BottomRight"]
-            .map(
-                (c) =>
-                    /** @type {keyof import("../spec/mark").MarkConfig} */ (
-                        "cornerRadius" + c
-                    )
-            )
-            .some((c) => this.properties[c] > 0);
+        const p = this.properties;
+        return (
+            p.cornerRadius ||
+            p.cornerRadiusBottomLeft ||
+            p.cornerRadiusBottomRight ||
+            p.cornerRadiusTopLeft ||
+            p.cornerRadiusTopRight
+        );
     }
 
     _isStroked() {
@@ -201,7 +201,7 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @param {import("./Mark").MarkRenderingOptions} options
+     * @param {import("./mark").MarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;

@@ -198,7 +198,7 @@ export default class RuleMark extends Mark {
     }
 
     /**
-     * @param {import("./Mark").MarkRenderingOptions} options
+     * @param {import("./mark").MarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;

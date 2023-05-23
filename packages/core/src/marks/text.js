@@ -191,9 +191,8 @@ export default class TextMark extends Mark {
         const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
         let charCount = 0;
         /** @type {function(any):any} */
-        const numberFormat = encoding.text.format
-            ? format(encoding.text.format)
-            : (d) => d;
+        const numberFormat =
+            "format" in encoding.text ? format(encoding.text.format) : (d) => d;
         for (const d of data) {
             // TODO: Optimization: don't format twice (calculation and actual encoding)
             const value = numberFormat(accessor(d));
@@ -258,7 +257,7 @@ export default class TextMark extends Mark {
     }
 
     /**
-     * @param {import("./Mark").MarkRenderingOptions} options
+     * @param {import("./mark").MarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;
