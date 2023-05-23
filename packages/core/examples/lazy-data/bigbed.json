@@ -14,7 +14,7 @@
   },
 
   "data": {
-    "dynamic": {
+    "lazy": {
       "type": "bigbed",
       "url": "http://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb"
     }
