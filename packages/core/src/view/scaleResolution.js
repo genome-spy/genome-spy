@@ -31,10 +31,10 @@ import {
     isChromosomalLocusInterval,
 } from "../genome/genome";
 import { NominalDomain } from "../utils/domainArray";
-import { easeQuadInOut } from "d3-ease";
-import { interpolateZoom } from "d3-interpolate";
+import { easeCubicInOut } from "d3-ease";
 import { shallowArrayEquals } from "../utils/arrayUtils";
 import { isScaleLocus } from "../genome/scaleLocus";
+import eerp from "../utils/eerp";
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
@@ -117,7 +117,7 @@ export default class ScaleResolution {
         this._domainListeners.delete(listener);
     }
 
-    _notifyDomainListeners() {
+    #notifyDomainListeners() {
         for (const listener of this._domainListeners.values()) {
             listener({
                 type: "domain",
@@ -166,6 +166,25 @@ export default class ScaleResolution {
      */
     isExplicitDomain() {
         return !!this.getConfiguredDomain();
+    }
+
+    isDomainInitialized() {
+        const s = this._scale;
+        if (!s) {
+            return false;
+        }
+
+        const domain = s.domain();
+
+        // We could alternatively have a flag that is set when the domain is initialized.
+        if (isContinuous(s.type)) {
+            return (
+                domain.length > 2 ||
+                (domain.length == 2 && (domain[0] !== 0 || domain[1] !== 0))
+            );
+        } else {
+            return domain.length > 0;
+        }
     }
 
     /**
@@ -306,11 +325,29 @@ export default class ScaleResolution {
      */
     reconfigure() {
         if (this._scale && this._scale.type != "null") {
+            const domainWasInitialized = this.isDomainInitialized();
+
+            const previousDomain = [...this._scale.domain()];
+
             invalidate(this, "scaleProps");
             const props = this.getScaleProps();
             configureScale(props, this._scale);
             if (isContinuous(this._scale.type)) {
                 this._zoomExtent = this._getZoomExtent();
+            }
+
+            const newDomain = [...this._scale.domain()];
+
+            if (!shallowArrayEquals(newDomain, previousDomain)) {
+                if (this.#isZoomingSupported() && domainWasInitialized) {
+                    // If configureScale altered the domain, restore the previous
+                    // domain and zoom smoothly to the new domain.
+                    this._scale.domain(previousDomain);
+                    this.zoomTo(newDomain, 500);
+                } else {
+                    // Update immediately if the previous domain was the initial domain [0, 0]
+                    this.#notifyDomainListeners();
+                }
             }
         }
     }
@@ -360,27 +397,29 @@ export default class ScaleResolution {
      */
     isZoomed() {
         return (
-            this.isZoomable() &&
+            this.#isZoomingSupported() &&
             shallowArrayEquals(this.getInitialDomain(), this.getDomain())
         );
     }
 
+    /**
+     * Returns true if zooming is supported and allowed in view spec.
+     */
     isZoomable() {
-        if (!isPrimaryPositionalChannel(this.channel)) {
-            return false;
-        }
-
-        const scaleType = this.getScale().type;
-        if (
-            !["linear", "locus", "index", "log", "pow", "sqrt"].includes(
-                scaleType
-            )
-        ) {
-            return false;
-        }
-
         // Check explicit configuration
-        return !!this.getScaleProps().zoom;
+        return this.#isZoomingSupported() && !!this.getScaleProps().zoom;
+    }
+
+    /**
+     * Returns true if zooming is supported but not necessarily allowed in view spec.
+     */
+    #isZoomingSupported() {
+        return (
+            isPrimaryPositionalChannel(this.channel) &&
+            ["linear", "locus", "index", "log", "pow", "sqrt"].includes(
+                this.getScale().type
+            )
+        );
     }
 
     /**
@@ -392,7 +431,7 @@ export default class ScaleResolution {
      * @returns {boolean} true if the scale was zoomed
      */
     zoom(scaleFactor, scaleAnchor, pan) {
-        if (!this.isZoomable()) {
+        if (!this.#isZoomingSupported()) {
             return false;
         }
 
@@ -455,7 +494,7 @@ export default class ScaleResolution {
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             scale.domain(newDomain);
-            this._notifyDomainListeners();
+            this.#notifyDomainListeners();
             return true;
         }
 
@@ -474,7 +513,7 @@ export default class ScaleResolution {
             duration = duration ? 700 : 0;
         }
 
-        if (!this.isZoomable()) {
+        if (!this.#isZoomingSupported()) {
             throw new Error("Not a zoomable scale!");
         }
 
@@ -494,37 +533,24 @@ export default class ScaleResolution {
             const tw = to[1] - to[0];
             const tc = to[0] + tw / 2;
 
-            /*
             await animator.transition({
                 duration,
-                easingFunction: easeExpInOut,
+                easingFunction: easeCubicInOut,
                 onUpdate: (t) => {
                     const w = eerp(fw, tw, t);
                     const wt = (fw - w) / (fw - tw);
                     const c = wt * tc + (1 - wt) * fc;
                     scale.domain([c - w / 2, c + w / 2]);
-                    this._notifyDomainListeners();
+                    this.#notifyDomainListeners();
                 },
             });
-            */
-            const interpolator = interpolateZoom([fc, 0, fw], [tc, 0, tw]).rho(
-                0.7
-            );
-            await animator.transition({
-                duration: (duration / 1000) * interpolator.duration,
-                easingFunction: easeQuadInOut,
-                onUpdate: (t) => {
-                    const [c, , w] = interpolator(t);
-                    scale.domain([c - w / 2, c + w / 2]);
-                    this._notifyDomainListeners();
-                },
-            });
+
             scale.domain(to);
-            this._notifyDomainListeners();
+            this.#notifyDomainListeners();
         } else {
             scale.domain(to);
             animator?.requestRender();
-            this._notifyDomainListeners();
+            this.#notifyDomainListeners();
         }
     }
 
@@ -534,7 +560,7 @@ export default class ScaleResolution {
      * @returns true if the domain was changed
      */
     resetZoom() {
-        if (!this.isZoomable()) {
+        if (!this.#isZoomingSupported()) {
             throw new Error("Not a zoomable scale!");
         }
 
@@ -543,7 +569,7 @@ export default class ScaleResolution {
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             this._scale.domain(newDomain);
-            this._notifyDomainListeners();
+            this.#notifyDomainListeners();
             return true;
         }
         return false;
@@ -556,6 +582,7 @@ export default class ScaleResolution {
      * be generalized to other quantitative channels such as color, opacity, size, etc.
      */
     getZoomLevel() {
+        // Zoom level makes sense only for user-zoomable scales where zoom extent is defined
         if (this.isZoomable()) {
             return span(this._zoomExtent) / span(this.getScale().domain());
         }
@@ -695,6 +722,13 @@ export default class ScaleResolution {
      */
     _reduceDomains(domainAccessor) {
         const domains = this.members
+            .filter(
+                (member) =>
+                    !member.view
+                        .getAncestors()
+                        // TODO: Should check until the resolved scale resolution
+                        .some((view) => !view.contributesToScaleDomain)
+            )
             .map(domainAccessor)
             .filter((domain) => !!domain);
 
@@ -794,4 +828,26 @@ function applyLockedProperties(props, channel) {
  */
 function isZoomParams(zoom) {
     return isObject(zoom);
+}
+
+/**
+ * Reconfigures scales, starting from the given view.
+ *
+ * TODO: This should be made unnecessary. Collectors should trigger the reconfiguration
+ * for those views that get their data from the collector.
+ *
+ * @param {import("./view").default} fromView
+ * @param {Channel[]} skipChannels
+ */
+export function reconfigureScales(fromView, skipChannels = []) {
+    /** @type {Set<ScaleResolution>} */
+    const uniqueResolutions = new Set();
+    fromView.visit((view) => {
+        for (const resolution of Object.values(view.resolutions.scale)) {
+            if (!skipChannels.includes(resolution.channel)) {
+                uniqueResolutions.add(resolution);
+            }
+        }
+    });
+    uniqueResolutions.forEach((resolution) => resolution.reconfigure());
 }

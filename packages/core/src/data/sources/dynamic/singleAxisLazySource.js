@@ -1,5 +1,6 @@
 import UnitView from "@genome-spy/core/view/unitView";
 import DataSource from "../dataSource";
+import { reconfigureScales } from "@genome-spy/core/view/scaleResolution";
 
 /**
  * Base class for data sources that listen a domain and propagate data lazily.
@@ -120,6 +121,9 @@ export default class SingleAxisLazySource extends DataSource {
         }
 
         this.complete();
+
+        reconfigureScales(this.view, [this.channel]);
+
         this.requestRender();
     }
 }

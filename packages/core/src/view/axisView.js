@@ -88,6 +88,7 @@ export default class AxisView extends LayerView {
 
         this.axisProps = fullAxisProps;
         this.blockEncodingInheritance = true;
+        this.contributesToScaleDomain = false;
     }
 
     getOrient() {

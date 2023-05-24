@@ -36,6 +36,7 @@ import { invalidatePrefix } from "./utils/propertyCacher";
 import { ViewFactory } from "./view/viewFactory";
 import LayerView from "./view/layerView";
 import ImplicitRootView from "./view/implicitRootView";
+import { reconfigureScales } from "./view/scaleResolution";
 
 /**
  * @typedef {import("./spec/view").UnitSpec} UnitSpec
@@ -410,14 +411,7 @@ export default class GenomeSpy {
 
         // Now that all data have been loaded, the domains may need adjusting
         // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
-        /** @type {Set<import("./view/scaleResolution").default>} */
-        const uniqueResolutions = new Set();
-        this.viewRoot.visit((view) => {
-            for (const resolution of Object.values(view.resolutions.scale)) {
-                uniqueResolutions.add(resolution);
-            }
-        });
-        uniqueResolutions.forEach((resolution) => resolution.reconfigure());
+        reconfigureScales(this.viewRoot);
 
         // This event is needed by SampleView so that it can extract the sample ids
         // from the data once they are loaded.

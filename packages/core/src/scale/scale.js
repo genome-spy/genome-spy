@@ -151,6 +151,11 @@ export default function createScale(_, logger) {
 
     const scaleInstance = scale();
 
+    if (!_.domain && isContinuous(scaleInstance.type)) {
+        // [0, 0] indicates an uninitialized domain.
+        _.domain = [0, 0];
+    }
+
     configureScale(_, scaleInstance, logger);
 
     return scaleInstance;

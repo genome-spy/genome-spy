@@ -109,6 +109,12 @@ export default class View {
          * TODO: Make configurable through spec. Allow more fine-grained control.
          */
         this.blockEncodingInheritance = false;
+
+        /**
+         * Whether ScaleResolution should include this view or its children in the domain.
+         * This is mainly used to block axis views from contributing to the domain.
+         */
+        this.contributesToScaleDomain = true;
     }
 
     getPadding() {

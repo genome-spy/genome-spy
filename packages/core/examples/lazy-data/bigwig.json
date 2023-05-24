@@ -23,12 +23,20 @@
     }
   },
 
+  "transform": [
+    {
+      "type": "filter",
+      "expr": "datum.score > 0"
+    }
+  ],
+
   "encoding": {
     "y": {
       "field": "score",
       "type": "quantitative",
       "scale": {
-        "domain": [0, 100]
+        "nice": true,
+        "zero": false
       },
       "axis": {
         "title": "GC (%)",

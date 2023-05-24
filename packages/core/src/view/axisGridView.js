@@ -41,6 +41,7 @@ export default class AxisGridView extends LayerView {
 
         this.axisProps = fullAxisProps;
         this.blockEncodingInheritance = true;
+        this.contributesToScaleDomain = false;
     }
 
     getOrient() {

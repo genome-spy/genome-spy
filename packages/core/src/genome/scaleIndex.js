@@ -42,8 +42,9 @@ export default function scaleIndex() {
         if (arguments.length) {
             domain = extent(_);
             domainSpan = domain[1] - domain[0];
+            const uninitializedDomain = domain[0] === 0 && domain[0] === 0;
 
-            if (domainSpan < minimumDomainSpan) {
+            if (domainSpan < minimumDomainSpan && !uninitializedDomain) {
                 domainSpan = minimumDomainSpan;
                 const centroid = (domain[0] + domain[1]) / 2;
                 domain[0] = centroid - domainSpan / 2;
