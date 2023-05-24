@@ -1,8 +1,6 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "height": 80,
-
   "genome": {
     "name": "hg38"
   },
@@ -12,14 +10,11 @@
     "style": "overlay"
   },
 
-  "view": {
-    "stroke": "lightgray"
-  },
-
   "data": {
     "lazy": {
       "type": "bigwig",
-      "url": "https://data.genomespy.app/genomes/hg38/hg38.gc5Base.bw"
+      "url": "https://data.genomespy.app/genomes/hg38/hg38.gc5Base.bw",
+      "pixelsPerBin": 1
     }
   },
 
@@ -30,20 +25,9 @@
     }
   ],
 
+  "resolve": { "scale": { "x": "shared" } },
+
   "encoding": {
-    "y": {
-      "field": "score",
-      "type": "quantitative",
-      "scale": {
-        "nice": true,
-        "zero": false
-      },
-      "axis": {
-        "title": "GC (%)",
-        "grid": true,
-        "gridDash": [2, 2]
-      }
-    },
     "x": {
       "chrom": "chrom",
       "pos": "start",
@@ -55,10 +39,65 @@
     }
   },
 
-  "mark": {
-    "type": "rect",
-    "minWidth": 0.5,
-    "minOpacity": 0.4,
-    "tooltip": null
-  }
+  "vconcat": [
+    {
+      "height": 140,
+
+      "view": {
+        "stroke": "lightgray"
+      },
+
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "axis": null
+        },
+        "y": {
+          "field": "score",
+          "type": "quantitative",
+          "scale": {
+            "nice": true,
+            "zero": false
+          },
+          "axis": {
+            "title": "GC (%)",
+            "grid": true,
+            "gridDash": [2, 2],
+            "maxExtent": 35
+          }
+        }
+      },
+      "mark": {
+        "type": "rect",
+        "minWidth": 0.5,
+        "minOpacity": 1,
+        "tooltip": null
+      }
+    },
+    {
+      "height": 80,
+
+      "view": {
+        "stroke": "lightgray"
+      },
+
+      "encoding": {
+        "color": {
+          "field": "score",
+          "type": "quantitative",
+          "scale": {
+            "zero": false
+          }
+        }
+      },
+      "mark": {
+        "type": "rect",
+        "minWidth": 0.5,
+        "minOpacity": 1,
+        "tooltip": null
+      }
+    }
+  ]
 }
