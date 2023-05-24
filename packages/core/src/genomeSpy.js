@@ -409,13 +409,15 @@ export default class GenomeSpy {
         );
 
         // Now that all data have been loaded, the domains may need adjusting
+        // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
+        /** @type {Set<import("./view/scaleResolution").default>} */
+        const uniqueResolutions = new Set();
         this.viewRoot.visit((view) => {
             for (const resolution of Object.values(view.resolutions.scale)) {
-                // TODO: Don't reconfigure multiple times
-                // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
-                resolution.reconfigure();
+                uniqueResolutions.add(resolution);
             }
         });
+        uniqueResolutions.forEach((resolution) => resolution.reconfigure());
 
         // This event is needed by SampleView so that it can extract the sample ids
         // from the data once they are loaded.
