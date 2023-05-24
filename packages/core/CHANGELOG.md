@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.32.2](https://github.com/genome-spy/genome-spy/compare/v0.32.1...v0.32.2) (2023-05-24)
+
+
+### Bug Fixes
+
+* **core:** add missing zoom-transition to other continuous scales ([60dcf9c](https://github.com/genome-spy/genome-spy/commit/60dcf9cfda211b0b0579583fc2dc16d9c729bf71))
+* **core:** axis ticks and grid lines were sometimes out of sync ([dd88840](https://github.com/genome-spy/genome-spy/commit/dd888403fa63a010143bea991e65a7fe2e32663a))
+* **core:** update scale domains when data are loaded lazily ([b70376b](https://github.com/genome-spy/genome-spy/commit/b70376be5964f69afe296c0d72f27b6d098027b0))
+
+
+
+
+
 ## [0.32.1](https://github.com/genome-spy/genome-spy/compare/v0.32.0...v0.32.1) (2023-05-23)
 
 
