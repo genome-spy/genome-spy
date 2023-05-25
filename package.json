@@ -31,7 +31,7 @@
     "build": "lerna run build",
     "build:docs": "mkdir -p docs/app && cp packages/doc-embed/dist/* docs/app/ && cp packages/core/dist/schema.json docs/ && mkdocs build",
     "lint": "eslint packages/*/src/",
-    "test": "npm -w @genome-spy/core run test:vitest",
+    "test": "vitest run",
     "start": "npm -w @genome-spy/app run dev",
     "pretty-quick": "pretty-quick",
     "prepare": "husky install",
