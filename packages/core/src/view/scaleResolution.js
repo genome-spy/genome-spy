@@ -68,6 +68,15 @@ export const INDEX = "index";
  * @typedef {import("../spec/scale").ZoomParams} ZoomParams
  */
 export default class ScaleResolution {
+    /** @type {number[]} */
+    #zoomExtent = undefined;
+
+    /** @type {Set<import("./scaleResolutionApi").ScaleResolutionListener>} Observers that are called when the scale domain is changed */
+    #domainListeners = new Set();
+
+    /** @type {VegaScale} */
+    #scale = undefined;
+
     /**
      * @param {Channel} channel
      */
@@ -78,17 +87,8 @@ export default class ScaleResolution {
         /** @type {string} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
-        /** @type {number[]} */
-        this._zoomExtent = undefined;
-
-        /** @type {Set<import("./scaleResolutionApi").ScaleResolutionListener>} Observers that are called when the scale domain is changed */
-        this._domainListeners = new Set();
-
         /** @type {string} An optional unique identifier for the scale */
         this.name = undefined;
-
-        /** @type {VegaScale} */
-        this._scale = undefined;
     }
 
     /**
@@ -103,7 +103,7 @@ export default class ScaleResolution {
         if (type != "domain") {
             throw new Error("Unsupported event type: " + type);
         }
-        this._domainListeners.add(listener);
+        this.#domainListeners.add(listener);
     }
 
     /**
@@ -114,11 +114,11 @@ export default class ScaleResolution {
         if (type != "domain") {
             throw new Error("Unsupported event type: " + type);
         }
-        this._domainListeners.delete(listener);
+        this.#domainListeners.delete(listener);
     }
 
     #notifyDomainListeners() {
-        for (const listener of this._domainListeners.values()) {
+        for (const listener of this.#domainListeners.values()) {
             listener({
                 type: "domain",
                 scaleResolution: this,
@@ -165,11 +165,11 @@ export default class ScaleResolution {
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
     isExplicitDomain() {
-        return !!this.getConfiguredDomain();
+        return !!this.#getConfiguredDomain();
     }
 
     isDomainInitialized() {
-        const s = this._scale;
+        const s = this.#scale;
         if (!s) {
             return false;
         }
@@ -193,7 +193,7 @@ export default class ScaleResolution {
      *
      * @returns {import("../spec/scale").Scale}
      */
-    _getMergedScaleProps() {
+    #getMergedScaleProps() {
         return getCachedOrCall(this, "mergedScaleProps", () => {
             const propArray = this.members
                 .map(
@@ -217,7 +217,7 @@ export default class ScaleResolution {
     getScaleProps() {
         // eslint-disable-next-line complexity
         return getCachedOrCall(this, "scaleProps", () => {
-            const mergedProps = this._getMergedScaleProps();
+            const mergedProps = this.#getMergedScaleProps();
             if (mergedProps === null || mergedProps.type == "null") {
                 // No scale (pass-thru)
                 // TODO: Check that the channel is compatible
@@ -225,7 +225,7 @@ export default class ScaleResolution {
             }
 
             const props = {
-                ...this._getDefaultScaleProperties(this.type),
+                ...this.#getDefaultScaleProperties(this.type),
                 ...mergedProps,
             };
 
@@ -233,7 +233,7 @@ export default class ScaleResolution {
                 props.type = getDefaultScaleType(this.channel, this.type);
             }
 
-            const domain = this.getInitialDomain();
+            const domain = this.#getInitialDomain();
 
             if (domain && domain.length > 0) {
                 props.domain = domain;
@@ -277,13 +277,13 @@ export default class ScaleResolution {
         });
     }
 
-    getInitialDomain() {
+    #getInitialDomain() {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
-            this.getConfiguredDomain() ??
+            this.#getConfiguredDomain() ??
             (this.type == LOCUS
                 ? this.getGenome().getExtent()
-                : this.getDataDomain())
+                : this.#getDataDomain())
         );
     }
 
@@ -292,8 +292,8 @@ export default class ScaleResolution {
      *
      * @return { DomainArray }
      */
-    getConfiguredDomain() {
-        return this._reduceDomains((member) =>
+    #getConfiguredDomain() {
+        return this.#reduceDomains((member) =>
             isSecondaryChannel(member.channel)
                 ? undefined
                 : member.view.getConfiguredDomain(member.channel)
@@ -305,9 +305,9 @@ export default class ScaleResolution {
      *
      * @return { DomainArray }
      */
-    getDataDomain() {
+    #getDataDomain() {
         // TODO: Optimize: extract domain only once if the views share the data
-        return this._reduceDomains((member) =>
+        return this.#reduceDomains((member) =>
             isSecondaryChannel(member.channel)
                 ? undefined
                 : member.view.extractDataDomain(member.channel)
@@ -318,25 +318,25 @@ export default class ScaleResolution {
      * Reconfigures the scale: updates domain and other settings
      */
     reconfigure() {
-        if (this._scale && this._scale.type != "null") {
+        if (this.#scale && this.#scale.type != "null") {
             const domainWasInitialized = this.isDomainInitialized();
 
-            const previousDomain = [...this._scale.domain()];
+            const previousDomain = [...this.#scale.domain()];
 
             invalidate(this, "scaleProps");
             const props = this.getScaleProps();
-            configureScale(props, this._scale);
-            if (isContinuous(this._scale.type)) {
-                this._zoomExtent = this._getZoomExtent();
+            configureScale(props, this.#scale);
+            if (isContinuous(this.#scale.type)) {
+                this.#zoomExtent = this.#getZoomExtent();
             }
 
-            const newDomain = [...this._scale.domain()];
+            const newDomain = [...this.#scale.domain()];
 
             if (!shallowArrayEquals(newDomain, previousDomain)) {
                 if (this.#isZoomingSupported() && domainWasInitialized) {
                     // If configureScale altered the domain, restore the previous
                     // domain and zoom smoothly to the new domain.
-                    this._scale.domain(previousDomain);
+                    this.#scale.domain(previousDomain);
                     this.zoomTo(newDomain, 500);
                 } else {
                     // Update immediately if the previous domain was the initial domain [0, 0]
@@ -350,21 +350,21 @@ export default class ScaleResolution {
      * @returns {import("../encoder/encoder").VegaScale}
      */
     getScale() {
-        if (this._scale) {
-            return this._scale;
+        if (this.#scale) {
+            return this.#scale;
         }
 
         const props = this.getScaleProps();
 
         const scale = createScale(props);
-        this._scale = scale;
+        this.#scale = scale;
 
         if (isScaleLocus(scale)) {
             scale.genome(this.getGenome());
         }
 
         if (isContinuous(scale.type)) {
-            this._zoomExtent = this._getZoomExtent();
+            this.#zoomExtent = this.#getZoomExtent();
         }
 
         return scale;
@@ -392,7 +392,7 @@ export default class ScaleResolution {
     isZoomed() {
         return (
             this.#isZoomingSupported() &&
-            shallowArrayEquals(this.getInitialDomain(), this.getDomain())
+            shallowArrayEquals(this.#getInitialDomain(), this.getDomain())
         );
     }
 
@@ -474,11 +474,11 @@ export default class ScaleResolution {
         }
 
         // TODO: Use the zoomTo method. Move clamping etc there.
-        if (this._zoomExtent) {
+        if (this.#zoomExtent) {
             newDomain = clampRange(
                 newDomain,
-                this._zoomExtent[0],
-                this._zoomExtent[1]
+                this.#zoomExtent[0],
+                this.#zoomExtent[1]
             );
         }
 
@@ -555,10 +555,10 @@ export default class ScaleResolution {
         }
 
         const oldDomain = this.getDomain();
-        const newDomain = this.getInitialDomain();
+        const newDomain = this.#getInitialDomain();
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
-            this._scale.domain(newDomain);
+            this.#scale.domain(newDomain);
             this.#notifyDomainListeners();
             return true;
         }
@@ -574,13 +574,13 @@ export default class ScaleResolution {
     getZoomLevel() {
         // Zoom level makes sense only for user-zoomable scales where zoom extent is defined
         if (this.isZoomable()) {
-            return span(this._zoomExtent) / span(this.getScale().domain());
+            return span(this.#zoomExtent) / span(this.getScale().domain());
         }
 
         return 1.0;
     }
 
-    _getZoomExtent() {
+    #getZoomExtent() {
         const props = this.getScaleProps();
         const zoom = props.zoom;
 
@@ -597,7 +597,7 @@ export default class ScaleResolution {
 
             // TODO: Perhaps this should be "domain" for index scale and nothing for quantitative.
             // Would behave similarly to Vega-Lite, which doesn't have constraints.
-            return this._scale.domain();
+            return this.#scale.domain();
         }
     }
 
@@ -607,7 +607,7 @@ export default class ScaleResolution {
      *
      * @param {string} dataType
      */
-    _getDefaultScaleProperties(dataType) {
+    #getDefaultScaleProperties(dataType) {
         const channel = this.channel;
         const props = {};
 
@@ -699,7 +699,7 @@ export default class ScaleResolution {
         return /** @type {number[]} */ (interval);
     }
 
-    _getViewPaths() {
+    #getViewPaths() {
         return this.members.map((v) => v.view.getPathString()).join(", ");
     }
 
@@ -710,7 +710,7 @@ export default class ScaleResolution {
      * @param {function(ResolutionMember):DomainArray} domainAccessor
      * @returns {DomainArray}
      */
-    _reduceDomains(domainAccessor) {
+    #reduceDomains(domainAccessor) {
         const domains = this.members
             .filter(
                 (member) =>
