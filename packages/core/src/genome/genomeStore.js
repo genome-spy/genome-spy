@@ -2,12 +2,12 @@ import Genome from "./genome";
 
 export default class GenomeStore {
     /**
-     * @param {import("../genomeSpy").default} genomeSpy
+     * @param {string} baseUrl
      */
-    constructor(genomeSpy) {
+    constructor(baseUrl) {
         /** @type {Map<string, Genome>} */
         this.genomes = new Map();
-        this.genomeSpy = genomeSpy;
+        this.baseUrl = baseUrl;
     }
 
     /**
@@ -20,7 +20,7 @@ export default class GenomeStore {
 
         return Promise.all(
             [...this.genomes.values()].map((genome) =>
-                genome.load(this.genomeSpy.spec.baseUrl)
+                genome.load(this.baseUrl)
             )
         );
     }

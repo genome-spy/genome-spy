@@ -68,13 +68,13 @@ Example:
 {
   "genome": {
     "contigs": [
-      "name": "chr3R", "size": "32079331",
-      "name": "chr3L", "size": "28110227",
-      "name": "chr2R", "size": "25286936",
-      "name": "chrX",  "size": "23542271",
-      "name": "chr2L", "size": "23513712",
-      "name": "chrY",  "size": "3667352",
-      "name": "chr4",  "size": "1348131",
+      {"name": "chr3R", "size": 32079331 },
+      {"name": "chr3L", "size": 28110227 },
+      {"name": "chr2R", "size": 25286936 },
+      {"name": "chrX",  "size": 23542271 },
+      {"name": "chr2L", "size": 23513712 },
+      {"name": "chrY",  "size": 3667352 },
+      {"name": "chr4",  "size": 1348131 },
     ]
   },
   ...
