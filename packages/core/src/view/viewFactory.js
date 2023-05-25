@@ -40,6 +40,7 @@ export class ViewFactory {
                     )
                 );
 
+        // @ts-expect-error TODO: Fix typing
         this.addViewType(isImportSpec, makeDefaultFactory(ImportView));
         this.addViewType(isLayerSpec, makeDefaultFactory(LayerView));
         this.addViewType(isUnitSpec, makeDefaultFactory(UnitView));

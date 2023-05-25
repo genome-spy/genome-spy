@@ -38,6 +38,7 @@ export default class ConcatView extends GridView {
 
         this.setChildren(
             childSpecs.map((childSpec, i) =>
+                // @ts-expect-error TODO: Fix typing
                 this.context.createView(childSpec, this, "grid" + i)
             )
         );

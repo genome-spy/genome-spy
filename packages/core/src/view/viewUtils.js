@@ -248,6 +248,7 @@ export async function processImports(viewRoot) {
             view.parent,
             view.name
         );
+        // @ts-expect-error TODO: Fix typing
         view.parent.replaceChild(view, importedView);
 
         // Import recursively

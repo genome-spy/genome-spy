@@ -18,6 +18,7 @@ export default class LayerView extends ContainerView {
         this.spec = spec;
 
         /** @type {(LayerView | import("./unitView").default)[]} */
+        // @ts-expect-error TODO: Fix typing
         this.children = (spec.layer || []).map((childSpec, i) => {
             if (isLayerSpec(childSpec) || isUnitSpec(childSpec)) {
                 return context.createView(childSpec, this, "layer" + i);
