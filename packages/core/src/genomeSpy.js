@@ -1,5 +1,3 @@
-import scaleLocus from "./genome/scaleLocus";
-import { scale as vegaScale } from "vega-scale";
 import { formats as vegaFormats } from "vega-loader";
 
 import "./styles/genome-spy.scss";
@@ -21,10 +19,8 @@ import InteractionEvent from "./utils/interactionEvent";
 import Point from "./utils/layout/point";
 import Animator from "./utils/animator";
 import DataFlow from "./data/dataFlow";
-import scaleIndex from "./genome/scaleIndex";
 import { buildDataFlow } from "./view/flowBuilder";
 import { optimizeDataFlow } from "./data/flowOptimizer";
-import scaleNull from "./utils/scaleNull";
 import GenomeStore from "./genome/genomeStore";
 import BmFontManager from "./fonts/bmFontManager";
 import fasta from "./data/formats/fasta";
@@ -51,12 +47,6 @@ import { reconfigureScales } from "./view/scaleResolution";
  * Events that are broadcasted to all views.
  * @typedef {"dataFlowBuilt" | "dataLoaded" | "layout" | "layoutComputed"} BroadcastEventType
  */
-
-// Register scaleLocus to Vega-Scale.
-// Loci are discrete but the scale's domain can be adjusted in a continuous manner.
-vegaScale("index", scaleIndex, ["continuous"]);
-vegaScale("locus", scaleLocus, ["continuous"]);
-vegaScale("null", scaleNull, []);
 
 vegaFormats("fasta", fasta);
 

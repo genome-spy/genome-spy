@@ -1,3 +1,7 @@
+import scaleLocus, { isScaleLocus } from "../genome/scaleLocus";
+import scaleIndex from "../genome/scaleIndex";
+import scaleNull from "../utils/scaleNull";
+
 import {
     panLinear,
     zoomLinear,
@@ -11,7 +15,7 @@ import {
     isObject,
     isBoolean,
 } from "vega-util";
-import { isDiscrete, isContinuous } from "vega-scale";
+import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
 import mergeObjects from "../utils/mergeObjects";
 import createScale, { configureScale } from "../scale/scale";
@@ -33,8 +37,13 @@ import {
 import { NominalDomain } from "../utils/domainArray";
 import { easeCubicInOut } from "d3-ease";
 import { shallowArrayEquals } from "../utils/arrayUtils";
-import { isScaleLocus } from "../genome/scaleLocus";
 import eerp from "../utils/eerp";
+
+// Register scaleLocus to Vega-Scale.
+// Loci are discrete but the scale's domain can be adjusted in a continuous manner.
+vegaScale("index", scaleIndex, ["continuous"]);
+vegaScale("locus", scaleLocus, ["continuous"]);
+vegaScale("null", scaleNull, []);
 
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
