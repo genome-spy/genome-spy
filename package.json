@@ -40,5 +40,8 @@
   },
   "workspaces": [
     "./packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@types/node": "^20.2.3"
+  }
 }
