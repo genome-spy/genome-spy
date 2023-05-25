@@ -2,15 +2,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@genome-spy/core": [
-        "packages/core/src"
-      ],
-      "@genome-spy/core/*": [
-        "packages/core/src/*"
-      ],
-      "@genome-spy/core/schema.json": [
-        "packages/core/dist/schema.json"
-      ]
+      "@genome-spy/core": ["packages/core/src"],
+      "@genome-spy/core/*": ["packages/core/src/*"],
+      "@genome-spy/core/schema.json": ["packages/core/dist/schema.json"]
     },
     "resolveJsonModule": true,
     "module": "nodenext",
@@ -21,6 +15,7 @@
     "target": "esnext",
     "strict": false,
     "noImplicitAny": true,
-    "types": []
+    "types": [],
+    "skipLibCheck": true
   }
 }
