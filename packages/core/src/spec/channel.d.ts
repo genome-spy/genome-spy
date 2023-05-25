@@ -24,7 +24,8 @@ export type PositionalChannel =
     | PrimaryPositionalChannel
     | SecondaryPositionalChannel;
 
-export type Channel =
+// Remember to updata the type guard when adding channels!
+export type ChannelWithScale =
     | PositionalChannel
     | "color"
     | "fill"
@@ -35,16 +36,20 @@ export type Channel =
     | "strokeWidth"
     | "size"
     | "shape"
-    | "text"
     | "angle"
-    | "sample"
+    | "dx"
+    | "dy";
+
+export type ChannelWithoutScale =
     | "uniqueId"
     | "search"
+    | "sample"
+    | "text"
     | "facetIndex"
     | "semanticScore"
-    | "dx"
-    | "dy"
     | "uniqueId";
+
+export type Channel = ChannelWithScale | ChannelWithoutScale;
 
 // TODO
 export type FacetFieldDef = any;
@@ -137,22 +142,26 @@ export interface ScaleMixins {
      *
      * This is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances.
      */
-    resolutionChannel?: Channel;
+    resolutionChannel?: ChannelWithScale;
 }
 
-export interface ValueDef<V extends Value = Scalar> {
+export interface ValueDefBase<V extends Value = Scalar> {
     /**
      * A constant value in visual domain (e.g., `"red"` / `"#0099ff"`, values between `0` to `1` for opacity).
      */
     value: V;
 }
 
-export interface DatumDef extends TitleMixins {
+export type ValueDef<V extends Value = Scalar> = ValueDefBase<V> & TitleMixins;
+
+export interface DatumDefBase {
     /**
      * A constant value in data domain.
      */
     datum?: Scalar;
 }
+
+export type DatumDef = DatumDefBase & TitleMixins;
 
 export interface ExprDef {
     /** An expression. Properties of the data can be accessed through the `datum` object. */
@@ -169,7 +178,8 @@ export type MarkPropFieldDef<
 
 export type MarkPropExprDef<T extends Type = Type> = ExprDef &
     TypeMixins<T> &
-    ScaleMixins;
+    ScaleMixins &
+    TitleMixins;
 
 export type MarkPropDatumDef<T extends Type> = LegendMixins &
     ScaleDatumDef &

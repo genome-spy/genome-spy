@@ -29,7 +29,7 @@ export function debounce(func, wait, rejectOnDebounce = true) {
             clearTimeout(timeout);
 
             rejectPrevious = reject;
-            timeout = setTimeout(later, wait);
+            timeout = window.setTimeout(later, wait);
         });
     };
 

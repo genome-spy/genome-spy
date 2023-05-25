@@ -1,5 +1,6 @@
 import { isDiscrete } from "vega-scale";
 import createIndexer from "../utils/indexer";
+import scaleNull from "../utils/scaleNull";
 
 /**
  * @typedef {Object} EncoderMetadata
@@ -54,7 +55,7 @@ import createIndexer from "../utils/indexer";
  * @returns {Partial<Record<Channel, Encoder>>}
  */
 export default function createEncoders(mark, encoding) {
-    /** @type {Partial<Record<Channel, Encoder>>} */
+    /** @type {Partial<Record<import("../spec/channel").Channel, Encoder>>} */
     const encoders = {};
 
     if (!encoding) {
@@ -66,11 +67,13 @@ export default function createEncoders(mark, encoding) {
             continue;
         }
 
-        const resolution = mark.unitView.getScaleResolution(
-            (isChannelDefWithScale(channelDef) &&
-                channelDef.resolutionChannel) ||
-                channel
-        );
+        const channelWithScale =
+            ((isChannelDefWithScale(channelDef) &&
+                channelDef.resolutionChannel) ??
+                (isChannelWithScale(channel) && channel)) ||
+            undefined;
+
+        const resolution = mark.unitView.getScaleResolution(channelWithScale);
 
         encoders[channel] = createEncoder(
             encoding[channel],
@@ -109,9 +112,16 @@ export function createEncoder(channelDef, scale, accessor, channel) {
             encoder.constant = accessor.constant;
         } else {
             if (!scale) {
-                throw new Error(
-                    `Missing scale! "${channel}": ${JSON.stringify(channelDef)}`
-                );
+                if (!isChannelWithScale(channel)) {
+                    // Channels like uniqueId are passed as is.
+                    scale = scaleNull();
+                } else {
+                    throw new Error(
+                        `Missing scale! "${channel}": ${JSON.stringify(
+                            channelDef
+                        )}`
+                    );
+                }
             }
 
             encoder = /** @type {Encoder} */ (
@@ -345,6 +355,31 @@ export function isColorChannel(channel) {
  */
 export function isDiscreteChannel(channel) {
     return ["shape", "squeeze"].includes(channel);
+}
+
+/**
+ * @param {Channel} channel
+ * @returns {channel is import("../spec/channel").ChannelWithScale}
+ */
+export function isChannelWithScale(channel) {
+    return [
+        "x",
+        "y",
+        "x2",
+        "y2",
+        "color",
+        "fill",
+        "stroke",
+        "opacity",
+        "fillOpacity",
+        "strokeOpacity",
+        "strokeWidth",
+        "size",
+        "shape",
+        "angle",
+        "dx",
+        "dy",
+    ].includes(channel);
 }
 
 /**

@@ -11,6 +11,7 @@ import {
 import { isContinuous, isDiscrete } from "vega-scale";
 import createEncoders, {
     isChannelDefWithScale,
+    isChannelWithScale,
     isDatumDef,
     isValueDef,
 } from "../encoder/encoder";
@@ -34,6 +35,7 @@ import { createProgram } from "../gl/webGLHelper";
 import coalesceProperties from "../utils/propertyCoalescer";
 import { isScalar } from "../utils/variableTools";
 import { InternMap } from "internmap";
+import scaleNull from "../utils/scaleNull";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -92,7 +94,10 @@ export default class Mark {
                 // TODO: Cache once the scales have been resolved
                 // TODO: Only check channels that are used
                 // TODO: provide more fine-grained xClip and yClip props
-                return /** @type {Channel[]} */ (["x", "y"])
+                return /** @type {import("../spec/channel").PositionalChannel[]} */ ([
+                    "x",
+                    "y",
+                ])
                     .map((channel) => unitView.getScaleResolution(channel))
                     .some((resolution) => resolution?.isZoomable() ?? false);
             },
@@ -330,9 +335,11 @@ export default class Mark {
                         channelDef.resolutionChannel) ||
                     channel;
 
-                const scale = this.unitView
-                    .getScaleResolution(resolutionChannel)
-                    .getScale();
+                const scale = isChannelWithScale(resolutionChannel)
+                    ? this.unitView
+                          .getScaleResolution(resolutionChannel)
+                          .getScale()
+                    : scaleNull();
 
                 const generated = generateScaleGlsl(channel, scale, channelDef);
 
@@ -600,11 +607,11 @@ export default class Mark {
                     (isChannelDefWithScale(channelDef) &&
                         channelDef.resolutionChannel) ||
                     channel;
-                const resolution =
-                    this.unitView.getScaleResolution(resolutionChannel);
 
-                if (resolution) {
-                    const scale = resolution.getScale();
+                if (isChannelWithScale(resolutionChannel)) {
+                    const scale = this.unitView
+                        .getScaleResolution(resolutionChannel)
+                        .getScale();
 
                     ops.push(() => {
                         const domain = isDiscrete(scale.type)
@@ -632,16 +639,18 @@ export default class Mark {
                         channelDef.resolutionChannel) ||
                     channel;
 
-                const resolution =
-                    this.unitView.getScaleResolution(resolutionChannel);
+                if (isChannelWithScale(resolutionChannel)) {
+                    const resolution =
+                        this.unitView.getScaleResolution(resolutionChannel);
 
-                const texture = glHelper.rangeTextures.get(resolution);
-                if (texture) {
-                    ops.push(() =>
-                        setUniforms(this.programInfo, {
-                            [RANGE_TEXTURE_PREFIX + channel]: texture,
-                        })
-                    );
+                    const texture = glHelper.rangeTextures.get(resolution);
+                    if (texture) {
+                        ops.push(() =>
+                            setUniforms(this.programInfo, {
+                                [RANGE_TEXTURE_PREFIX + channel]: texture,
+                            })
+                        );
+                    }
                 }
             }
         }

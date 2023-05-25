@@ -15,5 +15,7 @@ export default function scaleNull() {
         //
     };
 
+    scale.type = "null";
+
     return scale;
 }

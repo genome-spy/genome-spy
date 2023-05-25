@@ -81,7 +81,7 @@ export default class View {
         this.resolutions = {
             /**
              * Channel-specific scale resolutions
-             * @type {Partial<Record<Channel, import("./scaleResolution").default>>}
+             * @type {Partial<Record<import("../spec/channel").ChannelWithScale, import("./scaleResolution").default>>}
              */
             scale: {},
             /**
@@ -459,42 +459,31 @@ export default class View {
     }
 
     /**
-     *
-     * @param {Channel} channel
-     * @param {ResolutionTarget} type
-     * @returns {ScaleResolution | AxisResolution}
-     */
-    _getResolution(channel, type) {
-        channel = getPrimaryChannel(channel);
-
-        /** @type {import("./view").default } */
-        // eslint-disable-next-line consistent-this
-        let view = this;
-        do {
-            const resolution = view.resolutions[type][channel];
-            if (resolution) {
-                return resolution;
-            }
-            view = view.parent;
-        } while (view);
-    }
-
-    /**
-     * @param {Channel} channel
+     * @param {import("../spec/channel").ChannelWithScale} channel
      */
     getScaleResolution(channel) {
-        return /** @type {ScaleResolution} */ (
-            this._getResolution(channel, "scale")
-        );
+        const primaryChannel =
+            /** @type {import("../spec/channel").ChannelWithScale} */ (
+                getPrimaryChannel(channel)
+            );
+
+        return this.getAncestors()
+            .map((view) => view.resolutions.scale[primaryChannel])
+            .find((resolution) => resolution);
     }
 
     /**
-     * @param {Channel} channel
+     * @param {import("../spec/channel").PositionalChannel} channel
      */
     getAxisResolution(channel) {
-        return /** @type {AxisResolution} */ (
-            this._getResolution(channel, "axis")
-        );
+        const primaryChannel =
+            /** @type {import("../spec/channel").PrimaryPositionalChannel} */ (
+                getPrimaryChannel(channel)
+            );
+
+        return this.getAncestors()
+            .map((view) => view.resolutions.axis[primaryChannel])
+            .find((resolution) => resolution);
     }
 
     /**
@@ -596,7 +585,7 @@ function createViewOpacityFunction(view) {
         if (isNumber(opacityDef)) {
             return (parentOpacity) => parentOpacity * opacityDef;
         } else if (isDynamicOpacity(opacityDef)) {
-            /** @type {function(Channel):any} */
+            /** @type {(channel: import("../spec/channel").ChannelWithScale) => any} */
             const getScale = (channel) => {
                 const scale = view.getScaleResolution(channel)?.getScale();
                 // Only works on linear scales

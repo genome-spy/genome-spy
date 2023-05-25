@@ -104,6 +104,10 @@ export function generateScaleGlsl(channel, scale, channelDef) {
         );
     }
 
+    if (!scale) {
+        throw new Error("Scale is undefined");
+    }
+
     const primary = getPrimaryChannel(channel);
     const attributeName = ATTRIBUTE_PREFIX + channel;
     const domainUniformName = DOMAIN_PREFIX + primary;

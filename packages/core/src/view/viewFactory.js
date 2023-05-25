@@ -13,7 +13,6 @@ import { isArray, isObject, isString } from "vega-util";
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec
  * @typedef {import("../spec/view").ImportSpec} ImportSpec
- * @typedef {import("../spec/view").SampleSpec} SampleSpec
  * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
  * @typedef {import("../spec/view").HConcatSpec} HConcatSpec
  * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
@@ -123,10 +122,8 @@ export function isLayerSpec(spec) {
 export function isFacetSpec(spec) {
     return (
         "facet" in spec &&
-        // @ts-expect-error
         isObject(spec.facet) &&
         "spec" in spec &&
-        // @ts-expect-error
         isObject(spec.spec)
     );
 }

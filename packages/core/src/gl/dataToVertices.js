@@ -17,7 +17,7 @@ import { isContinuous } from "vega-scale";
  * @prop {number} count in vertices
  * @prop {import("../utils/binnedIndex").Lookup} xIndex
  *
- * @typedef {import("./arraybuilder").ConverterMetadata} Converter
+ * @typedef {import("./arrayBuilder").ConverterMetadata} Converter
  * @typedef {import("../encoder/encoder").Encoder} Encoder
  */
 export class GeometryBuilder {
@@ -478,7 +478,9 @@ export class TextVertexBuilder extends GeometryBuilder {
             );
         /** @type {(value: any) => string} */
         this.numberFormat =
-            !isValueDef(channelDef) && channelDef.format
+            !isValueDef(channelDef) &&
+            "format" in channelDef &&
+            channelDef.format
                 ? format(channelDef.format)
                 : (d) => d;
 

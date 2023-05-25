@@ -52,7 +52,7 @@ export const LOCUS = "locus"; // Humdum, should this be "genomic"?
 export const INDEX = "index";
 
 /**
- * @template {Channel}[T=Channel]
+ * @template {ChannelWithScale}[T=ChannelWithScale]
  * @typedef {{view: import("./unitView").default, channel: T}} ResolutionMember
  * @typedef {import("./unitView").default} UnitView
  * @typedef {import("../encoder/encoder").VegaScale} VegaScale
@@ -70,6 +70,7 @@ export const INDEX = "index";
  * @implements {ScaleResolutionApi}
  *
  * @typedef {import("../spec/channel").Channel} Channel
+ * @typedef {import("../spec/channel").ChannelWithScale} ChannelWithScale
  * @typedef {import("../spec/scale").Scale} Scale
  * @typedef {import("../spec/scale").NumericDomain} NumericDomain
  * @typedef {import("../spec/scale").ScalarDomain} ScalarDomain
@@ -140,7 +141,7 @@ export default class ScaleResolution {
      * N.B. This is expected to be called in depth-first order
      *
      * @param {UnitView} view
-     * @param {import("./view").Channel} channel
+     * @param {ChannelWithScale} channel
      */
     pushUnitView(view, channel) {
         const channelDef = getChannelDefWithScale(view, channel);

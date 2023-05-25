@@ -13,6 +13,8 @@ import {
     isChannelDefWithScale,
     primaryPositionalChannels,
     getPrimaryChannel,
+    isChannelWithScale,
+    isPrimaryPositionalChannel,
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 import AxisResolution from "./axisResolution";
@@ -63,7 +65,12 @@ export default class UnitView extends ContainerView {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
 
-        /** @type {(UnitView | LayerView)[]} */
+        /**
+         * TODO: Move this under SampleView.
+         * Plan: Views could have two parents, one for layout, one for data and encoding.
+         *
+         * @type {(UnitView | LayerView)[]}
+         */
         this.sampleAggregateViews = [];
         this._initializeAggregateViews();
 
@@ -89,8 +96,10 @@ export default class UnitView extends ContainerView {
      * @param {View} replacement
      */
     replaceChild(child, replacement) {
+        // @ts-ignore TODO: fix typing
         const i = this.sampleAggregateViews.indexOf(child);
         if (i >= 0) {
+            // @ts-ignore TODO: fix typing
             this.sampleAggregateViews[i] = replacement;
         } else {
             throw new Error("Not my child view!");
@@ -136,9 +145,13 @@ export default class UnitView extends ContainerView {
                 continue;
             }
 
-            let targetChannel = getPrimaryChannel(
+            const targetChannel = getPrimaryChannel(
                 channelDef.resolutionChannel ?? channel
             );
+
+            if (!isChannelWithScale(targetChannel)) {
+                continue;
+            }
 
             if (type == "axis" && !isPositionalChannel(targetChannel)) {
                 continue;
@@ -163,20 +176,27 @@ export default class UnitView extends ContainerView {
                 view = view.parent;
             }
 
-            if (!view.resolutions[type][targetChannel]) {
-                view.resolutions[type][targetChannel] =
-                    type == "scale"
-                        ? new ScaleResolution(targetChannel)
-                        : new AxisResolution(targetChannel);
-            }
-
-            // Looks silly, but keeps type checking happy
-            if (isPositionalChannel(channel)) {
+            // Quite a bit of redundancy, but makes type checker happy.
+            if (
+                type == "axis" &&
+                isPositionalChannel(channel) &&
+                isPrimaryPositionalChannel(targetChannel)
+            ) {
+                if (!view.resolutions[type][targetChannel]) {
+                    view.resolutions[type][targetChannel] = new AxisResolution(
+                        targetChannel
+                    );
+                }
                 view.resolutions[type][targetChannel].pushUnitView(
                     this,
                     channel
                 );
             } else if (type == "scale") {
+                if (!view.resolutions[type][targetChannel]) {
+                    view.resolutions[type][targetChannel] = new ScaleResolution(
+                        targetChannel
+                    );
+                }
                 view.resolutions[type][targetChannel].pushUnitView(
                     this,
                     channel
@@ -245,7 +265,7 @@ export default class UnitView extends ContainerView {
     /**
      * Returns the domain of the specified channel of this domain/mark.
      *
-     * @param {Channel} channel A primary channel
+     * @param {import("../spec/channel").ChannelWithScale} channel A primary channel
      * @returns {DomainArray}
      */
     getConfiguredDomain(channel) {
@@ -324,7 +344,7 @@ export default class UnitView extends ContainerView {
     }
 
     getZoomLevel() {
-        /** @param {Channel} channel */
+        /** @param {import("../spec/channel").ChannelWithScale} channel */
         const getZoomLevel = (channel) =>
             this.getScaleResolution(channel)?.getZoomLevel() ?? 1.0;
 
@@ -350,10 +370,9 @@ export default class UnitView extends ContainerView {
                     sample: null,
                 };
 
-                const summaryView =
-                    /** @type { UnitView | LayerView | DecoratorView } */ (
-                        this.context.createView(sumSpec, this, "summaryView")
-                    );
+                const summaryView = /** @type { UnitView | LayerView } */ (
+                    this.context.createView(sumSpec, this, "summaryView")
+                );
 
                 /**
                  * @param {View} [whoIsAsking]

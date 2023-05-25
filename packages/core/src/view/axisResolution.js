@@ -19,7 +19,7 @@ import { getCachedOrCall } from "../utils/propertyCacher";
  */
 export default class AxisResolution {
     /**
-     * @param {import("../spec/channel").Channel} channel
+     * @param {import("../spec/channel").PrimaryPositionalChannel} channel
      */
     constructor(channel) {
         this.channel = channel;
@@ -97,7 +97,8 @@ export default class AxisResolution {
             return {
                 member,
                 explicitTitle: coalesce(
-                    channelDef.axis?.title,
+                    // TODO: Proper type guard
+                    "axis" in channelDef ? channelDef.axis?.title : undefined,
                     channelDef.title
                 ),
                 implicitTitle: coalesce(

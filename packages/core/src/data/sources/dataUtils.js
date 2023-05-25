@@ -1,3 +1,5 @@
+import { isInlineData } from "./inlineSource";
+
 /**
  * Validates data source params, infers format if not specified explicitly,
  * returns a complete DataSource params object.
@@ -6,10 +8,13 @@
  *      DataSource parameters
  */
 export function getFormat(params) {
+    if (!isInlineData(params) && !isUrlData(params)) {
+        return;
+    }
     const format = { ...params.format };
 
     format.type ??= isUrlData(params) && extractTypeFromUrl(params.url);
-    // @ts-expect-error
+    // @ts-ignore TODO: Fix typing
     format.parse ??= "auto";
 
     if (!format.type) {
