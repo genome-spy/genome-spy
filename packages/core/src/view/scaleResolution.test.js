@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { createAndInitialize } from "./testUtils";
 import createDomain, { toRegularArray as r } from "../utils/domainArray";
 import LayerView from "./layerView";
+import ConcatView from "./concatView";
 import UnitView from "./unitView";
 import { primaryPositionalChannels } from "../encoder/encoder";
 
@@ -198,6 +199,8 @@ describe("Scale resolution", () => {
         );
     });
 
+    // TODO: Add test for "forced" resolution
+
     test("Default resolution is configurable", async () => {
         /** @type {import("../spec/view").LayerSpec} */
         const spec = {
@@ -231,6 +234,89 @@ describe("Scale resolution", () => {
         expect(view.children[0].getScaleResolution("y")).not.toBe(
             view.children[1].getScaleResolution("y")
         );
+    });
+
+    describe("Vertical and horizontal concatenations defaults resolutions for positional channels", async () => {
+        const makeTrack = (
+            /** @type {"x" | "y"} */ channel,
+            /** @type {"locus" | "index"} */ type
+        ) => ({
+            mark: "point",
+            encoding: { [channel]: { field: "foo", type, axis: null } },
+        });
+
+        const create = async (
+            /** @type {"vconcat" | "hconcat"} */ viewType,
+            /** @type {import("../spec/channel").Type[]} */ types
+        ) => {
+            return await createAndInitialize(
+                {
+                    data: { values: [] },
+                    [viewType]: types.map((t) =>
+                        makeTrack(viewType === "vconcat" ? "x" : "y", t)
+                    ),
+                },
+                ConcatView
+            );
+        };
+
+        test('Single "locus" track defaults to "shared"', async () => {
+            expect(
+                (await create("vconcat", ["locus"])).getDefaultResolution(
+                    "x",
+                    "scale"
+                )
+            ).toBe("shared");
+        });
+
+        test('Two "locus" tracks defaults to "shared"', async () => {
+            expect(
+                (
+                    await create("vconcat", ["locus", "locus"])
+                ).getDefaultResolution("x", "scale")
+            ).toBe("shared");
+        });
+
+        test('Single "index" track defaults to "shared"', async () => {
+            expect(
+                (await create("vconcat", ["index"])).getDefaultResolution(
+                    "x",
+                    "scale"
+                )
+            ).toBe("shared");
+        });
+
+        test('Mixed "locus" and "index" tracks default to "independent"', async () => {
+            expect(
+                (
+                    await create("vconcat", ["locus", "index"])
+                ).getDefaultResolution("x", "scale")
+            ).toBe("independent");
+        });
+
+        test('Two "quantitative" tracks default to "independent"', async () => {
+            expect(
+                (
+                    await create("vconcat", ["quantitative", "quantitative"])
+                ).getDefaultResolution("x", "scale")
+            ).toBe("independent");
+        });
+
+        test('Two vertical "quantitative" tracks default to "independent"', async () => {
+            expect(
+                (
+                    await create("hconcat", ["quantitative", "quantitative"])
+                ).getDefaultResolution("y", "scale")
+            ).toBe("independent");
+        });
+
+        test('Two vertical "locus" tracks default to "shared"', async () => {
+            expect(
+                (
+                    await create("hconcat", ["locus", "locus"])
+                ).getDefaultResolution("y", "scale")
+            ).toBe("shared");
+        });
     });
 });
 

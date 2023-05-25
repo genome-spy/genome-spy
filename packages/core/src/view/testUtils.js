@@ -11,6 +11,7 @@ import { resolveScalesAndAxes, initializeData } from "./viewUtils";
 import AccessorFactory from "../encoder/accessor";
 import DataFlow from "../data/dataFlow";
 import { ViewFactory } from "./viewFactory";
+import GenomeStore from "../genome/genomeStore";
 
 /** @type {<V extends View>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext) => V} */
 export function create(spec, viewClass, context = undefined) {
@@ -40,9 +41,19 @@ export async function createAndInitialize(
     viewClass,
     context = undefined
 ) {
+    const genomeStore = new GenomeStore(".");
+    await genomeStore.initialize({
+        name: "test",
+        contigs: [
+            { name: "chr1", size: 20 },
+            { name: "chr2", size: 30 },
+        ],
+    });
+
     context = /** @type {ViewContext} */ ({
         ...(context || {}),
         dataFlow: new DataFlow(),
+        genomeStore,
     });
     const view = create(spec, viewClass, context);
     resolveScalesAndAxes(view);

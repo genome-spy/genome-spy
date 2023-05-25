@@ -744,12 +744,11 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {string} channel
+     * @param {import("../spec/channel").Channel} channel
      * @param {import("./containerView").ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
-        // TODO: Default to shared when working with genomic coordinates
         return "independent";
     }
 }
