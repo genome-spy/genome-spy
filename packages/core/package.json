@@ -31,8 +31,7 @@
     "dev": "node dev-server.js",
     "build": "vite build && npm run build:schema",
     "prepublishOnly": "npm run build",
-    "test:tsc": "tsc -p tsconfig.json",
-    "checkSpec": "tsc --allowJs --checkJs --strict --noEmit --moduleResolution node --target es6 src/spec/root.d.ts",
+    "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/schema.json"
   },
   "dependencies": {
