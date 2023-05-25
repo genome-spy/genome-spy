@@ -191,7 +191,7 @@ export default class UnitView extends ContainerView {
                     this,
                     channel
                 );
-            } else if (type == "scale") {
+            } else if (type == "scale" && isChannelWithScale(channel)) {
                 if (!view.resolutions[type][targetChannel]) {
                     view.resolutions[type][targetChannel] = new ScaleResolution(
                         targetChannel
