@@ -6,8 +6,6 @@ import { field } from "../../utils/field";
 /**
  * Measures text length. This is mainly intended for reading-direction arrows
  * in gene annotations.
- *
- * @typedef {import("../../spec/transform").MeasureTextParams} MeasureTextParams
  */
 export default class MeasureTextTransform extends FlowNode {
     get behavior() {
@@ -16,7 +14,7 @@ export default class MeasureTextTransform extends FlowNode {
 
     /**
      *
-     * @param {MeasureTextParams} config
+     * @param {import("../../spec/transform").MeasureTextParams} config
      */
     constructor(config) {
         super();

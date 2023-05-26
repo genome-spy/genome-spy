@@ -1,14 +1,10 @@
 import createFunction from "../../utils/expression";
 import FlowNode from "../flowNode";
 
-/**
- * @typedef {import("../../spec/transform").FilterParams} FilterParams
- */
-
 export default class FilterTransform extends FlowNode {
     /**
      *
-     * @param {FilterParams} params
+     * @param {import("../../spec/transform").FilterParams} params
      */
     constructor(params) {
         super();

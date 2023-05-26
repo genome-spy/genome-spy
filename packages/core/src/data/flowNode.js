@@ -19,10 +19,9 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
 export const BEHAVIOR_COLLECTS = 1 << 2;
 
 const ROOT_CONTEXT_OBJECT = {};
+
 /**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
- *
- * @typedef {import("../types/flowBatch").FlowBatch} FlowBatch
  *
  * @typedef {Record<string, any>} Datum
  * @typedef {Datum[]} Data
@@ -255,7 +254,7 @@ export default class FlowNode {
     /**
      * Signals that a new batch of data will be propagated.
      *
-     * @param {FlowBatch} flowBatch
+     * @param {import("../types/flowBatch").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
         for (const child of this.children) {
@@ -273,7 +272,7 @@ export default class FlowNode {
 }
 
 /**
- * @param {FlowBatch} flowBatch
+ * @param {import("../types/flowBatch").FlowBatch} flowBatch
  * @returns {flowBatch is import("../types/flowBatch").FileBatch}
  */
 export function isFileBatch(flowBatch) {
@@ -281,7 +280,7 @@ export function isFileBatch(flowBatch) {
 }
 
 /**
- * @param {FlowBatch} flowBatch
+ * @param {import("../types/flowBatch").FlowBatch} flowBatch
  * @returns {flowBatch is import("../types/flowBatch").FacetBatch}
  */
 export function isFacetBatch(flowBatch) {

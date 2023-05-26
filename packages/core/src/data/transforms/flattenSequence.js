@@ -1,10 +1,6 @@
 import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
-/**
- * @typedef {import("../../spec/transform").FlattenSequenceParams} FlattenSequenceParams
- */
-
 export default class FlattenSequenceTransform extends FlowNode {
     get behavior() {
         return BEHAVIOR_CLONES;
@@ -12,7 +8,7 @@ export default class FlattenSequenceTransform extends FlowNode {
 
     /**
      *
-     * @param {FlattenSequenceParams} params
+     * @param {import("../../spec/transform").FlattenSequenceParams} params
      */
     constructor(params) {
         super();

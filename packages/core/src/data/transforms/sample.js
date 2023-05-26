@@ -2,13 +2,11 @@ import FlowNode from "../flowNode";
 
 /**
  * A reservoir sampler, based on: https://www.wikiwand.com/en/Reservoir_sampling
- *
- * @typedef {import("../../spec/transform").SampleParams} SampleParams
  */
 export default class SampleTransform extends FlowNode {
     /**
      *
-     * @param {SampleParams} params
+     * @param {import("../../spec/transform").SampleParams} params
      */
     constructor(params) {
         super();

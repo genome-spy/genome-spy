@@ -2,17 +2,13 @@ import { isString } from "vega-util";
 import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
-/**
- * @typedef {import("../../spec/transform").RegexExtractParams} RegexExtractParams
- */
-
 export default class RegexExtractTransform extends FlowNode {
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }
 
     /**
-     * @param {RegexExtractParams} params
+     * @param {import("../../spec/transform").RegexExtractParams} params
      */
     constructor(params) {
         super();

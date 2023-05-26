@@ -3,10 +3,6 @@ import numberExtractor from "../../utils/numberExtractor";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 /**
- * @typedef {import("../../spec/transform").FlattenCompressedExonsParams} FlattenCompressedExonsParams
- */
-
-/**
  * Flattens "run-length encoded" exons. The transforms inputs the start
  * coordinate of the gene body and a comma-delimited string of alternating
  * intron and exon lengths. A new datum is created for each exon.
@@ -18,7 +14,7 @@ export default class FlattenCompressedExonsTransform extends FlowNode {
 
     /**
      *
-     * @param {FlattenCompressedExonsParams} params
+     * @param {import("../../spec/transform").FlattenCompressedExonsParams} params
      */
     constructor(params) {
         super();

@@ -4,10 +4,6 @@ import { topKSlice } from "../../utils/topK";
 import ReservationMap from "../../utils/reservationMap";
 import { field } from "../../utils/field";
 
-/**
- * @typedef {import("../../spec/transform").FilterScoredLabelsParams} Params
- * @typedef {import("../../view/view").default} View
- */
 export default class FilterScoredLabelsTransform extends FlowNode {
     get behavior() {
         return BEHAVIOR_COLLECTS;
@@ -15,8 +11,8 @@ export default class FilterScoredLabelsTransform extends FlowNode {
 
     /**
      *
-     * @param {Params} params
-     * @param {View} view
+     * @param {import("../../spec/transform").FilterScoredLabelsParams} params
+     * @param {import("../../view/view").default} view
      */
     constructor(params, view) {
         super();

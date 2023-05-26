@@ -2,9 +2,6 @@ import { accessorName } from "vega-util";
 import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
-/**
- * @typedef {import("../../spec/transform").ProjectParams} ProjectParams
- */
 export default class ProjectTransform extends FlowNode {
     get behavior() {
         return BEHAVIOR_CLONES;
@@ -12,7 +9,7 @@ export default class ProjectTransform extends FlowNode {
 
     /**
      *
-     * @param {ProjectParams} params
+     * @param {import("../../spec/transform").ProjectParams} params
      */
     constructor(params) {
         super();

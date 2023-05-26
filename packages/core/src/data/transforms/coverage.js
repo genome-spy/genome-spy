@@ -4,10 +4,6 @@ import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
 /**
- * @typedef {import("../../spec/transform").CoverageParams} CoverageParams
- */
-
-/**
  * Computes coverage for sorted segments
  *
  * TODO: Binned coverage
@@ -18,7 +14,7 @@ export default class CoverageTransform extends FlowNode {
     }
 
     /**
-     * @param {CoverageParams} params
+     * @param {import("../../spec/transform").CoverageParams} params
      */
     constructor(params) {
         super();

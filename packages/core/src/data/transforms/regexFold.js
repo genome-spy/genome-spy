@@ -5,8 +5,6 @@ import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode";
  * Folds fields using a regex
  *
  * See: https://vega.github.io/vega/docs/transforms/fold/
- *
- * @typedef {import("../../spec/transform").RegexFoldParams} RegexFoldParams
  */
 export default class RegexFoldTransform extends FlowNode {
     get behavior() {
@@ -14,7 +12,7 @@ export default class RegexFoldTransform extends FlowNode {
     }
 
     /**
-     * @param {RegexFoldParams} params
+     * @param {import("../../spec/transform").RegexFoldParams} params
      */
     constructor(params) {
         super();
@@ -129,7 +127,7 @@ export default class RegexFoldTransform extends FlowNode {
 
         /**
          *
-         * @param {import("../flowNode").FlowBatch} flowBatch
+         * @param {import("../../types/flowBatch").FlowBatch} flowBatch
          */
         this.beginBatch = (flowBatch) => {
             if (isFileBatch(flowBatch)) {

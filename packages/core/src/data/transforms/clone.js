@@ -27,7 +27,7 @@ export default class CloneTransform extends FlowNode {
         /**
          * Signals that a new batch of data will be propagated.
          *
-         * @param {import("../flowNode").FlowBatch} [flowBatch]
+         * @param {import("../../types/flowBatch").FlowBatch} [flowBatch]
          */
         this.beginBatch = (flowBatch) => {
             if (isFileBatch(flowBatch)) {

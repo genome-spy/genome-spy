@@ -2,10 +2,6 @@ import { asArray } from "../../utils/arrayUtils";
 import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
 
-/**
- * @typedef {import("../../spec/transform").LinearizeGenomicCoordinateParams} LinearizeGenomicCoordinateParams
- * @typedef {import("../../view/view").default} View
- */
 export default class LinearizeGenomicCoordinate extends FlowNode {
     get behavior() {
         return BEHAVIOR_MODIFIES;
@@ -13,8 +9,8 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
 
     /**
      *
-     * @param {LinearizeGenomicCoordinateParams} params
-     * @param {View} view
+     * @param {import("../../spec/transform").LinearizeGenomicCoordinateParams} params
+     * @param {import("../../view/view").default} view
      */
     constructor(params, view) {
         super();

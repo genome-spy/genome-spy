@@ -11,9 +11,6 @@ import { asArray } from "../utils/arrayUtils";
  * The collected data can be optionally grouped and sorted.
  *
  * Grouping is primarily intended for handling faceted data.
- *
- * @typedef {import("../spec/transform").CollectParams} CollectParams
- * @typedef {import("./flowNode").Data} Data
  */
 export default class Collector extends FlowNode {
     get behavior() {
@@ -21,7 +18,7 @@ export default class Collector extends FlowNode {
     }
 
     /**
-     * @param {CollectParams} [params]
+     * @param {import("../spec/transform").CollectParams} [params]
      */
     constructor(params) {
         super();
@@ -31,14 +28,14 @@ export default class Collector extends FlowNode {
         /** @type {(function(Collector):void)[]} */
         this.observers = [];
 
-        /** @type {Map<any | any[], Data>} TODO: proper type for key */
+        /** @type {Map<any | any[], import("./flowNode").Data>} TODO: proper type for key */
         this.facetBatches = undefined;
 
         this._init();
     }
 
     _init() {
-        /** @type {Data} */
+        /** @type {import("./flowNode").Data} */
         this._data = [];
 
         // TODO: Consider nested maps

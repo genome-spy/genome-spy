@@ -1,9 +1,3 @@
-/**
- *
- * @typedef {import("./sources/dataSource").default} DataSource
- * @typedef {import("./collector").default} Collector
- */
-
 import NamedSource from "./sources/namedSource";
 
 /**
@@ -12,13 +6,13 @@ import NamedSource from "./sources/namedSource";
  */
 export default class DataFlow {
     constructor() {
-        /** @type {Map<H, DataSource>} */
+        /** @type {Map<H, import("./sources/dataSource").default>} */
         this._dataSourcesByHost = new Map();
 
-        /** @type {Map<H, Collector>} */
+        /** @type {Map<H, import("./collector").default>} */
         this._collectorsByHost = new Map();
 
-        /** @type {Map<H, (function(Collector):void)[]>} */
+        /** @type {Map<H, (function(import("./collector").default):void)[]>} */
         this._observers = new Map();
     }
 
@@ -33,7 +27,7 @@ export default class DataFlow {
     /**
      * Adds a callback function that will be called when a collector has completed.
      *
-     * @param {function(Collector):void} callback
+     * @param {function(import("./collector").default):void} callback
      * @param {H} key
      */
     addObserver(callback, key) {
@@ -48,7 +42,7 @@ export default class DataFlow {
 
     /**
      *
-     * @param {Collector} collector
+     * @param {import("./collector").default} collector
      * @param {H} key
      */
     _relayObserverCallback(collector, key) {
@@ -63,7 +57,7 @@ export default class DataFlow {
 
     /**
      *
-     * @param {DataSource} dataSource
+     * @param {import("./sources/dataSource").default} dataSource
      * @param {H} key
      */
     addDataSource(dataSource, key) {
@@ -117,7 +111,7 @@ export default class DataFlow {
 
     /**
      *
-     * @param {Collector} collector
+     * @param {import("./collector").default} collector
      * @param {H} key
      */
     addCollector(collector, key) {

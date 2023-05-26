@@ -9,17 +9,14 @@ import iterateNestedMaps from "../../utils/iterateNestedMaps";
  *
  * Eventually this will implement the most of Vega's aggregate transform:
  * https://vega.github.io/vega/docs/transforms/aggregate/
- *
- * @typedef {import("../../spec/transform").AggregateParams} AggregateParams
  */
-
 export default class AggregateTransform extends FlowNode {
     get behavior() {
         return BEHAVIOR_CLONES;
     }
 
     /**
-     * @param {AggregateParams} params
+     * @param {import("../../spec/transform").AggregateParams} params
      */
     constructor(params) {
         super();

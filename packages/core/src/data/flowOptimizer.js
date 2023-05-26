@@ -2,14 +2,8 @@ import { BEHAVIOR_CLONES, BEHAVIOR_COLLECTS } from "./flowNode";
 import CloneTransform from "./transforms/clone";
 
 /**
- * @typedef {import("./flowNode").default} FlowNode
- * @typedef {import("./sources/dataSource").default} DataSource
- * @typedef {import("./dataFlow").default<any>} DataFlow
- */
-
-/**
- * @param {FlowNode} node
- * @param {FlowNode} [parent]
+ * @param {import("../view/flowBuilder").FlowNode} node
+ * @param {import("../view/flowBuilder").FlowNode} [parent]
  */
 export function validateLinks(node, parent = undefined) {
     if (node.parent !== parent) {
@@ -28,7 +22,7 @@ export function validateLinks(node, parent = undefined) {
 /**
  * Removes possible redundant CloneTransforms that were added during graph construction.
  *
- * @param {FlowNode} node
+ * @param {import("../view/flowBuilder").FlowNode} node
  */
 export function removeRedundantCloneTransforms(node, cloneRequired = false) {
     if (node.behavior & BEHAVIOR_COLLECTS) {
@@ -93,7 +87,7 @@ export function combineAndPullCollectorsUp() {
 export function combineIdenticalDataSources(dataFlow) {
     const dataSourceEntries = [...dataFlow._dataSourcesByHost.entries()];
 
-    /** @type {Map<string, DataSource>} */
+    /** @type {Map<string, import("./sources/dataSource").default>} */
     const sourcesByIdentifiers = new Map();
     for (const e of dataSourceEntries) {
         const ds = e[1];
@@ -116,7 +110,7 @@ export function combineIdenticalDataSources(dataFlow) {
 
 /**
  *
- * @param {FlowNode} root
+ * @param {import("../view/flowBuilder").FlowNode} root
  */
 export function optimizeFlowGraph(root) {
     removeRedundantCloneTransforms(root);

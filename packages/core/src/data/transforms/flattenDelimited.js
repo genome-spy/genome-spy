@@ -2,21 +2,13 @@ import { asArray } from "../../utils/arrayUtils";
 import { field } from "../../utils/field";
 import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
 
-/**
- * @typedef {import("../../spec/transform").FlattenDelimitedParams} FlattenDelimitedParams
- * @prop {string[]} separators
- * @prop {string[]} fields
- * @prop {string[]} [as]
- */
-
 export default class FlattenDelimitedTransform extends FlowNode {
     get behavior() {
         return BEHAVIOR_CLONES;
     }
 
     /**
-     *
-     * @param {FlattenDelimitedParams} params
+     * @param {import("../../spec/transform").FlattenDelimitedParams} params
      */
     constructor(params) {
         super();

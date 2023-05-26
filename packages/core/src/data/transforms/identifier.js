@@ -24,8 +24,6 @@ const reservationMap = [null];
  * quick lookup of the IdentifierTransform instance that assigned the id.
  * This is mainly used for creating ids that can be used for picking, i.e.,
  * selecting rendered data items by hovering or clicking.
- *
- * @typedef {import("../../spec/transform").IdentifierParams} IdentifierParams
  */
 export default class IdentifierTransform extends FlowNode {
     get behavior() {
@@ -34,7 +32,7 @@ export default class IdentifierTransform extends FlowNode {
 
     /**
      *
-     * @param {IdentifierParams} params
+     * @param {import("../../spec/transform").IdentifierParams} params
      */
     constructor(params) {
         super();
