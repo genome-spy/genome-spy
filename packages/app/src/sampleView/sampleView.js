@@ -76,12 +76,13 @@ export default class SampleView extends ContainerView {
      *
      * @param {import("@genome-spy/core/spec/sampleView").SampleSpec} spec
      * @param {import("@genome-spy/core/types/viewContext").default} context
-     * @param {ContainerView} parent
+     * @param {ContainerView} layoutParent
+     * @param {import("@genome-spy/core/view/view").default} dataParent
      * @param {string} name
      * @param {import("../state/provenance").default<any>} provenance
      */
-    constructor(spec, context, parent, name, provenance) {
-        super(spec, context, parent, name);
+    constructor(spec, context, layoutParent, dataParent, name, provenance) {
+        super(spec, context, layoutParent, dataParent, name);
 
         this.provenance = provenance;
 
@@ -93,12 +94,13 @@ export default class SampleView extends ContainerView {
 
         /** @type { UnitView | LayerView } */
         this.child = /** @type { UnitView | LayerView } */ (
-            context.createView(spec.spec, this, "sample-facets")
+            context.createView(spec.spec, this, this, "sample-facets")
         );
 
         this.summaryViews = new ConcatView(
             { vconcat: [] },
             context,
+            this,
             this,
             "sampleSummaries"
         );
@@ -144,6 +146,7 @@ export default class SampleView extends ContainerView {
             },
             context,
             this,
+            this,
             "sample-sidebar"
         );
         this.peripheryCoords = Rectangle.ZERO;
@@ -159,6 +162,7 @@ export default class SampleView extends ContainerView {
                 const unitView = new UnitView(
                     createBackground(viewBackground),
                     this.context,
+                    this,
                     this,
                     "sample-background"
                 );
@@ -702,7 +706,7 @@ export default class SampleView extends ContainerView {
             return;
         }
 
-        if (!this.parent) {
+        if (!this.layoutParent) {
             // Usually padding is applied by GridView, but if this is the root view, we need to apply it here
             coords = coords.shrink(this.getPadding());
         }
@@ -906,7 +910,7 @@ export default class SampleView extends ContainerView {
             this.getScaleResolution("x").invertToComplex(normalizedXPos);
 
         const uniqueViewNames = findUniqueViewNames(
-            [...this.getAncestors()].at(-1)
+            [...this.getLayoutAncestors()].at(-1)
         );
 
         const fieldInfos = findEncodedFields(this.child)
@@ -1037,7 +1041,7 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {string} channel
-     * @param {import("@genome-spy/core/view/containerView").ResolutionTarget} resolutionType
+     * @param {import("@genome-spy/core/spec/view").ResolutionTarget} resolutionType
      * @returns {import("@genome-spy/core/spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {

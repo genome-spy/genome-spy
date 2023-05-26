@@ -56,12 +56,14 @@ export default class View {
      *
      * @param {import("../spec/view").ViewSpec} spec
      * @param {import("../types/viewContext").default} context
-     * @param {import("./containerView").default} parent
+     * @param {import("./containerView").default} layoutParent Parent that handles rendering of this view
+     * @param {import("./view").default} dataParent Parent that provides data, encodings, and is used in scale resolution
      * @param {string} name
      */
-    constructor(spec, context, parent, name) {
+    constructor(spec, context, layoutParent, dataParent, name) {
         this.context = context;
-        this.parent = parent;
+        this.layoutParent = layoutParent;
+        this.dataParent = dataParent;
         this.name = spec.name || name;
         this.spec = spec;
 
@@ -212,7 +214,9 @@ export default class View {
      * @returns {boolean}
      */
     isVisible() {
-        return this.getAncestors().every((view) => view.isConfiguredVisible());
+        return this.getLayoutAncestors().every((view) =>
+            view.isConfiguredVisible()
+        );
     }
 
     /**
@@ -224,31 +228,46 @@ export default class View {
      * @returns {number}
      */
     getEffectiveOpacity() {
-        return this.opacityFunction(this.parent?.getEffectiveOpacity() ?? 1.0);
+        return this.opacityFunction(
+            this.layoutParent?.getEffectiveOpacity() ?? 1.0
+        );
     }
 
     getPathString() {
-        return this.getAncestors()
+        return this.getLayoutAncestors()
             .map((v) => v.name)
             .reverse()
             .join("/");
     }
 
     /**
-     * Returns the ancestor views, starting with this view.
-     *
+     * @param {"dataParent" | "layoutParent"} prop
      * @returns {View[]}
      */
-    getAncestors() {
+    #getAncestors(prop) {
         /** @type {View[]} */
         const ancestors = [];
         // eslint-disable-next-line consistent-this
         let view = /** @type {View} */ (this);
         do {
             ancestors.push(view);
-            view = view.parent;
+            view = view[prop];
         } while (view);
         return ancestors;
+    }
+
+    /**
+     * Returns the ancestor views, starting with this view.
+     */
+    getLayoutAncestors() {
+        return this.#getAncestors("layoutParent");
+    }
+
+    /**
+     * Returns the ancestor views, starting with this view.
+     */
+    getDataAncestors() {
+        return this.#getAncestors("dataParent");
     }
 
     /**
@@ -385,8 +404,8 @@ export default class View {
      */
     getEncoding() {
         const pe =
-            this.parent && !this.blockEncodingInheritance
-                ? this.parent.getEncoding()
+            this.dataParent && !this.blockEncodingInheritance
+                ? this.dataParent.getEncoding()
                 : {};
         const te = this.spec.encoding || {};
 
@@ -412,8 +431,8 @@ export default class View {
      * @return {function(object):any}
      */
     getFacetAccessor(whoIsAsking) {
-        if (this.parent) {
-            return this.parent.getFacetAccessor(this);
+        if (this.layoutParent) {
+            return this.layoutParent.getFacetAccessor(this);
         }
     }
 
@@ -428,7 +447,7 @@ export default class View {
         if (isFieldDef(sampleFieldDef)) {
             return [sampleFieldDef.field];
         } else {
-            return this.parent?.getFacetFields(this);
+            return this.layoutParent?.getFacetFields(this);
         }
     }
 
@@ -451,7 +470,7 @@ export default class View {
                 getPrimaryChannel(channel)
             );
 
-        return this.getAncestors()
+        return this.getDataAncestors()
             .map((view) => view.resolutions.scale[primaryChannel])
             .find((resolution) => resolution);
     }
@@ -465,7 +484,7 @@ export default class View {
                 getPrimaryChannel(channel)
             );
 
-        return this.getAncestors()
+        return this.getDataAncestors()
             .map((view) => view.resolutions.axis[primaryChannel])
             .find((resolution) => resolution);
     }
@@ -475,7 +494,7 @@ export default class View {
      */
     getBaseUrl() {
         return appendToBaseUrl(
-            () => this.parent?.getBaseUrl(),
+            () => this.layoutParent?.getBaseUrl(),
             this.spec.baseUrl
         );
     }
@@ -522,7 +541,7 @@ export default class View {
                 invalidatePrefix(this, key);
                 break;
             case "ancestors":
-                for (const view of this.getAncestors()) {
+                for (const view of this.getLayoutAncestors()) {
                     invalidatePrefix(view, key);
                 }
                 break;

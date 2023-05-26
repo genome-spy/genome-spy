@@ -120,6 +120,7 @@ export class GroupPanel extends LayerView {
             },
             sampleView.context,
             undefined,
+            undefined,
             "sample-groups"
         );
 
@@ -236,7 +237,7 @@ export class GroupPanel extends LayerView {
         }
 
         // TODO: Get rid of the following. Should happen automatically:
-        peek([...this.getAncestors()]).visit((view) =>
+        peek([...this.getLayoutAncestors()]).visit((view) =>
             invalidatePrefix(view, "size")
         );
     }

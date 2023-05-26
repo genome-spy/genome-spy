@@ -26,7 +26,7 @@ export function create(spec, viewClass, context = undefined) {
         },
     });
 
-    const view = c.createView(spec, null, "root");
+    const view = c.createView(spec, null, null, "root");
 
     if (!(view instanceof viewClass)) {
         throw new Error("ViewClass and the spec do not match!");

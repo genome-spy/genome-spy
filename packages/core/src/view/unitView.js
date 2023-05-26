@@ -47,11 +47,12 @@ export default class UnitView extends ContainerView {
      *
      * @param {import("../spec/view").UnitSpec} spec
      * @param {import("../types/viewContext").default} context
-     * @param {import("./containerView").default} parent
+     * @param {import("./containerView").default} layoutParent
+     * @param {import("./view").default} dataParent
      * @param {string} name
      */
-    constructor(spec, context, parent, name) {
-        super(spec, context, parent, name);
+    constructor(spec, context, layoutParent, dataParent, name) {
+        super(spec, context, layoutParent, dataParent, name);
 
         this.spec = spec; // Set here again to keep types happy
 
@@ -128,7 +129,7 @@ export default class UnitView extends ContainerView {
     }
 
     /**
-     * Pulls scales and axes up in the view hierarcy according to the resolution rules.
+     * Pulls scales and axes up in the view hierarcy according to the resolution rules, using dataParents.
      * TODO: legends
      *
      * @param {ResolutionTarget} type
@@ -160,9 +161,9 @@ export default class UnitView extends ContainerView {
             while (
                 (view.getConfiguredOrDefaultResolution(targetChannel, type) ==
                     "forced" ||
-                    (view.parent instanceof ContainerView &&
+                    (view.dataParent instanceof ContainerView &&
                         ["shared", "excluded", "forced"].includes(
-                            view.parent.getConfiguredOrDefaultResolution(
+                            view.dataParent.getConfiguredOrDefaultResolution(
                                 targetChannel,
                                 type
                             )
@@ -171,7 +172,7 @@ export default class UnitView extends ContainerView {
                     "excluded"
             ) {
                 // @ts-ignore
-                view = view.parent;
+                view = view.dataParent;
             }
 
             // Quite a bit of redundancy, but makes type checker happy.
@@ -351,6 +352,7 @@ export default class UnitView extends ContainerView {
             .reduce((a, c) => a * c, 1);
     }
 
+    // TODO: Move this to SampleView
     _initializeAggregateViews() {
         if (isAggregateSamplesSpec(this.spec)) {
             // TODO: Support multiple
@@ -369,7 +371,7 @@ export default class UnitView extends ContainerView {
                 };
 
                 const summaryView = /** @type { UnitView | LayerView } */ (
-                    this.context.createView(sumSpec, this, "summaryView")
+                    this.context.createView(sumSpec, this, this, "summaryView")
                 );
 
                 /**
@@ -391,7 +393,7 @@ export default class UnitView extends ContainerView {
 
     /**
      * @param {string} channel
-     * @param {import("./containerView").ResolutionTarget} resolutionType
+     * @param {ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {

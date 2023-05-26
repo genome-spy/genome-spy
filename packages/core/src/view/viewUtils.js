@@ -223,11 +223,12 @@ export async function processImports(viewRoot) {
         // TODO: Let importSpec have a name
         const importedView = context.createView(
             loadedSpec,
-            view.parent,
+            view.layoutParent,
+            view.dataParent,
             view.name
         );
         // @ts-expect-error TODO: Fix typing issue
-        view.parent.replaceChild(view, importedView);
+        view.layoutParent.replaceChild(view, importedView);
 
         // Import recursively
         await processImports(importedView);

@@ -728,7 +728,7 @@ export default class ScaleResolution {
             .filter(
                 (member) =>
                     !member.view
-                        .getAncestors()
+                        .getLayoutAncestors()
                         // TODO: Should check until the resolved scale resolution
                         .some((view) => !view.contributesToScaleDomain)
             )

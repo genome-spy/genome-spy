@@ -9,11 +9,12 @@ export default class LayerView extends ContainerView {
      *
      * @param {import("../spec/view").LayerSpec} spec
      * @param {import("../types/viewContext").default} context
-     * @param {ContainerView} parent
+     * @param {ContainerView} layoutParent
+     * @param {import("./view").default} dataParent
      * @param {string} name
      */
-    constructor(spec, context, parent, name) {
-        super(spec, context, parent, name);
+    constructor(spec, context, layoutParent, dataParent, name) {
+        super(spec, context, layoutParent, dataParent, name);
 
         this.spec = spec;
 
@@ -21,7 +22,7 @@ export default class LayerView extends ContainerView {
         // @ts-expect-error TODO: Fix typing
         this.children = (spec.layer || []).map((childSpec, i) => {
             if (isLayerSpec(childSpec) || isUnitSpec(childSpec)) {
-                return context.createView(childSpec, this, "layer" + i);
+                return context.createView(childSpec, this, this, "layer" + i);
             } else {
                 throw new Error(
                     "LayerView accepts only unit or layer specs as children!"

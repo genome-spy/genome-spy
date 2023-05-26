@@ -123,7 +123,7 @@ class ViewSettingsButton extends LitElement {
             .filter(
                 (view) => isCustomViewName(view.name) && isConfigurable(view)
             )
-            .map((view) => [...view.getAncestors()].reverse());
+            .map((view) => [...view.getLayoutAncestors()].reverse());
 
         this.nestedPaths = nestPaths(paths);
     }
@@ -218,6 +218,6 @@ class ViewSettingsButton extends LitElement {
 
 const isConfigurable = (/** @type {View} */ view) =>
     view.spec.configurableVisibility ??
-    !(view.parent && view.parent instanceof LayerView);
+    !(view.layoutParent && view.layoutParent instanceof LayerView);
 
 customElements.define("genome-spy-view-visibility", ViewSettingsButton);

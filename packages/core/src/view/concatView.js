@@ -9,14 +9,16 @@ export default class ConcatView extends GridView {
      *
      * @param {import("../spec/view").AnyConcatSpec} spec
      * @param {import("../types/viewContext").default} context
-     * @param {import("./containerView").default} parent
+     * @param {import("./containerView").default} layoutParent
+     * @param {import("./view").default} dataParent
      * @param {string} name
      */
-    constructor(spec, context, parent, name) {
+    constructor(spec, context, layoutParent, dataParent, name) {
         super(
             spec,
             context,
-            parent,
+            layoutParent,
+            dataParent,
             name,
             isConcatSpec(spec)
                 ? spec.columns
@@ -39,7 +41,7 @@ export default class ConcatView extends GridView {
         this.setChildren(
             childSpecs.map((childSpec, i) =>
                 // @ts-expect-error TODO: Fix typing
-                this.context.createView(childSpec, this, "grid" + i)
+                this.context.createView(childSpec, this, this, "grid" + i)
             )
         );
     }

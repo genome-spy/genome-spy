@@ -17,10 +17,8 @@ export class ViewFactory {
      * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
      *
      * @typedef {(spec: ViewSpec) => boolean} SpecGuard
-     * @typedef {(spec: ViewSpec, context: ViewContext, parent?: import("./containerView").default, defaultName?: string) => View} Factory
+     * @typedef {(spec: ViewSpec, context: ViewContext, layoutParent?: import("./containerView").default, dataParent?: import("./view").default, defaultName?: string) => View} Factory
      */
-
-    /** */
     constructor() {
         /** @type {{specGuard: SpecGuard, factory: Factory}[]} */
         this.types = [];
@@ -28,12 +26,13 @@ export class ViewFactory {
         const makeDefaultFactory =
             (/** @type {typeof View} */ ViewClass) =>
             /** @type {Factory} */
-            (spec, context, parent, defaultName) =>
+            (spec, context, layoutParent, dataParent, defaultName) =>
                 /** @type {View} */ (
                     new ViewClass(
                         spec,
                         context,
-                        parent,
+                        layoutParent,
+                        dataParent,
                         spec.name ?? defaultName
                     )
                 );
@@ -59,16 +58,18 @@ export class ViewFactory {
     /**
      * @param {ViewSpec} spec
      * @param {ViewContext} context
-     * @param {import("./containerView").default} [parent]
+     * @param {import("./containerView").default} [layoutParent]
+     * @param {import("./view").default} [dataParent]
      * @param {string} [defaultName]
      */
-    createView(spec, context, parent, defaultName) {
+    createView(spec, context, layoutParent, dataParent, defaultName) {
         const type = this.types.find((type) => type.specGuard(spec));
         if (type) {
             return type.factory(
                 spec,
                 context,
-                parent,
+                layoutParent,
+                dataParent,
                 defaultName ?? "unnamed"
             );
         } else {

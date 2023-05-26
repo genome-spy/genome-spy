@@ -55,6 +55,8 @@ export class SampleAttributePanel extends ConcatView {
             sampleView.context,
             // TODO: fix parent
             undefined,
+            // TODO: fix parent
+            undefined,
             "sample-metadata"
         );
 
@@ -105,23 +107,22 @@ export class SampleAttributePanel extends ConcatView {
         });
 
         // TODO: Implement "mouseleave" event. Let's hack for now...
-        peek([...this.sampleView.getAncestors()]).addInteractionEventListener(
-            "mousemove",
-            (coords, event) => {
-                if (!this._attributeHighlighState.currentAttribute) {
-                    return;
-                }
-                if (event.target) {
-                    for (const view of event.target.getAncestors()) {
-                        if (view == this) {
-                            return;
-                        }
+        peek([
+            ...this.sampleView.getLayoutAncestors(),
+        ]).addInteractionEventListener("mousemove", (coords, event) => {
+            if (!this._attributeHighlighState.currentAttribute) {
+                return;
+            }
+            if (event.target) {
+                for (const view of event.target.getLayoutAncestors()) {
+                    if (view == this) {
+                        return;
                     }
                 }
-
-                this._handleAttributeHighlight(undefined);
             }
-        );
+
+            this._handleAttributeHighlight(undefined);
+        });
     }
 
     /**
@@ -505,7 +506,7 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {string} channel
-     * @param {import("@genome-spy/core/view/containerView").ResolutionTarget} resolutionType
+     * @param {import("@genome-spy/core/spec/view").ResolutionTarget} resolutionType
      * @returns {import("@genome-spy/core/spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {

@@ -121,13 +121,15 @@ export default class App {
             (
                 /** @type {import("@genome-spy/core/spec/sampleView").SampleSpec} */ spec,
                 context,
-                parent,
+                layoutParent,
+                dataParent,
                 defaultName
             ) =>
                 new SampleView(
                     spec,
                     context,
-                    parent,
+                    layoutParent,
+                    dataParent,
                     defaultName,
                     this.provenance
                 )
