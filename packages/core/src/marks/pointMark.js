@@ -8,7 +8,7 @@ import Mark from "./mark";
 import { sampleIterable } from "../data/transforms/sample";
 import { fixFill, fixStroke } from "./markUtils";
 
-/** @type {Record<string, import("../view/viewUtils").ChannelDef>} */
+/** @type {Record<string, import("../spec/channel").ChannelDef>} */
 const defaultEncoding = {};
 
 export default class PointMark extends Mark {
@@ -206,7 +206,7 @@ export default class PointMark extends Mark {
     }
 
     /**
-     * @param {import("../view/rendering").GlobalRenderingOptions} options
+     * @param {import("../types/rendering").GlobalRenderingOptions} options
      */
     prepareRender(options) {
         const ops = super.prepareRender(options);

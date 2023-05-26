@@ -7,8 +7,8 @@ import View, { VISIT_STOP, VISIT_SKIP } from "./view";
 export default class ContainerView extends View {
     /**
      *
-     * @param {import("./viewUtils").ContainerSpec} spec
-     * @param {import("./view").ViewContext} context
+     * @param {import("../spec/view").ContainerSpec} spec
+     * @param {import("../types/viewContext").default} context
      * @param {ContainerView} parent
      * @param {string} name
      */

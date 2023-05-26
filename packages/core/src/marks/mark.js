@@ -46,7 +46,7 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
  * @typedef {import("../spec/channel").Encoding} Encoding
  * @typedef {import("../spec/channel").ValueDef} ValueDef
  *
- * @typedef {import("../view/view").RenderingOptions} RenderingOptions
+ * @typedef {import("../types/rendering").RenderingOptions} RenderingOptions
  * @typedef {object} _MarkRenderingOptions
  * @prop {boolean} [skipViewportSetup] Don't configure viewport. Allows for
  *      optimized faceted rendering
@@ -568,7 +568,7 @@ export default class Mark {
      * views, i.e., multiple views share the uniforms (such as mark properties
      * and scales) and buffers.
      *
-     * @param {import("../view/rendering").GlobalRenderingOptions} options
+     * @param {import("../types/rendering").GlobalRenderingOptions} options
      * @returns {(() => void)[]}
      */
     // eslint-disable-next-line complexity

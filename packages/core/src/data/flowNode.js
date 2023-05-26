@@ -22,7 +22,7 @@ const ROOT_CONTEXT_OBJECT = {};
 /**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
  *
- * @typedef {import("./flowBatch").FlowBatch} FlowBatch
+ * @typedef {import("../types/flowBatch").FlowBatch} FlowBatch
  *
  * @typedef {Record<string, any>} Datum
  * @typedef {Datum[]} Data
@@ -274,7 +274,7 @@ export default class FlowNode {
 
 /**
  * @param {FlowBatch} flowBatch
- * @returns {flowBatch is import("./flowBatch").FileBatch}
+ * @returns {flowBatch is import("../types/flowBatch").FileBatch}
  */
 export function isFileBatch(flowBatch) {
     return flowBatch.type == "file";
@@ -282,7 +282,7 @@ export function isFileBatch(flowBatch) {
 
 /**
  * @param {FlowBatch} flowBatch
- * @returns {flowBatch is import("./flowBatch").FacetBatch}
+ * @returns {flowBatch is import("../types/flowBatch").FacetBatch}
  */
 export function isFacetBatch(flowBatch) {
     return flowBatch.type == "facet";

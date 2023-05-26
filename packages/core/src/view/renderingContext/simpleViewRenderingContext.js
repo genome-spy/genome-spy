@@ -8,7 +8,7 @@ import ViewRenderingContext from "./viewRenderingContext";
  */
 export default class SimpleViewRenderingContext extends ViewRenderingContext {
     /**
-     * @param {import("../rendering").GlobalRenderingOptions} globalOptions
+     * @param {import("../../types/rendering").GlobalRenderingOptions} globalOptions
      */
     constructor(globalOptions) {
         super(globalOptions);
@@ -48,7 +48,7 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
     /**
      *
      * @param {import("../../marks/mark").default} mark
-     * @param {import("../view").RenderingOptions} options
+     * @param {import("../../types/rendering").RenderingOptions} options
      */
     renderMark(mark, options) {
         if (this.globalOptions.picking && !mark.isPickingParticipant()) {

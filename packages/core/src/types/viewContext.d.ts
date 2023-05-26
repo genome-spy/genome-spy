@@ -1,5 +1,5 @@
 import { TemplateResult } from "lit-html";
-import View, { BroadcastMessage } from "./view";
+import View, { BroadcastMessage } from "../view/view";
 import DataFlow from "../data/dataFlow";
 import AccessorFactory from "../encoder/accessor";
 import WebGLHelper from "../gl/webGLHelper";

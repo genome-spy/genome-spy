@@ -16,7 +16,7 @@ import { orient2channel } from "./axisView";
 export default class AxisGridView extends LayerView {
     /**
      * @param {Axis} axisProps
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("../types/viewContext").default} context
      * @param {string} type Data type (quantitative, ..., locus)
      * @param {import("./containerView").default} parent
      */

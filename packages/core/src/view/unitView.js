@@ -48,7 +48,7 @@ export default class UnitView extends ContainerView {
     /**
      *
      * @param {import("../spec/view").UnitSpec} spec
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("../types/viewContext").default} context
      * @param {import("./containerView").default} parent
      * @param {string} name
      */
@@ -109,7 +109,7 @@ export default class UnitView extends ContainerView {
     /**
      * @param {import("./renderingContext/viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./view").RenderingOptions} [options]
+     * @param {import("../types/rendering").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
@@ -207,7 +207,7 @@ export default class UnitView extends ContainerView {
 
     /**
      *
-     * @param {import("./view").Channel} channel
+     * @param {Channel} channel
      */
     getAccessor(channel) {
         return this._cache("accessor/" + channel, () => {

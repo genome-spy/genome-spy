@@ -74,8 +74,8 @@ export default class SampleView extends ContainerView {
 
     /**
      *
-     * @param {import("@genome-spy/core/view/viewUtils").SampleSpec} spec
-     * @param {import("@genome-spy/core/view/viewUtils").ViewContext} context
+     * @param {import("@genome-spy/core/spec/sampleView").SampleSpec} spec
+     * @param {import("@genome-spy/core/types/viewContext").default} context
      * @param {ContainerView} parent
      * @param {string} name
      * @param {import("../state/provenance").default<any>} provenance
@@ -631,9 +631,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/renderingContext/viewRenderingContext").default} context
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
-     * @param {import("@genome-spy/core/view/view").RenderingOptions} [options]
+     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
      */
     renderChild(context, coords, options = {}) {
         const heightFactor = 1 / coords.height;
@@ -660,9 +658,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/renderingContext/viewRenderingContext").default} context
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
-     * @param {import("@genome-spy/core/view/view").RenderingOptions} [options]
+     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
      */
     renderSummaries(context, coords, options = {}) {
         options = {
@@ -699,9 +695,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/renderingContext/viewRenderingContext").default} context
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
-     * @param {import("@genome-spy/core/view/view").RenderingOptions} [options]
+     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {

@@ -30,17 +30,6 @@ export const VISIT_STOP = "VISIT_STOP";
 const defaultOpacityFunction = (parentOpacity) => parentOpacity;
 
 /**
- * @typedef {import("../spec/channel").Channel} Channel
- * @typedef {import("../spec/channel").ChannelDef} ChannelDef
- * @typedef {import("../spec/view").ViewSpec} ViewSpec
- * @typedef {import("./viewUtils").ViewContext} ViewContext
- * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
- * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
- *
- * @typedef {import("../spec/view").ResolutionTarget} ResolutionTarget
- * @typedef {import("./scaleResolution").default} ScaleResolution
- * @typedef {import("./axisResolution").default} AxisResolution
- *
  * @typedef {VISIT_SKIP|VISIT_STOP|void} VisitResult
  *
  * @callback VisitorCallback
@@ -57,8 +46,6 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @prop {import("../genomeSpy").BroadcastEventType} type Broadcast type
  * @prop {any} [payload] Anything
  *
- * @typedef {import("./rendering").RenderingOptions} RenderingOptions
- *
  * @callback InteractionEventListener
  * @param {import("../utils/layout/rectangle").default} coords
  *      Coordinates of the view
@@ -67,8 +54,8 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
 export default class View {
     /**
      *
-     * @param {ViewSpec} spec
-     * @param {ViewContext} context
+     * @param {import("../spec/view").ViewSpec} spec
+     * @param {import("../types/viewContext").default} context
      * @param {import("./containerView").default} parent
      * @param {string} name
      */
@@ -152,7 +139,7 @@ export default class View {
     getSizeFromSpec() {
         /**
          * @param {"width" | "height"} dimension
-         * @return {SizeDef}
+         * @return {import("../utils/layout/flexLayout").SizeDef}
          */
         const handleSize = (dimension) => {
             let value = this.spec[dimension];
@@ -383,10 +370,7 @@ export default class View {
      * Recursively traverses the view hierarchy, computes the view coordinates,
      * and coordinates the mark rendering.
      *
-     * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {import("../utils/layout/rectangle").default} coords The coordinate rectangle that the parent computed
-     *      for the child that is being visited.
-     * @param {RenderingOptions} [options]
+     * @type {import("../types/rendering").RenderMethod}
      */
     render(context, coords, options = {}) {
         // override

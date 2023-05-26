@@ -11,30 +11,8 @@ import { isFieldDef, primaryPositionalChannels } from "../encoder/encoder";
 import { rollup } from "d3-array";
 
 /**
- * @typedef {import("./viewContext").default} ViewContext
- * @typedef {import("../spec/mark").MarkConfig} MarkConfig
- * @typedef {import("../spec/channel").ChannelDef} ChannelDef
- * @typedef {import("../spec/view").ContainerSpec} ContainerSpec
- * @typedef {import("../spec/view").ViewSpec} ViewSpec
- * @typedef {import("../spec/view").LayerSpec} LayerSpec
- * @typedef {import("../spec/view").FacetSpec} FacetSpec
- * @typedef {import("../spec/sampleView").SampleSpec} SampleSpec
- * @typedef {import("../spec/view").UnitSpec} UnitSpec
- * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
- * @typedef {import("../spec/view").HConcatSpec} HConcatSpec
- * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
- * @typedef {VConcatSpec | HConcatSpec | ConcatSpec} AnyConcatSpec
- * @typedef {import("../spec/view").ImportSpec} ImportSpec
- * @typedef {import("../spec/view").ImportConfig} ImportConfig
- * @typedef {import("../spec/root").RootSpec} RootSpec
  *
- * @typedef {import("../spec/view").FacetMapping} FacetMapping
- * @typedef {import("../spec/channel").FacetFieldDef} FacetFieldDef
- */
-
-/**
- *
- * @param {ChannelDef | FacetMapping} def
+ * @param {import("../spec/channel").ChannelDef | import("../spec/view").FacetMapping} def
  * @returns {spec is FacetFieldDef}
  */
 export function isFacetFieldDef(def) {
@@ -43,7 +21,7 @@ export function isFacetFieldDef(def) {
 
 /**
  *
- * @param {FacetFieldDef | FacetMapping} def
+ * @param {import("../spec/channel").FacetFieldDef | import("../spec/view").FacetMapping} def
  * @returns {spec is FacetMapping}
  */
 export function isFacetMapping(def) {
@@ -186,7 +164,7 @@ export function findEncodedFields(view) {
 /**
  * @param {import("../spec/view").ImportSpec} spec
  * @param {string} baseUrl
- * @param {ViewContext} viewContext
+ * @param {import("../types/viewContext").default} viewContext
  */
 async function loadExternalViewSpec(spec, baseUrl, viewContext) {
     if (!spec.import.url) {
@@ -248,7 +226,7 @@ export async function processImports(viewRoot) {
             view.parent,
             view.name
         );
-        // @ts-expect-error TODO: Fix typing
+        // @ts-expect-error TODO: Fix typing issue
         view.parent.replaceChild(view, importedView);
 
         // Import recursively

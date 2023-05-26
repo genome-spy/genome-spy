@@ -8,7 +8,7 @@ export default class ImportView extends View {
     /**
      *
      * @param {import("../spec/view").ImportSpec} spec
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("../types/viewContext").default} context
      * @param {import("./view").default} parent
      * @param {string} name
      */

@@ -7,8 +7,8 @@ import GridView from "./gridView";
 export default class ConcatView extends GridView {
     /**
      *
-     * @param {import("./viewUtils").AnyConcatSpec} spec
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("../spec/view").AnyConcatSpec} spec
+     * @param {import("../types/viewContext").default} context
      * @param {import("./containerView").default} parent
      * @param {string} name
      */

@@ -11,8 +11,8 @@ export { GenomeSpy, html, icon, favIcon };
 /**
  * Embeds GenomeSpy into the DOM
  *
- * @type {import("./embedApi.js").EmbedFunction}
- * @returns {Promise<import("./embedApi").EmbedResult>}
+ * @type {import("./types/embedApi.js").EmbedFunction}
+ * @returns {Promise<import("./types/embedApi.js").EmbedResult>}
  */
 export async function embed(el, spec, options = {}) {
     /** @type {HTMLElement} */
@@ -95,7 +95,7 @@ export async function embed(el, spec, options = {}) {
 /**
  *
  * @param {import("./genomeSpy").default} genomeSpy
- * @param {import("./embedApi.js").EmbedOptions} options options
+ * @param {import("./types/embedApi.js").EmbedOptions} options options
  */
 function applyOptions(genomeSpy, options) {
     if (options.namedDataProvider) {

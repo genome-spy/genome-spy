@@ -133,9 +133,7 @@ export class SampleAttributePanel extends ConcatView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/renderingContext/viewRenderingContext").default} context
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
-     * @param {import("@genome-spy/core/view/view").RenderingOptions} [options]
+     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
@@ -582,7 +580,7 @@ export class SampleAttributePanel extends ConcatView {
 function createAttributeSpec(attributeName, attributeDef, sampleDef) {
     const field = `attributes["${attributeName}"]`;
 
-    /** @type {import("@genome-spy/core/view/viewUtils").UnitSpec} */
+    /** @type {import("@genome-spy/core/spec/view").UnitSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
         title: {
@@ -636,7 +634,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
 function createLabelViewSpec(sampleDef) {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
-    /** @type {import("@genome-spy/core/view/viewUtils").UnitSpec} */
+    /** @type {import("@genome-spy/core/spec/view").UnitSpec} */
     const titleSpec = {
         name: "metadata-sample-name",
         title: {

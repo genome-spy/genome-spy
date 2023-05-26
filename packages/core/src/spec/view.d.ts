@@ -205,3 +205,5 @@ export interface ConcatSpec extends ConcatBase {
     concat: (ViewSpec | ImportSpec)[];
     columns: number;
 }
+
+export type AnyConcatSpec = VConcatSpec | HConcatSpec | ConcatSpec;

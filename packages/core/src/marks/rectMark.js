@@ -184,7 +184,7 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @param {import("../view/rendering").GlobalRenderingOptions} options
+     * @param {import("../types/rendering").GlobalRenderingOptions} options
      */
     prepareRender(options) {
         const ops = super.prepareRender(options);

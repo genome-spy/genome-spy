@@ -2,7 +2,7 @@ import GridView from "./gridView";
 
 export default class ImplicitRootView extends GridView {
     /**
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("../types/viewContext").default} context
      * @param {import("./view").default} view
      */
     constructor(context, view) {

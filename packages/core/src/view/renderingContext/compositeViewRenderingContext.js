@@ -41,7 +41,7 @@ export default class CompositeViewRenderingContext extends ViewRenderingContext 
     /**
      *
      * @param {import("../../marks/mark").default} mark
-     * @param {import("../view").RenderingOptions} options
+     * @param {import("../../types/rendering").RenderingOptions} options
      */
     renderMark(mark, options) {
         for (const context of this.contexts) {

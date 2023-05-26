@@ -7,8 +7,8 @@ import ContainerView from "./containerView";
 export default class LayerView extends ContainerView {
     /**
      *
-     * @param {import("./viewUtils").LayerSpec} spec
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("../spec/view").LayerSpec} spec
+     * @param {import("../types/viewContext").default} context
      * @param {ContainerView} parent
      * @param {string} name
      */
@@ -42,7 +42,7 @@ export default class LayerView extends ContainerView {
     /**
      * @param {import("./renderingContext/viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./view").RenderingOptions} [options]
+     * @param {import("../types/rendering").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {

@@ -8,7 +8,7 @@ const MAX_ASCII = 127;
  * https://github.com/mattdesl/bmfont2json
  * https://github.com/etiennepinchon/aframe-fonts
  *
- * @typedef {import("./bmFont").Char} Char
+ * @typedef {import("../types/bmFont").Char} Char
  *
  * @typedef {object} BMFontMetrics
  * @prop {(text: string, fontSize?: number) => number} measureWidth
@@ -17,16 +17,16 @@ const MAX_ASCII = 127;
  * @prop {number} xHeight
  * @prop {number} capHeight
  * @prop {number} descent
- * @prop {import("./bmFont").Common} common
+ * @prop {import("../types/bmFont").Common} common
  *
- * @param {import("./bmFont").BMFont} bmFont
+ * @param {import("../types/bmFont").BMFont} bmFont
  * @returns {BMFontMetrics}
  */
 export default function getMetrics(bmFont) {
     /**
      * Use an ordinary array for fast lookup of ascii chars
      *
-     * @type {import("./bmFont").Char[]}
+     * @type {import("../types/bmFont").Char[]}
      */
     const asciiChars = [];
 

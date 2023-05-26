@@ -172,7 +172,7 @@ export default class RuleMark extends Mark {
     }
 
     /**
-     * @param {import("../view/rendering").GlobalRenderingOptions} options
+     * @param {import("../types/rendering").GlobalRenderingOptions} options
      */
     prepareRender(options) {
         const ops = super.prepareRender(options);

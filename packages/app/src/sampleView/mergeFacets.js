@@ -162,7 +162,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     _updateScales() {
-        /** @type {Set<import("@genome-spy/core/view/view").ScaleResolution>} */
+        /** @type {Set<import("@genome-spy/core/view/scaleResolution").default>} */
         const resolutions = new Set();
         this.view.visit((view) => {
             if (view instanceof UnitView && view.mark.encoding.y) {

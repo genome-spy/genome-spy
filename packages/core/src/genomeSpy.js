@@ -55,7 +55,7 @@ export default class GenomeSpy {
      *
      * @param {HTMLElement} container
      * @param {RootSpec} spec
-     * @param {import("./embedApi").EmbedOptions} [options]
+     * @param {import("./types/embedApi").EmbedOptions} [options]
      */
     constructor(container, spec, options = {}) {
         this.container = container;
@@ -265,7 +265,7 @@ export default class GenomeSpy {
         // eslint-disable-next-line consistent-this
         const self = this;
 
-        /** @type {import("./view/viewContext").default} */
+        /** @type {import("./types/viewContext").default} */
         const context = {
             dataFlow: new DataFlow(),
             accessorFactory: this.accessorFactory,

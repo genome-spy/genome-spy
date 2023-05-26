@@ -66,7 +66,7 @@ export const INDEX = "index";
  *
  * TODO: This has grown a bit too fat. Consider splitting.
  *
- * @typedef {import("./scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
+ * @typedef {import("../types/scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
  * @implements {ScaleResolutionApi}
  *
  * @typedef {import("../spec/channel").Channel} Channel
@@ -81,7 +81,7 @@ export default class ScaleResolution {
     /** @type {number[]} */
     #zoomExtent = undefined;
 
-    /** @type {Set<import("./scaleResolutionApi").ScaleResolutionListener>} Observers that are called when the scale domain is changed */
+    /** @type {Set<import("../types/scaleResolutionApi").ScaleResolutionListener>} Observers that are called when the scale domain is changed */
     #domainListeners = new Set();
 
     /** @type {VegaScale} */
@@ -107,7 +107,7 @@ export default class ScaleResolution {
      * are rendered.
      *
      * @param {"domain"} type
-     * @param {import("./scaleResolutionApi").ScaleResolutionListener} listener function
+     * @param {import("../types/scaleResolutionApi").ScaleResolutionListener} listener function
      */
     addEventListener(type, listener) {
         if (type != "domain") {
@@ -118,7 +118,7 @@ export default class ScaleResolution {
 
     /**
      * @param {"domain"} type
-     * @param {import("./scaleResolutionApi").ScaleResolutionListener} listener function
+     * @param {import("../types/scaleResolutionApi").ScaleResolutionListener} listener function
      */
     removeEventListener(type, listener) {
         if (type != "domain") {

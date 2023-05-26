@@ -60,7 +60,7 @@ export default class Collector extends FlowNode {
     }
 
     /**
-     * @param {import("./flowBatch").FlowBatch} flowBatch
+     * @param {import("../types/flowBatch").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
         if (isFacetBatch(flowBatch)) {
@@ -107,7 +107,7 @@ export default class Collector extends FlowNode {
         if (this.children.length) {
             for (const [key, data] of this.facetBatches.entries()) {
                 if (key) {
-                    /** @type {import("./flowBatch").FacetBatch} */
+                    /** @type {import("../types/flowBatch").FacetBatch} */
                     const facetBatch = { type: "facet", facetId: key };
                     for (const child of this.children) {
                         child.beginBatch(facetBatch);

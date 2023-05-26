@@ -19,10 +19,9 @@ import interactionToZoom from "./zoom";
 
 /**
  * @typedef {"row" | "column"} Direction
- * @typedef {import("./view").default} View
  *
  * @typedef {object} GridChild
- * @prop {View} view
+ * @prop {import("./view").default} view
  * @prop {UnitView} [background]
  * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes
  * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisGridView>>} gridLines
@@ -59,8 +58,8 @@ export default class GridView extends ContainerView {
 
     /**
      *
-     * @param {import("./viewUtils").AnyConcatSpec} spec
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("../spec/view").AnyConcatSpec} spec
+     * @param {import("./viewFactory").ViewContext} context
      * @param {ContainerView} parent
      * @param {string} name
      * @param {number} columns
@@ -84,7 +83,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {View} view
+     * @param {import("./view").default} view
      */
     #makeGridChild(view) {
         /** @type {GridChild} */
@@ -129,7 +128,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {View} view
+     * @param {import("./view").default} view
      */
     appendChild(view) {
         view.parent ??= this;
@@ -151,7 +150,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {View[]} views
+     * @param {import("./view").default[]} views
      */
     setChildren(views) {
         //this.#children = []; // TODO: Check why this breaks summary track
@@ -204,7 +203,7 @@ export default class GridView extends ContainerView {
             const { view, axes, gridLines } = gridChild;
 
             /**
-             * @param {import("./view").AxisResolution} r
+             * @param {import("./axisResolution").default} r
              * @param {import("../spec/channel").PrimaryPositionalChannel} channel
              * @param {UnitView | LayerView} axisParent
              */
@@ -316,7 +315,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @returns {IterableIterator<View>}
+     * @returns {IterableIterator<import("./view").default>}
      */
     *[Symbol.iterator]() {
         for (const gridChild of this.#children) {
@@ -545,7 +544,7 @@ export default class GridView extends ContainerView {
     /**
      * @param {import("./renderingContext/viewRenderingContext").default} context
      * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./view").RenderingOptions} [options]
+     * @param {import("../types/rendering").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
@@ -709,7 +708,7 @@ export default class GridView extends ContainerView {
     /**
      *
      * @param {import("../utils/layout/rectangle").default} coords Coordinates
-     * @param {View} view
+     * @param {import("./view").default} view
      * @param {import("./zoom").ZoomEvent} zoomEvent
      */
     #handleZoom(coords, view, zoomEvent) {
@@ -775,7 +774,7 @@ export function createBackground(viewBackground) {
 
 /**
  *
- * @param {View} view
+ * @param {import("./view").default} view
  * @returns
  */
 function getZoomableResolutions(view) {
@@ -799,7 +798,7 @@ function getZoomableResolutions(view) {
 }
 
 /**
- * @param {View} view
+ * @param {import("./view").default} view
  */
 export function isClippedChildren(view) {
     let clipped = true;

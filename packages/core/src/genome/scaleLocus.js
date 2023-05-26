@@ -2,18 +2,11 @@ import { tickStep } from "d3-array";
 import { format as d3format } from "d3-format";
 import scaleIndex from "./scaleIndex.js";
 
-/**
- * Creates a "locus" scale, which works similarly to band scale but the domain
- * consists of integer indexes.
- *
- * @typedef {import("./genome").default} Genome
- * @returns {import("./scaleLocus").ScaleLocus}
- */
 export default function scaleLocus() {
     /** @type {import("./scaleLocus").ScaleLocus} */
     const scale = /** @type {any} */ (scaleIndex().numberingOffset(1));
 
-    /** @type {Genome} */
+    /** @type {import("./genome").default} */
     let genome;
 
     // @ts-expect-error

@@ -8,7 +8,7 @@ import ConcatView from "./concatView";
 import { isArray, isObject, isString } from "vega-util";
 
 /**
- * @typedef {import("./viewContext").default} ViewContext
+ * @typedef {import("../types/viewContext").default} ViewContext
  * @typedef {import("../spec/view").UnitSpec} UnitSpec
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
  * @typedef {import("../spec/view").LayerSpec} LayerSpec

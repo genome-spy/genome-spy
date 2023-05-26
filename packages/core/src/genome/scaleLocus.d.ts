@@ -1,6 +1,10 @@
-import Genome from "./genome";
-import { ScaleIndex } from "./scaleIndex";
+import Genome from "../genome/genome";
+import { ScaleIndex } from "../genome/scaleIndex";
 
+/**
+ * Creates a "locus" scale, which works similarly to band scale but the domain
+ * consists of integer indexes.
+ */
 export default function scaleLocus(): ScaleLocus;
 
 export interface ScaleLocus extends ScaleIndex {

@@ -1,3 +1,4 @@
+import Mark from "../marks/mark";
 import { LocSize } from "../utils/layout/flexLayout";
 import Rectangle from "../utils/layout/rectangle";
 
@@ -42,3 +43,23 @@ export interface GlobalRenderingOptions {
      */
     picking?: boolean;
 }
+
+/**
+ * Allows for collecting marks for optimized rendering order.
+ */
+
+export interface DeferredRenderingRequest {
+    mark: Mark;
+    callback: () => void;
+    coords: Rectangle;
+    clipRect?: Rectangle;
+}
+
+/**
+ * Method signature for View.render(). Reduces the amount of JSDoc needed.
+ */
+export type RenderMethod = (
+    context: ViewRenderingContext,
+    coords: Rectangle,
+    options?: RenderingOptions
+) => void;

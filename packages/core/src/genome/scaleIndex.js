@@ -6,8 +6,6 @@ const minimumDomainSpan = 1;
 /**
  * Creates a "index" scale, which works similarly to d3's band scale but the domain
  * consists of integer indexes.
- *
- * @returns {import("./scaleIndex").ScaleIndex}
  */
 export default function scaleIndex() {
     let domain = [0, 1];

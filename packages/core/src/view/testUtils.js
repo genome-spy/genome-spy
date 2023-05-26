@@ -4,7 +4,7 @@
  *
  * @typedef {import("./view").default} View
  * @typedef {import("../spec/view").ViewSpec} ViewSpec
- * @typedef {import("./viewContext").default} ViewContext
+ * @typedef {import("../types/viewContext").default} ViewContext
  */
 
 import { resolveScalesAndAxes, initializeData } from "./viewUtils";

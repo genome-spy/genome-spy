@@ -10,12 +10,10 @@ import { field } from "../utils/field";
  * @prop {string[]} fields The fields that the return value is based on (if any)
  *
  * @typedef {(function(any):any) & AccessorMetadata} Accessor
- *
- * @typedef {import("../view/viewUtils").ChannelDef} ChannelDef
  */
 export default class AccessorFactory {
     constructor() {
-        /** @type {(function(ChannelDef):Accessor)[]} */
+        /** @type {(function(import("../spec/channel").ChannelDef):Accessor)[]} */
         this.accessorCreators = [];
 
         this.register((channelDef) => {
@@ -52,7 +50,7 @@ export default class AccessorFactory {
 
     /**
      *
-     * @param {function(ChannelDef):Accessor} creator
+     * @param {function(import("../spec/channel").ChannelDef):Accessor} creator
      */
     register(creator) {
         this.accessorCreators.push(creator);
@@ -60,7 +58,7 @@ export default class AccessorFactory {
 
     /**
      *
-     * @param {ChannelDef} encoding
+     * @param {import("../spec/channel").ChannelDef} encoding
      */
     createAccessor(encoding) {
         for (const creator of this.accessorCreators) {

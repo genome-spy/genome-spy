@@ -2,18 +2,9 @@ import { group } from "d3-array";
 
 import ViewRenderingContext from "./viewRenderingContext";
 
-/**
- *
- * @typedef {object} DeferredRenderingRequest Allows for collecting marks for
- *      optimized rendering order.
- * @prop {import("../../marks/mark").default} mark
- * @prop {function():void} callback
- * @prop {import("../../utils/layout/rectangle").default} coords
- * @prop {import("../../utils/layout/rectangle").default} [clipRect]
- */
 export default class DeferredViewRenderingContext extends ViewRenderingContext {
     /**
-     * @param {import("../rendering").GlobalRenderingOptions} globalOptions
+     * @param {import("../../types/rendering").GlobalRenderingOptions} globalOptions
      * @param {import("../../gl/webGLHelper").default} webGLHelper
      */
     constructor(globalOptions, webGLHelper) {
@@ -22,7 +13,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
         this.webGLHelper = webGLHelper;
 
         /**
-         * @type {DeferredRenderingRequest[]}
+         * @type {import("../../types/rendering").DeferredRenderingRequest[]}
          */
         this.buffer = [];
 
@@ -48,7 +39,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
     /**
      *
      * @param {import("../../marks/mark").default} mark
-     * @param {import("../view").RenderingOptions} options
+     * @param {import("../../types/rendering").RenderingOptions} options
      */
     renderMark(mark, options) {
         if (this.globalOptions.picking && !mark.isPickingParticipant()) {

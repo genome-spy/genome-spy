@@ -3,37 +3,37 @@ import { FlexDimensions } from "../utils/layout/flexLayout";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
-/**
- * @typedef {import("../spec/channel").PrimaryPositionalChannel} PositionalChannel
- * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
- */
-
-/** @type {Record<PositionalChannel, GeometricDimension>} */
+/** @type {Record<import("../spec/channel").PrimaryPositionalChannel, import("../spec/view").GeometricDimension>} */
 const CHANNEL_DIMENSIONS = {
     x: "width",
     y: "height",
 };
 
 /**
- * @param {PositionalChannel} channel
- * @returns {PositionalChannel}
+ * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+ * @returns {import("../spec/channel").PrimaryPositionalChannel}
  */
 function getPerpendicularChannel(channel) {
     return channel == "x" ? "y" : "x";
 }
 
-/** @type {Record<PositionalChannel, AxisOrient[]>} */
+/**
+ * @type {Record<import("../spec/channel").PrimaryPositionalChannel, AxisOrient[]>}
+ */
 export const CHANNEL_ORIENTS = {
     x: ["bottom", "top"],
     y: ["left", "right"],
 };
 
-/** @type {Record<AxisOrient, PositionalChannel>} */
+/**
+ * @type {Record<AxisOrient, import("../spec/channel").PrimaryPositionalChannel>}
+ */
 const ORIENT_CHANNELS = Object.fromEntries(
     Object.entries(CHANNEL_ORIENTS)
         .map(([channel, slots]) => slots.map((slot) => [slot, channel]))
         .flat(1)
 );
+
 /**
  * @param {AxisOrient} slot
  */
@@ -58,7 +58,7 @@ export function orient2channel(slot) {
 export default class AxisView extends LayerView {
     /**
      * @param {Axis} axisProps
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("../types/viewContext").default} context
      * @param {string} type Data type (quantitative, ..., locus)
      * @param {import("./containerView").default} parent
      */

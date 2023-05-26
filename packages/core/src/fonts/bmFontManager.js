@@ -23,7 +23,7 @@ const WEIGHTS = {
  * https://github.com/etiennepinchon/aframe-fonts
  *
  *
- * @typedef {import("./bmFont").BMFont} BMFont
+ * @typedef {import("../types/bmFont").BMFont} BMFont
  * @typedef {import("./bmFontMetrics").BMFontMetrics} BMFontMetrics
  *
  * @typedef {"normal" | "italic"} FontStyle

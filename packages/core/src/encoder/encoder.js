@@ -10,7 +10,7 @@ import scaleNull from "../utils/scaleNull";
  * @prop {VegaScale} [scale]
  * @prop {import("./accessor").Accessor} accessor 
  * @prop {function(any):number} [indexer] Converts ordinal values to index numbers
- * @prop {import("../view/viewUtils").ChannelDef} channelDef
+ * @prop {import("../spec/channel").ChannelDef} channelDef
  * @prop {function(function):void} applyMetadata Copies metadata to the target function
  *
  * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder

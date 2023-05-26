@@ -12,7 +12,7 @@ import ViewRenderingContext from "./viewRenderingContext";
  */
 export default class LayoutRecorderViewRenderingContext extends ViewRenderingContext {
     /**
-     * @param {import("../rendering").GlobalRenderingOptions} globalOptions
+     * @param {import("../../types/rendering").GlobalRenderingOptions} globalOptions
      */
     constructor(globalOptions) {
         super(globalOptions);
