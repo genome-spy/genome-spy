@@ -175,7 +175,7 @@ export default class ScaleResolution {
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
     isExplicitDomain() {
-        return !!this.#getConfiguredDomain();
+        return !!this.getConfiguredDomain();
     }
 
     isDomainInitialized() {
@@ -290,10 +290,10 @@ export default class ScaleResolution {
     #getInitialDomain() {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
-            this.#getConfiguredDomain() ??
+            this.getConfiguredDomain() ??
             (this.type == LOCUS
                 ? this.getGenome().getExtent()
-                : this.#getDataDomain())
+                : this.getDataDomain())
         );
     }
 
@@ -302,7 +302,7 @@ export default class ScaleResolution {
      *
      * @return { DomainArray }
      */
-    #getConfiguredDomain() {
+    getConfiguredDomain() {
         return this.#reduceDomains((member) =>
             isSecondaryChannel(member.channel)
                 ? undefined
@@ -315,8 +315,9 @@ export default class ScaleResolution {
      *
      * @return { DomainArray }
      */
-    #getDataDomain() {
-        // TODO: Optimize: extract domain only once if the views share the data
+    getDataDomain() {
+        // TODO: Optimize: extract domain only once if the views share the data.
+        // In fact, this should be a responsibility of collectors.
         return this.#reduceDomains((member) =>
             isSecondaryChannel(member.channel)
                 ? undefined
@@ -781,14 +782,7 @@ function getDefaultScaleType(channel, dataType) {
     };
 
     /** @type {Channel[]} */
-    const typelessChannels = [
-        "uniqueId",
-        "facetIndex",
-        "semanticScore",
-        "search",
-        "text",
-        "sample",
-    ];
+    const typelessChannels = ["sample"];
 
     const type = typelessChannels.includes(channel)
         ? "null"

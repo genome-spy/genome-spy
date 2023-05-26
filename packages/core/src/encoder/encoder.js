@@ -379,6 +379,7 @@ export function isChannelWithScale(channel) {
         "angle",
         "dx",
         "dy",
+        "sample",
     ].includes(channel);
 }
 

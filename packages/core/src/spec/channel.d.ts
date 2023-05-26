@@ -38,12 +38,12 @@ export type ChannelWithScale =
     | "shape"
     | "angle"
     | "dx"
-    | "dy";
+    | "dy"
+    | "sample"; // Needed for collecting sample ids (domain) from multiple views
 
 export type ChannelWithoutScale =
     | "uniqueId"
     | "search"
-    | "sample"
     | "text"
     | "facetIndex"
     | "semanticScore"
