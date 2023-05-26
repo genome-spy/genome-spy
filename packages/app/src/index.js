@@ -80,6 +80,8 @@ export async function embed(el, spec, options = {}) {
         getScaleResolutionByName(name) {
             return genomeSpy.getNamedScaleResolutions().get(name);
         },
+
+        updateNamedData: genomeSpy.updateNamedData.bind(genomeSpy),
     };
 }
 

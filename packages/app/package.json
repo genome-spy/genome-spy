@@ -20,6 +20,7 @@
   "scripts": {
     "dev": "node dev-server.js",
     "build": "vite build",
+    "test:tsc": "tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {

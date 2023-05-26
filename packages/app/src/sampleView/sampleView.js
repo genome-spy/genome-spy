@@ -42,6 +42,7 @@ import interactionToZoom from "@genome-spy/core/view/zoom";
 import Rectangle from "@genome-spy/core/utils/layout/rectangle";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { createBackground } from "@genome-spy/core/view/gridView";
+import { isChannelWithScale } from "@genome-spy/core/encoder/encoder";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -255,8 +256,8 @@ export default class SampleView extends ContainerView {
                         "field" in channelDef &&
                         channelDef.field == specifier.field
                 );
-                const scale = channel
-                    ? view.getScaleResolution(channel)?.getScale()
+                const scale = isChannelWithScale(channel)
+                    ? view.getScaleResolution(channel).getScale()
                     : undefined;
 
                 /** @type {import("./types").AttributeInfo} */
@@ -440,6 +441,7 @@ export default class SampleView extends ContainerView {
 
         // Synchronize loading with other data
         const key = "samples " + this.getPathString();
+        // @ts-expect-error TODO: Using a string as key is ugly. Try something else.
         this.context.dataFlow.addDataSource(dataSource, key);
     }
 

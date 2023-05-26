@@ -118,7 +118,12 @@ export default class App {
 
         this.genomeSpy.viewFactory.addViewType(
             isSampleSpec,
-            (spec, context, parent, defaultName) =>
+            (
+                /** @type {import("@genome-spy/core/spec/sampleView").SampleSpec} */ spec,
+                context,
+                parent,
+                defaultName
+            ) =>
                 new SampleView(
                     spec,
                     context,
@@ -372,7 +377,7 @@ export default class App {
 
         if (hash && hash.length > 0) {
             try {
-                /** @type {import("./appTypes").UrlHash} */
+                /** @type {import("./bookmark/databaseSchema").BookmarkEntry} */
                 const entry = decompressFromUrlHash(hash);
                 restoreBookmarkAndShowInfoBox(entry, this, { mode: "shared" });
                 return true;

@@ -18,18 +18,18 @@ import { isArray, isObject, isString } from "vega-util";
  * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
  * @typedef {VConcatSpec | HConcatSpec | ConcatSpec} AnyConcatSpec
  *
- * @typedef {(spec: ViewSpec) => boolean} specGuard
- * @typedef {(spec: ViewSpec, context: ViewContext, parent?: import("./containerView").default, defaultName?: string) => View} factory
+ * @typedef {(spec: ViewSpec) => boolean} SpecGuard
+ * @typedef {(spec: ViewSpec, context: ViewContext, parent?: import("./containerView").default, defaultName?: string) => View} Factory
  */
 
 export class ViewFactory {
     constructor() {
-        /** @type {{specGuard: specGuard, factory: factory}[]} */
+        /** @type {{specGuard: SpecGuard, factory: Factory}[]} */
         this.types = [];
 
         const makeDefaultFactory =
             (/** @type {typeof View} */ ViewClass) =>
-            /** @type {factory} */
+            /** @type {Factory} */
             (spec, context, parent, defaultName) =>
                 /** @type {View} */ (
                     new ViewClass(
@@ -51,8 +51,8 @@ export class ViewFactory {
     }
 
     /**
-     * @param {specGuard} specGuard
-     * @param {factory} factory
+     * @param {SpecGuard} specGuard
+     * @param {Factory} factory
      */
     addViewType(specGuard, factory) {
         this.types.push({ specGuard, factory });

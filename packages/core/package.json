@@ -32,7 +32,8 @@
     "build": "vite build && npm run build:schema",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
-    "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/schema.json"
+    "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/schema.json",
+    "build:typings": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/types"
   },
   "dependencies": {
     "@gmod/bam": "^1.1.18",
