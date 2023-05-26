@@ -43,6 +43,7 @@ import Rectangle from "@genome-spy/core/utils/layout/rectangle";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { createBackground } from "@genome-spy/core/view/gridView";
 import { isChannelWithScale } from "@genome-spy/core/encoder/encoder";
+import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -105,17 +106,12 @@ export default class SampleView extends ContainerView {
             "sampleSummaries"
         );
 
-        /*
-         * We produce an inconsistent view hierarchy by design. The summaries have the
-         * enclosing (by the spec) views as their parents, but they are also children of
-         * "this.summaryViews". The rationale is: the views inherit encodings and resolutions
-         * from their enclosing views but layout and rendering are managed by the SampleView.
+        /**
+         * @type {(UnitView | LayerView)[]}
          */
-        this.child.visit((view) => {
-            if (view instanceof UnitView) {
-                this.summaryViews.setChildren(view.sampleAggregateViews);
-            }
-        });
+        this.sampleAggregateViews = [];
+        this.#createSummaryViews();
+
         this.childCoords = Rectangle.ZERO;
 
         /**
@@ -409,6 +405,7 @@ export default class SampleView extends ContainerView {
         }
         yield this.child;
         yield this.peripheryView;
+        yield this.summaryViews;
     }
 
     /**
@@ -1037,6 +1034,46 @@ export default class SampleView extends ContainerView {
         resolution.zoom(2 ** zoomEvent.zDelta, p.x, tp.x - p.x);
 
         this.context.animator.requestRender();
+    }
+
+    // TODO: Move this to SampleView
+    #createSummaryViews() {
+        /** @type {View[]} */
+        const summaryViews = [];
+
+        for (const view of this.child.getDescendants()) {
+            const spec = view.spec;
+            if (!isAggregateSamplesSpec(spec)) {
+                continue;
+            }
+            for (const sumSpec of spec.aggregateSamples) {
+                const transform = sumSpec.transform ?? [];
+                if (transform.length && transform.at(-1).type != "collect") {
+                    // MergeFacets must be a direct child of Collector
+                    transform.push({ type: "collect" });
+                }
+                transform.push({ type: "mergeFacets" });
+                sumSpec.transform = transform;
+
+                sumSpec.encoding = {
+                    ...(sumSpec.encoding ?? {}),
+                    sample: null,
+                };
+
+                const summaryView = /** @type { UnitView | LayerView } */ (
+                    this.context.createView(sumSpec, this, view, "summaryView")
+                );
+
+                /**
+                 * @param {View} [whoIsAsking]
+                 */
+                summaryView.getFacetFields = (whoIsAsking) => undefined;
+
+                summaryViews.push(summaryView);
+            }
+        }
+
+        this.summaryViews.setChildren(summaryViews);
     }
 
     /**

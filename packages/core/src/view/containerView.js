@@ -127,33 +127,11 @@ export default class ContainerView extends View {
     }
 
     /**
-     * @param {import("../spec/channel").Channel | "default"} channel
-     * @param {import("../spec/view").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
-     */
-    getConfiguredResolution(channel, resolutionType) {
-        return this.spec.resolve?.[resolutionType]?.[channel];
-    }
-
-    /**
      * @param {import("../spec/channel").Channel} channel
      * @param {import("../spec/view").ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         return "shared";
-    }
-
-    /**
-     * @param {import("../spec/channel").Channel} channel
-     * @param {import("../spec/view").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
-     */
-    getConfiguredOrDefaultResolution(channel, resolutionType) {
-        return (
-            this.getConfiguredResolution(channel, resolutionType) ??
-            this.getConfiguredResolution("default", resolutionType) ??
-            this.getDefaultResolution(channel, resolutionType)
-        );
     }
 }

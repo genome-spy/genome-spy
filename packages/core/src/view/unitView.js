@@ -18,8 +18,6 @@ import {
 } from "../encoder/encoder";
 import createDomain from "../utils/domainArray";
 import AxisResolution from "./axisResolution";
-import { isAggregateSamplesSpec } from "./viewFactory";
-import { peek } from "../utils/arrayUtils";
 
 /**
  *
@@ -65,44 +63,11 @@ export default class UnitView extends ContainerView {
         }
 
         /**
-         * TODO: Move this under SampleView.
-         * Plan: Views could have two parents, one for layout, one for data and encoding.
-         *
-         * @type {(UnitView | LayerView)[]}
-         */
-        this.sampleAggregateViews = [];
-        this._initializeAggregateViews();
-
-        /**
          * Not nice! Inconsistent when faceting!
          * TODO: Something. Maybe store only width/height
          * @type {import("../utils/layout/rectangle").default}
          */
         this.coords = undefined;
-    }
-
-    /**
-     * @returns {IterableIterator<View>}
-     */
-    *[Symbol.iterator]() {
-        for (const child of this.sampleAggregateViews) {
-            yield child;
-        }
-    }
-
-    /**
-     * @param {View} child
-     * @param {View} replacement
-     */
-    replaceChild(child, replacement) {
-        // @ts-ignore TODO: fix typing
-        const i = this.sampleAggregateViews.indexOf(child);
-        if (i >= 0) {
-            // @ts-ignore TODO: fix typing
-            this.sampleAggregateViews[i] = replacement;
-        } else {
-            throw new Error("Not my child view!");
-        }
     }
 
     /**
@@ -350,38 +315,6 @@ export default class UnitView extends ContainerView {
         return primaryPositionalChannels
             .map(getZoomLevel)
             .reduce((a, c) => a * c, 1);
-    }
-
-    // TODO: Move this to SampleView
-    _initializeAggregateViews() {
-        if (isAggregateSamplesSpec(this.spec)) {
-            // TODO: Support multiple
-            for (const sumSpec of this.spec.aggregateSamples) {
-                const transform = sumSpec.transform ?? [];
-                if (transform.length && peek(transform).type != "collect") {
-                    // MergeFacets must be a direct child of Collector
-                    transform.push({ type: "collect" });
-                }
-                transform.push({ type: "mergeFacets" });
-                sumSpec.transform = transform;
-
-                sumSpec.encoding = {
-                    ...(sumSpec.encoding ?? {}),
-                    sample: null,
-                };
-
-                const summaryView = /** @type { UnitView | LayerView } */ (
-                    this.context.createView(sumSpec, this, this, "summaryView")
-                );
-
-                /**
-                 * @param {View} [whoIsAsking]
-                 */
-                summaryView.getFacetFields = (whoIsAsking) => undefined;
-
-                this.sampleAggregateViews.push(summaryView);
-            }
-        }
     }
 
     /**

@@ -364,6 +364,18 @@ export default class View {
     }
 
     /**
+     * Get all descendants of this view in depth-first order.
+     */
+    getDescendants() {
+        /** @type {View[]} */
+        const descendants = [];
+        this.visit((view) => {
+            descendants.push(view);
+        });
+        return descendants;
+    }
+
+    /**
      * Called after all scales in the view hierarchy have been resolved.
      */
     onScalesResolved() {
@@ -487,6 +499,37 @@ export default class View {
         return this.getDataAncestors()
             .map((view) => view.resolutions.axis[primaryChannel])
             .find((resolution) => resolution);
+    }
+
+    /**
+     * @param {import("../spec/channel").Channel | "default"} channel
+     * @param {import("../spec/view").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view").ResolutionBehavior}
+     */
+    getConfiguredResolution(channel, resolutionType) {
+        return this.spec.resolve?.[resolutionType]?.[channel];
+    }
+
+    /**
+     * @param {import("../spec/channel").Channel} channel
+     * @param {import("../spec/view").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view").ResolutionBehavior}
+     */
+    getConfiguredOrDefaultResolution(channel, resolutionType) {
+        return (
+            this.getConfiguredResolution(channel, resolutionType) ??
+            this.getConfiguredResolution("default", resolutionType) ??
+            this.getDefaultResolution(channel, resolutionType)
+        );
+    }
+
+    /**
+     * @param {import("../spec/channel").Channel} channel
+     * @param {import("../spec/view").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view").ResolutionBehavior}
+     */
+    getDefaultResolution(channel, resolutionType) {
+        return "independent";
     }
 
     /**

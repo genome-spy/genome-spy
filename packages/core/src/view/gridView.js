@@ -159,7 +159,7 @@ export default class GridView extends ContainerView {
      * @param {View[]} views
      */
     setChildren(views) {
-        //this.#children = []; // TODO: Check why this breaks summary track
+        this.#children = [];
         for (const view of views) {
             this.appendChild(view);
         }
