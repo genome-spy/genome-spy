@@ -52,27 +52,41 @@ export function nodesToTrees(nodes) {
  * Visits a tree using depth-first search. Uses a custom accessor for children.
  *
  * @param {T} rootNode
- * @param {{ preOrder?: (node: T) => void, postOrder?: (node: T) => void}} visitor
+ * @param {{ preOrder?: (node: T) => VisitResult, postOrder?: (node: T) => VisitResult }} visitor
  * @param {(node: T) => Iterable<T>} childrenAccessor
+ * @returns {VisitResult}
  * @template T
  */
 export function visitTreeWithAccessor(rootNode, visitor, childrenAccessor) {
-    visitor.preOrder?.(rootNode);
-
-    for (const child of childrenAccessor(rootNode)) {
-        visitTreeWithAccessor(child, visitor, childrenAccessor);
+    /** @typedef {"skip" | "stop" | void} VisitResult */
+    const preResult = visitor.preOrder?.(rootNode);
+    if (preResult) {
+        return preResult;
     }
 
-    visitor.postOrder?.(rootNode);
+    for (const child of childrenAccessor(rootNode)) {
+        const childResult = visitTreeWithAccessor(
+            child,
+            visitor,
+            childrenAccessor
+        );
+        if (childResult === "stop") {
+            return childResult;
+        }
+    }
+
+    return visitor.postOrder?.(rootNode);
 }
 
 /**
  * Visits a tree using depth-first search.
  *
  * @param {T} rootNode
- * @param {{ preOrder?: (node: T) => void, postOrder?: (node: T) => void}} visitor
+ * @param {{ preOrder?: (node: T) => VisitResult, postOrder?: (node: T) => VisitResult }} visitor
+ * @returns {VisitResult}
  * @template {{ children: T[] }} T
  */
 export function visitTree(rootNode, visitor) {
-    visitTreeWithAccessor(rootNode, visitor, (node) => node.children);
+    /** @typedef {"skip" | "stop" | void} VisitResult */
+    return visitTreeWithAccessor(rootNode, visitor, (node) => node.children);
 }

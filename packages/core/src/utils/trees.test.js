@@ -103,8 +103,12 @@ describe("VisitTree", () => {
         const visitedPost = [];
 
         visitTree(tree, {
-            preOrder: (node) => visitedPre.push(node),
-            postOrder: (node) => visitedPost.push(node),
+            preOrder: (node) => {
+                visitedPre.push(node);
+            },
+            postOrder: (node) => {
+                visitedPost.push(node);
+            },
         });
 
         expect(visitedPre.map((node) => node.id)).toEqual([

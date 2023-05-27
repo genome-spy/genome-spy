@@ -54,23 +54,25 @@ const SPACING = 10;
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
  *
- * @typedef {import("./sampleState").Group} Group
- * @typedef {import("./sampleState").Sample} Sample
- * @typedef {import("@genome-spy/core/utils/layout/flexLayout").LocSize} LocSize
- * @typedef {import("@genome-spy/core/view/view").default} View
- * @typedef {import("@genome-spy/core/view/layerView").default} LayerView
- * @typedef {import("@genome-spy/core/data/dataFlow").default<View>} DataFlow
- * @typedef {import("@genome-spy/core/genome/genome").ChromosomalLocus} ChromosomalLocus
- *
- * @typedef {object} LocusSpecifier
- * @prop {string} view A unique name of the view
- * @prop {string} field
- * @prop {number | ChromosomalLocus} locus Locus on the domain
- *
- * @typedef {import("./sampleViewTypes").SampleLocation} SampleLocation
- * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
  */
 export default class SampleView extends ContainerView {
+    /**
+     * @typedef {import("./sampleState").Group} Group
+     * @typedef {import("./sampleState").Sample} Sample
+     * @typedef {import("@genome-spy/core/utils/layout/flexLayout").LocSize} LocSize
+     * @typedef {import("@genome-spy/core/view/view").default} View
+     * @typedef {import("@genome-spy/core/view/layerView").default} LayerView
+     * @typedef {import("@genome-spy/core/data/dataFlow").default<View>} DataFlow
+     * @typedef {import("@genome-spy/core/genome/genome").ChromosomalLocus} ChromosomalLocus
+     *
+     * @typedef {object} LocusSpecifier
+     * @prop {string} view A unique name of the view
+     * @prop {string} field
+     * @prop {number | ChromosomalLocus} locus Locus on the domain
+     *
+     * @typedef {import("./sampleViewTypes").SampleLocation} SampleLocation
+     * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
+     */
     _peekState = 0;
 
     /**
@@ -99,7 +101,10 @@ export default class SampleView extends ContainerView {
         );
 
         this.summaryViews = new ConcatView(
-            { vconcat: [] },
+            {
+                configurableVisibility: false,
+                vconcat: [],
+            },
             context,
             this,
             this,

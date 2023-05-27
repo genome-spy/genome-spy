@@ -29,14 +29,12 @@ const SAMPLE_NAME = "SAMPLE_NAME";
 const attributeViewRegex = /^attribute-(.*)$/;
 
 /**
- * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("@genome-spy/core/view/view").default} View
- */
-
-/**
  * This special-purpose class takes care of rendering sample labels and metadata.
  */
 export class SampleAttributePanel extends ConcatView {
+    /**
+     * @typedef {import("@genome-spy/core/view/view").default} View
+     */
     /**
      * @param {import("./sampleView").default} sampleView
      */
@@ -53,10 +51,8 @@ export class SampleAttributePanel extends ConcatView {
                 },
             },
             sampleView.context,
-            // TODO: fix parent
-            undefined,
-            // TODO: fix parent
-            undefined,
+            sampleView,
+            sampleView,
             "sample-metadata"
         );
 
@@ -265,7 +261,7 @@ export class SampleAttributePanel extends ConcatView {
     /**
      * TODO: Attach this to state observer
      *
-     * @param {Sample[]} samples
+     * @param {import("./sampleState").Sample[]} samples
      */
     _setSamples(samples) {
         if (this.childCount) {

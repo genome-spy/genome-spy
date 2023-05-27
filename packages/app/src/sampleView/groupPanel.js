@@ -5,11 +5,6 @@ import LayerView from "@genome-spy/core/view/layerView";
 import { contextMenu } from "../utils/ui/contextMenu";
 import { iterateGroupHierarchy } from "./sampleSlice";
 
-/**
- * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("@genome-spy/core/view/view").default} View
- *
- */
 export class GroupPanel extends LayerView {
     /**
      * @param {import("./sampleView").default} sampleView
