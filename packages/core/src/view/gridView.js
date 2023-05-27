@@ -82,6 +82,9 @@ export default class GridView extends ContainerView {
         this._createChildren();
     }
 
+    /**
+     * @protected
+     */
     _createChildren() {
         // Override
     }

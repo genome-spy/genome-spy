@@ -52,6 +52,20 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @param {import("../utils/interactionEvent").default} event
  */
 export default class View {
+    /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
+    #broadcastHandlers = {};
+
+    /** @type {Record<string, InteractionEventListener[]>} */
+    #capturingInteractionEventListeners = {};
+
+    /** @type {Record<string, InteractionEventListener[]>} */
+    #nonCapturingInteractionEventListeners = {};
+
+    /**
+     * @type {function(number):number}
+     */
+    opacityFunction = defaultOpacityFunction;
+
     /**
      *
      * @param {import("../spec/view").ViewSpec} spec
@@ -80,18 +94,7 @@ export default class View {
             axis: {},
         };
 
-        /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
-        this._broadcastHandlers = {};
-
-        /** @type {Record<string, InteractionEventListener[]>} */
-        this._capturingInteractionEventListeners = {};
-        /** @type {Record<string, InteractionEventListener[]>} */
-        this._nonCapturingInteractionEventListeners = {};
-
         initPropertyCache(this);
-
-        /** @type {function(number):number} */
-        this.opacityFunction = defaultOpacityFunction;
 
         /**
          * Don't inherit encodings from parent.
@@ -130,7 +133,7 @@ export default class View {
     getSize() {
         return this._cache("size/size", () =>
             this.isConfiguredVisible()
-                ? this.getSizeFromSpec().addPadding(this.getPadding())
+                ? this.#getSizeFromSpec().addPadding(this.getPadding())
                 : ZERO_FLEXDIMENSIONS
         );
     }
@@ -138,7 +141,7 @@ export default class View {
     /**
      * @return {FlexDimensions}
      */
-    getSizeFromSpec() {
+    #getSizeFromSpec() {
         /**
          * @param {"width" | "height"} dimension
          * @return {import("../utils/layout/flexLayout").SizeDef}
@@ -277,7 +280,7 @@ export default class View {
      */
     handleBroadcast(message) {
         // TODO: message types should be constants
-        for (const handler of this._broadcastHandlers[message.type] || []) {
+        for (const handler of this.#broadcastHandlers[message.type] || []) {
             handler(message);
         }
     }
@@ -288,10 +291,10 @@ export default class View {
      * @param {function(BroadcastMessage):void} handler
      */
     _addBroadcastHandler(type, handler) {
-        let handlers = this._broadcastHandlers[type];
+        let handlers = this.#broadcastHandlers[type];
         if (!handlers) {
             handlers = [];
-            this._broadcastHandlers[type] = handlers;
+            this.#broadcastHandlers[type] = handlers;
         }
         handlers.push(handler);
     }
@@ -306,8 +309,8 @@ export default class View {
      */
     handleInteractionEvent(coords, event, capturing) {
         const listenersByType = capturing
-            ? this._capturingInteractionEventListeners
-            : this._nonCapturingInteractionEventListeners;
+            ? this.#capturingInteractionEventListeners
+            : this.#nonCapturingInteractionEventListeners;
         for (const listener of listenersByType[event.type] || []) {
             listener(coords, event);
         }
@@ -326,8 +329,8 @@ export default class View {
      */
     addInteractionEventListener(type, listener, useCapture) {
         const listenersByType = useCapture
-            ? this._capturingInteractionEventListeners
-            : this._nonCapturingInteractionEventListeners;
+            ? this.#capturingInteractionEventListeners
+            : this.#nonCapturingInteractionEventListeners;
         let listeners = listenersByType[type];
         if (!listeners) {
             listeners = [];
@@ -543,13 +546,6 @@ export default class View {
     }
 
     /**
-     * @returns {import("../data/sources/dataSource").default}
-     */
-    getDynamicDataSource() {
-        throw new Error("The view does not provide dynamic data!");
-    }
-
-    /**
      * Returns `true` if this view and its children supports picking.
      */
     isPickingSupported() {
@@ -568,6 +564,7 @@ export default class View {
      * @param {function(key?):T} callable A function that produces a value to be cached
      * @returns {T}
      * @template T
+     * @protected
      */
     _cache(key, callable) {
         return getCachedOrCall(this, key, callable);
