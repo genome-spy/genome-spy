@@ -58,13 +58,6 @@ const headerConfigs = {
  *  - Suppress redundant axes
  *  - Make this thing configurable
  *
- * @typedef {import("./view").default} View
- * @typedef {import("./layerView").default} LayerView
- * @typedef {import("./viewUtils").FacetFieldDef} FacetFieldDef
- * @typedef {import("./viewUtils").FacetMapping} FacetMapping
- * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
- * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
- *
  * @typedef {object} FacetDimension Stuff for working with facet dimensions
  * @prop {function} accessor
  * @prop {boolean[] | string[] | number[]} factors
@@ -72,6 +65,14 @@ const headerConfigs = {
  *
  */
 export default class FacetView extends ContainerView {
+    /**
+     * @typedef {import("./view").default} View
+     * @typedef {import("./layerView").default} LayerView
+     * @typedef {import("./viewUtils").FacetFieldDef} FacetFieldDef
+     * @typedef {import("./viewUtils").FacetMapping} FacetMapping
+     * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
+     * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
+     */
     /**
      *
      * @param {import("./viewUtils").FacetSpec} spec

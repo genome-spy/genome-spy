@@ -16,13 +16,14 @@ import { isContinuous } from "vega-scale";
  * @prop {number} offset in vertices
  * @prop {number} count in vertices
  * @prop {import("../utils/binnedIndex").Lookup} xIndex
- *
- * @typedef {import("./arrayBuilder").ConverterMetadata} Converter
- * @typedef {import("../encoder/encoder").Encoder} Encoder
  */
 export class GeometryBuilder {
     /**
-     *
+     * @typedef {import("./arrayBuilder").ConverterMetadata} Converter
+     * @typedef {import("../types/encoder").Encoder} Encoder
+     */
+
+    /**
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} [object.attributes]
@@ -253,13 +254,13 @@ export class RectVertexBuilder extends GeometryBuilder {
         }
 
         const e =
-            /** @type {Object.<string, import("../encoder/encoder").NumberEncoder>} */ (
+            /** @type {Object.<string, import("../types/encoder").NumberEncoder>} */ (
                 this.encoders
             );
         const [lower, upper] = this.visibleRange;
 
         /**
-         * @param {import("../encoder/encoder").Encoder} encoder
+         * @param {import("../types/encoder").Encoder} encoder
          */
         const a = (encoder) => encoder.accessor || ((x) => 0);
 

@@ -67,7 +67,7 @@ export default class Mark {
     constructor(unitView) {
         this.unitView = unitView;
 
-        /** @type {Record<string, import("../encoder/encoder").Encoder>} */
+        /** @type {Record<string, import("../types/encoder").Encoder>} */
         this.encoders = undefined;
 
         // TODO: Consolidate the following webgl stuff into a single object

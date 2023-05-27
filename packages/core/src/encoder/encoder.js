@@ -3,47 +3,6 @@ import createIndexer from "../utils/indexer";
 import scaleNull from "../utils/scaleNull";
 
 /**
- * @typedef {Object} EncoderMetadata
- * @prop {boolean} constant True if the accessor returns the same value for all objects
- * @prop {boolean} constantValue True the encoder returns a "value" without a scale
- * @prop {(value: import("../spec/channel").Scalar) => import("../spec/channel").Scalar} invert
- * @prop {VegaScale} [scale]
- * @prop {import("./accessor").Accessor} accessor 
- * @prop {function(any):number} [indexer] Converts ordinal values to index numbers
- * @prop {import("../spec/channel").ChannelDef} channelDef
- * @prop {function(function):void} applyMetadata Copies metadata to the target function
- *
- * @typedef {(function(object):(string|number)) & EncoderMetadata} Encoder
- * @typedef {(function(object):number) & EncoderMetadata} NumberEncoder
- *
- * @typedef {object} ScaleMetadata
- * @prop {string} type Scale type
- * @prop {boolean} [fp64] Whether to use emulated 64 bit floating point in WebGL
- * 
- * @typedef {(
-    import("d3-scale").ScaleContinuousNumeric<any, any> |
-    import("d3-scale").ScaleLinear<any, any> |
-    import("d3-scale").ScalePower<any, any> |
-    import("d3-scale").ScaleLogarithmic<any, any> |
-    import("d3-scale").ScaleSymLog<any, any> |
-    import("d3-scale").ScaleIdentity |
-    import("d3-scale").ScaleTime<any, any> |
-    import("d3-scale").ScaleSequential<any> |
-    import("d3-scale").ScaleDiverging<any> | 
-    import("d3-scale").ScaleQuantize<any> |
-    import("d3-scale").ScaleQuantile<any> |
-    import("d3-scale").ScaleThreshold<any, any> |
-    import("d3-scale").ScaleOrdinal<any, any> |
-    import("d3-scale").ScaleBand<any> |
-    import("d3-scale").ScalePoint<any>
-    )} D3Scale
- * 
- * @typedef {(D3Scale | import("../genome/scaleIndex").ScaleIndex | import("../genome/scaleLocus").ScaleLocus) & ScaleMetadata} VegaScale
- * 
- * @typedef {import("../spec/channel").Channel} Channel
- */
-
-/**
  * Creates an object that contains encoders for every channel of a mark
  *
  * TODO: This should actually receive the mark as parameter
@@ -55,7 +14,12 @@ import scaleNull from "../utils/scaleNull";
  * @returns {Partial<Record<Channel, Encoder>>}
  */
 export default function createEncoders(mark, encoding) {
-    /** @type {Partial<Record<import("../spec/channel").Channel, Encoder>>} */
+    /**
+     * @typedef {import("../spec/channel").Channel} Channel
+     * @typedef {import("../types/encoder").Encoder} Encoder
+     */
+
+    /** @type {Partial<Record<Channel, Encoder>>} */
     const encoders = {};
 
     if (!encoding) {
@@ -90,11 +54,17 @@ export default function createEncoders(mark, encoding) {
  *
  * @param {import("../spec/channel").ChannelDef} channelDef
  * @param {any} scale
- * @param {import("./accessor").Accessor} accessor
+ * @param {Accessor} accessor
  * @param {Channel} channel
  * @returns {Encoder}
  */
 export function createEncoder(channelDef, scale, accessor, channel) {
+    /**
+     * @typedef {import("../spec/channel").Channel} Channel
+     * @typedef {import("../types/encoder").Encoder} Encoder
+     * @typedef {import("../types/encoder").Accessor} Accessor
+     */
+
     /** @type {Encoder} */
     let encoder;
 
@@ -216,7 +186,7 @@ export function isChannelDefWithScale(channelDef) {
 
 /**
  * @param {import("../view/unitView").default} view
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  */
 export function getChannelDefWithScale(view, channel) {
     const channelDef = view.mark.encoding[channel];
@@ -262,7 +232,7 @@ export const positionalChannels = [
 ];
 
 /**
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  * @returns {channel is import("../spec/channel").PrimaryPositionalChannel}
  */
 export function isPrimaryPositionalChannel(channel) {
@@ -271,7 +241,7 @@ export function isPrimaryPositionalChannel(channel) {
 }
 
 /**
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  * @returns {channel is import("../spec/channel").PositionalChannel}
  */
 export function isPositionalChannel(channel) {
@@ -282,7 +252,7 @@ export function isPositionalChannel(channel) {
 /**
  * Map primary channels to secondarys
  *
- * @type {Partial<Record<Channel, import("../spec/channel").SecondaryPositionalChannel>>}
+ * @type {Partial<Record<import("../spec/channel").Channel, import("../spec/channel").SecondaryPositionalChannel>>}
  */
 export const secondaryChannels = {
     x: "x2",
@@ -292,7 +262,7 @@ export const secondaryChannels = {
 /**
  * Map secondary channels to primaries
  *
- * @type {Partial<Record<Channel, Channel>>}
+ * @type {Partial<Record<import("../spec/channel").Channel, import("../spec/channel").Channel>>}
  */
 export const primaryChannels = Object.fromEntries(
     Object.entries(secondaryChannels).map((entry) => [entry[1], entry[0]])
@@ -309,7 +279,7 @@ export function isSecondaryChannel(channel) {
 /**
  * Return the matching secondary channel or throws if one does not exist.
  *
- * @param {Channel} primaryChannel
+ * @param {import("../spec/channel").Channel} primaryChannel
  */
 export function getSecondaryChannel(primaryChannel) {
     const secondary = secondaryChannels[primaryChannel];
@@ -324,7 +294,7 @@ export function getSecondaryChannel(primaryChannel) {
  * Finds the primary channel for the provided channel, which may be
  * the primary or secondary.
  *
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  */
 export function getPrimaryChannel(channel) {
     return primaryChannels[channel] ?? channel;
@@ -333,7 +303,7 @@ export function getPrimaryChannel(channel) {
 /**
  * Returns an array that contains the given channel and its secondary channel if one exists.
  *
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  */
 export function getChannelWithSecondarys(channel) {
     return secondaryChannels[channel]
@@ -342,7 +312,7 @@ export function getChannelWithSecondarys(channel) {
 }
 
 /**
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  */
 export function isColorChannel(channel) {
     return ["color", "fill", "stroke"].includes(getPrimaryChannel(channel));
@@ -351,14 +321,14 @@ export function isColorChannel(channel) {
 /**
  * Returns true if the channel has a discrete range.
  *
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  */
 export function isDiscreteChannel(channel) {
     return ["shape", "squeeze"].includes(channel);
 }
 
 /**
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  * @returns {channel is import("../spec/channel").ChannelWithScale}
  */
 export function isChannelWithScale(channel) {
@@ -386,7 +356,7 @@ export function isChannelWithScale(channel) {
 /**
  * Returns valid discrete values for a discrete channel.
  *
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  * @returns {any[]}
  */
 export function getDiscreteRange(channel) {
@@ -408,7 +378,7 @@ export function getDiscreteRange(channel) {
 }
 
 /**
- * @param {Channel} channel
+ * @param {import("../spec/channel").Channel} channel
  * @returns {function(any):number}
  */
 export function getDiscreteRangeMapper(channel) {

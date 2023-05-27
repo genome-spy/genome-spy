@@ -34,17 +34,15 @@ export const markTypes = {
     text: TextMark,
 };
 
-/**
- * @typedef {import("../spec/channel").Channel} Channel
- * @typedef {import("./view").default} View
- * @typedef {import("./layerView").default} LayerView
- * @typedef {import("../utils/domainArray").DomainArray} DomainArray
- * @typedef {import("../encoder/accessor").Accessor} Accessor
- * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
- * @typedef {import("../spec/view").ResolutionTarget} ResolutionTarget
- *
- */
 export default class UnitView extends ContainerView {
+    /**
+     * @typedef {import("../spec/channel").Channel} Channel
+     * @typedef {import("./view").default} View
+     * @typedef {import("./layerView").default} LayerView
+     * @typedef {import("../utils/domainArray").DomainArray} DomainArray
+     * @typedef {import("../spec/view").ResolutionTarget} ResolutionTarget
+     *
+     */
     /**
      *
      * @param {import("../spec/view").UnitSpec} spec

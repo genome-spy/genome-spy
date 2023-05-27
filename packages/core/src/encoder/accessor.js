@@ -4,14 +4,10 @@ import { accessorFields, constant } from "vega-util";
 import { isDatumDef, isExprDef, isFieldDef } from "./encoder";
 import { field } from "../utils/field";
 
-/**
- * @typedef {Object} AccessorMetadata
- * @prop {boolean} constant True if the accessor returns the same value for all objects
- * @prop {string[]} fields The fields that the return value is based on (if any)
- *
- * @typedef {(function(any):any) & AccessorMetadata} Accessor
- */
 export default class AccessorFactory {
+    /**
+     * @typedef {import("../types/encoder").Accessor} Accessor
+     */
     constructor() {
         /** @type {(function(import("../spec/channel").ChannelDef):Accessor)[]} */
         this.accessorCreators = [];

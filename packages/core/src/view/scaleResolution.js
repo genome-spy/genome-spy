@@ -48,7 +48,7 @@ vegaScale("null", scaleNull, []);
 export const QUANTITATIVE = "quantitative";
 export const ORDINAL = "ordinal";
 export const NOMINAL = "nominal";
-export const LOCUS = "locus"; // Humdum, should this be "genomic"?
+export const LOCUS = "locus";
 export const INDEX = "index";
 
 /**
@@ -62,29 +62,28 @@ export const INDEX = "index";
  *
  * TODO: This has grown a bit too fat. Consider splitting.
  *
- * @typedef {import("../types/scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
  * @implements {ScaleResolutionApi}
- *
  */
 export default class ScaleResolution {
     /**
+     * @typedef {import("../types/scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
      * @typedef {import("../spec/channel").Channel} Channel
      * @typedef {import("../spec/channel").ChannelWithScale} ChannelWithScale
-     * @typedef {import("../spec/scale").Scale} Scale
      * @typedef {import("../spec/scale").NumericDomain} NumericDomain
      * @typedef {import("../spec/scale").ScalarDomain} ScalarDomain
      * @typedef {import("../spec/scale").ComplexDomain} ComplexDomain
      * @typedef {import("../spec/scale").ZoomParams} ZoomParams
      * @typedef {import("./unitView").default} UnitView
-     * @typedef {import("../encoder/encoder").VegaScale} VegaScale
+     * @typedef {import("../types/encoder").VegaScale} VegaScale
      * @typedef {import("../utils/domainArray").DomainArray} DomainArray
      * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
+     * @typedef {import("../types/scaleResolutionApi").ScaleResolutionListener} ScaleResolutionListener
      */
 
     /** @type {number[]} */
     #zoomExtent = undefined;
 
-    /** @type {Set<import("../types/scaleResolutionApi").ScaleResolutionListener>} Observers that are called when the scale domain is changed */
+    /** @type {Set<ScaleResolutionListener>} Observers that are called when the scale domain is changed */
     #domainListeners = new Set();
 
     /** @type {VegaScale} */
@@ -110,7 +109,7 @@ export default class ScaleResolution {
      * are rendered.
      *
      * @param {"domain"} type
-     * @param {import("../types/scaleResolutionApi").ScaleResolutionListener} listener function
+     * @param {ScaleResolutionListener} listener function
      */
     addEventListener(type, listener) {
         if (type != "domain") {
@@ -121,7 +120,7 @@ export default class ScaleResolution {
 
     /**
      * @param {"domain"} type
-     * @param {import("../types/scaleResolutionApi").ScaleResolutionListener} listener function
+     * @param {ScaleResolutionListener} listener function
      */
     removeEventListener(type, listener) {
         if (type != "domain") {
@@ -361,7 +360,7 @@ export default class ScaleResolution {
     }
 
     /**
-     * @returns {import("../encoder/encoder").VegaScale}
+     * @returns {VegaScale}
      */
     getScale() {
         if (this.#scale) {

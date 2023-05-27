@@ -1,10 +1,10 @@
 import { isLayerSpec, isUnitSpec } from "./viewFactory";
 import ContainerView from "./containerView";
 
-/**
- * @typedef {import("./view").default} View
- */
 export default class LayerView extends ContainerView {
+    /**
+     * @typedef {import("./view").default} View
+     */
     /**
      *
      * @param {import("../spec/view").LayerSpec} spec
