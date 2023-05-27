@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
 import UnitView from "./unitView";
-import LayerView from "./layerView";
 
 import { create, createAndInitialize } from "./testUtils";
 import { toRegularArray as r } from "../utils/domainArray";
 import ConcatView from "./concatView";
 import PointMark from "../marks/pointMark";
 import View from "./view";
+import LayerView from "./layerView";
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", () => {
