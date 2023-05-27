@@ -22,16 +22,18 @@ import { invalidate } from "../utils/propertyCacher";
 import NamedSource, { isNamedData } from "../data/sources/namedSource";
 
 /**
- * @typedef {import("./view").default} View
- * @typedef {import("../data/flowNode").default} FlowNode
- * @typedef {import("../spec/channel").Channel} Channel
- * @typedef {import("../spec/channel").Encoding} Encoding
- *
  * @param {View} root
  * @param {DataFlow<View>} [existingFlow] Add data flow
  *      graphs to an existing DataFlow object.
  */
 export function buildDataFlow(root, existingFlow) {
+    /**
+     * @typedef {import("./view").default} View
+     * @typedef {import("../data/flowNode").default} FlowNode
+     * @typedef {import("../spec/channel").Channel} Channel
+     * @typedef {import("../spec/channel").Encoding} Encoding
+     */
+
     /** @type {FlowNode[]} "Current nodes" on the path from view root to the current view */
     const nodeStack = [];
 
@@ -190,6 +192,13 @@ export function buildDataFlow(root, existingFlow) {
  * @param {View} view
  */
 export function linearizeLocusAccess(view) {
+    /**
+     * @typedef {import("./view").default} View
+     * @typedef {import("../data/flowNode").default} FlowNode
+     * @typedef {import("../spec/channel").Channel} Channel
+     * @typedef {import("../spec/channel").Encoding} Encoding
+     */
+
     /** @type {FlowNode[]} */
     const transforms = [];
 
@@ -296,8 +305,8 @@ export function linearizeLocusAccess(view) {
 }
 
 /**
- * @param {View} view
- * @param {Encoding} [encoding]
+ * @param {import("./view").default} view
+ * @param {import("../spec/channel").Encoding} [encoding]
  * @returns {import("../spec/transform").CompareParams}
  */
 function getCompareParamsForView(view, encoding) {
@@ -327,6 +336,9 @@ function getCompareParamsForView(view, encoding) {
  * @template {FlowNode} H
  */
 export function createChain(dataSource, ...transforms) {
+    /**
+     * @typedef {import("../data/flowNode").default} FlowNode
+     */
     /** @type {FlowNode} */
     let node = dataSource;
     for (const transform of transforms) {

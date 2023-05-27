@@ -7,22 +7,20 @@ import LayerView from "./layerView";
 import ConcatView from "./concatView";
 import { isArray, isObject, isString } from "vega-util";
 
-/**
- * @typedef {import("../types/viewContext").default} ViewContext
- * @typedef {import("../spec/view").UnitSpec} UnitSpec
- * @typedef {import("../spec/view").ViewSpec} ViewSpec
- * @typedef {import("../spec/view").LayerSpec} LayerSpec
- * @typedef {import("../spec/view").ImportSpec} ImportSpec
- * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
- * @typedef {import("../spec/view").HConcatSpec} HConcatSpec
- * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
- * @typedef {VConcatSpec | HConcatSpec | ConcatSpec} AnyConcatSpec
- *
- * @typedef {(spec: ViewSpec) => boolean} SpecGuard
- * @typedef {(spec: ViewSpec, context: ViewContext, parent?: import("./containerView").default, defaultName?: string) => View} Factory
- */
-
 export class ViewFactory {
+    /**
+     * @typedef {import("../types/viewContext").default} ViewContext
+     * @typedef {import("../spec/view").UnitSpec} UnitSpec
+     * @typedef {import("../spec/view").ViewSpec} ViewSpec
+     * @typedef {import("../spec/view").LayerSpec} LayerSpec
+     * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
+     * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
+     *
+     * @typedef {(spec: ViewSpec) => boolean} SpecGuard
+     * @typedef {(spec: ViewSpec, context: ViewContext, parent?: import("./containerView").default, defaultName?: string) => View} Factory
+     */
+
+    /** */
     constructor() {
         /** @type {{specGuard: SpecGuard, factory: Factory}[]} */
         this.types = [];

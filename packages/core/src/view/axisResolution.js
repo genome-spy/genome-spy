@@ -13,11 +13,11 @@ import coalesce from "../utils/coalesce";
 import mergeObjects from "../utils/mergeObjects";
 import { getCachedOrCall } from "../utils/propertyCacher";
 
-/**
- *
- * @typedef { import("./unitView").default} UnitView
- */
 export default class AxisResolution {
+    /**
+     * @typedef { import("./unitView").default} UnitView
+     */
+
     /**
      * @param {import("../spec/channel").PrimaryPositionalChannel} channel
      */

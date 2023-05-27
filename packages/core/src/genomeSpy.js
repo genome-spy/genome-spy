@@ -35,15 +35,6 @@ import ImplicitRootView from "./view/implicitRootView";
 import { reconfigureScales } from "./view/scaleResolution";
 
 /**
- * @typedef {import("./spec/view").UnitSpec} UnitSpec
- * @typedef {import("./spec/view").ViewSpec} ViewSpec
- * @typedef {import("./spec/view").ImportSpec} ImportSpec
- * @typedef {import("./spec/view").VConcatSpec} TrackSpec
- * @typedef {import("./spec/root").RootSpec} RootSpec
- * @typedef {import("./spec/root").RootConfig} RootConfig
- */
-
-/**
  * Events that are broadcasted to all views.
  * @typedef {"dataFlowBuilt" | "dataLoaded" | "layout" | "layoutComputed"} BroadcastEventType
  */
@@ -51,6 +42,13 @@ import { reconfigureScales } from "./view/scaleResolution";
 vegaFormats("fasta", fasta);
 
 export default class GenomeSpy {
+    /**
+     * @typedef {import("./view/view").default} View
+     * @typedef {import("./spec/view").ViewSpec} ViewSpec
+     * @typedef {import("./spec/root").RootSpec} RootSpec
+     * @typedef {import("./spec/root").RootConfig} RootConfig
+     */
+
     /**
      *
      * @param {HTMLElement} container
@@ -78,7 +76,7 @@ export default class GenomeSpy {
          * View visibility is checked using a predicate that can be overridden
          * for more dynamic visibility management.
          *
-         * @type {(view: import("./view/view").default) => boolean}
+         * @type {(view: View) => boolean}
          */
         this.viewVisibilityPredicate = (view) => view.isVisibleInSpec();
 
@@ -126,7 +124,7 @@ export default class GenomeSpy {
             ...(options.tooltipHandlers ?? {}),
         };
 
-        /** @type {import("./view/view").default} */
+        /** @type {View} */
         this.viewRoot = undefined;
     }
 
@@ -325,7 +323,7 @@ export default class GenomeSpy {
             },
         };
 
-        /** @type {import("./spec/view").ViewSpec & RootConfig} */
+        /** @type {ViewSpec & RootConfig} */
         const rootSpec = this.spec;
 
         if (rootSpec.datasets) {

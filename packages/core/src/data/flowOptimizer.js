@@ -2,8 +2,8 @@ import { BEHAVIOR_CLONES, BEHAVIOR_COLLECTS } from "./flowNode";
 import CloneTransform from "./transforms/clone";
 
 /**
- * @param {import("../view/flowBuilder").FlowNode} node
- * @param {import("../view/flowBuilder").FlowNode} [parent]
+ * @param {import("./flowNode").default} node
+ * @param {import("./flowNode").default} [parent]
  */
 export function validateLinks(node, parent = undefined) {
     if (node.parent !== parent) {
@@ -22,7 +22,7 @@ export function validateLinks(node, parent = undefined) {
 /**
  * Removes possible redundant CloneTransforms that were added during graph construction.
  *
- * @param {import("../view/flowBuilder").FlowNode} node
+ * @param {import("./flowNode").default} node
  */
 export function removeRedundantCloneTransforms(node, cloneRequired = false) {
     if (node.behavior & BEHAVIOR_COLLECTS) {
@@ -110,7 +110,7 @@ export function combineIdenticalDataSources(dataFlow) {
 
 /**
  *
- * @param {import("../view/flowBuilder").FlowNode} root
+ * @param {import("./flowNode").default} root
  */
 export function optimizeFlowGraph(root) {
     removeRedundantCloneTransforms(root);

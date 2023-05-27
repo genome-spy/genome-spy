@@ -54,10 +54,6 @@ export const INDEX = "index";
 /**
  * @template {ChannelWithScale}[T=ChannelWithScale]
  * @typedef {{view: import("./unitView").default, channel: T}} ResolutionMember
- * @typedef {import("./unitView").default} UnitView
- * @typedef {import("../encoder/encoder").VegaScale} VegaScale
- * @typedef {import("../utils/domainArray").DomainArray} DomainArray
- * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
  *
  */
 /**
@@ -69,15 +65,22 @@ export const INDEX = "index";
  * @typedef {import("../types/scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
  * @implements {ScaleResolutionApi}
  *
- * @typedef {import("../spec/channel").Channel} Channel
- * @typedef {import("../spec/channel").ChannelWithScale} ChannelWithScale
- * @typedef {import("../spec/scale").Scale} Scale
- * @typedef {import("../spec/scale").NumericDomain} NumericDomain
- * @typedef {import("../spec/scale").ScalarDomain} ScalarDomain
- * @typedef {import("../spec/scale").ComplexDomain} ComplexDomain
- * @typedef {import("../spec/scale").ZoomParams} ZoomParams
  */
 export default class ScaleResolution {
+    /**
+     * @typedef {import("../spec/channel").Channel} Channel
+     * @typedef {import("../spec/channel").ChannelWithScale} ChannelWithScale
+     * @typedef {import("../spec/scale").Scale} Scale
+     * @typedef {import("../spec/scale").NumericDomain} NumericDomain
+     * @typedef {import("../spec/scale").ScalarDomain} ScalarDomain
+     * @typedef {import("../spec/scale").ComplexDomain} ComplexDomain
+     * @typedef {import("../spec/scale").ZoomParams} ZoomParams
+     * @typedef {import("./unitView").default} UnitView
+     * @typedef {import("../encoder/encoder").VegaScale} VegaScale
+     * @typedef {import("../utils/domainArray").DomainArray} DomainArray
+     * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
+     */
+
     /** @type {number[]} */
     #zoomExtent = undefined;
 

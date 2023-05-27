@@ -46,16 +46,20 @@ export function orient2channel(slot) {
  *
  * TODO: Implement grid
  *
- * @typedef {import("../spec/view").LayerSpec} LayerSpec
- * @typedef {import("./view").default} View
- * @typedef {import("../spec/axis").Axis} Axis
- * @typedef {import("../spec/axis").GenomeAxis} GenomeAxis
- * @typedef {import("../spec/axis").AxisOrient} AxisOrient
- * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
- *
- * @typedef {Axis & { extent: number }} AugmentedAxis
  */
 export default class AxisView extends LayerView {
+    /**
+     *
+     * @typedef {import("../spec/view").LayerSpec} LayerSpec
+     * @typedef {import("./view").default} View
+     * @typedef {import("../spec/axis").Axis} Axis
+     * @typedef {import("../spec/axis").GenomeAxis} GenomeAxis
+     * @typedef {import("../spec/axis").AxisOrient} AxisOrient
+     * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
+     *
+     * @typedef {Axis & { extent: number }} AugmentedAxis
+     */
+
     /**
      * @param {Axis} axisProps
      * @param {import("../types/viewContext").default} context

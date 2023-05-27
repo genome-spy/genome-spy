@@ -18,18 +18,6 @@ import UnitView from "./unitView";
 import interactionToZoom from "./zoom";
 
 /**
- * @typedef {"row" | "column"} Direction
- *
- * @typedef {object} GridChild
- * @prop {import("./view").default} view
- * @prop {UnitView} [background]
- * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes
- * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisGridView>>} gridLines
- * @prop {UnitView} [title]
- * @prop {Rectangle} coords Coordinates of the view. Recorded for mouse tracking, etc.
- */
-
-/**
  * Modeled after: https://vega.github.io/vega/docs/layout/
  *
  * This should take care of the following:
@@ -45,6 +33,21 @@ import interactionToZoom from "./zoom";
  * - And later on, brushing, legend(?)
  */
 export default class GridView extends ContainerView {
+    /**
+     * @typedef {"row" | "column"} Direction
+     *
+     * @typedef {object} GridChild
+     * @prop {View} view
+     * @prop {UnitView} [background]
+     * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes
+     * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisGridView>>} gridLines
+     * @prop {UnitView} [title]
+     * @prop {Rectangle} coords Coordinates of the view. Recorded for mouse tracking, etc.
+     *
+     * @typedef {import("./view").default} View
+     */
+
+    /** */
     #columns = Infinity;
 
     #spacing = 10;
@@ -59,7 +62,7 @@ export default class GridView extends ContainerView {
     /**
      *
      * @param {import("../spec/view").AnyConcatSpec} spec
-     * @param {import("./viewFactory").ViewContext} context
+     * @param {import("../types/viewContext").default} context
      * @param {ContainerView} parent
      * @param {string} name
      * @param {number} columns
@@ -83,7 +86,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("./view").default} view
+     * @param {View} view
      */
     #makeGridChild(view) {
         /** @type {GridChild} */
@@ -128,7 +131,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("./view").default} view
+     * @param {View} view
      */
     appendChild(view) {
         view.parent ??= this;
@@ -150,7 +153,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("./view").default[]} views
+     * @param {View[]} views
      */
     setChildren(views) {
         //this.#children = []; // TODO: Check why this breaks summary track
@@ -160,8 +163,8 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("./view").default} child
-     * @param {import("./view").default} replacement
+     * @param {View} child
+     * @param {View} replacement
      */
     replaceChild(child, replacement) {
         const i = this.#children.findIndex(
@@ -315,7 +318,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @returns {IterableIterator<import("./view").default>}
+     * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
         for (const gridChild of this.#children) {
@@ -708,7 +711,7 @@ export default class GridView extends ContainerView {
     /**
      *
      * @param {import("../utils/layout/rectangle").default} coords Coordinates
-     * @param {import("./view").default} view
+     * @param {View} view
      * @param {import("./zoom").ZoomEvent} zoomEvent
      */
     #handleZoom(coords, view, zoomEvent) {
@@ -774,7 +777,7 @@ export function createBackground(viewBackground) {
 
 /**
  *
- * @param {import("./view").default} view
+ * @param {View} view
  * @returns
  */
 function getZoomableResolutions(view) {
@@ -798,7 +801,7 @@ function getZoomableResolutions(view) {
 }
 
 /**
- * @param {import("./view").default} view
+ * @param {View} view
  */
 export function isClippedChildren(view) {
     let clipped = true;

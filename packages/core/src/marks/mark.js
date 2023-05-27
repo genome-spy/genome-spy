@@ -41,10 +41,6 @@ export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 
 /**
- * @typedef {import("../spec/mark").MarkConfig} MarkConfig
- * @typedef {import("../spec/channel").Channel} Channel
- * @typedef {import("../spec/channel").Encoding} Encoding
- * @typedef {import("../spec/channel").ValueDef} ValueDef
  *
  * @typedef {import("../types/rendering").RenderingOptions} RenderingOptions
  * @typedef {object} _MarkRenderingOptions
@@ -58,6 +54,13 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
  *
  */
 export default class Mark {
+    /**
+     * @typedef {import("../spec/mark").MarkConfig} MarkConfig
+     * @typedef {import("../spec/channel").Channel} Channel
+     * @typedef {import("../spec/channel").Encoding} Encoding
+     * @typedef {import("../spec/channel").ValueDef} ValueDef
+     */
+
     /**
      * @param {import("../view/unitView").default} unitView
      */
