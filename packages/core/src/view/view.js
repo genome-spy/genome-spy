@@ -537,7 +537,7 @@ export default class View {
      */
     getBaseUrl() {
         return appendToBaseUrl(
-            () => this.layoutParent?.getBaseUrl(),
+            () => this.dataParent?.getBaseUrl(),
             this.spec.baseUrl
         );
     }
