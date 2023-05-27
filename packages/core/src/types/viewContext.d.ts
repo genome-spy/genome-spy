@@ -76,7 +76,8 @@ export default interface ViewContext {
 
     createView: (
         spec: ViewSpec,
-        parent?: ContainerView,
+        layoutParent?: ContainerView,
+        dataParent?: View,
         defaultName?: string
     ) => View;
 }

@@ -2,18 +2,18 @@ import View, { VISIT_STOP, VISIT_SKIP } from "./view";
 
 /**
  * Compositor view represents a non-leaf node in the view hierarchy.
- * @typedef {import("../spec/view").ResolutionTarget} ResolutionTarget
  */
 export default class ContainerView extends View {
     /**
      *
      * @param {import("../spec/view").ContainerSpec} spec
      * @param {import("../types/viewContext").default} context
-     * @param {ContainerView} parent
+     * @param {ContainerView} layoutParent
+     * @param {import("./view").default} dataParent
      * @param {string} name
      */
-    constructor(spec, context, parent, name) {
-        super(spec, context, parent, name);
+    constructor(spec, context, layoutParent, dataParent, name) {
+        super(spec, context, layoutParent, dataParent, name);
 
         this.spec = spec;
     }
@@ -127,33 +127,11 @@ export default class ContainerView extends View {
     }
 
     /**
-     * @param {import("../spec/channel").Channel | "default"} channel
-     * @param {ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
-     */
-    getConfiguredResolution(channel, resolutionType) {
-        return this.spec.resolve?.[resolutionType]?.[channel];
-    }
-
-    /**
      * @param {import("../spec/channel").Channel} channel
-     * @param {ResolutionTarget} resolutionType
+     * @param {import("../spec/view").ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         return "shared";
-    }
-
-    /**
-     * @param {import("../spec/channel").Channel} channel
-     * @param {ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
-     */
-    getConfiguredOrDefaultResolution(channel, resolutionType) {
-        return (
-            this.getConfiguredResolution(channel, resolutionType) ??
-            this.getConfiguredResolution("default", resolutionType) ??
-            this.getDefaultResolution(channel, resolutionType)
-        );
     }
 }

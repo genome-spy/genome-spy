@@ -18,9 +18,10 @@ export default class AxisGridView extends LayerView {
      * @param {Axis} axisProps
      * @param {import("../types/viewContext").default} context
      * @param {string} type Data type (quantitative, ..., locus)
-     * @param {import("./containerView").default} parent
+     * @param {import("./containerView").default} layoutParent
+     * @param {import("./view").default} dataParent
      */
-    constructor(axisProps, type, context, parent) {
+    constructor(axisProps, type, context, layoutParent, dataParent) {
         // Now the presence of genomeAxis is based on field type, not scale type.
         // TODO: Use scale instead. However, it would make the initialization much more
         // complex because scales are not available before scale resolution.
@@ -35,7 +36,8 @@ export default class AxisGridView extends LayerView {
         super(
             createAxisGrid(fullAxisProps, type),
             context,
-            parent,
+            layoutParent,
+            dataParent,
             `axisGrid_${axisProps.orient}`
         );
 

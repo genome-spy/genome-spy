@@ -285,7 +285,9 @@ export default class Mark {
             // e.g., view background or an x axis.
             // This could also be more generic and work with other faceting views
             // that will be available in the future.
-            this.unitView.getAncestors().find((view) => "samples" in view.spec)
+            this.unitView
+                .getLayoutAncestors()
+                .find((view) => "samples" in view.spec)
         ) {
             return SAMPLE_FACET_UNIFORM;
         }
@@ -556,7 +558,7 @@ export default class Mark {
             return false;
         }
 
-        for (const view of this.unitView.getAncestors()) {
+        for (const view of this.unitView.getLayoutAncestors()) {
             if (!view.isPickingSupported()) {
                 return false;
             }
@@ -662,7 +664,7 @@ export default class Mark {
             ops.push(() => {
                 /** @type {WebGLTexture} */
                 let facetTexture;
-                for (const view of this.unitView.getAncestors()) {
+                for (const view of this.unitView.getLayoutAncestors()) {
                     facetTexture = view.getSampleFacetTexture();
                     if (facetTexture) {
                         break;

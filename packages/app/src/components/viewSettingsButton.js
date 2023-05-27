@@ -4,7 +4,6 @@ import { LitElement, html, nothing } from "lit";
 import { live } from "lit/directives/live.js";
 import AxisView from "@genome-spy/core/view/axisView";
 import LayerView from "@genome-spy/core/view/layerView";
-import { VISIT_SKIP } from "@genome-spy/core/view/view";
 import {
     findUniqueViewNames,
     isCustomViewName,
@@ -14,11 +13,15 @@ import { queryDependency } from "../utils/dependency";
 import { nestPaths } from "../utils/nestPaths";
 import { toggleDropdown } from "../utils/ui/dropdown";
 import { viewSettingsSlice } from "../viewSettingsSlice";
+import {
+    nodesToTreesWithAccessor,
+    visitTree,
+} from "@genome-spy/core/utils/trees";
 
-/**
- * @typedef {import("@genome-spy/core/view/view").default} View
- */
 class ViewSettingsButton extends LitElement {
+    /**
+     * @typedef {import("@genome-spy/core/view/view").default} View
+     */
     constructor() {
         super();
 
@@ -110,20 +113,29 @@ class ViewSettingsButton extends LitElement {
         }
 
         /** @type {View[]} */
-        const views = [];
+        const nodes = [];
 
-        viewRoot.visit((view) => {
-            if (view instanceof AxisView) {
-                return VISIT_SKIP;
-            }
-            views.push(view);
-        });
+        for (const tree of nodesToTreesWithAccessor(
+            viewRoot.getDescendants(),
+            (view) => view.dataParent
+        )) {
+            visitTree(tree, {
+                preOrder: (node) => {
+                    const view = node.ref;
+                    if (view instanceof AxisView) {
+                        return "skip";
+                    }
+                    nodes.push(view);
+                },
+            });
+        }
 
-        const paths = views
+        // Do some flattening to the hierarchy, filter some levels out
+        const paths = nodes
             .filter(
                 (view) => isCustomViewName(view.name) && isConfigurable(view)
             )
-            .map((view) => [...view.getAncestors()].reverse());
+            .map((view) => [...view.getDataAncestors()].reverse());
 
         this.nestedPaths = nestPaths(paths);
     }
@@ -218,6 +230,6 @@ class ViewSettingsButton extends LitElement {
 
 const isConfigurable = (/** @type {View} */ view) =>
     view.spec.configurableVisibility ??
-    !(view.parent && view.parent instanceof LayerView);
+    !(view.layoutParent && view.layoutParent instanceof LayerView);
 
 customElements.define("genome-spy-view-visibility", ViewSettingsButton);

@@ -313,11 +313,12 @@ export default class GenomeSpy {
 
             isViewSpec: (spec) => self.viewFactory.isViewSpec(spec),
 
-            createView: function (spec, parent, defaultName) {
+            createView: function (spec, layoutParent, dataParent, defaultName) {
                 return self.viewFactory.createView(
                     spec,
                     context,
-                    parent,
+                    layoutParent,
+                    dataParent,
                     defaultName
                 );
             },
@@ -331,7 +332,7 @@ export default class GenomeSpy {
         }
 
         // Create the view hierarchy
-        this.viewRoot = context.createView(rootSpec, null, "viewRoot");
+        this.viewRoot = context.createView(rootSpec, null, null, "viewRoot");
 
         // Replace placeholder ImportViews with actual views.
         await processImports(this.viewRoot);
@@ -368,7 +369,10 @@ export default class GenomeSpy {
         optimizeDataFlow(flow);
         this.broadcast("dataFlowBuilt", flow);
 
-        flow.dataSources.forEach((ds) => console.log(ds.subtreeToString()));
+        // @ts-expect-error
+        if (import.meta.env.DEV) {
+            flow.dataSources.forEach((ds) => console.log(ds.subtreeToString()));
+        }
 
         // Create encoders (accessors, scales and related metadata)
         unitViews.forEach((view) => view.mark.initializeEncoders());
@@ -569,7 +573,7 @@ export default class GenomeSpy {
                         ? {
                               type: event.type,
                               viewPath: this._currentHover.mark.unitView
-                                  .getAncestors()
+                                  .getLayoutAncestors()
                                   .map((view) => view.name)
                                   .reverse(),
                               datum: this._currentHover.datum,

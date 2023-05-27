@@ -63,12 +63,13 @@ export default class GridView extends ContainerView {
      *
      * @param {import("../spec/view").AnyConcatSpec} spec
      * @param {import("../types/viewContext").default} context
-     * @param {ContainerView} parent
+     * @param {ContainerView} layoutParent
+     * @param {View} dataParent
      * @param {string} name
      * @param {number} columns
      */
-    constructor(spec, context, parent, name, columns) {
-        super(spec, context, parent, name);
+    constructor(spec, context, layoutParent, dataParent, name, columns) {
+        super(spec, context, layoutParent, dataParent, name);
         this.spec = spec;
 
         this.#spacing = spec.spacing ?? 10;
@@ -105,6 +106,7 @@ export default class GridView extends ContainerView {
                 const unitView = new UnitView(
                     createBackground(viewBackground),
                     this.context,
+                    this,
                     view,
                     "background" + this.#childSerial
                 );
@@ -118,6 +120,7 @@ export default class GridView extends ContainerView {
                 const unitView = new UnitView(
                     title,
                     this.context,
+                    this,
                     view,
                     "title" + this.#childSerial
                 );
@@ -134,7 +137,7 @@ export default class GridView extends ContainerView {
      * @param {View} view
      */
     appendChild(view) {
-        view.parent ??= this;
+        view.layoutParent ??= this;
         this.#children.push(this.#makeGridChild(view));
         this.#childSerial++;
     }
@@ -156,7 +159,7 @@ export default class GridView extends ContainerView {
      * @param {View[]} views
      */
     setChildren(views) {
-        //this.#children = []; // TODO: Check why this breaks summary track
+        this.#children = [];
         for (const view of views) {
             this.appendChild(view);
         }
@@ -249,7 +252,7 @@ export default class GridView extends ContainerView {
                     props,
                     r.scaleResolution.type,
                     this.context,
-                    // Note: AxisView has a unit/layerView as parent so that scale/axis resolutions are inherited correctly
+                    this,
                     axisParent
                 );
 
@@ -258,7 +261,7 @@ export default class GridView extends ContainerView {
                         props,
                         r.scaleResolution.type,
                         this.context,
-                        // Note: AxisGridView has a unit/layerView as parent so that scale/axis resolutions are inherited correctly
+                        this,
                         axisParent
                     );
                 }
@@ -554,7 +557,7 @@ export default class GridView extends ContainerView {
             return;
         }
 
-        if (!this.parent) {
+        if (!this.layoutParent) {
             // Usually padding is applied by the parent GridView, but if this is the root view, we need to apply it here
             coords = coords.shrink(this.getPadding());
         }
@@ -747,7 +750,7 @@ export default class GridView extends ContainerView {
 
     /**
      * @param {import("../spec/channel").Channel} channel
-     * @param {import("./containerView").ResolutionTarget} resolutionType
+     * @param {import("../spec/view").ResolutionTarget} resolutionType
      * @returns {import("../spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {

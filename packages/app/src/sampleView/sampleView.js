@@ -43,6 +43,7 @@ import Rectangle from "@genome-spy/core/utils/layout/rectangle";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { createBackground } from "@genome-spy/core/view/gridView";
 import { isChannelWithScale } from "@genome-spy/core/encoder/encoder";
+import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -53,35 +54,38 @@ const SPACING = 10;
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
  *
- * @typedef {import("./sampleState").Group} Group
- * @typedef {import("./sampleState").Sample} Sample
- * @typedef {import("@genome-spy/core/utils/layout/flexLayout").LocSize} LocSize
- * @typedef {import("@genome-spy/core/view/view").default} View
- * @typedef {import("@genome-spy/core/view/layerView").default} LayerView
- * @typedef {import("@genome-spy/core/data/dataFlow").default<View>} DataFlow
- * @typedef {import("@genome-spy/core/genome/genome").ChromosomalLocus} ChromosomalLocus
- *
- * @typedef {object} LocusSpecifier
- * @prop {string} view A unique name of the view
- * @prop {string} field
- * @prop {number | ChromosomalLocus} locus Locus on the domain
- *
- * @typedef {import("./sampleViewTypes").SampleLocation} SampleLocation
- * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
  */
 export default class SampleView extends ContainerView {
+    /**
+     * @typedef {import("./sampleState").Group} Group
+     * @typedef {import("./sampleState").Sample} Sample
+     * @typedef {import("@genome-spy/core/utils/layout/flexLayout").LocSize} LocSize
+     * @typedef {import("@genome-spy/core/view/view").default} View
+     * @typedef {import("@genome-spy/core/view/layerView").default} LayerView
+     * @typedef {import("@genome-spy/core/data/dataFlow").default<View>} DataFlow
+     * @typedef {import("@genome-spy/core/genome/genome").ChromosomalLocus} ChromosomalLocus
+     *
+     * @typedef {object} LocusSpecifier
+     * @prop {string} view A unique name of the view
+     * @prop {string} field
+     * @prop {number | ChromosomalLocus} locus Locus on the domain
+     *
+     * @typedef {import("./sampleViewTypes").SampleLocation} SampleLocation
+     * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
+     */
     _peekState = 0;
 
     /**
      *
      * @param {import("@genome-spy/core/spec/sampleView").SampleSpec} spec
      * @param {import("@genome-spy/core/types/viewContext").default} context
-     * @param {ContainerView} parent
+     * @param {ContainerView} layoutParent
+     * @param {import("@genome-spy/core/view/view").default} dataParent
      * @param {string} name
      * @param {import("../state/provenance").default<any>} provenance
      */
-    constructor(spec, context, parent, name, provenance) {
-        super(spec, context, parent, name);
+    constructor(spec, context, layoutParent, dataParent, name, provenance) {
+        super(spec, context, layoutParent, dataParent, name);
 
         this.provenance = provenance;
 
@@ -93,27 +97,26 @@ export default class SampleView extends ContainerView {
 
         /** @type { UnitView | LayerView } */
         this.child = /** @type { UnitView | LayerView } */ (
-            context.createView(spec.spec, this, "sample-facets")
+            context.createView(spec.spec, this, this, "sample-facets")
         );
 
         this.summaryViews = new ConcatView(
-            { vconcat: [] },
+            {
+                configurableVisibility: false,
+                vconcat: [],
+            },
             context,
+            this,
             this,
             "sampleSummaries"
         );
 
-        /*
-         * We produce an inconsistent view hierarchy by design. The summaries have the
-         * enclosing (by the spec) views as their parents, but they are also children of
-         * "this.summaryViews". The rationale is: the views inherit encodings and resolutions
-         * from their enclosing views but layout and rendering are managed by the SampleView.
+        /**
+         * @type {(UnitView | LayerView)[]}
          */
-        this.child.visit((view) => {
-            if (view instanceof UnitView) {
-                this.summaryViews.setChildren(view.sampleAggregateViews);
-            }
-        });
+        this.sampleAggregateViews = [];
+        this.#createSummaryViews();
+
         this.childCoords = Rectangle.ZERO;
 
         /**
@@ -144,6 +147,7 @@ export default class SampleView extends ContainerView {
             },
             context,
             this,
+            this,
             "sample-sidebar"
         );
         this.peripheryCoords = Rectangle.ZERO;
@@ -159,6 +163,7 @@ export default class SampleView extends ContainerView {
                 const unitView = new UnitView(
                     createBackground(viewBackground),
                     this.context,
+                    this,
                     this,
                     "sample-background"
                 );
@@ -405,6 +410,7 @@ export default class SampleView extends ContainerView {
         }
         yield this.child;
         yield this.peripheryView;
+        yield this.summaryViews;
     }
 
     /**
@@ -702,7 +708,7 @@ export default class SampleView extends ContainerView {
             return;
         }
 
-        if (!this.parent) {
+        if (!this.layoutParent) {
             // Usually padding is applied by GridView, but if this is the root view, we need to apply it here
             coords = coords.shrink(this.getPadding());
         }
@@ -906,7 +912,7 @@ export default class SampleView extends ContainerView {
             this.getScaleResolution("x").invertToComplex(normalizedXPos);
 
         const uniqueViewNames = findUniqueViewNames(
-            [...this.getAncestors()].at(-1)
+            [...this.getLayoutAncestors()].at(-1)
         );
 
         const fieldInfos = findEncodedFields(this.child)
@@ -1035,9 +1041,49 @@ export default class SampleView extends ContainerView {
         this.context.animator.requestRender();
     }
 
+    // TODO: Move this to SampleView
+    #createSummaryViews() {
+        /** @type {View[]} */
+        const summaryViews = [];
+
+        for (const view of this.child.getDescendants()) {
+            const spec = view.spec;
+            if (!isAggregateSamplesSpec(spec)) {
+                continue;
+            }
+            for (const sumSpec of spec.aggregateSamples) {
+                const transform = sumSpec.transform ?? [];
+                if (transform.length && transform.at(-1).type != "collect") {
+                    // MergeFacets must be a direct child of Collector
+                    transform.push({ type: "collect" });
+                }
+                transform.push({ type: "mergeFacets" });
+                sumSpec.transform = transform;
+
+                sumSpec.encoding = {
+                    ...(sumSpec.encoding ?? {}),
+                    sample: null,
+                };
+
+                const summaryView = /** @type { UnitView | LayerView } */ (
+                    this.context.createView(sumSpec, this, view, "summaryView")
+                );
+
+                /**
+                 * @param {View} [whoIsAsking]
+                 */
+                summaryView.getFacetFields = (whoIsAsking) => undefined;
+
+                summaryViews.push(summaryView);
+            }
+        }
+
+        this.summaryViews.setChildren(summaryViews);
+    }
+
     /**
      * @param {string} channel
-     * @param {import("@genome-spy/core/view/containerView").ResolutionTarget} resolutionType
+     * @param {import("@genome-spy/core/spec/view").ResolutionTarget} resolutionType
      * @returns {import("@genome-spy/core/spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {

@@ -182,7 +182,7 @@ export default class MergeSampleFacets extends FlowNode {
  * @param {View} view
  */
 function findProvenance(view) {
-    for (const v of view.getAncestors()) {
+    for (const v of view.getLayoutAncestors()) {
         if (v instanceof SampleView) {
             return v.provenance;
         }

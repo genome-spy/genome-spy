@@ -29,14 +29,12 @@ const SAMPLE_NAME = "SAMPLE_NAME";
 const attributeViewRegex = /^attribute-(.*)$/;
 
 /**
- * @typedef {import("./sampleView").Sample} Sample
- * @typedef {import("@genome-spy/core/view/view").default} View
- */
-
-/**
  * This special-purpose class takes care of rendering sample labels and metadata.
  */
 export class SampleAttributePanel extends ConcatView {
+    /**
+     * @typedef {import("@genome-spy/core/view/view").default} View
+     */
     /**
      * @param {import("./sampleView").default} sampleView
      */
@@ -53,8 +51,8 @@ export class SampleAttributePanel extends ConcatView {
                 },
             },
             sampleView.context,
-            // TODO: fix parent
-            undefined,
+            sampleView,
+            sampleView,
             "sample-metadata"
         );
 
@@ -105,23 +103,22 @@ export class SampleAttributePanel extends ConcatView {
         });
 
         // TODO: Implement "mouseleave" event. Let's hack for now...
-        peek([...this.sampleView.getAncestors()]).addInteractionEventListener(
-            "mousemove",
-            (coords, event) => {
-                if (!this._attributeHighlighState.currentAttribute) {
-                    return;
-                }
-                if (event.target) {
-                    for (const view of event.target.getAncestors()) {
-                        if (view == this) {
-                            return;
-                        }
+        peek([
+            ...this.sampleView.getLayoutAncestors(),
+        ]).addInteractionEventListener("mousemove", (coords, event) => {
+            if (!this._attributeHighlighState.currentAttribute) {
+                return;
+            }
+            if (event.target) {
+                for (const view of event.target.getLayoutAncestors()) {
+                    if (view == this) {
+                        return;
                     }
                 }
-
-                this._handleAttributeHighlight(undefined);
             }
-        );
+
+            this._handleAttributeHighlight(undefined);
+        });
     }
 
     /**
@@ -264,7 +261,7 @@ export class SampleAttributePanel extends ConcatView {
     /**
      * TODO: Attach this to state observer
      *
-     * @param {Sample[]} samples
+     * @param {import("./sampleState").Sample[]} samples
      */
     _setSamples(samples) {
         if (this.childCount) {
@@ -332,6 +329,7 @@ export class SampleAttributePanel extends ConcatView {
         views.push(
             this.context.createView(
                 createLabelViewSpec(this.sampleView.spec.samples),
+                this,
                 this
             )
         );
@@ -339,6 +337,7 @@ export class SampleAttributePanel extends ConcatView {
         for (const attribute of this.getAttributeNames()) {
             const view = this.context.createView(
                 this._createAttributeViewSpec(attribute),
+                this,
                 this
             );
             view.opacityFunction = (parentOpacity) =>
@@ -505,7 +504,7 @@ export class SampleAttributePanel extends ConcatView {
 
     /**
      * @param {string} channel
-     * @param {import("@genome-spy/core/view/containerView").ResolutionTarget} resolutionType
+     * @param {import("@genome-spy/core/spec/view").ResolutionTarget} resolutionType
      * @returns {import("@genome-spy/core/spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
