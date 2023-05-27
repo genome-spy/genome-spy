@@ -16,6 +16,8 @@ export default class ImplicitRootView extends GridView {
         );
 
         view.layoutParent = this;
+        view.dataParent = this;
+
         this.appendChild(view);
     }
 }

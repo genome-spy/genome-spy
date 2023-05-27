@@ -15,11 +15,11 @@ import {
     getPrimaryChannel,
 } from "../encoder/encoder";
 import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
-import { isAggregateSamplesSpec } from "./viewFactory";
 import { group } from "d3-array";
 import IdentifierTransform from "../data/transforms/identifier";
 import { invalidate } from "../utils/propertyCacher";
 import NamedSource, { isNamedData } from "../data/sources/namedSource";
+import { nodesToTreesWithAccessor, visitTree } from "../utils/trees";
 
 /**
  * @param {View} root
@@ -30,8 +30,6 @@ export function buildDataFlow(root, existingFlow) {
     /**
      * @typedef {import("./view").default} View
      * @typedef {import("../data/flowNode").default} FlowNode
-     * @typedef {import("../spec/channel").Channel} Channel
-     * @typedef {import("../spec/channel").Encoding} Encoding
      */
 
     /** @type {FlowNode[]} "Current nodes" on the path from view root to the current view */
@@ -132,7 +130,9 @@ export function buildDataFlow(root, existingFlow) {
 
         if (view instanceof UnitView) {
             if (!currentNode) {
-                throw new Error("A unit view has no (inherited) data source");
+                throw new Error(
+                    `A unit view (${view.getPathString()}) has no (inherited) data source`
+                );
             }
 
             // Support chrom/pos channelDefs
@@ -166,18 +166,24 @@ export function buildDataFlow(root, existingFlow) {
             appendNode(collector);
             dataFlow.addCollector(collector, view);
         }
-
-        if (isAggregateSamplesSpec(view.spec)) {
-            // TODO: implement summarization of layer views
-        }
     };
 
-    /** @param {View} view */
-    processView.postOrder = (view) => {
-        currentNode = nodeStack.pop();
-    };
+    // Views only keep track of their children based on the layout hierachy.
+    // Thus, let's get traversable hierarchies using dataParents.
+    const dataTrees = nodesToTreesWithAccessor(
+        root.getDescendants(),
+        (view) => view.dataParent
+    );
 
-    root.visit(processView);
+    for (const dataTree of dataTrees) {
+        visitTree(dataTree, {
+            preOrder: (node) => processView(node.ref),
+            // eslint-disable-next-line no-loop-func
+            postOrder: () => {
+                currentNode = nodeStack.pop();
+            },
+        });
+    }
 
     postProcessOps.forEach((op) => op());
 

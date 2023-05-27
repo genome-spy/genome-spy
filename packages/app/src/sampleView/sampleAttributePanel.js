@@ -333,6 +333,7 @@ export class SampleAttributePanel extends ConcatView {
         views.push(
             this.context.createView(
                 createLabelViewSpec(this.sampleView.spec.samples),
+                this,
                 this
             )
         );
@@ -340,6 +341,7 @@ export class SampleAttributePanel extends ConcatView {
         for (const attribute of this.getAttributeNames()) {
             const view = this.context.createView(
                 this._createAttributeViewSpec(attribute),
+                this,
                 this
             );
             view.opacityFunction = (parentOpacity) =>

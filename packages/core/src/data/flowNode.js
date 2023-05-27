@@ -212,13 +212,11 @@ export default class FlowNode {
         const childTree = this.children
             .map((child) => child.subtreeToString(depth + 1))
             .join("");
-        return (
-            " ".repeat(depth * 2) +
-            "* " +
-            /^class ([A-Za-z0-9_]+)/.exec("" + this.constructor)?.[1] +
-            "\n" +
-            childTree
-        );
+        return `${" ".repeat(depth * 2)}* ${this.constructor.name}${
+            ("identifier" in this && this.identifier
+                ? ": " + this.identifier
+                : "") ?? ""
+        } \n${childTree}`;
     }
 
     /**
