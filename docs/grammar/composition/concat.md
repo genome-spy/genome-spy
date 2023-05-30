@@ -181,5 +181,40 @@ following example.
 By default, all channels have independent scales and axes. However, because
 track-based layouts that resemble genome browsers are such a common use case,
 `vconcat` has a special treatment for the `x` channel: if all child views use
-`"locus"` or `"index"` data type on the `x` channel, the resolution defaults to
-`"shared"`.
+`"locus"` or `"index"` data type on the `x` channel, the scale resolution
+defaults to `"shared"`. However, axes are still `"independent"` by default.
+
+### Shared axes
+
+Concatenation operators support shared axes on channels that also have shared
+scales. Axis domain line, ticks, and labels are drawn only once for each row or column.
+Grid lines are drawn for all participating views.
+
+<div><genome-spy-doc-embed height="350">
+
+```json
+{
+  "data": { "url": "sincos.csv" },
+
+  "resolve": {
+    "scale": { "x": "shared", "y": "shared" },
+    "axis": { "x": "shared", "y": "shared" }
+  },
+
+  "spacing": 20,
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative", "axis": { "grid": true } },
+    "y": { "field": "sin", "type": "quantitative", "axis": { "grid": true } }
+  },
+
+  "columns": 2,
+
+  "concat": [
+    { "mark": "point", "view": { "stroke": "lightgray" } },
+    { "mark": "point", "view": { "stroke": "lightgray" } },
+    { "mark": "point", "view": { "stroke": "lightgray" } },
+    { "mark": "point", "view": { "stroke": "lightgray" } }
+  ]
+}
+```
