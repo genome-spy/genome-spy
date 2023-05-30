@@ -765,7 +765,11 @@ export default class GridView extends ContainerView {
                 ) {
                     axisView.render(
                         context,
-                        translateAxisCoords(childCoords, orient, axisView)
+                        translateAxisCoords(
+                            childCoords.shrink(gridChild.view.getOverhang()),
+                            orient,
+                            axisView
+                        )
                     );
                 }
             }
