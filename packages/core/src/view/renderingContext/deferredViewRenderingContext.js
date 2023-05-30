@@ -123,10 +123,16 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
             if (enabled && viewportVisible) op();
         };
 
-        // Group by marks in order to minimize program changes
-        const requestByMark = group(this.buffer, (request) => request.mark);
+        // We group by marks in order to minimize program changes.
+        // Note: by reversing the buffer, we ensure ensure that the last instance
+        // of a mark determines the order of the groups.
+        const requestByMark = group(
+            this.buffer.reverse(),
+            (request) => request.mark
+        );
 
-        for (const [mark, requests] of requestByMark.entries()) {
+        // And reversing again to restore the original order
+        for (const [mark, requests] of [...requestByMark.entries()].reverse()) {
             if (!mark.isReady()) {
                 continue;
             }
