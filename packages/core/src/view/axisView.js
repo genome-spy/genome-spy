@@ -28,7 +28,7 @@ export const CHANNEL_ORIENTS = {
 /**
  * @type {Record<AxisOrient, import("../spec/channel").PrimaryPositionalChannel>}
  */
-const ORIENT_CHANNELS = Object.fromEntries(
+export const ORIENT_CHANNELS = Object.fromEntries(
     Object.entries(CHANNEL_ORIENTS)
         .map(([channel, slots]) => slots.map((slot) => [slot, channel]))
         .flat(1)
@@ -95,10 +95,6 @@ export default class AxisView extends LayerView {
         this.axisProps = fullAxisProps;
         this.blockEncodingInheritance = true;
         this.contributesToScaleDomain = false;
-    }
-
-    getOrient() {
-        return this.axisProps.orient;
     }
 
     getSize() {
