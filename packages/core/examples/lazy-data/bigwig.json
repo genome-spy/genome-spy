@@ -37,6 +37,8 @@
     }
   },
 
+  "resolve": { "axis": { "x": "shared" } },
+
   "vconcat": [
     {
       "height": 140,
@@ -49,8 +51,7 @@
         "x": {
           "chrom": "chrom",
           "pos": "start",
-          "type": "locus",
-          "axis": null
+          "type": "locus"
         },
         "y": {
           "field": "score",

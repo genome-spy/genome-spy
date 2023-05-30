@@ -1,4 +1,5 @@
 /* eslint-disable max-depth */
+import { primaryPositionalChannels } from "../encoder/encoder";
 import {
     FlexDimensions,
     getLargestSize,
@@ -10,7 +11,7 @@ import Grid from "../utils/layout/grid";
 import Padding from "../utils/layout/padding";
 import Rectangle from "../utils/layout/rectangle";
 import AxisGridView from "./axisGridView";
-import AxisView, { CHANNEL_ORIENTS } from "./axisView";
+import AxisView, { CHANNEL_ORIENTS, ORIENT_CHANNELS } from "./axisView";
 import ContainerView from "./containerView";
 import LayerView from "./layerView";
 import createTitle from "./title";
@@ -56,6 +57,15 @@ export default class GridView extends ContainerView {
      * @type { GridChild[] }
      */
     #children = [];
+
+    /**
+     * Note: shared axes are not included in #children because we have to handle
+     * toggleable view visibilities. For example, if the bottom view is suddenly hidden,
+     * the axis should be shown in the view that takes its place as the new bottom view.
+     *
+     * @type { Partial<Record<import("../spec/channel").PrimaryPositionalChannel, AxisView>> } }
+     */
+    #sharedAxes = {};
 
     #childSerial = 0;
 
@@ -200,29 +210,60 @@ export default class GridView extends ContainerView {
         this.#createAxes();
     }
 
+    // eslint-disable-next-line complexity
     #createAxes() {
-        if (Object.keys(this.resolutions.axis).length) {
-            throw new Error(
-                "GridView (concat, vconcat, hconcat) does not currently support shared axes!"
-            );
+        // Axis ticks, labels, etc. They should be created only if this view has caught
+        // the scale resolution for the channel.
+        for (const channel of primaryPositionalChannels) {
+            const r = this.resolutions.axis[channel];
+            if (r) {
+                const props = r.getAxisProps();
+                if (props) {
+                    const propsWithDefaults = {
+                        title: r.getTitle(),
+                        orient: CHANNEL_ORIENTS[channel][0],
+                        ...props,
+                    };
+                    // TODO: Validate that channel and orient are compatible
+                    const v = new AxisView(
+                        propsWithDefaults,
+                        r.scaleResolution.type,
+                        this.context,
+                        this,
+                        this
+                    );
+                    this.#sharedAxes[channel] = v;
+
+                    // Axes are created after scales are resolved, so we need to resolve possible new scales here
+                    v.visit((view) => {
+                        if (view instanceof UnitView) {
+                            view.resolve("scale");
+                        }
+                    });
+                }
+            }
         }
 
-        // Create axes
+        // Create view decorations, grid lines, and independent axes for each child
         for (const gridChild of this.#children) {
             const { view, axes, gridLines } = gridChild;
 
             /**
              * @param {import("./axisResolution").default} r
              * @param {import("../spec/channel").PrimaryPositionalChannel} channel
-             * @param {UnitView | LayerView} axisParent
              */
-            const createAxis = (r, channel, axisParent) => {
-                const props = r.getAxisProps();
-                if (props === null) {
+            const getAxisPropsWithDefaults = (r, channel) => {
+                const propsWithoutDefaults = r.getAxisProps();
+                if (propsWithoutDefaults === null) {
                     return;
                 }
 
-                // Pick a default orient based on what is available
+                const props = propsWithoutDefaults
+                    ? { ...propsWithoutDefaults }
+                    : {};
+
+                // Pick a default orient based on what is available.
+                // This logic is needed for layer views that have independent axes.
                 if (!props.orient) {
                     for (const orient of CHANNEL_ORIENTS[channel]) {
                         if (!axes[orient]) {
@@ -245,21 +286,43 @@ export default class GridView extends ContainerView {
                     );
                 }
 
-                if (axes[props.orient]) {
-                    throw new Error(
-                        `An axis with the orient "${props.orient}" already exists!`
+                return props;
+            };
+
+            /**
+             * @param {import("./axisResolution").default} r
+             * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+             * @param {UnitView | LayerView} axisParent
+             */
+            const createAxis = (r, channel, axisParent) => {
+                const props = getAxisPropsWithDefaults(r, channel);
+
+                if (props) {
+                    if (axes[props.orient]) {
+                        throw new Error(
+                            `An axis with the orient "${props.orient}" already exists!`
+                        );
+                    }
+
+                    axes[props.orient] = new AxisView(
+                        props,
+                        r.scaleResolution.type,
+                        this.context,
+                        this,
+                        axisParent
                     );
                 }
+            };
 
-                axes[props.orient] = new AxisView(
-                    props,
-                    r.scaleResolution.type,
-                    this.context,
-                    this,
-                    axisParent
-                );
+            /**
+             * @param {import("./axisResolution").default} r
+             * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+             * @param {UnitView | LayerView} axisParent
+             */
+            const createAxisGrid = (r, channel, axisParent) => {
+                const props = getAxisPropsWithDefaults(r, channel);
 
-                if (props.grid || props.chromGrid) {
+                if (props && (props.grid || props.chromGrid)) {
                     gridLines[props.orient] = new AxisGridView(
                         props,
                         r.scaleResolution.type,
@@ -270,7 +333,7 @@ export default class GridView extends ContainerView {
                 }
             };
 
-            // Handle shared axes
+            // Handle children that have caught axis resolutions. Create axes for them.
             if (view instanceof UnitView || view instanceof LayerView) {
                 for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
                     "x",
@@ -282,6 +345,24 @@ export default class GridView extends ContainerView {
                     }
 
                     createAxis(r, channel, view);
+                }
+            }
+
+            // Handle gridlines of children. Note: children's axis resolution may be caught by
+            // this view or some of this view's ancestors.
+            if (view instanceof UnitView || view instanceof LayerView) {
+                for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
+                    "x",
+                    "y",
+                ])) {
+                    const r = view.getAxisResolution(channel);
+                    if (!r) {
+                        continue;
+                    }
+
+                    // TODO: Optimization: the same grid view could be reused for all children
+                    // because they share the axis and scale resolutions anyway.
+                    createAxisGrid(r, channel, view);
                 }
             }
 
@@ -310,6 +391,8 @@ export default class GridView extends ContainerView {
                         }
                     }
                 }
+
+                // TODO: Axis grid
             }
 
             // Axes are created after scales are resolved, so we need to resolve possible new scales here
@@ -344,6 +427,10 @@ export default class GridView extends ContainerView {
             if (gridChild.title) {
                 yield gridChild.title;
             }
+        }
+
+        for (const axisView of Object.values(this.#sharedAxes)) {
+            yield axisView;
         }
     }
 
@@ -527,13 +614,38 @@ export default class GridView extends ContainerView {
             return Padding.zero();
         }
 
-        const p = new Padding(
+        return new Padding(
             rows.at(0).axisBefore,
             cols.at(-1).axisAfter,
             rows.at(-1).axisAfter,
             cols.at(0).axisBefore
+        ).add(this.#getSharedAxisOverhang());
+    }
+
+    #getSharedAxisOverhang() {
+        /**
+         * @param {import("../spec/axis").AxisOrient} orient
+         */
+        const getSharedAxisSize = (orient) => {
+            const channel = ORIENT_CHANNELS[orient];
+            const axisView = this.#sharedAxes[channel];
+            if (axisView?.axisProps.orient !== orient) {
+                return 0;
+            }
+
+            return Math.max(
+                axisView.getPerpendicularSize() + axisView.axisProps.offset ??
+                    0,
+                0
+            );
+        };
+
+        return new Padding(
+            getSharedAxisSize("top"),
+            getSharedAxisSize("right"),
+            getSharedAxisSize("bottom"),
+            getSharedAxisSize("left")
         );
-        return p;
     }
 
     /**
@@ -545,6 +657,7 @@ export default class GridView extends ContainerView {
                 this.#getFlexSize("column"),
                 this.#getFlexSize("row")
             )
+                .addPadding(this.#getSharedAxisOverhang())
                 .subtractPadding(this.getOverhang())
                 .addPadding(this.getPadding())
         );
@@ -555,6 +668,7 @@ export default class GridView extends ContainerView {
      * @param {import("../utils/layout/rectangle").default} coords
      * @param {import("../types/rendering").RenderingOptions} [options]
      */
+    // eslint-disable-next-line complexity
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
             return;
@@ -564,6 +678,7 @@ export default class GridView extends ContainerView {
             // Usually padding is applied by the parent GridView, but if this is the root view, we need to apply it here
             coords = coords.shrink(this.getPadding());
         }
+        coords = coords.shrink(this.#getSharedAxisOverhang());
 
         context.pushView(this, coords);
 
@@ -629,34 +744,30 @@ export default class GridView extends ContainerView {
                 view.render(context, childCoords, options);
             }
 
+            // Independent axes
             for (const [orient, axisView] of Object.entries(axes)) {
+                axisView.render(
+                    context,
+                    translateAxisCoords(childCoords, orient, axisView)
+                    // Axes have no faceted data, thus, pass undefined facetId, i.e., no options
+                );
+            }
+
+            // Axes shared between children
+            for (const axisView of Object.values(this.#sharedAxes)) {
                 const props = axisView.axisProps;
-
-                /** @type {import("../utils/layout/rectangle").default} */
-                let axisCoords;
-
-                const ps = axisView.getPerpendicularSize();
-
-                if (orient == "bottom") {
-                    axisCoords = childCoords
-                        .translate(0, childCoords.height + props.offset)
-                        .modify({ height: ps });
-                } else if (orient == "top") {
-                    axisCoords = childCoords
-                        .translate(0, -ps - props.offset)
-                        .modify({ height: ps });
-                } else if (orient == "left") {
-                    axisCoords = childCoords
-                        .translate(-ps - props.offset, 0)
-                        .modify({ width: ps });
-                } else if (orient == "right") {
-                    axisCoords = childCoords
-                        .translate(childCoords.width + props.offset, 0)
-                        .modify({ width: ps });
+                const orient = props.orient;
+                if (
+                    (orient == "left" && col == 0) ||
+                    (orient == "right" && col == grid.nCols - 1) ||
+                    (orient == "top" && row == 0) ||
+                    (orient == "bottom" && row == grid.nRows - 1)
+                ) {
+                    axisView.render(
+                        context,
+                        translateAxisCoords(childCoords, orient, axisView)
+                    );
                 }
-
-                // Axes have no faceted data, thus, pass undefined facetId
-                axisView.render(context, axisCoords);
             }
 
             if (!clipped) {
@@ -819,4 +930,29 @@ export function isClippedChildren(view) {
     });
 
     return clipped;
+}
+
+/**
+ *
+ * @param {import("../utils/layout/rectangle").default} coords
+ * @param {import("../spec/axis").AxisOrient} orient
+ * @param {AxisView} axisView
+ */
+function translateAxisCoords(coords, orient, axisView) {
+    const props = axisView.axisProps;
+    const ps = axisView.getPerpendicularSize();
+
+    if (orient == "bottom") {
+        return coords
+            .translate(0, coords.height + props.offset)
+            .modify({ height: ps });
+    } else if (orient == "top") {
+        return coords.translate(0, -ps - props.offset).modify({ height: ps });
+    } else if (orient == "left") {
+        return coords.translate(-ps - props.offset, 0).modify({ width: ps });
+    } else if (orient == "right") {
+        return coords
+            .translate(coords.width + props.offset, 0)
+            .modify({ width: ps });
+    }
 }
