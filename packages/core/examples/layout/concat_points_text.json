@@ -1,0 +1,114 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "resolve": {
+    "scale": { "y": "independent", "x": "shared" },
+    "axis": { "x": "shared" }
+  },
+  "vconcat": [
+    {
+      "height": 200,
+      "view": { "stroke": "lightgray" },
+      "name": "Points",
+      "data": {
+        "sequence": { "start": 0, "stop": 200000, "as": "x" }
+      },
+      "transform": [
+        { "type": "formula", "expr": "random() * 0.682", "as": "u" },
+        {
+          "type": "formula",
+          "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618 + sin(datum.x / 10000)",
+          "as": "y"
+        }
+      ],
+      "mark": {
+        "type": "point",
+        "geometricZoomBound": 10.5
+      },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "zoom": true },
+          "axis": { "grid": true, "gridDash": [2, 4] }
+        },
+        "y": {
+          "field": "y",
+          "type": "quantitative",
+          "title": "The magnificent y axis!"
+        },
+        "size": { "value": 400 },
+        "opacity": { "value": 0.6 }
+      }
+    },
+    {
+      "view": { "stroke": "lightgray" },
+      "name": "Text",
+      "data": {
+        "sequence": { "start": 0, "stop": 300 }
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "floor(random() * 200000)",
+          "as": "x"
+        },
+        {
+          "type": "formula",
+          "expr": "floor(random() * 1000)",
+          "as": "y"
+        },
+        {
+          "type": "formula",
+          "expr": "'' + datum.x + 'x' + datum.y",
+          "as": "text"
+        },
+        {
+          "type": "formula",
+          "expr": "pow(40, random())",
+          "as": "size"
+        }
+      ],
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": {
+            "zoom": false
+          }
+        },
+        "y": {
+          "field": "y",
+          "type": "quantitative"
+        },
+        "text": {
+          "field": "text"
+        },
+        "size": {
+          "field": "size",
+          "type": "quantitative",
+          "scale": {
+            "range": [5, 200]
+          }
+        },
+        "opacity": {
+          "field": "size",
+          "type": "quantitative",
+          "scale": {
+            "range": [1, 0]
+          }
+        },
+        "angle": {
+          "field": "x",
+          "type": "quantitative"
+        }
+      },
+
+      "mark": {
+        "type": "text",
+        "align": "center",
+        "baseline": "middle"
+      }
+    }
+  ]
+}
