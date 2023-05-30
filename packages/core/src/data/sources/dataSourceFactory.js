@@ -7,6 +7,7 @@ import IndexedFastaSource from "./dynamic/indexedFastaSource";
 import BigWigSource from "./dynamic/bigWigSource";
 import BigBedSource from "./dynamic/bigBedSource";
 import BamSource from "./dynamic/bamSource";
+import TabixSource from "./dynamic/tabixSource";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} params
@@ -93,6 +94,14 @@ function isBamSource(params) {
 
 /**
  * @param {import("../../spec/data").LazyDataParams} params
+ * @returns {params is import("../../spec/data").TabixData}
+ */
+function isTabixSource(params) {
+    return params?.type == "tabix";
+}
+
+/**
+ * @param {import("../../spec/data").LazyDataParams} params
  * @param {import("../../view/view").default} view
  */
 function createDynamicDataSource(params, view) {
@@ -108,6 +117,8 @@ function createDynamicDataSource(params, view) {
         return new BigBedSource(params, view);
     } else if (isBamSource(params)) {
         return new BamSource(params, view);
+    } else if (isTabixSource(params)) {
+        return new TabixSource(params, view);
     }
 
     throw new Error(

@@ -199,7 +199,8 @@ export type LazyDataParams =
     | IndexedFastaData
     | BigWigData
     | BigBedData
-    | BamData;
+    | BamData
+    | TabixData;
 
 export interface AxisTicksData {
     type: "axisTicks";
@@ -325,4 +326,40 @@ export interface BamData {
      * __Default value:__ `10000`
      */
     windowSize?: number;
+}
+
+export interface TabixData {
+    type: "tabix";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * Url of the bgzip compressed file.
+     */
+    url: string;
+
+    /**
+     * Url of the tabix index file.
+     *
+     * __Default value:__ `url` + `".tbi"`.
+     */
+    indexUrl?: string;
+
+    /**
+     * Size of each chunk when fetching the Tabix file. Data is only fetched
+     * when the length of the visible domain smaller than the window size.
+     *
+     * __Default value:__ `10000000`
+     */
+    windowSize?: number;
+
+    /**
+     * Which parser to process the lines in the tabix-indexed file.
+     */
+    parser: "gff3";
 }
