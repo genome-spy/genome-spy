@@ -29,6 +29,8 @@ export default class LayerView extends ContainerView {
                 );
             }
         });
+
+        this.needsAxes = { x: true, y: true };
     }
 
     /**

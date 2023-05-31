@@ -30,7 +30,6 @@ import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler";
 import { invalidatePrefix } from "./utils/propertyCacher";
 import { ViewFactory } from "./view/viewFactory";
-import LayerView from "./view/layerView";
 import ImplicitRootView from "./view/implicitRootView";
 import { reconfigureScales } from "./view/scaleResolution";
 
@@ -337,10 +336,7 @@ export default class GenomeSpy {
         // Replace placeholder ImportViews with actual views.
         await processImports(this.viewRoot);
 
-        if (
-            this.viewRoot instanceof UnitView ||
-            this.viewRoot instanceof LayerView
-        ) {
+        if (this.viewRoot.needsAxes.x || this.viewRoot.needsAxes.y) {
             this.viewRoot = new ImplicitRootView(context, this.viewRoot);
         }
 

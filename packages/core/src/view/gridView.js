@@ -112,9 +112,9 @@ export default class GridView extends ContainerView {
             coords: Rectangle.ZERO,
         };
 
-        if (view instanceof UnitView || view instanceof LayerView) {
-            /** @type {import("../spec/view").ViewBackground} */
-            const viewBackground = view.spec?.view;
+        if (view.needsAxes.x || view.needsAxes.y) {
+            const spec = view.spec;
+            const viewBackground = "view" in spec ? spec?.view : undefined;
             if (viewBackground?.fill || viewBackground?.stroke) {
                 const unitView = new UnitView(
                     createBackground(viewBackground),
@@ -292,7 +292,7 @@ export default class GridView extends ContainerView {
             /**
              * @param {import("./axisResolution").default} r
              * @param {import("../spec/channel").PrimaryPositionalChannel} channel
-             * @param {UnitView | LayerView} axisParent
+             * @param {View} axisParent
              */
             const createAxis = (r, channel, axisParent) => {
                 const props = getAxisPropsWithDefaults(r, channel);
@@ -317,7 +317,7 @@ export default class GridView extends ContainerView {
             /**
              * @param {import("./axisResolution").default} r
              * @param {import("../spec/channel").PrimaryPositionalChannel} channel
-             * @param {UnitView | LayerView} axisParent
+             * @param {View} axisParent
              */
             const createAxisGrid = (r, channel, axisParent) => {
                 const props = getAxisPropsWithDefaults(r, channel);
@@ -334,11 +334,11 @@ export default class GridView extends ContainerView {
             };
 
             // Handle children that have caught axis resolutions. Create axes for them.
-            if (view instanceof UnitView || view instanceof LayerView) {
-                for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
-                    "x",
-                    "y",
-                ])) {
+            for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
+                "x",
+                "y",
+            ])) {
+                if (view.needsAxes[channel]) {
                     const r = view.resolutions.axis[channel];
                     if (!r) {
                         continue;
@@ -350,11 +350,11 @@ export default class GridView extends ContainerView {
 
             // Handle gridlines of children. Note: children's axis resolution may be caught by
             // this view or some of this view's ancestors.
-            if (view instanceof UnitView || view instanceof LayerView) {
-                for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
-                    "x",
-                    "y",
-                ])) {
+            for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
+                "x",
+                "y",
+            ])) {
+                if (view.needsAxes[channel]) {
                     const r = view.getAxisResolution(channel);
                     if (!r) {
                         continue;

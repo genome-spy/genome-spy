@@ -68,6 +68,8 @@ export default class UnitView extends ContainerView {
          * @type {import("../utils/layout/rectangle").default}
          */
         this.coords = undefined;
+
+        this.needsAxes = { x: true, y: true };
     }
 
     /**

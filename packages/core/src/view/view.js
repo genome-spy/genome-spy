@@ -107,6 +107,12 @@ export default class View {
          * This is mainly used to block axis views from contributing to the domain.
          */
         this.contributesToScaleDomain = true;
+
+        /**
+         * Whether GridView or equivalent should draw axis and grid lines for this view.
+         * @type {Record<import("../spec/channel").PrimaryPositionalChannel, boolean>}
+         */
+        this.needsAxes = { x: false, y: false };
     }
 
     getPadding() {
