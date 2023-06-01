@@ -5,60 +5,124 @@
     "url": "../sincos.csv"
   },
   "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative",
-      "axis": {
-        "orient": "top",
-        "grid": true
-      }
-    },
     "y": {
       "field": "sin",
-      "type": "quantitative"
+      "type": "quantitative",
+      "axis": { "grid": true }
     }
   },
 
-  "columns": 1,
-
   "name": "root",
 
-  "resolve": {
-    "scale": { "x": "shared" },
-    "axis": { "x": "shared" }
-  },
-
-  "concat": [
+  "hconcat": [
     {
       "columns": 1,
+
+      "name": "left",
+
+      "resolve": {
+        "scale": { "x": "shared" },
+        "axis": { "x": "shared" }
+      },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "axis": {
+            "orient": "top",
+            "grid": true
+          }
+        }
+      },
+
+      "concat": [
+        {
+          "columns": 1,
+
+          "resolve": {
+            "scale": { "x": "shared" },
+            "axis": { "x": "shared" }
+          },
+
+          "concat": [
+            {
+              "view": { "stroke": "lightgray" },
+              "mark": "point"
+            },
+            {
+              "view": { "stroke": "lightgray" },
+              "mark": "point",
+
+              "encoding": {
+                "y": {
+                  "field": "sin",
+                  "type": "quantitative",
+                  "axis": { "orient": "right", "grid": true }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "view": { "stroke": "lightgray" },
+          "mark": "point"
+        }
+      ]
+    },
+    {
+      "columns": 1,
+
+      "name": "right",
 
       "resolve": {
         "scale": { "x": "shared" },
         "axis": { "x": "shared" }
       },
 
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "axis": {
+            "orient": "bottom",
+            "grid": true
+          }
+        }
+      },
+
       "concat": [
         {
-          "view": { "stroke": "lightgray" },
-          "mark": "point"
+          "columns": 1,
+
+          "resolve": {
+            "scale": { "x": "shared" },
+            "axis": { "x": "shared" }
+          },
+
+          "concat": [
+            {
+              "view": { "stroke": "lightgray" },
+              "mark": "point"
+            },
+            {
+              "view": { "stroke": "lightgray" },
+              "mark": "point",
+
+              "encoding": {
+                "y": {
+                  "field": "sin",
+                  "type": "quantitative",
+                  "axis": { "orient": "right", "grid": true }
+                }
+              }
+            }
+          ]
         },
         {
           "view": { "stroke": "lightgray" },
-          "mark": "point",
-
-          "encoding": {
-            "y": {
-              "field": "sin",
-              "type": "quantitative",
-              "axis": { "orient": "right" }
-            }
-          }
+          "mark": "point"
         }
       ]
-    },
-    {
-      "view": { "stroke": "lightgray" },
-      "mark": "point"
     }
   ]
 }

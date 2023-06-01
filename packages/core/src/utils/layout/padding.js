@@ -76,6 +76,19 @@ export default class Padding {
 
     /**
      *
+     * @param {Padding} padding padding to union
+     */
+    union(padding) {
+        return new Padding(
+            Math.max(this.top, padding.top),
+            Math.max(this.right, padding.right),
+            Math.max(this.bottom, padding.bottom),
+            Math.max(this.left, padding.left)
+        );
+    }
+
+    /**
+     *
      * @param {PaddingConfig} config
      */
     static createFromConfig(config) {

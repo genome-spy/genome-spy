@@ -285,4 +285,12 @@ export default class Rectangle {
     toString() {
         return `Rectangle: x: ${this.x}, y: ${this.y}, width: ${this.width}, height: ${this.height}`;
     }
+
+    toRoundedString() {
+        return `Rectangle: x: ${Math.round(this.x)}, y: ${Math.round(
+            this.y
+        )}, width: ${Math.round(this.width)}, height: ${Math.round(
+            this.height
+        )}`;
+    }
 }

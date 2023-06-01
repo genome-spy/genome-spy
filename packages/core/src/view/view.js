@@ -139,7 +139,7 @@ export default class View {
     getSize() {
         return this._cache("size/size", () =>
             this.isConfiguredVisible()
-                ? this.#getSizeFromSpec().addPadding(this.getPadding())
+                ? this.#getSizeFromSpec()
                 : ZERO_FLEXDIMENSIONS
         );
     }

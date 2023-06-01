@@ -69,7 +69,7 @@ class ViewCoords {
      */
     constructor(viewName, coords) {
         this.viewName = viewName;
-        this.coords = coords.toString();
+        this.coords = coords.toRoundedString();
         /** @type {ViewCoords[]} */
         this.children = [];
     }

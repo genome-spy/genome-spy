@@ -1,0 +1,38 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Shared x-axis and scale, fixed view heights.",
+
+  "data": {
+    "url": "../sincos.csv"
+  },
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "title": null
+    },
+    "y": {
+      "field": "sin",
+      "type": "quantitative"
+    }
+  },
+
+  "resolve": {
+    "scale": { "x": "shared" },
+    "axis": { "x": "shared" }
+  },
+
+  "vconcat": [
+    {
+      "height": 100,
+      "view": { "stroke": "lightgray" },
+      "mark": "point"
+    },
+    {
+      "height": 200,
+      "view": { "stroke": "lightgray" },
+      "mark": "point"
+    }
+  ]
+}

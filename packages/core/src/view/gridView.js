@@ -450,25 +450,32 @@ export default class GridView extends ContainerView {
         const getMaxAxisSize = (indices, side) =>
             indices
                 .map((index) => {
-                    // Axis view is only present for unit and layer views
-                    const axisView =
-                        this.#visibleChildren[index].axes[orients[side]];
+                    const child = this.#visibleChildren[index];
+                    const view = child.view;
+                    const padding = child.view.getPadding();
+                    const axisView = child.axes[orients[side]];
+
                     if (axisView) {
-                        return Math.max(
+                        const overhang = Math.max(
                             axisView.getPerpendicularSize() +
                                 axisView.axisProps.offset ?? 0,
                             0
                         );
+
+                        return direction == "column"
+                            ? overhang + (side ? padding.right : padding.left)
+                            : overhang + (side ? padding.bottom : padding.top);
                     }
 
-                    // For views other than unit or layer, use overhang instead
-                    const overhang =
-                        this.#visibleChildren[index].view.getOverhang();
-                    if (direction == "column") {
-                        return side ? overhang.right : overhang.left;
-                    } else {
-                        return side ? overhang.bottom : overhang.top;
-                    }
+                    // For views without axis, use overhang instead
+                    const overhang = view.getOverhang().add(padding);
+                    return direction == "column"
+                        ? side
+                            ? overhang.right
+                            : overhang.left
+                        : side
+                        ? overhang.bottom
+                        : overhang.top;
                 })
                 .reduce((a, b) => Math.max(a, b), 0);
 
@@ -607,6 +614,10 @@ export default class GridView extends ContainerView {
      * @return {Padding}
      */
     getOverhang() {
+        return this.#getGridOverhang().union(this.#getSharedAxisOverhang());
+    }
+
+    #getGridOverhang() {
         const cols = this.#getSizes("column");
         const rows = this.#getSizes("row");
 
@@ -619,7 +630,7 @@ export default class GridView extends ContainerView {
             cols.at(-1).axisAfter,
             rows.at(-1).axisAfter,
             cols.at(0).axisBefore
-        ).add(this.#getSharedAxisOverhang());
+        );
     }
 
     #getSharedAxisOverhang() {
@@ -656,10 +667,7 @@ export default class GridView extends ContainerView {
             new FlexDimensions(
                 this.#getFlexSize("column"),
                 this.#getFlexSize("row")
-            )
-                .addPadding(this.#getSharedAxisOverhang())
-                .subtractPadding(this.getOverhang())
-                .addPadding(this.getPadding())
+            ).addPadding(this.#getSharedAxisOverhang())
         );
     }
 
@@ -710,18 +718,18 @@ export default class GridView extends ContainerView {
                 columnFlexCoords[this.#getViewSlot("column", col)];
             const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
 
-            const viewSize = view.getSize();
-            const viewPadding = view.getPadding().subtract(view.getOverhang());
+            const size = view.getSize();
+            const overhang = view.getOverhang();
 
-            const x = colLocSize.location + viewPadding.left;
-            const y = rowLocSize.location + viewPadding.top;
+            const x = colLocSize.location - overhang.left;
+            const y = rowLocSize.location - overhang.top;
 
             const width =
-                (viewSize.width.grow ? colLocSize.size : viewSize.width.px) -
-                viewPadding.width;
+                (size.width.grow ? colLocSize.size : size.width.px) +
+                overhang.width;
             const height =
-                (viewSize.height.grow ? rowLocSize.size : viewSize.height.px) -
-                viewPadding.height;
+                (size.height.grow ? rowLocSize.size : size.height.px) +
+                overhang.height;
 
             const childCoords = new Rectangle(
                 () => coords.x + x,

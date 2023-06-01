@@ -38,6 +38,7 @@
               }
             },
             {
+              "padding": { "top": 30, "left": 20, "right": 20 },
               "title": {
                 "text": "Hello!",
                 "orient": "top",
@@ -53,6 +54,7 @@
       ]
     },
     {
+      "padding": { "left": 20, "right": 20 },
       "view": { "stroke": "lightgray" },
       "mark": "point"
     }

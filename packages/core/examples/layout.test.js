@@ -10,6 +10,7 @@ import specPoint2D from "./point2d.json";
 import specComplexGridLayout from "./layout/complex_grid_layout.json";
 import specComplexGridLayout2 from "./layout/complex_grid_layout2.json";
 import specConcatPointsText from "./layout/concat_points_text.json";
+import specSharedAxisAtRoot from "./layout/shared_axis_at_root.json";
 
 /**
  * @typedef {import("../src/spec/root").RootSpec} RootSpec
@@ -54,7 +55,11 @@ describe("Test layout process", () => {
         expect(await specToLayout(specComplexGridLayout2)).toMatchSnapshot();
     });
 
-    test("layout/concat_points_text.json.json", async () => {
+    test("layout/concat_points_text.json", async () => {
         expect(await specToLayout(specConcatPointsText)).toMatchSnapshot();
+    });
+
+    test("layout/shared_axis_at_root.json", async () => {
+        expect(await specToLayout(specSharedAxisAtRoot)).toMatchSnapshot();
     });
 });
