@@ -829,7 +829,7 @@ export default class Mark {
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
     setViewport(coords, clipRect) {
-        const dpr = this.glHelper.dpr;
+        const dpr = this.unitView.context.devicePixelRatio;
         const gl = this.gl;
         const props = this.properties;
 
@@ -926,7 +926,7 @@ export default class Mark {
         setBlockUniforms(this.viewUniformInfo, {
             ...uniforms,
             uViewportSize: [coords.width, coords.height],
-            uDevicePixelRatio: this.glHelper.dpr,
+            uDevicePixelRatio: dpr,
         });
 
         setUniformBlock(this.gl, this.programInfo, this.viewUniformInfo);

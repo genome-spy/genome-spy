@@ -236,12 +236,14 @@ export default class TextMark extends Mark {
             // to find a suitable divisor.
             q /= 2;
         }
+        const uSdfNumerator =
+            this.font.metrics.common.base /
+            (this.unitView.context.devicePixelRatio / q);
 
         ops.push(() =>
             setUniforms(this.programInfo, {
                 uTexture: this.font.texture,
-                uSdfNumerator:
-                    this.font.metrics.common.base / (this.glHelper.dpr / q),
+                uSdfNumerator,
             })
         );
 

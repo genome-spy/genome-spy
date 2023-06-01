@@ -683,7 +683,7 @@ export default class GridView extends ContainerView {
         context.pushView(this, coords);
 
         const flexOpts = {
-            devicePixelRatio: this.context.glHelper.dpr,
+            devicePixelRatio: this.context.devicePixelRatio,
         };
         const columnFlexCoords = mapToPixelCoords(
             this.#makeFlexItems("column"),

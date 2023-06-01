@@ -8,6 +8,7 @@ import {
     resolveScalesAndAxes,
     processImports,
     setImplicitScaleNames,
+    calculateCanvasSize,
 } from "./view/viewUtils";
 import UnitView from "./view/unitView";
 
@@ -195,25 +196,11 @@ export default class GenomeSpy {
         this.container.classList.add("genome-spy");
         this.container.classList.add("loading");
 
-        this._glHelper = new WebGLHelper(this.container, () => {
-            if (this.viewRoot) {
-                const size = this.viewRoot
-                    .getSize()
-                    .addPadding(this.viewRoot.getOverhang());
-
-                // If a dimension has an absolutely specified size (in pixels), use it for the canvas size.
-                // However, if the dimension has a growing component, the canvas should be fit to the
-                // container.
-                // TODO: Enforce the minimum size (in case of both absolute and growing components).
-
-                /** @param {import("./utils/layout/flexLayout").SizeDef} dim */
-                const f = (dim) => (dim.grow > 0 ? undefined : dim.px);
-                return {
-                    width: f(size.width),
-                    height: f(size.height),
-                };
-            }
-        });
+        this._glHelper = new WebGLHelper(this.container, () =>
+            this.viewRoot
+                ? calculateCanvasSize(this.viewRoot)
+                : { width: undefined, height: undefined }
+        );
 
         this.loadingMessageElement = document.createElement("div");
         this.loadingMessageElement.className = "loading-message";
@@ -270,6 +257,11 @@ export default class GenomeSpy {
             animator: this.animator,
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(this._glHelper),
+
+            get devicePixelRatio() {
+                return self._glHelper.dpr;
+            },
+
             requestLayoutReflow: () => {
                 // placeholder
             },

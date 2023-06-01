@@ -28,6 +28,8 @@ export default interface ViewContext {
     genomeStore?: GenomeStore;
     fontManager: BmFontManager;
 
+    devicePixelRatio: number;
+
     requestLayoutReflow: () => void;
 
     updateTooltip: <T>(

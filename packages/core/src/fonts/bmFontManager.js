@@ -40,7 +40,7 @@ const WEIGHTS = {
  */
 export default class BmFontManager {
     /**
-     * @param {import("../gl/webGLHelper").default} webGLHelper
+     * @param {import("../gl/webGLHelper").default} [webGLHelper]
      */
     constructor(webGLHelper) {
         this._webGLHelper = webGLHelper;
@@ -68,7 +68,9 @@ export default class BmFontManager {
          */
         this._defaultFontEntry = {
             metrics: getMetrics(latoRegular),
-            texture: this._createTextureNow(latoRegularBitmap),
+            texture: webGLHelper
+                ? this._createTextureNow(latoRegularBitmap)
+                : undefined,
         };
     }
 
