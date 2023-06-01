@@ -764,6 +764,15 @@ export default class Mark {
      * @param {import("./mark").MarkRenderingOptions} options
      */
     createRenderCallback(draw, options) {
+        if (!this.bufferInfo) {
+            const e = new Error(
+                `${this.getType()} mark has no data. This is bug.`
+            );
+            // @ts-ignore
+            e.view = this.unitView;
+            throw e;
+        }
+
         // eslint-disable-next-line consistent-this
         const self = this;
 
