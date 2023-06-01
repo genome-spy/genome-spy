@@ -2,7 +2,7 @@ import { group } from "d3-array";
 
 import ViewRenderingContext from "./viewRenderingContext";
 
-export default class DeferredViewRenderingContext extends ViewRenderingContext {
+export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /**
      * @param {import("../../types/rendering").GlobalRenderingOptions} globalOptions
      * @param {import("../../gl/webGLHelper").default} webGLHelper
@@ -13,7 +13,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
         this.webGLHelper = webGLHelper;
 
         /**
-         * @type {import("../../types/rendering").DeferredRenderingRequest[]}
+         * @type {import("../../types/rendering").BufferedRenderingRequest[]}
          */
         this.buffer = [];
 
@@ -30,6 +30,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      * @param {import("../view").default} view
      * @param {import("../../utils/layout/rectangle").default} coords View coordinates
      *      inside the padding.
+     * @override
      */
     pushView(view, coords) {
         this.views.add(view);
@@ -40,6 +41,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      *
      * @param {import("../../marks/mark").default} mark
      * @param {import("../../types/rendering").RenderingOptions} options
+     * @override
      */
     renderMark(mark, options) {
         if (this.globalOptions.picking && !mark.isPickingParticipant()) {
@@ -61,7 +63,7 @@ export default class DeferredViewRenderingContext extends ViewRenderingContext {
      * Renders marks in an optimized order, minimizing the number of WebGL state
      * changes.
      */
-    renderDeferred() {
+    render() {
         if (!this.batch) {
             this._buildBatch();
         }

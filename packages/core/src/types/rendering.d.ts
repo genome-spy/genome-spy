@@ -48,7 +48,7 @@ export interface GlobalRenderingOptions {
  * Allows for collecting marks for optimized rendering order.
  */
 
-export interface DeferredRenderingRequest {
+export interface BufferedRenderingRequest {
     mark: Mark;
     callback: () => void;
     coords: Rectangle;

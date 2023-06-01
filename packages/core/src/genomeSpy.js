@@ -13,7 +13,7 @@ import UnitView from "./view/unitView";
 
 import WebGLHelper from "./gl/webGLHelper";
 import Rectangle from "./utils/layout/rectangle";
-import DeferredViewRenderingContext from "./view/renderingContext/deferredViewRenderingContext";
+import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext";
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext";
 import InteractionEvent from "./utils/interactionEvent";
 import Point from "./utils/layout/point";
@@ -79,9 +79,9 @@ export default class GenomeSpy {
          */
         this.viewVisibilityPredicate = (view) => view.isVisibleInSpec();
 
-        /** @type {DeferredViewRenderingContext} */
+        /** @type {BufferedViewRenderingContext} */
         this._renderingContext = undefined;
-        /** @type {DeferredViewRenderingContext} */
+        /** @type {BufferedViewRenderingContext} */
         this._pickingContext = undefined;
 
         /** Does picking buffer need to be rendered again */
@@ -720,13 +720,13 @@ export default class GenomeSpy {
             return;
         }
 
-        this._renderingContext = new DeferredViewRenderingContext(
+        this._renderingContext = new BufferedViewRenderingContext(
             {
                 picking: false,
             },
             this._glHelper
         );
-        this._pickingContext = new DeferredViewRenderingContext(
+        this._pickingContext = new BufferedViewRenderingContext(
             {
                 picking: true,
             },
@@ -746,7 +746,7 @@ export default class GenomeSpy {
     }
 
     renderAll() {
-        this._renderingContext?.renderDeferred();
+        this._renderingContext?.render();
 
         this._dirtyPickingBuffer = true;
     }
@@ -756,7 +756,7 @@ export default class GenomeSpy {
             return;
         }
 
-        this._pickingContext.renderDeferred();
+        this._pickingContext.render();
         this._dirtyPickingBuffer = false;
     }
 
