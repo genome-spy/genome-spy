@@ -37,14 +37,6 @@ export default class GridView extends ContainerView {
     /**
      * @typedef {"row" | "column"} Direction
      *
-     * @typedef {object} GridChild
-     * @prop {View} view
-     * @prop {UnitView} [background]
-     * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes
-     * @prop {Partial<Record<import("../spec/axis").AxisOrient, AxisGridView>>} gridLines
-     * @prop {UnitView} [title]
-     * @prop {Rectangle} coords Coordinates of the view. Recorded for mouse tracking, etc.
-     *
      * @typedef {import("./view").default} View
      */
 
@@ -102,56 +94,9 @@ export default class GridView extends ContainerView {
     /**
      * @param {View} view
      */
-    #makeGridChild(view) {
-        /** @type {GridChild} */
-        const gridChild = {
-            view,
-            background: undefined,
-            axes: {},
-            gridLines: {},
-            coords: Rectangle.ZERO,
-        };
-
-        if (view.needsAxes.x || view.needsAxes.y) {
-            const spec = view.spec;
-            const viewBackground = "view" in spec ? spec?.view : undefined;
-            if (viewBackground?.fill || viewBackground?.stroke) {
-                const unitView = new UnitView(
-                    createBackground(viewBackground),
-                    this.context,
-                    this,
-                    view,
-                    "background" + this.#childSerial
-                );
-                // TODO: Make configurable through spec:
-                unitView.blockEncodingInheritance = true;
-                gridChild.background = unitView;
-            }
-
-            const title = createTitle(view.spec.title);
-            if (title) {
-                const unitView = new UnitView(
-                    title,
-                    this.context,
-                    this,
-                    view,
-                    "title" + this.#childSerial
-                );
-                // TODO: Make configurable through spec:
-                unitView.blockEncodingInheritance = true;
-                gridChild.title = unitView;
-            }
-        }
-
-        return gridChild;
-    }
-
-    /**
-     * @param {View} view
-     */
     appendChild(view) {
         view.layoutParent ??= this;
-        this.#children.push(this.#makeGridChild(view));
+        this.#children.push(new GridChild(view, this, this.#childSerial));
         this.#childSerial++;
     }
 
@@ -187,7 +132,11 @@ export default class GridView extends ContainerView {
             (gridChild) => gridChild.view == child
         );
         if (i >= 0) {
-            this.#children[i] = this.#makeGridChild(replacement);
+            this.#children[i] = new GridChild(
+                replacement,
+                this,
+                this.#childSerial
+            );
         } else {
             throw new Error("Not my child view!");
         }
@@ -210,7 +159,6 @@ export default class GridView extends ContainerView {
         this.#createAxes();
     }
 
-    // eslint-disable-next-line complexity
     #createAxes() {
         // Axis ticks, labels, etc. They should be created only if this view has caught
         // the scale resolution for the channel.
@@ -246,163 +194,7 @@ export default class GridView extends ContainerView {
 
         // Create view decorations, grid lines, and independent axes for each child
         for (const gridChild of this.#children) {
-            const { view, axes, gridLines } = gridChild;
-
-            /**
-             * @param {import("./axisResolution").default} r
-             * @param {import("../spec/channel").PrimaryPositionalChannel} channel
-             */
-            const getAxisPropsWithDefaults = (r, channel) => {
-                const propsWithoutDefaults = r.getAxisProps();
-                if (propsWithoutDefaults === null) {
-                    return;
-                }
-
-                const props = propsWithoutDefaults
-                    ? { ...propsWithoutDefaults }
-                    : {};
-
-                // Pick a default orient based on what is available.
-                // This logic is needed for layer views that have independent axes.
-                if (!props.orient) {
-                    for (const orient of CHANNEL_ORIENTS[channel]) {
-                        if (!axes[orient]) {
-                            props.orient = orient;
-                            break;
-                        }
-                    }
-                    if (!props.orient) {
-                        throw new Error(
-                            "No slots available for an axis! Perhaps a LayerView has more than two children?"
-                        );
-                    }
-                }
-
-                props.title ??= r.getTitle();
-
-                if (!CHANNEL_ORIENTS[channel].includes(props.orient)) {
-                    throw new Error(
-                        `Invalid axis orientation "${props.orient}" on channel "${channel}"!`
-                    );
-                }
-
-                return props;
-            };
-
-            /**
-             * @param {import("./axisResolution").default} r
-             * @param {import("../spec/channel").PrimaryPositionalChannel} channel
-             * @param {View} axisParent
-             */
-            const createAxis = (r, channel, axisParent) => {
-                const props = getAxisPropsWithDefaults(r, channel);
-
-                if (props) {
-                    if (axes[props.orient]) {
-                        throw new Error(
-                            `An axis with the orient "${props.orient}" already exists!`
-                        );
-                    }
-
-                    axes[props.orient] = new AxisView(
-                        props,
-                        r.scaleResolution.type,
-                        this.context,
-                        this,
-                        axisParent
-                    );
-                }
-            };
-
-            /**
-             * @param {import("./axisResolution").default} r
-             * @param {import("../spec/channel").PrimaryPositionalChannel} channel
-             * @param {View} axisParent
-             */
-            const createAxisGrid = (r, channel, axisParent) => {
-                const props = getAxisPropsWithDefaults(r, channel);
-
-                if (props && (props.grid || props.chromGrid)) {
-                    gridLines[props.orient] = new AxisGridView(
-                        props,
-                        r.scaleResolution.type,
-                        this.context,
-                        this,
-                        axisParent
-                    );
-                }
-            };
-
-            // Handle children that have caught axis resolutions. Create axes for them.
-            for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
-                "x",
-                "y",
-            ])) {
-                if (view.needsAxes[channel]) {
-                    const r = view.resolutions.axis[channel];
-                    if (!r) {
-                        continue;
-                    }
-
-                    createAxis(r, channel, view);
-                }
-            }
-
-            // Handle gridlines of children. Note: children's axis resolution may be caught by
-            // this view or some of this view's ancestors.
-            for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
-                "x",
-                "y",
-            ])) {
-                if (view.needsAxes[channel]) {
-                    const r = view.getAxisResolution(channel);
-                    if (!r) {
-                        continue;
-                    }
-
-                    // TODO: Optimization: the same grid view could be reused for all children
-                    // because they share the axis and scale resolutions anyway.
-                    createAxisGrid(r, channel, view);
-                }
-            }
-
-            // Handle LayerView's possible independent axes
-            if (view instanceof LayerView) {
-                // First create axes that have an orient preference
-                for (const layerChild of view.children) {
-                    for (const [channel, r] of Object.entries(
-                        layerChild.resolutions.axis
-                    )) {
-                        const props = r.getAxisProps();
-                        if (props && props.orient) {
-                            createAxis(r, channel, layerChild);
-                        }
-                    }
-                }
-
-                // Then create axes in a priority order
-                for (const layerChild of view.children) {
-                    for (const [channel, r] of Object.entries(
-                        layerChild.resolutions.axis
-                    )) {
-                        const props = r.getAxisProps();
-                        if (props && !props.orient) {
-                            createAxis(r, channel, layerChild);
-                        }
-                    }
-                }
-
-                // TODO: Axis grid
-            }
-
-            // Axes are created after scales are resolved, so we need to resolve possible new scales here
-            [...Object.values(axes), ...Object.values(gridLines)].forEach((v) =>
-                v.visit((view) => {
-                    if (view instanceof UnitView) {
-                        view.resolve("scale");
-                    }
-                })
-            );
+            gridChild.createAxes();
         }
     }
 
@@ -411,22 +203,7 @@ export default class GridView extends ContainerView {
      */
     *[Symbol.iterator]() {
         for (const gridChild of this.#children) {
-            if (gridChild.background) {
-                yield gridChild.background;
-            }
-
-            for (const gridLineView of Object.values(gridChild.gridLines)) {
-                yield gridLineView;
-            }
-            for (const axisView of Object.values(gridChild.axes)) {
-                yield axisView;
-            }
-
-            yield gridChild.view;
-
-            if (gridChild.title) {
-                yield gridChild.title;
-            }
+            yield* gridChild;
         }
 
         for (const axisView of Object.values(this.#sharedAxes)) {
@@ -438,10 +215,6 @@ export default class GridView extends ContainerView {
      * @param {Direction} direction
      */
     #getSizes(direction) {
-        /** @type {import("../spec/axis").AxisOrient[]} */
-        const orients =
-            direction == "column" ? ["left", "right"] : ["top", "bottom"];
-
         const dim = direction == "column" ? "width" : "height";
 
         /**
@@ -451,24 +224,8 @@ export default class GridView extends ContainerView {
             indices
                 .map((index) => {
                     const child = this.#visibleChildren[index];
-                    const view = child.view;
-                    const padding = child.view.getPadding();
-                    const axisView = child.axes[orients[side]];
+                    const overhang = child.getOverhangAndPadding();
 
-                    if (axisView) {
-                        const overhang = Math.max(
-                            axisView.getPerpendicularSize() +
-                                axisView.axisProps.offset ?? 0,
-                            0
-                        );
-
-                        return direction == "column"
-                            ? overhang + (side ? padding.right : padding.left)
-                            : overhang + (side ? padding.bottom : padding.top);
-                    }
-
-                    // For views without axis, use overhang instead
-                    const overhang = view.getOverhang().add(padding);
                     return direction == "column"
                         ? side
                             ? overhang.right
@@ -479,18 +236,22 @@ export default class GridView extends ContainerView {
                 })
                 .reduce((a, b) => Math.max(a, b), 0);
 
-        return this.#grid[
-            direction == "column" ? "colIndices" : "rowIndices"
-        ].map((col) => ({
-            axisBefore: getMaxAxisSize(col, 0),
-            axisAfter: getMaxAxisSize(col, 1),
-            view: getLargestSize(
-                col.map(
-                    (rowIndex) =>
-                        this.#visibleChildren[rowIndex].view.getSize()[dim]
-                )
-            ),
-        }));
+        return this._cache(`size/directionSizes/${direction}`, () =>
+            this.#grid[direction == "column" ? "colIndices" : "rowIndices"].map(
+                (col) => ({
+                    axisBefore: getMaxAxisSize(col, 0),
+                    axisAfter: getMaxAxisSize(col, 1),
+                    view: getLargestSize(
+                        col.map(
+                            (rowIndex) =>
+                                this.#visibleChildren[rowIndex].view.getSize()[
+                                    dim
+                                ]
+                        )
+                    ),
+                })
+            )
+        );
     }
 
     /**
@@ -950,7 +711,7 @@ export function isClippedChildren(view) {
  * @param {import("../spec/axis").AxisOrient} orient
  * @param {AxisView} axisView
  */
-function translateAxisCoords(coords, orient, axisView) {
+export function translateAxisCoords(coords, orient, axisView) {
     const props = axisView.axisProps;
     const ps = axisView.getPerpendicularSize();
 
@@ -966,5 +727,269 @@ function translateAxisCoords(coords, orient, axisView) {
         return coords
             .translate(coords.width + props.offset, 0)
             .modify({ width: ps });
+    }
+}
+
+export class GridChild {
+    /**
+     * @param {View} view
+     * @param {ContainerView} layoutParent
+     * @param {number} serial
+     */
+    constructor(view, layoutParent, serial) {
+        this.layoutParent = layoutParent;
+        this.view = view;
+        this.serial = serial;
+
+        /** @type {UnitView} [background] */
+        this.background = undefined;
+
+        /** @type {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes */
+        this.axes = {};
+
+        /** @type {Partial<Record<import("../spec/axis").AxisOrient, AxisGridView>>} gridLines */
+        this.gridLines = {};
+
+        /** @type {UnitView} */
+        this.title = undefined;
+
+        /** @type {Rectangle} */
+        this.coords = Rectangle.ZERO;
+
+        if (view.needsAxes.x || view.needsAxes.y) {
+            const spec = view.spec;
+            const viewBackground = "view" in spec ? spec?.view : undefined;
+            if (viewBackground?.fill || viewBackground?.stroke) {
+                const unitView = new UnitView(
+                    createBackground(viewBackground),
+                    layoutParent.context,
+                    layoutParent,
+                    view,
+                    "background" + serial
+                );
+                // TODO: Make configurable through spec:
+                unitView.blockEncodingInheritance = true;
+                this.background = unitView;
+            }
+
+            const title = createTitle(view.spec.title);
+            if (title) {
+                const unitView = new UnitView(
+                    title,
+                    layoutParent.context,
+                    layoutParent,
+                    view,
+                    "title" + serial
+                );
+                // TODO: Make configurable through spec:
+                unitView.blockEncodingInheritance = true;
+                this.title = unitView;
+            }
+        }
+    }
+
+    /**
+     * @returns {IterableIterator<View>}
+     */
+    *[Symbol.iterator]() {
+        if (this.background) {
+            yield this.background;
+        }
+        if (this.title) {
+            yield this.title;
+        }
+        yield* Object.values(this.axes);
+        yield* Object.values(this.gridLines);
+        yield this.view;
+    }
+
+    /**
+     * Create view decorations, grid lines, axes, etc.
+     */
+    createAxes() {
+        const { view, axes, gridLines } = this;
+
+        /**
+         * @param {import("./axisResolution").default} r
+         * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+         */
+        const getAxisPropsWithDefaults = (r, channel) => {
+            const propsWithoutDefaults = r.getAxisProps();
+            if (propsWithoutDefaults === null) {
+                return;
+            }
+
+            const props = propsWithoutDefaults
+                ? { ...propsWithoutDefaults }
+                : {};
+
+            // Pick a default orient based on what is available.
+            // This logic is needed for layer views that have independent axes.
+            if (!props.orient) {
+                for (const orient of CHANNEL_ORIENTS[channel]) {
+                    if (!axes[orient]) {
+                        props.orient = orient;
+                        break;
+                    }
+                }
+                if (!props.orient) {
+                    throw new Error(
+                        "No slots available for an axis! Perhaps a LayerView has more than two children?"
+                    );
+                }
+            }
+
+            props.title ??= r.getTitle();
+
+            if (!CHANNEL_ORIENTS[channel].includes(props.orient)) {
+                throw new Error(
+                    `Invalid axis orientation "${props.orient}" on channel "${channel}"!`
+                );
+            }
+
+            return props;
+        };
+
+        /**
+         * @param {import("./axisResolution").default} r
+         * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+         * @param {View} axisParent
+         */
+        const createAxis = (r, channel, axisParent) => {
+            const props = getAxisPropsWithDefaults(r, channel);
+
+            if (props) {
+                if (axes[props.orient]) {
+                    throw new Error(
+                        `An axis with the orient "${props.orient}" already exists!`
+                    );
+                }
+
+                axes[props.orient] = new AxisView(
+                    props,
+                    r.scaleResolution.type,
+                    this.layoutParent.context,
+                    this.layoutParent,
+                    axisParent
+                );
+            }
+        };
+
+        /**
+         * @param {import("./axisResolution").default} r
+         * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+         * @param {View} axisParent
+         */
+        const createAxisGrid = (r, channel, axisParent) => {
+            const props = getAxisPropsWithDefaults(r, channel);
+
+            if (props && (props.grid || props.chromGrid)) {
+                gridLines[props.orient] = new AxisGridView(
+                    props,
+                    r.scaleResolution.type,
+                    this.layoutParent.context,
+                    this.layoutParent,
+                    axisParent
+                );
+            }
+        };
+
+        // Handle children that have caught axis resolutions. Create axes for them.
+        for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
+            "x",
+            "y",
+        ])) {
+            if (view.needsAxes[channel]) {
+                const r = view.resolutions.axis[channel];
+                if (!r) {
+                    continue;
+                }
+
+                createAxis(r, channel, view);
+            }
+        }
+
+        // Handle gridlines of children. Note: children's axis resolution may be caught by
+        // this view or some of this view's ancestors.
+        for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
+            "x",
+            "y",
+        ])) {
+            if (view.needsAxes[channel]) {
+                const r = view.getAxisResolution(channel);
+                if (!r) {
+                    continue;
+                }
+
+                // TODO: Optimization: the same grid view could be reused for all children
+                // because they share the axis and scale resolutions anyway.
+                createAxisGrid(r, channel, view);
+            }
+        }
+
+        // Handle LayerView's possible independent axes
+        if (view instanceof LayerView) {
+            // First create axes that have an orient preference
+            for (const layerChild of view.children) {
+                for (const [channel, r] of Object.entries(
+                    layerChild.resolutions.axis
+                )) {
+                    const props = r.getAxisProps();
+                    if (props && props.orient) {
+                        createAxis(r, channel, layerChild);
+                    }
+                }
+            }
+
+            // Then create axes in a priority order
+            for (const layerChild of view.children) {
+                for (const [channel, r] of Object.entries(
+                    layerChild.resolutions.axis
+                )) {
+                    const props = r.getAxisProps();
+                    if (props && !props.orient) {
+                        createAxis(r, channel, layerChild);
+                    }
+                }
+            }
+
+            // TODO: Axis grid
+        }
+
+        // Axes are created after scales are resolved, so we need to resolve possible new scales here
+        [...Object.values(axes), ...Object.values(gridLines)].forEach((v) =>
+            v.visit((view) => {
+                if (view instanceof UnitView) {
+                    view.resolve("scale");
+                }
+            })
+        );
+    }
+
+    getOverhang() {
+        const calculate = (
+            /** @type {import("../spec/axis").AxisOrient} */ orient
+        ) => {
+            const axisView = this.axes[orient];
+            return axisView
+                ? Math.max(
+                      axisView.getPerpendicularSize() +
+                          axisView.axisProps.offset ?? 0,
+                      0
+                  )
+                : 0;
+        };
+
+        // Axes and overhang should be mutually exclusive, so we can just add them together
+        return new Padding(
+            calculate("top"),
+            calculate("right"),
+            calculate("bottom"),
+            calculate("left")
+        ).add(this.view.getOverhang());
+    }
+
+    getOverhangAndPadding() {
+        return this.getOverhang().add(this.view.getPadding());
     }
 }
