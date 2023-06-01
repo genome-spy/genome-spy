@@ -1,0 +1,34 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "data": { "url": "../sincos.csv" },
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
+  },
+
+  "resolve": {
+    "scale": { "x": "shared" },
+    "axis": { "x": "shared" }
+  },
+
+  "spacing": 0,
+
+  "vconcat": [
+    {
+      "title": { "text": "First", "style": "overlay" },
+      "view": { "stroke": "lightgray" },
+      "mark": "point"
+    },
+    {
+      "title": { "text": "Second", "style": "overlay" },
+      "view": { "stroke": "lightgray" },
+      "mark": "point"
+    },
+    {
+      "title": { "text": "Third", "style": "overlay" },
+      "view": { "stroke": "lightgray" },
+      "mark": "point"
+    }
+  ]
+}

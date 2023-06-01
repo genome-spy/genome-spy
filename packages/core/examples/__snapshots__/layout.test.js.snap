@@ -962,6 +962,188 @@ ViewCoords {
 }
 `;
 
+exports[`Test layout process > layout/condensed_concat.json 1`] = `
+ViewCoords {
+  "children": [
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 323",
+      "viewName": "background0",
+    },
+    ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 0, y: 0, width: 52, height: 323",
+          "viewName": "domain",
+        },
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 0, y: 0, width: 52, height: 323",
+              "viewName": "ticks",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 0, y: 0, width: 52, height: 323",
+              "viewName": "labels",
+            },
+          ],
+          "coords": "Rectangle: x: 0, y: 0, width: 52, height: 323",
+          "viewName": "ticks_and_labels",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 0, y: 0, width: 52, height: 323",
+          "viewName": "title",
+        },
+      ],
+      "coords": "Rectangle: x: 0, y: 0, width: 52, height: 323",
+      "viewName": "axis_left",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 323",
+      "viewName": "unnamed",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 323",
+      "viewName": "title0",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 323, width: 1448, height: 323",
+      "viewName": "background1",
+    },
+    ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 0, y: 323, width: 52, height: 323",
+          "viewName": "domain",
+        },
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 0, y: 323, width: 52, height: 323",
+              "viewName": "ticks",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 0, y: 323, width: 52, height: 323",
+              "viewName": "labels",
+            },
+          ],
+          "coords": "Rectangle: x: 0, y: 323, width: 52, height: 323",
+          "viewName": "ticks_and_labels",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 0, y: 323, width: 52, height: 323",
+          "viewName": "title",
+        },
+      ],
+      "coords": "Rectangle: x: 0, y: 323, width: 52, height: 323",
+      "viewName": "axis_left",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 323, width: 1448, height: 323",
+      "viewName": "unnamed",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 323, width: 1448, height: 323",
+      "viewName": "title1",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 645, width: 1448, height: 323",
+      "viewName": "background2",
+    },
+    ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 0, y: 645, width: 52, height: 323",
+          "viewName": "domain",
+        },
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 0, y: 645, width: 52, height: 323",
+              "viewName": "ticks",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 0, y: 645, width: 52, height: 323",
+              "viewName": "labels",
+            },
+          ],
+          "coords": "Rectangle: x: 0, y: 645, width: 52, height: 323",
+          "viewName": "ticks_and_labels",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 0, y: 645, width: 52, height: 323",
+          "viewName": "title",
+        },
+      ],
+      "coords": "Rectangle: x: 0, y: 645, width: 52, height: 323",
+      "viewName": "axis_left",
+    },
+    ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 52, y: 968, width: 1448, height: 32",
+          "viewName": "domain",
+        },
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 52, y: 968, width: 1448, height: 32",
+              "viewName": "ticks",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 52, y: 968, width: 1448, height: 32",
+              "viewName": "labels",
+            },
+          ],
+          "coords": "Rectangle: x: 52, y: 968, width: 1448, height: 32",
+          "viewName": "ticks_and_labels",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 52, y: 968, width: 1448, height: 32",
+          "viewName": "title",
+        },
+      ],
+      "coords": "Rectangle: x: 52, y: 968, width: 1448, height: 32",
+      "viewName": "axis_bottom",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 645, width: 1448, height: 323",
+      "viewName": "unnamed",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 645, width: 1448, height: 323",
+      "viewName": "title2",
+    },
+  ],
+  "coords": "Rectangle: x: 0, y: 0, width: 1500, height: 968",
+  "viewName": "unnamed",
+}
+`;
+
 exports[`Test layout process > layout/shared_axis_at_root.json 1`] = `
 ViewCoords {
   "children": [
