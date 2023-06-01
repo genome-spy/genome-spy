@@ -26,6 +26,7 @@ import {
     isColorChannel,
     isDiscreteChannel,
 } from "../encoder/encoder";
+import { color } from "d3-color";
 
 export default class WebGLHelper {
     /**
@@ -34,8 +35,9 @@ export default class WebGLHelper {
      * @param {() => {width: number, height: number}} [sizeSource]
      *      A function that returns the content size. If a dimension is undefined,
      *      the canvas fills the container, otherwise the canvas is adjusted to the content size.
+     * @param {string} [clearColor]
      */
-    constructor(container, sizeSource) {
+    constructor(container, sizeSource, clearColor) {
         this._container = container;
         this._sizeSource = sizeSource;
 
@@ -117,6 +119,13 @@ export default class WebGLHelper {
         // https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio#Monitoring_screen_resolution_or_zoom_level_changes
 
         this._updateDpr();
+
+        /** @type {[number, number, number, number]} */
+        this._clearColor = [0, 0, 0, 0];
+        if (clearColor) {
+            const c = color(clearColor).rgb();
+            this._clearColor = [c.r / 255, c.g / 255, c.b / 255, c.opacity];
+        }
     }
 
     invalidateSize() {
@@ -280,7 +289,7 @@ export default class WebGLHelper {
         const { width, height } = this.getPhysicalCanvasSize();
         gl.viewport(0, 0, width, height);
         gl.disable(gl.SCISSOR_TEST);
-        gl.clearColor(0, 0, 0, 0);
+        gl.clearColor(...this._clearColor);
         gl.clear(gl.COLOR_BUFFER_BIT);
     }
 

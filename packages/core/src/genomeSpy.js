@@ -196,10 +196,13 @@ export default class GenomeSpy {
         this.container.classList.add("genome-spy");
         this.container.classList.add("loading");
 
-        this._glHelper = new WebGLHelper(this.container, () =>
-            this.viewRoot
-                ? calculateCanvasSize(this.viewRoot)
-                : { width: undefined, height: undefined }
+        this._glHelper = new WebGLHelper(
+            this.container,
+            () =>
+                this.viewRoot
+                    ? calculateCanvasSize(this.viewRoot)
+                    : { width: undefined, height: undefined },
+            this.spec.background
         );
 
         this.loadingMessageElement = document.createElement("div");

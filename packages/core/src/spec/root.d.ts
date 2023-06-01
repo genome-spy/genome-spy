@@ -9,6 +9,11 @@ interface RootConfig {
     baseUrl?: string;
 
     /**
+     * Background color of the canvas.
+     */
+    background?: string;
+
+    /**
      * https://vega.github.io/vega-lite/docs/data.html#datasets
      */
     datasets?: Record<string, any[]>;
