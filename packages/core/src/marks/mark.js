@@ -865,9 +865,7 @@ export default class Mark {
             let uViewScale;
 
             if (clipRect) {
-                clippedCoords = props.clip
-                    ? coords.intersect(clipRect)
-                    : clipRect;
+                clippedCoords = coords.intersect(clipRect);
 
                 uViewScale = [
                     coords.width / clippedCoords.width,
