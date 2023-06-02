@@ -63,8 +63,10 @@ export default class MergeSampleFacets extends FlowNode {
         if (isFieldDef(xChannelDef)) {
             this.xAccessor = field(xChannelDef.field);
         } else {
-            // TODO
-            throw new Error("Crash!");
+            throw new Error(
+                "Sample summarization requires a FieldDef. This is not a FieldDef: " +
+                    JSON.stringify(xChannelDef)
+            );
         }
     }
 
