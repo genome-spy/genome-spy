@@ -772,7 +772,7 @@ export function isClippedChildren(view) {
 
     view.visit((v) => {
         if (v instanceof UnitView) {
-            clipped &&= v.mark.properties.clip;
+            clipped &&= v.mark.properties.clip === true;
         }
     });
 
