@@ -12,7 +12,7 @@ import {
     scaleLocSize,
     translateLocSize,
 } from "@genome-spy/core/utils/layout/flexLayout";
-import { SampleAttributePanel } from "./sampleAttributePanel";
+import { MetadataView } from "./metadataView";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "@genome-spy/core/genome/locusFormat";
 import Padding from "@genome-spy/core/utils/layout/padding";
@@ -166,9 +166,9 @@ export default class SampleView extends ContainerView {
         this.peripheryCoords = Rectangle.ZERO;
 
         this.groupPanel = new GroupPanel(this);
-        this.attributePanel = new SampleAttributePanel(this);
+        this.metadataView = new MetadataView(this);
 
-        this.peripheryView.setChildren([this.groupPanel, this.attributePanel]);
+        this.peripheryView.setChildren([this.groupPanel, this.metadataView]);
 
         this.gridChild.view.addInteractionEventListener(
             "contextmenu",
@@ -201,7 +201,7 @@ export default class SampleView extends ContainerView {
                         return;
                     }
 
-                    this.attributePanel._setSamples(samples);
+                    this.metadataView._setSamples(samples);
 
                     // Align size to four bytes
                     this.facetTextureData = new Float32Array(

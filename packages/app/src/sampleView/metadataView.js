@@ -31,7 +31,7 @@ const attributeViewRegex = /^attribute-(.*)$/;
 /**
  * This special-purpose class takes care of rendering sample labels and metadata.
  */
-export class SampleAttributePanel extends ConcatView {
+export class MetadataView extends ConcatView {
     /**
      * @typedef {import("@genome-spy/core/view/view").default} View
      */

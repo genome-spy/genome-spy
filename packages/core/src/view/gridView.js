@@ -557,10 +557,7 @@ export default class GridView extends ContainerView {
                 view.render(context, childCoords, options);
             }
 
-            title?.render(context, childCoords, {
-                ...options,
-                //clipRect: undefined, // Hack for SampleAttributePanel. TODO: Proper fix
-            });
+            title?.render(context, childCoords, options);
         }
 
         context.popView(this);

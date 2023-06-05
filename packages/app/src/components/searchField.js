@@ -3,7 +3,7 @@ import { createRef, ref } from "lit/directives/ref.js";
 import { guard } from "lit/directives/guard.js";
 import { zoomLinear } from "vega-util";
 
-import { SampleAttributePanel } from "../sampleView/sampleAttributePanel";
+import { MetadataView } from "../sampleView/metadataView";
 import { sampleIterable } from "@genome-spy/core/data/transforms/sample";
 import { debounce } from "@genome-spy/core/utils/debounce";
 import { VISIT_STOP } from "@genome-spy/core/view/view";
@@ -156,7 +156,7 @@ export default class SearchField extends LitElement {
 
                 // TODO: A proper api for registering searchable stuff
                 this.genomeSpy.viewRoot.visit((view) => {
-                    if (view instanceof SampleAttributePanel) {
+                    if (view instanceof MetadataView) {
                         // TODO: Await
                         view.handleVerboseCommand(term);
                     }
@@ -270,11 +270,11 @@ export default class SearchField extends LitElement {
             `);
         }
 
-        const attributePanel = this.app.getSampleView()?.attributePanel;
-        if (attributePanel) {
-            const categoricalInfos = attributePanel
+        const metadataView = this.app.getSampleView()?.metadataView;
+        if (metadataView) {
+            const categoricalInfos = metadataView
                 .getAttributeNames()
-                .map((name) => attributePanel.getAttributeInfo(name))
+                .map((name) => metadataView.getAttributeInfo(name))
                 .filter(
                     (info) => info.type == "nominal" || info.type == "ordinal"
                 )
