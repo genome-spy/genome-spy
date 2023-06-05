@@ -868,9 +868,7 @@ export default class Mark {
 
             if (clipRect) {
                 clippedCoords = coords.intersect(clipRect).flatten();
-
-                if (clippedCoords.height <= 0 || clippedCoords.width <= 0) {
-                    // Nothing to render
+                if (!clippedCoords.isDefined()) {
                     return false;
                 }
 
@@ -914,6 +912,10 @@ export default class Mark {
                 uViewScale,
             };
         } else {
+            if (!coords.isDefined()) {
+                return false;
+            }
+
             // Viewport comprises the full canvas
             gl.viewport(
                 0,
