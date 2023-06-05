@@ -23,6 +23,8 @@ const SAMPLE_COUNT_VARIABLE = "sampleCount";
  * @typedef {import("@genome-spy/core/view/view").default} View
  */
 export default class MergeSampleFacets extends FlowNode {
+    #initialUpdate = true;
+
     /**
      *
      * @param {any} params
@@ -45,6 +47,20 @@ export default class MergeSampleFacets extends FlowNode {
             if (!this.#shouldUpdate) {
                 return;
             }
+
+            // Ensure that propagation is complete (albeit without actual data)
+            // before the first update. This is necessary to prevent errors in
+            // rendering before the initial data is available. The requestTransition
+            // hack below postpones the update until the next animation frame.
+            if (this.#initialUpdate) {
+                this.#initialUpdate = false;
+                this.reset();
+                this.complete();
+            }
+
+            // Using requestTransition to prevent unnecessary updates
+            // when multiple actions are dispatched as a batch.
+            // TODO: Figure out a cleaner way to do this.
             animator.requestTransition(() => {
                 this.reset();
                 this._mergeAndPropagate(sampleHierarchySelector(state));
@@ -175,6 +191,7 @@ export default class MergeSampleFacets extends FlowNode {
             }
         });
         for (const resolution of resolutions) {
+            // TODO: This should be handled automatically by collectors
             resolution.reconfigure();
         }
     }
