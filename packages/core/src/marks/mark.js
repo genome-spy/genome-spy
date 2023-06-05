@@ -878,36 +878,38 @@ export default class Mark {
                 ];
 
                 yClipOffset = Math.max(0, coords.y2 - clipRect.y2);
-                xClipOffset = Math.max(0, coords.x2 - clipRect.x2); // TODO: Check sign
+                xClipOffset = Math.max(0, coords.x2 - clipRect.x2);
             } else {
                 uViewScale = [1, 1];
             }
 
             const physicalGlCoords = [
-                coords.x,
+                clippedCoords.x,
                 logicalSize.height - clippedCoords.y2,
-                Math.max(0, clippedCoords.width),
-                Math.max(0, clippedCoords.height),
+                clippedCoords.width,
+                clippedCoords.height,
             ].map((x) => x * dpr);
 
             // Because glViewport accepts only integers, we subtract the rounding
             // errors from xyOffsets to guarantee that graphics in clipped
             // and non-clipped viewports align correctly
-            const flooredCoords = physicalGlCoords.map((x) => Math.floor(x));
+            const roundedCoords = physicalGlCoords.map((x) => Math.round(x));
             const [xError, yError] = physicalGlCoords.map(
-                (x, i) => x - flooredCoords[i]
+                (x, i) => x - roundedCoords[i]
             );
 
             // @ts-ignore
-            gl.viewport(...flooredCoords);
+            gl.viewport(...roundedCoords);
             // @ts-ignore
-            gl.scissor(...flooredCoords);
+            gl.scissor(...roundedCoords);
             gl.enable(gl.SCISSOR_TEST);
 
             uniforms = {
                 uViewOffset: [
-                    (xOffset + xClipOffset + xError) / clippedCoords.width,
-                    -(yOffset + yClipOffset - yError) / clippedCoords.height,
+                    (xOffset + xClipOffset + xError / dpr) /
+                        clippedCoords.width,
+                    -(yOffset + yClipOffset - yError / dpr) /
+                        clippedCoords.height,
                 ],
                 uViewScale,
             };
