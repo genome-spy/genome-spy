@@ -233,6 +233,7 @@ function createAxisGrid(axisProps, type) {
 
     return {
         name: "grid_layers",
+        configurableVisibility: false,
         resolve: {
             scale: {
                 [orient2channel(axisProps.orient)]: "forced",
