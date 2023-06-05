@@ -101,6 +101,14 @@ export default class Padding {
         return new Padding(this.top, 0, this.bottom, 0);
     }
 
+    get horizontalTotal() {
+        return this.left + this.right;
+    }
+
+    get verticalTotal() {
+        return this.top + this.bottom;
+    }
+
     /**
      *
      * @param {PaddingConfig} config

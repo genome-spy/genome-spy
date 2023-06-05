@@ -37,14 +37,16 @@ export class MetadataView extends ConcatView {
      */
     /**
      * @param {import("./sampleView").default} sampleView
+     * @param {import("@genome-spy/core/view/containerView").default} dataParent
      */
-    constructor(sampleView) {
+    constructor(sampleView, dataParent) {
         super(
             {
                 title: "Sample metadata",
                 data: { name: null },
                 hconcat: [], // Contents are added dynamically
                 spacing: sampleView.spec.samples.attributeSpacing ?? 1,
+                padding: { right: 10 },
                 resolve: {
                     scale: { default: "independent" },
                     axis: { default: "independent" },
@@ -52,7 +54,7 @@ export class MetadataView extends ConcatView {
             },
             sampleView.context,
             sampleView,
-            sampleView,
+            dataParent,
             "sample-metadata"
         );
 

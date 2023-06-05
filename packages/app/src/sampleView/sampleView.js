@@ -51,9 +51,6 @@ import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
-// Between views
-const SPACING = 10;
-
 /**
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
@@ -165,8 +162,8 @@ export default class SampleView extends ContainerView {
         );
         this.peripheryCoords = Rectangle.ZERO;
 
-        this.groupPanel = new GroupPanel(this);
-        this.metadataView = new MetadataView(this);
+        this.groupPanel = new GroupPanel(this, this.peripheryView);
+        this.metadataView = new MetadataView(this, this.peripheryView);
 
         this.peripheryView.setChildren([this.groupPanel, this.metadataView]);
 
@@ -396,7 +393,8 @@ export default class SampleView extends ContainerView {
      */
     getOverhang() {
         let peripherySize = this.peripheryView.isConfiguredVisible()
-            ? this.peripheryView.getSize().width.px + SPACING
+            ? this.peripheryView.getSize().width.px +
+              this.peripheryView.getPadding().horizontalTotal
             : 0;
 
         return new Padding(0, 0, 0, peripherySize).add(
@@ -765,6 +763,7 @@ export default class SampleView extends ContainerView {
         }
 
         coords = coords.shrink(this.gridChild.getOverhang());
+        // TODO: Should also consider the overhang of the summaries.
 
         context.pushView(this, coords);
 
@@ -775,8 +774,8 @@ export default class SampleView extends ContainerView {
                     : { px: 0 },
                 { grow: 1 },
             ],
-            coords.width,
-            { spacing: SPACING }
+            coords.width
+            //{ spacing: SPACING }
         );
 
         /** @param {LocSize} location */

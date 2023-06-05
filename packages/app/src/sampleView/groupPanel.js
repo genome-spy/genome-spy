@@ -8,14 +8,17 @@ import { iterateGroupHierarchy } from "./sampleSlice";
 export class GroupPanel extends LayerView {
     /**
      * @param {import("./sampleView").default} sampleView
+     * @param {import("@genome-spy/core/view/containerView").default} dataParent
      */
-    constructor(sampleView) {
+    constructor(sampleView, dataParent) {
         super(
             {
                 title: {
                     text: "Groups",
                     orient: "none",
                 },
+
+                padding: { right: 0 },
 
                 width: { step: 22 },
                 // TODO: Make step size, colors, font size, etc. configurable.
@@ -114,8 +117,8 @@ export class GroupPanel extends LayerView {
                 ],
             },
             sampleView.context,
-            undefined,
-            undefined,
+            sampleView,
+            dataParent, //undefined, // Everything breaks if we pass dataParent here. TODO: Why?
             "sample-groups"
         );
 
