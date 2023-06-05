@@ -838,6 +838,8 @@ export default class Mark {
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
     setViewport(coords, clipRect) {
+        coords = coords.flatten();
+
         const dpr = this.unitView.context.devicePixelRatio;
         const gl = this.gl;
         const props = this.properties;
@@ -849,8 +851,8 @@ export default class Mark {
         const pixelOffset = 0.5;
 
         // Note: we also handle xOffset/yOffset mark properties here
-        const xOffset = (props.xOffset || 0) + pixelOffset;
-        const yOffset = (props.yOffset || 0) + pixelOffset;
+        const xOffset = (props.xOffset ?? 0) + pixelOffset;
+        const yOffset = (props.yOffset ?? 0) + pixelOffset;
 
         /** @type {object} */
         let uniforms;
@@ -865,7 +867,12 @@ export default class Mark {
             let uViewScale;
 
             if (clipRect) {
-                clippedCoords = coords.intersect(clipRect);
+                clippedCoords = coords.intersect(clipRect).flatten();
+
+                if (clippedCoords.height <= 0 || clippedCoords.width <= 0) {
+                    // Nothing to render
+                    return false;
+                }
 
                 uViewScale = [
                     coords.width / clippedCoords.width,
@@ -938,8 +945,7 @@ export default class Mark {
 
         setUniformBlock(this.gl, this.programInfo, this.viewUniformInfo);
 
-        // TODO: Optimize: don't set viewport and stuff if rect is outside clipRect or screen
-        return clippedCoords.height > 0 && clippedCoords.width > 0;
+        return true;
     }
 
     /**
