@@ -5,10 +5,16 @@ import { Tooltip } from "./tooltip";
 export type MarkType = "rect" | "point" | "rule" | "text" | "link";
 
 export interface FillAndStrokeProps {
+    /** The fill color */
     fill?: string;
+
+    /** The fill opacity. Value between [0, 1]. */
     fillOpacity?: number;
 
+    /** The stroke color */
     stroke?: string;
+
+    /** The stroke opacity. Value between [0, 1]. */
     strokeOpacity?: number;
 }
 

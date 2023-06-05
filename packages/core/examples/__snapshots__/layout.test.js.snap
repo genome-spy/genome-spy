@@ -86,7 +86,7 @@ ViewCoords {
         ViewCoords {
           "children": [],
           "coords": "Rectangle: x: 62, y: 0, width: 856, height: 417",
-          "viewName": "background0",
+          "viewName": "backgroundStroke0",
         },
         ViewCoords {
           "children": [
@@ -162,7 +162,7 @@ ViewCoords {
             ViewCoords {
               "children": [],
               "coords": "Rectangle: x: 62, y: 489, width: 150, height: 479",
-              "viewName": "background0",
+              "viewName": "backgroundStroke0",
             },
             ViewCoords {
               "children": [
@@ -236,7 +236,7 @@ ViewCoords {
             ViewCoords {
               "children": [],
               "coords": "Rectangle: x: 294, y: 489, width: 624, height: 479",
-              "viewName": "background1",
+              "viewName": "backgroundStroke1",
             },
             ViewCoords {
               "children": [
@@ -323,7 +323,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 1020, y: 0, width: 460, height: 968",
-      "viewName": "background1",
+      "viewName": "backgroundStroke1",
     },
     ViewCoords {
       "children": [
@@ -440,11 +440,6 @@ ViewCoords {
         ViewCoords {
           "children": [
             ViewCoords {
-              "children": [],
-              "coords": "Rectangle: x: 52, y: 32, width: 641, height: 305",
-              "viewName": "background0",
-            },
-            ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
@@ -454,6 +449,11 @@ ViewCoords {
               ],
               "coords": "Rectangle: x: 52, y: 32, width: 641, height: 305",
               "viewName": "grid_layers",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 52, y: 32, width: 641, height: 305",
+              "viewName": "backgroundStroke0",
             },
             ViewCoords {
               "children": [
@@ -493,11 +493,6 @@ ViewCoords {
               "viewName": "unnamed",
             },
             ViewCoords {
-              "children": [],
-              "coords": "Rectangle: x: 52, y: 347, width: 641, height: 305",
-              "viewName": "background1",
-            },
-            ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
@@ -507,6 +502,11 @@ ViewCoords {
               ],
               "coords": "Rectangle: x: 52, y: 347, width: 641, height: 305",
               "viewName": "grid_layers",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 52, y: 347, width: 641, height: 305",
+              "viewName": "backgroundStroke1",
             },
             ViewCoords {
               "children": [
@@ -550,11 +550,6 @@ ViewCoords {
           "viewName": "unnamed",
         },
         ViewCoords {
-          "children": [],
-          "coords": "Rectangle: x: 52, y: 663, width: 641, height: 305",
-          "viewName": "background1",
-        },
-        ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
@@ -564,6 +559,11 @@ ViewCoords {
           ],
           "coords": "Rectangle: x: 52, y: 663, width: 641, height: 305",
           "viewName": "grid_layers",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 52, y: 663, width: 641, height: 305",
+          "viewName": "backgroundStroke1",
         },
         ViewCoords {
           "children": [
@@ -611,11 +611,6 @@ ViewCoords {
         ViewCoords {
           "children": [
             ViewCoords {
-              "children": [],
-              "coords": "Rectangle: x: 807, y: 32, width: 641, height: 305",
-              "viewName": "background0",
-            },
-            ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
@@ -625,6 +620,11 @@ ViewCoords {
               ],
               "coords": "Rectangle: x: 807, y: 32, width: 641, height: 305",
               "viewName": "grid_layers",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 807, y: 32, width: 641, height: 305",
+              "viewName": "backgroundStroke0",
             },
             ViewCoords {
               "children": [
@@ -664,11 +664,6 @@ ViewCoords {
               "viewName": "unnamed",
             },
             ViewCoords {
-              "children": [],
-              "coords": "Rectangle: x: 807, y: 347, width: 641, height: 305",
-              "viewName": "background1",
-            },
-            ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
@@ -678,6 +673,11 @@ ViewCoords {
               ],
               "coords": "Rectangle: x: 807, y: 347, width: 641, height: 305",
               "viewName": "grid_layers",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 807, y: 347, width: 641, height: 305",
+              "viewName": "backgroundStroke1",
             },
             ViewCoords {
               "children": [
@@ -721,11 +721,6 @@ ViewCoords {
           "viewName": "unnamed",
         },
         ViewCoords {
-          "children": [],
-          "coords": "Rectangle: x: 807, y: 663, width: 641, height: 305",
-          "viewName": "background1",
-        },
-        ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
@@ -735,6 +730,11 @@ ViewCoords {
           ],
           "coords": "Rectangle: x: 807, y: 663, width: 641, height: 305",
           "viewName": "grid_layers",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 807, y: 663, width: 641, height: 305",
+          "viewName": "backgroundStroke1",
         },
         ViewCoords {
           "children": [
@@ -819,11 +819,6 @@ exports[`Test layout process > layout/concat_points_text.json 1`] = `
 ViewCoords {
   "children": [
     ViewCoords {
-      "children": [],
-      "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 200",
-      "viewName": "background0",
-    },
-    ViewCoords {
       "children": [
         ViewCoords {
           "children": [],
@@ -838,6 +833,11 @@ ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 200",
       "viewName": "Points",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 200",
+      "viewName": "backgroundStroke0",
     },
     ViewCoords {
       "children": [
@@ -872,11 +872,6 @@ ViewCoords {
       "viewName": "axis_left",
     },
     ViewCoords {
-      "children": [],
-      "coords": "Rectangle: x: 52, y: 210, width: 1448, height: 758",
-      "viewName": "background1",
-    },
-    ViewCoords {
       "children": [
         ViewCoords {
           "children": [],
@@ -891,6 +886,11 @@ ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 210, width: 1448, height: 758",
       "viewName": "Text",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 210, width: 1448, height: 758",
+      "viewName": "backgroundStroke1",
     },
     ViewCoords {
       "children": [
@@ -968,7 +968,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 323",
-      "viewName": "background0",
+      "viewName": "backgroundStroke0",
     },
     ViewCoords {
       "children": [
@@ -1015,7 +1015,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 323, width: 1448, height: 323",
-      "viewName": "background1",
+      "viewName": "backgroundStroke1",
     },
     ViewCoords {
       "children": [
@@ -1062,7 +1062,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 645, width: 1448, height: 323",
-      "viewName": "background2",
+      "viewName": "backgroundStroke2",
     },
     ViewCoords {
       "children": [
@@ -1150,7 +1150,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 100",
-      "viewName": "background0",
+      "viewName": "backgroundStroke0",
     },
     ViewCoords {
       "children": [
@@ -1192,7 +1192,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 110, width: 1448, height: 200",
-      "viewName": "background1",
+      "viewName": "backgroundStroke1",
     },
     ViewCoords {
       "children": [

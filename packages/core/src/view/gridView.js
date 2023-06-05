@@ -472,7 +472,14 @@ export default class GridView extends ContainerView {
         );
 
         for (const [i, gridChild] of this.#visibleChildren.entries()) {
-            const { view, axes, gridLines, background, title } = gridChild;
+            const {
+                view,
+                axes,
+                gridLines,
+                background,
+                backgroundStroke,
+                title,
+            } = gridChild;
 
             const [col, row] = grid.getCellCoords(i);
             const colLocSize =
@@ -505,12 +512,10 @@ export default class GridView extends ContainerView {
                 ? childCoords.intersect(options.clipRect)
                 : childCoords;
 
-            if (background) {
-                background.render(context, clippedChildCoords, {
-                    ...options,
-                    clipRect: undefined,
-                });
-            }
+            background?.render(context, clippedChildCoords, {
+                ...options,
+                clipRect: undefined,
+            });
 
             for (const gridLineView of Object.values(gridLines)) {
                 gridLineView.render(context, childCoords, options);
@@ -521,6 +526,11 @@ export default class GridView extends ContainerView {
             if (clipped) {
                 view.render(context, childCoords, options);
             }
+
+            backgroundStroke?.render(context, clippedChildCoords, {
+                ...options,
+                clipRect: undefined,
+            });
 
             // Independent axes
             for (const [orient, axisView] of Object.entries(axes)) {
@@ -657,19 +667,74 @@ export default class GridView extends ContainerView {
  * @returns {import("../spec/view").UnitSpec}
  */
 export function createBackground(viewBackground) {
+    if (
+        !viewBackground ||
+        !viewBackground.fill ||
+        viewBackground.fillOpacity === 0
+    ) {
+        return;
+    }
+
     return {
         configurableVisibility: false,
         data: { values: [{}] },
         mark: {
-            fill: null,
-            strokeWidth: 1.0,
-            fillOpacity: viewBackground.fill ? 1.0 : 0, // TODO: This should be handled at lower level
-            ...viewBackground,
+            color: viewBackground.fill,
+            opacity: viewBackground.fillOpacity ?? 1.0,
             type: "rect",
             clip: false, // Shouldn't be needed
             tooltip: null,
             minHeight: 1,
             minOpacity: 0,
+        },
+    };
+}
+
+/**
+ * @param {import("../spec/view").ViewBackground} viewBackground
+ * @returns {import("../spec/view").UnitSpec}
+ */
+export function createBackgroundStroke(viewBackground) {
+    if (
+        !viewBackground ||
+        !viewBackground.stroke ||
+        viewBackground.strokeWidth === 0 ||
+        viewBackground.strokeOpacity === 0
+    ) {
+        return;
+    }
+
+    // Using rules to draw a non-filled rectangle.
+    // We are not using a rect mark because it is not optimized for outlines.
+    // TODO: Implement "hollow" mesh for non-filled rectangles
+    return {
+        configurableVisibility: false,
+        resolve: {
+            scale: { x: "excluded", y: "excluded" },
+            axis: { x: "excluded", y: "excluded" },
+        },
+        data: {
+            values: [
+                { x: 0, y: 0, x2: 1, y2: 0 },
+                { x: 1, y: 0, x2: 1, y2: 1 },
+                { x: 1, y: 1, x2: 0, y2: 1 },
+                { x: 0, y: 1, x2: 0, y2: 0 },
+            ],
+        },
+        mark: {
+            size: viewBackground.strokeWidth ?? 1.0,
+            color: viewBackground.stroke ?? "lightgray",
+            strokeCap: "square",
+            strokeOpacity: viewBackground.strokeOpacity ?? 1.0,
+            type: "rule",
+            clip: false,
+            tooltip: null,
+        },
+        encoding: {
+            x: { field: "x", type: "quantitative", scale: null },
+            y: { field: "y", type: "quantitative", scale: null },
+            x2: { field: "x2" },
+            y2: { field: "y2" },
         },
     };
 }
@@ -750,8 +815,11 @@ export class GridChild {
         this.view = view;
         this.serial = serial;
 
-        /** @type {UnitView} [background] */
+        /** @type {UnitView} */
         this.background = undefined;
+
+        /** @type {UnitView} */
+        this.backgroundStroke = undefined;
 
         /** @type {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes */
         this.axes = {};
@@ -768,17 +836,31 @@ export class GridChild {
         if (view.needsAxes.x || view.needsAxes.y) {
             const spec = view.spec;
             const viewBackground = "view" in spec ? spec?.view : undefined;
-            if (viewBackground?.fill || viewBackground?.stroke) {
-                const unitView = new UnitView(
-                    createBackground(viewBackground),
+
+            const backgroundSpec = createBackground(viewBackground);
+            if (backgroundSpec) {
+                this.background = new UnitView(
+                    backgroundSpec,
                     layoutParent.context,
                     layoutParent,
                     view,
                     "background" + serial
                 );
                 // TODO: Make configurable through spec:
-                unitView.blockEncodingInheritance = true;
-                this.background = unitView;
+                this.background.blockEncodingInheritance = true;
+            }
+
+            const backgroundStrokeSpec = createBackgroundStroke(viewBackground);
+            if (backgroundStrokeSpec) {
+                this.backgroundStroke = new UnitView(
+                    backgroundStrokeSpec,
+                    layoutParent.context,
+                    layoutParent,
+                    view,
+                    "backgroundStroke" + serial
+                );
+                // TODO: Make configurable through spec:
+                this.backgroundStroke.blockEncodingInheritance = true;
             }
 
             const title = createTitle(view.spec.title);
@@ -800,6 +882,9 @@ export class GridChild {
     *getChildren() {
         if (this.background) {
             yield this.background;
+        }
+        if (this.backgroundStroke) {
+            yield this.backgroundStroke;
         }
         if (this.title) {
             yield this.title;

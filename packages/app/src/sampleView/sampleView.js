@@ -43,6 +43,7 @@ import Rectangle from "@genome-spy/core/utils/layout/rectangle";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 import {
     createBackground,
+    createBackgroundStroke,
     GridChild,
     translateAxisCoords,
 } from "@genome-spy/core/view/gridView";
@@ -623,14 +624,16 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
+     *
+     * @param {Rectangle} coords
+     * @returns
      */
-    renderGroupBackgrounds(context, coords, options = {}) {
+    #getGroupBackgroundRects(coords) {
         if (
             !this.gridChild.groupBackground &&
             !Object.values(this.gridChild.axes).length
         ) {
-            return;
+            return [];
         }
 
         const groups = this.getLocations().groups;
@@ -648,28 +651,23 @@ export default class SampleView extends ContainerView {
                 ? coords.shrink(new Padding(summaryHeight, 0, 0, 0))
                 : coords;
 
-        for (const [i, groupLocation] of leafGroups.entries()) {
+        return [...leafGroups.values()].map((groupLocation) => {
             const y = () => {
                 const gLoc = groupLocation.locSize.location;
                 return coords.y + gLoc + summaryHeight;
             };
 
-            const groupCoords = coords
-                .modify({
-                    y,
-                    height: () => groupLocation.locSize.size - summaryHeight,
-                })
-                .intersect(clipRect);
-
-            this.gridChild.groupBackground?.render(context, groupCoords, {
-                ...options,
-                facetId: [i],
-            });
-
-            for (const gridLine of Object.values(this.gridChild.gridLines)) {
-                gridLine.render(context, groupCoords, { ...options, clipRect });
-            }
-        }
+            return {
+                coords: coords
+                    .modify({
+                        y,
+                        height: () =>
+                            groupLocation.locSize.size - summaryHeight,
+                    })
+                    .intersect(clipRect),
+                clipRect,
+            };
+        });
     }
 
     /**
@@ -698,13 +696,6 @@ export default class SampleView extends ContainerView {
         for (const opt of sampleOptions) {
             this.gridChild.background?.render(context, coords, opt);
             this.gridChild.view.render(context, coords, opt);
-        }
-
-        for (const [orient, axisView] of Object.entries(this.gridChild.axes)) {
-            axisView.render(
-                context,
-                translateAxisCoords(coords, orient, axisView)
-            );
         }
     }
 
@@ -789,9 +780,35 @@ export default class SampleView extends ContainerView {
         this.childCoords = toColumnCoords(cols[1]);
 
         this.peripheryView.render(context, this.peripheryCoords, options);
-        this.renderGroupBackgrounds(context, this.childCoords, options);
+
         this.renderSummaries(context, this.childCoords, options);
+
+        const backgroundRects = this.#getGroupBackgroundRects(this.childCoords);
+
+        for (const { coords, clipRect } of backgroundRects) {
+            this.gridChild.groupBackground?.render(context, coords, options);
+
+            for (const gridLine of Object.values(this.gridChild.gridLines)) {
+                gridLine.render(context, coords, { ...options, clipRect });
+            }
+        }
+
         this.renderChild(context, this.childCoords, options);
+
+        for (const { coords } of backgroundRects) {
+            this.gridChild.groupBackgroundStroke?.render(
+                context,
+                coords,
+                options
+            );
+        }
+
+        for (const [orient, axisView] of Object.entries(this.gridChild.axes)) {
+            axisView.render(
+                context,
+                translateAxisCoords(this.childCoords, orient, axisView)
+            );
+        }
 
         context.popView(this);
     }
@@ -1228,23 +1245,42 @@ class SampleGridChild extends GridChild {
 
         /** @type {UnitView} */
         this.groupBackground = undefined;
-        if (viewBackgroundSpec?.fill || viewBackgroundSpec?.stroke) {
-            const unitView = new UnitView(
-                createBackground(viewBackgroundSpec),
+        /** @type {UnitView} */
+        this.groupBackgroundStroke = undefined;
+
+        const backgroundSpec = createBackground(viewBackgroundSpec);
+        if (backgroundSpec) {
+            this.groupBackground = new UnitView(
+                backgroundSpec,
                 layoutParent.context,
                 layoutParent,
                 view,
-                "sample-group-background"
+                "sample-group-background-" + serial
             );
             // TODO: Make configurable through spec:
-            unitView.blockEncodingInheritance = true;
-            this.groupBackground = unitView;
+            this.groupBackground.blockEncodingInheritance = true;
+        }
+
+        const backgroundStrokeSpec = createBackgroundStroke(viewBackgroundSpec);
+        if (backgroundStrokeSpec) {
+            this.groupBackgroundStroke = new UnitView(
+                backgroundStrokeSpec,
+                layoutParent.context,
+                layoutParent,
+                view,
+                "sample-group-background-stroke-" + serial
+            );
+            // TODO: Make configurable through spec:
+            this.groupBackgroundStroke.blockEncodingInheritance = true;
         }
     }
 
     *getChildren() {
         if (this.groupBackground) {
             yield this.groupBackground;
+        }
+        if (this.groupBackgroundStroke) {
+            yield this.groupBackgroundStroke;
         }
         yield* super.getChildren();
     }

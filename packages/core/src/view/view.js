@@ -75,6 +75,10 @@ export default class View {
      * @param {string} name
      */
     constructor(spec, context, layoutParent, dataParent, name) {
+        if (!spec) {
+            throw new Error("View spec must be defined!");
+        }
+
         this.context = context;
         this.layoutParent = layoutParent;
         this.dataParent = dataParent;
