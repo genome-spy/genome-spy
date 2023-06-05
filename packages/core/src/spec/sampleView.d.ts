@@ -19,6 +19,11 @@ export interface SampleSpec extends ViewSpecBase {
     samples: SampleDef;
 
     /**
+     * An object defining the view background and outline. The background is
+     * repeated for each group.
+     */
+    view?: ViewBackground;
+    /**
      * The view specification to be repeated for each sample.
      */
     spec: LayerSpec | UnitSpec;

@@ -857,7 +857,7 @@ export default class Mark {
 
         let clippedCoords = coords;
 
-        if (props.clip || clipRect) {
+        if (props.clip !== "never" && (props.clip || clipRect)) {
             let xClipOffset = 0;
             let yClipOffset = 0;
 

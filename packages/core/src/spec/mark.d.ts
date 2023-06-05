@@ -379,7 +379,7 @@ export interface MarkConfig
      * If true, the mark is clipped to the UnitView's rectangle. By default, clipping
      * is enabled for marks that have zoomable positional scales.
      */
-    clip?: boolean;
+    clip?: boolean | "never";
 
     /**
      * Offsets of the `x` and `x2` coordinates in pixels. The offset is applied

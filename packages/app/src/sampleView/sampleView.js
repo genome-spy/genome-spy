@@ -41,7 +41,11 @@ import { contextMenu, DIVIDER } from "../utils/ui/contextMenu";
 import interactionToZoom from "@genome-spy/core/view/zoom";
 import Rectangle from "@genome-spy/core/utils/layout/rectangle";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { createBackground } from "@genome-spy/core/view/gridView";
+import {
+    createBackground,
+    GridChild,
+    translateAxisCoords,
+} from "@genome-spy/core/view/gridView";
 import { isChannelWithScale } from "@genome-spy/core/encoder/encoder";
 import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory";
 
@@ -95,14 +99,20 @@ export default class SampleView extends ContainerView {
         // TODO: Make this a function, not a class
         this.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
 
-        /** @type { UnitView | LayerView } */
-        this.child = /** @type { UnitView | LayerView } */ (
-            context.createView(spec.spec, this, this, "sample-facets")
+        this.gridChild = new SampleGridChild(
+            context.createView(spec.spec, this, this, "sample-facets"),
+            this,
+            0,
+            this.spec.view
         );
 
         this.summaryViews = new ConcatView(
             {
                 configurableVisibility: false,
+                resolve: {
+                    axis: { x: "independent" },
+                },
+                spacing: 0, // Let the children use padding to configure spacing
                 vconcat: [],
             },
             context,
@@ -114,7 +124,6 @@ export default class SampleView extends ContainerView {
         /**
          * @type {(UnitView | LayerView)[]}
          */
-        this.sampleAggregateViews = [];
         this.#createSummaryViews();
 
         this.childCoords = Rectangle.ZERO;
@@ -142,6 +151,10 @@ export default class SampleView extends ContainerView {
                     scale: { default: "independent" },
                     axis: { default: "independent" },
                 },
+                encoding: {
+                    y: null,
+                    facetIndex: null,
+                },
                 hconcat: [],
                 spacing: 0,
             },
@@ -157,25 +170,7 @@ export default class SampleView extends ContainerView {
 
         this.peripheryView.setChildren([this.groupPanel, this.attributePanel]);
 
-        {
-            const viewBackground = this.spec.spec?.view;
-            if (viewBackground?.fill || viewBackground?.stroke) {
-                const unitView = new UnitView(
-                    createBackground(viewBackground),
-                    this.context,
-                    this,
-                    this,
-                    "sample-background"
-                );
-                // TODO: Make configurable through spec:
-                unitView.blockEncodingInheritance = true;
-                this.backgroundView = unitView;
-            } else {
-                this.backgroundView = undefined;
-            }
-        }
-
-        this.child.addInteractionEventListener(
+        this.gridChild.view.addInteractionEventListener(
             "contextmenu",
             this._handleContextMenu.bind(this)
         );
@@ -389,41 +384,34 @@ export default class SampleView extends ContainerView {
         }
     }
 
+    onScalesResolved() {
+        super.onScalesResolved();
+
+        this.gridChild.createAxes();
+    }
+
+    /**
+     * @returns {Padding}
+     * @override
+     */
     getOverhang() {
         let peripherySize = this.peripheryView.isConfiguredVisible()
-            ? this.peripheryView.getSize().width.px
+            ? this.peripheryView.getSize().width.px + SPACING
             : 0;
 
-        if (peripherySize) {
-            peripherySize += SPACING;
-        }
-
-        return new Padding(0, 0, 0, peripherySize);
+        return new Padding(0, 0, 0, peripherySize).add(
+            this.gridChild.getOverhang()
+        );
     }
 
     /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
-        if (this.backgroundView) {
-            yield this.backgroundView;
-        }
-        yield this.child;
         yield this.peripheryView;
         yield this.summaryViews;
-    }
 
-    /**
-     * @param {import("@genome-spy/core/view/view").default} child
-     * @param {import("@genome-spy/core/view/view").default} replacement
-     */
-    replaceChild(child, replacement) {
-        const r = /** @type {UnitView | LayerView} */ (replacement);
-        if (child === this.child) {
-            this.child = r;
-        } else {
-            throw new Error("Not my child!");
-        }
+        yield* this.gridChild.getChildren();
     }
 
     loadSamples() {
@@ -639,14 +627,64 @@ export default class SampleView extends ContainerView {
     /**
      * @type {import("@genome-spy/core/types/rendering").RenderMethod}
      */
+    renderGroupBackgrounds(context, coords, options = {}) {
+        if (
+            !this.gridChild.groupBackground &&
+            !Object.values(this.gridChild.axes).length
+        ) {
+            return;
+        }
+
+        const groups = this.getLocations().groups;
+        const maxDepth = groups
+            .map((d) => d.key.depth)
+            .reduce((a, b) => Math.max(a, b), 0);
+        const leafGroups = groups.filter((d) => d.key.depth == maxDepth);
+
+        const summaryHeight = this.summaryViews.getSize().height.px;
+
+        coords = coords.flatten();
+
+        const clipRect =
+            this.stickySummaries && summaryHeight > 0
+                ? coords.shrink(new Padding(summaryHeight, 0, 0, 0))
+                : coords;
+
+        for (const [i, groupLocation] of leafGroups.entries()) {
+            const y = () => {
+                const gLoc = groupLocation.locSize.location;
+                return coords.y + gLoc + summaryHeight;
+            };
+
+            const groupCoords = coords
+                .modify({
+                    y,
+                    height: () => groupLocation.locSize.size - summaryHeight,
+                })
+                .intersect(clipRect);
+
+            this.gridChild.groupBackground?.render(context, groupCoords, {
+                ...options,
+                facetId: [i],
+            });
+
+            for (const gridLine of Object.values(this.gridChild.gridLines)) {
+                gridLine.render(context, groupCoords, { ...options, clipRect });
+            }
+        }
+    }
+
+    /**
+     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
+     */
     renderChild(context, coords, options = {}) {
         const heightFactor = 1 / coords.height;
         const heightFactorSource = () => heightFactor;
 
         const clipRect = this._clipBySummary(coords);
 
-        for (const sampleLocation of this.getLocations().samples) {
-            const optionsWithFacet = {
+        const sampleOptions = this.getLocations().samples.map(
+            (sampleLocation) => ({
                 ...options,
                 sampleFacetRenderingOptions: {
                     locSize: scaleLocSize(
@@ -656,10 +694,19 @@ export default class SampleView extends ContainerView {
                 },
                 facetId: [sampleLocation.key],
                 clipRect,
-            };
+            })
+        );
 
-            this.backgroundView?.render(context, coords, optionsWithFacet);
-            this.child.render(context, coords, optionsWithFacet);
+        for (const opt of sampleOptions) {
+            this.gridChild.background?.render(context, coords, opt);
+            this.gridChild.view.render(context, coords, opt);
+        }
+
+        for (const [orient, axisView] of Object.entries(this.gridChild.axes)) {
+            axisView.render(
+                context,
+                translateAxisCoords(coords, orient, axisView)
+            );
         }
     }
 
@@ -669,7 +716,9 @@ export default class SampleView extends ContainerView {
     renderSummaries(context, coords, options = {}) {
         options = {
             ...options,
-            clipRect: coords,
+            clipRect: coords.expand(
+                this.summaryViews.getOverhang().getHorizontal()
+            ),
         };
 
         const summaryHeight = this.summaryViews.getSize().height.px;
@@ -691,12 +740,14 @@ export default class SampleView extends ContainerView {
                     : pos;
             };
 
-            this.summaryViews.render(
-                context,
-                coords.modify({ y, height: summaryHeight }),
-                { ...options, facetId: [i] }
-                //options
-            );
+            const summaryCoords = coords
+                .modify({ y, height: summaryHeight })
+                .expand(this.summaryViews.getOverhang().getHorizontal());
+
+            this.summaryViews.render(context, summaryCoords, {
+                ...options,
+                facetId: [i],
+            });
         }
     }
 
@@ -712,6 +763,8 @@ export default class SampleView extends ContainerView {
             // Usually padding is applied by GridView, but if this is the root view, we need to apply it here
             coords = coords.shrink(this.getPadding());
         }
+
+        coords = coords.shrink(this.gridChild.getOverhang());
 
         context.pushView(this, coords);
 
@@ -737,8 +790,9 @@ export default class SampleView extends ContainerView {
         this.childCoords = toColumnCoords(cols[1]);
 
         this.peripheryView.render(context, this.peripheryCoords, options);
-        this.renderChild(context, this.childCoords, options);
+        this.renderGroupBackgrounds(context, this.childCoords, options);
         this.renderSummaries(context, this.childCoords, options);
+        this.renderChild(context, this.childCoords, options);
 
         context.popView(this);
     }
@@ -915,7 +969,7 @@ export default class SampleView extends ContainerView {
             [...this.getLayoutAncestors()].at(-1)
         );
 
-        const fieldInfos = findEncodedFields(this.child)
+        const fieldInfos = findEncodedFields(this.gridChild.view)
             .filter((d) => !["sample", "x", "x2"].includes(d.channel))
             // TODO: A method to check if a mark covers a range (both x and x2 defined)
             .filter((info) =>
@@ -996,13 +1050,17 @@ export default class SampleView extends ContainerView {
         }
 
         if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
-            this.child.propagateInteractionEvent(event);
+            this.gridChild.view.propagateInteractionEvent(event);
             // Hmm. Perhaps this could be attached to the child
             interactionToZoom(
                 event,
                 this.childCoords,
                 (zoomEvent) =>
-                    this.#handleZoom(this.childCoords, this.child, zoomEvent),
+                    this.#handleZoom(
+                        this.childCoords,
+                        this.gridChild.view,
+                        zoomEvent
+                    ),
                 this.context.getCurrentHover()
             );
         }
@@ -1025,7 +1083,7 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/zoom").ZoomEvent} zoomEvent
      */
     #handleZoom(coords, view, zoomEvent) {
-        const resolution = this.child.getScaleResolution("x");
+        const resolution = this.gridChild.view.getScaleResolution("x");
         if (!resolution || !resolution.isZoomable()) {
             return;
         }
@@ -1046,7 +1104,7 @@ export default class SampleView extends ContainerView {
         /** @type {View[]} */
         const summaryViews = [];
 
-        for (const view of this.child.getDescendants()) {
+        for (const view of this.gridChild.view.getDescendants()) {
             const spec = view.spec;
             if (!isAggregateSamplesSpec(spec)) {
                 continue;
@@ -1087,6 +1145,10 @@ export default class SampleView extends ContainerView {
      * @returns {import("@genome-spy/core/spec/view").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
+        if (resolutionType == "axis") {
+            return "independent";
+        }
+
         switch (channel) {
             case "x":
             case "sample":
@@ -1153,4 +1215,38 @@ export function isSampleSpec(spec) {
         "spec" in spec &&
         isObject(spec.spec)
     );
+}
+
+class SampleGridChild extends GridChild {
+    /**
+     * @param {View} view
+     * @param {ContainerView} layoutParent
+     * @param {number} serial
+     * @param {import("@genome-spy/core/spec/view").ViewBackground} [viewBackgroundSpec]
+     */
+    constructor(view, layoutParent, serial, viewBackgroundSpec) {
+        super(view, layoutParent, serial);
+
+        /** @type {UnitView} */
+        this.groupBackground = undefined;
+        if (viewBackgroundSpec?.fill || viewBackgroundSpec?.stroke) {
+            const unitView = new UnitView(
+                createBackground(viewBackgroundSpec),
+                layoutParent.context,
+                layoutParent,
+                view,
+                "sample-group-background"
+            );
+            // TODO: Make configurable through spec:
+            unitView.blockEncodingInheritance = true;
+            this.groupBackground = unitView;
+        }
+    }
+
+    *getChildren() {
+        if (this.groupBackground) {
+            yield this.groupBackground;
+        }
+        yield* super.getChildren();
+    }
 }

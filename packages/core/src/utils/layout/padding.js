@@ -88,6 +88,20 @@ export default class Padding {
     }
 
     /**
+     * Returns a new padding with the left and right, but with the top and bottom set to 0.
+     */
+    getHorizontal() {
+        return new Padding(0, this.right, 0, this.left);
+    }
+
+    /**
+     * Returns a new padding with the same top and bottom, but with the left and right set to 0.
+     */
+    getVertical() {
+        return new Padding(this.top, 0, this.bottom, 0);
+    }
+
+    /**
      *
      * @param {PaddingConfig} config
      */

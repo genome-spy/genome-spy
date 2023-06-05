@@ -203,7 +203,7 @@ export default class GridView extends ContainerView {
      */
     *[Symbol.iterator]() {
         for (const gridChild of this.#children) {
-            yield* gridChild;
+            yield* gridChild.getChildren();
         }
 
         for (const axisView of Object.values(this.#sharedAxes)) {
@@ -501,7 +501,16 @@ export default class GridView extends ContainerView {
 
             gridChild.coords = childCoords;
 
-            background?.render(context, childCoords, options);
+            const clippedChildCoords = options.clipRect
+                ? childCoords.intersect(options.clipRect)
+                : childCoords;
+
+            if (background) {
+                background.render(context, clippedChildCoords, {
+                    ...options,
+                    clipRect: undefined,
+                });
+            }
 
             for (const gridLineView of Object.values(gridLines)) {
                 gridLineView.render(context, childCoords, options);
@@ -517,8 +526,8 @@ export default class GridView extends ContainerView {
             for (const [orient, axisView] of Object.entries(axes)) {
                 axisView.render(
                     context,
-                    translateAxisCoords(childCoords, orient, axisView)
-                    // Axes have no faceted data, thus, pass undefined facetId, i.e., no options
+                    translateAxisCoords(childCoords, orient, axisView),
+                    options
                 );
             }
 
@@ -538,7 +547,8 @@ export default class GridView extends ContainerView {
                             childCoords.shrink(gridChild.view.getOverhang()),
                             orient,
                             axisView
-                        )
+                        ),
+                        options
                     );
                 }
             }
@@ -549,7 +559,7 @@ export default class GridView extends ContainerView {
 
             title?.render(context, childCoords, {
                 ...options,
-                clipRect: undefined, // Hack for SampleAttributePanel. TODO: Proper fix
+                //clipRect: undefined, // Hack for SampleAttributePanel. TODO: Proper fix
             });
         }
 
@@ -661,6 +671,8 @@ export function createBackground(viewBackground) {
             type: "rect",
             clip: false, // Shouldn't be needed
             tooltip: null,
+            minHeight: 1,
+            minOpacity: 0,
         },
     };
 }
@@ -788,10 +800,7 @@ export class GridChild {
         }
     }
 
-    /**
-     * @returns {IterableIterator<View>}
-     */
-    *[Symbol.iterator]() {
+    *getChildren() {
         if (this.background) {
             yield this.background;
         }

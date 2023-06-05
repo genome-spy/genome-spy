@@ -342,10 +342,21 @@ export class SampleAttributePanel extends ConcatView {
             );
             view.opacityFunction = (parentOpacity) =>
                 parentOpacity * this._getAttributeOpacity(attribute);
+
             views.push(view);
         }
 
         this.setChildren(views);
+
+        // This is a hack to ensure that the title views are not clipped.
+        // TODO: Clipping should only be applied to the unit views inside GridChilds
+        for (const v of this.getDescendants()) {
+            if (v instanceof UnitView && v.name.startsWith("title")) {
+                if (typeof v.spec.mark !== "string") {
+                    v.spec.mark.clip = "never";
+                }
+            }
+        }
 
         resolveScalesAndAxes(this);
     }
