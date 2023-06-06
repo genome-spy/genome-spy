@@ -2,7 +2,7 @@ import { Type } from "./channel";
 import { Data } from "./data";
 import { Align, FontStyle, FontWeight } from "./font";
 import { Scale } from "./scale";
-import { LayerSpec, UnitSpec, ViewSpecBase } from "./view";
+import { LayerSpec, UnitSpec, ViewSpecBase, ViewBackground } from "./view";
 
 // TODO: Figure out how this could be moved to the app package and excluded
 // from the core package.
