@@ -74,9 +74,6 @@ export default class SampleView extends ContainerView {
     #gridChild;
 
     /** @type {ConcatView} */
-    #summaryViews;
-
-    /** @type {ConcatView} */
     #sidebarView;
 
     /** @type {number} Recorded so that peek can be offset correctly */
@@ -109,21 +106,6 @@ export default class SampleView extends ContainerView {
             this,
             0,
             this.spec.view
-        );
-
-        this.#summaryViews = new ConcatView(
-            {
-                configurableVisibility: false,
-                resolve: {
-                    axis: { x: "independent" },
-                },
-                spacing: 0, // Let the children use padding to configure spacing
-                vconcat: [],
-            },
-            context,
-            this,
-            this,
-            "sampleSummaries"
         );
 
         /**
@@ -171,7 +153,8 @@ export default class SampleView extends ContainerView {
         this.locationManager = new LocationManager({
             getSampleHierarchy: () => this.sampleHierarchy,
             getHeight: () => this.childCoords.height,
-            getSummaryHeight: () => this.#summaryViews.getSize().height.px,
+            getSummaryHeight: () =>
+                this.#gridChild.summaryViews.getSize().height.px,
             onLocationUpdate: () => {
                 this.groupPanel.updateGroups();
             },
@@ -399,7 +382,6 @@ export default class SampleView extends ContainerView {
      */
     *[Symbol.iterator]() {
         yield this.#sidebarView;
-        yield this.#summaryViews;
 
         yield* this.#gridChild.getChildren();
     }
@@ -518,16 +500,15 @@ export default class SampleView extends ContainerView {
      * @type {import("@genome-spy/core/types/rendering").RenderMethod}
      */
     #renderSummaries(context, coords, options = {}) {
-        const summaryOverhang = this.#summaryViews
-            .getOverhang()
-            .getHorizontal();
+        const summaryViews = this.#gridChild.summaryViews;
+        const summaryOverhang = summaryViews.getOverhang().getHorizontal();
 
         options = {
             ...options,
             clipRect: coords.expand(summaryOverhang),
         };
 
-        const summaryHeight = this.#summaryViews.getSize().height.px;
+        const summaryHeight = summaryViews.getSize().height.px;
 
         for (const [i, summaryLocation] of this.locationManager
             .getLocations()
@@ -549,7 +530,7 @@ export default class SampleView extends ContainerView {
                 .modify({ y, height: summaryHeight })
                 .expand(summaryOverhang);
 
-            this.#summaryViews.render(context, summaryCoords, {
+            summaryViews.render(context, summaryCoords, {
                 ...options,
                 facetId: [i],
             });
@@ -811,7 +792,6 @@ export default class SampleView extends ContainerView {
         this.context.animator.requestRender();
     }
 
-    // TODO: Move this to SampleView
     #createSummaryViews() {
         /** @type {View[]} */
         const summaryViews = [];
@@ -848,7 +828,7 @@ export default class SampleView extends ContainerView {
             }
         }
 
-        this.#summaryViews.setChildren(summaryViews);
+        this.#gridChild.summaryViews.setChildren(summaryViews);
     }
 
     /**
@@ -969,6 +949,21 @@ class SampleGridChild extends GridChild {
             // TODO: Make configurable through spec:
             this.groupBackgroundStroke.blockEncodingInheritance = true;
         }
+
+        this.summaryViews = new ConcatView(
+            {
+                configurableVisibility: false,
+                resolve: {
+                    axis: { x: "independent" },
+                },
+                spacing: 0, // Let the children use padding to configure spacing
+                vconcat: [],
+            },
+            layoutParent.context,
+            layoutParent,
+            layoutParent,
+            "sampleSummaries"
+        );
     }
 
     *getChildren() {
@@ -978,6 +973,8 @@ class SampleGridChild extends GridChild {
         if (this.groupBackgroundStroke) {
             yield this.groupBackgroundStroke;
         }
+        yield this.summaryViews;
+
         yield* super.getChildren();
     }
 }
