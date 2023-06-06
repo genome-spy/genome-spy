@@ -147,7 +147,7 @@ export class MetadataView extends ConcatView {
 
         super.render(context, coords, {
             ...options,
-            clipRect: this.#sampleView.clipBySummary(coords),
+            clipRect: this.#sampleView.locationManager.clipBySummary(coords),
         });
     }
 

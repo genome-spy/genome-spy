@@ -4,6 +4,8 @@ import { invalidatePrefix } from "@genome-spy/core/utils/propertyCacher";
 import LayerView from "@genome-spy/core/view/layerView";
 import { contextMenu } from "../utils/ui/contextMenu";
 import { iterateGroupHierarchy } from "./sampleSlice";
+import { isString } from "vega-util";
+import { render } from "lit";
 
 export class GroupPanel extends LayerView {
     /**
@@ -174,7 +176,8 @@ export class GroupPanel extends LayerView {
     }
 
     updateRange() {
-        const groupLocations = this.sampleView.getLocations()?.groups;
+        const groupLocations =
+            this.sampleView.locationManager.getLocations()?.groups;
 
         if (!groupLocations?.length) {
             return;
@@ -198,7 +201,8 @@ export class GroupPanel extends LayerView {
     }
 
     updateGroups() {
-        const groupLocations = this.sampleView.getLocations()?.groups ?? [];
+        const groupLocations =
+            this.sampleView.locationManager.getLocations()?.groups ?? [];
 
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource").default} */ (
@@ -210,11 +214,13 @@ export class GroupPanel extends LayerView {
             return;
         }
 
+        const attributeTitles = this.#getAttributeTitles();
+
         const data = groupLocations.map((g) => ({
             _index: g.key.index,
             _depth: g.key.depth,
             _rawGroup: g.key.group,
-            attribute: g.key.attributeLabel,
+            attribute: attributeTitles[g.key.depth],
             // Name identifies a group
             name: g.key.group.name,
             // Title is shown in the vis, defaults to name
@@ -237,6 +243,32 @@ export class GroupPanel extends LayerView {
         // TODO: Get rid of the following. Should happen automatically:
         peek([...this.getLayoutAncestors()]).visit((view) =>
             invalidatePrefix(view, "size")
+        );
+    }
+
+    #getAttributeTitles() {
+        // Titles may be Lit's TemplateResults, which must be converted to strings.
+        const div = document.createElement("div");
+
+        return [null, ...this.sampleView.sampleHierarchy.groupMetadata].map(
+            (entry) => {
+                if (!entry) {
+                    return "unknown";
+                }
+                const title =
+                    this.sampleView.compositeAttributeInfoSource.getAttributeInfo(
+                        entry.attribute
+                    ).title;
+
+                if (!title) {
+                    return "unknown";
+                } else if (isString(title)) {
+                    return title;
+                } else {
+                    render(title, div);
+                    return div.textContent.replace(/\s+/g, " ").trim();
+                }
+            }
         );
     }
 }

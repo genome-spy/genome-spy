@@ -1,3 +1,4 @@
+import { SampleHierarchy } from "./sampleSlice";
 import { Group } from "./sampleState";
 import { LocSize } from "@genome-spy/core/utils/layout/flexLayout";
 
@@ -14,7 +15,6 @@ export interface GroupDetails {
     group: Group;
     depth: number;
     n: number;
-    attributeLabel: string;
 }
 
 export interface HierarchicalGroupLocation
@@ -29,4 +29,13 @@ export interface Locations {
     groups: HierarchicalGroupLocation[];
     samples: SampleLocation[];
     summaries: GroupLocation[];
+}
+
+export interface LocationContext {
+    getSampleHierarchy: () => SampleHierarchy;
+    getHeight: () => number;
+    getSummaryHeight: () => number;
+    onLocationUpdate: () => void;
+    viewContext: ViewContext;
+    isStickySummaries: () => boolean;
 }

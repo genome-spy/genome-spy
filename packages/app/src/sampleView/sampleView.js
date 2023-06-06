@@ -1,23 +1,18 @@
-import { isNumber, isObject, isString } from "vega-util";
-import { html, render } from "lit";
+import { isNumber, isObject } from "vega-util";
+import { html } from "lit";
 import {
     findEncodedFields,
     findUniqueViewNames,
 } from "@genome-spy/core/view/viewUtils";
 import ContainerView from "@genome-spy/core/view/containerView";
 import {
-    interpolateLocSizes,
-    locSizeEncloses,
     mapToPixelCoords,
     scaleLocSize,
-    translateLocSize,
 } from "@genome-spy/core/utils/layout/flexLayout";
 import { MetadataView } from "./metadataView";
 import generateAttributeContextMenu from "./attributeContextMenu";
 import { formatLocus } from "@genome-spy/core/genome/locusFormat";
 import Padding from "@genome-spy/core/utils/layout/padding";
-import transition from "@genome-spy/core/utils/transition";
-import { easeCubicOut, easeExpOut } from "d3-ease";
 import clamp from "@genome-spy/core/utils/clamp";
 import createDataSource from "@genome-spy/core/data/sources/dataSourceFactory";
 import FlowNode from "@genome-spy/core/data/flowNode";
@@ -25,7 +20,6 @@ import { createChain } from "@genome-spy/core/view/flowBuilder";
 import ConcatView from "@genome-spy/core/view/concatView";
 import UnitView from "@genome-spy/core/view/unitView";
 import { GroupPanel } from "./groupPanel";
-import { createOrUpdateTexture } from "@genome-spy/core/gl/webGLHelper";
 import {
     createSampleSlice,
     getActionInfo,
@@ -36,7 +30,7 @@ import {
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
 import { watch } from "../state/watch";
 import { createSelector } from "@reduxjs/toolkit";
-import { calculateLocations, getSampleLocationAt } from "./locations";
+import { LocationManager, getSampleLocationAt } from "./locationManager";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu";
 import interactionToZoom from "@genome-spy/core/view/zoom";
 import Rectangle from "@genome-spy/core/utils/layout/rectangle";
@@ -76,42 +70,6 @@ export default class SampleView extends ContainerView {
      * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
      */
 
-    /**
-     * 0: Bird's eye view, 1: Closeup view, (0, 1): Transitioning between the two
-     */
-    #peekState = 0;
-
-    #scrollOffset = 0;
-
-    #scrollableHeight = 0;
-
-    #stickySummaries = true;
-
-    /**
-     * There are to ways to manage how facets are drawn:
-     *
-     * 1) Use one draw call for each facet and pass the location data as a uniform.
-     * 2) Draw all facets with one call and pass the facet locations as a texture.
-     *
-     * The former is suitable for large datasets, which can be subsetted for better
-     * performance. The latter one is more performant for cases where each facet
-     * consists of few data items (sample attributes / metadata).
-     * @type {WebGLTexture}
-     */
-    #facetTexture = undefined;
-
-    /** @type {Float32Array} */
-    #facetTextureData = undefined;
-
-    /** @type {number} Recorded so that peek can be offset correctly */
-    #lastMouseY = -1;
-
-    /** @type {import("./sampleViewTypes").Locations} */
-    #locations = undefined;
-
-    /** @type {import("./sampleViewTypes").Locations} */
-    #scrollableLocations;
-
     /** @type {SampleGridChild} */
     #gridChild;
 
@@ -120,6 +78,11 @@ export default class SampleView extends ContainerView {
 
     /** @type {ConcatView} */
     #sidebarView;
+
+    /** @type {number} Recorded so that peek can be offset correctly */
+    #lastMouseY = -1;
+
+    #stickySummaries = false;
 
     /**
      *
@@ -205,15 +168,24 @@ export default class SampleView extends ContainerView {
             this.#handleContextMenu.bind(this)
         );
 
+        this.locationManager = new LocationManager({
+            getSampleHierarchy: () => this.sampleHierarchy,
+            getHeight: () => this.childCoords.height,
+            getSummaryHeight: () => this.#summaryViews.getSize().height.px,
+            onLocationUpdate: () => {
+                this.groupPanel.updateGroups();
+            },
+            viewContext: this.context,
+            isStickySummaries: () => this.#stickySummaries,
+        });
+
         this.provenance.storeHelper.subscribe(
             watch(
                 (state) => sampleHierarchySelector(state).rootGroup,
                 (rootGroup) => {
-                    this.#locations = undefined;
-                    this.groupPanel.updateGroups();
+                    this.locationManager.reset();
 
-                    // TODO: Handle scroll offset instead
-                    this.#peekState = 0;
+                    this.groupPanel.updateGroups();
 
                     this.context.requestLayoutReflow();
                     this.context.animator.requestRender();
@@ -232,11 +204,6 @@ export default class SampleView extends ContainerView {
                     }
 
                     this.metadataView.setSamples(samples);
-
-                    // Align size to four bytes
-                    this.#facetTextureData = new Float32Array(
-                        Math.ceil((samples.length * 2) / 4) * 4
-                    );
 
                     // Feed some initial dynamic data.
                     this.groupPanel.updateGroups();
@@ -320,7 +287,7 @@ export default class SampleView extends ContainerView {
         );
 
         this._addBroadcastHandler("layout", () => {
-            this.#locations = undefined;
+            this.locationManager.resetLocations();
         });
 
         this.addInteractionEventListener("mousemove", (coords, event) => {
@@ -332,12 +299,8 @@ export default class SampleView extends ContainerView {
             "wheel",
             (coords, event) => {
                 const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
-                if (this.#peekState && !wheelEvent.ctrlKey) {
-                    this.#scrollOffset = clamp(
-                        this.#scrollOffset + wheelEvent.deltaY,
-                        0,
-                        this.#scrollableHeight - this.childCoords.height
-                    );
+                if (this.locationManager.isCloseup() && !wheelEvent.ctrlKey) {
+                    this.locationManager.handleWheelEvent(wheelEvent);
 
                     this.groupPanel.updateRange();
                     /*
@@ -367,12 +330,15 @@ export default class SampleView extends ContainerView {
         // TODO: Check that the mouse pointer is inside the view (or inside the app instance)
         context.addKeyboardListener("keydown", (event) => {
             if (event.code == "KeyE" && !event.repeat) {
-                this.#togglePeek();
+                const mouseY = this.#lastMouseY;
+                const sampleId = this.getSampleAt(mouseY)?.id;
+
+                this.locationManager.togglePeek(undefined, mouseY, sampleId);
             }
         });
         context.addKeyboardListener("keyup", (event) => {
             if (event.code == "KeyE") {
-                this.#togglePeek(false);
+                this.locationManager.togglePeek(false);
             }
         });
 
@@ -507,195 +473,16 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @returns {import("./sampleViewTypes").Locations}
-     */
-    getLocations() {
-        if (!this.#locations) {
-            if (!this.childCoords?.height) {
-                return;
-            }
-
-            const sampleHierarchy = this.sampleHierarchy;
-            const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
-            const groupAttributes = [null, ...sampleHierarchy.groupMetadata];
-
-            const summaryHeight =
-                (this.#summaryViews?.isConfiguredVisible() &&
-                    this.#summaryViews?.getSize().height.px) ??
-                0;
-
-            // Locations squeezed into the viewport height
-            const fittedLocations = calculateLocations(flattened, {
-                viewHeight: this.childCoords.height,
-                groupSpacing: 5, // TODO: Configurable
-                summaryHeight,
-            });
-
-            // Scrollable locations that are shown when "peek" activates
-            const scrollableLocations = calculateLocations(flattened, {
-                sampleHeight: 35, // TODO: Configurable
-                groupSpacing: 15, // TODO: Configurable
-                summaryHeight,
-            });
-
-            const offsetSource = () => -this.#scrollOffset;
-            const ratioSource = () => this.#peekState;
-
-            /** Store for scroll offset calculation when peek fires */
-            this.#scrollableLocations = scrollableLocations;
-
-            // TODO: Use groups to calculate
-            this.#scrollableHeight = scrollableLocations.summaries
-                .map((d) => d.locSize.location + d.locSize.size)
-                .reduce((a, b) => Math.max(a, b), 0);
-
-            /** @type {import("./sampleViewTypes").InterpolatedLocationMaker} */
-            const makeInterpolatedLocations = (fitted, scrollable) => {
-                /** @type {any[]} */
-                const interactiveLocations = [];
-                for (let i = 0; i < fitted.length; i++) {
-                    const key = fitted[i].key;
-                    interactiveLocations.push({
-                        key,
-                        locSize: interpolateLocSizes(
-                            fitted[i].locSize,
-                            translateLocSize(
-                                scrollable[i].locSize,
-                                offsetSource
-                            ),
-                            ratioSource
-                        ),
-                    });
-                }
-                return interactiveLocations;
-            };
-
-            const groups = makeInterpolatedLocations(
-                fittedLocations.groups,
-                scrollableLocations.groups
-            );
-
-            const div = document.createElement("div");
-            // Perhaps this is not the right place to play with labels etc
-            groups.forEach((entry) => {
-                if (entry.key.depth == 0) return;
-
-                const attrId = groupAttributes[entry.key.depth].attribute;
-
-                const title =
-                    this.compositeAttributeInfoSource.getAttributeInfo(
-                        attrId
-                    ).title;
-                if (!title) {
-                    entry.key.attributeLabel = "unknown";
-                } else if (isString(title)) {
-                    entry.key.attributeLabel = title;
-                } else {
-                    render(title, div);
-                    entry.key.attributeLabel = div.textContent
-                        .replace(/\s+/g, " ")
-                        .trim();
-                }
-            });
-
-            this.#locations = {
-                samples: makeInterpolatedLocations(
-                    fittedLocations.samples,
-                    scrollableLocations.samples
-                ),
-                summaries: makeInterpolatedLocations(
-                    fittedLocations.summaries,
-                    scrollableLocations.summaries
-                ),
-                groups,
-            };
-        }
-
-        return this.#locations;
-    }
-
-    /**
      * @param {number} pos
      */
     getSampleAt(pos) {
-        const match = getSampleLocationAt(pos, this.getLocations().samples);
+        const match = getSampleLocationAt(
+            pos,
+            this.locationManager.getLocations().samples
+        );
         if (match) {
             return this.sampleHierarchy.sampleData.entities[match.key];
         }
-    }
-
-    /**
-     * @param {number} pos
-     */
-    getSummaryAt(pos) {
-        const groups = this.getLocations().summaries;
-        const groupIndex = groups.findIndex((summaryLocation) =>
-            locSizeEncloses(summaryLocation.locSize, pos)
-        );
-
-        return groupIndex >= 0
-            ? { index: groupIndex, location: groups[groupIndex] }
-            : undefined;
-    }
-
-    /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
-     */
-    clipBySummary(coords) {
-        if (this.#stickySummaries && this.#summaryViews.childCount) {
-            const summaryHeight = this.#summaryViews.getSize().height.px;
-            return coords.modify({
-                y: () => coords.y + summaryHeight,
-                height: () => coords.height - summaryHeight,
-            });
-        }
-    }
-
-    /**
-     *
-     * @param {Rectangle} coords
-     * @returns
-     */
-    #getGroupBackgroundRects(coords) {
-        if (
-            !this.#gridChild.groupBackground &&
-            !Object.values(this.#gridChild.axes).length
-        ) {
-            return [];
-        }
-
-        const groups = this.getLocations().groups;
-        const maxDepth = groups
-            .map((d) => d.key.depth)
-            .reduce((a, b) => Math.max(a, b), 0);
-        const leafGroups = groups.filter((d) => d.key.depth == maxDepth);
-
-        const summaryHeight = this.#summaryViews.getSize().height.px;
-
-        coords = coords.flatten();
-
-        const clipRect =
-            this.#stickySummaries && summaryHeight > 0
-                ? coords.shrink(new Padding(summaryHeight, 0, 0, 0))
-                : coords;
-
-        return [...leafGroups.values()].map((groupLocation) => {
-            const y = () => {
-                const gLoc = groupLocation.locSize.location;
-                return coords.y + gLoc + summaryHeight;
-            };
-
-            return {
-                coords: coords
-                    .modify({
-                        y,
-                        height: () =>
-                            groupLocation.locSize.size - summaryHeight,
-                    })
-                    .intersect(clipRect),
-                clipRect,
-            };
-        });
     }
 
     /**
@@ -705,10 +492,11 @@ export default class SampleView extends ContainerView {
         const heightFactor = 1 / coords.height;
         const heightFactorSource = () => heightFactor;
 
-        const clipRect = this.clipBySummary(coords);
+        const clipRect = this.locationManager.clipBySummary(coords);
 
-        const sampleOptions = this.getLocations().samples.map(
-            (sampleLocation) => ({
+        const sampleOptions = this.locationManager
+            .getLocations()
+            .samples.map((sampleLocation) => ({
                 ...options,
                 sampleFacetRenderingOptions: {
                     locSize: scaleLocSize(
@@ -718,8 +506,7 @@ export default class SampleView extends ContainerView {
                 },
                 facetId: [sampleLocation.key],
                 clipRect,
-            })
-        );
+            }));
 
         for (const opt of sampleOptions) {
             this.#gridChild.background?.render(context, coords, opt);
@@ -731,19 +518,20 @@ export default class SampleView extends ContainerView {
      * @type {import("@genome-spy/core/types/rendering").RenderMethod}
      */
     #renderSummaries(context, coords, options = {}) {
+        const summaryOverhang = this.#summaryViews
+            .getOverhang()
+            .getHorizontal();
+
         options = {
             ...options,
-            clipRect: coords.expand(
-                this.#summaryViews.getOverhang().getHorizontal()
-            ),
+            clipRect: coords.expand(summaryOverhang),
         };
 
         const summaryHeight = this.#summaryViews.getSize().height.px;
 
-        for (const [
-            i,
-            summaryLocation,
-        ] of this.getLocations().summaries.entries()) {
+        for (const [i, summaryLocation] of this.locationManager
+            .getLocations()
+            .summaries.entries()) {
             const y = () => {
                 const gLoc = summaryLocation.locSize.location;
                 let pos = coords.y + gLoc;
@@ -759,7 +547,7 @@ export default class SampleView extends ContainerView {
 
             const summaryCoords = coords
                 .modify({ y, height: summaryHeight })
-                .expand(this.#summaryViews.getOverhang().getHorizontal());
+                .expand(summaryOverhang);
 
             this.#summaryViews.render(context, summaryCoords, {
                 ...options,
@@ -811,7 +599,11 @@ export default class SampleView extends ContainerView {
 
         this.#renderSummaries(context, this.childCoords, options);
 
-        const backgroundRects = this.#getGroupBackgroundRects(this.childCoords);
+        const backgroundRects =
+            !this.#gridChild.groupBackground &&
+            !Object.values(this.#gridChild.axes).length
+                ? this.locationManager.getGroupBackgroundRects(this.childCoords)
+                : [];
 
         for (const { coords, clipRect } of backgroundRects) {
             this.#gridChild.groupBackground?.render(context, coords, options);
@@ -843,131 +635,11 @@ export default class SampleView extends ContainerView {
 
     onBeforeRender() {
         // TODO: Only when needed
-        this.#updateFacetTexture();
+        this.locationManager.updateFacetTexture();
     }
 
-    #updateFacetTexture() {
-        const arr = this.#facetTextureData;
-        arr.fill(0);
-
-        const entities = this.sampleHierarchy.sampleData?.entities;
-        if (entities) {
-            const sampleLocations = this.getLocations().samples;
-
-            const height = this.childCoords.height;
-
-            for (const sampleLocation of sampleLocations) {
-                // TODO: Get rid of the map lookup
-                const index = entities[sampleLocation.key].indexNumber;
-                arr[index * 2 + 0] = sampleLocation.locSize.location / height;
-                arr[index * 2 + 1] = sampleLocation.locSize.size / height;
-            }
-        }
-
-        const gl = this.context.glHelper.gl;
-
-        this.#facetTexture = createOrUpdateTexture(
-            gl,
-            {
-                internalFormat: gl.RG32F,
-                format: gl.RG,
-                height: 1,
-            },
-            arr,
-            this.#facetTexture
-        );
-    }
-
-    /**
-     * @param {boolean} [open] open if true, close if false, toggle if undefined
-     */
-    #togglePeek(open) {
-        if (this.#peekState > 0 && this.#peekState < 1) {
-            // Transition is going on
-            return;
-        }
-
-        if (open !== undefined && open == !!this.#peekState) {
-            return;
-        }
-
-        /** @type {import("@genome-spy/core/utils/transition").TransitionOptions} */
-        const props = {
-            requestAnimationFrame: (callback) =>
-                this.context.animator.requestTransition(callback),
-            onUpdate: (value) => {
-                this.#peekState = Math.pow(value, 2);
-                this.groupPanel.updateRange();
-                this.context.animator.requestRender();
-            },
-            from: this.#peekState,
-        };
-
-        if (this.#peekState == 0) {
-            const mouseY = this.#lastMouseY;
-            const sampleId = this.getSampleAt(mouseY)?.id;
-
-            let target;
-            if (sampleId) {
-                /** @param {LocSize} locSize */
-                const getCentroid = (locSize) =>
-                    locSize.location + locSize.size / 2;
-
-                target = getCentroid(
-                    this.#scrollableLocations.samples.find(
-                        (sampleLocation) => sampleLocation.key == sampleId
-                    ).locSize
-                );
-            } else {
-                // Match sample summaries
-                const groupInfo = this.getSummaryAt(mouseY);
-                if (groupInfo) {
-                    // TODO: Simplify now that target is available in groupLocations
-                    target =
-                        this.#scrollableLocations.summaries[groupInfo.index]
-                            .locSize.location -
-                        (groupInfo.location.locSize.location - mouseY);
-                }
-            }
-
-            if (target) {
-                this.#scrollOffset = target - mouseY;
-            } else {
-                // TODO: Find closest sample instead
-                this.#scrollOffset =
-                    (this.#scrollableHeight - this.childCoords.height) / 2;
-            }
-
-            if (this.#scrollableHeight > this.childCoords.height) {
-                transition({
-                    ...props,
-                    to: 1,
-                    duration: 500,
-                    easingFunction: easeExpOut,
-                });
-            } else {
-                // No point to zoom out in peek. Indicate the request registration and
-                // refusal with a discrete animation.
-
-                /** @param {number} x */
-                const bounce = (x) => (1 - Math.pow(x * 2 - 1, 2)) * 0.5;
-
-                transition({
-                    ...props,
-                    from: 0,
-                    to: 1,
-                    duration: 300,
-                    easingFunction: bounce,
-                });
-            }
-        } else {
-            transition({
-                ...props,
-                to: 0,
-                duration: 400,
-                easingFunction: easeCubicOut,
-            });
-        }
+    getSampleFacetTexture() {
+        return this.locationManager.getFacetTexture();
     }
 
     /**
@@ -976,15 +648,15 @@ export default class SampleView extends ContainerView {
      */
     makePeekMenuItem() {
         return {
-            ...(this.#peekState == 0
+            ...(!this.locationManager.isCloseup()
                 ? {
                       label: "Open closeup",
-                      callback: () => this.#togglePeek(true),
+                      callback: () => this.locationManager.togglePeek(true),
                       icon: faArrowsAltV,
                   }
                 : {
                       label: "Close closeup",
-                      callback: () => this.#togglePeek(false),
+                      callback: () => this.locationManager.togglePeek(false),
                       icon: faXmark,
                   }),
 
@@ -1077,10 +749,6 @@ export default class SampleView extends ContainerView {
         }
 
         contextMenu({ items }, mouseEvent);
-    }
-
-    getSampleFacetTexture() {
-        return this.#facetTexture;
     }
 
     /**
