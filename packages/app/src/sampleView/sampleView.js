@@ -471,36 +471,69 @@ export default class SampleView extends ContainerView {
      * @type {import("@genome-spy/core/types/rendering").RenderMethod}
      */
     #renderChild(context, coords, options = {}) {
+        const gridChild = this.#gridChild;
+
+        // Background and grid rendering --------
+
+        const backgroundRects =
+            gridChild.groupBackground || Object.values(gridChild.axes).length
+                ? this.locationManager.getGroupBackgroundRects(this.childCoords)
+                : [];
+
+        for (const { coords, clipRect } of backgroundRects) {
+            gridChild.groupBackground?.render(context, coords, options);
+
+            for (const gridLine of Object.values(gridChild.gridLines)) {
+                gridLine.render(context, coords, { ...options, clipRect });
+            }
+        }
+
+        // Sample rendering --------
+
         const heightFactor = 1 / coords.height;
         const heightFactorSource = () => heightFactor;
 
+        // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
 
-        const sampleOptions = this.locationManager
-            .getLocations()
-            .samples.map((sampleLocation) => ({
-                ...options,
-                sampleFacetRenderingOptions: {
-                    locSize: scaleLocSize(
-                        sampleLocation.locSize,
-                        heightFactorSource
-                    ),
-                },
-                facetId: [sampleLocation.key],
-                clipRect,
-            }));
+        const locations = this.locationManager.getLocations();
 
+        const sampleOptions = locations.samples.map((sampleLocation) => ({
+            ...options,
+            sampleFacetRenderingOptions: {
+                locSize: scaleLocSize(
+                    sampleLocation.locSize,
+                    heightFactorSource
+                ),
+            },
+            facetId: [sampleLocation.key],
+            clipRect,
+        }));
+
+        // Render the view for each sample, pass location and facet id as options
+        // TODO: Support facet texture as an alternative to multiple draw calls
         for (const opt of sampleOptions) {
-            this.#gridChild.background?.render(context, coords, opt);
-            this.#gridChild.view.render(context, coords, opt);
+            gridChild.background?.render(context, coords, opt);
+            gridChild.view.render(context, coords, opt);
+            gridChild.backgroundStroke?.render(context, coords, opt);
         }
-    }
 
-    /**
-     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
-     */
-    #renderSummaries(context, coords, options = {}) {
-        const summaryViews = this.#gridChild.summaryViews;
+        // Background stroke and axis rendering --------
+
+        for (const { coords } of backgroundRects) {
+            gridChild.groupBackgroundStroke?.render(context, coords, options);
+        }
+
+        for (const [orient, axisView] of Object.entries(gridChild.axes)) {
+            axisView.render(
+                context,
+                translateAxisCoords(coords, orient, axisView)
+            );
+        }
+
+        // Summary rendering --------
+
+        const summaryViews = gridChild.summaryViews;
         const summaryOverhang = summaryViews.getOverhang().getHorizontal();
 
         options = {
@@ -510,9 +543,7 @@ export default class SampleView extends ContainerView {
 
         const summaryHeight = summaryViews.getSize().height.px;
 
-        for (const [i, summaryLocation] of this.locationManager
-            .getLocations()
-            .summaries.entries()) {
+        for (const [i, summaryLocation] of locations.summaries.entries()) {
             const y = () => {
                 const gLoc = summaryLocation.locSize.location;
                 let pos = coords.y + gLoc;
@@ -578,38 +609,7 @@ export default class SampleView extends ContainerView {
 
         this.#sidebarView.render(context, this.sidebarCoords, options);
 
-        this.#renderSummaries(context, this.childCoords, options);
-
-        const backgroundRects =
-            !this.#gridChild.groupBackground &&
-            !Object.values(this.#gridChild.axes).length
-                ? this.locationManager.getGroupBackgroundRects(this.childCoords)
-                : [];
-
-        for (const { coords, clipRect } of backgroundRects) {
-            this.#gridChild.groupBackground?.render(context, coords, options);
-
-            for (const gridLine of Object.values(this.#gridChild.gridLines)) {
-                gridLine.render(context, coords, { ...options, clipRect });
-            }
-        }
-
         this.#renderChild(context, this.childCoords, options);
-
-        for (const { coords } of backgroundRects) {
-            this.#gridChild.groupBackgroundStroke?.render(
-                context,
-                coords,
-                options
-            );
-        }
-
-        for (const [orient, axisView] of Object.entries(this.#gridChild.axes)) {
-            axisView.render(
-                context,
-                translateAxisCoords(this.childCoords, orient, axisView)
-            );
-        }
 
         context.popView(this);
     }
