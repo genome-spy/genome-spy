@@ -35,6 +35,12 @@ export class MetadataView extends ConcatView {
     /**
      * @typedef {import("@genome-spy/core/view/view").default} View
      */
+
+    /**
+     * @type {import("./sampleView").default}
+     */
+    #sampleView;
+
     /**
      * @param {import("./sampleView").default} sampleView
      * @param {import("@genome-spy/core/view/containerView").default} dataParent
@@ -58,7 +64,7 @@ export class MetadataView extends ConcatView {
             "sample-metadata"
         );
 
-        this.sampleView = sampleView;
+        this.#sampleView = sampleView;
 
         this._attributeHighlighState = {
             /** Current opacity of attributes that are NOT hovered */
@@ -69,15 +75,15 @@ export class MetadataView extends ConcatView {
         };
 
         // TODO: Optimize the following
-        this.sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
+        this.#sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_ATTRIBUTE,
             (attribute) =>
                 this.children
-                    .map(this.getAttributeInfoFromView.bind(this))
+                    .map(this.#getAttributeInfoFromView.bind(this))
                     .find((info) => info && info.name == attribute.specifier)
         );
 
-        this.sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
+        this.#sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_NAME,
             (attribute) => SAMPLE_NAME_ATTRIBUTE_INFO
         );
@@ -89,15 +95,15 @@ export class MetadataView extends ConcatView {
 
         this.addInteractionEventListener("mousemove", (coords, event) => {
             const view = event.target;
-            const sample = this._findSampleForMouseEvent(coords, event);
+            const sample = this.#findSampleForMouseEvent(coords, event);
             const attribute =
-                (view && this.getAttributeInfoFromView(view)?.name) ||
+                (view && this.#getAttributeInfoFromView(view)?.name) ||
                 undefined;
 
             if (sample) {
                 const id = JSON.stringify([sample.id, attribute]);
                 this.context.updateTooltip(id, (id) =>
-                    Promise.resolve(this.sampleToTooltip(id))
+                    Promise.resolve(this.#sampleToTooltip(id))
                 );
             }
 
@@ -106,7 +112,7 @@ export class MetadataView extends ConcatView {
 
         // TODO: Implement "mouseleave" event. Let's hack for now...
         peek([
-            ...this.sampleView.getLayoutAncestors(),
+            ...this.#sampleView.getLayoutAncestors(),
         ]).addInteractionEventListener("mousemove", (coords, event) => {
             if (!this._attributeHighlighState.currentAttribute) {
                 return;
@@ -141,7 +147,7 @@ export class MetadataView extends ConcatView {
 
         super.render(context, coords, {
             ...options,
-            clipRect: this.sampleView._clipBySummary(coords),
+            clipRect: this.#sampleView.clipBySummary(coords),
         });
     }
 
@@ -192,7 +198,7 @@ export class MetadataView extends ConcatView {
      * @param {string} sampleId
      */
     getSample(sampleId) {
-        return this.sampleView.sampleHierarchy.sampleData?.entities[sampleId];
+        return this.#sampleView.sampleHierarchy.sampleData?.entities[sampleId];
     }
 
     /**
@@ -200,16 +206,16 @@ export class MetadataView extends ConcatView {
      *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent").default} event
      */
-    _findSampleForMouseEvent(coords, event) {
-        return this.sampleView.getSampleAt(
-            event.point.y - this.sampleView.childCoords.y
+    #findSampleForMouseEvent(coords, event) {
+        return this.#sampleView.getSampleAt(
+            event.point.y - this.#sampleView.childCoords.y
         );
     }
 
     /**
      * @param {string} attribute
      */
-    _getAttributeOpacity(attribute) {
+    #getAttributeOpacity(attribute) {
         const state = this._attributeHighlighState;
         return attribute == state.currentAttribute
             ? 1.0
@@ -224,7 +230,7 @@ export class MetadataView extends ConcatView {
     handleContextMenu(coords, event) {
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
 
-        const sample = this._findSampleForMouseEvent(coords, event);
+        const sample = this.#findSampleForMouseEvent(coords, event);
 
         if (!sample) {
             mouseEvent.preventDefault();
@@ -232,9 +238,9 @@ export class MetadataView extends ConcatView {
         }
 
         /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
-        const items = [this.sampleView.makePeekMenuItem(), DIVIDER];
+        const items = [this.#sampleView.makePeekMenuItem(), DIVIDER];
 
-        const attributeInfo = this.getAttributeInfoFromView(event.target);
+        const attributeInfo = this.#getAttributeInfoFromView(event.target);
         if (attributeInfo) {
             const attributeValue = sample.attributes[attributeInfo.name];
             items.push(
@@ -242,7 +248,7 @@ export class MetadataView extends ConcatView {
                     html`Attribute: <strong>${attributeInfo.name}</strong>`,
                     attributeInfo,
                     attributeValue,
-                    this.sampleView
+                    this.#sampleView
                 )
             );
         } else {
@@ -252,7 +258,7 @@ export class MetadataView extends ConcatView {
                     html`Sample: <strong>${sample.displayName}</strong>`,
                     SAMPLE_NAME_ATTRIBUTE_INFO,
                     sample.id,
-                    this.sampleView
+                    this.#sampleView
                 )
             );
         }
@@ -265,7 +271,7 @@ export class MetadataView extends ConcatView {
      *
      * @param {import("./sampleState").Sample[]} samples
      */
-    _setSamples(samples) {
+    setSamples(samples) {
         if (this.childCount) {
             throw new Error("Children are already created!");
             // TODO: Check whether the attributes match and update the views and data accordingly
@@ -330,7 +336,7 @@ export class MetadataView extends ConcatView {
 
         views.push(
             this.context.createView(
-                createLabelViewSpec(this.sampleView.spec.samples),
+                createLabelViewSpec(this.#sampleView.spec.samples),
                 this,
                 this
             )
@@ -338,12 +344,12 @@ export class MetadataView extends ConcatView {
 
         for (const attribute of this.getAttributeNames()) {
             const view = this.context.createView(
-                this._createAttributeViewSpec(attribute),
+                this.#createAttributeViewSpec(attribute),
                 this,
                 this
             );
             view.opacityFunction = (parentOpacity) =>
-                parentOpacity * this._getAttributeOpacity(attribute);
+                parentOpacity * this.#getAttributeOpacity(attribute);
 
             views.push(view);
         }
@@ -367,14 +373,14 @@ export class MetadataView extends ConcatView {
      *
      * @param {string} attributeName
      */
-    _getAttributeDef(attributeName) {
-        return this.sampleView.spec.samples?.attributes?.[attributeName];
+    #getAttributeDef(attributeName) {
+        return this.#sampleView.spec.samples?.attributes?.[attributeName];
     }
 
     getAttributeNames() {
         // TODO: Use reselect
         return this._cache("attributeNames", () => {
-            const samples = this.sampleView.getSamples();
+            const samples = this.#sampleView.getSamples();
 
             // Find all attributes
             const attributes = samples
@@ -393,13 +399,13 @@ export class MetadataView extends ConcatView {
      *
      * @param {string} attribute
      */
-    _createAttributeViewSpec(attribute) {
-        const attributeDef = this._getAttributeDef(attribute);
+    #createAttributeViewSpec(attribute) {
+        const attributeDef = this.#getAttributeDef(attribute);
 
         // Ensure that attributes have a type
         let fieldType = attributeDef ? attributeDef.type : undefined;
         if (!fieldType) {
-            const samples = this.sampleView.getSamples();
+            const samples = this.#sampleView.getSamples();
             switch (
                 inferType(samples.map((sample) => sample.attributes[attribute]))
             ) {
@@ -418,7 +424,7 @@ export class MetadataView extends ConcatView {
                 ...(attributeDef || {}),
                 type: fieldType,
             },
-            this.sampleView.spec.samples
+            this.#sampleView.spec.samples
         );
     }
 
@@ -427,7 +433,7 @@ export class MetadataView extends ConcatView {
      *
      * @param {string} attribute
      */
-    _findViewForAttribute(attribute) {
+    #findViewForAttribute(attribute) {
         // This is a bit fragile.. +1 is for skipping the sample label
         return this.children[this.getAttributeNames().indexOf(attribute) + 1];
     }
@@ -436,7 +442,7 @@ export class MetadataView extends ConcatView {
      * @param {View} view
      * @returns {import("./types").AttributeInfo}
      */
-    getAttributeInfoFromView(view) {
+    #getAttributeInfoFromView(view) {
         const nameMatch = view?.name.match(attributeViewRegex);
         if (nameMatch) {
             // Foolhardily assume that color is always used for encoding.
@@ -463,8 +469,8 @@ export class MetadataView extends ConcatView {
      * @param {string} attribute
      */
     getAttributeInfo(attribute) {
-        return this.getAttributeInfoFromView(
-            this._findViewForAttribute(attribute)
+        return this.#getAttributeInfoFromView(
+            this.#findViewForAttribute(attribute)
         );
     }
 
@@ -472,7 +478,7 @@ export class MetadataView extends ConcatView {
      *
      * @param {string} sampleAndAttribute
      */
-    sampleToTooltip(sampleAndAttribute) {
+    #sampleToTooltip(sampleAndAttribute) {
         /** @type {string[]} */
         const [sampleId, attribute] = JSON.parse(sampleAndAttribute);
 
@@ -541,14 +547,14 @@ export class MetadataView extends ConcatView {
         for (const name of this.getAttributeNames()) {
             const info = this.getAttributeInfo(name);
             if (info.type == ORDINAL || info.type == NOMINAL) {
-                const sample = this.sampleView
+                const sample = this.#sampleView
                     .getSamples()
                     .find(
                         (sample) => sample.attributes[info.name] == searchKey
                     );
 
                 if (sample) {
-                    const action = this.sampleView.actions.filterByNominal({
+                    const action = this.#sampleView.actions.filterByNominal({
                         attribute: {
                             type: SAMPLE_ATTRIBUTE,
                             specifier: name,
@@ -557,10 +563,11 @@ export class MetadataView extends ConcatView {
                     });
 
                     const lastAction =
-                        this.sampleView.provenance.getPresentState().lastAction;
+                        this.#sampleView.provenance.getPresentState()
+                            .lastAction;
                     // Undo the previous action if we are filtering by the same nominal attribute
                     const shouldUndo =
-                        this.sampleView.actions.filterByNominal.match(
+                        this.#sampleView.actions.filterByNominal.match(
                             lastAction
                         ) &&
                         !lastAction.payload.remove &&
@@ -568,7 +575,7 @@ export class MetadataView extends ConcatView {
                         lastAction.payload.attribute.specifier == name &&
                         lastAction.payload.values.length == 1;
 
-                    this.sampleView.provenance.storeHelper.dispatch(
+                    this.#sampleView.provenance.storeHelper.dispatch(
                         shouldUndo ? [ActionCreators.undo(), action] : action
                     );
 

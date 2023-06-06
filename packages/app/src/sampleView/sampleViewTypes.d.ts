@@ -19,3 +19,14 @@ export interface GroupDetails {
 
 export interface HierarchicalGroupLocation
     extends KeyAndLocation<GroupDetails> {}
+
+export type InterpolatedLocationMaker = <K, T extends KeyAndLocation<K>>(
+    fitted: T[],
+    scrollable: T[]
+) => T[];
+
+export interface Locations {
+    groups: HierarchicalGroupLocation[];
+    samples: SampleLocation[];
+    summaries: GroupLocation[];
+}
