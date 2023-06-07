@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.33.0](https://github.com/genome-spy/genome-spy/compare/v0.32.2...v0.33.0) (2023-06-07)
+
+
+### Bug Fixes
+
+* **app:** add a sensible error msg to `mergeFacets` ([c49b47f](https://github.com/genome-spy/genome-spy/commit/c49b47fb3db5099b7deaa29934593ce59d2f6d9a))
+* **app:** extracting samples from data was broken ([8843ec5](https://github.com/genome-spy/genome-spy/commit/8843ec555f7a80ead9b5f972d1c3c36daf07ac7f))
+* **app:** handling of paddings in `SampleView` ([b3b2eba](https://github.com/genome-spy/genome-spy/commit/b3b2eba0f02c4d9dc6cf49889e86125e672d8e18))
+* **app:** hide axis grids from view visibility dropdown ([c219918](https://github.com/genome-spy/genome-spy/commit/c2199184e1ae8f20a715f213fd4655a43b9345cb))
+* **app:** state problem in MergeFacets transform ([d58092c](https://github.com/genome-spy/genome-spy/commit/d58092c8695290ebd0142e3e64912aaf001dc5c9))
+* **core:** `setViewport` misbehaved when clipRect was set but mark had no clip property set ([c4e7e08](https://github.com/genome-spy/genome-spy/commit/c4e7e08a6214103d595d1889c62ed6edd0f77139))
+* **core:** viewport rounding error handling ([2e220da](https://github.com/genome-spy/genome-spy/commit/2e220da3ea066da31f6f4b4544bc6a622efccba5))
+
+
+### Features
+
+* **app:** support axes, grid lines, and view background in SampleView ([e68cf4b](https://github.com/genome-spy/genome-spy/commit/e68cf4be801948f0931274782c435e5a92b58d72))
+* **core:** add `background` prop for canvas background color ([ffacfa5](https://github.com/genome-spy/genome-spy/commit/ffacfa5831c3722a24272853c0dc47fadb86a505))
+* **core:** optimize `concat`'s default scale resolution for track-based layouts ([024c527](https://github.com/genome-spy/genome-spy/commit/024c527bb8ab23d3d59e87570901b930702b7077))
+* **core:** shared axes in `concat` views ([#162](https://github.com/genome-spy/genome-spy/issues/162)) ([eaa660b](https://github.com/genome-spy/genome-spy/commit/eaa660b049ae5a17384d0095776ad8a510cd5c14))
+
+
+### Performance Improvements
+
+* **core:** don't set viewport if the size of the clipped coords is zero ([44dc9f0](https://github.com/genome-spy/genome-spy/commit/44dc9f0ed28d8bc7878032867122bb8cbaf38c30))
+
+
+
+
+
 ## [0.32.2](https://github.com/genome-spy/genome-spy/compare/v0.32.1...v0.32.2) (2023-05-24)
 
 

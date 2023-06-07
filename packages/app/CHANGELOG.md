@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.33.0](https://github.com/genome-spy/genome-spy/compare/v0.32.2...v0.33.0) (2023-06-07)
+
+
+### Bug Fixes
+
+* **app:** add a sensible error msg to `mergeFacets` ([c49b47f](https://github.com/genome-spy/genome-spy/commit/c49b47fb3db5099b7deaa29934593ce59d2f6d9a))
+* **app:** handling of paddings in `SampleView` ([b3b2eba](https://github.com/genome-spy/genome-spy/commit/b3b2eba0f02c4d9dc6cf49889e86125e672d8e18))
+* **app:** state problem in MergeFacets transform ([d58092c](https://github.com/genome-spy/genome-spy/commit/d58092c8695290ebd0142e3e64912aaf001dc5c9))
+
+
+### Features
+
+* **app:** support axes, grid lines, and view background in SampleView ([e68cf4b](https://github.com/genome-spy/genome-spy/commit/e68cf4be801948f0931274782c435e5a92b58d72))
+
+
+
+
+
 ## [0.32.2](https://github.com/genome-spy/genome-spy/compare/v0.32.1...v0.32.2) (2023-05-24)
 
 **Note:** Version bump only for package @genome-spy/app
