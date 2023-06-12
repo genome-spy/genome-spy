@@ -39,11 +39,16 @@ export default class ProvenanceButtons extends LitElement {
          * @param {number} index
          */
         const makeDropdownItem = (action, index) => {
+            if (!action) {
+                return nothing;
+            }
+
             const info = this.provenance.getActionInfo(action);
             if (!info) {
                 // Skip Redux' internal actions
                 return nothing;
             }
+
             return html`
                 <li>
                     <a

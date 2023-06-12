@@ -418,7 +418,9 @@ export default class SampleView extends ContainerView {
 
         const resolution = this.getScaleResolution("sample");
         if (resolution) {
-            const samples = resolution.getDataDomain().map((s, i) => ({
+            // Use destructuring to get rid of the extra properties of DomainArray.
+            // They are incompatible with Redux.
+            const samples = [...resolution.getDataDomain()].map((s, i) => ({
                 id: s,
                 displayName: s,
                 indexNumber: i,
