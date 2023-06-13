@@ -1,6 +1,8 @@
 import { SampleHierarchy } from "./sampleSlice";
 import { Group } from "./sampleState";
 import { LocSize } from "@genome-spy/core/utils/layout/flexLayout";
+import { ChromosomalLocus } from "@genome-spy/core/spec/genome";
+import { Scalar } from "@genome-spy/core/spec/channel";
 
 export interface KeyAndLocation<T> {
     key: T;
@@ -38,4 +40,18 @@ export interface LocationContext {
     onLocationUpdate: () => void;
     viewContext: ViewContext;
     isStickySummaries: () => boolean;
+}
+
+export interface LocusSpecifier {
+    /** A uniuque name of the view */
+    view: string;
+
+    /** Attribute, e.g., the name of the field where a value is stored */
+    field: string;
+
+    /**
+     * Coordinate on the `x` axis. May be a number of locus on a chromosome.
+     * Alternatively, a scalar if a categorical scale is used.
+     */
+    locus: Scalar | ChromosomalLocus;
 }

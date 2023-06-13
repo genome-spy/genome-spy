@@ -43,6 +43,7 @@ import {
 } from "@genome-spy/core/view/gridView";
 import { isChannelWithScale } from "@genome-spy/core/encoder/encoder";
 import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory";
+import { isChromosomalLocus } from "@genome-spy/core/genome/genome";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -60,14 +61,6 @@ export default class SampleView extends ContainerView {
      * @typedef {import("@genome-spy/core/view/layerView").default} LayerView
      * @typedef {import("@genome-spy/core/data/dataFlow").default<View>} DataFlow
      * @typedef {import("@genome-spy/core/genome/genome").ChromosomalLocus} ChromosomalLocus
-     *
-     * @typedef {object} LocusSpecifier
-     * @prop {string} view A unique name of the view
-     * @prop {string} field
-     * @prop {number | ChromosomalLocus} locus Locus on the domain
-     *
-     * @typedef {import("./sampleViewTypes").SampleLocation} SampleLocation
-     * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
      */
 
     /** @type {SampleGridChild} */
@@ -197,34 +190,38 @@ export default class SampleView extends ContainerView {
         this.compositeAttributeInfoSource.addAttributeInfoSource(
             VALUE_AT_LOCUS,
             (attributeIdentifier) => {
-                const specifier = /** @type {LocusSpecifier} */ (
-                    attributeIdentifier.specifier
-                );
+                const specifier =
+                    /** @type {import("./sampleViewTypes").LocusSpecifier} */ (
+                        attributeIdentifier.specifier
+                    );
                 const view = /** @type {UnitView} */ (
                     this.findDescendantByName(specifier.view)
                 );
 
-                /** @type {number} */
-                let numericLocus;
-                if (isNumber(specifier.locus)) {
-                    numericLocus = specifier.locus;
-                } else {
-                    const genome = this.getScaleResolution("x").getGenome();
+                const xScaleResolution = view.getScaleResolution("x");
+
+                /** @type {import("@genome-spy/core/spec/channel").Scalar} */
+                let scalarLocus;
+
+                if (isChromosomalLocus(specifier.locus)) {
+                    const genome = xScaleResolution.getGenome();
                     if (genome) {
-                        numericLocus = genome.toContinuous(
+                        scalarLocus = genome.toContinuous(
                             specifier.locus.chrom,
                             specifier.locus.pos
                         );
                     } else {
                         throw new Error(
-                            "Encountered a complex locus but no genome is available!"
+                            "Encountered a chromosomal locus but no genome is available!"
                         );
                     }
+                } else {
+                    scalarLocus = specifier.locus;
                 }
 
                 /** @param {string} sampleId */
                 const accessor = (sampleId) =>
-                    view.mark.findDatumAt(sampleId, numericLocus)?.[
+                    view.mark.findDatumAt(sampleId, scalarLocus)?.[
                         specifier.field
                     ];
 
@@ -245,16 +242,19 @@ export default class SampleView extends ContainerView {
                     name: specifier.field,
                     attribute: attributeIdentifier,
                     // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
-                    title: html`
-                        <em class="attribute">${specifier.field}</em>
+                    // TODO: Format scalarLocus (if it's a number)
+                    title: html` <em class="attribute">${specifier.field}</em>
                         <span class="viewTitle"
                             >(${view.getTitleText() ?? view.name})</span
                         >
-                        at
-                        <span class="locus"
-                            >${locusToString(specifier.locus)}</span
-                        >
-                    `,
+                        ${isChromosomalLocus(specifier.locus)
+                            ? html`at
+                                  <span class="locus"
+                                      >${locusToString(specifier.locus)}</span
+                                  >`
+                            : html`<span class="scalar"
+                                  >of ${scalarLocus}</span
+                              >`}`,
                     accessor,
                     // TODO: Ensure that there's a type even if it's missing from spec
                     type: "type" in channelDef ? channelDef.type : undefined,
@@ -652,6 +652,15 @@ export default class SampleView extends ContainerView {
      *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent").default} event
      */
+    findSampleForMouseEvent(coords, event) {
+        return this.getSampleAt(event.point.y - this.childCoords.y);
+    }
+
+    /**
+     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
+     *      Coordinates of the view
+     * @param {import("@genome-spy/core/utils/interactionEvent").default} event
+     */
     #handleContextMenu(coords, event) {
         // TODO: Allow for registering listeners
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
@@ -661,14 +670,20 @@ export default class SampleView extends ContainerView {
             event.point.y
         ).x;
 
-        const complexX =
-            this.getScaleResolution("x").invertToComplex(normalizedXPos);
+        const sample = this.findSampleForMouseEvent(coords, event);
+
+        const view = this.#gridChild.view;
+
+        const resolution = view.getScaleResolution("x");
+        const complexX = resolution.invertToComplex(normalizedXPos);
 
         const uniqueViewNames = findUniqueViewNames(
-            [...this.getLayoutAncestors()].at(-1)
+            this.getLayoutAncestors().at(-1)
         );
 
-        const fieldInfos = findEncodedFields(this.#gridChild.view)
+        const axisTitle = view.getAxisResolution("x")?.getTitle();
+
+        const fieldInfos = findEncodedFields(view)
             .filter((d) => !["sample", "x", "x2"].includes(d.channel))
             // TODO: A method to check if a mark covers a range (both x and x2 defined)
             .filter((info) =>
@@ -682,7 +697,10 @@ export default class SampleView extends ContainerView {
             this.makePeekMenuItem(),
             DIVIDER,
             {
-                label: `Locus: ${locusToString(complexX)}`,
+                label:
+                    resolution.type === "locus"
+                        ? `Locus: ${locusToString(complexX)}`
+                        : `${axisTitle ? axisTitle + ": " : ""}${complexX}`,
                 type: "header",
             },
             DIVIDER,
@@ -691,9 +709,8 @@ export default class SampleView extends ContainerView {
         let previousContextTitle = "";
 
         for (const [i, fieldInfo] of fieldInfos.entries()) {
-            /** @type {LocusSpecifier} */
+            /** @type {import("./sampleViewTypes").LocusSpecifier} */
             const specifier = {
-                // TODO: Relative path
                 view: fieldInfo.view.name,
                 field: fieldInfo.field,
                 locus: complexX,
@@ -701,7 +718,7 @@ export default class SampleView extends ContainerView {
 
             const attributeInfo =
                 this.compositeAttributeInfoSource.getAttributeInfo({
-                    type: VALUE_AT_LOCUS,
+                    type: VALUE_AT_LOCUS, // TODO: Come up with a more generic name for the type
                     specifier,
                 });
 
@@ -718,6 +735,17 @@ export default class SampleView extends ContainerView {
                 previousContextTitle = contextTitle;
             }
 
+            const scale = resolution.getScale();
+            const scalarX =
+                "invert" in scale && sample
+                    ? fieldInfo.view.mark.findDatumAt(
+                          sample.id,
+                          /** @type {import("@genome-spy/core/spec/channel").Scalar} */ (
+                              scale.invert(normalizedXPos)
+                          )
+                      )?.[fieldInfo.field]
+                    : undefined;
+
             items.push({
                 label: fieldInfo.field,
                 submenu: generateAttributeContextMenu(
@@ -725,7 +753,7 @@ export default class SampleView extends ContainerView {
                     attributeInfo,
                     // TODO: Get the value from data
                     // But ability to remove undefined is useful too
-                    undefined,
+                    scalarX,
                     this
                 ),
             });

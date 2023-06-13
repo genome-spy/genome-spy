@@ -95,7 +95,10 @@ export class MetadataView extends ConcatView {
 
         this.addInteractionEventListener("mousemove", (coords, event) => {
             const view = event.target;
-            const sample = this.#findSampleForMouseEvent(coords, event);
+            const sample = this.#sampleView.findSampleForMouseEvent(
+                coords,
+                event
+            );
             const attribute =
                 (view && this.#getAttributeInfoFromView(view)?.name) ||
                 undefined;
@@ -202,17 +205,6 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
-     *      Coordinates of the view
-     * @param {import("@genome-spy/core/utils/interactionEvent").default} event
-     */
-    #findSampleForMouseEvent(coords, event) {
-        return this.#sampleView.getSampleAt(
-            event.point.y - this.#sampleView.childCoords.y
-        );
-    }
-
-    /**
      * @param {string} attribute
      */
     #getAttributeOpacity(attribute) {
@@ -230,7 +222,7 @@ export class MetadataView extends ConcatView {
     handleContextMenu(coords, event) {
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
 
-        const sample = this.#findSampleForMouseEvent(coords, event);
+        const sample = this.#sampleView.findSampleForMouseEvent(coords, event);
 
         if (!sample) {
             mouseEvent.preventDefault();

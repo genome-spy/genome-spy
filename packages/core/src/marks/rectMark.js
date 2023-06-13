@@ -8,6 +8,7 @@ import { fixFill, fixPositional, fixStroke } from "./markUtils";
 import { asArray } from "../utils/arrayUtils";
 import { isValueDef } from "../encoder/encoder";
 import { getCachedOrCall } from "../utils/propertyCacher";
+import { isDiscrete } from "vega-scale";
 
 export default class RectMark extends Mark {
     /**
@@ -224,16 +225,29 @@ export default class RectMark extends Mark {
      * This is highly specific to SampleView and its sorting/filtering functionality.
      *
      * @param {any} facetId
-     * @param {number} x position on the x domain
+     * @param {import("../spec/channel").Scalar} x value on the x domain
      * @returns {any}
+     * @override
      */
     findDatumAt(facetId, x) {
         facetId = asArray(facetId); // TODO: Do at the call site
-        const e = this.encoders;
         const data = this.unitView.getCollector().facetBatches.get(facetId);
-        const a = e.x.accessor;
-        const a2 = e.x2.accessor;
-        if (data) {
+        if (!data) {
+            return;
+        }
+
+        const e = this.encoders;
+
+        const scaleType = e.x.scale.type;
+
+        if (isDiscrete(scaleType)) {
+            const a = e.x.accessor;
+            // TODO: Binary search
+            return data.find((d) => x == a(d));
+        } else {
+            // TODO: Handle point features on locus/index scales
+            const a = e.x.accessor;
+            const a2 = e.x2.accessor;
             // TODO: Binary search
             return data.find((d) => x >= a(d) && x < a2(d));
         }

@@ -959,7 +959,7 @@ export default class Mark {
      * This is highly specific to SampleView and its sorting/filtering functionality.
      *
      * @param {string} facetId
-     * @param {number} x position on the x domain
+     * @param {import("../spec/channel").Scalar} x value on the x domain
      * @returns {any}
      */
     findDatumAt(facetId, x) {
