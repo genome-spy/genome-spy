@@ -241,10 +241,7 @@ export default class SampleView extends ContainerView {
         // TODO: Check that the mouse pointer is inside the view (or inside the app instance)
         context.addKeyboardListener("keydown", (event) => {
             if (event.code == "KeyE" && !event.repeat) {
-                const mouseY = this.#lastMouseY;
-                const sampleId = this.getSampleAt(mouseY)?.id;
-
-                this.locationManager.togglePeek(undefined, mouseY, sampleId);
+                this.#openCloseup();
             }
         });
         context.addKeyboardListener("keyup", (event) => {
@@ -590,7 +587,7 @@ export default class SampleView extends ContainerView {
             ...(!this.locationManager.isCloseup()
                 ? {
                       label: "Open closeup",
-                      callback: () => this.locationManager.togglePeek(true),
+                      callback: () => this.#openCloseup(),
                       icon: faArrowsAltV,
                   }
                 : {
@@ -610,6 +607,12 @@ export default class SampleView extends ContainerView {
      */
     findSampleForMouseEvent(coords, event) {
         return this.getSampleAt(event.point.y - this.childCoords.y);
+    }
+
+    #openCloseup() {
+        const mouseY = this.#lastMouseY;
+        const sampleId = this.getSampleAt(mouseY)?.id;
+        this.locationManager.togglePeek(undefined, mouseY, sampleId);
     }
 
     /**
