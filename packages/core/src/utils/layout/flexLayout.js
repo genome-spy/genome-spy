@@ -167,6 +167,19 @@ export function isStretching(items) {
     return items.some((size) => size.grow);
 }
 
+/**
+ *
+ * @param {SizeDef[]} sizeDefs
+ */
+export function sumSizeDefs(sizeDefs) {
+    const sum = { px: 0, grow: 0 };
+    for (const size of sizeDefs) {
+        sum.px += z(size.px);
+        sum.grow += z(size.grow);
+    }
+    return sum;
+}
+
 export class FlexDimensions {
     /**
      *

@@ -5,8 +5,10 @@ import {
 } from "@genome-spy/core/view/viewUtils";
 import ContainerView from "@genome-spy/core/view/containerView";
 import {
+    FlexDimensions,
     mapToPixelCoords,
     scaleLocSize,
+    sumSizeDefs,
 } from "@genome-spy/core/utils/layout/flexLayout";
 import { MetadataView } from "./metadataView";
 import generateAttributeContextMenu from "./attributeContextMenu";
@@ -301,6 +303,34 @@ export default class SampleView extends ContainerView {
         return new Padding(0, 0, 0, peripherySize).add(
             this.#gridChild.getOverhang()
         );
+    }
+
+    /**
+     * Returns the configured size, if present. Otherwise a computed or default
+     * height is returned.
+     *
+     * @returns {import("@genome-spy/core/utils/layout/flexLayout").FlexDimensions}
+     * @override
+     */
+    getSize() {
+        return this._cache("size/size2", () => {
+            const superSize = super.getSize();
+
+            /** @param {import("@genome-spy/core/view/view").default} view */
+            const total = (view) =>
+                view
+                    .getSize()
+                    .addPadding(view.getOverhang())
+                    .addPadding(view.getPadding());
+
+            const width = sumSizeDefs(
+                [this.#sidebarView, this.#gridChild.view].map(
+                    (view) => total(view).width
+                )
+            );
+
+            return new FlexDimensions(width, superSize.height);
+        });
     }
 
     /**

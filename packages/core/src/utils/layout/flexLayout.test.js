@@ -5,6 +5,7 @@ import {
     getLargestSize,
     isStretching,
     parseSizeDef,
+    sumSizeDefs,
 } from "./flexLayout";
 
 test("parseSize", () => {
@@ -269,6 +270,17 @@ describe("Collapse gaps when items have zero px and grow, reversed", () => {
 });
 
 describe("Utility fuctions", () => {
+    test("sumSizeDefs", () => {
+        const items = [
+            { px: 100 },
+            { px: 10, grow: 1 },
+            { grow: 9 },
+            { px: 200 },
+        ];
+
+        expect(sumSizeDefs(items)).toEqual({ px: 310, grow: 10 });
+    });
+
     test("getMinimumSize", () => {
         const items = [{ px: 100 }, { grow: 1 }, { grow: 9 }, { px: 200 }];
 
