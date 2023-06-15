@@ -323,7 +323,14 @@ export default class UnitView extends ContainerView {
      * @param {import("../utils/interactionEvent").default} event
      */
     propagateInteractionEvent(event) {
+        this.handleInteractionEvent(undefined, event, true);
         event.target = this;
+
+        if (event.stopped) {
+            return;
+        }
+
+        this.handleInteractionEvent(undefined, event, false);
     }
 
     /**
