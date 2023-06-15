@@ -66,12 +66,11 @@ export default class LayerView extends ContainerView {
      */
     propagateInteractionEvent(event) {
         this.handleInteractionEvent(undefined, event, true);
-        if (this.children.length) {
-            // Propagate to the top layer
-            this.children.at(-1).propagateInteractionEvent(event);
-        }
-        if (event.stopped) {
-            return;
+        for (let i = this.children.length - 1; i >= 0; i--) {
+            this.children[i].propagateInteractionEvent(event);
+            if (event.stopped) {
+                return;
+            }
         }
         this.handleInteractionEvent(undefined, event, false);
     }
