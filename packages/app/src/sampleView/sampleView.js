@@ -1,5 +1,4 @@
-import { isNumber, isObject } from "vega-util";
-import { html } from "lit";
+import { isObject } from "vega-util";
 import {
     findEncodedFields,
     findUniqueViewNames,
@@ -11,7 +10,6 @@ import {
 } from "@genome-spy/core/utils/layout/flexLayout";
 import { MetadataView } from "./metadataView";
 import generateAttributeContextMenu from "./attributeContextMenu";
-import { formatLocus } from "@genome-spy/core/genome/locusFormat";
 import Padding from "@genome-spy/core/utils/layout/padding";
 import clamp from "@genome-spy/core/utils/clamp";
 import createDataSource from "@genome-spy/core/data/sources/dataSourceFactory";
@@ -41,9 +39,9 @@ import {
     GridChild,
     translateAxisCoords,
 } from "@genome-spy/core/view/gridView";
-import { isChannelWithScale } from "@genome-spy/core/encoder/encoder";
 import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory";
-import { isChromosomalLocus } from "@genome-spy/core/genome/genome";
+import getViewAttributeInfo from "./viewAttributeInfoSource";
+import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -189,80 +187,8 @@ export default class SampleView extends ContainerView {
 
         this.compositeAttributeInfoSource.addAttributeInfoSource(
             VALUE_AT_LOCUS,
-            (attributeIdentifier) => {
-                const specifier =
-                    /** @type {import("./sampleViewTypes").LocusSpecifier} */ (
-                        attributeIdentifier.specifier
-                    );
-                const view = /** @type {UnitView} */ (
-                    this.findDescendantByName(specifier.view)
-                );
-
-                const xScaleResolution = view.getScaleResolution("x");
-
-                /** @type {import("@genome-spy/core/spec/channel").Scalar} */
-                let scalarLocus;
-
-                if (isChromosomalLocus(specifier.locus)) {
-                    const genome = xScaleResolution.getGenome();
-                    if (genome) {
-                        scalarLocus = genome.toContinuous(
-                            specifier.locus.chrom,
-                            specifier.locus.pos
-                        );
-                    } else {
-                        throw new Error(
-                            "Encountered a chromosomal locus but no genome is available!"
-                        );
-                    }
-                } else {
-                    scalarLocus = specifier.locus;
-                }
-
-                /** @param {string} sampleId */
-                const accessor = (sampleId) =>
-                    view.mark.findDatumAt(sampleId, scalarLocus)?.[
-                        specifier.field
-                    ];
-
-                // Find the channel and scale that matches the field
-                const [channel, channelDef] = Object.entries(
-                    view.getEncoding()
-                ).find(
-                    ([_channel, channelDef]) =>
-                        "field" in channelDef &&
-                        channelDef.field == specifier.field
-                );
-                const scale = isChannelWithScale(channel)
-                    ? view.getScaleResolution(channel).getScale()
-                    : undefined;
-
-                /** @type {import("./types").AttributeInfo} */
-                const attributeInfo = {
-                    name: specifier.field,
-                    attribute: attributeIdentifier,
-                    // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
-                    // TODO: Format scalarLocus (if it's a number)
-                    title: html` <em class="attribute">${specifier.field}</em>
-                        <span class="viewTitle"
-                            >(${view.getTitleText() ?? view.name})</span
-                        >
-                        ${isChromosomalLocus(specifier.locus)
-                            ? html`at
-                                  <span class="locus"
-                                      >${locusToString(specifier.locus)}</span
-                                  >`
-                            : html`<span class="scalar"
-                                  >of ${scalarLocus}</span
-                              >`}`,
-                    accessor,
-                    // TODO: Ensure that there's a type even if it's missing from spec
-                    type: "type" in channelDef ? channelDef.type : undefined,
-                    scale,
-                };
-
-                return attributeInfo;
-            }
+            (attributeIdentifier) =>
+                getViewAttributeInfo(this, attributeIdentifier)
         );
 
         this._addBroadcastHandler("dataLoaded", () =>
@@ -699,7 +625,7 @@ export default class SampleView extends ContainerView {
             {
                 label:
                     resolution.type === "locus"
-                        ? `Locus: ${locusToString(complexX)}`
+                        ? `Locus: ${locusOrNumberToString(complexX)}`
                         : `${axisTitle ? axisTitle + ": " : ""}${complexX}`,
                 type: "header",
             },
@@ -881,15 +807,6 @@ export default class SampleView extends ContainerView {
     }
 }
 
-/**
- * @param {number | ChromosomalLocus} locus
- */
-function locusToString(locus) {
-    return !isNumber(locus) && "chrom" in locus
-        ? formatLocus(locus)
-        : "" + locus;
-}
-
 class ProcessSample extends FlowNode {
     constructor() {
         super();
@@ -939,6 +856,9 @@ export function isSampleSpec(spec) {
     );
 }
 
+/**
+ * Extends GridChild with group background and stroke
+ */
 class SampleGridChild extends GridChild {
     /**
      * @param {View} view
