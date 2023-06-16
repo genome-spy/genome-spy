@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.34.0](https://github.com/genome-spy/genome-spy/compare/v0.33.0...v0.34.0) (2023-06-16)
+
+
+### Bug Fixes
+
+* **app:** handle explicit child view width in `SampleView` ([fb580e5](https://github.com/genome-spy/genome-spy/commit/fb580e5a179f0794e8712f6b61181e4211e48ea0))
+* **core:** handle interaction events also in UnitView ([b30af23](https://github.com/genome-spy/genome-spy/commit/b30af23a63347b841fa59fce00968ed7737183e8))
+* **core:** propagate interaction events to all layers ([af7e900](https://github.com/genome-spy/genome-spy/commit/af7e900f9eb95e0e88c988e8309a1765fbc42dfe))
+
+
+### Features
+
+* **app:** allow sorting, filtering non-genomic data ([d7bb194](https://github.com/genome-spy/genome-spy/commit/d7bb194de3ce95c212ec6f19d4c975bb9374f5ea))
+
+
+
+
+
 # [0.33.0](https://github.com/genome-spy/genome-spy/compare/v0.32.2...v0.33.0) (2023-06-07)
 
 
