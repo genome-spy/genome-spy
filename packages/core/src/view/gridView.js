@@ -80,15 +80,6 @@ export default class GridView extends ContainerView {
         this.#children = [];
 
         this.wrappingFacet = false;
-
-        this._createChildren();
-    }
-
-    /**
-     * @protected
-     */
-    _createChildren() {
-        // Override
     }
 
     /**
@@ -153,13 +144,15 @@ export default class GridView extends ContainerView {
         return this.#children.length;
     }
 
-    onScalesResolved() {
-        super.onScalesResolved();
-
-        this.#createAxes();
+    async onScalesResolved() {
+        await super.onScalesResolved();
+        //await this.createAxes();
     }
 
-    #createAxes() {
+    /**
+     * @protected
+     */
+    async createAxes() {
         // Axis ticks, labels, etc. They should be created only if this view has caught
         // the scale resolution for the channel.
         for (const channel of primaryPositionalChannels) {
@@ -193,9 +186,9 @@ export default class GridView extends ContainerView {
         }
 
         // Create view decorations, grid lines, and independent axes for each child
-        for (const gridChild of this.#children) {
-            gridChild.createAxes();
-        }
+        await Promise.all(
+            this.#children.map((gridChild) => gridChild.createAxes())
+        );
     }
 
     /**
@@ -897,7 +890,7 @@ export class GridChild {
     /**
      * Create view decorations, grid lines, axes, etc.
      */
-    createAxes() {
+    async createAxes() {
         const { view, axes, gridLines } = this;
 
         /**
@@ -946,7 +939,7 @@ export class GridChild {
          * @param {import("../spec/channel").PrimaryPositionalChannel} channel
          * @param {View} axisParent
          */
-        const createAxis = (r, channel, axisParent) => {
+        const createAxis = async (r, channel, axisParent) => {
             const props = getAxisPropsWithDefaults(r, channel);
 
             if (props) {
@@ -956,13 +949,15 @@ export class GridChild {
                     );
                 }
 
-                axes[props.orient] = new AxisView(
+                const axisView = new AxisView(
                     props,
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,
                     axisParent
                 );
+                axes[props.orient] = axisView;
+                await axisView.initializeChildren();
             }
         };
 
@@ -971,17 +966,19 @@ export class GridChild {
          * @param {import("../spec/channel").PrimaryPositionalChannel} channel
          * @param {View} axisParent
          */
-        const createAxisGrid = (r, channel, axisParent) => {
+        const createAxisGrid = async (r, channel, axisParent) => {
             const props = getAxisPropsWithDefaults(r, channel);
 
             if (props && (props.grid || props.chromGrid)) {
-                gridLines[props.orient] = new AxisGridView(
+                const axisGridView = new AxisGridView(
                     props,
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,
                     axisParent
                 );
+                gridLines[props.orient] = axisGridView;
+                await axisGridView.initializeChildren();
             }
         };
 
@@ -1014,32 +1011,32 @@ export class GridChild {
 
                 // TODO: Optimization: the same grid view could be reused for all children
                 // because they share the axis and scale resolutions anyway.
-                createAxisGrid(r, channel, view);
+                await createAxisGrid(r, channel, view);
             }
         }
 
         // Handle LayerView's possible independent axes
         if (view instanceof LayerView) {
             // First create axes that have an orient preference
-            for (const layerChild of view.children) {
+            for (const layerChild of view) {
                 for (const [channel, r] of Object.entries(
                     layerChild.resolutions.axis
                 )) {
                     const props = r.getAxisProps();
                     if (props && props.orient) {
-                        createAxis(r, channel, layerChild);
+                        await createAxis(r, channel, layerChild);
                     }
                 }
             }
 
             // Then create axes in a priority order
-            for (const layerChild of view.children) {
+            for (const layerChild of view) {
                 for (const [channel, r] of Object.entries(
                     layerChild.resolutions.axis
                 )) {
                     const props = r.getAxisProps();
                     if (props && !props.orient) {
-                        createAxis(r, channel, layerChild);
+                        await createAxis(r, channel, layerChild);
                     }
                 }
             }

@@ -62,6 +62,8 @@ export default class UnitView extends ContainerView {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
 
+        this.resolve();
+
         /**
          * Not nice! Inconsistent when faceting!
          * TODO: Something. Maybe store only width/height
@@ -99,9 +101,14 @@ export default class UnitView extends ContainerView {
      * Pulls scales and axes up in the view hierarcy according to the resolution rules, using dataParents.
      * TODO: legends
      *
-     * @param {ResolutionTarget} type
+     * @param {ResolutionTarget} [type] If not specified, both scales and axes are resolved.
      */
     resolve(type) {
+        if (!type) {
+            this.resolve("scale");
+            this.resolve("axis");
+        }
+
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
 
         const encoding = this.mark.encoding;

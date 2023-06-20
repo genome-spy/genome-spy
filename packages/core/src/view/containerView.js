@@ -18,6 +18,10 @@ export default class ContainerView extends View {
         this.spec = spec;
     }
 
+    async initializeChildren() {
+        // override
+    }
+
     /**
      * @returns {IterableIterator<View>}
      */

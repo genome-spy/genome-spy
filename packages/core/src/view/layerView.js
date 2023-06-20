@@ -5,6 +5,10 @@ export default class LayerView extends ContainerView {
     /**
      * @typedef {import("./view").default} View
      */
+
+    /** @type {(LayerView | import("./unitView").default)[]} */
+    #children = [];
+
     /**
      *
      * @param {import("../spec/view").LayerSpec} spec
@@ -18,26 +22,44 @@ export default class LayerView extends ContainerView {
 
         this.spec = spec;
 
-        /** @type {(LayerView | import("./unitView").default)[]} */
-        // @ts-expect-error TODO: Fix typing
-        this.children = (spec.layer || []).map((childSpec, i) => {
-            if (isLayerSpec(childSpec) || isUnitSpec(childSpec)) {
-                return context.createView(childSpec, this, this, "layer" + i);
-            } else {
-                throw new Error(
-                    "LayerView accepts only unit or layer specs as children!"
-                );
-            }
-        });
-
         this.needsAxes = { x: true, y: true };
+    }
+
+    /**
+     * @override
+     */
+    async initializeChildren() {
+        this.#children = await Promise.all(
+            this.spec.layer.map(
+                (childSpec, i) =>
+                    /** @type {(Promise<LayerView | import("./unitView").default>)} */ (
+                        this.context.createOrImportView(
+                            childSpec,
+                            this,
+                            this,
+                            "grid" + i,
+                            (importedSpec) => {
+                                if (
+                                    !isLayerSpec(importedSpec) &&
+                                    !isUnitSpec(importedSpec)
+                                ) {
+                                    throw new Error(
+                                        "LayerView accepts only unit or layer specs as children!"
+                                    );
+                                    // TODO: Add view to exception
+                                }
+                            }
+                        )
+                    )
+            )
+        );
     }
 
     /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
-        for (const child of this.children) {
+        for (const child of this.#children) {
             yield child;
         }
     }
@@ -54,7 +76,7 @@ export default class LayerView extends ContainerView {
 
         context.pushView(this, coords);
 
-        for (const child of this.children) {
+        for (const child of this.#children) {
             child.render(context, coords, options);
         }
 
@@ -66,8 +88,8 @@ export default class LayerView extends ContainerView {
      */
     propagateInteractionEvent(event) {
         this.handleInteractionEvent(undefined, event, true);
-        for (let i = this.children.length - 1; i >= 0; i--) {
-            this.children[i].propagateInteractionEvent(event);
+        for (let i = this.#children.length - 1; i >= 0; i--) {
+            this.#children[i].propagateInteractionEvent(event);
             if (event.stopped) {
                 return;
             }

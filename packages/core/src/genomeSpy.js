@@ -5,10 +5,10 @@ import Tooltip from "./utils/ui/tooltip.js";
 
 import AccessorFactory from "./encoder/accessor.js";
 import {
-    resolveScalesAndAxes,
-    processImports,
+    checkForDuplicateScaleNames,
     setImplicitScaleNames,
     calculateCanvasSize,
+    loadExternalViewSpec,
 } from "./view/viewUtils.js";
 import UnitView from "./view/unitView.js";
 
@@ -30,9 +30,9 @@ import Inertia, { makeEventTemplate } from "./utils/inertia.js";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
-import { ViewFactory } from "./view/viewFactory.js";
-import ImplicitRootView from "./view/implicitRootView.js";
+import { ViewFactory, isImportSpec, isUnitSpec } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
+import ContainerView from "./view/containerView.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -308,6 +308,55 @@ export default class GenomeSpy {
                     defaultName
                 );
             },
+
+            createOrImportView: async function (
+                spec,
+                layoutParent,
+                dataParent,
+                defaultName,
+                validator
+            ) {
+                /** @type {ViewSpec} */
+                let viewSpec;
+
+                if (isImportSpec(spec)) {
+                    viewSpec = await loadExternalViewSpec(
+                        spec,
+                        dataParent.getBaseUrl(),
+                        context
+                    );
+
+                    if (validator) {
+                        validator(viewSpec);
+                    }
+                } else {
+                    viewSpec = spec;
+                }
+
+                // Wrap a unit spec at root into a grid view to get axes, etc.
+                if (
+                    !dataParent &&
+                    isUnitSpec(viewSpec) &&
+                    defaultName === "viewRoot"
+                ) {
+                    viewSpec = {
+                        name: "implicitRoot",
+                        vconcat: [viewSpec],
+                    };
+                }
+
+                const view = this.createView(
+                    viewSpec,
+                    layoutParent,
+                    dataParent,
+                    defaultName
+                );
+                if (view instanceof ContainerView) {
+                    await view.initializeChildren();
+                }
+
+                return view;
+            },
         };
 
         /** @type {ViewSpec & RootConfig} */
@@ -318,34 +367,27 @@ export default class GenomeSpy {
         }
 
         // Create the view hierarchy
-        this.viewRoot = context.createView(rootSpec, null, null, "viewRoot");
+        this.viewRoot = await context.createOrImportView(
+            rootSpec,
+            null,
+            null,
+            "viewRoot"
+        );
 
-        // Replace placeholder ImportViews with actual views.
-        await processImports(this.viewRoot);
+        checkForDuplicateScaleNames(this.viewRoot);
 
-        if (this.viewRoot.needsAxes.x || this.viewRoot.needsAxes.y) {
-            this.viewRoot = new ImplicitRootView(context, this.viewRoot);
-        }
-
-        // Resolve scales, i.e., if possible, pull them towards the root
-        resolveScalesAndAxes(this.viewRoot);
         setImplicitScaleNames(this.viewRoot);
-
-        // Wrap unit or layer views that need axes
-        //this.viewRoot = addDecorators(this.viewRoot);
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this._glHelper.invalidateSize();
 
         // Collect all unit views to a list because they need plenty of initialization
-        /** @type {UnitView[]} */
-        const unitViews = [];
-        this.viewRoot.visit((view) => {
-            if (view instanceof UnitView) {
-                unitViews.push(view);
-            }
-        });
+        const unitViews = /** @type {UnitView[]} */ (
+            this.viewRoot
+                .getDescendants()
+                .filter((view) => view instanceof UnitView)
+        );
 
         // Build the data flow based on the view hierarchy
         const flow = buildDataFlow(this.viewRoot, context.dataFlow);

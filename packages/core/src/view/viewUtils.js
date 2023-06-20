@@ -2,7 +2,6 @@ import { isObject, isString } from "vega-util";
 import { loader as vegaLoader } from "vega-loader";
 
 import UnitView from "./unitView.js";
-import ImportView from "./importView.js";
 // eslint-disable-next-line no-unused-vars
 import View, { VISIT_SKIP, VISIT_STOP } from "./view.js";
 import { buildDataFlow } from "./flowBuilder.js";
@@ -67,13 +66,7 @@ export function getFlattenedViews(root) {
 /**
  * @param {View} root
  */
-export function resolveScalesAndAxes(root) {
-    root.visit((view) => {
-        if (view instanceof UnitView) {
-            view.resolve("scale");
-        }
-    });
-
+export function checkForDuplicateScaleNames(root) {
     // Check that each scale resolution has a unique name
     /** @type {Set<string>} */
     const scaleNames = new Set();
@@ -88,13 +81,6 @@ export function resolveScalesAndAxes(root) {
             scaleNames.add(name);
         }
     });
-
-    root.visit((view) => {
-        if (view instanceof UnitView) {
-            view.resolve("axis");
-        }
-    });
-    root.visit((view) => view.onScalesResolved());
 }
 
 /**
@@ -166,7 +152,7 @@ export function findEncodedFields(view) {
  * @param {string} baseUrl
  * @param {import("../types/viewContext").default} viewContext
  */
-async function loadExternalViewSpec(spec, baseUrl, viewContext) {
+export async function loadExternalViewSpec(spec, baseUrl, viewContext) {
     if (!spec.import.url) {
         throw new Error(
             "Cannot import, not an import spec: " + JSON.stringify(spec)
@@ -193,45 +179,6 @@ async function loadExternalViewSpec(spec, baseUrl, viewContext) {
                 spec
             )}`
         );
-    }
-}
-
-/**
- * @param {import("./view").default} viewRoot
- */
-export async function processImports(viewRoot) {
-    /** @type {ImportView[]} */
-    const importViews = [];
-
-    viewRoot.visit((view) => {
-        if (view instanceof ImportView) {
-            importViews.push(view);
-            return VISIT_SKIP;
-        }
-    });
-
-    for (const view of importViews) {
-        const context = view.context;
-
-        // TODO: Parallelize using promises, don't use await
-        const loadedSpec = await loadExternalViewSpec(
-            view.spec,
-            view.getBaseUrl(),
-            context
-        );
-
-        // TODO: Let importSpec have a name
-        const importedView = context.createView(
-            loadedSpec,
-            view.layoutParent,
-            view.dataParent,
-            view.name
-        );
-        // @ts-expect-error TODO: Fix typing issue
-        view.layoutParent.replaceChild(view, importedView);
-
-        // Import recursively
-        await processImports(importedView);
     }
 }
 

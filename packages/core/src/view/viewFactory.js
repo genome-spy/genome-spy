@@ -144,7 +144,7 @@ export function isAggregateSamplesSpec(spec) {
 /**
  *
  * @param {object} spec
- * @returns {spec is ImportSpec}
+ * @returns {spec is import("../spec/view").ImportSpec}
  */
 export function isImportSpec(spec) {
     return "import" in spec;

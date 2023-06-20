@@ -6,7 +6,7 @@
  * @typedef {import("../types/viewContext").default} ViewContext
  */
 
-import { resolveScalesAndAxes, initializeData } from "./viewUtils.js";
+import { checkForDuplicateScaleNames, initializeData } from "./viewUtils.js";
 import AccessorFactory from "../encoder/accessor.js";
 import DataFlow from "../data/dataFlow.js";
 import { ViewFactory } from "./viewFactory.js";
@@ -77,7 +77,7 @@ export async function createAndInitialize(
 ) {
     const view = create(spec, viewClass, context);
 
-    resolveScalesAndAxes(view);
+    checkForDuplicateScaleNames(view);
     await initializeData(view, view.context.dataFlow);
     return view;
 }
@@ -96,6 +96,6 @@ export async function createAndWrap(spec) {
             ? new ImplicitRootView(view.context, view)
             : view;
 
-    resolveScalesAndAxes(root);
+    checkForDuplicateScaleNames(root);
     return root;
 }

@@ -391,7 +391,7 @@ export default class View {
     /**
      * Called after all scales in the view hierarchy have been resolved.
      */
-    onScalesResolved() {
+    async onScalesResolved() {
         // Only set the opacity function once. The idea is to allow custom functions
         // and prevent accidental overwrites.
         if (
