@@ -180,12 +180,35 @@ export interface AggregateParams extends TransformParamsBase {
     groupby?: Field[];
 }
 
+export interface FlattenParams extends TransformParamsBase {
+    type: "flatten";
+
+    /**
+     * The field(s) to flatten. If no field is defined, the data object itself
+     * is treated as an array to be flattened.
+     */
+    fields?: Field[] | Field;
+
+    /**
+     * The output field name for the zero-based index of the array values. If unspecified, an index field is not added.
+     */
+    index?: string;
+
+    /**
+     * The output field name(s) for the flattened field.
+     *
+     * **Default:** the input fields.
+     */
+    as?: string[] | string;
+}
+
 export interface FlattenDelimitedParams extends TransformParamsBase {
     type: "flattenDelimited";
 
     /**
      * The field(s) to split and flatten
      */
+    // TODO: Rename to prular to make it consistent with the other flatten transforms
     field: Field[] | Field;
 
     /**
@@ -218,6 +241,7 @@ export interface FlattenSequenceParams extends TransformParamsBase {
      *
      * **Default:** `["pos", "sequence"]`
      */
+    // TODO: Introduce "index" property to make it consistent with the other flatten transforms
     as?: [string, string];
 }
 
@@ -465,6 +489,7 @@ export type TransformParams =
     | FormulaParams
     | FilterParams
     | FilterScoredLabelsParams
+    | FlattenParams
     | FlattenCompressedExonsParams
     | FlattenSequenceParams
     | IdentifierParams
