@@ -2,14 +2,12 @@ import { RemoteFile } from "generic-filehandle";
 import { TabixIndexedFile } from "@gmod/tabix";
 import gff from "@gmod/gff";
 
-import SingleAxisDynamicSource from "./singleAxisDynamicSource";
+import SingleAxisLazySource from "./singleAxisLazySource";
 import windowedMixin from "./windowedMixin";
 import { debounce } from "../../../utils/debounce";
 import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
 
-export default class TabixSource extends windowedMixin(
-    SingleAxisDynamicSource
-) {
+export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
     /** Keep track of the order of the requests */
     lastRequestId = 0;
 
@@ -24,7 +22,7 @@ export default class TabixSource extends windowedMixin(
         /** @type {import("../../../spec/data").TabixData} */
         const paramsWithDefaults = {
             channel: "x",
-            windowSize: 10_000_000,
+            windowSize: 2_000_000,
             ...params,
         };
 
@@ -131,7 +129,7 @@ export default class TabixSource extends windowedMixin(
                     parseSequences: false,
                 });
 
-                return features;
+                return features.flat();
             })
         );
 

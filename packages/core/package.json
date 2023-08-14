@@ -53,6 +53,7 @@
     "d3-color": "^3.0.1",
     "d3-ease": "^3.0.1",
     "d3-format": "^3.0.1",
+    "events": "^3.3.0",
     "flatqueue": "^2.0.3",
     "internmap": "^2.0.3",
     "lit-html": "^2.4.0",
