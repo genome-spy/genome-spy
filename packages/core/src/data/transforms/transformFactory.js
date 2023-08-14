@@ -2,6 +2,7 @@ import Collector from "../collector";
 import CoverageTransform from "./coverage";
 import FilterScoredLabelsTransform from "./filterScoredLabels";
 import FilterTransform from "./filter";
+import FlattenTransform from "./flatten";
 import FlattenCompressedExonsTransform from "./flattenCompressedExons";
 import FlattenDelimitedTransform from "./flattenDelimited";
 import FormulaTransform from "./formula";
@@ -28,6 +29,7 @@ export const transforms = {
     coverage: CoverageTransform,
     filterScoredLabels: FilterScoredLabelsTransform,
     filter: FilterTransform,
+    flatten: FlattenTransform,
     flattenCompressedExons: FlattenCompressedExonsTransform,
     flattenDelimited: FlattenDelimitedTransform,
     flattenSequence: FlattenSequenceTransform,

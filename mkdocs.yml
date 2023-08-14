@@ -48,6 +48,7 @@ nav:
                 - Coverage: "grammar/transform/coverage.md"
                 - Filter: "grammar/transform/filter.md"
                 - FilterScoredLabels: "grammar/transform/filter-scored-labels.md"
+                - Flatten: "grammar/transform/flatten.md"
                 - FlattenCompressedExons: "grammar/transform/flatten-compressed-exons.md"
                 - FlattenDelimited: "grammar/transform/flatten-delimited.md"
                 - FlattenSequence: "grammar/transform/flatten-sequence.md"
