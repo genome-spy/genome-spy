@@ -1,6 +1,6 @@
-import { isNumber, isString, isBoolean } from "vega-util";
+import { isNumber, isString, isBoolean, isArray } from "vega-util";
 import { format as d3format } from "d3-format";
-import { html } from "lit-html";
+import { html, nothing } from "lit-html";
 
 const numberFormat = d3format(".4~r");
 const exponentNumberFormat = d3format(".4~e");
@@ -8,9 +8,10 @@ const exponentNumberFormat = d3format(".4~e");
 /**
  *
  * @param {any} object Object to format
+ * @returns {string | import("lit-html").TemplateResult}
  */
 export default function formatObject(object) {
-    if (object === null) {
+    if (object === null || object === undefined) {
         return html` <span class="na">NA</span> `;
     }
 
@@ -25,6 +26,11 @@ export default function formatObject(object) {
             : numberFormat(object);
     } else if (isBoolean(object)) {
         return object ? "True" : "False";
+    } else if (isArray(object)) {
+        return html`${object.map((param, i) => [
+            formatObject(param),
+            i < object.length - 1 ? ", " : nothing,
+        ])}`;
     } else {
         return "?" + typeof object + " " + object;
     }
