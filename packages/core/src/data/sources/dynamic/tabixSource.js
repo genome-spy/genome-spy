@@ -37,17 +37,6 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
             throw new Error("No URL provided for TabixSource");
         }
 
-        if (
-            this.params.parser === "gff3" ||
-            this.params.url.includes(".gff3")
-        ) {
-            //
-        } else {
-            throw new Error(
-                "No parser defined for TabixSource. Cannot infer parser from file extension."
-            );
-        }
-
         const withBase = (/** @type {string} */ uri) =>
             new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
 
