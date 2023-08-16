@@ -1,12 +1,14 @@
 import { RemoteFile } from "generic-filehandle";
 import { TabixIndexedFile } from "@gmod/tabix";
-import gff from "@gmod/gff";
 
 import SingleAxisLazySource from "./singleAxisLazySource";
 import windowedMixin from "./windowedMixin";
 import { debounce } from "../../../utils/debounce";
 import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
 
+/**
+ * @template T
+ */
 export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
     /** Keep track of the order of the requests */
     lastRequestId = 0;
@@ -22,7 +24,8 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
         /** @type {import("../../../spec/data").TabixData} */
         const paramsWithDefaults = {
             channel: "x",
-            windowSize: 2_000_000,
+            windowSize: 3_000_000,
+            debounceDomainChange: 200,
             ...params,
         };
 
@@ -55,11 +58,13 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
             ),
         });
 
-        this.doDebouncedRequest = debounce(
-            this.doRequest.bind(this),
-            200,
-            false
-        );
+        if (this.params.debounceDomainChange > 0) {
+            this.onDomainChanged = debounce(
+                this.onDomainChanged.bind(this),
+                this.params.debounceDomainChange,
+                false
+            );
+        }
     }
 
     /**
@@ -77,7 +82,7 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
         const quantizedInterval = this.quantizeInterval(domain, windowSize);
 
         if (this.checkAndUpdateLastInterval(quantizedInterval)) {
-            this.doDebouncedRequest(quantizedInterval);
+            this.doRequest(quantizedInterval);
         }
     }
 
@@ -124,12 +129,7 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
                 });
 
                 // Hmm. It's silly that we have to first collect individual lines and then join them.
-                // eslint-disable-next-line no-sync
-                const features = gff.parseStringSync(lines.join("\n"), {
-                    parseSequences: false,
-                });
-
-                return features.flat();
+                return this._parseFeatures(lines);
             })
         );
 
@@ -138,5 +138,14 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
             abort: () => abortController.abort(),
             features: featuresWithChrom.flat(), // TODO: Use batches, not flat
         };
+    }
+
+    /**
+     * @abstract
+     * @param {string[]} lines
+     * @returns {T[]}
+     */
+    _parseFeatures(lines) {
+        return [];
     }
 }
