@@ -248,6 +248,317 @@ The example below displays "ENCODE Candidate Cis-Regulatory Elements (cCREs) com
 The data source is based on [GMOD](http://gmod.org/)'s
 [bbi-js](https://github.com/GMOD/bbi-js) library.
 
+## GFF3
+
+The tabix-based `"gff3"` source enables the retrieval of hierarchical data, such
+as genomic annotations stored in GFF3 files. The object format GenomeSpy uses
+is described in [gff-js](https://github.com/GMOD/gff-js#object-format)'s
+documentation. The [flatten](../transform/flatten.md) and
+[project](../tranform/project.md) transforms are useful when extracting the
+child features and attributes from the hierarchical data structure. See the
+example below.
+
+### Parameters
+
+SCHEMA Gff3Data
+
+### Example
+
+The example below displays the human (GRCh38.p13)
+[GENCODE](https://www.gencodegenes.org/) v43 annotation dataset. Please note
+that the example shows a maximum of ten overlapping features per locus as
+vertical scrolling is currently not supported properly.
+
+<div><genome-spy-doc-embed height="370" spechidden="true">
+
+```json
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "genome": { "name": "hg38" },
+
+  "height": { "step": 28 },
+
+  "view": { "stroke": "lightgray" },
+
+  "data": {
+    "lazy": {
+      "type": "gff3",
+      "url": "https://data.genomespy.app/sample-data/gencode.v43.annotation.sorted.gff3.gz",
+      "windowSize": 2000000,
+      "debounceDomainChange": 300
+    }
+  },
+
+  "transform": [
+    {
+      "type": "flatten"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.attributes.gene_name",
+      "as": "gene_name"
+    },
+    {
+      "type": "flatten",
+      "fields": ["child_features"]
+    },
+    {
+      "type": "flatten",
+      "fields": ["child_features"],
+      "as": ["child_feature"]
+    },
+    {
+      "type": "project",
+      "fields": [
+        "gene_name",
+        "child_feature.type",
+        "child_feature.strand",
+        "child_feature.seq_id",
+        "child_feature.start",
+        "child_feature.end",
+        "child_feature.attributes.gene_type",
+        "child_feature.attributes.transcript_type",
+        "child_feature.attributes.gene_id",
+        "child_feature.attributes.transcript_id",
+        "child_feature.attributes.transcript_name",
+        "child_feature.attributes.tag",
+        "source",
+        "child_feature.child_features"
+      ],
+      "as": [
+        "gene_name",
+        "type",
+        "strand",
+        "seq_id",
+        "start",
+        "end",
+        "gene_type",
+        "transcript_type",
+        "gene_id",
+        "transcript_id",
+        "transcript_name",
+        "tag",
+        "source",
+        "_child_features"
+      ]
+    },
+    {
+      "type": "collect",
+      "sort": {
+        "field": ["seq_id", "start", "transcript_id"]
+      }
+    },
+    {
+      "type": "pileup",
+      "start": "start",
+      "end": "end",
+      "as": "_lane"
+    }
+  ],
+
+  "encoding": {
+    "x": {
+      "chrom": "seq_id",
+      "pos": "start",
+      "offset": 1,
+      "type": "locus",
+      "scale": {
+        "domain": [
+          { "chrom": "chr5", "pos": 177482500 },
+          { "chrom": "chr5", "pos": 177518000 }
+        ]
+      }
+    },
+    "x2": {
+      "chrom": "seq_id",
+      "pos": "end"
+    },
+    "y": {
+      "field": "_lane",
+      "type": "index",
+      "scale": {
+        "zoom": false,
+        "reverse": true,
+        "domain": [0, 10],
+        "padding": 0.5
+      },
+      "axis": null
+    }
+  },
+
+  "layer": [
+    {
+      "name": "gencode-transcript",
+
+      "layer": [
+        {
+          "name": "gencode-tooltip-trap",
+          "title": "GENCODE transcript",
+          "mark": {
+            "type": "rule",
+            "color": "#b0b0b0",
+            "opacity": 0,
+            "size": 7
+          }
+        },
+        {
+          "name": "gencode-transcript-body",
+          "mark": {
+            "type": "rule",
+            "color": "#b0b0b0",
+            "tooltip": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "gencode-exons",
+
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["_child_features"]
+        },
+        {
+          "type": "flatten",
+          "fields": ["_child_features"],
+          "as": ["child_feature"]
+        },
+        {
+          "type": "project",
+          "fields": [
+            "gene_name",
+            "_lane",
+            "child_feature.type",
+            "child_feature.seq_id",
+            "child_feature.start",
+            "child_feature.end",
+            "child_feature.attributes.exon_number",
+            "child_feature.attributes.exon_id"
+          ],
+          "as": [
+            "gene_name",
+            "_lane",
+            "type",
+            "seq_id",
+            "start",
+            "end",
+            "exon_number",
+            "exon_id"
+          ]
+        }
+      ],
+
+      "layer": [
+        {
+          "title": "GENCODE exon",
+
+          "transform": [{ "type": "filter", "expr": "datum.type == 'exon'" }],
+
+          "mark": {
+            "type": "rect",
+            "minWidth": 0.5,
+            "minOpacity": 0.5,
+            "stroke": "#505050",
+            "fill": "#fafafa",
+            "strokeWidth": 1.0
+          }
+        },
+        {
+          "title": "GENCODE exon",
+
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.type != 'exon' && datum.type != 'start_codon' && datum.type != 'stop_codon'"
+            }
+          ],
+
+          "mark": {
+            "type": "rect",
+            "minWidth": 0.5,
+            "minOpacity": 0,
+            "strokeWidth": 1.0,
+            "strokeOpacity": 0.0,
+            "stroke": "gray"
+          },
+          "encoding": {
+            "fill": {
+              "field": "type",
+              "type": "nominal",
+              "scale": {
+                "domain": ["five_prime_UTR", "CDS", "three_prime_UTR"],
+                "range": ["#83bcb6", "#ffbf79", "#d6a5c9"]
+              }
+            }
+          }
+        },
+        {
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.type == 'three_prime_UTR' || datum.type == 'five_prime_UTR'"
+            },
+            {
+              "type": "formula",
+              "expr": "datum.type == 'three_prime_UTR' ? \"3'\" : \"5'\"",
+              "as": "label"
+            }
+          ],
+
+          "mark": {
+            "type": "text",
+            "color": "black",
+            "size": 11,
+            "opacity": 0.7,
+            "paddingX": 2,
+            "paddingY": 1.5,
+            "tooltip": null
+          },
+
+          "encoding": {
+            "text": {
+              "field": "label"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "gencode-transcript-labels",
+
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "(datum.strand == '-' ? '< ' : '') + datum.transcript_name + ' - ' + datum.transcript_id + (datum.strand == '+' ? ' >' : '')",
+          "as": "label"
+        }
+      ],
+
+      "mark": {
+        "type": "text",
+        "size": 10,
+        "yOffset": 12,
+        "tooltip": null,
+        "color": "#505050"
+      },
+
+      "encoding": {
+        "text": {
+          "field": "label"
+        }
+      }
+    }
+  ]
+}
+```
+
+</genome-spy-doc-embed></div>
+
+The data source is based on [GMOD](http://gmod.org/)'s
+[tabix-js](https://github.com/GMOD/tabix-js) and [gff-js](https://github.com/GMOD/gff-js) libraries.
+
 ## BAM
 
 The `"bam"` source is very much work in progress but has a low priority. It

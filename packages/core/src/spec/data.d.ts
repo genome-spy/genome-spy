@@ -199,7 +199,8 @@ export type LazyDataParams =
     | IndexedFastaData
     | BigWigData
     | BigBedData
-    | BamData;
+    | BamData
+    | Gff3Data;
 
 export interface AxisTicksData {
     type: "axisTicks";
@@ -325,4 +326,45 @@ export interface BamData {
      * __Default value:__ `10000`
      */
     windowSize?: number;
+}
+
+export interface TabixData {
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * Url of the bgzip compressed file.
+     */
+    url: string;
+
+    /**
+     * Url of the tabix index file.
+     *
+     * __Default value:__ `url` + `".tbi"`.
+     */
+    indexUrl?: string;
+
+    /**
+     * Size of each chunk when fetching the Tabix file. Data is only fetched
+     * when the length of the visible domain smaller than the window size.
+     *
+     * __Default value:__ `30000000`
+     */
+    windowSize?: number;
+
+    /**
+     * The debounce time for domain changes, in milliseconds. Debouncing prevents
+     * data fetches while the user is still panning around.
+     *
+     * __Default value:__ `200`
+     */
+    debounceDomainChange?: number;
+}
+
+export interface Gff3Data extends TabixData {
+    type: "gff3";
 }
