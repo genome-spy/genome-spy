@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.35.0](https://github.com/genome-spy/genome-spy/compare/v0.34.0...v0.35.0) (2023-08-16)
+
+
+### Features
+
+* `flatten` transform ([d22ea35](https://github.com/genome-spy/genome-spy/commit/d22ea35139c17566289b957bb45f95db5be92b2c))
+* gff3 with tabix ([#177](https://github.com/genome-spy/genome-spy/issues/177)) ([6e69ce9](https://github.com/genome-spy/genome-spy/commit/6e69ce9646f4629de219d04b32339750af822597))
+
+
+
+
+
 # [0.34.0](https://github.com/genome-spy/genome-spy/compare/v0.33.0...v0.34.0) (2023-06-16)
 
 
