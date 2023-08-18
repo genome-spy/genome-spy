@@ -16,6 +16,7 @@ import "./codeEditor";
 import "./filePane";
 import "./playground.scss";
 import addMarkdownProps from "./markdownProps";
+import { asArray } from "@genome-spy/core/utils/arrayUtils";
 
 registerJsonSchema();
 
@@ -42,6 +43,8 @@ let layout = layouts[0];
 
 /** @type {string} */
 let baseUrl;
+
+let visTitle = "";
 
 async function loadSpec() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -122,6 +125,8 @@ async function update(force = false) {
             parsedSpec.baseUrl = baseUrl;
         }
 
+        visTitle = asArray(parsedSpec.description)?.[0];
+
         // TODO: Fix possible race condition
         // eslint-disable-next-line require-atomic-updates
         embedResult = await embed(
@@ -154,7 +159,9 @@ const toolbarTemplate = () => html`
             ${icon(faColumns).node[0]}
             <span>Toggle layout</span>
         </button>
-        <span class="spacer"></span>
+        <span class="vis-title">
+            <span>${visTitle}</span>
+        </span>
         <a
             class="version"
             href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"

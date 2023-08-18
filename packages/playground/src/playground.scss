@@ -136,8 +136,10 @@ body {
         margin-right: $basic-spacing;
     }
 
-    .spacer {
+    .vis-title {
         flex-grow: 1;
+        font-style: italic;
+        font-size: 85%;
     }
 
     button,
