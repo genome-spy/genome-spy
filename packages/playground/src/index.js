@@ -146,16 +146,17 @@ async function update(force = false) {
 
 const toolbarTemplate = () => html`
     <div class="toolbar">
-        <img
-            title="GenomeSpy"
-            alt="GenomeSpy"
-            src="${genomeSpyIcon}"
+        <a
+            href="https://genomespy.app/"
+            target="_blank"
             class="genome-spy-icon"
-        />
+        >
+            <img title="GenomeSpy" alt="GenomeSpy" src="${genomeSpyIcon}" />
+        </a>
         <span class="title">
             <span>GenomeSpy Playground</span>
         </span>
-        <button @click=${toggleLayout}>
+        <button @click=${toggleLayout} class="tool-button">
             ${icon(faColumns).node[0]}
             <span>Toggle layout</span>
         </button>
@@ -163,11 +164,14 @@ const toolbarTemplate = () => html`
             <span>${visTitle}</span>
         </span>
         <a
-            class="version"
+            class="version tool-button"
             href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
             >v${packageJson.version}</a
         >
-        <a href="https://genomespy.app/docs/" target="_blank"
+        <a
+            href="https://genomespy.app/docs/"
+            target="_blank"
+            class="tool-button"
             >${icon(faQuestionCircle).node[0]} <span>Docs</span></a
         >
     </div>
