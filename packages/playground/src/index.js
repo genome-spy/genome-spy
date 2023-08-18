@@ -9,6 +9,7 @@ import defaultSpec from "./defaultspec.json?raw";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 // Available after the core package has been built
 import schema from "@genome-spy/core/schema.json";
+import "@genome-spy/core/style.css";
 
 import packageJson from "../package.json";
 import "./codeEditor";
@@ -34,12 +35,29 @@ let missingFiles = new Set();
 /** @type {import("@genome-spy/core/embedApi.js").EmbedResult} */
 let embedResult;
 
-let storedSpec = window.localStorage.getItem(STORAGE_KEY) || defaultSpec;
-
 let previousStringifiedSpec = "";
 
 const layouts = ["stacked", "parallel", "full"];
 let layout = layouts[0];
+
+/** @type {string} */
+let baseUrl;
+
+async function loadSpec() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const specUrl = urlParams.get("spec");
+    if (specUrl) {
+        // TODO: Error handling
+        const response = await fetch(specUrl);
+        baseUrl = specUrl.match(/.*\//)[0];
+
+        return response.text();
+    }
+    const storedSpec = window.localStorage.getItem(STORAGE_KEY);
+    const spec = storedSpec?.length > 0 ? storedSpec : defaultSpec;
+    console.log("Jeejee", spec);
+    return spec;
+}
 
 function toggleLayout() {
     layout = layouts[(layouts.indexOf(layout) + 1) % layouts.length];
@@ -53,7 +71,7 @@ function registerJsonSchema() {
         validate: true,
         schemas: [
             {
-                uri: "http://myserver/foo-schema.json", // id of the first schema
+                uri: "https://unpkg.com/@genome-spy/core/dist/schema.json", // id of the first schema
                 fileMatch: ["*"], // associate with our model
                 schema,
             },
@@ -76,8 +94,14 @@ function getNamedData(name) {
 async function update(force = false) {
     missingFiles = new Set();
 
+    if (baseUrl && window.location.search) {
+        window.history.replaceState(null, "", window.location.pathname);
+    }
+
     const value = editorRef.value?.value;
-    window.localStorage.setItem(STORAGE_KEY, value);
+    if (value) {
+        window.localStorage.setItem(STORAGE_KEY, value);
+    }
 
     try {
         const parsedSpec = JSON.parse(value);
@@ -92,6 +116,10 @@ async function update(force = false) {
 
         if (embedResult) {
             embedResult.finalize();
+        }
+
+        if (baseUrl && !parsedSpec.baseUrl) {
+            parsedSpec.baseUrl = baseUrl;
         }
 
         // TODO: Fix possible race condition
@@ -147,7 +175,6 @@ const layoutTemplate = () => html`
             <code-editor
                 ${ref(editorRef)}
                 @change=${debouncedUpdate}
-                .value=${storedSpec}
             ></code-editor>
         </section>
         <section id="genome-spy-pane">
@@ -169,4 +196,6 @@ function renderLayout() {
 
 renderLayout();
 
-update();
+loadSpec().then((spec) => {
+    editorRef.value.value = spec;
+});
