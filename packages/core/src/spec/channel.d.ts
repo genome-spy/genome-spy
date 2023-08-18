@@ -9,7 +9,7 @@
  */
 
 import { Scale } from "./scale";
-import { Axis } from "./axis";
+import { GenomeAxis } from "./axis";
 
 export type Scalar = string | number | boolean;
 export type Value = Scalar | null;
@@ -239,7 +239,7 @@ export interface PositionMixins extends BandMixins {
      *
      * __See also:__ [`axis`](https://vega.github.io/vega-lite/docs/axis.html) documentation.
      */
-    axis?: Axis | null;
+    axis?: GenomeAxis | null;
 }
 
 export type PositionFieldDefBase<F extends Field> = ScaleFieldDef<F, Type>;
