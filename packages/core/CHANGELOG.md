@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.36.0](https://github.com/genome-spy/genome-spy/compare/v0.35.0...v0.36.0) (2023-08-18)
+
+
+### Bug Fixes
+
+* **core:** replace Axis with GenomeAxis in the schema ([e22d60e](https://github.com/genome-spy/genome-spy/commit/e22d60e770540d9db6ce5a9c0a937574f54ea4bd))
+
+
+
+
+
 # [0.35.0](https://github.com/genome-spy/genome-spy/compare/v0.34.0...v0.35.0) (2023-08-16)
 
 

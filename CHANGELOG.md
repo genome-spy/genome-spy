@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.36.0](https://github.com/genome-spy/genome-spy/compare/v0.35.0...v0.36.0) (2023-08-18)
+
+
+### Bug Fixes
+
+* **core:** replace Axis with GenomeAxis in the schema ([e22d60e](https://github.com/genome-spy/genome-spy/commit/e22d60e770540d9db6ce5a9c0a937574f54ea4bd))
+
+
+### Features
+
+* **playground:** allow loading specs from urls ([2ae7118](https://github.com/genome-spy/genome-spy/commit/2ae7118fdfb4fd0f0936189252bf0ca204a23df9))
+* **playground:** link the bowtie to the website ([e9d394b](https://github.com/genome-spy/genome-spy/commit/e9d394b612da56126cb31e6dc4c80c17f2ad6194))
+* **playground:** show title/description in toolbar ([8d2f537](https://github.com/genome-spy/genome-spy/commit/8d2f5379cb087ffe4a8b35e4841353835a4a5351))
+
+
+
+
+
 # [0.35.0](https://github.com/genome-spy/genome-spy/compare/v0.34.0...v0.35.0) (2023-08-16)
 
 
