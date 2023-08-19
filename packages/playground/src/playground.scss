@@ -45,6 +45,22 @@ body {
     > * {
         position: relative;
     }
+
+    @media (max-width: 600px) {
+        &.parallel,
+        &.stacked {
+            grid-template-rows: $toolbar-height 1fr 1fr;
+            grid-template-columns: 1fr;
+            grid-template-areas:
+                "toolbar"
+                "genome-spy"
+                "editor";
+        }
+
+        #file-pane {
+            display: none;
+        }
+    }
 }
 
 #editor-pane {
@@ -202,6 +218,12 @@ body {
 
     .version {
         font-size: 85%;
+    }
+
+    @media (max-width: 600px) {
+        .hide-mobile {
+            display: none;
+        }
     }
 }
 

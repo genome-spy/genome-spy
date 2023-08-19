@@ -156,12 +156,12 @@ const toolbarTemplate = () => html`
         <span class="title">
             <span>GenomeSpy Playground</span>
         </span>
-        <button @click=${toggleLayout} class="tool-button">
+        <button @click=${toggleLayout} class="tool-button hide-mobile">
             ${icon(faColumns).node[0]}
             <span>Toggle layout</span>
         </button>
         <span class="vis-title">
-            <span>${visTitle}</span>
+            <span class="hide-mobile">${visTitle}</span>
         </span>
         <a
             class="version tool-button"
@@ -171,7 +171,7 @@ const toolbarTemplate = () => html`
         <a
             href="https://genomespy.app/docs/"
             target="_blank"
-            class="tool-button"
+            class="tool-button hide-mobile"
             >${icon(faQuestionCircle).node[0]} <span>Docs</span></a
         >
     </div>

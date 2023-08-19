@@ -71,6 +71,8 @@ export default class CodeEditor extends LitElement {
             value: this._initialValue,
             language: "json",
             minimap: { enabled: false },
+            fontFamily: "'Source Code Pro', monospace",
+            fontSize: 12,
         });
 
         this._editor.getModel().onDidChangeContent(() => {
