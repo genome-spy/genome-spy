@@ -154,14 +154,16 @@ body {
     > * {
         margin-left: $basic-spacing;
         display: block;
+        flex-shrink: 0;
     }
 
     > :last-child {
         margin-right: $basic-spacing;
     }
 
-    .vis-title {
+    > .vis-title {
         flex-grow: 1;
+        flex-shrink: 1;
         font-style: italic;
         font-size: 85%;
     }
