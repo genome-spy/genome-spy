@@ -8,4 +8,8 @@ export default defineConfig({
             fileRegex: /\.(txt|glsl)$/,
         }),
     ],
+    define: {
+        // A hack needed by events package
+        global: "globalThis",
+    },
 });

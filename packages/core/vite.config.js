@@ -21,6 +21,10 @@ export default defineConfig({
             apply: "build",
         },
     ],
+    define: {
+        // A hack needed by events package
+        global: "globalThis",
+    },
     build: {
         outDir: "../dist",
         emptyOutDir: true,
