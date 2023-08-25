@@ -334,7 +334,7 @@ export default class ScaleResolution {
         if (this.#scale && this.#scale.type != "null") {
             const domainWasInitialized = this.isDomainInitialized();
 
-            const previousDomain = [...this.#scale.domain()];
+            const previousDomain = this.#scale.domain();
 
             invalidate(this, "scaleProps");
             const props = this.getScaleProps();
@@ -343,14 +343,14 @@ export default class ScaleResolution {
                 this.#zoomExtent = this.#getZoomExtent();
             }
 
-            const newDomain = [...this.#scale.domain()];
+            const newDomain = this.#scale.domain();
 
             if (!shallowArrayEquals(newDomain, previousDomain)) {
                 if (this.#isZoomingSupported() && domainWasInitialized) {
                     // If configureScale altered the domain, restore the previous
                     // domain and zoom smoothly to the new domain.
                     this.#scale.domain(previousDomain);
-                    this.zoomTo(newDomain, 500);
+                    this.zoomTo(newDomain, 500); // TODO: Configurable duration
                 } else {
                     // Update immediately if the previous domain was the initial domain [0, 0]
                     this.#notifyDomainListeners();
@@ -536,6 +536,7 @@ export default class ScaleResolution {
             const tw = to[1] - to[0];
             const tc = to[0] + tw / 2;
 
+            // TODO: Abort possible previous transition
             await animator.transition({
                 duration,
                 easingFunction: easeCubicInOut,

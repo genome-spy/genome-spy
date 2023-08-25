@@ -51,7 +51,7 @@ export default function scaleIndex() {
 
             return scale;
         } else {
-            return domain;
+            return domain.slice();
         }
     };
 
