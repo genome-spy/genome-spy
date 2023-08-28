@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="style.scss" />
+    <title>Multiple Dynamic Sources</title>
+</head>
+
+<body>
+    <h1>Multiple Dynamic Sources</h1>
+
+    <p>The visualization layers multiple sources that share the scale domain.</p>
+
+    <div id="container"></div>
+
+    <div>
+        <label for="slider-point">a</label>
+        <input type="range" id="slider-point" name="point" min="-100" max="100" value="50" step="1" />
+    </div>
+    <div>
+        <label for="slider-rect">b</label>
+        <input type="range" id="slider-rect" name="rect" min="-100" max="100" value="75" step="1" />
+    </div>
+    <div>
+        <label for="slider-rule">c</label>
+        <input type="range" id="slider-rule" name="rule" min="-100" max="100" value="100" step="1" />
+    </div>
+
+    <script type="module" src="/multipleDynamicSources.js"></script>
+</body>
+
+</html>

@@ -161,19 +161,7 @@ export default class GenomeSpy {
         }
 
         namedSource.dataSource.updateDynamicData(data);
-
-        // Scale domains may need adjustment.
-        // TODO: Refactor so that Collectors handle scale extents etc.
-        for (const host of namedSource.hosts) {
-            host.visit((view) => {
-                for (const resolution of Object.values(
-                    view.resolutions.scale
-                )) {
-                    // TODO: Only update domain
-                    resolution.reconfigure();
-                }
-            });
-        }
+        reconfigureScales(namedSource.hosts);
 
         this.animator.requestRender();
     }

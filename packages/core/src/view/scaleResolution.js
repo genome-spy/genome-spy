@@ -36,7 +36,7 @@ import {
 } from "../genome/genome";
 import { NominalDomain } from "../utils/domainArray";
 import { easeCubicInOut } from "d3-ease";
-import { shallowArrayEquals } from "../utils/arrayUtils";
+import { asArray, shallowArrayEquals } from "../utils/arrayUtils";
 import eerp from "../utils/eerp";
 
 // Register scaleLocus to Vega-Scale.
@@ -343,12 +343,19 @@ export default class ScaleResolution {
                 this.#zoomExtent = this.#getZoomExtent();
             }
 
-            const newDomain = this.#scale.domain();
+            if (!domainWasInitialized) {
+                this.#notifyDomainListeners();
+                return;
+            }
 
+            const newDomain = this.#scale.domain();
             if (!shallowArrayEquals(newDomain, previousDomain)) {
-                if (this.#isZoomingSupported() && domainWasInitialized) {
-                    // If configureScale altered the domain, restore the previous
-                    // domain and zoom smoothly to the new domain.
+                if (this.isZoomable()) {
+                    // Don't mess with zoomed views, restore the previous domain
+                    this.#scale.domain(previousDomain);
+                } else if (this.#isZoomingSupported()) {
+                    // It can be zoomed, so lets make a smooth transition.
+                    // Restore the previous domain and zoom smoothly to the new domain.
                     this.#scale.domain(previousDomain);
                     this.zoomTo(newDomain, 500); // TODO: Configurable duration
                 } else {
@@ -833,18 +840,35 @@ function isZoomParams(zoom) {
  * TODO: This should be made unnecessary. Collectors should trigger the reconfiguration
  * for those views that get their data from the collector.
  *
- * @param {import("./view").default} fromView
- * @param {Channel[]} skipChannels
+ * TODO: This may reconfigure channels that are not affected by the change.
+ * Causes performance issues with domains that are extracted from data.
+ *
+ * @param {import("./view").default | import("./view").default[]} fromViews
  */
-export function reconfigureScales(fromView, skipChannels = []) {
+export function reconfigureScales(fromViews) {
     /** @type {Set<ScaleResolution>} */
     const uniqueResolutions = new Set();
-    fromView.visit((view) => {
+
+    /** @param {import("./view").default} view */
+    function collectResolutions(view) {
         for (const resolution of Object.values(view.resolutions.scale)) {
-            if (!skipChannels.includes(resolution.channel)) {
-                uniqueResolutions.add(resolution);
-            }
+            uniqueResolutions.add(resolution);
         }
-    });
+    }
+
+    for (const fromView of asArray(fromViews)) {
+        // Descendants
+        fromView.visit(collectResolutions);
+
+        // Ancestors
+        for (const view of fromView.getDataAncestors()) {
+            // Skip axis views etc. They should not mess with the domains.
+            if (!view.contributesToScaleDomain) {
+                break;
+            }
+            collectResolutions(view);
+        }
+    }
+
     uniqueResolutions.forEach((resolution) => resolution.reconfigure());
 }
