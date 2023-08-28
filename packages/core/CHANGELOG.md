@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.36.1](https://github.com/genome-spy/genome-spy/compare/v0.36.0...v0.36.1) (2023-08-28)
+
+
+### Bug Fixes
+
+* **core:** update scale domains when container view has shared scale but independent (dynamic) data ([6b551a3](https://github.com/genome-spy/genome-spy/commit/6b551a3166c7e77c24de7c666c928343aa1e32e6)), closes [#183](https://github.com/genome-spy/genome-spy/issues/183)
+
+
+
+
+
 # [0.36.0](https://github.com/genome-spy/genome-spy/compare/v0.35.0...v0.36.0) (2023-08-18)
 
 
