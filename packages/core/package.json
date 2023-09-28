@@ -13,20 +13,14 @@
   "browser": "dist/index.js",
   "type": "module",
   "exports": {
-    ".": {
-      "import": "./src/index.js"
-    },
+    ".": "./src/index.js",
     "./*": "./src/*",
     "./schema.json": "./dist/schema.json"
   },
   "publishConfig": {
-    "exports": {
-      ".": {
-        "import": "./dist/src/index.js"
-      },
-      "./*": "./dist/src/*",
-      "./schema.json": "./dist/schema.json"
-    }
+    ".": "./dist/src/index.js",
+    "./*": "./dist/src/*",
+    "./schema.json": "./dist/schema.json"
   },
   "files": [
     "dist/"
@@ -38,11 +32,11 @@
   },
   "scripts": {
     "dev": "node dev-server.js",
-    "build": "mkdir -p dist && node build.mjs && vite build && npm run build:schema",
+    "build": "mkdir -p dist && node build.mjs && vite build && npm run build:schema && npm run build:typings",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/schema.json",
-    "build:typings": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/types"
+    "build:typings": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src"
   },
   "dependencies": {
     "@gmod/bam": "^1.1.18",
