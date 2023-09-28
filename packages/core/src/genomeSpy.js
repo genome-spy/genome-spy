@@ -1,6 +1,6 @@
 import { formats as vegaFormats } from "vega-loader";
 
-import "./styles/genome-spy.scss";
+import css from "./styles/genome-spy.css.js";
 import Tooltip from "./utils/ui/tooltip";
 
 import AccessorFactory from "./encoder/accessor";
@@ -57,6 +57,10 @@ export default class GenomeSpy {
      */
     constructor(container, spec, options = {}) {
         this.container = container;
+
+        const styleElement = document.createElement("style");
+        styleElement.innerHTML = css;
+        container.appendChild(styleElement);
 
         /** Root level configuration object */
         this.spec = spec;

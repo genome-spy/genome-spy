@@ -9,7 +9,6 @@ import defaultSpec from "./defaultspec.json?raw";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 // Available after the core package has been built
 import schema from "@genome-spy/core/schema.json";
-import "@genome-spy/core/style.css";
 
 import packageJson from "../package.json";
 import "./codeEditor";
@@ -33,7 +32,7 @@ const files = {};
 /** @type {Set<string>} */
 let missingFiles = new Set();
 
-/** @type {import("@genome-spy/core/embedApi.js").EmbedResult} */
+/** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult} */
 let embedResult;
 
 let previousStringifiedSpec = "";

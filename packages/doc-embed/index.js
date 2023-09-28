@@ -3,8 +3,6 @@ import { html, css, LitElement, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { ref, createRef } from "lit/directives/ref.js";
 
-import "@genome-spy/core/style.css";
-
 /**
  *
  * @param {string} url
