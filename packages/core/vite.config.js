@@ -25,7 +25,7 @@ export default defineConfig({
         global: "globalThis",
     },
     build: {
-        outDir: "../dist/bundled",
+        outDir: "../dist/bundle",
         emptyOutDir: true,
         lib: {
             formats: ["umd", "es"],

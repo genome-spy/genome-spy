@@ -8,9 +8,9 @@
   "contributors": [],
   "license": "MIT",
   "version": "0.37.0",
-  "jsdelivr": "dist/index.js",
-  "unpkg": "dist/index.js",
-  "browser": "dist/index.js",
+  "jsdelivr": "dist/bundle/index.js",
+  "unpkg": "dist/bundle/index.js",
+  "browser": "dist/bundle/index.js",
   "type": "module",
   "exports": {
     ".": "./src/index.js",
@@ -18,9 +18,11 @@
     "./schema.json": "./dist/schema.json"
   },
   "publishConfig": {
-    ".": "./dist/src/index.js",
-    "./*": "./dist/src/*",
-    "./schema.json": "./dist/schema.json"
+    "exports": {
+      ".": "./dist/src/index.js",
+      "./*": "./dist/src/*",
+      "./schema.json": "./dist/schema.json"
+    }
   },
   "files": [
     "dist/"
