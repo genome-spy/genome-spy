@@ -1,8 +1,4 @@
-import { embed } from "@genome-spy/core/index.js";
-
-// --- https://github.com/genome-spy/genome-spy/issues/155
-//import { embed } from "@genome-spy/core";
-
+import { embed } from "@genome-spy/core";
 import { html, render } from "lit";
 
 /** @type {import("@genome-spy/core/spec/root").RootSpec} */
@@ -35,7 +31,7 @@ const container = document.getElementById("container");
 const dashboard = document.getElementById("dashboard");
 
 /**
- * @param {import("@genome-spy/core/view/scaleResolution").ScaleResolutionApi} genomeScale
+ * @param {import("@genome-spy/core/types/scaleResolutionApi").ScaleResolutionApi} genomeScale
  */
 function updateDashboard(genomeScale) {
     render(

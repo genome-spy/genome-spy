@@ -8,16 +8,25 @@
   "contributors": [],
   "license": "MIT",
   "version": "0.36.1",
-  "main": "dist/index.js",
-  "module": "dist/index.es.js",
+  "jsdelivr": "dist/index.js",
+  "unpkg": "dist/index.js",
+  "browser": "dist/index.js",
+  "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/index.es.js",
-      "require": "./dist/index.js"
+      "import": "./src/index.js"
     },
     "./*": "./src/*",
-    "./schema.json": "./dist/schema.json",
-    "./style.css": "./dist/style.css"
+    "./schema.json": "./dist/schema.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "import": "./dist/src/index.js"
+      },
+      "./*": "./dist/src/*",
+      "./schema.json": "./dist/schema.json"
+    }
   },
   "files": [
     "dist/"
@@ -29,7 +38,7 @@
   },
   "scripts": {
     "dev": "node dev-server.js",
-    "build": "vite build && npm run build:schema",
+    "build": "mkdir -p dist && node build.mjs && vite build && npm run build:schema",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/schema.json",

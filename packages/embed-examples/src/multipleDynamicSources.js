@@ -1,7 +1,4 @@
-import { embed } from "@genome-spy/core/index.js";
-
-// --- https://github.com/genome-spy/genome-spy/issues/155
-//import { embed } from "@genome-spy/core";
+import { embed } from "@genome-spy/core";
 
 /** @type {import("@genome-spy/core/spec/root").RootSpec} */
 const spec = {

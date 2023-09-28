@@ -69,16 +69,11 @@ This template loads the spec from a separate `spec.json` file.
 <html>
   <head>
     <title>GenomeSpy</title>
-    <link
-      rel="stylesheet"
-      type="text/css"
-      href="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.28.x/dist/style.css"
-    />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.28.x/dist/index.js"
+      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.36.x"
     ></script>
 
     <script>
@@ -97,16 +92,11 @@ You can alternatively provide the specification as a JavaScript object.
 <html>
   <head>
     <title>GenomeSpy</title>
-    <link
-      rel="stylesheet"
-      type="text/css"
-      href="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.28.x/dist/style.css"
-    />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.28.x/dist/index.js"
+      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.36.x"
     ></script>
 
     <script>

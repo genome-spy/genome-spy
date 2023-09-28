@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import rawPlugin from "vite-raw-plugin";
-import minifyHTML from "rollup-plugin-minify-html-literals";
 import glsl from "rollup-plugin-glsl";
 
 export default defineConfig({
@@ -26,7 +25,7 @@ export default defineConfig({
         global: "globalThis",
     },
     build: {
-        outDir: "../dist",
+        outDir: "../dist/bundled",
         emptyOutDir: true,
         lib: {
             formats: ["umd", "es"],
@@ -35,8 +34,6 @@ export default defineConfig({
             fileName: (format) =>
                 format == "umd" ? "index.js" : `index.${format}.js`,
         },
-        rollupOptions: {
-            plugins: [minifyHTML()],
-        },
+        rollupOptions: {},
     },
 });
