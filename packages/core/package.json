@@ -7,7 +7,7 @@
   },
   "contributors": [],
   "license": "MIT",
-  "version": "0.36.1",
+  "version": "0.37.0",
   "jsdelivr": "dist/index.js",
   "unpkg": "dist/index.js",
   "browser": "dist/index.js",

@@ -1,7 +1,7 @@
 {
   "name": "@genome-spy/playground",
   "private": true,
-  "version": "0.36.1",
+  "version": "0.37.0",
   "description": "A playground for testing GenomeSpy visualizations",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,7 @@
     "@fortawesome/fontawesome-free": "^6.1.1",
     "@fortawesome/fontawesome-svg-core": "^6.1.1",
     "@fortawesome/free-solid-svg-icons": "^6.1.1",
-    "@genome-spy/core": "^0.36.1",
+    "@genome-spy/core": "^0.37.0",
     "lit": "^2.0.2",
     "lit-html": "^2.4.0",
     "monaco-editor": "^0.30.1",
