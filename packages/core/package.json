@@ -17,13 +17,6 @@
     "./*": "./src/*",
     "./schema.json": "./dist/schema.json"
   },
-  "publishConfig": {
-    "exports": {
-      ".": "./dist/src/index.js",
-      "./*": "./dist/src/*",
-      "./schema.json": "./dist/schema.json"
-    }
-  },
   "files": [
     "dist/"
   ],
@@ -34,11 +27,13 @@
   },
   "scripts": {
     "dev": "node dev-server.js",
-    "build": "mkdir -p dist && node build.mjs && vite build && npm run build:schema && npm run build:typings",
+    "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/schema.json",
-    "build:typings": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src"
+    "build:typings": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src",
+    "prepack": "node scripts/prepack.mjs",
+    "postpack": "node scripts/postpack.mjs"
   },
   "dependencies": {
     "@gmod/bam": "^1.1.18",

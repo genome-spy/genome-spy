@@ -3,8 +3,8 @@
 // This script renames and minifies GLSL files into JavaScript files so that
 // the core library's users do not need to configure special handling for such files.
 
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import glob from "glob";
 
 const srcDir = "src";
