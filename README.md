@@ -10,7 +10,7 @@ The software is still work in progress. Documentation and examples for the curre
 
 ## Monorepo
 
-GenomeSpy is split into several [packages](./packages/), two of which are the most important:
+GenomeSpy is split into several [packages](./packages/), two (core and app) of which are the most important:
 
 ### Core
 
@@ -19,6 +19,10 @@ The [core](./packages/core/) library provides the visualization grammar and a We
 ### Cohort App
 
 The [app](./packages/app/) builds upon the core, extending the visualization grammar with support for faceting multiple (up to thousands of) patient samples. It provides a user interface for interactive analysis of the samples, which can be filtered, sorted, and grouped flexibly. A session handling with provenance, url hashes, and bookmarks is included.
+
+### Embed Examples
+
+The [embed-examples](./packages/embed-examples/) package contains examples of how to embed GenomeSpy in web applications and use the [API](https://genomespy.app/docs/api/) for advanced use cases.
 
 ## Contributing
 

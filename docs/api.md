@@ -10,7 +10,7 @@ See the [getting started](./getting-started.md) page.
 
 The `embed` function returns a promise that resolves into an object that
 provides the current public API. The API is documented in the [interface
-definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/embedApi.d.ts).
+definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/types/embedApi.d.ts).
 
 For practical examples on using the API, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
