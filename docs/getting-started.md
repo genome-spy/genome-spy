@@ -1,9 +1,20 @@
 # Getting Started
 
-There are three ways to get quickly started with GenomeSpy visualizations: the
-Playground app, Observable notebooks, and embedding GenomeSpy on HTML pages.
-More advanced users can use GenomeSpy as a visualization library in web
-applications.
+GenomeSpy is a visualization toolkit for genomic data. More specifically, it is
+a JavaScript library that can be used to create interactive visualizations of
+genomic data in web browsers. To visualize data with GenomeSpy, you need to:
+
+1. Have some data to be visualized
+2. Write or find a [visualization specification](grammar/index.md) that
+   describes how the data should be visualized
+3. Embed GenomeSpy into a web page and initialize it with the specification and
+   the data
+4. Open the web page with your web browser
+
+However, there are three ways to get quickly started with GenomeSpy
+visualizations: the Playground app, Observable notebooks, and embedding
+GenomeSpy on HTML pages. More advanced users can use GenomeSpy as a
+visualization library in web applications.
 
 ## Playground
 
@@ -28,7 +39,7 @@ create a web page for the visualization:
 1. Create an HTML document (web page) by using the example below
 2. Place the visualization spec and your data files into the same directory
    as the HTML document
-3. Copy them onto a web server or start a local web server in the directory
+3. Copy them onto a remote web server or start a local web server in the directory
 
 ### Local web server
 
@@ -73,7 +84,7 @@ This template loads the spec from a separate `spec.json` file.
   <body>
     <script
       type="text/javascript"
-      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.36.x"
+      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.37.x"
     ></script>
 
     <script>
@@ -96,7 +107,7 @@ You can alternatively provide the specification as a JavaScript object.
   <body>
     <script
       type="text/javascript"
-      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.36.x"
+      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.37.x"
     ></script>
 
     <script>
@@ -127,8 +138,14 @@ further experimentation.
 
 ## Using GenomeSpy as a visualization library in web applications
 
-TODO
+The [@genome-spy/core](https://www.npmjs.com/package/@genome-spy/core) NPM
+package contains a bundled library that can be used on web pages as shown in the
+examples above. In addition, it contains the source code in
+[ESM](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)
+format, allowing use with bundlers such as [Vite](https://vitejs.dev) and
+[Webpack](https://webpack.js.org/). For examples of such use, see:
 
-Meanwhile, check the
-[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
-package.
+- The [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+  package contains examples of embedding GenomeSpy in web applications and using the API.
+- [SegmentModel Spy](https://github.com/genome-spy/segment-model-spy) is an example
+  of a complete web application that uses GenomeSpy for visualization.

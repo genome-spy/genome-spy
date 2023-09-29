@@ -7,10 +7,35 @@
 
 ## Getting started
 
-The app has its own NPM package. To get started, follow the generic [Getting
-Started](../getting-started.md#html-template) documentation, but replace the
-`@genome-spy/core` package with the `@genome-spy/app` package, and use
-`genomeSpyApp.embed(...)` instead of `genomeSpyEmbed.embed(...)`.
+You can use the following HTML template to create a web page for your
+visualization. The template loads the app from a content delivery network
+and the visualization specification from a separate `spec.json` file placed
+in the same directory. See the [getting started](../getting-started.md#local-or-remote-web-server)
+page for more information.
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>GenomeSpy</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.jsdelivr.net/npm/@genome-spy/app@0.37.x/dist/style.css"
+    />
+  </head>
+  <body>
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/@genome-spy/app@0.37.x"
+    ></script>
+
+    <script>
+      genomeSpyApp.embed(document.body, "spec.json", {});
+    </script>
+  </body>
+</html>
+```
 
 For a complete example, check the
 [website-examples](https://github.com/genome-spy/website-examples/blob/master/index.html)
