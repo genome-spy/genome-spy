@@ -4,11 +4,11 @@ import { parseExpression, codegenExpression } from "vega-expression";
  *
  * @param {string} expr
  */
-export default function createFunction(expr, global = {}) {
+export default function createFunction(expr, globalObject = {}) {
     const cg = codegenExpression({
         forbidden: [],
         allowed: ["datum"],
-        globalvar: "global",
+        globalvar: "globalObject",
         fieldvar: "datum",
     });
 
@@ -19,11 +19,12 @@ export default function createFunction(expr, global = {}) {
         // eslint-disable-next-line no-new-func
         const fn = Function(
             "datum",
-            "global",
+            "globalObject",
             `"use strict"; return (${generatedCode.code});`
         );
 
-        const exprFunction = /** @param {object} x */ (x) => fn(x, global);
+        const exprFunction = /** @param {object} x */ (x) =>
+            fn(x, globalObject);
         exprFunction.fields = generatedCode.fields;
         return exprFunction;
     } catch (e) {
