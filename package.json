@@ -23,9 +23,9 @@
     "sass": "^1.49.7",
     "ts-json-schema-generator": "^1.0.0",
     "typescript": "^5.0.4",
-    "vite": "^4.3.8",
+    "vite": "^4.5.0",
     "vite-raw-plugin": "^1.0.1",
-    "vitest": "^0.31.1"
+    "vitest": "^0.34.6"
   },
   "scripts": {
     "build": "lerna run build",
