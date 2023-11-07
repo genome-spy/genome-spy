@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.3](https://github.com/genome-spy/genome-spy/compare/v0.37.2...v0.37.3) (2023-11-07)
+
+
+### Bug Fixes
+
+* **core:** global object was broken in expressions ([c8ece1d](https://github.com/genome-spy/genome-spy/commit/c8ece1d8f3883aed29c01d301d47b06bf1b613a8))
+
+
+
+
+
 ## [0.37.2](https://github.com/genome-spy/genome-spy/compare/v0.37.1...v0.37.2) (2023-09-29)
 
 **Note:** Version bump only for package root
