@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.37.4](https://github.com/genome-spy/genome-spy/compare/v0.37.3...v0.37.4) (2023-11-07)
+
+
+### Bug Fixes
+
+* **core:** `import.meta.env.DEV` failed with webpack ([bdb0709](https://github.com/genome-spy/genome-spy/commit/bdb07096979aa3071fd8cf1d7e79cf96e83a697a))
+
+
+
+
+
 ## [0.37.3](https://github.com/genome-spy/genome-spy/compare/v0.37.2...v0.37.3) (2023-11-07)
 
 
