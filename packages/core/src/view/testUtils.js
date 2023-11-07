@@ -6,14 +6,14 @@
  * @typedef {import("../types/viewContext").default} ViewContext
  */
 
-import { resolveScalesAndAxes, initializeData } from "./viewUtils";
-import AccessorFactory from "../encoder/accessor";
-import DataFlow from "../data/dataFlow";
-import { ViewFactory } from "./viewFactory";
-import GenomeStore from "../genome/genomeStore";
-import ImplicitRootView from "./implicitRootView";
-import View from "./view";
-import BmFontManager from "../fonts/bmFontManager";
+import { resolveScalesAndAxes, initializeData } from "./viewUtils.js";
+import AccessorFactory from "../encoder/accessor.js";
+import DataFlow from "../data/dataFlow.js";
+import { ViewFactory } from "./viewFactory.js";
+import GenomeStore from "../genome/genomeStore.js";
+import ImplicitRootView from "./implicitRootView.js";
+import View from "./view.js";
+import BmFontManager from "../fonts/bmFontManager.js";
 
 /**
  *

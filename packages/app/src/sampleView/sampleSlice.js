@@ -1,11 +1,11 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { peek } from "@genome-spy/core/utils/arrayUtils";
+import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import {
     groupSamplesByAccessor,
     groupSamplesByQuartiles,
     groupSamplesByThresholds,
     removeGroup,
-} from "./groupOperations";
+} from "./groupOperations.js";
 import {
     filterNominal,
     filterQuantitative,
@@ -14,7 +14,7 @@ import {
     retainFirstOfEachCategory,
     sort,
     wrapAccessorForComparison,
-} from "./sampleOperations";
+} from "./sampleOperations.js";
 
 import { format as d3format } from "d3-format";
 import { html } from "lit";

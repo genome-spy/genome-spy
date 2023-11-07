@@ -1,4 +1,4 @@
-import Genome from "./genome";
+import Genome from "./genome.js";
 
 export default class GenomeStore {
     /**

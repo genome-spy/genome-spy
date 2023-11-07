@@ -1,22 +1,22 @@
 /* eslint-disable max-depth */
-import { primaryPositionalChannels } from "../encoder/encoder";
+import { primaryPositionalChannels } from "../encoder/encoder.js";
 import {
     FlexDimensions,
     getLargestSize,
     mapToPixelCoords,
     parseSizeDef,
     ZERO_SIZEDEF,
-} from "../utils/layout/flexLayout";
-import Grid from "../utils/layout/grid";
-import Padding from "../utils/layout/padding";
-import Rectangle from "../utils/layout/rectangle";
-import AxisGridView from "./axisGridView";
-import AxisView, { CHANNEL_ORIENTS, ORIENT_CHANNELS } from "./axisView";
-import ContainerView from "./containerView";
-import LayerView from "./layerView";
-import createTitle from "./title";
-import UnitView from "./unitView";
-import interactionToZoom from "./zoom";
+} from "../utils/layout/flexLayout.js";
+import Grid from "../utils/layout/grid.js";
+import Padding from "../utils/layout/padding.js";
+import Rectangle from "../utils/layout/rectangle.js";
+import AxisGridView from "./axisGridView.js";
+import AxisView, { CHANNEL_ORIENTS, ORIENT_CHANNELS } from "./axisView.js";
+import ContainerView from "./containerView.js";
+import LayerView from "./layerView.js";
+import createTitle from "./title.js";
+import UnitView from "./unitView.js";
+import interactionToZoom from "./zoom.js";
 
 /**
  * Modeled after: https://vega.github.io/vega/docs/layout/

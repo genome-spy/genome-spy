@@ -1,11 +1,11 @@
-import RectMark from "../marks/rectMark";
-import PointMark from "../marks/pointMark";
-import RuleMark from "../marks/rule";
-import LinkMark from "../marks/link";
-import TextMark from "../marks/text";
+import RectMark from "../marks/rectMark.js";
+import PointMark from "../marks/pointMark.js";
+import RuleMark from "../marks/rule.js";
+import LinkMark from "../marks/link.js";
+import TextMark from "../marks/text.js";
 
-import ContainerView from "./containerView";
-import ScaleResolution from "./scaleResolution";
+import ContainerView from "./containerView.js";
+import ScaleResolution from "./scaleResolution.js";
 import {
     isSecondaryChannel,
     secondaryChannels,
@@ -15,9 +15,9 @@ import {
     getPrimaryChannel,
     isChannelWithScale,
     isPrimaryPositionalChannel,
-} from "../encoder/encoder";
-import createDomain from "../utils/domainArray";
-import AxisResolution from "./axisResolution";
+} from "../encoder/encoder.js";
+import createDomain from "../utils/domainArray.js";
+import AxisResolution from "./axisResolution.js";
 
 /**
  *

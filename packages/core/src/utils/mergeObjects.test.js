@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import mergeObjects from "./mergeObjects";
+import mergeObjects from "./mergeObjects.js";
 
 test("Merges non-conflicting properties", () => {
     expect(mergeObjects([{ a: 1 }, { b: 2 }], "test")).toEqual({ a: 1, b: 2 });

@@ -1,4 +1,4 @@
-import ViewRenderingContext from "./viewRenderingContext";
+import ViewRenderingContext from "./viewRenderingContext.js";
 
 /**
  * @typedef {import("../view").default} View

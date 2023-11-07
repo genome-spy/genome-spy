@@ -1,5 +1,5 @@
 import snarkdown from "snarkdown";
-import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
+import addBaseUrl from "@genome-spy/core/utils/addBaseUrl.js";
 
 /**
  * @typedef {object} SafeMarkdownOptions

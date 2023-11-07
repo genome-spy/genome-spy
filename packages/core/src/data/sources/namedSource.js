@@ -1,5 +1,5 @@
-import DataSource from "./dataSource";
-import { makeWrapper } from "./dataUtils";
+import DataSource from "./dataSource.js";
+import { makeWrapper } from "./dataUtils.js";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data

@@ -1,4 +1,6 @@
 {
+  "description": "Testing vertical alignment and various fonts",
+
   "data": { "values": ["The quick brown fox jumps over the lazy dog. ACTG"] },
 
   "vconcat": [

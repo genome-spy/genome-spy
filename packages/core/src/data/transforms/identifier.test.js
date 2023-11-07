@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { range } from "d3-array";
-import { processData } from "../flowTestUtils";
-import IdentifierTransform, { BLOCK_SIZE, DEFAULT_AS } from "./identifier";
+import { processData } from "../flowTestUtils.js";
+import IdentifierTransform, { BLOCK_SIZE, DEFAULT_AS } from "./identifier.js";
 
 test("An IdentifierTransform adds identifiers correctly", () => {
     const data = range(BLOCK_SIZE * 2).map((x) => ({ data: x }));

@@ -1,8 +1,8 @@
 /* eslint-disable no-unmodified-loop-condition */
 import FlatQueue from "flatqueue";
 import { isNumber } from "vega-util";
-import { field } from "../../utils/field";
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
+import { field } from "../../utils/field.js";
+import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
 
 const maxDepth = 65536;
 

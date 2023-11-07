@@ -1,5 +1,5 @@
 import { openDB } from "idb";
-import BookmarkDatabase from "./bookmarkDatabase";
+import BookmarkDatabase from "./bookmarkDatabase.js";
 
 const BOOKMARKS_STORE = "bookmarks";
 

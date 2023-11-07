@@ -1,10 +1,10 @@
 import { RemoteFile } from "generic-filehandle";
 import { TabixIndexedFile } from "@gmod/tabix";
 
-import SingleAxisLazySource from "./singleAxisLazySource";
-import windowedMixin from "./windowedMixin";
-import { debounce } from "../../../utils/debounce";
-import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
+import SingleAxisLazySource from "./singleAxisLazySource.js";
+import windowedMixin from "./windowedMixin.js";
+import { debounce } from "../../../utils/debounce.js";
+import addBaseUrl from "../../../utils/addBaseUrl.js";
 
 /**
  * @template T

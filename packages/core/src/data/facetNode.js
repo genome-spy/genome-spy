@@ -1,4 +1,4 @@
-import FlowNode from "./flowNode";
+import FlowNode from "./flowNode.js";
 
 /**
  * @typedef {object} FacetParams

@@ -2,9 +2,9 @@ import { Buffer } from "buffer";
 import { IndexedFasta } from "@gmod/indexedfasta";
 import { RemoteFile } from "generic-filehandle";
 
-import SingleAxisLazySource from "./singleAxisLazySource";
-import windowedMixin from "./windowedMixin";
-import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
+import SingleAxisLazySource from "./singleAxisLazySource.js";
+import windowedMixin from "./windowedMixin.js";
+import addBaseUrl from "../../../utils/addBaseUrl.js";
 
 // Hack needed by @gmod/indexedfasta
 // TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary

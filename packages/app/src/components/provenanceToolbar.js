@@ -6,7 +6,7 @@ import {
     faEllipsisH,
     faCircle,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "../utils/ui/dropdown";
+import { toggleDropdown } from "../utils/ui/dropdown.js";
 
 export default class ProvenanceButtons extends LitElement {
     constructor() {

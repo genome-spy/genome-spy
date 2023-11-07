@@ -1,5 +1,5 @@
-import createFunction from "../../utils/expression";
-import FlowNode from "../flowNode";
+import createFunction from "../../utils/expression.js";
+import FlowNode from "../flowNode.js";
 
 export default class FilterTransform extends FlowNode {
     /**

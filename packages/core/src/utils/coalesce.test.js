@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import coalesce from "./coalesce";
+import coalesce from "./coalesce.js";
 
 test("Coalesce returns first defined value", () => {
     expect(coalesce(0, 1, 2, 3)).toEqual(0);

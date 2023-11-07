@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import Genome from "./genome";
+import Genome from "./genome.js";
 
 describe("Human genome, chromosome names prefixed with 'chr'", () => {
     // Actually, the chromosomes are just named as in hg38, for example

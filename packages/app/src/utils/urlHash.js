@@ -2,7 +2,7 @@ import {
     compressToEncodedURIComponent,
     decompressFromEncodedURIComponent,
 } from "lz-string";
-import { crc32hex } from "./crc32";
+import { crc32hex } from "./crc32.js";
 
 /**
  * @param {any} value

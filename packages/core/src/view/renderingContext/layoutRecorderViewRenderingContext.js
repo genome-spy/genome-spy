@@ -1,5 +1,5 @@
-import { peek } from "../../utils/arrayUtils";
-import ViewRenderingContext from "./viewRenderingContext";
+import { peek } from "../../utils/arrayUtils.js";
+import ViewRenderingContext from "./viewRenderingContext.js";
 
 /**
  * A Rendering context that doesn't render anything. It creates a hierarchy

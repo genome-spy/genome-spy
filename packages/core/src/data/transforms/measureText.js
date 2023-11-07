@@ -1,7 +1,7 @@
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
+import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import fontMetadata from "../../fonts/Lato-Regular.json";
-import getMetrics from "../../fonts/bmFontMetrics";
-import { field } from "../../utils/field";
+import getMetrics from "../../fonts/bmFontMetrics.js";
+import { field } from "../../utils/field.js";
 
 /**
  * Measures text length. This is mainly intended for reading-direction arrows

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import * as vt from "./variableTools";
+import * as vt from "./variableTools.js";
 
 test("InferNumerality", () => {
     expect(vt.inferNumeric(["0", "1", "2.2", "-4"])).toBeTruthy();

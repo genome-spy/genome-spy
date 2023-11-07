@@ -11,7 +11,7 @@ import { expect, test } from "vitest";
 
 /* eslint-disable */
 
-import { validTicks } from "./ticks";
+import { validTicks } from "./ticks.js";
 
 test("validTicks uses count correctly", function () {
     var data = [0, 1, 2, 3, 4, 5, 6, 7];

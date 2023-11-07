@@ -1,10 +1,10 @@
 // eslint-disable-next-line no-unused-vars
-import View from "./view";
+import View from "./view.js";
 
-import UnitView from "./unitView";
-import ImportView from "./importView";
-import LayerView from "./layerView";
-import ConcatView from "./concatView";
+import UnitView from "./unitView.js";
+import ImportView from "./importView.js";
+import LayerView from "./layerView.js";
+import ConcatView from "./concatView.js";
 import { isArray, isObject, isString } from "vega-util";
 
 export class ViewFactory {

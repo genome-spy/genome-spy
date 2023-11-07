@@ -20,12 +20,12 @@ import {
     createDiscreteTexture,
     createInterpolatedColorTexture,
     createSchemeTexture,
-} from "../scale/colorUtils";
+} from "../scale/colorUtils.js";
 import {
     getDiscreteRangeMapper,
     isColorChannel,
     isDiscreteChannel,
-} from "../encoder/encoder";
+} from "../encoder/encoder.js";
 import { color } from "d3-color";
 
 export default class WebGLHelper {

@@ -10,11 +10,15 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { html, nothing, render } from "lit";
 import { ActionCreators } from "redux-undo";
-import safeMarkdown from "../utils/safeMarkdown";
-import { createCloseEvent, createModal, messageBox } from "../utils/ui/modal";
-import { handleTabClick } from "../utils/ui/tabs";
-import { compressToUrlHash } from "../utils/urlHash";
-import { viewSettingsSlice } from "../viewSettingsSlice";
+import safeMarkdown from "../utils/safeMarkdown.js";
+import {
+    createCloseEvent,
+    createModal,
+    messageBox,
+} from "../utils/ui/modal.js";
+import { handleTabClick } from "../utils/ui/tabs.js";
+import { compressToUrlHash } from "../utils/urlHash.js";
+import { viewSettingsSlice } from "../viewSettingsSlice.js";
 
 /**
  * @typedef {object} BookmarkInfoBoxOptions

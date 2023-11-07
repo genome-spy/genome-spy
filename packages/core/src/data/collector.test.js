@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import Collector from "./collector";
+import Collector from "./collector.js";
 
 const data = [1, 5, 2, 4, 3].map((x) => ({ x }));
 

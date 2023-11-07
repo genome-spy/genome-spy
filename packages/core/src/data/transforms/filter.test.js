@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { processData } from "../flowTestUtils";
-import FilterTransform from "./filter";
+import { processData } from "../flowTestUtils.js";
+import FilterTransform from "./filter.js";
 
 test("FilterTransform filter rows", () => {
     const data = [1, 2, 3, 4, 5, 6].map((x) => ({ x }));

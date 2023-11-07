@@ -1,8 +1,8 @@
 import { html, nothing, render } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip";
+import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip.js";
 import { computePosition, flip, offset } from "@floating-ui/dom";
-import { debounce } from "@genome-spy/core/utils/debounce";
+import { debounce } from "@genome-spy/core/utils/debounce.js";
 import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 
 /**

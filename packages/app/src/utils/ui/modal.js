@@ -1,5 +1,5 @@
 import { html, nothing, render } from "lit";
-import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip";
+import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip.js";
 
 const CLOSE_EVENT_TYPE = "close-dialog";
 

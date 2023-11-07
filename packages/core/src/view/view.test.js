@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
-import UnitView from "./unitView";
+import UnitView from "./unitView.js";
 
-import { create, createAndInitialize } from "./testUtils";
-import { toRegularArray as r } from "../utils/domainArray";
-import ConcatView from "./concatView";
-import PointMark from "../marks/pointMark";
-import View from "./view";
-import LayerView from "./layerView";
+import { create, createAndInitialize } from "./testUtils.js";
+import { toRegularArray as r } from "../utils/domainArray.js";
+import ConcatView from "./concatView.js";
+import PointMark from "../marks/pointMark.js";
+import View from "./view.js";
+import LayerView from "./layerView.js";
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", () => {

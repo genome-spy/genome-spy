@@ -14,8 +14,8 @@ import {
     isDiscreteChannel,
     getPrimaryChannel,
     isValueDef,
-} from "../encoder/encoder";
-import { peek } from "../utils/arrayUtils";
+} from "../encoder/encoder.js";
+import { peek } from "../utils/arrayUtils.js";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";

@@ -2,19 +2,19 @@ import {
     parseSizeDef,
     FlexDimensions,
     ZERO_FLEXDIMENSIONS,
-} from "../utils/layout/flexLayout";
-import Padding from "../utils/layout/padding";
+} from "../utils/layout/flexLayout.js";
+import Padding from "../utils/layout/padding.js";
 import {
     getCachedOrCall,
     initPropertyCache,
     invalidatePrefix,
-} from "../utils/propertyCacher";
+} from "../utils/propertyCacher.js";
 import { isNumber, isString, span } from "vega-util";
 import { scaleLog } from "d3-scale";
-import { isFieldDef, getPrimaryChannel } from "../encoder/encoder";
-import { appendToBaseUrl } from "../utils/url";
+import { isFieldDef, getPrimaryChannel } from "../encoder/encoder.js";
+import { appendToBaseUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
-import { peek } from "../utils/arrayUtils";
+import { peek } from "../utils/arrayUtils.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to

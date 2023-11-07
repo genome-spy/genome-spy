@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { processData } from "../flowTestUtils";
-import FlattenDelimitedTransform from "./flattenDelimited";
+import { processData } from "../flowTestUtils.js";
+import FlattenDelimitedTransform from "./flattenDelimited.js";
 
 const sampleData = [
     { id: 1, a: "q, w, e", b: "a-s-d" },

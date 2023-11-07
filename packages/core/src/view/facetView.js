@@ -1,17 +1,17 @@
 // @ts-nocheck
 // TODO: Enable when this is taken to use again
 
-import { isFacetFieldDef, isFacetMapping } from "./viewUtils";
-import ContainerView from "./containerView";
-import UnitView from "./unitView";
+import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
+import ContainerView from "./containerView.js";
+import UnitView from "./unitView.js";
 import { cross } from "d3-array";
-import { mapToPixelCoords } from "../utils/layout/flexLayout";
-import { OrdinalDomain } from "../utils/domainArray";
-import Rectangle from "../utils/layout/rectangle";
-import coalesce from "../utils/coalesce";
+import { mapToPixelCoords } from "../utils/layout/flexLayout.js";
+import { OrdinalDomain } from "../utils/domainArray.js";
+import Rectangle from "../utils/layout/rectangle.js";
+import coalesce from "../utils/coalesce.js";
 import { field as vegaField } from "vega-util";
-import DecoratorView from "./decoratorView";
-import Padding from "../utils/layout/padding";
+import DecoratorView from "./decoratorView.js";
+import Padding from "../utils/layout/padding.js";
 
 const DEFAULT_SPACING = 20;
 

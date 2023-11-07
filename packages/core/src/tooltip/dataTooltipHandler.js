@@ -1,5 +1,5 @@
 import { html } from "lit-html";
-import formatObject from "../utils/formatObject";
+import formatObject from "../utils/formatObject.js";
 
 /**
  * @type {import("./tooltipHandler").TooltipHandler}

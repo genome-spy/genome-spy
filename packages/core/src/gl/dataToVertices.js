@@ -1,14 +1,14 @@
 import { InternMap } from "internmap";
 import { format } from "d3-format";
 import { isString } from "vega-util";
-import ArrayBuilder from "./arrayBuilder";
-import { SDF_PADDING } from "../fonts/bmFontMetrics";
-import { createBinningRangeIndexer } from "../utils/binnedIndex";
-import { isValueDef } from "../encoder/encoder";
+import ArrayBuilder from "./arrayBuilder.js";
+import { SDF_PADDING } from "../fonts/bmFontMetrics.js";
+import { createBinningRangeIndexer } from "../utils/binnedIndex.js";
+import { isValueDef } from "../encoder/encoder.js";
 import {
     isHighPrecisionScale,
     splitHighPrecision,
-} from "../scale/glslScaleGenerator";
+} from "../scale/glslScaleGenerator.js";
 import { isContinuous } from "vega-scale";
 
 /**

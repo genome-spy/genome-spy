@@ -1,5 +1,5 @@
-import { peek } from "../../utils/arrayUtils";
-import ViewRenderingContext from "./viewRenderingContext";
+import { peek } from "../../utils/arrayUtils.js";
+import ViewRenderingContext from "./viewRenderingContext.js";
 
 /**
  * A trivial proof-of-concept SVG rendering context. Doesn't render any

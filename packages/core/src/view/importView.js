@@ -1,4 +1,4 @@
-import View from "./view";
+import View from "./view.js";
 
 /**
  * This is just a placeholder for custom tracks that are imported by name.

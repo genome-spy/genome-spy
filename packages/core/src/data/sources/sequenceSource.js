@@ -1,4 +1,4 @@
-import DataSource from "./dataSource";
+import DataSource from "./dataSource.js";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data

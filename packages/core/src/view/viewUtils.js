@@ -1,13 +1,13 @@
 import { isObject, isString } from "vega-util";
 import { loader as vegaLoader } from "vega-loader";
 
-import UnitView from "./unitView";
-import ImportView from "./importView";
+import UnitView from "./unitView.js";
+import ImportView from "./importView.js";
 // eslint-disable-next-line no-unused-vars
-import View, { VISIT_SKIP, VISIT_STOP } from "./view";
-import { buildDataFlow } from "./flowBuilder";
-import { optimizeDataFlow } from "../data/flowOptimizer";
-import { isFieldDef, primaryPositionalChannels } from "../encoder/encoder";
+import View, { VISIT_SKIP, VISIT_STOP } from "./view.js";
+import { buildDataFlow } from "./flowBuilder.js";
+import { optimizeDataFlow } from "../data/flowOptimizer.js";
+import { isFieldDef, primaryPositionalChannels } from "../encoder/encoder.js";
 import { rollup } from "d3-array";
 
 /**

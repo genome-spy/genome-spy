@@ -1,5 +1,5 @@
 import gff from "@gmod/gff";
-import TabixSource from "./tabixSource";
+import TabixSource from "./tabixSource.js";
 
 /**
  * @extends {TabixSource<import("@gmod/gff").GFF3Feature>}

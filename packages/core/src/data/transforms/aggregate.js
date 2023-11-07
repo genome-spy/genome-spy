@@ -1,7 +1,7 @@
 import { group as d3group } from "d3-array";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
-import { field } from "../../utils/field";
-import iterateNestedMaps from "../../utils/iterateNestedMaps";
+import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
+import { field } from "../../utils/field.js";
+import iterateNestedMaps from "../../utils/iterateNestedMaps.js";
 
 /**
  * A minimal aggregate transform that just counts grouped (by a single field) data items.

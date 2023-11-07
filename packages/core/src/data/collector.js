@@ -1,10 +1,10 @@
 import { InternMap } from "internmap";
 import { group } from "d3-array";
 import { compare } from "vega-util";
-import iterateNestedMaps from "../utils/iterateNestedMaps";
-import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode";
-import { field } from "../utils/field";
-import { asArray } from "../utils/arrayUtils";
+import iterateNestedMaps from "../utils/iterateNestedMaps.js";
+import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode.js";
+import { field } from "../utils/field.js";
+import { asArray } from "../utils/arrayUtils.js";
 
 /**
  * Collects (materializes) the data that flows through this node.

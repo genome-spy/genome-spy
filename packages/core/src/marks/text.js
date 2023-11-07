@@ -3,11 +3,11 @@ import { format } from "d3-format";
 import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
 import VERTEX_SHADER from "../gl/text.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/text.fragment.glsl";
-import { TextVertexBuilder } from "../gl/dataToVertices";
+import { TextVertexBuilder } from "../gl/dataToVertices.js";
 
-import Mark from "./mark";
-import { fixPositional } from "./markUtils";
-import { primaryPositionalChannels } from "../encoder/encoder";
+import Mark from "./mark.js";
+import { fixPositional } from "./markUtils.js";
+import { primaryPositionalChannels } from "../encoder/encoder.js";
 
 /** For GLSL uniforms */
 const alignments = {

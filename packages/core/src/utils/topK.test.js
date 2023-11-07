@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { range } from "d3-array";
-import { topK, topKSlice } from "./topK";
+import { topK, topKSlice } from "./topK.js";
 
 test("topK returns top k numbers in priority order", () => {
     /** @param {number} x */

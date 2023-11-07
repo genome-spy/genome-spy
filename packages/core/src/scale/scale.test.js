@@ -13,7 +13,7 @@ import { expect, test } from "vitest";
 
 import * as util from "vega-util";
 import * as vs from "vega-scale";
-import createScale from "./scale";
+import createScale from "./scale.js";
 
 // Suppress warnings by default
 const scale = (params, logger) =>

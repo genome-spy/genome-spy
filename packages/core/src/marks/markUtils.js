@@ -2,7 +2,7 @@ import {
     isValueDef,
     getSecondaryChannel,
     isChannelDefWithScale,
-} from "../encoder/encoder";
+} from "../encoder/encoder.js";
 
 /**
  *

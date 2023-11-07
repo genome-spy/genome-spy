@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import PileupTransform from "./pileup";
-import { processData } from "../flowTestUtils";
+import PileupTransform from "./pileup.js";
+import { processData } from "../flowTestUtils.js";
 
 // TODO: Test for lane preferences
 

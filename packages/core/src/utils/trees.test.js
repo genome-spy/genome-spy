@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { nodesToTrees, visitTree } from "./trees";
+import { nodesToTrees, visitTree } from "./trees.js";
 import { describe } from "vitest";
 
 describe("NodesToTrees", () => {

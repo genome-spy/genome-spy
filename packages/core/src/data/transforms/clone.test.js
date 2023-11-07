@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { processData } from "../flowTestUtils";
-import CloneTransform from "./clone";
+import { processData } from "../flowTestUtils.js";
+import CloneTransform from "./clone.js";
 
 test("CloneTransform clones the data objects", () => {
     const data = [{ x: 1 }, { x: 2 }];

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import createIndexer from "./indexer";
+import createIndexer from "./indexer.js";
 
 test("Index values one by one", () => {
     const indexer = createIndexer();

@@ -1,9 +1,9 @@
 import { RemoteFile } from "generic-filehandle";
 import { BamFile } from "@gmod/bam";
 
-import SingleAxisLazySource from "./singleAxisLazySource";
-import windowedMixin from "./windowedMixin";
-import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
+import SingleAxisLazySource from "./singleAxisLazySource.js";
+import windowedMixin from "./windowedMixin.js";
+import addBaseUrl from "../../../utils/addBaseUrl.js";
 
 export default class BamSource extends windowedMixin(SingleAxisLazySource) {
     /** Keep track of the order of the requests */

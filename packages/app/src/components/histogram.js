@@ -1,8 +1,8 @@
 import { LitElement, html, nothing } from "lit";
 import { bin } from "d3-array";
 import { scaleLinear } from "d3-scale";
-import clientPoint from "@genome-spy/core/utils/point";
-import clamp from "@genome-spy/core/utils/clamp";
+import clientPoint from "@genome-spy/core/utils/point.js";
+import clamp from "@genome-spy/core/utils/clamp.js";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 

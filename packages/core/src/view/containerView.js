@@ -1,4 +1,4 @@
-import View, { VISIT_STOP, VISIT_SKIP } from "./view";
+import View, { VISIT_STOP, VISIT_SKIP } from "./view.js";
 
 /**
  * Compositor view represents a non-leaf node in the view hierarchy.

@@ -1,5 +1,5 @@
-import { isConcatSpec, isHConcatSpec, isVConcatSpec } from "./viewFactory";
-import GridView from "./gridView";
+import { isConcatSpec, isHConcatSpec, isVConcatSpec } from "./viewFactory.js";
+import GridView from "./gridView.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.

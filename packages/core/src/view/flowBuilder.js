@@ -1,11 +1,11 @@
-import Collector from "../data/collector";
-import createTransform from "../data/transforms/transformFactory";
-import createDataSource from "../data/sources/dataSourceFactory";
-import UnitView from "./unitView";
-import { BEHAVIOR_MODIFIES } from "../data/flowNode";
-import CloneTransform from "../data/transforms/clone";
-import DataFlow from "../data/dataFlow";
-import DataSource from "../data/sources/dataSource";
+import Collector from "../data/collector.js";
+import createTransform from "../data/transforms/transformFactory.js";
+import createDataSource from "../data/sources/dataSourceFactory.js";
+import UnitView from "./unitView.js";
+import { BEHAVIOR_MODIFIES } from "../data/flowNode.js";
+import CloneTransform from "../data/transforms/clone.js";
+import DataFlow from "../data/dataFlow.js";
+import DataSource from "../data/sources/dataSource.js";
 import {
     isChannelDefWithScale,
     isChromPosDef,
@@ -13,13 +13,13 @@ import {
     isFieldDef,
     isPositionalChannel,
     getPrimaryChannel,
-} from "../encoder/encoder";
-import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate";
+} from "../encoder/encoder.js";
+import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate.js";
 import { group } from "d3-array";
-import IdentifierTransform from "../data/transforms/identifier";
-import { invalidate } from "../utils/propertyCacher";
-import NamedSource, { isNamedData } from "../data/sources/namedSource";
-import { nodesToTreesWithAccessor, visitTree } from "../utils/trees";
+import IdentifierTransform from "../data/transforms/identifier.js";
+import { invalidate } from "../utils/propertyCacher.js";
+import NamedSource, { isNamedData } from "../data/sources/namedSource.js";
+import { nodesToTreesWithAccessor, visitTree } from "../utils/trees.js";
 
 /**
  * @param {View} root

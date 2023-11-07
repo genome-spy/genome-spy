@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { processData } from "../flowTestUtils";
-import ProjectTransform from "./project";
+import { processData } from "../flowTestUtils.js";
+import ProjectTransform from "./project.js";
 
 test("Project", () => {
     const data = [

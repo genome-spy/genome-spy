@@ -1,6 +1,6 @@
-import { isChannelWithScale } from "@genome-spy/core/encoder/encoder";
-import { isChromosomalLocus } from "@genome-spy/core/genome/genome";
-import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat";
+import { isChannelWithScale } from "@genome-spy/core/encoder/encoder.js";
+import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
+import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { html } from "lit";
 
 /**

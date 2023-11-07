@@ -1,6 +1,6 @@
-import { asArray } from "../../utils/arrayUtils";
-import { field } from "../../utils/field";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
+import { asArray } from "../../utils/arrayUtils.js";
+import { field } from "../../utils/field.js";
+import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
 
 export default class FlattenDelimitedTransform extends FlowNode {
     get behavior() {

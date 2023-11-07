@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { processData } from "../flowTestUtils";
-import FormulaTransform from "./formula";
+import { processData } from "../flowTestUtils.js";
+import FormulaTransform from "./formula.js";
 
 test("FormulaTransform", () => {
     const data = [{ a: 2 }, { a: 3 }];

@@ -1,4 +1,4 @@
-import BookmarkDatabase from "./bookmarkDatabase";
+import BookmarkDatabase from "./bookmarkDatabase.js";
 
 /**
  * A simple readonly database that wraps an array of bookmark objects

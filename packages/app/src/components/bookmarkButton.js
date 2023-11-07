@@ -7,15 +7,15 @@ import {
     faPen,
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "../utils/ui/dropdown";
-import { messageBox } from "../utils/ui/modal";
-import { dropdownMenu, menuItemToTemplate } from "../utils/ui/contextMenu";
-import { queryDependency } from "../utils/dependency";
+import { toggleDropdown } from "../utils/ui/dropdown.js";
+import { messageBox } from "../utils/ui/modal.js";
+import { dropdownMenu, menuItemToTemplate } from "../utils/ui/contextMenu.js";
+import { queryDependency } from "../utils/dependency.js";
 import {
     restoreBookmarkAndShowInfoBox,
     showEnterBookmarkInfoDialog,
     showShareBookmarkDialog,
-} from "../bookmark/bookmark";
+} from "../bookmark/bookmark.js";
 
 class BookmarkButton extends LitElement {
     constructor() {

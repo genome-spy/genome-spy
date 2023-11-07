@@ -1,12 +1,15 @@
 import { describe, expect, test } from "vitest";
-import FlowNode, { BEHAVIOR_CLONES } from "./flowNode";
-import { removeRedundantCloneTransforms, validateLinks } from "./flowOptimizer";
-import CloneTransform from "./transforms/clone";
-import Collector from "./collector";
-import DataFlow from "./dataFlow";
-import { combineIdenticalDataSources } from "./flowOptimizer";
-import InlineSource from "./sources/inlineSource";
-import UrlSource from "./sources/urlSource";
+import FlowNode, { BEHAVIOR_CLONES } from "./flowNode.js";
+import {
+    removeRedundantCloneTransforms,
+    validateLinks,
+} from "./flowOptimizer.js";
+import CloneTransform from "./transforms/clone.js";
+import Collector from "./collector.js";
+import DataFlow from "./dataFlow.js";
+import { combineIdenticalDataSources } from "./flowOptimizer.js";
+import InlineSource from "./sources/inlineSource.js";
+import UrlSource from "./sources/urlSource.js";
 
 test("validateLinks() detects broken graph", () => {
     const root = new FlowNode();

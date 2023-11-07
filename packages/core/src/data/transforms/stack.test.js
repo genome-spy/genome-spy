@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { processData } from "../flowTestUtils";
-import StackTransform from "./stack";
+import { processData } from "../flowTestUtils.js";
+import StackTransform from "./stack.js";
 
 const sampleData = [
     { group: "a", choice: "q", value: 1 },

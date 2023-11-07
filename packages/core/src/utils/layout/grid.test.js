@@ -1,6 +1,6 @@
 import { expect, test, describe } from "vitest";
 
-import Grid from "./grid";
+import Grid from "./grid.js";
 
 describe("Grid indexing", () => {
     test("Single row", () => {

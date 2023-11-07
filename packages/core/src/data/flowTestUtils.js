@@ -1,5 +1,5 @@
-import Collector from "./collector";
-import FlowNode from "./flowNode";
+import Collector from "./collector.js";
+import FlowNode from "./flowNode.js";
 
 /**
  *

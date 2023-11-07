@@ -1,4 +1,4 @@
-import clamp from "./clamp";
+import clamp from "./clamp.js";
 
 const MAX_INTEGER = 2 ** 31 - 1;
 const MIN_INTEGER = -(2 ** 31);

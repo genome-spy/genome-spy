@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { processData } from "../flowTestUtils";
-import RegexFoldTransform from "./regexFold";
+import { processData } from "../flowTestUtils.js";
+import RegexFoldTransform from "./regexFold.js";
 
 describe("RegexFold", () => {
     test("Transform single variable", () => {

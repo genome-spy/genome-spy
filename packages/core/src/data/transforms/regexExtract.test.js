@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { processData } from "../flowTestUtils";
+import { processData } from "../flowTestUtils.js";
 
-import RegexExtractTransform from "./regexExtract";
+import RegexExtractTransform from "./regexExtract.js";
 
 /**
  * @param {import("./regexExtract").RegexExtractParams} params

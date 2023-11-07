@@ -1,4 +1,4 @@
-import GridView from "./gridView";
+import GridView from "./gridView.js";
 
 export default class ImplicitRootView extends GridView {
     /**

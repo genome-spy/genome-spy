@@ -1,5 +1,5 @@
-import createCloner from "../../utils/cloner";
-import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode";
+import createCloner from "../../utils/cloner.js";
+import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode.js";
 
 /**
  * Clones the data objects that pass through.

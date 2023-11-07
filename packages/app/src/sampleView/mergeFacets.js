@@ -1,17 +1,17 @@
-import { isFieldDef } from "@genome-spy/core/encoder/encoder";
+import { isFieldDef } from "@genome-spy/core/encoder/encoder.js";
 import {
     isSampleGroup,
     iterateGroupHierarchy,
     sampleHierarchySelector,
     SAMPLE_SLICE_NAME,
-} from "./sampleSlice";
-import { peek } from "@genome-spy/core/utils/arrayUtils";
-import { field } from "@genome-spy/core/utils/field";
-import kWayMerge from "@genome-spy/core/utils/kWayMerge";
-import SampleView from "./sampleView";
-import UnitView from "@genome-spy/core/view/unitView";
-import Collector from "@genome-spy/core/data/collector";
-import FlowNode from "@genome-spy/core/data/flowNode";
+} from "./sampleSlice.js";
+import { peek } from "@genome-spy/core/utils/arrayUtils.js";
+import { field } from "@genome-spy/core/utils/field.js";
+import kWayMerge from "@genome-spy/core/utils/kWayMerge.js";
+import SampleView from "./sampleView.js";
+import UnitView from "@genome-spy/core/view/unitView.js";
+import Collector from "@genome-spy/core/data/collector.js";
+import FlowNode from "@genome-spy/core/data/flowNode.js";
 
 /** The number of samples in a facet */
 const SAMPLE_COUNT_VARIABLE = "sampleCount";

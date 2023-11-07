@@ -1,14 +1,14 @@
 import { isNumber } from "vega-util";
 
-import { shallowArrayEquals } from "../../../utils/arrayUtils";
-import smoothstep from "../../../utils/smoothstep";
+import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
+import smoothstep from "../../../utils/smoothstep.js";
 import {
     validTicks,
     tickValues,
     tickFormat,
     tickCount,
-} from "../../../scale/ticks";
-import SingleAxisLazySource from "./singleAxisLazySource";
+} from "../../../scale/ticks.js";
+import SingleAxisLazySource from "./singleAxisLazySource.js";
 
 /**
  *

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
-import FilterTransform from "./transforms/filter";
-import FormulaTransform from "./transforms/formula";
-import Collector from "./collector";
-import { SynchronousSequenceSource } from "./flowTestUtils";
+import FilterTransform from "./transforms/filter.js";
+import FormulaTransform from "./transforms/formula.js";
+import Collector from "./collector.js";
+import { SynchronousSequenceSource } from "./flowTestUtils.js";
 
 describe("Test flow graphs", () => {
     test("Trivial graph: sequence to collector", () => {

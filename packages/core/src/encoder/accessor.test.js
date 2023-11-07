@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import AccessorFactory from "./accessor";
+import AccessorFactory from "./accessor.js";
 
 const af = new AccessorFactory();
 

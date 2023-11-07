@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import createCloner from "./cloner";
+import createCloner from "./cloner.js";
 
 const template = {
     a: 1,

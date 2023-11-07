@@ -1,6 +1,6 @@
-import UnitView from "@genome-spy/core/view/unitView";
-import DataSource from "../dataSource";
-import { reconfigureScales } from "@genome-spy/core/view/scaleResolution";
+import UnitView from "../../../view/unitView.js";
+import DataSource from "../dataSource.js";
+import { reconfigureScales } from "../../../view/scaleResolution.js";
 
 /**
  * Base class for data sources that listen a domain and propagate data lazily.

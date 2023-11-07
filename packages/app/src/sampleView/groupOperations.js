@@ -1,7 +1,7 @@
 import { group, quantileSorted, range, sort as d3sort } from "d3-array";
 import { format as d3format } from "d3-format";
 import { isNumber } from "vega-util";
-import { isGroupGroup } from "./sampleSlice";
+import { isGroupGroup } from "./sampleSlice.js";
 
 /**
  * @typedef {import("./sampleState").Group} Group

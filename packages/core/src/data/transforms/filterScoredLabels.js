@@ -1,8 +1,8 @@
 import { bisector } from "d3-array";
-import FlowNode, { BEHAVIOR_COLLECTS } from "../flowNode";
-import { topKSlice } from "../../utils/topK";
-import ReservationMap from "../../utils/reservationMap";
-import { field } from "../../utils/field";
+import FlowNode, { BEHAVIOR_COLLECTS } from "../flowNode.js";
+import { topKSlice } from "../../utils/topK.js";
+import ReservationMap from "../../utils/reservationMap.js";
+import { field } from "../../utils/field.js";
 
 export default class FilterScoredLabelsTransform extends FlowNode {
     get behavior() {

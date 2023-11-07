@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import createDomain, {
     toRegularArray as r,
     PiecewiseDomain,
-} from "./domainArray";
+} from "./domainArray.js";
 
 describe("Build quantitative domains", () => {
     test("Empty domain", () => {

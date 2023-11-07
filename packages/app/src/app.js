@@ -1,31 +1,31 @@
 import { loader as vegaLoader } from "vega-loader";
-import GenomeSpy from "@genome-spy/core/genomeSpy";
+import GenomeSpy from "@genome-spy/core/genomeSpy.js";
 import "./styles/genome-spy-app.scss";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
 import { html, render } from "lit";
 
-import { VISIT_STOP } from "@genome-spy/core/view/view";
-import SampleView, { isSampleSpec } from "./sampleView/sampleView";
-import IDBBookmarkDatabase from "./bookmark/idbBookmarkDatabase";
-import { asArray } from "@genome-spy/core/utils/arrayUtils";
+import { VISIT_STOP } from "@genome-spy/core/view/view.js";
+import SampleView, { isSampleSpec } from "./sampleView/sampleView.js";
+import IDBBookmarkDatabase from "./bookmark/idbBookmarkDatabase.js";
+import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 
-import "./components/toolbar";
+import "./components/toolbar.js";
 import { createRef, ref } from "lit/directives/ref.js";
-import { debounce } from "@genome-spy/core/utils/debounce";
-import Provenance from "./state/provenance";
+import { debounce } from "@genome-spy/core/utils/debounce.js";
+import Provenance from "./state/provenance.js";
 
-import MergeSampleFacets from "./sampleView/mergeFacets";
-import { transforms } from "@genome-spy/core/data/transforms/transformFactory";
-import { messageBox } from "./utils/ui/modal";
-import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash";
+import MergeSampleFacets from "./sampleView/mergeFacets.js";
+import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
+import { messageBox } from "./utils/ui/modal.js";
+import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash.js";
 import {
     restoreBookmark,
     restoreBookmarkAndShowInfoBox,
-} from "./bookmark/bookmark";
-import StoreHelper from "./state/storeHelper";
-import { watch } from "./state/watch";
-import { viewSettingsSlice } from "./viewSettingsSlice";
-import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase";
+} from "./bookmark/bookmark.js";
+import StoreHelper from "./state/storeHelper.js";
+import { watch } from "./state/watch.js";
+import { viewSettingsSlice } from "./viewSettingsSlice.js";
+import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 

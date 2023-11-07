@@ -1,5 +1,5 @@
-import LayerView from "./layerView";
-import { orient2channel } from "./axisView";
+import LayerView from "./layerView.js";
+import { orient2channel } from "./axisView.js";
 
 /**
  * @typedef {import("../spec/channel").PrimaryPositionalChannel} PositionalChannel

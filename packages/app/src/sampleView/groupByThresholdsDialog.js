@@ -1,12 +1,12 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faObjectGroup, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { html, nothing, render } from "lit";
-import { defaultScheme } from "../components/histogram";
-import { createModal } from "../utils/ui/modal";
+import { defaultScheme } from "../components/histogram.js";
+import { createModal } from "../utils/ui/modal.js";
 import {
     createThresholdGroupAccessor,
     formatThresholdInterval,
-} from "./groupOperations";
+} from "./groupOperations.js";
 
 /**
  * @param {import("./types").AttributeInfo} attributeInfo

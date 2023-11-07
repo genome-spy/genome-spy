@@ -1,4 +1,4 @@
-import FlowNode from "../flowNode";
+import FlowNode from "../flowNode.js";
 
 /**
  * A reservoir sampler, based on: https://www.wikiwand.com/en/Reservoir_sampling

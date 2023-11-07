@@ -6,12 +6,12 @@ import {
     isFieldDef,
     isSecondaryChannel,
     isValueDef,
-} from "../encoder/encoder";
-import { peek } from "../utils/arrayUtils";
-import coalesce from "../utils/coalesce";
+} from "../encoder/encoder.js";
+import { peek } from "../utils/arrayUtils.js";
+import coalesce from "../utils/coalesce.js";
 
-import mergeObjects from "../utils/mergeObjects";
-import { getCachedOrCall } from "../utils/propertyCacher";
+import mergeObjects from "../utils/mergeObjects.js";
+import { getCachedOrCall } from "../utils/propertyCacher.js";
 
 export default class AxisResolution {
     /**

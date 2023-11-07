@@ -1,4 +1,4 @@
-import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip";
+import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip.js";
 
 /** @type {Set<HTMLElement>} */
 const visibleDropdowns = new Set();

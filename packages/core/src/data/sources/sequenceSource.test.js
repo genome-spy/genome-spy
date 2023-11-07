@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import Collector from "../collector";
-import SequenceSource from "./sequenceSource";
+import Collector from "../collector.js";
+import SequenceSource from "./sequenceSource.js";
 
 /**
  * @param {SequenceSource} source

@@ -1,5 +1,9 @@
 import { expect, test } from "vitest";
-import { getCachedOrCall, invalidate, invalidateAll } from "./propertyCacher";
+import {
+    getCachedOrCall,
+    invalidate,
+    invalidateAll,
+} from "./propertyCacher.js";
 
 class TestClass {
     constructor() {

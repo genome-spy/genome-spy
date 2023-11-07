@@ -1,7 +1,7 @@
 import FlatQueue from "flatqueue";
 
-import { field } from "../../utils/field";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
+import { field } from "../../utils/field.js";
+import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
 
 /**
  * Computes coverage for sorted segments

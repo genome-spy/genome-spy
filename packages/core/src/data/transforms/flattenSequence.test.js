@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { processData } from "../flowTestUtils";
-import FlattenSequenceTransform from "./flattenSequence";
+import { processData } from "../flowTestUtils.js";
+import FlattenSequenceTransform from "./flattenSequence.js";
 
 /**
  * @param {import("./flattenSequence").FlattenSequenceParams} params

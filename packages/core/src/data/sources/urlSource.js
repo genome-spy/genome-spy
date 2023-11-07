@@ -1,6 +1,6 @@
 import { loader as vegaLoader, read } from "vega-loader";
-import { getFormat } from "./dataUtils";
-import DataSource from "./dataSource";
+import { getFormat } from "./dataUtils.js";
+import DataSource from "./dataSource.js";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} data

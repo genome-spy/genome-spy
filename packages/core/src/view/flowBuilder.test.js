@@ -1,15 +1,15 @@
 import { expect, test } from "vitest";
-import Collector from "../data/collector";
-import FlowNode from "../data/flowNode";
-import FilterTransform from "../data/transforms/filter";
-import FormulaTransform from "../data/transforms/formula";
-import InlineSource from "../data/sources/inlineSource";
-import SequenceSource from "../data/sources/sequenceSource";
-import { buildDataFlow } from "./flowBuilder";
-import { create } from "./testUtils";
-import CloneTransform from "../data/transforms/clone";
-import LayerView from "./layerView";
-import UnitView from "./unitView";
+import Collector from "../data/collector.js";
+import FlowNode from "../data/flowNode.js";
+import FilterTransform from "../data/transforms/filter.js";
+import FormulaTransform from "../data/transforms/formula.js";
+import InlineSource from "../data/sources/inlineSource.js";
+import SequenceSource from "../data/sources/sequenceSource.js";
+import { buildDataFlow } from "./flowBuilder.js";
+import { create } from "./testUtils.js";
+import CloneTransform from "../data/transforms/clone.js";
+import LayerView from "./layerView.js";
+import UnitView from "./unitView.js";
 
 /**
  *

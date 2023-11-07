@@ -1,13 +1,13 @@
-import InlineSource, { isInlineData } from "./inlineSource";
-import UrlSource, { isUrlData } from "./urlSource";
-import SequenceSource, { isSequenceGenerator } from "./sequenceSource";
-import AxisTickSource from "./dynamic/axisTickSource";
-import AxisGenomeSource from "./dynamic/axisGenomeSource";
-import IndexedFastaSource from "./dynamic/indexedFastaSource";
-import BigWigSource from "./dynamic/bigWigSource";
-import BigBedSource from "./dynamic/bigBedSource";
-import BamSource from "./dynamic/bamSource";
-import Gff3Source from "./dynamic/gff3Source";
+import InlineSource, { isInlineData } from "./inlineSource.js";
+import UrlSource, { isUrlData } from "./urlSource.js";
+import SequenceSource, { isSequenceGenerator } from "./sequenceSource.js";
+import AxisTickSource from "./dynamic/axisTickSource.js";
+import AxisGenomeSource from "./dynamic/axisGenomeSource.js";
+import IndexedFastaSource from "./dynamic/indexedFastaSource.js";
+import BigWigSource from "./dynamic/bigWigSource.js";
+import BigBedSource from "./dynamic/bigBedSource.js";
+import BamSource from "./dynamic/bamSource.js";
+import Gff3Source from "./dynamic/gff3Source.js";
 
 /**
  * @param {Partial<import("../../spec/data").Data>} params

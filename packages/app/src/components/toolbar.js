@@ -5,16 +5,16 @@ import {
     faQuestionCircle,
     faExpandArrowsAlt,
 } from "@fortawesome/free-solid-svg-icons";
-import { findGenomeScaleResolution } from "./searchField";
-import { asArray } from "@genome-spy/core/utils/arrayUtils";
+import { findGenomeScaleResolution } from "./searchField.js";
+import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import bowtie from "@genome-spy/core/img/bowtie.svg";
-import { messageBox } from "../utils/ui/modal";
+import { messageBox } from "../utils/ui/modal.js";
 
 import packageJson from "../../package.json";
 
-import "./viewSettingsButton";
-import "./provenanceToolbar";
-import "./bookmarkButton";
+import "./viewSettingsButton.js";
+import "./provenanceToolbar.js";
+import "./bookmarkButton.js";
 
 export default class Toolbar extends LitElement {
     constructor() {

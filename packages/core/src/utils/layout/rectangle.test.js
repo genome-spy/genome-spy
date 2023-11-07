@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import Rectangle from "./rectangle";
-import Padding from "./padding";
+import Rectangle from "./rectangle.js";
+import Padding from "./padding.js";
 
 test("Rectangle creation", () => {
     const r = Rectangle.create(1, 2, 3, 4);

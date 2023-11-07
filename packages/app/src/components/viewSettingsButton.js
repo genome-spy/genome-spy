@@ -2,21 +2,21 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faSlidersH } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, html, nothing } from "lit";
 import { live } from "lit/directives/live.js";
-import AxisView from "@genome-spy/core/view/axisView";
-import LayerView from "@genome-spy/core/view/layerView";
+import AxisView from "@genome-spy/core/view/axisView.js";
+import LayerView from "@genome-spy/core/view/layerView.js";
 import {
     findUniqueViewNames,
     isCustomViewName,
-} from "@genome-spy/core/view/viewUtils";
-import { watch } from "../state/watch";
-import { queryDependency } from "../utils/dependency";
-import { nestPaths } from "../utils/nestPaths";
-import { toggleDropdown } from "../utils/ui/dropdown";
-import { viewSettingsSlice } from "../viewSettingsSlice";
+} from "@genome-spy/core/view/viewUtils.js";
+import { watch } from "../state/watch.js";
+import { queryDependency } from "../utils/dependency.js";
+import { nestPaths } from "../utils/nestPaths.js";
+import { toggleDropdown } from "../utils/ui/dropdown.js";
+import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import {
     nodesToTreesWithAccessor,
     visitTree,
-} from "@genome-spy/core/utils/trees";
+} from "@genome-spy/core/utils/trees.js";
 
 class ViewSettingsButton extends LitElement {
     /**

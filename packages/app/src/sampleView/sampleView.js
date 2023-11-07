@@ -2,48 +2,48 @@ import { isObject } from "vega-util";
 import {
     findEncodedFields,
     findUniqueViewNames,
-} from "@genome-spy/core/view/viewUtils";
-import ContainerView from "@genome-spy/core/view/containerView";
+} from "@genome-spy/core/view/viewUtils.js";
+import ContainerView from "@genome-spy/core/view/containerView.js";
 import {
     FlexDimensions,
     mapToPixelCoords,
     scaleLocSize,
     sumSizeDefs,
-} from "@genome-spy/core/utils/layout/flexLayout";
-import { MetadataView } from "./metadataView";
-import generateAttributeContextMenu from "./attributeContextMenu";
-import Padding from "@genome-spy/core/utils/layout/padding";
-import clamp from "@genome-spy/core/utils/clamp";
-import createDataSource from "@genome-spy/core/data/sources/dataSourceFactory";
-import FlowNode from "@genome-spy/core/data/flowNode";
-import { createChain } from "@genome-spy/core/view/flowBuilder";
-import ConcatView from "@genome-spy/core/view/concatView";
-import UnitView from "@genome-spy/core/view/unitView";
-import { GroupPanel } from "./groupPanel";
+} from "@genome-spy/core/utils/layout/flexLayout.js";
+import { MetadataView } from "./metadataView.js";
+import generateAttributeContextMenu from "./attributeContextMenu.js";
+import Padding from "@genome-spy/core/utils/layout/padding.js";
+import clamp from "@genome-spy/core/utils/clamp.js";
+import createDataSource from "@genome-spy/core/data/sources/dataSourceFactory.js";
+import FlowNode from "@genome-spy/core/data/flowNode.js";
+import { createChain } from "@genome-spy/core/view/flowBuilder.js";
+import ConcatView from "@genome-spy/core/view/concatView.js";
+import UnitView from "@genome-spy/core/view/unitView.js";
+import { GroupPanel } from "./groupPanel.js";
 import {
     createSampleSlice,
     getActionInfo,
     getFlattenedGroupHierarchy,
     sampleHierarchySelector,
     SAMPLE_SLICE_NAME,
-} from "./sampleSlice";
-import CompositeAttributeInfoSource from "./compositeAttributeInfoSource";
-import { watch } from "../state/watch";
+} from "./sampleSlice.js";
+import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
+import { watch } from "../state/watch.js";
 import { createSelector } from "@reduxjs/toolkit";
-import { LocationManager, getSampleLocationAt } from "./locationManager";
-import { contextMenu, DIVIDER } from "../utils/ui/contextMenu";
-import interactionToZoom from "@genome-spy/core/view/zoom";
-import Rectangle from "@genome-spy/core/utils/layout/rectangle";
+import { LocationManager, getSampleLocationAt } from "./locationManager.js";
+import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
+import interactionToZoom from "@genome-spy/core/view/zoom.js";
+import Rectangle from "@genome-spy/core/utils/layout/rectangle.js";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 import {
     createBackground,
     createBackgroundStroke,
     GridChild,
     translateAxisCoords,
-} from "@genome-spy/core/view/gridView";
-import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory";
-import getViewAttributeInfo from "./viewAttributeInfoSource";
-import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat";
+} from "@genome-spy/core/view/gridView.js";
+import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory.js";
+import getViewAttributeInfo from "./viewAttributeInfoSource.js";
+import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 

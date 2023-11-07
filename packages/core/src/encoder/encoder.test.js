@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
-import AccessorFactory from "./accessor";
+import AccessorFactory from "./accessor.js";
 import { scale as vegaScale } from "vega-scale";
 
-import { createEncoder } from "./encoder";
+import { createEncoder } from "./encoder.js";
 
 describe("Encoder", () => {
     /** @type {Record<string, import("../view/viewUtils").ChannelDef>} */

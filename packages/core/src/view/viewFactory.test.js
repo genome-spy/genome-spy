@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { ViewFactory } from "./viewFactory";
+import { ViewFactory } from "./viewFactory.js";
 
 test("isViewSpec", () => {
     const factory = new ViewFactory();

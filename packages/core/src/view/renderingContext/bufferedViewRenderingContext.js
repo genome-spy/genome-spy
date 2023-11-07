@@ -1,6 +1,6 @@
 import { group } from "d3-array";
 
-import ViewRenderingContext from "./viewRenderingContext";
+import ViewRenderingContext from "./viewRenderingContext.js";
 
 export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /**

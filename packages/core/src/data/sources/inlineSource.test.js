@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import Collector from "../collector";
-import InlineSource from "./inlineSource";
+import Collector from "../collector.js";
+import InlineSource from "./inlineSource.js";
 
 /**
  * @param {InlineSource} source

@@ -1,5 +1,5 @@
-import { isLayerSpec, isUnitSpec } from "./viewFactory";
-import ContainerView from "./containerView";
+import { isLayerSpec, isUnitSpec } from "./viewFactory.js";
+import ContainerView from "./containerView.js";
 
 export default class LayerView extends ContainerView {
     /**

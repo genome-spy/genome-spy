@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import coalesceProperties from "./propertyCoalescer";
+import coalesceProperties from "./propertyCoalescer.js";
 
 test("CoalesceProperties works as expected", () => {
     const defaults = { a: 10, b: 11 };

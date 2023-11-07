@@ -1,13 +1,13 @@
 import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
-import { RectVertexBuilder } from "../gl/dataToVertices";
+import { RectVertexBuilder } from "../gl/dataToVertices.js";
 
-import Mark from "./mark";
-import { fixFill, fixPositional, fixStroke } from "./markUtils";
-import { asArray } from "../utils/arrayUtils";
-import { isValueDef } from "../encoder/encoder";
-import { getCachedOrCall } from "../utils/propertyCacher";
+import Mark from "./mark.js";
+import { fixFill, fixPositional, fixStroke } from "./markUtils.js";
+import { asArray } from "../utils/arrayUtils.js";
+import { isValueDef } from "../encoder/encoder.js";
+import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { isDiscrete } from "vega-scale";
 
 export default class RectMark extends Mark {

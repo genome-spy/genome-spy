@@ -1,6 +1,6 @@
-import { field } from "../../utils/field";
-import numberExtractor from "../../utils/numberExtractor";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
+import { field } from "../../utils/field.js";
+import numberExtractor from "../../utils/numberExtractor.js";
+import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
 
 /**
  * Flattens "run-length encoded" exons. The transforms inputs the start

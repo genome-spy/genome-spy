@@ -14,7 +14,7 @@
 // This file is a mess
 // TODO: Fix types, etc.
 
-import { tickCount } from "./ticks";
+import { tickCount } from "./ticks.js";
 import {
     error,
     inherits,

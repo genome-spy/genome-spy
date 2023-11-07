@@ -14,7 +14,7 @@ import createEncoders, {
     isChannelWithScale,
     isDatumDef,
     isValueDef,
-} from "../encoder/encoder";
+} from "../encoder/encoder.js";
 import {
     DOMAIN_PREFIX,
     generateValueGlsl,
@@ -24,18 +24,18 @@ import {
     isHighPrecisionScale,
     toHighPrecisionDomainUniform,
     splitHighPrecision,
-} from "../scale/glslScaleGenerator";
+} from "../scale/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
 import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
 import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
 import GLSL_PICKING_FRAGMENT from "../gl/includes/picking.fragment.glsl";
-import { getCachedOrCall } from "../utils/propertyCacher";
-import { createProgram } from "../gl/webGLHelper";
-import coalesceProperties from "../utils/propertyCoalescer";
-import { isScalar } from "../utils/variableTools";
+import { getCachedOrCall } from "../utils/propertyCacher.js";
+import { createProgram } from "../gl/webGLHelper.js";
+import coalesceProperties from "../utils/propertyCoalescer.js";
+import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
-import scaleNull from "../utils/scaleNull";
+import scaleNull from "../utils/scaleNull.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";

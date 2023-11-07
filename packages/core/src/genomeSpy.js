@@ -1,38 +1,38 @@
 import { formats as vegaFormats } from "vega-loader";
 
 import css from "./styles/genome-spy.css.js";
-import Tooltip from "./utils/ui/tooltip";
+import Tooltip from "./utils/ui/tooltip.js";
 
-import AccessorFactory from "./encoder/accessor";
+import AccessorFactory from "./encoder/accessor.js";
 import {
     resolveScalesAndAxes,
     processImports,
     setImplicitScaleNames,
     calculateCanvasSize,
-} from "./view/viewUtils";
-import UnitView from "./view/unitView";
+} from "./view/viewUtils.js";
+import UnitView from "./view/unitView.js";
 
-import WebGLHelper from "./gl/webGLHelper";
-import Rectangle from "./utils/layout/rectangle";
-import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext";
-import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext";
-import InteractionEvent from "./utils/interactionEvent";
-import Point from "./utils/layout/point";
-import Animator from "./utils/animator";
-import DataFlow from "./data/dataFlow";
-import { buildDataFlow } from "./view/flowBuilder";
-import { optimizeDataFlow } from "./data/flowOptimizer";
-import GenomeStore from "./genome/genomeStore";
-import BmFontManager from "./fonts/bmFontManager";
-import fasta from "./data/formats/fasta";
-import { VISIT_STOP } from "./view/view";
-import Inertia, { makeEventTemplate } from "./utils/inertia";
-import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler";
-import dataTooltipHandler from "./tooltip/dataTooltipHandler";
-import { invalidatePrefix } from "./utils/propertyCacher";
-import { ViewFactory } from "./view/viewFactory";
-import ImplicitRootView from "./view/implicitRootView";
-import { reconfigureScales } from "./view/scaleResolution";
+import WebGLHelper from "./gl/webGLHelper.js";
+import Rectangle from "./utils/layout/rectangle.js";
+import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext.js";
+import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext.js";
+import InteractionEvent from "./utils/interactionEvent.js";
+import Point from "./utils/layout/point.js";
+import Animator from "./utils/animator.js";
+import DataFlow from "./data/dataFlow.js";
+import { buildDataFlow } from "./view/flowBuilder.js";
+import { optimizeDataFlow } from "./data/flowOptimizer.js";
+import GenomeStore from "./genome/genomeStore.js";
+import BmFontManager from "./fonts/bmFontManager.js";
+import fasta from "./data/formats/fasta.js";
+import { VISIT_STOP } from "./view/view.js";
+import Inertia, { makeEventTemplate } from "./utils/inertia.js";
+import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
+import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
+import { invalidatePrefix } from "./utils/propertyCacher.js";
+import { ViewFactory } from "./view/viewFactory.js";
+import ImplicitRootView from "./view/implicitRootView.js";
+import { reconfigureScales } from "./view/scaleResolution.js";
 
 /**
  * Events that are broadcasted to all views.

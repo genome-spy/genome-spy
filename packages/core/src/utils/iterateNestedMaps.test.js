@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { group } from "d3-array";
-import iterateNestedMaps from "./iterateNestedMaps";
+import iterateNestedMaps from "./iterateNestedMaps.js";
 
 const data = [
     { name: "jim", amount: "34.0", date: "11/12/2015" },

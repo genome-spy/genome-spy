@@ -1,5 +1,5 @@
-import { field } from "../../utils/field";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode";
+import { field } from "../../utils/field.js";
+import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
 
 export default class FlattenSequenceTransform extends FlowNode {
     get behavior() {

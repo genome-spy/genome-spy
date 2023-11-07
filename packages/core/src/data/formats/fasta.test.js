@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import fasta from "./fasta";
+import fasta from "./fasta.js";
 
 test("fasta", () => {
     const fileContent = `>A stuff

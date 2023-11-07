@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import kWayMerge from "./kWayMerge";
+import kWayMerge from "./kWayMerge.js";
 
 test("k-way merge merges multiple sorted arrays", () => {
     /** @type {{a: number}[][]} */

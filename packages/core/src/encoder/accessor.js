@@ -1,8 +1,8 @@
-import createFunction from "../utils/expression";
+import createFunction from "../utils/expression.js";
 
 import { accessorFields, constant } from "vega-util";
-import { isDatumDef, isExprDef, isFieldDef } from "./encoder";
-import { field } from "../utils/field";
+import { isDatumDef, isExprDef, isFieldDef } from "./encoder.js";
+import { field } from "../utils/field.js";
 
 export default class AccessorFactory {
     /**

@@ -2,8 +2,8 @@ import { color as d3color } from "d3-color";
 import { range } from "d3-array";
 import { scheme as vegaScheme, interpolateColors } from "vega-scale";
 import { isString, isArray, isFunction } from "vega-util";
-import { peek } from "../utils/arrayUtils";
-import { createOrUpdateTexture } from "../gl/webGLHelper";
+import { peek } from "../utils/arrayUtils.js";
+import { createOrUpdateTexture } from "../gl/webGLHelper.js";
 
 /**
  * @param {string | import("../spec/scale").SchemeParams} schemeParams

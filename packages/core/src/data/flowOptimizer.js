@@ -1,5 +1,5 @@
-import { BEHAVIOR_CLONES, BEHAVIOR_COLLECTS } from "./flowNode";
-import CloneTransform from "./transforms/clone";
+import { BEHAVIOR_CLONES, BEHAVIOR_COLLECTS } from "./flowNode.js";
+import CloneTransform from "./transforms/clone.js";
 
 /**
  * @param {import("./flowNode").default} node

@@ -1,4 +1,4 @@
-import ViewRenderingContext from "./viewRenderingContext";
+import ViewRenderingContext from "./viewRenderingContext.js";
 
 /**
  * This class is mainly for illustrative purpose, i.e., how the rendering

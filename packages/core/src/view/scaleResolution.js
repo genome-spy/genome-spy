@@ -1,6 +1,6 @@
-import scaleLocus, { isScaleLocus } from "../genome/scaleLocus";
-import scaleIndex from "../genome/scaleIndex";
-import scaleNull from "../utils/scaleNull";
+import scaleLocus, { isScaleLocus } from "../genome/scaleLocus.js";
+import scaleIndex from "../genome/scaleIndex.js";
+import scaleNull from "../utils/scaleNull.js";
 
 import {
     panLinear,
@@ -17,10 +17,10 @@ import {
 } from "vega-util";
 import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
-import mergeObjects from "../utils/mergeObjects";
-import createScale, { configureScale } from "../scale/scale";
+import mergeObjects from "../utils/mergeObjects.js";
+import createScale, { configureScale } from "../scale/scale.js";
 
-import { invalidate, getCachedOrCall } from "../utils/propertyCacher";
+import { invalidate, getCachedOrCall } from "../utils/propertyCacher.js";
 import {
     getChannelDefWithScale,
     getDiscreteRange,
@@ -29,15 +29,15 @@ import {
     isPositionalChannel,
     isPrimaryPositionalChannel,
     isSecondaryChannel,
-} from "../encoder/encoder";
+} from "../encoder/encoder.js";
 import {
     isChromosomalLocus,
     isChromosomalLocusInterval,
-} from "../genome/genome";
-import { NominalDomain } from "../utils/domainArray";
+} from "../genome/genome.js";
+import { NominalDomain } from "../utils/domainArray.js";
 import { easeCubicInOut } from "d3-ease";
-import { asArray, shallowArrayEquals } from "../utils/arrayUtils";
-import eerp from "../utils/eerp";
+import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
+import eerp from "../utils/eerp.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.

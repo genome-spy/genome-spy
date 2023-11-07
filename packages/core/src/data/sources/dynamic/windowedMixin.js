@@ -1,6 +1,6 @@
 /** @typedef {new (...args: any[]) => any} Constructor */
 
-import { shallowArrayEquals } from "../../../utils/arrayUtils";
+import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 
 /**
  * Utils for handling data sources that are fetched in chunks.

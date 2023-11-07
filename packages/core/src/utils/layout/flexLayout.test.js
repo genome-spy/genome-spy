@@ -6,7 +6,7 @@ import {
     isStretching,
     parseSizeDef,
     sumSizeDefs,
-} from "./flexLayout";
+} from "./flexLayout.js";
 
 test("parseSize", () => {
     expect(parseSizeDef(10)).toEqual({ px: 10, grow: 0 });

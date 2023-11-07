@@ -1,10 +1,10 @@
 import { BigWig } from "@gmod/bbi";
 import { RemoteFile } from "generic-filehandle";
 
-import { debounce } from "../../../utils/debounce";
-import SingleAxisLazySource from "./singleAxisLazySource";
-import windowedMixin from "./windowedMixin";
-import addBaseUrl from "../../../utils/addBaseUrl";
+import { debounce } from "../../../utils/debounce.js";
+import SingleAxisLazySource from "./singleAxisLazySource.js";
+import windowedMixin from "./windowedMixin.js";
+import addBaseUrl from "../../../utils/addBaseUrl.js";
 
 /**
  *

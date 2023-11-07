@@ -3,17 +3,17 @@ import { classMap } from "lit/directives/class-map.js";
 
 import { inferType } from "vega-loader";
 
-import ConcatView from "@genome-spy/core/view/concatView";
-import UnitView from "@genome-spy/core/view/unitView";
-import generateAttributeContextMenu from "./attributeContextMenu";
-import formatObject from "@genome-spy/core/utils/formatObject";
-import { buildDataFlow } from "@genome-spy/core/view/flowBuilder";
-import { NOMINAL, ORDINAL } from "@genome-spy/core/view/scaleResolution";
-import { resolveScalesAndAxes } from "@genome-spy/core/view/viewUtils";
+import ConcatView from "@genome-spy/core/view/concatView.js";
+import UnitView from "@genome-spy/core/view/unitView.js";
+import generateAttributeContextMenu from "./attributeContextMenu.js";
+import formatObject from "@genome-spy/core/utils/formatObject.js";
+import { buildDataFlow } from "@genome-spy/core/view/flowBuilder.js";
+import { NOMINAL, ORDINAL } from "@genome-spy/core/view/scaleResolution.js";
+import { resolveScalesAndAxes } from "@genome-spy/core/view/viewUtils.js";
 import { easeQuadInOut } from "d3-ease";
-import { peek } from "@genome-spy/core/utils/arrayUtils";
+import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
-import { contextMenu, DIVIDER } from "../utils/ui/contextMenu";
+import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 
 // TODO: Move to a more generic place
 /** @type {Record<string, import("@genome-spy/core/spec/channel").Type>} */

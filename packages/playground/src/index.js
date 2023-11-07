@@ -3,7 +3,7 @@ import { ref, createRef } from "lit/directives/ref.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faColumns, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
-import { debounce } from "@genome-spy/core/utils/debounce";
+import { debounce } from "@genome-spy/core/utils/debounce.js";
 import defaultSpec from "./defaultspec.json?raw";
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
@@ -14,8 +14,8 @@ import packageJson from "../package.json";
 import "./codeEditor";
 import "./filePane";
 import "./playground.scss";
-import addMarkdownProps from "./markdownProps";
-import { asArray } from "@genome-spy/core/utils/arrayUtils";
+import addMarkdownProps from "./markdownProps.js";
+import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 
 registerJsonSchema();
 

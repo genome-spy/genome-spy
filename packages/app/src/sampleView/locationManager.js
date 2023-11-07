@@ -1,17 +1,17 @@
-import { createOrUpdateTexture } from "@genome-spy/core/gl/webGLHelper";
-import { peek } from "@genome-spy/core/utils/arrayUtils";
-import clamp from "@genome-spy/core/utils/clamp";
+import { createOrUpdateTexture } from "@genome-spy/core/gl/webGLHelper.js";
+import { peek } from "@genome-spy/core/utils/arrayUtils.js";
+import clamp from "@genome-spy/core/utils/clamp.js";
 import {
     interpolateLocSizes,
     locSizeEncloses,
     mapToPixelCoords,
     translateLocSize,
-} from "@genome-spy/core/utils/layout/flexLayout";
-import Padding from "@genome-spy/core/utils/layout/padding";
-import smoothstep from "@genome-spy/core/utils/smoothstep";
-import transition from "@genome-spy/core/utils/transition";
+} from "@genome-spy/core/utils/layout/flexLayout.js";
+import Padding from "@genome-spy/core/utils/layout/padding.js";
+import smoothstep from "@genome-spy/core/utils/smoothstep.js";
+import transition from "@genome-spy/core/utils/transition.js";
 import { easeCubicOut, easeExpOut } from "d3-ease";
-import { getFlattenedGroupHierarchy } from "./sampleSlice";
+import { getFlattenedGroupHierarchy } from "./sampleSlice.js";
 
 export class LocationManager {
     /**

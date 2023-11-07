@@ -1,7 +1,7 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faFilter } from "@fortawesome/free-solid-svg-icons";
 import { html, render } from "lit";
-import { createModal } from "../utils/ui/modal";
+import { createModal } from "../utils/ui/modal.js";
 
 /**
  * @param {import("./types").AttributeInfo} attributeInfo

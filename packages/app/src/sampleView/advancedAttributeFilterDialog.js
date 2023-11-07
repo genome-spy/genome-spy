@@ -8,9 +8,9 @@ import { html, nothing, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { repeat } from "lit/directives/repeat.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
-import { createModal, messageBox } from "../utils/ui/modal";
+import { createModal, messageBox } from "../utils/ui/modal.js";
 import { classMap } from "lit/directives/class-map.js";
-import "../components/histogram";
+import "../components/histogram.js";
 
 /**
  * @typedef {import("@genome-spy/core/spec/channel").Scalar} Scalar

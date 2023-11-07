@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import CoverageTransform from "./coverage";
-import { processData } from "../flowTestUtils";
+import CoverageTransform from "./coverage.js";
+import { processData } from "../flowTestUtils.js";
 
 /**
  * @typedef {import("../../spec/transform").CoverageParams} CoverageParams

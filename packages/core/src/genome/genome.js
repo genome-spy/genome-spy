@@ -2,7 +2,7 @@ import { bisect } from "d3-array";
 import { tsvParseRows } from "d3-dsv";
 import { loader } from "vega-loader";
 import { isObject } from "vega-util";
-import { formatRange } from "./locusFormat";
+import { formatRange } from "./locusFormat.js";
 
 const defaultBaseUrl = "https://genomespy.app/data/genomes/";
 

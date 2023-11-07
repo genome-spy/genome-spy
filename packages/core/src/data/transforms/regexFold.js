@@ -1,5 +1,5 @@
-import { asArray } from "../../utils/arrayUtils";
-import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode";
+import { asArray } from "../../utils/arrayUtils.js";
+import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode.js";
 
 /**
  * Folds fields using a regex

@@ -1,4 +1,4 @@
-import SingleAxisLazySource from "./singleAxisLazySource";
+import SingleAxisLazySource from "./singleAxisLazySource.js";
 
 /**
  * Propagates the genome (chromosome) data associated with the channel.

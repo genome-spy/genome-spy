@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { nestPaths } from "./nestPaths";
+import { nestPaths } from "./nestPaths.js";
 
 test("nestPaths nests paths properly", () => {
     // prettier-ignore

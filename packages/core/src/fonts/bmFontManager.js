@@ -3,7 +3,7 @@ import { createTexture } from "twgl.js";
 import { isString } from "vega-util";
 import latoRegular from "../fonts/Lato-Regular.json";
 import latoRegularBitmap from "../fonts/Lato-Regular.png";
-import getMetrics from "./bmFontMetrics";
+import getMetrics from "./bmFontMetrics.js";
 
 const WEIGHTS = {
     thin: 100,

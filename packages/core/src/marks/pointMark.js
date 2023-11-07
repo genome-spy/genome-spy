@@ -1,12 +1,12 @@
 import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
 import { quantileSorted } from "d3-array";
-import { PointVertexBuilder } from "../gl/dataToVertices";
+import { PointVertexBuilder } from "../gl/dataToVertices.js";
 import VERTEX_SHADER from "../gl/point.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
 
-import Mark from "./mark";
-import { sampleIterable } from "../data/transforms/sample";
-import { fixFill, fixStroke } from "./markUtils";
+import Mark from "./mark.js";
+import { sampleIterable } from "../data/transforms/sample.js";
+import { fixFill, fixStroke } from "./markUtils.js";
 
 /** @type {Record<string, import("../spec/channel").ChannelDef>} */
 const defaultEncoding = {};

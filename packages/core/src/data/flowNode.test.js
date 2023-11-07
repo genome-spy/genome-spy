@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import FlowNode from "./flowNode";
-import { validateLinks } from "./flowOptimizer";
+import FlowNode from "./flowNode.js";
+import { validateLinks } from "./flowOptimizer.js";
 
 describe("Flow mutation", () => {
     test("Excise a terminal node", () => {

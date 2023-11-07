@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
-import SampleTransform from "./sample";
+import SampleTransform from "./sample.js";
 import { extent } from "d3-array";
-import { createChain } from "../../view/flowBuilder";
+import { createChain } from "../../view/flowBuilder.js";
 
 test("SampleTransform produces roughly uniform distributions", () => {
     const size = 10;

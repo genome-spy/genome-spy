@@ -1,4 +1,4 @@
-import { embed } from "./index";
+import { embed } from "./index.js";
 
 // This is for development purposes. Use "npm start" to launch.
 

@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { createAndInitialize } from "./testUtils";
-import createDomain, { toRegularArray as r } from "../utils/domainArray";
-import LayerView from "./layerView";
-import ConcatView from "./concatView";
-import UnitView from "./unitView";
-import { primaryPositionalChannels } from "../encoder/encoder";
+import { createAndInitialize } from "./testUtils.js";
+import createDomain, { toRegularArray as r } from "../utils/domainArray.js";
+import LayerView from "./layerView.js";
+import ConcatView from "./concatView.js";
+import UnitView from "./unitView.js";
+import { primaryPositionalChannels } from "../encoder/encoder.js";
 
 /**
  * @typedef {import("../spec/channel").Channel} Channel

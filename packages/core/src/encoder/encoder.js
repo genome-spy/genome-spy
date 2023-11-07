@@ -1,6 +1,6 @@
 import { isDiscrete } from "vega-scale";
-import createIndexer from "../utils/indexer";
-import scaleNull from "../utils/scaleNull";
+import createIndexer from "../utils/indexer.js";
+import scaleNull from "../utils/scaleNull.js";
 
 /**
  * Creates an object that contains encoders for every channel of a mark

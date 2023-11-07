@@ -1,4 +1,4 @@
-import NamedSource from "./sources/namedSource";
+import NamedSource from "./sources/namedSource.js";
 
 /**
  * @template H A key (string, object, whatever) that is used to retrieve

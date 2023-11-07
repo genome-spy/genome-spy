@@ -1,5 +1,5 @@
-import createFunction from "../../utils/expression";
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
+import createFunction from "../../utils/expression.js";
+import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
 
 export default class FormulaTransform extends FlowNode {
     get behavior() {

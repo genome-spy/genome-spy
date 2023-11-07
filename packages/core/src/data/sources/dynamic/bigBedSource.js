@@ -2,10 +2,10 @@ import { BigBed } from "@gmod/bbi";
 import { RemoteFile } from "generic-filehandle";
 import BED from "@gmod/bed";
 
-import SingleAxisLazySource from "./singleAxisLazySource";
-import windowedMixin from "./windowedMixin";
-import { debounce } from "../../../utils/debounce";
-import addBaseUrl from "@genome-spy/core/utils/addBaseUrl";
+import SingleAxisLazySource from "./singleAxisLazySource.js";
+import windowedMixin from "./windowedMixin.js";
+import { debounce } from "../../../utils/debounce.js";
+import addBaseUrl from "../../../utils/addBaseUrl.js";
 
 export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
     /** Keep track of the order of the requests */

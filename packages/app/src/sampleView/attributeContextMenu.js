@@ -3,9 +3,9 @@
  */
 
 import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
-import { advancedAttributeFilterDialog } from "./advancedAttributeFilterDialog";
-import groupByThresholdsDialog from "./groupByThresholdsDialog";
-import retainFirstNCategoriesDialog from "./retainFirstNCategoriesDialog";
+import { advancedAttributeFilterDialog } from "./advancedAttributeFilterDialog.js";
+import groupByThresholdsDialog from "./groupByThresholdsDialog.js";
+import retainFirstNCategoriesDialog from "./retainFirstNCategoriesDialog.js";
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title

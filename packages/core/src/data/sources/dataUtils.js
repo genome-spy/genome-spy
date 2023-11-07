@@ -1,4 +1,4 @@
-import { isInlineData } from "./inlineSource";
+import { isInlineData } from "./inlineSource.js";
 
 /**
  * Validates data source params, infers format if not specified explicitly,
@@ -44,7 +44,7 @@ export const makeWrapper = (/** @type {any} */ d) =>
     typeof d != "object" ? scalarWrapper : nopWrapper;
 
 const scalarWrapper = (
-    /** @type {import("@genome-spy/core/spec/channel").Scalar} */ x
+    /** @type {import("../../spec/channel").Scalar} */ x
 ) => ({ data: x });
 
 const nopWrapper = (/** @type {import("../flowNode").Datum} */ x) => x;

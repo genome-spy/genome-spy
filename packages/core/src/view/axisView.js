@@ -1,5 +1,5 @@
-import LayerView from "./layerView";
-import { FlexDimensions } from "../utils/layout/flexLayout";
+import LayerView from "./layerView.js";
+import { FlexDimensions } from "../utils/layout/flexLayout.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 

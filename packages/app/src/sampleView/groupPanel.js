@@ -1,9 +1,9 @@
 import { range } from "d3-array";
-import { peek } from "@genome-spy/core/utils/arrayUtils";
-import { invalidatePrefix } from "@genome-spy/core/utils/propertyCacher";
-import LayerView from "@genome-spy/core/view/layerView";
-import { contextMenu } from "../utils/ui/contextMenu";
-import { iterateGroupHierarchy } from "./sampleSlice";
+import { peek } from "@genome-spy/core/utils/arrayUtils.js";
+import { invalidatePrefix } from "@genome-spy/core/utils/propertyCacher.js";
+import LayerView from "@genome-spy/core/view/layerView.js";
+import { contextMenu } from "../utils/ui/contextMenu.js";
+import { iterateGroupHierarchy } from "./sampleSlice.js";
 import { isString } from "vega-util";
 import { render } from "lit";
 

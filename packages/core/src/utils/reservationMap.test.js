@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import ReservationMap from "./reservationMap";
+import ReservationMap from "./reservationMap.js";
 
 test("ReservationMap works correctly", () => {
     const m = new ReservationMap(20);

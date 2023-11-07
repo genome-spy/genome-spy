@@ -1,4 +1,4 @@
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode";
+import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
 
 export const DEFAULT_AS = "_uniqueId";
 

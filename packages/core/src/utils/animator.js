@@ -1,4 +1,4 @@
-import doTransition from "./transition";
+import doTransition from "./transition.js";
 
 export default class Animator {
     /**

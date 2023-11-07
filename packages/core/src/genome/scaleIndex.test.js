@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import scaleIndex from "./scaleIndex";
+import scaleIndex from "./scaleIndex.js";
 
 test("Scale with defaults works as expected", () => {
     const scale = scaleIndex();

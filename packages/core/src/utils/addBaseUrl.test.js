@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import addBaseUrl from "./addBaseUrl";
+import addBaseUrl from "./addBaseUrl.js";
 
 test("addBaseUrl adds baseUrl when needed", () => {
     expect(addBaseUrl("foo.html", "https://site.com/")).toEqual(
