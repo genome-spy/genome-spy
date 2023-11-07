@@ -353,7 +353,7 @@ export default class GenomeSpy {
         this.broadcast("dataFlowBuilt", flow);
 
         // @ts-expect-error
-        if (import.meta.env.DEV) {
+        if (import.meta.env?.DEV) {
             flow.dataSources.forEach((ds) => console.log(ds.subtreeToString()));
         }
 
