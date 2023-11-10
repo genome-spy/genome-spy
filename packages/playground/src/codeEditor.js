@@ -6,11 +6,12 @@ import { LitElement, nothing } from "lit";
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 import "monaco-editor/esm/vs/language/json/monaco.contribution.js";
-import "monaco-editor/esm/vs/editor/browser/controller/coreCommands.js";
-import "monaco-editor/esm/vs/editor/contrib/folding/folding.js";
-import "monaco-editor/esm/vs/editor/contrib/multicursor/multicursor.js";
-import "monaco-editor/esm/vs/editor/contrib/bracketMatching/bracketMatching.js";
-import "monaco-editor/esm/vs/editor/contrib/hover/hover.js";
+import "monaco-editor/esm/vs/editor/browser/coreCommands.js";
+import "monaco-editor/esm/vs/editor/contrib/folding/browser/folding.js";
+import "monaco-editor/esm/vs/editor/contrib/multicursor/browser/multicursor.js";
+import "monaco-editor/esm/vs/editor/contrib/bracketMatching/browser/bracketMatching.js";
+import "monaco-editor/esm/vs/editor/contrib/hover/browser/hover.js";
+import "monaco-editor/esm/vs/editor/contrib/find/browser/findController.js";
 
 // @ts-ignore
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";

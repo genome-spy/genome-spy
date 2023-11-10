@@ -9,6 +9,10 @@ export default defineConfig({
             fileRegex: /\.glsl$/,
         }),
     ],
+    define: {
+        // A hack needed by events package
+        global: "globalThis",
+    },
     build: {
         outDir: "../dist",
         emptyOutDir: true,
