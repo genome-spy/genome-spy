@@ -16,9 +16,10 @@ export default class LayerView extends ContainerView {
      * @param {ContainerView} layoutParent
      * @param {import("./view").default} dataParent
      * @param {string} name
+     * @param {import("./view").ViewOptions} [options]
      */
-    constructor(spec, context, layoutParent, dataParent, name) {
-        super(spec, context, layoutParent, dataParent, name);
+    constructor(spec, context, layoutParent, dataParent, name, options) {
+        super(spec, context, layoutParent, dataParent, name, options);
 
         this.spec = spec;
 

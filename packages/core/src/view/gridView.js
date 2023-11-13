@@ -69,9 +69,18 @@ export default class GridView extends ContainerView {
      * @param {View} dataParent
      * @param {string} name
      * @param {number} columns
+     * @param {import("./view").ViewOptions} [options]
      */
-    constructor(spec, context, layoutParent, dataParent, name, columns) {
-        super(spec, context, layoutParent, dataParent, name);
+    constructor(
+        spec,
+        context,
+        layoutParent,
+        dataParent,
+        name,
+        columns,
+        options
+    ) {
+        super(spec, context, layoutParent, dataParent, name, options);
         this.spec = spec;
 
         this.#spacing = spec.spacing ?? 10;
@@ -837,10 +846,11 @@ export class GridChild {
                     layoutParent.context,
                     layoutParent,
                     view,
-                    "background" + serial
+                    "background" + serial,
+                    {
+                        blockEncodingInheritance: true,
+                    }
                 );
-                // TODO: Make configurable through spec:
-                this.background.blockEncodingInheritance = true;
             }
 
             const backgroundStrokeSpec = createBackgroundStroke(viewBackground);
@@ -850,10 +860,11 @@ export class GridChild {
                     layoutParent.context,
                     layoutParent,
                     view,
-                    "backgroundStroke" + serial
+                    "backgroundStroke" + serial,
+                    {
+                        blockEncodingInheritance: true,
+                    }
                 );
-                // TODO: Make configurable through spec:
-                this.backgroundStroke.blockEncodingInheritance = true;
             }
 
             const title = createTitle(view.spec.title);
@@ -863,10 +874,11 @@ export class GridChild {
                     layoutParent.context,
                     layoutParent,
                     view,
-                    "title" + serial
+                    "title" + serial,
+                    {
+                        blockEncodingInheritance: true,
+                    }
                 );
-                // TODO: Make configurable through spec:
-                unitView.blockEncodingInheritance = true;
                 this.title = unitView;
             }
         }

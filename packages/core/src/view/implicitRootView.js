@@ -4,15 +4,17 @@ export default class ImplicitRootView extends GridView {
     /**
      * @param {import("../types/viewContext").default} context
      * @param {import("./view").default} view
+     * @param {import("./view").ViewOptions} [options]
      */
-    constructor(context, view) {
+    constructor(context, view, options) {
         super(
             { vconcat: [] },
             context,
             undefined,
             undefined,
             "implicitRoot",
-            1
+            1,
+            options
         );
 
         view.layoutParent = this;

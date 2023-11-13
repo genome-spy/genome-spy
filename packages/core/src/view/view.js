@@ -50,6 +50,12 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @param {import("../utils/layout/rectangle").default} coords
  *      Coordinates of the view
  * @param {import("../utils/interactionEvent").default} event
+ *
+ * @typedef {object} ViewOptions
+ * @prop {boolean} [blockEncodingInheritance]
+ *      Don't inherit encodings from parent. Default: false.
+ * @prop {boolean} [contributesToScaleDomain]
+ *      Whether ScaleResolution should include this view or its children in the domain. Default: true
  */
 export default class View {
     /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
@@ -73,8 +79,10 @@ export default class View {
      * @param {import("./containerView").default} layoutParent Parent that handles rendering of this view
      * @param {import("./view").default} dataParent Parent that provides data, encodings, and is used in scale resolution
      * @param {string} name
+     * @param {ViewOptions} [options]
+     *
      */
-    constructor(spec, context, layoutParent, dataParent, name) {
+    constructor(spec, context, layoutParent, dataParent, name, options = {}) {
         if (!spec) {
             throw new Error("View spec must be defined!");
         }
@@ -100,17 +108,11 @@ export default class View {
 
         initPropertyCache(this);
 
-        /**
-         * Don't inherit encodings from parent.
-         * TODO: Make configurable through spec. Allow more fine-grained control.
-         */
-        this.blockEncodingInheritance = false;
-
-        /**
-         * Whether ScaleResolution should include this view or its children in the domain.
-         * This is mainly used to block axis views from contributing to the domain.
-         */
-        this.contributesToScaleDomain = true;
+        this.options = {
+            blockEncodingInheritance: false,
+            contributesToScaleDomain: true,
+            ...options,
+        };
 
         /**
          * Whether GridView or equivalent should draw axis and grid lines for this view.
@@ -429,7 +431,7 @@ export default class View {
      */
     getEncoding() {
         const pe =
-            this.dataParent && !this.blockEncodingInheritance
+            this.dataParent && !this.options.blockEncodingInheritance
                 ? this.dataParent.getEncoding()
                 : {};
         const te = this.spec.encoding || {};

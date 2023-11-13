@@ -48,9 +48,10 @@ export default class UnitView extends ContainerView {
      * @param {import("./containerView").default} layoutParent
      * @param {import("./view").default} dataParent
      * @param {string} name
+     * @param {import("./view").ViewOptions} [options]
      */
-    constructor(spec, context, layoutParent, dataParent, name) {
-        super(spec, context, layoutParent, dataParent, name);
+    constructor(spec, context, layoutParent, dataParent, name, options) {
+        super(spec, context, layoutParent, dataParent, name, options);
 
         this.spec = spec; // Set here again to keep types happy
 
