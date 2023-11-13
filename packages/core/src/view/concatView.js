@@ -76,18 +76,7 @@ export default class ConcatView extends GridView {
             (isVConcatSpec(this.spec) && channel === "x") ||
             (isHConcatSpec(this.spec) && channel === "y")
         ) {
-            const types = new Set(
-                this.children
-                    .map((child) => child.getEncoding()[channel])
-                    .filter((x) => x)
-                    .map((e) => "type" in e && e.type)
-                    .filter((type) => type)
-            );
-
-            return types.size === 1 &&
-                (types.has("index") || types.has("locus"))
-                ? "shared"
-                : "independent";
+            return "shared";
         } else {
             return "independent";
         }

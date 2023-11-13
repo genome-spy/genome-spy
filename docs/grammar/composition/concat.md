@@ -178,11 +178,10 @@ following example.
 
 ## Resolve
 
-By default, all channels have independent scales and axes. However, because
+By default, all channels have `"independent"` scales and axes. However, because
 track-based layouts that resemble genome browsers are such a common use case,
-`vconcat` has a special treatment for the `x` channel: if all child views use
-`"locus"` or `"index"` data type on the `x` channel, the scale resolution
-defaults to `"shared"`. However, axes are still `"independent"` by default.
+`vconcat` defaults to `"shared"` resolution for `x` channel and `hconcat`
+defaults to `"shared"` resolution for `y` channel.
 
 ### Shared axes
 
