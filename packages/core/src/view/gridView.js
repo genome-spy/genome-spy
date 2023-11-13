@@ -162,6 +162,9 @@ export default class GridView extends ContainerView {
      * @protected
      */
     async createAxes() {
+        /** @type {Promise<void>[]} */
+        const promises = [];
+
         // Axis ticks, labels, etc. They should be created only if this view has caught
         // the scale resolution for the channel.
         for (const channel of primaryPositionalChannels) {
@@ -182,22 +185,17 @@ export default class GridView extends ContainerView {
                         this,
                         this
                     );
+                    promises.push(v.initializeChildren());
                     this.#sharedAxes[channel] = v;
-
-                    // Axes are created after scales are resolved, so we need to resolve possible new scales here
-                    v.visit((view) => {
-                        if (view instanceof UnitView) {
-                            view.resolve("scale");
-                        }
-                    });
                 }
             }
         }
 
         // Create view decorations, grid lines, and independent axes for each child
-        await Promise.all(
-            this.#children.map((gridChild) => gridChild.createAxes())
-        );
+        return Promise.all([
+            ...promises,
+            ...this.#children.map((gridChild) => gridChild.createAxes()),
+        ]);
     }
 
     /**
