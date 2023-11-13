@@ -2,7 +2,6 @@
 import View from "./view.js";
 
 import UnitView from "./unitView.js";
-import ImportView from "./importView.js";
 import LayerView from "./layerView.js";
 import ConcatView from "./concatView.js";
 import { isArray, isObject, isString } from "vega-util";
@@ -37,8 +36,6 @@ export class ViewFactory {
                     )
                 );
 
-        // @ts-expect-error TODO: Fix typing
-        this.addViewType(isImportSpec, makeDefaultFactory(ImportView));
         this.addViewType(isLayerSpec, makeDefaultFactory(LayerView));
         this.addViewType(isUnitSpec, makeDefaultFactory(UnitView));
         this.addViewType(isVConcatSpec, makeDefaultFactory(ConcatView));
