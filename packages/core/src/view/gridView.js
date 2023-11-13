@@ -153,11 +153,6 @@ export default class GridView extends ContainerView {
         return this.#children.length;
     }
 
-    async onScalesResolved() {
-        await super.onScalesResolved();
-        //await this.createAxes();
-    }
-
     /**
      * @protected
      */

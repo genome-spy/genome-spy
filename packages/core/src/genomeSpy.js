@@ -383,15 +383,20 @@ export default class GenomeSpy {
 
         setImplicitScaleNames(this.viewRoot);
 
+        const views = this.viewRoot.getDescendants();
+
+        // View opacity should be configured after all scales have been resolved.
+        // Currently this doesn't work if new views are added dynamically.
+        // TODO: Figure out how to handle dynamic view addition/removal nicely.
+        views.forEach((view) => view.configureViewOpacity());
+
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this._glHelper.invalidateSize();
 
         // Collect all unit views to a list because they need plenty of initialization
         const unitViews = /** @type {UnitView[]} */ (
-            this.viewRoot
-                .getDescendants()
-                .filter((view) => view instanceof UnitView)
+            views.filter((view) => view instanceof UnitView)
         );
 
         // Build the data flow based on the view hierarchy

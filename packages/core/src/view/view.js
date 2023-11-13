@@ -393,7 +393,7 @@ export default class View {
     /**
      * Called after all scales in the view hierarchy have been resolved.
      */
-    async onScalesResolved() {
+    configureViewOpacity() {
         // Only set the opacity function once. The idea is to allow custom functions
         // and prevent accidental overwrites.
         if (
@@ -661,7 +661,7 @@ function createViewOpacityFunction(view) {
 
             const scale = opacityDef.channel
                 ? getScale(opacityDef.channel)
-                : getScale("x") || getScale("y");
+                : getScale("x") ?? getScale("y");
 
             if (!scale) {
                 throw new Error(
