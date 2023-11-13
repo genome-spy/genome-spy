@@ -30,7 +30,12 @@ import Inertia, { makeEventTemplate } from "./utils/inertia.js";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
-import { ViewFactory, isImportSpec, isUnitSpec } from "./view/viewFactory.js";
+import {
+    ViewFactory,
+    isImportSpec,
+    isLayerSpec,
+    isUnitSpec,
+} from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
 import ContainerView from "./view/containerView.js";
 
@@ -336,7 +341,7 @@ export default class GenomeSpy {
                 // Wrap a unit spec at root into a grid view to get axes, etc.
                 if (
                     !dataParent &&
-                    isUnitSpec(viewSpec) &&
+                    (isUnitSpec(viewSpec) || isLayerSpec(viewSpec)) &&
                     defaultName === "viewRoot"
                 ) {
                     viewSpec = {
