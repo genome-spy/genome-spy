@@ -15,6 +15,7 @@ import { isFieldDef, getPrimaryChannel } from "../encoder/encoder.js";
 import { appendToBaseUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
+import ViewError from "../utils/viewError.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -177,8 +178,9 @@ export default class View {
                         const domain = scale.domain();
                         steps = peek(domain) - domain[0];
                     } else {
-                        throw new Error(
-                            `Cannot use step-based size with "${scale.type}" scale!`
+                        throw new ViewError(
+                            `Cannot use step-based size with "${scale.type}" scale!`,
+                            this
                         );
                     }
 
@@ -196,8 +198,9 @@ export default class View {
 
                     return { px: steps * stepSize, grow: 0 };
                 } else {
-                    throw new Error(
-                        "Cannot use 'step' size with missing scale!"
+                    throw new ViewError(
+                        "Cannot use 'step' size with missing scale!",
+                        this
                     );
                 }
             } else {
@@ -664,8 +667,9 @@ function createViewOpacityFunction(view) {
                 : getScale("x") ?? getScale("y");
 
             if (!scale) {
-                throw new Error(
-                    "Cannot find a resolved quantitative scale for dynamic opacity!"
+                throw new ViewError(
+                    "Cannot find a resolved quantitative scale for dynamic opacity!",
+                    view
                 );
             }
 
