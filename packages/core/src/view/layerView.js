@@ -1,5 +1,6 @@
 import { isLayerSpec, isUnitSpec } from "./viewFactory.js";
 import ContainerView from "./containerView.js";
+import ViewError from "../utils/viewError.js";
 
 export default class LayerView extends ContainerView {
     /**
@@ -44,8 +45,9 @@ export default class LayerView extends ContainerView {
                                     !isLayerSpec(importedSpec) &&
                                     !isUnitSpec(importedSpec)
                                 ) {
-                                    throw new Error(
-                                        "LayerView accepts only unit or layer specs as children!"
+                                    throw new ViewError(
+                                        "LayerView accepts only unit or layer specs as children!",
+                                        this
                                     );
                                     // TODO: Add view to exception
                                 }
@@ -54,6 +56,10 @@ export default class LayerView extends ContainerView {
                     )
             )
         );
+    }
+
+    get children() {
+        return this.#children.slice();
     }
 
     /**

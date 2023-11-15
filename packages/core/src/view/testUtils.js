@@ -9,11 +9,10 @@
 import { checkForDuplicateScaleNames, initializeData } from "./viewUtils.js";
 import AccessorFactory from "../encoder/accessor.js";
 import DataFlow from "../data/dataFlow.js";
-import { ViewFactory } from "./viewFactory.js";
+import { ViewFactory, isImportSpec } from "./viewFactory.js";
 import GenomeStore from "../genome/genomeStore.js";
-import ImplicitRootView from "./implicitRootView.js";
-import View from "./view.js";
 import BmFontManager from "../fonts/bmFontManager.js";
+import ContainerView from "./containerView.js";
 
 /**
  *
@@ -36,7 +35,24 @@ export function createTestViewContext(partialContext = {}) {
         accessorFactory: new AccessorFactory(),
 
         createView: function (spec, parent, defaultName) {
-            return viewTypeRegistry.createView(spec, c, parent, defaultName);
+            throw new Error("Not implemented: createView");
+        },
+
+        createOrImportView: async function (spec, parent, defaultName) {
+            if (!isImportSpec(spec)) {
+                const view = viewTypeRegistry.createView(
+                    spec,
+                    c,
+                    parent,
+                    defaultName
+                );
+                if (view instanceof ContainerView) {
+                    await view.initializeChildren();
+                }
+                return view;
+            } else {
+                throw new Error("Import specs not supported in tests!");
+            }
         },
 
         dataFlow: new DataFlow(),
@@ -53,12 +69,16 @@ export function createTestViewContext(partialContext = {}) {
 }
 
 /** @type {<V extends View>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext) => V} */
-export function create(spec, viewClass, context = undefined) {
+export async function create(spec, viewClass, context = undefined) {
     const c = createTestViewContext(context);
-    const view = c.createView(spec, null, null, "root");
+    const view = await c.createOrImportView(spec, null, null, "root");
 
     if (!(view instanceof viewClass)) {
         throw new Error("ViewClass and the spec do not match!");
+    }
+
+    if (view instanceof ContainerView) {
+        await view.initializeChildren();
     }
 
     return view;
@@ -75,27 +95,9 @@ export async function createAndInitialize(
     context = undefined,
     options = { noData: false, implicitRoot: false }
 ) {
-    const view = create(spec, viewClass, context);
+    const view = await create(spec, viewClass, context);
 
     checkForDuplicateScaleNames(view);
     await initializeData(view, view.context.dataFlow);
     return view;
-}
-
-/**
- * Creates a view and wraps it in an implicit root view if needed.
- * Does not initialize data.
- *
- * @param {ViewSpec} spec
- */
-export async function createAndWrap(spec) {
-    const view = create(spec, View);
-
-    const root =
-        view.needsAxes.x || view.needsAxes.y
-            ? new ImplicitRootView(view.context, view)
-            : view;
-
-    checkForDuplicateScaleNames(root);
-    return root;
 }

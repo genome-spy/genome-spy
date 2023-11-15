@@ -29,8 +29,8 @@ const mark = {
     tooltip: null,
 };
 
-test("Trivial flow", () => {
-    const root = create(
+test("Trivial flow", async () => {
+    const root = await create(
         {
             data: { values: [3.141] },
             transform: [
@@ -56,8 +56,8 @@ test("Trivial flow", () => {
     expect(flow.collectors[0]).toBe(byPath(dataSource, [0, 0, 0]));
 });
 
-test("Branching flow", () => {
-    const root = create(
+test("Branching flow", async () => {
+    const root = await create(
         {
             data: { values: [3.141] },
             layer: [
@@ -96,8 +96,8 @@ test("Branching flow", () => {
     expect(byPath(dataSource, [1, 0])).toBeInstanceOf(Collector);
 });
 
-test("Nested data sources", () => {
-    const root = create(
+test("Nested data sources", async () => {
+    const root = await create(
         {
             data: { values: [1] },
             transform: [{ type: "filter", expr: "datum.data > 0" }],

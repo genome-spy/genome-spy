@@ -350,12 +350,14 @@ export default class GenomeSpy {
                     };
                 }
 
-                const view = this.createView(
+                const view = self.viewFactory.createView(
                     viewSpec,
+                    context,
                     layoutParent,
                     dataParent,
                     defaultName
                 );
+
                 if (view instanceof ContainerView) {
                     await view.initializeChildren();
                 }
