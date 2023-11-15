@@ -286,6 +286,7 @@ export default class SampleView extends ContainerView {
 
         await this.#gridChild.createAxes();
         await this.#createSummaryViews();
+        // @ts-expect-error TODO: Resolve this
         await this.#gridChild.summaryViews.createAxes();
 
         await this.groupPanel.initializeChildren();
