@@ -863,7 +863,7 @@ export function reconfigureScales(fromViews) {
         // Ancestors
         for (const view of fromView.getDataAncestors()) {
             // Skip axis views etc. They should not mess with the domains.
-            if (!view.contributesToScaleDomain) {
+            if (!view.options.contributesToScaleDomain) {
                 break;
             }
             collectResolutions(view);
