@@ -68,7 +68,7 @@ export function createTestViewContext(partialContext = {}) {
     return c;
 }
 
-/** @type {<V extends View>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext) => V} */
+/** @type {<V extends import("./view.js").default>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext) => Promise<V>} */
 export async function create(spec, viewClass, context = undefined) {
     const c = createTestViewContext(context);
     const view = await c.createOrImportView(spec, null, null, "root");
@@ -87,7 +87,7 @@ export async function create(spec, viewClass, context = undefined) {
 /**
  * Creates a view and initializes its data. Does not wrap it in an implicit root view.
  *
- * @type {<V extends View>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext, options?: {noData: boolean, implicitRoot: boolean}) => Promise<V>}
+ * @type {<V extends import("./view.js").default>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext, options?: {noData: boolean, implicitRoot: boolean}) => Promise<V>}
  */
 export async function createAndInitialize(
     spec,
