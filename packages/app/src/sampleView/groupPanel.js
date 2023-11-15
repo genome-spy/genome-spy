@@ -120,7 +120,7 @@ export class GroupPanel extends LayerView {
             },
             sampleView.context,
             sampleView,
-            dataParent, //undefined, // Everything breaks if we pass dataParent here. TODO: Why?
+            dataParent,
             "sample-groups"
         );
 
