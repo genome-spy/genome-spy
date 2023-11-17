@@ -10,7 +10,7 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v4
             - uses: awalsh128/cache-apt-pkgs-action@latest
               with:
                   packages: libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev
@@ -30,10 +30,9 @@ jobs:
                   python setup.py install
                   popd
 
-            - name: Use Node.js 20.x
-              uses: actions/setup-node@v2
+            - uses: actions/setup-node@v4
               with:
-                  node-version: 20.x
+                  node-version: 18
                   cache: "npm"
 
             - name: Install npm dependencies
