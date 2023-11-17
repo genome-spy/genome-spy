@@ -9,11 +9,11 @@ import generateAttributeContextMenu from "./attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
 import { buildDataFlow } from "@genome-spy/core/view/flowBuilder.js";
 import { NOMINAL, ORDINAL } from "@genome-spy/core/view/scaleResolution.js";
-import { resolveScalesAndAxes } from "@genome-spy/core/view/viewUtils.js";
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
+import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
 
 // TODO: Move to a more generic place
 /** @type {Record<string, import("@genome-spy/core/spec/channel").Type>} */
@@ -358,7 +358,7 @@ export class MetadataView extends ConcatView {
             }
         }
 
-        resolveScalesAndAxes(this);
+        checkForDuplicateScaleNames(this);
     }
 
     /**

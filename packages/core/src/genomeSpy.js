@@ -5,8 +5,7 @@ import Tooltip from "./utils/ui/tooltip.js";
 
 import AccessorFactory from "./encoder/accessor.js";
 import {
-    resolveScalesAndAxes,
-    processImports,
+    checkForDuplicateScaleNames,
     setImplicitScaleNames,
     calculateCanvasSize,
 } from "./view/viewUtils.js";
@@ -30,8 +29,7 @@ import Inertia, { makeEventTemplate } from "./utils/inertia.js";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
-import { ViewFactory } from "./view/viewFactory.js";
-import ImplicitRootView from "./view/implicitRootView.js";
+import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
 
 /**
@@ -299,6 +297,9 @@ export default class GenomeSpy {
 
             isViewSpec: (spec) => self.viewFactory.isViewSpec(spec),
 
+            /**
+             * @deprecated: TODO: Kill this
+             */
             createView: function (spec, layoutParent, dataParent, defaultName) {
                 return self.viewFactory.createView(
                     spec,
@@ -306,6 +307,23 @@ export default class GenomeSpy {
                     layoutParent,
                     dataParent,
                     defaultName
+                );
+            },
+
+            createOrImportView: async function (
+                spec,
+                layoutParent,
+                dataParent,
+                defaultName,
+                validator
+            ) {
+                return self.viewFactory.createOrImportView(
+                    spec,
+                    context,
+                    layoutParent,
+                    dataParent,
+                    defaultName,
+                    validator
                 );
             },
         };
@@ -317,35 +335,34 @@ export default class GenomeSpy {
             this.registerNamedDataProvider((name) => rootSpec.datasets[name]);
         }
 
-        // Create the view hierarchy
-        this.viewRoot = context.createView(rootSpec, null, null, "viewRoot");
+        // Create the view hierarchy.
+        // This also resolves scales and axes.
+        this.viewRoot = await context.createOrImportView(
+            rootSpec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
 
-        // Replace placeholder ImportViews with actual views.
-        await processImports(this.viewRoot);
+        checkForDuplicateScaleNames(this.viewRoot);
 
-        if (this.viewRoot.needsAxes.x || this.viewRoot.needsAxes.y) {
-            this.viewRoot = new ImplicitRootView(context, this.viewRoot);
-        }
-
-        // Resolve scales, i.e., if possible, pull them towards the root
-        resolveScalesAndAxes(this.viewRoot);
         setImplicitScaleNames(this.viewRoot);
 
-        // Wrap unit or layer views that need axes
-        //this.viewRoot = addDecorators(this.viewRoot);
+        const views = this.viewRoot.getDescendants();
+
+        // View opacity should be configured after all scales have been resolved.
+        // Currently this doesn't work if new views are added dynamically.
+        // TODO: Figure out how to handle dynamic view addition/removal nicely.
+        views.forEach((view) => view.configureViewOpacity());
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this._glHelper.invalidateSize();
 
         // Collect all unit views to a list because they need plenty of initialization
-        /** @type {UnitView[]} */
-        const unitViews = [];
-        this.viewRoot.visit((view) => {
-            if (view instanceof UnitView) {
-                unitViews.push(view);
-            }
-        });
+        const unitViews = /** @type {UnitView[]} */ (
+            views.filter((view) => view instanceof UnitView)
+        );
 
         // Build the data flow based on the view hierarchy
         const flow = buildDataFlow(this.viewRoot, context.dataFlow);

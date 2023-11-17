@@ -8,7 +8,7 @@ import GenomeStore from "../genome/genomeStore";
 import BmFontManager from "../fonts/bmFontManager";
 import Mark from "../marks/mark";
 import { Datum } from "../data/flowNode";
-import { ViewSpec } from "../spec/view";
+import { ImportSpec, ViewSpec } from "../spec/view";
 import ContainerView from "./containerView";
 import { BroadcastEventType } from "../genomeSpy";
 
@@ -76,10 +76,39 @@ export default interface ViewContext {
 
     isViewSpec: (spec: any) => boolean;
 
+    /**
+     * @deprecated Use createOrImportView instead.
+     * @param spec
+     * @param layoutParent
+     * @param dataParent
+     * @param defaultName
+     * @returns
+     */
     createView: (
         spec: ViewSpec,
         layoutParent?: ContainerView,
         dataParent?: View,
         defaultName?: string
     ) => View;
+
+    /**
+     *
+     * @param spec
+     * @param layoutParent
+     * @param dataParent
+     * @param defaultName
+     * @param validator
+     * @returns
+     */
+    createOrImportView: (
+        spec: ViewSpec | ImportSpec,
+        layoutParent?: ContainerView,
+        dataParent?: View,
+        defaultName?: string,
+        /**
+         * Validates whether the imported spec is acceptable for the importer.
+         * The function should throw an Error if the view is not acceptable.
+         */
+        validator?: (spec: ViewSpec) => void
+    ) => Promise<View>;
 }

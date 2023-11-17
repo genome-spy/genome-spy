@@ -15,6 +15,7 @@ import { isFieldDef, getPrimaryChannel } from "../encoder/encoder.js";
 import { appendToBaseUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
+import ViewError from "../utils/viewError.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -50,6 +51,12 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @param {import("../utils/layout/rectangle").default} coords
  *      Coordinates of the view
  * @param {import("../utils/interactionEvent").default} event
+ *
+ * @typedef {object} ViewOptions
+ * @prop {boolean} [blockEncodingInheritance]
+ *      Don't inherit encodings from parent. Default: false.
+ * @prop {boolean} [contributesToScaleDomain]
+ *      Whether ScaleResolution should include this view or its children in the domain. Default: true
  */
 export default class View {
     /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
@@ -73,8 +80,10 @@ export default class View {
      * @param {import("./containerView").default} layoutParent Parent that handles rendering of this view
      * @param {import("./view").default} dataParent Parent that provides data, encodings, and is used in scale resolution
      * @param {string} name
+     * @param {ViewOptions} [options]
+     *
      */
-    constructor(spec, context, layoutParent, dataParent, name) {
+    constructor(spec, context, layoutParent, dataParent, name, options = {}) {
         if (!spec) {
             throw new Error("View spec must be defined!");
         }
@@ -100,17 +109,11 @@ export default class View {
 
         initPropertyCache(this);
 
-        /**
-         * Don't inherit encodings from parent.
-         * TODO: Make configurable through spec. Allow more fine-grained control.
-         */
-        this.blockEncodingInheritance = false;
-
-        /**
-         * Whether ScaleResolution should include this view or its children in the domain.
-         * This is mainly used to block axis views from contributing to the domain.
-         */
-        this.contributesToScaleDomain = true;
+        this.options = {
+            blockEncodingInheritance: false,
+            contributesToScaleDomain: true,
+            ...options,
+        };
 
         /**
          * Whether GridView or equivalent should draw axis and grid lines for this view.
@@ -175,8 +178,9 @@ export default class View {
                         const domain = scale.domain();
                         steps = peek(domain) - domain[0];
                     } else {
-                        throw new Error(
-                            `Cannot use step-based size with "${scale.type}" scale!`
+                        throw new ViewError(
+                            `Cannot use step-based size with "${scale.type}" scale!`,
+                            this
                         );
                     }
 
@@ -194,8 +198,9 @@ export default class View {
 
                     return { px: steps * stepSize, grow: 0 };
                 } else {
-                    throw new Error(
-                        "Cannot use 'step' size with missing scale!"
+                    throw new ViewError(
+                        "Cannot use 'step' size with missing scale!",
+                        this
                     );
                 }
             } else {
@@ -391,7 +396,7 @@ export default class View {
     /**
      * Called after all scales in the view hierarchy have been resolved.
      */
-    onScalesResolved() {
+    configureViewOpacity() {
         // Only set the opacity function once. The idea is to allow custom functions
         // and prevent accidental overwrites.
         if (
@@ -429,7 +434,7 @@ export default class View {
      */
     getEncoding() {
         const pe =
-            this.dataParent && !this.blockEncodingInheritance
+            this.dataParent && !this.options.blockEncodingInheritance
                 ? this.dataParent.getEncoding()
                 : {};
         const te = this.spec.encoding || {};
@@ -659,11 +664,12 @@ function createViewOpacityFunction(view) {
 
             const scale = opacityDef.channel
                 ? getScale(opacityDef.channel)
-                : getScale("x") || getScale("y");
+                : getScale("x") ?? getScale("y");
 
             if (!scale) {
-                throw new Error(
-                    "Cannot find a resolved quantitative scale for dynamic opacity!"
+                throw new ViewError(
+                    "Cannot find a resolved quantitative scale for dynamic opacity!",
+                    view
                 );
             }
 

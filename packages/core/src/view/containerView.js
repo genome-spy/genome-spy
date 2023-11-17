@@ -11,11 +11,16 @@ export default class ContainerView extends View {
      * @param {ContainerView} layoutParent
      * @param {import("./view").default} dataParent
      * @param {string} name
+     * @param {import("./view").ViewOptions} [options]
      */
-    constructor(spec, context, layoutParent, dataParent, name) {
-        super(spec, context, layoutParent, dataParent, name);
+    constructor(spec, context, layoutParent, dataParent, name, options) {
+        super(spec, context, layoutParent, dataParent, name, options);
 
         this.spec = spec;
+    }
+
+    async initializeChildren() {
+        // override
     }
 
     /**

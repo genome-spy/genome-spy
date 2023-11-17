@@ -69,9 +69,18 @@ export default class GridView extends ContainerView {
      * @param {View} dataParent
      * @param {string} name
      * @param {number} columns
+     * @param {import("./view").ViewOptions} [options]
      */
-    constructor(spec, context, layoutParent, dataParent, name, columns) {
-        super(spec, context, layoutParent, dataParent, name);
+    constructor(
+        spec,
+        context,
+        layoutParent,
+        dataParent,
+        name,
+        columns,
+        options
+    ) {
+        super(spec, context, layoutParent, dataParent, name, options);
         this.spec = spec;
 
         this.#spacing = spec.spacing ?? 10;
@@ -80,15 +89,6 @@ export default class GridView extends ContainerView {
         this.#children = [];
 
         this.wrappingFacet = false;
-
-        this._createChildren();
-    }
-
-    /**
-     * @protected
-     */
-    _createChildren() {
-        // Override
     }
 
     /**
@@ -153,13 +153,13 @@ export default class GridView extends ContainerView {
         return this.#children.length;
     }
 
-    onScalesResolved() {
-        super.onScalesResolved();
+    /**
+     * @protected
+     */
+    async createAxes() {
+        /** @type {Promise<void>[]} */
+        const promises = [];
 
-        this.#createAxes();
-    }
-
-    #createAxes() {
         // Axis ticks, labels, etc. They should be created only if this view has caught
         // the scale resolution for the channel.
         for (const channel of primaryPositionalChannels) {
@@ -180,22 +180,17 @@ export default class GridView extends ContainerView {
                         this,
                         this
                     );
+                    promises.push(v.initializeChildren());
                     this.#sharedAxes[channel] = v;
-
-                    // Axes are created after scales are resolved, so we need to resolve possible new scales here
-                    v.visit((view) => {
-                        if (view instanceof UnitView) {
-                            view.resolve("scale");
-                        }
-                    });
                 }
             }
         }
 
         // Create view decorations, grid lines, and independent axes for each child
-        for (const gridChild of this.#children) {
-            gridChild.createAxes();
-        }
+        return Promise.all([
+            ...promises,
+            ...this.#children.map((gridChild) => gridChild.createAxes()),
+        ]);
     }
 
     /**
@@ -844,10 +839,11 @@ export class GridChild {
                     layoutParent.context,
                     layoutParent,
                     view,
-                    "background" + serial
+                    "background" + serial,
+                    {
+                        blockEncodingInheritance: true,
+                    }
                 );
-                // TODO: Make configurable through spec:
-                this.background.blockEncodingInheritance = true;
             }
 
             const backgroundStrokeSpec = createBackgroundStroke(viewBackground);
@@ -857,10 +853,11 @@ export class GridChild {
                     layoutParent.context,
                     layoutParent,
                     view,
-                    "backgroundStroke" + serial
+                    "backgroundStroke" + serial,
+                    {
+                        blockEncodingInheritance: true,
+                    }
                 );
-                // TODO: Make configurable through spec:
-                this.backgroundStroke.blockEncodingInheritance = true;
             }
 
             const title = createTitle(view.spec.title);
@@ -870,10 +867,11 @@ export class GridChild {
                     layoutParent.context,
                     layoutParent,
                     view,
-                    "title" + serial
+                    "title" + serial,
+                    {
+                        blockEncodingInheritance: true,
+                    }
                 );
-                // TODO: Make configurable through spec:
-                unitView.blockEncodingInheritance = true;
                 this.title = unitView;
             }
         }
@@ -897,7 +895,7 @@ export class GridChild {
     /**
      * Create view decorations, grid lines, axes, etc.
      */
-    createAxes() {
+    async createAxes() {
         const { view, axes, gridLines } = this;
 
         /**
@@ -946,7 +944,7 @@ export class GridChild {
          * @param {import("../spec/channel").PrimaryPositionalChannel} channel
          * @param {View} axisParent
          */
-        const createAxis = (r, channel, axisParent) => {
+        const createAxis = async (r, channel, axisParent) => {
             const props = getAxisPropsWithDefaults(r, channel);
 
             if (props) {
@@ -956,13 +954,15 @@ export class GridChild {
                     );
                 }
 
-                axes[props.orient] = new AxisView(
+                const axisView = new AxisView(
                     props,
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,
                     axisParent
                 );
+                axes[props.orient] = axisView;
+                await axisView.initializeChildren();
             }
         };
 
@@ -971,17 +971,19 @@ export class GridChild {
          * @param {import("../spec/channel").PrimaryPositionalChannel} channel
          * @param {View} axisParent
          */
-        const createAxisGrid = (r, channel, axisParent) => {
+        const createAxisGrid = async (r, channel, axisParent) => {
             const props = getAxisPropsWithDefaults(r, channel);
 
             if (props && (props.grid || props.chromGrid)) {
-                gridLines[props.orient] = new AxisGridView(
+                const axisGridView = new AxisGridView(
                     props,
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,
                     axisParent
                 );
+                gridLines[props.orient] = axisGridView;
+                await axisGridView.initializeChildren();
             }
         };
 
@@ -1014,32 +1016,32 @@ export class GridChild {
 
                 // TODO: Optimization: the same grid view could be reused for all children
                 // because they share the axis and scale resolutions anyway.
-                createAxisGrid(r, channel, view);
+                await createAxisGrid(r, channel, view);
             }
         }
 
         // Handle LayerView's possible independent axes
         if (view instanceof LayerView) {
             // First create axes that have an orient preference
-            for (const layerChild of view.children) {
+            for (const layerChild of view) {
                 for (const [channel, r] of Object.entries(
                     layerChild.resolutions.axis
                 )) {
                     const props = r.getAxisProps();
                     if (props && props.orient) {
-                        createAxis(r, channel, layerChild);
+                        await createAxis(r, channel, layerChild);
                     }
                 }
             }
 
             // Then create axes in a priority order
-            for (const layerChild of view.children) {
+            for (const layerChild of view) {
                 for (const [channel, r] of Object.entries(
                     layerChild.resolutions.axis
                 )) {
                     const props = r.getAxisProps();
                     if (props && !props.orient) {
-                        createAxis(r, channel, layerChild);
+                        await createAxis(r, channel, layerChild);
                     }
                 }
             }

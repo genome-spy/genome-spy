@@ -1,4 +1,4 @@
-import { createAndWrap } from "../src/view/testUtils";
+import { create } from "../src/view/testUtils";
 import { describe, expect, test } from "vitest";
 
 import DebugginViewRenderingContext from "../src/view/renderingContext/debuggingViewRenderingContext";
@@ -12,6 +12,7 @@ import specComplexGridLayout2 from "./layout/complex_grid_layout2.json";
 import specConcatPointsText from "./layout/concat_points_text.json";
 import specSharedAxisAtRoot from "./layout/shared_axis_at_root.json";
 import specCondensedConcat from "./layout/condensed_concat.json";
+import View from "../src/view/view";
 
 /**
  * @typedef {import("../src/spec/root").RootSpec} RootSpec
@@ -21,7 +22,9 @@ import specCondensedConcat from "./layout/condensed_concat.json";
  * @param {RootSpec} spec
  */
 async function specToLayout(spec) {
-    const view = await createAndWrap(/** @type {ViewSpec} */ (spec));
+    const view = await create(/** @type {ViewSpec} */ (spec), View, {
+        wrapRoot: true,
+    });
     const renderingContext = new DebugginViewRenderingContext({});
 
     const canvasSize = calculateCanvasSize(view);

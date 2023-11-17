@@ -237,85 +237,67 @@ describe("Scale resolution", () => {
     });
 
     describe("Vertical and horizontal concatenations defaults resolutions for positional channels", async () => {
-        const makeTrack = (
-            /** @type {"x" | "y"} */ channel,
-            /** @type {"locus" | "index"} */ type
-        ) => ({
-            mark: "point",
-            encoding: { [channel]: { field: "foo", type, axis: null } },
-        });
-
         const create = async (
-            /** @type {"vconcat" | "hconcat"} */ viewType,
-            /** @type {import("../spec/channel").Type[]} */ types
+            /** @type {"vconcat" | "hconcat" | "concat"} */ viewType
         ) => {
             return await createAndInitialize(
                 {
                     data: { values: [] },
-                    [viewType]: types.map((t) =>
-                        makeTrack(viewType === "vconcat" ? "x" : "y", t)
-                    ),
+                    [viewType]: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "foo",
+                                    type: "quantitative",
+                                    axis: null,
+                                },
+                                y: {
+                                    field: "foo",
+                                    type: "quantitative",
+                                    axis: null,
+                                },
+                            },
+                        },
+                    ],
                 },
                 ConcatView
             );
         };
 
-        test('Single "locus" track defaults to "shared"', async () => {
-            expect(
-                (await create("vconcat", ["locus"])).getDefaultResolution(
-                    "x",
-                    "scale"
-                )
-            ).toBe("shared");
+        const vconcat = await create("vconcat");
+
+        test('"x" of "vconcat" defaults to "shared"', () => {
+            expect(vconcat.getDefaultResolution("x", "scale")).toBe("shared");
         });
 
-        test('Two "locus" tracks defaults to "shared"', async () => {
-            expect(
-                (
-                    await create("vconcat", ["locus", "locus"])
-                ).getDefaultResolution("x", "scale")
-            ).toBe("shared");
+        test('"y" of "vconcat" defaults to "independent"', () => {
+            expect(vconcat.getDefaultResolution("y", "scale")).toBe(
+                "independent"
+            );
         });
 
-        test('Single "index" track defaults to "shared"', async () => {
-            expect(
-                (await create("vconcat", ["index"])).getDefaultResolution(
-                    "x",
-                    "scale"
-                )
-            ).toBe("shared");
+        const hconcat = await create("hconcat");
+
+        test('"x" of "hconcat" defaults to "independent"', () => {
+            expect(hconcat.getDefaultResolution("x", "scale")).toBe(
+                "independent"
+            );
         });
 
-        test('Mixed "locus" and "index" tracks default to "independent"', async () => {
-            expect(
-                (
-                    await create("vconcat", ["locus", "index"])
-                ).getDefaultResolution("x", "scale")
-            ).toBe("independent");
+        test('"y" of "hconcat" defaults to "shared"', () => {
+            expect(hconcat.getDefaultResolution("y", "scale")).toBe("shared");
         });
 
-        test('Two "quantitative" tracks default to "independent"', async () => {
-            expect(
-                (
-                    await create("vconcat", ["quantitative", "quantitative"])
-                ).getDefaultResolution("x", "scale")
-            ).toBe("independent");
-        });
+        const concat = await create("concat");
 
-        test('Two vertical "quantitative" tracks default to "independent"', async () => {
-            expect(
-                (
-                    await create("hconcat", ["quantitative", "quantitative"])
-                ).getDefaultResolution("y", "scale")
-            ).toBe("independent");
-        });
-
-        test('Two vertical "locus" tracks default to "shared"', async () => {
-            expect(
-                (
-                    await create("hconcat", ["locus", "locus"])
-                ).getDefaultResolution("y", "scale")
-            ).toBe("shared");
+        test('"x" and "y" of "concat" defaults to "independent"', () => {
+            expect(concat.getDefaultResolution("x", "scale")).toBe(
+                "independent"
+            );
+            expect(concat.getDefaultResolution("y", "scale")).toBe(
+                "independent"
+            );
         });
     });
 });
@@ -626,7 +608,10 @@ describe("Named scales", () => {
         return expect(
             createAndInitialize(
                 {
-                    resolve: { scale: { x: "independent" } },
+                    resolve: {
+                        scale: { x: "independent" },
+                        axis: { x: "independent" },
+                    },
                     data: { values: [1, 2] },
                     layer: [
                         {

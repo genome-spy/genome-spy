@@ -738,7 +738,7 @@ export default class ScaleResolution {
                     !member.view
                         .getLayoutAncestors()
                         // TODO: Should check until the resolved scale resolution
-                        .some((view) => !view.contributesToScaleDomain)
+                        .some((view) => !view.options.contributesToScaleDomain)
             )
             .map(domainAccessor)
             .filter((domain) => !!domain);
@@ -863,7 +863,7 @@ export function reconfigureScales(fromViews) {
         // Ancestors
         for (const view of fromView.getDataAncestors()) {
             // Skip axis views etc. They should not mess with the domains.
-            if (!view.contributesToScaleDomain) {
+            if (!view.options.contributesToScaleDomain) {
                 break;
             }
             collectResolutions(view);

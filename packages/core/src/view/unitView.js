@@ -48,9 +48,10 @@ export default class UnitView extends ContainerView {
      * @param {import("./containerView").default} layoutParent
      * @param {import("./view").default} dataParent
      * @param {string} name
+     * @param {import("./view").ViewOptions} [options]
      */
-    constructor(spec, context, layoutParent, dataParent, name) {
-        super(spec, context, layoutParent, dataParent, name);
+    constructor(spec, context, layoutParent, dataParent, name, options) {
+        super(spec, context, layoutParent, dataParent, name, options);
 
         this.spec = spec; // Set here again to keep types happy
 
@@ -61,6 +62,8 @@ export default class UnitView extends ContainerView {
         } else {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
+
+        this.resolve();
 
         /**
          * Not nice! Inconsistent when faceting!
@@ -99,9 +102,14 @@ export default class UnitView extends ContainerView {
      * Pulls scales and axes up in the view hierarcy according to the resolution rules, using dataParents.
      * TODO: legends
      *
-     * @param {ResolutionTarget} type
+     * @param {ResolutionTarget} [type] If not specified, both scales and axes are resolved.
      */
     resolve(type) {
+        if (!type) {
+            this.resolve("scale");
+            this.resolve("axis");
+        }
+
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
 
         const encoding = this.mark.encoding;
