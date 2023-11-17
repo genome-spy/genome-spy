@@ -30,10 +30,10 @@ jobs:
                   python setup.py install
                   popd
 
-            - name: Use Node.js 16.x
+            - name: Use Node.js 20.x
               uses: actions/setup-node@v2
               with:
-                  node-version: 16.x
+                  node-version: 20.x
                   cache: "npm"
 
             - name: Install npm dependencies
