@@ -9,18 +9,19 @@ import View from "./view.js";
 import LayerView from "./layerView.js";
 
 describe("Trivial creations and initializations", () => {
-    test("Fails on empty spec", () => {
-        // @ts-ignore
-        expect(() => create({}, View)).toThrow();
+    test("Fails on empty spec", async () => {
+        expect(create({}, View)).rejects.toThrow();
     });
 
     test("Parses a trivial spec", () => {
-        expect(create({ mark: "point" }, View)).toBeInstanceOf(UnitView);
-        expect(create({ layer: [] }, View)).toBeInstanceOf(LayerView);
+        expect(create({ mark: "point" }, View)).resolves.toBeInstanceOf(
+            UnitView
+        );
+        expect(create({ layer: [] }, View)).resolves.toBeInstanceOf(LayerView);
     });
 
-    test("Parses a more comples spec", () => {
-        const view = create(
+    test("Parses a more comples spec", async () => {
+        const view = await create(
             {
                 concat: [
                     {
@@ -40,7 +41,7 @@ describe("Trivial creations and initializations", () => {
         expect(view.children[2]).toBeUndefined();
     });
 
-    test("Parses and initializes a trivial spec", () => {
+    test("Parses and initializes a trivial spec", async () => {
         const spec = {
             data: { values: [1] },
             mark: "point",

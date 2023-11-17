@@ -2,11 +2,24 @@
 import View from "./view.js";
 
 import UnitView from "./unitView.js";
-import ImportView from "./importView.js";
 import LayerView from "./layerView.js";
 import ConcatView from "./concatView.js";
 import { isArray, isObject, isString } from "vega-util";
+import { loadExternalViewSpec } from "./viewUtils.js";
+import ContainerView from "./containerView";
+import ViewError from "../utils/viewError.js";
 
+export const VIEW_ROOT_NAME = "viewRoot";
+
+/**
+ * @typedef {object} ViewFactoryOptions
+ * @property {boolean} [allowImport]
+ * @property {boolean} [wrapRoot]
+ */
+
+/**
+ *
+ */
 export class ViewFactory {
     /**
      * @typedef {import("../types/viewContext").default} ViewContext
@@ -19,7 +32,18 @@ export class ViewFactory {
      * @typedef {(spec: ViewSpec) => boolean} SpecGuard
      * @typedef {(spec: ViewSpec, context: ViewContext, layoutParent?: import("./containerView").default, dataParent?: import("./view").default, defaultName?: string) => View} Factory
      */
-    constructor() {
+
+    /**
+     * @param {ViewFactoryOptions} [options]
+     */
+    constructor(options = {}) {
+        /** @type {Required<ViewFactoryOptions>} */
+        this.options = {
+            allowImport: true,
+            wrapRoot: true,
+            ...options,
+        };
+
         /** @type {{specGuard: SpecGuard, factory: Factory}[]} */
         this.types = [];
 
@@ -37,8 +61,6 @@ export class ViewFactory {
                     )
                 );
 
-        // @ts-expect-error TODO: Fix typing
-        this.addViewType(isImportSpec, makeDefaultFactory(ImportView));
         this.addViewType(isLayerSpec, makeDefaultFactory(LayerView));
         this.addViewType(isUnitSpec, makeDefaultFactory(UnitView));
         this.addViewType(isVConcatSpec, makeDefaultFactory(ConcatView));
@@ -94,6 +116,77 @@ export class ViewFactory {
 
         return matches.length == 1;
     }
+
+    /**
+     * Creates a view from a spec, or imports it from an external source.
+     * Also initializes child views.
+     *
+     * @param {ViewSpec | import("../spec/view").ImportSpec} spec
+     * @param {ViewContext} context
+     * @param {import("./containerView").default} [layoutParent]
+     * @param {import("./view").default} [dataParent]
+     * @param {string} [defaultName]
+     * @param {(spec: ViewSpec) => void} [validator]
+     */
+    async createOrImportView(
+        spec,
+        context,
+        layoutParent,
+        dataParent,
+        defaultName,
+        validator
+    ) {
+        /** @type {ViewSpec} */
+        let viewSpec;
+
+        if (isImportSpec(spec)) {
+            if (this.options.allowImport) {
+                viewSpec = await loadExternalViewSpec(
+                    spec,
+                    dataParent.getBaseUrl(),
+                    context
+                );
+
+                if (validator) {
+                    validator(viewSpec);
+                }
+            } else {
+                throw new ViewError(
+                    "Importing views is not allowed!",
+                    layoutParent
+                );
+            }
+        } else {
+            viewSpec = spec;
+        }
+
+        // Wrap a unit spec at root into a grid view to get axes, etc.
+        if (
+            !dataParent &&
+            this.options.wrapRoot &&
+            (isUnitSpec(viewSpec) || isLayerSpec(viewSpec)) &&
+            defaultName === VIEW_ROOT_NAME
+        ) {
+            viewSpec = {
+                name: "implicitRoot",
+                vconcat: [viewSpec],
+            };
+        }
+
+        const view = this.createView(
+            viewSpec,
+            context,
+            layoutParent,
+            dataParent,
+            defaultName
+        );
+
+        if (view instanceof ContainerView) {
+            await view.initializeChildren();
+        }
+
+        return view;
+    }
 }
 
 /**
@@ -144,7 +237,7 @@ export function isAggregateSamplesSpec(spec) {
 /**
  *
  * @param {object} spec
- * @returns {spec is ImportSpec}
+ * @returns {spec is import("../spec/view").ImportSpec}
  */
 export function isImportSpec(spec) {
     return "import" in spec;

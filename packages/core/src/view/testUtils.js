@@ -6,22 +6,23 @@
  * @typedef {import("../types/viewContext").default} ViewContext
  */
 
-import { resolveScalesAndAxes, initializeData } from "./viewUtils.js";
+import { checkForDuplicateScaleNames, initializeData } from "./viewUtils.js";
 import AccessorFactory from "../encoder/accessor.js";
 import DataFlow from "../data/dataFlow.js";
-import { ViewFactory } from "./viewFactory.js";
+import { VIEW_ROOT_NAME, ViewFactory } from "./viewFactory.js";
 import GenomeStore from "../genome/genomeStore.js";
-import ImplicitRootView from "./implicitRootView.js";
-import View from "./view.js";
 import BmFontManager from "../fonts/bmFontManager.js";
 
 /**
- *
- * @param {Partial<ViewContext>} partialContext
+ * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
  * @returns
  */
-export function createTestViewContext(partialContext = {}) {
-    const viewTypeRegistry = new ViewFactory();
+export function createTestViewContext(viewFactoryOptions = {}) {
+    const viewFactory = new ViewFactory({
+        allowImport: false,
+        wrapRoot: false,
+        ...viewFactoryOptions,
+    });
 
     const genomeStore = new GenomeStore(".");
     genomeStore.initialize({
@@ -32,11 +33,27 @@ export function createTestViewContext(partialContext = {}) {
         ],
     });
 
+    // @ts-expect-error
     const c = /** @type {ViewContext} */ ({
         accessorFactory: new AccessorFactory(),
 
         createView: function (spec, parent, defaultName) {
-            return viewTypeRegistry.createView(spec, c, parent, defaultName);
+            throw new Error("Not implemented: createView");
+        },
+
+        createOrImportView: async function (
+            spec,
+            parent,
+            dataParent,
+            defaultName
+        ) {
+            return viewFactory.createOrImportView(
+                spec,
+                this,
+                parent,
+                dataParent,
+                defaultName
+            );
         },
 
         dataFlow: new DataFlow(),
@@ -46,16 +63,18 @@ export function createTestViewContext(partialContext = {}) {
 
         isViewConfiguredVisible: () => true,
 
-        ...partialContext,
+        //...partialContext,
     });
 
     return c;
 }
 
-/** @type {<V extends View>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext) => V} */
-export function create(spec, viewClass, context = undefined) {
-    const c = createTestViewContext(context);
-    const view = c.createView(spec, null, null, "root");
+/**
+ * @type {<V extends import("./view.js").default>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, ViewFactoryOptions?: import("./viewFactory.js").ViewFactoryOptions) => Promise<V>}
+ */
+export async function create(spec, viewClass, viewFactoryOptions = {}) {
+    const c = createTestViewContext(viewFactoryOptions);
+    const view = await c.createOrImportView(spec, null, null, VIEW_ROOT_NAME);
 
     if (!(view instanceof viewClass)) {
         throw new Error("ViewClass and the spec do not match!");
@@ -67,35 +86,12 @@ export function create(spec, viewClass, context = undefined) {
 /**
  * Creates a view and initializes its data. Does not wrap it in an implicit root view.
  *
- * @type {<V extends View>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext, options?: {noData: boolean, implicitRoot: boolean}) => Promise<V>}
+ * @type {<V extends import("./view.js").default>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext, options?: {noData: boolean, implicitRoot: boolean}) => Promise<V>}
  */
-export async function createAndInitialize(
-    spec,
-    viewClass,
-    context = undefined,
-    options = { noData: false, implicitRoot: false }
-) {
-    const view = create(spec, viewClass, context);
+export async function createAndInitialize(spec, viewClass) {
+    const view = await create(spec, viewClass);
 
-    resolveScalesAndAxes(view);
+    checkForDuplicateScaleNames(view);
     await initializeData(view, view.context.dataFlow);
     return view;
-}
-
-/**
- * Creates a view and wraps it in an implicit root view if needed.
- * Does not initialize data.
- *
- * @param {ViewSpec} spec
- */
-export async function createAndWrap(spec) {
-    const view = create(spec, View);
-
-    const root =
-        view.needsAxes.x || view.needsAxes.y
-            ? new ImplicitRootView(view.context, view)
-            : view;
-
-    resolveScalesAndAxes(root);
-    return root;
 }

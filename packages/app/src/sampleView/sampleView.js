@@ -94,54 +94,8 @@ export default class SampleView extends ContainerView {
         // TODO: Make this a function, not a class
         this.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
 
-        this.#gridChild = new SampleGridChild(
-            context.createView(spec.spec, this, this, "sample-facets"),
-            this,
-            0,
-            this.spec.view
-        );
-
-        /**
-         * @type {(UnitView | LayerView)[]}
-         */
-        this.#createSummaryViews();
-
         this.childCoords = Rectangle.ZERO;
-
-        /**
-         * Container for group markers and metadata.
-         * @type {ConcatView}
-         */
-        this.#sidebarView = new ConcatView(
-            {
-                title: "Sidebar",
-                resolve: {
-                    scale: { default: "independent" },
-                    axis: { default: "independent" },
-                },
-                encoding: {
-                    y: null,
-                    facetIndex: null,
-                },
-                hconcat: [],
-                spacing: 0,
-            },
-            context,
-            this,
-            this,
-            "sample-sidebar"
-        );
         this.sidebarCoords = Rectangle.ZERO;
-
-        this.groupPanel = new GroupPanel(this, this.#sidebarView);
-        this.metadataView = new MetadataView(this, this.#sidebarView);
-
-        this.#sidebarView.setChildren([this.groupPanel, this.metadataView]);
-
-        this.#gridChild.view.addInteractionEventListener(
-            "contextmenu",
-            this.#handleContextMenu.bind(this)
-        );
 
         this.locationManager = new LocationManager({
             getSampleHierarchy: () => this.sampleHierarchy,
@@ -161,7 +115,7 @@ export default class SampleView extends ContainerView {
                 (rootGroup) => {
                     this.locationManager.reset();
 
-                    this.groupPanel.updateGroups();
+                    this.groupPanel?.updateGroups();
 
                     this.context.requestLayoutReflow();
                     this.context.animator.requestRender();
@@ -281,10 +235,67 @@ export default class SampleView extends ContainerView {
         }
     }
 
-    onScalesResolved() {
-        super.onScalesResolved();
+    async initializeChildren() {
+        this.#gridChild = new SampleGridChild(
+            this.context.createView(
+                this.spec.spec,
+                this,
+                this,
+                "sample-facets"
+            ),
+            this,
+            0,
+            this.spec.view
+        );
 
-        this.#gridChild.createAxes();
+        /**
+         * Container for group markers and metadata.
+         * @type {ConcatView}
+         */
+        this.#sidebarView = new ConcatView(
+            {
+                title: "Sidebar",
+                resolve: {
+                    scale: { default: "independent" },
+                    axis: { default: "independent" },
+                },
+                encoding: {
+                    y: null,
+                    facetIndex: null,
+                },
+                hconcat: [],
+                spacing: 0,
+            },
+            this.context,
+            this,
+            this,
+            "sample-sidebar"
+        );
+
+        this.groupPanel = new GroupPanel(this, this.#sidebarView);
+        this.metadataView = new MetadataView(this, this.#sidebarView);
+        this.#sidebarView.setChildren([this.groupPanel, this.metadataView]);
+
+        if (this.#gridChild.view instanceof ContainerView) {
+            await this.#gridChild.view.initializeChildren();
+        }
+
+        if (this.#gridChild.summaryViews instanceof ContainerView) {
+            await this.#gridChild.summaryViews.initializeChildren();
+        }
+
+        await this.#gridChild.createAxes();
+        await this.#createSummaryViews();
+        // @ts-expect-error TODO: Resolve this
+        await this.#gridChild.summaryViews.createAxes();
+
+        await this.groupPanel.initializeChildren();
+        await this.metadataView.initializeChildren();
+
+        this.#gridChild.view.addInteractionEventListener(
+            "contextmenu",
+            this.#handleContextMenu.bind(this)
+        );
     }
 
     /**
@@ -781,7 +792,7 @@ export default class SampleView extends ContainerView {
         this.context.animator.requestRender();
     }
 
-    #createSummaryViews() {
+    async #createSummaryViews() {
         /** @type {View[]} */
         const summaryViews = [];
 
@@ -807,6 +818,9 @@ export default class SampleView extends ContainerView {
                 const summaryView = /** @type { UnitView | LayerView } */ (
                     this.context.createView(sumSpec, this, view, "summaryView")
                 );
+                if (summaryView instanceof ContainerView) {
+                    await summaryView.initializeChildren();
+                }
 
                 /**
                  * @param {View} [whoIsAsking]
@@ -914,10 +928,11 @@ class SampleGridChild extends GridChild {
                 layoutParent.context,
                 layoutParent,
                 view,
-                "sample-group-background-" + serial
+                "sample-group-background-" + serial,
+                {
+                    blockEncodingInheritance: true,
+                }
             );
-            // TODO: Make configurable through spec:
-            this.groupBackground.blockEncodingInheritance = true;
         }
 
         const backgroundStrokeSpec = createBackgroundStroke(viewBackgroundSpec);
@@ -927,10 +942,11 @@ class SampleGridChild extends GridChild {
                 layoutParent.context,
                 layoutParent,
                 view,
-                "sample-group-background-stroke-" + serial
+                "sample-group-background-stroke-" + serial,
+                {
+                    blockEncodingInheritance: true,
+                }
             );
-            // TODO: Make configurable through spec:
-            this.groupBackgroundStroke.blockEncodingInheritance = true;
         }
 
         this.summaryViews = new ConcatView(
