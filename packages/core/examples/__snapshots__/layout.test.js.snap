@@ -70,7 +70,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 968",
-      "viewName": "unnamed",
+      "viewName": "grid0",
     },
   ],
   "coords": "Rectangle: x: 0, y: 0, width: 1500, height: 1000",
@@ -155,7 +155,7 @@ ViewCoords {
         ViewCoords {
           "children": [],
           "coords": "Rectangle: x: 62, y: 0, width: 856, height: 417",
-          "viewName": "unnamed",
+          "viewName": "grid0",
         },
         ViewCoords {
           "children": [
@@ -231,7 +231,7 @@ ViewCoords {
             ViewCoords {
               "children": [],
               "coords": "Rectangle: x: 62, y: 489, width: 150, height: 479",
-              "viewName": "unnamed",
+              "viewName": "grid0",
             },
             ViewCoords {
               "children": [],
@@ -305,7 +305,7 @@ ViewCoords {
             ViewCoords {
               "children": [],
               "coords": "Rectangle: x: 294, y: 489, width: 624, height: 479",
-              "viewName": "unnamed",
+              "viewName": "grid1",
             },
             ViewCoords {
               "children": [],
@@ -314,11 +314,11 @@ ViewCoords {
             },
           ],
           "coords": "Rectangle: x: 0, y: 459, width: 938, height: 541",
-          "viewName": "unnamed",
+          "viewName": "grid1",
         },
       ],
       "coords": "Rectangle: x: 0, y: 0, width: 938, height: 1000",
-      "viewName": "unnamed",
+      "viewName": "grid0",
     },
     ViewCoords {
       "children": [],
@@ -392,11 +392,11 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 1020, y: 0, width: 460, height: 968",
-      "viewName": "unnamed",
+      "viewName": "grid1",
     },
   ],
   "coords": "Rectangle: x: 0, y: 0, width: 1500, height: 1000",
-  "viewName": "unnamed",
+  "viewName": "viewRoot",
 }
 `;
 
@@ -490,7 +490,7 @@ ViewCoords {
             ViewCoords {
               "children": [],
               "coords": "Rectangle: x: 52, y: 32, width: 641, height: 305",
-              "viewName": "unnamed",
+              "viewName": "grid0",
             },
             ViewCoords {
               "children": [
@@ -543,11 +543,11 @@ ViewCoords {
             ViewCoords {
               "children": [],
               "coords": "Rectangle: x: 52, y: 347, width: 641, height: 305",
-              "viewName": "unnamed",
+              "viewName": "grid1",
             },
           ],
           "coords": "Rectangle: x: 0, y: 32, width: 745, height: 621",
-          "viewName": "unnamed",
+          "viewName": "grid0",
         },
         ViewCoords {
           "children": [
@@ -600,7 +600,7 @@ ViewCoords {
         ViewCoords {
           "children": [],
           "coords": "Rectangle: x: 52, y: 663, width: 641, height: 305",
-          "viewName": "unnamed",
+          "viewName": "grid1",
         },
       ],
       "coords": "Rectangle: x: 0, y: 32, width: 745, height: 936",
@@ -661,7 +661,7 @@ ViewCoords {
             ViewCoords {
               "children": [],
               "coords": "Rectangle: x: 807, y: 32, width: 641, height: 305",
-              "viewName": "unnamed",
+              "viewName": "grid0",
             },
             ViewCoords {
               "children": [
@@ -714,11 +714,11 @@ ViewCoords {
             ViewCoords {
               "children": [],
               "coords": "Rectangle: x: 807, y: 347, width: 641, height: 305",
-              "viewName": "unnamed",
+              "viewName": "grid1",
             },
           ],
           "coords": "Rectangle: x: 755, y: 32, width: 745, height: 621",
-          "viewName": "unnamed",
+          "viewName": "grid0",
         },
         ViewCoords {
           "children": [
@@ -803,7 +803,7 @@ ViewCoords {
         ViewCoords {
           "children": [],
           "coords": "Rectangle: x: 807, y: 663, width: 641, height: 305",
-          "viewName": "unnamed",
+          "viewName": "grid1",
         },
       ],
       "coords": "Rectangle: x: 755, y: 32, width: 745, height: 936",
@@ -958,7 +958,7 @@ ViewCoords {
     },
   ],
   "coords": "Rectangle: x: 0, y: 0, width: 1500, height: 968",
-  "viewName": "unnamed",
+  "viewName": "viewRoot",
 }
 `;
 
@@ -1005,7 +1005,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 323",
-      "viewName": "unnamed",
+      "viewName": "grid0",
     },
     ViewCoords {
       "children": [],
@@ -1052,7 +1052,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 323, width: 1448, height: 323",
-      "viewName": "unnamed",
+      "viewName": "grid1",
     },
     ViewCoords {
       "children": [],
@@ -1131,7 +1131,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 645, width: 1448, height: 323",
-      "viewName": "unnamed",
+      "viewName": "grid2",
     },
     ViewCoords {
       "children": [],
@@ -1140,7 +1140,7 @@ ViewCoords {
     },
   ],
   "coords": "Rectangle: x: 0, y: 0, width: 1500, height: 968",
-  "viewName": "unnamed",
+  "viewName": "viewRoot",
 }
 `;
 
@@ -1187,7 +1187,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 0, width: 1448, height: 100",
-      "viewName": "unnamed",
+      "viewName": "grid0",
     },
     ViewCoords {
       "children": [],
@@ -1256,11 +1256,11 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 110, width: 1448, height: 200",
-      "viewName": "unnamed",
+      "viewName": "grid1",
     },
   ],
   "coords": "Rectangle: x: 0, y: 0, width: 1500, height: 330",
-  "viewName": "unnamed",
+  "viewName": "viewRoot",
 }
 `;
 
@@ -1334,7 +1334,7 @@ ViewCoords {
     ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 52, y: 0, width: 200, height: 200",
-      "viewName": "unnamed",
+      "viewName": "grid0",
     },
   ],
   "coords": "Rectangle: x: 0, y: 0, width: 304, height: 264",

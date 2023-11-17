@@ -8,7 +8,6 @@ import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
     calculateCanvasSize,
-    loadExternalViewSpec,
 } from "./view/viewUtils.js";
 import UnitView from "./view/unitView.js";
 
@@ -30,14 +29,8 @@ import Inertia, { makeEventTemplate } from "./utils/inertia.js";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
-import {
-    ViewFactory,
-    isImportSpec,
-    isLayerSpec,
-    isUnitSpec,
-} from "./view/viewFactory.js";
+import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
-import ContainerView from "./view/containerView.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -304,6 +297,9 @@ export default class GenomeSpy {
 
             isViewSpec: (spec) => self.viewFactory.isViewSpec(spec),
 
+            /**
+             * @deprecated: TODO: Kill this
+             */
             createView: function (spec, layoutParent, dataParent, defaultName) {
                 return self.viewFactory.createView(
                     spec,
@@ -321,48 +317,14 @@ export default class GenomeSpy {
                 defaultName,
                 validator
             ) {
-                /** @type {ViewSpec} */
-                let viewSpec;
-
-                if (isImportSpec(spec)) {
-                    viewSpec = await loadExternalViewSpec(
-                        spec,
-                        dataParent.getBaseUrl(),
-                        context
-                    );
-
-                    if (validator) {
-                        validator(viewSpec);
-                    }
-                } else {
-                    viewSpec = spec;
-                }
-
-                // Wrap a unit spec at root into a grid view to get axes, etc.
-                if (
-                    !dataParent &&
-                    (isUnitSpec(viewSpec) || isLayerSpec(viewSpec)) &&
-                    defaultName === "viewRoot"
-                ) {
-                    viewSpec = {
-                        name: "implicitRoot",
-                        vconcat: [viewSpec],
-                    };
-                }
-
-                const view = self.viewFactory.createView(
-                    viewSpec,
+                return self.viewFactory.createOrImportView(
+                    spec,
                     context,
                     layoutParent,
                     dataParent,
-                    defaultName
+                    defaultName,
+                    validator
                 );
-
-                if (view instanceof ContainerView) {
-                    await view.initializeChildren();
-                }
-
-                return view;
             },
         };
 
@@ -379,7 +341,7 @@ export default class GenomeSpy {
             rootSpec,
             null,
             null,
-            "viewRoot"
+            VIEW_ROOT_NAME
         );
 
         checkForDuplicateScaleNames(this.viewRoot);

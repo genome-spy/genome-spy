@@ -15,3 +15,11 @@ test("isViewSpec", () => {
 
     expect(() => factory.isViewSpec({ mark: "rect", layer: [] })).toThrow();
 });
+
+test("Throws if importing is not allowed", () => {
+    const factory = new ViewFactory({ allowImport: false });
+
+    expect(() =>
+        factory.createOrImportView({ import: { url: "" } })
+    ).rejects.toThrow();
+});
