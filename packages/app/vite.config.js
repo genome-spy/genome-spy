@@ -21,10 +21,10 @@ export default defineConfig({
         outDir: "../dist",
         emptyOutDir: true,
         lib: {
-            formats: ["umd"],
+            formats: ["umd", "es"],
             entry: "index.js",
             name: "genomeSpyApp",
-            fileName: () => "index.js",
+            fileName: (format) => `index.${format === "es" ? "es." : ""}js`,
         },
         rollupOptions: {
             plugins: [
