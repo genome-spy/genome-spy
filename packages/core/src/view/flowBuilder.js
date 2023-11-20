@@ -1,7 +1,6 @@
 import Collector from "../data/collector.js";
 import createTransform from "../data/transforms/transformFactory.js";
 import createDataSource from "../data/sources/dataSourceFactory.js";
-import UnitView from "./unitView.js";
 import { BEHAVIOR_MODIFIES } from "../data/flowNode.js";
 import CloneTransform from "../data/transforms/clone.js";
 import DataFlow from "../data/dataFlow.js";
@@ -128,15 +127,21 @@ export function buildDataFlow(root, existingFlow) {
             createTransforms(view.spec.transform, view);
         }
 
-        if (view instanceof UnitView) {
+        // The following is equivalent to "view instanceof UnitView" but without dependency.
+        // It's a bit fragile and should be replaced with a proper type guard.
+        if ("mark" in view) {
+            const unitView = /** @type {import("./unitView.js").default}*/ (
+                view
+            );
+
             if (!currentNode) {
                 throw new Error(
-                    `A unit view (${view.getPathString()}) has no (inherited) data source`
+                    `A unit view (${unitView.getPathString()}) has no (inherited) data source`
                 );
             }
 
             // Support chrom/pos channelDefs
-            const linearize = linearizeLocusAccess(view);
+            const linearize = linearizeLocusAccess(unitView);
             if (linearize) {
                 postProcessOps.push(linearize.rewrite);
                 for (const transform of linearize.transforms) {
@@ -147,7 +152,7 @@ export function buildDataFlow(root, existingFlow) {
                 }
             }
 
-            if (view.mark.isPickingParticipant()) {
+            if (unitView.mark.isPickingParticipant()) {
                 appendTransform(new CloneTransform());
                 appendTransform(
                     new IdentifierTransform({ type: "identifier" })
@@ -156,15 +161,15 @@ export function buildDataFlow(root, existingFlow) {
 
             const collector = new Collector({
                 type: "collect",
-                groupby: view.getFacetFields(),
+                groupby: unitView.getFacetFields(),
                 sort: getCompareParamsForView(
-                    view,
+                    unitView,
                     linearize?.rewrittenEncoding
                 ),
             });
 
             appendNode(collector);
-            dataFlow.addCollector(collector, view);
+            dataFlow.addCollector(collector, unitView);
         }
     };
 
