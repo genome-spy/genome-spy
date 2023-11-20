@@ -18,7 +18,7 @@
     "directory": "packages/app"
   },
   "scripts": {
-    "dev": "node dev-server.js",
+    "dev": "node dev-server.mjs",
     "build": "vite build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "npm run build"

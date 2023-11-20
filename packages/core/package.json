@@ -26,7 +26,7 @@
     "directory": "packages/core"
   },
   "scripts": {
-    "dev": "node dev-server.js",
+    "dev": "node dev-server.mjs",
     "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",

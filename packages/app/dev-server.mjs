@@ -1,10 +1,9 @@
-/* eslint-disable no-undef */
-
 // Vite dev server with some custom paths for static files
 
-const path = require("path");
-const express = require("express");
-const { createServer: createViteServer } = require("vite");
+import path from "path";
+import express from "express";
+import { createServer as createViteServer } from "vite";
+import { URL } from "url";
 
 async function createServer() {
     const app = express();
@@ -12,6 +11,8 @@ async function createServer() {
     const vite = await createViteServer({
         server: { middlewareMode: true },
     });
+
+    const __dirname = new URL(".", import.meta.url).pathname;
 
     // Random examples
     app.use(
