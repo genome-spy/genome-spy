@@ -1,6 +1,3 @@
-import { RemoteFile } from "generic-filehandle";
-import { TabixIndexedFile } from "@gmod/tabix";
-
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 import windowedMixin from "./windowedMixin.js";
 import { debounce } from "../../../utils/debounce.js";
@@ -13,7 +10,7 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
     /** Keep track of the order of the requests */
     lastRequestId = 0;
 
-    /** @type {TabixIndexedFile} */
+    /** @type {import("@gmod/tabix").TabixIndexedFile} */
     tbiIndex;
 
     /**
@@ -37,16 +34,6 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
             throw new Error("No URL provided for TabixSource");
         }
 
-        const withBase = (/** @type {string} */ uri) =>
-            new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
-
-        this.tbiIndex = new TabixIndexedFile({
-            filehandle: withBase(this.params.url),
-            tbiFilehandle: withBase(
-                this.params.indexUrl ?? this.params.url + ".tbi"
-            ),
-        });
-
         if (this.params.debounceDomainChange > 0) {
             this.onDomainChanged = debounce(
                 this.onDomainChanged.bind(this),
@@ -54,6 +41,25 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
                 false
             );
         }
+
+        this.initializedPromise = new Promise((resolve) => {
+            Promise.all([
+                import("@gmod/tabix"),
+                import("generic-filehandle"),
+            ]).then(([{ TabixIndexedFile }, { RemoteFile }]) => {
+                const withBase = (/** @type {string} */ uri) =>
+                    new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+
+                this.tbiIndex = new TabixIndexedFile({
+                    filehandle: withBase(this.params.url),
+                    tbiFilehandle: withBase(
+                        this.params.indexUrl ?? this.params.url + ".tbi"
+                    ),
+                });
+
+                resolve();
+            });
+        });
     }
 
     /**
@@ -96,6 +102,8 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
      * @param {number[]} interval
      */
     async getFeatures(interval) {
+        await this.initializedPromise;
+
         let requestId = ++this.lastRequestId;
 
         // TODO: Abort previous requests

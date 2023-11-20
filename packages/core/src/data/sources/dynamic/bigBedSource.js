@@ -1,7 +1,3 @@
-import { BigBed } from "@gmod/bbi";
-import { RemoteFile } from "generic-filehandle";
-import BED from "@gmod/bed";
-
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 import windowedMixin from "./windowedMixin.js";
 import { debounce } from "../../../utils/debounce.js";
@@ -11,8 +7,11 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
     /** Keep track of the order of the requests */
     lastRequestId = 0;
 
-    /** @type {BED} */
+    /** @type {import("@gmod/bed").default} */
     parser;
+
+    /** @type {import("@gmod/bbi").BigBed} */
+    bbi;
 
     /**
      * @param {import("../../../spec/data").BigBedData} params
@@ -34,22 +33,33 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
             throw new Error("No URL provided for BigBedSource");
         }
 
-        this.bbi = new BigBed({
-            filehandle: new RemoteFile(
-                addBaseUrl(this.params.url, this.view.getBaseUrl())
-            ),
-        });
-
         this.doDebouncedRequest = debounce(
             this.doRequest.bind(this),
             200,
             false
         );
 
-        this.headerPromise = this.bbi.getHeader();
+        this.initializedPromise = new Promise((resolve) => {
+            Promise.all([
+                import("@gmod/bed"),
+                import("@gmod/bbi"),
+                import("generic-filehandle"),
+            ]).then(([bed, { BigBed }, { RemoteFile }]) => {
+                const BED = bed.default;
 
-        this.headerPromise.then((header) => {
-            this.parser = new BED({ autoSql: header.autoSql });
+                this.bbi = new BigBed({
+                    filehandle: new RemoteFile(
+                        addBaseUrl(this.params.url, this.view.getBaseUrl())
+                    ),
+                });
+
+                this.headerPromise = this.bbi.getHeader();
+                this.headerPromise.then(async (header) => {
+                    this.parser = new BED({ autoSql: header.autoSql });
+
+                    resolve();
+                });
+            });
         });
     }
 
@@ -59,6 +69,8 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
      * @param {number[]} domain Linearized domain
      */
     async onDomainChanged(domain) {
+        await this.initializedPromise;
+
         const windowSize = this.params.windowSize;
 
         if (domain[1] - domain[0] > windowSize) {

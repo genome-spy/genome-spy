@@ -1,6 +1,3 @@
-import { BigWig } from "@gmod/bbi";
-import { RemoteFile } from "generic-filehandle";
-
 import { debounce } from "../../../utils/debounce.js";
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 import windowedMixin from "./windowedMixin.js";
@@ -15,6 +12,9 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
 
     /** Keep track of the order of the requests */
     lastRequestId = 0;
+
+    /** @type {import("@gmod/bbi").BigWig} */
+    bbi;
 
     /**
      * @param {import("../../../spec/data").BigWigData} params
@@ -36,30 +36,38 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
             throw new Error("No URL provided for BigWigSource");
         }
 
-        this.bbi = new BigWig({
-            filehandle: new RemoteFile(
-                addBaseUrl(this.params.url, this.view.getBaseUrl())
-            ),
-        });
-
         this.doDebouncedRequest = debounce(
             this.doRequest.bind(this),
             200,
             false
         );
 
-        this.headerPromise = this.bbi.getHeader();
+        this.initializedPromise = new Promise((resolve) => {
+            Promise.all([
+                import("@gmod/bbi"),
+                import("generic-filehandle"),
+            ]).then(([{ BigWig }, { RemoteFile }]) => {
+                this.bbi = new BigWig({
+                    filehandle: new RemoteFile(
+                        addBaseUrl(this.params.url, this.view.getBaseUrl())
+                    ),
+                });
 
-        this.headerPromise.then((header) => {
-            this.reductionLevels = /** @type {{reductionLevel: number}[]} */ (
-                header.zoomLevels
-            )
-                .map((z) => z.reductionLevel)
-                .reverse();
+                this.bbi.getHeader().then((header) => {
+                    this.reductionLevels =
+                        /** @type {{reductionLevel: number}[]} */ (
+                            header.zoomLevels
+                        )
+                            .map((z) => z.reductionLevel)
+                            .reverse();
 
-            // Add the non-reduced level. Not sure if this is the best way to do it.
-            // Afaik, the non-reduced bin size is not available in the header.
-            this.reductionLevels.push(1);
+                    // Add the non-reduced level. Not sure if this is the best way to do it.
+                    // Afaik, the non-reduced bin size is not available in the header.
+                    this.reductionLevels.push(1);
+
+                    resolve();
+                });
+            });
         });
     }
 
@@ -69,8 +77,7 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
      * @param {number[]} domain Linearized domain
      */
     async onDomainChanged(domain) {
-        // Header must be available to determine the reduction level
-        await this.headerPromise;
+        await this.initializedPromise;
 
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.getAxisLength() || 700;

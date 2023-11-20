@@ -1,16 +1,6 @@
-import { Buffer } from "buffer";
-import { IndexedFasta } from "@gmod/indexedfasta";
-import { RemoteFile } from "generic-filehandle";
-
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 import windowedMixin from "./windowedMixin.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
-
-// Hack needed by @gmod/indexedfasta
-// TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
-if (typeof window !== "undefined") {
-    window.Buffer = Buffer;
-}
 
 /**
  *
@@ -38,12 +28,30 @@ export default class IndexedFastaSource extends windowedMixin(
             throw new Error("No URL provided for IndexedFastaSource");
         }
 
-        const withBase = (/** @type {string} */ uri) =>
-            new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+        this.initializedPromise = new Promise((resolve) => {
+            Promise.all([
+                import("buffer"),
+                import("@gmod/indexedfasta"),
+                import("generic-filehandle"),
+            ]).then(([{ Buffer }, { IndexedFasta }, { RemoteFile }]) => {
+                // Hack needed by @gmod/indexedfasta
+                // TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
+                if (typeof window !== "undefined") {
+                    window.Buffer = Buffer;
+                }
 
-        this.fasta = new IndexedFasta({
-            fasta: withBase(this.params.url),
-            fai: withBase(this.params.indexUrl ?? this.params.url + ".fai"),
+                const withBase = (/** @type {string} */ uri) =>
+                    new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+
+                this.fasta = new IndexedFasta({
+                    fasta: withBase(this.params.url),
+                    fai: withBase(
+                        this.params.indexUrl ?? this.params.url + ".fai"
+                    ),
+                });
+
+                resolve();
+            });
         });
     }
 
@@ -58,6 +66,8 @@ export default class IndexedFastaSource extends windowedMixin(
         if (domain[1] - domain[0] > windowSize) {
             return;
         }
+
+        await this.initializedPromise;
 
         const quantizedInterval = this.quantizeInterval(domain, windowSize);
 

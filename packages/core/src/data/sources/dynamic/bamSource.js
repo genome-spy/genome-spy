@@ -1,6 +1,3 @@
-import { RemoteFile } from "generic-filehandle";
-import { BamFile } from "@gmod/bam";
-
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 import windowedMixin from "./windowedMixin.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
@@ -8,6 +5,9 @@ import addBaseUrl from "../../../utils/addBaseUrl.js";
 export default class BamSource extends windowedMixin(SingleAxisLazySource) {
     /** Keep track of the order of the requests */
     lastRequestId = 0;
+
+    /** @type {import("@gmod/bam").BamFile} */
+    bam;
 
     /**
      * Some BAM files lack the "chr" prefix on their reference names. For example:
@@ -40,26 +40,35 @@ export default class BamSource extends windowedMixin(SingleAxisLazySource) {
             throw new Error("No URL provided for BamSource");
         }
 
-        const withBase = (/** @type {string} */ uri) =>
-            new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+        this.initializedPromise = new Promise((resolve) => {
+            Promise.all([
+                import("@gmod/bam"),
+                import("generic-filehandle"),
+            ]).then(([{ BamFile }, { RemoteFile }]) => {
+                const withBase = (/** @type {string} */ uri) =>
+                    new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
 
-        this.bam = new BamFile({
-            bamFilehandle: withBase(this.params.url),
-            baiFilehandle: withBase(
-                this.params.indexUrl ?? this.params.url + ".bai"
-            ),
-        });
+                this.bam = new BamFile({
+                    bamFilehandle: withBase(this.params.url),
+                    baiFilehandle: withBase(
+                        this.params.indexUrl ?? this.params.url + ".bai"
+                    ),
+                });
 
-        this.headerPromise = this.bam.getHeader();
-        this.headerPromise.then((_header) => {
-            const g = this.genome.hasChrPrefix();
-            // @ts-expect-error protected property
-            const b = this.bam.indexToChr?.[0]?.refName.startsWith("chr");
-            if (g && !b) {
-                this.chrPrefixFixer = (chr) => chr.replace("chr", "");
-            } else if (!g && b) {
-                this.chrPrefixFixer = (chr) => "chr" + chr;
-            }
+                this.bam.getHeader().then((_header) => {
+                    const g = this.genome.hasChrPrefix();
+                    const b =
+                        // @ts-expect-error protected property
+                        this.bam.indexToChr?.[0]?.refName.startsWith("chr");
+                    if (g && !b) {
+                        this.chrPrefixFixer = (chr) => chr.replace("chr", "");
+                    } else if (!g && b) {
+                        this.chrPrefixFixer = (chr) => "chr" + chr;
+                    }
+
+                    resolve();
+                });
+            });
         });
     }
 
@@ -75,7 +84,7 @@ export default class BamSource extends windowedMixin(SingleAxisLazySource) {
             return;
         }
 
-        await this.headerPromise;
+        await this.initializedPromise;
 
         const quantizedInterval = this.quantizeInterval(domain, windowSize);
 
