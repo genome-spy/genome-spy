@@ -12,6 +12,6 @@
   },
   "dependencies": {
     "@genome-spy/core": "^0.37.4",
-    "lit": "^2.0.0-rc.2"
+    "lit": "^3.1.0"
   }
 }
