@@ -9,11 +9,11 @@ export default class IndexedFastaSource extends windowedMixin(
     SingleAxisLazySource
 ) {
     /**
-     * @param {import("../../../spec/data").IndexedFastaData} params
-     * @param {import("../../../view/view").default} view
+     * @param {import("../../../spec/data.js").IndexedFastaData} params
+     * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
-        /** @type {import("../../../spec/data").IndexedFastaData} */
+        /** @type {import("../../../spec/data.js").IndexedFastaData} */
         const paramsWithDefaults = {
             channel: "x",
             windowSize: 7000,

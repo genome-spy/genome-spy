@@ -6,13 +6,13 @@ import {
 
 /**
  *
- * @typedef {import("../spec/channel").Encoding} Encoding
- * @typedef {import("../spec/channel").Channel} Channel
+ * @typedef {import("../spec/channel.js").Encoding} Encoding
+ * @typedef {import("../spec/channel.js").Channel} Channel
  */
 
 /**
  * @param {Encoding} encoding
- * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
  */
 export function fixPositional(encoding, channel) {
     const secondaryChannel = getSecondaryChannel(channel);
@@ -67,7 +67,7 @@ export function fixPositional(encoding, channel) {
 }
 
 /**
- * @param {import("../spec/channel").Encoding} encoding
+ * @param {import("../spec/channel.js").Encoding} encoding
  * @param {boolean} filled
  */
 export function fixStroke(encoding, filled) {
@@ -96,7 +96,7 @@ export function fixStroke(encoding, filled) {
 }
 
 /**
- * @param {import("../spec/channel").Encoding} encoding
+ * @param {import("../spec/channel.js").Encoding} encoding
  * @param {boolean} filled
  */
 export function fixFill(encoding, filled) {

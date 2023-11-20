@@ -3,10 +3,10 @@ import { format as d3format } from "d3-format";
 import scaleIndex from "./scaleIndex.js";
 
 export default function scaleLocus() {
-    /** @type {import("./scaleLocus").ScaleLocus} */
+    /** @type {import("./scaleLocus.js").ScaleLocus} */
     const scale = /** @type {any} */ (scaleIndex().numberingOffset(1));
 
-    /** @type {import("./genome").default} */
+    /** @type {import("./genome.js").default} */
     let genome;
 
     // @ts-expect-error
@@ -94,7 +94,7 @@ export default function scaleLocus() {
 }
 
 /**
- * @type {import("./scaleLocus").isScaleLocus}
+ * @type {import("./scaleLocus.js").isScaleLocus}
  */
 export function isScaleLocus(scale) {
     return scale.type == "locus";

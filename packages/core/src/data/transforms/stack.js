@@ -9,7 +9,7 @@ export default class StackTransform extends FlowNode {
     }
 
     /**
-     * @param {import("../../spec/transform").StackParams} params
+     * @param {import("../../spec/transform.js").StackParams} params
      */
     constructor(params) {
         super();
@@ -25,7 +25,7 @@ export default class StackTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../flowNode").Datum} datum
+     * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
         this.buffer.push(datum);

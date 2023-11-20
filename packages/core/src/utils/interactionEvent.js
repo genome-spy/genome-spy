@@ -6,7 +6,7 @@
 export default class InteractionEvent {
     /**
      *
-     * @param {import("./layout/point").default} point Event coordinates
+     * @param {import("./layout/point.js").default} point Event coordinates
      *      inside the visualization canvas.
      * @param {UIEvent} uiEvent The event to be wrapped
      */
@@ -18,7 +18,7 @@ export default class InteractionEvent {
         /**
          * The target is known only in the bubbling phase
          *
-         * @type {import("../view/view").default}
+         * @type {import("../view/view.js").default}
          */
         this.target = undefined;
     }

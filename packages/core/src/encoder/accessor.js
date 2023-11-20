@@ -6,10 +6,10 @@ import { field } from "../utils/field.js";
 
 export default class AccessorFactory {
     /**
-     * @typedef {import("../types/encoder").Accessor} Accessor
+     * @typedef {import("../types/encoder.js").Accessor} Accessor
      */
     constructor() {
-        /** @type {(function(import("../spec/channel").ChannelDef):Accessor)[]} */
+        /** @type {(function(import("../spec/channel.js").ChannelDef):Accessor)[]} */
         this.accessorCreators = [];
 
         this.register((channelDef) => {
@@ -46,7 +46,7 @@ export default class AccessorFactory {
 
     /**
      *
-     * @param {function(import("../spec/channel").ChannelDef):Accessor} creator
+     * @param {function(import("../spec/channel.js").ChannelDef):Accessor} creator
      */
     register(creator) {
         this.accessorCreators.push(creator);
@@ -54,7 +54,7 @@ export default class AccessorFactory {
 
     /**
      *
-     * @param {import("../spec/channel").ChannelDef} encoding
+     * @param {import("../spec/channel.js").ChannelDef} encoding
      */
     createAccessor(encoding) {
         for (const creator of this.accessorCreators) {

@@ -15,12 +15,12 @@ import { isContinuous } from "vega-scale";
  * @typedef {object} RangeEntry Represents a location of a vertex subset
  * @prop {number} offset in vertices
  * @prop {number} count in vertices
- * @prop {import("../utils/binnedIndex").Lookup} xIndex
+ * @prop {import("../utils/binnedIndex.js").Lookup} xIndex
  */
 export class GeometryBuilder {
     /**
-     * @typedef {import("./arrayBuilder").ConverterMetadata} Converter
-     * @typedef {import("../types/encoder").Encoder} Encoder
+     * @typedef {import("./arrayBuilder.js").ConverterMetadata} Converter
+     * @typedef {import("../types/encoder.js").Encoder} Encoder
      */
 
     /**
@@ -127,14 +127,14 @@ export class GeometryBuilder {
     }
 
     /**
-     * @param {import("../data/flowNode").Data} data Domain, but specified using datums
+     * @param {import("../data/flowNode.js").Data} data Domain, but specified using datums
      * @param {number} [lo]
      * @param {number} [hi]
      */
     prepareXIndexer(data, lo = 0, hi = lo + data.length) {
         const disable = () => {
             /**
-             * @param {import("../data/flowNode").Datum} datum
+             * @param {import("../data/flowNode.js").Datum} datum
              */
             this.addToXIndex = (datum) => {
                 // nop
@@ -192,7 +192,7 @@ export class GeometryBuilder {
      * Add the datum to an index, which allows for efficient rendering of ranges
      * on the x axis. Must be called after a datum has been pushed to the ArrayBuilder.
      *
-     * @param {import("../data/flowNode").Datum} datum
+     * @param {import("../data/flowNode.js").Datum} datum
      */
     addToXIndex(datum) {
         //
@@ -254,13 +254,13 @@ export class RectVertexBuilder extends GeometryBuilder {
         }
 
         const e =
-            /** @type {Object.<string, import("../types/encoder").NumberEncoder>} */ (
+            /** @type {Object.<string, import("../types/encoder.js").NumberEncoder>} */ (
                 this.encoders
             );
         const [lower, upper] = this.visibleRange;
 
         /**
-         * @param {import("../types/encoder").Encoder} encoder
+         * @param {import("../types/encoder.js").Encoder} encoder
          */
         const a = (encoder) => encoder.accessor || ((x) => 0);
 
@@ -448,7 +448,7 @@ export class TextVertexBuilder extends GeometryBuilder {
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
-     * @param {import("../fonts/bmFontMetrics").BMFontMetrics} object.fontMetrics
+     * @param {import("../fonts/bmFontMetrics.js").BMFontMetrics} object.fontMetrics
      * @param {Record<string, any>} object.properties
      * @param {number} [object.numCharacters] number of characters
      * @param {boolean} [object.logoLetters]
@@ -474,7 +474,7 @@ export class TextVertexBuilder extends GeometryBuilder {
         const e = encoders;
 
         const channelDef =
-            /** @type {import("../spec/channel").TextDef<string>} */ (
+            /** @type {import("../spec/channel.js").TextDef<string>} */ (
                 e.text.channelDef
             );
         /** @type {(value: any) => string} */

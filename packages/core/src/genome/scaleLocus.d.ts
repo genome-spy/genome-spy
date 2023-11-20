@@ -1,5 +1,5 @@
-import Genome from "../genome/genome";
-import { ScaleIndex } from "../genome/scaleIndex";
+import Genome from "../genome/genome.js";
+import { ScaleIndex } from "../genome/scaleIndex.js";
 
 /**
  * Creates a "locus" scale, which works similarly to band scale but the domain

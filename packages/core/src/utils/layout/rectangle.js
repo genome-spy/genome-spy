@@ -11,7 +11,7 @@ function constant(value) {
  * Allows for implementing scrolling viewports etc.
  *
  * @typedef {("x" | "y" | "width" | "height")} Prop
- * @typedef {import("./padding").default } Padding
+ * @typedef {import("./padding.js").default } Padding
  * @typedef {() => number} Accessor
  */
 export default class Rectangle {

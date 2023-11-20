@@ -4,7 +4,7 @@ import FlowNode from "../flowNode.js";
 export default class FilterTransform extends FlowNode {
     /**
      *
-     * @param {import("../../spec/transform").FilterParams} params
+     * @param {import("../../spec/transform.js").FilterParams} params
      */
     constructor(params) {
         super();
@@ -23,7 +23,7 @@ export default class FilterTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../flowNode").Datum} datum
+     * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
         if (this.predicate(datum)) {

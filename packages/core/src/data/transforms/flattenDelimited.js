@@ -8,7 +8,7 @@ export default class FlattenDelimitedTransform extends FlowNode {
     }
 
     /**
-     * @param {import("../../spec/transform").FlattenDelimitedParams} params
+     * @param {import("../../spec/transform.js").FlattenDelimitedParams} params
      */
     constructor(params) {
         super();
@@ -39,7 +39,7 @@ export default class FlattenDelimitedTransform extends FlowNode {
             const flatLen = splitFields[0].length;
 
             for (let ri = 0; ri < flatLen; ri++) {
-                /** @type {import("../flowNode").Datum} */
+                /** @type {import("../flowNode.js").Datum} */
                 const newRow = Object.assign({}, datum);
                 for (let fi = 0; fi < accessors.length; fi++) {
                     newRow[as[fi]] = splitFields[fi][ri];

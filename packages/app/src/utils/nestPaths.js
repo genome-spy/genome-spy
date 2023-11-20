@@ -1,8 +1,8 @@
 /**
+ * @template T
  * @typedef {object} NestedItem
  * @prop {T} item
  * @prop {NestedItem<T>[]} children
- * @template T
  */
 
 /**

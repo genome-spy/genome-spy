@@ -1,6 +1,6 @@
 /**
- * @typedef {import("./types").AttributeIdentifier} AttributeIdentifier
- * @typedef {((identifier: AttributeIdentifier) => import("./types").AttributeInfo)} AttributeInfoSource
+ * @typedef {import("./types.js").AttributeIdentifier} AttributeIdentifier
+ * @typedef {((identifier: AttributeIdentifier) => import("./types.js").AttributeInfo)} AttributeInfoSource
  */
 
 /**

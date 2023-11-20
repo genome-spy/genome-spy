@@ -4,9 +4,9 @@ import { isNumber } from "vega-util";
 import { isGroupGroup } from "./sampleSlice.js";
 
 /**
- * @typedef {import("./sampleState").Group} Group
- * @typedef {import("./sampleState").SampleGroup} SampleGroup
- * @typedef {import("./sampleState").GroupGroup} GroupGroup
+ * @typedef {import("./sampleState.js").Group} Group
+ * @typedef {import("./sampleState.js").SampleGroup} SampleGroup
+ * @typedef {import("./sampleState.js").GroupGroup} GroupGroup
  */
 
 /**
@@ -54,7 +54,7 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
  *
  * @param {SampleGroup} sampleGroup
  * @param {function(any):any} accessor
- * @param {import("./payloadTypes").Threshold[]} thresholds
+ * @param {import("./payloadTypes.js").Threshold[]} thresholds
  */
 function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
     const groupName = (/** @type {number} */ groupIndex) =>
@@ -82,7 +82,7 @@ function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
  *
  * @param {SampleGroup} sampleGroup
  * @param {function(any):any} accessor
- * @param {import("./payloadTypes").Threshold[]} thresholds
+ * @param {import("./payloadTypes.js").Threshold[]} thresholds
  */
 export function groupSamplesByThresholds(sampleGroup, accessor, thresholds) {
     groupSamplesByRawThresholds(sampleGroup, accessor, [
@@ -151,7 +151,7 @@ export function removeGroup(rootGroup, path) {
  * on the given thresholds.
  *
  * @param {function(any):any} accessor
- * @param {import("./payloadTypes").Threshold[]} thresholds Must be in ascending order
+ * @param {import("./payloadTypes.js").Threshold[]} thresholds Must be in ascending order
  */
 export function createThresholdGroupAccessor(accessor, thresholds) {
     /** @param {any} datum */
@@ -213,8 +213,8 @@ const thresholdFormat = d3format(".3~r");
 
 /**
  * TODO: Move to "utils" or something
- * @param {import("./payloadTypes").Threshold} t1
- * @param {import("./payloadTypes").Threshold} t2
+ * @param {import("./payloadTypes.js").Threshold} t1
+ * @param {import("./payloadTypes.js").Threshold} t2
  */
 export const formatThresholdInterval = (t1, t2) =>
     `${t1.operator == "lt" ? "[" : "("}${thresholdFormat(

@@ -44,13 +44,13 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * } Visitor
  *
  * @typedef {object} BroadcastMessage
- * @prop {import("../genomeSpy").BroadcastEventType} type Broadcast type
+ * @prop {import("../genomeSpy.js").BroadcastEventType} type Broadcast type
  * @prop {any} [payload] Anything
  *
  * @callback InteractionEventListener
- * @param {import("../utils/layout/rectangle").default} coords
+ * @param {import("../utils/layout/rectangle.js").default} coords
  *      Coordinates of the view
- * @param {import("../utils/interactionEvent").default} event
+ * @param {import("../utils/interactionEvent.js").default} event
  *
  * @typedef {object} ViewOptions
  * @prop {boolean} [blockEncodingInheritance]
@@ -75,10 +75,10 @@ export default class View {
 
     /**
      *
-     * @param {import("../spec/view").ViewSpec} spec
-     * @param {import("../types/viewContext").default} context
-     * @param {import("./containerView").default} layoutParent Parent that handles rendering of this view
-     * @param {import("./view").default} dataParent Parent that provides data, encodings, and is used in scale resolution
+     * @param {import("../spec/view.js").ViewSpec} spec
+     * @param {import("../types/viewContext.js").default} context
+     * @param {import("./containerView.js").default} layoutParent Parent that handles rendering of this view
+     * @param {import("./view.js").default} dataParent Parent that provides data, encodings, and is used in scale resolution
      * @param {string} name
      * @param {ViewOptions} [options]
      *
@@ -97,12 +97,12 @@ export default class View {
         this.resolutions = {
             /**
              * Channel-specific scale resolutions
-             * @type {Partial<Record<import("../spec/channel").ChannelWithScale, import("./scaleResolution").default>>}
+             * @type {Partial<Record<import("../spec/channel.js").ChannelWithScale, import("./scaleResolution.js").default>>}
              */
             scale: {},
             /**
              * Channel-specific axis resolutions
-             * @type {Partial<Record<import("../spec/channel").PrimaryPositionalChannel, import("./axisResolution").default>>}
+             * @type {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("./axisResolution.js").default>>}
              */
             axis: {},
         };
@@ -117,7 +117,7 @@ export default class View {
 
         /**
          * Whether GridView or equivalent should draw axis and grid lines for this view.
-         * @type {Record<import("../spec/channel").PrimaryPositionalChannel, boolean>}
+         * @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, boolean>}
          */
         this.needsAxes = { x: false, y: false };
     }
@@ -157,7 +157,7 @@ export default class View {
     #getSizeFromSpec() {
         /**
          * @param {"width" | "height"} dimension
-         * @return {import("../utils/layout/flexLayout").SizeDef}
+         * @return {import("../utils/layout/flexLayout.js").SizeDef}
          */
         const handleSize = (dimension) => {
             let value = this.spec[dimension];
@@ -186,7 +186,7 @@ export default class View {
 
                     // TODO: Type guards maybe?
                     const _scale =
-                        /** @type {import("d3-scale").ScaleBand<any> | import("../genome/scaleLocus").ScaleLocus | import("../genome/scaleIndex").ScaleIndex} */ (
+                        /** @type {import("d3-scale").ScaleBand<any> | import("../genome/scaleLocus.js").ScaleLocus | import("../genome/scaleIndex.js").ScaleIndex} */ (
                             scale
                         );
 
@@ -317,9 +317,9 @@ export default class View {
     /**
      * Handles an interactionEvent
      *
-     * @param {import("../utils/layout/rectangle").default} coords
+     * @param {import("../utils/layout/rectangle.js").default} coords
      *      Coordinates of the view
-     * @param {import("../utils/interactionEvent").default} event
+     * @param {import("../utils/interactionEvent.js").default} event
      * @param {boolean} capturing
      */
     handleInteractionEvent(coords, event, capturing) {
@@ -419,7 +419,7 @@ export default class View {
      * Recursively traverses the view hierarchy, computes the view coordinates,
      * and coordinates the mark rendering.
      *
-     * @type {import("../types/rendering").RenderMethod}
+     * @type {import("../types/rendering.js").RenderMethod}
      */
     render(context, coords, options = {}) {
         // override
@@ -430,7 +430,7 @@ export default class View {
      * encodings. However, this does not contain any defaults or inferred/adjusted/fixed
      * encodings. Those are available in Mark's encoding property.
      *
-     * @return {import("../spec/channel").Encoding}
+     * @return {import("../spec/channel.js").Encoding}
      */
     getEncoding() {
         const pe =
@@ -439,7 +439,7 @@ export default class View {
                 : {};
         const te = this.spec.encoding || {};
 
-        /** @type {import("../spec/channel").Encoding} */
+        /** @type {import("../spec/channel.js").Encoding} */
         const combined = {
             ...pe,
             ...te,
@@ -502,11 +502,11 @@ export default class View {
     }
 
     /**
-     * @param {import("../spec/channel").ChannelWithScale} channel
+     * @param {import("../spec/channel.js").ChannelWithScale} channel
      */
     getScaleResolution(channel) {
         const primaryChannel =
-            /** @type {import("../spec/channel").ChannelWithScale} */ (
+            /** @type {import("../spec/channel.js").ChannelWithScale} */ (
                 getPrimaryChannel(channel)
             );
 
@@ -516,11 +516,11 @@ export default class View {
     }
 
     /**
-     * @param {import("../spec/channel").PositionalChannel} channel
+     * @param {import("../spec/channel.js").PositionalChannel} channel
      */
     getAxisResolution(channel) {
         const primaryChannel =
-            /** @type {import("../spec/channel").PrimaryPositionalChannel} */ (
+            /** @type {import("../spec/channel.js").PrimaryPositionalChannel} */ (
                 getPrimaryChannel(channel)
             );
 
@@ -530,18 +530,18 @@ export default class View {
     }
 
     /**
-     * @param {import("../spec/channel").Channel | "default"} channel
-     * @param {import("../spec/view").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
+     * @param {import("../spec/channel.js").Channel | "default"} channel
+     * @param {import("../spec/view.js").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view.js").ResolutionBehavior}
      */
     getConfiguredResolution(channel, resolutionType) {
         return this.spec.resolve?.[resolutionType]?.[channel];
     }
 
     /**
-     * @param {import("../spec/channel").Channel} channel
-     * @param {import("../spec/view").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
+     * @param {import("../spec/channel.js").Channel} channel
+     * @param {import("../spec/view.js").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view.js").ResolutionBehavior}
      */
     getConfiguredOrDefaultResolution(channel, resolutionType) {
         return (
@@ -552,9 +552,9 @@ export default class View {
     }
 
     /**
-     * @param {import("../spec/channel").Channel} channel
-     * @param {import("../spec/view").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
+     * @param {import("../spec/channel.js").Channel} channel
+     * @param {import("../spec/view.js").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view.js").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         return "independent";
@@ -625,7 +625,7 @@ export default class View {
      * Broadcasts a message to views that include the given (x, y) point.
      * This is mainly intended for mouse events.
      *
-     * @param {import("../utils/interactionEvent").default} event
+     * @param {import("../utils/interactionEvent.js").default} event
      */
     propagateInteractionEvent(event) {
         // Subclasses must implement proper handling
@@ -635,7 +635,7 @@ export default class View {
 /**
  *
  * @param {any} opacity
- * @returns {opacity is import("../spec/view").DynamicOpacity}
+ * @returns {opacity is import("../spec/view.js").DynamicOpacity}
  */
 function isDynamicOpacity(opacity) {
     return "unitsPerPixel" in opacity;
@@ -653,7 +653,7 @@ function createViewOpacityFunction(view) {
         if (isNumber(opacityDef)) {
             return (parentOpacity) => parentOpacity * opacityDef;
         } else if (isDynamicOpacity(opacityDef)) {
-            /** @type {(channel: import("../spec/channel").ChannelWithScale) => any} */
+            /** @type {(channel: import("../spec/channel.js").ChannelWithScale) => any} */
             const getScale = (channel) => {
                 const scale = view.getScaleResolution(channel)?.getScale();
                 // Only works on linear scales
@@ -692,6 +692,6 @@ function createViewOpacityFunction(view) {
 /**
  *
  * @param {any} size
- * @return {size is import("../spec/view").Step}
+ * @return {size is import("../spec/view.js").Step}
  */
 export const isStepSize = (size) => !!size?.step;

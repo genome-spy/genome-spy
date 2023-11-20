@@ -8,7 +8,7 @@ export default class RegexExtractTransform extends FlowNode {
     }
 
     /**
-     * @param {import("../../spec/transform").RegexExtractParams} params
+     * @param {import("../../spec/transform.js").RegexExtractParams} params
      */
     constructor(params) {
         super();

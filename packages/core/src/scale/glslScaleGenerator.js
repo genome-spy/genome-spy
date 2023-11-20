@@ -28,7 +28,7 @@ export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
 const FLT_MAX = 3.402823466e38;
 
 /**
- * @typedef {import("../spec/channel").Channel} Channel
+ * @typedef {import("../spec/channel.js").Channel} Channel
  */
 
 /**
@@ -94,7 +94,7 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  *
  * @param {Channel} channel
  * @param {any} scale TODO: typing
- * @param {import("../spec/channel").ChannelDef} channelDef
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
  */
 // eslint-disable-next-line complexity
 export function generateScaleGlsl(channel, scale, channelDef) {

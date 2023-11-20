@@ -4,7 +4,7 @@ import { isInlineData } from "./inlineSource.js";
  * Validates data source params, infers format if not specified explicitly,
  * returns a complete DataSource params object.
  *
- * @param {import("../../spec/data").DataSource} params
+ * @param {import("../../spec/data.js").DataSource} params
  *      DataSource parameters
  */
 export function getFormat(params) {
@@ -44,30 +44,30 @@ export const makeWrapper = (/** @type {any} */ d) =>
     typeof d != "object" ? scalarWrapper : nopWrapper;
 
 const scalarWrapper = (
-    /** @type {import("../../spec/channel").Scalar} */ x
+    /** @type {import("../../spec/channel.js").Scalar} */ x
 ) => ({ data: x });
 
-const nopWrapper = (/** @type {import("../flowNode").Datum} */ x) => x;
+const nopWrapper = (/** @type {import("../flowNode.js").Datum} */ x) => x;
 
 /**
- * @param {import("../../spec/data").DataFormat} dataFormat
- * @return {dataFormat is import("../../spec/data").CsvDataFormat}
+ * @param {import("../../spec/data.js").DataFormat} dataFormat
+ * @return {dataFormat is import("../../spec/data.js").CsvDataFormat}
  */
 export function isCsvDataFormat(dataFormat) {
     return dataFormat.type == "csv" || dataFormat.type == "tsv";
 }
 
 /**
- * @param {import("../../spec/data").DataFormat} dataFormat
- * @return {dataFormat is import("../../spec/data").DsvDataFormat}
+ * @param {import("../../spec/data.js").DataFormat} dataFormat
+ * @return {dataFormat is import("../../spec/data.js").DsvDataFormat}
  */
 export function isDsvDataFormat(dataFormat) {
     return dataFormat.type == "dsv";
 }
 
 /**
- * @param {import("../../spec/data").DataFormat} dataFormat
- * @return {dataFormat is import("../../spec/data").JsonDataFormat}
+ * @param {import("../../spec/data.js").DataFormat} dataFormat
+ * @return {dataFormat is import("../../spec/data.js").JsonDataFormat}
  */
 export function isJsonDataFormat(dataFormat) {
     return dataFormat.type == "json";
@@ -75,8 +75,8 @@ export function isJsonDataFormat(dataFormat) {
 
 /**
  *
- * @param {import("../../spec/data").DataSource} dataSource
- * @return {dataSource is import("../../spec/data").UrlData}
+ * @param {import("../../spec/data.js").DataSource} dataSource
+ * @return {dataSource is import("../../spec/data.js").UrlData}
  */
 export function isUrlData(dataSource) {
     return "url" in dataSource;

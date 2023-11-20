@@ -1,4 +1,4 @@
-import { Field } from "../spec/transform";
+import { Field } from "../spec/transform.js";
 
 export interface FlowBatchBase {
     type: string;

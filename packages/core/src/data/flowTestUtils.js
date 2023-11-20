@@ -3,7 +3,7 @@ import FlowNode from "./flowNode.js";
 
 /**
  *
- * @param {import("./flowNode").default} flowNode
+ * @param {import("./flowNode.js").default} flowNode
  * @param {any[]} data
  */
 export function processData(flowNode, data) {

@@ -12,7 +12,7 @@ export default class ProvenanceButtons extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../state/provenance").default<any>} */
+        /** @type {import("../state/provenance.js").default<any>} */
         this.provenance = undefined;
     }
 

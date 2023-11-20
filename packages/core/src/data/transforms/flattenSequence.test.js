@@ -3,7 +3,7 @@ import { processData } from "../flowTestUtils.js";
 import FlattenSequenceTransform from "./flattenSequence.js";
 
 /**
- * @param {import("./flattenSequence").FlattenSequenceParams} params
+ * @param {import("./flattenSequence.js").FlattenSequenceParams} params
  * @param {any[]} data
  */
 function transform(params, data) {

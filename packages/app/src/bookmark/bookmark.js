@@ -22,14 +22,14 @@ import { viewSettingsSlice } from "../viewSettingsSlice.js";
 
 /**
  * @typedef {object} BookmarkInfoBoxOptions
- * @prop {import("./bookmarkDatabase").default} [database]
+ * @prop {import("./bookmarkDatabase.js").default} [database]
  *      An optional bookmark database that contains the entry. Used for next/prev buttons.
  * @prop {"default" | "tour" | "shared"} [mode]
  * @prop {string} [afterTourBookmark] See `RemoteBookmarkConfig`
  */
 
 /**
- * @type {import("../utils/ui/modal").Modal}
+ * @type {import("../utils/ui/modal.js").Modal}
  */
 let infoBox;
 
@@ -37,7 +37,7 @@ let infoBox;
  * Resets the provenance and scales to defaults.
  * TODO: Move elsewhere since this could be useful for a "reset" button.
  *
- * @param {import("../app").default} app
+ * @param {import("../app.js").default} app
  */
 export function resetToDefaultState(app) {
     for (const scaleResolution of app.genomeSpy
@@ -57,8 +57,8 @@ export function resetToDefaultState(app) {
 }
 
 /**
- * @param {import("./databaseSchema").BookmarkEntry} entry
- * @param {import("../app").default} app
+ * @param {import("./databaseSchema.js").BookmarkEntry} entry
+ * @param {import("../app.js").default} app
  */
 export async function restoreBookmark(entry, app) {
     try {
@@ -98,8 +98,8 @@ export async function restoreBookmark(entry, app) {
 }
 
 /**
- * @param {import("./databaseSchema").BookmarkEntry} entry
- * @param {import("../app").default} app
+ * @param {import("./databaseSchema.js").BookmarkEntry} entry
+ * @param {import("../app.js").default} app
  * @param {BookmarkInfoBoxOptions} [options]
  */
 export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
@@ -115,8 +115,8 @@ export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
 
 /**
  *
- * @param {import("./databaseSchema").BookmarkEntry} entry
- * @param {import("../app").default} app
+ * @param {import("./databaseSchema.js").BookmarkEntry} entry
+ * @param {import("../app.js").default} app
  * @param {BookmarkInfoBoxOptions} [options]
  */
 export async function showBookmarkInfoBox(entry, app, options = {}) {
@@ -127,8 +127,8 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
 
 /**
  *
- * @param {import("./databaseSchema").BookmarkEntry} entry
- * @param {import("../app").default} app
+ * @param {import("./databaseSchema.js").BookmarkEntry} entry
+ * @param {import("../app.js").default} app
  * @param {BookmarkInfoBoxOptions} [options]
  */
 export async function updateBookmarkInfoBox(entry, app, options) {
@@ -242,7 +242,7 @@ export async function updateBookmarkInfoBox(entry, app, options) {
 }
 
 /**
- * @param {import("./databaseSchema").BookmarkEntry} bookmark
+ * @param {import("./databaseSchema.js").BookmarkEntry} bookmark
  * @param {boolean} global Is it a remote bookmark that should be shared with a short url
  */
 export function showShareBookmarkDialog(bookmark, global) {
@@ -304,8 +304,8 @@ ${json}</textarea
 }
 
 /**
- * @param {import("./bookmarkDatabase").default} bookmarkDatabase
- * @param {import("./databaseSchema").BookmarkEntry} bookmark
+ * @param {import("./bookmarkDatabase.js").default} bookmarkDatabase
+ * @param {import("./databaseSchema.js").BookmarkEntry} bookmark
  * @param {"add" | "edit" | "share"} mode
  * @returns {Promise<boolean>} promise that resolves to true when the bookmark was saved
  */

@@ -252,7 +252,7 @@ export default class FlowNode {
     /**
      * Signals that a new batch of data will be propagated.
      *
-     * @param {import("../types/flowBatch").FlowBatch} flowBatch
+     * @param {import("../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
         for (const child of this.children) {
@@ -270,16 +270,16 @@ export default class FlowNode {
 }
 
 /**
- * @param {import("../types/flowBatch").FlowBatch} flowBatch
- * @returns {flowBatch is import("../types/flowBatch").FileBatch}
+ * @param {import("../types/flowBatch.js").FlowBatch} flowBatch
+ * @returns {flowBatch is import("../types/flowBatch.js").FileBatch}
  */
 export function isFileBatch(flowBatch) {
     return flowBatch.type == "file";
 }
 
 /**
- * @param {import("../types/flowBatch").FlowBatch} flowBatch
- * @returns {flowBatch is import("../types/flowBatch").FacetBatch}
+ * @param {import("../types/flowBatch.js").FlowBatch} flowBatch
+ * @returns {flowBatch is import("../types/flowBatch.js").FacetBatch}
  */
 export function isFacetBatch(flowBatch) {
     return flowBatch.type == "facet";

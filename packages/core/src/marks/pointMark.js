@@ -8,12 +8,12 @@ import Mark from "./mark.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
 
-/** @type {Record<string, import("../spec/channel").ChannelDef>} */
+/** @type {Record<string, import("../spec/channel.js").ChannelDef>} */
 const defaultEncoding = {};
 
 export default class PointMark extends Mark {
     /**
-     * @param {import("../view/unitView").default} unitView
+     * @param {import("../view/unitView.js").default} unitView
      */
     constructor(unitView) {
         super(unitView);
@@ -65,7 +65,7 @@ export default class PointMark extends Mark {
     }
 
     /**
-     * @returns {import("../spec/channel").Channel[]}
+     * @returns {import("../spec/channel.js").Channel[]}
      */
     getSupportedChannels() {
         return [
@@ -89,8 +89,8 @@ export default class PointMark extends Mark {
     }
 
     /**
-     * @param {import("../spec/channel").Encoding} encoding
-     * @returns {import("../spec/channel").Encoding}
+     * @param {import("../spec/channel.js").Encoding} encoding
+     * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
         fixStroke(encoding, this.properties.filled);
@@ -206,7 +206,7 @@ export default class PointMark extends Mark {
     }
 
     /**
-     * @param {import("../types/rendering").GlobalRenderingOptions} options
+     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
      */
     prepareRender(options) {
         const ops = super.prepareRender(options);
@@ -231,7 +231,7 @@ export default class PointMark extends Mark {
     }
 
     /**
-     * @param {import("./mark").MarkRenderingOptions} options
+     * @param {import("./mark.js").MarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;

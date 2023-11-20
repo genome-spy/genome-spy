@@ -17,11 +17,11 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
     bbi;
 
     /**
-     * @param {import("../../../spec/data").BigWigData} params
-     * @param {import("../../../view/view").default} view
+     * @param {import("../../../spec/data.js").BigWigData} params
+     * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
-        /** @type {import("../../../spec/data").BigWigData} */
+        /** @type {import("../../../spec/data.js").BigWigData} */
         const paramsWithDefaults = {
             pixelsPerBin: 2,
             channel: "x",

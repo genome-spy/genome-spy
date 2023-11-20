@@ -15,10 +15,10 @@ import {
     ScaleDiverging,
     ScaleContinuousNumeric,
 } from "d3-scale";
-import { ChannelDef } from "../spec/channel";
-import { ScaleLocus } from "../genome/scaleLocus";
-import { ScaleIndex } from "../genome/scaleIndex";
-import { Scalar } from "../spec/channel";
+import { ChannelDef } from "../spec/channel.js";
+import { ScaleLocus } from "../genome/scaleLocus.js";
+import { ScaleIndex } from "../genome/scaleIndex.js";
+import { Scalar } from "../spec/channel.js";
 
 export interface AccessorMetadata {
     /** True if the accessor returns the same value for all objects */

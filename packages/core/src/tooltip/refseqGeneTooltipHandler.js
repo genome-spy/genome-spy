@@ -11,7 +11,7 @@ import { html } from "lit-html";
 const symbolSummaryCache = new Map();
 
 /**
- * @type {import("./tooltipHandler").TooltipHandler}
+ * @type {import("./tooltipHandler.js").TooltipHandler}
  */
 export default async function refseqGeneTooltipHandler(datum, mark, params) {
     const symbol = datum.symbol;

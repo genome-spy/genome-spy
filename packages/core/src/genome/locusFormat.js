@@ -4,14 +4,14 @@ import { isNumber } from "vega-util";
 const numberFormat = d3format(",d");
 
 /**
- * @param {import("../spec/genome").ChromosomalLocus} locus
+ * @param {import("../spec/genome.js").ChromosomalLocus} locus
  */
 export function formatLocus(locus) {
     return locus.chrom + ":" + numberFormat(Math.floor(locus.pos + 1));
 }
 
 /**
- * @param {number | import("../spec/genome").ChromosomalLocus} locus
+ * @param {number | import("../spec/genome.js").ChromosomalLocus} locus
  */
 export function locusOrNumberToString(locus) {
     return !isNumber(locus) && "chrom" in locus
@@ -20,8 +20,8 @@ export function locusOrNumberToString(locus) {
 }
 
 /**
- * @param {import("../spec/genome").ChromosomalLocus} begin
- * @param {import("../spec/genome").ChromosomalLocus} end
+ * @param {import("../spec/genome.js").ChromosomalLocus} begin
+ * @param {import("../spec/genome.js").ChromosomalLocus} end
  */
 export function formatRange(begin, end) {
     return (

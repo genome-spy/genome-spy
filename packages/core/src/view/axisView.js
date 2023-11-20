@@ -3,22 +3,22 @@ import { FlexDimensions } from "../utils/layout/flexLayout.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
-/** @type {Record<import("../spec/channel").PrimaryPositionalChannel, import("../spec/view").GeometricDimension>} */
+/** @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, import("../spec/view.js").GeometricDimension>} */
 const CHANNEL_DIMENSIONS = {
     x: "width",
     y: "height",
 };
 
 /**
- * @param {import("../spec/channel").PrimaryPositionalChannel} channel
- * @returns {import("../spec/channel").PrimaryPositionalChannel}
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+ * @returns {import("../spec/channel.js").PrimaryPositionalChannel}
  */
 function getPerpendicularChannel(channel) {
     return channel == "x" ? "y" : "x";
 }
 
 /**
- * @type {Record<import("../spec/channel").PrimaryPositionalChannel, AxisOrient[]>}
+ * @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, AxisOrient[]>}
  */
 export const CHANNEL_ORIENTS = {
     x: ["bottom", "top"],
@@ -26,7 +26,7 @@ export const CHANNEL_ORIENTS = {
 };
 
 /**
- * @type {Record<AxisOrient, import("../spec/channel").PrimaryPositionalChannel>}
+ * @type {Record<AxisOrient, import("../spec/channel.js").PrimaryPositionalChannel>}
  */
 export const ORIENT_CHANNELS = Object.fromEntries(
     Object.entries(CHANNEL_ORIENTS)
@@ -50,23 +50,23 @@ export function orient2channel(slot) {
 export default class AxisView extends LayerView {
     /**
      *
-     * @typedef {import("../spec/view").LayerSpec} LayerSpec
-     * @typedef {import("./view").default} View
-     * @typedef {import("../spec/axis").Axis} Axis
-     * @typedef {import("../spec/axis").GenomeAxis} GenomeAxis
-     * @typedef {import("../spec/axis").AxisOrient} AxisOrient
-     * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
+     * @typedef {import("../spec/view.js").LayerSpec} LayerSpec
+     * @typedef {import("./view.js").default} View
+     * @typedef {import("../spec/axis.js").Axis} Axis
+     * @typedef {import("../spec/axis.js").GenomeAxis} GenomeAxis
+     * @typedef {import("../spec/axis.js").AxisOrient} AxisOrient
+     * @typedef {import("../utils/layout/flexLayout.js").SizeDef} SizeDef
      *
      * @typedef {Axis & { extent: number }} AugmentedAxis
      */
 
     /**
      * @param {Axis} axisProps
-     * @param {import("../types/viewContext").default} context
+     * @param {import("../types/viewContext.js").default} context
      * @param {string} type Data type (quantitative, ..., locus)
-     * @param {import("./containerView").default} layoutParent
-     * @param {import("./view").default} dataParent
-     * @param {import("./view").ViewOptions} [options]
+     * @param {import("./containerView.js").default} layoutParent
+     * @param {import("./view.js").default} dataParent
+     * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(axisProps, type, context, layoutParent, dataParent, options) {
         // Now the presence of genomeAxis is based on field type, not scale type.
@@ -210,9 +210,9 @@ function getDefaultAngleAndAlign(type, axisProps) {
     const orient = axisProps.orient;
     const discrete = type == "nominal" || type == "ordinal";
 
-    /** @type {import("../spec/font").Align} */
+    /** @type {import("../spec/font.js").Align} */
     let align = "center";
-    /** @type {import("../spec/font").Baseline} */
+    /** @type {import("../spec/font.js").Baseline} */
     let baseline = "middle";
 
     /** @type {number} */
@@ -267,7 +267,7 @@ function createAxis(axisProps, type) {
     const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
 
     /**
-     * @return {import("../spec/view").UnitSpec}
+     * @return {import("../spec/view.js").UnitSpec}
      */
     const createDomain = () => ({
         name: "domain",
@@ -284,7 +284,7 @@ function createAxis(axisProps, type) {
     });
 
     /**
-     * @return {import("../spec/view").UnitSpec}
+     * @return {import("../spec/view.js").UnitSpec}
      */
     const createLabels = () => ({
         name: "labels",
@@ -308,7 +308,7 @@ function createAxis(axisProps, type) {
     });
 
     /**
-     * @return {import("../spec/view").UnitSpec}
+     * @return {import("../spec/view.js").UnitSpec}
      */
     const createTicks = () => ({
         name: "ticks",
@@ -330,7 +330,7 @@ function createAxis(axisProps, type) {
     });
 
     /**
-     * @return {import("../spec/view").UnitSpec}
+     * @return {import("../spec/view.js").UnitSpec}
      */
     const createTitle = () => ({
         name: "title",
@@ -351,7 +351,7 @@ function createAxis(axisProps, type) {
     });
 
     /**
-     * @return {import("../spec/view").LayerSpec}
+     * @return {import("../spec/view.js").LayerSpec}
      */
     const createTicksAndLabels = () => {
         /** @type {LayerSpec} */
@@ -404,7 +404,7 @@ function createAxis(axisProps, type) {
     return axisSpec;
 }
 
-/** @type {import("../spec/axis").GenomeAxis} */
+/** @type {import("../spec/axis.js").GenomeAxis} */
 const defaultGenomeAxisProps = {
     ...defaultAxisProps,
 
@@ -439,7 +439,7 @@ export function createGenomeAxis(axisProps, type) {
     const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
 
     /**
-     * @return {import("../spec/view").UnitSpec}
+     * @return {import("../spec/view.js").UnitSpec}
      */
     const createChromosomeTicks = () => ({
         name: "chromosome_ticks",
@@ -456,10 +456,10 @@ export function createGenomeAxis(axisProps, type) {
     });
 
     /**
-     * @return {import("../spec/view").UnitSpec}
+     * @return {import("../spec/view.js").UnitSpec}
      */
     const createChromosomeLabels = () => {
-        /** @type {Partial<import("../spec/mark").MarkConfig>} */
+        /** @type {Partial<import("../spec/mark.js").MarkConfig>} */
         let chromLabelMarkProps;
         switch (ap.orient) {
             case "top":
@@ -511,7 +511,7 @@ export function createGenomeAxis(axisProps, type) {
                 chromLabelMarkProps = {};
         }
 
-        /** @type {import("../spec/view").UnitSpec} */
+        /** @type {import("../spec/view.js").UnitSpec} */
         const labels = {
             name: "chromosome_labels",
             mark: {
@@ -570,7 +570,7 @@ export function createGenomeAxis(axisProps, type) {
     );
 
     if (axisProps.chromTicks || axisProps.chromLabels) {
-        /** @type {import("../spec/view").LayerSpec} */
+        /** @type {import("../spec/view.js").LayerSpec} */
         const chromLayerSpec = {
             // TODO: Configuration
             name: CHROM_LAYER_NAME,
@@ -594,7 +594,7 @@ export function createGenomeAxis(axisProps, type) {
         if (axisProps.chromLabels) {
             chromLayerSpec.layer.push(createChromosomeLabels());
 
-            /** @type {import("../spec/mark").MarkConfig} */
+            /** @type {import("../spec/mark.js").MarkConfig} */
             let labelMarkSpec;
 
             // TODO: Simplify the following mess
@@ -605,10 +605,10 @@ export function createGenomeAxis(axisProps, type) {
                         .filter((view) => view.name == "labels")
                         .forEach(
                             (
-                                /** @type {import("../spec/view").UnitSpec} */ view
+                                /** @type {import("../spec/view.js").UnitSpec} */ view
                             ) => {
                                 labelMarkSpec =
-                                    /** @type {import("../spec/mark").MarkConfig} */ (
+                                    /** @type {import("../spec/mark.js").MarkConfig} */ (
                                         view.mark
                                     );
                             }

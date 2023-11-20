@@ -8,7 +8,7 @@ export default class FormulaTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../../spec/transform").FormulaParams} params
+     * @param {import("../../spec/transform.js").FormulaParams} params
      */
     constructor(params) {
         super();
@@ -26,7 +26,7 @@ export default class FormulaTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../flowNode").Datum} datum
+     * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
         datum[this.as] = this.fn(datum);

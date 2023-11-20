@@ -7,14 +7,14 @@ import UnitView from "./unitView.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
 
 /**
- * @typedef {import("../spec/channel").Channel} Channel
+ * @typedef {import("../spec/channel.js").Channel} Channel
  */
 
 // NOTE: The most of these tests don't actually test scaleResolution but the resolution algorithm.
 
 describe("Scale resolution", () => {
     test("Channels with just values (no fields or scales) do not resolve", async () => {
-        /** @type {import("../spec/view").LayerSpec} */
+        /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [] },
 
@@ -43,7 +43,7 @@ describe("Scale resolution", () => {
     });
 
     test("Deeply shared scales are shared", async () => {
-        /** @type {import("../spec/view").LayerSpec} */
+        /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [] },
             encoding: {
@@ -72,7 +72,7 @@ describe("Scale resolution", () => {
     });
 
     test("Shared branches under an independent branch works as expected", async () => {
-        /** @type {import("../spec/view").LayerSpec} */
+        /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [] },
             encoding: {
@@ -111,7 +111,7 @@ describe("Scale resolution", () => {
     });
 
     test("Independent branches under a shared branch works as expected", async () => {
-        /** @type {import("../spec/view").LayerSpec} */
+        /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [] },
             encoding: {
@@ -159,7 +159,7 @@ describe("Scale resolution", () => {
     });
 
     test("Excluded resolution is not pushed towards the root but collects from children.", async () => {
-        /** @type {import("../spec/view").LayerSpec} */
+        /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [] },
             encoding: {
@@ -202,7 +202,7 @@ describe("Scale resolution", () => {
     // TODO: Add test for "forced" resolution
 
     test("Default resolution is configurable", async () => {
-        /** @type {import("../spec/view").LayerSpec} */
+        /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [] },
             encoding: {
@@ -334,7 +334,7 @@ describe("Domain handling", () => {
             LayerView
         );
 
-        /** @param {import("./view").default} view */
+        /** @param {import("./view.js").default} view */
         const d = (view) => view.getScaleResolution("y").getScale().domain();
 
         expect(r(d(view))).toEqual([1, 5]);
@@ -370,7 +370,7 @@ describe("Domain handling", () => {
             LayerView
         );
 
-        /** @param {import("./view").default} view */
+        /** @param {import("./view.js").default} view */
         const d = (view) => view.getScaleResolution("y").getScale().domain();
 
         expect(r(d(view))).toEqual([1, 5]);
@@ -402,7 +402,7 @@ describe("Domain handling", () => {
             UnitView
         );
 
-        /** @param {import("./view").default} view */
+        /** @param {import("./view.js").default} view */
         const d = (view) => view.getScaleResolution("y").getScale().domain();
 
         // FAILS!!!!!!! TODO: FIX!!
@@ -441,7 +441,7 @@ describe("Domain handling", () => {
             LayerView
         );
 
-        /** @param {import("./view").default} view */
+        /** @param {import("./view.js").default} view */
         const d = (view) => view.getScaleResolution("y").getScale().domain();
 
         expect(r(d(view))).toEqual([1, 5]);
@@ -467,7 +467,7 @@ describe("Domain handling", () => {
             view.getScaleResolution(channel).reconfigure();
         }
 
-        const d = /** @param {import("../spec/channel").Channel} channel*/ (
+        const d = /** @param {import("../spec/channel.js").Channel} channel*/ (
             channel
         ) => view.getScaleResolution(channel).getScale().domain();
 

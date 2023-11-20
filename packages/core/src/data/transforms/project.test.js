@@ -11,7 +11,7 @@ test("Project", () => {
         },
     ];
 
-    /** @param {import("./project").ProjectParams} params */
+    /** @param {import("./project.js").ProjectParams} params */
     const p = (params) => processData(new ProjectTransform(params), data);
 
     expect(p({ type: "project", fields: ["bar"] })).toEqual([{ bar: "BAR" }]);

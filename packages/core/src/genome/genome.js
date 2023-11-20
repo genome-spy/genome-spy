@@ -7,8 +7,8 @@ import { formatRange } from "./locusFormat.js";
 const defaultBaseUrl = "https://genomespy.app/data/genomes/";
 
 /**
- * @typedef {import("../spec/genome").GenomeConfig} GenomeConfig
- * @typedef {import("../spec/genome").ChromosomalLocus} ChromosomalLocus
+ * @typedef {import("../spec/genome.js").GenomeConfig} GenomeConfig
+ * @typedef {import("../spec/genome.js").ChromosomalLocus} ChromosomalLocus
  *
  * @typedef {object} Chromosome
  * @prop {string} name

@@ -1,6 +1,6 @@
-import { Scalar } from "./channel";
-import { Align, Baseline, FontStyle, FontWeight } from "./font";
-import { Tooltip } from "./tooltip";
+import { Scalar } from "./channel.js";
+import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
+import { Tooltip } from "./tooltip.js";
 
 export type MarkType = "rect" | "point" | "rule" | "text" | "link";
 

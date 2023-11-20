@@ -2,8 +2,8 @@ import DataSource from "./dataSource.js";
 import { makeWrapper } from "./dataUtils.js";
 
 /**
- * @param {Partial<import("../../spec/data").Data>} data
- * @returns {data is import("../../spec/data").NamedData}
+ * @param {Partial<import("../../spec/data.js").Data>} data
+ * @returns {data is import("../../spec/data.js").NamedData}
  */
 export function isNamedData(data) {
     return "name" in data;
@@ -17,8 +17,8 @@ export default class NamedSource extends DataSource {
     #explicitData;
 
     /**
-     * @param {import("../../spec/data").NamedData} params
-     * @param {import("../../view/view").default} view
+     * @param {import("../../spec/data.js").NamedData} params
+     * @param {import("../../view/view.js").default} view
      * @param {function(string):any[]} provider Function that retrieves a dataset using a name
      */
     constructor(params, view, provider) {
@@ -38,7 +38,7 @@ export default class NamedSource extends DataSource {
     /**
      * Update the named data. If data is omitted, a data provider is used instead.
      *
-     * @param {import("../flowNode").Datum[]} [data]
+     * @param {import("../flowNode.js").Datum[]} [data]
      */
     updateDynamicData(data) {
         // TODO: Throw is data is undefined and the provider is unable to provide any data
@@ -50,7 +50,7 @@ export default class NamedSource extends DataSource {
         const data =
             this.#explicitData ?? this.provider(this.params.name) ?? [];
 
-        /** @type {(x: any) => import("../flowNode").Datum} */
+        /** @type {(x: any) => import("../flowNode.js").Datum} */
         let wrap = (x) => x;
 
         if (Array.isArray(data)) {

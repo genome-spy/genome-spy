@@ -6,7 +6,7 @@ import LayerView from "./layerView.js";
 import ConcatView from "./concatView.js";
 import { isArray, isObject, isString } from "vega-util";
 import { loadExternalViewSpec } from "./viewUtils.js";
-import ContainerView from "./containerView";
+import ContainerView from "./containerView.js";
 import ViewError from "../utils/viewError.js";
 
 export const VIEW_ROOT_NAME = "viewRoot";
@@ -22,16 +22,16 @@ export const VIEW_ROOT_NAME = "viewRoot";
  */
 export class ViewFactory {
     /**
-     * @typedef {import("../types/viewContext").default} ViewContext
-     * @typedef {import("../spec/view").UnitSpec} UnitSpec
-     * @typedef {import("../spec/view").ViewSpec} ViewSpec
-     * @typedef {import("../spec/view").LayerSpec} LayerSpec
-     * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
-     * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
-     * @typedef {import("../spec/sampleView").SampleSpec} SampleSpec
+     * @typedef {import("../types/viewContext.js").default} ViewContext
+     * @typedef {import("../spec/view.js").UnitSpec} UnitSpec
+     * @typedef {import("../spec/view.js").ViewSpec} ViewSpec
+     * @typedef {import("../spec/view.js").LayerSpec} LayerSpec
+     * @typedef {import("../spec/view.js").VConcatSpec} VConcatSpec
+     * @typedef {import("../spec/view.js").ConcatSpec} ConcatSpec
+     * @typedef {import("../spec/sampleView.js").SampleSpec} SampleSpec
      *
      * @typedef {(spec: ViewSpec) => boolean} SpecGuard
-     * @typedef {(spec: ViewSpec, context: ViewContext, layoutParent?: import("./containerView").default, dataParent?: import("./view").default, defaultName?: string) => View} Factory
+     * @typedef {(spec: ViewSpec, context: ViewContext, layoutParent?: import("./containerView.js").default, dataParent?: import("./view.js").default, defaultName?: string) => View} Factory
      */
 
     /** @type {Map<SpecGuard, Factory>} */
@@ -87,8 +87,8 @@ export class ViewFactory {
     /**
      * @param {ViewSpec} spec
      * @param {ViewContext} context
-     * @param {import("./containerView").default} [layoutParent]
-     * @param {import("./view").default} [dataParent]
+     * @param {import("./containerView.js").default} [layoutParent]
+     * @param {import("./view.js").default} [dataParent]
      * @param {string} [defaultName]
      */
     createView(spec, context, layoutParent, dataParent, defaultName) {
@@ -129,10 +129,10 @@ export class ViewFactory {
      * Creates a view from a spec, or imports it from an external source.
      * Also initializes child views.
      *
-     * @param {ViewSpec | import("../spec/view").ImportSpec} spec
+     * @param {ViewSpec | import("../spec/view.js").ImportSpec} spec
      * @param {ViewContext} context
-     * @param {import("./containerView").default} [layoutParent]
-     * @param {import("./view").default} [dataParent]
+     * @param {import("./containerView.js").default} [layoutParent]
+     * @param {import("./view.js").default} [dataParent]
      * @param {string} [defaultName]
      * @param {(spec: ViewSpec) => void} [validator]
      */
@@ -232,7 +232,7 @@ export function isFacetSpec(spec) {
 /**
  *
  * @param {ViewSpec} spec
- * @returns {spec is import("../spec/view").AggregateSamplesSpec}
+ * @returns {spec is import("../spec/view.js").AggregateSamplesSpec}
  */
 export function isAggregateSamplesSpec(spec) {
     return (
@@ -245,7 +245,7 @@ export function isAggregateSamplesSpec(spec) {
 /**
  *
  * @param {object} spec
- * @returns {spec is import("../spec/view").ImportSpec}
+ * @returns {spec is import("../spec/view.js").ImportSpec}
  */
 export function isImportSpec(spec) {
     return "import" in spec;

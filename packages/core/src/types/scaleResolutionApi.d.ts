@@ -1,5 +1,5 @@
-import { ComplexDomain, NumericDomain } from "../spec/scale";
-import ScaleResolution from "../view/scaleResolution";
+import { ComplexDomain, NumericDomain } from "../spec/scale.js";
+import ScaleResolution from "../view/scaleResolution.js";
 
 export interface ScaleResolutionEvent {
     type: "domain";

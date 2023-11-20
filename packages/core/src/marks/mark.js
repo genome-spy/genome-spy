@@ -42,7 +42,7 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 
 /**
  *
- * @typedef {import("../types/rendering").RenderingOptions} RenderingOptions
+ * @typedef {import("../types/rendering.js").RenderingOptions} RenderingOptions
  * @typedef {object} _MarkRenderingOptions
  * @prop {boolean} [skipViewportSetup] Don't configure viewport. Allows for
  *      optimized faceted rendering
@@ -55,19 +55,19 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
  */
 export default class Mark {
     /**
-     * @typedef {import("../spec/mark").MarkConfig} MarkConfig
-     * @typedef {import("../spec/channel").Channel} Channel
-     * @typedef {import("../spec/channel").Encoding} Encoding
-     * @typedef {import("../spec/channel").ValueDef} ValueDef
+     * @typedef {import("../spec/mark.js").MarkConfig} MarkConfig
+     * @typedef {import("../spec/channel.js").Channel} Channel
+     * @typedef {import("../spec/channel.js").Encoding} Encoding
+     * @typedef {import("../spec/channel.js").ValueDef} ValueDef
      */
 
     /**
-     * @param {import("../view/unitView").default} unitView
+     * @param {import("../view/unitView.js").default} unitView
      */
     constructor(unitView) {
         this.unitView = unitView;
 
-        /** @type {Record<string, import("../types/encoder").Encoder>} */
+        /** @type {Record<string, import("../types/encoder.js").Encoder>} */
         this.encoders = undefined;
 
         // TODO: Consolidate the following webgl stuff into a single object
@@ -97,7 +97,7 @@ export default class Mark {
                 // TODO: Cache once the scales have been resolved
                 // TODO: Only check channels that are used
                 // TODO: provide more fine-grained xClip and yClip props
-                return /** @type {import("../spec/channel").PositionalChannel[]} */ ([
+                return /** @type {import("../spec/channel.js").PositionalChannel[]} */ ([
                     "x",
                     "y",
                 ])
@@ -404,7 +404,7 @@ export default class Mark {
             if (error.detail) {
                 console.warn(error.detail);
             }
-            /** @type {Error & { view?: import("../view/view").default}} */
+            /** @type {Error & { view?: import("../view/view.js").default}} */
             const err = new Error(
                 "Cannot create shader program: " + error.message
             );
@@ -573,7 +573,7 @@ export default class Mark {
      * views, i.e., multiple views share the uniforms (such as mark properties
      * and scales) and buffers.
      *
-     * @param {import("../types/rendering").GlobalRenderingOptions} options
+     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
      * @returns {(() => void)[]}
      */
     // eslint-disable-next-line complexity
@@ -761,7 +761,7 @@ export default class Mark {
 
     /**
      * @param {DrawFunction} draw A function that draws a range of vertices
-     * @param {import("./mark").MarkRenderingOptions} options
+     * @param {import("./mark.js").MarkRenderingOptions} options
      */
     createRenderCallback(draw, options) {
         if (!this.bufferInfo) {
@@ -776,7 +776,7 @@ export default class Mark {
         // eslint-disable-next-line consistent-this
         const self = this;
 
-        /** @type {function(import("../gl/dataToVertices").RangeEntry):void} rangeEntry */
+        /** @type {function(import("../gl/dataToVertices.js").RangeEntry):void} rangeEntry */
         let drawWithRangeEntry;
 
         const scale = this.unitView.getScaleResolution("x")?.getScale();
@@ -833,8 +833,8 @@ export default class Mark {
     /**
      * Sets viewport, clipping, and uniforms related to scaling and translation
      *
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("../utils/layout/rectangle").default} [clipRect]
+     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("../utils/layout/rectangle.js").default} [clipRect]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
     setViewport(coords, clipRect) {
@@ -959,7 +959,7 @@ export default class Mark {
      * This is highly specific to SampleView and its sorting/filtering functionality.
      *
      * @param {string} facetId
-     * @param {import("../spec/channel").Scalar} x value on the x domain
+     * @param {import("../spec/channel.js").Scalar} x value on the x domain
      * @returns {any}
      */
     findDatumAt(facetId, x) {
@@ -968,7 +968,7 @@ export default class Mark {
 }
 
 /**
- * @augments {InternMap<K, import("../gl/dataToVertices").RangeEntry>}
+ * @augments {InternMap<K, import("../gl/dataToVertices.js").RangeEntry>}
  * @template K
  */
 class RangeMap extends InternMap {
@@ -994,7 +994,7 @@ class RangeMap extends InternMap {
 
     /**
      *
-     * @param {Map<K, import("../gl/dataToVertices").RangeEntry>} anotherMap
+     * @param {Map<K, import("../gl/dataToVertices.js").RangeEntry>} anotherMap
      */
     migrateEntries(anotherMap) {
         for (const [key, value] of anotherMap.entries()) {

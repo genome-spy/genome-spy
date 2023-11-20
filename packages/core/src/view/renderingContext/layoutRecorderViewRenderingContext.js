@@ -6,13 +6,13 @@ import ViewRenderingContext from "./viewRenderingContext.js";
  * of view coordinates, including faceted views that are repeated multiple times.
  * The coordinates can be used for mouse events / interactions, for example.
  *
- * @typedef {import("../view").default} View
- * @typedef {import("../../utils/layout/rectangle").default} Rectangle
+ * @typedef {import("../view.js").default} View
+ * @typedef {import("../../utils/layout/rectangle.js").default} Rectangle
  *
  */
 export default class LayoutRecorderViewRenderingContext extends ViewRenderingContext {
     /**
-     * @param {import("../../types/rendering").GlobalRenderingOptions} globalOptions
+     * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      */
     constructor(globalOptions) {
         super(globalOptions);
@@ -99,7 +99,7 @@ class ViewCoords {
      * Broadcasts a message to views that include the given (x, y) point.
      * This is mainly intended for mouse events.
      *
-     * @param {import("../../utils/interactionEvent").default} event
+     * @param {import("../../utils/interactionEvent.js").default} event
      */
     dispatchInteractionEvent(event) {
         if (this.coords.containsPoint(event.point.x, event.point.y)) {

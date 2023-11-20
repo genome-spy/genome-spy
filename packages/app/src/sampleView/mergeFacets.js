@@ -20,7 +20,7 @@ const SAMPLE_COUNT_VARIABLE = "sampleCount";
  * Merges sample facets by groups that have been formed in SampleSlice.
  * Propagates the merged facets as new facets.
  *
- * @typedef {import("@genome-spy/core/view/view").default} View
+ * @typedef {import("@genome-spy/core/view/view.js").default} View
  */
 export default class MergeSampleFacets extends FlowNode {
     #initialUpdate = true;
@@ -87,7 +87,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     /**
-     * @param {import("@genome-spy/core/data/flowNode").Datum} datum
+     * @param {import("@genome-spy/core/data/flowNode.js").Datum} datum
      */
     handle(datum) {
         // NOP. Block propagation.
@@ -131,7 +131,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     /**
-     * @param {import("./sampleSlice").SampleHierarchy} sampleHierarchy
+     * @param {import("./sampleSlice.js").SampleHierarchy} sampleHierarchy
      */
     _mergeAndPropagate(sampleHierarchy) {
         const groupPaths = [
@@ -180,7 +180,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     _updateScales() {
-        /** @type {Set<import("@genome-spy/core/view/scaleResolution").default>} */
+        /** @type {Set<import("@genome-spy/core/view/scaleResolution.js").default>} */
         const resolutions = new Set();
         this.view.visit((view) => {
             if (view instanceof UnitView && view.mark.encoding.y) {

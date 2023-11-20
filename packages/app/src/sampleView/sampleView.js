@@ -53,13 +53,13 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
  */
 export default class SampleView extends ContainerView {
     /**
-     * @typedef {import("./sampleState").Group} Group
-     * @typedef {import("./sampleState").Sample} Sample
-     * @typedef {import("@genome-spy/core/utils/layout/flexLayout").LocSize} LocSize
-     * @typedef {import("@genome-spy/core/view/view").default} View
-     * @typedef {import("@genome-spy/core/view/layerView").default} LayerView
-     * @typedef {import("@genome-spy/core/data/dataFlow").default<View>} DataFlow
-     * @typedef {import("@genome-spy/core/genome/genome").ChromosomalLocus} ChromosomalLocus
+     * @typedef {import("./sampleState.js").Group} Group
+     * @typedef {import("./sampleState.js").Sample} Sample
+     * @typedef {import("@genome-spy/core/utils/layout/flexLayout.js").LocSize} LocSize
+     * @typedef {import("@genome-spy/core/view/view.js").default} View
+     * @typedef {import("@genome-spy/core/view/layerView.js").default} LayerView
+     * @typedef {import("@genome-spy/core/data/dataFlow.js").default<View>} DataFlow
+     * @typedef {import("@genome-spy/core/genome/genome.js").ChromosomalLocus} ChromosomalLocus
      */
 
     /** @type {SampleGridChild} */
@@ -75,12 +75,12 @@ export default class SampleView extends ContainerView {
 
     /**
      *
-     * @param {import("@genome-spy/core/spec/sampleView").SampleSpec} spec
-     * @param {import("@genome-spy/core/types/viewContext").default} context
+     * @param {import("@genome-spy/core/spec/sampleView.js").SampleSpec} spec
+     * @param {import("@genome-spy/core/types/viewContext.js").default} context
      * @param {ContainerView} layoutParent
-     * @param {import("@genome-spy/core/view/view").default} dataParent
+     * @param {import("@genome-spy/core/view/view.js").default} dataParent
      * @param {string} name
-     * @param {import("../state/provenance").default<any>} provenance
+     * @param {import("../state/provenance.js").default<any>} provenance
      */
     constructor(spec, context, layoutParent, dataParent, name, provenance) {
         super(spec, context, layoutParent, dataParent, name);
@@ -204,7 +204,7 @@ export default class SampleView extends ContainerView {
         });
 
         const getAttributeInfo = (
-            /** @type {import("./types").AttributeInfo} */ attribute
+            /** @type {import("./types.js").AttributeInfo} */ attribute
         ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
 
         const sampleSlice = createSampleSlice(getAttributeInfo);
@@ -219,7 +219,7 @@ export default class SampleView extends ContainerView {
 
         const sampleSelector = createSelector(
             (
-                /** @type {import("./sampleState").SampleHierarchy} */ sampleHierarchy
+                /** @type {import("./sampleState.js").SampleHierarchy} */ sampleHierarchy
             ) => sampleHierarchy.sampleData?.entities,
             (entities) => entities && Object.values(entities)
         );
@@ -316,14 +316,14 @@ export default class SampleView extends ContainerView {
      * Returns the configured size, if present. Otherwise a computed or default
      * height is returned.
      *
-     * @returns {import("@genome-spy/core/utils/layout/flexLayout").FlexDimensions}
+     * @returns {import("@genome-spy/core/utils/layout/flexLayout.js").FlexDimensions}
      * @override
      */
     getSize() {
         return this._cache("size/size2", () => {
             const superSize = super.getSize();
 
-            /** @param {import("@genome-spy/core/view/view").default} view */
+            /** @param {import("@genome-spy/core/view/view.js").default} view */
             const total = (view) =>
                 view
                     .getSize()
@@ -401,7 +401,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @returns {import("./sampleState").SampleHierarchy}
+     * @returns {import("./sampleState.js").SampleHierarchy}
      */
     get sampleHierarchy() {
         return this.provenance.getPresentState()[SAMPLE_SLICE_NAME];
@@ -410,7 +410,7 @@ export default class SampleView extends ContainerView {
     get leafSamples() {
         // TODO: Memoize using createSelector or something
         const sampleGroups =
-            /** @type {import("./sampleState").SampleGroup[]} */ (
+            /** @type {import("./sampleState.js").SampleGroup[]} */ (
                 getFlattenedGroupHierarchy(this.sampleHierarchy).map((path) =>
                     path.at(-1)
                 )
@@ -433,7 +433,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
+     * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
      */
     #renderChild(context, coords, options = {}) {
         const gridChild = this.#gridChild;
@@ -534,7 +534,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
+     * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
@@ -590,7 +590,7 @@ export default class SampleView extends ContainerView {
 
     /**
      *
-     * @returns {import("../utils/ui/contextMenu").MenuItem}
+     * @returns {import("../utils/ui/contextMenu.js").MenuItem}
      */
     makePeekMenuItem() {
         return {
@@ -611,9 +611,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
+     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
      *      Coordinates of the view
-     * @param {import("@genome-spy/core/utils/interactionEvent").default} event
+     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
     findSampleForMouseEvent(coords, event) {
         return this.getSampleAt(event.point.y - this.childCoords.y);
@@ -626,9 +626,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
+     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
      *      Coordinates of the view
-     * @param {import("@genome-spy/core/utils/interactionEvent").default} event
+     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
     #handleContextMenu(coords, event) {
         // TODO: Allow for registering listeners
@@ -661,7 +661,7 @@ export default class SampleView extends ContainerView {
             // TODO: Log a warning if the view name is not unique
             .filter((info) => uniqueViewNames.has(info.view.name));
 
-        /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
+        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         let items = [
             this.makePeekMenuItem(),
             DIVIDER,
@@ -678,7 +678,7 @@ export default class SampleView extends ContainerView {
         let previousContextTitle = "";
 
         for (const [i, fieldInfo] of fieldInfos.entries()) {
-            /** @type {import("./sampleViewTypes").LocusSpecifier} */
+            /** @type {import("./sampleViewTypes.js").LocusSpecifier} */
             const specifier = {
                 view: fieldInfo.view.name,
                 field: fieldInfo.field,
@@ -709,7 +709,7 @@ export default class SampleView extends ContainerView {
                 "invert" in scale && sample
                     ? fieldInfo.view.mark.findDatumAt(
                           sample.id,
-                          /** @type {import("@genome-spy/core/spec/channel").Scalar} */ (
+                          /** @type {import("@genome-spy/core/spec/channel.js").Scalar} */ (
                               scale.invert(normalizedXPos)
                           )
                       )?.[fieldInfo.field]
@@ -732,7 +732,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/interactionEvent").default} event
+     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
     propagateInteractionEvent(event) {
         this.handleInteractionEvent(undefined, event, true);
@@ -770,9 +770,9 @@ export default class SampleView extends ContainerView {
 
     /**
      *
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords Coordinates
+     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords Coordinates
      * @param {View} view
-     * @param {import("@genome-spy/core/view/zoom").ZoomEvent} zoomEvent
+     * @param {import("@genome-spy/core/view/zoom.js").ZoomEvent} zoomEvent
      */
     #handleZoom(coords, view, zoomEvent) {
         const resolution = this.#gridChild.view.getScaleResolution("x");
@@ -835,8 +835,8 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {string} channel
-     * @param {import("@genome-spy/core/spec/view").ResolutionTarget} resolutionType
-     * @returns {import("@genome-spy/core/spec/view").ResolutionBehavior}
+     * @param {import("@genome-spy/core/spec/view.js").ResolutionTarget} resolutionType
+     * @returns {import("@genome-spy/core/spec/view.js").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         if (resolutionType == "axis") {
@@ -865,7 +865,7 @@ class ProcessSample extends FlowNode {
 
     /**
      *
-     * @param {import("@genome-spy/core/data/flowNode").Datum} datum
+     * @param {import("@genome-spy/core/data/flowNode.js").Datum} datum
      */
     handle(datum) {
         this._propagate({
@@ -896,7 +896,7 @@ class SampleGridChild extends GridChild {
      * @param {View} view
      * @param {ContainerView} layoutParent
      * @param {number} serial
-     * @param {import("@genome-spy/core/spec/view").ViewBackground} [viewBackgroundSpec]
+     * @param {import("@genome-spy/core/spec/view.js").ViewBackground} [viewBackgroundSpec]
      */
     constructor(view, layoutParent, serial, viewBackgroundSpec) {
         super(view, layoutParent, serial);

@@ -10,10 +10,10 @@
  */
 export function nodesToTreesWithAccessor(nodes, parentAccessor) {
     /**
+     * @template T
      * @typedef {object} NodeWrapper
      * @prop {T} ref
      * @prop {NodeWrapper<T>[]} children
-     * @template T
      */
 
     /** @type {Map<T, NodeWrapper<T>>} */

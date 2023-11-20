@@ -18,7 +18,7 @@ export default class Collector extends FlowNode {
     }
 
     /**
-     * @param {import("../spec/transform").CollectParams} [params]
+     * @param {import("../spec/transform.js").CollectParams} [params]
      */
     constructor(params) {
         super();
@@ -28,14 +28,14 @@ export default class Collector extends FlowNode {
         /** @type {(function(Collector):void)[]} */
         this.observers = [];
 
-        /** @type {Map<any | any[], import("./flowNode").Data>} TODO: proper type for key */
+        /** @type {Map<any | any[], import("./flowNode.js").Data>} TODO: proper type for key */
         this.facetBatches = undefined;
 
         this._init();
     }
 
     _init() {
-        /** @type {import("./flowNode").Data} */
+        /** @type {import("./flowNode.js").Data} */
         this._data = [];
 
         // TODO: Consider nested maps
@@ -50,14 +50,14 @@ export default class Collector extends FlowNode {
 
     /**
      *
-     * @param {import("./flowNode").Datum} datum
+     * @param {import("./flowNode.js").Datum} datum
      */
     handle(datum) {
         this._data.push(datum);
     }
 
     /**
-     * @param {import("../types/flowBatch").FlowBatch} flowBatch
+     * @param {import("../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
         if (isFacetBatch(flowBatch)) {
@@ -104,7 +104,7 @@ export default class Collector extends FlowNode {
         if (this.children.length) {
             for (const [key, data] of this.facetBatches.entries()) {
                 if (key) {
-                    /** @type {import("../types/flowBatch").FacetBatch} */
+                    /** @type {import("../types/flowBatch.js").FacetBatch} */
                     const facetBatch = { type: "facet", facetId: key };
                     for (const child of this.children) {
                         child.beginBatch(facetBatch);
@@ -124,7 +124,7 @@ export default class Collector extends FlowNode {
     }
 
     /**
-     * @returns {Iterable<import("./flowNode").Datum>}
+     * @returns {Iterable<import("./flowNode.js").Datum>}
      */
     getData() {
         this._checkStatus();
@@ -151,7 +151,7 @@ export default class Collector extends FlowNode {
 
     /**
      *
-     * @param {(datum: import("./flowNode").Datum) => void} visitor
+     * @param {(datum: import("./flowNode.js").Datum) => void} visitor
      */
     visitData(visitor) {
         this._checkStatus();

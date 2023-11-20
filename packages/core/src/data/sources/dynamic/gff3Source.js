@@ -8,8 +8,8 @@ export default class Gff3Source extends TabixSource {
     #gff;
 
     /**
-     * @param {import("../../../spec/data").TabixData} params
-     * @param {import("../../../view/view").default} view
+     * @param {import("../../../spec/data.js").TabixData} params
+     * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
         super(params, view);

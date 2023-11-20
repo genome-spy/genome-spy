@@ -9,7 +9,7 @@ const sampleData = [
 ];
 
 /**
- * @param {import("./flattenDelimited").FlattenDelimitedParams} params
+ * @param {import("./flattenDelimited.js").FlattenDelimitedParams} params
  * @param {any[]} data
  */
 function transform(params, data) {
@@ -18,7 +18,7 @@ function transform(params, data) {
 
 describe("FlattenDelimited transform", () => {
     test("With a single field", () => {
-        /** @type {import("./flattenDelimited").FlattenDelimitedParams} */
+        /** @type {import("./flattenDelimited.js").FlattenDelimitedParams} */
         const config = {
             type: "flattenDelimited",
             field: "a",
@@ -37,7 +37,7 @@ describe("FlattenDelimited transform", () => {
     });
 
     test("With two fields", () => {
-        /** @type {import("./flattenDelimited").FlattenDelimitedParams} */
+        /** @type {import("./flattenDelimited.js").FlattenDelimitedParams} */
         const config = {
             type: "flattenDelimited",
             field: ["a", "b"],
@@ -64,7 +64,7 @@ describe("FlattenDelimited transform", () => {
             },
         ];
 
-        /** @type {import("./flattenDelimited").FlattenDelimitedParams} */
+        /** @type {import("./flattenDelimited.js").FlattenDelimitedParams} */
         const config = {
             type: "flattenDelimited",
             field: ["a", "b"],
@@ -75,7 +75,7 @@ describe("FlattenDelimited transform", () => {
     });
 
     test("Throws on mismatching spec lengths", () => {
-        /** @type {import("./flattenDelimited").FlattenDelimitedParams} */
+        /** @type {import("./flattenDelimited.js").FlattenDelimitedParams} */
         const config = {
             type: "flattenDelimited",
             field: ["a", "b"],

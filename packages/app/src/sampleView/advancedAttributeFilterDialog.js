@@ -13,13 +13,13 @@ import { classMap } from "lit/directives/class-map.js";
 import "../components/histogram.js";
 
 /**
- * @typedef {import("@genome-spy/core/spec/channel").Scalar} Scalar
- * @typedef {import("./sampleOperations").ComparisonOperatorType} ComparisonOperatorType
+ * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
+ * @typedef {import("./sampleOperations.js").ComparisonOperatorType} ComparisonOperatorType
  */
 
 /**
- * @param {import("./types").AttributeInfo} attribute
- * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("./types.js").AttributeInfo} attribute
+ * @param {import("./sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export function advancedAttributeFilterDialog(attribute, sampleView) {
     const type = attribute.scale?.type;
@@ -35,8 +35,8 @@ export function advancedAttributeFilterDialog(attribute, sampleView) {
 }
 
 /**
- * @param {import("./types").AttributeInfo} attributeInfo
- * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export function identifierAttributeFilterDialog(attributeInfo, sampleView) {
     discreteAttributeFilterDialog(
@@ -47,8 +47,8 @@ export function identifierAttributeFilterDialog(attributeInfo, sampleView) {
 }
 
 /**
- * @param {import("./types").AttributeInfo} attributeInfo
- * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export function discreteScaleAttributeFilterDialog(attributeInfo, sampleView) {
     const scale =
@@ -73,8 +73,8 @@ export function discreteScaleAttributeFilterDialog(attributeInfo, sampleView) {
 
 /**
  * @param {Scalar[]} categories
- * @param {import("./types").AttributeInfo} attributeInfo
- * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  * @param {(value: Scalar) => (import("lit").TemplateResult | typeof nothing)} [categoryToMarker]
  */
 export function discreteAttributeFilterDialog(
@@ -320,8 +320,8 @@ export function discreteAttributeFilterDialog(
 }
 
 /**
- * @param {import("./types").AttributeInfo} attributeInfo
- * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     const dispatch = sampleView.provenance.storeHelper.getDispatcher();
@@ -379,7 +379,7 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const thresholdAdded = (
-        /** @type {import("../components/histogram").ThresholdEvent}*/ event
+        /** @type {import("../components/histogram.js").ThresholdEvent}*/ event
     ) => {
         if (typeof operand !== "number") {
             operand = event.value;
@@ -388,7 +388,7 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     };
 
     const thresholdAdjusted = (
-        /** @type {import("../components/histogram").ThresholdEvent}*/ event
+        /** @type {import("../components/histogram.js").ThresholdEvent}*/ event
     ) => {
         operand = event.value;
         updateHtml();
@@ -467,9 +467,9 @@ const verboseOps = {
 /**
  * Extract values for histogram
  *
- * @param {import("./types").AttributeInfo} attributeInfo
+ * @param {import("./types.js").AttributeInfo} attributeInfo
  * @param {string[]} samples
- * @param {import("./sampleSlice").SampleHierarchy} sampleHierarchy
+ * @param {import("./sampleSlice.js").SampleHierarchy} sampleHierarchy
  */
 function extractValues(attributeInfo, samples, sampleHierarchy) {
     const a = attributeInfo.accessor;

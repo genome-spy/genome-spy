@@ -21,11 +21,11 @@ export default class BamSource extends windowedMixin(SingleAxisLazySource) {
     chrPrefixFixer = (chr) => chr;
 
     /**
-     * @param {import("../../../spec/data").BamData} params
-     * @param {import("../../../view/view").default} view
+     * @param {import("../../../spec/data.js").BamData} params
+     * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
-        /** @type {import("../../../spec/data").BamData} */
+        /** @type {import("../../../spec/data.js").BamData} */
         const paramsWithDefaults = {
             channel: "x",
             windowSize: 20000,

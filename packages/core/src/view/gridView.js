@@ -37,7 +37,7 @@ export default class GridView extends ContainerView {
     /**
      * @typedef {"row" | "column"} Direction
      *
-     * @typedef {import("./view").default} View
+     * @typedef {import("./view.js").default} View
      */
 
     /** */
@@ -55,7 +55,7 @@ export default class GridView extends ContainerView {
      * toggleable view visibilities. For example, if the bottom view is suddenly hidden,
      * the axis should be shown in the view that takes its place as the new bottom view.
      *
-     * @type { Partial<Record<import("../spec/channel").PrimaryPositionalChannel, AxisView>> } }
+     * @type { Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, AxisView>> } }
      */
     #sharedAxes = {};
 
@@ -63,13 +63,13 @@ export default class GridView extends ContainerView {
 
     /**
      *
-     * @param {import("../spec/view").AnyConcatSpec} spec
-     * @param {import("../types/viewContext").default} context
+     * @param {import("../spec/view.js").AnyConcatSpec} spec
+     * @param {import("../types/viewContext.js").default} context
      * @param {ContainerView} layoutParent
      * @param {View} dataParent
      * @param {string} name
      * @param {number} columns
-     * @param {import("./view").ViewOptions} [options]
+     * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(
         spec,
@@ -270,7 +270,7 @@ export default class GridView extends ContainerView {
     #makeFlexItems(direction) {
         const sizes = this.#getSizes(direction);
 
-        /** @type {import("../utils/layout/flexLayout").SizeDef[]} */
+        /** @type {import("../utils/layout/flexLayout.js").SizeDef[]} */
         const items = [];
 
         // Title
@@ -307,7 +307,7 @@ export default class GridView extends ContainerView {
 
     /**
      * @param {Direction} direction
-     * @return {import("../utils/layout/flexLayout").SizeDef}
+     * @return {import("../utils/layout/flexLayout.js").SizeDef}
      */
     #getFlexSize(direction) {
         let grow = 0;
@@ -391,7 +391,7 @@ export default class GridView extends ContainerView {
 
     #getSharedAxisOverhang() {
         /**
-         * @param {import("../spec/axis").AxisOrient} orient
+         * @param {import("../spec/axis.js").AxisOrient} orient
          */
         const getSharedAxisSize = (orient) => {
             const channel = ORIENT_CHANNELS[orient];
@@ -428,9 +428,9 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("../types/rendering").RenderingOptions} [options]
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     // eslint-disable-next-line complexity
     render(context, coords, options = {}) {
@@ -569,7 +569,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("../utils/interactionEvent").default} event
+     * @param {import("../utils/interactionEvent.js").default} event
      */
     propagateInteractionEvent(event) {
         this.handleInteractionEvent(undefined, event, true);
@@ -612,9 +612,9 @@ export default class GridView extends ContainerView {
 
     /**
      *
-     * @param {import("../utils/layout/rectangle").default} coords Coordinates
+     * @param {import("../utils/layout/rectangle.js").default} coords Coordinates
      * @param {View} view
-     * @param {import("./zoom").ZoomEvent} zoomEvent
+     * @param {import("./zoom.js").ZoomEvent} zoomEvent
      */
     #handleZoom(coords, view, zoomEvent) {
         for (const [channel, resolutionSet] of Object.entries(
@@ -648,9 +648,9 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("../spec/channel").Channel} channel
-     * @param {import("../spec/view").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
+     * @param {import("../spec/channel.js").Channel} channel
+     * @param {import("../spec/view.js").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view.js").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         return "independent";
@@ -658,8 +658,8 @@ export default class GridView extends ContainerView {
 }
 
 /**
- * @param {import("../spec/view").ViewBackground} viewBackground
- * @returns {import("../spec/view").UnitSpec}
+ * @param {import("../spec/view.js").ViewBackground} viewBackground
+ * @returns {import("../spec/view.js").UnitSpec}
  */
 export function createBackground(viewBackground) {
     if (
@@ -686,8 +686,8 @@ export function createBackground(viewBackground) {
 }
 
 /**
- * @param {import("../spec/view").ViewBackground} viewBackground
- * @returns {import("../spec/view").UnitSpec}
+ * @param {import("../spec/view.js").ViewBackground} viewBackground
+ * @returns {import("../spec/view.js").UnitSpec}
  */
 export function createBackgroundStroke(viewBackground) {
     if (
@@ -740,7 +740,7 @@ export function createBackgroundStroke(viewBackground) {
  * @returns
  */
 function getZoomableResolutions(view) {
-    /** @type {Record<import("../spec/channel").PrimaryPositionalChannel, Set<import("./scaleResolution").default>>} */
+    /** @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, Set<import("./scaleResolution.js").default>>} */
     const resolutions = {
         x: new Set(),
         y: new Set(),
@@ -776,8 +776,8 @@ export function isClippedChildren(view) {
 
 /**
  *
- * @param {import("../utils/layout/rectangle").default} coords
- * @param {import("../spec/axis").AxisOrient} orient
+ * @param {import("../utils/layout/rectangle.js").default} coords
+ * @param {import("../spec/axis.js").AxisOrient} orient
  * @param {AxisView} axisView
  */
 export function translateAxisCoords(coords, orient, axisView) {
@@ -816,10 +816,10 @@ export class GridChild {
         /** @type {UnitView} */
         this.backgroundStroke = undefined;
 
-        /** @type {Partial<Record<import("../spec/axis").AxisOrient, AxisView>>} axes */
+        /** @type {Partial<Record<import("../spec/axis.js").AxisOrient, AxisView>>} axes */
         this.axes = {};
 
-        /** @type {Partial<Record<import("../spec/axis").AxisOrient, AxisGridView>>} gridLines */
+        /** @type {Partial<Record<import("../spec/axis.js").AxisOrient, AxisGridView>>} gridLines */
         this.gridLines = {};
 
         /** @type {UnitView} */
@@ -899,8 +899,8 @@ export class GridChild {
         const { view, axes, gridLines } = this;
 
         /**
-         * @param {import("./axisResolution").default} r
-         * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+         * @param {import("./axisResolution.js").default} r
+         * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
          */
         const getAxisPropsWithDefaults = (r, channel) => {
             const propsWithoutDefaults = r.getAxisProps();
@@ -940,8 +940,8 @@ export class GridChild {
         };
 
         /**
-         * @param {import("./axisResolution").default} r
-         * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+         * @param {import("./axisResolution.js").default} r
+         * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
          * @param {View} axisParent
          */
         const createAxis = async (r, channel, axisParent) => {
@@ -967,8 +967,8 @@ export class GridChild {
         };
 
         /**
-         * @param {import("./axisResolution").default} r
-         * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+         * @param {import("./axisResolution.js").default} r
+         * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
          * @param {View} axisParent
          */
         const createAxisGrid = async (r, channel, axisParent) => {
@@ -988,7 +988,7 @@ export class GridChild {
         };
 
         // Handle children that have caught axis resolutions. Create axes for them.
-        for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
+        for (const channel of /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */ ([
             "x",
             "y",
         ])) {
@@ -1004,7 +1004,7 @@ export class GridChild {
 
         // Handle gridlines of children. Note: children's axis resolution may be caught by
         // this view or some of this view's ancestors.
-        for (const channel of /** @type {import("../spec/channel").PrimaryPositionalChannel[]} */ ([
+        for (const channel of /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */ ([
             "x",
             "y",
         ])) {
@@ -1061,7 +1061,7 @@ export class GridChild {
 
     getOverhang() {
         const calculate = (
-            /** @type {import("../spec/axis").AxisOrient} */ orient
+            /** @type {import("../spec/axis.js").AxisOrient} */ orient
         ) => {
             const axisView = this.axes[orient];
             return axisView

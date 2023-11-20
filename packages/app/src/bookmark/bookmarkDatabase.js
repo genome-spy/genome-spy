@@ -10,7 +10,7 @@ export default class BookmarkDatabase {
     }
 
     /**
-     * @param {import("./databaseSchema").BookmarkEntry} entry
+     * @param {import("./databaseSchema.js").BookmarkEntry} entry
      * @param {string} [nameToReplace]
      */
     async put(entry, nameToReplace) {
@@ -36,7 +36,7 @@ export default class BookmarkDatabase {
     /**
      *
      * @param {string} name
-     * @returns {Promise<import("./databaseSchema").BookmarkEntry>}
+     * @returns {Promise<import("./databaseSchema.js").BookmarkEntry>}
      */
     async get(name) {
         return undefined;

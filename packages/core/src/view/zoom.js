@@ -8,10 +8,10 @@
  */
 
 /**
- * @param {import("../utils/interactionEvent").default} event
- * @param {import("./renderingContext/layoutRecorderViewRenderingContext").Rectangle} coords The plot area
+ * @param {import("../utils/interactionEvent.js").default} event
+ * @param {import("./renderingContext/layoutRecorderViewRenderingContext.js").Rectangle} coords The plot area
  * @param {(zoomEvent: ZoomEvent) => void} handleZoom
- * @param {import("../types/viewContext").Hover} [hover]
+ * @param {import("../types/viewContext.js").Hover} [hover]
  */
 export default function interactionToZoom(event, coords, handleZoom, hover) {
     if (event.type == "wheel") {

@@ -87,7 +87,7 @@ export async function embed(el, spec, options = {}) {
 
 /**
  *
- * @param {import("@genome-spy/core/genomeSpy").default} genomeSpy
+ * @param {import("@genome-spy/core/genomeSpy.js").default} genomeSpy
  * @param {Record<string, any>} opt
  */
 function applyOptions(genomeSpy, opt) {

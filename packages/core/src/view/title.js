@@ -1,6 +1,6 @@
 import { isString } from "vega-util";
 
-/** @type {Omit<Required<import("../spec/title").Title>, "text" | "style">} */
+/** @type {Omit<Required<import("../spec/title.js").Title>, "text" | "style">} */
 const BASE_TITLE_STYLE = {
     anchor: "middle",
     frame: "group",
@@ -18,7 +18,7 @@ const BASE_TITLE_STYLE = {
     fontWeight: "normal",
 };
 
-/** @type {Partial<import("../spec/title").Title>} */
+/** @type {Partial<import("../spec/title.js").Title>} */
 const TRACK_TITLE_STYLE = {
     orient: "left",
     anchor: "middle",
@@ -28,7 +28,7 @@ const TRACK_TITLE_STYLE = {
     fontSize: 12,
 };
 
-/** @type {Partial<import("../spec/title").Title>} */
+/** @type {Partial<import("../spec/title.js").Title>} */
 const OVERLAY_TITLE_STYLE = {
     orient: "top",
     anchor: "start",
@@ -39,14 +39,14 @@ const OVERLAY_TITLE_STYLE = {
     fontSize: 12,
 };
 
-/** @type {Record<import("../spec/title").TitleAnchor, number>} */
+/** @type {Record<import("../spec/title.js").TitleAnchor, number>} */
 const ANCHORS = {
     start: 0,
     middle: 0.5,
     end: 1,
 };
 
-/** @type {Record<import("../spec/title").TitleAnchor, import("../spec/font").Align>} */
+/** @type {Record<import("../spec/title.js").TitleAnchor, import("../spec/font.js").Align>} */
 const ANCHOR_TO_ALIGN = {
     start: "left",
     middle: "center",
@@ -54,15 +54,15 @@ const ANCHOR_TO_ALIGN = {
 };
 
 /**
- * @param {string | import("../spec/title").Title} title
- * @returns {import("../spec/view").UnitSpec}
+ * @param {string | import("../spec/title.js").Title} title
+ * @returns {import("../spec/view.js").UnitSpec}
  */
 export default function createTitle(title) {
     if (!title) {
         return;
     }
 
-    /** @type {import("../spec/title").Title} */
+    /** @type {import("../spec/title.js").Title} */
     const titleSpec = isString(title) ? { text: title } : title;
 
     if (!titleSpec.text || titleSpec.orient == "none") {
@@ -70,7 +70,7 @@ export default function createTitle(title) {
     }
 
     // TODO: Make these configurable
-    /** @type {Partial<import("../spec/title").Title>} */
+    /** @type {Partial<import("../spec/title.js").Title>} */
     const config =
         {
             "track-title": TRACK_TITLE_STYLE,
@@ -79,14 +79,14 @@ export default function createTitle(title) {
 
     // TODO: frame prop
 
-    /** @type {import("../spec/title").Title} */
+    /** @type {import("../spec/title.js").Title} */
     const preliminarySpec = {
         ...BASE_TITLE_STYLE,
         ...config,
         ...titleSpec,
     };
 
-    /** @type {Partial<import("../spec/title").Title>} */
+    /** @type {Partial<import("../spec/title.js").Title>} */
     let orientConfig = {};
     let xy = { x: 0, y: 0 };
 
@@ -112,7 +112,7 @@ export default function createTitle(title) {
         default:
     }
 
-    /** @type {import("../spec/title").Title} */
+    /** @type {import("../spec/title.js").Title} */
     const spec = {
         ...BASE_TITLE_STYLE,
         ...orientConfig,

@@ -33,7 +33,7 @@ export default defineConfig({
                 replace({
                     "process.env.NODE_ENV": JSON.stringify("production"),
                 }),
-                minifyHTML(),
+                minifyHTML.default(),
             ],
         },
     },

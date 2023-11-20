@@ -94,7 +94,7 @@ export async function embed(el, spec, options = {}) {
 
 /**
  *
- * @param {import("./genomeSpy").default} genomeSpy
+ * @param {import("./genomeSpy.js").default} genomeSpy
  * @param {import("./types/embedApi.js").EmbedOptions} options options
  */
 function applyOptions(genomeSpy, options) {

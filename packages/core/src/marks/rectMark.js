@@ -12,7 +12,7 @@ import { isDiscrete } from "vega-scale";
 
 export default class RectMark extends Mark {
     /**
-     * @param {import("../view/unitView").default} unitView
+     * @param {import("../view/unitView.js").default} unitView
      */
     constructor(unitView) {
         super(unitView);
@@ -55,7 +55,7 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @returns {import("../spec/channel").Channel[]}
+     * @returns {import("../spec/channel.js").Channel[]}
      */
     getSupportedChannels() {
         return [
@@ -86,8 +86,8 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @param {import("../spec/channel").Encoding} encoding
-     * @returns {import("../spec/channel").Encoding}
+     * @param {import("../spec/channel.js").Encoding} encoding
+     * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
@@ -185,7 +185,7 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @param {import("../types/rendering").GlobalRenderingOptions} options
+     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
      */
     prepareRender(options) {
         const ops = super.prepareRender(options);
@@ -202,7 +202,7 @@ export default class RectMark extends Mark {
     }
 
     /**
-     * @param {import("./mark").MarkRenderingOptions} options
+     * @param {import("./mark.js").MarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;
@@ -225,7 +225,7 @@ export default class RectMark extends Mark {
      * This is highly specific to SampleView and its sorting/filtering functionality.
      *
      * @param {any} facetId
-     * @param {import("../spec/channel").Scalar} x value on the x domain
+     * @param {import("../spec/channel.js").Scalar} x value on the x domain
      * @returns {any}
      * @override
      */

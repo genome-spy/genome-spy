@@ -3,7 +3,7 @@ import { processData } from "../flowTestUtils.js";
 import FlattenTransform from "./flatten.js";
 
 /**
- * @param {import("./flatten").FlattenParams} params
+ * @param {import("./flatten.js").FlattenParams} params
  * @param {any[]} data
  */
 function transform(params, data) {
@@ -12,7 +12,7 @@ function transform(params, data) {
 
 describe("Flatten transform", () => {
     test("With a single field", () => {
-        /** @type {import("./flattenDelimited").FlattenParams} */
+        /** @type {import("./flattenDelimited.js").FlattenParams} */
         const params = { type: "flatten", fields: ["foo"] };
 
         const input = [
@@ -30,7 +30,7 @@ describe("Flatten transform", () => {
     });
 
     test("With an index field", () => {
-        /** @type {import("./flattenDelimited").FlattenParams} */
+        /** @type {import("./flattenDelimited.js").FlattenParams} */
         const params = { type: "flatten", fields: ["foo"], index: "idx" };
 
         const input = [
@@ -48,7 +48,7 @@ describe("Flatten transform", () => {
     });
 
     test("With multiple fields", () => {
-        /** @type {import("./flattenDelimited").FlattenParams} */
+        /** @type {import("./flattenDelimited.js").FlattenParams} */
         const params = { type: "flatten", fields: ["foo", "bar"] };
 
         const input = [
@@ -66,7 +66,7 @@ describe("Flatten transform", () => {
     });
 
     test("Throws on mismatching spec lengths", () => {
-        /** @type {import("./flattenDelimited").FlattenParams} */
+        /** @type {import("./flattenDelimited.js").FlattenParams} */
         const params = {
             type: "flatten",
             fields: ["a", "b"],
@@ -77,7 +77,7 @@ describe("Flatten transform", () => {
     });
 
     test("Missing fields property treats the input object as an array", () => {
-        /** @type {import("./flattenDelimited").FlattenParams} */
+        /** @type {import("./flattenDelimited.js").FlattenParams} */
         const params = {
             type: "flatten",
         };

@@ -1,6 +1,6 @@
 import { embed } from "@genome-spy/core";
 
-/** @type {import("@genome-spy/core/spec/root").RootSpec} */
+/** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
     height: 250,
     width: 250,

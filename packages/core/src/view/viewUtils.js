@@ -11,7 +11,7 @@ import { rollup } from "d3-array";
 
 /**
  *
- * @param {import("../spec/channel").ChannelDef | import("../spec/view").FacetMapping} def
+ * @param {import("../spec/channel.js").ChannelDef | import("../spec/view.js").FacetMapping} def
  * @returns {spec is FacetFieldDef}
  */
 export function isFacetFieldDef(def) {
@@ -20,7 +20,7 @@ export function isFacetFieldDef(def) {
 
 /**
  *
- * @param {import("../spec/channel").FacetFieldDef | import("../spec/view").FacetMapping} def
+ * @param {import("../spec/channel.js").FacetFieldDef | import("../spec/view.js").FacetMapping} def
  * @returns {spec is FacetMapping}
  */
 export function isFacetMapping(def) {
@@ -103,7 +103,7 @@ export function setImplicitScaleNames(root) {
 
 /**
  * @param {View} root
- * @param {import("../data/dataFlow").default<View>} [existingFlow] Add data flow
+ * @param {import("../data/dataFlow.js").default<View>} [existingFlow] Add data flow
  *      graphs to an existing DataFlow object.
  */
 export async function initializeData(root, existingFlow) {
@@ -124,7 +124,7 @@ export async function initializeData(root, existingFlow) {
  * @param {View} view
  */
 export function findEncodedFields(view) {
-    /** @type {{view: UnitView, channel: import("../spec/channel").Channel, field: import("../spec/channel").Field, type: import("../spec/channel").Type}[]} */
+    /** @type {{view: UnitView, channel: import("../spec/channel.js").Channel, field: import("../spec/channel.js").Field, type: import("../spec/channel.js").Type}[]} */
     const fieldInfos = [];
 
     view.visit((view) => {
@@ -148,9 +148,9 @@ export function findEncodedFields(view) {
 }
 
 /**
- * @param {import("../spec/view").ImportSpec} spec
+ * @param {import("../spec/view.js").ImportSpec} spec
  * @param {string} baseUrl
- * @param {import("../types/viewContext").default} viewContext
+ * @param {import("../types/viewContext.js").default} viewContext
  */
 export async function loadExternalViewSpec(spec, baseUrl, viewContext) {
     if (!spec.import.url) {
@@ -189,7 +189,7 @@ export function stackifyVisitor(visitor) {
     /** @type {View[]} */
     const stack = [];
 
-    /** @type {import("./view").Visitor} */
+    /** @type {import("./view.js").Visitor} */
     const stackified = (view) => visitor(view, stack);
 
     stackified.beforeChildren = (view) => {
@@ -264,7 +264,7 @@ export function calculateCanvasSize(viewRoot) {
     // container.
     // TODO: Enforce the minimum size (in case of both absolute and growing components).
 
-    /** @param {import("../utils/layout/flexLayout").SizeDef} dim */
+    /** @param {import("../utils/layout/flexLayout.js").SizeDef} dim */
     const f = (dim) => (dim.grow > 0 ? undefined : dim.px);
     return {
         width: f(size.width),

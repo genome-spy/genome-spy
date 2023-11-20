@@ -5,7 +5,7 @@ import BookmarkDatabase from "./bookmarkDatabase.js";
  */
 export default class SimpleBookmarkDatabase extends BookmarkDatabase {
     /**
-     * @param {import("./databaseSchema").BookmarkEntry[]} bookmarks
+     * @param {import("./databaseSchema.js").BookmarkEntry[]} bookmarks
      */
     constructor(bookmarks) {
         super();
@@ -23,7 +23,7 @@ export default class SimpleBookmarkDatabase extends BookmarkDatabase {
 
     /**
      * @param {string} name
-     * @returns {Promise<import("./databaseSchema").BookmarkEntry>}
+     * @returns {Promise<import("./databaseSchema.js").BookmarkEntry>}
      */
     async get(name) {
         return this.bookmarks.find((bookmark) => bookmark.name == name);

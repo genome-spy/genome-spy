@@ -1,8 +1,8 @@
 /**
  * A class for handing paddings, borders, margins, etc.
  *
- * @typedef {import("../../spec/view").Paddings} Paddings
- * @typedef {import("../../spec/view").PaddingConfig} PaddingConfig
+ * @typedef {import("../../spec/view.js").Paddings} Paddings
+ * @typedef {import("../../spec/view.js").PaddingConfig} PaddingConfig
  */
 export default class Padding {
     /**

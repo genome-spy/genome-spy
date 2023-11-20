@@ -47,7 +47,7 @@ export default class WebGLHelper {
         /** @type {{ type: string, listener: function}[]} */
         this._listeners = [];
 
-        /** @type {WeakMap<import("../view/scaleResolution").default, WebGLTexture>} */
+        /** @type {WeakMap<import("../view/scaleResolution.js").default, WebGLTexture>} */
         this.rangeTextures = new WeakMap();
 
         // --------------------------------------------------------
@@ -300,7 +300,7 @@ export default class WebGLHelper {
      *
      * TODO: This may be too specific to be included in WebGLHelper. Find a better place.
      *
-     * @param {import("../view/scaleResolution").default} resolution
+     * @param {import("../view/scaleResolution.js").default} resolution
      * @param {boolean} update Update the texture if it exists already.
      */
     createRangeTexture(resolution, update = false) {

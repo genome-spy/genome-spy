@@ -32,7 +32,7 @@ import undoable, { ActionCreators } from "redux-undo";
 export default class Provenance {
     /**
      *
-     * @param {import("./storeHelper").default<{provenance?: import("redux-undo").StateWithHistory<S>}>} storeHelper
+     * @param {import("./storeHelper.js").default<{provenance?: import("redux-undo").StateWithHistory<S>}>} storeHelper
      */
     constructor(storeHelper) {
         this.storeHelper = storeHelper;

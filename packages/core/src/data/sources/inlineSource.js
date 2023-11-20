@@ -3,8 +3,8 @@ import { getFormat, makeWrapper } from "./dataUtils.js";
 import DataSource from "./dataSource.js";
 
 /**
- * @param {Partial<import("../../spec/data").Data>} data
- * @returns {data is import("../../spec/data").InlineData}
+ * @param {Partial<import("../../spec/data.js").Data>} data
+ * @returns {data is import("../../spec/data.js").InlineData}
  */
 export function isInlineData(data) {
     return "values" in data;
@@ -12,8 +12,8 @@ export function isInlineData(data) {
 
 export default class InlineSource extends DataSource {
     /**
-     * @param {import("../../spec/data").InlineData} params
-     * @param {import("../../view/view").default} view
+     * @param {import("../../spec/data.js").InlineData} params
+     * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
         super();
@@ -32,7 +32,7 @@ export default class InlineSource extends DataSource {
 
         let data = [];
 
-        /** @type {(x: any) => import("../flowNode").Datum} */
+        /** @type {(x: any) => import("../flowNode.js").Datum} */
         let wrap = (x) => x;
 
         if (Array.isArray(values)) {

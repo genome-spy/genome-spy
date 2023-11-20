@@ -8,7 +8,7 @@ export default class FlattenSequenceTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../../spec/transform").FlattenSequenceParams} params
+     * @param {import("../../spec/transform.js").FlattenSequenceParams} params
      */
     constructor(params) {
         super();

@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.37.4",
   "description": "Examples",
+  "type": "module",
   "scripts": {
     "dev": "vite"
   },

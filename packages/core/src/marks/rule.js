@@ -12,7 +12,7 @@ import { isChannelDefWithScale } from "../encoder/encoder.js";
 
 export default class RuleMark extends Mark {
     /**
-     * @param {import("../view/unitView").default} unitView
+     * @param {import("../view/unitView.js").default} unitView
      */
     constructor(unitView) {
         super(unitView);
@@ -52,15 +52,15 @@ export default class RuleMark extends Mark {
     }
 
     /**
-     * @returns {import("../spec/channel").Channel[]}
+     * @returns {import("../spec/channel.js").Channel[]}
      */
     getSupportedChannels() {
         return [...super.getSupportedChannels(), "x2", "y2", "size"];
     }
 
     /**
-     * @param {import("../spec/channel").Encoding} encoding
-     * @returns {import("../spec/channel").Encoding}
+     * @param {import("../spec/channel.js").Encoding} encoding
+     * @returns {import("../spec/channel.js").Encoding}
      */
     // eslint-disable-next-line complexity
     fixEncoding(encoding) {
@@ -172,7 +172,7 @@ export default class RuleMark extends Mark {
     }
 
     /**
-     * @param {import("../types/rendering").GlobalRenderingOptions} options
+     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
      */
     prepareRender(options) {
         const ops = super.prepareRender(options);
@@ -198,7 +198,7 @@ export default class RuleMark extends Mark {
     }
 
     /**
-     * @param {import("./mark").MarkRenderingOptions} options
+     * @param {import("./mark.js").MarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;

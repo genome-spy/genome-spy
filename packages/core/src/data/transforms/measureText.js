@@ -14,7 +14,7 @@ export default class MeasureTextTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../../spec/transform").MeasureTextParams} config
+     * @param {import("../../spec/transform.js").MeasureTextParams} config
      */
     constructor(config) {
         super();

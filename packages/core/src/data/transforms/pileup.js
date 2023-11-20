@@ -13,7 +13,7 @@ export default class PileupTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../../spec/transform").PileupParams} params
+     * @param {import("../../spec/transform.js").PileupParams} params
      */
     constructor(params) {
         super();

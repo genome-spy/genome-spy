@@ -5,23 +5,23 @@ import { html } from "lit";
 
 /**
  *
- * @param {import("@genome-spy/core/view/containerView").default} rootView
- * @param {import("./types").AttributeIdentifier} attributeIdentifier
+ * @param {import("@genome-spy/core/view/containerView.js").default} rootView
+ * @param {import("./types.js").AttributeIdentifier} attributeIdentifier
  * @returns
  */
 export default function getViewAttributeInfo(rootView, attributeIdentifier) {
     const specifier =
-        /** @type {import("./sampleViewTypes").LocusSpecifier} */ (
+        /** @type {import("./sampleViewTypes.js").LocusSpecifier} */ (
             attributeIdentifier.specifier
         );
     const view =
-        /** @type {import("@genome-spy/core/view/unitView").default} */ (
+        /** @type {import("@genome-spy/core/view/unitView.js").default} */ (
             rootView.findDescendantByName(specifier.view)
         );
 
     const xScaleResolution = view.getScaleResolution("x");
 
-    /** @type {import("@genome-spy/core/spec/channel").Scalar} */
+    /** @type {import("@genome-spy/core/spec/channel.js").Scalar} */
     let scalarLocus;
 
     if (isChromosomalLocus(specifier.locus)) {
@@ -53,7 +53,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         ? view.getScaleResolution(channel).getScale()
         : undefined;
 
-    /** @type {import("./types").AttributeInfo} */
+    /** @type {import("./types.js").AttributeInfo} */
     const attributeInfo = {
         name: specifier.field,
         attribute: attributeIdentifier,

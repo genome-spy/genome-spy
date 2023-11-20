@@ -6,13 +6,13 @@ import NamedSource from "./sources/namedSource.js";
  */
 export default class DataFlow {
     constructor() {
-        /** @type {Map<H, import("./sources/dataSource").default>} */
+        /** @type {Map<H, import("./sources/dataSource.js").default>} */
         this._dataSourcesByHost = new Map();
 
-        /** @type {Map<H, import("./collector").default>} */
+        /** @type {Map<H, import("./collector.js").default>} */
         this._collectorsByHost = new Map();
 
-        /** @type {Map<H, (function(import("./collector").default):void)[]>} */
+        /** @type {Map<H, (function(import("./collector.js").default):void)[]>} */
         this._observers = new Map();
     }
 
@@ -27,7 +27,7 @@ export default class DataFlow {
     /**
      * Adds a callback function that will be called when a collector has completed.
      *
-     * @param {function(import("./collector").default):void} callback
+     * @param {function(import("./collector.js").default):void} callback
      * @param {H} key
      */
     addObserver(callback, key) {
@@ -42,7 +42,7 @@ export default class DataFlow {
 
     /**
      *
-     * @param {import("./collector").default} collector
+     * @param {import("./collector.js").default} collector
      * @param {H} key
      */
     _relayObserverCallback(collector, key) {
@@ -57,7 +57,7 @@ export default class DataFlow {
 
     /**
      *
-     * @param {import("./sources/dataSource").default} dataSource
+     * @param {import("./sources/dataSource.js").default} dataSource
      * @param {H} key
      */
     addDataSource(dataSource, key) {
@@ -111,7 +111,7 @@ export default class DataFlow {
 
     /**
      *
-     * @param {import("./collector").default} collector
+     * @param {import("./collector.js").default} collector
      * @param {H} key
      */
     addCollector(collector, key) {

@@ -2,8 +2,8 @@
  * Utils for Jest tests
  * TODO: Find a better place and convention
  *
- * @typedef {import("../spec/view").ViewSpec} ViewSpec
- * @typedef {import("../types/viewContext").default} ViewContext
+ * @typedef {import("../spec/view.js").ViewSpec} ViewSpec
+ * @typedef {import("../types/viewContext.js").default} ViewContext
  */
 
 import { checkForDuplicateScaleNames, initializeData } from "./viewUtils.js";

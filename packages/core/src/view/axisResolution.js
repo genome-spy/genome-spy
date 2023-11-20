@@ -15,15 +15,15 @@ import { getCachedOrCall } from "../utils/propertyCacher.js";
 
 export default class AxisResolution {
     /**
-     * @typedef { import("./unitView").default} UnitView
+     * @typedef { import("./unitView.js").default} UnitView
      */
 
     /**
-     * @param {import("../spec/channel").PrimaryPositionalChannel} channel
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {import("./scaleResolution").ResolutionMember<import("../spec/channel").PositionalChannel>[]} The involved views */
+        /** @type {import("./scaleResolution.js").ResolutionMember<import("../spec/channel.js").PositionalChannel>[]} The involved views */
         this.members = [];
     }
 
@@ -36,7 +36,7 @@ export default class AxisResolution {
      * scales have been resolved.
      *
      * @param {UnitView} view
-     * @param {import("../spec/channel").PositionalChannel} channel TODO: Do something for this
+     * @param {import("../spec/channel.js").PositionalChannel} channel TODO: Do something for this
      */
     pushUnitView(view, channel) {
         const newScaleResolution = view.getScaleResolution(this.channel);
@@ -69,7 +69,7 @@ export default class AxisResolution {
                 // No axis whatsoever is wanted
                 return null;
             } else {
-                return /** @type { import("../spec/axis").GenomeAxis} */ (
+                return /** @type { import("../spec/axis.js").GenomeAxis} */ (
                     mergeObjects(
                         propArray.filter((props) => props !== undefined),
                         "axis",
@@ -81,7 +81,7 @@ export default class AxisResolution {
     }
 
     getTitle() {
-        /** @param {import("./scaleResolution").ResolutionMember} member} */
+        /** @param {import("./scaleResolution.js").ResolutionMember} member} */
         const computeTitle = (member) => {
             const channelDef = getChannelDefWithScale(
                 member.view,

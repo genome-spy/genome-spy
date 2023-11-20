@@ -1,6 +1,6 @@
-import Mark from "../marks/mark";
-import { LocSize } from "../utils/layout/flexLayout";
-import Rectangle from "../utils/layout/rectangle";
+import Mark from "../marks/mark.js";
+import { LocSize } from "../utils/layout/flexLayout.js";
+import Rectangle from "../utils/layout/rectangle.js";
 
 /**
  * Describes the location of a sample facet. Left is the primary pos, right is for

@@ -2,25 +2,25 @@ import LayerView from "./layerView.js";
 import { orient2channel } from "./axisView.js";
 
 /**
- * @typedef {import("../spec/channel").PrimaryPositionalChannel} PositionalChannel
- * @typedef {import("../spec/view").GeometricDimension} GeometricDimension
+ * @typedef {import("../spec/channel.js").PrimaryPositionalChannel} PositionalChannel
+ * @typedef {import("../spec/view.js").GeometricDimension} GeometricDimension
  */
 
 /**
  * An internal view that renders an axis grid.
  *
- * @typedef {import("./view").default} View
- * @typedef {import("../spec/axis").Axis} Axis
- * @typedef {import("../spec/axis").GenomeAxis} GenomeAxis
+ * @typedef {import("./view.js").default} View
+ * @typedef {import("../spec/axis.js").Axis} Axis
+ * @typedef {import("../spec/axis.js").GenomeAxis} GenomeAxis
  */
 export default class AxisGridView extends LayerView {
     /**
      * @param {Axis} axisProps
-     * @param {import("../types/viewContext").default} context
+     * @param {import("../types/viewContext.js").default} context
      * @param {string} type Data type (quantitative, ..., locus)
-     * @param {import("./containerView").default} layoutParent
-     * @param {import("./view").default} dataParent
-     * @param {import("./view").ViewOptions} [options]
+     * @param {import("./containerView.js").default} layoutParent
+     * @param {import("./view.js").default} dataParent
+     * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(axisProps, type, context, layoutParent, dataParent, options) {
         // Now the presence of genomeAxis is based on field type, not scale type.
@@ -80,7 +80,7 @@ const defaultAxisProps = {
 };
 
 /**
- * @type {import("../spec/axis").GenomeAxis}
+ * @type {import("../spec/axis.js").GenomeAxis}
  */
 const defaultGenomeAxisProps = {
     ...defaultAxisProps,
@@ -96,7 +96,7 @@ const defaultGenomeAxisProps = {
 /**
  * @param {Axis} axisProps
  * @param {string} type
- * @returns {import("../spec/view").UnitSpec}
+ * @returns {import("../spec/view.js").UnitSpec}
  */
 function createRegularAxisGrid(axisProps, type) {
     const ap = axisProps;
@@ -127,9 +127,9 @@ function createRegularAxisGrid(axisProps, type) {
 }
 
 /**
- * @param {import("../spec/axis").GenomeAxis} axisProps
+ * @param {import("../spec/axis.js").GenomeAxis} axisProps
  * @param {string} type
- * @returns {import("../spec/view").UnitSpec}
+ * @returns {import("../spec/view.js").UnitSpec}
  */
 function createChromAxisGrid(axisProps, type) {
     const ap = axisProps;
@@ -159,9 +159,9 @@ function createChromAxisGrid(axisProps, type) {
 }
 
 /**
- * @param {import("../spec/axis").GenomeAxis} axisProps
+ * @param {import("../spec/axis.js").GenomeAxis} axisProps
  * @param {string} type
- * @returns {import("../spec/view").UnitSpec}
+ * @returns {import("../spec/view.js").UnitSpec}
  */
 function createChromAxisFill(axisProps, type) {
     const ap = axisProps;
@@ -213,13 +213,13 @@ function createChromAxisFill(axisProps, type) {
 /**
  * @param {GenomeAxis} axisProps
  * @param {string} type
- * @returns {import("../spec/view").LayerSpec}
+ * @returns {import("../spec/view.js").LayerSpec}
  */
 function createAxisGrid(axisProps, type) {
     const ap = { ...axisProps };
 
     /**
-     * @type {(import("../spec/view").UnitSpec | import("../spec/view").LayerSpec)[]}
+     * @type {(import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec)[]}
      */
     const layers = [];
 
