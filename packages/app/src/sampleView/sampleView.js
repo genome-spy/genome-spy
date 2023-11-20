@@ -1,4 +1,3 @@
-import { isObject } from "vega-util";
 import {
     findEncodedFields,
     findUniqueViewNames,
@@ -887,20 +886,6 @@ function extractAttributes(row) {
     delete attributes.sample;
     delete attributes.displayName;
     return attributes;
-}
-
-/**
- *
- * @param {import("@genome-spy/core/spec/view").ViewSpec} spec
- * @returns {spec is SampleSpec}
- */
-export function isSampleSpec(spec) {
-    return (
-        "samples" in spec &&
-        isObject(spec.samples) &&
-        "spec" in spec &&
-        isObject(spec.spec)
-    );
 }
 
 /**

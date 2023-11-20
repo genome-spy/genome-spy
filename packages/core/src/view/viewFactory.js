@@ -28,10 +28,14 @@ export class ViewFactory {
      * @typedef {import("../spec/view").LayerSpec} LayerSpec
      * @typedef {import("../spec/view").VConcatSpec} VConcatSpec
      * @typedef {import("../spec/view").ConcatSpec} ConcatSpec
+     * @typedef {import("../spec/sampleView").SampleSpec} SampleSpec
      *
      * @typedef {(spec: ViewSpec) => boolean} SpecGuard
      * @typedef {(spec: ViewSpec, context: ViewContext, layoutParent?: import("./containerView").default, dataParent?: import("./view").default, defaultName?: string) => View} Factory
      */
+
+    /** @type {Map<SpecGuard, Factory>} */
+    #types = new Map();
 
     /**
      * @param {ViewFactoryOptions} [options]
@@ -43,9 +47,6 @@ export class ViewFactory {
             wrapRoot: true,
             ...options,
         };
-
-        /** @type {{specGuard: SpecGuard, factory: Factory}[]} */
-        this.types = [];
 
         const makeDefaultFactory =
             (/** @type {typeof View} */ ViewClass) =>
@@ -67,6 +68,12 @@ export class ViewFactory {
         this.addViewType(isHConcatSpec, makeDefaultFactory(ConcatView));
         this.addViewType(isConcatSpec, makeDefaultFactory(ConcatView));
         //this.addViewType(isFacetSpec, makeDefaultFactory(FacetView));
+
+        this.addViewType(isSampleSpec, () => {
+            throw new Error(
+                "SampleView is not supported by the @genome-spy/core package. Use @genome-spy/app instead!"
+            );
+        });
     }
 
     /**
@@ -74,7 +81,7 @@ export class ViewFactory {
      * @param {Factory} factory
      */
     addViewType(specGuard, factory) {
-        this.types.push({ specGuard, factory });
+        this.#types.set(specGuard, factory);
     }
 
     /**
@@ -85,21 +92,22 @@ export class ViewFactory {
      * @param {string} [defaultName]
      */
     createView(spec, context, layoutParent, dataParent, defaultName) {
-        const type = this.types.find((type) => type.specGuard(spec));
-        if (type) {
-            return type.factory(
-                spec,
-                context,
-                layoutParent,
-                dataParent,
-                defaultName ?? "unnamed"
-            );
-        } else {
-            throw new Error(
-                "Invalid spec, cannot figure out the view type from the properties: " +
-                    JSON.stringify([...Object.keys(spec)])
-            );
+        for (const [guard, factory] of this.#types) {
+            if (guard(spec)) {
+                return factory(
+                    spec,
+                    context,
+                    layoutParent,
+                    dataParent,
+                    defaultName
+                );
+            }
         }
+
+        throw new Error(
+            "Invalid spec, cannot figure out the view type from the properties: " +
+                JSON.stringify([...Object.keys(spec)])
+        );
     }
 
     /**
@@ -108,7 +116,7 @@ export class ViewFactory {
      * @returns {spec is ViewSpec}
      */
     isViewSpec(spec) {
-        const matches = this.types.filter((type) => type.specGuard(spec));
+        const matches = [...this.#types.keys()].filter((guard) => guard(spec));
 
         if (matches.length > 1) {
             throw new Error("Ambiguous spec. Cannot create a view!");
@@ -268,4 +276,18 @@ export function isHConcatSpec(spec) {
  */
 export function isConcatSpec(spec) {
     return "concat" in spec && isArray(spec.concat);
+}
+
+/**
+ *
+ * @param {ViewSpec} spec
+ * @returns {spec is SampleSpec}
+ */
+export function isSampleSpec(spec) {
+    return (
+        "samples" in spec &&
+        isObject(spec.samples) &&
+        "spec" in spec &&
+        isObject(spec.spec)
+    );
 }

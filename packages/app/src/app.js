@@ -5,7 +5,7 @@ import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
 import { html, render } from "lit";
 
 import { VISIT_STOP } from "@genome-spy/core/view/view.js";
-import SampleView, { isSampleSpec } from "./sampleView/sampleView.js";
+import SampleView from "./sampleView/sampleView.js";
 import IDBBookmarkDatabase from "./bookmark/idbBookmarkDatabase.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 
@@ -26,6 +26,7 @@ import StoreHelper from "./state/storeHelper.js";
 import { watch } from "./state/watch.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
+import { isSampleSpec } from "@genome-spy/core/view/viewFactory";
 
 transforms.mergeFacets = MergeSampleFacets;
 
