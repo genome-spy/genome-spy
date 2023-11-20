@@ -26,9 +26,9 @@
   },
   "dependencies": {
     "@floating-ui/dom": "^0.5.0",
-    "@fortawesome/fontawesome-free": "^6.1.1",
-    "@fortawesome/fontawesome-svg-core": "^6.1.1",
-    "@fortawesome/free-solid-svg-icons": "^6.1.1",
+    "@fortawesome/fontawesome-free": "^6.4.2",
+    "@fortawesome/fontawesome-svg-core": "^6.4.2",
+    "@fortawesome/free-solid-svg-icons": "^6.4.2",
     "@genome-spy/core": "^0.37.4",
     "@reduxjs/toolkit": "^1.8.4",
     "idb": "^7.0.1",
