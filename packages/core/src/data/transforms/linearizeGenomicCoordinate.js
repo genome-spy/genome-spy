@@ -9,8 +9,8 @@ export default class LinearizeGenomicCoordinate extends FlowNode {
 
     /**
      *
-     * @param {import("../../spec/transform").LinearizeGenomicCoordinateParams} params
-     * @param {import("../../view/view").default} view
+     * @param {import("../../spec/transform.js").LinearizeGenomicCoordinateParams} params
+     * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
         super();

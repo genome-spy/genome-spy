@@ -137,9 +137,9 @@ export function configureScale(_, scale, logger) {
 
 /**
  *
- * @param {import("../spec/scale").Scale} _
+ * @param {import("../spec/scale.js").Scale} _
  * @param {*} logger
- * @returns {import("../encoder/encoder").VegaScale}
+ * @returns {import("../encoder/encoder.js").VegaScale}
  */
 export default function createScale(_, logger) {
     const key = scaleKey(_);

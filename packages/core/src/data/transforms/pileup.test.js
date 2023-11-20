@@ -5,7 +5,7 @@ import { processData } from "../flowTestUtils.js";
 // TODO: Test for lane preferences
 
 /**
- * @typedef {import("../../spec/transform").PileupParams} PileupParams
+ * @typedef {import("../../spec/transform.js").PileupParams} PileupParams
  */
 
 const reads = [

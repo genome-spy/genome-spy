@@ -7,8 +7,8 @@ import { reconfigureScales } from "../../../view/scaleResolution.js";
  */
 export default class SingleAxisLazySource extends DataSource {
     /**
-     * @param {import("../../../view/view").default} view
-     * @param {import("../../../spec/channel").PrimaryPositionalChannel} channel
+     * @param {import("../../../view/view.js").default} view
+     * @param {import("../../../spec/channel.js").PrimaryPositionalChannel} channel
      */
     constructor(view, channel) {
         super();
@@ -25,7 +25,7 @@ export default class SingleAxisLazySource extends DataSource {
             );
         }
 
-        /** @type {import("../../../spec/channel").PrimaryPositionalChannel}  */
+        /** @type {import("../../../spec/channel.js").PrimaryPositionalChannel}  */
         this.channel = channel;
 
         this.scaleResolution = this.view.getScaleResolution(channel);
@@ -46,7 +46,7 @@ export default class SingleAxisLazySource extends DataSource {
             if (this.view.isVisible()) {
                 this.onDomainChanged(
                     this.scaleResolution.getDomain(),
-                    /** @type {import("../../../spec/genome").ChromosomalLocus[]} */
+                    /** @type {import("../../../spec/genome.js").ChromosomalLocus[]} */
                     (this.scaleResolution.getComplexDomain())
                 );
             }
@@ -87,7 +87,7 @@ export default class SingleAxisLazySource extends DataSource {
      * Listen to the domain change event and update data when the covered windows change.
      *
      * @param {number[]} domain Linearized domain
-     * @param {import("../../../spec/genome").ChromosomalLocus[]} complexDomain Chrom/Pos domain
+     * @param {import("../../../spec/genome.js").ChromosomalLocus[]} complexDomain Chrom/Pos domain
      */
     async onDomainChanged(domain, complexDomain) {
         // Override me
@@ -110,7 +110,7 @@ export default class SingleAxisLazySource extends DataSource {
 
     /**
      *
-     * @param {import("../../flowNode").Datum[]} data
+     * @param {import("../../flowNode.js").Datum[]} data
      */
     publishData(data) {
         this.reset();

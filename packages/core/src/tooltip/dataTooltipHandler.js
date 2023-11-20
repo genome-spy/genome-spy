@@ -2,7 +2,7 @@ import { html } from "lit-html";
 import formatObject from "../utils/formatObject.js";
 
 /**
- * @type {import("./tooltipHandler").TooltipHandler}
+ * @type {import("./tooltipHandler.js").TooltipHandler}
  */
 export default async function dataTooltipHandler(datum, mark, params) {
     /**

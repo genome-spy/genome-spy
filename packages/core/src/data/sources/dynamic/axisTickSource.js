@@ -15,16 +15,16 @@ import SingleAxisLazySource from "./singleAxisLazySource.js";
  */
 export default class AxisTickSource extends SingleAxisLazySource {
     /**
-     * @type {import("../../../spec/channel").Scalar[]}
+     * @type {import("../../../spec/channel.js").Scalar[]}
      */
     ticks = [];
 
     /**
-     * @param {import("../../../spec/data").AxisTicksData} params
-     * @param {import("../../../view/view").default} view
+     * @param {import("../../../spec/data.js").AxisTicksData} params
+     * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
-        /** @type {import("../../../spec/data").AxisTicksData} params */
+        /** @type {import("../../../spec/data.js").AxisTicksData} params */
         const paramsWithDefaults = {
             axis: {},
             ...params,

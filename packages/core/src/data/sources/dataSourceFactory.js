@@ -10,8 +10,8 @@ import BamSource from "./dynamic/bamSource.js";
 import Gff3Source from "./dynamic/gff3Source.js";
 
 /**
- * @param {Partial<import("../../spec/data").Data>} params
- * @param {import("../../view/view").default} view
+ * @param {Partial<import("../../spec/data.js").Data>} params
+ * @param {import("../../view/view.js").default} view
  */
 export default function createDataSource(params, view) {
     if (isInlineData(params)) {
@@ -31,8 +31,8 @@ export default function createDataSource(params, view) {
 
 /**
  *
- * @param {Partial<import("../../spec/data").Data>} params
- * @returns {params is import("../../spec/data").LazyData}
+ * @param {Partial<import("../../spec/data.js").Data>} params
+ * @returns {params is import("../../spec/data.js").LazyData}
  */
 function isLazyData(params) {
     return "lazy" in params;
@@ -40,8 +40,8 @@ function isLazyData(params) {
 
 /**
  *
- * @param {import("../../spec/data").LazyDataParams} params
- * @returns {params is import("../../spec/data").AxisTicksData}
+ * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").AxisTicksData}
  */
 function isAxisTickSource(params) {
     return params?.type == "axisTicks";
@@ -49,8 +49,8 @@ function isAxisTickSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").LazyDataParams} params
- * @returns {params is import("../../spec/data").AxisGenomeData}
+ * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").AxisGenomeData}
  */
 function isAxisGenomeSource(params) {
     return params?.type == "axisGenome";
@@ -58,8 +58,8 @@ function isAxisGenomeSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").LazyDataParams} params
- * @returns {params is import("../../spec/data").IndexedFastaData}
+ * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").IndexedFastaData}
  */
 function isIndexedFastaSource(params) {
     return params?.type == "indexedFasta";
@@ -67,8 +67,8 @@ function isIndexedFastaSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").LazyDataParams} params
- * @returns {params is import("../../spec/data").BigWigData}
+ * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").BigWigData}
  */
 function isBigWigSource(params) {
     return params?.type == "bigwig";
@@ -76,8 +76,8 @@ function isBigWigSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").LazyDataParams} params
- * @returns {params is import("../../spec/data").BigBedData}
+ * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").BigBedData}
  */
 function isBigBedSource(params) {
     return params?.type == "bigbed";
@@ -85,24 +85,24 @@ function isBigBedSource(params) {
 
 /**
  *
- * @param {import("../../spec/data").LazyDataParams} params
- * @returns {params is import("../../spec/data").BamData}
+ * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").BamData}
  */
 function isBamSource(params) {
     return params?.type == "bam";
 }
 
 /**
- * @param {import("../../spec/data").LazyDataParams} params
- * @returns {params is import("../../spec/data").Gff3Data}
+ * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").Gff3Data}
  */
 function isGff3Source(params) {
     return params?.type == "gff3";
 }
 
 /**
- * @param {import("../../spec/data").LazyDataParams} params
- * @param {import("../../view/view").default} view
+ * @param {import("../../spec/data.js").LazyDataParams} params
+ * @param {import("../../view/view.js").default} view
  */
 function createDynamicDataSource(params, view) {
     if (isAxisTickSource(params)) {

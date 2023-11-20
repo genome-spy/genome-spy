@@ -197,7 +197,7 @@ export class FlexDimensions {
     /**
      * Adds padding to absolute (px) dimensions
      *
-     * @param {import("./padding").default} padding
+     * @param {import("./padding.js").default} padding
      */
     addPadding(padding) {
         return this.#addPx(padding.width, padding.height);
@@ -206,7 +206,7 @@ export class FlexDimensions {
     /**
      * Subtracts padding from absolute (px) dimensions
      *
-     * @param {import("./padding").default} padding
+     * @param {import("./padding.js").default} padding
      */
     subtractPadding(padding) {
         return this.#addPx(-padding.width, -padding.height);
@@ -274,7 +274,7 @@ export function isSizeDef(spec) {
 
 /**
  *
- * @param {"container" | number | SizeDef | import("../../spec/view").Step} size
+ * @param {"container" | number | SizeDef | import("../../spec/view.js").Step} size
  * @returns {SizeDef}
  */
 export function parseSizeDef(size) {

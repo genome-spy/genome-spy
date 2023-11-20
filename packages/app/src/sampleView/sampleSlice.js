@@ -30,12 +30,12 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 /**
- * @typedef {import("./sampleState").SampleHierarchy} SampleHierarchy
- * @typedef {import("./sampleState").Group} Group
- * @typedef {import("./sampleState").SampleGroup} SampleGroup
- * @typedef {import("./sampleState").GroupGroup} GroupGroup
+ * @typedef {import("./sampleState.js").SampleHierarchy} SampleHierarchy
+ * @typedef {import("./sampleState.js").Group} Group
+ * @typedef {import("./sampleState.js").SampleGroup} SampleGroup
+ * @typedef {import("./sampleState.js").GroupGroup} GroupGroup
  *
- * @typedef {import("./payloadTypes").PayloadWithAttribute} PayloadWithAttribute
+ * @typedef {import("./payloadTypes.js").PayloadWithAttribute} PayloadWithAttribute
  */
 
 /**
@@ -74,7 +74,7 @@ function createInitialState() {
 }
 
 /**
- * @param {import("./compositeAttributeInfoSource").AttributeInfoSource} getAttributeInfo
+ * @param {import("./compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
  */
 export function createSampleSlice(getAttributeInfo) {
     /**
@@ -95,7 +95,7 @@ export function createSampleSlice(getAttributeInfo) {
         reducers: {
             [SET_SAMPLES]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").SetSamples>} */ action
+                /** @type {PayloadAction<import("./payloadTypes.js").SetSamples>} */ action
             ) => {
                 const samples = action.payload.samples;
 
@@ -144,7 +144,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [SORT_BY]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").SortBy>} */ action
+                /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
             ) => {
                 applyToSamples(state, (samples) =>
                     sort(
@@ -160,7 +160,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [RETAIN_FIRST_OF_EACH]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").RetainFirstOfEach>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstOfEach>} */
                 action
             ) => {
                 applyToSamples(state, (samples) =>
@@ -173,7 +173,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [RETAIN_FIRST_N_CATEGORIES]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").RetainFirstNCategories>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstNCategories>} */
                 action
             ) => {
                 applyToSamples(state, (samples) =>
@@ -187,7 +187,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [FILTER_BY_QUANTITATIVE]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").FilterByQuantitative>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").FilterByQuantitative>} */
                 action
             ) => {
                 applyToSamples(state, (samples) =>
@@ -202,7 +202,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [FILTER_BY_NOMINAL]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").FilterByNominal>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").FilterByNominal>} */
                 action
             ) => {
                 applyToSamples(state, (samples) =>
@@ -217,7 +217,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [REMOVE_UNDEFINED]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").RemoveUndefined>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").RemoveUndefined>} */
                 action
             ) => {
                 applyToSamples(state, (samples) =>
@@ -227,7 +227,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [GROUP_BY_NOMINAL]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").GroupByNominal>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").GroupByNominal>} */
                 action
             ) => {
                 const domain = getAttributeInfo(
@@ -248,7 +248,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [GROUP_BY_QUARTILES]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").GroupToQuartiles>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").GroupToQuartiles>} */
                 action
             ) => {
                 applyToGroups(state, (sampleGroup) =>
@@ -264,7 +264,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [GROUP_BY_THRESHOLDS]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").GroupByThresholds>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").GroupByThresholds>} */
                 action
             ) => {
                 applyToGroups(state, (sampleGroup) =>
@@ -281,7 +281,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [REMOVE_GROUP]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").RemoveGroup>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").RemoveGroup>} */
                 action
             ) => {
                 const root = state.rootGroup;
@@ -292,7 +292,7 @@ export function createSampleSlice(getAttributeInfo) {
 
             [RETAIN_MATCHED]: (
                 state,
-                /** @type {PayloadAction<import("./payloadTypes").RetainMatched>} */
+                /** @type {PayloadAction<import("./payloadTypes.js").RetainMatched>} */
                 action
             ) => {
                 const accessor = getAccessor(action.payload, state);
@@ -452,7 +452,7 @@ export function* iterateGroupHierarchy(group) {
 
 const attributeNumberFormat = d3format(".4");
 
-/** @type {Record<import("./sampleOperations").ComparisonOperatorType, string>} */
+/** @type {Record<import("./sampleOperations.js").ComparisonOperatorType, string>} */
 const verboseOps = {
     lt: "<",
     lte: "\u2264",
@@ -474,8 +474,8 @@ function formatSet(values) {
  * Describes an action for displaying it in menus or provenance tracking.
  *
  * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
- * @param {import("./compositeAttributeInfoSource").AttributeInfoSource} getAttributeInfo
- * @returns {import("../state/provenance").ActionInfo}
+ * @param {import("./compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
+ * @returns {import("../state/provenance.js").ActionInfo}
  */
 export function getActionInfo(action, getAttributeInfo) {
     if (!action.type.startsWith(SAMPLE_SLICE_NAME)) {
@@ -540,7 +540,7 @@ export function getActionInfo(action, getAttributeInfo) {
             };
         case FILTER_BY_NOMINAL: {
             const values =
-                /** @type {import("@genome-spy/core/spec/channel").Scalar[]} */ (
+                /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */ (
                     payload.values
                 );
 
@@ -569,7 +569,7 @@ export function getActionInfo(action, getAttributeInfo) {
                 Retain samples having ${attr}
                 <span class="operator"
                     >${verboseOps[
-                        /** @type {import("./payloadTypes").FilterByQuantitative} */ (
+                        /** @type {import("./payloadTypes.js").FilterByQuantitative} */ (
                             payload
                         ).operator
                     ]}</span
@@ -616,7 +616,7 @@ export function getActionInfo(action, getAttributeInfo) {
                 provenanceTitle: html`
                     Group by thresholds
                     ${formatSet(
-                        /** @type {import("./payloadTypes").GroupByThresholds} */ (
+                        /** @type {import("./payloadTypes.js").GroupByThresholds} */ (
                             payload
                         ).thresholds.map(
                             (t) => `${verboseOps[t.operator]} ${t.operand}`
@@ -632,7 +632,7 @@ export function getActionInfo(action, getAttributeInfo) {
                 provenanceTitle: html`
                     Remove group
                     ${join(
-                        /** @type {import("./payloadTypes").RemoveGroup} */ (
+                        /** @type {import("./payloadTypes.js").RemoveGroup} */ (
                             payload
                         ).path.map((name) => html`<strong>${name}</strong>`),
                         " / "

@@ -20,7 +20,7 @@ export default class Toolbar extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../app").default} */
+        /** @type {import("../app.js").default} */
         this.app = undefined;
 
         /** Just to signal (and re-render) once GenomeSpy has been launched */

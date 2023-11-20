@@ -71,7 +71,7 @@ export default class Animator {
      * Initiates a transition with a `requestAnimationFrame` that is synced
      * with this Animator instance.
      *
-     * @param {import("./transition").TransitionOptions} options
+     * @param {import("./transition.js").TransitionOptions} options
      */
     transition(options) {
         return doTransition({

@@ -16,7 +16,7 @@ import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
 
 // TODO: Move to a more generic place
-/** @type {Record<string, import("@genome-spy/core/spec/channel").Type>} */
+/** @type {Record<string, import("@genome-spy/core/spec/channel.js").Type>} */
 const FieldType = {
     NOMINAL: "nominal",
     ORDINAL: "ordinal",
@@ -33,17 +33,17 @@ const attributeViewRegex = /^attribute-(.*)$/;
  */
 export class MetadataView extends ConcatView {
     /**
-     * @typedef {import("@genome-spy/core/view/view").default} View
+     * @typedef {import("@genome-spy/core/view/view.js").default} View
      */
 
     /**
-     * @type {import("./sampleView").default}
+     * @type {import("./sampleView.js").default}
      */
     #sampleView;
 
     /**
-     * @param {import("./sampleView").default} sampleView
-     * @param {import("@genome-spy/core/view/containerView").default} dataParent
+     * @param {import("./sampleView.js").default} sampleView
+     * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
      */
     constructor(sampleView, dataParent) {
         super(
@@ -133,7 +133,7 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @returns {import("@genome-spy/core/spec/channel").Encoding}
+     * @returns {import("@genome-spy/core/spec/channel.js").Encoding}
      */
     getEncoding() {
         // Block all inheritance
@@ -141,7 +141,7 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @type {import("@genome-spy/core/types/rendering").RenderMethod}
+     * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
@@ -215,9 +215,9 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
+     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
      *      Coordinates of the view
-     * @param {import("@genome-spy/core/utils/interactionEvent").default} event
+     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
     handleContextMenu(coords, event) {
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
@@ -229,7 +229,7 @@ export class MetadataView extends ConcatView {
             return;
         }
 
-        /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
+        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [this.#sampleView.makePeekMenuItem(), DIVIDER];
 
         const attributeInfo = this.#getAttributeInfoFromView(event.target);
@@ -261,7 +261,7 @@ export class MetadataView extends ConcatView {
     /**
      * TODO: Attach this to state observer
      *
-     * @param {import("./sampleState").Sample[]} samples
+     * @param {import("./sampleState.js").Sample[]} samples
      */
     setSamples(samples) {
         if (this.childCount) {
@@ -276,13 +276,13 @@ export class MetadataView extends ConcatView {
         // TODO: optimizeDataFlow(dataFlow);
 
         const dynamicSource =
-            /** @type {import("@genome-spy/core/data/sources/namedSource").default} */ (
+            /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
                 flow.findDataSourceByKey(this)
             );
 
         dynamicSource.visit((node) => node.initialize());
 
-        /** @type {Promise<import("@genome-spy/core/marks/mark").default>[]} */
+        /** @type {Promise<import("@genome-spy/core/marks/mark.js").default>[]} */
         const promises = [];
 
         this.visit((view) => {
@@ -432,7 +432,7 @@ export class MetadataView extends ConcatView {
 
     /**
      * @param {View} view
-     * @returns {import("./types").AttributeInfo}
+     * @returns {import("./types.js").AttributeInfo}
      */
     #getAttributeInfoFromView(view) {
         const nameMatch = view?.name.match(attributeViewRegex);
@@ -515,8 +515,8 @@ export class MetadataView extends ConcatView {
 
     /**
      * @param {string} channel
-     * @param {import("@genome-spy/core/spec/view").ResolutionTarget} resolutionType
-     * @returns {import("@genome-spy/core/spec/view").ResolutionBehavior}
+     * @param {import("@genome-spy/core/spec/view.js").ResolutionTarget} resolutionType
+     * @returns {import("@genome-spy/core/spec/view.js").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         return "independent";
@@ -585,13 +585,13 @@ export class MetadataView extends ConcatView {
 
 /**
  * @param {string} attributeName
- * @param {import("@genome-spy/core/spec/sampleView").SampleAttributeDef} attributeDef
- * @param {import("@genome-spy/core/spec/sampleView").SampleDef} sampleDef
+ * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} attributeDef
+ * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
  */
 function createAttributeSpec(attributeName, attributeDef, sampleDef) {
     const field = `attributes["${attributeName}"]`;
 
-    /** @type {import("@genome-spy/core/spec/view").UnitSpec} */
+    /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
         title: {
@@ -640,12 +640,12 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
 
 /**
  *
- * @param {import("@genome-spy/core/spec/sampleView").SampleDef} sampleDef
+ * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
  */
 function createLabelViewSpec(sampleDef) {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
-    /** @type {import("@genome-spy/core/spec/view").UnitSpec} */
+    /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
     const titleSpec = {
         name: "metadata-sample-name",
         title: {
@@ -694,7 +694,7 @@ function isDefined(value) {
     );
 }
 
-/** @type {import("./types").AttributeInfo} */
+/** @type {import("./types.js").AttributeInfo} */
 const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
     name: "sample",
     attribute: { type: SAMPLE_NAME },

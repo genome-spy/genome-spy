@@ -3,7 +3,7 @@ import CoverageTransform from "./coverage.js";
 import { processData } from "../flowTestUtils.js";
 
 /**
- * @typedef {import("../../spec/transform").CoverageParams} CoverageParams
+ * @typedef {import("../../spec/transform.js").CoverageParams} CoverageParams
  */
 
 /**

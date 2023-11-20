@@ -1,16 +1,16 @@
 import { TemplateResult } from "lit-html";
-import View, { BroadcastMessage } from "../view/view";
-import DataFlow from "../data/dataFlow";
-import AccessorFactory from "../encoder/accessor";
-import WebGLHelper from "../gl/webGLHelper";
-import Animator from "../utils/animator";
-import GenomeStore from "../genome/genomeStore";
-import BmFontManager from "../fonts/bmFontManager";
-import Mark from "../marks/mark";
-import { Datum } from "../data/flowNode";
-import { ImportSpec, ViewSpec } from "../spec/view";
-import ContainerView from "./containerView";
-import { BroadcastEventType } from "../genomeSpy";
+import View, { BroadcastMessage } from "../view/view.js";
+import DataFlow from "../data/dataFlow.js";
+import AccessorFactory from "../encoder/accessor.js";
+import WebGLHelper from "../gl/webGLHelper.js";
+import Animator from "../utils/animator.js";
+import GenomeStore from "../genome/genomeStore.js";
+import BmFontManager from "../fonts/bmFontManager.js";
+import Mark from "../marks/mark.js";
+import { Datum } from "../data/flowNode.js";
+import { ImportSpec, ViewSpec } from "../spec/view.js";
+import ContainerView from "./containerView.js";
+import { BroadcastEventType } from "../genomeSpy.js";
 
 export interface Hover {
     mark: Mark;

@@ -17,7 +17,7 @@ describe("RegexFold", () => {
             },
         ];
 
-        /** @type { import("../../spec/transform").RegexFoldParams } */
+        /** @type { import("../../spec/transform.js").RegexFoldParams } */
         const singleGatherConfig = {
             type: "regexFold",
             columnRegex: "^(.*)_a$",
@@ -67,7 +67,7 @@ describe("RegexFold", () => {
             },
         ];
 
-        /** @type { import("../../spec/transform").RegexFoldParams } */
+        /** @type { import("../../spec/transform.js").RegexFoldParams } */
         const singleGatherConfig = {
             type: "regexFold",
             columnRegex: "^(.*)_a$",
@@ -118,7 +118,7 @@ describe("RegexFold", () => {
             },
         ];
 
-        /** @type { import("../../spec/transform").RegexFoldParams } */
+        /** @type { import("../../spec/transform.js").RegexFoldParams } */
         const singleGatherConfig = {
             type: "regexFold",
             columnRegex: ["^(.*)_a$", "^(.*)_b$"],

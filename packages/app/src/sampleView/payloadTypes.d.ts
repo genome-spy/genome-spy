@@ -1,6 +1,6 @@
-import { ComparisonOperatorType } from "./sampleOperations";
-import { Sample } from "./sampleState";
-import { AttributeIdentifier } from "./types";
+import { ComparisonOperatorType } from "./sampleOperations.js";
+import { Sample } from "./sampleState.js";
+import { AttributeIdentifier } from "./types.js";
 
 export interface SetSamples {
     samples: Sample[];

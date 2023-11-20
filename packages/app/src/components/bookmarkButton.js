@@ -21,7 +21,7 @@ class BookmarkButton extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../app").default} */
+        /** @type {import("../app.js").default} */
         this.app = undefined;
     }
 
@@ -31,7 +31,7 @@ class BookmarkButton extends LitElement {
         this.dispatchEvent(
             queryDependency(
                 "app",
-                (/** @type {import("../app").default} */ app) => {
+                (/** @type {import("../app.js").default} */ app) => {
                     this.app = app;
                 }
             )
@@ -43,7 +43,7 @@ class BookmarkButton extends LitElement {
     }
 
     _createBookmarkWithCurrentState() {
-        /** @type {import("../bookmark/databaseSchema").BookmarkEntry} */
+        /** @type {import("../bookmark/databaseSchema.js").BookmarkEntry} */
         const bookmark = {
             name: undefined,
             timestamp: Date.now(),
@@ -78,7 +78,7 @@ class BookmarkButton extends LitElement {
     }
 
     /**
-     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
+     * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} [name] Name of an existing entry that will be updated
      */
     async _addBookmark(bookmarkDatabase, name) {
@@ -111,7 +111,7 @@ class BookmarkButton extends LitElement {
 
     /**
      *
-     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
+     * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} name
      */
     async _loadBookmark(bookmarkDatabase, name) {
@@ -124,7 +124,7 @@ class BookmarkButton extends LitElement {
     }
 
     /**
-     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
+     * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} name
      * @param {MouseEvent} event
      */
@@ -144,7 +144,7 @@ class BookmarkButton extends LitElement {
                 }
             });
 
-        /** @type {import("../utils/ui/contextMenu").MenuItem[]} */
+        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
 
         const global = bookmarkDatabase == this.app.globalBookmarkDatabase;
@@ -176,7 +176,7 @@ class BookmarkButton extends LitElement {
     }
 
     /**
-     * @param {import("../bookmark/bookmarkDatabase").default} bookmarkDatabase
+     * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} databaseTitle
      */
     async _makeBookmarkMenuItems(bookmarkDatabase, databaseTitle) {
@@ -189,7 +189,7 @@ class BookmarkButton extends LitElement {
                 this._createContextMenu(bookmarkDatabase, name, event),
         }));
         return items.length
-            ? /** @type {import("../utils/ui/contextMenu").MenuItem[]} */ ([
+            ? /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */ ([
                   { type: "divider" },
                   { label: databaseTitle, type: "header" },
                   ...items,
@@ -199,7 +199,7 @@ class BookmarkButton extends LitElement {
 
     _getBookmarks() {
         /**
-         * @param {import("../bookmark/bookmarkDatabase").default} db
+         * @param {import("../bookmark/bookmarkDatabase.js").default} db
          * @param {string} title
          */
         const makeTemplate = (db, title) =>

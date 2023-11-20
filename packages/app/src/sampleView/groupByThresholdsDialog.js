@@ -9,13 +9,13 @@ import {
 } from "./groupOperations.js";
 
 /**
- * @param {import("./types").AttributeInfo} attributeInfo
- * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export default function groupByThresholdsDialog(attributeInfo, sampleView) {
     const dispatch = sampleView.provenance.storeHelper.getDispatcher();
 
-    /** @type {import("./payloadTypes").Threshold[]} */
+    /** @type {import("./payloadTypes.js").Threshold[]} */
     const thresholds = [];
 
     const modal = createModal();
@@ -70,7 +70,9 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
     ) => {
         const value = /** @type {HTMLInputElement} */ (event.target).value;
         thresholds[index].operator =
-            /** @type {import("./payloadTypes").ThresholdOperator} */ (value);
+            /** @type {import("./payloadTypes.js").ThresholdOperator} */ (
+                value
+            );
 
         updateHtml();
     };
@@ -87,7 +89,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
     };
 
     const thresholdAdded = (
-        /** @type {import("../components/histogram").ThresholdEvent}*/ event
+        /** @type {import("../components/histogram.js").ThresholdEvent}*/ event
     ) => {
         const index = thresholds.findIndex((t) => t.operand > event.value);
 
@@ -99,7 +101,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
     };
 
     const thresholdAdjusted = (
-        /** @type {import("../components/histogram").ThresholdEvent}*/ event
+        /** @type {import("../components/histogram.js").ThresholdEvent}*/ event
     ) => {
         thresholds[event.index].operand = clampThreshold(
             event.value,
@@ -121,7 +123,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
 
     function updateHtml() {
         const makeTable = () => {
-            /** @type {import("./payloadTypes").Threshold[]} */
+            /** @type {import("./payloadTypes.js").Threshold[]} */
             const t = [
                 { operand: -Infinity, operator: "lt" },
                 ...thresholds,
@@ -247,7 +249,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
 
 /**
  *
- * @param {import("./payloadTypes").Threshold[]} thresholds
+ * @param {import("./payloadTypes.js").Threshold[]} thresholds
  */
 function validateThresholds(thresholds) {
     // TODO: Check that the order is valid
@@ -259,9 +261,9 @@ function validateThresholds(thresholds) {
  *
  * N.B. This is copy-paste from advanced filter. TODO: dedupe
  *
- * @param {import("./types").AttributeInfo} attributeInfo
+ * @param {import("./types.js").AttributeInfo} attributeInfo
  * @param {string[]} samples
- * @param {import("./sampleSlice").SampleHierarchy} sampleHierarchy
+ * @param {import("./sampleSlice.js").SampleHierarchy} sampleHierarchy
  */
 function extractValues(attributeInfo, samples, sampleHierarchy) {
     const a = attributeInfo.accessor;

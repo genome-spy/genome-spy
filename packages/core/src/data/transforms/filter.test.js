@@ -5,7 +5,7 @@ import FilterTransform from "./filter.js";
 test("FilterTransform filter rows", () => {
     const data = [1, 2, 3, 4, 5, 6].map((x) => ({ x }));
 
-    /** @type {import("../../spec/transform").FilterParams} */
+    /** @type {import("../../spec/transform.js").FilterParams} */
     const filterParams = {
         type: "filter",
         expr: "datum.x > 3 && datum.x != 5",

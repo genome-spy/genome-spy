@@ -9,7 +9,7 @@ export default class ProjectTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../../spec/transform").ProjectParams} params
+     * @param {import("../../spec/transform.js").ProjectParams} params
      */
     constructor(params) {
         super();

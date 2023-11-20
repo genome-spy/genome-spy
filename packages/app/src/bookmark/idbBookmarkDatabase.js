@@ -4,7 +4,7 @@ import BookmarkDatabase from "./bookmarkDatabase.js";
 const BOOKMARKS_STORE = "bookmarks";
 
 /**
- * @typedef {import("../state/provenance").Action} Action
+ * @typedef {import("../state/provenance.js").Action} Action
  */
 
 /**
@@ -20,7 +20,7 @@ export default class IDBBookmarkDatabase extends BookmarkDatabase {
 
         this.specId = specId;
 
-        /** @type {Promise<import("idb").IDBPDatabase<import("./databaseSchema").BookmarkDB>>} */
+        /** @type {Promise<import("idb").IDBPDatabase<import("./databaseSchema.js").BookmarkDB>>} */
         this._db = undefined;
     }
 
@@ -59,7 +59,7 @@ export default class IDBBookmarkDatabase extends BookmarkDatabase {
     }
 
     /**
-     * @param {import("./databaseSchema").BookmarkEntry} entry
+     * @param {import("./databaseSchema.js").BookmarkEntry} entry
      * @param {string} [nameToReplace]
      */
     async put(entry, nameToReplace) {

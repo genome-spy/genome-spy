@@ -6,12 +6,12 @@ import { html } from "lit";
 /**
  *
  * @param {import("@genome-spy/core/view/containerView").default} rootView
- * @param {import("./types").AttributeIdentifier} attributeIdentifier
+ * @param {import("./types.js").AttributeIdentifier} attributeIdentifier
  * @returns
  */
 export default function getViewAttributeInfo(rootView, attributeIdentifier) {
     const specifier =
-        /** @type {import("./sampleViewTypes").LocusSpecifier} */ (
+        /** @type {import("./sampleViewTypes.js").LocusSpecifier} */ (
             attributeIdentifier.specifier
         );
     const view =
@@ -53,7 +53,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         ? view.getScaleResolution(channel).getScale()
         : undefined;
 
-    /** @type {import("./types").AttributeInfo} */
+    /** @type {import("./types.js").AttributeInfo} */
     const attributeInfo = {
         name: specifier.field,
         attribute: attributeIdentifier,

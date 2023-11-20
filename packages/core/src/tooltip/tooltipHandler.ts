@@ -1,5 +1,5 @@
 import { TemplateResult } from "lit-html";
-import Mark from "../marks/mark";
+import Mark from "../marks/mark.js";
 
 /**
  * Converts a datum to tooltip (HTMLElement or lit's TemplateResult).

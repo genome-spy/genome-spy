@@ -4,18 +4,18 @@ import ViewRenderingContext from "./viewRenderingContext.js";
  * This class is mainly for illustrative purpose, i.e., how the rendering
  * would be performed in the most straightforward, unoptimized way.
  *
- * @typedef {import("../view").default} View
+ * @typedef {import("../view.js").default} View
  */
 export default class SimpleViewRenderingContext extends ViewRenderingContext {
     /**
-     * @param {import("../../types/rendering").GlobalRenderingOptions} globalOptions
+     * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      */
     constructor(globalOptions) {
         super(globalOptions);
-        /** @type {import("../../utils/layout/rectangle").default} */
+        /** @type {import("../../utils/layout/rectangle.js").default} */
         this.coords = undefined;
 
-        /** @type {Set<import("../view").default>} */
+        /** @type {Set<import("../view.js").default>} */
         this.views = new Set();
     }
 
@@ -23,7 +23,7 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
      * Must be called when a view's render() method is entered
      *
      * @param {View} view
-     * @param {import("../../utils/layout/rectangle").default} coords View coordinates
+     * @param {import("../../utils/layout/rectangle.js").default} coords View coordinates
      *      inside the padding.
      */
     pushView(view, coords) {
@@ -47,8 +47,8 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
 
     /**
      *
-     * @param {import("../../marks/mark").default} mark
-     * @param {import("../../types/rendering").RenderingOptions} options
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {import("../../types/rendering.js").RenderingOptions} options
      */
     renderMark(mark, options) {
         if (this.globalOptions.picking && !mark.isPickingParticipant()) {

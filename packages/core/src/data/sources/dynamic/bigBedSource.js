@@ -14,11 +14,11 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
     bbi;
 
     /**
-     * @param {import("../../../spec/data").BigBedData} params
-     * @param {import("../../../view/view").default} view
+     * @param {import("../../../spec/data.js").BigBedData} params
+     * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
-        /** @type {import("../../../spec/data").BigBedData} */
+        /** @type {import("../../../spec/data.js").BigBedData} */
         const paramsWithDefaults = {
             channel: "x",
             windowSize: 1000000,
@@ -55,6 +55,7 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
 
                 this.headerPromise = this.bbi.getHeader();
                 this.headerPromise.then(async (header) => {
+                    // @ts-ignore TODO: Fix
                     this.parser = new BED({ autoSql: header.autoSql });
 
                     resolve();

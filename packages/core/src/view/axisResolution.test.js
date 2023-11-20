@@ -3,7 +3,7 @@ import { createAndInitialize } from "./testUtils.js";
 import UnitView from "./unitView.js";
 import View from "./view.js";
 
-/** @type {import("../spec/view").LayerSpec} */
+/** @type {import("../spec/view.js").LayerSpec} */
 const spec = {
     data: { values: [] },
     layer: [

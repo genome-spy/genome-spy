@@ -1,8 +1,8 @@
 import DataSource from "./dataSource.js";
 
 /**
- * @param {Partial<import("../../spec/data").Data>} data
- * @returns {data is import("../../spec/data").SequenceGenerator}
+ * @param {Partial<import("../../spec/data.js").Data>} data
+ * @returns {data is import("../../spec/data.js").SequenceGenerator}
  */
 export function isSequenceGenerator(data) {
     return "sequence" in data;
@@ -11,8 +11,8 @@ export function isSequenceGenerator(data) {
 export default class SequenceSource extends DataSource {
     /**
      *
-     * @param {import("../../spec/data").SequenceGenerator} params
-     * @param {import("../../view/view").default} view
+     * @param {import("../../spec/data.js").SequenceGenerator} params
+     * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
         super();

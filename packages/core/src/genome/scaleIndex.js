@@ -28,7 +28,7 @@ export default function scaleIndex() {
      * In principle, the domain consists of integer indices. However,
      * we accept real numbers so that items can be centered inside a band.
      *
-     * @type {import("./scaleIndex").ScaleIndex}
+     * @type {import("./scaleIndex.js").ScaleIndex}
      */
     const scale = /** @type {any} */ (scaleFunction);
 

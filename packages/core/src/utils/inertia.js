@@ -5,7 +5,7 @@ import { lerp } from "vega-util";
  */
 export default class Inertia {
     /**
-     * @param {import("./animator").default} animator
+     * @param {import("./animator.js").default} animator
      * @param {boolean} [disabled] Just call the callback directly
      */
     constructor(animator, disabled) {

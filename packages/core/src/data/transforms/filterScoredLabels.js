@@ -11,8 +11,8 @@ export default class FilterScoredLabelsTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../../spec/transform").FilterScoredLabelsParams} params
-     * @param {import("../../view/view").default} view
+     * @param {import("../../spec/transform.js").FilterScoredLabelsParams} params
+     * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
         super();
@@ -126,7 +126,7 @@ export default class FilterScoredLabelsTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../flowNode").Datum} datum
+     * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
         this._data.push(datum);

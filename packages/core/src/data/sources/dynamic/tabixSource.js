@@ -14,11 +14,11 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
     tbiIndex;
 
     /**
-     * @param {import("../../../spec/data").TabixData} params
-     * @param {import("../../../view/view").default} view
+     * @param {import("../../../spec/data.js").TabixData} params
+     * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
-        /** @type {import("../../../spec/data").TabixData} */
+        /** @type {import("../../../spec/data.js").TabixData} */
         const paramsWithDefaults = {
             channel: "x",
             windowSize: 3_000_000,

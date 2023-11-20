@@ -6,7 +6,7 @@ import FlowNode from "../flowNode.js";
 export default class SampleTransform extends FlowNode {
     /**
      *
-     * @param {import("../../spec/transform").SampleParams} params
+     * @param {import("../../spec/transform.js").SampleParams} params
      */
     constructor(params) {
         super();
@@ -60,7 +60,7 @@ export default class SampleTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../flowNode").Datum} datum
+     * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
         this.ingester(datum);

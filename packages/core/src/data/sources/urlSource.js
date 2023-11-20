@@ -3,8 +3,8 @@ import { getFormat } from "./dataUtils.js";
 import DataSource from "./dataSource.js";
 
 /**
- * @param {Partial<import("../../spec/data").Data>} data
- * @returns {data is import("../../spec/data").UrlData}
+ * @param {Partial<import("../../spec/data.js").Data>} data
+ * @returns {data is import("../../spec/data.js").UrlData}
  */
 export function isUrlData(data) {
     return "url" in data;
@@ -12,8 +12,8 @@ export function isUrlData(data) {
 
 export default class UrlSource extends DataSource {
     /**
-     * @param {import("../../spec/data").UrlData} params
-     * @param {import("../../view/view").default} view
+     * @param {import("../../spec/data.js").UrlData} params
+     * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
         super();

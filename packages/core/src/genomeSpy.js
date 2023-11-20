@@ -41,17 +41,17 @@ vegaFormats("fasta", fasta);
 
 export default class GenomeSpy {
     /**
-     * @typedef {import("./view/view").default} View
-     * @typedef {import("./spec/view").ViewSpec} ViewSpec
-     * @typedef {import("./spec/root").RootSpec} RootSpec
-     * @typedef {import("./spec/root").RootConfig} RootConfig
+     * @typedef {import("./view/view.js").default} View
+     * @typedef {import("./spec/view.js").ViewSpec} ViewSpec
+     * @typedef {import("./spec/root.js").RootSpec} RootSpec
+     * @typedef {import("./spec/root.js").RootConfig} RootConfig
      */
 
     /**
      *
      * @param {HTMLElement} container
      * @param {RootSpec} spec
-     * @param {import("./types/embedApi").EmbedOptions} [options]
+     * @param {import("./types/embedApi.js").EmbedOptions} [options]
      */
     constructor(container, spec, options = {}) {
         this.container = container;
@@ -92,7 +92,7 @@ export default class GenomeSpy {
 
         /**
          * Currently hovered mark and datum
-         * @type {{ mark: import("./marks/mark").default, datum: import("./data/flowNode").Datum, uniqueId: number }}
+         * @type {{ mark: import("./marks/mark.js").default, datum: import("./data/flowNode.js").Datum, uniqueId: number }}
          */
         this._currentHover = undefined;
 
@@ -119,7 +119,7 @@ export default class GenomeSpy {
          */
         this._extraBroadcastListeners = new Map();
 
-        /** @type {Record<string, import("./tooltip/tooltipHandler").TooltipHandler>}> */
+        /** @type {Record<string, import("./tooltip/tooltipHandler.js").TooltipHandler>}> */
         this.tooltipHandlers = {
             default: dataTooltipHandler,
             refseqgene: refseqGeneTooltipHandler,
@@ -242,7 +242,7 @@ export default class GenomeSpy {
         // eslint-disable-next-line consistent-this
         const self = this;
 
-        /** @type {import("./types/viewContext").default} */
+        /** @type {import("./types/viewContext.js").default} */
         const context = {
             dataFlow: new DataFlow(),
             accessorFactory: this.accessorFactory,
@@ -776,7 +776,7 @@ export default class GenomeSpy {
     }
 
     getNamedScaleResolutions() {
-        /** @type {Map<string, import("./view/scaleResolution").default>} */
+        /** @type {Map<string, import("./view/scaleResolution.js").default>} */
         const resolutions = new Map();
         this.viewRoot.visit((view) => {
             for (const resolution of Object.values(view.resolutions.scale)) {

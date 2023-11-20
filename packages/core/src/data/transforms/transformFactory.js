@@ -21,7 +21,7 @@ import IdentifierTransform from "./identifier.js";
 /**
  * TODO: Make this dynamic
  *
- * @type {Record<string, new (params: any, view?: import("../../view/view").default) => import("../flowNode").default>}
+ * @type {Record<string, new (params: any, view?: import("../../view/view.js").default) => import("../flowNode.js").default>}
  */
 export const transforms = {
     aggregate: AggregateTransform,
@@ -46,8 +46,8 @@ export const transforms = {
 };
 
 /**
- * @param {import("../../spec/transform").TransformParamsBase} params
- * @param {import("../../view/view").default} [view]
+ * @param {import("../../spec/transform.js").TransformParamsBase} params
+ * @param {import("../../view/view.js").default} [view]
  */
 export default function createTransform(params, view) {
     const Transform = transforms[params.type];

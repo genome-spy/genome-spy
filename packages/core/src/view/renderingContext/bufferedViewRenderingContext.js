@@ -4,8 +4,8 @@ import ViewRenderingContext from "./viewRenderingContext.js";
 
 export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /**
-     * @param {import("../../types/rendering").GlobalRenderingOptions} globalOptions
-     * @param {import("../../gl/webGLHelper").default} webGLHelper
+     * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
+     * @param {import("../../gl/webGLHelper.js").default} webGLHelper
      */
     constructor(globalOptions, webGLHelper) {
         super(globalOptions);
@@ -13,22 +13,22 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         this.webGLHelper = webGLHelper;
 
         /**
-         * @type {import("../../types/rendering").BufferedRenderingRequest[]}
+         * @type {import("../../types/rendering.js").BufferedRenderingRequest[]}
          */
         this.buffer = [];
 
-        /** @type {import("../../utils/layout/rectangle").default} */
+        /** @type {import("../../utils/layout/rectangle.js").default} */
         this.coords = undefined;
 
-        /** @type {Set<import("../view").default>} */
+        /** @type {Set<import("../view.js").default>} */
         this.views = new Set();
     }
 
     /**
      * Must be called when a view's render() method is entered
      *
-     * @param {import("../view").default} view
-     * @param {import("../../utils/layout/rectangle").default} coords View coordinates
+     * @param {import("../view.js").default} view
+     * @param {import("../../utils/layout/rectangle.js").default} coords View coordinates
      *      inside the padding.
      * @override
      */
@@ -39,8 +39,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
 
     /**
      *
-     * @param {import("../../marks/mark").default} mark
-     * @param {import("../../types/rendering").RenderingOptions} options
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {import("../../types/rendering.js").RenderingOptions} options
      * @override
      */
     renderMark(mark, options) {
@@ -150,7 +150,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                     .map((op) => ifEnabled(op))
             );
 
-            /** @type {import("../../utils/layout/rectangle").default} */
+            /** @type {import("../../utils/layout/rectangle.js").default} */
             let previousCoords;
             for (const request of requests) {
                 const coords = request.coords;

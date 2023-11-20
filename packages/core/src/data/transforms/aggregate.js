@@ -16,7 +16,7 @@ export default class AggregateTransform extends FlowNode {
     }
 
     /**
-     * @param {import("../../spec/transform").AggregateParams} params
+     * @param {import("../../spec/transform.js").AggregateParams} params
      */
     constructor(params) {
         super();
@@ -32,7 +32,7 @@ export default class AggregateTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../flowNode").Datum} datum
+     * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
         this.buffer.push(datum);

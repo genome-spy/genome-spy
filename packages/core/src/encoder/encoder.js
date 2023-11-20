@@ -9,14 +9,14 @@ import scaleNull from "../utils/scaleNull.js";
  *
  * TODO: This method should have a test. But how to mock Mark...
  *
- * @param {import("../marks/mark").default} mark
- * @param {import("../spec/channel").Encoding} [encoding] Taken from the mark if not provided
+ * @param {import("../marks/mark.js").default} mark
+ * @param {import("../spec/channel.js").Encoding} [encoding] Taken from the mark if not provided
  * @returns {Partial<Record<Channel, Encoder>>}
  */
 export default function createEncoders(mark, encoding) {
     /**
-     * @typedef {import("../spec/channel").Channel} Channel
-     * @typedef {import("../types/encoder").Encoder} Encoder
+     * @typedef {import("../spec/channel.js").Channel} Channel
+     * @typedef {import("../types/encoder.js").Encoder} Encoder
      */
 
     /** @type {Partial<Record<Channel, Encoder>>} */
@@ -52,7 +52,7 @@ export default function createEncoders(mark, encoding) {
 
 /**
  *
- * @param {import("../spec/channel").ChannelDef} channelDef
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {any} scale
  * @param {Accessor} accessor
  * @param {Channel} channel
@@ -60,9 +60,9 @@ export default function createEncoders(mark, encoding) {
  */
 export function createEncoder(channelDef, scale, accessor, channel) {
     /**
-     * @typedef {import("../spec/channel").Channel} Channel
-     * @typedef {import("../types/encoder").Encoder} Encoder
-     * @typedef {import("../types/encoder").Accessor} Accessor
+     * @typedef {import("../spec/channel.js").Channel} Channel
+     * @typedef {import("../types/encoder.js").Encoder} Encoder
+     * @typedef {import("../types/encoder.js").Accessor} Accessor
      */
 
     /** @type {Encoder} */
@@ -147,32 +147,32 @@ export function createEncoder(channelDef, scale, accessor, channel) {
 /**
  * TODO: Move to a more generic place
  *
- * @param {import("../spec/channel").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel").ValueDef}
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").ValueDef}
  */
 export function isValueDef(channelDef) {
     return channelDef && "value" in channelDef;
 }
 
 /**
- * @param {import("../spec/channel").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel").FieldDefBase<string>}
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").FieldDefBase<string>}
  */
 export function isFieldDef(channelDef) {
     return channelDef && "field" in channelDef;
 }
 
 /**
- * @param {import("../spec/channel").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel").DatumDef}
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").DatumDef}
  */
 export function isDatumDef(channelDef) {
     return channelDef && "datum" in channelDef;
 }
 
 /**
- * @param {import("../spec/channel").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel").ChannelDefWithScale}
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").ChannelDefWithScale}
  */
 export function isChannelDefWithScale(channelDef) {
     // TODO: Not accurate, fix
@@ -185,8 +185,8 @@ export function isChannelDefWithScale(channelDef) {
 }
 
 /**
- * @param {import("../view/unitView").default} view
- * @param {import("../spec/channel").Channel} channel
+ * @param {import("../view/unitView.js").default} view
+ * @param {import("../spec/channel.js").Channel} channel
  */
 export function getChannelDefWithScale(view, channel) {
     const channelDef = view.mark.encoding[channel];
@@ -198,33 +198,33 @@ export function getChannelDefWithScale(view, channel) {
 }
 
 /**
- * @param {import("../spec/channel").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel").ChromPosDef}
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").ChromPosDef}
  */
 export function isChromPosDef(channelDef) {
     return channelDef && "chrom" in channelDef;
 }
 
 /**
- * @param {import("../spec/channel").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel").ExprDef}
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").ExprDef}
  */
 export function isExprDef(channelDef) {
     return channelDef && "expr" in channelDef;
 }
 
 /**
- * @type {import("../spec/channel").PrimaryPositionalChannel[]}
+ * @type {import("../spec/channel.js").PrimaryPositionalChannel[]}
  */
 export const primaryPositionalChannels = ["x", "y"];
 
 /**
- * @type {import("../spec/channel").SecondaryPositionalChannel[]}
+ * @type {import("../spec/channel.js").SecondaryPositionalChannel[]}
  */
 export const secondaryPositionalChannels = ["x2", "y2"];
 
 /**
- * @type {import("../spec/channel").PositionalChannel[]}
+ * @type {import("../spec/channel.js").PositionalChannel[]}
  */
 export const positionalChannels = [
     ...primaryPositionalChannels,
@@ -232,8 +232,8 @@ export const positionalChannels = [
 ];
 
 /**
- * @param {import("../spec/channel").Channel} channel
- * @returns {channel is import("../spec/channel").PrimaryPositionalChannel}
+ * @param {import("../spec/channel.js").Channel} channel
+ * @returns {channel is import("../spec/channel.js").PrimaryPositionalChannel}
  */
 export function isPrimaryPositionalChannel(channel) {
     // @ts-expect-error
@@ -241,8 +241,8 @@ export function isPrimaryPositionalChannel(channel) {
 }
 
 /**
- * @param {import("../spec/channel").Channel} channel
- * @returns {channel is import("../spec/channel").PositionalChannel}
+ * @param {import("../spec/channel.js").Channel} channel
+ * @returns {channel is import("../spec/channel.js").PositionalChannel}
  */
 export function isPositionalChannel(channel) {
     // @ts-expect-error
@@ -252,7 +252,7 @@ export function isPositionalChannel(channel) {
 /**
  * Map primary channels to secondarys
  *
- * @type {Partial<Record<import("../spec/channel").Channel, import("../spec/channel").SecondaryPositionalChannel>>}
+ * @type {Partial<Record<import("../spec/channel.js").Channel, import("../spec/channel.js").SecondaryPositionalChannel>>}
  */
 export const secondaryChannels = {
     x: "x2",
@@ -262,7 +262,7 @@ export const secondaryChannels = {
 /**
  * Map secondary channels to primaries
  *
- * @type {Partial<Record<import("../spec/channel").Channel, import("../spec/channel").Channel>>}
+ * @type {Partial<Record<import("../spec/channel.js").Channel, import("../spec/channel.js").Channel>>}
  */
 export const primaryChannels = Object.fromEntries(
     Object.entries(secondaryChannels).map((entry) => [entry[1], entry[0]])
@@ -279,7 +279,7 @@ export function isSecondaryChannel(channel) {
 /**
  * Return the matching secondary channel or throws if one does not exist.
  *
- * @param {import("../spec/channel").Channel} primaryChannel
+ * @param {import("../spec/channel.js").Channel} primaryChannel
  */
 export function getSecondaryChannel(primaryChannel) {
     const secondary = secondaryChannels[primaryChannel];
@@ -294,7 +294,7 @@ export function getSecondaryChannel(primaryChannel) {
  * Finds the primary channel for the provided channel, which may be
  * the primary or secondary.
  *
- * @param {import("../spec/channel").Channel} channel
+ * @param {import("../spec/channel.js").Channel} channel
  */
 export function getPrimaryChannel(channel) {
     return primaryChannels[channel] ?? channel;
@@ -303,7 +303,7 @@ export function getPrimaryChannel(channel) {
 /**
  * Returns an array that contains the given channel and its secondary channel if one exists.
  *
- * @param {import("../spec/channel").Channel} channel
+ * @param {import("../spec/channel.js").Channel} channel
  */
 export function getChannelWithSecondarys(channel) {
     return secondaryChannels[channel]
@@ -312,7 +312,7 @@ export function getChannelWithSecondarys(channel) {
 }
 
 /**
- * @param {import("../spec/channel").Channel} channel
+ * @param {import("../spec/channel.js").Channel} channel
  */
 export function isColorChannel(channel) {
     return ["color", "fill", "stroke"].includes(getPrimaryChannel(channel));
@@ -321,15 +321,15 @@ export function isColorChannel(channel) {
 /**
  * Returns true if the channel has a discrete range.
  *
- * @param {import("../spec/channel").Channel} channel
+ * @param {import("../spec/channel.js").Channel} channel
  */
 export function isDiscreteChannel(channel) {
     return ["shape", "squeeze"].includes(channel);
 }
 
 /**
- * @param {import("../spec/channel").Channel} channel
- * @returns {channel is import("../spec/channel").ChannelWithScale}
+ * @param {import("../spec/channel.js").Channel} channel
+ * @returns {channel is import("../spec/channel.js").ChannelWithScale}
  */
 export function isChannelWithScale(channel) {
     return [
@@ -356,7 +356,7 @@ export function isChannelWithScale(channel) {
 /**
  * Returns valid discrete values for a discrete channel.
  *
- * @param {import("../spec/channel").Channel} channel
+ * @param {import("../spec/channel.js").Channel} channel
  * @returns {any[]}
  */
 export function getDiscreteRange(channel) {
@@ -378,7 +378,7 @@ export function getDiscreteRange(channel) {
 }
 
 /**
- * @param {import("../spec/channel").Channel} channel
+ * @param {import("../spec/channel.js").Channel} channel
  * @returns {function(any):number}
  */
 export function getDiscreteRangeMapper(channel) {

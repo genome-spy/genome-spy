@@ -6,7 +6,7 @@ import { peek } from "../utils/arrayUtils.js";
 import { createOrUpdateTexture } from "../gl/webGLHelper.js";
 
 /**
- * @param {string | import("../spec/scale").SchemeParams} schemeParams
+ * @param {string | import("../spec/scale.js").SchemeParams} schemeParams
  * @param {WebGL2RenderingContext} gl
  * @param {number} [count]
  * @param {WebGLTexture} [existingTexture]
@@ -50,7 +50,7 @@ export function createSchemeTexture(schemeParams, gl, count, existingTexture) {
 
 /**
  * @param {string[]} colors
- * @param {import("../spec/scale").ScaleInterpolate | import("../spec/scale").ScaleInterpolateParams} interpolateParams
+ * @param {import("../spec/scale.js").ScaleInterpolate | import("../spec/scale.js").ScaleInterpolateParams} interpolateParams
  * @param {WebGL2RenderingContext} gl
  * @param {WebGLTexture} [existingTexture]
  */

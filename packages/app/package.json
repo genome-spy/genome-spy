@@ -9,6 +9,7 @@
   "license": "MIT",
   "version": "0.37.4",
   "main": "dist/index.js",
+  "type": "module",
   "files": [
     "dist/"
   ],

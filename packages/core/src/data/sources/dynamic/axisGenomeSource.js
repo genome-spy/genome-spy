@@ -6,8 +6,8 @@ import SingleAxisLazySource from "./singleAxisLazySource.js";
  */
 export default class AxisGenomeSource extends SingleAxisLazySource {
     /**
-     * @param {import("../../../spec/data").AxisGenomeData} params
-     * @param {import("../../../view/view").default} view
+     * @param {import("../../../spec/data.js").AxisGenomeData} params
+     * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
         super(view, params.channel);

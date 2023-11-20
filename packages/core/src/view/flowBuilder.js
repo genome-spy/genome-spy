@@ -28,8 +28,8 @@ import { nodesToTreesWithAccessor, visitTree } from "../utils/trees.js";
  */
 export function buildDataFlow(root, existingFlow) {
     /**
-     * @typedef {import("./view").default} View
-     * @typedef {import("../data/flowNode").default} FlowNode
+     * @typedef {import("./view.js").default} View
+     * @typedef {import("../data/flowNode.js").default} FlowNode
      */
 
     /** @type {FlowNode[]} "Current nodes" on the path from view root to the current view */
@@ -80,7 +80,7 @@ export function buildDataFlow(root, existingFlow) {
 
     /**
      *
-     * @param {import("../spec/transform").TransformParams[]} transforms
+     * @param {import("../spec/transform.js").TransformParams[]} transforms
      * @param {View} view
      */
     function createTransforms(transforms, view) {
@@ -199,10 +199,10 @@ export function buildDataFlow(root, existingFlow) {
  */
 export function linearizeLocusAccess(view) {
     /**
-     * @typedef {import("./view").default} View
-     * @typedef {import("../data/flowNode").default} FlowNode
-     * @typedef {import("../spec/channel").Channel} Channel
-     * @typedef {import("../spec/channel").Encoding} Encoding
+     * @typedef {import("./view.js").default} View
+     * @typedef {import("../data/flowNode.js").default} FlowNode
+     * @typedef {import("../spec/channel.js").Channel} Channel
+     * @typedef {import("../spec/channel.js").Encoding} Encoding
      */
 
     /** @type {FlowNode[]} */
@@ -211,7 +211,7 @@ export function linearizeLocusAccess(view) {
     /** @type {Encoding} */
     const rewrittenEncoding = {};
 
-    /** @type {{ channel: Channel, chromPosDef: import("../spec/channel").ChromPosDef}[]} */
+    /** @type {{ channel: Channel, chromPosDef: import("../spec/channel.js").ChromPosDef}[]} */
     const channelsAndChromPosDefs = [];
 
     // Optimize the number of transforms. Use only a single transform for positions
@@ -311,9 +311,9 @@ export function linearizeLocusAccess(view) {
 }
 
 /**
- * @param {import("./view").default} view
- * @param {import("../spec/channel").Encoding} [encoding]
- * @returns {import("../spec/transform").CompareParams}
+ * @param {import("./view.js").default} view
+ * @param {import("../spec/channel.js").Encoding} [encoding]
+ * @returns {import("../spec/transform.js").CompareParams}
  */
 function getCompareParamsForView(view, encoding) {
     // TODO: Should sort by min(x, x2).
@@ -343,7 +343,7 @@ function getCompareParamsForView(view, encoding) {
  */
 export function createChain(dataSource, ...transforms) {
     /**
-     * @typedef {import("../data/flowNode").default} FlowNode
+     * @typedef {import("../data/flowNode.js").default} FlowNode
      */
     /** @type {FlowNode} */
     let node = dataSource;
@@ -362,7 +362,7 @@ export function createChain(dataSource, ...transforms) {
         node.addChild(collector);
     }
 
-    /** @type {function():Promise<Iterable<import("../data/flowNode").Datum>>} */
+    /** @type {function():Promise<Iterable<import("../data/flowNode.js").Datum>>} */
     let loadAndCollect;
     if (dataSource instanceof DataSource) {
         loadAndCollect = async () => {

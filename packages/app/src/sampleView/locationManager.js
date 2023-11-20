@@ -15,7 +15,7 @@ import { getFlattenedGroupHierarchy } from "./sampleSlice.js";
 
 export class LocationManager {
     /**
-     * @typedef {import("@genome-spy/core/utils/layout/flexLayout").LocSize} LocSize
+     * @typedef {import("@genome-spy/core/utils/layout/flexLayout.js").LocSize} LocSize
      */
 
     /**
@@ -33,17 +33,17 @@ export class LocationManager {
     /** @type {Float32Array} */
     #facetTextureData = undefined;
 
-    /** @type {import("./sampleViewTypes").Locations} */
+    /** @type {import("./sampleViewTypes.js").Locations} */
     #locations = undefined;
 
-    /** @type {import("./sampleViewTypes").Locations} */
+    /** @type {import("./sampleViewTypes.js").Locations} */
     #scrollableLocations;
 
-    /** @type {import("./sampleViewTypes").LocationContext} */
+    /** @type {import("./sampleViewTypes.js").LocationContext} */
     #locationContext;
 
     /**
-     * @param {import("./sampleViewTypes").LocationContext} locationContext
+     * @param {import("./sampleViewTypes.js").LocationContext} locationContext
      */
     constructor(locationContext) {
         this.#locationContext = locationContext;
@@ -92,7 +92,7 @@ export class LocationManager {
         const viewContext = this.#locationContext.viewContext;
         const height = this.#locationContext.getHeight();
 
-        /** @type {import("@genome-spy/core/utils/transition").TransitionOptions} */
+        /** @type {import("@genome-spy/core/utils/transition.js").TransitionOptions} */
         const props = {
             requestAnimationFrame: (callback) =>
                 viewContext.animator.requestTransition(callback),
@@ -168,7 +168,7 @@ export class LocationManager {
     }
 
     /**
-     * @returns {import("./sampleViewTypes").Locations}
+     * @returns {import("./sampleViewTypes.js").Locations}
      */
     getLocations() {
         if (this.#locations) {
@@ -210,7 +210,7 @@ export class LocationManager {
             .map((d) => d.locSize.location + d.locSize.size)
             .reduce((a, b) => Math.max(a, b), 0);
 
-        /** @type {import("./sampleViewTypes").InterpolatedLocationMaker} */
+        /** @type {import("./sampleViewTypes.js").InterpolatedLocationMaker} */
         const makeInterpolatedLocations = (fitted, scrollable) => {
             /** @type {any[]} */
             const interactiveLocations = [];
@@ -249,7 +249,7 @@ export class LocationManager {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
+     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
      */
     getGroupBackgroundRects(coords) {
         const groups = this.getLocations().groups;
@@ -348,7 +348,7 @@ export class LocationManager {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle").default} coords
+     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
      */
     clipBySummary(coords) {
         if (this.#locationContext.isStickySummaries()) {
@@ -380,10 +380,10 @@ function calculateLocations(
     { viewHeight = 0, sampleHeight = 0, groupSpacing = 5, summaryHeight = 0 }
 ) {
     /**
-     * @typedef {import("./sampleState").Group} Group
-     * @typedef {import("./sampleViewTypes").GroupLocation} GroupLocation
-     * @typedef {import("./sampleViewTypes").SampleLocation} SampleLocation
-     * @typedef {import("@genome-spy/core/utils/layout/flexLayout").LocSize} LocSize
+     * @typedef {import("./sampleState.js").Group} Group
+     * @typedef {import("./sampleViewTypes.js").GroupLocation} GroupLocation
+     * @typedef {import("./sampleViewTypes.js").SampleLocation} SampleLocation
+     * @typedef {import("@genome-spy/core/utils/layout/flexLayout.js").LocSize} LocSize
      */
 
     if (!viewHeight && !sampleHeight) {
@@ -392,7 +392,7 @@ function calculateLocations(
 
     /** @param {Group[]} path */
     const getSampleGroup = (path) =>
-        /** @type {import("./sampleSlice").SampleGroup} */ (peek(path));
+        /** @type {import("./sampleSlice.js").SampleGroup} */ (peek(path));
 
     const sampleGroupEntries = flattenedGroupHierarchy
         .map((path) => ({
@@ -403,7 +403,7 @@ function calculateLocations(
         // Skip empty groups
         .filter((entry) => entry.samples.length);
 
-    /** @type {function(string[]):import("@genome-spy/core/utils/layout/flexLayout").SizeDef} */
+    /** @type {function(string[]):import("@genome-spy/core/utils/layout/flexLayout.js").SizeDef} */
     const sizeDefGenerator = sampleHeight
         ? (group) => ({
               px: group.length * sampleHeight + summaryHeight,
@@ -458,7 +458,7 @@ function calculateLocations(
         const stack = [];
         for (const entry of groupLocations) {
             const path = entry.key;
-            const last = /** @type {import("./sampleSlice").SampleGroup} */ (
+            const last = /** @type {import("./sampleSlice.js").SampleGroup} */ (
                 peek(path)
             );
 
@@ -497,7 +497,7 @@ function calculateLocations(
         }
     }
 
-    /** @type {import("./sampleViewTypes").HierarchicalGroupLocation[]} */
+    /** @type {import("./sampleViewTypes.js").HierarchicalGroupLocation[]} */
     const groups = [...extract()]
         .sort((a, b) => a.depth - b.depth)
         .map((entry, index) => ({
@@ -521,7 +521,7 @@ function calculateLocations(
 /**
  *
  * @param {number} pos Coordinate on unit scale
- * @param {import("./sampleViewTypes").SampleLocation[]} [sampleLocations]
+ * @param {import("./sampleViewTypes.js").SampleLocation[]} [sampleLocations]
  */
 export function getSampleLocationAt(pos, sampleLocations) {
     // TODO: Matching should be done without paddings

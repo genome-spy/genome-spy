@@ -8,7 +8,7 @@ export default class FlattenTransform extends FlowNode {
     }
 
     /**
-     * @param {import("../../spec/transform").FlattenParams} params
+     * @param {import("../../spec/transform.js").FlattenParams} params
      */
     constructor(params) {
         super();
@@ -36,7 +36,7 @@ export default class FlattenTransform extends FlowNode {
 
                 for (let ri = 0; ri < maxLen; ri++) {
                     // TODO: use objectCloner for extra performance
-                    /** @type {import("../flowNode").Datum} */
+                    /** @type {import("../flowNode.js").Datum} */
                     const newRow = Object.assign({}, datum);
                     for (let fi = 0; fi < accessors.length; fi++) {
                         newRow[as[fi]] =
@@ -55,7 +55,7 @@ export default class FlattenTransform extends FlowNode {
             this.handle = (datum) => {
                 // TODO: Check that the object is an array
                 for (let i = 0; i < datum.length; i++) {
-                    /** @type {import("../flowNode").Datum} */
+                    /** @type {import("../flowNode.js").Datum} */
                     const newRow = Object.assign({}, datum[i]);
                     if (indexField) {
                         newRow[indexField] = i;

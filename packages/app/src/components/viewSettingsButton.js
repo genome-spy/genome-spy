@@ -20,19 +20,19 @@ import {
 
 class ViewSettingsButton extends LitElement {
     /**
-     * @typedef {import("@genome-spy/core/view/view").default} View
+     * @typedef {import("@genome-spy/core/view/view.js").default} View
      */
     constructor() {
         super();
 
-        /** @type {import("../app").default} */
+        /** @type {import("../app.js").default} */
         this.app = undefined;
 
-        /** @type {import("../utils/nestPaths").NestedItem<View>} */
+        /** @type {import("../utils/nestPaths.js").NestedItem<View>} */
         this.nestedPaths = undefined;
 
         this.sateWatcher = watch(
-            (/** @type {import("../state").State} */ state) =>
+            (/** @type {import("../state.js").State} */ state) =>
                 state.viewSettings,
             (_old, viewSettings) => this.requestUpdate()
         );
@@ -46,7 +46,7 @@ class ViewSettingsButton extends LitElement {
         this.dispatchEvent(
             queryDependency(
                 "app",
-                (/** @type {import("../app").default} */ app) => {
+                (/** @type {import("../app.js").default} */ app) => {
                     this.app = app;
                 }
             )
@@ -80,7 +80,7 @@ class ViewSettingsButton extends LitElement {
 
     /**
      * @param {UIEvent} event
-     * @param {import("@genome-spy/core/view/view").default} view
+     * @param {import("@genome-spy/core/view/view.js").default} view
      */
     handleCheckboxClick(event, view) {
         const checked = /** @type {HTMLInputElement} */ (event.target).checked;
@@ -147,7 +147,7 @@ class ViewSettingsButton extends LitElement {
         const uniqueNames = findUniqueViewNames(viewRoot);
 
         /**
-         * @param {import("../utils/nestPaths").NestedItem<View>[]} children
+         * @param {import("../utils/nestPaths.js").NestedItem<View>[]} children
          * @param {boolean} [checkedParent]
          */
         var childrenToHtml = (children, checkedParent = true) =>
@@ -160,7 +160,7 @@ class ViewSettingsButton extends LitElement {
                 : nothing;
 
         /**
-         * @param { import("../utils/nestPaths").NestedItem<View>} item
+         * @param { import("../utils/nestPaths.js").NestedItem<View>} item
          * @returns {import("lit").TemplateResult}
          */
         var nestedItemToHtml = (/** */ item) => {

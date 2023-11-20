@@ -14,7 +14,7 @@ export default class FlattenCompressedExonsTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../../spec/transform").FlattenCompressedExonsParams} params
+     * @param {import("../../spec/transform.js").FlattenCompressedExonsParams} params
      */
     constructor(params) {
         super();

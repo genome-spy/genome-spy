@@ -26,7 +26,7 @@ import StoreHelper from "./state/storeHelper.js";
 import { watch } from "./state/watch.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
-import { isSampleSpec } from "@genome-spy/core/view/viewFactory";
+import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -37,8 +37,8 @@ export default class App {
     /**
      *
      * @param {HTMLElement} appContainerElement
-     * @param {import("./spec/appSpec").AppRootSpec} config
-     * @param {import("@genome-spy/core/types/embedApi").EmbedOptions} options
+     * @param {import("./spec/appSpec.js").AppRootSpec} config
+     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions} options
      */
     constructor(appContainerElement, config, options = {}) {
         // eslint-disable-next-line consistent-this
@@ -46,11 +46,11 @@ export default class App {
 
         this.config = config;
 
-        /** @type {StoreHelper<import("./state").State>} */
+        /** @type {StoreHelper<import("./state.js").State>} */
         this.storeHelper = new StoreHelper();
         this.storeHelper.addReducer("viewSettings", viewSettingsSlice.reducer);
 
-        /** @type {Provenance<import("./sampleView/sampleState").SampleHierarchy>} */
+        /** @type {Provenance<import("./sampleView/sampleState.js").SampleHierarchy>} */
         this.provenance = new Provenance(this.storeHelper);
 
         /** @type {(() => void)[]} */
@@ -65,7 +65,7 @@ export default class App {
 
         /**
          * Local bookmarks in the IndexedDB
-         * @type {import("./bookmark/bookmarkDatabase").default}
+         * @type {import("./bookmark/bookmarkDatabase.js").default}
          */
         this.localBookmarkDatabase =
             typeof config.specId == "string"
@@ -74,7 +74,7 @@ export default class App {
 
         /**
          * Remote bookmarks loaded from a URL
-         * @type {import("./bookmark/bookmarkDatabase").default}
+         * @type {import("./bookmark/bookmarkDatabase.js").default}
          */
         this.globalBookmarkDatabase = undefined;
 
@@ -96,7 +96,7 @@ export default class App {
             .addEventListener(
                 "query-dependency",
                 (
-                    /** @type {import("./appTypes").DependencyQueryEvent} */ event
+                    /** @type {import("./appTypes.js").DependencyQueryEvent} */ event
                 ) => {
                     if (event.detail.name == "app") {
                         event.detail.setter(self);
@@ -120,7 +120,7 @@ export default class App {
         this.genomeSpy.viewFactory.addViewType(
             isSampleSpec,
             (
-                /** @type {import("@genome-spy/core/spec/sampleView").SampleSpec} */ spec,
+                /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */ spec,
                 context,
                 layoutParent,
                 dataParent,
@@ -168,7 +168,7 @@ export default class App {
     async launch() {
         /**
          * Initiate async fetching of the remote bookmark entries.
-         * @type {Promise<import("./bookmark/databaseSchema").BookmarkEntry[]>}
+         * @type {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>}
          */
         const remoteBookmarkPromise = this.config.bookmarks?.remote
             ? vegaLoader({ baseURL: this.config.baseUrl })
@@ -190,7 +190,7 @@ export default class App {
 
         this.storeHelper.subscribe(
             watch(
-                (/** @type {import("./state").State} */ state) =>
+                (/** @type {import("./state.js").State} */ state) =>
                     state.viewSettings?.visibilities,
                 (_viewVisibilities, _oldViewVisibilities) => {
                     // TODO: Optimize: only invalidate the affected views
@@ -248,9 +248,10 @@ export default class App {
             }
         }
 
-        const toolbar = /** @type {import("./components/toolbar").default} */ (
-            this.toolbarRef.value
-        );
+        const toolbar =
+            /** @type {import("./components/toolbar.js").default} */ (
+                this.toolbarRef.value
+            );
         // Just trigger re-render. Need a way to broadcast this to all components.
         toolbar.appInitialized = true;
 
@@ -302,7 +303,7 @@ export default class App {
      * Update provenance to url
      */
     _updateStateToUrl() {
-        /** @type {import("./appTypes").UrlHash} */
+        /** @type {import("./appTypes.js").UrlHash} */
         const hashData = {
             actions: [],
             scaleDomains: {},
@@ -373,7 +374,7 @@ export default class App {
 
         if (hash && hash.length > 0) {
             try {
-                /** @type {import("./bookmark/databaseSchema").BookmarkEntry} */
+                /** @type {import("./bookmark/databaseSchema.js").BookmarkEntry} */
                 const entry = decompressFromUrlHash(hash);
                 restoreBookmarkAndShowInfoBox(entry, this, { mode: "shared" });
                 return true;
@@ -405,7 +406,7 @@ export default class App {
             return;
         }
 
-        /** @type {import("./sampleView/sampleView").default} */
+        /** @type {import("./sampleView/sampleView.js").default} */
         let sampleView;
 
         this.genomeSpy.viewRoot.visit((view) => {

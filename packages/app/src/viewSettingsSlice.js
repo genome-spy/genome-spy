@@ -5,7 +5,7 @@ import { createSlice } from "@reduxjs/toolkit";
  * @typedef {import("@reduxjs/toolkit").PayloadAction<P>} PayloadAction
  */
 
-/** @type {import("./state").ViewSettings} */
+/** @type {import("./state.js").ViewSettings} */
 const initialState = {
     visibilities: {},
 };
@@ -35,7 +35,7 @@ export const viewSettingsSlice = createSlice({
 
         setViewSettings: (
             _state,
-            /** @type {PayloadAction<import("./state").ViewSettings>} */ action
+            /** @type {PayloadAction<import("./state.js").ViewSettings>} */ action
         ) => ({
             ...initialState,
             ...(action.payload ? action.payload : {}),

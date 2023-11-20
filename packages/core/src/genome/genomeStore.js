@@ -11,7 +11,7 @@ export default class GenomeStore {
     }
 
     /**
-     * @param {import("../spec/genome").GenomeConfig} genomeConfig
+     * @param {import("../spec/genome.js").GenomeConfig} genomeConfig
      */
     // eslint-disable-next-line require-await
     async initialize(genomeConfig) {

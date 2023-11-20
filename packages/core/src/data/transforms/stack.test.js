@@ -8,7 +8,7 @@ const sampleData = [
     { group: "b", choice: "y", value: 3 },
 ];
 
-/** @type {import("./stack").StackParams} */
+/** @type {import("./stack.js").StackParams} */
 const baseConf = {
     type: "stack",
     field: "value",
@@ -23,7 +23,7 @@ const baseConf = {
 
 /**
  *
- * @param {import("./stack").StackParams} params
+ * @param {import("./stack.js").StackParams} params
  * @param {any[]} data
  */
 function transform(params, data) {

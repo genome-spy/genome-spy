@@ -14,7 +14,7 @@ export default class CoverageTransform extends FlowNode {
     }
 
     /**
-     * @param {import("../../spec/transform").CoverageParams} params
+     * @param {import("../../spec/transform.js").CoverageParams} params
      */
     constructor(params) {
         super();

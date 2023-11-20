@@ -9,8 +9,8 @@ import { render } from "lit";
 
 export class GroupPanel extends LayerView {
     /**
-     * @param {import("./sampleView").default} sampleView
-     * @param {import("@genome-spy/core/view/containerView").default} dataParent
+     * @param {import("./sampleView.js").default} sampleView
+     * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
      */
     constructor(sampleView, dataParent) {
         super(
@@ -138,10 +138,10 @@ export class GroupPanel extends LayerView {
                 return;
             }
 
-            /** @type {import("./sampleState").Group} */
+            /** @type {import("./sampleState.js").Group} */
             const group = hover.datum._rawGroup;
 
-            /** @type {import("./sampleState").Group[]} */
+            /** @type {import("./sampleState.js").Group[]} */
             let foundPath;
             for (const path of iterateGroupHierarchy(
                 this.sampleView.sampleHierarchy.rootGroup
@@ -205,7 +205,7 @@ export class GroupPanel extends LayerView {
             this.sampleView.locationManager.getLocations()?.groups ?? [];
 
         const dynamicSource =
-            /** @type {import("@genome-spy/core/data/sources/namedSource").default} */ (
+            /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
                 this.context.dataFlow.findDataSourceByKey(this)
             );
 

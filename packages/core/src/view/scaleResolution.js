@@ -53,7 +53,7 @@ export const INDEX = "index";
 
 /**
  * @template {ChannelWithScale}[T=ChannelWithScale]
- * @typedef {{view: import("./unitView").default, channel: T}} ResolutionMember
+ * @typedef {{view: import("./unitView.js").default, channel: T}} ResolutionMember
  *
  */
 /**
@@ -66,18 +66,18 @@ export const INDEX = "index";
  */
 export default class ScaleResolution {
     /**
-     * @typedef {import("../types/scaleResolutionApi").ScaleResolutionApi} ScaleResolutionApi
-     * @typedef {import("../spec/channel").Channel} Channel
-     * @typedef {import("../spec/channel").ChannelWithScale} ChannelWithScale
-     * @typedef {import("../spec/scale").NumericDomain} NumericDomain
-     * @typedef {import("../spec/scale").ScalarDomain} ScalarDomain
-     * @typedef {import("../spec/scale").ComplexDomain} ComplexDomain
-     * @typedef {import("../spec/scale").ZoomParams} ZoomParams
-     * @typedef {import("./unitView").default} UnitView
-     * @typedef {import("../types/encoder").VegaScale} VegaScale
-     * @typedef {import("../utils/domainArray").DomainArray} DomainArray
-     * @typedef {import("../genome/genome").ChromosomalLocus} ChromosomalLocus
-     * @typedef {import("../types/scaleResolutionApi").ScaleResolutionListener} ScaleResolutionListener
+     * @typedef {import("../types/scaleResolutionApi.js").ScaleResolutionApi} ScaleResolutionApi
+     * @typedef {import("../spec/channel.js").Channel} Channel
+     * @typedef {import("../spec/channel.js").ChannelWithScale} ChannelWithScale
+     * @typedef {import("../spec/scale.js").NumericDomain} NumericDomain
+     * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
+     * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
+     * @typedef {import("../spec/scale.js").ZoomParams} ZoomParams
+     * @typedef {import("./unitView.js").default} UnitView
+     * @typedef {import("../types/encoder.js").VegaScale} VegaScale
+     * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
+     * @typedef {import("../genome/genome.js").ChromosomalLocus} ChromosomalLocus
+     * @typedef {import("../types/scaleResolutionApi.js").ScaleResolutionListener} ScaleResolutionListener
      */
 
     /** @type {number[]} */
@@ -203,7 +203,7 @@ export default class ScaleResolution {
      * Collects and merges scale properties from the participating views.
      * Does not include inferred default values such as schemes etc.
      *
-     * @returns {import("../spec/scale").Scale}
+     * @returns {import("../spec/scale.js").Scale}
      */
     #getMergedScaleProps() {
         return getCachedOrCall(this, "mergedScaleProps", () => {
@@ -224,7 +224,7 @@ export default class ScaleResolution {
      * Returns the merged scale properties supplemented with inferred properties
      * and domain.
      *
-     * @returns {import("../spec/scale").Scale}
+     * @returns {import("../spec/scale.js").Scale}
      */
     getScaleProps() {
         // eslint-disable-next-line complexity
@@ -449,7 +449,8 @@ export default class ScaleResolution {
         const oldDomain = scale.domain();
         let newDomain = [...oldDomain];
 
-        // @ts-expect-error
+        /** @type {number} */
+        // @ts-ignore
         let anchor = scale.invert(scaleAnchor);
 
         if (this.getScaleProps().reverse) {
@@ -658,6 +659,10 @@ export default class ScaleResolution {
         return props;
     }
 
+    /**
+     *
+     * @returns {import("../genome/genome.js").default}
+     */
     getGenome() {
         if (this.type !== "locus") {
             return undefined;
@@ -753,7 +758,7 @@ export default class ScaleResolution {
  *
  * @param {Channel} channel
  * @param {string} dataType
- * @returns {import("../spec/scale").ScaleType}
+ * @returns {import("../spec/scale.js").ScaleType}
  */
 function getDefaultScaleType(channel, dataType) {
     // TODO: Band scale, Bin-Quantitative
@@ -770,7 +775,7 @@ function getDefaultScaleType(channel, dataType) {
     }
 
     /**
-     * @type {Partial<Record<Channel, (import("../spec/scale").ScaleType | undefined)[]>>}
+     * @type {Partial<Record<Channel, (import("../spec/scale.js").ScaleType | undefined)[]>>}
      * Default types: nominal, ordinal, quantitative.
      * undefined = incompatible, "null" = disabled (pass-thru)
      */
@@ -812,8 +817,8 @@ function getDefaultScaleType(channel, dataType) {
 }
 
 /**
- * @param {import("../spec/scale").Scale} props
- * @param {import("../spec/channel").Channel} channel
+ * @param {import("../spec/scale.js").Scale} props
+ * @param {import("../spec/channel.js").Channel} channel
  */
 function applyLockedProperties(props, channel) {
     if (isPositionalChannel(channel) && props.type !== "ordinal") {
@@ -843,13 +848,13 @@ function isZoomParams(zoom) {
  * TODO: This may reconfigure channels that are not affected by the change.
  * Causes performance issues with domains that are extracted from data.
  *
- * @param {import("./view").default | import("./view").default[]} fromViews
+ * @param {import("./view.js").default | import("./view.js").default[]} fromViews
  */
 export function reconfigureScales(fromViews) {
     /** @type {Set<ScaleResolution>} */
     const uniqueResolutions = new Set();
 
-    /** @param {import("./view").default} view */
+    /** @param {import("./view.js").default} view */
     function collectResolutions(view) {
         for (const resolution of Object.values(view.resolutions.scale)) {
             uniqueResolutions.add(resolution);

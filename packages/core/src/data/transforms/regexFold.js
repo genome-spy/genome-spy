@@ -12,7 +12,7 @@ export default class RegexFoldTransform extends FlowNode {
     }
 
     /**
-     * @param {import("../../spec/transform").RegexFoldParams} params
+     * @param {import("../../spec/transform.js").RegexFoldParams} params
      */
     constructor(params) {
         super();
@@ -127,7 +127,7 @@ export default class RegexFoldTransform extends FlowNode {
 
         /**
          *
-         * @param {import("../../types/flowBatch").FlowBatch} flowBatch
+         * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
          */
         this.beginBatch = (flowBatch) => {
             if (isFileBatch(flowBatch)) {

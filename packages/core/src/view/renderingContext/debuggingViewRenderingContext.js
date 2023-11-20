@@ -6,13 +6,13 @@ import ViewRenderingContext from "./viewRenderingContext.js";
  * of view coordinates, including faceted views that are repeated multiple times.
  * The coordinates can be used for debugging or testing of the layout engine.
  *
- * @typedef {import("../view").default} View
- * @typedef {import("../../utils/layout/rectangle").default} Rectangle
+ * @typedef {import("../view.js").default} View
+ * @typedef {import("../../utils/layout/rectangle.js").default} Rectangle
  *
  */
 export default class DebugginViewRenderingContext extends ViewRenderingContext {
     /**
-     * @param {import("../../types/rendering").GlobalRenderingOptions} globalOptions
+     * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      */
     constructor(globalOptions) {
         super(globalOptions);

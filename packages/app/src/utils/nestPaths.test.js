@@ -15,7 +15,7 @@ test("nestPaths nests paths properly", () => {
 );
 
     /**
-     * @type {import("./nestPaths").NestedItem<string>}
+     * @type {import("./nestPaths.js").NestedItem<string>}
      */
     const result = {
         item: "r",

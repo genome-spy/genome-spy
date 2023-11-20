@@ -66,17 +66,17 @@ const headerConfigs = {
  */
 export default class FacetView extends ContainerView {
     /**
-     * @typedef {import("./view").default} View
-     * @typedef {import("./layerView").default} LayerView
-     * @typedef {import("./viewUtils").FacetFieldDef} FacetFieldDef
-     * @typedef {import("./viewUtils").FacetMapping} FacetMapping
-     * @typedef {import("../utils/layout/flexLayout").LocSize} LocSize
-     * @typedef {import("../utils/layout/flexLayout").SizeDef} SizeDef
+     * @typedef {import("./view.js").default} View
+     * @typedef {import("./layerView.js").default} LayerView
+     * @typedef {import("./viewUtils.js").FacetFieldDef} FacetFieldDef
+     * @typedef {import("./viewUtils.js").FacetMapping} FacetMapping
+     * @typedef {import("../utils/layout/flexLayout.js").LocSize} LocSize
+     * @typedef {import("../utils/layout/flexLayout.js").SizeDef} SizeDef
      */
     /**
      *
-     * @param {import("./viewUtils").FacetSpec} spec
-     * @param {import("./viewUtils").ViewContext} context
+     * @param {import("./viewUtils.js").FacetSpec} spec
+     * @param {import("./viewUtils.js").ViewContext} context
      * @param {ContainerView} parent
      * @param {string} name
      */
@@ -121,8 +121,8 @@ export default class FacetView extends ContainerView {
     }
 
     /**
-     * @param {import("./view").default} child
-     * @param {import("./view").default} replacement
+     * @param {import("./view.js").default} child
+     * @param {import("./view.js").default} replacement
      */
     replaceChild(child, replacement) {
         if (child !== this.child) {
@@ -145,7 +145,7 @@ export default class FacetView extends ContainerView {
      * @param {"row" | "column"} channel
      */
     getAccessor(channel) {
-        /** @type {import("./viewUtils").FacetMapping} */
+        /** @type {import("./viewUtils.js").FacetMapping} */
         let facetMapping;
         if (isFacetMapping(this.spec.facet)) {
             facetMapping = this.spec.facet; // Mark provides encodings with defaults and possible modifications
@@ -169,7 +169,7 @@ export default class FacetView extends ContainerView {
     }
 
     updateFacets() {
-        /** @type {import("./viewUtils").FacetMapping} */
+        /** @type {import("./viewUtils.js").FacetMapping} */
         let facetMapping;
         if (isFacetMapping(this.spec.facet)) {
             facetMapping = this.spec.facet; // Mark provides encodings with defaults and possible modifications
@@ -273,9 +273,9 @@ export default class FacetView extends ContainerView {
     }
 
     /**
-     * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("./view").RenderingOptions} [options]
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("./view.js").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
@@ -471,7 +471,7 @@ export default class FacetView extends ContainerView {
 function createLabelViewSpec(headerConfig) {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
-    /** @type {import("./viewUtils").UnitSpec} */
+    /** @type {import("./viewUtils.js").UnitSpec} */
     const titleView = {
         data: {
             values: [],

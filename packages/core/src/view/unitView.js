@@ -21,7 +21,7 @@ import AxisResolution from "./axisResolution.js";
 
 /**
  *
- * @type {Object.<string, typeof import("../marks/mark").default>}
+ * @type {Object.<string, typeof import("../marks/mark.js").default>}
  * TODO: Find a proper place, make extendible
  */
 export const markTypes = {
@@ -34,21 +34,21 @@ export const markTypes = {
 
 export default class UnitView extends ContainerView {
     /**
-     * @typedef {import("../spec/channel").Channel} Channel
-     * @typedef {import("./view").default} View
-     * @typedef {import("./layerView").default} LayerView
-     * @typedef {import("../utils/domainArray").DomainArray} DomainArray
-     * @typedef {import("../spec/view").ResolutionTarget} ResolutionTarget
+     * @typedef {import("../spec/channel.js").Channel} Channel
+     * @typedef {import("./view.js").default} View
+     * @typedef {import("./layerView.js").default} LayerView
+     * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
+     * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionTarget
      *
      */
     /**
      *
-     * @param {import("../spec/view").UnitSpec} spec
-     * @param {import("../types/viewContext").default} context
-     * @param {import("./containerView").default} layoutParent
-     * @param {import("./view").default} dataParent
+     * @param {import("../spec/view.js").UnitSpec} spec
+     * @param {import("../types/viewContext.js").default} context
+     * @param {import("./containerView.js").default} layoutParent
+     * @param {import("./view.js").default} dataParent
      * @param {string} name
-     * @param {import("./view").ViewOptions} [options]
+     * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(spec, context, layoutParent, dataParent, name, options) {
         super(spec, context, layoutParent, dataParent, name, options);
@@ -57,7 +57,7 @@ export default class UnitView extends ContainerView {
 
         const Mark = markTypes[this.getMarkType()];
         if (Mark) {
-            /** @type {import("../marks/mark").default} */
+            /** @type {import("../marks/mark.js").default} */
             this.mark = new Mark(this);
         } else {
             throw new Error(`No such mark: ${this.getMarkType()}`);
@@ -68,7 +68,7 @@ export default class UnitView extends ContainerView {
         /**
          * Not nice! Inconsistent when faceting!
          * TODO: Something. Maybe store only width/height
-         * @type {import("../utils/layout/rectangle").default}
+         * @type {import("../utils/layout/rectangle.js").default}
          */
         this.coords = undefined;
 
@@ -76,9 +76,9 @@ export default class UnitView extends ContainerView {
     }
 
     /**
-     * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("../types/rendering").RenderingOptions} [options]
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
@@ -239,7 +239,7 @@ export default class UnitView extends ContainerView {
     /**
      * Returns the domain of the specified channel of this domain/mark.
      *
-     * @param {import("../spec/channel").ChannelWithScale} channel A primary channel
+     * @param {import("../spec/channel.js").ChannelWithScale} channel A primary channel
      * @returns {DomainArray}
      */
     getConfiguredDomain(channel) {
@@ -318,7 +318,7 @@ export default class UnitView extends ContainerView {
     }
 
     getZoomLevel() {
-        /** @param {import("../spec/channel").ChannelWithScale} channel */
+        /** @param {import("../spec/channel.js").ChannelWithScale} channel */
         const getZoomLevel = (channel) =>
             this.getScaleResolution(channel)?.getZoomLevel() ?? 1.0;
 
@@ -328,7 +328,7 @@ export default class UnitView extends ContainerView {
     }
 
     /**
-     * @param {import("../utils/interactionEvent").default} event
+     * @param {import("../utils/interactionEvent.js").default} event
      */
     propagateInteractionEvent(event) {
         this.handleInteractionEvent(undefined, event, true);
@@ -344,7 +344,7 @@ export default class UnitView extends ContainerView {
     /**
      * @param {string} channel
      * @param {ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
+     * @returns {import("../spec/view.js").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         // This affects the sample aggregate views.

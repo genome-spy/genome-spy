@@ -13,7 +13,7 @@ export default class DataSource extends FlowNode {
 
     /**
      *
-     * @param {import("../flowNode").Datum} datum
+     * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
         throw new Error("Source does not handle incoming data!");

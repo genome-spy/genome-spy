@@ -5,17 +5,17 @@ import ViewRenderingContext from "./viewRenderingContext.js";
  * A trivial proof-of-concept SVG rendering context. Doesn't render any
  * marks at this point, only placeholders.
  *
- * @typedef {import("../view").default} View
+ * @typedef {import("../view.js").default} View
  */
 export default class SvgViewRenderingContext extends ViewRenderingContext {
     /**
      *
-     * @param {import("../../types/rendering").GlobalRenderingOptions} globalOptions
+     * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      */
     constructor(globalOptions) {
         super(globalOptions);
 
-        /** @type {import("../../utils/layout/rectangle").default} */
+        /** @type {import("../../utils/layout/rectangle.js").default} */
         this.coords = undefined;
 
         this.svg = document.createElementNS(
@@ -31,7 +31,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      * Must be called when a view's render() method is entered
      *
      * @param {View} view
-     * @param {import("../../utils/layout/rectangle").default} coords View coordinates
+     * @param {import("../../utils/layout/rectangle.js").default} coords View coordinates
      *      inside the padding.
      */
     pushView(view, coords) {
@@ -67,8 +67,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
     /**
      *
-     * @param {import("../../marks/mark").default} mark
-     * @param {import("../../types/rendering").RenderingOptions} options
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {import("../../types/rendering.js").RenderingOptions} options
      */
     renderMark(mark, options) {
         const current = this._currentNode;

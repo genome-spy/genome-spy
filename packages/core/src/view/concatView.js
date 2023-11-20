@@ -7,10 +7,10 @@ import GridView from "./gridView.js";
 export default class ConcatView extends GridView {
     /**
      *
-     * @param {import("../spec/view").AnyConcatSpec} spec
-     * @param {import("../types/viewContext").default} context
-     * @param {import("./containerView").default} layoutParent
-     * @param {import("./view").default} dataParent
+     * @param {import("../spec/view.js").AnyConcatSpec} spec
+     * @param {import("../types/viewContext.js").default} context
+     * @param {import("./containerView.js").default} layoutParent
+     * @param {import("./view.js").default} dataParent
      * @param {string} name
      */
     constructor(spec, context, layoutParent, dataParent, name) {
@@ -58,9 +58,9 @@ export default class ConcatView extends GridView {
     }
 
     /**
-     * @param {import("../spec/channel").Channel} channel
-     * @param {import("../spec/view").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
+     * @param {import("../spec/channel.js").Channel} channel
+     * @param {import("../spec/view.js").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view.js").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         if (resolutionType == "axis") {

@@ -1,7 +1,7 @@
 import ViewRenderingContext from "./viewRenderingContext.js";
 
 /**
- * @typedef {import("../view").default} View
+ * @typedef {import("../view.js").default} View
  */
 export default class CompositeViewRenderingContext extends ViewRenderingContext {
     /**
@@ -18,7 +18,7 @@ export default class CompositeViewRenderingContext extends ViewRenderingContext 
      * Must be called when a view's render() method is entered
      *
      * @param {View} view
-     * @param {import("../../utils/layout/rectangle").default} coords View coordinates
+     * @param {import("../../utils/layout/rectangle.js").default} coords View coordinates
      *      inside the padding.
      */
     pushView(view, coords) {
@@ -40,8 +40,8 @@ export default class CompositeViewRenderingContext extends ViewRenderingContext 
 
     /**
      *
-     * @param {import("../../marks/mark").default} mark
-     * @param {import("../../types/rendering").RenderingOptions} options
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {import("../../types/rendering.js").RenderingOptions} options
      */
     renderMark(mark, options) {
         for (const context of this.contexts) {

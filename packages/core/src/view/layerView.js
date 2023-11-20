@@ -4,20 +4,20 @@ import ViewError from "../utils/viewError.js";
 
 export default class LayerView extends ContainerView {
     /**
-     * @typedef {import("./view").default} View
+     * @typedef {import("./view.js").default} View
      */
 
-    /** @type {(LayerView | import("./unitView").default)[]} */
+    /** @type {(LayerView | import("./unitView.js").default)[]} */
     #children = [];
 
     /**
      *
-     * @param {import("../spec/view").LayerSpec} spec
-     * @param {import("../types/viewContext").default} context
+     * @param {import("../spec/view.js").LayerSpec} spec
+     * @param {import("../types/viewContext.js").default} context
      * @param {ContainerView} layoutParent
-     * @param {import("./view").default} dataParent
+     * @param {import("./view.js").default} dataParent
      * @param {string} name
-     * @param {import("./view").ViewOptions} [options]
+     * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(spec, context, layoutParent, dataParent, name, options) {
         super(spec, context, layoutParent, dataParent, name, options);
@@ -34,7 +34,7 @@ export default class LayerView extends ContainerView {
         this.#children = await Promise.all(
             this.spec.layer.map(
                 (childSpec, i) =>
-                    /** @type {(Promise<LayerView | import("./unitView").default>)} */ (
+                    /** @type {(Promise<LayerView | import("./unitView.js").default>)} */ (
                         this.context.createOrImportView(
                             childSpec,
                             this,
@@ -72,9 +72,9 @@ export default class LayerView extends ContainerView {
     }
 
     /**
-     * @param {import("./renderingContext/viewRenderingContext").default} context
-     * @param {import("../utils/layout/rectangle").default} coords
-     * @param {import("../types/rendering").RenderingOptions} [options]
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
         if (!this.isConfiguredVisible()) {
@@ -91,7 +91,7 @@ export default class LayerView extends ContainerView {
     }
 
     /**
-     * @param {import("../utils/interactionEvent").default} event
+     * @param {import("../utils/interactionEvent.js").default} event
      */
     propagateInteractionEvent(event) {
         this.handleInteractionEvent(undefined, event, true);

@@ -1,5 +1,5 @@
 /**
- * @typedef {import("../utils/ui/contextMenu").MenuItem} MenuItem
+ * @typedef {import("../utils/ui/contextMenu.js").MenuItem} MenuItem
  */
 
 import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
@@ -9,9 +9,9 @@ import retainFirstNCategoriesDialog from "./retainFirstNCategoriesDialog.js";
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
- * @param {import("./types").AttributeInfo} attributeInfo
- * @param {import("@genome-spy/core/spec/channel").Scalar} attributeValue
- * @param {import("./sampleView").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("@genome-spy/core/spec/channel.js").Scalar} attributeValue
+ * @param {import("./sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export default function generateAttributeContextMenu(
     title,
@@ -37,7 +37,7 @@ export default function generateAttributeContextMenu(
     }
 
     /**
-     * @param {import("../state/provenance").Action} action
+     * @param {import("../state/provenance.js").Action} action
      * @param {boolean} [disabled]
      * @param {function} [callback]
      * @returns {MenuItem}
@@ -54,7 +54,7 @@ export default function generateAttributeContextMenu(
     };
 
     /**
-     * @param {import("../state/provenance").Action[]} actions
+     * @param {import("../state/provenance.js").Action[]} actions
      */
     const addActions = (...actions) =>
         items.push(...actions.map((action) => actionToItem(action)));

@@ -1,6 +1,6 @@
-import { ScaleResolutionApi } from "./scaleResolutionApi";
-import { TooltipHandler } from "../tooltip/tooltipHandler";
-import { RootSpec } from "../spec/root";
+import { ScaleResolutionApi } from "./scaleResolutionApi.js";
+import { TooltipHandler } from "../tooltip/tooltipHandler.js";
+import { RootSpec } from "../spec/root.js";
 
 /**
  * Embeds GenomeSpy into the DOM

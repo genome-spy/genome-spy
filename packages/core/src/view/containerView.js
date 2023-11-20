@@ -6,12 +6,12 @@ import View, { VISIT_STOP, VISIT_SKIP } from "./view.js";
 export default class ContainerView extends View {
     /**
      *
-     * @param {import("../spec/view").ContainerSpec} spec
-     * @param {import("../types/viewContext").default} context
+     * @param {import("../spec/view.js").ContainerSpec} spec
+     * @param {import("../types/viewContext.js").default} context
      * @param {ContainerView} layoutParent
-     * @param {import("./view").default} dataParent
+     * @param {import("./view.js").default} dataParent
      * @param {string} name
-     * @param {import("./view").ViewOptions} [options]
+     * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(spec, context, layoutParent, dataParent, name, options) {
         super(spec, context, layoutParent, dataParent, name, options);
@@ -33,8 +33,8 @@ export default class ContainerView extends View {
     /**
      * Replaces a child view with another one. Does not alter the old or new child.
      *
-     * @param {import("./view").default} child
-     * @param {import("./view").default} replacement
+     * @param {import("./view.js").default} child
+     * @param {import("./view.js").default} replacement
      */
     replaceChild(child, replacement) {
         throw new Error("Not implemented");
@@ -45,11 +45,11 @@ export default class ContainerView extends View {
      * the value if the visitor returns a defined value. The `afterChildren` callback
      * allows for post-order traversal
      *
-     * @param {import("./view").Visitor} visitor
-     * @returns {import("./view").VisitResult}
+     * @param {import("./view.js").Visitor} visitor
+     * @returns {import("./view.js").VisitResult}
      */
     visit(visitor) {
-        /** @type  {import("./view").VisitResult}*/
+        /** @type  {import("./view.js").VisitResult}*/
         let result;
         try {
             result = visitor(this);
@@ -132,9 +132,9 @@ export default class ContainerView extends View {
     }
 
     /**
-     * @param {import("../spec/channel").Channel} channel
-     * @param {import("../spec/view").ResolutionTarget} resolutionType
-     * @returns {import("../spec/view").ResolutionBehavior}
+     * @param {import("../spec/channel.js").Channel} channel
+     * @param {import("../spec/view.js").ResolutionTarget} resolutionType
+     * @returns {import("../spec/view.js").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
         return "shared";

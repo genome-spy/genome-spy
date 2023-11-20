@@ -14,7 +14,7 @@ export default class SearchField extends LitElement {
 
         this.inputRef = createRef();
 
-        /** @type {import("../app").default} */
+        /** @type {import("../app.js").default} */
         this.app = undefined;
 
         /** @type {function():string} */

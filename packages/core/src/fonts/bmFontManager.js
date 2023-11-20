@@ -23,8 +23,8 @@ const WEIGHTS = {
  * https://github.com/etiennepinchon/aframe-fonts
  *
  *
- * @typedef {import("../types/bmFont").BMFont} BMFont
- * @typedef {import("./bmFontMetrics").BMFontMetrics} BMFontMetrics
+ * @typedef {import("../types/bmFont.js").BMFont} BMFont
+ * @typedef {import("./bmFontMetrics.js").BMFontMetrics} BMFontMetrics
  *
  * @typedef {"normal" | "italic"} FontStyle
  * @typedef {number} FontWeight
@@ -40,7 +40,7 @@ const WEIGHTS = {
  */
 export default class BmFontManager {
     /**
-     * @param {import("../gl/webGLHelper").default} [webGLHelper]
+     * @param {import("../gl/webGLHelper.js").default} [webGLHelper]
      */
     constructor(webGLHelper) {
         this._webGLHelper = webGLHelper;

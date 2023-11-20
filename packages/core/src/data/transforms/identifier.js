@@ -32,7 +32,7 @@ export default class IdentifierTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../../spec/transform").IdentifierParams} params
+     * @param {import("../../spec/transform.js").IdentifierParams} params
      */
     constructor(params) {
         super();
@@ -70,7 +70,7 @@ export default class IdentifierTransform extends FlowNode {
 
     /**
      *
-     * @param {import("../flowNode").Datum} datum
+     * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
         datum[this.as] = this._nextId();
