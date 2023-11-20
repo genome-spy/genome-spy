@@ -6,6 +6,7 @@
   "author": "Kari Lavikka <kari.lavikka@helsinki.fi>",
   "homepage": "",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "build": "vite build"
   },

@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.37.4",
   "description": "A playground for testing GenomeSpy visualizations",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

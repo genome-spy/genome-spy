@@ -19,7 +19,7 @@ const fasta = new IndexedFasta({
     ),
 });
 
-/** @type {import("@genome-spy/core/spec/root").RootSpec} */
+/** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
     height: 30,
 
@@ -135,7 +135,7 @@ const genomeScale = api.getScaleResolutionByName("genomeScale");
 genomeScale.addEventListener("domain", (event) => {
     handleDomainChange(
         event.scaleResolution.getDomain(),
-        /** @type {import("@genome-spy/core/spec/genome").ChromosomalLocus[]} */ (
+        /** @type {import("@genome-spy/core/spec/genome.js").ChromosomalLocus[]} */ (
             event.scaleResolution.getComplexDomain()
         )
     );
@@ -144,7 +144,7 @@ genomeScale.addEventListener("domain", (event) => {
 const windowSize = 7000;
 
 /**
- * @type {import("@genome-spy/core/spec/genome").ChromosomalLocus[]}
+ * @type {import("@genome-spy/core/spec/genome.js").ChromosomalLocus[]}
  */
 let lastQuantizedDomain;
 
@@ -152,7 +152,7 @@ let lastQuantizedDomain;
  * Listen to the domain change event and update data when the covered windows change.
  *
  * @param {number[]} domain Linearized domain
- * @param {import("@genome-spy/core/spec/genome").ChromosomalLocus[]} complexDomain Chrom/Pos domain
+ * @param {import("@genome-spy/core/spec/genome.js").ChromosomalLocus[]} complexDomain Chrom/Pos domain
  */
 async function handleDomainChange(domain, complexDomain) {
     // Note: window size must be smaller than the largest chromosome.
@@ -203,8 +203,8 @@ async function handleDomainChange(domain, complexDomain) {
 }
 
 /**
- * @param {import("@genome-spy/core/spec/genome").ChromosomalLocus[]} domain1
- * @param {import("@genome-spy/core/spec/genome").ChromosomalLocus[]} domain2
+ * @param {import("@genome-spy/core/spec/genome.js").ChromosomalLocus[]} domain1
+ * @param {import("@genome-spy/core/spec/genome.js").ChromosomalLocus[]} domain2
  */
 function isIdenticalDomain(domain1, domain2) {
     return (

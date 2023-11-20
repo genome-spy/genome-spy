@@ -11,8 +11,8 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 import schema from "@genome-spy/core/schema.json";
 
 import packageJson from "../package.json";
-import "./codeEditor";
-import "./filePane";
+import "./codeEditor.js";
+import "./filePane.js";
 import "./playground.scss";
 import addMarkdownProps from "./markdownProps.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
@@ -23,10 +23,10 @@ const STORAGE_KEY = "playgroundSpec";
 
 const genomeSpyContainerRef = createRef();
 
-/** @type {import("lit/directives/ref.js").Ref<import("./codeEditor").default>} */
+/** @type {import("lit/directives/ref.js").Ref<import("./codeEditor.js").default>} */
 const editorRef = createRef();
 
-/** @type {Record<string, import("./filePane").FileEntry>} */
+/** @type {Record<string, import("./filePane.js").FileEntry>} */
 const files = {};
 
 /** @type {Set<string>} */
