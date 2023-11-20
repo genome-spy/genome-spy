@@ -374,14 +374,14 @@ function typeSlowly(text, element) {
 /**
  * Finds a scale resolution that has a zoomable locus scale
  *
- * @param {import("@genome-spy/core/view/view").default} viewRoot
+ * @param {import("@genome-spy/core/view/view.js").default} viewRoot
  */
 export function findGenomeScaleResolution(viewRoot) {
-    /** @type {import("@genome-spy/core/view/scaleResolution").default} */
+    /** @type {import("@genome-spy/core/view/scaleResolution.js").default} */
     let match;
 
     viewRoot.visit((view) => {
-        for (const channel of /** @type {import("@genome-spy/core/spec/channel").PrimaryPositionalChannel[]} */ ([
+        for (const channel of /** @type {import("@genome-spy/core/spec/channel.js").PrimaryPositionalChannel[]} */ ([
             "x",
             "y",
         ])) {

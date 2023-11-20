@@ -5,7 +5,7 @@ import { html } from "lit";
 
 /**
  *
- * @param {import("@genome-spy/core/view/containerView").default} rootView
+ * @param {import("@genome-spy/core/view/containerView.js").default} rootView
  * @param {import("./types.js").AttributeIdentifier} attributeIdentifier
  * @returns
  */
@@ -15,13 +15,13 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             attributeIdentifier.specifier
         );
     const view =
-        /** @type {import("@genome-spy/core/view/unitView").default} */ (
+        /** @type {import("@genome-spy/core/view/unitView.js").default} */ (
             rootView.findDescendantByName(specifier.view)
         );
 
     const xScaleResolution = view.getScaleResolution("x");
 
-    /** @type {import("@genome-spy/core/spec/channel").Scalar} */
+    /** @type {import("@genome-spy/core/spec/channel.js").Scalar} */
     let scalarLocus;
 
     if (isChromosomalLocus(specifier.locus)) {

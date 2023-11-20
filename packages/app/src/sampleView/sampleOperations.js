@@ -90,6 +90,7 @@ export function retainFirstNCategories(samples, accessor, n) {
  * @template T
  */
 export function sort(samples, accessor, descending = false) {
+    // @ts-ignore TODO: Fix mapsort typings
     return mapSort(samples, accessor, (av, bv) => {
         if (descending) {
             [av, bv] = [bv, av];
