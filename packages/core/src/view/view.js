@@ -15,7 +15,7 @@ import { isFieldDef, getPrimaryChannel } from "../encoder/encoder.js";
 import { appendToBaseUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
-import ViewError from "../utils/viewError.js";
+import ViewError from "./viewError.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to

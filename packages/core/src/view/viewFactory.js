@@ -7,7 +7,7 @@ import ConcatView from "./concatView.js";
 import { isArray, isObject, isString } from "vega-util";
 import { loadExternalViewSpec } from "./viewUtils.js";
 import ContainerView from "./containerView.js";
-import ViewError from "../utils/viewError.js";
+import ViewError from "./viewError.js";
 
 export const VIEW_ROOT_NAME = "viewRoot";
 

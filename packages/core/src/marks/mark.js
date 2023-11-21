@@ -36,7 +36,7 @@ import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
 import scaleNull from "../utils/scaleNull.js";
-import ViewError from "../utils/viewError.js";
+import ViewError from "../view/viewError.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
