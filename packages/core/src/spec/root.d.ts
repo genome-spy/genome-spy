@@ -1,5 +1,5 @@
-import { GenomeConfig } from "./genome";
-import { ViewSpec } from "./view";
+import { GenomeConfig } from "./genome.js";
+import { ViewSpec } from "./view.js";
 
 interface RootConfig {
     $schema?: string;

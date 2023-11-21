@@ -11,8 +11,8 @@
 /*
  * Constants and utilities for data.
  */
-import { Axis } from "./axis";
-import { FieldName, PrimaryPositionalChannel } from "./channel";
+import { Axis } from "./axis.js";
+import { FieldName, PrimaryPositionalChannel } from "./channel.js";
 
 export type ParseValue =
     | null

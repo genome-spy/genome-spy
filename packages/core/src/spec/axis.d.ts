@@ -1,4 +1,4 @@
-import { Align, Baseline, FontStyle, FontWeight } from "./font";
+import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 
 export interface GenomeAxis extends Axis {
     chromTicks?: boolean;

@@ -1,19 +1,19 @@
-import { Data } from "./data";
-import { TransformParams } from "./transform";
+import { Data } from "./data.js";
+import { TransformParams } from "./transform.js";
 import {
     Channel,
     Encoding,
     FacetFieldDef,
     PrimaryPositionalChannel,
-} from "./channel";
+} from "./channel.js";
 import {
     FillAndStrokeProps,
     MarkConfigAndType,
     MarkType,
     RectProps,
-} from "./mark";
-import { Title } from "./title";
-import { SampleSpec } from "./sampleView";
+} from "./mark.js";
+import { Title } from "./title.js";
+import { SampleSpec } from "./sampleView.js";
 
 export interface SizeDef {
     /** Size in pixels */
@@ -70,7 +70,18 @@ export type ViewBackground = Pick<
 export interface ViewSpecBase extends ResolveSpec {
     name?: string;
 
+    /**
+     * Height of the view. If a number, it is interpreted as pixels.
+     *
+     * **Default:** `"container"`
+     */
     height?: SizeDef | number | Step | "container";
+
+    /**
+     * Width of the view. If a number, it is interpreted as pixels.
+     *
+     * **Default:** `"container"`
+     */
     width?: SizeDef | number | Step | "container";
 
     /**
@@ -95,7 +106,7 @@ export interface ViewSpecBase extends ResolveSpec {
     /**
      * Opacity of the view and all its children.
      *
-     * **Default:* `1.0`
+     * **Default:** `1.0`
      */
     // TODO: Should be available only in Unit and Layer views.
     opacity?: ViewOpacityDef;
@@ -119,7 +130,10 @@ export interface ViewSpecBase extends ResolveSpec {
     configurableVisibility?: boolean;
 }
 
-export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
+export interface UnitSpec
+    extends ViewSpecBase,
+        AggregateSamplesSpec,
+        MaxSizeSpec {
     view?: ViewBackground;
     mark: MarkType | MarkConfigAndType;
 }
@@ -129,7 +143,10 @@ export interface AggregateSamplesSpec {
     aggregateSamples?: (UnitSpec | LayerSpec)[];
 }
 
-export interface LayerSpec extends ViewSpecBase, AggregateSamplesSpec {
+export interface LayerSpec
+    extends ViewSpecBase,
+        AggregateSamplesSpec,
+        MaxSizeSpec {
     view?: ViewBackground;
     layer: (LayerSpec | UnitSpec)[];
 }
@@ -179,10 +196,10 @@ export type ViewSpec =
     | UnitSpec
     | LayerSpec
     //    | FacetSpec
-    | SampleSpec
     | VConcatSpec
     | HConcatSpec
-    | ConcatSpec;
+    | ConcatSpec
+    | SampleSpec;
 
 export interface ImportConfig {
     name?: string;

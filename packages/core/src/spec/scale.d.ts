@@ -8,7 +8,7 @@
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
-import { ChromosomalLocus } from "./genome";
+import { ChromosomalLocus } from "./genome.js";
 
 export type ScaleType =
     | "null"

@@ -8,7 +8,7 @@
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
-import { Align, Baseline, FontStyle, FontWeight } from "./font";
+import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 
 export type TitleOrient = "none" | "left" | "right" | "top" | "bottom";
 export type TitleAnchor = null | "start" | "middle" | "end";

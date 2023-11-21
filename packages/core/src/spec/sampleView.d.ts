@@ -1,8 +1,8 @@
-import { Type } from "./channel";
-import { Data } from "./data";
-import { Align, FontStyle, FontWeight } from "./font";
-import { Scale } from "./scale";
-import { LayerSpec, UnitSpec, ViewSpecBase, ViewBackground } from "./view";
+import { Type } from "./channel.js";
+import { Data } from "./data.js";
+import { Align, FontStyle, FontWeight } from "./font.js";
+import { Scale } from "./scale.js";
+import { LayerSpec, UnitSpec, ViewSpecBase, ViewBackground } from "./view.js";
 
 // TODO: Figure out how this could be moved to the app package and excluded
 // from the core package.

@@ -8,8 +8,8 @@
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
-import { Scale } from "./scale";
-import { GenomeAxis } from "./axis";
+import { Scale } from "./scale.js";
+import { GenomeAxis } from "./axis.js";
 
 export type Scalar = string | number | boolean;
 export type Value = Scalar | null;
