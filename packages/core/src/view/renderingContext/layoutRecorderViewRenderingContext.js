@@ -7,7 +7,7 @@ import ViewRenderingContext from "./viewRenderingContext.js";
  * The coordinates can be used for mouse events / interactions, for example.
  *
  * @typedef {import("../view.js").default} View
- * @typedef {import("../../utils/layout/rectangle.js").default} Rectangle
+ * @typedef {import("../layout/rectangle.js").default} Rectangle
  *
  */
 export default class LayoutRecorderViewRenderingContext extends ViewRenderingContext {

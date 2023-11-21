@@ -5,13 +5,13 @@ import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
 import ContainerView from "./containerView.js";
 import UnitView from "./unitView.js";
 import { cross } from "d3-array";
-import { mapToPixelCoords } from "../utils/layout/flexLayout.js";
+import { mapToPixelCoords } from "./layout/flexLayout.js";
 import { OrdinalDomain } from "../utils/domainArray.js";
-import Rectangle from "../utils/layout/rectangle.js";
+import Rectangle from "./layout/rectangle.js";
 import coalesce from "../utils/coalesce.js";
 import { field as vegaField } from "vega-util";
 import DecoratorView from "./decoratorView.js";
-import Padding from "../utils/layout/padding.js";
+import Padding from "./layout/padding.js";
 
 const DEFAULT_SPACING = 20;
 
@@ -70,8 +70,8 @@ export default class FacetView extends ContainerView {
      * @typedef {import("./layerView.js").default} LayerView
      * @typedef {import("./viewUtils.js").FacetFieldDef} FacetFieldDef
      * @typedef {import("./viewUtils.js").FacetMapping} FacetMapping
-     * @typedef {import("../utils/layout/flexLayout.js").LocSize} LocSize
-     * @typedef {import("../utils/layout/flexLayout.js").SizeDef} SizeDef
+     * @typedef {import("./layout/flexLayout.js").LocSize} LocSize
+     * @typedef {import("./layout/flexLayout.js").SizeDef} SizeDef
      */
     /**
      *
@@ -274,7 +274,7 @@ export default class FacetView extends ContainerView {
 
     /**
      * @param {import("./renderingContext/viewRenderingContext.js").default} context
-     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("./layout/rectangle.js").default} coords
      * @param {import("./view.js").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {

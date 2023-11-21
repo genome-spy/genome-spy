@@ -12,11 +12,11 @@ import {
 import UnitView from "./view/unitView.js";
 
 import WebGLHelper from "./gl/webGLHelper.js";
-import Rectangle from "./utils/layout/rectangle.js";
+import Rectangle from "./view/layout/rectangle.js";
 import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext.js";
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext.js";
 import InteractionEvent from "./utils/interactionEvent.js";
-import Point from "./utils/layout/point.js";
+import Point from "./view/layout/point.js";
 import Animator from "./utils/animator.js";
 import DataFlow from "./data/dataFlow.js";
 import { buildDataFlow } from "./view/flowBuilder.js";

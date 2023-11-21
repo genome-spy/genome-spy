@@ -17,7 +17,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
          */
         this.buffer = [];
 
-        /** @type {import("../../utils/layout/rectangle.js").default} */
+        /** @type {import("../layout/rectangle.js").default} */
         this.coords = undefined;
 
         /** @type {Set<import("../view.js").default>} */
@@ -28,7 +28,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
      * Must be called when a view's render() method is entered
      *
      * @param {import("../view.js").default} view
-     * @param {import("../../utils/layout/rectangle.js").default} coords View coordinates
+     * @param {import("../layout/rectangle.js").default} coords View coordinates
      *      inside the padding.
      * @override
      */
@@ -150,7 +150,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                     .map((op) => ifEnabled(op))
             );
 
-            /** @type {import("../../utils/layout/rectangle.js").default} */
+            /** @type {import("../layout/rectangle.js").default} */
             let previousCoords;
             for (const request of requests) {
                 const coords = request.coords;

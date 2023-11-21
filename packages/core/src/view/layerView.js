@@ -73,7 +73,7 @@ export default class LayerView extends ContainerView {
 
     /**
      * @param {import("./renderingContext/viewRenderingContext.js").default} context
-     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("./layout/rectangle.js").default} coords
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {

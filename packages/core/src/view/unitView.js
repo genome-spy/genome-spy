@@ -68,7 +68,7 @@ export default class UnitView extends ContainerView {
         /**
          * Not nice! Inconsistent when faceting!
          * TODO: Something. Maybe store only width/height
-         * @type {import("../utils/layout/rectangle.js").default}
+         * @type {import("./layout/rectangle.js").default}
          */
         this.coords = undefined;
 
@@ -77,7 +77,7 @@ export default class UnitView extends ContainerView {
 
     /**
      * @param {import("./renderingContext/viewRenderingContext.js").default} context
-     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("./layout/rectangle.js").default} coords
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {

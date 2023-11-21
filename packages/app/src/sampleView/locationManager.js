@@ -6,8 +6,8 @@ import {
     locSizeEncloses,
     mapToPixelCoords,
     translateLocSize,
-} from "@genome-spy/core/utils/layout/flexLayout.js";
-import Padding from "@genome-spy/core/utils/layout/padding.js";
+} from "@genome-spy/core/view/layout/flexLayout.js";
+import Padding from "@genome-spy/core/view/layout/padding.js";
 import smoothstep from "@genome-spy/core/utils/smoothstep.js";
 import transition from "@genome-spy/core/utils/transition.js";
 import { easeCubicOut, easeExpOut } from "d3-ease";
@@ -15,7 +15,7 @@ import { getFlattenedGroupHierarchy } from "./sampleSlice.js";
 
 export class LocationManager {
     /**
-     * @typedef {import("@genome-spy/core/utils/layout/flexLayout.js").LocSize} LocSize
+     * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
      */
 
     /**
@@ -249,7 +249,7 @@ export class LocationManager {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
+     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
      */
     getGroupBackgroundRects(coords) {
         const groups = this.getLocations().groups;
@@ -348,7 +348,7 @@ export class LocationManager {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
+     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
      */
     clipBySummary(coords) {
         if (this.#locationContext.isStickySummaries()) {
@@ -383,7 +383,7 @@ function calculateLocations(
      * @typedef {import("./sampleState.js").Group} Group
      * @typedef {import("./sampleViewTypes.js").GroupLocation} GroupLocation
      * @typedef {import("./sampleViewTypes.js").SampleLocation} SampleLocation
-     * @typedef {import("@genome-spy/core/utils/layout/flexLayout.js").LocSize} LocSize
+     * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
      */
 
     if (!viewHeight && !sampleHeight) {
@@ -403,7 +403,7 @@ function calculateLocations(
         // Skip empty groups
         .filter((entry) => entry.samples.length);
 
-    /** @type {function(string[]):import("@genome-spy/core/utils/layout/flexLayout.js").SizeDef} */
+    /** @type {function(string[]):import("@genome-spy/core/view/layout/flexLayout.js").SizeDef} */
     const sizeDefGenerator = sampleHeight
         ? (group) => ({
               px: group.length * sampleHeight + summaryHeight,

@@ -264,7 +264,7 @@ export function calculateCanvasSize(viewRoot) {
     // container.
     // TODO: Enforce the minimum size (in case of both absolute and growing components).
 
-    /** @param {import("../utils/layout/flexLayout.js").SizeDef} dim */
+    /** @param {import("./layout/flexLayout.js").SizeDef} dim */
     const f = (dim) => (dim.grow > 0 ? undefined : dim.px);
     return {
         width: f(size.width),

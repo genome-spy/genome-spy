@@ -1,6 +1,6 @@
 import { SampleHierarchy } from "./sampleSlice";
 import { Group } from "./sampleState";
-import { LocSize } from "@genome-spy/core/utils/layout/flexLayout";
+import { LocSize } from "@genome-spy/core/view/layout/flexLayout";
 import { ChromosomalLocus } from "@genome-spy/core/spec/genome";
 import { Scalar } from "@genome-spy/core/spec/channel";
 

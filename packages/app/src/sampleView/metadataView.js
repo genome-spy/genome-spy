@@ -215,7 +215,7 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
+     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
      *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */

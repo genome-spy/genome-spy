@@ -2,7 +2,7 @@ import { create } from "../src/view/testUtils";
 import { describe, expect, test } from "vitest";
 
 import DebugginViewRenderingContext from "../src/view/renderingContext/debuggingViewRenderingContext";
-import Rectangle from "../src/utils/layout/rectangle";
+import Rectangle from "../src/view/layout/rectangle";
 import { calculateCanvasSize } from "../src/view/viewUtils";
 
 import specFirst from "./first.json";

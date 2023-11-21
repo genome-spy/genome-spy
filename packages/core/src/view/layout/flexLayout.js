@@ -1,5 +1,5 @@
 import { isNumber } from "vega-util";
-import { isStepSize } from "../../view/view.js";
+import { isStepSize } from "../view.js";
 
 /**
  *

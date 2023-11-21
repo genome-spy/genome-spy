@@ -6,10 +6,10 @@ import {
     mapToPixelCoords,
     parseSizeDef,
     ZERO_SIZEDEF,
-} from "../utils/layout/flexLayout.js";
-import Grid from "../utils/layout/grid.js";
-import Padding from "../utils/layout/padding.js";
-import Rectangle from "../utils/layout/rectangle.js";
+} from "./layout/flexLayout.js";
+import Grid from "./layout/grid.js";
+import Padding from "./layout/padding.js";
+import Rectangle from "./layout/rectangle.js";
 import AxisGridView from "./axisGridView.js";
 import AxisView, { CHANNEL_ORIENTS, ORIENT_CHANNELS } from "./axisView.js";
 import ContainerView from "./containerView.js";
@@ -270,7 +270,7 @@ export default class GridView extends ContainerView {
     #makeFlexItems(direction) {
         const sizes = this.#getSizes(direction);
 
-        /** @type {import("../utils/layout/flexLayout.js").SizeDef[]} */
+        /** @type {import("./layout/flexLayout.js").SizeDef[]} */
         const items = [];
 
         // Title
@@ -307,7 +307,7 @@ export default class GridView extends ContainerView {
 
     /**
      * @param {Direction} direction
-     * @return {import("../utils/layout/flexLayout.js").SizeDef}
+     * @return {import("./layout/flexLayout.js").SizeDef}
      */
     #getFlexSize(direction) {
         let grow = 0;
@@ -429,7 +429,7 @@ export default class GridView extends ContainerView {
 
     /**
      * @param {import("./renderingContext/viewRenderingContext.js").default} context
-     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("./layout/rectangle.js").default} coords
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     // eslint-disable-next-line complexity
@@ -612,7 +612,7 @@ export default class GridView extends ContainerView {
 
     /**
      *
-     * @param {import("../utils/layout/rectangle.js").default} coords Coordinates
+     * @param {import("./layout/rectangle.js").default} coords Coordinates
      * @param {View} view
      * @param {import("./zoom.js").ZoomEvent} zoomEvent
      */
@@ -776,7 +776,7 @@ export function isClippedChildren(view) {
 
 /**
  *
- * @param {import("../utils/layout/rectangle.js").default} coords
+ * @param {import("./layout/rectangle.js").default} coords
  * @param {import("../spec/axis.js").AxisOrient} orient
  * @param {AxisView} axisView
  */

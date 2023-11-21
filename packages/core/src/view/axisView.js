@@ -1,5 +1,5 @@
 import LayerView from "./layerView.js";
-import { FlexDimensions } from "../utils/layout/flexLayout.js";
+import { FlexDimensions } from "./layout/flexLayout.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
@@ -55,7 +55,7 @@ export default class AxisView extends LayerView {
      * @typedef {import("../spec/axis.js").Axis} Axis
      * @typedef {import("../spec/axis.js").GenomeAxis} GenomeAxis
      * @typedef {import("../spec/axis.js").AxisOrient} AxisOrient
-     * @typedef {import("../utils/layout/flexLayout.js").SizeDef} SizeDef
+     * @typedef {import("./layout/flexLayout.js").SizeDef} SizeDef
      *
      * @typedef {Axis & { extent: number }} AugmentedAxis
      */

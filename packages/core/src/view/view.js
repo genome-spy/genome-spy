@@ -2,8 +2,8 @@ import {
     parseSizeDef,
     FlexDimensions,
     ZERO_FLEXDIMENSIONS,
-} from "../utils/layout/flexLayout.js";
-import Padding from "../utils/layout/padding.js";
+} from "./layout/flexLayout.js";
+import Padding from "./layout/padding.js";
 import {
     getCachedOrCall,
     initPropertyCache,
@@ -48,7 +48,7 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @prop {any} [payload] Anything
  *
  * @callback InteractionEventListener
- * @param {import("../utils/layout/rectangle.js").default} coords
+ * @param {import("./layout/rectangle.js").default} coords
  *      Coordinates of the view
  * @param {import("../utils/interactionEvent.js").default} event
  *
@@ -157,7 +157,7 @@ export default class View {
     #getSizeFromSpec() {
         /**
          * @param {"width" | "height"} dimension
-         * @return {import("../utils/layout/flexLayout.js").SizeDef}
+         * @return {import("./layout/flexLayout.js").SizeDef}
          */
         const handleSize = (dimension) => {
             let value = this.spec[dimension];
@@ -317,7 +317,7 @@ export default class View {
     /**
      * Handles an interactionEvent
      *
-     * @param {import("../utils/layout/rectangle.js").default} coords
+     * @param {import("./layout/rectangle.js").default} coords
      *      Coordinates of the view
      * @param {import("../utils/interactionEvent.js").default} event
      * @param {boolean} capturing

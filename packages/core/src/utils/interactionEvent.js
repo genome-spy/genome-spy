@@ -6,7 +6,7 @@
 export default class InteractionEvent {
     /**
      *
-     * @param {import("./layout/point.js").default} point Event coordinates
+     * @param {import("../view/layout/point.js").default} point Event coordinates
      *      inside the visualization canvas.
      * @param {UIEvent} uiEvent The event to be wrapped
      */

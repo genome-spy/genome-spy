@@ -15,7 +15,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     constructor(globalOptions) {
         super(globalOptions);
 
-        /** @type {import("../../utils/layout/rectangle.js").default} */
+        /** @type {import("../layout/rectangle.js").default} */
         this.coords = undefined;
 
         this.svg = document.createElementNS(
@@ -31,7 +31,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      * Must be called when a view's render() method is entered
      *
      * @param {View} view
-     * @param {import("../../utils/layout/rectangle.js").default} coords View coordinates
+     * @param {import("../layout/rectangle.js").default} coords View coordinates
      *      inside the padding.
      */
     pushView(view, coords) {

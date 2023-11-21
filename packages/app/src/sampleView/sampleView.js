@@ -8,10 +8,10 @@ import {
     mapToPixelCoords,
     scaleLocSize,
     sumSizeDefs,
-} from "@genome-spy/core/utils/layout/flexLayout.js";
+} from "@genome-spy/core/view/layout/flexLayout.js";
 import { MetadataView } from "./metadataView.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
-import Padding from "@genome-spy/core/utils/layout/padding.js";
+import Padding from "@genome-spy/core/view/layout/padding.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
 import createDataSource from "@genome-spy/core/data/sources/dataSourceFactory.js";
 import FlowNode from "@genome-spy/core/data/flowNode.js";
@@ -32,7 +32,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { LocationManager, getSampleLocationAt } from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import interactionToZoom from "@genome-spy/core/view/zoom.js";
-import Rectangle from "@genome-spy/core/utils/layout/rectangle.js";
+import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 import {
     createBackground,
@@ -55,7 +55,7 @@ export default class SampleView extends ContainerView {
     /**
      * @typedef {import("./sampleState.js").Group} Group
      * @typedef {import("./sampleState.js").Sample} Sample
-     * @typedef {import("@genome-spy/core/utils/layout/flexLayout.js").LocSize} LocSize
+     * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
      * @typedef {import("@genome-spy/core/view/view.js").default} View
      * @typedef {import("@genome-spy/core/view/layerView.js").default} LayerView
      * @typedef {import("@genome-spy/core/data/dataFlow.js").default<View>} DataFlow
@@ -316,7 +316,7 @@ export default class SampleView extends ContainerView {
      * Returns the configured size, if present. Otherwise a computed or default
      * height is returned.
      *
-     * @returns {import("@genome-spy/core/utils/layout/flexLayout.js").FlexDimensions}
+     * @returns {import("@genome-spy/core/view/layout/flexLayout.js").FlexDimensions}
      * @override
      */
     getSize() {
@@ -611,7 +611,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
+     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
      *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
@@ -626,7 +626,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords
+     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
      *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
@@ -770,7 +770,7 @@ export default class SampleView extends ContainerView {
 
     /**
      *
-     * @param {import("@genome-spy/core/utils/layout/rectangle.js").default} coords Coordinates
+     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords Coordinates
      * @param {View} view
      * @param {import("@genome-spy/core/view/zoom.js").ZoomEvent} zoomEvent
      */

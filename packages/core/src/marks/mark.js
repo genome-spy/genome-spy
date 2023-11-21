@@ -832,8 +832,8 @@ export default class Mark {
     /**
      * Sets viewport, clipping, and uniforms related to scaling and translation
      *
-     * @param {import("../utils/layout/rectangle.js").default} coords
-     * @param {import("../utils/layout/rectangle.js").default} [clipRect]
+     * @param {import("../view/layout/rectangle.js").default} coords
+     * @param {import("../view/layout/rectangle.js").default} [clipRect]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
     setViewport(coords, clipRect) {

@@ -14,7 +14,7 @@ export default class ViewRenderingContext {
      * Must be called when a view's render() method is entered
      *
      * @param {View} view
-     * @param {import("../../utils/layout/rectangle.js").default} coords View coordinates
+     * @param {import("../layout/rectangle.js").default} coords View coordinates
      *      inside the padding.
      */
     pushView(view, coords) {
