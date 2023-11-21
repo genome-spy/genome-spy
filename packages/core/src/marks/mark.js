@@ -36,6 +36,7 @@ import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
 import scaleNull from "../utils/scaleNull.js";
+import ViewError from "../utils/viewError.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -765,12 +766,10 @@ export default class Mark {
      */
     createRenderCallback(draw, options) {
         if (!this.bufferInfo) {
-            const e = new Error(
-                `${this.getType()} mark has no data. This is bug.`
+            throw new ViewError(
+                `${this.getType()} mark has no data. This is bug.`,
+                this.unitView
             );
-            // @ts-ignore
-            e.view = this.unitView;
-            throw e;
         }
 
         // eslint-disable-next-line consistent-this
