@@ -998,7 +998,7 @@ export class GridChild {
                     continue;
                 }
 
-                createAxis(r, channel, view);
+                await createAxis(r, channel, view);
             }
         }
 
