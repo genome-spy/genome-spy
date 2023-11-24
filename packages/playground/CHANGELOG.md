@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.38.0](https://github.com/genome-spy/genome-spy/compare/v0.37.4...v0.38.0) (2023-11-24)
+
+
+### Bug Fixes
+
+* **playground:** oscillating sizes when panel layout is changed ([1d60d43](https://github.com/genome-spy/genome-spy/commit/1d60d43d884e65c507236a2fee038fd0a7d0d844)), closes [#186](https://github.com/genome-spy/genome-spy/issues/186)
+
+
+
+
+
 ## [0.37.4](https://github.com/genome-spy/genome-spy/compare/v0.37.3...v0.37.4) (2023-11-07)
 
 **Note:** Version bump only for package @genome-spy/playground
