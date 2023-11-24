@@ -36,9 +36,10 @@
     "postpack": "node scripts/postpack.mjs"
   },
   "dependencies": {
-    "@gmod/bam": "^1.1.18",
+    "@gmod/bam": "^2.0.0",
     "@gmod/bbi": "^4.0.0",
     "@gmod/bed": "^2.1.2",
+    "@gmod/bgzf-filehandle": "^1.4.7",
     "@gmod/gff": "^1.3.0",
     "@gmod/indexedfasta": "^2.0.4",
     "@gmod/tabix": "^1.5.10",
