@@ -85,6 +85,22 @@ export interface ViewSpecBase extends ResolveSpec {
     width?: SizeDef | number | Step | "container";
 
     /**
+     * Optional viewport height of the view. If the view size exceeds the viewport height,
+     * it will be shown with scrollbars. This property implicitly enables clipping.
+     *
+     * **Default:** `null` (same as `height`)
+     */
+    viewportHeight?: SizeDef | number | "container";
+
+    /**
+     * Optional viewport width of the view. If the view size exceeds the viewport width,
+     * it will be shown with scrollbars. This property implicitly enables clipping.
+     *
+     * **Default:** `null` (same as `width`)
+     */
+    viewportWidth?: SizeDef | number | "container";
+
+    /**
      * Padding in pixels.
      *
      * **Default:* `0`

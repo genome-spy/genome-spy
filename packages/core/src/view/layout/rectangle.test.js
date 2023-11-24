@@ -114,6 +114,14 @@ test("intersect", () => {
     expect(x.intersect(y).isDefined()).toBeFalsy();
 });
 
+test("union", () => {
+    const a = Rectangle.create(1, 1, 6, 3);
+    const b = Rectangle.create(5, 2, 3, 4);
+    const c = Rectangle.create(1, 1, 7, 5);
+
+    expect(a.union(b).equals(c)).toBeTruthy();
+});
+
 test("isDefined", () => {
     expect(Rectangle.create(0, 0, 1, 1).isDefined()).toBeTruthy();
     expect(Rectangle.create(0, 0, 0, 0).isDefined()).toBeTruthy();

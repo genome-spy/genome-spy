@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "A unit view inside a scrollable viewport",
+
+  "data": { "sequence": { "start": 1, "stop": 51, "step": 1 } },
+
+  "encoding": {
+    "x": { "field": "data", "type": "ordinal" },
+    "y": { "field": "data", "type": "ordinal" }
+  },
+
+  "view": { "stroke": "lightgray", "fill": "#fafafa" },
+
+  "height": { "step": 20 },
+  "width": { "step": 20 },
+
+  "viewportHeight": "container",
+  "viewportWidth": "container",
+
+  "mark": { "type": "point" }
+}

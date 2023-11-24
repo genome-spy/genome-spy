@@ -75,6 +75,12 @@ the name should be unique within the whole view hierarchy.
 `height`
 : Height of the view. Check [child sizing](./composition/concat.md#child-sizing) for details.
 
+`viewportWidth`
+: Width of the scrollable view. Check [child sizing](./composition/concat.md#child-sizing) for details.
+
+`viewportHeight`
+: Height of the scrollable view. Check [child sizing](./composition/concat.md#child-sizing) for details.
+
 `view`
 : View background. An object with the following [`"rect"`](./mark/rect.md) mark's properties:
 `fill`, `stroke`, `strokeWidth`, `fillOpacity`, `strokeOpacity`, and `borderRadius`.

@@ -225,7 +225,7 @@ export default class Rectangle {
      * @param {Rectangle} rectangle
      */
     intersect(rectangle) {
-        if (this === rectangle) {
+        if (this === rectangle || rectangle == null) {
             return this;
         }
 
@@ -236,6 +236,26 @@ export default class Rectangle {
                 Math.min(this.x2, rectangle.x2) - Math.max(this.x, rectangle.x),
             () =>
                 Math.min(this.y2, rectangle.y2) - Math.max(this.y, rectangle.y)
+        );
+    }
+
+    /**
+     * Returns an union of this and the other rectangle.
+     *
+     * @param {Rectangle} rectangle
+     */
+    union(rectangle) {
+        if (this === rectangle || rectangle == null) {
+            return this;
+        }
+
+        return new Rectangle(
+            () => Math.min(this.x, rectangle.x),
+            () => Math.min(this.y, rectangle.y),
+            () =>
+                Math.max(this.x2, rectangle.x2) - Math.min(this.x, rectangle.x),
+            () =>
+                Math.max(this.y2, rectangle.y2) - Math.min(this.y, rectangle.y)
         );
     }
 

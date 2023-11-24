@@ -176,6 +176,38 @@ following example.
 
 </genome-spy-doc-embed></div>
 
+### Scrollable viewports
+
+Sometimes the concents of a view are so large that they do not fit into the
+available space. In such cases, the view can be made scrollable by setting an
+explicit size for the view using the `viewportWidth` and `viewportHeight`
+properties. They accept the same values as `width` and `height` properties except
+for the step size. Scrollable viewports are particularly useful for categorical
+data types (`"ordinal"` and `"nominal"`) and respective scales and axes that
+do not support zooming and panning.
+
+<div><genome-spy-doc-embed height="200">
+
+```json
+{
+  "height": { "step": 20 },
+  "viewportHeight": "container",
+
+  "view": { "stroke": "lightgray" },
+
+  "data": { "sequence": { "start": 0, "stop": 31, "step": 1 } },
+
+  "encoding": {
+    "x": { "field": "data", "type": "quantitative" },
+    "y": { "field": "data", "type": "ordinal" }
+  },
+
+  "mark": { "type": "point" }
+}
+```
+
+</genome-spy-doc-embed></div>
+
 ## Resolve
 
 By default, all channels have `"independent"` scales and axes. However, because

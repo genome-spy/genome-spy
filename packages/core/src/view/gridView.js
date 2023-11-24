@@ -17,6 +17,7 @@ import LayerView from "./layerView.js";
 import createTitle from "./title.js";
 import UnitView from "./unitView.js";
 import interactionToZoom from "./zoom.js";
+import clamp from "../utils/clamp.js";
 
 /**
  * Modeled after: https://vega.github.io/vega/docs/layout/
@@ -31,11 +32,13 @@ import interactionToZoom from "./zoom.js";
  * - Facet (column / row) titles
  * - Header / footer
  * - Zoom / pan
+ * - Scrollable viewports (with scrollbars)
  * - And later on, brushing, legend(?)
  */
 export default class GridView extends ContainerView {
     /**
      * @typedef {"row" | "column"} Direction
+     * @typedef {"horizontal" | "vertical"} ScrollDirection
      *
      * @typedef {import("./view.js").default} View
      */
@@ -239,9 +242,9 @@ export default class GridView extends ContainerView {
                     view: getLargestSize(
                         col.map(
                             (rowIndex) =>
-                                this.#visibleChildren[rowIndex].view.getSize()[
-                                    dim
-                                ]
+                                this.#visibleChildren[
+                                    rowIndex
+                                ].view.getViewportSize()[dim]
                         )
                     ),
                 })
@@ -314,8 +317,7 @@ export default class GridView extends ContainerView {
         let px = 0;
 
         const explicitSize =
-            (direction == "row" && this.spec.height) ??
-            (direction == "column" && this.spec.width);
+            direction == "row" ? this.spec.height : this.spec.width;
         if (explicitSize || explicitSize === 0) {
             return parseSizeDef(explicitSize);
         }
@@ -466,6 +468,10 @@ export default class GridView extends ContainerView {
             this.#columns ?? Infinity
         );
 
+        /** @param {number} x */
+        const round = (x) =>
+            Math.round(x * devicePixelRatio) / devicePixelRatio;
+
         for (const [i, gridChild] of this.#visibleChildren.entries()) {
             const {
                 view,
@@ -481,31 +487,65 @@ export default class GridView extends ContainerView {
                 columnFlexCoords[this.#getViewSlot("column", col)];
             const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
 
-            const size = view.getSize();
+            const viewportSize = view.getViewportSize();
+            const viewSize = view.getSize();
+
             const overhang = view.getOverhang();
 
             const x = colLocSize.location - overhang.left;
             const y = rowLocSize.location - overhang.top;
 
-            const width =
-                (size.width.grow ? colLocSize.size : size.width.px) +
-                overhang.width;
-            const height =
-                (size.height.grow ? rowLocSize.size : size.height.px) +
-                overhang.height;
+            // TODO: Optimize for cases where viewportSize and viewSize have equal identity
 
-            const childCoords = new Rectangle(
+            /**
+             * @param {FlexDimensions} size
+             * @param {"width" | "height"} dimension
+             */
+            const getLen = (size, dimension) =>
+                (size[dimension].grow
+                    ? (dimension == "width" ? colLocSize : rowLocSize).size
+                    : size[dimension].px) + overhang[dimension];
+
+            const viewportWidth = getLen(viewportSize, "width");
+            const viewportHeight = getLen(viewportSize, "height");
+            const viewWidth = getLen(viewSize, "width");
+            const viewHeight = getLen(viewSize, "height");
+
+            const hScrollbar = gridChild.scrollbars.horizontal;
+            const vScrollbar = gridChild.scrollbars.vertical;
+
+            const getHScrollOffset = hScrollbar
+                ? () => round(hScrollbar.viewportOffset)
+                : () => 0;
+            const getVScrollOffset = vScrollbar
+                ? () => round(vScrollbar.viewportOffset)
+                : () => 0;
+
+            // TODO: Part of the following rendering logic could be moved to GridChild
+
+            const viewportCoords = new Rectangle(
                 () => coords.x + x,
                 () => coords.y + y,
-                () => width,
-                () => height
+                () => viewportWidth,
+                () => viewportHeight
             );
 
-            gridChild.coords = childCoords;
+            const scrollable = view.isScrollable();
+
+            const viewCoords = scrollable
+                ? new Rectangle(
+                      () => coords.x + x - getHScrollOffset(),
+                      () => coords.y + y - getVScrollOffset(),
+                      () => viewWidth,
+                      () => viewHeight
+                  )
+                : viewportCoords;
+
+            gridChild.coords = viewportCoords;
 
             const clippedChildCoords = options.clipRect
-                ? childCoords.intersect(options.clipRect)
-                : childCoords;
+                ? viewportCoords.intersect(options.clipRect)
+                : viewportCoords;
 
             background?.render(context, clippedChildCoords, {
                 ...options,
@@ -513,13 +553,17 @@ export default class GridView extends ContainerView {
             });
 
             for (const gridLineView of Object.values(gridLines)) {
-                gridLineView.render(context, childCoords, options);
+                gridLineView.render(context, viewportCoords, options);
             }
 
+            const clipped = isClippedChildren(view) || scrollable;
+
             // If clipped, the axes should be drawn on top of the marks (because clipping may not be pixel-perfect)
-            const clipped = isClippedChildren(view);
             if (clipped) {
-                view.render(context, childCoords, options);
+                view.render(context, viewCoords, {
+                    ...options,
+                    clipRect: clippedChildCoords,
+                });
             }
 
             backgroundStroke?.render(context, clippedChildCoords, {
@@ -529,14 +573,66 @@ export default class GridView extends ContainerView {
 
             // Independent axes
             for (const [orient, axisView] of Object.entries(axes)) {
-                axisView.render(
-                    context,
-                    translateAxisCoords(childCoords, orient, axisView),
-                    options
+                const direction =
+                    orient == "left" || orient == "right"
+                        ? "vertical"
+                        : "horizontal";
+
+                const scrollable = gridChild.scrollbars[direction];
+
+                // Axes should stick to the viewport edge but move with the view
+                // when scrolling.
+                const coords = scrollable
+                    ? viewportCoords.modify(
+                          direction == "vertical"
+                              ? {
+                                    y: () => viewCoords.y,
+                                    height: viewHeight,
+                                }
+                              : {
+                                    x: () => viewCoords.x,
+                                    width: viewWidth,
+                                }
+                      )
+                    : viewportCoords;
+
+                const translatedCoords = translateAxisCoords(
+                    coords,
+                    orient,
+                    axisView
                 );
+
+                let clipRect = options.clipRect;
+
+                // Scrollable axes must be clipped along the scroll direction.
+                if (scrollable) {
+                    clipRect = translatedCoords.intersect(clipRect).intersect(
+                        scrollable
+                            ? viewportCoords.modify(
+                                  // Ugly hack. Need to implement intersectX and intersectY.
+                                  direction == "vertical"
+                                      ? {
+                                            x: -100000,
+                                            width: 200000,
+                                        }
+                                      : {
+                                            y: -100000,
+                                            height: 200000,
+                                        }
+                              )
+                            : undefined
+                    );
+                }
+
+                axisView.render(context, translatedCoords, {
+                    ...options,
+                    clipRect,
+                });
             }
 
             // Axes shared between children
+            // TODO: What if some have scrollable viewports?
+            // Should throw an error because cannot have shared axes in such cases.
             for (const axisView of Object.values(this.#sharedAxes)) {
                 const props = axisView.axisProps;
                 const orient = props.orient;
@@ -549,7 +645,7 @@ export default class GridView extends ContainerView {
                     axisView.render(
                         context,
                         translateAxisCoords(
-                            childCoords.shrink(gridChild.view.getOverhang()),
+                            viewportCoords.shrink(gridChild.view.getOverhang()),
                             orient,
                             axisView
                         ),
@@ -559,10 +655,15 @@ export default class GridView extends ContainerView {
             }
 
             if (!clipped) {
-                view.render(context, childCoords, options);
+                view.render(context, viewCoords, options);
             }
 
-            title?.render(context, childCoords, options);
+            for (const scrollbar of Object.values(gridChild.scrollbars)) {
+                scrollbar.updateScrollbar(viewportCoords, viewCoords);
+                scrollbar.render(context, coords, options);
+            }
+
+            title?.render(context, viewportCoords, options);
         }
 
         context.popView(this);
@@ -581,6 +682,16 @@ export default class GridView extends ContainerView {
         const pointedChild = this.#visibleChildren.find((gridChild) =>
             gridChild.coords.containsPoint(event.point.x, event.point.y)
         );
+
+        for (const scrollbar of Object.values(pointedChild?.scrollbars ?? {})) {
+            if (scrollbar.coords.containsPoint(event.point.x, event.point.y)) {
+                scrollbar.propagateInteractionEvent(event);
+                if (event.stopped) {
+                    return;
+                }
+            }
+        }
+
         const pointedView = pointedChild?.view;
         if (pointedView) {
             pointedView.propagateInteractionEvent(event);
@@ -822,6 +933,9 @@ export class GridChild {
         /** @type {Partial<Record<import("../spec/axis.js").AxisOrient, AxisGridView>>} gridLines */
         this.gridLines = {};
 
+        /** @type {Partial<Record<ScrollDirection, Scrollbar>>} */
+        this.scrollbars = {};
+
         /** @type {UnitView} */
         this.title = undefined;
 
@@ -875,6 +989,15 @@ export class GridChild {
                 this.title = unitView;
             }
         }
+
+        // TODO: More specific getter for this
+        if (view.spec.viewportWidth != null) {
+            this.scrollbars.horizontal = new Scrollbar(this, "horizontal");
+        }
+
+        if (view.spec.viewportHeight != null) {
+            this.scrollbars.vertical = new Scrollbar(this, "vertical");
+        }
     }
 
     *getChildren() {
@@ -890,6 +1013,7 @@ export class GridChild {
         yield* Object.values(this.axes);
         yield* Object.values(this.gridLines);
         yield this.view;
+        yield* Object.values(this.scrollbars);
     }
 
     /**
@@ -1084,5 +1208,166 @@ export class GridChild {
 
     getOverhangAndPadding() {
         return this.getOverhang().add(this.view.getPadding());
+    }
+}
+
+class Scrollbar extends UnitView {
+    /**
+     * @param {GridChild} gridChild
+     * @param {ScrollDirection} scrollDirection
+     */
+    constructor(gridChild, scrollDirection) {
+        // TODO: Configurable
+        const config = {
+            scrollbarSize: 8,
+            scrollbarPadding: 2,
+            // TODO: inside/outside view
+        };
+
+        super(
+            {
+                data: { values: [{}] },
+                mark: {
+                    type: "rect",
+                    fill: "#b0b0b0",
+                    fillOpacity: 0.6,
+                    stroke: "white",
+                    strokeWidth: 1,
+                    strokeOpacity: 1,
+                    cornerRadius: 5,
+                    clip: false,
+                },
+                configurableVisibility: false,
+            },
+            gridChild.layoutParent.context,
+            gridChild.layoutParent,
+            gridChild.view,
+            "scrollbar-" + scrollDirection, // TODO: Serial
+            {
+                blockEncodingInheritance: true,
+            }
+        );
+
+        this.config = config;
+        this.scrollDirection = scrollDirection;
+
+        // This is the actual state of the scrollbar. It's better to keep track of
+        // the viewport offset rather than the scrollbar offset because the former
+        // is more stable when the viewport size changes.
+        this.viewportOffset = 0;
+
+        this.maxScrollOffset = 0;
+        this.scrollbarCoords = Rectangle.ZERO;
+
+        this.addInteractionEventListener("mousedown", (coords, event) => {
+            event.stopPropagation();
+
+            if (this.maxScrollOffset <= 0) {
+                return;
+            }
+
+            const getMouseOffset = (/** @type {MouseEvent} */ mouseEvent) =>
+                scrollDirection == "vertical"
+                    ? mouseEvent.clientY
+                    : mouseEvent.clientX;
+
+            const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+            mouseEvent.preventDefault();
+
+            const initialScrollOffset = this.getScrollOffset();
+            const initialOffset = getMouseOffset(mouseEvent);
+
+            const onMousemove = /** @param {MouseEvent} moveEvent */ (
+                moveEvent
+            ) => {
+                const scrollOffset = clamp(
+                    getMouseOffset(moveEvent) -
+                        initialOffset +
+                        initialScrollOffset,
+                    0,
+                    this.maxScrollOffset
+                );
+
+                this.viewportOffset =
+                    (scrollOffset / this.maxScrollOffset) *
+                    this.maxViewportOffset;
+                this.context.animator.requestRender();
+            };
+
+            const onMouseup = () => {
+                document.removeEventListener("mousemove", onMousemove);
+                document.removeEventListener("mouseup", onMouseup);
+            };
+
+            document.addEventListener("mouseup", onMouseup, false);
+            document.addEventListener("mousemove", onMousemove, false);
+        });
+    }
+
+    getScrollOffset() {
+        return (
+            (this.viewportOffset / this.maxViewportOffset) *
+            this.maxScrollOffset
+        );
+    }
+
+    /**
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("./layout/rectangle.js").default} coords
+     * @param {import("../types/rendering.js").RenderingOptions} [options]
+     */
+    render(context, coords, options) {
+        super.render(context, this.scrollbarCoords, options);
+    }
+
+    /**
+     *
+     * @param {Rectangle} viewportCoords
+     * @param {Rectangle} coords
+     */
+    updateScrollbar(viewportCoords, coords) {
+        const sPad = this.config.scrollbarPadding;
+        const sSize = this.config.scrollbarSize;
+
+        const dimension =
+            this.scrollDirection == "horizontal" ? "width" : "height";
+
+        const visibleFraction = Math.min(
+            1,
+            viewportCoords[dimension] / coords[dimension]
+        );
+        const maxScrollLength = viewportCoords[dimension] - 2 * sPad;
+        const scrollLength = visibleFraction * maxScrollLength;
+
+        this.maxScrollOffset = maxScrollLength - scrollLength;
+        this.maxViewportOffset = coords[dimension] - viewportCoords[dimension];
+        this.viewportOffset = clamp(
+            this.viewportOffset,
+            0,
+            this.maxViewportOffset
+        );
+
+        this.scrollbarCoords =
+            this.scrollDirection == "vertical"
+                ? new Rectangle(
+                      () =>
+                          viewportCoords.x +
+                          viewportCoords.width -
+                          sSize -
+                          sPad,
+                      () => viewportCoords.y + sPad + this.getScrollOffset(),
+                      () => sSize,
+                      () => scrollLength
+                  )
+                : new Rectangle(
+                      () => viewportCoords.x + sPad + this.getScrollOffset(),
+                      () =>
+                          viewportCoords.y +
+                          viewportCoords.height -
+                          sSize -
+                          sPad,
+                      () => scrollLength,
+                      () => sSize
+                  );
     }
 }
