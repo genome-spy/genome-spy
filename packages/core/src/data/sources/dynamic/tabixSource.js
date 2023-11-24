@@ -44,9 +44,15 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
 
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
+                import("buffer"),
                 import("@gmod/tabix"),
                 import("generic-filehandle"),
-            ]).then(([{ TabixIndexedFile }, { RemoteFile }]) => {
+            ]).then(([{ Buffer }, { TabixIndexedFile }, { RemoteFile }]) => {
+                // Hack needed by @gmod/tabix
+                if (typeof window !== "undefined") {
+                    window.Buffer ??= Buffer;
+                }
+
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
 

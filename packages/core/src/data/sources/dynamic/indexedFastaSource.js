@@ -37,7 +37,7 @@ export default class IndexedFastaSource extends windowedMixin(
                 // Hack needed by @gmod/indexedfasta
                 // TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
                 if (typeof window !== "undefined") {
-                    window.Buffer = Buffer;
+                    window.Buffer ??= Buffer;
                 }
 
                 const withBase = (/** @type {string} */ uri) =>
