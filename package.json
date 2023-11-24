@@ -7,7 +7,7 @@
   "devDependencies": {
     "@commitlint/cli": "^16.2.4",
     "@commitlint/config-conventional": "^16.2.4",
-    "@rollup/plugin-replace": "^4.0.0",
+    "@rollup/plugin-replace": "^5.0.0",
     "dependency-cruiser": "^15.3.0",
     "eslint": "^8.23.0",
     "eslint-config-prettier": "^8.5.0",
@@ -19,12 +19,12 @@
     "prettier": "^2.8.4",
     "pretty-quick": "^3.1.3",
     "regenerator-runtime": "^0.13.9",
+    "rollup": "^4.5.2",
     "rollup-plugin-glsl": "^1.3.0",
-    "rollup-plugin-minify-html-literals": "^1.2.6",
     "sass": "^1.49.7",
     "ts-json-schema-generator": "^1.0.0",
     "typescript": "^5.2.2",
-    "vite": "^5.0.0",
+    "vite": "^5.0.2",
     "vite-raw-plugin": "^1.0.1",
     "vitest": "^0.34.6"
   },
@@ -38,7 +38,7 @@
     "pretty-quick": "pretty-quick",
     "prepare": "husky install",
     "pre-commit": "lint-staged",
-    "version": "git rm package-lock.json && npm install && git add package-lock.json"
+    "version": "git rm package-lock.json && npm install && npm i --save-dev rollup && git add package-lock.json"
   },
   "workspaces": [
     "./packages/*"
