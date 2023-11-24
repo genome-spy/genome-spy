@@ -130,10 +130,7 @@ export interface ViewSpecBase extends ResolveSpec {
     configurableVisibility?: boolean;
 }
 
-export interface UnitSpec
-    extends ViewSpecBase,
-        AggregateSamplesSpec,
-        MaxSizeSpec {
+export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
     view?: ViewBackground;
     mark: MarkType | MarkConfigAndType;
 }
@@ -143,10 +140,7 @@ export interface AggregateSamplesSpec {
     aggregateSamples?: (UnitSpec | LayerSpec)[];
 }
 
-export interface LayerSpec
-    extends ViewSpecBase,
-        AggregateSamplesSpec,
-        MaxSizeSpec {
+export interface LayerSpec extends ViewSpecBase, AggregateSamplesSpec {
     view?: ViewBackground;
     layer: (LayerSpec | UnitSpec)[];
 }
