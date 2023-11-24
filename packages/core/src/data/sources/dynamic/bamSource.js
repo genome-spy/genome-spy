@@ -58,7 +58,6 @@ export default class BamSource extends windowedMixin(SingleAxisLazySource) {
                 this.bam.getHeader().then((_header) => {
                     const g = this.genome.hasChrPrefix();
                     const b =
-                        // @ts-expect-error protected property
                         this.bam.indexToChr?.[0]?.refName.startsWith("chr");
                     if (g && !b) {
                         this.chrPrefixFixer = (chr) => chr.replace("chr", "");
