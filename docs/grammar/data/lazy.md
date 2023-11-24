@@ -269,7 +269,7 @@ The example below displays the human (GRCh38.p13)
 that the example shows a maximum of ten overlapping features per locus as
 vertical scrolling is currently not supported properly.
 
-<div><genome-spy-doc-embed height="370" spechidden="true">
+<div><genome-spy-doc-embed height="360" spechidden="true">
 
 ```json
 {
@@ -278,6 +278,7 @@ vertical scrolling is currently not supported properly.
   "genome": { "name": "hg38" },
 
   "height": { "step": 28 },
+  "viewportHeight": "container",
 
   "view": { "stroke": "lightgray" },
 
@@ -380,7 +381,7 @@ vertical scrolling is currently not supported properly.
       "scale": {
         "zoom": false,
         "reverse": true,
-        "domain": [0, 10],
+        "domain": [0, 40],
         "padding": 0.5
       },
       "axis": null
