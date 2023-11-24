@@ -138,6 +138,18 @@ export default class View {
     }
 
     /**
+     * Returns true if the view has explicit viewport size specified and should be
+     * scrollable.
+     *
+     * @returns {boolean}
+     */
+    isScrollable() {
+        return (
+            this.spec.viewportWidth != null || this.spec.viewportHeight != null
+        );
+    }
+
+    /**
      * Returns the configured size, if present. Otherwise a computed or default
      * height is returned.
      *
@@ -146,72 +158,99 @@ export default class View {
     getSize() {
         return this._cache("size/size", () =>
             this.isConfiguredVisible()
-                ? this.#getSizeFromSpec()
+                ? new FlexDimensions(
+                      this.#getDimensionSize("width"),
+                      this.#getDimensionSize("height")
+                  )
                 : ZERO_FLEXDIMENSIONS
         );
     }
 
     /**
-     * @return {FlexDimensions}
+     * @returns {FlexDimensions}
      */
-    #getSizeFromSpec() {
-        /**
-         * @param {"width" | "height"} dimension
-         * @return {import("./layout/flexLayout.js").SizeDef}
-         */
-        const handleSize = (dimension) => {
-            let value = this.spec[dimension];
+    getViewportSize() {
+        if (!this.isScrollable()) {
+            return this.getSize();
+        }
 
-            if (isStepSize(value)) {
-                const stepSize = value.step;
+        if (!this.isConfiguredVisible()) {
+            return ZERO_FLEXDIMENSIONS;
+        }
 
-                const scale = this.getScaleResolution(
-                    dimension == "width" ? "x" : "y"
-                )?.getScale();
+        const size = this.getSize();
 
-                if (scale) {
-                    // Note: this and all ancestral views need to be refreshed when the domain is changed.
-                    let steps = 0;
-                    if (isDiscrete(scale.type)) {
-                        steps = scale.domain().length;
-                    } else if (["locus", "index"].includes(scale.type)) {
-                        const domain = scale.domain();
-                        steps = peek(domain) - domain[0];
-                    } else {
-                        throw new ViewError(
-                            `Cannot use step-based size with "${scale.type}" scale!`,
-                            this
-                        );
-                    }
+        // TODO: Caching
+        return new FlexDimensions(
+            this.#getDimensionSize("viewportWidth") ?? size.width,
+            this.#getDimensionSize("viewportHeight") ?? size.height
+        );
+    }
 
-                    // TODO: Type guards maybe?
-                    const _scale =
-                        /** @type {import("d3-scale").ScaleBand<any> | import("../genome/scaleLocus.js").ScaleLocus | import("../genome/scaleIndex.js").ScaleIndex} */ (
-                            scale
-                        );
+    /**
+     * @param {"width" | "height" | "viewportWidth" | "viewportHeight"} dimension
+     * @return {import("./layout/flexLayout.js").SizeDef}
+     */
+    #getDimensionSize(dimension) {
+        let value = this.spec[dimension];
 
-                    steps = bandSpace(
-                        steps,
-                        _scale.paddingInner(),
-                        _scale.paddingOuter()
-                    );
+        const viewport =
+            dimension == "viewportWidth" || dimension == "viewportHeight";
 
-                    return { px: steps * stepSize, grow: 0 };
+        if (isStepSize(value)) {
+            if (viewport) {
+                throw new ViewError(
+                    `Cannot use step-based size with "${dimension}"!`,
+                    this
+                );
+            }
+
+            const stepSize = value.step;
+
+            const scale = this.getScaleResolution(
+                dimension == "width" ? "x" : "y"
+            )?.getScale();
+
+            if (scale) {
+                // Note: this and all ancestral views need to be refreshed when the domain is changed.
+                let steps = 0;
+                if (isDiscrete(scale.type)) {
+                    steps = scale.domain().length;
+                } else if (["locus", "index"].includes(scale.type)) {
+                    const domain = scale.domain();
+                    steps = peek(domain) - domain[0];
                 } else {
                     throw new ViewError(
-                        "Cannot use 'step' size with missing scale!",
+                        `Cannot use step-based size with "${scale.type}" scale!`,
                         this
                     );
                 }
-            } else {
-                return (value && parseSizeDef(value)) ?? { px: 0, grow: 1 };
-            }
-        };
 
-        return this._cache(
-            "size/sizeFromSpec",
-            () => new FlexDimensions(handleSize("width"), handleSize("height"))
-        );
+                // TODO: Type guards maybe?
+                const _scale =
+                    /** @type {import("d3-scale").ScaleBand<any> | import("../genome/scaleLocus.js").ScaleLocus | import("../genome/scaleIndex.js").ScaleIndex} */ (
+                        scale
+                    );
+
+                steps = bandSpace(
+                    steps,
+                    _scale.paddingInner(),
+                    _scale.paddingOuter()
+                );
+
+                return { px: steps * stepSize, grow: 0 };
+            } else {
+                throw new ViewError(
+                    "Cannot use 'step' size with missing scale!",
+                    this
+                );
+            }
+        } else {
+            return (
+                (value && parseSizeDef(value)) ??
+                (viewport ? undefined : { px: 0, grow: 1 })
+            );
+        }
     }
 
     isConfiguredVisible() {

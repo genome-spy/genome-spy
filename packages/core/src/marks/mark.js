@@ -866,6 +866,10 @@ export default class Mark {
             let uViewScale;
 
             if (clipRect) {
+                // The following fails with axes that are handled by a GridView
+                // that itself is scrollable. The axes are clipped to the viewport
+                // but also to the axis view, resulting in clipped axes where
+                // not necessary.
                 clippedCoords = coords.intersect(clipRect).flatten();
                 if (!clippedCoords.isDefined()) {
                     return false;
@@ -877,7 +881,7 @@ export default class Mark {
                 ];
 
                 yClipOffset = Math.max(0, coords.y2 - clipRect.y2);
-                xClipOffset = Math.max(0, coords.x2 - clipRect.x2);
+                xClipOffset = Math.min(0, coords.x - clipRect.x);
             } else {
                 uViewScale = [1, 1];
             }

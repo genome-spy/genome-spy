@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "A grid view inside a scrollable viewport",
+
+  "data": { "url": "../sincos.csv" },
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
+  },
+
+  "vconcat": [
+    {
+      "viewportHeight": 300,
+
+      "vconcat": [
+        { "height": 200, "view": { "stroke": "lightgray" }, "mark": "point" },
+        { "height": 200, "view": { "stroke": "lightgray" }, "mark": "point" }
+      ]
+    },
+    { "height": 200, "view": { "stroke": "lightgray" }, "mark": "point" }
+  ]
+}
