@@ -46,6 +46,13 @@ export interface SampleHierarchy {
     sampleData: {
         ids: string[];
         entities: Record<string, Sample>;
+
+        /**
+         * An array of metadata attributes available in the sample data.
+         * Allows for efficient checking whether the attributes have
+         * changed between two states.
+         */
+        attributeNames: string[];
     };
 
     /** Metadata for each hierarchy level. Does not include the root. */

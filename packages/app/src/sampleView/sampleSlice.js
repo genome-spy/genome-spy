@@ -120,6 +120,10 @@ export const sampleSlice = createSlice({
                 entities: Object.fromEntries(
                     samplesWithIndices.map((sample) => [sample.id, sample])
                 ),
+                attributeNames: extractObjectKeys(
+                    samples,
+                    (sample) => sample.attributes
+                ),
             };
 
             state.rootGroup = {
@@ -327,6 +331,23 @@ export const sampleSlice = createSlice({
         },
     },
 });
+
+/**
+ * Given an array of objects, extract all unique keys used in the objects
+ * and return them as an array.
+ *
+ * @param {object[]} objects
+ * @param {(x: any) => object} [accessor]
+ */
+function extractObjectKeys(objects, accessor = (x) => x) {
+    const keys = new Set();
+    for (const obj of objects) {
+        for (const key of Object.keys(accessor(obj))) {
+            keys.add(key);
+        }
+    }
+    return [...keys];
+}
 
 /**
  * Applies an operation to each group of samples.

@@ -204,6 +204,17 @@ export class MetadataView extends ConcatView {
         state.currentAttribute = attribute;
     }
 
+    get #sampleData() {
+        return this.#sampleView.sampleHierarchy.sampleData;
+    }
+
+    /**
+     * @param {string} sampleId
+     */
+    getSample(sampleId) {
+        return this.#sampleData?.entities[sampleId];
+    }
+
     /**
      * @param {string} attribute
      */
@@ -432,7 +443,7 @@ export class MetadataView extends ConcatView {
     }
 
     getAttributeNames() {
-        return Object.keys(this.#samples[0].attributes);
+        return this.#sampleData.attributeNames;
     }
 
     /**
