@@ -6,6 +6,7 @@ import {
     faEllipsisH,
     faCircle,
     faCheck,
+    faFileUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "../utils/ui/dropdown.js";
 
@@ -110,6 +111,10 @@ export default class ProvenanceButtons extends LitElement {
                     ${icon(faRedo).node[0]}
                 </button>
             </div>
+
+            <button class="tool-btn" title="Upload metadata">
+                ${icon(faFileUpload).node[0]}
+            </button>
         `;
     }
 }

@@ -61,6 +61,7 @@ export default class Toolbar extends LitElement {
         if (provenance.isEnabled()) {
             elements.push(html`
                 <genome-spy-provenance-buttons
+                    class="btn-group"
                     .provenance=${provenance}
                 ></genome-spy-provenance-buttons>
             `);
