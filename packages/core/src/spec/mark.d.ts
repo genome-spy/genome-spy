@@ -351,14 +351,12 @@ export interface LinkProps extends SecondaryPositionProps {
     minSagittaLength?: number;
 
     /**
-     * TODO
+     * The minimum stroke width of the links when pointing with the mouse cursor.
+     * Allows making very thin links easier to point at.
+     *
+     * **Default value:** `3.0`
      */
-    color2?: string;
-
-    /**
-     * TODO
-     */
-    size2?: number;
+    minPickingSize?: number;
 }
 
 // TODO: Mark-specific configs

@@ -3,6 +3,9 @@ uniform float uSagittaScaleFactor;
 /** Make very small arcs visible */
 uniform float uMinSagittaLength;
 
+/** The minimum stroke width in pixels when rendering into the picking buffer */
+uniform float uMinPickingSize;
+
 in vec2 strip;
 
 out vec4 vColor;
@@ -85,8 +88,10 @@ void main(void) {
         mixedSize = pixelSize;
     }
 
-    // Add an extra pixel to stroke width to accommodate edge antialiasing
-    float paddedSize = mixedSize + pixelSize;
+    // Handle minimum picking size or add an extra pixel to the stroke width to accommodate edge antialiasing
+    float paddedSize = uPickingEnabled
+        ? max(mixedSize, uMinPickingSize)
+        : mixedSize + pixelSize;
 
     vNormalLengthInPixels = strip.y * paddedSize;
     

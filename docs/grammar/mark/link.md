@@ -54,6 +54,14 @@ channels:
 
     **Default value:** `101`
 
+`minPickingSize`
+: Type: Number
+
+    The minimum stroke width of the links when pointing with the mouse cursor.
+    Allows making very thin links easier to point at.
+
+    **Default value:** `3.0`
+
 ## Examples
 
 <div><genome-spy-doc-embed height="350">

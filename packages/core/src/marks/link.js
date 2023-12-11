@@ -26,6 +26,7 @@ export default class LinkMark extends Mark {
                 segments: 101, // Performance is affected more by the fill rate, i.e. number of pixels
                 sagittaScaleFactor: 1.0,
                 minSagittaLength: 1.5,
+                minPickingSize: 3.0,
             })
         );
     }
@@ -82,6 +83,7 @@ export default class LinkMark extends Mark {
         setUniforms(this.programInfo, {
             uSagittaScaleFactor: props.sagittaScaleFactor,
             uMinSagittaLength: props.minSagittaLength,
+            uMinPickingSize: props.minPickingSize,
         });
     }
 
