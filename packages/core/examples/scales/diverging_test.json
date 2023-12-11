@@ -1,5 +1,6 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+
   "data": {
     "sequence": { "start": -5, "stop": 11 }
   },

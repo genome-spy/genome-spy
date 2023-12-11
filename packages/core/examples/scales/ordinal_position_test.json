@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "description": [
     "Using ordinal scale to map values to arbitrary positions on the positional channels",
     "This is mainly for GenomeSpy's internal use."

@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "description": "Constrain zoom extent and specify an initial domain",
 
   "genome": { "name": "hg38" },

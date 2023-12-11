@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "description": "Check that the minLength and strokeDash properties work",
 
   "data": {

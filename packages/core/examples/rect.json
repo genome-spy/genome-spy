@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "data": {
     "values": [
       { "x": 0.2, "x2": 0.4 },

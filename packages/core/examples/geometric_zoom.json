@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "data": {
     "sequence": { "start": 0, "stop": 200000, "as": "x" }
   },

@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "resolve": { "scale": { "x": "shared" } },
 
   "data": {

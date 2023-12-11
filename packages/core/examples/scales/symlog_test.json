@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "data": { "sequence": { "start": -10, "stop": 10.1, "step": 0.5 } },
   "transform": [
     { "type": "formula", "expr": "datum.data / 1000", "as": "data" }

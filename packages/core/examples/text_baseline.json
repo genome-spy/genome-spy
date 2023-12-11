@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "description": "Testing vertical alignment and various fonts",
 
   "data": { "values": ["The quick brown fox jumps over the lazy dog. ACTG"] },
@@ -28,7 +30,7 @@
             "x": { "value": 0 },
             "x2": { "value": 1 },
             "size": { "value": 100 },
-            "text": { "field": "data", "type": "nominal" }
+            "text": { "field": "data" }
           }
         }
       ]
@@ -56,7 +58,7 @@
             "x": { "value": 0 },
             "x2": { "value": 1 },
             "size": { "value": 100 },
-            "text": { "field": "data", "type": "nominal" }
+            "text": { "field": "data" }
           }
         }
       ]
@@ -84,7 +86,7 @@
             "x": { "value": 0 },
             "x2": { "value": 1 },
             "size": { "value": 100 },
-            "text": { "field": "data", "type": "nominal" }
+            "text": { "field": "data" }
           }
         }
       ]
@@ -113,7 +115,7 @@
             "x": { "value": 0 },
             "x2": { "value": 1 },
             "size": { "value": 100 },
-            "text": { "field": "data", "type": "nominal" }
+            "text": { "field": "data" }
           }
         }
       ]

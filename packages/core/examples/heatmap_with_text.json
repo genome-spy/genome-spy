@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "data": {
     "sequence": { "start": 0, "stop": 40000, "as": "i" }
   },
@@ -46,6 +48,7 @@
         "text": { "field": "z", "format": ".2f" },
         "color": {
           "field": "z",
+          "type": "quantitative",
           "scale": {
             "type": "threshold",
             "domain": [0],

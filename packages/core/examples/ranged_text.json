@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "data": {
     "values": ["A", "B", "C", "D", "E", "F", "G"]
   },
@@ -33,8 +35,7 @@
       },
       "encoding": {
         "text": {
-          "expr": "'Hello ' + floor(datum.a)",
-          "type": "ordinal"
+          "expr": "'Hello ' + floor(datum.a)"
         },
         "size": { "value": 12 }
       }
