@@ -76,22 +76,18 @@ void main(void) {
 
     //p = applySampleFacet(p);
 
-#ifdef size2_DEFINED
-    float mixedSize = mix(getScaled_size(), getScaled_size2(), t);
-#else
-    float mixedSize = getScaled_size();
-#endif
+    float size = getScaled_size();
 
     // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively
-    if (mixedSize < pixelSize) {
-        opacity *= mixedSize / pixelSize;
-        mixedSize = pixelSize;
+    if (size < pixelSize) {
+        opacity *= size / pixelSize;
+        size = pixelSize;
     }
 
     // Handle minimum picking size or add an extra pixel to the stroke width to accommodate edge antialiasing
     float paddedSize = uPickingEnabled
-        ? max(mixedSize, uMinPickingSize)
-        : mixedSize + pixelSize;
+        ? max(size, uMinPickingSize)
+        : size + pixelSize;
 
     vNormalLengthInPixels = strip.y * paddedSize;
     
@@ -100,13 +96,7 @@ void main(void) {
 
     gl_Position = pixelsToNdc(p);
 
-#ifdef color2_DEFINED
-    // Yuck, RGB interpolation in gamma space!
-    // TODO: linear space: https://unlimited3d.wordpress.com/2020/01/08/srgb-color-space-in-opengl/
-    vec3 color = mix(getScaled_color(), getScaled_color2(), t);
-#else 
     vec3 color = getScaled_color();
-#endif
 
     vColor = vec4(color * opacity, opacity);
 
