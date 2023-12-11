@@ -415,7 +415,7 @@ export class PointVertexBuilder extends GeometryBuilder {
     }
 }
 
-export class ConnectionVertexBuilder extends GeometryBuilder {
+export class LinkVertexBuilder extends GeometryBuilder {
     /**
      * @param {object} object
      * @param {Record<string, Encoder>} object.encoders

@@ -1,7 +1,7 @@
 import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
 import VERTEX_SHADER from "../gl/link.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/link.fragment.glsl";
-import { ConnectionVertexBuilder } from "../gl/dataToVertices.js";
+import { LinkVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
 
@@ -89,7 +89,7 @@ export default class LinkMark extends Mark {
         const collector = this.unitView.getCollector();
         const itemCount = collector.getItemCount();
 
-        const builder = new ConnectionVertexBuilder({
+        const builder = new LinkVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
             numItems: itemCount,
