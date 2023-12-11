@@ -1,4 +1,6 @@
 {
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "data": {
     "sequence": { "start": 0, "stop": 100, "as": "z" }
   },
@@ -10,25 +12,12 @@
 
   "mark": {
     "type": "link",
-    "segments": 101
+    "segments": 101,
+    "color": "gray"
   },
 
   "encoding": {
-    "y": { "value": 0 },
-    "y2": { "value": 0 },
     "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
-    "x2": { "field": "x2" },
-    "height": {
-      "expr": "abs(datum.x2 - datum.x)",
-      "type": "quantitative",
-      "scale": {
-        "range": [0.001, 0.99]
-      }
-    },
-    "opacity": { "value": 0.3 },
-    "color": { "value": "black" },
-    "color2": { "value": "red" },
-    "size": { "value": 1 },
-    "size2": { "value": 7 }
+    "x2": { "field": "x2" }
   }
 }
