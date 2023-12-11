@@ -20,9 +20,9 @@ void main(void) {
     float pixelSize = 1.0 / uDevicePixelRatio;
     float opacity = getScaled_opacity() * uViewOpacity;
 
-    vec2 a = vec2(getScaled_x(), getScaled_y()) * uViewportSize;
-    vec2 b = vec2(getScaled_x2(), getScaled_y2()) * uViewportSize;
-    
+    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y())) * uViewportSize;
+    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2())) * uViewportSize;
+
     vec2 chordVector = b - a;
     vec2 unitChordVector = normalize(chordVector);
     vec2 chordNormal = vec2(-unitChordVector.y, unitChordVector.x);
@@ -31,19 +31,6 @@ void main(void) {
         length(chordVector) / 2.0 * uSagittaScaleFactor,
         uMinSagittaLength
     );
-
-    bool compress = false;
-    if (compress) {
-        // Work in progres...
-        float maxSagittaLen = length(chordNormal * uViewportSize);
-        float maxChordLen = length(unitChordVector * uViewportSize);
-
-        float threshold = maxSagittaLen * 0.5;
-        if (sagitta > threshold) {
-            float m = (maxSagittaLen - threshold) / (maxChordLen - threshold);
-            sagitta = (sagitta - threshold) * m + threshold;
-        }
-    }
 
     vec2 controlOffset = chordNormal * sagitta / 0.75;
 
@@ -73,8 +60,6 @@ void main(void) {
 
     vec2 tangent = normalize(3.0*C1*t*t + 2.0*C2*t + C3);
     vec2 normal = vec2(-tangent.y, tangent.x);
-
-    //p = applySampleFacet(p);
 
     float size = getScaled_size();
 
