@@ -39,7 +39,8 @@ channels:
 : Type: String
 
     One of `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`,
-    `"triangle-down"`, `"triangle-right"`, or `"triangle-left"`.
+    `"triangle-down"`, `"triangle-right"`, `"triangle-left"`, `"tick-up"`,
+    `"tick-down"`, `"tick-right"`, or `"tick-left"`.
 
     **Default value:** `"circle"`
 

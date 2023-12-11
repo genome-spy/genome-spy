@@ -23,7 +23,6 @@ import createScale, { configureScale } from "../scale/scale.js";
 import { invalidate, getCachedOrCall } from "../utils/propertyCacher.js";
 import {
     getChannelDefWithScale,
-    getDiscreteRange,
     isColorChannel,
     isDiscreteChannel,
     isPositionalChannel,
@@ -649,7 +648,10 @@ export default class ScaleResolution {
                     : "viridis";
         } else if (isDiscreteChannel(channel)) {
             // Shapes of point mark, for example
-            props.range = getDiscreteRange(channel);
+            props.range =
+                channel == "shape"
+                    ? ["circle", "square", "triangle-up", "cross", "diamond"]
+                    : [];
         } else if (channel == "size") {
             props.range = [0, 400]; // TODO: Configurable default. This is currently optimized for points.
         } else if (channel == "angle") {

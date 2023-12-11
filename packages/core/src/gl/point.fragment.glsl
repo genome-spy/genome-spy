@@ -16,15 +16,13 @@ in mat2 vRotationMatrix;
 
 out lowp vec4 fragColor;
 
+// Copypaste from vertex shader
 const float CIRCLE = 0.0;
 const float SQUARE = 1.0;
-const float TRIANGLE_UP = 2.0;
-const float CROSS = 3.0;
-const float DIAMOND = 4.0;
-const float TRIANGLE_DOWN = 5.0;
-const float TRIANGLE_RIGHT = 6.0;
-const float TRIANGLE_LEFT = 7.0;
-
+const float CROSS = 2.0;
+const float DIAMOND = 3.0;
+const float TRIANGLE_UP = 4.0;
+const float TICK_UP = 8.0;
 
 // The distance functions are inspired by:
 // http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
@@ -39,17 +37,17 @@ float square(vec2 p, float r) {
     return max(p.x, p.y) - r;
 }
 
-float equilateralTriangle(vec2 p, float r, bool flip, bool swap) {
-    if (swap) {
-        p.xy = p.yx;
-    }
-    if (flip) {
-        p.y = -p.y;
-    }
+float tickUp(vec2 p, float r) {
+    float halfR = r * 0.5;
+    p.y += halfR;
+    p = abs(p);
+    return max(p.x - r * 0.15, p.y - halfR);
+}
 
+float equilateralTriangle(vec2 p, float r) {
+    p.y = -p.y;
     float k = sqrt(3.0);
     float kr = k * r;
-    //p.y -= kr * 2.0 / 3.0;
     p.y -= kr / 2.0;
     return max((abs(p.x) * k + p.y) / 2.0, -p.y - kr);
 }
@@ -82,23 +80,17 @@ void main() {
     } else if (vShape == SQUARE) {
         d = square(p, r);
 
-    } else if (vShape == TRIANGLE_UP) {
-        d = equilateralTriangle(p, r, true, false);
-
     } else if (vShape == CROSS) {
         d = crossShape(p, r);
 
     } else if (vShape == DIAMOND) {
         d = diamond(p, r);
 
-    } else if (vShape == TRIANGLE_DOWN) {
-        d = equilateralTriangle(p, r, false, false);
+    } else if (vShape == TRIANGLE_UP) {
+        d = equilateralTriangle(p, r);
 
-    } else if (vShape == TRIANGLE_RIGHT) {
-        d = equilateralTriangle(p, r, false, true);
-
-    } else if (vShape == TRIANGLE_LEFT) {
-        d = equilateralTriangle(p, r, true, true);
+    } else if (vShape == TICK_UP) {
+        d = tickUp(p, r);
 
     } else {
         d = 0.0;

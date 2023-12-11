@@ -366,12 +366,16 @@ export function getDiscreteRange(channel) {
             return [
                 "circle",
                 "square",
-                "triangle-up",
                 "cross",
                 "diamond",
-                "triangle-down",
+                "triangle-up",
                 "triangle-right",
+                "triangle-down",
                 "triangle-left",
+                "tick-up",
+                "tick-right",
+                "tick-down",
+                "tick-left",
             ];
         default:
     }
@@ -391,6 +395,7 @@ export function getDiscreteRangeMapper(channel) {
     );
 
     return (value) => {
+        // TODO: Memoize previous
         const mapped = valueMap.get(value);
         if (mapped !== undefined) {
             return mapped;

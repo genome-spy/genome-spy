@@ -25,6 +25,19 @@ out lowp float vShape;
 out lowp float vHalfStrokeWidth;
 out mat2 vRotationMatrix;
 
+// Copypaste from fragment shader
+const float CIRCLE = 0.0;
+const float SQUARE = 1.0;
+const float CROSS = 2.0;
+const float DIAMOND = 3.0;
+const float TRIANGLE_UP = 4.0;
+const float TRIANGLE_RIGHT = 5.0;
+const float TRIANGLE_DOWN = 6.0;
+const float TRIANGLE_LEFT = 7.0;
+const float TICK_UP = 8.0;
+const float TICK_RIGHT = 9.0;
+const float TICK_DOWN = 10.0;
+const float TICK_LEFT = 11.0;
 
 float computeSemanticThresholdFactor() {
     // TODO: add smooth transition
@@ -59,6 +72,7 @@ vec2 getDxDy() {
 }
 
 void main(void) {
+    float shapeAngle = 0.0;
 
     float semanticThresholdFactor = computeSemanticThresholdFactor();
     if (semanticThresholdFactor <= 0.0) {
@@ -103,11 +117,21 @@ void main(void) {
 	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
 	bool circle = vShape == 0.0;
 
+    if (vShape > TICK_UP && vShape <= TICK_LEFT) {
+        shapeAngle = (vShape - TICK_UP) * 90.0;
+        vShape = TICK_UP;
+    } else if (vShape > TRIANGLE_UP && vShape <= TRIANGLE_LEFT) {
+        shapeAngle = (vShape - TRIANGLE_UP) * 90.0;
+        vShape = TRIANGLE_UP;
+    }
+
 	float angleInDegrees = getScaled_angle();
-	float angle = -angleInDegrees * PI / 180.0;
+	float angle = -(shapeAngle + angleInDegrees) * PI / 180.0;
     float sinTheta = sin(angle);
     float cosTheta = cos(angle);
     vRotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
+
+    // Not needed if we would draw rotated quads instead of gl.POINTS
 	float roomForRotation = circle ? 1.0 : sin(mod(angle, PI / 2.0) + PI / 4.0) / sin(PI / 4.0);
 
 	float aaPadding = 1.0 / uDevicePixelRatio;
