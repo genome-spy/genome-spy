@@ -344,6 +344,15 @@ export interface LinkProps extends SecondaryPositionProps {
     orient?: "vertical" | "horizontal";
 
     /**
+     * Whether the apex of the `"dome"` shape is clamped to the viewport edge. When over a
+     * half of the dome is located outside the viewport, clamping allows for more accurate
+     * reading of the value encoded by the apex' position.
+     *
+     * **Default value:** `false`
+     */
+    clampApex?: boolean;
+
+    /**
      * The number of segments in the bézier curve. Affects the rendering quality and performance.
      * Use a higher value for a smoother curve.
      *

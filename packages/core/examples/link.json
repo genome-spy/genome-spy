@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "data": {
-    "sequence": { "start": 0, "stop": 100, "as": "z" }
+    "sequence": { "start": 0, "stop": 50, "as": "z" }
   },
 
   "transform": [
@@ -15,6 +15,7 @@
     "type": "link",
     "linkShape": "dome",
     "orient": "vertical",
+    "clampApex": true,
     "segments": 101,
     "color": "gray"
   },

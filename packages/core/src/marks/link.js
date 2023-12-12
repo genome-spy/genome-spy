@@ -31,6 +31,7 @@ export default class LinkMark extends Mark {
                 arcHeightFactor: 1.0,
                 minArcHeight: 1.5,
                 minPickingSize: 3.0,
+                clampApex: false,
 
                 linkShape: "arc",
                 orient: "vertical",
@@ -101,6 +102,7 @@ export default class LinkMark extends Mark {
             uMinPickingSize: props.minPickingSize,
             uShape: LINK_SHAPES.indexOf(props.linkShape),
             uOrient: ORIENTS.indexOf(props.orient),
+            uClampApex: !!props.clampApex,
         });
     }
 

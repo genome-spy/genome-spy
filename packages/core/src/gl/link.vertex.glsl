@@ -8,6 +8,7 @@ uniform float uMinPickingSize;
 
 uniform int uShape;
 uniform int uOrient;
+uniform bool uClampApex;
 
 in vec2 strip;
 
@@ -40,14 +41,32 @@ void main(void) {
         if (uShape == SHAPE_DOME) {
             vec2 height = vec2(0.0);
             if (uOrient == ORIENT_VERTICAL) {
-                p1 = vec2(a.x, b.y);
-                p4 = vec2(b.x, b.y);
+                p1 = vec2(min(a.x, b.x), b.y);
+                p4 = vec2(max(a.x, b.x), b.y);
                 height = vec2(0.0, a.y - b.y);
 
+                if (uClampApex) {
+                    if (p4.x > 0.0) {
+                        p1.x = max(p1.x, -p4.x);
+                    }
+                    if (p1.x < uViewportSize.x) {
+                        p4.x = min(p4.x, 2.0 * uViewportSize.x - p1.x);
+                    }
+                }
+
             } else {
-                p1 = vec2(b.x, a.y);
-                p4 = vec2(b.x, b.y);
+                p1 = vec2(b.x, min(a.y, b.y));
+                p4 = vec2(b.x, max(a.y, b.y));
                 height = vec2(a.x - b.x, 0.0);
+
+                if (uClampApex) {
+                    if (p4.y > 0.0) {
+                        p1.y = max(p1.y, -p4.y);
+                    }
+                    if (p1.y < uViewportSize.y) {
+                        p4.y = min(p4.y, 2.0 * uViewportSize.y - p1.y);
+                    }
+                }
             }
 
             vec2 controlOffset = height / 0.75;

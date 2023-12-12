@@ -68,6 +68,15 @@ channels:
 
     **Default value:** `"vertical"`
 
+`clampApex`
+: Type: Boolean
+
+    Whether the apex of the `"dome"` shape is clamped to the viewport edge. When over a
+    half of the dome is located outside the viewport, clamping allows for more accurate
+    reading of the value encoded by the apex' position.
+
+    **Default value:** `false`
+
 `arcHeightFactor`
 : Type: Number
 
@@ -166,7 +175,9 @@ grid with
 ### Varying the dome height
 
 This example uses the `"dome"` shape to draw links with varying heights. The
-height is determined by the `y` channel.
+height is determined by the `y` channel. The `clampApex` property is set to
+`true` to ensure that the apex of the dome is always visible. Try to zoom in
+and pan around to see it in action.
 
 <div><genome-spy-doc-embed height="350">
 
@@ -190,6 +201,7 @@ height is determined by the `y` channel.
     "type": "link",
     "linkShape": "dome",
     "orient": "vertical",
+    "clampApex": true,
     "color": "gray"
   },
 
