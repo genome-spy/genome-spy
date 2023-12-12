@@ -7,17 +7,25 @@
 
   "transform": [
     { "type": "formula", "expr": "random() * 1000", "as": "x" },
-    { "type": "formula", "expr": "datum.x + random() * 500", "as": "x2" }
+    { "type": "formula", "expr": "datum.x + random() * 500", "as": "x2" },
+    { "type": "formula", "expr": "random() * 1000 - 200", "as": "y" }
   ],
 
   "mark": {
     "type": "link",
+    "linkShape": "dome",
+    "orient": "vertical",
     "segments": 101,
     "color": "gray"
   },
 
   "encoding": {
     "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
-    "x2": { "field": "x2" }
+    "x2": { "field": "x2" },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "axis": { "grid": true }
+    }
   }
 }

@@ -329,6 +329,21 @@ export interface PointProps extends AngleProps {
 
 export interface LinkProps extends SecondaryPositionProps {
     /**
+     * The shape of the link path. Either `"arc"`, `"diagonal"`, `"line"`, or `"dome"`.
+     *
+     * **Default value:** `"arc"`
+     */
+    linkShape?: "arc" | "diagonal" | "line" | "dome";
+
+    /**
+     * The orientation of the link path. Either `"vertical"` or `"horizontal"`.
+     * Only applies to diagonal links.
+     *
+     * **Default value:** `"vertical"`
+     */
+    orient?: "vertical" | "horizontal";
+
+    /**
      * The number of segments in the bézier curve. Affects the rendering quality and performance.
      * Use a higher value for a smoother curve.
      *
@@ -337,18 +352,18 @@ export interface LinkProps extends SecondaryPositionProps {
     segments?: number;
 
     /**
-     * Scaling factor of the arc's sagitta. The default value `1.0` produces roughly circular arcs.
+     * Scaling factor for the `"arc`" shape's height. The default value `1.0` produces roughly circular arcs.
      *
      * **Default value:** `1.0`
      */
-    sagittaScaleFactor?: number;
+    arcHeightFactor?: number;
 
     /**
-     * Minimum length of the arc's sagitta. Makes very short links more clearly visible.
+     * The minimum height of an `"arc"` shape. Makes very short links more clearly visible.
      *
      * **Default value:** `1.5`
      */
-    minSagittaLength?: number;
+    minArcHeight?: number;
 
     /**
      * The minimum stroke width of the links when pointing with the mouse cursor.

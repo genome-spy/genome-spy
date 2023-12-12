@@ -4,6 +4,10 @@ import FRAGMENT_SHADER from "../gl/link.fragment.glsl";
 import { LinkVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
+import { isChannelDefWithScale } from "../encoder/encoder.js";
+
+const LINK_SHAPES = ["arc", "dome", "diagonal", "line"];
+const ORIENTS = ["vertical", "horizontal"];
 
 export default class LinkMark extends Mark {
     /**
@@ -24,9 +28,12 @@ export default class LinkMark extends Mark {
                 opacity: 1.0,
 
                 segments: 101, // Performance is affected more by the fill rate, i.e. number of pixels
-                sagittaScaleFactor: 1.0,
-                minSagittaLength: 1.5,
+                arcHeightFactor: 1.0,
+                minArcHeight: 1.5,
                 minPickingSize: 3.0,
+
+                linkShape: "arc",
+                orient: "vertical",
             })
         );
     }
@@ -56,12 +63,20 @@ export default class LinkMark extends Mark {
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
-        if (!encoding.x) {
-            encoding.x2 = encoding.x;
+        if (!encoding.x2) {
+            if (isChannelDefWithScale(encoding.x)) {
+                encoding.x2 = { datum: 0.0 };
+            } else {
+                encoding.x2 = encoding.x;
+            }
         }
 
         if (!encoding.y2) {
-            encoding.y2 = encoding.y;
+            if (isChannelDefWithScale(encoding.y)) {
+                encoding.y2 = { datum: 0.0 };
+            } else {
+                encoding.y2 = encoding.y;
+            }
         }
 
         return encoding;
@@ -81,9 +96,11 @@ export default class LinkMark extends Mark {
 
         // TODO: Use uniform block.
         setUniforms(this.programInfo, {
-            uSagittaScaleFactor: props.sagittaScaleFactor,
-            uMinSagittaLength: props.minSagittaLength,
+            uArcHeightFactor: props.arcHeightFactor,
+            uMinArcHeight: props.minArcHeight,
             uMinPickingSize: props.minPickingSize,
+            uShape: LINK_SHAPES.indexOf(props.linkShape),
+            uOrient: ORIENTS.indexOf(props.orient),
         });
     }
 
