@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.39.0](https://github.com/genome-spy/genome-spy/compare/v0.38.0...v0.39.0) (2023-12-12)
+
+
+### Bug Fixes
+
+* **app:** sample faceting in `"link"` mark ([33a9a5f](https://github.com/genome-spy/genome-spy/commit/33a9a5f39c48e9cd27c0e1b3d9ab4b7b8dce995d)), closes [#198](https://github.com/genome-spy/genome-spy/issues/198)
+
+
+### Features
+
+* **core:** add `minPickingSize` prop to `link` mark ([fac1fbd](https://github.com/genome-spy/genome-spy/commit/fac1fbd8f06f28a1e081b969853c0aacaa6f23e3)), closes [#84](https://github.com/genome-spy/genome-spy/issues/84)
+* **core:** clamp `"link"` mark's apex to viewport edge ([4c26e3a](https://github.com/genome-spy/genome-spy/commit/4c26e3a6b6894dc33d197fb6184096f8c23d24c7)), closes [#206](https://github.com/genome-spy/genome-spy/issues/206)
+* **core:** more shapes and props for the `"link"` mark ([7e99459](https://github.com/genome-spy/genome-spy/commit/7e994599117520055521eee307cc9d41eded3b77)), closes [#199](https://github.com/genome-spy/genome-spy/issues/199)
+* **core:** new `"tick-up"`, `"tick-right"`, etc. point shapes ([bd4c92d](https://github.com/genome-spy/genome-spy/commit/bd4c92dac14fad4657948af935711eecbfa6611d)), closes [#196](https://github.com/genome-spy/genome-spy/issues/196)
+
+
+
+
+
 # [0.38.0](https://github.com/genome-spy/genome-spy/compare/v0.37.4...v0.38.0) (2023-11-24)
 
 
