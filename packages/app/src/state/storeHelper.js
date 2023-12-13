@@ -70,6 +70,8 @@ export default class StoreHelper {
      */
     dispatch(action) {
         if (Array.isArray(action)) {
+            // TODO: Investigate
+            // @ts-ignore Typings broke down mysteriously although, afaik, nothing changed
             this.store.dispatch(batchActions(action));
         } else {
             this.store.dispatch(action);

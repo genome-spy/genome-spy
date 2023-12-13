@@ -12,6 +12,7 @@
 
 import { combineReducers } from "@reduxjs/toolkit";
 import undoable, { ActionCreators } from "redux-undo";
+import { isString } from "vega-util";
 
 /**
  * Handles provenance, undo/redo, etc. In practice, this is a thin
@@ -63,8 +64,8 @@ export default class Provenance {
         this._reducers[name] = reducer;
 
         const filterAction = (/** @type {Action} */ action) =>
-            Object.keys(this._reducers).some((key) =>
-                action.type.startsWith(key)
+            Object.keys(this._reducers).some(
+                (key) => isString(key) && action.type.startsWith(key)
             );
 
         /**
