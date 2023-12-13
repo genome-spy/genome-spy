@@ -375,6 +375,27 @@ export interface LinkProps extends SecondaryPositionProps {
     minArcHeight?: number;
 
     /**
+     * The maximum length of `"arc"` shape's chord in pixels. The chord is the line segment
+     * between the two points that define the arc. Limiting the chord length serves two purposes
+     * when zooming in close enough:
+     * 1) it prevents the arc from becoming a straight line and
+     * 2) it mitigates the limited precision of floating point numbers in arc rendering.
+     *
+     * **Default value:** `50000`
+     */
+    maxChordLength?: number;
+
+    /**
+     * The range of the `"arc"` shape's fading distance in pixels. This property allows for
+     * making the arc's opacity fade out as it extends away from the chord. The fading distance
+     * is interpolated from one to zero between the interval defined by this property.
+     * Both `false` and `[0, 0]` disable fading.
+     *
+     * **Default value:** `false`
+     */
+    arcFadingDistance?: [number, number] | false;
+
+    /**
      * The minimum stroke width of the links when pointing with the mouse cursor.
      * Allows making very thin links easier to point at.
      *

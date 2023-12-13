@@ -10,6 +10,11 @@ uniform int uShape;
 uniform int uOrient;
 uniform bool uClampApex;
 
+// In pixels
+uniform float uMaxChordLength;
+// In pixels
+uniform vec2 uArcFadingDistance;
+
 in vec2 strip;
 
 out vec4 vColor;
@@ -26,6 +31,21 @@ const int SHAPE_DIAGONAL = 2;
 const int SHAPE_LINE = 3;
 const int ORIENT_VERTICAL = 0;
 const int ORIENT_HORIZONTAL = 1;
+
+float distanceFromLine(vec2 pointOnLine1, vec2 pointOnLine2, vec2 point) {
+    vec2 a = point - pointOnLine1;
+    vec2 b = pointOnLine2 - pointOnLine1;
+    vec2 proj = dot(a, b) / dot(b, b) * b;
+    return length(a - proj);
+}
+
+bool isInsideViewport(vec2 point, float marginFactor) {
+    vec2 margin = uViewportSize * vec2(marginFactor);
+    return point.x >= -margin.x
+        && point.x <= uViewportSize.x + margin.x
+        && point.y >= -margin.y
+        && point.y <= uViewportSize.y + margin.y;
+}
 
 void main(void) {
     float pixelSize = 1.0 / uDevicePixelRatio;
@@ -81,9 +101,20 @@ void main(void) {
             vec2 chordVector = p4 - p1;
             vec2 unitChordVector = normalize(chordVector);
             vec2 chordNormal = vec2(-unitChordVector.y, unitChordVector.x);
+            float chordLength = length(chordVector);
+
+            if (chordLength > uMaxChordLength) {
+                if (isInsideViewport(p1, 2.0)) {
+                    chordLength = uMaxChordLength;
+                    p4 = p1 + unitChordVector * uMaxChordLength;
+                } else if (isInsideViewport(p4, 2.0)) {
+                    chordLength = uMaxChordLength;
+                    p1 = p4 - unitChordVector * uMaxChordLength;
+                }
+            }
 
             float height = max(
-                length(chordVector) / 2.0 * uArcHeightFactor,
+                chordLength / 2.0 * uArcHeightFactor,
                 uMinArcHeight
             );
 
@@ -151,6 +182,19 @@ void main(void) {
 
     vNormalLengthInPixels = strip.y * paddedSize;
     
+    if (uShape == SHAPE_ARC && uArcFadingDistance[0] > 0.0 && uArcFadingDistance[1] > 0.0) {
+        float d = distanceFromLine(p1, p4, p);
+        float distanceOpacity = smoothstep(uArcFadingDistance[1], uArcFadingDistance[0], d);    
+
+        // Fade out
+        opacity *= distanceOpacity;
+
+        // Collapse fully transparent triangles to skip fragment processing 
+        if (distanceOpacity <= 0.0) {
+            vNormalLengthInPixels = 0.0;
+        }
+    }
+
     // Extrude
     p += normal * vNormalLengthInPixels;
 

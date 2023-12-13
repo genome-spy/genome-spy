@@ -32,6 +32,8 @@ export default class LinkMark extends Mark {
                 minArcHeight: 1.5,
                 minPickingSize: 3.0,
                 clampApex: false,
+                maxChordLength: 50000,
+                arcFadingDistance: false,
 
                 linkShape: "arc",
                 orient: "vertical",
@@ -103,6 +105,8 @@ export default class LinkMark extends Mark {
             uShape: LINK_SHAPES.indexOf(props.linkShape),
             uOrient: ORIENTS.indexOf(props.orient),
             uClampApex: !!props.clampApex,
+            uMaxChordLength: props.maxChordLength,
+            uArcFadingDistance: props.arcFadingDistance || [0, 0],
         });
     }
 

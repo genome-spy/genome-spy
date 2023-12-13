@@ -1,4 +1,4 @@
-in lowp vec4 vColor;
+in vec4 vColor;
 in float vSize;
 in float vNormalLengthInPixels;
 
