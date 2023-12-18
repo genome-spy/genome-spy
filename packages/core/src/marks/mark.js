@@ -441,6 +441,7 @@ export default class Mark {
             // left pos, left height, right pos, right height
             uSampleFacet: [0, 1, 0, 1],
             uTransitionOffset: 0.0,
+            uZero: 0.0,
         });
     }
 

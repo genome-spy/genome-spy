@@ -1,4 +1,4 @@
-const float inf = 1.0 / 0.0;
+uniform highp float uZero;
 
 // Utils ------------
 
@@ -105,6 +105,7 @@ float scaleBandHp(vec2 value, vec3 domainExtent, vec2 range,
     // Using max to prevent the shader compiler from wrecking the precision.
     // Othwewise the compiler could optimize the sum of the four terms into
     // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
     float hi = max(value[0] - domainStart[0], -inf);
     float lo = max(value[1] - domainStart[1], -inf);
 
