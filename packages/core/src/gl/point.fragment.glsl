@@ -1,9 +1,6 @@
 const lowp vec4 white = vec4(1.0);
 const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
 
-uniform bool uInwardStroke;
-uniform float uGradientStrength;
-
 in float vRadius;
 in float vRadiusWithPadding;
 

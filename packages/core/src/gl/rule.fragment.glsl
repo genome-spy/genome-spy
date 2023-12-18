@@ -4,9 +4,6 @@ const int SQUARE = 1;
 const int ROUND = 2;
 
 uniform sampler2D uDashTexture;
-uniform float uDashTextureSize;
-uniform float uStrokeDashOffset;
-uniform lowp int uStrokeCap;
 
 in vec4 vColor;
 in float vSize;

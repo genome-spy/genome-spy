@@ -3,6 +3,7 @@ import { quantileSorted } from "d3-array";
 import { PointVertexBuilder } from "../gl/dataToVertices.js";
 import VERTEX_SHADER from "../gl/point.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
+import COMMON_SHADER from "../gl/point.common.glsl";
 
 import Mark from "./mark.js";
 import { sampleIterable } from "../data/transforms/sample.js";
@@ -126,7 +127,9 @@ export default class PointMark extends Mark {
 
     async initializeGraphics() {
         await super.initializeGraphics();
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
+            COMMON_SHADER,
+        ]);
     }
 
     finalizeGraphicsInitialization() {

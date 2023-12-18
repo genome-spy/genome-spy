@@ -1,5 +1,4 @@
 uniform sampler2D uTexture;
-uniform bool uLogoLetter;
 
 in vec2 vTexCoord;
 in float vEdgeFadeOpacity;

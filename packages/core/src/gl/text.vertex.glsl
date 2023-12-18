@@ -1,32 +1,8 @@
-uniform float uSdfNumerator;
-
-uniform vec2 uD; // dx & dy
-
 in mediump vec2 vertexCoord;
 in lowp vec2 textureCoord;
 
-uniform vec4 uViewportEdgeFadeWidth;
-uniform vec4 uViewportEdgeFadeDistance;
-    
-uniform bool uSqueeze;
-uniform bool uLogoLetter;
-
 // Width of the text (all letters)
 in float width;
-
-// x: -1, 0, 1 = left, center, right
-// y: -1, 0, 1 = top, middle, bottom 
-uniform ivec2 uAlign;
-
-#ifdef x2_DEFINED
-uniform float uPaddingX;
-uniform bool uFlushX;
-#endif
-
-#ifdef y2_DEFINED
-uniform float uPaddingY;
-uniform bool uFlushY;
-#endif
 
 out vec2 vTexCoord;
 out vec4 vColor;

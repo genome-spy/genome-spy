@@ -7,6 +7,7 @@ import {
 } from "twgl.js";
 import VERTEX_SHADER from "../gl/rule.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rule.fragment.glsl";
+import COMMON_SHADER from "../gl/rule.common.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 
@@ -136,7 +137,9 @@ export default class RuleMark extends Mark {
             this.dashTextureSize = textureData.length; // Not needed with WebGL2
         }
 
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
+            COMMON_SHADER,
+        ]);
     }
 
     finalizeGraphicsInitialization() {

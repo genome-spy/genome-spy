@@ -3,6 +3,7 @@ import { format } from "d3-format";
 import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
 import VERTEX_SHADER from "../gl/text.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/text.fragment.glsl";
+import COMMON_SHADER from "../gl/text.common.glsl";
 import { TextVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
@@ -142,7 +143,9 @@ export default class TextMark extends Mark {
 
     async initializeGraphics() {
         await super.initializeGraphics();
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
+            COMMON_SHADER,
+        ]);
     }
 
     finalizeGraphicsInitialization() {

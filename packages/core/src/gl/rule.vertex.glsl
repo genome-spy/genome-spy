@@ -9,12 +9,6 @@ in float pos;
 /** Which side of the stroke: -0.5 or 0.5 */
 in float side;
 
-/** Minimum rule length in pixels */
-uniform float uMinLength;
-
-uniform mediump float uDashTextureSize;
-uniform lowp int uStrokeCap;
-
 out vec4 vColor;
 
 /** Stroke width */

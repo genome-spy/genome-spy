@@ -304,7 +304,7 @@ export default class Mark {
         const attributes = this.getAttributes();
 
         // For debugging
-        extraHeaders.push("// view: " + this.unitView.getPathString());
+        const debugHeader = "// view: " + this.unitView.getPathString();
 
         // TODO: This is a temporary variable, don't store it in the mark object
         /** @type {string[]} */
@@ -366,6 +366,7 @@ export default class Mark {
 
         const vertexParts = [
             vertexPrecision,
+            debugHeader,
             ...extraHeaders,
             GLSL_COMMON,
             GLSL_SCALES,
@@ -377,6 +378,7 @@ export default class Mark {
         ];
 
         const fragmentParts = [
+            debugHeader,
             ...extraHeaders,
             GLSL_COMMON,
             GLSL_PICKING_FRAGMENT,
