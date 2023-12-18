@@ -88,6 +88,12 @@ export default class Mark {
         /** @type {import("twgl.js").UniformBlockInfo} WebGL buffers */
         this.viewUniformInfo = undefined;
 
+        /**
+         * Uniforms related to the specific mark type.
+         * @type {import("twgl.js").UniformBlockInfo}
+         */
+        this.markUniformInfo = undefined;
+
         /** @type {RangeMap<any>} keep track of facet locations within the vertex array */
         this.rangeMap = new RangeMap();
 
@@ -433,6 +439,12 @@ export default class Mark {
             this.gl,
             this.programInfo,
             "View"
+        );
+
+        this.markUniformInfo = createUniformBlockInfo(
+            this.gl,
+            this.programInfo,
+            "Mark"
         );
 
         this.gl.useProgram(this.programInfo.program);

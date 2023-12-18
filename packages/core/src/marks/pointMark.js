@@ -1,4 +1,9 @@
-import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
+import {
+    drawBufferInfo,
+    setBlockUniforms,
+    setBuffersAndAttributes,
+    setUniformBlock,
+} from "twgl.js";
 import { quantileSorted } from "d3-array";
 import { PointVertexBuilder } from "../gl/dataToVertices.js";
 import VERTEX_SHADER from "../gl/point.vertex.glsl";
@@ -138,9 +143,10 @@ export default class PointMark extends Mark {
         this.gl.useProgram(this.programInfo.program);
 
         const props = this.properties;
-        setUniforms(this.programInfo, {
-            uInwardStroke: props.inwardStroke,
-            uGradientStrength: props.fillGradientStrength,
+
+        setBlockUniforms(this.markUniformInfo, {
+            uInwardStroke: !!props.inwardStroke,
+            uGradientStrength: +props.fillGradientStrength,
             uMaxRelativePointDiameter: 1 - 2 * props.sampleFacetPadding,
         });
     }
@@ -214,13 +220,15 @@ export default class PointMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        ops.push(() =>
-            setUniforms(this.programInfo, {
+        ops.push(() => {
+            // TODO: Use bindUniformBlock if none of the uniform has changed
+            setBlockUniforms(this.markUniformInfo, {
                 uMaxPointSize: this._getMaxPointSize(),
                 uScaleFactor: this._getGeometricScaleFactor(),
                 uSemanticThreshold: this.getSemanticThreshold(),
-            })
-        );
+            });
+            setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+        });
 
         ops.push(() =>
             setBuffersAndAttributes(

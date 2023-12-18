@@ -1,18 +1,20 @@
-    uniform float uSdfNumerator;
+uniform Mark {
+    uniform mediump float uSdfNumerator;
 
-    uniform vec2 uD; // dx & dy
+    uniform mediump vec2 uD; // dx & dy
 
-    uniform vec4 uViewportEdgeFadeWidth;
-    uniform vec4 uViewportEdgeFadeDistance;
+    uniform mediump vec4 uViewportEdgeFadeWidth;
+    uniform mediump vec4 uViewportEdgeFadeDistance;
         
     uniform bool uSqueeze;
     uniform bool uLogoLetter;
 
     // x: -1, 0, 1 = left, center, right
     // y: -1, 0, 1 = top, middle, bottom 
-    uniform ivec2 uAlign;
+    uniform lowp ivec2 uAlign;
 
-    uniform float uPaddingX;
+    uniform mediump float uPaddingX;
     uniform bool uFlushX;
-    uniform float uPaddingY;
+    uniform mediump float uPaddingY;
     uniform bool uFlushY;
+};

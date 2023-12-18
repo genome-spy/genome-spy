@@ -1,3 +1,14 @@
+uniform Mark {
+    /** Minimum size (width, height) of the displayed rectangle in pixels */
+    uniform vec2 uMinSize;
+
+    /** Minimum opacity for the size size clamping */
+    uniform float uMinOpacity;
+
+    /** top-right, bottom-right, top-left, bottom-left */
+    uniform vec4 uCornerRadii;
+};
+
 /**
  * The vertex position wrt the rectangle specified by (x, x2, y, y2).
  * [0, 0] = [x, y], [1, 1] = [x2, y2]. 
@@ -6,20 +17,10 @@
  */
 in vec2 frac;
 
-/** Minimum size (width, height) of the displayed rectangle in pixels */
-uniform vec2 uMinSize;
-
-/** Minimum opacity for the size size clamping */
-uniform float uMinOpacity;
-
-/** top-right, bottom-right, top-left, bottom-left */
-uniform vec4 uCornerRadii;
-
 out lowp vec4 vFillColor;
 out lowp vec4 vStrokeColor;
 out float vHalfStrokeWidth;
 out vec4 vCornerRadii;
-
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED)
 /** Position for SDF-strokes */

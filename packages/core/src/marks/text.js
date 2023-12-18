@@ -1,6 +1,12 @@
 import { isString } from "vega-util";
 import { format } from "d3-format";
-import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
+import {
+    drawBufferInfo,
+    setBlockUniforms,
+    setBuffersAndAttributes,
+    setUniformBlock,
+    setUniforms,
+} from "twgl.js";
 import VERTEX_SHADER from "../gl/text.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/text.fragment.glsl";
 import COMMON_SHADER from "../gl/text.common.glsl";
@@ -156,7 +162,7 @@ export default class TextMark extends Mark {
         const props = this.properties;
 
         // TODO: Use uniform block.
-        setUniforms(this.programInfo, {
+        setBlockUniforms(this.markUniformInfo, {
             uPaddingX: props.paddingX,
             uPaddingY: props.paddingY,
             uFlushX: !!props.flushX,
@@ -243,12 +249,17 @@ export default class TextMark extends Mark {
             this.font.metrics.common.base /
             (this.unitView.context.devicePixelRatio / q);
 
-        ops.push(() =>
+        ops.push(() => {
+            // TODO: Use bindUniformBlock if none of the uniform has changed
+            setBlockUniforms(this.markUniformInfo, {
+                uSdfNumerator,
+            });
+            setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+
             setUniforms(this.programInfo, {
                 uTexture: this.font.texture,
-                uSdfNumerator,
-            })
-        );
+            });
+        });
 
         ops.push(() =>
             setBuffersAndAttributes(

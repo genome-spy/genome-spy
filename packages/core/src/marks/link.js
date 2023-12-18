@@ -1,4 +1,10 @@
-import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
+import {
+    bindUniformBlock,
+    drawBufferInfo,
+    setBlockUniforms,
+    setBuffersAndAttributes,
+    setUniformBlock,
+} from "twgl.js";
 import VERTEX_SHADER from "../gl/link.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/link.fragment.glsl";
 import { LinkVertexBuilder } from "../gl/dataToVertices.js";
@@ -97,8 +103,7 @@ export default class LinkMark extends Mark {
 
         const props = this.properties;
 
-        // TODO: Use uniform block.
-        setUniforms(this.programInfo, {
+        setBlockUniforms(this.markUniformInfo, {
             uArcHeightFactor: props.arcHeightFactor,
             uMinArcHeight: props.minArcHeight,
             uMinPickingSize: props.minPickingSize,
@@ -108,6 +113,7 @@ export default class LinkMark extends Mark {
             uMaxChordLength: props.maxChordLength,
             uArcFadingDistance: props.arcFadingDistance || [0, 0],
         });
+        setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
     }
 
     updateGraphicsData() {
@@ -142,12 +148,23 @@ export default class LinkMark extends Mark {
     }
 
     /**
+     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
+     */
+    prepareRender(options) {
+        const ops = super.prepareRender(options);
+
+        ops.push(() => {
+            bindUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+        });
+
+        return ops;
+    }
+
+    /**
      * @param {import("./mark.js").MarkRenderingOptions} options
      */
     render(options) {
         const gl = this.gl;
-
-        // TODO: Vertical clipping in faceted view
 
         return this.createRenderCallback((offset, count) => {
             // We are using instanced drawing here.

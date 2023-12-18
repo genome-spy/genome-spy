@@ -1,4 +1,10 @@
-import { drawBufferInfo, setBuffersAndAttributes, setUniforms } from "twgl.js";
+import {
+    bindUniformBlock,
+    drawBufferInfo,
+    setBlockUniforms,
+    setBuffersAndAttributes,
+    setUniformBlock,
+} from "twgl.js";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices.js";
@@ -154,16 +160,17 @@ export default class RectMark extends Mark {
 
         const props = this.properties;
 
-        setUniforms(this.programInfo, {
-            uMinSize: [props.minWidth, props.minHeight], // in pixels
-            uMinOpacity: props.minOpacity,
+        setBlockUniforms(this.markUniformInfo, {
+            uMinSize: [+props.minWidth, +props.minHeight], // in pixels
+            uMinOpacity: +props.minOpacity,
             uCornerRadii: [
-                props.cornerRadiusTopRight ?? props.cornerRadius,
-                props.cornerRadiusBottomRight ?? props.cornerRadius,
-                props.cornerRadiusTopLeft ?? props.cornerRadius,
-                props.cornerRadiusBottomLeft ?? props.cornerRadius,
+                props.cornerRadiusTopRight ?? props.cornerRadius ?? 0,
+                props.cornerRadiusBottomRight ?? props.cornerRadius ?? 0,
+                props.cornerRadiusTopLeft ?? props.cornerRadius ?? 0,
+                props.cornerRadiusBottomLeft ?? props.cornerRadius ?? 0,
             ],
         });
+        setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
     }
 
     updateGraphicsData() {
@@ -190,13 +197,15 @@ export default class RectMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        ops.push(() =>
+        ops.push(() => {
+            bindUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+
             setBuffersAndAttributes(
                 this.gl,
                 this.programInfo,
                 this.vertexArrayInfo
-            )
-        );
+            );
+        });
 
         return ops;
     }
