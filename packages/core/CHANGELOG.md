@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.40.0](https://github.com/genome-spy/genome-spy/compare/v0.39.0...v0.40.0) (2023-12-18)
+
+
+### Bug Fixes
+
+* **core:** fix locus/index scale precision issue on macOS Sonoma ([8a6c934](https://github.com/genome-spy/genome-spy/commit/8a6c93496942b29c9d588d9d62a7687f5d31c0c1))
+
+
+### Features
+
+* **core:** add new `"link"` mark props: `maxChordLength` and `arcFadingDistance` ([d72de62](https://github.com/genome-spy/genome-spy/commit/d72de62d97cdfdf9b85d5b607855247c776acd3e))
+
+
+
+
+
 # [0.39.0](https://github.com/genome-spy/genome-spy/compare/v0.38.0...v0.39.0) (2023-12-12)
 
 
