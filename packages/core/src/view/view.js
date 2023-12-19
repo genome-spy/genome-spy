@@ -16,6 +16,7 @@ import { appendToBaseUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
+import { isExprRef } from "../marks/mark.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -723,6 +724,11 @@ function createViewOpacityFunction(view) {
 
                 return interpolate(unitsPerPixel) * parentOpacity;
             };
+        } else if (isExprRef(opacityDef)) {
+            const fn = view.context.paramBroker.createExpression(
+                opacityDef.expr
+            );
+            return (parentOpacity) => fn(null) * parentOpacity;
         }
     }
     return (parentOpacity) => parentOpacity;
