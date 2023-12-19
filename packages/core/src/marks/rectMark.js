@@ -1,5 +1,4 @@
 import {
-    bindUniformBlock,
     drawBufferInfo,
     setBlockUniforms,
     setBuffersAndAttributes,
@@ -197,15 +196,15 @@ export default class RectMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        ops.push(() => {
-            bindUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+        ops.push(() => this.bindOrSetMarkUniformBlock());
 
+        ops.push(() =>
             setBuffersAndAttributes(
                 this.gl,
                 this.programInfo,
                 this.vertexArrayInfo
-            );
-        });
+            )
+        );
 
         return ops;
     }

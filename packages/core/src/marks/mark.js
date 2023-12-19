@@ -1,4 +1,5 @@
 import {
+    bindUniformBlock,
     createBufferInfoFromArrays,
     createProgramInfoFromProgram,
     createUniformBlockInfo,
@@ -37,6 +38,7 @@ import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
 import scaleNull from "../utils/scaleNull.js";
 import ViewError from "../view/viewError.js";
+import { isString } from "vega-util";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -60,6 +62,7 @@ export default class Mark {
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../spec/channel.js").Encoding} Encoding
      * @typedef {import("../spec/channel.js").ValueDef} ValueDef
+     * @typedef {import("../spec/mark.js").ExprRef} ExprRef
      */
 
     /**
@@ -93,6 +96,14 @@ export default class Mark {
          * @type {import("twgl.js").UniformBlockInfo}
          */
         this.markUniformInfo = undefined;
+
+        /**
+         * Indicates whether the mark's uniforms have been altered since the last rendering.
+         * If set to true, the uniforms will be sent to the GPU before rendering the next frame.
+
+         * @protected
+         */
+        this.markUniformsAltered = true;
 
         /** @type {RangeMap<any>} keep track of facet locations within the vertex array */
         this.rangeMap = new RangeMap();
@@ -459,6 +470,42 @@ export default class Mark {
         });
     }
 
+    /**
+     * Set a uniform based on a mark property. If the property is an expression,
+     * register a listener to update the uniform when the params referenced by the
+     * expression change.
+     *
+     * @protected
+     * @template T
+     * @param {string} uniformName
+     * @param {T} propValue
+     * @param {(x: Exclude<T, ExprRef>) => any} adjuster
+     */
+    registerMarkUniform(uniformName, propValue, adjuster = (x) => x) {
+        const uniformSetter = this.markUniformInfo.setters[uniformName];
+
+        if (isExprRef(propValue)) {
+            const fn = this.unitView.context.paramBroker.createExpression(
+                propValue.expr
+            );
+
+            const set = () => {
+                uniformSetter(adjuster(fn(null)));
+                this.markUniformsAltered = true;
+            };
+
+            // Register a listener ...
+            fn.addListener(set);
+            // ... and set the initial value
+            set();
+        } else {
+            uniformSetter(
+                adjuster(/** @type {Exclude<T, ExprRef>} */ (propValue))
+            );
+            this.markUniformsAltered = true;
+        }
+    }
+
     _setDatums() {
         for (const [channel, channelDef] of Object.entries(this.encoding)) {
             if (isDatumDef(channelDef)) {
@@ -581,6 +628,18 @@ export default class Mark {
         }
 
         return true;
+    }
+
+    /**
+     * @protected
+     */
+    bindOrSetMarkUniformBlock() {
+        if (this.markUniformsAltered) {
+            setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+            this.markUniformsAltered = false;
+        } else {
+            bindUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+        }
     }
 
     /**
@@ -1019,4 +1078,13 @@ class RangeMap extends InternMap {
             Object.assign(this.get(key), value);
         }
     }
+}
+
+// TODO: Find a better place for this function
+/**
+ * @param {any} x
+ * @returns {x is import("../spec/mark.js").ExprRef}
+ */
+export function isExprRef(x) {
+    return typeof x === "object" && "expr" in x && isString(x.expr);
 }

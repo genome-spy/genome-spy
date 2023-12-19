@@ -1,8 +1,9 @@
-import { SampleHierarchy } from "./sampleSlice";
-import { Group } from "./sampleState";
-import { LocSize } from "@genome-spy/core/view/layout/flexLayout";
-import { ChromosomalLocus } from "@genome-spy/core/spec/genome";
-import { Scalar } from "@genome-spy/core/spec/channel";
+import { SampleHierarchy } from "./sampleSlice.js";
+import { Group } from "./sampleState.js";
+import { LocSize } from "@genome-spy/core/view/layout/flexLayout.js";
+import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
+import { Scalar } from "@genome-spy/core/spec/channel.js";
+import ViewContext from "@genome-spy/core/types/viewContext.js";
 
 export interface KeyAndLocation<T> {
     key: T;

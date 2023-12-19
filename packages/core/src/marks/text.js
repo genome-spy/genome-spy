@@ -4,7 +4,6 @@ import {
     drawBufferInfo,
     setBlockUniforms,
     setBuffersAndAttributes,
-    setUniformBlock,
     setUniforms,
 } from "twgl.js";
 import VERTEX_SHADER from "../gl/text.vertex.glsl";
@@ -250,16 +249,18 @@ export default class TextMark extends Mark {
             (this.unitView.context.devicePixelRatio / q);
 
         ops.push(() => {
-            // TODO: Use bindUniformBlock if none of the uniform has changed
+            // TODO: only set if dpr changed
             setBlockUniforms(this.markUniformInfo, {
                 uSdfNumerator,
             });
-            setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+            this.markUniformsAltered = true;
 
             setUniforms(this.programInfo, {
                 uTexture: this.font.texture,
             });
         });
+
+        ops.push(() => this.bindOrSetMarkUniformBlock());
 
         ops.push(() =>
             setBuffersAndAttributes(

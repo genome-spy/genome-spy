@@ -2,7 +2,6 @@ import {
     drawBufferInfo,
     setBlockUniforms,
     setBuffersAndAttributes,
-    setUniformBlock,
 } from "twgl.js";
 import { quantileSorted } from "d3-array";
 import { PointVertexBuilder } from "../gl/dataToVertices.js";
@@ -227,8 +226,10 @@ export default class PointMark extends Mark {
                 uScaleFactor: this._getGeometricScaleFactor(),
                 uSemanticThreshold: this.getSemanticThreshold(),
             });
-            setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+            this.markUniformsAltered = true;
         });
+
+        ops.push(() => this.bindOrSetMarkUniformBlock());
 
         ops.push(() =>
             setBuffersAndAttributes(

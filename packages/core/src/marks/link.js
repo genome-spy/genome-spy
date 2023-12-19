@@ -1,10 +1,4 @@
-import {
-    bindUniformBlock,
-    drawBufferInfo,
-    setBlockUniforms,
-    setBuffersAndAttributes,
-    setUniformBlock,
-} from "twgl.js";
+import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
 import VERTEX_SHADER from "../gl/link.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/link.fragment.glsl";
 import { LinkVertexBuilder } from "../gl/dataToVertices.js";
@@ -103,17 +97,22 @@ export default class LinkMark extends Mark {
 
         const props = this.properties;
 
-        setBlockUniforms(this.markUniformInfo, {
-            uArcHeightFactor: props.arcHeightFactor,
-            uMinArcHeight: props.minArcHeight,
-            uMinPickingSize: props.minPickingSize,
-            uShape: LINK_SHAPES.indexOf(props.linkShape),
-            uOrient: ORIENTS.indexOf(props.orient),
-            uClampApex: !!props.clampApex,
-            uMaxChordLength: props.maxChordLength,
-            uArcFadingDistance: props.arcFadingDistance || [0, 0],
-        });
-        setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+        this.registerMarkUniform(
+            "uArcFadingDistance",
+            props.arcFadingDistance,
+            (x) => x || /** @type {[number, number]} */ ([0, 0])
+        );
+        this.registerMarkUniform("uArcHeightFactor", props.arcHeightFactor);
+        this.registerMarkUniform("uMinArcHeight", props.minArcHeight);
+        this.registerMarkUniform("uMinPickingSize", props.minPickingSize);
+        this.registerMarkUniform("uShape", props.linkShape, (linkShape) =>
+            LINK_SHAPES.indexOf(linkShape)
+        );
+        this.registerMarkUniform("uOrient", props.orient, (orient) =>
+            ORIENTS.indexOf(orient)
+        );
+        this.registerMarkUniform("uClampApex", props.clampApex, (x) => !!x);
+        this.registerMarkUniform("uMaxChordLength", props.maxChordLength);
     }
 
     updateGraphicsData() {
@@ -153,9 +152,7 @@ export default class LinkMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        ops.push(() => {
-            bindUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
-        });
+        ops.push(() => this.bindOrSetMarkUniformBlock());
 
         return ops;
     }

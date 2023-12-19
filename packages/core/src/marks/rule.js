@@ -1,6 +1,5 @@
 import Mark from "./mark.js";
 import {
-    bindUniformBlock,
     createTexture,
     drawBufferInfo,
     setBlockUniforms,
@@ -186,9 +185,7 @@ export default class RuleMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        ops.push(() => {
-            bindUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
-        });
+        ops.push(() => this.bindOrSetMarkUniformBlock());
 
         if (this.dashTexture) {
             ops.push(() =>

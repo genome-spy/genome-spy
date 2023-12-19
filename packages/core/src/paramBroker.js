@@ -1,0 +1,102 @@
+import { isString } from "vega-util";
+import createFunction from "./utils/expression.js";
+
+/**
+ * A class that manages parameters and expressions. Still a work in progress.
+ *
+ * TODO: Write tests for this class.
+ *
+ * This should eventually handle the following:
+ * - Parameter registration
+ * - Dependency tracking
+ * - Calling observers when a parameter changes
+ * - Somehow saving parameter "state" (in bookmarks)
+ * - Maybe something else
+ */
+export default class ParamBroker {
+    /** @type {Map<string, any>} */
+    #params;
+
+    /** @type {Set<string>} */
+    #allocatedSetters;
+
+    /** @type {Record<string, any>} */
+    #proxy;
+
+    /** @type {Map<string, Set<() => void>>} */
+    #paramListeners;
+
+    constructor() {
+        this.#params = new Map();
+        this.#allocatedSetters = new Set();
+        this.#paramListeners = new Map();
+
+        this.#proxy = new Proxy(this.#params, {
+            get(target, prop) {
+                return isString(prop) ? target.get(prop) : undefined;
+            },
+        });
+    }
+
+    /**
+     *
+     * @param {string} paramName
+     * @returns {(value: any) => void}
+     */
+    allocateSetter(paramName) {
+        if (this.#allocatedSetters.has(paramName)) {
+            throw new Error(
+                "Setter already allocated for parameter: " + paramName
+            );
+        }
+
+        this.#allocatedSetters.add(paramName);
+
+        return (value) => {
+            this.#params.set(paramName, value);
+
+            const listeners = this.#paramListeners.get(paramName);
+            if (listeners) {
+                for (const listener of listeners) {
+                    listener();
+                }
+            }
+        };
+    }
+
+    // TODO: deallocateSetter
+
+    /**
+     * Parse expr and return a function that returns the value of the parameter.
+     *
+     * @param {string} expr
+     */
+    createExpression(expr) {
+        /** @type {import("./utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void}} */
+        const fn = /** @type {any} */ (createFunction(expr, this.#proxy));
+
+        for (const g of fn.globals) {
+            if (!this.#allocatedSetters.has(g)) {
+                throw new Error(
+                    `Unknown variable "${g}" in expression: ${expr}`
+                );
+            }
+        }
+
+        /**
+         *
+         * @param {() => void} listener
+         */
+        fn.addListener = (listener) => {
+            for (const g of fn.globals) {
+                const listeners = this.#paramListeners.get(g) ?? new Set();
+                this.#paramListeners.set(g, listeners);
+                listeners.add(listener);
+            }
+        };
+
+        // TODO: remove listener
+
+        return fn;
+    }
+}
