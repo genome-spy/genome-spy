@@ -1,4 +1,3 @@
-import UnitView from "../../../view/unitView.js";
 import DataSource from "../dataSource.js";
 import { reconfigureScales } from "../../../view/scaleResolution.js";
 
@@ -33,7 +32,9 @@ export default class SingleAxisLazySource extends DataSource {
             const sentences = [
                 `The dynamic data source cannot find a resolved scale for channel "${channel}".`,
             ];
-            if (!(this.view instanceof UnitView)) {
+
+            // equivalent to "view instanceof UnitView"
+            if (!("mark" in view)) {
                 sentences.push(
                     `Make sure the view has a "shared" scale resolution as it is not a unit view.`
                 );
