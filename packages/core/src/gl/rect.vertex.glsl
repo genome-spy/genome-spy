@@ -1,12 +1,15 @@
 uniform Mark {
     /** Minimum size (width, height) of the displayed rectangle in pixels */
-    uniform vec2 uMinSize;
+    uniform float uMinWidth;
+    uniform float uMinHeight;
 
-    /** Minimum opacity for the size size clamping */
+    /** Minimum opacity for the size clamping */
     uniform float uMinOpacity;
 
-    /** top-right, bottom-right, top-left, bottom-left */
-    uniform vec4 uCornerRadii;
+    uniform float uCornerRadiusTopRight;
+    uniform float uCornerRadiusBottomRight;
+    uniform float uCornerRadiusTopLeft;
+    uniform float uCornerRadiusBottomLeft;
 };
 
 /**
@@ -51,7 +54,13 @@ void sort(inout float a, inout float b) {
 }
 
 void main(void) {
-    vec2 normalizedMinSize = uMinSize / uViewportSize;
+    vec2 normalizedMinSize = vec2(uMinWidth, uMinHeight) / uViewportSize;
+    vec4 cornerRadii = vec4(
+        uCornerRadiusTopRight,
+        uCornerRadiusBottomRight,
+        uCornerRadiusBottomLeft,
+        uCornerRadiusTopLeft
+    );
 
     float x = getScaled_x();
     float x2 = getScaled_x2();
@@ -101,7 +110,7 @@ void main(void) {
 
     vHalfSizeInPixels = sizeInPixels / 2.0;
 
-    vCornerRadii = min(uCornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
+    vCornerRadii = min(cornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
     vHalfStrokeWidth = strokeWidth / 2.0;
     vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
 #endif

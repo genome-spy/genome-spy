@@ -2,6 +2,15 @@ import { Scalar } from "./channel.js";
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
 
+// TODO: This may not be the best place for this type.
+// Also, this is now similar to the ExprDef type in channel.d.ts
+export interface ExprRef {
+    /**
+     * The expression string.
+     */
+    expr: string;
+}
+
 export type MarkType = "rect" | "point" | "rule" | "text" | "link";
 
 export interface FillAndStrokeProps {
@@ -63,7 +72,7 @@ export interface RectProps extends SecondaryPositionProps {
      * **Default value:** `0`
      */
     // TODO: Rename to minCompensatedOpacity or something like that
-    minOpacity?: number;
+    minOpacity?: number | ExprRef;
 
     /**
      * The minimum width of a rectangle in pixels. The property clamps rectangles'
@@ -74,49 +83,49 @@ export interface RectProps extends SecondaryPositionProps {
      *
      * **Default value:** `1`
      */
-    minWidth?: number;
+    minWidth?: number | ExprRef;
 
     /**
      * The minimum height of a rectangle in pixels. The property clamps rectangles' heights.
      *
      * **Default value:** `0`
      */
-    minHeight?: number;
+    minHeight?: number | ExprRef;
 
     /**
      * Radius of the rounded corners.
      *
      * **Default value:** `0`
      */
-    cornerRadius?: number;
+    cornerRadius?: number | ExprRef;
 
     /**
      * Radius of the top left rounded corner. Has higher precedence than `cornerRadius`.
      *
      * **Default value:** (None)
      */
-    cornerRadiusTopLeft?: number;
+    cornerRadiusTopLeft?: number | ExprRef;
 
     /**
      * Radius of the top right rounded corner. Has higher precedence than `cornerRadius`.
      *
      * **Default value:** (None)
      */
-    cornerRadiusTopRight?: number;
+    cornerRadiusTopRight?: number | ExprRef;
 
     /**
      * Radius of the bottom left rounded corner. Has higher precedence than `cornerRadius`.
      *
      * **Default value:** (None)
      */
-    cornerRadiusBottomLeft?: number;
+    cornerRadiusBottomLeft?: number | ExprRef;
 
     /**
      * Radius of the bottom right rounded corner. Has higher precedence than `cornerRadius`.
      *
      * **Default value:** (None)
      */
-    cornerRadiusBottomRight?: number;
+    cornerRadiusBottomRight?: number | ExprRef;
 }
 
 export interface RuleProps extends SecondaryPositionProps {
@@ -126,7 +135,7 @@ export interface RuleProps extends SecondaryPositionProps {
      *
      * **Default value:** `0`
      */
-    minLength?: number;
+    minLength?: number | ExprRef;
 
     /**
      * An array of of alternating stroke and gap lengths or `null` for solid strokes.
@@ -147,7 +156,7 @@ export interface RuleProps extends SecondaryPositionProps {
      *
      * **Default value:** `"butt"`
      */
-    strokeCap?: "butt" | "square" | "round";
+    strokeCap?: "butt" | "square" | "round" | ExprRef;
 }
 
 export interface TextProps
@@ -333,7 +342,7 @@ export interface LinkProps extends SecondaryPositionProps {
      *
      * **Default value:** `"arc"`
      */
-    linkShape?: "arc" | "diagonal" | "line" | "dome";
+    linkShape?: "arc" | "diagonal" | "line" | "dome" | ExprRef;
 
     /**
      * The orientation of the link path. Either `"vertical"` or `"horizontal"`.
@@ -341,7 +350,7 @@ export interface LinkProps extends SecondaryPositionProps {
      *
      * **Default value:** `"vertical"`
      */
-    orient?: "vertical" | "horizontal";
+    orient?: "vertical" | "horizontal" | ExprRef;
 
     /**
      * Whether the apex of the `"dome"` shape is clamped to the viewport edge. When over a
@@ -350,7 +359,7 @@ export interface LinkProps extends SecondaryPositionProps {
      *
      * **Default value:** `false`
      */
-    clampApex?: boolean;
+    clampApex?: boolean | ExprRef;
 
     /**
      * The number of segments in the bézier curve. Affects the rendering quality and performance.
@@ -365,14 +374,14 @@ export interface LinkProps extends SecondaryPositionProps {
      *
      * **Default value:** `1.0`
      */
-    arcHeightFactor?: number;
+    arcHeightFactor?: number | ExprRef;
 
     /**
      * The minimum height of an `"arc"` shape. Makes very short links more clearly visible.
      *
      * **Default value:** `1.5`
      */
-    minArcHeight?: number;
+    minArcHeight?: number | ExprRef;
 
     /**
      * The maximum length of `"arc"` shape's chord in pixels. The chord is the line segment
@@ -383,7 +392,7 @@ export interface LinkProps extends SecondaryPositionProps {
      *
      * **Default value:** `50000`
      */
-    maxChordLength?: number;
+    maxChordLength?: number | ExprRef;
 
     /**
      * The range of the `"arc"` shape's fading distance in pixels. This property allows for
@@ -393,7 +402,7 @@ export interface LinkProps extends SecondaryPositionProps {
      *
      * **Default value:** `false`
      */
-    arcFadingDistance?: [number, number] | false;
+    arcFadingDistance?: [number, number] | false | ExprRef;
 
     /**
      * The minimum stroke width of the links when pointing with the mouse cursor.
@@ -401,7 +410,7 @@ export interface LinkProps extends SecondaryPositionProps {
      *
      * **Default value:** `3.0`
      */
-    minPickingSize?: number;
+    minPickingSize?: number | ExprRef;
 }
 
 // TODO: Mark-specific configs

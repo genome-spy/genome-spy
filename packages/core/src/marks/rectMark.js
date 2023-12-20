@@ -1,10 +1,4 @@
-import {
-    bindUniformBlock,
-    drawBufferInfo,
-    setBlockUniforms,
-    setBuffersAndAttributes,
-    setUniformBlock,
-} from "twgl.js";
+import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
 import VERTEX_SHADER from "../gl/rect.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/rect.fragment.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices.js";
@@ -82,8 +76,8 @@ export default class RectMark extends Mark {
                 this,
                 "opaque",
                 () =>
-                    !this._isRoundedCorners() &&
-                    !this._isStroked() &&
+                    !this.#isRoundedCorners() &&
+                    !this.#isStroked() &&
                     isValueDef(this.encoding.fillOpacity) &&
                     this.encoding.fillOpacity.value == 1.0 &&
                     this.properties.minOpacity == 1.0
@@ -118,7 +112,7 @@ export default class RectMark extends Mark {
         // TODO: Pop the previous buffers
     }
 
-    _isRoundedCorners() {
+    #isRoundedCorners() {
         const p = this.properties;
         return (
             p.cornerRadius ||
@@ -129,7 +123,7 @@ export default class RectMark extends Mark {
         );
     }
 
-    _isStroked() {
+    #isStroked() {
         const sw = this.encoding.strokeWidth;
         return !(isValueDef(sw) && !sw.value);
     }
@@ -139,10 +133,10 @@ export default class RectMark extends Mark {
 
         /** @type {string[]} */
         const defines = [];
-        if (this._isRoundedCorners()) {
+        if (this.#isRoundedCorners()) {
             defines.push("ROUNDED_CORNERS");
         }
-        if (this._isStroked()) {
+        if (this.#isStroked()) {
             defines.push("STROKED");
         }
 
@@ -160,17 +154,25 @@ export default class RectMark extends Mark {
 
         const props = this.properties;
 
-        setBlockUniforms(this.markUniformInfo, {
-            uMinSize: [+props.minWidth, +props.minHeight], // in pixels
-            uMinOpacity: +props.minOpacity,
-            uCornerRadii: [
-                props.cornerRadiusTopRight ?? props.cornerRadius ?? 0,
-                props.cornerRadiusBottomRight ?? props.cornerRadius ?? 0,
-                props.cornerRadiusTopLeft ?? props.cornerRadius ?? 0,
-                props.cornerRadiusBottomLeft ?? props.cornerRadius ?? 0,
-            ],
-        });
-        setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+        this.registerMarkUniform("uMinWidth", props.minWidth);
+        this.registerMarkUniform("uMinHeight", props.minHeight);
+        this.registerMarkUniform("uMinOpacity", props.minOpacity);
+        this.registerMarkUniform(
+            "uCornerRadiusTopRight",
+            props.cornerRadiusTopRight ?? props.cornerRadius ?? 0
+        );
+        this.registerMarkUniform(
+            "uCornerRadiusBottomRight",
+            props.cornerRadiusBottomRight ?? props.cornerRadius ?? 0
+        );
+        this.registerMarkUniform(
+            "uCornerRadiusTopLeft",
+            props.cornerRadiusTopLeft ?? props.cornerRadius ?? 0
+        );
+        this.registerMarkUniform(
+            "uCornerRadiusBottomLeft",
+            props.cornerRadiusBottomLeft ?? props.cornerRadius ?? 0
+        );
     }
 
     updateGraphicsData() {
@@ -197,15 +199,15 @@ export default class RectMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        ops.push(() => {
-            bindUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+        ops.push(() => this.bindOrSetMarkUniformBlock());
 
+        ops.push(() =>
             setBuffersAndAttributes(
                 this.gl,
                 this.programInfo,
                 this.vertexArrayInfo
-            );
-        });
+            )
+        );
 
         return ops;
     }

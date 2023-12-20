@@ -31,6 +31,7 @@ import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
+import ParamBroker from "./paramBroker.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -128,6 +129,8 @@ export default class GenomeSpy {
 
         /** @type {View} */
         this.viewRoot = undefined;
+
+        this._paramBroker = new ParamBroker();
     }
 
     /**
@@ -254,6 +257,8 @@ export default class GenomeSpy {
             get devicePixelRatio() {
                 return self._glHelper.dpr;
             },
+
+            paramBroker: this._paramBroker,
 
             requestLayoutReflow: () => {
                 // placeholder

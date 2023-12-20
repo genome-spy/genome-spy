@@ -42,11 +42,22 @@ export class LocationManager {
     /** @type {import("./sampleViewTypes.js").LocationContext} */
     #locationContext;
 
+    /** @type {(param: any) => void} */
+    #sampleHeightParam;
+
     /**
      * @param {import("./sampleViewTypes.js").LocationContext} locationContext
      */
     constructor(locationContext) {
         this.#locationContext = locationContext;
+        this.#sampleHeightParam =
+            locationContext.viewContext.paramBroker.allocateSetter(
+                "sampleHeight"
+            );
+    }
+
+    #updateSampleHeightParam() {
+        this.#sampleHeightParam(this.#locations.samples[0]?.locSize.size ?? 0);
     }
 
     isCloseup() {
@@ -99,6 +110,7 @@ export class LocationManager {
             onUpdate: (value) => {
                 this.#peekState = Math.pow(value, 2);
                 this.#locationContext.onLocationUpdate();
+                this.#updateSampleHeightParam();
                 viewContext.animator.requestRender();
             },
             from: this.#peekState,
@@ -244,6 +256,8 @@ export class LocationManager {
             ),
             groups,
         };
+
+        this.#updateSampleHeightParam();
 
         return this.#locations;
     }

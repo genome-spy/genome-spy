@@ -7,6 +7,7 @@ import {
     PrimaryPositionalChannel,
 } from "./channel.js";
 import {
+    ExprRef,
     FillAndStrokeProps,
     MarkConfigAndType,
     MarkType,
@@ -43,7 +44,7 @@ export interface DynamicOpacity {
     values: number[];
 }
 
-export type ViewOpacityDef = number | DynamicOpacity;
+export type ViewOpacityDef = number | DynamicOpacity | ExprRef;
 
 export interface Step {
     step: number;

@@ -1,11 +1,9 @@
 import Mark from "./mark.js";
 import {
-    bindUniformBlock,
     createTexture,
     drawBufferInfo,
     setBlockUniforms,
     setBuffersAndAttributes,
-    setUniformBlock,
     setUniforms,
 } from "twgl.js";
 import VERTEX_SHADER from "../gl/rule.vertex.glsl";
@@ -152,14 +150,17 @@ export default class RuleMark extends Mark {
 
         const props = this.properties;
 
+        this.registerMarkUniform("uMinLength", props.minLength);
+        this.registerMarkUniform(
+            "uStrokeCap",
+            props.strokeCap ?? "butt",
+            (cap) => ["butt", "square", "round"].indexOf(cap)
+        );
+
         setBlockUniforms(this.markUniformInfo, {
-            uMinLength: +props.minLength,
             uDashTextureSize: +this.dashTextureSize,
-            uStrokeCap: ["butt", "square", "round"].indexOf(
-                props.strokeCap ?? "butt"
-            ),
         });
-        setUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
+        this.markUniformsAltered = true;
     }
 
     updateGraphicsData() {
@@ -186,9 +187,7 @@ export default class RuleMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        ops.push(() => {
-            bindUniformBlock(this.gl, this.programInfo, this.markUniformInfo);
-        });
+        ops.push(() => this.bindOrSetMarkUniformBlock());
 
         if (this.dashTexture) {
             ops.push(() =>
