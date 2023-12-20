@@ -72,7 +72,7 @@ export interface RectProps extends SecondaryPositionProps {
      * **Default value:** `0`
      */
     // TODO: Rename to minCompensatedOpacity or something like that
-    minOpacity?: number;
+    minOpacity?: number | ExprRef;
 
     /**
      * The minimum width of a rectangle in pixels. The property clamps rectangles'
@@ -83,49 +83,49 @@ export interface RectProps extends SecondaryPositionProps {
      *
      * **Default value:** `1`
      */
-    minWidth?: number;
+    minWidth?: number | ExprRef;
 
     /**
      * The minimum height of a rectangle in pixels. The property clamps rectangles' heights.
      *
      * **Default value:** `0`
      */
-    minHeight?: number;
+    minHeight?: number | ExprRef;
 
     /**
      * Radius of the rounded corners.
      *
      * **Default value:** `0`
      */
-    cornerRadius?: number;
+    cornerRadius?: number | ExprRef;
 
     /**
      * Radius of the top left rounded corner. Has higher precedence than `cornerRadius`.
      *
      * **Default value:** (None)
      */
-    cornerRadiusTopLeft?: number;
+    cornerRadiusTopLeft?: number | ExprRef;
 
     /**
      * Radius of the top right rounded corner. Has higher precedence than `cornerRadius`.
      *
      * **Default value:** (None)
      */
-    cornerRadiusTopRight?: number;
+    cornerRadiusTopRight?: number | ExprRef;
 
     /**
      * Radius of the bottom left rounded corner. Has higher precedence than `cornerRadius`.
      *
      * **Default value:** (None)
      */
-    cornerRadiusBottomLeft?: number;
+    cornerRadiusBottomLeft?: number | ExprRef;
 
     /**
      * Radius of the bottom right rounded corner. Has higher precedence than `cornerRadius`.
      *
      * **Default value:** (None)
      */
-    cornerRadiusBottomRight?: number;
+    cornerRadiusBottomRight?: number | ExprRef;
 }
 
 export interface RuleProps extends SecondaryPositionProps {
