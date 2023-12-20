@@ -135,7 +135,7 @@ export interface RuleProps extends SecondaryPositionProps {
      *
      * **Default value:** `0`
      */
-    minLength?: number;
+    minLength?: number | ExprRef;
 
     /**
      * An array of of alternating stroke and gap lengths or `null` for solid strokes.
@@ -156,7 +156,7 @@ export interface RuleProps extends SecondaryPositionProps {
      *
      * **Default value:** `"butt"`
      */
-    strokeCap?: "butt" | "square" | "round";
+    strokeCap?: "butt" | "square" | "round" | ExprRef;
 }
 
 export interface TextProps
