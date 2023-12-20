@@ -64,6 +64,7 @@ const cg = codegenExpression({
  * @typedef { ((x: object) => any) & ExpressionProps } ExpressionFunction
  *
  * @param {string} expr
+ * @returns {ExpressionFunction}
  */
 export default function createFunction(expr, globalObject = {}) {
     try {

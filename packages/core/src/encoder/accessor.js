@@ -70,7 +70,9 @@ export default class AccessorFactory {
  * @param {string} expr
  */
 function createExpressionAccessor(expr) {
-    const accessor = /** @type {Accessor} */ (createFunction(expr));
-    accessor.constant = accessor.fields.length == 0; // Not bulletproof, eh
+    const fn = createFunction(expr);
+    const accessor = /** @type {Accessor} */ (/** @type {any} */ (fn));
+    // Not bulletproof and probably erroneous with global params
+    accessor.constant = accessor.fields.length == 0;
     return accessor;
 }
