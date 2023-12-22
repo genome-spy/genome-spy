@@ -172,6 +172,8 @@ export default class LinkMark extends Mark {
                     this.vertexArrayInfo
                 )
             );
+        } else {
+            ops.push(() => this.gl.bindVertexArray(null));
         }
 
         return ops;
@@ -202,11 +204,9 @@ export default class LinkMark extends Mark {
             : this.createRenderCallback((offset, count) => {
                   // Because vanilla WebGL 2 does not provide glDrawArraysInstancedBaseInstance,
                   // we have to hack with offsets in vertexAttribPointer
-                  // TODO: Use VAOs more intelligently to reduce WebGL calls
-
-                  this.gl.bindVertexArray(
-                      this.vertexArrayInfo.vertexArrayObject
-                  );
+                  //
+                  // TODO: Use VAOs more intelligently to reduce WebGL calls. In other words,
+                  // reserve one VAO for each facet/sample.
 
                   for (const attribInfoObject of Object.entries(
                       this.bufferInfo.attribs
