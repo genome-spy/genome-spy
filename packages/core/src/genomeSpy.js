@@ -57,6 +57,9 @@ export default class GenomeSpy {
     constructor(container, spec, options = {}) {
         this.container = container;
 
+        /** @type {(() => void)[]} */
+        this._destructionCallbacks = [];
+
         const styleElement = document.createElement("style");
         styleElement.innerHTML = css;
         container.appendChild(styleElement);
@@ -198,6 +201,44 @@ export default class GenomeSpy {
             this.spec.background
         );
 
+        const resizeCallback = () => {
+            this._glHelper.invalidateSize();
+            dprSetter(window.devicePixelRatio);
+            this.computeLayout();
+            // Render immediately, without RAF
+            this.renderAll();
+        };
+
+        // TODO: Size should be observed only if the content is not absolutely sized
+        const resizeObserver = new ResizeObserver(resizeCallback);
+        resizeObserver.observe(this.container);
+        this._destructionCallbacks.push(() => resizeObserver.disconnect());
+
+        const dprSetter = this._paramBroker.allocateSetter("devicePixelRatio");
+        dprSetter(window.devicePixelRatio);
+
+        /** @type {() => void} */
+        let remove = null;
+
+        const updatePixelRatio = () => {
+            if (remove != null) {
+                remove();
+                resizeCallback();
+            }
+            const media = matchMedia(
+                `(resolution: ${window.devicePixelRatio}dppx)`
+            );
+            media.addEventListener("change", updatePixelRatio);
+            remove = () => {
+                media.removeEventListener("change", updatePixelRatio);
+            };
+        };
+        updatePixelRatio();
+
+        if (remove) {
+            this._destructionCallbacks.push(remove);
+        }
+
         this.loadingMessageElement = document.createElement("div");
         this.loadingMessageElement.className = "loading-message";
         this.loadingMessageElement.innerHTML = `<div class="message">Loading<span class="ellipsis">...</span></div>`;
@@ -228,6 +269,8 @@ export default class GenomeSpy {
                 document.removeEventListener(type, listener);
             }
         }
+
+        this._destructionCallbacks.forEach((callback) => callback());
 
         this._glHelper.finalize();
 
@@ -453,14 +496,6 @@ export default class GenomeSpy {
 
             this.computeLayout();
             this.animator.requestRender();
-
-            // Register resize listener after the initial layout computation to prevent
-            // incomplete layouts from accidentally polluting any caches related to sizes.
-            this._glHelper.addEventListener("resize", () => {
-                this.computeLayout();
-                // Render immediately, without RAF
-                this.renderAll();
-            });
 
             return true;
         } catch (reason) {

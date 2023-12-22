@@ -160,6 +160,22 @@ export default class TextMark extends Mark {
 
         const props = this.properties;
 
+        this.registerMarkUniform(
+            "uSdfNumerator",
+            /** @type {import("../spec/mark.js").ExprRef | number} */
+            ({ expr: "devicePixelRatio" }),
+            (dpr) => {
+                let q = 0.35; // TODO: Ensure that this makes sense. Now chosen by trial & error
+                if (this.properties.logoLetters) {
+                    // Adjust to make stretched letters a bit less blurry
+                    // A proper solution would probably be to compute gradients in the fragment shader
+                    // to find a suitable divisor.
+                    q /= 2;
+                }
+                return this.font.metrics.common.base / (dpr / q);
+            }
+        );
+
         // TODO: Use uniform block.
         setBlockUniforms(this.markUniformInfo, {
             uPaddingX: props.paddingX,
@@ -237,24 +253,7 @@ export default class TextMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        let q = 0.35; // TODO: Ensure that this makes sense. Now chosen by trial & error
-        if (this.properties.logoLetters) {
-            // Adjust to make stretched letters a bit less blurry
-            // A proper solution would probably be to compute gradients in the fragment shader
-            // to find a suitable divisor.
-            q /= 2;
-        }
-        const uSdfNumerator =
-            this.font.metrics.common.base /
-            (this.unitView.context.devicePixelRatio / q);
-
         ops.push(() => {
-            // TODO: only set if dpr changed
-            setBlockUniforms(this.markUniformInfo, {
-                uSdfNumerator,
-            });
-            this.markUniformsAltered = true;
-
             setUniforms(this.programInfo, {
                 uTexture: this.font.texture,
             });

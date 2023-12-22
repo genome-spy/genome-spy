@@ -39,13 +39,15 @@ export default class WebGLHelper {
      */
     constructor(container, sizeSource, clearColor) {
         this._container = container;
-        this._sizeSource = sizeSource;
+        this._sizeSource =
+            sizeSource ??
+            (() => ({
+                width: undefined,
+                height: undefined,
+            }));
 
         /** @type {Map<string, WebGLShader>} */
         this._shaderCache = new Map();
-
-        /** @type {{ type: string, listener: function}[]} */
-        this._listeners = [];
 
         /** @type {WeakMap<import("../view/scaleResolution.js").default, WebGLTexture>} */
         this.rangeTextures = new WeakMap();
@@ -107,16 +109,6 @@ export default class WebGLHelper {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         this.adjustGl();
-
-        // TODO: Size should be observed only if the content is not absolutely sized
-        this._resizeObserver = new ResizeObserver((entries) => {
-            this.invalidateSize();
-            this._emit("resize");
-        });
-        this._resizeObserver.observe(this._container);
-
-        // TODO: Observe devicePixelRatio
-        // https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio#Monitoring_screen_resolution_or_zoom_level_changes
 
         this._updateDpr();
 
@@ -188,7 +180,6 @@ export default class WebGLHelper {
     }
 
     finalize() {
-        this._resizeObserver.unobserve(this._container);
         this.canvas.remove();
     }
 
@@ -214,10 +205,7 @@ export default class WebGLHelper {
         }
 
         // TODO: The size should never be smaller than the minimum content size!
-        const contentSize = this._sizeSource?.() ?? {
-            width: undefined,
-            height: undefined,
-        };
+        const contentSize = this._sizeSource();
 
         const cs = window.getComputedStyle(this._container, null);
         const width =
@@ -234,25 +222,6 @@ export default class WebGLHelper {
 
         this._logicalCanvasSize = { width, height };
         return this._logicalCanvasSize;
-    }
-
-    /**
-     * @param {"render"|"resize"} eventType
-     * @param {function} listener
-     */
-    addEventListener(eventType, listener) {
-        this._listeners.push({ type: eventType, listener });
-    }
-
-    /**
-     * @param {string} eventType
-     */
-    _emit(eventType) {
-        for (const entry of this._listeners) {
-            if (entry.type === eventType) {
-                entry.listener();
-            }
-        }
     }
 
     /**
