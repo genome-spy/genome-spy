@@ -1,4 +1,4 @@
-import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
+import { setBuffersAndAttributes } from "twgl.js";
 import VERTEX_SHADER from "../gl/link.vertex.glsl";
 import FRAGMENT_SHADER from "../gl/link.fragment.glsl";
 import { LinkVertexBuilder } from "../gl/dataToVertices.js";
@@ -38,6 +38,16 @@ export default class LinkMark extends Mark {
                 linkShape: "arc",
                 orient: "vertical",
             })
+        );
+
+        /**
+         * Only available if "WebGL Draft Extensions" is enabled in chrome://flags
+         * But seems to work.
+         *
+         * @private
+         */
+        this._baseInstanceExt = this.gl.getExtension(
+            "WEBGL_draw_instanced_base_vertex_base_instance"
         );
     }
 
@@ -154,6 +164,16 @@ export default class LinkMark extends Mark {
 
         ops.push(() => this.bindOrSetMarkUniformBlock());
 
+        if (this._baseInstanceExt) {
+            ops.push(() =>
+                setBuffersAndAttributes(
+                    this.gl,
+                    this.programInfo,
+                    this.vertexArrayInfo
+                )
+            );
+        }
+
         return ops;
     }
 
@@ -163,42 +183,57 @@ export default class LinkMark extends Mark {
     render(options) {
         const gl = this.gl;
 
-        return this.createRenderCallback((offset, count) => {
-            // We are using instanced drawing here.
-            // However, WebGL does not provide glDrawArraysInstancedBaseInstance and thus,
-            // we have to hack with offsets in vertexAttribPointer
-            // TODO: Use VAOs more intelligently to reduce WebGL calls
-            // TODO: Explore multiDrawArraysInstancedWEBGL
-            // There's also a promising extension draft:
-            // https://www.khronos.org/registry/webgl/extensions/WEBGL_draw_instanced_base_vertex_base_instance/
-            // (and https://www.khronos.org/registry/webgl/extensions/WEBGL_multi_draw_instanced_base_vertex_base_instance/)
+        const arcVertexCount = (this.properties.segments + 1) * 2;
 
-            this.gl.bindVertexArray(this.vertexArrayInfo.vertexArrayObject);
+        return this._baseInstanceExt
+            ? this.createRenderCallback((offset, count) => {
+                  // Using the following extension, which, however, is only a draft and
+                  // available if "WebGL Draft Extensions" is enabled in chrome://flags
+                  // https://www.khronos.org/registry/webgl/extensions/WEBGL_draw_instanced_base_vertex_base_instance/
 
-            for (const attribInfoObject of Object.entries(
-                this.bufferInfo.attribs
-            )) {
-                const [attribute, attribInfo] = attribInfoObject;
-                if (
-                    attribInfo.buffer &&
-                    attribInfo.numComponents &&
-                    attribInfo.divisor
-                ) {
-                    attribInfo.offset =
-                        offset * this.arrays[attribute].numComponents * 4; // gl.FLOAT in bytes
-                }
-            }
-            setBuffersAndAttributes(gl, this.programInfo, this.bufferInfo);
+                  this._baseInstanceExt.drawArraysInstancedBaseInstanceWEBGL(
+                      gl.TRIANGLE_STRIP,
+                      0,
+                      arcVertexCount,
+                      count,
+                      offset
+                  );
+              }, options)
+            : this.createRenderCallback((offset, count) => {
+                  // Because vanilla WebGL 2 does not provide glDrawArraysInstancedBaseInstance,
+                  // we have to hack with offsets in vertexAttribPointer
+                  // TODO: Use VAOs more intelligently to reduce WebGL calls
 
-            drawBufferInfo(
-                gl,
-                this.bufferInfo,
-                gl.TRIANGLE_STRIP,
-                (this.properties.segments + 1) * 2, // number of vertices in a triangle strip
-                0,
-                count
-            );
-        }, options);
+                  this.gl.bindVertexArray(
+                      this.vertexArrayInfo.vertexArrayObject
+                  );
+
+                  for (const attribInfoObject of Object.entries(
+                      this.bufferInfo.attribs
+                  )) {
+                      const [attribute, attribInfo] = attribInfoObject;
+                      if (
+                          attribInfo.buffer &&
+                          attribInfo.numComponents &&
+                          attribInfo.divisor
+                      ) {
+                          attribInfo.offset =
+                              offset * this.arrays[attribute].numComponents * 4; // gl.FLOAT in bytes
+                      }
+                  }
+                  setBuffersAndAttributes(
+                      gl,
+                      this.programInfo,
+                      this.bufferInfo
+                  );
+
+                  gl.drawArraysInstanced(
+                      gl.TRIANGLE_STRIP,
+                      0,
+                      arcVertexCount,
+                      count
+                  );
+              }, options);
     }
 }
 
