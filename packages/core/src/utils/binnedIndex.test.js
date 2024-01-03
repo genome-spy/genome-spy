@@ -152,4 +152,50 @@ describe("Binning Indexer", () => {
         expect(index(115, 116)).toEqual([4, 8]);
         expect(index(135, 145)).toEqual([6, 10]);
     });
+
+    test("Unordered ranges disable the index", () => {
+        const items = [
+            [10, 30],
+            [25, 50],
+
+            [112, 139],
+            [102, 129], // <- Unordered!
+            [121, 149],
+        ];
+        const indexer = createBinningRangeIndexer(
+            100,
+            [0, 1000],
+            (x) => x[0],
+            (x) => x[1]
+        );
+
+        items.forEach((x, i) => indexer(x, i * 2, (i + 1) * 2));
+
+        const index = indexer.getIndex();
+
+        expect(index).toBeUndefined();
+    });
+
+    test("Inverted ranges disable the index", () => {
+        const items = [
+            [10, 30],
+            [25, 50],
+
+            [102, 129],
+            [139, 112], // <- Inverted!
+            [121, 149],
+        ];
+        const indexer = createBinningRangeIndexer(
+            100,
+            [0, 1000],
+            (x) => x[0],
+            (x) => x[1]
+        );
+
+        items.forEach((x, i) => indexer(x, i * 2, (i + 1) * 2));
+
+        const index = indexer.getIndex();
+
+        expect(index).toBeUndefined();
+    });
 });

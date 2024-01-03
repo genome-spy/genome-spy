@@ -15,6 +15,8 @@ const MIN_INTEGER = -(2 ** 31);
  * A binned index for (overlapping) ranges that are sorted by their start position.
  * Each indexed range is associated with respective vertex indices.
  *
+ * The indexing scheme is somewhat similar to Tabix (https://academic.oup.com/bioinformatics/article/27/5/718/262743).
+ *
  * @param {number} size Number of bins
  * @param {[number, number]} domain Domain of positions
  * @param {(datum: T) => number} accessor Accessor for range's start position
@@ -27,13 +29,15 @@ export function createBinningRangeIndexer(
     accessor,
     accessor2 = accessor
 ) {
-    const startIndices = new Int32Array(size);
+    const startIndices = new Array(size);
     startIndices.fill(MAX_INTEGER);
 
     let lastIndex = MIN_INTEGER;
+    let lastStart = -Infinity;
     let unordered = false;
 
-    const endIndices = new Int32Array(size);
+    const endIndices = new Array(size);
+    endIndices.fill(0);
 
     const start = domain[0];
     const domainLength = domain[1] - domain[0];
@@ -63,17 +67,33 @@ export function createBinningRangeIndexer(
      * @param {number} endVertexIndex
      */
     function binningIndexer(datum, startVertexIndex, endVertexIndex) {
+        if (unordered) {
+            return;
+        }
+
         if (startVertexIndex > lastIndex) {
             lastIndex = startVertexIndex;
-        } else if (!unordered) {
+        } else {
             unordered = true;
             // TODO: Contextual info like view path
             console.debug(
                 "Items are not ordered properly. Disabling binned index."
             );
+            return;
         }
 
         const value = accessor(datum);
+
+        if (value < lastStart) {
+            unordered = true;
+            // TODO: Contextual info like view path
+            console.debug(
+                "Items are not ordered properly. Disabling binned index."
+            );
+            return;
+        }
+        lastStart = value;
+
         const bin = getBin(value, false);
 
         if (startIndices[bin] > startVertexIndex) {
@@ -93,18 +113,42 @@ export function createBinningRangeIndexer(
      * @param {number} endVertexIndex
      */
     function binningRangeIndexer(datum, startVertexIndex, endVertexIndex) {
+        if (unordered) {
+            return;
+        }
+
         if (startVertexIndex > lastIndex) {
             lastIndex = startVertexIndex;
-        } else if (!unordered) {
+        } else {
+            unordered = true;
+            // TODO: Contextual info like view path
+            console.debug(
+                "Items (vertices) are not ordered properly. Disabling binned index."
+            );
+            return;
+        }
+
+        const start = accessor(datum);
+        const end = accessor2(datum);
+
+        if (start < lastStart) {
             unordered = true;
             // TODO: Contextual info like view path
             console.debug(
                 "Items are not ordered properly. Disabling binned index."
             );
+            return;
+        } else if (end < start) {
+            unordered = true;
+            // TODO: Contextual info like view path
+            console.debug(
+                "End index is less than start index. Disabling binned index. Datum: ",
+                datum
+            );
+            return;
         }
+        lastStart = start;
 
-        const start = accessor(datum);
-        const end = accessor2(datum);
         const startBin = getBin(start, false);
         const endBin = getBin(end, true);
 
@@ -135,7 +179,16 @@ export function createBinningRangeIndexer(
         return arr;
     };
 
+    /**
+     * Finalizes the index and returns a lookup function.
+     *
+     * @returns {Lookup}
+     */
     const getIndex = () => {
+        if (unordered) {
+            return undefined;
+        }
+
         for (let i = 1; i < endIndices.length; i++) {
             if (endIndices[i] < endIndices[i - 1]) {
                 endIndices[i] = endIndices[i - 1];
@@ -159,9 +212,5 @@ export function createBinningRangeIndexer(
     binningIndexer.getIndex = getIndex;
     binningRangeIndexer.getIndex = getIndex;
 
-    if (unordered) {
-        return undefined;
-    } else {
-        return accessor == accessor2 ? binningIndexer : binningRangeIndexer;
-    }
+    return accessor == accessor2 ? binningIndexer : binningRangeIndexer;
 }
