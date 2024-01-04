@@ -29,7 +29,11 @@ export default function radixSort(arr) {
             // TODO: This could be implemented in WASM for better performance as
             // it would be able to use 64-bit integers.
             if (digitIndex >= MAX_INTEGER_DIGIT) {
-                return Math.floor(value / pow) % 16;
+                if (value > MAX_INTEGER) {
+                    return Math.floor(value / pow) % 16;
+                } else {
+                    return 0;
+                }
             } else {
                 return (value >> shift) & 0xf;
             }
