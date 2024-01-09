@@ -78,6 +78,8 @@ export default class SingleAxisLazySource extends DataSource {
 
     /**
      * Convenience getter for genome.
+
+     * @protected
      */
     get genome() {
         return this.scaleResolution.getGenome();
@@ -88,6 +90,7 @@ export default class SingleAxisLazySource extends DataSource {
      *
      * @param {number[]} domain Linearized domain
      * @param {import("../../../spec/genome.js").ChromosomalLocus[]} complexDomain Chrom/Pos domain
+     * @abstract
      */
     async onDomainChanged(domain, complexDomain) {
         // Override me
@@ -96,6 +99,8 @@ export default class SingleAxisLazySource extends DataSource {
     /**
      * TODO: Get rid of this method.
      * Rendering should be requested by the collector.
+     *
+     * @protected
      */
     requestRender() {
         // An awfully hacky way.
@@ -111,6 +116,7 @@ export default class SingleAxisLazySource extends DataSource {
     /**
      *
      * @param {import("../../flowNode.js").Datum[]} data
+     * @protected
      */
     publishData(data) {
         this.reset();

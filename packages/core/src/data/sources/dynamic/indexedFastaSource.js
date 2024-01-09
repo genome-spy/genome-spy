@@ -8,6 +8,8 @@ import addBaseUrl from "../../../utils/addBaseUrl.js";
 export default class IndexedFastaSource extends windowedMixin(
     SingleAxisLazySource
 ) {
+    #abortController = new AbortController();
+
     /**
      * @param {import("../../../spec/data.js").IndexedFastaData} params
      * @param {import("../../../view/view.js").default} view
@@ -77,20 +79,32 @@ export default class IndexedFastaSource extends windowedMixin(
                     quantizedInterval
                 );
 
-            // TODO: Error handling
-            const sequencesWithChrom = await Promise.all(
-                discreteChromosomeIntervals.map((d) =>
-                    this.fasta
-                        .getSequence(d.chrom, d.startPos, d.endPos)
-                        .then((sequence) => ({
-                            chrom: d.chrom,
-                            start: d.startPos,
-                            sequence,
-                        }))
-                )
-            );
+            this.#abortController.abort();
+            this.#abortController = new AbortController();
+            const signal = this.#abortController.signal;
 
-            this.publishData(sequencesWithChrom);
+            try {
+                const sequencesWithChrom = await Promise.all(
+                    discreteChromosomeIntervals.map((d) =>
+                        this.fasta
+                            .getSequence(d.chrom, d.startPos, d.endPos, {
+                                signal,
+                            })
+                            .then((sequence) => ({
+                                chrom: d.chrom,
+                                start: d.startPos,
+                                sequence,
+                            }))
+                    )
+                );
+
+                this.publishData(sequencesWithChrom);
+            } catch (e) {
+                if (!signal.aborted) {
+                    // TODO: Nice reporting of errors
+                    throw e;
+                }
+            }
         }
     }
 }

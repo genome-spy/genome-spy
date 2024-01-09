@@ -8,8 +8,7 @@ import addBaseUrl from "../../../utils/addBaseUrl.js";
  * @abstract
  */
 export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
-    /** Keep track of the order of the requests */
-    lastRequestId = 0;
+    #abortController = new AbortController();
 
     /** @type {import("@gmod/tabix").TabixIndexedFile} */
     tbiIndex;
@@ -94,14 +93,11 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
      * @param {number[]} interval linearized domain
      */
     async doRequest(interval) {
-        const featureResponse = await this.getFeatures(interval);
+        const features = await this.getFeatures(interval);
 
-        // Discard late responses
-        if (featureResponse.requestId < this.lastRequestId) {
-            return;
+        if (features) {
+            this.publishData(features);
         }
-
-        this.publishData(featureResponse.features);
     }
 
     /**
@@ -111,37 +107,47 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
     async getFeatures(interval) {
         await this.initializedPromise;
 
-        let requestId = ++this.lastRequestId;
+        // Doesn't abort the fetch requests. See: https://github.com/GMOD/tabix-js/issues/143
+        this.#abortController.abort();
 
-        // TODO: Abort previous requests
-        const abortController = new AbortController();
+        this.#abortController = new AbortController();
+        const signal = this.#abortController.signal;
 
         const discreteChromosomeIntervals =
             this.genome.continuousToDiscreteChromosomeIntervals(interval);
 
-        // TODO: Error handling
-        const featuresWithChrom = await Promise.all(
-            discreteChromosomeIntervals.map(async (d) => {
-                /** @type {string[]} */
-                const lines = [];
+        try {
+            const featuresWithChrom = await Promise.all(
+                discreteChromosomeIntervals.map(async (d) => {
+                    /** @type {string[]} */
+                    const lines = [];
 
-                await this.tbiIndex.getLines(d.chrom, d.startPos, d.endPos, {
-                    lineCallback: (line) => {
-                        lines.push(line);
-                    },
-                    signal: abortController.signal,
-                });
+                    await this.tbiIndex.getLines(
+                        d.chrom,
+                        d.startPos,
+                        d.endPos,
+                        {
+                            lineCallback: (line) => {
+                                lines.push(line);
+                            },
+                            signal,
+                        }
+                    );
 
-                // Hmm. It's silly that we have to first collect individual lines and then join them.
-                return this._parseFeatures(lines);
-            })
-        );
+                    // Hmm. It's silly that we have to first collect individual lines and then join them.
+                    return this._parseFeatures(lines);
+                })
+            );
 
-        return {
-            requestId,
-            abort: () => abortController.abort(),
-            features: featuresWithChrom.flat(), // TODO: Use batches, not flat
-        };
+            if (!signal.aborted) {
+                return featuresWithChrom.flat(); // TODO: Use batches, not flat
+            }
+        } catch (e) {
+            if (!signal.aborted) {
+                // TODO: Nice reporting of errors
+                throw e;
+            }
+        }
     }
 
     /**

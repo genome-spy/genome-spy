@@ -4,8 +4,7 @@ import { debounce } from "../../../utils/debounce.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
 
 export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
-    /** Keep track of the order of the requests */
-    lastRequestId = 0;
+    #abortController = new AbortController();
 
     /** @type {import("@gmod/bed").default} */
     parser;
@@ -91,14 +90,11 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
      * @param {number[]} interval linearized domain
      */
     async doRequest(interval) {
-        const featureResponse = await this.getFeatures(interval);
+        const features = await this.getFeatures(interval);
 
-        // Discard late responses
-        if (featureResponse.requestId < this.lastRequestId) {
-            return;
+        if (features) {
+            this.publishData(features);
         }
-
-        this.publishData(featureResponse.features);
     }
 
     /**
@@ -106,36 +102,40 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
      * @param {number[]} interval
      */
     async getFeatures(interval) {
-        let requestId = ++this.lastRequestId;
+        this.#abortController.abort();
 
-        // TODO: Abort previous requests
-        const abortController = new AbortController();
+        this.#abortController = new AbortController();
+        const signal = this.#abortController.signal;
 
         const discreteChromosomeIntervals =
             this.genome.continuousToDiscreteChromosomeIntervals(interval);
 
-        // TODO: Error handling
-        const featuresWithChrom = await Promise.all(
-            discreteChromosomeIntervals.map((d) =>
-                this.bbi
-                    .getFeatures(d.chrom, d.startPos, d.endPos, {
-                        signal: abortController.signal,
-                    })
-                    .then((features) =>
-                        features.map((f) =>
-                            this.parser.parseLine(
-                                `${d.chrom}\t${f.start}\t${f.end}\t${f.rest}`,
-                                { uniqueId: f.uniqueId }
+        try {
+            const featuresWithChrom = await Promise.all(
+                discreteChromosomeIntervals.map((d) =>
+                    this.bbi
+                        .getFeatures(d.chrom, d.startPos, d.endPos, {
+                            signal,
+                        })
+                        .then((features) =>
+                            features.map((f) =>
+                                this.parser.parseLine(
+                                    `${d.chrom}\t${f.start}\t${f.end}\t${f.rest}`,
+                                    { uniqueId: f.uniqueId }
+                                )
                             )
                         )
-                    )
-            )
-        );
+                )
+            );
 
-        return {
-            requestId,
-            abort: () => abortController.abort(),
-            features: featuresWithChrom.flat(), // TODO: Use batches, not flat
-        };
+            if (!signal.aborted) {
+                return featuresWithChrom.flat(); // TODO: Use batches, not flat
+            }
+        } catch (e) {
+            if (!signal.aborted) {
+                // TODO: Nice reporting of errors
+                throw e;
+            }
+        }
     }
 }

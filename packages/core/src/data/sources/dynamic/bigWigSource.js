@@ -7,11 +7,10 @@ import addBaseUrl from "../../../utils/addBaseUrl.js";
  *
  */
 export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
+    #abortController = new AbortController();
+
     /** @type {number[]} */
     reductionLevels = [];
-
-    /** Keep track of the order of the requests */
-    lastRequestId = 0;
 
     /** @type {import("@gmod/bbi").BigWig} */
     bbi;
@@ -106,17 +105,12 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
      * @param {number} reductionLevel
      */
     async doRequest(interval, reductionLevel) {
-        const featureResponse = await this.getFeatures(
+        const features = await this.getFeatures(
             interval,
             1 / 2 / reductionLevel / this.params.pixelsPerBin
         );
 
-        // Discard late responses
-        if (featureResponse.requestId < this.lastRequestId) {
-            return;
-        }
-
-        this.publishData(featureResponse.features);
+        this.publishData(features);
     }
 
     /**
@@ -125,38 +119,42 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
      * @param {number} scale
      */
     async getFeatures(interval, scale) {
-        let requestId = ++this.lastRequestId;
+        this.#abortController.abort();
 
-        // TODO: Abort previous requests
-        const abortController = new AbortController();
+        this.#abortController = new AbortController();
+        const signal = this.#abortController.signal;
 
         const discreteChromosomeIntervals =
             this.genome.continuousToDiscreteChromosomeIntervals(interval);
 
-        // TODO: Error handling
-        const featuresWithChrom = await Promise.all(
-            discreteChromosomeIntervals.map((d) =>
-                this.bbi
-                    .getFeatures(d.chrom, d.startPos, d.endPos, {
-                        scale,
-                        signal: abortController.signal,
-                    })
-                    .then((features) =>
-                        features.map((f) => ({
-                            chrom: d.chrom,
-                            start: f.start,
-                            end: f.end,
-                            score: f.score,
-                        }))
-                    )
-            )
-        );
+        try {
+            const featuresWithChrom = await Promise.all(
+                discreteChromosomeIntervals.map((d) =>
+                    this.bbi
+                        .getFeatures(d.chrom, d.startPos, d.endPos, {
+                            scale,
+                            signal,
+                        })
+                        .then((features) =>
+                            features.map((f) => ({
+                                chrom: d.chrom,
+                                start: f.start,
+                                end: f.end,
+                                score: f.score,
+                            }))
+                        )
+                )
+            );
 
-        return {
-            requestId,
-            abort: () => abortController.abort(),
-            features: featuresWithChrom.flat(), // TODO: Use batches, not flat
-        };
+            if (!signal.aborted) {
+                return featuresWithChrom.flat(); // TODO: Use batches, not flat
+            }
+        } catch (e) {
+            if (!signal.aborted) {
+                // TODO: Nice reporting of errors
+                throw e;
+            }
+        }
     }
 }
 
