@@ -5,6 +5,7 @@ import addBaseUrl from "../../../utils/addBaseUrl.js";
 
 /**
  * @template T
+ * @abstract
  */
 export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
     /** Keep track of the order of the requests */
@@ -145,6 +146,7 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
 
     /**
      * @abstract
+     * @protected
      * @param {string[]} lines
      * @returns {T[]}
      */
