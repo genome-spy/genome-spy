@@ -65,9 +65,9 @@ export default class AxisTickSource extends SingleAxisLazySource {
             this.ticks = ticks;
 
             const format = tickFormat(scale, requestedCount, axisParams.format);
-            this.publishData(
-                ticks.map((tick) => ({ value: tick, label: format(tick) }))
-            );
+            this.publishData([
+                ticks.map((tick) => ({ value: tick, label: format(tick) })),
+            ]);
         }
     }
 }

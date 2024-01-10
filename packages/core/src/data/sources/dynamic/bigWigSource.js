@@ -1,19 +1,15 @@
-import { debounce } from "../../../utils/debounce.js";
-import SingleAxisLazySource from "./singleAxisLazySource.js";
-import windowedMixin from "./windowedMixin.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
+import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 /**
  *
  */
-export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
-    #abortController = new AbortController();
-
+export default class BigWigSource extends SingleAxisWindowedSource {
     /** @type {number[]} */
-    reductionLevels = [];
+    #reductionLevels = [];
 
     /** @type {import("@gmod/bbi").BigWig} */
-    bbi;
+    #bbi;
 
     /**
      * @param {import("../../../spec/data.js").BigWigData} params
@@ -24,6 +20,8 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
         const paramsWithDefaults = {
             pixelsPerBin: 2,
             channel: "x",
+            debounce: 200,
+            debounceMode: "window",
             ...params,
         };
 
@@ -35,25 +33,21 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
             throw new Error("No URL provided for BigWigSource");
         }
 
-        this.doDebouncedRequest = debounce(
-            this.doRequest.bind(this),
-            200,
-            false
-        );
+        this.setupDebouncing(this.params);
 
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
                 import("@gmod/bbi"),
                 import("generic-filehandle"),
             ]).then(([{ BigWig }, { RemoteFile }]) => {
-                this.bbi = new BigWig({
+                this.#bbi = new BigWig({
                     filehandle: new RemoteFile(
                         addBaseUrl(this.params.url, this.view.getBaseUrl())
                     ),
                 });
 
-                this.bbi.getHeader().then((header) => {
-                    this.reductionLevels =
+                this.#bbi.getHeader().then((header) => {
+                    this.#reductionLevels =
                         /** @type {{reductionLevel: number}[]} */ (
                             header.zoomLevels
                         )
@@ -62,7 +56,7 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
 
                     // Add the non-reduced level. Not sure if this is the best way to do it.
                     // Afaik, the non-reduced bin size is not available in the header.
-                    this.reductionLevels.push(1);
+                    this.#reductionLevels.push(1);
 
                     resolve();
                 });
@@ -84,7 +78,7 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
         const reductionLevel = findReductionLevel(
             domain,
             length,
-            this.reductionLevels
+            this.#reductionLevels
         );
 
         // The sensible minimum window size actually depends on the non-reduced data density...
@@ -94,66 +88,37 @@ export default class BigWigSource extends windowedMixin(SingleAxisLazySource) {
         const quantizedInterval = this.quantizeInterval(domain, windowSize);
 
         if (this.checkAndUpdateLastInterval(quantizedInterval)) {
-            this.doDebouncedRequest(quantizedInterval, reductionLevel);
+            this.loadInterval(quantizedInterval, reductionLevel);
         }
     }
 
     /**
-     * Listen to the domain change event and update data when the covered windows change.
-     *
      * @param {number[]} interval linearized domain
      * @param {number} reductionLevel
      */
-    async doRequest(interval, reductionLevel) {
-        const features = await this.getFeatures(
+    // @ts-expect-error
+    async loadInterval(interval, reductionLevel) {
+        const scale = 1 / 2 / reductionLevel / this.params.pixelsPerBin;
+        const featureChunks = await this.discretizeAndLoad(
             interval,
-            1 / 2 / reductionLevel / this.params.pixelsPerBin
+            (d, signal) =>
+                this.#bbi
+                    .getFeatures(d.chrom, d.startPos, d.endPos, {
+                        scale,
+                        signal,
+                    })
+                    .then((features) =>
+                        features.map((f) => ({
+                            chrom: d.chrom,
+                            start: f.start,
+                            end: f.end,
+                            score: f.score,
+                        }))
+                    )
         );
 
-        this.publishData(features);
-    }
-
-    /**
-     *
-     * @param {number[]} interval
-     * @param {number} scale
-     */
-    async getFeatures(interval, scale) {
-        this.#abortController.abort();
-
-        this.#abortController = new AbortController();
-        const signal = this.#abortController.signal;
-
-        const discreteChromosomeIntervals =
-            this.genome.continuousToDiscreteChromosomeIntervals(interval);
-
-        try {
-            const featuresWithChrom = await Promise.all(
-                discreteChromosomeIntervals.map((d) =>
-                    this.bbi
-                        .getFeatures(d.chrom, d.startPos, d.endPos, {
-                            scale,
-                            signal,
-                        })
-                        .then((features) =>
-                            features.map((f) => ({
-                                chrom: d.chrom,
-                                start: f.start,
-                                end: f.end,
-                                score: f.score,
-                            }))
-                        )
-                )
-            );
-
-            if (!signal.aborted) {
-                return featuresWithChrom.flat(); // TODO: Use batches, not flat
-            }
-        } catch (e) {
-            if (!signal.aborted) {
-                // TODO: Nice reporting of errors
-                throw e;
-            }
+        if (featureChunks) {
+            this.publishData(featureChunks);
         }
     }
 }

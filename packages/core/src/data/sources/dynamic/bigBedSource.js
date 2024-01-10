@@ -1,11 +1,7 @@
-import SingleAxisLazySource from "./singleAxisLazySource.js";
-import windowedMixin from "./windowedMixin.js";
-import { debounce } from "../../../utils/debounce.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
+import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
-export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
-    #abortController = new AbortController();
-
+export default class BigBedSource extends SingleAxisWindowedSource {
     /** @type {import("@gmod/bed").default} */
     parser;
 
@@ -21,6 +17,8 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
         const paramsWithDefaults = {
             channel: "x",
             windowSize: 1000000,
+            debounce: 200,
+            debounceMode: "window",
             ...params,
         };
 
@@ -32,11 +30,7 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
             throw new Error("No URL provided for BigBedSource");
         }
 
-        this.doDebouncedRequest = debounce(
-            this.doRequest.bind(this),
-            200,
-            false
-        );
+        this.setupDebouncing(this.params);
 
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
@@ -52,8 +46,7 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
                     ),
                 });
 
-                this.headerPromise = this.bbi.getHeader();
-                this.headerPromise.then(async (header) => {
+                this.bbi.getHeader().then(async (header) => {
                     // @ts-ignore TODO: Fix
                     this.parser = new BED({ autoSql: header.autoSql });
 
@@ -64,78 +57,28 @@ export default class BigBedSource extends windowedMixin(SingleAxisLazySource) {
     }
 
     /**
-     * Listen to the domain change event and update data when the covered windows change.
-     *
-     * @param {number[]} domain Linearized domain
-     */
-    async onDomainChanged(domain) {
-        await this.initializedPromise;
-
-        const windowSize = this.params.windowSize;
-
-        if (domain[1] - domain[0] > windowSize) {
-            return;
-        }
-
-        const quantizedInterval = this.quantizeInterval(domain, windowSize);
-
-        if (this.checkAndUpdateLastInterval(quantizedInterval)) {
-            this.doDebouncedRequest(quantizedInterval);
-        }
-    }
-
-    /**
-     * Listen to the domain change event and update data when the covered windows change.
-     *
      * @param {number[]} interval linearized domain
      */
-    async doRequest(interval) {
-        const features = await this.getFeatures(interval);
+    async loadInterval(interval) {
+        const features = await this.discretizeAndLoad(
+            interval,
+            async (d, signal) =>
+                this.bbi
+                    .getFeatures(d.chrom, d.startPos, d.endPos, {
+                        signal,
+                    })
+                    .then((features) =>
+                        features.map((f) =>
+                            this.parser.parseLine(
+                                `${d.chrom}\t${f.start}\t${f.end}\t${f.rest}`,
+                                { uniqueId: f.uniqueId }
+                            )
+                        )
+                    )
+        );
 
         if (features) {
             this.publishData(features);
-        }
-    }
-
-    /**
-     *
-     * @param {number[]} interval
-     */
-    async getFeatures(interval) {
-        this.#abortController.abort();
-
-        this.#abortController = new AbortController();
-        const signal = this.#abortController.signal;
-
-        const discreteChromosomeIntervals =
-            this.genome.continuousToDiscreteChromosomeIntervals(interval);
-
-        try {
-            const featuresWithChrom = await Promise.all(
-                discreteChromosomeIntervals.map((d) =>
-                    this.bbi
-                        .getFeatures(d.chrom, d.startPos, d.endPos, {
-                            signal,
-                        })
-                        .then((features) =>
-                            features.map((f) =>
-                                this.parser.parseLine(
-                                    `${d.chrom}\t${f.start}\t${f.end}\t${f.rest}`,
-                                    { uniqueId: f.uniqueId }
-                                )
-                            )
-                        )
-                )
-            );
-
-            if (!signal.aborted) {
-                return featuresWithChrom.flat(); // TODO: Use batches, not flat
-            }
-        } catch (e) {
-            if (!signal.aborted) {
-                // TODO: Nice reporting of errors
-                throw e;
-            }
         }
     }
 }

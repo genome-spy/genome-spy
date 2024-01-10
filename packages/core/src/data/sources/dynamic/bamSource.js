@@ -1,13 +1,9 @@
-import SingleAxisLazySource from "./singleAxisLazySource.js";
-import windowedMixin from "./windowedMixin.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
+import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
-export default class BamSource extends windowedMixin(SingleAxisLazySource) {
-    /** Keep track of the order of the requests */
-    lastRequestId = 0;
-
+export default class BamSource extends SingleAxisWindowedSource {
     /** @type {import("@gmod/bam").BamFile} */
-    bam;
+    #bam;
 
     /**
      * Some BAM files lack the "chr" prefix on their reference names. For example:
@@ -29,6 +25,8 @@ export default class BamSource extends windowedMixin(SingleAxisLazySource) {
         const paramsWithDefaults = {
             channel: "x",
             windowSize: 20000,
+            debounce: 200,
+            debounceMode: "domain",
             ...params,
         };
 
@@ -40,6 +38,8 @@ export default class BamSource extends windowedMixin(SingleAxisLazySource) {
             throw new Error("No URL provided for BamSource");
         }
 
+        this.setupDebouncing(this.params);
+
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
                 import("@gmod/bam"),
@@ -48,17 +48,17 @@ export default class BamSource extends windowedMixin(SingleAxisLazySource) {
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
 
-                this.bam = new BamFile({
+                this.#bam = new BamFile({
                     bamFilehandle: withBase(this.params.url),
                     baiFilehandle: withBase(
                         this.params.indexUrl ?? this.params.url + ".bai"
                     ),
                 });
 
-                this.bam.getHeader().then((_header) => {
+                this.#bam.getHeader().then((_header) => {
                     const g = this.genome.hasChrPrefix();
                     const b =
-                        this.bam.indexToChr?.[0]?.refName.startsWith("chr");
+                        this.#bam.indexToChr?.[0]?.refName.startsWith("chr");
                     if (g && !b) {
                         this.chrPrefixFixer = (chr) => chr.replace("chr", "");
                     } else if (!g && b) {
@@ -72,52 +72,35 @@ export default class BamSource extends windowedMixin(SingleAxisLazySource) {
     }
 
     /**
-     * Listen to the domain change event and update data when the covered windows change.
-     *
-     * @param {number[]} domain Linearized domain
+     * @param {number[]} interval linearized domain
      */
-    async onDomainChanged(domain) {
-        const windowSize = this.params.windowSize;
+    async loadInterval(interval) {
+        const featureChunks = await this.discretizeAndLoad(
+            interval,
+            async (d, signal) =>
+                this.#bam
+                    .getRecordsForRange(
+                        this.chrPrefixFixer(d.chrom),
+                        d.startPos,
+                        d.endPos,
+                        { signal }
+                    )
+                    .then((records) =>
+                        records.map((record) => ({
+                            chrom: d.chrom,
+                            start: record.get("start"),
+                            end: record.get("end"),
+                            name: record.get("name"),
+                            MD: record.get("MD"),
+                            cigar: record.get("cigar"),
+                            mapq: record.get("mq"),
+                            strand: record.get("strand") === 1 ? "+" : "-",
+                        }))
+                    )
+        );
 
-        if (domain[1] - domain[0] > windowSize) {
-            return;
-        }
-
-        await this.initializedPromise;
-
-        const quantizedInterval = this.quantizeInterval(domain, windowSize);
-
-        if (this.checkAndUpdateLastInterval(quantizedInterval)) {
-            const discreteChromosomeIntervals =
-                this.genome.continuousToDiscreteChromosomeIntervals(
-                    quantizedInterval
-                );
-
-            // TODO: Error handling
-            const sequencesWithChrom = await Promise.all(
-                discreteChromosomeIntervals.map((d) =>
-                    this.bam
-                        .getRecordsForRange(
-                            this.chrPrefixFixer(d.chrom),
-                            d.startPos,
-                            d.endPos
-                        )
-                        .then((records) =>
-                            records.map((record) => ({
-                                chrom: d.chrom,
-                                start: record.get("start"),
-                                end: record.get("end"),
-                                name: record.get("name"),
-                                MD: record.get("MD"),
-                                cigar: record.get("cigar"),
-                                mapq: record.get("mq"),
-                                strand: record.get("strand") === 1 ? "+" : "-",
-                            }))
-                        )
-                )
-            );
-
-            this.publishData(sequencesWithChrom.flat());
+        if (featureChunks) {
+            this.publishData(featureChunks);
         }
     }
 }

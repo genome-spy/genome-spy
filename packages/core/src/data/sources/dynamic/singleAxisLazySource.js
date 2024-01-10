@@ -7,6 +7,12 @@ import { reconfigureScales } from "../../../view/scaleResolution.js";
  */
 export default class SingleAxisLazySource extends DataSource {
     /**
+     * Has to be resolved before any data can be requested upon domain changes.
+     * @protected
+     */
+    initializedPromise = Promise.resolve();
+
+    /**
      * @param {import("../../../view/view.js").default} view
      * @param {import("../../../spec/channel.js").PrimaryPositionalChannel} channel
      */
@@ -78,7 +84,7 @@ export default class SingleAxisLazySource extends DataSource {
 
     /**
      * Convenience getter for genome.
-
+     *
      * @protected
      */
     get genome() {
@@ -114,16 +120,19 @@ export default class SingleAxisLazySource extends DataSource {
     }
 
     /**
+     * Resets the data flow and propagates the data.
      *
-     * @param {import("../../flowNode.js").Datum[]} data
+     * @param {import("../../flowNode.js").Datum[][]} chunks An array of data chunks.
      * @protected
      */
-    publishData(data) {
+    publishData(chunks) {
         this.reset();
         this.beginBatch({ type: "file" });
 
-        for (const d of data) {
-            this._propagate(d);
+        for (const data of chunks) {
+            for (const d of data) {
+                this._propagate(d);
+            }
         }
 
         this.complete();

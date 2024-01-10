@@ -24,6 +24,7 @@ export default class Gff3Source extends TabixSource {
      * @param {string[]} lines
      */
     _parseFeatures(lines) {
+        // Hmm. It's silly that we have to first collect individual lines and then join them.
         // eslint-disable-next-line no-sync
         const features = this.#gff?.parseStringSync(lines.join("\n"), {
             parseSequences: false,

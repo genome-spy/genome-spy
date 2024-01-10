@@ -202,6 +202,29 @@ export type LazyDataParams =
     | BamData
     | Gff3Data;
 
+export interface DebouncedData {
+    /**
+     * Debounce time for data updates, in milliseconds. Debouncing prevents
+     * excessive data updates when the user is zooming or panning around.
+     *
+     * __Default value:__ `200`
+     */
+    debounce?: number;
+
+    /**
+     * The debounce mode for data updates. If set to `"domain"`, domain change
+     * events (panning and zooming) will be debounced. If set to `"window"`,
+     * the data fetches initiated by the changes to the visible window (or tile)
+     * will be debounced.  If your data is small, the `"window"` is better as
+     * it will start fetching data while the user is still panning around,
+     * resulting in a shorter perceived latency.
+     *
+     * __Default value:__ `"window"`
+     *
+     */
+    debounceMode?: "domain" | "window";
+}
+
 export interface AxisTicksData {
     type: "axisTicks";
 
@@ -219,7 +242,7 @@ export interface AxisGenomeData {
     channel: PrimaryPositionalChannel;
 }
 
-export interface IndexedFastaData {
+export interface IndexedFastaData extends DebouncedData {
     type: "indexedFasta";
 
     /**
@@ -250,7 +273,7 @@ export interface IndexedFastaData {
     windowSize?: number;
 }
 
-export interface BigWigData {
+export interface BigWigData extends DebouncedData {
     type: "bigwig";
 
     /**
@@ -273,7 +296,7 @@ export interface BigWigData {
     pixelsPerBin?: number;
 }
 
-export interface BigBedData {
+export interface BigBedData extends DebouncedData {
     type: "bigbed";
 
     /**
@@ -297,7 +320,7 @@ export interface BigBedData {
     windowSize?: number;
 }
 
-export interface BamData {
+export interface BamData extends DebouncedData {
     type: "bam";
 
     /**
@@ -328,7 +351,7 @@ export interface BamData {
     windowSize?: number;
 }
 
-export interface TabixData {
+export interface TabixData extends DebouncedData {
     /**
      * Which channel's scale domain to monitor.
      *
@@ -355,14 +378,6 @@ export interface TabixData {
      * __Default value:__ `30000000`
      */
     windowSize?: number;
-
-    /**
-     * The debounce time for domain changes, in milliseconds. Debouncing prevents
-     * data fetches while the user is still panning around.
-     *
-     * __Default value:__ `200`
-     */
-    debounceDomainChange?: number;
 }
 
 export interface Gff3Data extends TabixData {

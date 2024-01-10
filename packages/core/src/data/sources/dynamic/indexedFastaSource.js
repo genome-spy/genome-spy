@@ -1,15 +1,7 @@
-import SingleAxisLazySource from "./singleAxisLazySource.js";
-import windowedMixin from "./windowedMixin.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
+import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
-/**
- *
- */
-export default class IndexedFastaSource extends windowedMixin(
-    SingleAxisLazySource
-) {
-    #abortController = new AbortController();
-
+export default class IndexedFastaSource extends SingleAxisWindowedSource {
     /**
      * @param {import("../../../spec/data.js").IndexedFastaData} params
      * @param {import("../../../view/view.js").default} view
@@ -19,6 +11,8 @@ export default class IndexedFastaSource extends windowedMixin(
         const paramsWithDefaults = {
             channel: "x",
             windowSize: 7000,
+            debounce: 200,
+            debounceMode: "window",
             ...params,
         };
 
@@ -29,6 +23,8 @@ export default class IndexedFastaSource extends windowedMixin(
         if (!this.params.url) {
             throw new Error("No URL provided for IndexedFastaSource");
         }
+
+        this.setupDebouncing(this.params);
 
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
@@ -58,53 +54,25 @@ export default class IndexedFastaSource extends windowedMixin(
     }
 
     /**
-     * Listen to the domain change event and update data when the covered windows change.
-     *
-     * @param {number[]} domain Linearized domain
+     * @param {number[]} interval linearized domain
      */
-    async onDomainChanged(domain) {
-        const windowSize = this.params.windowSize;
+    async loadInterval(interval) {
+        const features = await this.discretizeAndLoad(
+            interval,
+            async (d, signal) =>
+                this.fasta
+                    .getSequence(d.chrom, d.startPos, d.endPos, {
+                        signal,
+                    })
+                    .then((sequence) => ({
+                        chrom: d.chrom,
+                        start: d.startPos,
+                        sequence,
+                    }))
+        );
 
-        if (domain[1] - domain[0] > windowSize) {
-            return;
-        }
-
-        await this.initializedPromise;
-
-        const quantizedInterval = this.quantizeInterval(domain, windowSize);
-
-        if (this.checkAndUpdateLastInterval(quantizedInterval)) {
-            const discreteChromosomeIntervals =
-                this.genome.continuousToDiscreteChromosomeIntervals(
-                    quantizedInterval
-                );
-
-            this.#abortController.abort();
-            this.#abortController = new AbortController();
-            const signal = this.#abortController.signal;
-
-            try {
-                const sequencesWithChrom = await Promise.all(
-                    discreteChromosomeIntervals.map((d) =>
-                        this.fasta
-                            .getSequence(d.chrom, d.startPos, d.endPos, {
-                                signal,
-                            })
-                            .then((sequence) => ({
-                                chrom: d.chrom,
-                                start: d.startPos,
-                                sequence,
-                            }))
-                    )
-                );
-
-                this.publishData(sequencesWithChrom);
-            } catch (e) {
-                if (!signal.aborted) {
-                    // TODO: Nice reporting of errors
-                    throw e;
-                }
-            }
+        if (features) {
+            this.publishData([features]);
         }
     }
 }

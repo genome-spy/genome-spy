@@ -14,6 +14,6 @@ export default class AxisGenomeSource extends SingleAxisLazySource {
     }
 
     async load() {
-        this.publishData(this.genome.chromosomes);
+        this.publishData([this.genome.chromosomes]);
     }
 }

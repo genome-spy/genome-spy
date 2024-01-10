@@ -1,17 +1,13 @@
-import SingleAxisLazySource from "./singleAxisLazySource.js";
-import windowedMixin from "./windowedMixin.js";
-import { debounce } from "../../../utils/debounce.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
+import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 /**
  * @template T
  * @abstract
  */
-export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
-    #abortController = new AbortController();
-
+export default class TabixSource extends SingleAxisWindowedSource {
     /** @type {import("@gmod/tabix").TabixIndexedFile} */
-    tbiIndex;
+    #tbiIndex;
 
     /**
      * @param {import("../../../spec/data.js").TabixData} params
@@ -22,7 +18,8 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
         const paramsWithDefaults = {
             channel: "x",
             windowSize: 3_000_000,
-            debounceDomainChange: 200,
+            debounce: 200,
+            debounceMode: "domain",
             ...params,
         };
 
@@ -34,13 +31,7 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
             throw new Error("No URL provided for TabixSource");
         }
 
-        if (this.params.debounceDomainChange > 0) {
-            this.onDomainChanged = debounce(
-                this.onDomainChanged.bind(this),
-                this.params.debounceDomainChange,
-                false
-            );
-        }
+        this.setupDebouncing(this.params);
 
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
@@ -56,7 +47,7 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
 
-                this.tbiIndex = new TabixIndexedFile({
+                this.#tbiIndex = new TabixIndexedFile({
                     filehandle: withBase(this.params.url),
                     tbiFilehandle: withBase(
                         this.params.indexUrl ?? this.params.url + ".tbi"
@@ -71,82 +62,33 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
     /**
      * Listen to the domain change event and update data when the covered windows change.
      *
-     * @param {number[]} domain Linearized domain
-     */
-    async onDomainChanged(domain) {
-        const windowSize = this.params.windowSize;
-
-        if (domain[1] - domain[0] > windowSize) {
-            return;
-        }
-
-        const quantizedInterval = this.quantizeInterval(domain, windowSize);
-
-        if (this.checkAndUpdateLastInterval(quantizedInterval)) {
-            this.doRequest(quantizedInterval);
-        }
-    }
-
-    /**
-     * Listen to the domain change event and update data when the covered windows change.
-     *
      * @param {number[]} interval linearized domain
      */
-    async doRequest(interval) {
-        const features = await this.getFeatures(interval);
+    async loadInterval(interval) {
+        const featureChunks = await this.discretizeAndLoad(
+            interval,
+            async (discreteInterval, signal) => {
+                /** @type {string[]} */
+                const lines = [];
 
-        if (features) {
-            this.publishData(features);
-        }
-    }
+                await this.#tbiIndex.getLines(
+                    discreteInterval.chrom,
+                    discreteInterval.startPos,
+                    discreteInterval.endPos,
+                    {
+                        lineCallback: (line) => {
+                            lines.push(line);
+                        },
+                        signal,
+                    }
+                );
 
-    /**
-     *
-     * @param {number[]} interval
-     */
-    async getFeatures(interval) {
-        await this.initializedPromise;
-
-        // Doesn't abort the fetch requests. See: https://github.com/GMOD/tabix-js/issues/143
-        this.#abortController.abort();
-
-        this.#abortController = new AbortController();
-        const signal = this.#abortController.signal;
-
-        const discreteChromosomeIntervals =
-            this.genome.continuousToDiscreteChromosomeIntervals(interval);
-
-        try {
-            const featuresWithChrom = await Promise.all(
-                discreteChromosomeIntervals.map(async (d) => {
-                    /** @type {string[]} */
-                    const lines = [];
-
-                    await this.tbiIndex.getLines(
-                        d.chrom,
-                        d.startPos,
-                        d.endPos,
-                        {
-                            lineCallback: (line) => {
-                                lines.push(line);
-                            },
-                            signal,
-                        }
-                    );
-
-                    // Hmm. It's silly that we have to first collect individual lines and then join them.
-                    return this._parseFeatures(lines);
-                })
-            );
-
-            if (!signal.aborted) {
-                return featuresWithChrom.flat(); // TODO: Use batches, not flat
+                return this._parseFeatures(lines);
             }
-        } catch (e) {
-            if (!signal.aborted) {
-                // TODO: Nice reporting of errors
-                throw e;
-            }
+        );
+
+        if (featureChunks) {
+            this.publishData(featureChunks);
         }
     }
 
@@ -157,6 +99,7 @@ export default class TabixSource extends windowedMixin(SingleAxisLazySource) {
      * @returns {T[]}
      */
     _parseFeatures(lines) {
+        // Override me
         return [];
     }
 }
