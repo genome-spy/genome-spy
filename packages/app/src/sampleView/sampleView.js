@@ -537,6 +537,8 @@ export default class SampleView extends ContainerView {
      * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
      */
     render(context, coords, options = {}) {
+        super.render(context, coords, options);
+
         if (!this.isConfiguredVisible()) {
             return;
         }

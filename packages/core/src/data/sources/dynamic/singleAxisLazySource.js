@@ -103,6 +103,16 @@ export default class SingleAxisLazySource extends DataSource {
     }
 
     /**
+     * Sets the loading status of the data source. The status is shown in the UI.
+     *
+     * @param {boolean} status true if loading, false otherwise
+     * @protected
+     */
+    setLoadingStatus(status) {
+        this.view.context.setDataLoadingStatus(this.view, status);
+    }
+
+    /**
      * TODO: Get rid of this method.
      * Rendering should be requested by the collector.
      *

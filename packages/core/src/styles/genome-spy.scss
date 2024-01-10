@@ -18,10 +18,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
     .loading-message {
         position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        right: 0;
+        inset: 0;
         display: flex;
 
         align-items: center;
@@ -51,6 +48,45 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         @keyframes blinker {
             50% {
                 opacity: 0;
+            }
+        }
+    }
+
+    .loading-indicators {
+        position: absolute;
+        inset: 0;
+
+        user-select: none;
+        pointer-events: none;
+
+        div {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            > div {
+                font-size: 11px;
+                transition: opacity 0.2s;
+                background: white;
+                padding: 2px 5px;
+                display: flex;
+                border-radius: 3px;
+                gap: 0.5em;
+                opacity: 0;
+
+                &.loading {
+                    opacity: 0.5;
+                }
+
+                > * {
+                    display: block;
+                }
+
+                img {
+                    width: 1.5em;
+                    height: 1.5em;
+                }
             }
         }
     }

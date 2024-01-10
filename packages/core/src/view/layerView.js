@@ -77,6 +77,8 @@ export default class LayerView extends ContainerView {
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
+        super.render(context, coords, options);
+
         if (!this.isConfiguredVisible()) {
             return;
         }

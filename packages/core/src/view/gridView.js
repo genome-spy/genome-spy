@@ -436,6 +436,8 @@ export default class GridView extends ContainerView {
      */
     // eslint-disable-next-line complexity
     render(context, coords, options = {}) {
+        super.render(context, coords, options);
+
         if (!this.isConfiguredVisible()) {
             return;
         }

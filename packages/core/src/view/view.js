@@ -75,6 +75,13 @@ export default class View {
     opacityFunction = defaultOpacityFunction;
 
     /**
+     * Not nice! Inconsistent when faceting!
+     * TODO: Something. Maybe store only width/height
+     * @type {import("./layout/rectangle.js").default}
+     */
+    coords;
+
+    /**
      *
      * @param {import("../spec/view.js").ViewSpec} spec
      * @param {import("../types/viewContext.js").default} context
@@ -462,6 +469,10 @@ export default class View {
      * @type {import("../types/rendering.js").RenderMethod}
      */
     render(context, coords, options = {}) {
+        this.coords = options.clipRect
+            ? coords.intersect(options.clipRect)
+            : coords;
+
         // override
     }
 

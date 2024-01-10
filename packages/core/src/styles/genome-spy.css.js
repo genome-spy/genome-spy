@@ -9,10 +9,7 @@ const css = `.genome-spy {
 }
 .genome-spy .loading-message {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -36,6 +33,38 @@ const css = `.genome-spy {
   50% {
     opacity: 0;
   }
+}
+.genome-spy .loading-indicators {
+  position: absolute;
+  inset: 0;
+  user-select: none;
+  pointer-events: none;
+}
+.genome-spy .loading-indicators div {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.genome-spy .loading-indicators div > div {
+  font-size: 11px;
+  transition: opacity 0.2s;
+  background: white;
+  padding: 2px 5px;
+  display: flex;
+  border-radius: 3px;
+  gap: 0.5em;
+  opacity: 0;
+}
+.genome-spy .loading-indicators div > div.loading {
+  opacity: 0.5;
+}
+.genome-spy .loading-indicators div > div > * {
+  display: block;
+}
+.genome-spy .loading-indicators div > div img {
+  width: 1.5em;
+  height: 1.5em;
 }
 .genome-spy .tooltip {
   position: absolute;

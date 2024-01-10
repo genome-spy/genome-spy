@@ -65,13 +65,6 @@ export default class UnitView extends ContainerView {
 
         this.resolve();
 
-        /**
-         * Not nice! Inconsistent when faceting!
-         * TODO: Something. Maybe store only width/height
-         * @type {import("./layout/rectangle.js").default}
-         */
-        this.coords = undefined;
-
         this.needsAxes = { x: true, y: true };
     }
 
@@ -81,11 +74,11 @@ export default class UnitView extends ContainerView {
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     render(context, coords, options = {}) {
+        super.render(context, coords, options);
+
         if (!this.isConfiguredVisible()) {
             return;
         }
-
-        this.coords = coords;
 
         context.pushView(this, coords);
         context.renderMark(this.mark, options);

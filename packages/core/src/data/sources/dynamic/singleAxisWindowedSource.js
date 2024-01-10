@@ -87,6 +87,8 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
         // Abort previous requests
         this.#abortController.abort();
 
+        this.setLoadingStatus(true);
+
         this.#abortController = new AbortController();
         const signal = this.#abortController.signal;
 
@@ -103,11 +105,13 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
             );
 
             if (!signal.aborted) {
+                this.setLoadingStatus(false);
                 return resultByChrom;
             }
         } catch (e) {
             if (!signal.aborted) {
                 // TODO: Nice reporting of errors
+                this.setLoadingStatus(false);
                 throw e;
             }
         }

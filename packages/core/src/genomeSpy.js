@@ -1,4 +1,7 @@
 import { formats as vegaFormats } from "vega-loader";
+import { html, render } from "lit-html";
+import { styleMap } from "lit/directives/style-map.js";
+import SPINNER from "./img/90-ring-with-bg.svg";
 
 import css from "./styles/genome-spy.css.js";
 import Tooltip from "./utils/ui/tooltip.js";
@@ -134,6 +137,13 @@ export default class GenomeSpy {
         this.viewRoot = undefined;
 
         this._paramBroker = new ParamBroker();
+
+        /**
+         * Views that are currently loading data using lazy sources.
+         *
+         * @type {Map<View, boolean>}
+         */
+        this._loadingViews = new Map();
     }
 
     /**
@@ -188,6 +198,53 @@ export default class GenomeSpy {
             ?.forEach((listener) => listener(message));
     }
 
+    /**
+     * Draw some layers on top of the canvas. It's easier to do fancy spinning
+     * animations with html elements than with WebGL.
+     */
+    _updateLoadingIndicators() {
+        /** @type {import("lit-html").TemplateResult[]} */
+        const indicators = [];
+
+        const isSomethingVisible = () =>
+            [...this._loadingViews.values()].some((v) => v);
+
+        for (const [view, status] of this._loadingViews) {
+            const c = view.coords;
+            if (c) {
+                const style = {
+                    left: `${c.x}px`,
+                    top: `${c.y}px`,
+                    width: `${c.width}px`,
+                    height: `${c.height}px`,
+                };
+                indicators.push(
+                    html`<div style=${styleMap(style)}>
+                        <div class=${status ? "loading" : ""}>
+                            <img src="${SPINNER}" alt="" />
+                            <span>Loading...</span>
+                        </div>
+                    </div>`
+                );
+            }
+        }
+
+        // Do some hacks to stop css animations of the loading indicators.
+        // Otherwise they fire animation frames even when their opacity is zero.
+        if (isSomethingVisible()) {
+            this.loadingIndicatorsElement.style.display = "block";
+        } else {
+            // TODO: Clear previous timeout
+            setTimeout(() => {
+                if (!isSomethingVisible()) {
+                    this.loadingIndicatorsElement.style.display = "none";
+                }
+            }, 3000);
+        }
+
+        render(indicators, this.loadingIndicatorsElement);
+    }
+
     _prepareContainer() {
         this.container.classList.add("genome-spy");
         this.container.classList.add("loading");
@@ -239,10 +296,19 @@ export default class GenomeSpy {
             this._destructionCallbacks.push(remove);
         }
 
+        // The initial loading message that is shown until the first frame is rendered
         this.loadingMessageElement = document.createElement("div");
         this.loadingMessageElement.className = "loading-message";
         this.loadingMessageElement.innerHTML = `<div class="message">Loading<span class="ellipsis">...</span></div>`;
         this.container.appendChild(this.loadingMessageElement);
+
+        // A container for loading indicators (for lazy data sources.)
+        // These could alternatively be included in the view hierarchy,
+        // but it's easier this way – particularly if we want to show
+        // some fancy animated spinners.
+        this.loadingIndicatorsElement = document.createElement("div");
+        this.loadingIndicatorsElement.className = "loading-indicators";
+        this.container.appendChild(this.loadingIndicatorsElement);
 
         this.tooltip = new Tooltip(this.container);
 
@@ -309,6 +375,11 @@ export default class GenomeSpy {
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () => this._currentHover,
+
+            setDataLoadingStatus: (view, status) => {
+                this._loadingViews.set(view, status);
+                this._updateLoadingIndicators();
+            },
 
             addKeyboardListener: (type, listener) => {
                 // TODO: Listeners should be called only when the mouse pointer is inside the

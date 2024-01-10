@@ -71,6 +71,15 @@ export default interface ViewContext {
     getNamedDataFromProvider: (name: string) => any[];
 
     /**
+     * Allows lazy data sources to signal that they are loading data.
+     * The status is shown in the UI somewhere within or near the view.
+     *
+     * @param view The view where the data source is located.
+     * @param status true if loading, false if not loading.
+     */
+    setDataLoadingStatus: (view: View, status: boolean) => void;
+
+    /**
      * Returns true if the view is configured to be visible.
      * N.B. This does NOT consider ancestors' visibility.
      */
