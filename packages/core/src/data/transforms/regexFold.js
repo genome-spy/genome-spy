@@ -48,6 +48,14 @@ export default class RegexFoldTransform extends FlowNode {
         const detectColumns = (datum) => {
             const colNames = /** @type {string[]} */ (Object.keys(datum));
 
+            for (const re of columnRegex) {
+                if (!colNames.some((colName) => re.test(colName))) {
+                    throw new Error(
+                        `No columns matching the regex ${re.toString()} found in the data!`
+                    );
+                }
+            }
+
             /** @type {Map<string, string[]>} */
             const sampleColMap = new Map();
 

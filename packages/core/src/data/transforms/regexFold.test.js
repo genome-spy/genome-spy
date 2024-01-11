@@ -157,4 +157,32 @@ describe("RegexFold", () => {
             },
         ]);
     });
+
+    test("Throws error if no columns match the regex", () => {
+        const sampleData = [
+            {
+                row: 1,
+                sample1_a: "r1s1a",
+                sample2_a: "r1s2a",
+            },
+            {
+                row: 2,
+                sample1_a: "r2s1a",
+                sample2_a: "r2s2a",
+            },
+        ];
+
+        /** @type { import("../../spec/transform.js").RegexFoldParams } */
+        const singleGatherConfig = {
+            type: "regexFold",
+            columnRegex: "^(.*)_c$",
+            asValue: "a",
+        };
+
+        expect(() =>
+            processData(new RegexFoldTransform(singleGatherConfig), sampleData)
+        ).toThrowError(
+            "No columns matching the regex /^(.*)_c$/ found in the data!"
+        );
+    });
 });
