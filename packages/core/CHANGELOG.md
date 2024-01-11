@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.42.0](https://github.com/genome-spy/genome-spy/compare/v0.41.0...v0.42.0) (2024-01-11)
+
+
+### Bug Fixes
+
+* **core:** disable binned vertex indexing if data are unordered ([3309919](https://github.com/genome-spy/genome-spy/commit/33099191392c0d90827cf1a6d76de0635798d40e)), closes [#142](https://github.com/genome-spy/genome-spy/issues/142)
+* **core:** observe `devicePixelRatio` and rerender when it changes ([3df60cd](https://github.com/genome-spy/genome-spy/commit/3df60cda67e3b632579c7b84032673d9a5e61a7f)), closes [#208](https://github.com/genome-spy/genome-spy/issues/208)
+
+
+### Features
+
+* **core:** add better debouncing configuration to lazy data sources ([57dcba9](https://github.com/genome-spy/genome-spy/commit/57dcba996060f49f3f706cf190fe83ad9979797f)), closes [#204](https://github.com/genome-spy/genome-spy/issues/204)
+* **core:** throw an error if regex in `regexFold` transform does not match any column ([ef7bee7](https://github.com/genome-spy/genome-spy/commit/ef7bee7ba48ac2d13712d496fde589d3d12b9e42))
+* **core:** visual indicator for lazy-loading status ([cb59657](https://github.com/genome-spy/genome-spy/commit/cb596574d1283f056625f73c4d30e715b84bc703)), closes [#157](https://github.com/genome-spy/genome-spy/issues/157)
+
+
+### Performance Improvements
+
+* **core:** remove unnecessary `bindVertexArray` call in `"link"` mark ([b6b71f3](https://github.com/genome-spy/genome-spy/commit/b6b71f3815120ab518ea5f5b653d661266d4517d))
+* **core:** use `ext.drawArraysInstancedBaseInstanceWEBGL` in `"link"` mark ([1de9e18](https://github.com/genome-spy/genome-spy/commit/1de9e1844a0bc23117f4ed82e781618f5a4deb1c)), closes [#214](https://github.com/genome-spy/genome-spy/issues/214)
+
+
+
+
+
 # [0.41.0](https://github.com/genome-spy/genome-spy/compare/v0.40.0...v0.41.0) (2023-12-20)
 
 
