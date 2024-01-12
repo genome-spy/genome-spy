@@ -101,6 +101,8 @@ export function createEncoder(channelDef, scale, accessor, channel) {
             if (isDiscrete(scale.type)) {
                 // TODO: pass the found values back to the scale/resolution
                 const indexer = createIndexer();
+                // Warning: There's a chance that the domain and indexer get out of sync.
+                // TODO: Make this more robust
                 indexer.addAll(scale.domain());
                 encoder.indexer = indexer;
             }
@@ -195,6 +197,14 @@ export function getChannelDefWithScale(view, channel) {
     } else {
         throw new Error("Not a channel def with scale!");
     }
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").TypeMixins<import("../spec/channel.js").Type>}
+ */
+export function isChannelDefWithType(channelDef) {
+    return channelDef && "type" in channelDef;
 }
 
 /**

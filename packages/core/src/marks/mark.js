@@ -14,6 +14,7 @@ import createEncoders, {
     isChannelDefWithScale,
     isChannelWithScale,
     isDatumDef,
+    isFieldDef,
     isValueDef,
 } from "../encoder/encoder.js";
 import {
@@ -25,6 +26,7 @@ import {
     isHighPrecisionScale,
     toHighPrecisionDomainUniform,
     splitHighPrecision,
+    dedupeEncodingFields,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -316,6 +318,7 @@ export default class Mark {
      * @param {string} vertexShader
      * @param {string} fragmentShader
      * @param {string[]} [extraHeaders]
+     * @protected
      */
     createAndLinkShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const attributes = this.getAttributes();
@@ -329,6 +332,15 @@ export default class Mark {
 
         /** @type {string[]} */
         let scaleCode = [];
+
+        /**
+         * Attribute definitions. Using set to prevent duplicates caused by
+         * multiple channels using the same shared quantitative field.
+         * @type {Set<string>}
+         */
+        const attributeCode = new Set();
+
+        const dedupedEncodingFields = dedupeEncodingFields(this.encoders);
 
         const sampleFacetMode = this.getSampleFacetMode();
         if (sampleFacetMode) {
@@ -364,11 +376,27 @@ export default class Mark {
                           .getScale()
                     : scaleNull();
 
-                const generated = generateScaleGlsl(channel, scale, channelDef);
+                // Channels that share the same quantitative field
+                // TODO: It should be ok to share a categorical field if the channels
+                // share the same scale, e.g., primary and secondary positional channels
+                const sharedChannels =
+                    isFieldDef(channelDef) && !isDiscrete(scale.type)
+                        ? dedupedEncodingFields.get([channelDef.field, true])
+                        : [channel];
+
+                const generated = generateScaleGlsl(
+                    channel,
+                    scale,
+                    channelDef,
+                    sharedChannels
+                );
 
                 scaleCode.push(generated.glsl);
                 if (generated.domainUniform) {
                     this.domainUniforms.push(generated.domainUniform);
+                }
+                if (generated.attributeGlsl) {
+                    attributeCode.add(generated.attributeGlsl);
                 }
             }
         }
@@ -388,6 +416,7 @@ export default class Mark {
             GLSL_COMMON,
             GLSL_SCALES,
             domainUniformBlock,
+            [...attributeCode].join("\n"),
             ...scaleCode,
             GLSL_SAMPLE_FACET,
             GLSL_PICKING_VERTEX,

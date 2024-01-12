@@ -14,8 +14,10 @@ import {
     isDiscreteChannel,
     getPrimaryChannel,
     isValueDef,
+    isFieldDef,
 } from "../encoder/encoder.js";
-import { peek } from "../utils/arrayUtils.js";
+import { asArray, peek } from "../utils/arrayUtils.js";
+import { InternMap } from "internmap";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
@@ -95,9 +97,15 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  * @param {Channel} channel
  * @param {any} scale TODO: typing
  * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @param {Channel[]} [sharedQuantitativeChannels] Channels that share the same quantitative field
  */
 // eslint-disable-next-line complexity
-export function generateScaleGlsl(channel, scale, channelDef) {
+export function generateScaleGlsl(
+    channel,
+    scale,
+    channelDef,
+    sharedQuantitativeChannels = [channel]
+) {
     if (isValueDef(channelDef)) {
         throw new Error(
             `Cannot create scale for "value": ${JSON.stringify(channelDef)}`
@@ -109,7 +117,8 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     }
 
     const primary = getPrimaryChannel(channel);
-    const attributeName = ATTRIBUTE_PREFIX + channel;
+    const attributeName =
+        ATTRIBUTE_PREFIX + makeAttributeName(sharedQuantitativeChannels);
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeName = RANGE_PREFIX + primary;
 
@@ -270,11 +279,9 @@ export function generateScaleGlsl(channel, scale, channelDef) {
         interpolate = `getDiscreteColor(${textureUniformName}, int(transformed)).r`;
     }
 
-    if (isDatumDef(channelDef)) {
-        glsl.push(`uniform highp ${attributeType} ${attributeName};`);
-    } else {
-        glsl.push(`in highp ${attributeType} ${attributeName};`);
-    }
+    const attributeGlsl = isDatumDef(channelDef)
+        ? `uniform highp ${attributeType} ${attributeName};`
+        : `in highp ${attributeType} ${attributeName};`;
 
     /** @type {string[]} Channel's scale function*/
     const scaleBody = [];
@@ -361,6 +368,7 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
     }
 
     return {
+        attributeGlsl,
         glsl: concatenated,
         domainUniform,
     };
@@ -503,4 +511,47 @@ function exactSplitHighPrecision(x) {
  */
 export function toHighPrecisionDomainUniform(domain) {
     return [...exactSplitHighPrecision(domain[0]), domain[1] - domain[0]];
+}
+
+/**
+ * @typedef {[string, boolean]} FieldKey Tuple: [channel, isQuantitative]]
+ */
+
+/**
+ * Finds duplicated quantitative fields in the encoding block.
+ * They need to be uploaded to the GPU only once.
+ *
+ * @param {Partial<Record<import("../spec/channel.js").Channel, import("../types/encoder.js").Encoder>>} encoders
+ */
+export function dedupeEncodingFields(encoders) {
+    /**
+     * Value: an array of channels
+     * @type {InternMap<FieldKey, import("../spec/channel.js").Channel[]>}
+     */
+    const deduped = new InternMap([], JSON.stringify);
+
+    for (const [channel, encoder] of Object.entries(encoders)) {
+        const channelDef = encoder.channelDef;
+        if (isFieldDef(channelDef)) {
+            const field = channelDef.field;
+
+            /** @type {[string, boolean]} */
+            const key = [
+                field,
+                encoder.scale
+                    ? isContinuous(encoder.scale.type) ?? false
+                    : false,
+            ];
+
+            deduped.set(key, [...(deduped.get(key) ?? []), channel]);
+        }
+    }
+    return deduped;
+}
+
+/**
+ * @param {import("../spec/channel.js").Channel | import("../spec/channel.js").Channel[]} channel
+ */
+export function makeAttributeName(channel) {
+    return asArray(channel).join("_");
 }

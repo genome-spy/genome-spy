@@ -6,7 +6,9 @@ import { SDF_PADDING } from "../fonts/bmFontMetrics.js";
 import { createBinningRangeIndexer } from "../utils/binnedIndex.js";
 import { isValueDef } from "../encoder/encoder.js";
 import {
+    dedupeEncodingFields,
     isHighPrecisionScale,
+    makeAttributeName,
     splitHighPrecision,
 } from "./glslScaleGenerator.js";
 import { isContinuous } from "vega-scale";
@@ -41,6 +43,12 @@ export class GeometryBuilder {
             )
         );
 
+        const dedupedEncodingFields = [
+            ...dedupeEncodingFields(encoders).entries(),
+        ]
+            .filter(([key, channels]) => key[1] && channels.length > 1)
+            .map(([_key, channels]) => channels);
+
         this.allocatedVertices = numVertices;
 
         this.variableBuilder = new ArrayBuilder(numVertices);
@@ -49,6 +57,16 @@ export class GeometryBuilder {
         // TODO: If more than one channels use the same field with the same data type, convert the field only once.
 
         for (const [channel, ce] of Object.entries(this.variableEncoders)) {
+            // Only add the first of the shared channels as all the rest are same
+            // For example, if both x and x2 are using the same field, only x is
+            // added to the array builder with the name "x_x2".
+            const sharedChannels = dedupedEncodingFields.find((channels) =>
+                channels.find((c) => c == channel)
+            );
+            if (sharedChannels && channel != sharedChannels[0]) {
+                continue;
+            }
+
             const accessor = ce.accessor;
 
             const doubleArray = [0, 0];
@@ -69,7 +87,11 @@ export class GeometryBuilder {
                 ? (d) => splitHighPrecision(accessor(d), doubleArray)
                 : accessor;
 
-            this.variableBuilder.addConverter(channel, {
+            const attributeName = sharedChannels
+                ? makeAttributeName(sharedChannels)
+                : channel;
+
+            this.variableBuilder.addConverter(attributeName, {
                 f,
                 numComponents: hp ? 2 : 1,
                 arrayReference: hp ? doubleArray : undefined,

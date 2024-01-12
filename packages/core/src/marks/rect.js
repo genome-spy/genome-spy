@@ -179,7 +179,6 @@ export default class RectMark extends Mark {
         const collector = this.unitView.getCollector();
         const numItems = collector.getItemCount();
 
-        // TODO: Disable tessellation on SimpleTrack - no need for it
         const builder = new RectVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
