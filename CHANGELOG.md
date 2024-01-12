@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.42.1](https://github.com/genome-spy/genome-spy/compare/v0.42.0...v0.42.1) (2024-01-12)
+
+
+### Performance Improvements
+
+* **core:** add caching to indexer (of categorical values) ([6e0734c](https://github.com/genome-spy/genome-spy/commit/6e0734c498e373c3bb762c7061ec262278a455aa))
+* **core:** deduplicate vertex buffers that share the same quantitative field ([118196d](https://github.com/genome-spy/genome-spy/commit/118196d9b9d055092ad675b9167e35125636fb90))
+* **core:** use `gl_VertexID` to calculate rect corners ([26cdf4b](https://github.com/genome-spy/genome-spy/commit/26cdf4b98e76ef389e97842f997de5d5bcffdaaf))
+
+
+
+
+
 # [0.42.0](https://github.com/genome-spy/genome-spy/compare/v0.41.0...v0.42.0) (2024-01-11)
 
 
