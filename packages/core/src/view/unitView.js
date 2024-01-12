@@ -1,5 +1,5 @@
-import RectMark from "../marks/rectMark.js";
-import PointMark from "../marks/pointMark.js";
+import RectMark from "../marks/rect.js";
+import PointMark from "../marks/point.js";
 import RuleMark from "../marks/rule.js";
 import LinkMark from "../marks/link.js";
 import TextMark from "../marks/text.js";

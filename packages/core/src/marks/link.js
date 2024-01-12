@@ -1,6 +1,6 @@
 import { setBuffersAndAttributes } from "twgl.js";
-import VERTEX_SHADER from "../gl/link.vertex.glsl";
-import FRAGMENT_SHADER from "../gl/link.fragment.glsl";
+import VERTEX_SHADER from "./link.vertex.glsl";
+import FRAGMENT_SHADER from "./link.fragment.glsl";
 import { LinkVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";

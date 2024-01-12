@@ -3,7 +3,7 @@ import { range } from "d3-array";
 import { scheme as vegaScheme, interpolateColors } from "vega-scale";
 import { isString, isArray, isFunction } from "vega-util";
 import { peek } from "../utils/arrayUtils.js";
-import { createOrUpdateTexture } from "../gl/webGLHelper.js";
+import { createOrUpdateTexture } from "./webGLHelper.js";
 
 /**
  * @param {string | import("../spec/scale.js").SchemeParams} schemeParams

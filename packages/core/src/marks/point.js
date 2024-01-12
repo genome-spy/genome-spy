@@ -5,9 +5,9 @@ import {
 } from "twgl.js";
 import { quantileSorted } from "d3-array";
 import { PointVertexBuilder } from "../gl/dataToVertices.js";
-import VERTEX_SHADER from "../gl/point.vertex.glsl";
-import FRAGMENT_SHADER from "../gl/point.fragment.glsl";
-import COMMON_SHADER from "../gl/point.common.glsl";
+import VERTEX_SHADER from "./point.vertex.glsl";
+import FRAGMENT_SHADER from "./point.fragment.glsl";
+import COMMON_SHADER from "./point.common.glsl";
 
 import Mark from "./mark.js";
 import { sampleIterable } from "../data/transforms/sample.js";

@@ -8,7 +8,7 @@ import { isValueDef } from "../encoder/encoder.js";
 import {
     isHighPrecisionScale,
     splitHighPrecision,
-} from "../scale/glslScaleGenerator.js";
+} from "./glslScaleGenerator.js";
 import { isContinuous } from "vega-scale";
 
 /**

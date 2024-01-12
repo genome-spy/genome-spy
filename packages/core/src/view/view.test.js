@@ -4,7 +4,7 @@ import UnitView from "./unitView.js";
 import { create, createAndInitialize } from "./testUtils.js";
 import { toRegularArray as r } from "../utils/domainArray.js";
 import ConcatView from "./concatView.js";
-import PointMark from "../marks/pointMark.js";
+import PointMark from "../marks/point.js";
 import View from "./view.js";
 import LayerView from "./layerView.js";
 

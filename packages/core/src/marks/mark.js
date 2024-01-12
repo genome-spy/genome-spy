@@ -25,7 +25,7 @@ import {
     isHighPrecisionScale,
     toHighPrecisionDomainUniform,
     splitHighPrecision,
-} from "../scale/glslScaleGenerator.js";
+} from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
 import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";

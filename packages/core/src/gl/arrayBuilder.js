@@ -1,5 +1,5 @@
 import { isNumber } from "vega-util";
-import { ATTRIBUTE_PREFIX } from "../scale/glslScaleGenerator.js";
+import { ATTRIBUTE_PREFIX } from "./glslScaleGenerator.js";
 
 /**
  * @typedef {Object} ConverterMetadata

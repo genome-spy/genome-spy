@@ -20,7 +20,7 @@ import {
     createDiscreteTexture,
     createInterpolatedColorTexture,
     createSchemeTexture,
-} from "../scale/colorUtils.js";
+} from "./colorUtils.js";
 import {
     getDiscreteRangeMapper,
     isColorChannel,
