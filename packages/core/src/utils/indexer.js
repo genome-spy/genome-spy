@@ -8,16 +8,25 @@
 export default function createIndexer() {
     let counter = 0;
 
+    /** @type {any} */
+    let previousValue;
+    let index = 0;
+
     /** @type {Map<T, number>} */
     const values = new Map();
 
     /** @param {T} value */
     const indexer = (value) => {
-        let index = values.get(value);
+        if (value === previousValue) {
+            return index;
+        }
+
+        index = values.get(value);
         if (index === undefined) {
             index = counter++;
             values.set(value, index);
         }
+        previousValue = value;
         return index;
     };
 

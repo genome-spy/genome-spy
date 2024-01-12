@@ -8,6 +8,8 @@ test("Index values one by one", () => {
     expect(indexer("b")).toEqual(1);
     expect(indexer("c")).toEqual(2);
     expect(indexer("a")).toEqual(0);
+    expect(indexer("a")).toEqual(0);
+    expect(indexer("c")).toEqual(2);
     expect(indexer("c")).toEqual(2);
 });
 
