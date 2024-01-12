@@ -238,9 +238,8 @@ export class RectVertexBuilder extends GeometryBuilder {
 
         this.visibleRange = visibleRange;
 
-        this.tessellationThreshold = tessellationThreshold || Infinity;
-
-        this.updateFrac = this.variableBuilder.createUpdater("frac", 2);
+        // Tessellation is unavailable for now
+        //this.tessellationThreshold = tessellationThreshold || Infinity;
     }
 
     /**
@@ -269,9 +268,6 @@ export class RectVertexBuilder extends GeometryBuilder {
 
         this.prepareXIndexer(data, lo, hi);
 
-        const frac = [0, 0];
-        this.updateFrac(frac);
-
         for (let i = lo; i < hi; i++) {
             const d = data[i];
 
@@ -294,28 +290,15 @@ export class RectVertexBuilder extends GeometryBuilder {
             // Start a new segment.
             this.variableBuilder.updateFromDatum(d);
 
-            frac[0] = 0;
-            frac[1] = 0;
-
-            // Tessellate segments
-            const tileCount = 1;
-            //    width < Infinity
-            //        ? Math.ceil(width / this.tessellationThreshold)
-            //        : 1;
-
-            // Duplicate the first vertex to produce degenerate triangles
+            // Six vertices per rect. The vertex shader is using gl_VertexID to
+            // determine the vertex position within the rect.
+            this.variableBuilder.pushAll();
+            this.variableBuilder.pushAll();
+            this.variableBuilder.pushAll();
+            this.variableBuilder.pushAll();
+            this.variableBuilder.pushAll();
             this.variableBuilder.pushAll();
 
-            for (let i = 0; i <= tileCount; i++) {
-                frac[0] = i / tileCount;
-                frac[1] = 0;
-                this.variableBuilder.pushAll();
-                frac[1] = 1;
-                this.variableBuilder.pushAll();
-            }
-
-            // Duplicate the last vertex to produce a degenerate triangle between the segments
-            this.variableBuilder.pushAll();
             this.addToXIndex(d);
         }
 

@@ -12,14 +12,6 @@ uniform Mark {
     uniform float uCornerRadiusBottomLeft;
 };
 
-/**
- * The vertex position wrt the rectangle specified by (x, x2, y, y2).
- * [0, 0] = [x, y], [1, 1] = [x2, y2]. 
- * The x or y component may contain fractional values if the rectangle 
- * have been tessellated.
- */
-in vec2 frac;
-
 out lowp vec4 vFillColor;
 out lowp vec4 vStrokeColor;
 out float vHalfStrokeWidth;
@@ -53,7 +45,24 @@ void sort(inout float a, inout float b) {
     }
 }
 
+/**
+ * The vertex position wrt the rectangle specified by (x, x2, y, y2).
+ * [0, 0] = [x, y], [1, 1] = [x2, y2]. 
+ * The x or y component may contain fractional values if the rectangle 
+ * have been tessellated.
+ */
+vec2 getVertexPos() {
+    int index = gl_VertexID % 6;
+    return vec2(
+        index == 0 || index == 1 || index == 3 ? 0.0 : 1.0,
+        index == 0 || index == 1 || index == 2 ? 0.0 : 1.0
+    );
+    
+}
+
 void main(void) {
+    vec2 frac = getVertexPos();
+
     vec2 normalizedMinSize = vec2(uMinWidth, uMinHeight) / uViewportSize;
     vec4 cornerRadii = vec4(
         uCornerRadiusTopRight,
