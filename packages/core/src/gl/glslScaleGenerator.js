@@ -539,7 +539,9 @@ export function dedupeEncodingFields(encoders) {
             const key = [
                 field,
                 encoder.scale
-                    ? isContinuous(encoder.scale.type) ?? false
+                    ? (isContinuous(encoder.scale.type) ||
+                          isDiscretizing(encoder.scale.type)) ??
+                      false
                     : false,
             ];
 

@@ -379,10 +379,9 @@ export default class Mark {
                 // Channels that share the same quantitative field
                 // TODO: It should be ok to share a categorical field if the channels
                 // share the same scale, e.g., primary and secondary positional channels
-                const sharedChannels =
-                    isFieldDef(channelDef) && !isDiscrete(scale.type)
-                        ? dedupedEncodingFields.get([channelDef.field, true])
-                        : [channel];
+                const sharedChannels = isFieldDef(channelDef)
+                    ? dedupedEncodingFields.get([channelDef.field, true])
+                    : [channel];
 
                 const generated = generateScaleGlsl(
                     channel,
