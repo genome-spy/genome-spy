@@ -217,29 +217,14 @@ export class RectVertexBuilder extends GeometryBuilder {
      * @param {Object} object
      * @param {Record<string, Encoder>} object.encoders
      * @param {string[]} object.attributes
-     * @param {number} [object.tessellationThreshold]
-     *     If the rect is wider than the threshold, tessellate it into pieces
-     * @param {number[]} [object.visibleRange]
      * @param {number} [object.numItems] Number of data items
      */
-    constructor({
-        encoders,
-        attributes,
-        tessellationThreshold = Infinity,
-        visibleRange = [-Infinity, Infinity],
-        numItems,
-    }) {
+    constructor({ encoders, attributes, numItems }) {
         super({
             encoders,
             attributes,
-            numVertices:
-                tessellationThreshold == Infinity ? numItems * 6 : undefined,
+            numVertices: numItems * 6,
         });
-
-        this.visibleRange = visibleRange;
-
-        // Tessellation is unavailable for now
-        //this.tessellationThreshold = tessellationThreshold || Infinity;
     }
 
     /**
@@ -252,40 +237,10 @@ export class RectVertexBuilder extends GeometryBuilder {
             return;
         }
 
-        const e =
-            /** @type {Object.<string, import("../types/encoder.js").NumberEncoder>} */ (
-                this.encoders
-            );
-        const [lower, upper] = this.visibleRange;
-
-        /**
-         * @param {import("../types/encoder.js").Encoder} encoder
-         */
-        const a = (encoder) => encoder.accessor || ((x) => 0);
-
-        const xAccessor = a(e.x);
-        const x2Accessor = a(e.x2);
-
         this.prepareXIndexer(data, lo, hi);
 
         for (let i = lo; i < hi; i++) {
             const d = data[i];
-
-            let x = xAccessor(d),
-                x2 = x2Accessor(d);
-
-            if (x > x2) {
-                [x, x2] = [x2, x];
-            }
-
-            // Skip rects that fall outside the visible range. TODO: Optimize by using binary search / interval tree
-            if (x2 < lower || x > upper) {
-                continue;
-            }
-
-            // Truncate to prevent tessellation of parts that are outside the viewport
-            if (x < lower) x = lower;
-            if (x2 > upper) x2 = upper;
 
             // Start a new segment.
             this.variableBuilder.updateFromDatum(d);
