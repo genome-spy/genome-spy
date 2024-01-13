@@ -54,8 +54,6 @@ export class GeometryBuilder {
         this.variableBuilder = new ArrayBuilder(numVertices);
 
         // Create converters and updaters for all variable channels.
-        // TODO: If more than one channels use the same field with the same data type, convert the field only once.
-
         for (const [channel, ce] of Object.entries(this.variableEncoders)) {
             // Only add the first of the shared channels as all the rest are same
             // For example, if both x and x2 are using the same field, only x is
