@@ -87,8 +87,12 @@ export default class Collector extends FlowNode {
             const accessors = this.params.groupby.map((fieldName) =>
                 field(fieldName)
             );
-            // @ts-ignore
-            const groups = group(this._data, ...accessors);
+            const groups =
+                accessors.length > 1
+                    ? // @ts-ignore
+                      group(this._data, ...accessors)
+                    : // D3's group is SLOW!
+                      groupBy(this._data, accessors[0]);
 
             this.facetBatches.clear();
             for (const [key, data] of iterateNestedMaps(groups)) {
@@ -181,4 +185,26 @@ export default class Collector extends FlowNode {
             );
         }
     }
+}
+
+/**
+ * Like D3's group but without InternMap, which is slow.
+ * TODO: Implement multi-level grouping
+ *
+ * @param {import("./flowNode.js").Datum[]} data
+ * @param {(data: import("./flowNode.js").Datum) => import("../spec/channel.js").Scalar} accessor
+ */
+function groupBy(data, accessor) {
+    const groups = new Map();
+    for (let i = 0, n = data.length; i < n; i++) {
+        const datum = data[i];
+        const key = accessor(datum);
+        let group = groups.get(key);
+        if (!group) {
+            group = [];
+            groups.set(key, group);
+        }
+        group.push(datum);
+    }
+    return groups;
 }
