@@ -1,6 +1,12 @@
 import { isNumber } from "vega-util";
 import { ATTRIBUTE_PREFIX } from "./glslScaleGenerator.js";
 
+/** Unrolling appears to give a 20% performance boost on Chrome but compiling the
+ * dynamically generated code takes time and is thus not great for small dynamic data.
+ * Unrolling probably allows the JS engine to inline pusher calls.
+ */
+const UNROLL_LIMIT = 10000;
+
 /**
  * @typedef {Object} ConverterMetadata
  *      A function that extracts a raw attribute from a datum (optionally) converts
@@ -135,37 +141,22 @@ export default class ArrayBuilder {
         return updater;
     }
 
-    _unrollPushAll() {
-        let preps = "";
-        let pushs = "";
-
-        for (let i = 0; i < this.pushers.length; i++) {
-            preps += `const p${i} = that.pushers[${i}];\n`;
-            pushs += `p${i}();\n`;
-        }
-
-        // eslint-disable-next-line no-new-func
-        const createUnrolled = new Function(
-            "that",
-            `${preps}
-
-            return function unrolledPushAll() {
-                ${pushs}
-                that.vertexCount++;
-            };
-        `
-        );
-
-        this.pushAll = createUnrolled(this);
-    }
-
     pushAll() {
-        // Unrolling appears to give a 20% performance boost on Chrome but compiling the
-        // dynamically generated code takes time and is thus not great for small dynamic data.
-        // Unrolling probably allows the JS engine to inline pusher calls.
-        const unroll = this.size > 100000;
-        if (unroll) {
-            this._unrollPushAll();
+        if (this.size > UNROLL_LIMIT) {
+            const preps = this.pushers
+                .map((_v, i) => `const p${i} = that.pushers[${i}];`)
+                .join("\n");
+            const pushs = this.pushers.map((_v, i) => `  p${i}();`).join("\n");
+
+            // eslint-disable-next-line no-new-func
+            this.pushAll = new Function(
+                "that",
+                `${preps}
+return function unrolledPushAll() {
+${pushs}
+  that.vertexCount++;
+};`
+            )(this);
         } else {
             this.pushAll = () => {
                 for (let i = 0; i < this.pushers.length; i++) {
@@ -183,9 +174,32 @@ export default class ArrayBuilder {
      * @param {object} datum
      */
     updateFromDatum(datum) {
-        for (let i = 0; i < this.dataUpdaters.length; i++) {
-            this.dataUpdaters[i](datum);
+        if (this.size > UNROLL_LIMIT) {
+            const preps = this.dataUpdaters
+                .map((_v, i) => `const u${i} = that.dataUpdaters[${i}];`)
+                .join("\n");
+            const updates = this.dataUpdaters
+                .map((_v, i) => `  u${i}(datum);`)
+                .join("\n");
+
+            // eslint-disable-next-line no-new-func
+            this.updateFromDatum = new Function(
+                "that",
+                "datum",
+                `${preps}
+return function unrolledUpdateFromDatum(datum) {
+${updates}
+};`
+            )(this);
+        } else {
+            this.updateFromDatum = (datum) => {
+                for (let i = 0; i < this.dataUpdaters.length; i++) {
+                    this.dataUpdaters[i](datum);
+                }
+            };
         }
+
+        this.updateFromDatum(datum);
     }
 
     /**
