@@ -39,7 +39,7 @@ export default class RegexFoldTransform extends FlowNode {
         /** @type {string[]} */
         let includedColumns;
 
-        /** @type {(datum: any, sampleId: string) => Record<string, any>} */
+        /** @type {(datum: any, sampleId: string, attrs: any[]) => Record<string, any>} */
         let create;
 
         /**
@@ -91,7 +91,7 @@ export default class RegexFoldTransform extends FlowNode {
                         "]"
                 ),
                 JSON.stringify(sampleKey) + ": sampleId",
-                ...as.map((a) => JSON.stringify(a) + ": null"),
+                ...as.map((a, i) => JSON.stringify(a) + `: datum[attrs[${i}]]`),
             ];
 
             // eslint-disable-next-line no-new-func
@@ -99,6 +99,7 @@ export default class RegexFoldTransform extends FlowNode {
                 new Function(
                     "datum",
                     "sampleId",
+                    "attrs",
                     "return {\n" + props.join(",\n") + "\n};"
                 )
             );
@@ -112,12 +113,9 @@ export default class RegexFoldTransform extends FlowNode {
                 detectColumns(datum);
             }
 
-            for (const [sampleId, attrs] of sampleAttrs) {
-                const tidyRow = create(datum, sampleId);
-                for (let i = 0; i < attrs.length; i++) {
-                    tidyRow[as[i]] = datum[attrs[i]];
-                }
-
+            for (let i = 0; i < sampleAttrs.length; i++) {
+                const [sampleId, attrs] = sampleAttrs[i];
+                const tidyRow = create(datum, sampleId, attrs);
                 this._propagate(tidyRow);
             }
         };
