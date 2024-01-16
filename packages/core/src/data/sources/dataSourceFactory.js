@@ -1,13 +1,13 @@
 import InlineSource, { isInlineData } from "./inlineSource.js";
 import UrlSource, { isUrlData } from "./urlSource.js";
 import SequenceSource, { isSequenceGenerator } from "./sequenceSource.js";
-import AxisTickSource from "./dynamic/axisTickSource.js";
-import AxisGenomeSource from "./dynamic/axisGenomeSource.js";
-import IndexedFastaSource from "./dynamic/indexedFastaSource.js";
-import BigWigSource from "./dynamic/bigWigSource.js";
-import BigBedSource from "./dynamic/bigBedSource.js";
-import BamSource from "./dynamic/bamSource.js";
-import Gff3Source from "./dynamic/gff3Source.js";
+import AxisTickSource from "./lazy/axisTickSource.js";
+import AxisGenomeSource from "./lazy/axisGenomeSource.js";
+import IndexedFastaSource from "./lazy/indexedFastaSource.js";
+import BigWigSource from "./lazy/bigWigSource.js";
+import BigBedSource from "./lazy/bigBedSource.js";
+import BamSource from "./lazy/bamSource.js";
+import Gff3Source from "./lazy/gff3Source.js";
 
 /**
  * @param {Partial<import("../../spec/data.js").Data>} params
@@ -21,7 +21,7 @@ export default function createDataSource(params, view) {
     } else if (isSequenceGenerator(params)) {
         return new SequenceSource(params, view);
     } else if (isLazyData(params)) {
-        return createDynamicDataSource(params.lazy, view);
+        return createLazyDataSource(params.lazy, view);
     }
 
     throw new Error(
@@ -104,7 +104,7 @@ function isGff3Source(params) {
  * @param {import("../../spec/data.js").LazyDataParams} params
  * @param {import("../../view/view.js").default} view
  */
-function createDynamicDataSource(params, view) {
+function createLazyDataSource(params, view) {
     if (isAxisTickSource(params)) {
         return new AxisTickSource(params, view);
     } else if (isAxisGenomeSource(params)) {

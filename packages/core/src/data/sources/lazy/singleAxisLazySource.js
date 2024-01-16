@@ -23,11 +23,11 @@ export default class SingleAxisLazySource extends DataSource {
 
         if (!channel) {
             throw new Error(
-                `No channel has been specified for the dynamic data source. Must be either "x" or "y".`
+                `No channel has been specified for the lazy data source. Must be either "x" or "y".`
             );
         } else if (channel !== "x" && channel !== "y") {
             throw new Error(
-                `Invalid channel specified for the dynamic data source: ${channel}. Must be either "x" or "y"`
+                `Invalid channel specified for the lazy data source: ${channel}. Must be either "x" or "y"`
             );
         }
 
@@ -37,7 +37,7 @@ export default class SingleAxisLazySource extends DataSource {
         this.scaleResolution = this.view.getScaleResolution(channel);
         if (!this.scaleResolution) {
             const sentences = [
-                `The dynamic data source cannot find a resolved scale for channel "${channel}".`,
+                `The lazy data source cannot find a resolved scale for channel "${channel}".`,
             ];
             if (!(this.view instanceof UnitView)) {
                 sentences.push(
