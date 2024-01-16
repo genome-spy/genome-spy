@@ -314,13 +314,26 @@ export type ChannelDef<F extends Field = string> =
 // TODO: Does this make sense?
 export type ChannelDefWithScale = ScaleMixins & TypeMixins<Type>;
 
+export interface XIndexDef {
+    /**
+     * Builds and index for efficient rendering of subsets of the data. This
+     * setting is useful when rendering large amounts of data and often
+     * only a small subset of the data is visible. An example of such a
+     * situation is a scatter plot spanning the whole genome.
+     *
+     * This setting implicitly sorts the data by the field assigned
+     * on the `x` channel.
+     */
+    buildIndex?: boolean;
+}
+
 export interface Encoding<F extends Field = string> {
     /**
      * X coordinates of the marks.
      *
      * The `value` of this channel can be a number between zero and one.
      */
-    x?: PositionDef<F>;
+    x?: PositionDef<F> & XIndexDef;
 
     /**
      * Y coordinates of the marks.

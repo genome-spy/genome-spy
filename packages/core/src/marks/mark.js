@@ -258,6 +258,12 @@ export default class Mark {
                 }
             }
 
+            if (encoding.x) {
+                // Building the x index is rarely necessary, but it's safer to build
+                // it by default.
+                encoding.x.buildIndex ??= true;
+            }
+
             return encoding;
         });
     }

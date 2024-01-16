@@ -162,7 +162,13 @@ export class GeometryBuilder {
             this.xIndexer = undefined;
         };
 
-        if (!data.length || hi - lo < 0) {
+        const channelDef = this.encoders.x?.channelDef;
+        if (
+            !("buildIndex" in channelDef) ||
+            !channelDef.buildIndex ||
+            !data.length ||
+            hi - lo < 0
+        ) {
             disable();
             return;
         }

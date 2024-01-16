@@ -13,6 +13,7 @@ import {
     isFieldDef,
     isPositionalChannel,
     getPrimaryChannel,
+    isExprDef,
 } from "../encoder/encoder.js";
 import LinearizeGenomicCoordinate from "../data/transforms/linearizeGenomicCoordinate.js";
 import { group } from "d3-array";
@@ -311,20 +312,26 @@ export function linearizeLocusAccess(view) {
 }
 
 /**
- * @param {import("./view.js").default} view
+ * @param {import("./unitView.js").default} view
  * @param {import("../spec/channel.js").Encoding} [encoding]
  * @returns {import("../spec/transform.js").CompareParams}
  */
 function getCompareParamsForView(view, encoding) {
-    // TODO: Should sort by min(x, x2).
     const e = { ...view.getEncoding(), ...encoding }.x;
     if (isChannelDefWithScale(e)) {
         if (view.getScaleResolution("x")?.isZoomable()) {
             if (isFieldDef(e)) {
-                return { field: e.field };
+                // TODO: Don't sort if the data is already sorted.
+                // The sort status should be tracked in the data flow.
+                // For instance, genomic data is typically already sorted
+                // by position within a chromosome (but not necessarily
+                // across chromosomes).
+                return "buildIndex" in e && e.buildIndex
+                    ? { field: e.field }
+                    : null;
             } else if (isDatumDef(e)) {
                 // Nop
-            } else {
+            } else if (isExprDef(e)) {
                 // TODO: Support expr by inserting a Formula transform
                 throw new Error(
                     "A zoomable x channel must be mapped to a field."
