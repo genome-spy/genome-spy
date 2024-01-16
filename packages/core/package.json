@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@gmod/bam": "^2.0.0",
-    "@gmod/bbi": "^4.0.0",
+    "@gmod/bbi": "^4.0.3",
     "@gmod/bed": "^2.1.2",
     "@gmod/bgzf-filehandle": "^1.4.7",
     "@gmod/gff": "^1.3.0",
