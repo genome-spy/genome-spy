@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.43.0](https://github.com/genome-spy/genome-spy/compare/v0.42.2...v0.43.0) (2024-01-16)
+
+
+### Features
+
+* **core:** allow disabling sorting and indexing the data by `x` channel ([2899241](https://github.com/genome-spy/genome-spy/commit/2899241e203e33fe51811ccb5878adcd0ab6b240))
+
+
+### Performance Improvements
+
+* **core:** don't use `d3-array`'s `group` to group facets. Its slow ([01f7b01](https://github.com/genome-spy/genome-spy/commit/01f7b019b5557a8e2e09517cbc809579fbfae904))
+* **core:** more unrolling to `arrayBuilder` ([7f2d130](https://github.com/genome-spy/genome-spy/commit/7f2d130f040fe3675acd3b9968a9f5459b0b6949))
+* **core:** optimize `regexFold` transform ([2386137](https://github.com/genome-spy/genome-spy/commit/2386137236c89e884add20804502fa2d308e1417))
+
+
+
+
+
 ## [0.42.2](https://github.com/genome-spy/genome-spy/compare/v0.42.1...v0.42.2) (2024-01-12)
 
 
