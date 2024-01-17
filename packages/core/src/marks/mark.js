@@ -393,7 +393,9 @@ export default class Mark {
                     channel,
                     scale,
                     channelDef,
-                    sharedChannels
+                    sharedChannels?.includes(channel)
+                        ? sharedChannels
+                        : [channel]
                 );
 
                 scaleCode.push(generated.glsl);

@@ -21,6 +21,10 @@ float scaleIdentity(float value) {
     return value;
 }
 
+float scaleIdentity(uint value) {
+    return float(value);
+}
+
 float scaleLinear(float value, vec2 domain, vec2 range) {
     float domainSpan = domain[1] - domain[0];
     float rangeSpan = range[1] - range[0];
@@ -62,7 +66,8 @@ float scalePow(float value, vec2 domain, vec2 range, float exponent) {
 // TODO: scaleThreshold
 // TODO: scaleQuantile (special case of threshold scale)
 
-float scaleBand(float value, vec2 domainExtent, vec2 range,
+// TODO: domainExtent should be uint
+float scaleBand(uint value, vec2 domainExtent, vec2 range,
                 float paddingInner, float paddingOuter,
                 float align, float band) {
 
@@ -81,7 +86,7 @@ float scaleBand(float value, vec2 domainExtent, vec2 range,
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
-    return start + (value - domainExtent[0]) * step + bandwidth * band;
+    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
 }
 
 // High precision variant of scaleBand for index/locus scales
