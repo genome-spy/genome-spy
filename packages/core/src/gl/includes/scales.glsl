@@ -89,8 +89,14 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
     return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
 }
 
+vec2 splitUint(uint value) {
+    uint valueLo = value & uint(pow(2.0, 11.0) - 1.0);
+    uint valueHi = value - valueLo;
+    return vec2(float(valueHi), float(valueLo));
+}
+
 // High precision variant of scaleBand for index/locus scales
-float scaleBandHp(vec2 value, vec3 domainExtent, vec2 range,
+float scaleBandHp(uint value, vec3 domainExtent, vec2 range,
                  float paddingInner, float paddingOuter,
                  float align, float band) {
 
@@ -107,12 +113,16 @@ float scaleBandHp(vec2 value, vec3 domainExtent, vec2 range,
     start += (rangeSpan - step * (n - paddingInner)) * align;
     float bandwidth = step * (1.0 - paddingInner);
 
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = splitUint(value);
+
     // Using max to prevent the shader compiler from wrecking the precision.
     // Othwewise the compiler could optimize the sum of the four terms into
     // some equivalent form that does premature rounding.
     float inf = 1.0 / uZero;
-    float hi = max(value[0] - domainStart[0], -inf);
-    float lo = max(value[1] - domainStart[1], -inf);
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
 
     return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
 }

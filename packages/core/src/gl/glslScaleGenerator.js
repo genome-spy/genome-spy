@@ -127,7 +127,7 @@ export function generateScaleGlsl(
 
     const hp = isHighPrecisionScale(scale.type);
 
-    const attributeType = discrete ? "uint" : hp ? "vec2" : "float";
+    const attributeType = discrete ? "uint" : hp ? "uint" : "float";
 
     const domainLength = scale.domain ? scale.domain().length : undefined;
 
