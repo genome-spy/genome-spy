@@ -251,6 +251,29 @@ export class RectVertexBuilder extends GeometryBuilder {
             attributes,
             numVertices: numItems * 6,
         });
+        this.variableBuilder.configure();
+
+        const pushAll = this.variableBuilder.pushAll;
+
+        this.pushAllSixTimes =
+            // TODO: Don't do this stupid comparison. Instead, reuse the previous GeometryBuilder.
+            numItems > 500
+                ? // Make a new function instance where the JS engine can inline
+                  // all pushAll calls to avoid the function call overhead.
+                  new Function(
+                      "pushAll",
+                      `return function unrolledPushAllSixTimes() {
+  pushAll(); pushAll(); pushAll(); pushAll(); pushAll(); pushAll();
+};`
+                  )(pushAll)
+                : function pushAllSixTimes() {
+                      pushAll();
+                      pushAll();
+                      pushAll();
+                      pushAll();
+                      pushAll();
+                      pushAll();
+                  };
     }
 
     /**
@@ -273,12 +296,7 @@ export class RectVertexBuilder extends GeometryBuilder {
 
             // Six vertices per rect. The vertex shader is using gl_VertexID to
             // determine the vertex position within the rect.
-            this.variableBuilder.pushAll();
-            this.variableBuilder.pushAll();
-            this.variableBuilder.pushAll();
-            this.variableBuilder.pushAll();
-            this.variableBuilder.pushAll();
-            this.variableBuilder.pushAll();
+            this.pushAllSixTimes();
 
             this.addToXIndex(d);
         }
@@ -318,6 +336,8 @@ export class RuleVertexBuilder extends GeometryBuilder {
 
         this.updateSide = this.variableBuilder.createUpdater("side", 1);
         this.updatePos = this.variableBuilder.createUpdater("pos", 1);
+
+        this.variableBuilder.configure();
     }
 
     /* eslint-disable complexity */
@@ -376,6 +396,7 @@ export class PointVertexBuilder extends GeometryBuilder {
             attributes,
             numVertices: numItems,
         });
+        this.variableBuilder.configure();
     }
 }
 
@@ -392,6 +413,7 @@ export class LinkVertexBuilder extends GeometryBuilder {
             attributes,
             numVertices: numItems,
         });
+        this.variableBuilder.configure();
     }
 
     toArrays() {
@@ -459,6 +481,8 @@ export class TextVertexBuilder extends GeometryBuilder {
         );
 
         this.updateWidth = this.variableBuilder.createUpdater("width", 1);
+
+        this.variableBuilder.configure();
     }
 
     /**

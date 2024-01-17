@@ -18,6 +18,8 @@ const UNROLL_LIMIT = 10000;
 export default class ArrayBuilder {
     // TODO: Support strided layout. May yield better performance or not. No consensus in literature.
 
+    #configured = false;
+
     /**
      *
      * @param {number} size Size if known, uses TypedArray
@@ -35,6 +37,15 @@ export default class ArrayBuilder {
         this.dataUpdaters = [];
 
         this.vertexCount = 0;
+    }
+
+    configure() {
+        if (this.#configured) {
+            throw new Error("Already configured!");
+        }
+        this.#configurePushAll();
+        this.#configureUpdateFromDatum();
+        this.#configured = true;
     }
 
     /**
@@ -142,6 +153,17 @@ export default class ArrayBuilder {
     }
 
     pushAll() {
+        throw new Error("Call configure() first!");
+    }
+
+    /**
+     * @param {object} datum
+     */
+    updateFromDatum(datum) {
+        throw new Error("Call configure() first!");
+    }
+
+    #configurePushAll() {
         if (this.size > UNROLL_LIMIT) {
             const preps = this.pushers
                 .map((_v, i) => `const p${i} = that.pushers[${i}];`)
@@ -165,15 +187,9 @@ ${pushs}
                 this.vertexCount++;
             };
         }
-
-        this.pushAll();
     }
 
-    /**
-     *
-     * @param {object} datum
-     */
-    updateFromDatum(datum) {
+    #configureUpdateFromDatum() {
         if (this.size > UNROLL_LIMIT) {
             const preps = this.dataUpdaters
                 .map((_v, i) => `const u${i} = that.dataUpdaters[${i}];`)
@@ -192,14 +208,12 @@ ${updates}
 };`
             )(this);
         } else {
-            this.updateFromDatum = (datum) => {
+            this.updateFromDatum = (/** @type {object} */ datum) => {
                 for (let i = 0; i < this.dataUpdaters.length; i++) {
                     this.dataUpdaters[i](datum);
                 }
             };
         }
-
-        this.updateFromDatum(datum);
     }
 
     /**
