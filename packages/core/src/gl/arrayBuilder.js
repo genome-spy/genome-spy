@@ -14,6 +14,7 @@ const UNROLL_LIMIT = 10000;
  * @prop {function(object):any} f The converter
  * @prop {number[]} [arrayReference] An optimization for fp64 mainly
  * @prop {number} [numComponents]
+ * @prop {typeof Uint16Array | typeof Int16Array | typeof Uint32Array | typeof Int32Array | typeof Float32Array} [targetArrayType] Defaults to Float32Array
  */
 export default class ArrayBuilder {
     // TODO: Support strided layout. May yield better performance or not. No consensus in literature.
@@ -27,7 +28,7 @@ export default class ArrayBuilder {
     constructor(size) {
         this.size = size;
 
-        /** @type {Object.<string, {data: number[] | Float32Array, numComponents: number, divisor?: number}>} */
+        /** @type {Object.<string, {data: Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array, numComponents: number, divisor?: number}>} */
         this.arrays = {};
 
         /** @type {(function():void)[]} */
@@ -57,6 +58,7 @@ export default class ArrayBuilder {
         const updater = this.createUpdater(
             ATTRIBUTE_PREFIX + attribute,
             metadata.numComponents || 1,
+            metadata.targetArrayType ?? Float32Array,
             metadata.arrayReference
         );
         const f = metadata.f;
@@ -71,10 +73,16 @@ export default class ArrayBuilder {
      *
      * @param {string} attributeName
      * @param {number} numComponents
+     * @param {typeof Uint16Array | typeof Int16Array | typeof Uint32Array | typeof Int32Array | typeof Float32Array} [targetArrayType]
      * @param {number[]} [arrayReference]
      * @return {function(number|number[])}
      */
-    createUpdater(attributeName, numComponents, arrayReference) {
+    createUpdater(
+        attributeName,
+        numComponents,
+        targetArrayType = Float32Array,
+        arrayReference = undefined
+    ) {
         if (!isNumber(this.size)) {
             throw new Error("The number of vertices must be defined!");
         }
@@ -84,7 +92,8 @@ export default class ArrayBuilder {
         let updater;
         let i = 0;
 
-        const array = new Float32Array(this.size * numComponents);
+        // eslint-disable-next-line new-cap
+        const array = new targetArrayType(this.size * numComponents);
 
         this.arrays[attributeName] = {
             data: array,

@@ -11,7 +11,7 @@ import {
     makeAttributeName,
     splitHighPrecision,
 } from "./glslScaleGenerator.js";
-import { isContinuous } from "vega-scale";
+import { isContinuous, isDiscrete } from "vega-scale";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
@@ -93,6 +93,9 @@ export class GeometryBuilder {
                 f,
                 numComponents: hp ? 2 : 1,
                 arrayReference: hp ? doubleArray : undefined,
+                targetArrayType: isDiscrete(ce.scale.type)
+                    ? Uint16Array
+                    : Float32Array,
             });
         }
 
@@ -226,7 +229,7 @@ export class GeometryBuilder {
 
     toArrays() {
         return {
-            /** @type {Record<string, {data: number[] | Float32Array, numComponents: number, divisor?: number}>} */
+            /** @type {Record<string, {data: Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array, numComponents: number, divisor?: number}>} */
             arrays: this.variableBuilder.arrays,
             /** Number of vertices used */
             vertexCount: this.variableBuilder.vertexCount,
