@@ -89,13 +89,19 @@ float scaleBand(uint value, vec2 domainExtent, vec2 range,
     return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
 }
 
+const int lowBits = 12;
+const float lowDivisor = pow(2.0, float(lowBits));
+const uint lowMask = uint(lowDivisor - 1.0);
+
 vec2 splitUint(uint value) {
-    uint valueLo = value & uint(pow(2.0, 11.0) - 1.0);
+    uint valueLo = value & lowMask;
     uint valueHi = value - valueLo;
     return vec2(float(valueHi), float(valueLo));
 }
 
-// High precision variant of scaleBand for index/locus scales
+/**
+ * High precision variant of scaleBand for index/locus scales
+ */
 float scaleBandHp(uint value, vec3 domainExtent, vec2 range,
                  float paddingInner, float paddingOuter,
                  float align, float band) {
@@ -116,6 +122,41 @@ float scaleBandHp(uint value, vec3 domainExtent, vec2 range,
     // Split into to values with each having a reduced number of significant digits
     // to mitigate the lack of precision in float32 calculations.
     vec2 splitValue = splitUint(value);
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales for large
+ * domains where 32bit uints are not sufficient to represent the domain.
+ */
+float scaleBandHp(uvec2 value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = vec2(float(value[0]) * lowDivisor, float(value[1]));
 
     // Using max to prevent the shader compiler from wrecking the precision.
     // Othwewise the compiler could optimize the sum of the four terms into

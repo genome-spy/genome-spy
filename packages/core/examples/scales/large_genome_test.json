@@ -1,0 +1,39 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Testing a very large genome where 32 bit integers are insufficient.",
+
+  "genome": {
+    "name": "custom",
+    "contigs": [
+      {
+        "name": "huge1",
+        "size": 20000000000
+      },
+      {
+        "name": "huge2",
+        "size": 40000000000
+      }
+    ]
+  },
+
+  "data": {
+    "values": [
+      { "chrom": "huge1", "pos": 10000000000 },
+      { "chrom": "huge2", "pos": 20000000000 }
+    ]
+  },
+
+  "encoding": {
+    "x": {
+      "chrom": "chrom",
+      "pos": "pos",
+      "type": "locus"
+    },
+    "text": {
+      "field": "pos"
+    }
+  },
+
+  "mark": "text"
+}

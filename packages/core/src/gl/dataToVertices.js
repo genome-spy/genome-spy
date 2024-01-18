@@ -8,7 +8,9 @@ import { isValueDef } from "../encoder/encoder.js";
 import {
     dedupeEncodingFields,
     isHighPrecisionScale,
+    isLargeGenome,
     makeAttributeName,
+    splitLargeHighPrecision,
 } from "./glslScaleGenerator.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 
@@ -66,6 +68,10 @@ export class GeometryBuilder {
 
             const accessor = ce.accessor;
 
+            const hp = isHighPrecisionScale(ce.scale.type);
+            const largeHp = hp && isLargeGenome(ce.scale.domain());
+            const largeHpArray = [0, 0];
+
             const indexer = ce.indexer;
 
             /**
@@ -75,11 +81,11 @@ export class GeometryBuilder {
              *
              * @type {function(any):(number | number[])}
              */
-            const f = indexer ? (d) => indexer(accessor(d)) : accessor;
-
-            // Large genomes (> 2^32 bp) will overflow the 32 bit index
-            // TODO: Fix by splitting into ivec2. See:
-            // https://github.com/genome-spy/genome-spy/blob/5df2d5459b3ece0218135411e6e7d8d20639f587/packages/core/src/gl/dataToVertices.js#L85
+            const f = indexer
+                ? (d) => indexer(accessor(d))
+                : largeHp
+                ? (d) => splitLargeHighPrecision(accessor(d), largeHpArray)
+                : accessor;
 
             const attributeName = sharedChannels
                 ? makeAttributeName(sharedChannels)
@@ -87,9 +93,11 @@ export class GeometryBuilder {
 
             this.variableBuilder.addConverter(attributeName, {
                 f,
+                numComponents: largeHp ? 2 : 1,
+                arrayReference: largeHp ? largeHpArray : undefined,
                 targetArrayType: isDiscrete(ce.scale.type)
                     ? Uint16Array
-                    : isHighPrecisionScale(ce.scale.type)
+                    : hp
                     ? Uint32Array
                     : Float32Array,
             });
