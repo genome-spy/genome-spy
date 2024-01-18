@@ -126,8 +126,15 @@ export function generateScaleGlsl(
     const discrete = isDiscrete(scale.type);
 
     const hp = isHighPrecisionScale(scale.type);
+    const largeHp = hp && isLargeGenome(scale.domain());
 
-    const attributeType = discrete ? "uint" : hp ? "vec2" : "float";
+    const attributeType = largeHp
+        ? "uvec2"
+        : hp
+        ? "uint"
+        : discrete
+        ? "uint"
+        : "float";
 
     const domainLength = scale.domain ? scale.domain().length : undefined;
 
@@ -472,6 +479,7 @@ function makeFunctionCall(name, ...args) {
 }
 
 /**
+ * True if scale needs more than 24 bits (float32) of precision.
  *
  * @param {string} type
  */
@@ -479,9 +487,17 @@ export function isHighPrecisionScale(type) {
     return type == "index" || type == "locus";
 }
 
-// Maximum precise index number is 2^(23 + 11) ~ 17G
-// Higher number increases precision but makes zooming unstable
-const BS = 2 ** 11;
+/**
+ * True if Uint32 cannot represent the domain.
+ *
+ * @param {number[]} domain
+ */
+export function isLargeGenome(domain) {
+    return domain[1] > 2 ** 32;
+}
+
+const LOW_BITS = 12;
+const BS = 2 ** LOW_BITS;
 const BM = BS - 1;
 
 /**
@@ -493,6 +509,20 @@ export function splitHighPrecision(x, arr = []) {
     // https://www.wikiwand.com/en/Modulo#Performance_issues
     const lo = x & BM;
     const hi = x - lo;
+
+    arr[0] = hi;
+    arr[1] = lo;
+
+    return arr;
+}
+
+/**
+ * @param {number} x Must be an integer
+ * @param {number[]} [arr]
+ */
+export function splitLargeHighPrecision(x, arr = []) {
+    const lo = x % BS;
+    const hi = (x - lo) / BS;
 
     arr[0] = hi;
     arr[1] = lo;

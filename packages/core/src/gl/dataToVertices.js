@@ -8,8 +8,9 @@ import { isValueDef } from "../encoder/encoder.js";
 import {
     dedupeEncodingFields,
     isHighPrecisionScale,
+    isLargeGenome,
     makeAttributeName,
-    splitHighPrecision,
+    splitLargeHighPrecision,
 } from "./glslScaleGenerator.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 
@@ -67,8 +68,9 @@ export class GeometryBuilder {
 
             const accessor = ce.accessor;
 
-            const doubleArray = [0, 0];
             const hp = isHighPrecisionScale(ce.scale.type);
+            const largeHp = hp && isLargeGenome(ce.scale.domain());
+            const largeHpArray = [0, 0];
 
             const indexer = ce.indexer;
 
@@ -81,8 +83,8 @@ export class GeometryBuilder {
              */
             const f = indexer
                 ? (d) => indexer(accessor(d))
-                : hp
-                ? (d) => splitHighPrecision(accessor(d), doubleArray)
+                : largeHp
+                ? (d) => splitLargeHighPrecision(accessor(d), largeHpArray)
                 : accessor;
 
             const attributeName = sharedChannels
@@ -91,10 +93,12 @@ export class GeometryBuilder {
 
             this.variableBuilder.addConverter(attributeName, {
                 f,
-                numComponents: hp ? 2 : 1,
-                arrayReference: hp ? doubleArray : undefined,
+                numComponents: largeHp ? 2 : 1,
+                arrayReference: largeHp ? largeHpArray : undefined,
                 targetArrayType: isDiscrete(ce.scale.type)
                     ? Uint16Array
+                    : hp
+                    ? Uint32Array
                     : Float32Array,
             });
         }
