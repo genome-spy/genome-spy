@@ -7,7 +7,7 @@
   },
   "contributors": [],
   "license": "MIT",
-  "version": "0.43.0",
+  "version": "0.43.1",
   "main": "dist/index.js",
   "type": "module",
   "files": [
@@ -29,7 +29,7 @@
     "@fortawesome/fontawesome-free": "^6.4.2",
     "@fortawesome/fontawesome-svg-core": "^6.4.2",
     "@fortawesome/free-solid-svg-icons": "^6.4.2",
-    "@genome-spy/core": "^0.43.0",
+    "@genome-spy/core": "^0.43.1",
     "@reduxjs/toolkit": "^1.8.4",
     "idb": "^7.1.1",
     "lit": "^3.1.0",

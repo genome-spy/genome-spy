@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.43.1](https://github.com/genome-spy/genome-spy/compare/v0.43.0...v0.43.1) (2024-01-18)
+
+
+### Performance Improvements
+
+* **core:** implement an optimized bed parser ([c1d1067](https://github.com/genome-spy/genome-spy/commit/c1d106789710ef8ff795b65afc9a8bc2d2d51b36))
+* **core:** improve ´rect´ mark performance, add even more unrolling ([6b9e7c9](https://github.com/genome-spy/genome-spy/commit/6b9e7c9fb0a0a2a2e25496fff293fe1b6249507c))
+* **core:** use `Uint16Array` for categorical vertex arrays ([1e3a9c7](https://github.com/genome-spy/genome-spy/commit/1e3a9c737873bde4de9ca848f14109c7c7f5b43f))
+* **core:** use `Uint32Array` as vertex buffer for `index` and `locus` scale ([#224](https://github.com/genome-spy/genome-spy/issues/224)) ([85f54a3](https://github.com/genome-spy/genome-spy/commit/85f54a38b466d26b4f96c1a5eef6b8b659e81a68))
+
+
+
+
+
 # [0.43.0](https://github.com/genome-spy/genome-spy/compare/v0.42.2...v0.43.0) (2024-01-16)
 
 
