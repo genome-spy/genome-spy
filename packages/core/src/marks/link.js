@@ -139,6 +139,7 @@ export default class LinkMark extends Mark {
 
         const vertexData = builder.toArrays();
 
+        // TODO: Use gl_VertexID to calculate the strip in the vertex shader
         vertexData.arrays.strip = {
             data: createStrip(this.properties.segments),
             numComponents: 2,
@@ -245,5 +246,5 @@ function createStrip(/** @type number */ segments) {
         coords.push(i / segments, 0.5);
         coords.push(i / segments, -0.5);
     }
-    return coords;
+    return new Float32Array(coords);
 }
