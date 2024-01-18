@@ -8,7 +8,7 @@ export default class BigBedSource extends SingleAxisWindowedSource {
     /** @type {import("@gmod/bbi").BigBed} */
     bbi;
 
-    /** @type {(chrom: string, fields: { start: number, end: number, rest: string }) => Record<string, any>} */
+    /** @type {(chrom: string, fields: { start: number, end: number, rest?: string }) => Record<string, any>} */
     parseLine;
 
     /**
