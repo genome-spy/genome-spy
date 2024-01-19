@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.43.2](https://github.com/genome-spy/genome-spy/compare/v0.43.1...v0.43.2) (2024-01-19)
+
+
+### Bug Fixes
+
+* **core:** flush queue in `coverage` transform before each facet batch ([19b3246](https://github.com/genome-spy/genome-spy/commit/19b3246fd16f15b1c1d51a2391dd78650c760715))
+
+
+### Performance Improvements
+
+* **core:** optimize the custom bed parser ([1112e53](https://github.com/genome-spy/genome-spy/commit/1112e53e20d6b131ee9ec3366926a42708f755c8))
+* **core:** use callback, not iterator in `kWayMerge` ([361213a](https://github.com/genome-spy/genome-spy/commit/361213a3f84bfa048093baa5cb79f4a54b8ebfb4))
+
+
+
+
+
 ## [0.43.1](https://github.com/genome-spy/genome-spy/compare/v0.43.0...v0.43.1) (2024-01-18)
 
 

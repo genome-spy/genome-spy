@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.43.2](https://github.com/genome-spy/genome-spy/compare/v0.43.1...v0.43.2) (2024-01-19)
+
+
+### Performance Improvements
+
+* **core:** use callback, not iterator in `kWayMerge` ([361213a](https://github.com/genome-spy/genome-spy/commit/361213a3f84bfa048093baa5cb79f4a54b8ebfb4))
+
+
+
+
+
 ## [0.43.1](https://github.com/genome-spy/genome-spy/compare/v0.43.0...v0.43.1) (2024-01-18)
 
 **Note:** Version bump only for package @genome-spy/app
