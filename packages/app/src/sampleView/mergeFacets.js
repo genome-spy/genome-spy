@@ -153,16 +153,13 @@ export default class MergeSampleFacets extends FlowNode {
                 // TODO: Only merge and propagate if the sets of samples change.
                 // Computation is unnecessary when data is just sorted.
 
-                const iterator = kWayMerge(
+                kWayMerge(
                     samples.map(
                         (sample) => collector.facetBatches.get([sample]) ?? []
                     ),
+                    (d) => this._propagate(d),
                     this.xAccessor
                 );
-
-                for (const d of iterator) {
-                    this._propagate(d);
-                }
             }
         }
 

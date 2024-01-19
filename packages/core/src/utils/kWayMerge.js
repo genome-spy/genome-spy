@@ -1,13 +1,14 @@
 import FlatQueue from "flatqueue";
 
 /**
- * Returns an iterator that merges multiple sorted arrays.
+ * Merges multiple sorted arrays.
  *
  * @param {T[][]} arrays
+ * @param {function(T):void} handler a function that will be called for each element
  * @param {function(T):number} [accessor]
  * @template T
  */
-export default function* kWayMerge(arrays, accessor = (x) => +x) {
+export default function kWayMerge(arrays, handler, accessor = (x) => +x) {
     // https://www.wikiwand.com/en/K-way_merge_algorithm
 
     // This could be optimized by implementing a tournament tree or
@@ -31,7 +32,7 @@ export default function* kWayMerge(arrays, accessor = (x) => +x) {
         let pointer = pointers[i];
         const element = array[pointer++];
 
-        yield element;
+        handler(element);
 
         if (pointer < array.length) {
             const newValue = accessor(array[pointer]);
