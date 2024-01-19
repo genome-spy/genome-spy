@@ -97,7 +97,8 @@ export default class BigBedSource extends SingleAxisWindowedSource {
  * This parser avoids generating piles of garbage to be collected by the GC.
  * We don't split the line into an array of strings, but instead parse the
  * integer fields directly from the original string.
- * This parser doesn't support arrays, etc. at the moment.
+ * This parser doesn't support arrays, etc. at the moment. This could, however,
+ * be extended into a fully-featured parser.
  *
  * @param {import("@gmod/bed").default} bed
  */
@@ -171,6 +172,30 @@ function makeFastParser(bed) {
         }
     });
 
+    const templateFields = fields.map(
+        (field) => `"${field.name}": ${field.isNumeric ? "0" : "emptyString"}`
+    );
+
+    /**
+     * Make a template object with all fields to avoid the JavaScript VM's
+     * hidden class to be changed after each property assignment. Transitions
+     * between hidden classes generate plenty of garbage to be collected.
+     *
+     * Ideally, the parsed values would be assigned directly in this function,
+     * but for some reason, it results in abysmally slow performance on Chrome,
+     * but not on Firefox, where it would be super fast.
+     */
+    const makeTemplate = new Function(`
+        const emptyString = "";
+        return function makeTemplate(chrom, chromStart, chromEnd) {
+            return {
+                chrom,
+                chromStart,
+                chromEnd,
+                ${templateFields.join(",\n")}
+            }
+        };`)();
+
     /**
      * @param {string} line
      */
@@ -189,11 +214,7 @@ function makeFastParser(bed) {
     function parseLine(chrom, chromStart, chromEnd, rest) {
         setLine(rest);
 
-        currentObject = {
-            chrom,
-            chromStart,
-            chromEnd,
-        };
+        currentObject = makeTemplate(chrom, chromStart, chromEnd);
 
         for (let j = 0, n = fieldParsers.length; j < n; j++) {
             fieldParsers[j]();
