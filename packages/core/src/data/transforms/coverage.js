@@ -183,5 +183,14 @@ export default class CoverageTransform extends FlowNode {
             flushQueue();
             super.complete();
         };
+
+        /**
+         * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
+         */
+        this.beginBatch = (flowBatch) => {
+            flushQueue();
+            prevChrom = undefined;
+            super.beginBatch(flowBatch);
+        };
     }
 }
