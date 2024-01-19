@@ -6,7 +6,10 @@ import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
 /**
  * Computes coverage for sorted segments
  *
- * TODO: Binned coverage
+ * TODO: Binned coverage, e.g., don't emit a new segment for every
+ * coverage change, but only every n bases or so. The most straightforward
+ * way to implement it is a separate transform that bins the coverage
+ * segments and calculates weighted averages.
  */
 export default class CoverageTransform extends FlowNode {
     get behavior() {
@@ -56,7 +59,11 @@ export default class CoverageTransform extends FlowNode {
             )
         );
 
-        // End pos as priority, weight as value
+        /**
+         * End pos as priority, weight as value
+         *
+         * @type {FlatQueue<number>}
+         */
         this.ends = new FlatQueue();
     }
 
@@ -75,7 +82,7 @@ export default class CoverageTransform extends FlowNode {
         const chromAccessor = this.chromAccessor;
         const weightAccessor = this.weightAccessor;
 
-        /** @type {Record<string, number|string>} used for merging adjacent segment */
+        /** @type {import("../flowNode.js").Datum} used for merging adjacent segment */
         let bufferedSegment;
 
         /** @type {string} */
@@ -91,7 +98,7 @@ export default class CoverageTransform extends FlowNode {
         /** @type {number} */
         let prevEdge;
 
-        // End pos as priority, weight as value
+        /** End pos as priority, weight as value */
         const ends = this.ends;
         ends.clear();
 
@@ -127,9 +134,7 @@ export default class CoverageTransform extends FlowNode {
         };
 
         const flushQueue = () => {
-            // Flush queue
-            /** @type {number} */
-            let edge;
+            let edge = 0;
             while ((edge = ends.peekValue()) !== undefined) {
                 pushSegment(prevEdge, edge, coverage);
                 prevEdge = edge;
@@ -147,8 +152,7 @@ export default class CoverageTransform extends FlowNode {
         this.handle = (datum) => {
             const start = startAccessor(datum);
 
-            /** @type {number} */
-            let edge;
+            let edge = 0;
             while ((edge = ends.peekValue()) !== undefined && edge < start) {
                 pushSegment(prevEdge, edge, coverage);
                 prevEdge = edge;
