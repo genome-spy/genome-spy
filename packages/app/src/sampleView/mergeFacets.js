@@ -120,13 +120,12 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     complete() {
-        if (!this.#shouldUpdate) {
-            return;
+        if (this.#shouldUpdate) {
+            this._mergeAndPropagate(
+                this.provenance.getPresentState()[SAMPLE_SLICE_NAME]
+            );
         }
 
-        this._mergeAndPropagate(
-            this.provenance.getPresentState()[SAMPLE_SLICE_NAME]
-        );
         super.complete();
     }
 
