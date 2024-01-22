@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.43.3](https://github.com/genome-spy/genome-spy/compare/v0.43.2...v0.43.3) (2024-01-22)
+
+
+### Performance Improvements
+
+* **core:** stupid fast bed parser ([b5b0776](https://github.com/genome-spy/genome-spy/commit/b5b0776e13264aac71ee6741b926f690d64a21fb))
+
+
+
+
+
 ## [0.43.2](https://github.com/genome-spy/genome-spy/compare/v0.43.1...v0.43.2) (2024-01-19)
 
 
