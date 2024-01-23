@@ -1,17 +1,3 @@
-uniform Mark {
-    /** Minimum size (width, height) of the displayed rectangle in pixels */
-    uniform float uMinWidth;
-    uniform float uMinHeight;
-
-    /** Minimum opacity for the size clamping */
-    uniform float uMinOpacity;
-
-    uniform float uCornerRadiusTopRight;
-    uniform float uCornerRadiusBottomRight;
-    uniform float uCornerRadiusTopLeft;
-    uniform float uCornerRadiusBottomLeft;
-};
-
 out lowp vec4 vFillColor;
 out lowp vec4 vStrokeColor;
 out float vHalfStrokeWidth;

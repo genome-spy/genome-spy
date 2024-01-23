@@ -15,21 +15,21 @@ export type MarkType = "rect" | "point" | "rule" | "text" | "link";
 
 export interface FillAndStrokeProps {
     /** The fill color */
-    fill?: string;
+    fill?: string | ExprRef;
 
     /** The fill opacity. Value between [0, 1]. */
-    fillOpacity?: number;
+    fillOpacity?: number | ExprRef;
 
     /** The stroke color */
-    stroke?: string;
+    stroke?: string | ExprRef;
 
     /** The stroke opacity. Value between [0, 1]. */
-    strokeOpacity?: number;
+    strokeOpacity?: number | ExprRef;
 }
 
 export interface SecondaryPositionProps {
-    x2?: number;
-    y2?: number;
+    x2?: number | ExprRef;
+    y2?: number | ExprRef;
 }
 
 export interface AngleProps {
@@ -38,7 +38,7 @@ export interface AngleProps {
      *
      * **Default value:** `0`
      */
-    angle?: number;
+    angle?: number | ExprRef;
 }
 
 /**
@@ -177,7 +177,7 @@ export interface TextProps
      *
      * **Default value:** `11`
      */
-    size?: number;
+    size?: number | ExprRef;
 
     /**
      * The font typeface. GenomeSpy uses [SDF](https://github.com/Chlumsky/msdfgen)

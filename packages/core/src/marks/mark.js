@@ -16,6 +16,7 @@ import createEncoders, {
     isDatumDef,
     isFieldDef,
     isValueDef,
+    isValueExprDef,
 } from "../encoder/encoder.js";
 import {
     DOMAIN_PREFIX,
@@ -27,6 +28,7 @@ import {
     toHighPrecisionDomainUniform,
     splitHighPrecision,
     dedupeEncodingFields,
+    generateDynamicValueGlslAndUniform,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -64,8 +66,16 @@ export default class Mark {
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../spec/channel.js").Encoding} Encoding
      * @typedef {import("../spec/channel.js").ValueDef} ValueDef
+     * @typedef {import("../spec/channel.js").ValueExprDef} ValueExprDef
      * @typedef {import("../spec/mark.js").ExprRef} ExprRef
      */
+
+    /**
+     * Only needed during initialization;
+     *
+     * @type {Map<string, { expr: string, adjuster: function}>}
+     */
+    #dynamicValueUniforms = new Map();
 
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -224,23 +234,30 @@ export default class Mark {
             const defaults = this.getDefaultEncoding();
             const configured = this.unitView.getEncoding();
 
-            /** @type {(property: string) => ValueDef} */
+            /** @type {(property: string) => ValueDef | ValueExprDef } */
             const propToValueDef = (property) => {
                 const value =
                     this.properties[/** @type {keyof MarkConfig} */ (property)];
-                return isScalar(value) && { value };
+                return isScalar(value)
+                    ? { value }
+                    : isExprRef(value)
+                    ? { valueExpr: value.expr }
+                    : undefined;
             };
 
             const propertyValues = Object.fromEntries(
                 this.getSupportedChannels()
                     .map(
                         (channel) =>
-                            /** @type {[Channel, ValueDef]} */ ([
+                            /** @type {[Channel, ValueDef | ValueExprDef]} */ ([
                                 channel,
                                 propToValueDef(channel),
                             ])
                     )
-                    .filter((entry) => entry[1].value !== undefined)
+                    .filter(
+                        (entry) =>
+                            isValueDef(entry[1]) || isValueExprDef(entry[1])
+                    )
             );
 
             const encoding = this.fixEncoding({
@@ -353,6 +370,9 @@ export default class Mark {
             extraHeaders.push(`#define ${sampleFacetMode}`);
         }
 
+        /** @type {string[]} */
+        const dynamicMarkUniforms = [];
+
         for (const attribute of attributes) {
             /** @type {Channel} */
             let channel;
@@ -363,12 +383,22 @@ export default class Mark {
             }
 
             const channelDef = this.encoding[channel];
-
             if (!channelDef) {
                 continue;
             }
 
-            if (isValueDef(channelDef)) {
+            if (isValueExprDef(channelDef)) {
+                // An expression that evaluates to a value
+                const { uniformName, uniformGlsl, scaleGlsl, adjuster } =
+                    generateDynamicValueGlslAndUniform(channel);
+                scaleCode.push(scaleGlsl);
+                dynamicMarkUniforms.push(uniformGlsl);
+                this.#dynamicValueUniforms.set(uniformName, {
+                    expr: channelDef.valueExpr,
+                    adjuster,
+                });
+            } else if (isValueDef(channelDef)) {
+                // A constant value
                 scaleCode.push(
                     generateConstantValueGlsl(channel, channelDef.value)
                 );
@@ -418,6 +448,19 @@ export default class Mark {
 
         const vertexPrecision = "precision highp float;\n";
 
+        /**
+         * @param {string} shaderCode
+         */
+        const addDynamicMarkUniforms = (shaderCode) =>
+            shaderCode.replace(
+                "#pragma markUniforms",
+                dynamicMarkUniforms.join("\n")
+            );
+
+        extraHeaders = extraHeaders.map(addDynamicMarkUniforms);
+        vertexShader = addDynamicMarkUniforms(vertexShader);
+        fragmentShader = addDynamicMarkUniforms(fragmentShader);
+
         const vertexParts = [
             vertexPrecision,
             debugHeader,
@@ -433,6 +476,7 @@ export default class Mark {
         ];
 
         const fragmentParts = [
+            vertexPrecision,
             debugHeader,
             ...extraHeaders,
             GLSL_COMMON,
@@ -506,6 +550,15 @@ export default class Mark {
             uTransitionOffset: 0.0,
             uZero: 0.0,
         });
+
+        for (const [
+            uniformName,
+            { expr, adjuster },
+        ] of this.#dynamicValueUniforms.entries()) {
+            // @ts-expect-error TODO: Do something for the type of adjuster
+            this.registerMarkUniform(uniformName, { expr }, adjuster);
+        }
+        this.#dynamicValueUniforms.clear();
     }
 
     /**
@@ -1124,5 +1177,5 @@ class RangeMap extends InternMap {
  * @returns {x is import("../spec/mark.js").ExprRef}
  */
 export function isExprRef(x) {
-    return typeof x === "object" && "expr" in x && isString(x.expr);
+    return typeof x == "object" && x != null && "expr" in x && isString(x.expr);
 }

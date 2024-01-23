@@ -17,4 +17,6 @@ uniform Mark {
     uniform bool uFlushX;
     uniform mediump float uPaddingY;
     uniform bool uFlushY;
+
+#pragma markUniforms
 };

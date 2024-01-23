@@ -1,6 +1,7 @@
 import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
 import VERTEX_SHADER from "./rect.vertex.glsl";
 import FRAGMENT_SHADER from "./rect.fragment.glsl";
+import COMMON_SHADER from "./rect.common.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
@@ -140,11 +141,10 @@ export default class RectMark extends Mark {
             defines.push("STROKED");
         }
 
-        this.createAndLinkShaders(
-            VERTEX_SHADER,
-            FRAGMENT_SHADER,
-            defines.map((d) => "#define " + d)
-        );
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
+            COMMON_SHADER,
+            ...defines.map((d) => "#define " + d),
+        ]);
     }
 
     finalizeGraphicsInitialization() {

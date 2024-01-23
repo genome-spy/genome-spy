@@ -19,4 +19,6 @@ uniform Mark {
     uniform highp float uSemanticThreshold;
 
     uniform mediump float uGradientStrength;
+
+#pragma markUniforms
 };
