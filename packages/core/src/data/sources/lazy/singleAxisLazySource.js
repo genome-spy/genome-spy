@@ -98,7 +98,7 @@ export default class SingleAxisLazySource extends DataSource {
      * @param {import("../../../spec/genome.js").ChromosomalLocus[]} complexDomain Chrom/Pos domain
      * @abstract
      */
-    async onDomainChanged(domain, complexDomain) {
+    onDomainChanged(domain, complexDomain) {
         // Override me
     }
 

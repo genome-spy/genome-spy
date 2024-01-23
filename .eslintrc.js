@@ -9,6 +9,7 @@ module.exports = {
         sourceType: "module",
     },
     rules: {
+        "callback-return": "off",
         "no-new-func": "off",
         "no-bitwise": "off",
         "no-undefined": "off",

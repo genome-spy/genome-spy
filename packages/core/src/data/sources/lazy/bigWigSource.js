@@ -85,11 +85,9 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         // Using 5000 as a default to avoid too many requests.
         const windowSize = Math.max(reductionLevel * length, 5000);
 
-        const quantizedInterval = this.quantizeInterval(domain, windowSize);
-
-        if (this.checkAndUpdateLastInterval(quantizedInterval)) {
-            this.loadInterval(quantizedInterval, reductionLevel);
-        }
+        this.callIfWindowsChanged(domain, windowSize, (quantizedInterval) =>
+            this.loadInterval(quantizedInterval, reductionLevel)
+        );
     }
 
     /**

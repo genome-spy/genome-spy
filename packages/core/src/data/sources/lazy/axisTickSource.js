@@ -35,7 +35,7 @@ export default class AxisTickSource extends SingleAxisLazySource {
         this.params = params;
     }
 
-    async onDomainChanged() {
+    onDomainChanged() {
         // Note, although this function is async, it is not awaited. Data are updated
         // synchronously to ensure that the new ticks are available before the next frame is drawn.
 

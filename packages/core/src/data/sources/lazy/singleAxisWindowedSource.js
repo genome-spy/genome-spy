@@ -15,6 +15,8 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      */
     #lastQuantizedInterval = [0, 0];
 
+    #lastWindowSize = 0;
+
     /**
      * @type {{windowSize?: number}}
      * @protected
@@ -48,21 +50,23 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      *
      * @param {number[]} domain Linearized domain
      */
-    async onDomainChanged(domain) {
+    onDomainChanged(domain) {
         const windowSize = this.params?.windowSize ?? -1;
 
         if (domain[1] - domain[0] > windowSize) {
             return;
         }
 
-        const quantizedInterval = this.quantizeInterval(domain, windowSize);
+        this.callIfWindowsChanged(
+            domain,
+            windowSize,
+            async (quantizedInterval) => {
+                // Possible metadata must be loaded before the first request.
+                await this.initializedPromise;
 
-        if (this.checkAndUpdateLastInterval(quantizedInterval)) {
-            // Possible metadata must be loaded before the first request.
-            await this.initializedPromise;
-
-            this.loadInterval(quantizedInterval);
-        }
+                this.loadInterval(quantizedInterval);
+            }
+        );
     }
 
     /**
@@ -120,35 +124,33 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     }
 
     /**
-     * Returns one or two consecutive windows that cover the given interval.
-     * The windows are conceptually similar to "tiles" but they are never loaded separately.
      *
-     * @param {number[]} interval
+     * @param {number[]} interval Domain
      * @param {number} windowSize
+     * @param {function(number[]):void} callback
      * @protected
      */
-    quantizeInterval(interval, windowSize) {
-        return [
+    callIfWindowsChanged(interval, windowSize, callback) {
+        // One or two consecutive windows that cover the given interval.
+        // The windows are conceptually similar to "tiles" but they are never loaded separately.
+        const quantizedInterval = [
             Math.max(Math.floor(interval[0] / windowSize) * windowSize, 0),
             Math.min(
                 Math.ceil(interval[1] / windowSize) * windowSize,
                 this.genome.totalSize // Perhaps scale domain should be used here
             ),
         ];
-    }
 
-    /**
-     *
-     * @param {number[]} interval
-     * @protected
-     */
-    checkAndUpdateLastInterval(interval) {
         const last = this.#lastQuantizedInterval;
-        if (interval[0] >= last[0] && interval[1] <= last[1]) {
-            return false;
-        }
+        if (
+            windowSize !== this.#lastWindowSize ||
+            quantizedInterval[0] < last[0] ||
+            quantizedInterval[1] > last[1]
+        ) {
+            this.#lastQuantizedInterval = quantizedInterval;
+            this.#lastWindowSize = windowSize;
 
-        this.#lastQuantizedInterval = interval;
-        return true;
+            callback(quantizedInterval);
+        }
     }
 }
