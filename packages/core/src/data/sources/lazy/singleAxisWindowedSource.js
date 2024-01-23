@@ -1,8 +1,10 @@
 import SingleAxisLazySource from "./singleAxisLazySource.js";
-import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 
 /**
+ * Divides the domain into windows and loads the data for one or two consecutive windows
+ * that cover the visible interval.
+ *
  * @abstract
  */
 export default class SingleAxisWindowedSource extends SingleAxisLazySource {
@@ -118,9 +120,8 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     }
 
     /**
-     * Returns three consecutive windows. The idea is to immediately have some data
-     * to show to the user when they pan the view. The windows are conceptually
-     * similar to "tiles" but they are never loaded separately.
+     * Returns one or two consecutive windows that cover the given interval.
+     * The windows are conceptually similar to "tiles" but they are never loaded separately.
      *
      * @param {number[]} interval
      * @param {number} windowSize
@@ -128,9 +129,9 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      */
     quantizeInterval(interval, windowSize) {
         return [
-            Math.max(Math.floor(interval[0] / windowSize - 1) * windowSize, 0),
+            Math.max(Math.floor(interval[0] / windowSize) * windowSize, 0),
             Math.min(
-                Math.ceil(interval[1] / windowSize + 1) * windowSize,
+                Math.ceil(interval[1] / windowSize) * windowSize,
                 this.genome.totalSize // Perhaps scale domain should be used here
             ),
         ];
@@ -142,7 +143,8 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      * @protected
      */
     checkAndUpdateLastInterval(interval) {
-        if (shallowArrayEquals(this.#lastQuantizedInterval, interval)) {
+        const last = this.#lastQuantizedInterval;
+        if (interval[0] >= last[0] && interval[1] <= last[1]) {
             return false;
         }
 
