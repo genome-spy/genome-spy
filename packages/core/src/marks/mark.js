@@ -19,7 +19,7 @@ import createEncoders, {
 } from "../encoder/encoder.js";
 import {
     DOMAIN_PREFIX,
-    generateValueGlsl,
+    generateConstantValueGlsl,
     generateScaleGlsl,
     RANGE_TEXTURE_PREFIX,
     ATTRIBUTE_PREFIX,
@@ -369,7 +369,9 @@ export default class Mark {
             }
 
             if (isValueDef(channelDef)) {
-                scaleCode.push(generateValueGlsl(channel, channelDef.value));
+                scaleCode.push(
+                    generateConstantValueGlsl(channel, channelDef.value)
+                );
             } else {
                 const resolutionChannel =
                     (isChannelDefWithScale(channelDef) &&

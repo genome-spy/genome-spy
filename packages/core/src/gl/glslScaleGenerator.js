@@ -54,7 +54,7 @@ function splitScaleType(type) {
  * @param {Channel} channel
  * @param {number | number[] | string | boolean} value
  */
-export function generateValueGlsl(channel, value) {
+export function generateConstantValueGlsl(channel, value) {
     /** @type {VectorizedValue} */
     let vec;
     if (isDiscreteChannel(channel)) {
