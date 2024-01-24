@@ -583,6 +583,7 @@ export default class Mark {
             const set = () => {
                 uniformSetter(adjuster(fn(null)));
                 this.markUniformsAltered = true;
+                this.unitView.context.animator.requestRender();
             };
 
             // Register a listener ...
