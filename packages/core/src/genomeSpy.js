@@ -137,6 +137,14 @@ export default class GenomeSpy {
         this.viewRoot = undefined;
 
         this._paramBroker = new ParamBroker();
+        for (const { name, value } of spec.params ?? []) {
+            const setter = this._paramBroker.allocateSetter(name);
+            if (value != null) {
+                setter(value);
+            } else {
+                // TODO: Bindings
+            }
+        }
 
         /**
          * Views that are currently loading data using lazy sources.
