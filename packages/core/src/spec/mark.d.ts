@@ -414,7 +414,7 @@ export interface LinkProps extends SecondaryPositionProps {
 }
 
 // TODO: Mark-specific configs
-export interface MarkConfig
+export interface MarkProps
     extends PointProps,
         RectProps,
         TextProps,
@@ -422,11 +422,11 @@ export interface MarkConfig
         LinkProps,
         FillAndStrokeProps {
     // Channels.
-    x?: number;
-    y?: number;
-    color?: string;
-    opacity?: number;
-    size?: number;
+    x?: number | ExprRef;
+    y?: number | ExprRef;
+    color?: string | ExprRef;
+    opacity?: number | ExprRef;
+    size?: number | ExprRef;
 
     /**
      * Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`).
@@ -463,7 +463,7 @@ export interface MarkConfig
     /**
      * The stroke width in pixels.
      */
-    strokeWidth?: number;
+    strokeWidth?: number | ExprRef;
 
     /**
      * Minimum size for WebGL buffers (number of data items).
@@ -474,6 +474,6 @@ export interface MarkConfig
     minBufferSize?: number;
 }
 
-export interface MarkConfigAndType extends MarkConfig {
+export interface MarkConfigAndType extends MarkProps {
     type: MarkType;
 }

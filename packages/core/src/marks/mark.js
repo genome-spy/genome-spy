@@ -62,7 +62,7 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
  */
 export default class Mark {
     /**
-     * @typedef {import("../spec/mark.js").MarkConfig} MarkConfig
+     * @typedef {import("../spec/mark.js").MarkProps} MarkProps
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../spec/channel.js").Encoding} Encoding
      * @typedef {import("../spec/channel.js").ValueDef} ValueDef
@@ -121,7 +121,7 @@ export default class Mark {
         this.rangeMap = new RangeMap();
 
         // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
-        /** @type {MarkConfig} */
+        /** @type {MarkProps} */
         this.defaultProperties = {
             get clip() {
                 // TODO: Cache once the scales have been resolved
@@ -151,13 +151,13 @@ export default class Mark {
          *
          * TODO: Proper and comprehensive typings for mark properties
          *
-         * @type {Partial<MarkConfig>}
+         * @type {Partial<MarkProps>}
          * @readonly
          */
         this.properties = coalesceProperties(
             typeof this.unitView.spec.mark == "object"
-                ? () => /** @type {MarkConfig} */ (this.unitView.spec.mark)
-                : () => /** @type {MarkConfig} */ ({}),
+                ? () => /** @type {MarkProps} */ (this.unitView.spec.mark)
+                : () => /** @type {MarkProps} */ ({}),
             () => this.defaultProperties
         );
     }
@@ -237,7 +237,7 @@ export default class Mark {
             /** @type {(property: string) => ValueDef | ValueExprDef } */
             const propToValueDef = (property) => {
                 const value =
-                    this.properties[/** @type {keyof MarkConfig} */ (property)];
+                    this.properties[/** @type {keyof MarkProps} */ (property)];
                 return isScalar(value)
                     ? { value }
                     : isExprRef(value)
