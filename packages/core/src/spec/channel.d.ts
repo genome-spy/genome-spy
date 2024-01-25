@@ -342,13 +342,6 @@ export interface XIndexDef {
     buildIndex?: boolean;
 }
 
-/**
- * @internal
- */
-export interface ValueExprDef {
-    valueExpr: string;
-}
-
 export interface Encoding<F extends Field = string> {
     /**
      * X coordinates of the marks.

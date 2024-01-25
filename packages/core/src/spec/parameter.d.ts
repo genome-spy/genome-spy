@@ -7,7 +7,7 @@ export interface VariableParameter {
      * (or "$", or "_") and may not start with a digit. Reserved keywords that
      * may not be used as parameter names are: "datum".
      */
-    name: ParameterName;
+    name: string;
 
     /**
      * The [initial value](http://vega.github.io/vega-lite/docs/value.html) of the parameter.
