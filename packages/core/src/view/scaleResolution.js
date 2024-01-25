@@ -77,16 +77,18 @@ export default class ScaleResolution {
      * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
      * @typedef {import("../genome/genome.js").ChromosomalLocus} ChromosomalLocus
      * @typedef {import("../types/scaleResolutionApi.js").ScaleResolutionListener} ScaleResolutionListener
+     *
+     * @typedef {VegaScale & { props: import("../spec/scale.js").Scale }} ScaleWithProps
      */
 
     /** @type {number[]} */
-    #zoomExtent = undefined;
+    #zoomExtent;
 
     /** @type {Set<ScaleResolutionListener>} Observers that are called when the scale domain is changed */
     #domainListeners = new Set();
 
-    /** @type {VegaScale} */
-    #scale = undefined;
+    /** @type {ScaleWithProps} */
+    #scale;
 
     /**
      * @param {Channel} channel
@@ -175,11 +177,11 @@ export default class ScaleResolution {
     /**
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
-    isExplicitDomain() {
+    #isExplicitDomain() {
         return !!this.getConfiguredDomain();
     }
 
-    isDomainInitialized() {
+    #isDomainInitialized() {
         const s = this.#scale;
         if (!s) {
             return false;
@@ -225,67 +227,64 @@ export default class ScaleResolution {
      *
      * @returns {import("../spec/scale.js").Scale}
      */
-    getScaleProps() {
-        // eslint-disable-next-line complexity
-        return getCachedOrCall(this, "scaleProps", () => {
-            const mergedProps = this.#getMergedScaleProps();
-            if (mergedProps === null || mergedProps.type == "null") {
-                // No scale (pass-thru)
-                // TODO: Check that the channel is compatible
-                return { type: "null" };
-            }
+    #getScaleProps() {
+        const mergedProps = this.#getMergedScaleProps();
+        if (mergedProps === null || mergedProps.type == "null") {
+            // No scale (pass-thru)
+            // TODO: Check that the channel is compatible
+            return { type: "null" };
+        }
 
-            const props = {
-                ...this.#getDefaultScaleProperties(this.type),
-                ...mergedProps,
-            };
+        const props = {
+            ...this.#getDefaultScaleProperties(this.type),
+            ...mergedProps,
+        };
 
-            if (!props.type) {
-                props.type = getDefaultScaleType(this.channel, this.type);
-            }
+        if (!props.type) {
+            props.type = getDefaultScaleType(this.channel, this.type);
+        }
 
-            const domain = this.#getInitialDomain();
+        const domain = this.#getInitialDomain();
 
-            if (domain && domain.length > 0) {
-                props.domain = domain;
-            } else if (isDiscrete(props.type)) {
-                props.domain = new NominalDomain();
-            }
+        if (domain && domain.length > 0) {
+            props.domain = domain;
+        } else if (isDiscrete(props.type)) {
+            props.domain = new NominalDomain();
+        }
 
-            if (!props.domain && props.domainMid !== undefined) {
-                // Initialize with a bogus domain so that scale.js can inject the domainMid.
-                // The number of domain elements must be know before the glsl scale is generated.
-                props.domain = [props.domainMin ?? 0, props.domainMax ?? 1];
-            }
+        if (!props.domain && props.domainMid !== undefined) {
+            // Initialize with a bogus domain so that scale.js can inject the domainMid.
+            // The number of domain elements must be know before the glsl scale is generated.
+            props.domain = [props.domainMin ?? 0, props.domainMax ?? 1];
+        }
 
-            // Reverse discrete y axis
-            if (
-                this.channel == "y" &&
-                isDiscrete(props.type) &&
-                props.reverse == undefined
-            ) {
-                props.reverse = true;
-            }
+        // Reverse discrete y axis
+        if (
+            this.channel == "y" &&
+            isDiscrete(props.type) &&
+            props.reverse == undefined
+        ) {
+            props.reverse = true;
+        }
 
-            if (props.range && props.scheme) {
-                delete props.scheme;
-                // TODO: Props should be set more intelligently
-                /*
+        if (props.range && props.scheme) {
+            delete props.scheme;
+            // TODO: Props should be set more intelligently
+            /*
                 throw new Error(
                     `Scale has both "range" and "scheme" defined! Views: ${this._getViewPaths()}`
                 );
                 */
-            }
+        }
 
-            // By default, index and locus scales are zoomable, others are not
-            if (!("zoom" in props) && ["index", "locus"].includes(props.type)) {
-                props.zoom = true;
-            }
+        // By default, index and locus scales are zoomable, others are not
+        if (!("zoom" in props) && ["index", "locus"].includes(props.type)) {
+            props.zoom = true;
+        }
 
-            applyLockedProperties(props, this.channel);
+        applyLockedProperties(props, this.channel);
 
-            return props;
-        });
+        return props;
     }
 
     #getInitialDomain() {
@@ -330,52 +329,58 @@ export default class ScaleResolution {
      * Reconfigures the scale: updates domain and other settings
      */
     reconfigure() {
-        if (this.#scale && this.#scale.type != "null") {
-            const domainWasInitialized = this.isDomainInitialized();
+        const scale = this.#scale;
 
-            const previousDomain = this.#scale.domain();
+        if (!scale || scale.type == "null") {
+            return;
+        }
 
-            invalidate(this, "scaleProps");
-            const props = this.getScaleProps();
-            configureScale(props, this.#scale);
-            if (isContinuous(this.#scale.type)) {
-                this.#zoomExtent = this.#getZoomExtent();
-            }
+        const domainWasInitialized = this.#isDomainInitialized();
+        const previousDomain = scale.domain();
 
-            if (!domainWasInitialized) {
+        invalidate(this, "scaleProps");
+        const props = this.#getScaleProps();
+        configureScale(props, scale);
+        if (isContinuous(scale.type)) {
+            this.#zoomExtent = this.#getZoomExtent();
+        }
+
+        if (!domainWasInitialized) {
+            this.#notifyDomainListeners();
+            return;
+        }
+
+        const newDomain = scale.domain();
+        if (!shallowArrayEquals(newDomain, previousDomain)) {
+            if (this.isZoomable()) {
+                // Don't mess with zoomed views, restore the previous domain
+                scale.domain(previousDomain);
+            } else if (this.#isZoomingSupported()) {
+                // It can be zoomed, so lets make a smooth transition.
+                // Restore the previous domain and zoom smoothly to the new domain.
+                scale.domain(previousDomain);
+                this.zoomTo(newDomain, 500); // TODO: Configurable duration
+            } else {
+                // Update immediately if the previous domain was the initial domain [0, 0]
                 this.#notifyDomainListeners();
-                return;
-            }
-
-            const newDomain = this.#scale.domain();
-            if (!shallowArrayEquals(newDomain, previousDomain)) {
-                if (this.isZoomable()) {
-                    // Don't mess with zoomed views, restore the previous domain
-                    this.#scale.domain(previousDomain);
-                } else if (this.#isZoomingSupported()) {
-                    // It can be zoomed, so lets make a smooth transition.
-                    // Restore the previous domain and zoom smoothly to the new domain.
-                    this.#scale.domain(previousDomain);
-                    this.zoomTo(newDomain, 500); // TODO: Configurable duration
-                } else {
-                    // Update immediately if the previous domain was the initial domain [0, 0]
-                    this.#notifyDomainListeners();
-                }
             }
         }
     }
 
     /**
-     * @returns {VegaScale}
+     * @returns {ScaleWithProps}
      */
     getScale() {
         if (this.#scale) {
             return this.#scale;
         }
 
-        const props = this.getScaleProps();
+        const props = this.#getScaleProps();
 
         const scale = createScale(props);
+        // Annotate the scale with props
+        scale.props = props;
+
         this.#scale = scale;
 
         if (isScaleLocus(scale)) {
@@ -420,7 +425,7 @@ export default class ScaleResolution {
      */
     isZoomable() {
         // Check explicit configuration
-        return this.#isZoomingSupported() && !!this.getScaleProps().zoom;
+        return this.#isZoomingSupported() && !!this.getScale().props.zoom;
     }
 
     /**
@@ -452,7 +457,7 @@ export default class ScaleResolution {
         // @ts-ignore
         let anchor = scale.invert(scaleAnchor);
 
-        if (this.getScaleProps().reverse) {
+        if (scale.props.reverse) {
             pan = -pan;
         }
 
@@ -602,7 +607,7 @@ export default class ScaleResolution {
     }
 
     #getZoomExtent() {
-        const props = this.getScaleProps();
+        const props = this.getScale().props;
         const zoom = props.zoom;
 
         if (isZoomParams(zoom)) {
@@ -632,12 +637,12 @@ export default class ScaleResolution {
         const channel = this.channel;
         const props = {};
 
-        if (this.isExplicitDomain()) {
+        if (this.#isExplicitDomain()) {
             props.zero = false;
         }
 
         if (isPositionalChannel(channel)) {
-            props.nice = !this.isExplicitDomain();
+            props.nice = !this.#isExplicitDomain();
         } else if (isColorChannel(channel)) {
             // TODO: Named ranges
             props.scheme =

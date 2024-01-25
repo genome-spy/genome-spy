@@ -301,9 +301,9 @@ export default class WebGLHelper {
         const channel = resolution.channel;
 
         if (isColorChannel(channel)) {
-            const props = resolution.getScaleProps();
-
             const scale = resolution.getScale();
+            const props = scale.props;
+
             const range = /** @type {any[]} */ (scale.range());
 
             /** @type {WebGLTexture} */
