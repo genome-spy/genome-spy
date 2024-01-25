@@ -301,7 +301,7 @@ export default class WebGLHelper {
         const channel = resolution.channel;
 
         if (isColorChannel(channel)) {
-            const scale = resolution.getScale();
+            const scale = resolution.scale;
             const props = scale.props;
 
             const range = /** @type {any[]} */ (scale.range());
@@ -355,7 +355,7 @@ export default class WebGLHelper {
 
             this.rangeTextures.set(resolution, texture);
         } else {
-            const scale = resolution.getScale();
+            const scale = resolution.scale;
 
             if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
                 /** @type {function(any):number} Handle "shape" etc */
@@ -363,9 +363,7 @@ export default class WebGLHelper {
                     ? getDiscreteRangeMapper(channel)
                     : (x) => x;
 
-                const range = /** @type {any[]} */ (
-                    resolution.getScale().range()
-                );
+                const range = /** @type {any[]} */ (scale.range());
 
                 this.rangeTextures.set(
                     resolution,

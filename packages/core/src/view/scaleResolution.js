@@ -370,7 +370,7 @@ export default class ScaleResolution {
     /**
      * @returns {ScaleWithProps}
      */
-    getScale() {
+    get scale() {
         if (this.#scale) {
             return this.#scale;
         }
@@ -395,7 +395,7 @@ export default class ScaleResolution {
     }
 
     getDomain() {
-        return this.getScale().domain();
+        return this.scale.domain();
     }
 
     /**
@@ -425,14 +425,14 @@ export default class ScaleResolution {
      */
     isZoomable() {
         // Check explicit configuration
-        return this.#isZoomingSupported() && !!this.getScale().props.zoom;
+        return this.#isZoomingSupported() && !!this.scale.props.zoom;
     }
 
     /**
      * Returns true if zooming is supported but not necessarily allowed in view spec.
      */
     #isZoomingSupported() {
-        const type = this.getScale().type;
+        const type = this.scale.type;
         return isContinuous(type);
     }
 
@@ -449,7 +449,7 @@ export default class ScaleResolution {
             return false;
         }
 
-        const scale = this.getScale();
+        const scale = this.scale;
         const oldDomain = scale.domain();
         let newDomain = [...oldDomain];
 
@@ -538,7 +538,7 @@ export default class ScaleResolution {
 
         const animator = this.members[0]?.view.context.animator;
 
-        const scale = this.getScale();
+        const scale = this.scale;
         const from = /** @type {number[]} */ (scale.domain());
 
         if (duration > 0 && from.length == 2) {
@@ -600,14 +600,14 @@ export default class ScaleResolution {
     getZoomLevel() {
         // Zoom level makes sense only for user-zoomable scales where zoom extent is defined
         if (this.isZoomable()) {
-            return span(this.#zoomExtent) / span(this.getScale().domain());
+            return span(this.#zoomExtent) / span(this.scale.domain());
         }
 
         return 1.0;
     }
 
     #getZoomExtent() {
-        const props = this.getScale().props;
+        const props = this.scale.props;
         const zoom = props.zoom;
 
         if (isZoomParams(zoom)) {
@@ -692,7 +692,7 @@ export default class ScaleResolution {
      * @param {number} value
      */
     invertToComplex(value) {
-        const scale = this.getScale();
+        const scale = this.scale;
         if ("invert" in scale) {
             const inverted = /** @type {number} */ (scale.invert(value));
             return this.toComplex(inverted);

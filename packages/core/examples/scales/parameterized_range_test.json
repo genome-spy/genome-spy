@@ -1,0 +1,28 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "data": {
+    "sequence": {
+      "start": 1,
+      "stop": 8,
+      "step": 1
+    }
+  },
+
+  "mark": "point",
+
+  "encoding": {
+    "x": {
+      "field": "data",
+      "type": "ordinal"
+    },
+    "size": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": {
+        "type": "linear",
+        "range": { "expr": "[0, 2000]" }
+      }
+    }
+  }
+}

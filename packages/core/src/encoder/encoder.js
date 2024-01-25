@@ -41,7 +41,7 @@ export default function createEncoders(mark, encoding) {
 
         encoders[channel] = createEncoder(
             encoding[channel],
-            resolution?.getScale(),
+            resolution?.scale,
             mark.unitView.getAccessor(channel),
             channel
         );

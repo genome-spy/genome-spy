@@ -409,9 +409,7 @@ export default class Mark {
                     channel;
 
                 const scale = isChannelWithScale(resolutionChannel)
-                    ? this.unitView
-                          .getScaleResolution(resolutionChannel)
-                          .getScale()
+                    ? this.unitView.getScaleResolution(resolutionChannel).scale
                     : scaleNull();
 
                 // Channels that share the same quantitative field
@@ -797,9 +795,10 @@ export default class Mark {
                     channel;
 
                 if (isChannelWithScale(resolutionChannel)) {
-                    const scale = this.unitView
-                        .getScaleResolution(resolutionChannel)
-                        .getScale();
+                    const scale =
+                        this.unitView.getScaleResolution(
+                            resolutionChannel
+                        ).scale;
 
                     ops.push(() => {
                         const domain = isDiscrete(scale.type)
@@ -960,7 +959,7 @@ export default class Mark {
         /** @type {function(import("../gl/dataToVertices.js").RangeEntry):void} rangeEntry */
         let drawWithRangeEntry;
 
-        const scale = this.unitView.getScaleResolution("x")?.getScale();
+        const scale = this.unitView.getScaleResolution("x")?.scale;
         const continuous = scale && isContinuous(scale.type);
         const domainStartOffset = ["index", "locus"].includes(scale?.type)
             ? -1

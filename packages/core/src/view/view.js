@@ -217,7 +217,7 @@ export default class View {
 
             const scale = this.getScaleResolution(
                 dimension == "width" ? "x" : "y"
-            )?.getScale();
+            )?.scale;
 
             if (scale) {
                 // Note: this and all ancestral views need to be refreshed when the domain is changed.
@@ -706,7 +706,7 @@ function createViewOpacityFunction(view) {
         } else if (isDynamicOpacity(opacityDef)) {
             /** @type {(channel: import("../spec/channel.js").ChannelWithScale) => any} */
             const getScale = (channel) => {
-                const scale = view.getScaleResolution(channel)?.getScale();
+                const scale = view.getScaleResolution(channel)?.scale;
                 // Only works on linear scales
                 if (["linear", "index", "locus"].includes(scale?.type)) {
                     return scale;

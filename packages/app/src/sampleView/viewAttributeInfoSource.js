@@ -50,7 +50,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             "field" in channelDef && channelDef.field == specifier.field
     );
     const scale = isChannelWithScale(channel)
-        ? view.getScaleResolution(channel).getScale()
+        ? view.getScaleResolution(channel).scale
         : undefined;
 
     /** @type {import("./types.js").AttributeInfo} */
