@@ -459,7 +459,7 @@ export function createGenomeAxis(axisProps, type) {
      * @return {import("../spec/view.js").UnitSpec}
      */
     const createChromosomeLabels = () => {
-        /** @type {Partial<import("../spec/mark.js").MarkConfig>} */
+        /** @type {Partial<import("../spec/mark.js").MarkProps>} */
         let chromLabelMarkProps;
         switch (ap.orient) {
             case "top":
@@ -594,7 +594,7 @@ export function createGenomeAxis(axisProps, type) {
         if (axisProps.chromLabels) {
             chromLayerSpec.layer.push(createChromosomeLabels());
 
-            /** @type {import("../spec/mark.js").MarkConfig} */
+            /** @type {import("../spec/mark.js").MarkProps} */
             let labelMarkSpec;
 
             // TODO: Simplify the following mess
@@ -608,7 +608,7 @@ export function createGenomeAxis(axisProps, type) {
                                 /** @type {import("../spec/view.js").UnitSpec} */ view
                             ) => {
                                 labelMarkSpec =
-                                    /** @type {import("../spec/mark.js").MarkConfig} */ (
+                                    /** @type {import("../spec/mark.js").MarkProps} */ (
                                         view.mark
                                     );
                             }

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "params": [
+    {
+      "name": "cornerRadius",
+      "value": 20,
+      "bind": { "input": "range", "min": 0, "max": 100, "step": 1 }
+    },
+    {
+      "name": "strokeWidth",
+      "value": 5,
+      "bind": { "input": "range", "min": 0, "max": 50, "step": 0.5 }
+    },
+    {
+      "name": "fillOpacity",
+      "value": 1,
+      "bind": { "input": "range", "min": 0, "max": 1, "step": 0.01 }
+    },
+    {
+      "name": "redStroke",
+      "value": false,
+      "bind": { "input": "checkbox" }
+    },
+    {
+      "name": "fillColor",
+      "value": "navy",
+      "bind": {
+        "input": "select",
+        "options": ["navy", "purple"],
+        "labels": ["Navy", "Purple"]
+      }
+    }
+  ],
+
+  "data": {
+    "values": [
+      { "x": 0.2, "x2": 0.4 },
+      { "x": 0.6, "x2": 0.8 }
+    ]
+  },
+
+  "layer": [
+    {
+      "transform": [
+        { "type": "regexFold", "columnRegex": ["^(x.?)$"], "asValue": ["z"] }
+      ],
+
+      "layer": [
+        {
+          "mark": {
+            "type": "rule",
+            "strokeDash": [3, 3]
+          },
+
+          "encoding": {
+            "x": { "field": "z", "type": "quantitative" },
+            "color": { "value": "darkgray" }
+          }
+        },
+        {
+          "mark": {
+            "type": "rule",
+            "strokeDash": [1, 5, 3, 5]
+          },
+
+          "encoding": {
+            "y": { "field": "z", "type": "quantitative" },
+            "color": { "value": "darkgray" }
+          }
+        }
+      ]
+    },
+    {
+      "mark": {
+        "type": "rect",
+        "strokeWidth": { "expr": "strokeWidth" },
+        "cornerRadius": { "expr": "cornerRadius" },
+        "fillOpacity": { "expr": "fillOpacity" },
+        "stroke": { "expr": "redStroke ? 'firebrick' : 'black'" },
+        "fill": { "expr": "fillColor" }
+      },
+
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1] }
+        },
+        "x2": { "field": "x2" },
+        "y": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1] }
+        },
+        "y2": { "field": "x2" }
+      }
+    }
+  ]
+}

@@ -50,11 +50,12 @@ function splitScaleType(type) {
 }
 
 /**
+ * Generates GLSL code for a constant value.
  *
  * @param {Channel} channel
  * @param {number | number[] | string | boolean} value
  */
-export function generateValueGlsl(channel, value) {
+export function generateConstantValueGlsl(channel, value) {
     /** @type {VectorizedValue} */
     let vec;
     if (isDiscreteChannel(channel)) {
@@ -81,8 +82,6 @@ export function generateValueGlsl(channel, value) {
         vec = vectorize(value);
     }
 
-    // These could also be passed as uniforms because GPU drivers often handle
-    // uniforms as constants and recompile the shader to eliminate dead code etc.
     let glsl = `
 #define ${channel}_DEFINED
 ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
@@ -90,6 +89,42 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
     return ${vec};
 }`;
     return glsl;
+}
+
+/**
+ * Generates GLSL code for a dynamic, parameter-driven values. These are mainly
+ * used as dynamic mark properties that map to encoding channels.
+ *
+ * @param {Channel} channel
+ */
+export function generateDynamicValueGlslAndUniform(channel) {
+    let dataType = "float";
+    /** @type {(x: any) => any} */
+    let adjuster = (x) => x;
+
+    if (isColorChannel(channel)) {
+        dataType = "vec3";
+        adjuster = (x) => cssColorToArray(x);
+    }
+
+    const uniformName = `u${capitalize(channel)}`;
+
+    const uniformGlsl = `    // Dynamic value\n    uniform ${dataType} ${uniformName};`;
+
+    let scaleGlsl = `
+#define ${channel}_DEFINED
+${dataType} ${SCALED_FUNCTION_PREFIX}${channel}() {
+    // Dynamic value
+    return ${uniformName};
+}`;
+
+    return {
+        channel,
+        uniformName,
+        uniformGlsl,
+        scaleGlsl,
+        adjuster,
+    };
 }
 
 /**
@@ -443,9 +478,16 @@ function vectorize(value) {
 /**
  * @param {string} color
  */
-function vectorizeCssColor(color) {
+function cssColorToArray(color) {
     const rgb = d3color(color).rgb();
-    return vectorize([rgb.r, rgb.g, rgb.b].map((x) => x / 255));
+    return [rgb.r, rgb.g, rgb.b].map((x) => x / 255);
+}
+
+/**
+ * @param {string} color
+ */
+function vectorizeCssColor(color) {
+    return vectorize(cssColorToArray(color));
 }
 
 /**
@@ -590,4 +632,11 @@ export function dedupeEncodingFields(encoders) {
  */
 export function makeAttributeName(channel) {
     return asArray(channel).join("_");
+}
+
+/**
+ * @param {string} str
+ */
+function capitalize(str) {
+    return str[0].toUpperCase() + str.slice(1);
 }

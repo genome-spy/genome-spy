@@ -15,21 +15,21 @@ export type MarkType = "rect" | "point" | "rule" | "text" | "link";
 
 export interface FillAndStrokeProps {
     /** The fill color */
-    fill?: string;
+    fill?: string | ExprRef;
 
     /** The fill opacity. Value between [0, 1]. */
-    fillOpacity?: number;
+    fillOpacity?: number | ExprRef;
 
     /** The stroke color */
-    stroke?: string;
+    stroke?: string | ExprRef;
 
     /** The stroke opacity. Value between [0, 1]. */
-    strokeOpacity?: number;
+    strokeOpacity?: number | ExprRef;
 }
 
 export interface SecondaryPositionProps {
-    x2?: number;
-    y2?: number;
+    x2?: number | ExprRef;
+    y2?: number | ExprRef;
 }
 
 export interface AngleProps {
@@ -38,7 +38,7 @@ export interface AngleProps {
      *
      * **Default value:** `0`
      */
-    angle?: number;
+    angle?: number | ExprRef;
 }
 
 /**
@@ -177,7 +177,7 @@ export interface TextProps
      *
      * **Default value:** `11`
      */
-    size?: number;
+    size?: number | ExprRef;
 
     /**
      * The font typeface. GenomeSpy uses [SDF](https://github.com/Chlumsky/msdfgen)
@@ -414,7 +414,7 @@ export interface LinkProps extends SecondaryPositionProps {
 }
 
 // TODO: Mark-specific configs
-export interface MarkConfig
+export interface MarkProps
     extends PointProps,
         RectProps,
         TextProps,
@@ -422,11 +422,11 @@ export interface MarkConfig
         LinkProps,
         FillAndStrokeProps {
     // Channels.
-    x?: number;
-    y?: number;
-    color?: string;
-    opacity?: number;
-    size?: number;
+    x?: number | ExprRef;
+    y?: number | ExprRef;
+    color?: string | ExprRef;
+    opacity?: number | ExprRef;
+    size?: number | ExprRef;
 
     /**
      * Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`).
@@ -463,7 +463,7 @@ export interface MarkConfig
     /**
      * The stroke width in pixels.
      */
-    strokeWidth?: number;
+    strokeWidth?: number | ExprRef;
 
     /**
      * Minimum size for WebGL buffers (number of data items).
@@ -474,6 +474,6 @@ export interface MarkConfig
     minBufferSize?: number;
 }
 
-export interface MarkConfigAndType extends MarkConfig {
+export interface MarkConfigAndType extends MarkProps {
     type: MarkType;
 }

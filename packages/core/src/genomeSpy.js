@@ -35,6 +35,8 @@ import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
 import ParamBroker from "./paramBroker.js";
+import { debounce } from "./utils/debounce.js";
+import { tickStep } from "d3-array";
 
 /**
  * Events that are broadcasted to all views.
@@ -137,6 +139,7 @@ export default class GenomeSpy {
         this.viewRoot = undefined;
 
         this._paramBroker = new ParamBroker();
+        this.#initializeParameters();
 
         /**
          * Views that are currently loading data using lazy sources.
@@ -144,6 +147,111 @@ export default class GenomeSpy {
          * @type {Map<View, boolean>}
          */
         this._loadingViews = new Map();
+    }
+
+    #initializeParameters() {
+        /** @type {import("lit-html").TemplateResult[]} */
+        const inputs = [];
+
+        for (const param of this.spec.params ?? []) {
+            const { name, value, bind } = param;
+            const setter = this._paramBroker.allocateSetter(name);
+
+            if (value != null) {
+                setter(value);
+            }
+
+            // TODO: Implement two-way data binding, e.g. when an external agent changes
+            // the parameter value, the UI components should be updated.
+
+            if (bind && "input" in bind) {
+                const debouncedSetter = bind.debounce
+                    ? debounce(setter, bind.debounce, false)
+                    : setter;
+
+                if (bind.input == "range") {
+                    // TODO: Show the value next to the slider
+                    inputs.push(
+                        html`<label
+                            >${bind.name ?? name}
+                            <input
+                                type="range"
+                                min=${bind.min ?? 0}
+                                max=${bind.max ?? 100}
+                                step=${bind.step ??
+                                tickStep(bind.min, bind.max, 100)}
+                                .value=${value}
+                                @input=${(/** @type {any} */ e) =>
+                                    debouncedSetter(e.target.valueAsNumber)}
+                        /></label>`
+                    );
+                } else if (bind.input == "checkbox") {
+                    inputs.push(
+                        html`<label
+                            >${bind.name ?? name}
+                            <input
+                                type="checkbox"
+                                ?checked=${value}
+                                @input=${(/** @type {any} */ e) =>
+                                    debouncedSetter(e.target.checked)}
+                        /></label>`
+                    );
+                } else if (bind.input == "radio") {
+                    inputs.push(
+                        html`<span class="label">${bind.name ?? name}</span>
+                            ${bind.options.map(
+                                (option, i) => html`<label>
+                                    <input
+                                        type="radio"
+                                        name=${name}
+                                        value=${option}
+                                        .checked=${value == option}
+                                        @input=${(/** @type {any} */ e) =>
+                                            debouncedSetter(e.target.value)}
+                                    />${bind.labels?.[i] ?? option}</label
+                                >`
+                            )}`
+                    );
+                } else if (bind.input == "select") {
+                    inputs.push(
+                        html`<label
+                            >${bind.name ?? name}
+                            <select
+                                @input=${(/** @type {any} */ e) =>
+                                    debouncedSetter(e.target.value)}
+                            >
+                                ${bind.options.map(
+                                    (option, i) => html`<option
+                                        value=${option}
+                                        ?selected=${value == option}
+                                    >
+                                        ${bind.labels?.[i] ?? option}
+                                    </option>`
+                                )}
+                            </select></label
+                        >`
+                    );
+                } else {
+                    // TODO: Support other types: "text", "number", "color".
+                    throw new Error("Unsupported input type: " + bind.input);
+                }
+            }
+        }
+
+        if (inputs.length) {
+            const inputsDiv = document.createElement("div");
+            this.container.appendChild(inputsDiv);
+
+            // TODO: Move to css
+            // @ts-ignore
+            inputsDiv.style =
+                "position: absolute; bottom: 10px; right: 10px; background: rgba(255, 255, 255, 0.8); padding: 10px; z-index: 1; border: 1px solid lightgray";
+
+            render(
+                html`${inputs.map((input) => html`<div>${input}</div>`)}`,
+                inputsDiv
+            );
+        }
     }
 
     /**

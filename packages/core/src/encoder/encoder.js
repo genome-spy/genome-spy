@@ -68,7 +68,14 @@ export function createEncoder(channelDef, scale, accessor, channel) {
     /** @type {Encoder} */
     let encoder;
 
-    if (isValueDef(channelDef)) {
+    if (isValueExprDef(channelDef)) {
+        // TODO: Should get the value expression as the accessor
+        encoder = /** @type {Encoder} */ ((datum) => undefined);
+        //encoder = /** @type {Encoder} */ (/** @type {any} */ (accessor));
+        encoder.constant = true;
+        encoder.constantValue = false;
+        encoder.accessor = accessor;
+    } else if (isValueDef(channelDef)) {
         const value = channelDef.value;
         encoder = /** @type {Encoder} */ ((datum) => value);
         encoder.constant = true;
@@ -154,6 +161,14 @@ export function createEncoder(channelDef, scale, accessor, channel) {
  */
 export function isValueDef(channelDef) {
     return channelDef && "value" in channelDef;
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").ValueExprDef}
+ */
+export function isValueExprDef(channelDef) {
+    return channelDef && "valueExpr" in channelDef;
 }
 
 /**

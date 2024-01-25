@@ -15,6 +15,8 @@ uniform Mark {
     uniform float uMaxChordLength;
     // In pixels
     uniform vec2 uArcFadingDistance;
+
+#pragma markUniforms
 };
 
 in vec2 strip;

@@ -5,4 +5,6 @@ uniform Mark {
     uniform mediump float uDashTextureSize;
     uniform lowp int uStrokeCap;
     uniform mediump float uStrokeDashOffset;
+
+#pragma markUniforms
 };
