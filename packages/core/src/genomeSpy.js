@@ -36,6 +36,7 @@ import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
 import ParamBroker from "./paramBroker.js";
 import { debounce } from "./utils/debounce.js";
+import { tickStep } from "d3-array";
 
 /**
  * Events that are broadcasted to all views.
@@ -177,7 +178,8 @@ export default class GenomeSpy {
                                 type="range"
                                 min=${bind.min ?? 0}
                                 max=${bind.max ?? 100}
-                                step=${bind.step}
+                                step=${bind.step ??
+                                tickStep(bind.min, bind.max, 100)}
                                 .value=${value}
                                 @input=${(/** @type {any} */ e) =>
                                     debouncedSetter(e.target.valueAsNumber)}
