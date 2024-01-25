@@ -1,15 +1,7 @@
 import { Scalar } from "./channel.js";
+import { ExprRef } from "./parameter.js";
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
-
-// TODO: This may not be the best place for this type.
-// Also, this is now similar to the ExprDef type in channel.d.ts
-export interface ExprRef {
-    /**
-     * The expression string.
-     */
-    expr: string;
-}
 
 export type MarkType = "rect" | "point" | "rule" | "text" | "link";
 

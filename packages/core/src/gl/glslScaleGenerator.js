@@ -325,9 +325,9 @@ export function generateScaleGlsl(
         interpolate = `getDiscreteColor(${textureUniformName}, int(transformed)).r`;
     }
 
-    const attributeGlsl = isDatumDef(channelDef)
-        ? `uniform highp ${attributeType} ${attributeName};`
-        : `in highp ${attributeType} ${attributeName};`;
+    const [attributeGlsl, markUniformGlsl] = isDatumDef(channelDef)
+        ? [undefined, `  uniform highp ${attributeType} ${attributeName};`]
+        : [`in highp ${attributeType} ${attributeName};`, undefined];
 
     /** @type {string[]} Channel's scale function*/
     const scaleBody = [];
@@ -414,7 +414,10 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
     }
 
     return {
+        attributeName,
         attributeGlsl,
+        // Ends up in the Mark uniform block
+        markUniformGlsl,
         glsl: concatenated,
         domainUniform,
     };

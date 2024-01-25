@@ -23,12 +23,12 @@ import {
     generateConstantValueGlsl,
     generateScaleGlsl,
     RANGE_TEXTURE_PREFIX,
-    ATTRIBUTE_PREFIX,
     isHighPrecisionScale,
     toHighPrecisionDomainUniform,
-    splitHighPrecision,
     dedupeEncodingFields,
     generateDynamicValueGlslAndUniform,
+    isLargeGenome,
+    splitLargeHighPrecision,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -67,13 +67,13 @@ export default class Mark {
      * @typedef {import("../spec/channel.js").Encoding} Encoding
      * @typedef {import("../spec/channel.js").ValueDef} ValueDef
      * @typedef {import("../spec/channel.js").ValueExprDef} ValueExprDef
-     * @typedef {import("../spec/mark.js").ExprRef} ExprRef
+     * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
      */
 
     /**
      * Only needed during initialization;
      *
-     * @type {Map<string, { expr: string, adjuster: function}>}
+     * @type {Map<string, { value: import("../spec/channel.js").Scalar | ExprRef, adjuster: function}>}
      */
     #dynamicValueUniforms = new Map();
 
@@ -394,7 +394,7 @@ export default class Mark {
                 scaleCode.push(scaleGlsl);
                 dynamicMarkUniforms.push(uniformGlsl);
                 this.#dynamicValueUniforms.set(uniformName, {
-                    expr: channelDef.valueExpr,
+                    value: { expr: channelDef.valueExpr },
                     adjuster,
                 });
             } else if (isValueDef(channelDef)) {
@@ -436,6 +436,36 @@ export default class Mark {
                 }
                 if (generated.attributeGlsl) {
                     attributeCode.add(generated.attributeGlsl);
+                }
+                if (generated.markUniformGlsl) {
+                    if (!isDatumDef(channelDef)) {
+                        throw new Error("Bug!");
+                    }
+
+                    const encoder = this.encoders[channel];
+
+                    const indexer = encoder.indexer;
+                    const hp = isHighPrecisionScale(encoder.scale.type);
+                    const largeHp = hp && isLargeGenome(encoder.scale.domain());
+
+                    /**
+                     * Discrete variables both numeric and strings must be "indexed",
+                     * 64 bit floats must be converted to vec2.
+                     * 32 bit continuous variables go to GPU as is.
+                     *
+                     * @type {function(import("../spec/channel.js").Scalar):(number | number[])}
+                     */
+                    const adjuster = indexer
+                        ? indexer
+                        : largeHp
+                        ? splitLargeHighPrecision
+                        : (d) => +d;
+
+                    dynamicMarkUniforms.push(generated.markUniformGlsl);
+                    this.#dynamicValueUniforms.set(generated.attributeName, {
+                        value: channelDef.datum,
+                        adjuster,
+                    });
                 }
             }
         }
@@ -542,8 +572,6 @@ export default class Mark {
 
         this.gl.useProgram(this.programInfo.program);
 
-        this._setDatums();
-
         setUniforms(this.programInfo, {
             // left pos, left height, right pos, right height
             uSampleFacet: [0, 1, 0, 1],
@@ -551,12 +579,13 @@ export default class Mark {
             uZero: 0.0,
         });
 
+        // Set dynamic values, e.g., those having an ExprRef.
         for (const [
             uniformName,
-            { expr, adjuster },
+            { value, adjuster },
         ] of this.#dynamicValueUniforms.entries()) {
             // @ts-expect-error TODO: Do something for the type of adjuster
-            this.registerMarkUniform(uniformName, { expr }, adjuster);
+            this.registerMarkUniform(uniformName, value, adjuster);
         }
         this.#dynamicValueUniforms.clear();
     }
@@ -574,6 +603,11 @@ export default class Mark {
      */
     registerMarkUniform(uniformName, propValue, adjuster = (x) => x) {
         const uniformSetter = this.markUniformInfo.setters[uniformName];
+        if (!uniformSetter) {
+            throw new Error(
+                `Uniform "${uniformName}" not found int the Mark block!`
+            );
+        }
 
         if (isExprRef(propValue)) {
             const fn = this.unitView.context.paramBroker.createExpression(
@@ -595,24 +629,6 @@ export default class Mark {
                 adjuster(/** @type {Exclude<T, ExprRef>} */ (propValue))
             );
             this.markUniformsAltered = true;
-        }
-    }
-
-    _setDatums() {
-        for (const [channel, channelDef] of Object.entries(this.encoding)) {
-            if (isDatumDef(channelDef)) {
-                const encoder = this.encoders[channel];
-
-                const datum = encoder.indexer
-                    ? encoder.indexer(channelDef.datum)
-                    : isHighPrecisionScale(encoder.scale.type)
-                    ? splitHighPrecision(+channelDef.datum)
-                    : +channelDef.datum;
-
-                setUniforms(this.programInfo, {
-                    [ATTRIBUTE_PREFIX + channel]: datum,
-                });
-            }
         }
     }
 
@@ -1175,7 +1191,7 @@ class RangeMap extends InternMap {
 // TODO: Find a better place for this function
 /**
  * @param {any} x
- * @returns {x is import("../spec/mark.js").ExprRef}
+ * @returns {x is import("../spec/parameter.js").ExprRef}
  */
 export function isExprRef(x) {
     return typeof x == "object" && x != null && "expr" in x && isString(x.expr);

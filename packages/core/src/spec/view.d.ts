@@ -7,12 +7,12 @@ import {
     PrimaryPositionalChannel,
 } from "./channel.js";
 import {
-    ExprRef,
     FillAndStrokeProps,
     MarkConfigAndType,
     MarkType,
     RectProps,
 } from "./mark.js";
+import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { SampleSpec } from "./sampleView.js";
 

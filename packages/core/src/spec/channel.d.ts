@@ -8,11 +8,12 @@
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
+import { ExprRef } from "./parameter.js";
 import { Scale } from "./scale.js";
 import { GenomeAxis } from "./axis.js";
 
 export type Scalar = string | number | boolean;
-export type Value = Scalar | null;
+export type Value = Scalar | ExprRef | null;
 
 export type FieldName = string;
 export type Field = FieldName;

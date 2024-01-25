@@ -162,7 +162,7 @@ export default class TextMark extends Mark {
 
         this.registerMarkUniform(
             "uSdfNumerator",
-            /** @type {import("../spec/mark.js").ExprRef | number} */
+            /** @type {import("../spec/parameter.js").ExprRef | number} */
             ({ expr: "devicePixelRatio" }),
             (dpr) => {
                 let q = 0.35; // TODO: Ensure that this makes sense. Now chosen by trial & error

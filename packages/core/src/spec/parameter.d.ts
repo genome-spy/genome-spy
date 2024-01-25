@@ -1,3 +1,10 @@
+export interface ExprRef {
+    /**
+     * The expression string.
+     */
+    expr: string;
+}
+
 // Adapted from: https://github.com/vega/vega-lite/blob/main/src/parameter.ts
 
 export interface VariableParameter {
