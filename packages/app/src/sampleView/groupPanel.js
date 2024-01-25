@@ -196,8 +196,6 @@ export class GroupPanel extends LayerView {
         }
 
         yRes.scale.range(yRange);
-        // TODO: The texture should be updated implicitly when the range is modified
-        this.context.glHelper.createRangeTexture(yRes, true);
     }
 
     updateGroups() {

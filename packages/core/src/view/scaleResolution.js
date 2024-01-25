@@ -391,6 +391,26 @@ export default class ScaleResolution {
             this.#zoomExtent = this.#getZoomExtent();
         }
 
+        // Untidy dependency. TODO: Work around
+        const glHelper = this.members[0].view.context.glHelper;
+
+        // Hijack the range method
+        const range = scale.range;
+        if (range) {
+            // TODO: Only update the texture when the range is really changed
+            const updateTexture = () => glHelper.createRangeTexture(this, true);
+            scale.range = function (/** @type {any} */ _) {
+                if (arguments.length) {
+                    range(_);
+                    updateTexture();
+                } else {
+                    return range();
+                }
+            };
+        }
+
+        glHelper.createRangeTexture(this, true);
+
         return scale;
     }
 
