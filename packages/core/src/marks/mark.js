@@ -428,16 +428,10 @@ export default class Mark {
                 );
 
                 scaleCode.push(generated.glsl);
-                if (generated.domainUniform) {
-                    this.domainUniforms.push(generated.domainUniform);
-                }
-                if (generated.rangeUniform) {
-                    this.domainUniforms.push(generated.rangeUniform);
-                    //
-                }
-                if (generated.attributeGlsl) {
-                    attributeCode.add(generated.attributeGlsl);
-                }
+                this.domainUniforms.push(generated.domainUniform);
+                this.domainUniforms.push(generated.rangeUniform);
+                attributeCode.add(generated.attributeGlsl);
+
                 if (generated.markUniformGlsl) {
                     if (!isDatumDef(channelDef)) {
                         throw new Error("Bug!");
@@ -475,6 +469,7 @@ export default class Mark {
             }
         }
 
+        this.domainUniforms = this.domainUniforms.filter((x) => !!x);
         const domainUniformBlock = this.domainUniforms.length
             ? "layout(std140) uniform Domains {\n" +
               this.domainUniforms.map((u) => `    ${u}\n`).join("") +
