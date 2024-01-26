@@ -160,7 +160,7 @@ export default class TextMark extends Mark {
 
         const props = this.properties;
 
-        this.registerMarkUniform(
+        this.registerMarkUniformValue(
             "uSdfNumerator",
             /** @type {import("../spec/parameter.js").ExprRef | number} */
             ({ expr: "devicePixelRatio" }),

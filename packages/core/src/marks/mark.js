@@ -389,7 +389,7 @@ export default class Mark {
                     dynamicMarkUniforms.push(uniformGlsl);
 
                     this.#callAfterShaderCompilation.push(() => {
-                        this.registerMarkUniform(
+                        this.registerMarkUniformValue(
                             uniformName,
                             channelDef.value,
                             adjuster
@@ -432,6 +432,10 @@ export default class Mark {
                 this.domainUniforms.push(generated.rangeUniform);
                 attributeCode.add(generated.attributeGlsl);
 
+                if (generated.rangeUniform) {
+                    //
+                }
+
                 if (generated.markUniformGlsl) {
                     if (!isDatumDef(channelDef)) {
                         throw new Error("Bug!");
@@ -459,7 +463,7 @@ export default class Mark {
                     dynamicMarkUniforms.push(generated.markUniformGlsl);
 
                     this.#callAfterShaderCompilation.push(() => {
-                        this.registerMarkUniform(
+                        this.registerMarkUniformValue(
                             generated.attributeName,
                             channelDef.datum,
                             adjuster
@@ -589,6 +593,28 @@ export default class Mark {
     }
 
     /**
+     * Sets a uniform in the Mark block. Requests a render from the animator.
+     *
+     * @protected
+     * @param {string} uniformName
+     * @returns {function(any):void}
+     */
+    createMarkUniformSetter(uniformName) {
+        const uniformSetter = this.markUniformInfo.setters[uniformName];
+        if (!uniformSetter) {
+            throw new Error(
+                `Uniform "${uniformName}" not found int the Mark block!`
+            );
+        }
+
+        return (value) => {
+            uniformSetter(value);
+            this.markUniformsAltered = true;
+            this.unitView.context.animator.requestRender();
+        };
+    }
+
+    /**
      * Set a uniform based on a mark property. If the property is an expression,
      * register a listener to update the uniform when the params referenced by the
      * expression change.
@@ -599,34 +625,22 @@ export default class Mark {
      * @param {T} propValue
      * @param {(x: Exclude<T, ExprRef>) => any} adjuster
      */
-    registerMarkUniform(uniformName, propValue, adjuster = (x) => x) {
-        const uniformSetter = this.markUniformInfo.setters[uniformName];
-        if (!uniformSetter) {
-            throw new Error(
-                `Uniform "${uniformName}" not found int the Mark block!`
-            );
-        }
+    registerMarkUniformValue(uniformName, propValue, adjuster = (x) => x) {
+        const setter = this.createMarkUniformSetter(uniformName);
 
         if (isExprRef(propValue)) {
             const fn = this.unitView.context.paramBroker.createExpression(
                 propValue.expr
             );
 
-            const set = () => {
-                uniformSetter(adjuster(fn(null)));
-                this.markUniformsAltered = true;
-                this.unitView.context.animator.requestRender();
-            };
+            const set = () => setter(adjuster(fn(null)));
 
             // Register a listener ...
             fn.addListener(set);
             // ... and set the initial value
             set();
         } else {
-            uniformSetter(
-                adjuster(/** @type {Exclude<T, ExprRef>} */ (propValue))
-            );
-            this.markUniformsAltered = true;
+            setter(adjuster(/** @type {Exclude<T, ExprRef>} */ (propValue)));
         }
     }
 
