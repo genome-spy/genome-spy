@@ -1,6 +1,7 @@
 import { setBuffersAndAttributes } from "twgl.js";
 import VERTEX_SHADER from "./link.vertex.glsl";
 import FRAGMENT_SHADER from "./link.fragment.glsl";
+import COMMON_SHADER from "./link.common.glsl";
 import { LinkVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
@@ -98,7 +99,9 @@ export default class LinkMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
+            COMMON_SHADER,
+        ]);
     }
 
     finalizeGraphicsInitialization() {

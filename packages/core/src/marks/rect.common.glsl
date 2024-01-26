@@ -1,4 +1,4 @@
-uniform Mark {
+layout(std140) uniform Mark {
     /** Minimum size (width, height) of the displayed rectangle in pixels */
     uniform float uMinWidth;
     uniform float uMinHeight;

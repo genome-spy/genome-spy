@@ -426,8 +426,8 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
                 ? domainLength
                 : 2;
         domainUniform = hp
-            ? `highp vec3 ${domainUniformName};`
-            : `mediump float ${domainUniformName}[${length}];`;
+            ? `    highp vec3 ${domainUniformName};`
+            : `    mediump float ${domainUniformName}[${length}];`;
     }
 
     return {
@@ -436,6 +436,7 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
         // Ends up in the Mark uniform block
         markUniformGlsl,
         glsl: concatenated,
+        domainUniformName,
         domainUniform,
         rangeUniform,
     };

@@ -1,4 +1,4 @@
-uniform Mark {
+layout(std140) uniform Mark {
     /** Minimum rule length in pixels */
     uniform mediump float uMinLength;
 

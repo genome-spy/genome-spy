@@ -18,7 +18,6 @@ import createEncoders, {
     isValueDef,
 } from "../encoder/encoder.js";
 import {
-    DOMAIN_PREFIX,
     generateConstantValueGlsl,
     generateScaleGlsl,
     RANGE_TEXTURE_PREFIX,
@@ -342,10 +341,6 @@ export default class Mark {
         // For debugging
         const debugHeader = "// view: " + this.unitView.getPathString();
 
-        // TODO: This is a temporary variable, don't store it in the mark object
-        /** @type {string[]} */
-        this.domainUniforms = [];
-
         /** @type {string[]} */
         let scaleCode = [];
 
@@ -428,8 +423,8 @@ export default class Mark {
                 );
 
                 scaleCode.push(generated.glsl);
-                this.domainUniforms.push(generated.domainUniform);
-                this.domainUniforms.push(generated.rangeUniform);
+                dynamicMarkUniforms.push(generated.domainUniform);
+                //this.domainUniforms.push(generated.rangeUniform);
                 attributeCode.add(generated.attributeGlsl);
 
                 if (generated.rangeUniform) {
@@ -470,17 +465,35 @@ export default class Mark {
                         );
                     });
                 }
+
+                if (generated.domainUniform) {
+                    this.#callAfterShaderCompilation.push(() => {
+                        const domainSetter = this.createMarkUniformSetter(
+                            generated.domainUniformName
+                        );
+                        const scale = scaleResolution.scale;
+                        const set = () => {
+                            const domain = isDiscrete(scale.type)
+                                ? [0, scale.domain().length]
+                                : scale.domain();
+
+                            domainSetter(
+                                isHighPrecisionScale(scale.type)
+                                    ? toHighPrecisionDomainUniform(domain)
+                                    : domain
+                            );
+                        };
+
+                        scaleResolution.addEventListener("domain", set);
+
+                        // Initial value
+                        set();
+                    });
+                }
             }
         }
 
-        this.domainUniforms = this.domainUniforms.filter((x) => !!x);
-        const domainUniformBlock = this.domainUniforms.length
-            ? "layout(std140) uniform Domains {\n" +
-              this.domainUniforms.map((u) => `    ${u}\n`).join("") +
-              "};\n\n"
-            : "";
-
-        const vertexPrecision = "precision highp float;\n";
+        const vertexPrecision = "precision highp float;\nprecision highp int;";
 
         /**
          * @param {string} shaderCode
@@ -501,7 +514,6 @@ export default class Mark {
             ...extraHeaders,
             GLSL_COMMON,
             GLSL_SCALES,
-            domainUniformBlock,
             [...attributeCode].join("\n"),
             ...scaleCode,
             GLSL_SAMPLE_FACET,
@@ -556,14 +568,6 @@ export default class Mark {
             this.programStatus.program
         );
         delete this.programStatus;
-
-        if (this.domainUniforms.length) {
-            this.domainUniformInfo = createUniformBlockInfo(
-                this.gl,
-                this.programInfo,
-                "Domains"
-            );
-        }
 
         this.viewUniformInfo = createUniformBlockInfo(
             this.gl,
@@ -790,48 +794,6 @@ export default class Mark {
 
             gl.useProgram(this.programInfo.program);
         });
-
-        if (this.domainUniformInfo) {
-            // TODO: Only update the domains that have changed
-
-            for (const [uniform, setter] of Object.entries(
-                this.domainUniformInfo.setters
-            )) {
-                // TODO: isChannel()
-                const channel = /** @type {Channel} */ (
-                    uniform.substring(DOMAIN_PREFIX.length)
-                );
-
-                const channelDef = this.encoding[channel];
-                const resolutionChannel =
-                    (isChannelDefWithScale(channelDef) &&
-                        channelDef.resolutionChannel) ||
-                    channel;
-
-                if (isChannelWithScale(resolutionChannel)) {
-                    const scale =
-                        this.unitView.getScaleResolution(
-                            resolutionChannel
-                        ).scale;
-
-                    ops.push(() => {
-                        const domain = isDiscrete(scale.type)
-                            ? [0, scale.domain().length]
-                            : scale.domain();
-
-                        setter(
-                            isHighPrecisionScale(scale.type)
-                                ? toHighPrecisionDomainUniform(domain)
-                                : domain
-                        );
-                    });
-                }
-            }
-
-            ops.push(() =>
-                setUniformBlock(gl, this.programInfo, this.domainUniformInfo)
-            );
-        }
 
         for (const [channel, channelDef] of Object.entries(this.encoding)) {
             if (isChannelDefWithScale(channelDef)) {
