@@ -20,7 +20,6 @@ import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 import mergeObjects from "../utils/mergeObjects.js";
 import createScale, { configureScale } from "../scale/scale.js";
 
-import { invalidate, getCachedOrCall } from "../utils/propertyCacher.js";
 import {
     getChannelDefWithScale,
     isColorChannel,
@@ -207,18 +206,15 @@ export default class ScaleResolution {
      * @returns {import("../spec/scale.js").Scale}
      */
     #getMergedScaleProps() {
-        return getCachedOrCall(this, "mergedScaleProps", () => {
-            const propArray = this.members
-                .map(
-                    (member) =>
-                        getChannelDefWithScale(member.view, member.channel)
-                            .scale
-                )
-                .filter((props) => props !== undefined);
+        const propArray = this.members
+            .map(
+                (member) =>
+                    getChannelDefWithScale(member.view, member.channel).scale
+            )
+            .filter((props) => props !== undefined);
 
-            // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
-            return mergeObjects(propArray, "scale", ["domain"]);
-        });
+        // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
+        return mergeObjects(propArray, "scale", ["domain"]);
     }
 
     /**
@@ -338,7 +334,6 @@ export default class ScaleResolution {
         const domainWasInitialized = this.#isDomainInitialized();
         const previousDomain = scale.domain();
 
-        invalidate(this, "scaleProps");
         const props = this.#getScaleProps();
         configureScale(props, scale);
         if (isContinuous(scale.type)) {
