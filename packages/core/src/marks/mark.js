@@ -40,7 +40,6 @@ import { createProgram } from "../gl/webGLHelper.js";
 import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
-import scaleNull from "../utils/scaleNull.js";
 import ViewError from "../view/viewError.js";
 import { isString } from "vega-util";
 
@@ -343,6 +342,7 @@ export default class Mark {
      * @param {string[]} [extraHeaders]
      * @protected
      */
+    // eslint-disable-next-line complexity
     createAndLinkShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const attributes = this.getAttributes();
 
@@ -408,9 +408,9 @@ export default class Mark {
                         channelDef.resolutionChannel) ||
                     channel;
 
-                const scale = isChannelWithScale(resolutionChannel)
-                    ? this.unitView.getScaleResolution(resolutionChannel).scale
-                    : scaleNull();
+                const scaleResolution = isChannelWithScale(resolutionChannel)
+                    ? this.unitView.getScaleResolution(resolutionChannel)
+                    : null;
 
                 // Channels that share the same quantitative field
                 // TODO: It should be ok to share a categorical field if the channels
@@ -421,7 +421,7 @@ export default class Mark {
 
                 const generated = generateScaleGlsl(
                     channel,
-                    scale,
+                    scaleResolution,
                     channelDef,
                     sharedChannels?.includes(channel)
                         ? sharedChannels
@@ -431,6 +431,10 @@ export default class Mark {
                 scaleCode.push(generated.glsl);
                 if (generated.domainUniform) {
                     this.domainUniforms.push(generated.domainUniform);
+                }
+                if (generated.rangeUniform) {
+                    this.domainUniforms.push(generated.rangeUniform);
+                    //
                 }
                 if (generated.attributeGlsl) {
                     attributeCode.add(generated.attributeGlsl);

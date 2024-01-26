@@ -363,6 +363,18 @@ export default class ScaleResolution {
                 // Update immediately if the previous domain was the initial domain [0, 0]
                 this.#notifyDomainListeners();
             }
+
+            // Nasty dependency on WebGL here
+            this.members[0].view.context.glHelper.createRangeTexture(
+                this,
+                true
+            );
+            /*
+            const range = props.range;
+            if (range && isArray(range) && range.find(isExprRef)) {    
+                //
+            }
+            */
         }
     }
 

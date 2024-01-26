@@ -9,6 +9,7 @@
  */
 
 import { ChromosomalLocus } from "./genome.js";
+import { ExprRef } from "./parameter.js";
 
 export type ScaleType =
     | "null"
@@ -94,7 +95,7 @@ export interface Scale {
      *
      * 2) Any directly specified `range` for `x` and `y` channels will be ignored. Range can be customized via the view's corresponding [size](https://vega.github.io/vega-lite/docs/size.html) (`width` and `height`).
      */
-    range?: number[] | string[] | string;
+    range?: number[] | string[] | string | ExprRef[];
 
     // ordinal
 

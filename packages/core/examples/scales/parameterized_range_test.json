@@ -21,7 +21,7 @@
       "type": "quantitative",
       "scale": {
         "type": "linear",
-        "range": { "expr": "[0, 2000]" }
+        "range": [{ "expr": "0" }, { "expr": "2000" }]
       }
     }
   }

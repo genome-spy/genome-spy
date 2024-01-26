@@ -18,6 +18,8 @@ import {
 } from "../encoder/encoder.js";
 import { asArray, peek } from "../utils/arrayUtils.js";
 import { InternMap } from "internmap";
+import { isExprRef } from "../marks/mark.js";
+import scaleNull from "../utils/scaleNull.js";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
@@ -130,14 +132,14 @@ ${dataType} ${SCALED_FUNCTION_PREFIX}${channel}() {
 /**
  *
  * @param {Channel} channel
- * @param {any} scale TODO: typing
+ * @param {import("../view/scaleResolution.js").default} scaleResolution TODO: typing
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {Channel[]} [sharedQuantitativeChannels] Channels that share the same quantitative field
  */
 // eslint-disable-next-line complexity
 export function generateScaleGlsl(
     channel,
-    scale,
+    scaleResolution,
     channelDef,
     sharedQuantitativeChannels = [channel]
 ) {
@@ -147,9 +149,11 @@ export function generateScaleGlsl(
         );
     }
 
-    if (!scale) {
-        throw new Error("Scale is undefined");
-    }
+    /**
+     * Typecast to any to make it easier to handle all the different scale variants
+     * @type {any}
+     */
+    const scale = scaleResolution ? scaleResolution.scale : scaleNull();
 
     const primary = getPrimaryChannel(channel);
     const attributeName =
@@ -288,14 +292,27 @@ export function generateScaleGlsl(
             ? scale.range()
             : undefined;
 
-    if (range && channel == primary && range.length && range.every(isNumber)) {
-        const vectorizedRange = vectorizeRange(range);
+    /** @type {string} */
+    let rangeUniform;
 
-        // Range needs no runtime adjustment (at least for now). Thus, pass it as a constant that the
-        // GLSL compiler can optimize away in the case of unit ranges.
-        glsl.push(
-            `const ${vectorizedRange.type} ${rangeName} = ${vectorizedRange};`
-        );
+    if (range && channel == primary) {
+        const rangeProp = scale.props.range ?? [];
+        // Maybe the scale could be annotated with a "dynamicRange" property or something
+        if (isExprRef(rangeProp) || rangeProp.some(isExprRef)) {
+            if (range.length != 2) {
+                throw new Error(
+                    "A range with ExprRefs must have exactly two elements!"
+                );
+                // TODO: Use an array instead of vec2. This is likely to be a rare case, however.
+            }
+            rangeUniform = `uniform vec2 ${rangeName};`;
+        } else if (range.length && range.every(isNumber)) {
+            const vectorizedRange = vectorizeRange(range);
+
+            glsl.push(
+                `const ${vectorizedRange.type} ${rangeName} = ${vectorizedRange};`
+            );
+        }
     }
 
     const returnType = isColorChannel(channel) ? "vec3" : "float";
@@ -420,6 +437,7 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
         markUniformGlsl,
         glsl: concatenated,
         domainUniform,
+        rangeUniform,
     };
 }
 
