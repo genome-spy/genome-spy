@@ -336,6 +336,10 @@ export default class ScaleResolution {
 
         const props = this.#getScaleProps();
         configureScale(props, scale);
+
+        // Annotate the scale with the new props
+        scale.props = props;
+
         if (isContinuous(scale.type)) {
             this.#zoomExtent = this.#getZoomExtent();
         }
