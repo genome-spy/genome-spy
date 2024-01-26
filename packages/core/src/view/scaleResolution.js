@@ -65,6 +65,7 @@ export const INDEX = "index";
 export default class ScaleResolution {
     /**
      * @typedef {import("../types/scaleResolutionApi.js").ScaleResolutionApi} ScaleResolutionApi
+     * @typedef {import("../types/scaleResolutionApi.js").ScaleResolutionEventType} ScaleResolutionEventType
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../spec/channel.js").ChannelWithScale} ChannelWithScale
      * @typedef {import("../spec/scale.js").NumericDomain} NumericDomain
@@ -83,8 +84,13 @@ export default class ScaleResolution {
     /** @type {number[]} */
     #zoomExtent;
 
-    /** @type {Set<ScaleResolutionListener>} Observers that are called when the scale domain is changed */
-    #domainListeners = new Set();
+    /**
+     * @type {Record<ScaleResolutionEventType, Set<ScaleResolutionListener>>}
+     */
+    #listeners = {
+        domain: new Set(),
+        range: new Set(),
+    };
 
     /** @type {ScaleWithProps} */
     #scale;
@@ -108,31 +114,28 @@ export default class ScaleResolution {
      * e.g., zoomed. The call is synchronous and happens before the views
      * are rendered.
      *
-     * @param {"domain"} type
+     * @param {ScaleResolutionEventType} type
      * @param {ScaleResolutionListener} listener function
      */
     addEventListener(type, listener) {
-        if (type != "domain") {
-            throw new Error("Unsupported event type: " + type);
-        }
-        this.#domainListeners.add(listener);
+        this.#listeners[type].add(listener);
     }
 
     /**
-     * @param {"domain"} type
+     * @param {ScaleResolutionEventType} type
      * @param {ScaleResolutionListener} listener function
      */
     removeEventListener(type, listener) {
-        if (type != "domain") {
-            throw new Error("Unsupported event type: " + type);
-        }
-        this.#domainListeners.delete(listener);
+        this.#listeners[type].delete(listener);
     }
 
-    #notifyDomainListeners() {
-        for (const listener of this.#domainListeners.values()) {
+    /**
+     * @param {ScaleResolutionEventType} type
+     */
+    #notifyListeners(type) {
+        for (const listener of this.#listeners[type].values()) {
             listener({
-                type: "domain",
+                type,
                 scaleResolution: this,
             });
         }
@@ -345,7 +348,7 @@ export default class ScaleResolution {
         }
 
         if (!domainWasInitialized) {
-            this.#notifyDomainListeners();
+            this.#notifyListeners("domain");
             return;
         }
 
@@ -361,20 +364,8 @@ export default class ScaleResolution {
                 this.zoomTo(newDomain, 500); // TODO: Configurable duration
             } else {
                 // Update immediately if the previous domain was the initial domain [0, 0]
-                this.#notifyDomainListeners();
+                this.#notifyListeners("domain");
             }
-
-            // Nasty dependency on WebGL here
-            this.members[0].view.context.glHelper.createRangeTexture(
-                this,
-                true
-            );
-            /*
-            const range = props.range;
-            if (range && isArray(range) && range.find(isExprRef)) {    
-                //
-            }
-            */
         }
     }
 
@@ -402,25 +393,21 @@ export default class ScaleResolution {
             this.#zoomExtent = this.#getZoomExtent();
         }
 
-        // Untidy dependency. TODO: Work around
-        const glHelper = this.members[0].view.context.glHelper;
-
         // Hijack the range method
         const range = scale.range;
         if (range) {
-            // TODO: Only update the texture when the range is really changed
-            const updateTexture = () => glHelper.createRangeTexture(this, true);
+            const notify = () => this.#notifyListeners("range");
             scale.range = function (/** @type {any} */ _) {
                 if (arguments.length) {
                     range(_);
-                    updateTexture();
+                    notify();
                 } else {
                     return range();
                 }
             };
+            // The initial setting
+            notify();
         }
-
-        glHelper.createRangeTexture(this, true);
 
         return scale;
     }
@@ -540,7 +527,7 @@ export default class ScaleResolution {
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             scale.domain(newDomain);
-            this.#notifyDomainListeners();
+            this.#notifyListeners("domain");
             return true;
         }
 
@@ -588,16 +575,16 @@ export default class ScaleResolution {
                     const wt = (fw - w) / (fw - tw);
                     const c = wt * tc + (1 - wt) * fc;
                     scale.domain([c - w / 2, c + w / 2]);
-                    this.#notifyDomainListeners();
+                    this.#notifyListeners("domain");
                 },
             });
 
             scale.domain(to);
-            this.#notifyDomainListeners();
+            this.#notifyListeners("domain");
         } else {
             scale.domain(to);
             animator?.requestRender();
-            this.#notifyDomainListeners();
+            this.#notifyListeners("domain");
         }
     }
 
@@ -616,7 +603,7 @@ export default class ScaleResolution {
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             this.#scale.domain(newDomain);
-            this.#notifyDomainListeners();
+            this.#notifyListeners("domain");
             return true;
         }
         return false;
