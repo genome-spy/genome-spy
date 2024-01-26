@@ -72,9 +72,9 @@ export default class Mark {
     /**
      * Only needed during initialization;
      *
-     * @type {Map<string, { value: import("../spec/channel.js").Scalar | ExprRef, adjuster: function}>}
+     * @type {(() => void)[]}
      */
-    #dynamicValueUniforms = new Map();
+    #callAfterShaderCompilation = [];
 
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -393,9 +393,13 @@ export default class Mark {
                     generateDynamicValueGlslAndUniform(channel);
                 scaleCode.push(scaleGlsl);
                 dynamicMarkUniforms.push(uniformGlsl);
-                this.#dynamicValueUniforms.set(uniformName, {
-                    value: { expr: channelDef.valueExpr },
-                    adjuster,
+
+                this.#callAfterShaderCompilation.push(() => {
+                    this.registerMarkUniform(
+                        uniformName,
+                        { expr: channelDef.valueExpr },
+                        adjuster
+                    );
                 });
             } else if (isValueDef(channelDef)) {
                 // A constant value
@@ -464,9 +468,13 @@ export default class Mark {
                         : (d) => +d;
 
                     dynamicMarkUniforms.push(generated.markUniformGlsl);
-                    this.#dynamicValueUniforms.set(generated.attributeName, {
-                        value: channelDef.datum,
-                        adjuster,
+
+                    this.#callAfterShaderCompilation.push(() => {
+                        this.registerMarkUniform(
+                            generated.attributeName,
+                            channelDef.datum,
+                            adjuster
+                        );
                     });
                 }
             }
@@ -531,6 +539,9 @@ export default class Mark {
     /**
      * Check WebGL shader/program compilation/linking status and finalize
      * initialization.
+     *
+     * This is done as a separate step after all shader compilations have been
+     * initiated. The idea is to allow for parallel background compilation.
      */
     finalizeGraphicsInitialization() {
         const error = this.programStatus.getProgramErrors();
@@ -581,15 +592,10 @@ export default class Mark {
             uZero: 0.0,
         });
 
-        // Set dynamic values, e.g., those having an ExprRef.
-        for (const [
-            uniformName,
-            { value, adjuster },
-        ] of this.#dynamicValueUniforms.entries()) {
-            // @ts-expect-error TODO: Do something for the type of adjuster
-            this.registerMarkUniform(uniformName, value, adjuster);
+        for (const fn of this.#callAfterShaderCompilation) {
+            fn();
         }
-        this.#dynamicValueUniforms.clear();
+        this.#callAfterShaderCompilation = undefined;
     }
 
     /**
