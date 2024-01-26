@@ -27,6 +27,7 @@ import {
     generateDynamicValueGlslAndUniform,
     isLargeGenome,
     splitLargeHighPrecision,
+    getRangeForGlsl,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -424,11 +425,24 @@ export default class Mark {
 
                 scaleCode.push(generated.glsl);
                 dynamicMarkUniforms.push(generated.domainUniform);
-                //this.domainUniforms.push(generated.rangeUniform);
+                dynamicMarkUniforms.push(generated.rangeUniform);
                 attributeCode.add(generated.attributeGlsl);
 
                 if (generated.rangeUniform) {
-                    //
+                    this.#callAfterShaderCompilation.push(() => {
+                        const rangeSetter = this.createMarkUniformSetter(
+                            generated.rangeName
+                        );
+
+                        const set = () =>
+                            rangeSetter(
+                                getRangeForGlsl(scaleResolution.scale, channel)
+                            );
+                        scaleResolution.addEventListener("range", set);
+
+                        // Initial value
+                        set();
+                    });
                 }
 
                 if (generated.markUniformGlsl) {
