@@ -16,7 +16,6 @@ import createEncoders, {
     isDatumDef,
     isFieldDef,
     isValueDef,
-    isValueExprDef,
 } from "../encoder/encoder.js";
 import {
     DOMAIN_PREFIX,
@@ -65,7 +64,6 @@ export default class Mark {
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../spec/channel.js").Encoding} Encoding
      * @typedef {import("../spec/channel.js").ValueDef} ValueDef
-     * @typedef {import("../spec/channel.js").ValueExprDef} ValueExprDef
      * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
      */
 
@@ -233,14 +231,12 @@ export default class Mark {
             const defaults = this.getDefaultEncoding();
             const configured = this.unitView.getEncoding();
 
-            /** @type {(property: string) => ValueDef | ValueExprDef } */
+            /** @type {(property: string) => ValueDef} */
             const propToValueDef = (property) => {
                 const value =
                     this.properties[/** @type {keyof MarkProps} */ (property)];
-                return isScalar(value)
+                return isScalar(value) || isExprRef(value)
                     ? { value }
-                    : isExprRef(value)
-                    ? { valueExpr: value.expr }
                     : undefined;
             };
 
@@ -248,15 +244,12 @@ export default class Mark {
                 this.getSupportedChannels()
                     .map(
                         (channel) =>
-                            /** @type {[Channel, ValueDef | ValueExprDef]} */ ([
+                            /** @type {[Channel, ValueDef] } */ ([
                                 channel,
                                 propToValueDef(channel),
                             ])
                     )
-                    .filter(
-                        (entry) =>
-                            isValueDef(entry[1]) || isValueExprDef(entry[1])
-                    )
+                    .filter((entry) => isValueDef(entry[1]))
             );
 
             const encoding = this.fixEncoding({
@@ -387,25 +380,27 @@ export default class Mark {
                 continue;
             }
 
-            if (isValueExprDef(channelDef)) {
-                // An expression that evaluates to a value
-                const { uniformName, uniformGlsl, scaleGlsl, adjuster } =
-                    generateDynamicValueGlslAndUniform(channel);
-                scaleCode.push(scaleGlsl);
-                dynamicMarkUniforms.push(uniformGlsl);
+            if (isValueDef(channelDef)) {
+                if (isExprRef(channelDef.value)) {
+                    // An expression that evaluates to a value
+                    const { uniformName, uniformGlsl, scaleGlsl, adjuster } =
+                        generateDynamicValueGlslAndUniform(channel);
+                    scaleCode.push(scaleGlsl);
+                    dynamicMarkUniforms.push(uniformGlsl);
 
-                this.#callAfterShaderCompilation.push(() => {
-                    this.registerMarkUniform(
-                        uniformName,
-                        { expr: channelDef.valueExpr },
-                        adjuster
+                    this.#callAfterShaderCompilation.push(() => {
+                        this.registerMarkUniform(
+                            uniformName,
+                            channelDef.value,
+                            adjuster
+                        );
+                    });
+                } else {
+                    // A constant value
+                    scaleCode.push(
+                        generateConstantValueGlsl(channel, channelDef.value)
                     );
-                });
-            } else if (isValueDef(channelDef)) {
-                // A constant value
-                scaleCode.push(
-                    generateConstantValueGlsl(channel, channelDef.value)
-                );
+                }
             } else {
                 const resolutionChannel =
                     (isChannelDefWithScale(channelDef) &&
