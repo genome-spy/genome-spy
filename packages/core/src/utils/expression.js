@@ -61,7 +61,7 @@ const cg = codegenExpression({
  * @prop { string[] } globals
  * @prop { string } code
  *
- * @typedef { ((x: object) => any) & ExpressionProps } ExpressionFunction
+ * @typedef { ((datum: object) => any) & ExpressionProps } ExpressionFunction
  *
  * @param {string} expr
  * @returns {ExpressionFunction}
@@ -79,8 +79,8 @@ export default function createFunction(expr, globalObject = {}) {
         ).bind(functionContext);
 
         /** @type { ExpressionFunction } */
-        const exprFunction = /** @param {object} x */ (x) =>
-            fn(x, globalObject);
+        const exprFunction = /** @param {object} datum */ (datum) =>
+            fn(datum, globalObject);
         exprFunction.fields = generatedCode.fields;
         exprFunction.globals = generatedCode.globals;
         exprFunction.code = generatedCode.code;

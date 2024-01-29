@@ -36,6 +36,7 @@ import { NominalDomain } from "../utils/domainArray.js";
 import { easeCubicInOut } from "d3-ease";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
 import eerp from "../utils/eerp.js";
+import { isExprRef } from "../marks/mark.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -96,6 +97,14 @@ export default class ScaleResolution {
     #scale;
 
     /**
+     * Keeps track of the expression references in the range. If range is modified,
+     * new expressions are created and the old ones must be invalidated.
+     *
+     * @type {Set<import("../paramBroker.js").ExprRefFunction>}
+     */
+    #rangeExprRefListeners = new Set();
+
+    /**
      * @param {Channel} channel
      */
     constructor(channel) {
@@ -107,6 +116,10 @@ export default class ScaleResolution {
 
         /** @type {string} An optional unique identifier for the scale */
         this.name = undefined;
+    }
+
+    get #viewContext() {
+        return this.members[0].view.context;
     }
 
     /**
@@ -286,6 +299,62 @@ export default class ScaleResolution {
         return props;
     }
 
+    /**
+     * Configures range. If range is an array of expressions, they are evaluated
+     * and the scale is updated when the expressions change.
+     */
+    #configureRange() {
+        const props = this.#scale.props;
+        const range = props.range;
+        this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
+
+        if (!range || !isArray(range)) {
+            // Named ranges?
+            return;
+        }
+
+        /**
+         * @param {T} array
+         * @param {boolean} reverse
+         * @returns {T}
+         * @template T
+         */
+        const flip = (array, reverse) =>
+            // @ts-ignore TODO: Fix the type (should be a generic union array type)
+            reverse ? array.slice().reverse() : array;
+
+        if (range.some(isExprRef)) {
+            /** @type {(() => void)[]} */
+            let expressions;
+
+            const evaluateAndSet = () => {
+                this.#scale.range(
+                    flip(
+                        expressions.map((expr) => expr()),
+                        props.reverse
+                    )
+                );
+            };
+
+            expressions = range.map((elem) => {
+                if (isExprRef(elem)) {
+                    const fn = this.#viewContext.paramBroker.createExpression(
+                        elem.expr
+                    );
+                    fn.addListener(evaluateAndSet);
+                    this.#rangeExprRefListeners.add(fn);
+                    return () => fn(null);
+                } else {
+                    return () => elem;
+                }
+            });
+
+            evaluateAndSet();
+        } else {
+            this.#scale.range(flip(range, props.reverse));
+        }
+    }
+
     #getInitialDomain() {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
@@ -338,10 +407,11 @@ export default class ScaleResolution {
         const previousDomain = scale.domain();
 
         const props = this.#getScaleProps();
-        configureScale(props, scale);
+        configureScale({ ...props, range: undefined }, scale);
 
         // Annotate the scale with the new props
         scale.props = props;
+        this.#configureRange();
 
         if (isContinuous(scale.type)) {
             this.#zoomExtent = this.#getZoomExtent();
@@ -379,11 +449,12 @@ export default class ScaleResolution {
 
         const props = this.#getScaleProps();
 
-        const scale = createScale(props);
+        const scale = createScale({ ...props, range: undefined });
         // Annotate the scale with props
         scale.props = props;
 
         this.#scale = scale;
+        this.#configureRange();
 
         if (isScaleLocus(scale)) {
             scale.genome(this.getGenome());

@@ -1,6 +1,18 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
+  "params": [
+    {
+      "name": "maxSize",
+      "value": 1000,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 2000
+      }
+    }
+  ],
+
   "data": {
     "sequence": {
       "start": 1,
@@ -21,7 +33,7 @@
       "type": "quantitative",
       "scale": {
         "type": "linear",
-        "range": [{ "expr": "0" }, { "expr": "2000" }]
+        "range": [{ "expr": "0" }, { "expr": "maxSize" }]
       }
     }
   }

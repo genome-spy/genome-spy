@@ -12,6 +12,8 @@ import createFunction from "./utils/expression.js";
  * - Calling observers when a parameter changes
  * - Somehow saving parameter "state" (in bookmarks)
  * - Maybe something else
+ *
+ * @typedef {import("./utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, invalidate: () => void}} ExprRefFunction
  */
 export default class ParamBroker {
     /** @type {Map<string, any>} */
@@ -72,7 +74,7 @@ export default class ParamBroker {
      * @param {string} expr
      */
     createExpression(expr) {
-        /** @type {import("./utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void}} */
+        /** @type {ExprRefFunction} */
         const fn = /** @type {any} */ (createFunction(expr, this.#proxy));
 
         for (const g of fn.globals) {
@@ -83,6 +85,9 @@ export default class ParamBroker {
             }
         }
 
+        // Keep track of them so that they can be detached later
+        const myListeners = new Set();
+
         /**
          *
          * @param {() => void} listener
@@ -92,10 +97,21 @@ export default class ParamBroker {
                 const listeners = this.#paramListeners.get(g) ?? new Set();
                 this.#paramListeners.set(g, listeners);
                 listeners.add(listener);
+                myListeners.add(listener);
             }
         };
 
-        // TODO: remove listener
+        /**
+         * Detach listeners. This must be called if the expression is no longer used.
+         */
+        fn.invalidate = () => {
+            for (const g of fn.globals) {
+                const listeners = this.#paramListeners.get(g);
+                for (const listener of myListeners) {
+                    listeners.delete(listener);
+                }
+            }
+        };
 
         return fn;
     }
