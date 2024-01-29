@@ -336,7 +336,7 @@ export default class WebGLHelper {
                 // Interpolating
                 isInterpolating(scale.type) ||
                 // Or piecewise
-                (isContinuous(scale.type) && range.length > 2)
+                (isContinuous(scale.type) && range.length > 1)
             ) {
                 texture = createInterpolatedColorTexture(
                     range,
