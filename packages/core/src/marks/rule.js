@@ -150,8 +150,8 @@ export default class RuleMark extends Mark {
 
         const props = this.properties;
 
-        this.registerMarkUniform("uMinLength", props.minLength);
-        this.registerMarkUniform(
+        this.registerMarkUniformValue("uMinLength", props.minLength);
+        this.registerMarkUniformValue(
             "uStrokeCap",
             props.strokeCap ?? "butt",
             (cap) => ["butt", "square", "round"].indexOf(cap)

@@ -1,4 +1,4 @@
-uniform Mark {
+layout(std140) uniform Mark {
     uniform mediump float uSdfNumerator;
 
     uniform mediump vec2 uD; // dx & dy

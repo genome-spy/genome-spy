@@ -150,31 +150,16 @@ export interface ValueDefBase<V extends Value = Scalar> {
     /**
      * A constant value in visual domain (e.g., `"red"` / `"#0099ff"`, values between `0` to `1` for opacity).
      */
-    value: V;
+    value: V | ExprRef;
 }
 
 export type ValueDef<V extends Value = Scalar> = ValueDefBase<V> & TitleMixins;
-
-/**
- * @internal
- */
-export interface ValueExprDefBase {
-    /**
-     * An expression that evaluates as a value in visual domain (e.g., `"red"` / `"#0099ff"`, values between `0` to `1` for opacity).
-     */
-    valueExpr: string;
-}
-
-/**
- * @internal
- */
-export type ValueExprDef = ValueExprDefBase & TitleMixins;
 
 export interface DatumDefBase {
     /**
      * A constant value in data domain.
      */
-    datum?: Scalar;
+    datum?: Scalar | ExprRef;
 }
 
 export type DatumDef = DatumDefBase & TitleMixins;

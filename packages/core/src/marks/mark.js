@@ -16,10 +16,8 @@ import createEncoders, {
     isDatumDef,
     isFieldDef,
     isValueDef,
-    isValueExprDef,
 } from "../encoder/encoder.js";
 import {
-    DOMAIN_PREFIX,
     generateConstantValueGlsl,
     generateScaleGlsl,
     RANGE_TEXTURE_PREFIX,
@@ -29,6 +27,7 @@ import {
     generateDynamicValueGlslAndUniform,
     isLargeGenome,
     splitLargeHighPrecision,
+    getRangeForGlsl,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -40,7 +39,6 @@ import { createProgram } from "../gl/webGLHelper.js";
 import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
-import scaleNull from "../utils/scaleNull.js";
 import ViewError from "../view/viewError.js";
 import { isString } from "vega-util";
 
@@ -66,16 +64,15 @@ export default class Mark {
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../spec/channel.js").Encoding} Encoding
      * @typedef {import("../spec/channel.js").ValueDef} ValueDef
-     * @typedef {import("../spec/channel.js").ValueExprDef} ValueExprDef
      * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
      */
 
     /**
      * Only needed during initialization;
      *
-     * @type {Map<string, { value: import("../spec/channel.js").Scalar | ExprRef, adjuster: function}>}
+     * @type {(() => void)[]}
      */
-    #dynamicValueUniforms = new Map();
+    #callAfterShaderCompilation = [];
 
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -234,14 +231,12 @@ export default class Mark {
             const defaults = this.getDefaultEncoding();
             const configured = this.unitView.getEncoding();
 
-            /** @type {(property: string) => ValueDef | ValueExprDef } */
+            /** @type {(property: string) => ValueDef} */
             const propToValueDef = (property) => {
                 const value =
                     this.properties[/** @type {keyof MarkProps} */ (property)];
-                return isScalar(value)
+                return isScalar(value) || isExprRef(value)
                     ? { value }
-                    : isExprRef(value)
-                    ? { valueExpr: value.expr }
                     : undefined;
             };
 
@@ -249,15 +244,12 @@ export default class Mark {
                 this.getSupportedChannels()
                     .map(
                         (channel) =>
-                            /** @type {[Channel, ValueDef | ValueExprDef]} */ ([
+                            /** @type {[Channel, ValueDef] } */ ([
                                 channel,
                                 propToValueDef(channel),
                             ])
                     )
-                    .filter(
-                        (entry) =>
-                            isValueDef(entry[1]) || isValueExprDef(entry[1])
-                    )
+                    .filter((entry) => isValueDef(entry[1]))
             );
 
             const encoding = this.fixEncoding({
@@ -343,15 +335,12 @@ export default class Mark {
      * @param {string[]} [extraHeaders]
      * @protected
      */
+    // eslint-disable-next-line complexity
     createAndLinkShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const attributes = this.getAttributes();
 
         // For debugging
         const debugHeader = "// view: " + this.unitView.getPathString();
-
-        // TODO: This is a temporary variable, don't store it in the mark object
-        /** @type {string[]} */
-        this.domainUniforms = [];
 
         /** @type {string[]} */
         let scaleCode = [];
@@ -387,32 +376,36 @@ export default class Mark {
                 continue;
             }
 
-            if (isValueExprDef(channelDef)) {
-                // An expression that evaluates to a value
-                const { uniformName, uniformGlsl, scaleGlsl, adjuster } =
-                    generateDynamicValueGlslAndUniform(channel);
-                scaleCode.push(scaleGlsl);
-                dynamicMarkUniforms.push(uniformGlsl);
-                this.#dynamicValueUniforms.set(uniformName, {
-                    value: { expr: channelDef.valueExpr },
-                    adjuster,
-                });
-            } else if (isValueDef(channelDef)) {
-                // A constant value
-                scaleCode.push(
-                    generateConstantValueGlsl(channel, channelDef.value)
-                );
+            if (isValueDef(channelDef)) {
+                if (isExprRef(channelDef.value)) {
+                    // An expression that evaluates to a value
+                    const { uniformName, uniformGlsl, scaleGlsl, adjuster } =
+                        generateDynamicValueGlslAndUniform(channel);
+                    scaleCode.push(scaleGlsl);
+                    dynamicMarkUniforms.push(uniformGlsl);
+
+                    this.#callAfterShaderCompilation.push(() => {
+                        this.registerMarkUniformValue(
+                            uniformName,
+                            channelDef.value,
+                            adjuster
+                        );
+                    });
+                } else {
+                    // A constant value
+                    scaleCode.push(
+                        generateConstantValueGlsl(channel, channelDef.value)
+                    );
+                }
             } else {
                 const resolutionChannel =
                     (isChannelDefWithScale(channelDef) &&
                         channelDef.resolutionChannel) ||
                     channel;
 
-                const scale = isChannelWithScale(resolutionChannel)
-                    ? this.unitView
-                          .getScaleResolution(resolutionChannel)
-                          .getScale()
-                    : scaleNull();
+                const scaleResolution = isChannelWithScale(resolutionChannel)
+                    ? this.unitView.getScaleResolution(resolutionChannel)
+                    : null;
 
                 // Channels that share the same quantitative field
                 // TODO: It should be ok to share a categorical field if the channels
@@ -423,7 +416,7 @@ export default class Mark {
 
                 const generated = generateScaleGlsl(
                     channel,
-                    scale,
+                    scaleResolution,
                     channelDef,
                     sharedChannels?.includes(channel)
                         ? sharedChannels
@@ -431,12 +424,27 @@ export default class Mark {
                 );
 
                 scaleCode.push(generated.glsl);
-                if (generated.domainUniform) {
-                    this.domainUniforms.push(generated.domainUniform);
+                dynamicMarkUniforms.push(generated.domainUniform);
+                dynamicMarkUniforms.push(generated.rangeUniform);
+                attributeCode.add(generated.attributeGlsl);
+
+                if (generated.rangeUniform) {
+                    this.#callAfterShaderCompilation.push(() => {
+                        const rangeSetter = this.createMarkUniformSetter(
+                            generated.rangeName
+                        );
+
+                        const set = () =>
+                            rangeSetter(
+                                getRangeForGlsl(scaleResolution.scale, channel)
+                            );
+                        scaleResolution.addEventListener("range", set);
+
+                        // Initial value
+                        set();
+                    });
                 }
-                if (generated.attributeGlsl) {
-                    attributeCode.add(generated.attributeGlsl);
-                }
+
                 if (generated.markUniformGlsl) {
                     if (!isDatumDef(channelDef)) {
                         throw new Error("Bug!");
@@ -462,21 +470,44 @@ export default class Mark {
                         : (d) => +d;
 
                     dynamicMarkUniforms.push(generated.markUniformGlsl);
-                    this.#dynamicValueUniforms.set(generated.attributeName, {
-                        value: channelDef.datum,
-                        adjuster,
+
+                    this.#callAfterShaderCompilation.push(() => {
+                        this.registerMarkUniformValue(
+                            generated.attributeName,
+                            channelDef.datum,
+                            adjuster
+                        );
+                    });
+                }
+
+                if (generated.domainUniform) {
+                    this.#callAfterShaderCompilation.push(() => {
+                        const domainSetter = this.createMarkUniformSetter(
+                            generated.domainUniformName
+                        );
+                        const scale = scaleResolution.scale;
+                        const set = () => {
+                            const domain = isDiscrete(scale.type)
+                                ? [0, scale.domain().length]
+                                : scale.domain();
+
+                            domainSetter(
+                                isHighPrecisionScale(scale.type)
+                                    ? toHighPrecisionDomainUniform(domain)
+                                    : domain
+                            );
+                        };
+
+                        scaleResolution.addEventListener("domain", set);
+
+                        // Initial value
+                        set();
                     });
                 }
             }
         }
 
-        const domainUniformBlock = this.domainUniforms.length
-            ? "layout(std140) uniform Domains {\n" +
-              this.domainUniforms.map((u) => `    ${u}\n`).join("") +
-              "};\n\n"
-            : "";
-
-        const vertexPrecision = "precision highp float;\n";
+        const vertexPrecision = "precision highp float;\nprecision highp int;";
 
         /**
          * @param {string} shaderCode
@@ -497,7 +528,6 @@ export default class Mark {
             ...extraHeaders,
             GLSL_COMMON,
             GLSL_SCALES,
-            domainUniformBlock,
             [...attributeCode].join("\n"),
             ...scaleCode,
             GLSL_SAMPLE_FACET,
@@ -529,6 +559,9 @@ export default class Mark {
     /**
      * Check WebGL shader/program compilation/linking status and finalize
      * initialization.
+     *
+     * This is done as a separate step after all shader compilations have been
+     * initiated. The idea is to allow for parallel background compilation.
      */
     finalizeGraphicsInitialization() {
         const error = this.programStatus.getProgramErrors();
@@ -549,14 +582,6 @@ export default class Mark {
             this.programStatus.program
         );
         delete this.programStatus;
-
-        if (this.domainUniforms.length) {
-            this.domainUniformInfo = createUniformBlockInfo(
-                this.gl,
-                this.programInfo,
-                "Domains"
-            );
-        }
 
         this.viewUniformInfo = createUniformBlockInfo(
             this.gl,
@@ -579,15 +604,32 @@ export default class Mark {
             uZero: 0.0,
         });
 
-        // Set dynamic values, e.g., those having an ExprRef.
-        for (const [
-            uniformName,
-            { value, adjuster },
-        ] of this.#dynamicValueUniforms.entries()) {
-            // @ts-expect-error TODO: Do something for the type of adjuster
-            this.registerMarkUniform(uniformName, value, adjuster);
+        for (const fn of this.#callAfterShaderCompilation) {
+            fn();
         }
-        this.#dynamicValueUniforms.clear();
+        this.#callAfterShaderCompilation = undefined;
+    }
+
+    /**
+     * Sets a uniform in the Mark block. Requests a render from the animator.
+     *
+     * @protected
+     * @param {string} uniformName
+     * @returns {function(any):void}
+     */
+    createMarkUniformSetter(uniformName) {
+        const uniformSetter = this.markUniformInfo.setters[uniformName];
+        if (!uniformSetter) {
+            throw new Error(
+                `Uniform "${uniformName}" not found int the Mark block!`
+            );
+        }
+
+        return (value) => {
+            uniformSetter(value);
+            this.markUniformsAltered = true;
+            this.unitView.context.animator.requestRender();
+        };
     }
 
     /**
@@ -601,34 +643,22 @@ export default class Mark {
      * @param {T} propValue
      * @param {(x: Exclude<T, ExprRef>) => any} adjuster
      */
-    registerMarkUniform(uniformName, propValue, adjuster = (x) => x) {
-        const uniformSetter = this.markUniformInfo.setters[uniformName];
-        if (!uniformSetter) {
-            throw new Error(
-                `Uniform "${uniformName}" not found int the Mark block!`
-            );
-        }
+    registerMarkUniformValue(uniformName, propValue, adjuster = (x) => x) {
+        const setter = this.createMarkUniformSetter(uniformName);
 
         if (isExprRef(propValue)) {
             const fn = this.unitView.context.paramBroker.createExpression(
                 propValue.expr
             );
 
-            const set = () => {
-                uniformSetter(adjuster(fn(null)));
-                this.markUniformsAltered = true;
-                this.unitView.context.animator.requestRender();
-            };
+            const set = () => setter(adjuster(fn(null)));
 
             // Register a listener ...
             fn.addListener(set);
             // ... and set the initial value
             set();
         } else {
-            uniformSetter(
-                adjuster(/** @type {Exclude<T, ExprRef>} */ (propValue))
-            );
-            this.markUniformsAltered = true;
+            setter(adjuster(/** @type {Exclude<T, ExprRef>} */ (propValue)));
         }
     }
 
@@ -779,47 +809,6 @@ export default class Mark {
             gl.useProgram(this.programInfo.program);
         });
 
-        if (this.domainUniformInfo) {
-            // TODO: Only update the domains that have changed
-
-            for (const [uniform, setter] of Object.entries(
-                this.domainUniformInfo.setters
-            )) {
-                // TODO: isChannel()
-                const channel = /** @type {Channel} */ (
-                    uniform.substring(DOMAIN_PREFIX.length)
-                );
-
-                const channelDef = this.encoding[channel];
-                const resolutionChannel =
-                    (isChannelDefWithScale(channelDef) &&
-                        channelDef.resolutionChannel) ||
-                    channel;
-
-                if (isChannelWithScale(resolutionChannel)) {
-                    const scale = this.unitView
-                        .getScaleResolution(resolutionChannel)
-                        .getScale();
-
-                    ops.push(() => {
-                        const domain = isDiscrete(scale.type)
-                            ? [0, scale.domain().length]
-                            : scale.domain();
-
-                        setter(
-                            isHighPrecisionScale(scale.type)
-                                ? toHighPrecisionDomainUniform(domain)
-                                : domain
-                        );
-                    });
-                }
-            }
-
-            ops.push(() =>
-                setUniformBlock(gl, this.programInfo, this.domainUniformInfo)
-            );
-        }
-
         for (const [channel, channelDef] of Object.entries(this.encoding)) {
             if (isChannelDefWithScale(channelDef)) {
                 const resolutionChannel =
@@ -960,7 +949,7 @@ export default class Mark {
         /** @type {function(import("../gl/dataToVertices.js").RangeEntry):void} rangeEntry */
         let drawWithRangeEntry;
 
-        const scale = this.unitView.getScaleResolution("x")?.getScale();
+        const scale = this.unitView.getScaleResolution("x")?.scale;
         const continuous = scale && isContinuous(scale.type);
         const domainStartOffset = ["index", "locus"].includes(scale?.type)
             ? -1

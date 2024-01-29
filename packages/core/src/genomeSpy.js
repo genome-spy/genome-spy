@@ -641,12 +641,6 @@ export default class GenomeSpy {
 
         await graphicsInitialized;
 
-        this.viewRoot.visit((view) => {
-            for (const resolution of Object.values(view.resolutions.scale)) {
-                this._glHelper.createRangeTexture(resolution);
-            }
-        });
-
         for (const view of unitViews) {
             view.mark.finalizeGraphicsInitialization();
         }

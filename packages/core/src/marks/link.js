@@ -1,6 +1,7 @@
 import { setBuffersAndAttributes } from "twgl.js";
 import VERTEX_SHADER from "./link.vertex.glsl";
 import FRAGMENT_SHADER from "./link.fragment.glsl";
+import COMMON_SHADER from "./link.common.glsl";
 import { LinkVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
@@ -98,7 +99,9 @@ export default class LinkMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER);
+        this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
+            COMMON_SHADER,
+        ]);
     }
 
     finalizeGraphicsInitialization() {
@@ -107,22 +110,29 @@ export default class LinkMark extends Mark {
 
         const props = this.properties;
 
-        this.registerMarkUniform(
+        this.registerMarkUniformValue(
             "uArcFadingDistance",
             props.arcFadingDistance,
             (x) => x || /** @type {[number, number]} */ ([0, 0])
         );
-        this.registerMarkUniform("uArcHeightFactor", props.arcHeightFactor);
-        this.registerMarkUniform("uMinArcHeight", props.minArcHeight);
-        this.registerMarkUniform("uMinPickingSize", props.minPickingSize);
-        this.registerMarkUniform("uShape", props.linkShape, (linkShape) =>
+        this.registerMarkUniformValue(
+            "uArcHeightFactor",
+            props.arcHeightFactor
+        );
+        this.registerMarkUniformValue("uMinArcHeight", props.minArcHeight);
+        this.registerMarkUniformValue("uMinPickingSize", props.minPickingSize);
+        this.registerMarkUniformValue("uShape", props.linkShape, (linkShape) =>
             LINK_SHAPES.indexOf(linkShape)
         );
-        this.registerMarkUniform("uOrient", props.orient, (orient) =>
+        this.registerMarkUniformValue("uOrient", props.orient, (orient) =>
             ORIENTS.indexOf(orient)
         );
-        this.registerMarkUniform("uClampApex", props.clampApex, (x) => !!x);
-        this.registerMarkUniform("uMaxChordLength", props.maxChordLength);
+        this.registerMarkUniformValue(
+            "uClampApex",
+            props.clampApex,
+            (x) => !!x
+        );
+        this.registerMarkUniformValue("uMaxChordLength", props.maxChordLength);
     }
 
     updateGraphicsData() {

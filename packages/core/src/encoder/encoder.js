@@ -1,6 +1,7 @@
 import { isDiscrete } from "vega-scale";
 import createIndexer from "../utils/indexer.js";
 import scaleNull from "../utils/scaleNull.js";
+import { isExprRef } from "../marks/mark.js";
 
 /**
  * Creates an object that contains encoders for every channel of a mark
@@ -41,7 +42,7 @@ export default function createEncoders(mark, encoding) {
 
         encoders[channel] = createEncoder(
             encoding[channel],
-            resolution?.getScale(),
+            resolution?.scale,
             mark.unitView.getAccessor(channel),
             channel
         );
@@ -68,19 +69,21 @@ export function createEncoder(channelDef, scale, accessor, channel) {
     /** @type {Encoder} */
     let encoder;
 
-    if (isValueExprDef(channelDef)) {
-        // TODO: Should get the value expression as the accessor
-        encoder = /** @type {Encoder} */ ((datum) => undefined);
-        //encoder = /** @type {Encoder} */ (/** @type {any} */ (accessor));
-        encoder.constant = true;
-        encoder.constantValue = false;
-        encoder.accessor = accessor;
-    } else if (isValueDef(channelDef)) {
-        const value = channelDef.value;
-        encoder = /** @type {Encoder} */ ((datum) => value);
-        encoder.constant = true;
-        encoder.constantValue = true;
-        encoder.accessor = undefined;
+    if (isValueDef(channelDef)) {
+        if (isExprRef(channelDef.value)) {
+            // TODO: Should get the value expression as the accessor
+            encoder = /** @type {Encoder} */ ((datum) => undefined);
+            //encoder = /** @type {Encoder} */ (/** @type {any} */ (accessor));
+            encoder.constant = true;
+            encoder.constantValue = false;
+            encoder.accessor = accessor;
+        } else {
+            const value = channelDef.value;
+            encoder = /** @type {Encoder} */ ((datum) => value);
+            encoder.constant = true;
+            encoder.constantValue = true;
+            encoder.accessor = undefined;
+        }
     } else if (accessor) {
         if (channel == "text") {
             // TODO: Define somewhere channels that don't use a scale
@@ -161,14 +164,6 @@ export function createEncoder(channelDef, scale, accessor, channel) {
  */
 export function isValueDef(channelDef) {
     return channelDef && "value" in channelDef;
-}
-
-/**
- * @param {import("../spec/channel.js").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel.js").ValueExprDef}
- */
-export function isValueExprDef(channelDef) {
-    return channelDef && "valueExpr" in channelDef;
 }
 
 /**

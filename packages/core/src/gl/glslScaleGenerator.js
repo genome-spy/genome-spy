@@ -18,6 +18,8 @@ import {
 } from "../encoder/encoder.js";
 import { asArray, peek } from "../utils/arrayUtils.js";
 import { InternMap } from "internmap";
+import { isExprRef } from "../marks/mark.js";
+import scaleNull from "../utils/scaleNull.js";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
@@ -130,14 +132,14 @@ ${dataType} ${SCALED_FUNCTION_PREFIX}${channel}() {
 /**
  *
  * @param {Channel} channel
- * @param {any} scale TODO: typing
+ * @param {import("../view/scaleResolution.js").default} scaleResolution TODO: typing
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {Channel[]} [sharedQuantitativeChannels] Channels that share the same quantitative field
  */
 // eslint-disable-next-line complexity
 export function generateScaleGlsl(
     channel,
-    scale,
+    scaleResolution,
     channelDef,
     sharedQuantitativeChannels = [channel]
 ) {
@@ -147,9 +149,11 @@ export function generateScaleGlsl(
         );
     }
 
-    if (!scale) {
-        throw new Error("Scale is undefined");
-    }
+    /**
+     * Typecast to any to make it easier to handle all the different scale variants
+     * @type {any}
+     */
+    const scale = scaleResolution ? scaleResolution.scale : scaleNull();
 
     const primary = getPrimaryChannel(channel);
     const attributeName =
@@ -278,24 +282,35 @@ export function generateScaleGlsl(
             );
     }
 
-    // N.B. Interpolating scales require unit range
-    // TODO: Reverse
-    const range =
-        isInterpolating(scale.type) ||
-        (isContinuous(scale.type) && isColorChannel(channel))
-            ? [0, 1]
-            : scale.range
-            ? scale.range()
-            : undefined;
+    const range = getRangeForGlsl(scale, channel);
 
-    if (range && channel == primary && range.length && range.every(isNumber)) {
-        const vectorizedRange = vectorizeRange(range);
+    /** @type {string} */
+    let rangeUniform;
 
-        // Range needs no runtime adjustment (at least for now). Thus, pass it as a constant that the
-        // GLSL compiler can optimize away in the case of unit ranges.
-        glsl.push(
-            `const ${vectorizedRange.type} ${rangeName} = ${vectorizedRange};`
-        );
+    if (range && channel == primary) {
+        const rangeProp = scale.props.range ?? [];
+        // Maybe the scale could be annotated with a "dynamicRange" property or something
+        if (isExprRef(rangeProp) || rangeProp.some(isExprRef)) {
+            // TODO: should check that we don't have an ordinal range here as it should be
+            // handled using a texture.
+            if (range.length < 1 || range.length > 4) {
+                // TODO: Use an array instead of (float|vec[234]). This is likely to be a rare case, however.
+                throw new Error(
+                    `A range with ExprRefs must have 1-4 elements, not ${
+                        range.length
+                    }! Range: ${JSON.stringify(range)}`
+                );
+            }
+            rangeUniform = `    uniform ${getFloatVectorType(
+                range.length
+            )} ${rangeName};`;
+        } else if (range.length && range.every(isNumber)) {
+            const vectorizedRange = vectorizeRange(range);
+
+            glsl.push(
+                `const ${vectorizedRange.type} ${rangeName} = ${vectorizedRange};`
+            );
+        }
     }
 
     const returnType = isColorChannel(channel) ? "vec3" : "float";
@@ -326,7 +341,7 @@ export function generateScaleGlsl(
     }
 
     const [attributeGlsl, markUniformGlsl] = isDatumDef(channelDef)
-        ? [undefined, `  uniform highp ${attributeType} ${attributeName};`]
+        ? [undefined, `    uniform highp ${attributeType} ${attributeName};`]
         : [`in highp ${attributeType} ${attributeName};`, undefined];
 
     /** @type {string[]} Channel's scale function*/
@@ -409,8 +424,8 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
                 ? domainLength
                 : 2;
         domainUniform = hp
-            ? `highp vec3 ${domainUniformName};`
-            : `mediump float ${domainUniformName}[${length}];`;
+            ? `    highp vec3 ${domainUniformName};`
+            : `    mediump float ${domainUniformName}[${length}];`;
     }
 
     return {
@@ -419,7 +434,10 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
         // Ends up in the Mark uniform block
         markUniformGlsl,
         glsl: concatenated,
+        domainUniformName,
         domainUniform,
+        rangeName,
+        rangeUniform,
     };
 }
 
@@ -464,18 +482,28 @@ function vectorize(value) {
         throw new Error("Invalid number of components: " + numComponents);
     }
 
-    let type;
-    let str;
-
-    if (numComponents > 1) {
-        type = `vec${numComponents}`;
-        str = `${type}(${value.map(toDecimal).join(", ")})`;
-    } else {
-        type = "float";
-        str = toDecimal(value[0]);
-    }
+    const type = getFloatVectorType(numComponents);
+    const str = `${type}(${value.map(toDecimal).join(", ")})`;
 
     return Object.assign(str, { type, numComponents });
+}
+
+/**
+ * @param {number} numComponents
+ */
+function getFloatVectorType(numComponents) {
+    switch (numComponents) {
+        case 1:
+            return "float";
+        case 2:
+            return "vec2";
+        case 3:
+            return "vec3";
+        case 4:
+            return "vec4";
+        default:
+            throw new Error("Invalid number of components: " + numComponents);
+    }
 }
 
 /**
@@ -643,3 +671,18 @@ export function makeAttributeName(channel) {
 function capitalize(str) {
     return str[0].toUpperCase() + str.slice(1);
 }
+
+/**
+ * N.B. Interpolating scales require unit range
+ * TODO: Reverse
+ * @param {any} scale
+ * @param {Channel} channel
+ * @returns {number[]}
+ */
+export const getRangeForGlsl = (scale, channel) =>
+    isInterpolating(scale.type) ||
+    (isContinuous(scale.type) && isColorChannel(channel))
+        ? [0, 1]
+        : scale.range
+        ? scale.range()
+        : undefined;

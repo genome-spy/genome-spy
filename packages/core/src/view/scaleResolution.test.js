@@ -335,7 +335,7 @@ describe("Domain handling", () => {
         );
 
         /** @param {import("./view.js").default} view */
-        const d = (view) => view.getScaleResolution("y").getScale().domain();
+        const d = (view) => view.getScaleResolution("y").scale.domain();
 
         expect(r(d(view))).toEqual([1, 5]);
         expect(r(d(view.children[0]))).toEqual([1, 5]);
@@ -371,7 +371,7 @@ describe("Domain handling", () => {
         );
 
         /** @param {import("./view.js").default} view */
-        const d = (view) => view.getScaleResolution("y").getScale().domain();
+        const d = (view) => view.getScaleResolution("y").scale.domain();
 
         expect(r(d(view))).toEqual([1, 5]);
         expect(r(d(view.children[0]))).toEqual([1, 5]);
@@ -403,7 +403,7 @@ describe("Domain handling", () => {
         );
 
         /** @param {import("./view.js").default} view */
-        const d = (view) => view.getScaleResolution("y").getScale().domain();
+        const d = (view) => view.getScaleResolution("y").scale.domain();
 
         // FAILS!!!!!!! TODO: FIX!!
         // expect(r(d(view))).toEqual([1, 5]);
@@ -442,7 +442,7 @@ describe("Domain handling", () => {
         );
 
         /** @param {import("./view.js").default} view */
-        const d = (view) => view.getScaleResolution("y").getScale().domain();
+        const d = (view) => view.getScaleResolution("y").scale.domain();
 
         expect(r(d(view))).toEqual([1, 5]);
         expect(r(d(view.children[0]))).toEqual([1, 5]);
@@ -469,7 +469,7 @@ describe("Domain handling", () => {
 
         const d = /** @param {import("../spec/channel.js").Channel} channel*/ (
             channel
-        ) => view.getScaleResolution(channel).getScale().domain();
+        ) => view.getScaleResolution(channel).scale.domain();
 
         expect(d("x")).toEqual([0, 3]);
         expect(d("y")).toEqual([0, 3]);
@@ -497,7 +497,7 @@ describe("Domain handling", () => {
         );
 
         const d = /** @param {Channel} channel*/ (channel) =>
-            view.getScaleResolution(channel).getScale().domain();
+            view.getScaleResolution(channel).scale.domain();
 
         expect(d("x")).toEqual([1, 4]);
         expect(d("x")).toEqual([1, 4]);
@@ -530,7 +530,7 @@ describe("Domain handling", () => {
         }
 
         const d = /** @param {Channel} channel*/ (channel) =>
-            view.getScaleResolution(channel).getScale().domain();
+            view.getScaleResolution(channel).scale.domain();
 
         expect(d("x")).toEqual([2, 3]);
         expect(d("y")).toEqual([2, 3]);

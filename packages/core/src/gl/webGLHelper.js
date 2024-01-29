@@ -301,9 +301,9 @@ export default class WebGLHelper {
         const channel = resolution.channel;
 
         if (isColorChannel(channel)) {
-            const props = resolution.getScaleProps();
+            const scale = resolution.scale;
+            const props = scale.props;
 
-            const scale = resolution.getScale();
             const range = /** @type {any[]} */ (scale.range());
 
             /** @type {WebGLTexture} */
@@ -336,7 +336,7 @@ export default class WebGLHelper {
                 // Interpolating
                 isInterpolating(scale.type) ||
                 // Or piecewise
-                (isContinuous(scale.type) && range.length > 2)
+                (isContinuous(scale.type) && range.length > 1)
             ) {
                 texture = createInterpolatedColorTexture(
                     range,
@@ -355,7 +355,7 @@ export default class WebGLHelper {
 
             this.rangeTextures.set(resolution, texture);
         } else {
-            const scale = resolution.getScale();
+            const scale = resolution.scale;
 
             if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
                 /** @type {function(any):number} Handle "shape" etc */
@@ -363,9 +363,7 @@ export default class WebGLHelper {
                     ? getDiscreteRangeMapper(channel)
                     : (x) => x;
 
-                const range = /** @type {any[]} */ (
-                    resolution.getScale().range()
-                );
+                const range = /** @type {any[]} */ (scale.range());
 
                 this.rangeTextures.set(
                     resolution,

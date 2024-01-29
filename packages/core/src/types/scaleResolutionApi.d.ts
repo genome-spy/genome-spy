@@ -1,8 +1,9 @@
 import { ComplexDomain, NumericDomain } from "../spec/scale.js";
 import ScaleResolution from "../view/scaleResolution.js";
 
+export type ScaleResolutionEventType = "domain" | "range";
 export interface ScaleResolutionEvent {
-    type: "domain";
+    type: ScaleResolutionEventType;
 
     scaleResolution: ScaleResolution;
 }
@@ -13,10 +14,13 @@ export type ScaleResolutionListener = (event: ScaleResolutionEvent) => void;
  * A public API for ScaleResolution
  */
 export interface ScaleResolutionApi {
-    addEventListener(type: "domain", listener: ScaleResolutionListener): void;
+    addEventListener(
+        type: ScaleResolutionEventType,
+        listener: ScaleResolutionListener
+    ): void;
 
     removeEventListener(
-        type: "domain",
+        type: ScaleResolutionEventType,
         listener: ScaleResolutionListener
     ): void;
 

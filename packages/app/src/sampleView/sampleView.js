@@ -706,7 +706,7 @@ export default class SampleView extends ContainerView {
                 previousContextTitle = contextTitle;
             }
 
-            const scale = resolution.getScale();
+            const scale = resolution.scale;
             const scalarX =
                 "invert" in scale && sample
                     ? fieldInfo.view.mark.findDatumAt(

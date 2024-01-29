@@ -154,22 +154,22 @@ export default class RectMark extends Mark {
 
         const props = this.properties;
 
-        this.registerMarkUniform("uMinWidth", props.minWidth);
-        this.registerMarkUniform("uMinHeight", props.minHeight);
-        this.registerMarkUniform("uMinOpacity", props.minOpacity);
-        this.registerMarkUniform(
+        this.registerMarkUniformValue("uMinWidth", props.minWidth);
+        this.registerMarkUniformValue("uMinHeight", props.minHeight);
+        this.registerMarkUniformValue("uMinOpacity", props.minOpacity);
+        this.registerMarkUniformValue(
             "uCornerRadiusTopRight",
             props.cornerRadiusTopRight ?? props.cornerRadius ?? 0
         );
-        this.registerMarkUniform(
+        this.registerMarkUniformValue(
             "uCornerRadiusBottomRight",
             props.cornerRadiusBottomRight ?? props.cornerRadius ?? 0
         );
-        this.registerMarkUniform(
+        this.registerMarkUniformValue(
             "uCornerRadiusTopLeft",
             props.cornerRadiusTopLeft ?? props.cornerRadius ?? 0
         );
-        this.registerMarkUniform(
+        this.registerMarkUniformValue(
             "uCornerRadiusBottomLeft",
             props.cornerRadiusBottomLeft ?? props.cornerRadius ?? 0
         );

@@ -160,9 +160,16 @@ export default class UnitView extends ContainerView {
                 );
             } else if (type == "scale" && isChannelWithScale(channel)) {
                 if (!view.resolutions[type][targetChannel]) {
-                    view.resolutions[type][targetChannel] = new ScaleResolution(
-                        targetChannel
-                    );
+                    const resolution = new ScaleResolution(targetChannel);
+                    view.resolutions[type][targetChannel] = resolution;
+
+                    resolution.addEventListener("range", (event) => {
+                        // Create if WebGLHelper is available, i.e., if not running in headless mode
+                        this.context.glHelper?.createRangeTexture(
+                            event.scaleResolution,
+                            true
+                        );
+                    });
                 }
                 view.resolutions[type][targetChannel].pushUnitView(
                     this,

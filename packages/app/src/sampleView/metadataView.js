@@ -450,7 +450,7 @@ export class MetadataView extends ConcatView {
                         attributeName
                     ],
                 type: resolution.type,
-                scale: resolution.getScale(),
+                scale: resolution.scale,
                 title: html`<em class="attribute">${attributeName}</em>`,
             };
         }

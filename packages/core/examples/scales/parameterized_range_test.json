@@ -1,0 +1,84 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "params": [
+    {
+      "name": "maxSize",
+      "value": 1000,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 8000
+      }
+    },
+    {
+      "name": "shape",
+      "value": "cross",
+      "bind": {
+        "input": "select",
+        "options": ["diamond", "cross"]
+      }
+    },
+    {
+      "name": "color",
+      "value": "red",
+      "bind": {
+        "input": "select",
+        "options": ["red", "green"]
+      }
+    }
+  ],
+
+  "data": {
+    "sequence": {
+      "start": 1,
+      "stop": 10,
+      "step": 1
+    }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "datum.data % 3",
+      "as": "data3"
+    }
+  ],
+
+  "mark": "point",
+
+  "encoding": {
+    "x": {
+      "field": "data",
+      "type": "ordinal"
+    },
+    "size": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": {
+        "type": "linear",
+        "range": [{ "expr": "0" }, { "expr": "maxSize" }]
+      }
+    },
+    "color": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": {
+        "type": "linear",
+        "domain": [1, 9],
+        "range": [{ "expr": "'black'" }, { "expr": "color" }]
+      }
+    },
+    "shape": {
+      "field": "data3",
+      "type": "ordinal",
+      "scale": {
+        "range": [
+          { "expr": "'circle'" },
+          { "expr": "'square'" },
+          { "expr": "shape" }
+        ]
+      }
+    }
+  }
+}
