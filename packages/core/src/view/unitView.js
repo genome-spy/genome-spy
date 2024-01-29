@@ -164,7 +164,8 @@ export default class UnitView extends ContainerView {
                     view.resolutions[type][targetChannel] = resolution;
 
                     resolution.addEventListener("range", (event) => {
-                        this.context.glHelper.createRangeTexture(
+                        // Create if WebGLHelper is available, i.e., if not running in headless mode
+                        this.context.glHelper?.createRangeTexture(
                             event.scaleResolution,
                             true
                         );
