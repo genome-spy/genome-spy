@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.44.0](https://github.com/genome-spy/genome-spy/compare/v0.43.3...v0.44.0) (2024-01-30)
+
+
+### Features
+
+* **core:** allow scale ranges to be specified using parameters ([#228](https://github.com/genome-spy/genome-spy/issues/228)) ([caf3b68](https://github.com/genome-spy/genome-spy/commit/caf3b68c9a60d3670c9414158573405e7a0066d5))
+
+
+
+
+
 ## [0.43.3](https://github.com/genome-spy/genome-spy/compare/v0.43.2...v0.43.3) (2024-01-22)
 
 

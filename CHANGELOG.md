@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.44.0](https://github.com/genome-spy/genome-spy/compare/v0.43.3...v0.44.0) (2024-01-30)
+
+
+### Bug Fixes
+
+* **core:** fix a bug introduced in the previous fix ([b650b94](https://github.com/genome-spy/genome-spy/commit/b650b94020fb6e1fb4e687d828dc42b4ae9b4004))
+* **core:** improve windowed lazy data loading logic ([7d9028e](https://github.com/genome-spy/genome-spy/commit/7d9028e947290684e24407275228dca0fd83dce5)), closes [#221](https://github.com/genome-spy/genome-spy/issues/221)
+
+
+### Features
+
+* **core:** allow scale ranges to be specified using parameters ([#228](https://github.com/genome-spy/genome-spy/issues/228)) ([caf3b68](https://github.com/genome-spy/genome-spy/commit/caf3b68c9a60d3670c9414158573405e7a0066d5))
+* **core:** parameter-driven mark properties ([#227](https://github.com/genome-spy/genome-spy/issues/227)) ([2af6d35](https://github.com/genome-spy/genome-spy/commit/2af6d35c9da55bea71b18070334e8867561ec6a7))
+* **core:** support `expr`s in `datum`s in `ChannelDef`s ([7099b04](https://github.com/genome-spy/genome-spy/commit/7099b044140767b44e2414d09374804f054092a7)), closes [#205](https://github.com/genome-spy/genome-spy/issues/205)
+
+
+
+
+
 ## [0.43.3](https://github.com/genome-spy/genome-spy/compare/v0.43.2...v0.43.3) (2024-01-22)
 
 
