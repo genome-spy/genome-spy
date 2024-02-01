@@ -134,6 +134,12 @@ export default class View {
         this.paramMediator = new ParamMediator(
             () => this.dataParent?.paramMediator
         );
+
+        if (spec.params) {
+            for (const param of spec.params) {
+                this.paramMediator.registerParam(param);
+            }
+        }
     }
 
     getPadding() {
@@ -742,9 +748,7 @@ function createViewOpacityFunction(view) {
                 return interpolate(unitsPerPixel) * parentOpacity;
             };
         } else if (isExprRef(opacityDef)) {
-            const fn = view.context.paramBroker.createExpression(
-                opacityDef.expr
-            );
+            const fn = view.paramMediator.createExpression(opacityDef.expr);
             return (parentOpacity) => fn(null) * parentOpacity;
         }
     }

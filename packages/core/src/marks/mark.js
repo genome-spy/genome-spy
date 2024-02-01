@@ -647,7 +647,7 @@ export default class Mark {
         const setter = this.createMarkUniformSetter(uniformName);
 
         if (isExprRef(propValue)) {
-            const fn = this.unitView.context.paramBroker.createExpression(
+            const fn = this.unitView.paramMediator.createExpression(
                 propValue.expr
             );
 

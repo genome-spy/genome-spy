@@ -73,6 +73,9 @@ export default class SampleView extends ContainerView {
 
     #stickySummaries = false;
 
+    /** @type {(param: any) => void} */
+    #sampleHeightParam;
+
     /**
      *
      * @param {import("@genome-spy/core/spec/sampleView.js").SampleSpec} spec
@@ -96,13 +99,19 @@ export default class SampleView extends ContainerView {
         this.childCoords = Rectangle.ZERO;
         this.sidebarCoords = Rectangle.ZERO;
 
+        this.#sampleHeightParam = this.paramMediator.allocateSetter(
+            "sampleHeight",
+            0
+        );
+
         this.locationManager = new LocationManager({
             getSampleHierarchy: () => this.sampleHierarchy,
             getHeight: () => this.childCoords.height,
             getSummaryHeight: () =>
                 this.#gridChild.summaryViews.getSize().height.px,
-            onLocationUpdate: () => {
+            onLocationUpdate: ({ sampleHeight }) => {
                 this.groupPanel.updateGroups();
+                this.#sampleHeightParam(sampleHeight);
             },
             viewContext: this.context,
             isStickySummaries: () => this.#stickySummaries,

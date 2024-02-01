@@ -29,7 +29,6 @@ export default interface ViewContext {
     genomeStore?: GenomeStore;
     fontManager: BmFontManager;
 
-    paramBroker: ParamMediator;
     devicePixelRatio: number;
 
     requestLayoutReflow: () => void;

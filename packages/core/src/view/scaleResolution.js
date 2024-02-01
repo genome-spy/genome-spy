@@ -118,8 +118,12 @@ export default class ScaleResolution {
         this.name = undefined;
     }
 
+    get #firstMemberView() {
+        return this.members[0].view;
+    }
+
     get #viewContext() {
-        return this.members[0].view.context;
+        return this.#firstMemberView.context;
     }
 
     /**
@@ -338,9 +342,10 @@ export default class ScaleResolution {
 
             expressions = range.map((elem) => {
                 if (isExprRef(elem)) {
-                    const fn = this.#viewContext.paramBroker.createExpression(
-                        elem.expr
-                    );
+                    const fn =
+                        this.#firstMemberView.paramMediator.createExpression(
+                            elem.expr
+                        );
                     fn.addListener(evaluateAndSet);
                     this.#rangeExprRefListeners.add(fn);
                     return () => fn(null);

@@ -108,6 +108,11 @@ export interface ViewSpecBase extends ResolveSpec {
      */
     padding?: PaddingConfig;
 
+    /**
+     * Dynamic variables that parameterize a visualization.
+     */
+    params?: VariableParameter[];
+
     data?: Data;
     transform?: TransformParams[];
     encoding?: Encoding;

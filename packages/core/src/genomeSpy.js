@@ -34,7 +34,6 @@ import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
-import ParamMediator from "./view/paramMediator.js";
 import { debounce } from "./utils/debounce.js";
 import { tickStep } from "d3-array";
 
@@ -138,8 +137,7 @@ export default class GenomeSpy {
         /** @type {View} */
         this.viewRoot = undefined;
 
-        this._paramBroker = new ParamMediator();
-        this.#initializeParameters();
+        //this.#initializeParameters();
 
         /**
          * Views that are currently loading data using lazy sources.
@@ -353,17 +351,10 @@ export default class GenomeSpy {
         render(indicators, this.loadingIndicatorsElement);
     }
 
-    _prepareContainer() {
-        this.container.classList.add("genome-spy");
-        this.container.classList.add("loading");
-
-        this._glHelper = new WebGLHelper(
-            this.container,
-            () =>
-                this.viewRoot
-                    ? calculateCanvasSize(this.viewRoot)
-                    : { width: undefined, height: undefined },
-            this.spec.background
+    #setupDpr() {
+        const dprSetter = this.viewRoot.paramMediator.allocateSetter(
+            "devicePixelRatio",
+            window.devicePixelRatio
         );
 
         const resizeCallback = () => {
@@ -378,9 +369,6 @@ export default class GenomeSpy {
         const resizeObserver = new ResizeObserver(resizeCallback);
         resizeObserver.observe(this.container);
         this._destructionCallbacks.push(() => resizeObserver.disconnect());
-
-        const dprSetter = this._paramBroker.allocateSetter("devicePixelRatio");
-        dprSetter(window.devicePixelRatio);
 
         /** @type {() => void} */
         let remove = null;
@@ -403,6 +391,20 @@ export default class GenomeSpy {
         if (remove) {
             this._destructionCallbacks.push(remove);
         }
+    }
+
+    #prepareContainer() {
+        this.container.classList.add("genome-spy");
+        this.container.classList.add("loading");
+
+        this._glHelper = new WebGLHelper(
+            this.container,
+            () =>
+                this.viewRoot
+                    ? calculateCanvasSize(this.viewRoot)
+                    : { width: undefined, height: undefined },
+            this.spec.background
+        );
 
         // The initial loading message that is shown until the first frame is rendered
         this.loadingMessageElement = document.createElement("div");
@@ -474,8 +476,6 @@ export default class GenomeSpy {
             get devicePixelRatio() {
                 return self._glHelper.dpr;
             },
-
-            paramBroker: this._paramBroker,
 
             requestLayoutReflow: () => {
                 // placeholder
@@ -585,6 +585,7 @@ export default class GenomeSpy {
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this._glHelper.invalidateSize();
+        this.#setupDpr();
 
         // Collect all unit views to a list because they need plenty of initialization
         const unitViews = /** @type {UnitView[]} */ (
@@ -661,7 +662,7 @@ export default class GenomeSpy {
      */
     async launch() {
         try {
-            this._prepareContainer();
+            this.#prepareContainer();
 
             await this._prepareViewsAndData();
 

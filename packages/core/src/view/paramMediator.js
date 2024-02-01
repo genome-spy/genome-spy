@@ -15,14 +15,24 @@ import createFunction from "../utils/expression.js";
  * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, invalidate: () => void}} ExprRefFunction
  */
 export default class ParamMediator {
+    /**
+     * @typedef {import("../spec/parameter.js").VariableParameter} VariableParameter
+     */
+
     /** @type {Map<string, any>} */
     #params;
 
-    /** @type {Map<string, Set<() => void>>} */
-    #paramListeners;
+    /**
+     * @type {Map<string, Set<() => void>>}
+     * @protected
+     */
+    paramListeners;
 
     /** @type {Map<string, (value: any) => void>} */
     #allocatedSetters = new Map();
+
+    /** @type {Map<string, VariableParameter>} */
+    #paramConfigs = new Map();
 
     /** @type {() => ParamMediator} */
     #parentFinder;
@@ -35,17 +45,26 @@ export default class ParamMediator {
         this.#parentFinder = parentFinder ?? (() => undefined);
 
         this.#params = new Map();
-        this.#paramListeners = new Map();
+        this.paramListeners = new Map();
+    }
+
+    /**
+     * @param {VariableParameter} param
+     */
+    registerParam(param) {
+        const setter = this.allocateSetter(param.name, param.value);
+        this.#paramConfigs.set(param.name, param);
+        return setter;
     }
 
     /**
      *
      * @param {string} paramName
-     * @param {import("../spec/parameter.js").VariableParameter} [param]
-     *      An optional parameter object to be saved for later use.
-     * @returns {(value: any) => void}
+     * @param {T} initialValue
+     * @returns {(value: T) => void}
+     * @template T
      */
-    allocateSetter(paramName, param) {
+    allocateSetter(paramName, initialValue) {
         if (this.#allocatedSetters.has(paramName)) {
             throw new Error(
                 "Setter already allocated for parameter: " + paramName
@@ -54,18 +73,22 @@ export default class ParamMediator {
 
         /** @type {(value: any) => void} */
         const setter = (value) => {
-            this.#params.set(paramName, value);
+            const previous = this.#params.get(paramName);
+            if (value !== previous) {
+                this.#params.set(paramName, value);
 
-            const listeners = this.#paramListeners.get(paramName);
-            if (listeners) {
-                for (const listener of listeners) {
-                    listener();
+                const listeners = this.paramListeners.get(paramName);
+                if (listeners) {
+                    for (const listener of listeners) {
+                        listener();
+                    }
                 }
             }
         };
 
+        setter(initialValue);
+
         this.#allocatedSetters.set(paramName, setter);
-        setter(param?.value);
 
         return setter;
     }
@@ -104,23 +127,28 @@ export default class ParamMediator {
         /** @type {ExprRefFunction} */
         const fn = /** @type {any} */ (createFunction(expr, globalObject));
 
-        for (const g of fn.globals) {
-            const mediator = this.findMediatorForParam(g);
+        /** @type {Map<string, ParamMediator>} */
+        const mediatorsForParams = new Map();
+
+        for (const param of fn.globals) {
+            const mediator = this.findMediatorForParam(param);
             if (!mediator) {
                 throw new Error(
-                    `Unknown variable "${g}" in expression: ${expr}`
+                    `Unknown variable "${param}" in expression: ${expr}`
                 );
             }
 
-            Object.defineProperty(globalObject, g, {
+            mediatorsForParams.set(param, mediator);
+
+            Object.defineProperty(globalObject, param, {
                 enumerable: true,
                 get() {
-                    return mediator.getParam(g);
+                    return mediator.getParam(param);
                 },
             });
         }
         // TODO: There should be a way to "materialize" the global object when
-        // it is used in expressions in transformation batches, i.e., the same
+        // it is used in expressions in transformation batches, i.e., when the same
         // expression is applied to multiple data objects. In that case, the global
         // object remains constant and the Map lookups cause unnecessary overhead.
 
@@ -132,9 +160,11 @@ export default class ParamMediator {
          * @param {() => void} listener
          */
         fn.addListener = (listener) => {
-            for (const g of fn.globals) {
-                const listeners = this.#paramListeners.get(g) ?? new Set();
-                this.#paramListeners.set(g, listeners);
+            for (const [param, mediator] of mediatorsForParams) {
+                const listeners =
+                    mediator.paramListeners.get(param) ?? new Set();
+                mediator.paramListeners.set(param, listeners);
+
                 listeners.add(listener);
                 myListeners.add(listener);
             }
@@ -144,10 +174,9 @@ export default class ParamMediator {
          * Detach listeners. This must be called if the expression is no longer used.
          */
         fn.invalidate = () => {
-            for (const g of fn.globals) {
-                const listeners = this.#paramListeners.get(g);
+            for (const [param, mediator] of mediatorsForParams) {
                 for (const listener of myListeners) {
-                    listeners.delete(listener);
+                    mediator.paramListeners.get(param)?.delete(listener);
                 }
             }
         };
