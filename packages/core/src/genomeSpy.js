@@ -34,7 +34,7 @@ import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
-import ParamBroker from "./paramBroker.js";
+import ParamMediator from "./view/paramMediator.js";
 import { debounce } from "./utils/debounce.js";
 import { tickStep } from "d3-array";
 
@@ -138,7 +138,7 @@ export default class GenomeSpy {
         /** @type {View} */
         this.viewRoot = undefined;
 
-        this._paramBroker = new ParamBroker();
+        this._paramBroker = new ParamMediator();
         this.#initializeParameters();
 
         /**

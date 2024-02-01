@@ -100,7 +100,7 @@ export default class ScaleResolution {
      * Keeps track of the expression references in the range. If range is modified,
      * new expressions are created and the old ones must be invalidated.
      *
-     * @type {Set<import("../paramBroker.js").ExprRefFunction>}
+     * @type {Set<import("./paramMediator.js").ExprRefFunction>}
      */
     #rangeExprRefListeners = new Set();
 

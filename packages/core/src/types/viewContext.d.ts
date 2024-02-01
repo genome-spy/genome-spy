@@ -11,7 +11,7 @@ import { Datum } from "../data/flowNode.js";
 import { ImportSpec, ViewSpec } from "../spec/view.js";
 import ContainerView from "./containerView.js";
 import { BroadcastEventType } from "../genomeSpy.js";
-import ParamBroker from "../paramBroker.js";
+import ParamMediator from "../view/paramMediator.js";
 
 export interface Hover {
     mark: Mark;
@@ -29,7 +29,7 @@ export default interface ViewContext {
     genomeStore?: GenomeStore;
     fontManager: BmFontManager;
 
-    paramBroker: ParamBroker;
+    paramBroker: ParamMediator;
     devicePixelRatio: number;
 
     requestLayoutReflow: () => void;

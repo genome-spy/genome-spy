@@ -1,5 +1,4 @@
-import { isString } from "vega-util";
-import createFunction from "./utils/expression.js";
+import createFunction from "../utils/expression.js";
 
 /**
  * A class that manages parameters and expressions. Still a work in progress.
@@ -13,48 +12,48 @@ import createFunction from "./utils/expression.js";
  * - Somehow saving parameter "state" (in bookmarks)
  * - Maybe something else
  *
- * @typedef {import("./utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, invalidate: () => void}} ExprRefFunction
+ * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, invalidate: () => void}} ExprRefFunction
  */
-export default class ParamBroker {
+export default class ParamMediator {
     /** @type {Map<string, any>} */
     #params;
-
-    /** @type {Set<string>} */
-    #allocatedSetters;
-
-    /** @type {Record<string, any>} */
-    #proxy;
 
     /** @type {Map<string, Set<() => void>>} */
     #paramListeners;
 
-    constructor() {
-        this.#params = new Map();
-        this.#allocatedSetters = new Set();
-        this.#paramListeners = new Map();
+    /** @type {Map<string, (value: any) => void>} */
+    #allocatedSetters = new Map();
 
-        this.#proxy = new Proxy(this.#params, {
-            get(target, prop) {
-                return isString(prop) ? target.get(prop) : undefined;
-            },
-        });
+    /** @type {() => ParamMediator} */
+    #parentFinder;
+
+    /**
+     *
+     * @param {() => ParamMediator} [parentFinder]
+     */
+    constructor(parentFinder) {
+        this.#parentFinder = parentFinder ?? (() => undefined);
+
+        this.#params = new Map();
+        this.#paramListeners = new Map();
     }
 
     /**
      *
      * @param {string} paramName
+     * @param {import("../spec/parameter.js").VariableParameter} [param]
+     *      An optional parameter object to be saved for later use.
      * @returns {(value: any) => void}
      */
-    allocateSetter(paramName) {
+    allocateSetter(paramName, param) {
         if (this.#allocatedSetters.has(paramName)) {
             throw new Error(
                 "Setter already allocated for parameter: " + paramName
             );
         }
 
-        this.#allocatedSetters.add(paramName);
-
-        return (value) => {
+        /** @type {(value: any) => void} */
+        const setter = (value) => {
             this.#params.set(paramName, value);
 
             const listeners = this.#paramListeners.get(paramName);
@@ -64,6 +63,32 @@ export default class ParamBroker {
                 }
             }
         };
+
+        this.#allocatedSetters.set(paramName, setter);
+        setter(param?.value);
+
+        return setter;
+    }
+
+    /**
+     * @param {string} paramName
+     */
+    getParam(paramName) {
+        return this.#params.get(paramName);
+    }
+
+    /**
+     *
+     * @param {string} paramName
+     * @returns {ParamMediator}
+     * @protected
+     */
+    findMediatorForParam(paramName) {
+        if (this.#params.has(paramName)) {
+            return this;
+        } else {
+            return this.#parentFinder()?.findMediatorForParam(paramName);
+        }
     }
 
     // TODO: deallocateSetter
@@ -74,16 +99,30 @@ export default class ParamBroker {
      * @param {string} expr
      */
     createExpression(expr) {
+        const globalObject = {};
+
         /** @type {ExprRefFunction} */
-        const fn = /** @type {any} */ (createFunction(expr, this.#proxy));
+        const fn = /** @type {any} */ (createFunction(expr, globalObject));
 
         for (const g of fn.globals) {
-            if (!this.#allocatedSetters.has(g)) {
+            const mediator = this.findMediatorForParam(g);
+            if (!mediator) {
                 throw new Error(
                     `Unknown variable "${g}" in expression: ${expr}`
                 );
             }
+
+            Object.defineProperty(globalObject, g, {
+                enumerable: true,
+                get() {
+                    return mediator.getParam(g);
+                },
+            });
         }
+        // TODO: There should be a way to "materialize" the global object when
+        // it is used in expressions in transformation batches, i.e., the same
+        // expression is applied to multiple data objects. In that case, the global
+        // object remains constant and the Map lookups cause unnecessary overhead.
 
         // Keep track of them so that they can be detached later
         const myListeners = new Set();
