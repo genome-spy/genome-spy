@@ -749,6 +749,7 @@ function createViewOpacityFunction(view) {
             };
         } else if (isExprRef(opacityDef)) {
             const fn = view.paramMediator.createExpression(opacityDef.expr);
+            fn.addListener(() => view.context.animator.requestRender());
             return (parentOpacity) => fn(null) * parentOpacity;
         }
     }
