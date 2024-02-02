@@ -9,6 +9,7 @@ import createFunction from "../utils/expression.js";
 export default class ParamMediator {
     /**
      * @typedef {import("../spec/parameter.js").VariableParameter} VariableParameter
+     * @typedef {(value: any) => void} ParameterSetter
      */
 
     /** @type {Map<string, any>} */
@@ -44,11 +45,27 @@ export default class ParamMediator {
 
     /**
      * @param {VariableParameter} param
+     * @returns {ParameterSetter}
      */
     registerParam(param) {
-        const setter = this.allocateSetter(param.name, param.value);
-        this.#paramConfigs.set(param.name, param);
-        return setter;
+        if ("value" in param && "expr" in param) {
+            throw new Error(
+                "Parameter must not have both value and expr: " + param.name
+            );
+        }
+
+        if ("value" in param) {
+            const setter = this.allocateSetter(param.name, param.value);
+            return setter;
+        } else if ("expr" in param) {
+            const expr = this.createExpression(param.expr);
+            // TODO: getSetter(param) should return a setter that throws if
+            // modifying the value is attempted.
+            const setter = this.allocateSetter(param.name, expr(null));
+            expr.addListener(() => setter(expr(null)));
+            // NOP
+            return (_) => undefined;
+        }
     }
 
     /**

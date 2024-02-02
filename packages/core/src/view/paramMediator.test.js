@@ -73,6 +73,30 @@ describe("Single-level ParamMediator", () => {
         setter(60);
         expect(result).toBe(51);
     });
+
+    test("Expression parameter handles dependencies", () => {
+        const pm = new ParamMediator();
+        const setter = pm.registerParam({ name: "foo", value: 42 });
+        pm.registerParam({ name: "bar", expr: "foo + 1" });
+        pm.registerParam({ name: "baz", expr: "bar + 2" });
+
+        const expr = pm.createExpression("baz");
+
+        let result = expr();
+        expect(result).toBe(45);
+
+        expr.addListener(() => (result = expr()));
+
+        setter(52);
+        expect(result).toBe(55);
+    });
+
+    test("Throws if both value and expr are provided", () => {
+        const pm = new ParamMediator();
+        expect(() =>
+            pm.registerParam({ name: "foo", value: 42, expr: "bar" })
+        ).toThrow();
+    });
 });
 
 describe("Nested ParamMediators", () => {

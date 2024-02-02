@@ -24,6 +24,12 @@ export interface VariableParameter {
     value?: any;
 
     /**
+     * An expression for the value of the parameter. This expression may include other parameters,
+     * in which case the parameter will automatically update in response to upstream parameter changes.
+     */
+    expr?: Expr;
+
+    /**
      * Binds the parameter to an external input element such as a slider, selection list or radio button group.
      */
     bind?: Binding;
