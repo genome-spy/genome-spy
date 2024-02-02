@@ -18,6 +18,7 @@ import {
     visitTree,
 } from "@genome-spy/core/utils/trees.js";
 import { dropdownMenu } from "../utils/ui/contextMenu.js";
+import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
 
 class ViewSettingsButton extends LitElement {
     /**
@@ -147,7 +148,7 @@ class ViewSettingsButton extends LitElement {
         const viewRoot = this.app.genomeSpy.viewRoot;
         const uniqueNames = findUniqueViewNames(viewRoot);
 
-        /** @type {import("lit").TemplateResult[]} */
+        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
 
         /**
@@ -158,20 +159,43 @@ class ViewSettingsButton extends LitElement {
             const view = item.item;
             const checked = visibilities[view.name] ?? view.isVisibleInSpec();
 
+            /** @type {() => import("../utils/ui/contextMenu.js").MenuItem[]} */
+            let submenuOpener;
+
+            if (view.paramMediator.paramConfigs.size) {
+                submenuOpener = () => [
+                    {
+                        label: "Parameters",
+                        type: "header",
+                    },
+                    { type: "divider" },
+                    {
+                        customContent: html`<div class="gs-input-binding">
+                            ${createBindingInputs(view.paramMediator)}
+                        </div>`,
+                    },
+                ];
+            }
+
             if (depth >= 0) {
-                items.push(html`<li>
-                    <label class="checkbox choice-item"
-                        ><input
-                            style=${`margin-left: ${depth * 1.5}em;`}
-                            type="checkbox"
-                            ?disabled=${!uniqueNames.has(view.name) ||
-                            !isConfigurable(view)}
-                            .checked=${live(checked)}
-                            @change=${(/** @type {UIEvent} */ event) =>
-                                this.#handleCheckboxClick(event, view)}
-                        />${view.getTitleText() ?? view.name}
-                    </label>
-                </li>`);
+                const template = html` <label class="checkbox"
+                    ><input
+                        style=${`margin-left: ${depth * 1.5}em;`}
+                        type="checkbox"
+                        ?disabled=${!uniqueNames.has(view.name) ||
+                        !isConfigurable(view)}
+                        .checked=${live(checked)}
+                        @change=${(/** @type {UIEvent} */ event) =>
+                            this.#handleCheckboxClick(event, view)}
+                    />${view.getTitleText() ?? view.name}
+                </label>`;
+
+                items.push({
+                    customContent: submenuOpener
+                        ? template
+                        : html`<li>${template}</li>`,
+                    submenu: submenuOpener,
+                });
             }
 
             if (checked) {
@@ -188,12 +212,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     #showDropdown() {
-        /**
-         * @type {import("../utils/ui/contextMenu.js").MenuItem[]}
-         */
-        const items = this.#makeToggles().map((item) => ({
-            customContent: item,
-        }));
+        const items = this.#makeToggles();
 
         const defaultVis = !Object.keys(this.getVisibilities()).length;
 
@@ -217,6 +236,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     render() {
+        // TODO: Highlight the button when the dropdown is open.
         return html`
             <div class="dropdown bookmark-dropdown">
                 <button

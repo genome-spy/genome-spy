@@ -247,6 +247,7 @@ $font-size: 14px;
 }
 
 $menu-hover-bg-color: #e0e0e0;
+$menu-active-bg-color: #e8e8e8;
 $menu-item-h-padding: 15px;
 $menu-line-height: 22px;
 
@@ -278,8 +279,10 @@ $menu-line-height: 22px;
         position: relative;
         padding: 0;
 
-        > :is(a:first-child, label):hover,
-        &.active > a:first-child {
+        &.active > :is(a:first-child, .submenu-item) {
+            background-color: $menu-active-bg-color;
+        }
+        > :is(a:first-child, label, .submenu-item):hover {
             background-color: $menu-hover-bg-color;
         }
 
@@ -312,7 +315,7 @@ $menu-line-height: 22px;
     }
 
     .menu-header,
-    li > :is(span.disabled-item, a, label) {
+    li > :is(span.disabled-item, a:first-child, .submenu-item, label) {
         padding-left: $menu-item-h-padding;
         padding-right: $menu-item-h-padding;
         display: block;
@@ -324,17 +327,21 @@ $menu-line-height: 22px;
     }
 
     li {
-        > :is(a.submenu-item, a.choice-item) {
+        > :is(div.submenu-item, .choice-item) {
             display: flex;
             justify-content: space-between;
             align-items: center;
+
+            > :first-child {
+                flex-grow: 1;
+            }
 
             > * {
                 display: block;
             }
         }
 
-        > a.submenu-item {
+        > .submenu-item {
             // Make an arrow
             &::after {
                 content: "";
@@ -396,6 +403,15 @@ $menu-line-height: 22px;
 
     li:not(:hover) a.menu-ellipsis {
         display: none;
+    }
+
+    .gs-input-binding {
+        margin: 0 $menu-item-h-padding;
+        line-height: normal;
+
+        .description {
+            margin-bottom: 0.2em;
+        }
     }
 }
 

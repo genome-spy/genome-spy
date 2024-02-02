@@ -140,38 +140,40 @@ const css = `
   padding: 10px;
   background: #fff0f0;
 }
-.genome-spy .input-binding {
+
+.gs-input-binding {
   display: grid;
   grid-template-columns: max-content max-content;
   column-gap: 1em;
-  row-gap: 0.4em;
+  row-gap: 0.3em;
   justify-items: start;
 }
-.genome-spy .input-binding > select,
-.genome-spy .input-binding > input:not([type=checkbox]) {
+.gs-input-binding > select,
+.gs-input-binding > input:not([type=checkbox]) {
   width: 100%;
 }
-.genome-spy .input-binding input[type=range] + span {
+.gs-input-binding input[type=range] + span {
   display: inline-block;
   margin-left: 0.3em;
   min-width: 2.2em;
 }
-.genome-spy .input-binding input[type=range],
-.genome-spy .input-binding input[type=radio] {
+.gs-input-binding input[type=range],
+.gs-input-binding input[type=radio] {
   vertical-align: text-bottom;
 }
-.genome-spy .input-binding .radio-group {
+.gs-input-binding .radio-group {
   display: flex;
   align-items: center;
 }
-.genome-spy .input-binding .description {
+.gs-input-binding .description {
   max-width: 20em;
   grid-column: 1/-1;
   color: #777;
   font-size: 90%;
   margin-top: -0.5em;
 }
-.genome-spy .input-binding-overlay {
+
+.gs-input-binding-overlay {
   position: absolute;
   bottom: 10px;
   right: 10px;

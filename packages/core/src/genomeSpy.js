@@ -158,9 +158,12 @@ export default class GenomeSpy {
         if (inputs.length) {
             const inputsDiv = document.createElement("div");
             this.container.appendChild(inputsDiv);
-            inputsDiv.className = "input-binding-overlay";
+            inputsDiv.className = "gs-input-binding-overlay";
 
-            render(html`<div class="input-binding">${inputs}</div>`, inputsDiv);
+            render(
+                html`<div class="gs-input-binding">${inputs}</div>`,
+                inputsDiv
+            );
         }
     }
 

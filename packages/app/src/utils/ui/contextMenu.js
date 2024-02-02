@@ -14,7 +14,7 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
  * @prop {function} [ellipsisCallback]
  * @prop {"divider" | "header" | undefined} [type]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
- * @prop {MenuItem[]} [submenu]
+ * @prop {MenuItem[] | (() => MenuItem[])} [submenu]
  *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
@@ -90,23 +90,26 @@ const createHeader = (/** @type {MenuItem} */ item) =>
 const createSubmenu = (item, level) =>
     html`
         <li>
-            <a
+            <div
                 class="submenu-item"
-                @click=${(/** @type {MouseEvent} */ event) =>
-                    event.stopPropagation()}
-                @mouseup=${(/** @type {MouseEvent} */ event) =>
-                    event.stopPropagation()}
                 @mouseenter=${(/** @type {MouseEvent} */ event) =>
                     debouncer(() => {
                         const li = /** @type {HTMLElement} */ (
                             event.target
                         ).closest("li");
-                        renderAndPositionSubmenu(item.submenu, li, level + 1);
+                        const submenu =
+                            typeof item.submenu == "function"
+                                ? item.submenu()
+                                : item.submenu;
+                        renderAndPositionSubmenu(submenu, li, level + 1);
                         event.stopPropagation();
                     })}
                 @mouseleave=${() => debouncer(() => clearSubmenus(level + 1))}
-                ><span>${item.label}</span></a
             >
+                ${item.customContent
+                    ? item.customContent
+                    : html`<span>${item.label}</span>`}
+            </div>
         </li>
     `;
 
@@ -161,10 +164,10 @@ export function menuItemToTemplate(item, level = 1) {
         case "header":
             return createHeader(item);
         default:
-            if (item.customContent) {
-                return item.customContent;
-            } else if (item.submenu) {
+            if (item.submenu) {
                 return createSubmenu(item, level);
+            } else if (item.customContent) {
+                return item.customContent;
             } else if (item.callback) {
                 return createChoice(item);
             } else {
