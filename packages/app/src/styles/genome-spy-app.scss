@@ -257,6 +257,10 @@ $menu-line-height: 22px;
     border: #e0e0e0;
     border-radius: 2px;
 
+    // Ensure that toobar menus fit into the window
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+
     z-index: 100;
 
     box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
@@ -274,7 +278,7 @@ $menu-line-height: 22px;
         position: relative;
         padding: 0;
 
-        > a:first-child:hover,
+        > :is(a:first-child, label):hover,
         &.active > a:first-child {
             background-color: $menu-hover-bg-color;
         }
@@ -308,8 +312,7 @@ $menu-line-height: 22px;
     }
 
     .menu-header,
-    li > span.disabled-item,
-    li > a {
+    li > :is(span.disabled-item, a, label) {
         padding-left: $menu-item-h-padding;
         padding-right: $menu-item-h-padding;
         display: block;
@@ -419,8 +422,6 @@ $menu-line-height: 22px;
     overflow: auto;
     position: absolute;
 
-    max-height: calc(100vh - 60px);
-
     display: none;
     z-index: 1;
     width: max-content;
@@ -442,19 +443,6 @@ $menu-line-height: 22px;
 
     > li > ul {
         padding-left: 0;
-    }
-
-    label {
-        padding: 0 $menu-item-h-padding;
-
-        &:hover {
-            background-color: $menu-hover-bg-color;
-        }
-    }
-
-    .unchecked label {
-        // TODO: Theme color
-        color: #aaa;
     }
 }
 
