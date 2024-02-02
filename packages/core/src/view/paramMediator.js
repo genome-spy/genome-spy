@@ -1,16 +1,8 @@
 import createFunction from "../utils/expression.js";
 
 /**
- * A class that manages parameters and expressions. Still a work in progress.
- *
- * TODO: Write tests for this class.
- *
- * This should eventually handle the following:
- * - Parameter registration
- * - Dependency tracking
- * - Calling observers when a parameter changes
- * - Somehow saving parameter "state" (in bookmarks)
- * - Maybe something else
+ * A class that manages parameters and expressions.
+ * Supports nesting and scoped parameters.
  *
  * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, invalidate: () => void}} ExprRefFunction
  */
@@ -20,7 +12,7 @@ export default class ParamMediator {
      */
 
     /** @type {Map<string, any>} */
-    #params;
+    #paramValues;
 
     /**
      * @type {Map<string, Set<() => void>>}
@@ -38,13 +30,15 @@ export default class ParamMediator {
     #parentFinder;
 
     /**
-     *
      * @param {() => ParamMediator} [parentFinder]
+     *      An optional function that returns the parent mediator.
+     *      N.B. The function must always return the same mediator for the same parent,
+     *      i.e., the changing the structure of the hierarchy is NOT supported.
      */
     constructor(parentFinder) {
         this.#parentFinder = parentFinder ?? (() => undefined);
 
-        this.#params = new Map();
+        this.#paramValues = new Map();
         this.paramListeners = new Map();
     }
 
@@ -73,9 +67,9 @@ export default class ParamMediator {
 
         /** @type {(value: any) => void} */
         const setter = (value) => {
-            const previous = this.#params.get(paramName);
+            const previous = this.#paramValues.get(paramName);
             if (value !== previous) {
-                this.#params.set(paramName, value);
+                this.#paramValues.set(paramName, value);
 
                 const listeners = this.paramListeners.get(paramName);
                 if (listeners) {
@@ -94,10 +88,32 @@ export default class ParamMediator {
     }
 
     /**
+     * Gets an existing setter for a parameter. Throws if the setter is not found.
      * @param {string} paramName
      */
-    getParam(paramName) {
-        return this.#params.get(paramName);
+    getSetter(paramName) {
+        const setter = this.#allocatedSetters.get(paramName);
+        if (!setter) {
+            throw new Error("Setter not found for parameter: " + paramName);
+        }
+        return setter;
+    }
+
+    /**
+     * Get the value of a parameter from this mediator.
+     * @param {string} paramName
+     */
+    getValue(paramName) {
+        return this.#paramValues.get(paramName);
+    }
+
+    /**
+     * Get the value of a parameter from this mediator or the ancestors.
+     * @param {string} paramName
+     */
+    findValue(paramName) {
+        const mediator = this.findMediatorForParam(paramName);
+        return mediator?.getValue(paramName);
     }
 
     /**
@@ -107,7 +123,7 @@ export default class ParamMediator {
      * @protected
      */
     findMediatorForParam(paramName) {
-        if (this.#params.has(paramName)) {
+        if (this.#paramValues.has(paramName)) {
             return this;
         } else {
             return this.#parentFinder()?.findMediatorForParam(paramName);
@@ -143,7 +159,7 @@ export default class ParamMediator {
             Object.defineProperty(globalObject, param, {
                 enumerable: true,
                 get() {
-                    return mediator.getParam(param);
+                    return mediator.getValue(param);
                 },
             });
         }

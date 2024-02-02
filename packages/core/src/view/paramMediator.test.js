@@ -1,0 +1,139 @@
+import { describe, expect, test } from "vitest";
+import ParamMediator from "./paramMediator.js";
+
+describe("Single-level ParamMediator", () => {
+    test("Trivial case", () => {
+        const pm = new ParamMediator();
+        pm.registerParam({ name: "foo", value: 42 });
+        expect(pm.getValue("foo")).toBe(42);
+    });
+
+    test("Setter", () => {
+        const pm = new ParamMediator();
+        const setter = pm.allocateSetter("foo", 42);
+        expect(pm.getValue("foo")).toBe(42);
+
+        setter(43);
+        expect(pm.getValue("foo")).toBe(43);
+    });
+
+    test("Expressions have access to parameters", () => {
+        const pm = new ParamMediator();
+        pm.registerParam({ name: "foo", value: 42 });
+        const expr = pm.createExpression("foo + 1");
+        expect(expr()).toBe(43);
+    });
+
+    test("Throws on an unknown parameter", () => {
+        const pm = new ParamMediator();
+        expect(() => pm.createExpression("foo")).toThrow();
+    });
+
+    test("Listener on an expression gets called (only) when a parameter changes", () => {
+        const pm = new ParamMediator();
+        const setter = pm.allocateSetter("foo", 42);
+        const expr = pm.createExpression("foo + 1");
+
+        let result;
+        let calls = 0;
+
+        expr.addListener(() => {
+            result = expr();
+            calls++;
+        });
+
+        setter(50);
+        expect(result).toBe(51);
+        expect(calls).toBe(1);
+
+        setter(60);
+        expect(result).toBe(61);
+        expect(calls).toBe(2);
+
+        setter(60);
+        expect(result).toBe(61);
+        expect(calls).toBe(2);
+    });
+
+    test("Expression invalidation", () => {
+        const pm = new ParamMediator();
+        const setter = pm.allocateSetter("foo", 42);
+        const expr = pm.createExpression("foo + 1");
+
+        let result = expr();
+        expect(result).toBe(43);
+
+        expr.addListener(() => (result = expr()));
+
+        setter(50);
+        expect(result).toBe(51);
+
+        expr.invalidate();
+        // Listeners should be invalidated now: the result must remain the same.
+        setter(60);
+        expect(result).toBe(51);
+    });
+});
+
+describe("Nested ParamMediators", () => {
+    test("Value in parent", () => {
+        const parent = new ParamMediator();
+        const child = new ParamMediator(() => parent);
+
+        parent.registerParam({ name: "foo", value: 42 });
+        expect(parent.findValue("foo")).toBe(42);
+        expect(child.findValue("foo")).toBe(42);
+    });
+
+    test("Value in child", () => {
+        const parent = new ParamMediator();
+        const child = new ParamMediator(() => parent);
+
+        child.registerParam({ name: "foo", value: 42 });
+        expect(parent.findValue("foo")).toBeUndefined();
+        expect(child.findValue("foo")).toBe(42);
+    });
+
+    test("Child overrides parent", () => {
+        const parent = new ParamMediator();
+        const child = new ParamMediator(() => parent);
+
+        parent.registerParam({ name: "foo", value: 1 });
+        child.registerParam({ name: "foo", value: 2 });
+
+        expect(parent.findValue("foo")).toBe(1);
+        expect(child.findValue("foo")).toBe(2);
+    });
+
+    test("Expression", () => {
+        const parent = new ParamMediator();
+        const child = new ParamMediator(() => parent);
+
+        parent.registerParam({ name: "foo", value: 1 });
+        child.registerParam({ name: "bar", value: 2 });
+
+        const expr = child.createExpression("foo + bar");
+        expect(expr()).toBe(3);
+    });
+
+    test("Listener on an expression", () => {
+        const parent = new ParamMediator();
+        const child = new ParamMediator(() => parent);
+
+        const parentSetter = parent.allocateSetter("foo", 1);
+        const childSetter = parent.allocateSetter("bar", 2);
+
+        const expr = child.createExpression("foo + bar");
+
+        let result = expr();
+        expr.addListener(() => (result = expr()));
+
+        expect(result).toBe(3);
+
+        parentSetter(10);
+        expect(result).toBe(12);
+
+        childSetter(20);
+        expect(result).toBe(30);
+    });
+});
