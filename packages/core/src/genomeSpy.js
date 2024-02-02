@@ -147,22 +147,25 @@ export default class GenomeSpy {
         this._loadingViews = new Map();
     }
 
-    #initializeParameters() {
+    #initializeParameterBindings() {
         /** @type {import("lit-html").TemplateResult[]} */
         const inputs = [];
 
-        for (const param of this.spec.params ?? []) {
-            const { name, value, bind } = param;
-            const setter = this._paramBroker.allocateSetter(name);
+        this.viewRoot.visit((view) => {
+            const mediator = view.paramMediator;
+            for (const param of mediator.paramConfigs.values()) {
+                const bind = param.bind;
+                if (!bind || !("input" in bind)) {
+                    continue;
+                }
 
-            if (value != null) {
-                setter(value);
-            }
+                const name = param.name;
+                const setter = mediator.getSetter(name);
+                const value = mediator.getValue(name);
 
-            // TODO: Implement two-way data binding, e.g. when an external agent changes
-            // the parameter value, the UI components should be updated.
+                // TODO: Implement two-way data binding, e.g. when an external agent changes
+                // the parameter value, the UI components should be updated.
 
-            if (bind && "input" in bind) {
                 const debouncedSetter = bind.debounce
                     ? debounce(setter, bind.debounce, false)
                     : setter;
@@ -234,7 +237,7 @@ export default class GenomeSpy {
                     throw new Error("Unsupported input type: " + bind.input);
                 }
             }
-        }
+        });
 
         if (inputs.length) {
             const inputsDiv = document.createElement("div");
@@ -570,6 +573,8 @@ export default class GenomeSpy {
             null,
             VIEW_ROOT_NAME
         );
+
+        this.#initializeParameterBindings();
 
         checkForDuplicateScaleNames(this.viewRoot);
 

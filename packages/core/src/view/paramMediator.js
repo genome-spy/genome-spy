@@ -54,18 +54,24 @@ export default class ParamMediator {
             );
         }
 
+        /** @type {ParameterSetter} */
+        let setter;
+
         if ("value" in param) {
-            const setter = this.allocateSetter(param.name, param.value);
-            return setter;
+            setter = this.allocateSetter(param.name, param.value);
         } else if ("expr" in param) {
             const expr = this.createExpression(param.expr);
             // TODO: getSetter(param) should return a setter that throws if
             // modifying the value is attempted.
-            const setter = this.allocateSetter(param.name, expr(null));
-            expr.addListener(() => setter(expr(null)));
+            const realSetter = this.allocateSetter(param.name, expr(null));
+            expr.addListener(() => realSetter(expr(null)));
             // NOP
-            return (_) => undefined;
+            setter = (_) => undefined;
         }
+
+        this.#paramConfigs.set(param.name, param);
+
+        return setter;
     }
 
     /**
@@ -131,6 +137,15 @@ export default class ParamMediator {
     findValue(paramName) {
         const mediator = this.findMediatorForParam(paramName);
         return mediator?.getValue(paramName);
+    }
+
+    /**
+     * Returns configs for all parameters that have been registered using `registerParam`.
+     */
+    get paramConfigs() {
+        return /** @type {ReadonlyMap<string, VariableParameter>} */ (
+            this.#paramConfigs
+        );
     }
 
     /**
