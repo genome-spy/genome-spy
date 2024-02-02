@@ -15,7 +15,14 @@
     {
       "name": "fillOpacity",
       "value": 1,
-      "bind": { "input": "range", "min": 0, "max": 1, "step": 0.01 }
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 1,
+        "step": 0.01,
+        "name": "Fill opacity",
+        "description": "A random help text. Adjust the slider!"
+      }
     },
     {
       "name": "redStroke",
@@ -26,7 +33,7 @@
       "name": "fillColor",
       "value": "navy",
       "bind": {
-        "input": "select",
+        "input": "radio",
         "options": ["navy", "purple"],
         "labels": ["Navy", "Purple"]
       }

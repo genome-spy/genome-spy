@@ -186,4 +186,51 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
             background: #fff0f0;
         }
     }
+
+    .input-binding {
+        display: grid;
+        grid-template-columns: max-content max-content;
+        column-gap: 1em;
+        row-gap: 0.4em;
+        justify-items: start;
+
+        > select,
+        > input:not([type="checkbox"]) {
+            width: 100%;
+        }
+
+        input[type="range"] + span {
+            display: inline-block;
+            margin-left: 0.3em;
+            min-width: 2.2em;
+        }
+
+        input[type="range"],
+        input[type="radio"] {
+            vertical-align: text-bottom;
+        }
+
+        .radio-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .description {
+            max-width: 20em;
+            grid-column: 1 / -1;
+            color: #777;
+            font-size: 90%;
+            margin-top: -0.5em;
+        }
+    }
+
+    .input-binding-overlay {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        z-index: 1;
+        border: 1px solid lightgray;
+    }
 }
