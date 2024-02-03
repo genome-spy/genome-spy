@@ -6,8 +6,6 @@ import { isExprRef } from "../marks/mark.js";
 /**
  * Creates an object that contains encoders for every channel of a mark
  *
- * TODO: This should actually receive the mark as parameter
- *
  * TODO: This method should have a test. But how to mock Mark...
  *
  * @param {import("../marks/mark.js").default} mark
@@ -41,6 +39,7 @@ export default function createEncoders(mark, encoding) {
         const resolution = mark.unitView.getScaleResolution(channelWithScale);
 
         encoders[channel] = createEncoder(
+            mark,
             encoding[channel],
             resolution?.scale,
             mark.unitView.getAccessor(channel),
@@ -52,14 +51,14 @@ export default function createEncoders(mark, encoding) {
 }
 
 /**
- *
+ * @param {import("../marks/mark.js").default} mark
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {any} scale
  * @param {Accessor} accessor
  * @param {Channel} channel
  * @returns {Encoder}
  */
-export function createEncoder(channelDef, scale, accessor, channel) {
+function createEncoder(mark, channelDef, scale, accessor, channel) {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../types/encoder.js").Encoder} Encoder
@@ -71,9 +70,10 @@ export function createEncoder(channelDef, scale, accessor, channel) {
 
     if (isValueDef(channelDef)) {
         if (isExprRef(channelDef.value)) {
-            // TODO: Should get the value expression as the accessor
-            encoder = /** @type {Encoder} */ ((datum) => undefined);
-            //encoder = /** @type {Encoder} */ (/** @type {any} */ (accessor));
+            const fn = mark.unitView.paramMediator.createExpression(
+                channelDef.value.expr
+            );
+            encoder = /** @type {Encoder} */ ((datum) => fn(null));
             encoder.constant = true;
             encoder.constantValue = false;
             encoder.accessor = accessor;
