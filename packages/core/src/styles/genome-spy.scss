@@ -10,6 +10,15 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
     position: relative;
 
+    display: flex;
+    flex-direction: column;
+
+    .canvas-wrapper {
+        position: relative;
+        flex-grow: 1;
+        overflow: hidden;
+    }
+
     canvas {
         transform: scale(1, 1);
         opacity: 1;
@@ -31,23 +40,23 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         }
     }
 
-    &.loading {
-        canvas {
+    .loading {
+        > canvas {
             transform: scale(0.95, 0.95);
             opacity: 0;
         }
 
-        .loading-message .message {
+        > .loading-message .message {
             opacity: 1;
-        }
 
-        .ellipsis {
-            animation: blinker 1s linear infinite;
-        }
+            .ellipsis {
+                animation: blinker 1s linear infinite;
+            }
 
-        @keyframes blinker {
-            50% {
-                opacity: 0;
+            @keyframes blinker {
+                50% {
+                    opacity: 0;
+                }
             }
         }
     }
@@ -204,6 +213,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         display: inline-block;
         margin-left: 0.3em;
         min-width: 2.2em;
+        font-variant-numeric: tabular-nums;
     }
 
     input[type="range"],
@@ -225,12 +235,8 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     }
 }
 
-.gs-input-binding-overlay {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(255, 255, 255, 0.8);
-    padding: 10px;
-    z-index: 1;
-    border: 1px solid lightgray;
+.gs-input-bindings {
+    flex-basis: content;
+    font-size: 14px;
+    padding: $basic-spacing;
 }

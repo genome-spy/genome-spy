@@ -11,6 +11,7 @@ import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
     calculateCanvasSize,
+    calculateViewRootSize,
 } from "./view/viewUtils.js";
 import UnitView from "./view/unitView.js";
 
@@ -59,13 +60,12 @@ export default class GenomeSpy {
      */
     constructor(container, spec, options = {}) {
         this.container = container;
+        this.options = options;
+
+        options.inputBindingContainer ??= "default";
 
         /** @type {(() => void)[]} */
         this._destructionCallbacks = [];
-
-        const styleElement = document.createElement("style");
-        styleElement.innerHTML = css;
-        container.appendChild(styleElement);
 
         /** Root level configuration object */
         this.spec = spec;
@@ -136,14 +136,23 @@ export default class GenomeSpy {
         /** @type {View} */
         this.viewRoot = undefined;
 
-        //this.#initializeParameters();
-
         /**
          * Views that are currently loading data using lazy sources.
          *
          * @type {Map<View, boolean>}
          */
         this._loadingViews = new Map();
+
+        /**
+         * @type {HTMLElement}
+         */
+        this._inputBindingContainer = undefined;
+    }
+
+    get #canvasWrapper() {
+        return /** @type {HTMLElement} */ (
+            this.container.querySelector(".canvas-wrapper")
+        );
     }
 
     #initializeParameterBindings() {
@@ -154,15 +163,28 @@ export default class GenomeSpy {
             const mediator = view.paramMediator;
             inputs.push(...createBindingInputs(mediator));
         });
+        const ibc = this.options.inputBindingContainer;
+
+        if (!ibc || ibc == "none" || !inputs.length) {
+            return;
+        }
+
+        this._inputBindingContainer = element("div", {
+            className: "gs-input-bindings",
+        });
+
+        if (ibc == "default") {
+            this.container.appendChild(this._inputBindingContainer);
+        } else if (ibc instanceof HTMLElement) {
+            ibc.appendChild(this._inputBindingContainer);
+        } else {
+            throw new Error("Invalid inputBindingContainer");
+        }
 
         if (inputs.length) {
-            const inputsDiv = document.createElement("div");
-            this.container.appendChild(inputsDiv);
-            inputsDiv.className = "gs-input-binding-overlay";
-
             render(
                 html`<div class="gs-input-binding">${inputs}</div>`,
-                inputsDiv
+                this._inputBindingContainer
             );
         }
     }
@@ -310,32 +332,44 @@ export default class GenomeSpy {
 
     #prepareContainer() {
         this.container.classList.add("genome-spy");
-        this.container.classList.add("loading");
+
+        const styleElement = document.createElement("style");
+        styleElement.innerHTML = css;
+        this.container.appendChild(styleElement);
+
+        const canvasWrapper = element("div", {
+            class: "canvas-wrapper",
+        });
+        this.container.appendChild(canvasWrapper);
+
+        canvasWrapper.classList.add("loading");
 
         this._glHelper = new WebGLHelper(
-            this.container,
+            canvasWrapper,
             () =>
                 this.viewRoot
-                    ? calculateCanvasSize(this.viewRoot)
+                    ? calculateCanvasSize(calculateViewRootSize(this.viewRoot))
                     : { width: undefined, height: undefined },
             this.spec.background
         );
 
         // The initial loading message that is shown until the first frame is rendered
-        this.loadingMessageElement = document.createElement("div");
-        this.loadingMessageElement.className = "loading-message";
-        this.loadingMessageElement.innerHTML = `<div class="message">Loading<span class="ellipsis">...</span></div>`;
-        this.container.appendChild(this.loadingMessageElement);
+        this.loadingMessageElement = element("div", {
+            class: "loading-message",
+            innerHTML: `<div class="message">Loading<span class="ellipsis">...</span></div>`,
+        });
+        canvasWrapper.appendChild(this.loadingMessageElement);
 
         // A container for loading indicators (for lazy data sources.)
         // These could alternatively be included in the view hierarchy,
         // but it's easier this way – particularly if we want to show
         // some fancy animated spinners.
-        this.loadingIndicatorsElement = document.createElement("div");
-        this.loadingIndicatorsElement.className = "loading-indicators";
-        this.container.appendChild(this.loadingIndicatorsElement);
+        this.loadingIndicatorsElement = element("div", {
+            class: "loading-indicators",
+        });
+        canvasWrapper.appendChild(this.loadingIndicatorsElement);
 
-        this.tooltip = new Tooltip(this.container);
+        this.tooltip = new Tooltip(canvasWrapper);
 
         this.loadingMessageElement
             .querySelector(".message")
@@ -352,8 +386,10 @@ export default class GenomeSpy {
     destroy() {
         // TODO: There's a memory leak somewhere
 
+        const canvasWrapper = this.#canvasWrapper;
+
         this.container.classList.remove("genome-spy");
-        this.container.classList.remove("loading");
+        canvasWrapper.classList.remove("loading");
 
         for (const [type, listeners] of this._keyboardListeners) {
             for (const listener of listeners) {
@@ -364,6 +400,8 @@ export default class GenomeSpy {
         this._destructionCallbacks.forEach((callback) => callback());
 
         this._glHelper.finalize();
+
+        this._inputBindingContainer?.remove();
 
         while (this.container.firstChild) {
             this.container.firstChild.remove();
@@ -486,6 +524,9 @@ export default class GenomeSpy {
             VIEW_ROOT_NAME
         );
 
+        this.#canvasWrapper.style.flexGrow =
+            calculateViewRootSize(this.viewRoot).height.grow > 0 ? "1" : "0";
+
         this.#initializeParameterBindings();
 
         checkForDuplicateScaleNames(this.viewRoot);
@@ -598,7 +639,7 @@ export default class GenomeSpy {
 
             return false;
         } finally {
-            this.container.classList.remove("loading");
+            this.#canvasWrapper.classList.remove("loading");
             // Transition listener doesn't appear to work on observablehq
             window.setTimeout(() => {
                 this.loadingMessageElement.style.display = "none";
@@ -933,4 +974,20 @@ function createMessageBox(container, message) {
     messageText.textContent = message;
     messageBox.appendChild(messageText);
     container.appendChild(messageBox);
+}
+
+/**
+ * @param {string} tag
+ * @param {Record<string, any>} attrs
+ */
+function element(tag, attrs) {
+    const el = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+        if (["innerHTML", "innerText", "className"].includes(key)) {
+            // @ts-ignore
+            el[key] = value;
+        }
+        el.setAttribute(key, value);
+    }
+    return el;
 }

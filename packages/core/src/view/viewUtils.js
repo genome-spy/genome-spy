@@ -256,9 +256,14 @@ export const isCustomViewName = (name) => !/^(layer|concat)\d+$/.test(name);
 /**
  * @param {View} viewRoot
  */
-export function calculateCanvasSize(viewRoot) {
-    const size = viewRoot.getSize().addPadding(viewRoot.getOverhang());
+export function calculateViewRootSize(viewRoot) {
+    return viewRoot.getSize().addPadding(viewRoot.getOverhang());
+}
 
+/**
+ * @param {import("./layout/flexLayout.js").FlexDimensions} viewRootSize
+ */
+export function calculateCanvasSize(viewRootSize) {
     // If a dimension has an absolutely specified size (in pixels), use it for the canvas size.
     // However, if the dimension has a growing component, the canvas should be fit to the
     // container.
@@ -267,7 +272,7 @@ export function calculateCanvasSize(viewRoot) {
     /** @param {import("./layout/flexLayout.js").SizeDef} dim */
     const f = (dim) => (dim.grow > 0 ? undefined : dim.px);
     return {
-        width: f(size.width),
-        height: f(size.height),
+        width: f(viewRootSize.width),
+        height: f(viewRootSize.height),
     };
 }

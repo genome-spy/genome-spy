@@ -46,6 +46,9 @@ export default class App {
 
         this.config = config;
 
+        // App has a specialized handler for input bindings
+        options.inputBindingContainer = "none";
+
         /** @type {StoreHelper<import("./state.js").State>} */
         this.storeHelper = new StoreHelper();
         this.storeHelper.addReducer("viewSettings", viewSettingsSlice.reducer);

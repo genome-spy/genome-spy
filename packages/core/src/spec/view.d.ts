@@ -15,6 +15,7 @@ import {
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { SampleSpec } from "./sampleView.js";
+import { VariableParameter } from "./parameter.js";
 
 export interface SizeDef {
     /** Size in pixels */

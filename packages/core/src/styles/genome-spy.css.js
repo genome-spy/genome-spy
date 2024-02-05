@@ -2,6 +2,13 @@ const css = `
 .genome-spy {
   font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.genome-spy .canvas-wrapper {
+  position: relative;
+  flex-grow: 1;
+  overflow: hidden;
 }
 .genome-spy canvas {
   transform: scale(1, 1);
@@ -20,14 +27,14 @@ const css = `
   opacity: 0;
   transition: opacity 0.7s;
 }
-.genome-spy.loading canvas {
+.genome-spy .loading > canvas {
   transform: scale(0.95, 0.95);
   opacity: 0;
 }
-.genome-spy.loading .loading-message .message {
+.genome-spy .loading > .loading-message .message {
   opacity: 1;
 }
-.genome-spy.loading .ellipsis {
+.genome-spy .loading > .loading-message .message .ellipsis {
   animation: blinker 1s linear infinite;
 }
 @keyframes blinker {
@@ -156,6 +163,7 @@ const css = `
   display: inline-block;
   margin-left: 0.3em;
   min-width: 2.2em;
+  font-variant-numeric: tabular-nums;
 }
 .gs-input-binding input[type=range],
 .gs-input-binding input[type=radio] {
@@ -173,14 +181,10 @@ const css = `
   margin-top: -0.5em;
 }
 
-.gs-input-binding-overlay {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  background: rgba(255, 255, 255, 0.8);
+.gs-input-bindings {
+  flex-basis: content;
+  font-size: 14px;
   padding: 10px;
-  z-index: 1;
-  border: 1px solid lightgray;
 }
 `;
 export default css;
