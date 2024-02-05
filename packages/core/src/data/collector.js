@@ -89,8 +89,10 @@ export default class Collector extends FlowNode {
             );
             const groups =
                 accessors.length > 1
-                    ? // @ts-ignore
-                      group(this._data, ...accessors)
+                    ? // There's something strange in d3-array's typings
+                      /** @type {Map<any, any>} */ /** @type {any} */ (
+                          group(this._data, ...accessors)
+                      )
                     : // D3's group is SLOW!
                       groupBy(this._data, accessors[0]);
 
