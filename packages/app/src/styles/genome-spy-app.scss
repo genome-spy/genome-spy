@@ -318,7 +318,6 @@ $menu-line-height: 22px;
     li > :is(span.disabled-item, a:first-child, .submenu-item, label) {
         padding-left: $menu-item-h-padding;
         padding-right: $menu-item-h-padding;
-        display: block;
     }
 
     .menu-header {
@@ -334,10 +333,6 @@ $menu-line-height: 22px;
 
             > :first-child {
                 flex-grow: 1;
-            }
-
-            > * {
-                display: block;
             }
         }
 
