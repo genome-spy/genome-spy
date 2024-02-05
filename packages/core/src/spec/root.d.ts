@@ -15,14 +15,6 @@ interface RootConfig {
     background?: string;
 
     /**
-     * Dynamic variables that parameterize a visualization.
-     *
-     * For now, these are only supported in mark properties, i.e.,
-     * they are not supported in the filter and formula transforms (yet).
-     */
-    params?: VariableParameter[];
-
-    /**
      * https://vega.github.io/vega-lite/docs/data.html#datasets
      */
     datasets?: Record<string, any[]>;

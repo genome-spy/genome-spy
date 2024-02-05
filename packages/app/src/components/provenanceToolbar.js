@@ -54,7 +54,7 @@ export default class ProvenanceButtons extends LitElement {
                     <a
                         @click=${() => this.provenance.activateState(index)}
                         class=${index == this.provenance.getCurrentIndex()
-                            ? "active"
+                            ? "active-state"
                             : ""}
                     >
                         ${icon(info.icon ?? faCircle).node[0]}

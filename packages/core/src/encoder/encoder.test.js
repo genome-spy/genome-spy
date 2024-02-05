@@ -29,6 +29,7 @@ describe("Encoder", () => {
         const encoders = {};
         for (const [channel, channelDef] of Object.entries(encoding)) {
             encoders[channel] = createEncoder(
+                null, // TODO: stub the mark
                 channelDef,
                 scales[channel],
                 accessorFactory.createAccessor(encodingSpecs[channel]),
@@ -95,4 +96,6 @@ describe("Encoder", () => {
     });
 
     // TODO: Test indexer
+
+    // TODO: Text ExprRef
 });

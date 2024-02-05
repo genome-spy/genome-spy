@@ -10,6 +10,15 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
     position: relative;
 
+    display: flex;
+    flex-direction: column;
+
+    .canvas-wrapper {
+        position: relative;
+        flex-grow: 1;
+        overflow: hidden;
+    }
+
     canvas {
         transform: scale(1, 1);
         opacity: 1;
@@ -31,23 +40,23 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         }
     }
 
-    &.loading {
-        canvas {
+    .loading {
+        > canvas {
             transform: scale(0.95, 0.95);
             opacity: 0;
         }
 
-        .loading-message .message {
+        > .loading-message .message {
             opacity: 1;
-        }
 
-        .ellipsis {
-            animation: blinker 1s linear infinite;
-        }
+            .ellipsis {
+                animation: blinker 1s linear infinite;
+            }
 
-        @keyframes blinker {
-            50% {
-                opacity: 0;
+            @keyframes blinker {
+                50% {
+                    opacity: 0;
+                }
             }
         }
     }
@@ -186,4 +195,48 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
             background: #fff0f0;
         }
     }
+}
+
+.gs-input-binding {
+    display: grid;
+    grid-template-columns: max-content max-content;
+    column-gap: 1em;
+    row-gap: 0.3em;
+    justify-items: start;
+
+    > select,
+    > input:not([type="checkbox"]) {
+        width: 100%;
+    }
+
+    input[type="range"] + span {
+        display: inline-block;
+        margin-left: 0.3em;
+        min-width: 2.2em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"],
+    input[type="radio"] {
+        vertical-align: text-bottom;
+    }
+
+    .radio-group {
+        display: flex;
+        align-items: center;
+    }
+
+    .description {
+        max-width: 20em;
+        grid-column: 1 / -1;
+        color: #777;
+        font-size: 90%;
+        margin-top: -0.5em;
+    }
+}
+
+.gs-input-bindings {
+    flex-basis: content;
+    font-size: 14px;
+    padding: $basic-spacing;
 }

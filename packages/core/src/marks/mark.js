@@ -644,10 +644,20 @@ export default class Mark {
      * @param {(x: Exclude<T, ExprRef>) => any} adjuster
      */
     registerMarkUniformValue(uniformName, propValue, adjuster = (x) => x) {
-        const setter = this.createMarkUniformSetter(uniformName);
+        const rawSetter = this.createMarkUniformSetter(uniformName);
+        const setter = (/** @type {any} */ value) => {
+            if (value == null) {
+                throw new Error(
+                    `Trying to set null/undefined value for uniform: ${uniformName}${
+                        isExprRef(propValue) ? `Expr: ${propValue.expr}` : ""
+                    }`
+                );
+            }
+            rawSetter(value);
+        };
 
         if (isExprRef(propValue)) {
-            const fn = this.unitView.context.paramBroker.createExpression(
+            const fn = this.unitView.paramMediator.createExpression(
                 propValue.expr
             );
 

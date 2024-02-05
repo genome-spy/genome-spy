@@ -15,6 +15,7 @@ import {
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { SampleSpec } from "./sampleView.js";
+import { VariableParameter } from "./parameter.js";
 
 export interface SizeDef {
     /** Size in pixels */
@@ -107,6 +108,11 @@ export interface ViewSpecBase extends ResolveSpec {
      * **Default:* `0`
      */
     padding?: PaddingConfig;
+
+    /**
+     * Dynamic variables that parameterize a visualization.
+     */
+    params?: VariableParameter[];
 
     data?: Data;
     transform?: TransformParams[];

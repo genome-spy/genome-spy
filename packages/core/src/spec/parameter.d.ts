@@ -24,6 +24,12 @@ export interface VariableParameter {
     value?: any;
 
     /**
+     * An expression for the value of the parameter. This expression may include other parameters,
+     * in which case the parameter will automatically update in response to upstream parameter changes.
+     */
+    expr?: string;
+
+    /**
      * Binds the parameter to an external input element such as a slider, selection list or radio button group.
      */
     bind?: Binding;
@@ -36,13 +42,6 @@ export type Element = string;
 
 export interface BindBase {
     /**
-     * An optional CSS selector string indicating the parent element to which
-     * the input element should be added. By default, all input elements are
-     * added within the parent container of the Vega view.
-     */
-    element?: Element;
-
-    /**
      * If defined, delays event handling until the specified milliseconds have
      * elapsed since the last event was fired.
      */
@@ -54,6 +53,11 @@ export interface BindBase {
      * label for the bound parameter.
      */
     name?: string;
+
+    /**
+     * An optional description or help text that is shown below the input element.
+     */
+    description?: string;
 }
 
 export interface BindCheckbox extends BindBase {

@@ -1,7 +1,8 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faSlidersH } from "@fortawesome/free-solid-svg-icons";
-import { LitElement, html, nothing } from "lit";
+import { LitElement, html } from "lit";
 import { live } from "lit/directives/live.js";
+import { ref, createRef } from "lit/directives/ref.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
 import LayerView from "@genome-spy/core/view/layerView.js";
 import {
@@ -11,12 +12,13 @@ import {
 import { watch } from "../state/watch.js";
 import { queryDependency } from "../utils/dependency.js";
 import { nestPaths } from "../utils/nestPaths.js";
-import { toggleDropdown } from "../utils/ui/dropdown.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import {
     nodesToTreesWithAccessor,
     visitTree,
 } from "@genome-spy/core/utils/trees.js";
+import { dropdownMenu } from "../utils/ui/contextMenu.js";
+import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
 
 class ViewSettingsButton extends LitElement {
     /**
@@ -38,6 +40,8 @@ class ViewSettingsButton extends LitElement {
         );
 
         this.style.display = "none";
+
+        this.buttonRef = createRef();
     }
 
     connectedCallback() {
@@ -53,7 +57,7 @@ class ViewSettingsButton extends LitElement {
         );
 
         this.app.addInitializationListener(() => {
-            this.updateToggles();
+            this.#updateToggles();
             this.requestUpdate();
             this.style.display = this.nestedPaths.children.length
                 ? "block"
@@ -73,16 +77,9 @@ class ViewSettingsButton extends LitElement {
 
     /**
      * @param {UIEvent} event
-     */
-    toolButtonClicked(event) {
-        toggleDropdown(event);
-    }
-
-    /**
-     * @param {UIEvent} event
      * @param {import("@genome-spy/core/view/view.js").default} view
      */
-    handleCheckboxClick(event, view) {
+    #handleCheckboxClick(event, view) {
         const checked = /** @type {HTMLInputElement} */ (event.target).checked;
 
         this.app.storeHelper.dispatch(
@@ -97,16 +94,21 @@ class ViewSettingsButton extends LitElement {
         // Just to be sure...
         this.requestUpdate();
 
+        // Update reset item
+        this.#showDropdown();
+
         event.stopPropagation();
     }
 
-    handleResetClick() {
+    #handleResetClick() {
         this.app.storeHelper.dispatch(
             viewSettingsSlice.actions.restoreDefaultVisibilities()
         );
+        // Update checkboxes
+        this.#showDropdown();
     }
 
-    updateToggles() {
+    #updateToggles() {
         const viewRoot = this.app.genomeSpy.viewRoot;
         if (!viewRoot) {
             return;
@@ -140,85 +142,111 @@ class ViewSettingsButton extends LitElement {
         this.nestedPaths = nestPaths(paths);
     }
 
-    renderToggles() {
+    #makeToggles() {
         const visibilities = this.getVisibilities();
 
         const viewRoot = this.app.genomeSpy.viewRoot;
         const uniqueNames = findUniqueViewNames(viewRoot);
 
-        /**
-         * @param {import("../utils/nestPaths.js").NestedItem<View>[]} children
-         * @param {boolean} [checkedParent]
-         */
-        var childrenToHtml = (children, checkedParent = true) =>
-            children.length
-                ? html`
-                      <ul class=${checkedParent ? null : "unchecked"}>
-                          ${children.map(nestedItemToHtml)}
-                      </ul>
-                  `
-                : nothing;
+        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+        const items = [];
 
         /**
          * @param { import("../utils/nestPaths.js").NestedItem<View>} item
-         * @returns {import("lit").TemplateResult}
+         * @param {number} [depth]
          */
-        var nestedItemToHtml = (/** */ item) => {
+        const nestedItemToHtml = (/** */ item, depth = -1) => {
             const view = item.item;
             const checked = visibilities[view.name] ?? view.isVisibleInSpec();
 
-            return html`<li>
-                <label class="checkbox"
+            /** @type {() => import("../utils/ui/contextMenu.js").MenuItem[]} */
+            let submenuOpener;
+
+            if (view.paramMediator.paramConfigs.size) {
+                submenuOpener = () => [
+                    {
+                        label: "Parameters",
+                        type: "header",
+                    },
+                    { type: "divider" },
+                    {
+                        customContent: html`<div class="gs-input-binding">
+                            ${createBindingInputs(view.paramMediator)}
+                        </div>`,
+                    },
+                ];
+            }
+
+            if (depth >= 0) {
+                const template = html` <label class="checkbox"
                     ><input
+                        style=${`margin-left: ${depth * 1.5}em;`}
                         type="checkbox"
                         ?disabled=${!uniqueNames.has(view.name) ||
                         !isConfigurable(view)}
                         .checked=${live(checked)}
                         @change=${(/** @type {UIEvent} */ event) =>
-                            this.handleCheckboxClick(event, view)}
+                            this.#handleCheckboxClick(event, view)}
                     />${view.getTitleText() ?? view.name}
-                </label>
-                ${checked ? childrenToHtml(item.children, checked) : nothing}
-            </li>`;
+                </label>`;
+
+                items.push({
+                    customContent: submenuOpener
+                        ? template
+                        : html`<li>${template}</li>`,
+                    submenu: submenuOpener,
+                });
+            }
+
+            if (checked) {
+                depth++;
+                for (const child of item.children) {
+                    nestedItemToHtml(child, depth);
+                }
+            }
         };
 
-        return childrenToHtml(this.nestedPaths.children);
+        nestedItemToHtml(this.nestedPaths);
+
+        return items;
+    }
+
+    #showDropdown() {
+        const items = this.#makeToggles();
+
+        const defaultVis = !Object.keys(this.getVisibilities()).length;
+
+        dropdownMenu(
+            {
+                items: [
+                    { label: "View visibility", type: "header" },
+                    {
+                        label: "Restore defaults",
+                        callback: defaultVis
+                            ? undefined
+                            : () => this.#handleResetClick(),
+                    },
+                    { type: "divider" },
+                    ...items,
+                ],
+            },
+            this.buttonRef.value,
+            "bottom-start"
+        );
     }
 
     render() {
-        const defaultVis = !Object.keys(this.getVisibilities()).length;
-
+        // TODO: Highlight the button when the dropdown is open.
         return html`
             <div class="dropdown bookmark-dropdown">
                 <button
+                    ${ref(this.buttonRef)}
                     class="tool-btn"
                     title="Toggle view visibilities"
-                    @click=${this.toolButtonClicked.bind(this)}
+                    @click=${this.#showDropdown.bind(this)}
                 >
                     ${icon(faSlidersH).node[0]}
                 </button>
-                <ul
-                    class="gs-dropdown-menu"
-                    @click=${(/** @type {UIEvent} */ event) =>
-                        event.stopPropagation()}
-                >
-                    <!-- TODO: utility functions for menu items -->
-                    <li class="menu-header">View visibility</li>
-                    <li>
-                        ${defaultVis
-                            ? html`<span class="disabled-item"
-                                  >Restore defaults</span
-                              >`
-                            : html`<a @click=${() => this.handleResetClick()}
-                                  >Restore defaults</a
-                              >`}
-                    </li>
-                    <li class="menu-divider"></li>
-
-                    <li>
-                        ${this.nestedPaths ? this.renderToggles() : nothing}
-                    </li>
-                </ul>
             </div>
         `;
     }

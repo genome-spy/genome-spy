@@ -100,7 +100,7 @@ export default class ScaleResolution {
      * Keeps track of the expression references in the range. If range is modified,
      * new expressions are created and the old ones must be invalidated.
      *
-     * @type {Set<import("../paramBroker.js").ExprRefFunction>}
+     * @type {Set<import("./paramMediator.js").ExprRefFunction>}
      */
     #rangeExprRefListeners = new Set();
 
@@ -118,8 +118,12 @@ export default class ScaleResolution {
         this.name = undefined;
     }
 
+    get #firstMemberView() {
+        return this.members[0].view;
+    }
+
     get #viewContext() {
-        return this.members[0].view.context;
+        return this.#firstMemberView.context;
     }
 
     /**
@@ -338,9 +342,10 @@ export default class ScaleResolution {
 
             expressions = range.map((elem) => {
                 if (isExprRef(elem)) {
-                    const fn = this.#viewContext.paramBroker.createExpression(
-                        elem.expr
-                    );
+                    const fn =
+                        this.#firstMemberView.paramMediator.createExpression(
+                            elem.expr
+                        );
                     fn.addListener(evaluateAndSet);
                     this.#rangeExprRefListeners.add(fn);
                     return () => fn(null);

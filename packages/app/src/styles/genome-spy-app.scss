@@ -247,6 +247,7 @@ $font-size: 14px;
 }
 
 $menu-hover-bg-color: #e0e0e0;
+$menu-active-bg-color: #e8e8e8;
 $menu-item-h-padding: 15px;
 $menu-line-height: 22px;
 
@@ -256,6 +257,10 @@ $menu-line-height: 22px;
     background: #f6f6f6;
     border: #e0e0e0;
     border-radius: 2px;
+
+    // Ensure that toobar menus fit into the window
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
 
     z-index: 100;
 
@@ -274,8 +279,10 @@ $menu-line-height: 22px;
         position: relative;
         padding: 0;
 
-        > a:first-child:hover,
-        &.active > a:first-child {
+        &.active > :is(a:first-child, .submenu-item) {
+            background-color: $menu-active-bg-color;
+        }
+        > :is(a:first-child, label, .submenu-item):hover {
             background-color: $menu-hover-bg-color;
         }
 
@@ -308,11 +315,9 @@ $menu-line-height: 22px;
     }
 
     .menu-header,
-    li > span.disabled-item,
-    li > a {
+    li > :is(span.disabled-item, a:first-child, .submenu-item, label) {
         padding-left: $menu-item-h-padding;
         padding-right: $menu-item-h-padding;
-        display: block;
     }
 
     .menu-header {
@@ -321,17 +326,17 @@ $menu-line-height: 22px;
     }
 
     li {
-        > :is(a.submenu-item, a.choice-item) {
+        > :is(div.submenu-item, .choice-item) {
             display: flex;
             justify-content: space-between;
             align-items: center;
 
-            > * {
-                display: block;
+            > :first-child {
+                flex-grow: 1;
             }
         }
 
-        > a.submenu-item {
+        > .submenu-item {
             // Make an arrow
             &::after {
                 content: "";
@@ -394,6 +399,15 @@ $menu-line-height: 22px;
     li:not(:hover) a.menu-ellipsis {
         display: none;
     }
+
+    .gs-input-binding {
+        margin: 0 $menu-item-h-padding;
+        line-height: normal;
+
+        .description {
+            margin-bottom: 0.2em;
+        }
+    }
 }
 
 .provenance-menu {
@@ -419,19 +433,9 @@ $menu-line-height: 22px;
     overflow: auto;
     position: absolute;
 
-    max-height: calc(100vh - 60px);
-
     display: none;
     z-index: 1;
     width: max-content;
-
-    a.active {
-        $tickSize: 5px;
-
-        background-color: #e0e0e0;
-        border-left: $tickSize solid #c0c0c0;
-        padding-left: $menu-item-h-padding - $tickSize;
-    }
 
     // Checkbox stuff --------------------
 
@@ -443,18 +447,15 @@ $menu-line-height: 22px;
     > li > ul {
         padding-left: 0;
     }
+}
 
-    label {
-        padding: 0 $menu-item-h-padding;
+.gs-dropdown-menu.provenance-menu {
+    .active-state {
+        $tickSize: 5px;
 
-        &:hover {
-            background-color: $menu-hover-bg-color;
-        }
-    }
-
-    .unchecked label {
-        // TODO: Theme color
-        color: #aaa;
+        background-color: #e0e0e0;
+        border-left: $tickSize solid #c0c0c0;
+        padding-left: $menu-item-h-padding - $tickSize;
     }
 }
 

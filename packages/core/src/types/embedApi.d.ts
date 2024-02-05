@@ -27,6 +27,12 @@ export interface EmbedOptions {
      * Custom tooltip handlers. Use `"default"` to override the default handler
      */
     tooltipHandlers?: Record<string, TooltipHandler>;
+
+    /**
+     * Where to put the input binding elements. The default is `"default"`, which means that
+     * the input binding elements are placed in the same container as the GenomeSpy instance.
+     */
+    inputBindingContainer?: HTMLElement | "none" | "default";
 }
 
 /**

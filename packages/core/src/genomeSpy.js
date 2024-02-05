@@ -11,6 +11,7 @@ import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
     calculateCanvasSize,
+    calculateViewRootSize,
 } from "./view/viewUtils.js";
 import UnitView from "./view/unitView.js";
 
@@ -34,9 +35,7 @@ import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
-import ParamBroker from "./paramBroker.js";
-import { debounce } from "./utils/debounce.js";
-import { tickStep } from "d3-array";
+import createBindingInputs from "./utils/inputBinding.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -61,13 +60,12 @@ export default class GenomeSpy {
      */
     constructor(container, spec, options = {}) {
         this.container = container;
+        this.options = options;
+
+        options.inputBindingContainer ??= "default";
 
         /** @type {(() => void)[]} */
         this._destructionCallbacks = [];
-
-        const styleElement = document.createElement("style");
-        styleElement.innerHTML = css;
-        container.appendChild(styleElement);
 
         /** Root level configuration object */
         this.spec = spec;
@@ -138,118 +136,55 @@ export default class GenomeSpy {
         /** @type {View} */
         this.viewRoot = undefined;
 
-        this._paramBroker = new ParamBroker();
-        this.#initializeParameters();
-
         /**
          * Views that are currently loading data using lazy sources.
          *
          * @type {Map<View, boolean>}
          */
         this._loadingViews = new Map();
+
+        /**
+         * @type {HTMLElement}
+         */
+        this._inputBindingContainer = undefined;
     }
 
-    #initializeParameters() {
+    get #canvasWrapper() {
+        return /** @type {HTMLElement} */ (
+            this.container.querySelector(".canvas-wrapper")
+        );
+    }
+
+    #initializeParameterBindings() {
         /** @type {import("lit-html").TemplateResult[]} */
         const inputs = [];
 
-        for (const param of this.spec.params ?? []) {
-            const { name, value, bind } = param;
-            const setter = this._paramBroker.allocateSetter(name);
+        this.viewRoot.visit((view) => {
+            const mediator = view.paramMediator;
+            inputs.push(...createBindingInputs(mediator));
+        });
+        const ibc = this.options.inputBindingContainer;
 
-            if (value != null) {
-                setter(value);
-            }
+        if (!ibc || ibc == "none" || !inputs.length) {
+            return;
+        }
 
-            // TODO: Implement two-way data binding, e.g. when an external agent changes
-            // the parameter value, the UI components should be updated.
+        this._inputBindingContainer = element("div", {
+            className: "gs-input-bindings",
+        });
 
-            if (bind && "input" in bind) {
-                const debouncedSetter = bind.debounce
-                    ? debounce(setter, bind.debounce, false)
-                    : setter;
-
-                if (bind.input == "range") {
-                    // TODO: Show the value next to the slider
-                    inputs.push(
-                        html`<label
-                            >${bind.name ?? name}
-                            <input
-                                type="range"
-                                min=${bind.min ?? 0}
-                                max=${bind.max ?? 100}
-                                step=${bind.step ??
-                                tickStep(bind.min, bind.max, 100)}
-                                .value=${value}
-                                @input=${(/** @type {any} */ e) =>
-                                    debouncedSetter(e.target.valueAsNumber)}
-                        /></label>`
-                    );
-                } else if (bind.input == "checkbox") {
-                    inputs.push(
-                        html`<label
-                            >${bind.name ?? name}
-                            <input
-                                type="checkbox"
-                                ?checked=${value}
-                                @input=${(/** @type {any} */ e) =>
-                                    debouncedSetter(e.target.checked)}
-                        /></label>`
-                    );
-                } else if (bind.input == "radio") {
-                    inputs.push(
-                        html`<span class="label">${bind.name ?? name}</span>
-                            ${bind.options.map(
-                                (option, i) => html`<label>
-                                    <input
-                                        type="radio"
-                                        name=${name}
-                                        value=${option}
-                                        .checked=${value == option}
-                                        @input=${(/** @type {any} */ e) =>
-                                            debouncedSetter(e.target.value)}
-                                    />${bind.labels?.[i] ?? option}</label
-                                >`
-                            )}`
-                    );
-                } else if (bind.input == "select") {
-                    inputs.push(
-                        html`<label
-                            >${bind.name ?? name}
-                            <select
-                                @input=${(/** @type {any} */ e) =>
-                                    debouncedSetter(e.target.value)}
-                            >
-                                ${bind.options.map(
-                                    (option, i) => html`<option
-                                        value=${option}
-                                        ?selected=${value == option}
-                                    >
-                                        ${bind.labels?.[i] ?? option}
-                                    </option>`
-                                )}
-                            </select></label
-                        >`
-                    );
-                } else {
-                    // TODO: Support other types: "text", "number", "color".
-                    throw new Error("Unsupported input type: " + bind.input);
-                }
-            }
+        if (ibc == "default") {
+            this.container.appendChild(this._inputBindingContainer);
+        } else if (ibc instanceof HTMLElement) {
+            ibc.appendChild(this._inputBindingContainer);
+        } else {
+            throw new Error("Invalid inputBindingContainer");
         }
 
         if (inputs.length) {
-            const inputsDiv = document.createElement("div");
-            this.container.appendChild(inputsDiv);
-
-            // TODO: Move to css
-            // @ts-ignore
-            inputsDiv.style =
-                "position: absolute; bottom: 10px; right: 10px; background: rgba(255, 255, 255, 0.8); padding: 10px; z-index: 1; border: 1px solid lightgray";
-
             render(
-                html`${inputs.map((input) => html`<div>${input}</div>`)}`,
-                inputsDiv
+                html`<div class="gs-input-binding">${inputs}</div>`,
+                this._inputBindingContainer
             );
         }
     }
@@ -353,17 +288,10 @@ export default class GenomeSpy {
         render(indicators, this.loadingIndicatorsElement);
     }
 
-    _prepareContainer() {
-        this.container.classList.add("genome-spy");
-        this.container.classList.add("loading");
-
-        this._glHelper = new WebGLHelper(
-            this.container,
-            () =>
-                this.viewRoot
-                    ? calculateCanvasSize(this.viewRoot)
-                    : { width: undefined, height: undefined },
-            this.spec.background
+    #setupDpr() {
+        const dprSetter = this.viewRoot.paramMediator.allocateSetter(
+            "devicePixelRatio",
+            window.devicePixelRatio
         );
 
         const resizeCallback = () => {
@@ -378,9 +306,6 @@ export default class GenomeSpy {
         const resizeObserver = new ResizeObserver(resizeCallback);
         resizeObserver.observe(this.container);
         this._destructionCallbacks.push(() => resizeObserver.disconnect());
-
-        const dprSetter = this._paramBroker.allocateSetter("devicePixelRatio");
-        dprSetter(window.devicePixelRatio);
 
         /** @type {() => void} */
         let remove = null;
@@ -403,22 +328,48 @@ export default class GenomeSpy {
         if (remove) {
             this._destructionCallbacks.push(remove);
         }
+    }
+
+    #prepareContainer() {
+        this.container.classList.add("genome-spy");
+
+        const styleElement = document.createElement("style");
+        styleElement.innerHTML = css;
+        this.container.appendChild(styleElement);
+
+        const canvasWrapper = element("div", {
+            class: "canvas-wrapper",
+        });
+        this.container.appendChild(canvasWrapper);
+
+        canvasWrapper.classList.add("loading");
+
+        this._glHelper = new WebGLHelper(
+            canvasWrapper,
+            () =>
+                this.viewRoot
+                    ? calculateCanvasSize(calculateViewRootSize(this.viewRoot))
+                    : { width: undefined, height: undefined },
+            this.spec.background
+        );
 
         // The initial loading message that is shown until the first frame is rendered
-        this.loadingMessageElement = document.createElement("div");
-        this.loadingMessageElement.className = "loading-message";
-        this.loadingMessageElement.innerHTML = `<div class="message">Loading<span class="ellipsis">...</span></div>`;
-        this.container.appendChild(this.loadingMessageElement);
+        this.loadingMessageElement = element("div", {
+            class: "loading-message",
+            innerHTML: `<div class="message">Loading<span class="ellipsis">...</span></div>`,
+        });
+        canvasWrapper.appendChild(this.loadingMessageElement);
 
         // A container for loading indicators (for lazy data sources.)
         // These could alternatively be included in the view hierarchy,
         // but it's easier this way – particularly if we want to show
         // some fancy animated spinners.
-        this.loadingIndicatorsElement = document.createElement("div");
-        this.loadingIndicatorsElement.className = "loading-indicators";
-        this.container.appendChild(this.loadingIndicatorsElement);
+        this.loadingIndicatorsElement = element("div", {
+            class: "loading-indicators",
+        });
+        canvasWrapper.appendChild(this.loadingIndicatorsElement);
 
-        this.tooltip = new Tooltip(this.container);
+        this.tooltip = new Tooltip(canvasWrapper);
 
         this.loadingMessageElement
             .querySelector(".message")
@@ -435,8 +386,10 @@ export default class GenomeSpy {
     destroy() {
         // TODO: There's a memory leak somewhere
 
+        const canvasWrapper = this.#canvasWrapper;
+
         this.container.classList.remove("genome-spy");
-        this.container.classList.remove("loading");
+        canvasWrapper.classList.remove("loading");
 
         for (const [type, listeners] of this._keyboardListeners) {
             for (const listener of listeners) {
@@ -447,6 +400,8 @@ export default class GenomeSpy {
         this._destructionCallbacks.forEach((callback) => callback());
 
         this._glHelper.finalize();
+
+        this._inputBindingContainer?.remove();
 
         while (this.container.firstChild) {
             this.container.firstChild.remove();
@@ -474,8 +429,6 @@ export default class GenomeSpy {
             get devicePixelRatio() {
                 return self._glHelper.dpr;
             },
-
-            paramBroker: this._paramBroker,
 
             requestLayoutReflow: () => {
                 // placeholder
@@ -571,6 +524,11 @@ export default class GenomeSpy {
             VIEW_ROOT_NAME
         );
 
+        this.#canvasWrapper.style.flexGrow =
+            calculateViewRootSize(this.viewRoot).height.grow > 0 ? "1" : "0";
+
+        this.#initializeParameterBindings();
+
         checkForDuplicateScaleNames(this.viewRoot);
 
         setImplicitScaleNames(this.viewRoot);
@@ -585,6 +543,7 @@ export default class GenomeSpy {
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this._glHelper.invalidateSize();
+        this.#setupDpr();
 
         // Collect all unit views to a list because they need plenty of initialization
         const unitViews = /** @type {UnitView[]} */ (
@@ -661,7 +620,7 @@ export default class GenomeSpy {
      */
     async launch() {
         try {
-            this._prepareContainer();
+            this.#prepareContainer();
 
             await this._prepareViewsAndData();
 
@@ -680,7 +639,7 @@ export default class GenomeSpy {
 
             return false;
         } finally {
-            this.container.classList.remove("loading");
+            this.#canvasWrapper.classList.remove("loading");
             // Transition listener doesn't appear to work on observablehq
             window.setTimeout(() => {
                 this.loadingMessageElement.style.display = "none";
@@ -1015,4 +974,20 @@ function createMessageBox(container, message) {
     messageText.textContent = message;
     messageBox.appendChild(messageText);
     container.appendChild(messageBox);
+}
+
+/**
+ * @param {string} tag
+ * @param {Record<string, any>} attrs
+ */
+function element(tag, attrs) {
+    const el = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+        if (["innerHTML", "innerText", "className"].includes(key)) {
+            // @ts-ignore
+            el[key] = value;
+        }
+        el.setAttribute(key, value);
+    }
+    return el;
 }

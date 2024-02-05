@@ -7,13 +7,14 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 
 /**
  * @typedef {Object} MenuItem
+ * @prop {import("lit").TemplateResult} [customContent]
  * @prop {string | import("lit").TemplateResult} [label]
  * @prop {function} [callback]
  * @prop {string} [shortcut] Shortcut key. Just for displaying.
  * @prop {function} [ellipsisCallback]
  * @prop {"divider" | "header" | undefined} [type]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
- * @prop {MenuItem[]} [submenu]
+ * @prop {MenuItem[] | (() => MenuItem[])} [submenu]
  *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
@@ -89,23 +90,26 @@ const createHeader = (/** @type {MenuItem} */ item) =>
 const createSubmenu = (item, level) =>
     html`
         <li>
-            <a
+            <div
                 class="submenu-item"
-                @click=${(/** @type {MouseEvent} */ event) =>
-                    event.stopPropagation()}
-                @mouseup=${(/** @type {MouseEvent} */ event) =>
-                    event.stopPropagation()}
                 @mouseenter=${(/** @type {MouseEvent} */ event) =>
                     debouncer(() => {
                         const li = /** @type {HTMLElement} */ (
                             event.target
                         ).closest("li");
-                        renderAndPositionSubmenu(item.submenu, li, level + 1);
+                        const submenu =
+                            typeof item.submenu == "function"
+                                ? item.submenu()
+                                : item.submenu;
+                        renderAndPositionSubmenu(submenu, li, level + 1);
                         event.stopPropagation();
                     })}
                 @mouseleave=${() => debouncer(() => clearSubmenus(level + 1))}
-                ><span>${item.label}</span></a
             >
+                ${item.customContent
+                    ? item.customContent
+                    : html`<span>${item.label}</span>`}
+            </div>
         </li>
     `;
 
@@ -162,6 +166,8 @@ export function menuItemToTemplate(item, level = 1) {
         default:
             if (item.submenu) {
                 return createSubmenu(item, level);
+            } else if (item.customContent) {
+                return item.customContent;
             } else if (item.callback) {
                 return createChoice(item);
             } else {
@@ -195,6 +201,8 @@ function renderAndPositionMenu(items, openerElement, level, placement) {
             // nop. clear the debouncer.
         });
     });
+    menuElement.addEventListener("mouseup", (event) => event.stopPropagation());
+    menuElement.addEventListener("click", (event) => event.stopPropagation());
 
     // TODO: Keyboard navigation: https://web.dev/building-a-split-button-component/
 
@@ -207,14 +215,17 @@ function renderAndPositionMenu(items, openerElement, level, placement) {
     clearSubmenus(level);
     openLevels[level] = menuElement;
 
+    placement ??= "right-start";
+    const adjust = !/^(top|bottom)/.test(placement);
+
     computePosition(openerElement, menuElement, {
-        placement: placement ?? "right-start",
-        middleware: level ? [flip()] : [offset(2), flip()],
+        placement,
+        middleware: level < 1 && adjust ? [offset(2), flip()] : [flip()],
     }).then(({ x, y }) => {
         const first = /** @type {HTMLElement} */ (
             menuElement.querySelector(":scope > li")
         );
-        if (first) {
+        if (first && adjust) {
             // Align items nicely
             y -= first.getBoundingClientRect().top;
         }
@@ -223,20 +234,13 @@ function renderAndPositionMenu(items, openerElement, level, placement) {
     });
 }
 
-/**
- *
- * @param {MenuOptions} options
- * @param {HTMLElement | VirtualElement} openerElement
- * @param {import("@floating-ui/core").Placement} [placement]
- */
-export function dropdownMenu(options, openerElement, placement) {
-    placement ??= "bottom-start";
+/** @type {any} */
+let lastOpener;
 
-    clearMenu();
-
+function prepareBackdrop() {
+    const container = document.body;
     const openedAt = performance.now();
 
-    const container = document.body;
     backdropElement = document.createElement("div");
     backdropElement.classList.add("gs-context-menu-backdrop");
 
@@ -252,12 +256,36 @@ export function dropdownMenu(options, openerElement, placement) {
         },
         { once: true }
     );
-
     container.appendChild(backdropElement);
 
     document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
+}
+/**
+ *
+ * @param {MenuOptions} options
+ * @param {HTMLElement | VirtualElement} openerElement
+ * @param {import("@floating-ui/core").Placement} [placement]
+ */
+export function dropdownMenu(options, openerElement, placement) {
+    placement ??= "bottom-start";
 
-    renderAndPositionMenu(options.items, openerElement, 0, placement);
+    // Create new or just update?
+    if (backdropElement && lastOpener !== openerElement) {
+        clearMenu();
+    }
+    lastOpener = openerElement;
+
+    if (!backdropElement) {
+        prepareBackdrop();
+        renderAndPositionMenu(options.items, openerElement, 0, placement);
+    } else {
+        // Update existing menu
+        const level = 0;
+        render(
+            options.items.map((item) => menuItemToTemplate(item, level)),
+            openLevels[0]
+        );
+    }
 }
 
 /**

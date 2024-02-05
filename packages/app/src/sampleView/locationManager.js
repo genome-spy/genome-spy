@@ -42,22 +42,11 @@ export class LocationManager {
     /** @type {import("./sampleViewTypes.js").LocationContext} */
     #locationContext;
 
-    /** @type {(param: any) => void} */
-    #sampleHeightParam;
-
     /**
      * @param {import("./sampleViewTypes.js").LocationContext} locationContext
      */
     constructor(locationContext) {
         this.#locationContext = locationContext;
-        this.#sampleHeightParam =
-            locationContext.viewContext.paramBroker.allocateSetter(
-                "sampleHeight"
-            );
-    }
-
-    #updateSampleHeightParam() {
-        this.#sampleHeightParam(this.#locations.samples[0]?.locSize.size ?? 0);
     }
 
     isCloseup() {
@@ -85,6 +74,14 @@ export class LocationManager {
         );
     }
 
+    #callOnLocationUpdate() {
+        const sampleHeight = this.#locations.samples[0]?.locSize.size ?? 0;
+        this.#locationContext.onLocationUpdate({
+            // TODO: Refactor to make acquiring sampleHeight easier
+            sampleHeight,
+        });
+    }
+
     /**
      * @param {boolean} [open] open if true, close if false, toggle if undefined
      * @param {number} [mouseY] Mouse position in pixels
@@ -109,8 +106,7 @@ export class LocationManager {
                 viewContext.animator.requestTransition(callback),
             onUpdate: (value) => {
                 this.#peekState = Math.pow(value, 2);
-                this.#locationContext.onLocationUpdate();
-                this.#updateSampleHeightParam();
+                this.#callOnLocationUpdate();
                 viewContext.animator.requestRender();
             },
             from: this.#peekState,
@@ -257,7 +253,8 @@ export class LocationManager {
             groups,
         };
 
-        this.#updateSampleHeightParam();
+        // Silly place. TODO: Move
+        this.#callOnLocationUpdate();
 
         return this.#locations;
     }
