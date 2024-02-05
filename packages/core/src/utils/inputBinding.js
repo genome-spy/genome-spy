@@ -1,4 +1,4 @@
-import { html } from "lit-html";
+import { html } from "lit";
 import { debounce } from "./debounce.js";
 import { tickStep } from "d3-array";
 
@@ -8,7 +8,7 @@ import { tickStep } from "d3-array";
 export default function createBindingInputs(mediator) {
     const random = Math.floor(Math.random() * 0xffffff).toString(16);
 
-    /** @type {import("lit-html").TemplateResult[]} */
+    /** @type {import("lit").TemplateResult[]} */
     const inputs = [];
 
     for (const param of mediator.paramConfigs.values()) {

@@ -1,4 +1,4 @@
-import { TemplateResult } from "lit-html";
+import { TemplateResult } from "lit";
 import View, { BroadcastMessage } from "../view/view.js";
 import DataFlow from "../data/dataFlow.js";
 import AccessorFactory from "../encoder/accessor.js";

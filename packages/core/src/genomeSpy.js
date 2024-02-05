@@ -1,5 +1,5 @@
 import { formats as vegaFormats } from "vega-loader";
-import { html, render } from "lit-html";
+import { html, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import SPINNER from "./img/90-ring-with-bg.svg";
 
@@ -156,7 +156,7 @@ export default class GenomeSpy {
     }
 
     #initializeParameterBindings() {
-        /** @type {import("lit-html").TemplateResult[]} */
+        /** @type {import("lit").TemplateResult[]} */
         const inputs = [];
 
         this.viewRoot.visit((view) => {
@@ -246,7 +246,7 @@ export default class GenomeSpy {
      * animations with html elements than with WebGL.
      */
     _updateLoadingIndicators() {
-        /** @type {import("lit-html").TemplateResult[]} */
+        /** @type {import("lit").TemplateResult[]} */
         const indicators = [];
 
         const isSomethingVisible = () =>

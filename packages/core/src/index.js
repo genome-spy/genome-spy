@@ -1,6 +1,6 @@
 import { isObject, isString } from "vega-util";
 import { loader as vegaLoader } from "vega-loader";
-import { html } from "lit-html";
+import { html } from "lit";
 
 import GenomeSpy from "./genomeSpy.js";
 import icon from "./img/bowtie.svg";

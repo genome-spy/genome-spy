@@ -1,6 +1,6 @@
 import { isNumber, isString, isBoolean, isArray } from "vega-util";
 import { format as d3format } from "d3-format";
-import { html, nothing } from "lit-html";
+import { html, nothing } from "lit";
 
 const numberFormat = d3format(".4~r");
 const exponentNumberFormat = d3format(".4~e");
@@ -8,7 +8,7 @@ const exponentNumberFormat = d3format(".4~e");
 /**
  *
  * @param {any} object Object to format
- * @returns {string | import("lit-html").TemplateResult}
+ * @returns {string | import("lit").TemplateResult}
  */
 export default function formatObject(object) {
     if (object === null || object === undefined) {
