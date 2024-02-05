@@ -58,7 +58,7 @@ export default function createEncoders(mark, encoding) {
  * @param {Channel} channel
  * @returns {Encoder}
  */
-function createEncoder(mark, channelDef, scale, accessor, channel) {
+export function createEncoder(mark, channelDef, scale, accessor, channel) {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../types/encoder.js").Encoder} Encoder
