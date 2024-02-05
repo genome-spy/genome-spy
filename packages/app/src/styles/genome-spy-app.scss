@@ -437,14 +437,6 @@ $menu-line-height: 22px;
     z-index: 1;
     width: max-content;
 
-    a.active {
-        $tickSize: 5px;
-
-        background-color: #e0e0e0;
-        border-left: $tickSize solid #c0c0c0;
-        padding-left: $menu-item-h-padding - $tickSize;
-    }
-
     // Checkbox stuff --------------------
 
     ul {
@@ -454,6 +446,16 @@ $menu-line-height: 22px;
 
     > li > ul {
         padding-left: 0;
+    }
+}
+
+.gs-dropdown-menu.provenance-menu {
+    .active-state {
+        $tickSize: 5px;
+
+        background-color: #e0e0e0;
+        border-left: $tickSize solid #c0c0c0;
+        padding-left: $menu-item-h-padding - $tickSize;
     }
 }
 
