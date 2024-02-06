@@ -100,7 +100,7 @@ export default class SampleView extends ContainerView {
         this.sidebarCoords = Rectangle.ZERO;
 
         this.#sampleHeightParam = this.paramMediator.allocateSetter(
-            "sampleHeight",
+            "height",
             0
         );
 
