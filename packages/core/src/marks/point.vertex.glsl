@@ -25,24 +25,6 @@ float computeSemanticThresholdFactor() {
     return getScaled_semanticScore() >= uSemanticThreshold ? 1.0 : 0.0;
 }
 
-/**
- * Computes a scaling factor for the points in a sample-faceted view.
- */
-float getDownscaleFactor(vec2 pos) {
-    if (!isFacetedSamples()) {
-        return 1.0;
-    }
-
-    float sampleFacetHeight = getSampleFacetHeight(pos);
-    float maxPointDiameter = sqrt(uMaxPointSize);
-
-    float factor = sampleFacetHeight *
-        uViewportSize.y *
-        uMaxRelativePointDiameter;
-
-    return clamp(0.0, maxPointDiameter, factor) / maxPointDiameter;
-}
-
 // TODO: Move this into common.glsl or something
 vec2 getDxDy() {
 #if defined(dx_DEFINED) || defined(dy_DEFINED)
@@ -74,8 +56,7 @@ void main(void) {
 
     float diameter = sqrt(size) *
         uScaleFactor *
-        semanticThresholdFactor *
-        getDownscaleFactor(pos);
+        semanticThresholdFactor;
 
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.

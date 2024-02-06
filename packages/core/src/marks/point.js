@@ -146,7 +146,6 @@ export default class PointMark extends Mark {
         setBlockUniforms(this.markUniformInfo, {
             uInwardStroke: !!props.inwardStroke,
             uGradientStrength: +props.fillGradientStrength,
-            uMaxRelativePointDiameter: 1 - 2 * props.sampleFacetPadding,
         });
     }
 
@@ -175,20 +174,6 @@ export default class PointMark extends Mark {
             1 / 3
             // note: 1/3 appears to yield perceptually more uniform result than 1/2. I don't know why!
         );
-    }
-
-    /**
-     * Returns the maximum size of the points in the data, before any scaling
-     */
-    _getMaxPointSize() {
-        const e = this.encoders.size;
-        if (e.constant) {
-            return e(null);
-        } else {
-            return /** @type {number[]} */ (e.scale.range()).reduce((a, b) =>
-                Math.max(a, b)
-            );
-        }
     }
 
     getSemanticThreshold() {
@@ -222,7 +207,6 @@ export default class PointMark extends Mark {
         ops.push(() => {
             // TODO: Use bindUniformBlock if none of the uniform has changed
             setBlockUniforms(this.markUniformInfo, {
-                uMaxPointSize: this._getMaxPointSize(),
                 uScaleFactor: this._getGeometricScaleFactor(),
                 uSemanticThreshold: this.getSemanticThreshold(),
             });

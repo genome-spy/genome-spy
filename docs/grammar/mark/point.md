@@ -79,18 +79,6 @@ channels:
 
     **Default value:** `0`
 
-`sampleFacetPadding`
-: Type: Number
-
-    A special property for the [GenomeSpy app](../../sample-collections/visualizing.md).
-
-    Padding between sample facet's upper/lower edge and the maximum point size. This property
-    controls how tightly points are squeezed when facet's height is smaller than the maximum
-    point size. The unit is a proportion of facet's height. The value must be between `0`
-    and `0.5`. This property has no effect when sample faceting is not used.
-
-    **Default value:** `0.1`
-
 ## Examples
 
 ### Plenty of points

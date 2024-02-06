@@ -6,14 +6,8 @@ layout(std140) uniform Mark {
     */
     uniform bool uInwardStroke;
 
-    /** Maximum size of the largest point as the fraction of the height of the (faceted) view */
-    uniform lowp float uMaxRelativePointDiameter;
-
     /** Scale factor for geometric zoom */
     uniform mediump float uScaleFactor;
-
-    /** The size of the largest point in the data */
-    uniform mediump float uMaxPointSize;
 
     uniform mediump float uZoomLevel;
     uniform highp float uSemanticThreshold;
