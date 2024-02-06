@@ -174,7 +174,7 @@ const css = `
   align-items: center;
 }
 .gs-input-binding .description {
-  max-width: 20em;
+  max-width: 26em;
   grid-column: 1/-1;
   color: #777;
   font-size: 90%;
