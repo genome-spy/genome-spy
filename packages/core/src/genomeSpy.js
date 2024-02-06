@@ -579,6 +579,7 @@ export default class GenomeSpy {
         // Have to wait until asynchronous font loading is complete.
         // Text mark's geometry builder needs font metrics before data can be
         // converted into geometries.
+        // TODO: Make updateGraphicsData async and await font loading there.
         await context.fontManager.waitUntilReady();
 
         // Find all data sources and initiate loading

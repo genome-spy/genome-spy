@@ -222,6 +222,49 @@ export default class Mark {
     }
 
     /**
+     * Handles dynamic properties that are not bound to uniforms but need
+     * to trigger a graphics update, i.e., rebuild the vertex buffer.
+     *
+     * @param {(keyof MarkProps)[]} props
+     * @protected
+     */
+    setupExprRefsNeedingGraphicsUpdate(props) {
+        const channels = this.getSupportedChannels();
+        /** @type {Partial<MarkProps>} */
+        const exprProps = {};
+        for (const key of props) {
+            const prop = this.properties[key];
+            if (prop && isExprRef(prop)) {
+                const fn = this.unitView.paramMediator.createExpression(
+                    prop.expr
+                );
+                fn.addListener(() => {
+                    this.updateGraphicsData();
+                    this.unitView.context.animator.requestRender();
+                });
+                // @ts-ignore
+                if (!channels.includes(key)) {
+                    Object.defineProperty(exprProps, key, {
+                        get() {
+                            return fn();
+                        },
+                    });
+                } else {
+                    // Encoder takes care of evaluating the expression
+                    // N.B.: There are now two expression instances for the
+                    // same expression, which is no ideal
+                }
+            }
+        }
+        const originalProperties = this.properties;
+        // @ts-ignore
+        this.properties = coalesceProperties(
+            () => exprProps,
+            () => originalProperties
+        );
+    }
+
+    /**
      * Returns the encoding spec supplemented with mark's default encodings
      *
      * @returns {Encoding}

@@ -40,6 +40,9 @@ const baselines = {
  */
 export default class TextMark extends Mark {
     /**
+     * @typedef {import("../spec/mark.js").MarkProps} MarkProps
+     */
+    /**
      * @param {import("../view/unitView.js").default} unitView
      */
     constructor(unitView) {
@@ -99,6 +102,12 @@ export default class TextMark extends Mark {
                   this.properties.fontWeight
               )
             : unitView.context.fontManager.getDefaultFont();
+
+        this.setupExprRefsNeedingGraphicsUpdate([
+            "text",
+            "fitToBand",
+            "logoLetters",
+        ]);
     }
 
     getAttributes() {
@@ -176,19 +185,18 @@ export default class TextMark extends Mark {
             }
         );
 
-        // TODO: Use uniform block.
-        setBlockUniforms(this.markUniformInfo, {
-            uPaddingX: props.paddingX,
-            uPaddingY: props.paddingY,
-            uFlushX: !!props.flushX,
-            uFlushY: !!props.flushY,
+        this.registerMarkUniformValue("uPaddingX", props.paddingX);
+        this.registerMarkUniformValue("uPaddingY", props.paddingY);
+        this.registerMarkUniformValue("uFlushX", props.flushX, (x) => !!x);
+        this.registerMarkUniformValue("uFlushY", props.flushY, (x) => !!x);
+        this.registerMarkUniformValue("uSqueeze", props.squeeze, (x) => !!x);
 
+        setBlockUniforms(this.markUniformInfo, {
             uAlign: [alignments[props.align], baselines[props.baseline]],
 
             uD: [props.dx, -props.dy],
 
             uLogoLetter: !!props.logoLetters,
-            uSqueeze: !!props.squeeze,
 
             uViewportEdgeFadeWidth: [
                 props.viewportEdgeFadeWidthTop,

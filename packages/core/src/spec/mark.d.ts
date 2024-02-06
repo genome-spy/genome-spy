@@ -162,7 +162,7 @@ export interface TextProps
      *
      * **Default value:** `""`
      */
-    text?: Scalar;
+    text?: Scalar | ExprRef;
 
     /**
      * The font size in pixels.
@@ -241,26 +241,26 @@ export interface TextProps
      *
      * **Default value:** `0`
      */
-    paddingX?: number;
+    paddingX?: number | ExprRef;
 
     /**
      * The vertical padding, in pixels, when the `y2` channel is used for ranged text.
      *
      * **Default value:** `0`
      */
-    paddingY?: number;
+    paddingY?: number | ExprRef;
 
     /**
      * If true, the text is kept inside the viewport when the range of `x` and `x2`
      * intersect the viewport.
      */
-    flushX?: boolean;
+    flushX?: boolean | ExprRef;
 
     /**
      * If true, the text is kept inside the viewport when the range of `y` and `y2`
      * intersect the viewport.
      */
-    flushY?: boolean;
+    flushY?: boolean | ExprRef;
 
     /**
      * If the `squeeze` property is true and secondary positional channels (`x2` and/or `y2`)
@@ -268,7 +268,7 @@ export interface TextProps
      *
      * **Default value:** `true`
      */
-    squeeze?: boolean;
+    squeeze?: boolean | ExprRef;
 
     /**
      * Stretch letters so that they can be used with [sequence logos](https://en.wikipedia.org/wiki/Sequence_logo), etc...

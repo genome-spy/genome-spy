@@ -1,0 +1,47 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "params": [
+    {
+      "name": "size",
+      "value": 50,
+      "bind": {
+        "input": "range",
+        "min": 1,
+        "max": 300
+      }
+    },
+    {
+      "name": "angle",
+      "value": 0,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 360
+      }
+    },
+    {
+      "name": "text",
+      "value": "GenomeSpy",
+      "bind": {
+        "input": "select",
+        "options": [
+          "GenomeSpy",
+          "Hello",
+          "World",
+          "Hello World",
+          "GenomeSpy is awesome!"
+        ]
+      }
+    }
+  ],
+
+  "data": { "values": [{}] },
+
+  "mark": {
+    "type": "text",
+    "text": { "expr": "text" },
+    "size": { "expr": "size" },
+    "angle": { "expr": "angle" }
+  }
+}
