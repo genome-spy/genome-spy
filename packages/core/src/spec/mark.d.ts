@@ -292,7 +292,7 @@ export interface PointProps extends AngleProps {
      *
      * **Default value:** `false`
      */
-    inwardStroke?: boolean;
+    inwardStroke?: boolean | ExprRef;
 
     /**
      * Gradient strength controls the amount of the gradient eye-candy effect in the fill color.
@@ -300,7 +300,7 @@ export interface PointProps extends AngleProps {
      *
      * **Default value:** `0`
      */
-    fillGradientStrength?: number;
+    fillGradientStrength?: number | ExprRef;
 
     /**
      * TODO

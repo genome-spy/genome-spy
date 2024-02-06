@@ -163,10 +163,15 @@ export default class PointMark extends Mark {
 
         const props = this.properties;
 
-        setBlockUniforms(this.markUniformInfo, {
-            uInwardStroke: !!props.inwardStroke,
-            uGradientStrength: +props.fillGradientStrength,
-        });
+        this.registerMarkUniformValue(
+            "uInwardStroke",
+            props.inwardStroke,
+            (x) => !!x
+        );
+        this.registerMarkUniformValue(
+            "uGradientStrength",
+            props.fillGradientStrength
+        );
     }
 
     updateGraphicsData() {
