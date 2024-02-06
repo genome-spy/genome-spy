@@ -61,7 +61,7 @@ const cg = codegenExpression({
  * @prop { string[] } globals
  * @prop { string } code
  *
- * @typedef { ((datum: object) => any) & ExpressionProps } ExpressionFunction
+ * @typedef { ((datum?: object) => any) & ExpressionProps } ExpressionFunction
  *
  * @param {string} expr
  * @returns {ExpressionFunction}

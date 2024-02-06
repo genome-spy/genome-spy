@@ -307,7 +307,7 @@ export interface PointProps extends AngleProps {
      *
      * **Default value:** `0.02`
      */
-    semanticZoomFraction?: number;
+    semanticZoomFraction?: number | ExprRef;
 
     /**
      * Enables geometric zooming. The value is the base two logarithmic zoom level where the maximum

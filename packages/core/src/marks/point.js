@@ -9,7 +9,7 @@ import VERTEX_SHADER from "./point.vertex.glsl";
 import FRAGMENT_SHADER from "./point.fragment.glsl";
 import COMMON_SHADER from "./point.common.glsl";
 
-import Mark from "./mark.js";
+import Mark, { isExprRef } from "./mark.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
 
@@ -17,6 +17,8 @@ import { fixFill, fixStroke } from "./markUtils.js";
 const defaultEncoding = {};
 
 export default class PointMark extends Mark {
+    #semanticZoomFraction = () => 0;
+
     /**
      * @param {import("../view/unitView.js").default} unitView
      */
@@ -45,6 +47,24 @@ export default class PointMark extends Mark {
                 semanticZoomFraction: 0.02,
             })
         );
+
+        // TODO: This mess should be simplified
+        // TODO: createExpression should accept constant values or ExprRefs and allow
+        // easy registration of requestRender listeners
+        const szf = this.properties.semanticZoomFraction;
+        if (szf != null) {
+            if (isExprRef(szf)) {
+                const fn = this.unitView.paramMediator.createExpression(
+                    szf.expr
+                );
+                fn.addListener(() =>
+                    this.getContext().animator.requestRender()
+                );
+                this.#semanticZoomFraction = fn;
+            } else {
+                this.#semanticZoomFraction = () => szf;
+            }
+        }
     }
 
     getAttributes() {
@@ -180,9 +200,7 @@ export default class PointMark extends Mark {
         if (this.sampledSemanticScores) {
             const p = Math.max(
                 0,
-                1 -
-                    this.properties.semanticZoomFraction *
-                        this.unitView.getZoomLevel()
+                1 - this.#semanticZoomFraction() * this.unitView.getZoomLevel()
             );
             if (p <= 0) {
                 // The sampled scores may be missing the min/max values
