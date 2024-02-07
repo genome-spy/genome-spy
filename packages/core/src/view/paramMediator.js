@@ -4,7 +4,7 @@ import createFunction from "../utils/expression.js";
  * A class that manages parameters and expressions.
  * Supports nesting and scoped parameters.
  *
- * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, invalidate: () => void}} ExprRefFunction
+ * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, invalidate: () => void, identifier: () => string}} ExprRefFunction
  */
 export default class ParamMediator {
     /**
@@ -228,6 +228,12 @@ export default class ParamMediator {
                 }
             }
         };
+
+        // TODO: This should contain unique identifier for each parameter.
+        // As the same parameter name may be used in different branches of the
+        // hierarchy, they should be distinguished by a unique identifier, e.g.,
+        // a serial number of something similar.
+        fn.identifier = () => fn.code;
 
         return fn;
     }
