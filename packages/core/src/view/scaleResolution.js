@@ -36,7 +36,7 @@ import { NominalDomain } from "../utils/domainArray.js";
 import { easeCubicInOut } from "d3-ease";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
 import eerp from "../utils/eerp.js";
-import { isExprRef } from "../marks/mark.js";
+import { isExprRef } from "./paramMediator.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.

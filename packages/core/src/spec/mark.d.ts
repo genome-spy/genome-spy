@@ -234,7 +234,7 @@ export interface TextProps
      *
      * **Default value:** `false`
      */
-    fitToBand?: boolean;
+    fitToBand?: boolean | ExprRef;
 
     /**
      * The horizontal padding, in pixels, when the `x2` channel is used for ranged text.
@@ -273,7 +273,7 @@ export interface TextProps
     /**
      * Stretch letters so that they can be used with [sequence logos](https://en.wikipedia.org/wiki/Sequence_logo), etc...
      */
-    logoLetters?: boolean;
+    logoLetters?: boolean | ExprRef;
 }
 
 export interface PointProps extends AngleProps {

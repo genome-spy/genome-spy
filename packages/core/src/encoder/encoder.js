@@ -1,7 +1,7 @@
 import { isDiscrete } from "vega-scale";
 import createIndexer from "../utils/indexer.js";
 import scaleNull from "../utils/scaleNull.js";
-import { isExprRef } from "../marks/mark.js";
+import { isExprRef } from "../view/paramMediator.js";
 
 /**
  * Creates an object that contains encoders for every channel of a mark

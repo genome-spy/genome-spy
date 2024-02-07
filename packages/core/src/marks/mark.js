@@ -40,7 +40,7 @@ import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
 import ViewError from "../view/viewError.js";
-import { isString } from "vega-util";
+import { isExprRef } from "../view/paramMediator.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -1228,13 +1228,4 @@ class RangeMap extends InternMap {
             Object.assign(this.get(key), value);
         }
     }
-}
-
-// TODO: Find a better place for this function
-/**
- * @param {any} x
- * @returns {x is import("../spec/parameter.js").ExprRef}
- */
-export function isExprRef(x) {
-    return typeof x == "object" && x != null && "expr" in x && isString(x.expr);
 }

@@ -18,7 +18,7 @@ import {
 } from "../encoder/encoder.js";
 import { asArray, peek } from "../utils/arrayUtils.js";
 import { InternMap } from "internmap";
-import { isExprRef } from "../marks/mark.js";
+import { isExprRef } from "../view/paramMediator.js";
 import scaleNull from "../utils/scaleNull.js";
 
 export const ATTRIBUTE_PREFIX = "attr_";

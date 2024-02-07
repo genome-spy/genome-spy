@@ -9,7 +9,8 @@ import VERTEX_SHADER from "./point.vertex.glsl";
 import FRAGMENT_SHADER from "./point.fragment.glsl";
 import COMMON_SHADER from "./point.common.glsl";
 
-import Mark, { isExprRef } from "./mark.js";
+import Mark from "./mark.js";
+import { isExprRef } from "../view/paramMediator.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
 

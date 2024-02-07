@@ -1,3 +1,4 @@
+import { isString } from "vega-util";
 import createFunction from "../utils/expression.js";
 
 /**
@@ -237,4 +238,12 @@ export default class ParamMediator {
 
         return fn;
     }
+}
+
+/**
+ * @param {any} x
+ * @returns {x is import("../spec/parameter.js").ExprRef}
+ */
+export function isExprRef(x) {
+    return typeof x == "object" && x != null && "expr" in x && isString(x.expr);
 }

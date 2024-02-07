@@ -16,8 +16,7 @@ import { appendToBaseUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
-import { isExprRef } from "../marks/mark.js";
-import ParamMediator from "./paramMediator.js";
+import ParamMediator, { isExprRef } from "./paramMediator.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
