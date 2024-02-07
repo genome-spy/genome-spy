@@ -162,7 +162,11 @@ class ViewSettingsButton extends LitElement {
             /** @type {() => import("../utils/ui/contextMenu.js").MenuItem[]} */
             let submenuOpener;
 
-            if (view.paramMediator.paramConfigs.size) {
+            if (
+                [...view.paramMediator.paramConfigs.values()].some(
+                    (param) => param.bind
+                )
+            ) {
                 submenuOpener = () => [
                     {
                         label: "Parameters",
