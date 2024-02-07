@@ -158,6 +158,8 @@ export class ViewFactory {
                 if (validator) {
                     validator(viewSpec);
                 }
+
+                applyParamsToImportedSpec(viewSpec, spec.import);
             } else {
                 throw new ViewError(
                     "Importing views is not allowed!",
@@ -194,6 +196,49 @@ export class ViewFactory {
         }
 
         return view;
+    }
+}
+
+/**
+ *
+ * @param {ViewSpec} importedSpec
+ * @param {import("../spec/view.js").ImportParams} importParams
+ */
+function applyParamsToImportedSpec(importedSpec, importParams) {
+    if (importParams.name != null) {
+        importedSpec.name = importParams.name;
+    }
+
+    const params = isArray(importParams.params)
+        ? importParams.params
+        : isObject(importParams.params)
+        ? Object.entries(importParams.params).map(([name, value]) => ({
+              name,
+              value,
+          }))
+        : [];
+
+    if (!params.length) {
+        return;
+    }
+
+    importedSpec.params ??= [];
+
+    // Replace overridden parameters
+    for (const param of params) {
+        const index = importedSpec.params.findIndex(
+            (p) => p.name == param.name
+        );
+        if (index >= 0) {
+            importedSpec.params[index] = param;
+        }
+    }
+
+    // Add missing parameters
+    for (const param of params) {
+        if (!importedSpec.params.some((p) => p.name == param.name)) {
+            importedSpec.params.push(param);
+        }
     }
 }
 

@@ -18,7 +18,7 @@ export interface Title {
     /**
      * The title text.
      */
-    text: string;
+    text: string | ExprRef;
 
     /**
      * A mark style property to apply to the title text mark. If not specified, a default style of `"group-title"` is applied.

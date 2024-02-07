@@ -218,14 +218,23 @@ export type ViewSpec =
     | ConcatSpec
     | SampleSpec;
 
-export interface ImportConfig {
-    name?: string;
+export interface ImportParams {
     url?: string;
-    params?: object;
+
+    /**
+     * Name for the imported view. Overrides the name defined in the imported spec.
+     */
+    name?: string;
+
+    /**
+     * Dynamic variables that parameterize a visualization. Parameters defined here
+     * override the parameters defined in the imported spec.
+     */
+    params?: VariableParameter[] | Record<string, any>;
 }
 
 export interface ImportSpec {
-    import: ImportConfig;
+    import: ImportParams;
 }
 
 export interface ConcatBase extends ViewSpecBase {
