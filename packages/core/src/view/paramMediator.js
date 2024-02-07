@@ -25,6 +25,9 @@ export default class ParamMediator {
     /** @type {Map<string, (value: any) => void>} */
     #allocatedSetters = new Map();
 
+    /** @type {Map<string, ExprRefFunction>} */
+    #expressions = new Map();
+
     /** @type {Map<string, VariableParameter>} */
     #paramConfigs = new Map();
 
@@ -171,6 +174,10 @@ export default class ParamMediator {
      * @param {string} expr
      */
     createExpression(expr) {
+        if (this.#expressions.has(expr)) {
+            return this.#expressions.get(expr);
+        }
+
         const globalObject = {};
 
         /** @type {ExprRefFunction} */
@@ -221,6 +228,7 @@ export default class ParamMediator {
 
         /**
          * Detach listeners. This must be called if the expression is no longer used.
+         * TODO: What if the expression is used in multiple places?
          */
         fn.invalidate = () => {
             for (const [param, mediator] of mediatorsForParams) {
@@ -236,7 +244,19 @@ export default class ParamMediator {
         // a serial number of something similar.
         fn.identifier = () => fn.code;
 
+        this.#expressions.set(expr, fn);
+
         return fn;
+    }
+
+    /**
+     * A convenience method for evaluating an expression.
+     *
+     * @param {string} expr
+     */
+    evaluateAndGet(expr) {
+        const fn = this.createExpression(expr);
+        return fn();
     }
 }
 

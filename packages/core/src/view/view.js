@@ -642,7 +642,11 @@ export default class View {
     getTitleText() {
         const title = this.spec.title;
         if (title) {
-            return isString(title) ? title : title.text;
+            return isString(title)
+                ? title
+                : isExprRef(title.text)
+                ? this.paramMediator.evaluateAndGet(title.text.expr)
+                : title.text;
         }
     }
 
