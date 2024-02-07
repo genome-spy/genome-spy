@@ -13,6 +13,7 @@
  */
 import { Axis } from "./axis.js";
 import { FieldName, PrimaryPositionalChannel } from "./channel.js";
+import { ExprRef } from "./parameter.js";
 
 export type ParseValue =
     | null
@@ -123,7 +124,7 @@ export interface UrlData extends DataBase {
      * An URL or an array of URLs from which to load the data set.
      * Use the `format.type` property to ensure the loaded data is correctly parsed.
      */
-    url: string | string[];
+    url: string | string[] | ExprRef;
 }
 
 export interface InlineData extends DataBase {
@@ -169,24 +170,24 @@ export interface SequenceParams {
     /**
      * The starting value of the sequence (inclusive).
      */
-    start: number;
+    start: number | ExprRef;
     /**
      * The ending value of the sequence (exclusive).
      */
-    stop: number;
+    stop: number | ExprRef;
     /**
      * The step value between sequence entries.
      *
      * __Default value:__ `1`
      */
-    step?: number;
+    step?: number | ExprRef;
 
     /**
      * The name of the generated sequence field.
      *
      * __Default value:__ `"data"`
      */
-    as?: FieldName;
+    as?: FieldName | ExprRef;
 }
 
 export interface LazyData {

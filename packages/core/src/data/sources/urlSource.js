@@ -1,6 +1,10 @@
 import { loader as vegaLoader, read } from "vega-loader";
 import { getFormat } from "./dataUtils.js";
 import DataSource from "./dataSource.js";
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../view/paramMediator.js";
 
 /**
  * @param {Partial<import("../../spec/data.js").Data>} data
@@ -18,7 +22,10 @@ export default class UrlSource extends DataSource {
     constructor(params, view) {
         super();
 
-        this.params = params;
+        this.params = activateExprRefProps(view.paramMediator, params, () => {
+            this.load();
+        });
+
         this.baseUrl = view?.getBaseUrl();
     }
 
@@ -27,10 +34,16 @@ export default class UrlSource extends DataSource {
     }
 
     async load() {
-        const url = this.params.url;
+        const url = withoutExprRef(this.params.url);
 
         /** @type {string[]} */
         const urls = Array.isArray(url) ? url : [url];
+
+        if (urls.length === 0 || !urls[0]) {
+            this.reset();
+            this.complete();
+            return;
+        }
 
         /** @param {string} url */
         const load = async (url) =>

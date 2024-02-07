@@ -132,20 +132,29 @@ describe("removeRedundantCloneTransforms", () => {
     });
 });
 
+const viewStub = {
+    paramMediator: {
+        registerParam: () => {},
+        allocateSetter: () => {},
+        createExpression: () => {},
+    },
+    getBaseUrl: () => "",
+};
+
 describe("Merge indentical data sources", () => {
     test("Merges correctly", () => {
         /** @type {DataFlow<string>} */
         const dataFlow = new DataFlow();
 
-        const a = new UrlSource({ url: "http://genomespy.app/" });
+        const a = new UrlSource({ url: "http://genomespy.app/" }, viewStub);
         const ac = new Collector();
         a.addChild(ac);
 
-        const b = new UrlSource({ url: "http://genomespy.app/" });
+        const b = new UrlSource({ url: "http://genomespy.app/" }, viewStub);
         const bc = new Collector();
         b.addChild(bc);
 
-        const c = new UrlSource({ url: "http://helsinki.fi/" });
+        const c = new UrlSource({ url: "http://helsinki.fi/" }, viewStub);
         const cc = new Collector();
         c.addChild(cc);
 

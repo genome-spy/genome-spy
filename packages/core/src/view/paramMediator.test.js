@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import ParamMediator from "./paramMediator.js";
+import ParamMediator, { activateExprRefProps } from "./paramMediator.js";
 
 describe("Single-level ParamMediator", () => {
     test("Trivial case", () => {
@@ -159,5 +159,53 @@ describe("Nested ParamMediators", () => {
 
         childSetter(20);
         expect(result).toBe(30);
+    });
+});
+
+test("activateExprRefProps", async () => {
+    const pm = new ParamMediator();
+
+    const fooSetter = pm.registerParam({ name: "foo", value: 7 });
+    const barSetter = pm.registerParam({ name: "bar", value: 11 });
+
+    /** @type {Record<string, any | import("../spec/parameter.js").ExprRef} */
+    const props = {
+        a: 42,
+        b: { expr: "foo" },
+        c: { expr: "bar" },
+    };
+
+    /** @type {string[]} */
+    let altered = [];
+
+    const activatedProps = activateExprRefProps(pm, props, (props) => {
+        altered = props;
+    });
+
+    expect(activatedProps).toEqual({
+        a: 42,
+        b: 7,
+        c: 11,
+    });
+
+    fooSetter(8);
+
+    // Let the scheduled microtask call the listener
+    await Promise.resolve();
+
+    expect(altered).toEqual(["b"]);
+
+    fooSetter(1);
+    barSetter(2);
+
+    // Let the scheduled microtask call the listener
+    await Promise.resolve();
+
+    expect(altered).toEqual(["b", "c"]);
+
+    expect(activatedProps).toEqual({
+        a: 42,
+        b: 1,
+        c: 2,
     });
 });

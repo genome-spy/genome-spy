@@ -247,3 +247,71 @@ export default class ParamMediator {
 export function isExprRef(x) {
     return typeof x == "object" && x != null && "expr" in x && isString(x.expr);
 }
+
+/**
+ * Removes ExprRef from the type and checks that the value is not an ExprRef.
+ * This is designed to be used with `activateExprRefProps`.
+ *
+ * @param {T | import("../spec/parameter.js").ExprRef} x
+ * @template T
+ * @returns {T}
+ */
+export function withoutExprRef(x) {
+    if (isExprRef(x)) {
+        throw new Error(
+            `ExprRef ${JSON.stringify(
+                x
+            )} not allowed here. Expected a scalar value.`
+        );
+    }
+    return /** @type {T} */ (x);
+}
+
+/**
+ * Takes a record of properties that may have ExprRefs as values. Converts the
+ * ExprRefs to getters and setups a listener that is called when any of the
+ * expressions (upstream parameters) change.
+ *
+ * @param {ParamMediator} paramMediator
+ * @param {T} props The properties object
+ * @param {(props: (keyof T)[]) => void} [listener] Listener to be called when any of the expressions change
+ * @returns T
+ * @template {Record<string, any | import("../spec/parameter.js").ExprRef>} T
+ */
+export function activateExprRefProps(paramMediator, props, listener) {
+    /** @type {Record<string, any | import("../spec/parameter.js").ExprRef>} */
+    const activatedProps = { ...props };
+
+    /** @type {(keyof T)[]} */
+    const alteredProps = [];
+
+    const batchPropertyChange = (/** @type {keyof T} */ prop) => {
+        alteredProps.push(prop);
+        if (alteredProps.length === 1) {
+            queueMicrotask(() => {
+                listener(alteredProps.slice());
+                alteredProps.length = 0;
+            });
+        }
+    };
+
+    for (const [key, value] of Object.entries(props)) {
+        if (isExprRef(value)) {
+            const fn = paramMediator.createExpression(value.expr);
+            if (listener) {
+                fn.addListener(() => batchPropertyChange(key));
+            }
+
+            Object.defineProperty(activatedProps, key, {
+                enumerable: true,
+                get() {
+                    return fn();
+                },
+            });
+        } else {
+            activatedProps[key] = value;
+        }
+    }
+
+    return /** @type {T} */ (activatedProps);
+}

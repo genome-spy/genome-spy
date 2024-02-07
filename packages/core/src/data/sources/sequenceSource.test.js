@@ -14,10 +14,18 @@ async function collectSource(source) {
     return [...collector.getData()];
 }
 
+const viewStub = {
+    paramMediator: {
+        registerParam: () => {},
+        allocateSetter: () => {},
+        createExpression: () => {},
+    },
+};
+
 test("SequenceSource generates a sequence", async () => {
     expect(
         await collectSource(
-            new SequenceSource({ sequence: { start: 0, stop: 3 } })
+            new SequenceSource({ sequence: { start: 0, stop: 3 } }, viewStub)
         )
     ).toEqual([{ data: 0 }, { data: 1 }, { data: 2 }]);
 });
@@ -25,7 +33,10 @@ test("SequenceSource generates a sequence", async () => {
 test("SequenceSource generates a sequence with a custom step", async () => {
     expect(
         await collectSource(
-            new SequenceSource({ sequence: { start: 0, stop: 5, step: 2 } })
+            new SequenceSource(
+                { sequence: { start: 0, stop: 5, step: 2 } },
+                viewStub
+            )
         )
     ).toEqual([{ data: 0 }, { data: 2 }, { data: 4 }]);
 });
@@ -33,14 +44,21 @@ test("SequenceSource generates a sequence with a custom step", async () => {
 test("SequenceSource generates a sequence with a custom field name", async () => {
     expect(
         await collectSource(
-            new SequenceSource({ sequence: { start: 0, stop: 3, as: "x" } })
+            new SequenceSource(
+                { sequence: { start: 0, stop: 3, as: "x" } },
+                viewStub
+            )
         )
     ).toEqual([{ x: 0 }, { x: 1 }, { x: 2 }]);
 });
 
 test("SequenceSource throws on missing 'start' parameter", () => {
-    expect(() => new SequenceSource({ sequence: { stop: 3 } })).toThrow();
+    expect(
+        () => new SequenceSource({ sequence: { stop: 3 } }, viewStub)
+    ).toThrow();
 });
 test("SequenceSource throws on missing 'stop' parameter", () => {
-    expect(() => new SequenceSource({ sequence: { start: 0 } })).toThrow();
+    expect(
+        () => new SequenceSource({ sequence: { start: 0 } }, viewStub)
+    ).toThrow();
 });

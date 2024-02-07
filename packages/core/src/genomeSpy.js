@@ -573,6 +573,7 @@ export default class GenomeSpy {
                 view.mark.initializeData();
                 // Update WebGL buffers
                 view.mark.updateGraphicsData();
+                context.animator.requestRender();
             }, view);
         }
 

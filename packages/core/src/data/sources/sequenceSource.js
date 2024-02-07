@@ -1,3 +1,7 @@
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../view/paramMediator.js";
 import DataSource from "./dataSource.js";
 
 /**
@@ -16,7 +20,13 @@ export default class SequenceSource extends DataSource {
      */
     constructor(params, view) {
         super();
-        this.sequence = params.sequence;
+        this.sequence = activateExprRefProps(
+            view.paramMediator,
+            params.sequence,
+            () => {
+                this.loadSynchronously();
+            }
+        );
 
         if (!("start" in this.sequence)) {
             throw new Error("'start' is missing from sequence parameters!");
@@ -27,14 +37,15 @@ export default class SequenceSource extends DataSource {
     }
 
     loadSynchronously() {
-        const as = this.sequence.as || "data";
-        const step = this.sequence.step || 1;
-        const stop = this.sequence.stop;
+        const as = withoutExprRef(this.sequence.as) ?? "data";
+        const start = withoutExprRef(this.sequence.start) ?? 0;
+        const step = withoutExprRef(this.sequence.step) ?? 1;
+        const stop = withoutExprRef(this.sequence.stop);
 
         this.reset();
         this.beginBatch({ type: "file" });
 
-        for (let x = this.sequence.start; x < stop; x += step) {
+        for (let x = start; x < stop; x += step) {
             this._propagate({ [as]: x });
         }
 

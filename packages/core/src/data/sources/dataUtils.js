@@ -1,3 +1,4 @@
+import { withoutExprRef } from "../../view/paramMediator.js";
 import { isInlineData } from "./inlineSource.js";
 
 /**
@@ -13,7 +14,8 @@ export function getFormat(params) {
     }
     const format = { ...params.format };
 
-    format.type ??= isUrlData(params) && extractTypeFromUrl(params.url);
+    format.type ??=
+        isUrlData(params) && extractTypeFromUrl(withoutExprRef(params.url));
     // @ts-ignore TODO: Fix typing
     format.parse ??= "auto";
 
