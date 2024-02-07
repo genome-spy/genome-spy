@@ -9,6 +9,7 @@
  */
 
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
+import { ExprRef } from "./parameter.js";
 
 export type TitleOrient = "none" | "left" | "right" | "top" | "bottom";
 export type TitleAnchor = null | "start" | "middle" | "end";
