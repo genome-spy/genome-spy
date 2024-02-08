@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.45.0](https://github.com/genome-spy/genome-spy/compare/v0.44.0...v0.45.0) (2024-02-08)
+
+
+### Bug Fixes
+
+* **core:** exprRef in view title ([cede00e](https://github.com/genome-spy/genome-spy/commit/cede00e3e7b2cbacbce71e8661f831b72d1d946d))
+
+
+### Features
+
+* **core:** more ExprRefs to `"text"` mark properties ([732f264](https://github.com/genome-spy/genome-spy/commit/732f26440f4db6b772b55dc9e0878829de5f41ac))
+* **core:** parameterized imports ([d9d8ec7](https://github.com/genome-spy/genome-spy/commit/d9d8ec72b2d2af0264e32683386d0e2108f59665)), closes [#56](https://github.com/genome-spy/genome-spy/issues/56)
+* **core:** support ExprRefs in `inwardStroke` and `fillGradientStrength` props of `"point"` mark ([45727a5](https://github.com/genome-spy/genome-spy/commit/45727a540e054f4e2caf16633eba21652fe9451d))
+* **core:** support ExprRefs in `semanticZoomFraction` property ([5961c1e](https://github.com/genome-spy/genome-spy/commit/5961c1eb0553ded24291679c1c61f7e2ffcca30a))
+* **core:** support ExprRefs in BigBed and BigWig data sources ([b8681dd](https://github.com/genome-spy/genome-spy/commit/b8681dda4be242737b1195192894ea51fb0ffcf8))
+* remove `sampleFacetPadding` property and the special handling of point sizes ([7121a7e](https://github.com/genome-spy/genome-spy/commit/7121a7eace30e65531dbe039edc157c3a568ffad))
+* scoped parameters ([#235](https://github.com/genome-spy/genome-spy/issues/235)) ([975fe29](https://github.com/genome-spy/genome-spy/commit/975fe29a8dd3e868f63946fcd9bf4937faaa3176))
+* support ExprRefs in `url` and `sequence` data sources ([58dad1c](https://github.com/genome-spy/genome-spy/commit/58dad1cf18ac424fca2a9ddff2780b2518079866))
+
+
+
+
+
 # [0.44.0](https://github.com/genome-spy/genome-spy/compare/v0.43.3...v0.44.0) (2024-01-30)
 
 
