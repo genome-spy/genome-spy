@@ -55,7 +55,7 @@ export interface Title {
     /**
      * Angle in degrees of title and subtitle text.
      */
-    angle?: number;
+    angle?: number | ExprRef;
 
     /**
      * Vertical text baseline for title and subtitle text. One of `"alphabetic"` (default), `"top"`, `"middle"`, or `"bottom"`.
@@ -76,7 +76,7 @@ export interface Title {
     /**
      * Text color for title text.
      */
-    color?: string;
+    color?: string | ExprRef;
 
     /**
      * Font name for title text.
@@ -88,7 +88,7 @@ export interface Title {
      *
      * @minimum 0
      */
-    fontSize?: number;
+    fontSize?: number | ExprRef;
 
     /**
      * Font style for title text.
