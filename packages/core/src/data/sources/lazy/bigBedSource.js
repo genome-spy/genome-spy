@@ -1,3 +1,7 @@
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../../view/paramMediator.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -25,9 +29,21 @@ export default class BigBedSource extends SingleAxisWindowedSource {
             ...params,
         };
 
-        super(view, paramsWithDefaults.channel);
+        const activatedParams = activateExprRefProps(
+            view.paramMediator,
+            paramsWithDefaults,
+            (props) => {
+                if (props.includes("url")) {
+                    this.#initialize().then(() => this.reloadLastDomain());
+                } else if (props.includes("windowSize")) {
+                    this.reloadLastDomain();
+                }
+            }
+        );
 
-        this.params = paramsWithDefaults;
+        super(view, activatedParams.channel);
+
+        this.params = activatedParams;
 
         if (!this.params.url) {
             throw new Error("No URL provided for BigBedSource");
@@ -35,7 +51,11 @@ export default class BigBedSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.initializedPromise = new Promise((resolve) => {
+        this.#initialize();
+    }
+
+    #initialize() {
+        this.initializedPromise = new Promise((resolve, reject) => {
             Promise.all([
                 import("@gmod/bed"),
                 import("@gmod/bbi"),
@@ -45,28 +65,40 @@ export default class BigBedSource extends SingleAxisWindowedSource {
 
                 this.bbi = new BigBed({
                     filehandle: new RemoteFile(
-                        addBaseUrl(this.params.url, this.view.getBaseUrl())
+                        addBaseUrl(
+                            withoutExprRef(this.params.url),
+                            this.view.getBaseUrl()
+                        )
                     ),
                 });
 
-                this.bbi.getHeader().then(async (header) => {
-                    // @ts-ignore TODO: Fix
-                    this.parser = new BED({ autoSql: header.autoSql });
-                    try {
-                        const fastParser = makeFastParser(this.parser);
-                        this.parseLine = (chrom, f) =>
-                            fastParser(chrom, f.start, f.end, f.rest);
-                    } catch (e) {
-                        this.parseLine = (chrom, f) =>
-                            this.parser.parseLine(
-                                `${chrom}\t${f.start}\t${f.end}\t${f.rest}`
-                            );
-                    }
+                this.bbi
+                    .getHeader()
+                    .then(async (header) => {
+                        // @ts-ignore TODO: Fix
+                        this.parser = new BED({ autoSql: header.autoSql });
+                        try {
+                            const fastParser = makeFastParser(this.parser);
+                            this.parseLine = (chrom, f) =>
+                                fastParser(chrom, f.start, f.end, f.rest);
+                        } catch (e) {
+                            this.parseLine = (chrom, f) =>
+                                this.parser.parseLine(
+                                    `${chrom}\t${f.start}\t${f.end}\t${f.rest}`
+                                );
+                        }
 
-                    resolve();
-                });
+                        resolve();
+                    })
+                    .catch((e) => {
+                        // Load empty data
+                        this.load();
+                        reject(e);
+                    });
             });
         });
+
+        return this.initializedPromise;
     }
 
     /**

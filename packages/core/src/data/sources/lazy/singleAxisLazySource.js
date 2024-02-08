@@ -148,7 +148,5 @@ export default class SingleAxisLazySource extends DataSource {
         this.complete();
 
         reconfigureScales(this.view);
-
-        this.requestRender();
     }
 }

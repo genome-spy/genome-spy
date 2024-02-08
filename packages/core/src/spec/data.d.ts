@@ -210,7 +210,7 @@ export interface DebouncedData {
      *
      * __Default value:__ `200`
      */
-    debounce?: number;
+    debounce?: number | ExprRef;
 
     /**
      * The debounce mode for data updates. If set to `"domain"`, domain change
@@ -287,14 +287,14 @@ export interface BigWigData extends DebouncedData {
     /**
      * URL of the BigWig file.
      */
-    url: string;
+    url: string | ExprRef;
 
     /**
      * The approximate minimum width of each data bin, in pixels.
      *
      * __Default value:__ `2`
      */
-    pixelsPerBin?: number;
+    pixelsPerBin?: number | ExprRef;
 }
 
 export interface BigBedData extends DebouncedData {
@@ -310,7 +310,7 @@ export interface BigBedData extends DebouncedData {
     /**
      * URL of the BigBed file.
      */
-    url: string;
+    url: string | ExprRef;
 
     /**
      * Size of each chunk when fetching the BigBed file. Data is only fetched
@@ -318,7 +318,7 @@ export interface BigBedData extends DebouncedData {
      *
      * __Default value:__ `1000000`
      */
-    windowSize?: number;
+    windowSize?: number | ExprRef;
 }
 
 export interface BamData extends DebouncedData {

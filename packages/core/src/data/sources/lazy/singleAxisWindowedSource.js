@@ -1,5 +1,6 @@
+import { withoutExprRef } from "../../../view/paramMediator.js";
+import { debounce } from "../../../utils/debounce.js";
 import SingleAxisLazySource from "./singleAxisLazySource.js";
-import { debounce } from "@genome-spy/core/utils/debounce.js";
 
 /**
  * Divides the domain into windows and loads the data for one or two consecutive windows
@@ -10,15 +11,16 @@ import { debounce } from "@genome-spy/core/utils/debounce.js";
 export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     #abortController = new AbortController();
 
-    /**
-     * @type {number[]}
-     */
+    /** @type {number[]} */
     #lastQuantizedInterval = [0, 0];
+
+    /** @type {number[]} */
+    #lastDomain = [0, 0];
 
     #lastWindowSize = 0;
 
     /**
-     * @type {{windowSize?: number}}
+     * @type {{windowSize?: number | import("../../../spec/parameter.js").ExprRef}}
      * @protected
      */
     params;
@@ -28,20 +30,22 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      * @protected
      */
     setupDebouncing(debounceParams) {
-        if (debounceParams.debounce > 0) {
-            if (debounceParams.debounceMode == "domain") {
-                this.onDomainChanged = debounce(
-                    this.onDomainChanged.bind(this),
-                    debounceParams.debounce,
-                    false
-                );
-            } else if (debounceParams.debounceMode == "window") {
-                this.loadInterval = debounce(
-                    this.loadInterval.bind(this),
-                    debounceParams.debounce,
-                    false
-                );
-            }
+        const wait = () => withoutExprRef(debounceParams.debounce);
+        const debounceMode = debounceParams.debounceMode;
+        if (debounceMode == "domain") {
+            this.onDomainChanged = debounce(
+                this.onDomainChanged.bind(this),
+                wait,
+                false
+            );
+        } else if (debounceMode == "window") {
+            this.loadInterval = debounce(
+                this.loadInterval.bind(this),
+                wait,
+                false
+            );
+        } else {
+            throw new Error("Invalid debounceMode: " + debounceMode);
         }
     }
 
@@ -51,7 +55,9 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      * @param {number[]} domain Linearized domain
      */
     onDomainChanged(domain) {
-        const windowSize = this.params?.windowSize ?? -1;
+        this.#lastDomain = domain;
+
+        const windowSize = withoutExprRef(this.params?.windowSize) ?? -1;
 
         if (domain[1] - domain[0] > windowSize) {
             return;
@@ -67,6 +73,18 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
                 this.loadInterval(quantizedInterval);
             }
         );
+    }
+
+    /**
+     * @protected
+     */
+    reloadLastDomain() {
+        const domain = this.#lastDomain;
+
+        this.#lastDomain = [0, 0];
+        this.#lastQuantizedInterval = [0, 0];
+
+        this.onDomainChanged(domain);
     }
 
     /**

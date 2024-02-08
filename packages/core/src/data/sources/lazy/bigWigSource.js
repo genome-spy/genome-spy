@@ -1,3 +1,7 @@
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../../view/paramMediator.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -25,9 +29,21 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             ...params,
         };
 
-        super(view, paramsWithDefaults.channel);
+        const activatedParams = activateExprRefProps(
+            view.paramMediator,
+            paramsWithDefaults,
+            (props) => {
+                if (props.includes("url")) {
+                    this.#initialize().then(() => this.reloadLastDomain());
+                } else if (props.includes("pixelsPerBin")) {
+                    this.reloadLastDomain();
+                }
+            }
+        );
 
-        this.params = paramsWithDefaults;
+        super(view, activatedParams.channel);
+
+        this.params = activatedParams;
 
         if (!this.params.url) {
             throw new Error("No URL provided for BigWigSource");
@@ -35,6 +51,10 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
+        this.#initialize();
+    }
+
+    #initialize() {
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
                 import("@gmod/bbi"),
@@ -42,7 +62,10 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             ]).then(([{ BigWig }, { RemoteFile }]) => {
                 this.#bbi = new BigWig({
                     filehandle: new RemoteFile(
-                        addBaseUrl(this.params.url, this.view.getBaseUrl())
+                        addBaseUrl(
+                            withoutExprRef(this.params.url),
+                            this.view.getBaseUrl()
+                        )
                     ),
                 });
 
@@ -62,6 +85,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
                 });
             });
         });
+
+        return this.initializedPromise;
     }
 
     /**
@@ -96,7 +121,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      */
     // @ts-expect-error
     async loadInterval(interval, reductionLevel) {
-        const scale = 1 / 2 / reductionLevel / this.params.pixelsPerBin;
+        const scale =
+            1 / 2 / reductionLevel / withoutExprRef(this.params.pixelsPerBin);
         const featureChunks = await this.discretizeAndLoad(
             interval,
             (d, signal) =>

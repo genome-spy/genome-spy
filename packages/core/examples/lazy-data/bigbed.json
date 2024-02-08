@@ -3,6 +3,39 @@
 
   "description": "ENCODE Candidate Cis-Regulatory Elements (cCREs) combined from all cell types, hg38",
 
+  "params": [
+    {
+      "name": "url",
+      "value": "http://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb",
+      "bind": {
+        "input": "radio",
+        "options": [
+          "http://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb",
+          "http://xy.xy.xy/"
+        ],
+        "labels": ["Working URL", "Invalid URL"]
+      }
+    },
+    {
+      "name": "windowSize",
+      "value": 1000000,
+      "bind": {
+        "input": "select",
+        "options": [100000000, 10000000, 1000000, 100000]
+      }
+    },
+    {
+      "name": "debounce",
+      "value": 200,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 3000,
+        "step": 100
+      }
+    }
+  ],
+
   "height": 30,
 
   "genome": {
@@ -16,7 +49,9 @@
   "data": {
     "lazy": {
       "type": "bigbed",
-      "url": "http://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb"
+      "url": { "expr": "url" },
+      "windowSize": { "expr": "windowSize" },
+      "debounce": { "expr": "debounce" }
     }
   },
 

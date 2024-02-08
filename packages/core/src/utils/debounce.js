@@ -1,6 +1,6 @@
 /**
  * @param {(...args:T) => R} func
- * @param {number} wait
+ * @param {number | (() => number)} wait
  * @template {any[]} T
  * @template R
  */
@@ -29,7 +29,10 @@ export function debounce(func, wait, rejectOnDebounce = true) {
             clearTimeout(timeout);
 
             rejectPrevious = reject;
-            timeout = window.setTimeout(later, wait);
+            timeout = window.setTimeout(
+                later,
+                typeof wait == "function" ? wait() : wait
+            );
         });
     };
 
