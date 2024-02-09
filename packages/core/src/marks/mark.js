@@ -1224,6 +1224,17 @@ class RangeMap extends InternMap {
      * @param {Map<K, import("../gl/dataToVertices.js").RangeEntry>} anotherMap
      */
     migrateEntries(anotherMap) {
+        for (const [key, value] of this.entries()) {
+            // Buffered draw calls maintain direct references to the range entries.
+            // Thus, they cannot just be deleted, but instead, their counts and offsets
+            // must be zeroed.
+            if (!anotherMap.has(key)) {
+                value.offset = 0;
+                value.count = 0;
+                value.xIndex = undefined;
+            }
+        }
+
         for (const [key, value] of anotherMap.entries()) {
             Object.assign(this.get(key), value);
         }
