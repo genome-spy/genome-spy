@@ -1,4 +1,3 @@
-import createFunction from "../../utils/expression.js";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
 
 export default class FormulaTransform extends FlowNode {
@@ -16,12 +15,13 @@ export default class FormulaTransform extends FlowNode {
 
         this.as = params.as;
 
-        /** @type {(datum: any) => any} */
+        /** @type {import("../../view/paramMediator.js").ExprRefFunction} */
         this.fn = undefined;
     }
 
     initialize() {
-        this.fn = createFunction(this.params.expr, this.getGlobalObject());
+        this.fn = this.paramMediator.createExpression(this.params.expr);
+        this.fn.addListener(() => this.repropagate());
     }
 
     /**

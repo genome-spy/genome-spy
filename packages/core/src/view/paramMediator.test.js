@@ -55,6 +55,19 @@ describe("Single-level ParamMediator", () => {
         expect(calls).toBe(2);
     });
 
+    test("Passive parameter does not trigger listeners", () => {
+        const pm = new ParamMediator();
+        const setter = pm.allocateSetter("foo", 42, true);
+        const expr = pm.createExpression("foo");
+
+        let result = expr();
+
+        expr.addListener(() => (result = expr()));
+
+        setter(50);
+        expect(result).toBe(42);
+    });
+
     test("Expression invalidation", () => {
         const pm = new ParamMediator();
         const setter = pm.allocateSetter("foo", 42);

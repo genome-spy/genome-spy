@@ -18,8 +18,6 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
  */
 export const BEHAVIOR_COLLECTS = 1 << 2;
 
-const ROOT_CONTEXT_OBJECT = {};
-
 /**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
  *
@@ -220,19 +218,6 @@ export default class FlowNode {
     }
 
     /**
-     * The global object for expressions (in formula and filter transforms).
-     * Nodes in the hierarchy may extend the object using Object.create to
-     * introduce variables that are visible downstream the flow.
-     *
-     * @returns {Record<string, any>}
-     */
-    getGlobalObject() {
-        return this.parent
-            ? this.parent.getGlobalObject()
-            : ROOT_CONTEXT_OBJECT;
-    }
-
-    /**
      *
      * @param {Datum} datum
      */
@@ -257,6 +242,31 @@ export default class FlowNode {
     beginBatch(flowBatch) {
         for (const child of this.children) {
             child.beginBatch(flowBatch);
+        }
+    }
+
+    /**
+     * @returns {import("../view/paramMediator.js").default}
+     * @protected
+     */
+    get paramMediator() {
+        if (!this.parent) {
+            throw new Error("Cannot find paramMediator!");
+        }
+        return this.parent.paramMediator;
+    }
+
+    /**
+     * Repropagates the stored data. If this node has no stored data,
+     * find the nearest ancestor that has and repropagate from there.
+     */
+    repropagate() {
+        if (this.parent) {
+            this.parent.repropagate();
+        } else {
+            throw new Error(
+                "Cannot repropagate data, no FlowNode with stored data found!"
+            );
         }
     }
 

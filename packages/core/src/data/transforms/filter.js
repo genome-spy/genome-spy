@@ -1,4 +1,3 @@
-import createFunction from "../../utils/expression.js";
 import FlowNode from "../flowNode.js";
 
 export default class FilterTransform extends FlowNode {
@@ -10,15 +9,13 @@ export default class FilterTransform extends FlowNode {
         super();
         this.params = params;
 
-        /** @type {(datum: any) => boolean} */
+        /** @type {import("../../view/paramMediator.js").ExprRefFunction} */
         this.predicate = undefined;
     }
 
     initialize() {
-        this.predicate = createFunction(
-            this.params.expr,
-            this.getGlobalObject()
-        );
+        this.predicate = this.paramMediator.createExpression(this.params.expr);
+        this.predicate.addListener(() => this.repropagate());
     }
 
     /**

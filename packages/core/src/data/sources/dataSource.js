@@ -37,6 +37,10 @@ export default class DataSource extends FlowNode {
         this.view.context.setDataLoadingStatus(this.view, status, detail);
     }
 
+    get paramMediator() {
+        return this.view.paramMediator;
+    }
+
     /**
      *
      * @param {import("../flowNode.js").Datum} datum
@@ -47,5 +51,9 @@ export default class DataSource extends FlowNode {
 
     async load() {
         // override
+    }
+
+    repropagate() {
+        this.load();
     }
 }

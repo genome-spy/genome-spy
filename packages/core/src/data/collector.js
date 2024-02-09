@@ -107,6 +107,16 @@ export default class Collector extends FlowNode {
             sortData(data);
         }
 
+        this.#propagateToChildren();
+
+        super.complete();
+
+        for (const observer of this.observers) {
+            observer(this);
+        }
+    }
+
+    #propagateToChildren() {
         if (this.children.length) {
             for (const [key, data] of this.facetBatches.entries()) {
                 if (key) {
@@ -121,11 +131,17 @@ export default class Collector extends FlowNode {
                 }
             }
         }
+    }
 
-        super.complete();
+    repropagate() {
+        for (const child of this.children) {
+            child.reset();
+        }
 
-        for (const observer of this.observers) {
-            observer(this);
+        this.#propagateToChildren();
+
+        for (const child of this.children) {
+            child.complete();
         }
     }
 

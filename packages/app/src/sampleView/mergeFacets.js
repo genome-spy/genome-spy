@@ -25,6 +25,9 @@ const SAMPLE_COUNT_VARIABLE = "sampleCount";
 export default class MergeSampleFacets extends FlowNode {
     #initialUpdate = true;
 
+    /** @type {(value: any) => void} */
+    #sampleCountSetter;
+
     /**
      *
      * @param {any} params
@@ -67,13 +70,14 @@ export default class MergeSampleFacets extends FlowNode {
                 this.complete();
             });
         });
-
-        /** @type {any} */
-        this.contextObject = undefined;
     }
 
     initialize() {
-        this.contextObject = Object.create(super.getGlobalObject());
+        this.#sampleCountSetter = this.paramMediator.allocateSetter(
+            SAMPLE_COUNT_VARIABLE,
+            0,
+            true
+        );
 
         const xChannelDef = this.view.getEncoding()["x"];
         if (isFieldDef(xChannelDef)) {
@@ -104,8 +108,12 @@ export default class MergeSampleFacets extends FlowNode {
         return this.view.isConfiguredVisible();
     }
 
-    getGlobalObject() {
-        return this.contextObject;
+    /**
+     * @returns {import("@genome-spy/core/view/paramMediator.js").default}
+     * @protected
+     */
+    get paramMediator() {
+        return this.view.paramMediator;
     }
 
     _getCollector() {
@@ -141,8 +149,7 @@ export default class MergeSampleFacets extends FlowNode {
             const group = peek(groupPath);
 
             if (isSampleGroup(group)) {
-                this.contextObject[SAMPLE_COUNT_VARIABLE] =
-                    group.samples.length;
+                this.#sampleCountSetter(group.samples.length);
 
                 this.beginBatch({ type: "facet", facetId: [i] });
 

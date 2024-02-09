@@ -82,10 +82,11 @@ export default class ParamMediator {
      *
      * @param {string} paramName
      * @param {T} initialValue
+     * @param {boolean} [passive] If true, the setter will not notify listeners when the value changes.
      * @returns {(value: T) => void}
      * @template T
      */
-    allocateSetter(paramName, initialValue) {
+    allocateSetter(paramName, initialValue, passive = false) {
         if (this.#allocatedSetters.has(paramName)) {
             throw new Error(
                 "Setter already allocated for parameter: " + paramName
@@ -99,7 +100,7 @@ export default class ParamMediator {
                 this.#paramValues.set(paramName, value);
 
                 const listeners = this.paramListeners.get(paramName);
-                if (listeners) {
+                if (listeners && !passive) {
                     for (const listener of listeners) {
                         listener();
                     }
