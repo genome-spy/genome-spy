@@ -67,6 +67,10 @@ const css = `
 .genome-spy .loading-indicators div > div.loading {
   opacity: 0.5;
 }
+.genome-spy .loading-indicators div > div.error {
+  opacity: 0.8;
+  color: firebrick;
+}
 .genome-spy .loading-indicators div > div > * {
   display: block;
 }

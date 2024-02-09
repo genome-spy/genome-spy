@@ -55,7 +55,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
     }
 
     #initialize() {
-        this.initializedPromise = new Promise((resolve) => {
+        this.initializedPromise = new Promise((resolve, reject) => {
             Promise.all([
                 import("@gmod/bbi"),
                 import("generic-filehandle"),
@@ -69,20 +69,30 @@ export default class BigWigSource extends SingleAxisWindowedSource {
                     ),
                 });
 
-                this.#bbi.getHeader().then((header) => {
-                    this.#reductionLevels =
-                        /** @type {{reductionLevel: number}[]} */ (
-                            header.zoomLevels
-                        )
-                            .map((z) => z.reductionLevel)
-                            .reverse();
+                this.setLoadingStatus("loading");
+                this.#bbi
+                    .getHeader()
+                    .then((header) => {
+                        this.#reductionLevels =
+                            /** @type {{reductionLevel: number}[]} */ (
+                                header.zoomLevels
+                            )
+                                .map((z) => z.reductionLevel)
+                                .reverse();
 
-                    // Add the non-reduced level. Not sure if this is the best way to do it.
-                    // Afaik, the non-reduced bin size is not available in the header.
-                    this.#reductionLevels.push(1);
+                        // Add the non-reduced level. Not sure if this is the best way to do it.
+                        // Afaik, the non-reduced bin size is not available in the header.
+                        this.#reductionLevels.push(1);
 
-                    resolve();
-                });
+                        this.setLoadingStatus("complete");
+                        resolve();
+                    })
+                    .catch((e) => {
+                        // Load empty data
+                        this.load();
+                        this.setLoadingStatus("error");
+                        reject(e);
+                    });
             });
         });
 

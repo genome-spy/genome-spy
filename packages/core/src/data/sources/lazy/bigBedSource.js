@@ -72,6 +72,7 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                     ),
                 });
 
+                this.setLoadingStatus("loading");
                 this.bbi
                     .getHeader()
                     .then(async (header) => {
@@ -88,11 +89,13 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                                 );
                         }
 
+                        this.setLoadingStatus("complete");
                         resolve();
                     })
                     .catch((e) => {
                         // Load empty data
                         this.load();
+                        this.setLoadingStatus("error");
                         reject(e);
                     });
             });

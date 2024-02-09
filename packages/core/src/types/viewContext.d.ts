@@ -18,6 +18,8 @@ export interface Hover {
     datum: Datum;
 }
 
+export type DataLoadingStatus = "loading" | "complete" | "error";
+
 /**
  * ViewContext provides essential data and interfaces to View classes.
  */
@@ -74,9 +76,9 @@ export default interface ViewContext {
      * The status is shown in the UI somewhere within or near the view.
      *
      * @param view The view where the data source is located.
-     * @param status true if loading, false if not loading.
+     * @param status
      */
-    setDataLoadingStatus: (view: View, status: boolean) => void;
+    setDataLoadingStatus: (view: View, status: DataLoadingStatus) => void;
 
     /**
      * Returns true if the view is configured to be visible.

@@ -88,6 +88,11 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
                     opacity: 0.5;
                 }
 
+                &.error {
+                    opacity: 0.8;
+                    color: firebrick;
+                }
+
                 > * {
                     display: block;
                 }

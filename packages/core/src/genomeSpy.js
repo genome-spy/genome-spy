@@ -139,7 +139,7 @@ export default class GenomeSpy {
         /**
          * Views that are currently loading data using lazy sources.
          *
-         * @type {Map<View, boolean>}
+         * @type {Map<View, import("./types/viewContext.js").DataLoadingStatus>}
          */
         this._loadingViews = new Map();
 
@@ -250,7 +250,9 @@ export default class GenomeSpy {
         const indicators = [];
 
         const isSomethingVisible = () =>
-            [...this._loadingViews.values()].some((v) => v);
+            [...this._loadingViews.values()].some(
+                (v) => v == "loading" || v == "error"
+            );
 
         for (const [view, status] of this._loadingViews) {
             const c = view.coords;
@@ -263,9 +265,13 @@ export default class GenomeSpy {
                 };
                 indicators.push(
                     html`<div style=${styleMap(style)}>
-                        <div class=${status ? "loading" : ""}>
-                            <img src="${SPINNER}" alt="" />
-                            <span>Loading...</span>
+                        <div class=${status}>
+                            ${status == "error"
+                                ? html`<span>Loading failed</span>`
+                                : html`
+                                      <img src="${SPINNER}" alt="" />
+                                      <span>Loading...</span>
+                                  `}
                         </div>
                     </div>`
                 );
@@ -274,6 +280,7 @@ export default class GenomeSpy {
 
         // Do some hacks to stop css animations of the loading indicators.
         // Otherwise they fire animation frames even when their opacity is zero.
+        // TODO: Instead of this, replace the animated spinners with static images.
         if (isSomethingVisible()) {
             this.loadingIndicatorsElement.style.display = "block";
         } else {
