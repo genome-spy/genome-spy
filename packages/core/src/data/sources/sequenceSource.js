@@ -19,7 +19,8 @@ export default class SequenceSource extends DataSource {
      * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
-        super();
+        super(view);
+
         this.sequence = activateExprRefProps(
             view.paramMediator,
             params.sequence,

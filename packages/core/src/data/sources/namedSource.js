@@ -22,7 +22,7 @@ export default class NamedSource extends DataSource {
      * @param {function(string):any[]} provider Function that retrieves a dataset using a name
      */
     constructor(params, view, provider) {
-        super();
+        super(view);
 
         this.provider = provider;
         this.params = params;

@@ -77,8 +77,13 @@ export default interface ViewContext {
      *
      * @param view The view where the data source is located.
      * @param status
+     * @param detail Details about the error, if any.
      */
-    setDataLoadingStatus: (view: View, status: DataLoadingStatus) => void;
+    setDataLoadingStatus: (
+        view: View,
+        status: DataLoadingStatus,
+        detail?: string
+    ) => void;
 
     /**
      * Returns true if the view is configured to be visible.

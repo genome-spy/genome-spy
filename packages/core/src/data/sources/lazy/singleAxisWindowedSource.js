@@ -135,7 +135,7 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
         } catch (e) {
             if (!signal.aborted) {
                 // TODO: Nice reporting of errors
-                this.setLoadingStatus("error");
+                this.setLoadingStatus("error", e.message);
                 throw e;
             }
         }

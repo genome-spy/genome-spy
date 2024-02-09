@@ -90,7 +90,10 @@ export default class BigWigSource extends SingleAxisWindowedSource {
                     .catch((e) => {
                         // Load empty data
                         this.load();
-                        this.setLoadingStatus("error");
+                        this.setLoadingStatus(
+                            "error",
+                            `${withoutExprRef(this.params.url)}: ${e.message}`
+                        );
                         reject(e);
                     });
             });

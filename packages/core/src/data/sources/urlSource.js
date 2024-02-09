@@ -20,7 +20,7 @@ export default class UrlSource extends DataSource {
      * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
-        super();
+        super(view);
 
         this.params = activateExprRefProps(view.paramMediator, params, () =>
             this.load()
@@ -55,9 +55,7 @@ export default class UrlSource extends DataSource {
                     .load(url)
                     .catch((/** @type {Error} */ e) => {
                         // TODO: Include baseurl in the error message. Should be normalized, however.
-                        throw new Error(
-                            `Cannot fetch: ${this.baseUrl}${url}: ${e.message}`
-                        );
+                        throw new Error(`${url}: ${e.message}`);
                     })
             );
 
@@ -78,9 +76,15 @@ export default class UrlSource extends DataSource {
             }
         };
 
+        this.setLoadingStatus("loading");
         this.reset();
 
-        await Promise.all(urls.map((url) => load(url).then(readAndParse)));
+        try {
+            await Promise.all(urls.map((url) => load(url).then(readAndParse)));
+            this.setLoadingStatus("complete");
+        } catch (e) {
+            this.setLoadingStatus("error", e.message);
+        }
 
         this.complete();
     }

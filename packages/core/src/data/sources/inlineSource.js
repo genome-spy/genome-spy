@@ -16,7 +16,7 @@ export default class InlineSource extends DataSource {
      * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
-        super();
+        super(view);
 
         this.params = params;
 

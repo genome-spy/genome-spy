@@ -17,9 +17,7 @@ export default class SingleAxisLazySource extends DataSource {
      * @param {import("../../../spec/channel.js").PrimaryPositionalChannel} channel
      */
     constructor(view, channel) {
-        super();
-
-        this.view = view;
+        super(view);
 
         if (!channel) {
             throw new Error(
@@ -100,16 +98,6 @@ export default class SingleAxisLazySource extends DataSource {
      */
     onDomainChanged(domain, complexDomain) {
         // Override me
-    }
-
-    /**
-     * Sets the loading status of the data source. The status is shown in the UI.
-     *
-     * @param {import("../../../types/viewContext.js").DataLoadingStatus} status
-     * @protected
-     */
-    setLoadingStatus(status) {
-        this.view.context.setDataLoadingStatus(this.view, status);
     }
 
     /**

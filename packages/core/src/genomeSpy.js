@@ -1,5 +1,5 @@
 import { formats as vegaFormats } from "vega-loader";
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import SPINNER from "./img/90-ring-with-bg.svg";
 
@@ -139,7 +139,7 @@ export default class GenomeSpy {
         /**
          * Views that are currently loading data using lazy sources.
          *
-         * @type {Map<View, import("./types/viewContext.js").DataLoadingStatus>}
+         * @type {Map<View, { status: import("./types/viewContext.js").DataLoadingStatus, detail?: string }>}
          */
         this._loadingViews = new Map();
 
@@ -251,7 +251,7 @@ export default class GenomeSpy {
 
         const isSomethingVisible = () =>
             [...this._loadingViews.values()].some(
-                (v) => v == "loading" || v == "error"
+                (v) => v.status == "loading" || v.status == "error"
             );
 
         for (const [view, status] of this._loadingViews) {
@@ -265,9 +265,14 @@ export default class GenomeSpy {
                 };
                 indicators.push(
                     html`<div style=${styleMap(style)}>
-                        <div class=${status}>
-                            ${status == "error"
-                                ? html`<span>Loading failed</span>`
+                        <div class=${status.status}>
+                            ${status.status == "error"
+                                ? html`<span
+                                      >Loading
+                                      failed${status.detail
+                                          ? html`: ${status.detail}`
+                                          : nothing}</span
+                                  >`
                                 : html`
                                       <img src="${SPINNER}" alt="" />
                                       <span>Loading...</span>
@@ -444,8 +449,8 @@ export default class GenomeSpy {
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () => this._currentHover,
 
-            setDataLoadingStatus: (view, status) => {
-                this._loadingViews.set(view, status);
+            setDataLoadingStatus: (view, status, detail) => {
+                this._loadingViews.set(view, { status, detail });
                 this._updateLoadingIndicators();
             },
 
@@ -926,6 +931,10 @@ export default class GenomeSpy {
             // Canvas should now be sized based on the root view or the container
             Rectangle.create(0, 0, canvasSize.width, canvasSize.height)
         );
+
+        // The view coordinates may have not been known during the initial data loading.
+        // Thus, update them so that possible error messages are shown in the correct place.
+        this._updateLoadingIndicators();
 
         this.broadcast("layoutComputed");
     }
