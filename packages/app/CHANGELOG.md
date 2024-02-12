@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.46.0](https://github.com/genome-spy/genome-spy/compare/v0.45.0...v0.46.0) (2024-02-12)
+
+
+### Bug Fixes
+
+* **app:** `aggregateSamples` without an extra layer ([413b32e](https://github.com/genome-spy/genome-spy/commit/413b32e8b61f6c7e243b42b48d8ad2f6647bba28)), closes [#233](https://github.com/genome-spy/genome-spy/issues/233)
+
+
+### Features
+
+* **core:** support params in filter and formula transforms ([11d9626](https://github.com/genome-spy/genome-spy/commit/11d9626d60dbe400ed4e280bedeff796759e223c))
+
+
+
+
+
 # [0.45.0](https://github.com/genome-spy/genome-spy/compare/v0.44.0...v0.45.0) (2024-02-08)
 
 

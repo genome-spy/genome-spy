@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.46.0](https://github.com/genome-spy/genome-spy/compare/v0.45.0...v0.46.0) (2024-02-12)
+
+
+### Bug Fixes
+
+* **app:** `aggregateSamples` without an extra layer ([413b32e](https://github.com/genome-spy/genome-spy/commit/413b32e8b61f6c7e243b42b48d8ad2f6647bba28)), closes [#233](https://github.com/genome-spy/genome-spy/issues/233)
+* **core:** allow `undefined` in expressions ([d2334c9](https://github.com/genome-spy/genome-spy/commit/d2334c96b8bfeaf3e4afd31a6c9a9982f30c91ce))
+* **core:** properly reset RangeMap entries when Collector receives an empty dataset ([494423f](https://github.com/genome-spy/genome-spy/commit/494423f5323481deb5848d7a3391e743cced651c))
+
+
+### Features
+
+* **core:** change the way import params are defined ([17d4e05](https://github.com/genome-spy/genome-spy/commit/17d4e0512f5b02d322744d0216448af9ea924c4b))
+* **core:** import templates defined within the specification ([6877b15](https://github.com/genome-spy/genome-spy/commit/6877b1592afea0d61e4890c7760cb9c9cdf3d932))
+* **core:** show error indicator for failed lazy data loading ([74248c7](https://github.com/genome-spy/genome-spy/commit/74248c70001fab1b599a3c6008215715ee2669bf))
+* **core:** show loading indicator for `UrlSource` ([1b583fe](https://github.com/genome-spy/genome-spy/commit/1b583fe99025e89c7160c83e29556c252d437183))
+* **core:** support params in filter and formula transforms ([11d9626](https://github.com/genome-spy/genome-spy/commit/11d9626d60dbe400ed4e280bedeff796759e223c))
+
+
+
+
+
 # [0.45.0](https://github.com/genome-spy/genome-spy/compare/v0.44.0...v0.45.0) (2024-02-08)
 
 
