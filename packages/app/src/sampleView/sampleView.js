@@ -811,22 +811,19 @@ export default class SampleView extends ContainerView {
             if (!isAggregateSamplesSpec(spec)) {
                 continue;
             }
-            for (const sumSpec of spec.aggregateSamples) {
-                const transform = sumSpec.transform ?? [];
-                if (transform.length && transform.at(-1).type != "collect") {
-                    // MergeFacets must be a direct child of Collector
-                    transform.push({ type: "collect" });
-                }
-                transform.push({ type: "mergeFacets" });
-                sumSpec.transform = transform;
+            for (const aggSpec of spec.aggregateSamples) {
+                aggSpec.transform = [
+                    { type: "mergeFacets" },
+                    ...(aggSpec.transform ?? []),
+                ];
 
-                sumSpec.encoding = {
-                    ...(sumSpec.encoding ?? {}),
+                aggSpec.encoding = {
+                    ...(aggSpec.encoding ?? {}),
                     sample: null,
                 };
 
                 const summaryView = /** @type { UnitView | LayerView } */ (
-                    this.context.createView(sumSpec, this, view, "summaryView")
+                    this.context.createView(aggSpec, this, view, "summaryView")
                 );
                 if (summaryView instanceof ContainerView) {
                     await summaryView.initializeChildren();
