@@ -151,6 +151,7 @@ export function findEncodedFields(view) {
  * @param {import("../spec/view.js").ImportSpec} spec
  * @param {string} baseUrl
  * @param {import("../types/viewContext.js").default} viewContext
+ * @returns {Promise<import("../spec/view.js").ViewSpec>}
  */
 export async function loadExternalViewSpec(spec, baseUrl, viewContext) {
     if (!spec.import.url) {

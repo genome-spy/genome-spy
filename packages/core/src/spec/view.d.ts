@@ -165,7 +165,7 @@ export interface AggregateSamplesSpec {
 
 export interface LayerSpec extends ViewSpecBase, AggregateSamplesSpec {
     view?: ViewBackground;
-    layer: (LayerSpec | UnitSpec)[];
+    layer: (LayerSpec | UnitSpec | ImportSpec)[];
 }
 
 export interface FacetSpec extends ViewSpecBase {
@@ -220,9 +220,12 @@ export type ViewSpec =
 
 export interface ImportParams {
     url?: string;
+}
 
+export interface ImportSpec {
     /**
-     * Name for the imported view. Overrides the name defined in the imported spec.
+     * The name given to the imported view. This property overrides the name
+     * specified in the imported spec.
      */
     name?: string;
 
@@ -231,9 +234,7 @@ export interface ImportParams {
      * override the parameters defined in the imported spec.
      */
     params?: VariableParameter[] | Record<string, any>;
-}
 
-export interface ImportSpec {
     import: ImportParams;
 }
 

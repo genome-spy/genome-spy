@@ -149,17 +149,17 @@ export class ViewFactory {
 
         if (isImportSpec(spec)) {
             if (this.options.allowImport) {
-                viewSpec = await loadExternalViewSpec(
+                const importedSpec = await loadExternalViewSpec(
                     spec,
                     dataParent.getBaseUrl(),
                     context
                 );
 
-                if (validator) {
-                    validator(viewSpec);
-                }
+                validator?.(importedSpec);
 
-                applyParamsToImportedSpec(viewSpec, spec.import);
+                applyParamsToImportedSpec(importedSpec, spec);
+
+                viewSpec = importedSpec;
             } else {
                 throw new ViewError(
                     "Importing views is not allowed!",
@@ -200,19 +200,18 @@ export class ViewFactory {
 }
 
 /**
- *
  * @param {ViewSpec} importedSpec
- * @param {import("../spec/view.js").ImportParams} importParams
+ * @param {import("../spec/view.js").ImportSpec} importSpec
  */
-function applyParamsToImportedSpec(importedSpec, importParams) {
-    if (importParams.name != null) {
-        importedSpec.name = importParams.name;
+function applyParamsToImportedSpec(importedSpec, importSpec) {
+    if (importSpec.name != null) {
+        importedSpec.name = importSpec.name;
     }
 
-    const params = isArray(importParams.params)
-        ? importParams.params
-        : isObject(importParams.params)
-        ? Object.entries(importParams.params).map(([name, value]) => ({
+    const params = isArray(importSpec.params)
+        ? importSpec.params
+        : isObject(importSpec.params)
+        ? Object.entries(importSpec.params).map(([name, value]) => ({
               name,
               value,
           }))
