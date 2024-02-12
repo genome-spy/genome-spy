@@ -68,6 +68,7 @@ export default class MergeSampleFacets extends FlowNode {
                 this.reset();
                 this._mergeAndPropagate(sampleHierarchySelector(state));
                 this.complete();
+                this.#updateScales();
             });
         });
     }
@@ -132,9 +133,12 @@ export default class MergeSampleFacets extends FlowNode {
             this._mergeAndPropagate(
                 this.provenance.getPresentState()[SAMPLE_SLICE_NAME]
             );
-        }
 
-        super.complete();
+            super.complete();
+            this.#updateScales();
+        } else {
+            super.complete();
+        }
     }
 
     /**
@@ -168,8 +172,6 @@ export default class MergeSampleFacets extends FlowNode {
                 );
             }
         }
-
-        this._updateScales();
     }
 
     /**
@@ -182,7 +184,7 @@ export default class MergeSampleFacets extends FlowNode {
         // TODO: Validate that the parent is a collector
     }
 
-    _updateScales() {
+    #updateScales() {
         /** @type {Set<import("@genome-spy/core/view/scaleResolution.js").default>} */
         const resolutions = new Set();
         this.view.visit((view) => {
