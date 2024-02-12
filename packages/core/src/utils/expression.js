@@ -49,7 +49,7 @@ function buildFunctions(codegen) {
 
 const cg = codegenExpression({
     forbidden: [],
-    allowed: ["datum"],
+    allowed: ["datum", "undefined"],
     globalvar: "globalObject",
     fieldvar: "datum",
     functions: buildFunctions,
