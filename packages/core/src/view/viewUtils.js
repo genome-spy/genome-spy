@@ -31,15 +31,6 @@ export function isFacetMapping(def) {
 }
 
 /**
- *
- * @param {object} config
- * @returns {config is ImportConfig}
- */
-export function isImportConfig(config) {
-    return "name" in config || "url" in config;
-}
-
-/**
  * Returns all marks in the order (DFS) they are rendered
  * @param {View} root
  */
@@ -154,32 +145,31 @@ export function findEncodedFields(view) {
  * @returns {Promise<import("../spec/view.js").ViewSpec>}
  */
 export async function loadExternalViewSpec(spec, baseUrl, viewContext) {
-    if (!spec.import.url) {
-        throw new Error(
-            "Cannot import, not an import spec: " + JSON.stringify(spec)
+    const importParam = spec.import;
+    if ("url" in importParam) {
+        const loader = vegaLoader({ baseURL: baseUrl });
+        const url = importParam.url;
+
+        const importedSpec = JSON.parse(
+            await loader.load(url).catch((/** @type {Error} */ e) => {
+                throw new Error(
+                    `Could not load imported view spec: ${url} \nReason: ${e.message}`
+                );
+            })
         );
-    }
 
-    const loader = vegaLoader({ baseURL: baseUrl });
-    const url = spec.import.url;
-
-    const importedSpec = JSON.parse(
-        await loader.load(url).catch((/** @type {Error} */ e) => {
+        if (viewContext.isViewSpec(importedSpec)) {
+            importedSpec.baseUrl = url.match(/^[^?#]*\//)?.[0];
+            return importedSpec;
+        } else {
             throw new Error(
-                `Could not load imported view spec: ${url} \nReason: ${e.message}`
+                `The imported spec "${url}" is not a view spec: ${JSON.stringify(
+                    spec
+                )}`
             );
-        })
-    );
-
-    if (viewContext.isViewSpec(importedSpec)) {
-        importedSpec.baseUrl = url.match(/^[^?#]*\//)?.[0];
-        return importedSpec;
+        }
     } else {
-        throw new Error(
-            `The imported spec "${url}" is not a view spec: ${JSON.stringify(
-                spec
-            )}`
-        );
+        throw new Error("Not an url import: " + JSON.stringify(importParam));
     }
 }
 

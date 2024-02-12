@@ -151,6 +151,12 @@ export interface ViewSpecBase extends ResolveSpec {
      * **Default:** `false` for children of `layer`, `true` for others.
      */
     configurableVisibility?: boolean;
+
+    /**
+     * Templates that can be reused within the view specification by importing
+     * them with the template key.
+     */
+    templates?: Record<string, ViewSpec>;
 }
 
 export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
@@ -218,8 +224,12 @@ export type ViewSpec =
     | ConcatSpec
     | SampleSpec;
 
-export interface ImportParams {
-    url?: string;
+export interface UrlImport {
+    url: string;
+}
+
+export interface TemplateImport {
+    template: string;
 }
 
 export interface ImportSpec {
@@ -235,7 +245,7 @@ export interface ImportSpec {
      */
     params?: VariableParameter[] | Record<string, any>;
 
-    import: ImportParams;
+    import: UrlImport | TemplateImport;
 }
 
 export interface ConcatBase extends ViewSpecBase {

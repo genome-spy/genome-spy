@@ -13,7 +13,7 @@ export const VIEW_ROOT_NAME = "viewRoot";
 
 /**
  * @typedef {object} ViewFactoryOptions
- * @property {boolean} [allowImport]
+ * @property {boolean} [allowImport] allows imports from urls
  * @property {boolean} [wrapRoot]
  */
 
@@ -148,24 +148,33 @@ export class ViewFactory {
         let viewSpec;
 
         if (isImportSpec(spec)) {
-            if (this.options.allowImport) {
-                const importedSpec = await loadExternalViewSpec(
-                    spec,
-                    dataParent.getBaseUrl(),
-                    context
-                );
+            /** @type {ViewSpec} */
+            let importedSpec;
 
-                validator?.(importedSpec);
-
-                applyParamsToImportedSpec(importedSpec, spec);
-
-                viewSpec = importedSpec;
+            if ("url" in spec.import) {
+                if (this.options.allowImport) {
+                    importedSpec = await loadExternalViewSpec(
+                        spec,
+                        dataParent.getBaseUrl(),
+                        context
+                    );
+                } else {
+                    throw new ViewError(
+                        "Importing views is not allowed!",
+                        layoutParent
+                    );
+                }
+            } else if ("template" in spec.import) {
+                importedSpec = findTemplate(spec.import.template, dataParent);
             } else {
-                throw new ViewError(
-                    "Importing views is not allowed!",
-                    layoutParent
-                );
+                throw new Error("Invalid import: " + JSON.stringify(spec));
             }
+
+            validator?.(importedSpec);
+
+            applyParamsToImportedSpec(importedSpec, spec);
+
+            viewSpec = importedSpec;
         } else {
             viewSpec = spec;
         }
@@ -196,6 +205,26 @@ export class ViewFactory {
         }
 
         return view;
+    }
+}
+
+/**
+ * @param {string} name
+ * @param {View} view Start searching from this view, then search within its parent, etc.
+ */
+function findTemplate(name, view) {
+    const template = view.spec?.templates?.[name];
+    if (template) {
+        // Ensure that the template is not altered
+        return structuredClone(template);
+    }
+
+    if (view.dataParent) {
+        return findTemplate(name, view.dataParent);
+    } else {
+        throw new Error(
+            `Cannot find template "${name}" in current view or its ancestors!`
+        );
     }
 }
 

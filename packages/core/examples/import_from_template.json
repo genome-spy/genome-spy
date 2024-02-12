@@ -1,0 +1,53 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Importing templates defined within the specification.",
+
+  "templates": {
+    "viz": {
+      "view": {
+        "stroke": "lightgray"
+      },
+
+      "title": {
+        "text": { "expr": "'Dataset: ' + dataset" },
+        "style": "overlay",
+        "fontSize": 20
+      },
+
+      "data": {
+        "url": {
+          "expr": "'data/' + dataset + '-table.csv'"
+        }
+      },
+
+      "mark": "point",
+
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "y",
+          "type": "quantitative"
+        }
+      }
+    }
+  },
+
+  "vconcat": [
+    {
+      "vconcat": [
+        {
+          "params": { "dataset": "sin" },
+          "import": { "template": "viz" }
+        },
+        {
+          "params": { "dataset": "cos" },
+          "import": { "template": "viz" }
+        }
+      ]
+    }
+  ]
+}
