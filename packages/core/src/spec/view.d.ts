@@ -124,6 +124,11 @@ export interface ViewSpecBase extends ResolveSpec {
      */
     description?: string | string[];
 
+    /**
+     * Optional base URL for constructing request URLs. When set, all views
+     * deeper in the hierarchy inherit this base URL, using it for importing
+     * loading data and importing specifications.
+     */
     baseUrl?: string;
 
     /**
@@ -225,43 +230,70 @@ export type ViewSpec =
     | SampleSpec;
 
 export interface UrlImport {
+    /**
+     * Imports a specification from the specified URL.
+     */
     url: string;
 }
 
 export interface TemplateImport {
+    /**
+     * Imports a specification from the current view hierarchy, searching
+     * first in the current view, then ascending through ancestors.
+     */
     template: string;
 }
 
 export interface ImportSpec {
     /**
      * The name given to the imported view. This property overrides the name
-     * specified in the imported spec.
+     * specified in the imported specification.
      */
     name?: string;
 
     /**
-     * Dynamic variables that parameterize a visualization. Parameters defined here
-     * override the parameters defined in the imported spec.
+     * Dynamic variables that parameterize a visualization. Parameters defined
+     * here override the parameters defined in the imported specification.
      */
     params?: VariableParameter[] | Record<string, any>;
 
+    /**
+     * The method to import a specification.
+     */
     import: UrlImport | TemplateImport;
 }
 
 export interface ConcatBase extends ViewSpecBase {
+    /**
+     * The gap between the views, in pixels.
+     */
     spacing?: number;
 }
 
 export interface VConcatSpec extends ConcatBase {
+    /**
+     * Specifies views that will be concatenated vertically.
+     */
     vconcat: (ViewSpec | ImportSpec)[];
 }
 
 export interface HConcatSpec extends ConcatBase {
+    /**
+     * Specifies views that will be concatenated horizontally.
+     */
     hconcat: (ViewSpec | ImportSpec)[];
 }
 
 export interface ConcatSpec extends ConcatBase {
+    /**
+     * Specifies views that will be concatenated into a grid that wraps when
+     * the specified number of columns are used.
+     */
     concat: (ViewSpec | ImportSpec)[];
+
+    /**
+     * The number of columns in the grid.
+     */
     columns: number;
 }
 
