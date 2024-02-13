@@ -19,17 +19,34 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
 export const BEHAVIOR_COLLECTS = 1 << 2;
 
 /**
+ * @typedef {{paramMediator: import("../view/paramMediator.js").default}} ParamMediatorProvider
+ */
+
+/**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
  *
  * @typedef {Record<string, any>} Datum
  * @typedef {Datum[]} Data
  */
 export default class FlowNode {
+    /**
+     * An object that provides a paramMediator. (Most likely a View)
+     *
+     * @type {ParamMediatorProvider}
+     * @protected
+     */
+    paramMediatorProvider = null;
+
     get behavior() {
         return 0;
     }
 
-    constructor() {
+    /**
+     * @param {ParamMediatorProvider} [paramMediatorProvider]
+     */
+    constructor(paramMediatorProvider) {
+        this.paramMediatorProvider = paramMediatorProvider;
+
         /** @type {FlowNode[]} */
         this.children = [];
 
@@ -250,6 +267,10 @@ export default class FlowNode {
      * @protected
      */
     get paramMediator() {
+        if (this.paramMediatorProvider) {
+            return this.paramMediatorProvider.paramMediator;
+        }
+
         if (!this.parent) {
             throw new Error("Cannot find paramMediator!");
         }

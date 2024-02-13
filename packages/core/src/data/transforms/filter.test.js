@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { processData } from "../flowTestUtils.js";
+import { makeParamMediatorProvider, processData } from "../flowTestUtils.js";
 import FilterTransform from "./filter.js";
 
 test.todo("Implement stub for ParamMediator");
@@ -13,12 +13,8 @@ test("FilterTransform filter rows", () => {
         expr: "datum.x > 3 && datum.x != 5",
     };
 
-    /* TODO: Enable this test, implement stub for ParamMediator
-
-    const t = new FilterTransform(filterParams);
+    const t = new FilterTransform(filterParams, makeParamMediatorProvider());
     t.initialize();
 
     expect(processData(t, data)).toEqual([4, 6].map((x) => ({ x })));
-
-    */
 });

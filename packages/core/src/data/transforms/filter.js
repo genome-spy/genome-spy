@@ -4,9 +4,11 @@ export default class FilterTransform extends FlowNode {
     /**
      *
      * @param {import("../../spec/transform.js").FilterParams} params
+     * @param {import("../flowNode.js").ParamMediatorProvider} paramMediatorProvider
      */
-    constructor(params) {
-        super();
+    constructor(params, paramMediatorProvider) {
+        super(paramMediatorProvider);
+
         this.params = params;
 
         /** @type {import("../../view/paramMediator.js").ExprRefFunction} */

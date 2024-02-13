@@ -1,5 +1,16 @@
+import ParamMediator from "../view/paramMediator.js";
 import Collector from "./collector.js";
 import FlowNode from "./flowNode.js";
+
+/**
+ *
+ * @returns {import("./flowNode.js").ParamMediatorProvider}
+ */
+export function makeParamMediatorProvider() {
+    return {
+        paramMediator: new ParamMediator(),
+    };
+}
 
 /**
  *
