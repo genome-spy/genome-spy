@@ -64,7 +64,7 @@ export default class FlowNode {
      * Dynamically updates the propagator method to allow the JavaScript engine
      * to employ optimizations such as inlining.
      */
-    _updatePropagator() {
+    #updatePropagator() {
         this._propagate = Function(
             "children",
             range(this.children.length)
@@ -94,7 +94,7 @@ export default class FlowNode {
         }
         this.children.push(child);
         child.setParent(this);
-        this._updatePropagator();
+        this.#updatePropagator();
         return this;
     }
 
@@ -129,7 +129,7 @@ export default class FlowNode {
 
         newParent.parent = this.parent;
         this.parent.children[this.parent.children.indexOf(this)] = newParent;
-        this.parent._updatePropagator();
+        this.parent.#updatePropagator();
         this.parent = undefined;
         newParent.addChild(this);
     }
@@ -143,7 +143,7 @@ export default class FlowNode {
         if (index > -1) {
             this.children.splice(index, 1);
             child.parent = undefined;
-            this._updatePropagator();
+            this.#updatePropagator();
         } else {
             throw new Error("Trying to remove an unknown child node!");
         }
@@ -162,7 +162,7 @@ export default class FlowNode {
             const child = this.children[0];
             child.setParent(this.parent);
             this.parent.children[this.parent.children.indexOf(this)] = child;
-            this.parent._updatePropagator();
+            this.parent.#updatePropagator();
             this.setParent(undefined);
             this.children.length = 0;
         } else {
@@ -259,6 +259,7 @@ export default class FlowNode {
     /**
      * Repropagates the stored data. If this node has no stored data,
      * find the nearest ancestor that has and repropagate from there.
+     * @protected
      */
     repropagate() {
         if (this.parent) {
@@ -273,6 +274,7 @@ export default class FlowNode {
     /**
      *
      * @param {any} datum
+     * @protected
      */
     _propagate(datum) {
         // Implementation is set dynamically in add/removeChild
