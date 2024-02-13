@@ -17,6 +17,10 @@ export default class CoverageTransform extends FlowNode {
     }
 
     /**
+     * @typedef {import("../flowNode.js").Datum} Datum
+     */
+
+    /**
      * @param {import("../../spec/transform.js").CoverageParams} params
      */
     constructor(params) {
@@ -34,30 +38,30 @@ export default class CoverageTransform extends FlowNode {
         this.weightAccessor = params.weight ? field(params.weight) : (d) => 1;
 
         this.as = {
-            coverage: params.as || "coverage",
-            start: params.asStart || params.start,
-            end: params.asEnd || params.end,
-            chrom: params.asChrom || params.chrom,
+            coverage: params.as ?? "coverage",
+            start: params.asStart ?? params.start,
+            end: params.asEnd ?? params.end,
+            chrom: params.asChrom ?? params.chrom,
         };
 
-        // eslint-disable-next-line no-new-func
-        this.createSegment = /** @type {function} */ (
-            new Function(
-                "start",
-                "end",
-                "coverage",
-                "chrom",
-                "return {" +
-                    Object.entries(this.as)
-                        .filter(([param, prop]) => prop)
-                        .map(
-                            ([param, prop]) =>
-                                `${JSON.stringify(prop)}: ${param}`
-                        )
-                        .join(", ") +
-                    "};"
-            )
-        );
+        this.createSegment =
+            /** @type {(start: Number, end: Number, coverage: Number, chrom?: string) => Datum} */ (
+                new Function(
+                    "start",
+                    "end",
+                    "coverage",
+                    "chrom",
+                    "return {" +
+                        Object.entries(this.as)
+                            .filter(([param, prop]) => prop)
+                            .map(
+                                ([param, prop]) =>
+                                    `${JSON.stringify(prop)}: ${param}`
+                            )
+                            .join(", ") +
+                        "};"
+                )
+            );
 
         /**
          * End pos as priority, weight as value
@@ -82,7 +86,7 @@ export default class CoverageTransform extends FlowNode {
         const chromAccessor = this.chromAccessor;
         const weightAccessor = this.weightAccessor;
 
-        /** @type {import("../flowNode.js").Datum} used for merging adjacent segment */
+        /** @type {Datum} used for merging adjacent segment */
         let bufferedSegment;
 
         /** @type {string} */
@@ -96,11 +100,19 @@ export default class CoverageTransform extends FlowNode {
         let coverage = 0;
 
         /** @type {number} */
-        let prevEdge;
+        let prevEdge = NaN;
 
         /** End pos as priority, weight as value */
         const ends = this.ends;
         ends.clear();
+
+        /**
+         * @param {Datum} segment
+         */
+        const propagate = (segment) => {
+            this._propagate(segment);
+            bufferedSegment = null;
+        };
 
         /**
          * @param {number} start
@@ -119,7 +131,7 @@ export default class CoverageTransform extends FlowNode {
                     bufferedSegment[asEnd] = end;
                     extended = true;
                 } else if (bufferedSegment[asCoverage] != 0) {
-                    this._propagate(bufferedSegment);
+                    propagate(bufferedSegment);
                 }
             }
 
@@ -140,15 +152,16 @@ export default class CoverageTransform extends FlowNode {
                 prevEdge = edge;
                 coverage -= ends.pop();
             }
-            prevEdge = undefined;
+            prevEdge = NaN;
 
             if (bufferedSegment) {
-                this._propagate(bufferedSegment);
-                bufferedSegment = undefined;
+                propagate(bufferedSegment);
             }
         };
 
-        /** @param {Record<string, any>} datum */
+        /**
+         * @param {Datum} datum
+         */
         this.handle = (datum) => {
             const start = startAccessor(datum);
 
@@ -168,7 +181,7 @@ export default class CoverageTransform extends FlowNode {
                 }
             }
 
-            if (prevEdge !== undefined) {
+            if (!isNaN(prevEdge)) {
                 pushSegment(prevEdge, start, coverage);
             }
             prevEdge = start;
@@ -189,7 +202,7 @@ export default class CoverageTransform extends FlowNode {
          */
         this.beginBatch = (flowBatch) => {
             flushQueue();
-            prevChrom = undefined;
+            prevChrom = null;
             super.beginBatch(flowBatch);
         };
     }
