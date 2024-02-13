@@ -2,7 +2,6 @@ import { isFieldDef } from "@genome-spy/core/encoder/encoder.js";
 import {
     isSampleGroup,
     iterateGroupHierarchy,
-    sampleHierarchySelector,
     SAMPLE_SLICE_NAME,
 } from "./sampleSlice.js";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
@@ -66,9 +65,8 @@ export default class MergeSampleFacets extends FlowNode {
             // TODO: Figure out a cleaner way to do this.
             animator.requestTransition(() => {
                 this.reset();
-                this._mergeAndPropagate(sampleHierarchySelector(state));
+                // complete calls mergeAndPropagate
                 this.complete();
-                this.#updateScales();
             });
         });
     }
@@ -117,7 +115,7 @@ export default class MergeSampleFacets extends FlowNode {
         return this.view.paramMediator;
     }
 
-    _getCollector() {
+    #getCollector() {
         if (this.parent instanceof Collector) {
             // TODO: Ensure that the collector has proper groupbys
             return this.parent;
@@ -130,7 +128,7 @@ export default class MergeSampleFacets extends FlowNode {
 
     complete() {
         if (this.#shouldUpdate) {
-            this._mergeAndPropagate(
+            this.#mergeAndPropagate(
                 this.provenance.getPresentState()[SAMPLE_SLICE_NAME]
             );
 
@@ -144,7 +142,7 @@ export default class MergeSampleFacets extends FlowNode {
     /**
      * @param {import("./sampleSlice.js").SampleHierarchy} sampleHierarchy
      */
-    _mergeAndPropagate(sampleHierarchy) {
+    #mergeAndPropagate(sampleHierarchy) {
         const groupPaths = [
             ...iterateGroupHierarchy(sampleHierarchy.rootGroup),
         ].filter((path) => isSampleGroup(peek(path)));
@@ -155,10 +153,10 @@ export default class MergeSampleFacets extends FlowNode {
             if (isSampleGroup(group)) {
                 this.#sampleCountSetter(group.samples.length);
 
-                this.beginBatch({ type: "facet", facetId: [i] });
+                this.beginBatch({ type: "facet", facetId: [i] }, true);
 
                 const samples = group.samples;
-                const collector = this._getCollector();
+                const collector = this.#getCollector();
 
                 // TODO: Only merge and propagate if the sets of samples change.
                 // Computation is unnecessary when data is just sorted.
@@ -171,6 +169,24 @@ export default class MergeSampleFacets extends FlowNode {
                     this.xAccessor
                 );
             }
+        }
+    }
+
+    /**
+     * Signals that a new batch of data will be propagated.
+     *
+     * @param {import("@genome-spy/core/types/flowBatch.js").FlowBatch} flowBatch
+     * @param {boolean} [force]
+     */
+    beginBatch(flowBatch, force) {
+        if (!force) {
+            // Stop all batch propagations coming from ancestors, as this
+            // transform creates its own facet batches - one for each sample group.
+            return;
+        }
+
+        for (const child of this.children) {
+            child.beginBatch(flowBatch);
         }
     }
 
