@@ -151,9 +151,11 @@ export default class MergeSampleFacets extends FlowNode {
             const group = peek(groupPath);
 
             if (isSampleGroup(group)) {
-                this.#sampleCountSetter(group.samples.length);
-
                 this.beginBatch({ type: "facet", facetId: [i] }, true);
+
+                // Sample count must be set AFTER beginBatch, as downstream nodes
+                // may buffer the data and flush it only when a new batch begins.
+                this.#sampleCountSetter(group.samples.length);
 
                 const samples = group.samples;
                 const collector = this.#getCollector();
