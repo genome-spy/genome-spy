@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.46.1](https://github.com/genome-spy/genome-spy/compare/v0.46.0...v0.46.1) (2024-02-13)
+
+
+### Bug Fixes
+
+* **core:** param scopes in `formula` and `filter` transforms ([4a4c3f3](https://github.com/genome-spy/genome-spy/commit/4a4c3f305a6b9b23ac2a99cc367a401e41581a81))
+
+
+### Performance Improvements
+
+* **core:** optimize `coverage` transform a bit ([25c7375](https://github.com/genome-spy/genome-spy/commit/25c737519f9ab0de06de6d8a2e95aee2572f3f5c))
+
+
+
+
+
 # [0.46.0](https://github.com/genome-spy/genome-spy/compare/v0.45.0...v0.46.0) (2024-02-12)
 
 

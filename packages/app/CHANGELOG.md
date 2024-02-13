@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.46.1](https://github.com/genome-spy/genome-spy/compare/v0.46.0...v0.46.1) (2024-02-13)
+
+
+### Bug Fixes
+
+* **app:** `mergeFacets` transform correctly updates data-based domains ([7a3f5d5](https://github.com/genome-spy/genome-spy/commit/7a3f5d59f2bb2197f75a363b6ebc3a992b901b4e))
+* **app:** `sampleCount` in `mergeFacets` had an incorrect value at certain circumstances ([d2ae3f0](https://github.com/genome-spy/genome-spy/commit/d2ae3f0eb1884adeafecc96c92bcc911739fbacf))
+
+
+### Performance Improvements
+
+* **app:** don't propagate twice in `mergeFacets` transform when the provenance state is navigated ([b09cdc9](https://github.com/genome-spy/genome-spy/commit/b09cdc9988fa4c9963c4a7a55ca9bddde156c204))
+
+
+
+
+
 # [0.46.0](https://github.com/genome-spy/genome-spy/compare/v0.45.0...v0.46.0) (2024-02-12)
 
 
