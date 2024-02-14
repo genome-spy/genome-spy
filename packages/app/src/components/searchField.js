@@ -71,6 +71,11 @@ export default class SearchField extends LitElement {
      * @param {KeyboardEvent} event
      */
     _onKeyDown(event) {
+        if (event.target instanceof HTMLInputElement) {
+            // Ignore, don't interfere with input fields
+            return;
+        }
+
         switch (event.code) {
             case "KeyF":
                 if (!(event.metaKey || event.altKey || event.ctrlKey)) {
