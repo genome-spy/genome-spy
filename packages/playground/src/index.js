@@ -57,7 +57,6 @@ async function loadSpec() {
     }
     const storedSpec = window.localStorage.getItem(STORAGE_KEY);
     const spec = storedSpec?.length > 0 ? storedSpec : defaultSpec;
-    console.log("Jeejee", spec);
     return spec;
 }
 
@@ -133,6 +132,7 @@ async function update(force = false) {
             parsedSpec,
             {
                 namedDataProvider: getNamedData,
+                powerPreference: "high-performance",
             }
         );
 

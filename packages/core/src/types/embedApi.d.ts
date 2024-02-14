@@ -33,6 +33,13 @@ export interface EmbedOptions {
      * the input binding elements are placed in the same container as the GenomeSpy instance.
      */
     inputBindingContainer?: HTMLElement | "none" | "default";
+
+    /**
+     * A suggestion for the browser on the appropriate GPU setup for the WebGL environment.
+     * Defaults to "default" in the @genome-spy/core package and "high-performance" in the
+     * @genome-spy/app package.
+     */
+    powerPreference?: "default" | "high-performance" | "low-power";
 }
 
 /**

@@ -41,6 +41,11 @@ export async function embed(el, spec, options = {}) {
         specObject.width ??= "container";
         specObject.padding ??= 10;
 
+        options = {
+            powerPreference: "high-performance",
+            ...options,
+        };
+
         const app = new App(element, specObject, options);
         genomeSpy = app.genomeSpy;
         applyOptions(genomeSpy, options);

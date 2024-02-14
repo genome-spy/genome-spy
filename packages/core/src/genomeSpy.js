@@ -362,7 +362,8 @@ export default class GenomeSpy {
                 this.viewRoot
                     ? calculateCanvasSize(calculateViewRootSize(this.viewRoot))
                     : { width: undefined, height: undefined },
-            this.spec.background
+            this.spec.background,
+            { powerPreference: this.options.powerPreference ?? "default" }
         );
 
         // The initial loading message that is shown until the first frame is rendered

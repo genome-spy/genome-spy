@@ -36,8 +36,14 @@ export default class WebGLHelper {
      *      A function that returns the content size. If a dimension is undefined,
      *      the canvas fills the container, otherwise the canvas is adjusted to the content size.
      * @param {string} [clearColor]
+     * @param {WebGLContextAttributes} [webglContextAttributes]
      */
-    constructor(container, sizeSource, clearColor) {
+    constructor(
+        container,
+        sizeSource,
+        clearColor,
+        webglContextAttributes = {}
+    ) {
         this._container = container;
         this._sizeSource =
             sizeSource ??
@@ -67,6 +73,7 @@ export default class WebGLHelper {
                 // Disable depth writes. We don't use depth testing.
                 depth: false,
                 premultipliedAlpha: true,
+                ...webglContextAttributes,
             })
         );
 
