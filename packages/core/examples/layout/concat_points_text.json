@@ -23,7 +23,10 @@
       ],
       "mark": {
         "type": "point",
-        "geometricZoomBound": 10.5
+        "size": {
+          "expr": "400 * pow(min(1, zoomLevel / 25), 1.8)"
+        },
+        "opacity": 0.6
       },
       "encoding": {
         "x": {
@@ -36,9 +39,7 @@
           "field": "y",
           "type": "quantitative",
           "title": "The magnificent y axis!"
-        },
-        "size": { "value": 400 },
-        "opacity": { "value": 0.6 }
+        }
       }
     },
     {

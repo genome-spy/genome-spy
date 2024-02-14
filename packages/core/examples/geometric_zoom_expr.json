@@ -1,0 +1,42 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "data": {
+    "sequence": {
+      "start": 0,
+      "stop": 100
+    }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "random()", "as": "x" },
+    { "type": "formula", "expr": "random()", "as": "y" },
+    { "type": "formula", "expr": "1 / (random() + 0.1)", "as": "z" },
+    { "type": "collect", "sort": { "field": "z" } }
+  ],
+
+  "mark": {
+    "type": "text",
+    "text": "Zoom!"
+  },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 1], "zoom": true }
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [0, 1], "zoom": true }
+    },
+    "size": {
+      "field": "z",
+      "type": "quantitative",
+      "scale": {
+        "range": [{ "expr": "0" }, { "expr": "zoomLevel * 200" }]
+      }
+    }
+  }
+}

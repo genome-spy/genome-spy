@@ -192,7 +192,11 @@ export default class PointMark extends Mark {
         this.updateBufferInfo(vertexData);
     }
 
-    _getGeometricScaleFactor() {
+    /**
+     * This and `geometricZoomBound` should be deprecated once params (zoomLevel) and
+     * expressions are documented.
+     */
+    #getGeometricScaleFactor() {
         const zoomLevel = Math.pow(2, this.properties.geometricZoomBound || 0);
 
         return Math.pow(
@@ -231,7 +235,7 @@ export default class PointMark extends Mark {
         ops.push(() => {
             // TODO: Use bindUniformBlock if none of the uniform has changed
             setBlockUniforms(this.markUniformInfo, {
-                uScaleFactor: this._getGeometricScaleFactor(),
+                uScaleFactor: this.#getGeometricScaleFactor(),
                 uSemanticThreshold: this.getSemanticThreshold(),
             });
             this.markUniformsAltered = true;

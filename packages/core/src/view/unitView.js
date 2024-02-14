@@ -39,6 +39,13 @@ export default class UnitView extends View {
      * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionTarget
      *
      */
+
+    /**
+     * Sets the zoom level parameter.
+     * @type {(zoomLevel: number) => void}
+     */
+    #zoomLevelSetter;
+
     /**
      *
      * @param {import("../spec/view.js").UnitSpec} spec
@@ -62,6 +69,19 @@ export default class UnitView extends View {
         }
 
         this.resolve();
+
+        this.#zoomLevelSetter = this.paramMediator.allocateSetter(
+            "zoomLevel",
+            1.0
+        );
+        /** @type {import("../spec/channel.js").ChannelWithScale[]} */ ([
+            "x",
+            "y",
+        ]).forEach((channel) =>
+            this.getScaleResolution(channel)?.addEventListener("domain", () =>
+                this.#zoomLevelSetter(Math.sqrt(this.getZoomLevel()))
+            )
+        );
 
         this.needsAxes = { x: true, y: true };
     }
