@@ -32,7 +32,6 @@ export default function createBindingInputs(mediator) {
         const id = `${random}-param-${name}`;
 
         if (bind.input == "range") {
-            // TODO: Show the value next to the slider
             inputs.push(
                 html`<label for=${id}>${label}</label>
                     <div>
@@ -99,8 +98,33 @@ export default function createBindingInputs(mediator) {
                         )}
                     </select> `
             );
+        } else if (
+            bind.input == "text" ||
+            bind.input == "number" ||
+            bind.input == "color"
+        ) {
+            inputs.push(
+                html`<label for=${id}>${label}</label>
+                    <div>
+                        <input
+                            id=${id}
+                            type=${bind.input}
+                            placeholder=${bind.placeholder ?? ""}
+                            autocomplete=${bind.autocomplete ?? "off"}
+                            .value=${value}
+                            @focus=${(/** @type {any} */ e) =>
+                                e.target.select()}
+                            @input=${(/** @type {any} */ e) => {
+                                debouncedSetter(
+                                    bind.input == "number"
+                                        ? e.target.valueAsNumber
+                                        : e.target.value
+                                );
+                            }}
+                        />
+                    </div>`
+            );
         } else {
-            // TODO: Support other types: "text", "number", "color".
             throw new Error("Unsupported input type: " + bind.input);
         }
 

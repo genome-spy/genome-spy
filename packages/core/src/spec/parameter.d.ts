@@ -60,6 +60,25 @@ export interface BindBase {
     description?: string;
 }
 
+export interface BindInput extends BindBase {
+    /**
+     * The type of input element to use.
+     * The valid values are `"checkbox"`, `"radio"`, `"range"`, `"select"`, `"text"`, `"number"`, and `"color"`.
+     */
+    input?: "text" | "number" | "color";
+
+    /**
+     * Text that appears in the form control when it has no value set.
+     */
+    placeholder?: string;
+
+    /**
+     * A hint for form autofill.
+     * See the [HTML autocomplete attribute](https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete) for additional information.
+     */
+    autocomplete?: string;
+}
+
 export interface BindCheckbox extends BindBase {
     input: "checkbox";
 }
@@ -124,4 +143,4 @@ export interface BindDirect {
     debounce?: number;
 }
 
-export type Binding = BindCheckbox | BindRadioSelect | BindRange;
+export type Binding = BindCheckbox | BindRadioSelect | BindRange | BindInput;
