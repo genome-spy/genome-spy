@@ -831,7 +831,12 @@ export default class GenomeSpy {
 
             this.viewRoot.visit((view) => {
                 if (view instanceof UnitView) {
-                    if (view.mark.isPickingParticipant()) {
+                    if (
+                        view.mark.isPickingParticipant() &&
+                        [...view.facetCoords.values()].some((coords) =>
+                            coords.containsPoint(x, y)
+                        )
+                    ) {
                         const accessor = view.mark.encoders.uniqueId.accessor;
                         view.getCollector().visitData((d) => {
                             if (accessor(d) == uniqueId) {

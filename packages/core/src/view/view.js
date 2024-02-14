@@ -17,6 +17,7 @@ import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
 import ParamMediator, { isExprRef } from "./paramMediator.js";
+import { InternMap } from "internmap";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -75,11 +76,12 @@ export default class View {
     opacityFunction = defaultOpacityFunction;
 
     /**
-     * Not nice! Inconsistent when faceting!
-     * TODO: Something. Maybe store only width/height
-     * @type {import("./layout/rectangle.js").default}
+     * Coords of the view for each facet, recorded during the last layout rendering pass.
+     * Most views have only one facet, so the map is usually of size 1.
+     *
+     * @type {Map<any, import("./layout/rectangle.js").default>}
      */
-    coords;
+    facetCoords = new InternMap();
 
     /**
      *
@@ -139,6 +141,16 @@ export default class View {
                 this.paramMediator.registerParam(param);
             }
         }
+    }
+
+    /**
+     * Returns the coords of the view. If view has been faceted, returns the coords
+     * of an arbitrary facet. If all or specific facet coords are needed, use `facetCoords`.
+     *
+     * @returns {import("./layout/rectangle.js").default}
+     */
+    get coords() {
+        return this.facetCoords.values().next().value;
     }
 
     getPadding() {
@@ -480,9 +492,13 @@ export default class View {
      * @type {import("../types/rendering.js").RenderMethod}
      */
     render(context, coords, options = {}) {
-        this.coords = options.clipRect
-            ? coords.intersect(options.clipRect)
-            : coords;
+        if (options.firstFacet) {
+            this.facetCoords.clear();
+        }
+        this.facetCoords.set(
+            options.facetId,
+            options.clipRect ? coords.intersect(options.clipRect) : coords
+        );
 
         // override
     }

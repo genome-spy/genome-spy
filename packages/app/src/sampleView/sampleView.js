@@ -538,6 +538,7 @@ export default class SampleView extends ContainerView {
             summaryViews.render(context, summaryCoords, {
                 ...options,
                 facetId: [i],
+                firstFacet: i == 0,
             });
         }
     }

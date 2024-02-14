@@ -24,6 +24,12 @@ export interface RenderingOptions {
      */
     facetId?: any;
 
+    /**
+     * If rendering facets, this is the first facet. Allows for
+     * cleanup, etc.
+     */
+    firstFacet?: boolean;
+
     sampleFacetRenderingOptions?: SampleFacetRenderingOptions;
 
     /**
