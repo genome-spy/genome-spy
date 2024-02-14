@@ -946,7 +946,8 @@ class SampleGridChild extends GridChild {
             {
                 configurableVisibility: false,
                 resolve: {
-                    axis: { x: "independent" },
+                    axis: { x: "shared" },
+                    scale: { x: "shared" },
                 },
                 spacing: 0, // Let the children use padding to configure spacing
                 vconcat: [],

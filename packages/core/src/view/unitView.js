@@ -4,7 +4,6 @@ import RuleMark from "../marks/rule.js";
 import LinkMark from "../marks/link.js";
 import TextMark from "../marks/text.js";
 
-import ContainerView from "./containerView.js";
 import ScaleResolution from "./scaleResolution.js";
 import {
     isSecondaryChannel,
@@ -18,6 +17,7 @@ import {
 } from "../encoder/encoder.js";
 import createDomain from "../utils/domainArray.js";
 import AxisResolution from "./axisResolution.js";
+import View from "./view.js";
 
 /**
  *
@@ -32,11 +32,9 @@ export const markTypes = {
     text: TextMark,
 };
 
-export default class UnitView extends ContainerView {
+export default class UnitView extends View {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
-     * @typedef {import("./view.js").default} View
-     * @typedef {import("./layerView.js").default} LayerView
      * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
      * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionTarget
      *
@@ -129,7 +127,7 @@ export default class UnitView extends ContainerView {
             while (
                 (view.getConfiguredOrDefaultResolution(targetChannel, type) ==
                     "forced" ||
-                    (view.dataParent instanceof ContainerView &&
+                    (view.dataParent &&
                         ["shared", "excluded", "forced"].includes(
                             view.dataParent.getConfiguredOrDefaultResolution(
                                 targetChannel,
@@ -220,7 +218,7 @@ export default class UnitView extends ContainerView {
     /**
      * @param {Channel} channel A primary channel
      */
-    _validateDomainQuery(channel) {
+    #validateDomainQuery(channel) {
         if (isSecondaryChannel(channel)) {
             throw new Error(
                 `getDomain(${channel}), must only be called for primary channels!`
@@ -243,7 +241,7 @@ export default class UnitView extends ContainerView {
      * @returns {DomainArray}
      */
     getConfiguredDomain(channel) {
-        const channelDef = this._validateDomainQuery(channel);
+        const channelDef = this.#validateDomainQuery(channel);
 
         const specDomain =
             channelDef && channelDef.scale && channelDef.scale.domain;
@@ -273,7 +271,7 @@ export default class UnitView extends ContainerView {
      * @returns {DomainArray}
      */
     extractDataDomain(channel) {
-        const channelDef = this._validateDomainQuery(channel);
+        const channelDef = this.#validateDomainQuery(channel);
         const type = channelDef.type ?? "nominal"; // TODO: Should check that this is a channel without scale
 
         /** @param {Channel} channel */
