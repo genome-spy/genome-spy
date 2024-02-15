@@ -18,6 +18,7 @@ import createTitle from "./title.js";
 import UnitView from "./unitView.js";
 import interactionToZoom from "./zoom.js";
 import clamp from "../utils/clamp.js";
+import { makeLerpSmoother } from "../utils/animator.js";
 
 /**
  * Modeled after: https://vega.github.io/vega/docs/layout/
@@ -1214,6 +1215,20 @@ export class GridChild {
 }
 
 class Scrollbar extends UnitView {
+    /** @type {ScrollDirection} */
+    #scrollDirection;
+
+    #scrollbarCoords = Rectangle.ZERO;
+
+    #maxScrollOffset = 0;
+
+    #maxViewportOffset = 0;
+
+    // This is the actual state of the scrollbar. It's better to keep track of
+    // the viewport offset rather than the scrollbar offset because the former
+    // is more stable when the viewport size changes.
+    viewportOffset = 0;
+
     /**
      * @param {GridChild} gridChild
      * @param {ScrollDirection} scrollDirection
@@ -1251,20 +1266,23 @@ class Scrollbar extends UnitView {
         );
 
         this.config = config;
-        this.scrollDirection = scrollDirection;
+        this.#scrollDirection = scrollDirection;
 
-        // This is the actual state of the scrollbar. It's better to keep track of
-        // the viewport offset rather than the scrollbar offset because the former
-        // is more stable when the viewport size changes.
-        this.viewportOffset = 0;
-
-        this.maxScrollOffset = 0;
-        this.scrollbarCoords = Rectangle.ZERO;
+        // Make it smooth!
+        this.interpolateViewportOffset = makeLerpSmoother(
+            this.context.animator,
+            (value) => {
+                this.viewportOffset = value;
+            },
+            50,
+            0.4,
+            this.viewportOffset
+        );
 
         this.addInteractionEventListener("mousedown", (coords, event) => {
             event.stopPropagation();
 
-            if (this.maxScrollOffset <= 0) {
+            if (this.#maxScrollOffset <= 0) {
                 return;
             }
 
@@ -1276,7 +1294,7 @@ class Scrollbar extends UnitView {
             const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
             mouseEvent.preventDefault();
 
-            const initialScrollOffset = this.getScrollOffset();
+            const initialScrollOffset = this.scrollOffset;
             const initialOffset = getMouseOffset(mouseEvent);
 
             const onMousemove = /** @param {MouseEvent} moveEvent */ (
@@ -1287,13 +1305,13 @@ class Scrollbar extends UnitView {
                         initialOffset +
                         initialScrollOffset,
                     0,
-                    this.maxScrollOffset
+                    this.#maxScrollOffset
                 );
 
-                this.viewportOffset =
-                    (scrollOffset / this.maxScrollOffset) *
-                    this.maxViewportOffset;
-                this.context.animator.requestRender();
+                this.interpolateViewportOffset(
+                    (scrollOffset / this.#maxScrollOffset) *
+                        this.#maxViewportOffset
+                );
             };
 
             const onMouseup = () => {
@@ -1306,10 +1324,10 @@ class Scrollbar extends UnitView {
         });
     }
 
-    getScrollOffset() {
+    get scrollOffset() {
         return (
-            (this.viewportOffset / this.maxViewportOffset) *
-            this.maxScrollOffset
+            (this.viewportOffset / this.#maxViewportOffset) *
+            this.#maxScrollOffset
         );
     }
 
@@ -1319,7 +1337,7 @@ class Scrollbar extends UnitView {
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     render(context, coords, options) {
-        super.render(context, this.scrollbarCoords, options);
+        super.render(context, this.#scrollbarCoords, options);
     }
 
     /**
@@ -1332,7 +1350,7 @@ class Scrollbar extends UnitView {
         const sSize = this.config.scrollbarSize;
 
         const dimension =
-            this.scrollDirection == "horizontal" ? "width" : "height";
+            this.#scrollDirection == "horizontal" ? "width" : "height";
 
         const visibleFraction = Math.min(
             1,
@@ -1341,28 +1359,28 @@ class Scrollbar extends UnitView {
         const maxScrollLength = viewportCoords[dimension] - 2 * sPad;
         const scrollLength = visibleFraction * maxScrollLength;
 
-        this.maxScrollOffset = maxScrollLength - scrollLength;
-        this.maxViewportOffset = coords[dimension] - viewportCoords[dimension];
+        this.#maxScrollOffset = maxScrollLength - scrollLength;
+        this.#maxViewportOffset = coords[dimension] - viewportCoords[dimension];
         this.viewportOffset = clamp(
             this.viewportOffset,
             0,
-            this.maxViewportOffset
+            this.#maxViewportOffset
         );
 
-        this.scrollbarCoords =
-            this.scrollDirection == "vertical"
+        this.#scrollbarCoords =
+            this.#scrollDirection == "vertical"
                 ? new Rectangle(
                       () =>
                           viewportCoords.x +
                           viewportCoords.width -
                           sSize -
                           sPad,
-                      () => viewportCoords.y + sPad + this.getScrollOffset(),
+                      () => viewportCoords.y + sPad + this.scrollOffset,
                       () => sSize,
                       () => scrollLength
                   )
                 : new Rectangle(
-                      () => viewportCoords.x + sPad + this.getScrollOffset(),
+                      () => viewportCoords.x + sPad + this.scrollOffset,
                       () =>
                           viewportCoords.y +
                           viewportCoords.height -

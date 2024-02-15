@@ -81,3 +81,69 @@ export default class Animator {
         });
     }
 }
+
+/**
+ * Returns a lerp smoother that animates a value towards a target value. Lerp smoothing
+ * is conceptually similar to easing, but can be used when the current and target
+ * values are not known in advance.
+ *
+ * Read more at: https://www.gamedeveloper.com/programming/improved-lerp-smoothing-
+ *
+ * @param {import("../utils/animator.js").default} animator
+ * @param {(value: number) => void} callback Function to be called with the interpolated value
+ * @param {number} halfLife Time until half of the value is reached, in milliseconds
+ * @param {number} stopAt Stop animation when the value is within this distance from the target
+ * @param {number} [initialValue] Initial value
+ * @returns {(target: number) => void} Function that activates the transition with a new target value
+ */
+export function makeLerpSmoother(
+    animator,
+    callback,
+    halfLife,
+    stopAt,
+    initialValue = 0
+) {
+    let lastTimeStamp = 0;
+    let settled = true;
+
+    let current = initialValue;
+    let target = current;
+
+    /**
+     * @param {number} [timestamp]
+     */
+    function smoothUpdate(timestamp) {
+        timestamp ??= +document.timeline.currentTime;
+
+        // If settled, the animation loop may have been stopped, so we need to
+        // wait until the next frame to get a proper time delta.
+        const tD = settled ? 0 : timestamp - lastTimeStamp;
+        lastTimeStamp = timestamp;
+
+        settled = false;
+
+        // Lerp smoothing: https://twitter.com/FreyaHolmer/status/1757836988495847568
+        current = target + (current - target) * Math.pow(2, -tD / halfLife);
+
+        callback(current);
+
+        if (Math.abs(target - current) < stopAt) {
+            current = target;
+            callback(current);
+            settled = true;
+            animator.requestRender();
+        } else {
+            animator.requestTransition((t) => smoothUpdate(t));
+        }
+    }
+
+    /**
+     * @param {number} value
+     */
+    return function setTarget(value) {
+        target = value;
+        if (settled) {
+            smoothUpdate();
+        }
+    };
+}
