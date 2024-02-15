@@ -760,9 +760,7 @@ export default class Mark {
      * @param {any} vertexData TODO: Extract type from VertexBuilder
      */
     updateBufferInfo(vertexData) {
-        if (this.vertexArrayInfo) {
-            this.gl.bindVertexArray(this.vertexArrayInfo.vertexArrayObject);
-        }
+        this.gl.bindVertexArray(null);
 
         if (
             this.bufferInfo &&
