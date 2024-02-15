@@ -1,4 +1,6 @@
 import { lerp } from "vega-util";
+import { makeLerpSmoother } from "./animator.js";
+import clamp from "./clamp.js";
 
 /**
  * Creates some inertia, mainly for zooming with a mechanical mouse wheel
@@ -11,35 +13,32 @@ export default class Inertia {
     constructor(animator, disabled) {
         this.animator = animator;
         this.disabled = !!disabled;
-        this.damping = 0.015;
-        this.acceleration = 0.3; // per event
-        /** Use acceleration if the momentum step is greater than X */
-        this.accelerationThreshold = 100;
-        this.lowerLimit = 0.5; // When to stop updating
-        this.loop = false;
 
-        this.momentum = 0;
-        this.timestamp = 0;
+        // Limit the velocity by setting the maximum distance the value can travel
+        this.maxDistance = 500;
+
         /** @type {function(number):void} */
         this.callback = null;
 
-        this._transitionCallback = this.animate.bind(this);
-        this.clear();
-    }
+        this.targetValue = 0;
+        this.lastValue = 0;
 
-    clear() {
-        /** @type {number} */
-        this.momentum = 0;
-        this.timestamp = null;
-        this.loop = null;
-        this.callback = null;
+        this.smoother = makeLerpSmoother(
+            animator,
+            (value) => {
+                const delta = value - this.lastValue;
+                this.lastValue = value;
+                this.callback?.(delta);
+            },
+            40,
+            0.1
+        );
     }
 
     cancel() {
-        if (this.loop) {
-            this.animator.cancelTransition(this._transitionCallback);
-            this.clear();
-        }
+        // decelelerate rapidly
+        this.targetValue = lerp([this.lastValue, this.targetValue], 0.3);
+        this.smoother(this.targetValue);
     }
 
     /**
@@ -53,50 +52,16 @@ export default class Inertia {
             return;
         }
 
-        // This may have some use in the future to improve the behavior of
-        // a mechanical mouse wheel:
-        // https://github.com/w3c/uievents/issues/181
-
-        if (value * this.momentum < 0) {
-            this.momentum = 0; // Stop if the direction changes
-        } else if (Math.abs(value) > this.accelerationThreshold) {
-            this.momentum = lerp([this.momentum, value], this.acceleration);
-        } else {
-            this.momentum = value;
-        }
-
         this.callback = callback;
 
-        if (!this.loop) {
-            this.animate();
-        }
-    }
+        const delta = clamp(
+            this.targetValue + value - this.lastValue,
+            -this.maxDistance,
+            this.maxDistance
+        );
+        this.targetValue = this.lastValue + delta;
 
-    /**
-     *
-     * @param {number} [timestamp]
-     */
-    animate(timestamp) {
-        this.callback(this.momentum); // TODO: This is actually a delta, should take the elapsed time into account
-
-        const timeDelta = timestamp - this.timestamp || 0;
-        this.timestamp = timestamp;
-
-        const velocity = Math.abs(this.momentum);
-
-        this.momentum =
-            Math.sign(this.momentum) *
-            Math.max(
-                0,
-                velocity - ((velocity * this.damping) ** 1.5 + 0.04) * timeDelta
-            );
-
-        if (Math.abs(this.momentum) > this.lowerLimit) {
-            this.loop = true;
-            this.animator.requestTransition(this._transitionCallback);
-        } else {
-            this.clear();
-        }
+        this.smoother(this.targetValue);
     }
 }
 

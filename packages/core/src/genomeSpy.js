@@ -669,24 +669,30 @@ export default class GenomeSpy {
         // that would also contain state-related stuff that currently pollute the
         // GenomeSpy class.
 
+        let lastWheelEvent = performance.now();
+
         /** @param {Event} event */
         const listener = (event) => {
+            const now = performance.now();
+            const wheeling = now - lastWheelEvent < 200;
+
             if (event instanceof MouseEvent) {
-                if (event.type == "mousemove") {
+                const rect = canvas.getBoundingClientRect();
+                const point = new Point(
+                    event.clientX - rect.left - canvas.clientLeft,
+                    event.clientY - rect.top - canvas.clientTop
+                );
+
+                if (event.type == "mousemove" && !wheeling) {
                     this.tooltip.handleMouseMove(event);
                     this._tooltipUpdateRequested = false;
 
                     if (event.buttons == 0) {
                         // Disable during dragging
                         this.renderPickingFramebuffer();
+                        this._handlePicking(point.x, point.y);
                     }
                 }
-
-                const rect = canvas.getBoundingClientRect();
-                const point = new Point(
-                    event.clientX - rect.left - canvas.clientLeft,
-                    event.clientY - rect.top - canvas.clientTop
-                );
 
                 /**
                  * @param {MouseEvent} event
@@ -705,14 +711,10 @@ export default class GenomeSpy {
                     this._wheelInertia.cancel();
                 }
 
-                if (event.type == "mousemove") {
-                    this._handlePicking(point.x, point.y);
-                } else if (
-                    event.type == "mousedown" ||
-                    event.type == "mouseup"
-                ) {
+                if (event.type == "mousedown" || event.type == "mouseup") {
                     this.renderPickingFramebuffer();
                 } else if (event.type == "wheel") {
+                    lastWheelEvent = now;
                     this._tooltipUpdateRequested = false;
 
                     const wheelEvent = /** @type {WheelEvent} */ (event);
