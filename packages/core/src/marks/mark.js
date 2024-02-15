@@ -85,31 +85,42 @@ export default class Mark {
 
         // TODO: Consolidate the following webgl stuff into a single object
 
-        /** @type {import("twgl.js").BufferInfo & { allocatedVertices?: number }} WebGL buffers */
+        /**
+         * @type {import("twgl.js").BufferInfo & { allocatedVertices?: number }}
+         * @protected
+         */
         this.bufferInfo = undefined;
 
-        /** @type {import("twgl.js").ProgramInfo} WebGL buffers */
+        /**
+         * @type {import("twgl.js").ProgramInfo}
+         * @protected
+         */
         this.programInfo = undefined;
 
-        /** @type {import("twgl.js").VertexArrayInfo} WebGL buffers */
+        /**
+         * @type {import("twgl.js").VertexArrayInfo}
+         * @protected
+         */
         this.vertexArrayInfo = undefined;
 
-        /** @type {import("twgl.js").UniformBlockInfo} WebGL buffers */
-        this.domainUniformInfo = undefined;
-
-        /** @type {import("twgl.js").UniformBlockInfo} WebGL buffers */
+        /**
+         * @type {import("twgl.js").UniformBlockInfo}
+         * @protected
+         */
         this.viewUniformInfo = undefined;
 
         /**
          * Uniforms related to the specific mark type.
+         *
          * @type {import("twgl.js").UniformBlockInfo}
+         * @protected
          */
         this.markUniformInfo = undefined;
 
         /**
          * Indicates whether the mark's uniforms have been altered since the last rendering.
          * If set to true, the uniforms will be sent to the GPU before rendering the next frame.
-
+         *
          * @protected
          */
         this.markUniformsAltered = true;
@@ -719,8 +730,15 @@ export default class Mark {
      * Delete WebGL buffers etc.
      */
     deleteGraphicsData() {
+        const gl = this.gl;
+
+        if (this.vertexArrayInfo) {
+            this.gl.bindVertexArray(null);
+            gl.deleteVertexArray(this.vertexArrayInfo.vertexArrayObject);
+            this.vertexArrayInfo = undefined;
+        }
+
         if (this.bufferInfo) {
-            const gl = this.gl;
             // A hack to prevent WebGL: INVALID_OPERATION: drawArrays: no buffer is bound to enabled attribute
             // TODO: Consider using bufferSubData or DYNAMIC_DRAW etc...
             for (let i = 0; i < 8; i++) {
@@ -742,8 +760,9 @@ export default class Mark {
      * @param {any} vertexData TODO: Extract type from VertexBuilder
      */
     updateBufferInfo(vertexData) {
-        // Ensure that no VAOs are inadvertently altered
-        this.gl.bindVertexArray(null);
+        if (this.vertexArrayInfo) {
+            this.gl.bindVertexArray(this.vertexArrayInfo.vertexArrayObject);
+        }
 
         if (
             this.bufferInfo &&
@@ -761,8 +780,6 @@ export default class Mark {
                         attributeData.data,
                         0
                     );
-                    // TODO: Consider double buffering:
-                    // https://community.khronos.org/t/texture-buffers-are-much-slower-than-uniform-buffers/77139
                 }
             }
         } else {
@@ -773,7 +790,6 @@ export default class Mark {
                 { numElements: vertexData.vertexCount }
             );
             this.bufferInfo.allocatedVertices = vertexData.allocatedVertices;
-            this.vertexArrayInfo = undefined;
         }
     }
 

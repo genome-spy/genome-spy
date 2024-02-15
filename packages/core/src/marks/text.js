@@ -243,7 +243,10 @@ export default class TextMark extends Mark {
             fontMetrics: this.font.metrics,
             numCharacters: Math.max(
                 charCount,
-                this.properties.minBufferSize || 0
+                // There's some mysterious bug with growing the buffer –
+                // old buffer is rendered instead of the new one.
+                // TODO: Figure it out
+                this.properties.minBufferSize || 1024
             ),
         });
 
