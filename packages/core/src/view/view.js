@@ -391,6 +391,7 @@ export default class View {
      *      Coordinates of the view
      * @param {import("../utils/interactionEvent.js").default} event
      * @param {boolean} capturing
+     * @protected
      */
     handleInteractionEvent(coords, event, capturing) {
         const listenersByType = capturing

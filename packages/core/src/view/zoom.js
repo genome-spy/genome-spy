@@ -9,7 +9,7 @@
 
 /**
  * @param {import("../utils/interactionEvent.js").default} event
- * @param {import("./renderingContext/layoutRecorderViewRenderingContext.js").Rectangle} coords The plot area
+ * @param {import("./layout/rectangle.js").default} coords
  * @param {(zoomEvent: ZoomEvent) => void} handleZoom
  * @param {import("../types/viewContext.js").Hover} [hover]
  */
