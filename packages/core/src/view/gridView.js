@@ -18,7 +18,7 @@ import createTitle from "./title.js";
 import UnitView from "./unitView.js";
 import interactionToZoom from "./zoom.js";
 import clamp from "../utils/clamp.js";
-import { lerp } from "vega-util";
+import { makeLerpSmoother } from "../utils/animator.js";
 
 /**
  * Modeled after: https://vega.github.io/vega/docs/layout/
@@ -1224,9 +1224,6 @@ class Scrollbar extends UnitView {
 
     #maxViewportOffset = 0;
 
-    /** What the smooth animation should target */
-    #targetViewportOffset = 0;
-
     // This is the actual state of the scrollbar. It's better to keep track of
     // the viewport offset rather than the scrollbar offset because the former
     // is more stable when the viewport size changes.
@@ -1271,6 +1268,17 @@ class Scrollbar extends UnitView {
         this.config = config;
         this.#scrollDirection = scrollDirection;
 
+        // Make it smooth!
+        this.interpolateViewportOffset = makeLerpSmoother(
+            this.context.animator,
+            (value) => {
+                this.viewportOffset = value;
+            },
+            50,
+            0.4,
+            this.viewportOffset
+        );
+
         this.addInteractionEventListener("mousedown", (coords, event) => {
             event.stopPropagation();
 
@@ -1300,7 +1308,7 @@ class Scrollbar extends UnitView {
                     this.#maxScrollOffset
                 );
 
-                this.#updateViewportOffset(
+                this.interpolateViewportOffset(
                     (scrollOffset / this.#maxScrollOffset) *
                         this.#maxViewportOffset
                 );
@@ -1314,59 +1322,6 @@ class Scrollbar extends UnitView {
             document.addEventListener("mouseup", onMouseup, false);
             document.addEventListener("mousemove", onMousemove, false);
         });
-    }
-
-    #lastTimeStamp = 0;
-
-    #settled = true;
-
-    /**
-     * @param {number} timestamp
-     */
-    #smoothUpdate(timestamp) {
-        if (this.viewportOffset == this.#targetViewportOffset) {
-            this.#settled = true;
-            return;
-        }
-
-        // If settled, the animation loop may have been stopped, so we need to
-        // wait until the next frame to get a proper time delta.
-        const tD = this.#settled ? 0 : timestamp - this.#lastTimeStamp;
-
-        this.#settled = false;
-
-        // Lerp smoothing: https://twitter.com/FreyaHolmer/status/1757836988495847568
-        this.viewportOffset = lerp(
-            [this.viewportOffset, this.#targetViewportOffset],
-            1 - Math.pow(2, -tD / 50)
-        );
-
-        this.#lastTimeStamp = timestamp;
-
-        // In pixels
-        const minDiff = 0.4;
-
-        if (
-            Math.abs(this.viewportOffset - this.#targetViewportOffset) < minDiff
-        ) {
-            this.viewportOffset = this.#targetViewportOffset;
-            this.#settled = true;
-            this.context.animator.requestRender();
-        } else {
-            this.context.animator.requestTransition((t) =>
-                this.#smoothUpdate(t)
-            );
-        }
-    }
-
-    /**
-     * @param {number} viewportOffset
-     */
-    #updateViewportOffset(viewportOffset) {
-        this.#targetViewportOffset = viewportOffset;
-        if (this.#settled) {
-            this.#smoothUpdate(+document.timeline.currentTime);
-        }
     }
 
     get scrollOffset() {
