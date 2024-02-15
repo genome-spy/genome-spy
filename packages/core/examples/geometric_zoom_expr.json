@@ -17,14 +17,16 @@
 
   "mark": {
     "type": "text",
-    "text": "Zoom!"
+    "text": "Zoom!",
+    "font": "Teko"
   },
 
   "encoding": {
     "x": {
       "field": "x",
       "type": "quantitative",
-      "scale": { "domain": [0, 1], "zoom": true }
+      "scale": { "domain": [0, 1], "zoom": true },
+      "buildIndex": false
     },
     "y": {
       "field": "y",
@@ -37,6 +39,11 @@
       "scale": {
         "range": [{ "expr": "0" }, { "expr": "zoomLevel * 200" }]
       }
+    },
+    "color": {
+      "field": "z",
+      "type": "quantitative",
+      "scale": { "range": ["white", "black"] }
     }
   }
 }
