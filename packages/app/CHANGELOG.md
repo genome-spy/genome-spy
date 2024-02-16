@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.47.0](https://github.com/genome-spy/genome-spy/compare/v0.46.1...v0.47.0) (2024-02-16)
+
+
+### Bug Fixes
+
+* **app:** don't activate search field using shortcut when focus is in another input field ([d5a72fc](https://github.com/genome-spy/genome-spy/commit/d5a72fcee64f1f3a422d36c3328abc2a449d0dee))
+
+
+### Features
+
+* **core:** add `powerPreference` to embed options ([f3af4a0](https://github.com/genome-spy/genome-spy/commit/f3af4a04c759eab992f362ab02644d94ed819da9))
+
+
+### Performance Improvements
+
+* **core:** improve picking (hover, click) performance ([a3a6889](https://github.com/genome-spy/genome-spy/commit/a3a68898c9aa79ab378b8ed666d4ec56d7477848))
+
+
+
+
+
 ## [0.46.1](https://github.com/genome-spy/genome-spy/compare/v0.46.0...v0.46.1) (2024-02-13)
 
 

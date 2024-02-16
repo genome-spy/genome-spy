@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.47.0](https://github.com/genome-spy/genome-spy/compare/v0.46.1...v0.47.0) (2024-02-16)
+
+
+### Bug Fixes
+
+* **core:** improve mouse wheel inertia ([5dc308c](https://github.com/genome-spy/genome-spy/commit/5dc308c426c08f588ef76acb712d1bc8c300220c)), closes [#166](https://github.com/genome-spy/genome-spy/issues/166)
+* **core:** scale padding ([a1e6a0e](https://github.com/genome-spy/genome-spy/commit/a1e6a0ea7320b45044a333ff4e226e057719294b))
+* **core:** use `JSON.stringify` in facetCoords InternMap ([e0e195a](https://github.com/genome-spy/genome-spy/commit/e0e195a95451daf4db66a2ea016bdabb1c98fe62))
+* **core:** vertexArrayObject issue ([3c71c7e](https://github.com/genome-spy/genome-spy/commit/3c71c7ea5c932328664216f4b89accdaacd82b7d))
+
+
+### Features
+
+* **core:** `zoomLevel` param ([79eb70c](https://github.com/genome-spy/genome-spy/commit/79eb70c0549c44013747324b2c5771f2b5e27d5f))
+* **core:** add `powerPreference` to embed options ([f3af4a0](https://github.com/genome-spy/genome-spy/commit/f3af4a04c759eab992f362ab02644d94ed819da9))
+* **core:** lerp-smoothed scrollbar animation ([#238](https://github.com/genome-spy/genome-spy/issues/238)) ([971c4a5](https://github.com/genome-spy/genome-spy/commit/971c4a546f0e19554aa3288984c48fc56a79982d)), closes [#166](https://github.com/genome-spy/genome-spy/issues/166)
+* **core:** support `"text"`, `"number"`, and `"color"` in param input bindings ([1820427](https://github.com/genome-spy/genome-spy/commit/1820427e406655f8cd5a00bc7dc7e0f4bf78bb42))
+
+
+### Performance Improvements
+
+* **core:** improve picking (hover, click) performance ([a3a6889](https://github.com/genome-spy/genome-spy/commit/a3a68898c9aa79ab378b8ed666d4ec56d7477848))
+
+
+
+
+
 ## [0.46.1](https://github.com/genome-spy/genome-spy/compare/v0.46.0...v0.46.1) (2024-02-13)
 
 
