@@ -274,6 +274,8 @@ function rawDomain(scale, raw, logger) {
 }
 
 function padDomain(type, domain, range, pad, exponent, constant) {
+    range ??= [0, 1]; // default to unit range. TODO: Fix this when we have pixel-based ranges.
+
     var span = Math.abs(peek(range) - range[0]),
         frac = span / (span - 2 * pad),
         d =
