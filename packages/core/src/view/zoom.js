@@ -8,7 +8,7 @@
  */
 
 import { makeLerpSmoother } from "../utils/animator.js";
-import makeRingBuffer from "../utils/ringBuffer.js";
+import RingBuffer from "../utils/ringBuffer.js";
 import Point from "./layout/point.js";
 
 /** @type {ReturnType<typeof makeLerpSmoother>} */
@@ -77,7 +77,8 @@ export default function interactionToZoom(
             smoother.stop();
         }
 
-        const buffer = makeRingBuffer(5);
+        /** @type {RingBuffer<{point: Point, timestamp: number}>} */
+        const buffer = new RingBuffer(10);
 
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
         mouseEvent.preventDefault();
@@ -88,7 +89,7 @@ export default function interactionToZoom(
             moveEvent
         ) => {
             const point = Point.fromMouseEvent(moveEvent);
-            buffer.push(point);
+            buffer.push({ point, timestamp: performance.now() });
 
             const delta = point.subtract(prevPoint);
 
@@ -103,35 +104,51 @@ export default function interactionToZoom(
             prevPoint = point;
         };
 
-        const onMouseup = /** @param {MouseEvent} upEvent */ (upEvent) => {
+        const animateInertia = () => {
+            const lastMillisToInclude = 100;
+
+            const now = performance.now();
+            const arr = buffer
+                .get()
+                .filter((p) => now - p.timestamp < lastMillisToInclude);
+
+            if (arr.length < 2 || !animator) {
+                return;
+            }
+
+            const a = arr.at(-1);
+            const b = arr[0];
+
+            const v = a.point
+                .subtract(b.point)
+                .multiply(1 / (a.timestamp - b.timestamp));
+
+            let x = prevPoint.x;
+
+            smoother = makeLerpSmoother(
+                animator,
+                (a) => {
+                    handleZoom({
+                        x: a,
+                        y: prevPoint.y,
+                        xDelta: x - a,
+                        yDelta: 0,
+                        zDelta: 0,
+                    });
+                    x = a;
+                },
+                200,
+                0.5,
+                x
+            );
+
+            smoother(prevPoint.x - v.x * 200);
+        };
+
+        const onMouseup = () => {
             document.removeEventListener("mousemove", onMousemove);
             document.removeEventListener("mouseup", onMouseup);
-
-            const arr = buffer.get();
-            if (animator && arr.length >= 5) {
-                const delta = arr[arr.length - 1].subtract(arr[0]);
-
-                let x = prevPoint.x;
-
-                smoother = makeLerpSmoother(
-                    animator,
-                    (a) => {
-                        handleZoom({
-                            x: a,
-                            y: prevPoint.y,
-                            xDelta: x - a,
-                            yDelta: 0,
-                            zDelta: 0,
-                        });
-                        x = a;
-                    },
-                    200,
-                    0.5,
-                    x
-                );
-
-                smoother(prevPoint.x - delta.x * 3);
-            }
+            animateInertia();
         };
 
         document.addEventListener("mouseup", onMouseup, false);

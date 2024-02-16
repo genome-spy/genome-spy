@@ -35,6 +35,13 @@ export default class Point {
     }
 
     /**
+     * @param {number} scalar
+     */
+    multiply(scalar) {
+        return new Point(this.x * scalar, this.y * scalar);
+    }
+
+    /**
      * @param {Point} point
      */
     equals(point) {

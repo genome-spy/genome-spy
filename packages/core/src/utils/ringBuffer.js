@@ -1,23 +1,43 @@
 /**
- * @param {number} size
  * @template T
  */
-export default function makeRingBuffer(size) {
+export default class RingBuffer {
     /** @type {T[]} */
-    const buffer = new Array(size);
-    let index = 0;
-    let length = 0;
+    #buffer;
 
-    return {
-        push: (/** @type {T} */ value) => {
-            buffer[index] = value;
-            index = (index + 1) % size;
-            length = Math.min(length + 1, size);
-        },
-        get: () =>
-            length < size
-                ? buffer.slice(0, length)
-                : buffer.slice(index, size).concat(buffer.slice(0, index)),
-        length: () => length,
-    };
+    #index = 0;
+
+    #length = 0;
+
+    /**
+     * @param {number} size
+     */
+    constructor(size) {
+        this.#buffer = new Array(size);
+    }
+
+    /** @param {T} value */
+    push(value) {
+        this.#buffer[this.#index] = value;
+        this.#index = (this.#index + 1) % this.size;
+        this.#length = Math.min(this.#length + 1, this.size);
+    }
+
+    /**
+     * @returns {T[]}
+     */
+    get() {
+        const b = this.#buffer;
+        return this.#length < this.size
+            ? b.slice(0, this.#length)
+            : b.slice(this.#index, this.size).concat(b.slice(0, this.#index));
+    }
+
+    get size() {
+        return this.#buffer.length;
+    }
+
+    get length() {
+        return this.#length;
+    }
 }
