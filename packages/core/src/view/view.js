@@ -81,7 +81,7 @@ export default class View {
      *
      * @type {Map<any, import("./layout/rectangle.js").default>}
      */
-    facetCoords = new InternMap();
+    facetCoords = new InternMap([], JSON.stringify);
 
     /**
      *
@@ -493,6 +493,8 @@ export default class View {
      * @type {import("../types/rendering.js").RenderMethod}
      */
     render(context, coords, options = {}) {
+        // TODO: When using sample faceting, all facets have the same coords.
+        // It would be better to save only single coords with an `undefined` facetId.
         if (options.firstFacet) {
             this.facetCoords.clear();
         }
