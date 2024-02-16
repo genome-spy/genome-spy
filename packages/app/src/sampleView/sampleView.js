@@ -765,7 +765,8 @@ export default class SampleView extends ContainerView {
                         this.#gridChild.view,
                         zoomEvent
                     ),
-                this.context.getCurrentHover()
+                this.context.getCurrentHover(),
+                this.context.animator
             );
         }
 

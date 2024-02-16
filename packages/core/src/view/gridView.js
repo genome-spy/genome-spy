@@ -712,7 +712,8 @@ export default class GridView extends ContainerView {
                             pointedChild.view,
                             zoomEvent
                         ),
-                    this.context.getCurrentHover()
+                    this.context.getCurrentHover(),
+                    this.context.animator
                 );
             }
         }

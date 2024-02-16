@@ -7,13 +7,24 @@
  * @prop {number} zDelta
  */
 
+import { makeLerpSmoother } from "../utils/animator.js";
+import makeRingBuffer from "../utils/ringBuffer.js";
+import Point from "./layout/point.js";
+
 /**
  * @param {import("../utils/interactionEvent.js").default} event
  * @param {import("./layout/rectangle.js").default} coords
  * @param {(zoomEvent: ZoomEvent) => void} handleZoom
  * @param {import("../types/viewContext.js").Hover} [hover]
+ * @param {import("../utils/animator.js").default} [animator]
  */
-export default function interactionToZoom(event, coords, handleZoom, hover) {
+export default function interactionToZoom(
+    event,
+    coords,
+    handleZoom,
+    hover,
+    animator
+) {
     if (event.type == "wheel") {
         event.uiEvent.preventDefault(); // TODO: Only if there was something zoomable
 
@@ -59,28 +70,61 @@ export default function interactionToZoom(event, coords, handleZoom, hover) {
         event.type == "mousedown" &&
         /** @type {MouseEvent} */ (event.uiEvent).button === 0
     ) {
+        const buffer = makeRingBuffer(5);
+
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
         mouseEvent.preventDefault();
 
-        let prevMouseEvent = mouseEvent;
+        let prevPoint = Point.fromMouseEvent(mouseEvent);
 
         const onMousemove = /** @param {MouseEvent} moveEvent */ (
             moveEvent
         ) => {
+            const point = Point.fromMouseEvent(moveEvent);
+            buffer.push(point);
+
+            const delta = point.subtract(prevPoint);
+
             handleZoom({
-                x: prevMouseEvent.clientX,
-                y: prevMouseEvent.clientY,
-                xDelta: moveEvent.clientX - prevMouseEvent.clientX,
-                yDelta: moveEvent.clientY - prevMouseEvent.clientY,
+                x: prevPoint.x,
+                y: prevPoint.y,
+                xDelta: delta.x,
+                yDelta: delta.y,
                 zDelta: 0,
             });
 
-            prevMouseEvent = moveEvent;
+            prevPoint = point;
         };
 
         const onMouseup = /** @param {MouseEvent} upEvent */ (upEvent) => {
             document.removeEventListener("mousemove", onMousemove);
             document.removeEventListener("mouseup", onMouseup);
+
+            const arr = buffer.get();
+            if (animator && arr.length >= 5) {
+                const delta = arr[arr.length - 1].subtract(arr[0]);
+
+                let x = prevPoint.x;
+
+                const smoother = makeLerpSmoother(
+                    animator,
+                    (a) => {
+                        handleZoom({
+                            x: a,
+                            y: prevPoint.y,
+                            xDelta: x - a,
+                            yDelta: 0,
+                            zDelta: 0,
+                        });
+                        x = a;
+                    },
+                    300,
+                    0.5,
+                    x
+                );
+
+                smoother(prevPoint.x - delta.x * 5);
+            }
         };
 
         document.addEventListener("mouseup", onMouseup, false);

@@ -1,4 +1,15 @@
+/*
+ * Hmm. This looks quite a bit like a two-dimensional vector.
+ * Maybe we should use a vector instead?
+ */
 export default class Point {
+    /**
+     * @param {MouseEvent} event
+     */
+    static fromMouseEvent(event) {
+        return new Point(event.clientX, event.clientY);
+    }
+
     /**
      *
      * @param {number} x
@@ -10,7 +21,20 @@ export default class Point {
     }
 
     /**
-     *
+     * @param {Point} point
+     */
+    subtract(point) {
+        return new Point(this.x - point.x, this.y - point.y);
+    }
+
+    /**
+     * @param {Point} point
+     */
+    add(point) {
+        return new Point(this.x - point.x, this.y - point.y);
+    }
+
+    /**
      * @param {Point} point
      */
     equals(point) {
