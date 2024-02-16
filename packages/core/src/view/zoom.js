@@ -11,6 +11,9 @@ import { makeLerpSmoother } from "../utils/animator.js";
 import makeRingBuffer from "../utils/ringBuffer.js";
 import Point from "./layout/point.js";
 
+/** @type {ReturnType<typeof makeLerpSmoother>} */
+let smoother;
+
 /**
  * @param {import("../utils/interactionEvent.js").default} event
  * @param {import("./layout/rectangle.js").default} coords
@@ -70,6 +73,10 @@ export default function interactionToZoom(
         event.type == "mousedown" &&
         /** @type {MouseEvent} */ (event.uiEvent).button === 0
     ) {
+        if (smoother) {
+            smoother.stop();
+        }
+
         const buffer = makeRingBuffer(5);
 
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
@@ -106,7 +113,7 @@ export default function interactionToZoom(
 
                 let x = prevPoint.x;
 
-                const smoother = makeLerpSmoother(
+                smoother = makeLerpSmoother(
                     animator,
                     (a) => {
                         handleZoom({
@@ -118,12 +125,12 @@ export default function interactionToZoom(
                         });
                         x = a;
                     },
-                    300,
+                    200,
                     0.5,
                     x
                 );
 
-                smoother(prevPoint.x - delta.x * 5);
+                smoother(prevPoint.x - delta.x * 3);
             }
         };
 
