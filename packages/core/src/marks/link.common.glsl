@@ -16,5 +16,7 @@ layout(std140) uniform Mark {
     // In pixels
     uniform vec2 uArcFadingDistance;
 
+    uniform int uSegmentBreaks;
+
 #pragma markUniforms
 };

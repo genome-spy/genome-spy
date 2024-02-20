@@ -349,7 +349,7 @@ export interface LinkProps extends SecondaryPositionProps {
      *
      * **Default value:* `101`
      */
-    segments?: number;
+    segments?: number | ExprRef;
 
     /**
      * Scaling factor for the `"arc`" shape's height. The default value `1.0` produces roughly circular arcs.

@@ -133,6 +133,11 @@ export default class LinkMark extends Mark {
             (x) => !!x
         );
         this.registerMarkUniformValue("uMaxChordLength", props.maxChordLength);
+        this.registerMarkUniformValue(
+            "uSegmentBreaks",
+            props.segments,
+            (x) => x + 1
+        );
     }
 
     updateGraphicsData() {
@@ -148,12 +153,6 @@ export default class LinkMark extends Mark {
         builder.addBatches(collector.facetBatches);
 
         const vertexData = builder.toArrays();
-
-        // TODO: Use gl_VertexID to calculate the strip in the vertex shader
-        vertexData.arrays.strip = {
-            data: createStrip(this.properties.segments),
-            numComponents: 2,
-        };
 
         this.rangeMap.migrateEntries(vertexData.rangeMap);
 
@@ -196,8 +195,6 @@ export default class LinkMark extends Mark {
     render(options) {
         const gl = this.gl;
 
-        const arcVertexCount = (this.properties.segments + 1) * 2;
-
         return this._baseInstanceExt
             ? this.createRenderCallback((offset, count) => {
                   // Using the following extension, which, however, is only a draft and
@@ -207,7 +204,9 @@ export default class LinkMark extends Mark {
                   this._baseInstanceExt.drawArraysInstancedBaseInstanceWEBGL(
                       gl.TRIANGLE_STRIP,
                       0,
-                      arcVertexCount,
+                      /** @type {Float32Array} */ (
+                          this.markUniformInfo.uniforms.uSegmentBreaks
+                      )[0] * 2,
                       count,
                       offset
                   );
@@ -241,20 +240,11 @@ export default class LinkMark extends Mark {
                   gl.drawArraysInstanced(
                       gl.TRIANGLE_STRIP,
                       0,
-                      arcVertexCount,
+                      /** @type {Float32Array} */ (
+                          this.markUniformInfo.uniforms.uSegmentBreaks
+                      )[0] * 2,
                       count
                   );
               }, options);
     }
-}
-
-function createStrip(/** @type number */ segments) {
-    let i = 0;
-    const coords = [];
-
-    for (; i <= segments; i++) {
-        coords.push(i / segments, 0.5);
-        coords.push(i / segments, -0.5);
-    }
-    return new Float32Array(coords);
 }

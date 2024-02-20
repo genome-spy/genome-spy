@@ -1,5 +1,3 @@
-in vec2 strip;
-
 out vec4 vColor;
 
 /** Stroke width */
@@ -127,6 +125,11 @@ void main(void) {
         p3 = p2;
         p4 = b;
     }
+
+    vec2 strip = vec2(
+        float(gl_VertexID / 2) / float(uSegmentBreaks),
+        float(gl_VertexID % 2) - 0.5
+    );
 
     // Make segments shorter near the endpoints to make the tightly bent attachment points smoother
     float t = smoothstep(0.0, 1.0, strip.x);
