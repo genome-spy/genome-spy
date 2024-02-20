@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.48.1](https://github.com/genome-spy/genome-spy/compare/v0.48.0...v0.48.1) (2024-02-20)
+
+
+### Bug Fixes
+
+* **core:** also handle `y` direction in drag-to-pan inertia ([88f53e8](https://github.com/genome-spy/genome-spy/commit/88f53e8d194ec9225a9384e83b2db37642846223))
+* **core:** categorical data in `"link"` mark misbehaved ([14a4d8d](https://github.com/genome-spy/genome-spy/commit/14a4d8d99c822d45b142a47f5016808e55949f73)), closes [#231](https://github.com/genome-spy/genome-spy/issues/231)
+* **core:** rect mark's corner radius ([42af3a6](https://github.com/genome-spy/genome-spy/commit/42af3a6f9cf2247f509c2d2c20447da84f10cd01))
+
+
+
+
+
 # [0.48.0](https://github.com/genome-spy/genome-spy/compare/v0.47.0...v0.48.0) (2024-02-20)
 
 
