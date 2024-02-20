@@ -53,8 +53,8 @@ void main(void) {
     vec4 cornerRadii = vec4(
         uCornerRadiusTopRight,
         uCornerRadiusBottomRight,
-        uCornerRadiusBottomLeft,
-        uCornerRadiusTopLeft
+        uCornerRadiusTopLeft,
+        uCornerRadiusBottomLeft
     );
 
     float x = getScaled_x();
