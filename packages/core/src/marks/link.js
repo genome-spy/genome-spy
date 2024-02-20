@@ -228,7 +228,9 @@ export default class LinkMark extends Mark {
                           attribInfo.divisor
                       ) {
                           attribInfo.offset =
-                              offset * this.arrays[attribute].numComponents * 4; // gl.FLOAT in bytes
+                              offset *
+                              this.arrays[attribute].numComponents *
+                              this.bytesPerElement.get(attribute);
                       }
                   }
                   setBuffersAndAttributes(

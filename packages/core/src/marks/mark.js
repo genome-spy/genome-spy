@@ -92,6 +92,16 @@ export default class Mark {
         this.bufferInfo = undefined;
 
         /**
+         * TWGL's BufferInfo doesn't contain the number of bytes per element,
+         * so we need to keep track of it separately. This is mainly used by
+         * the instancing hack in the link mark.
+         *
+         * @type {Map<string, number>}
+         * @protected
+         */
+        this.bytesPerElement = new Map();
+
+        /**
          * @type {import("twgl.js").ProgramInfo}
          * @protected
          */
@@ -788,6 +798,15 @@ export default class Mark {
                 { numElements: vertexData.vertexCount }
             );
             this.bufferInfo.allocatedVertices = vertexData.allocatedVertices;
+
+            for (const [attribute, attributeData] of Object.entries(
+                vertexData.arrays
+            )) {
+                this.bytesPerElement.set(
+                    attribute,
+                    attributeData.data.BYTES_PER_ELEMENT
+                );
+            }
         }
     }
 
