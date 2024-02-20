@@ -41,6 +41,10 @@ export default class Point {
         return new Point(this.x * scalar, this.y * scalar);
     }
 
+    get length() {
+        return Math.sqrt(this.x ** 2 + this.y ** 2);
+    }
+
     /**
      * @param {Point} point
      */

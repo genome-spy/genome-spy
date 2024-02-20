@@ -78,7 +78,7 @@ export default function interactionToZoom(
         }
 
         /** @type {RingBuffer<{point: Point, timestamp: number}>} */
-        const buffer = new RingBuffer(10);
+        const buffer = new RingBuffer(30);
 
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
         mouseEvent.preventDefault();
@@ -105,14 +105,14 @@ export default function interactionToZoom(
         };
 
         const animateInertia = () => {
-            const lastMillisToInclude = 100;
+            const lastMillisToInclude = 160;
 
             const now = performance.now();
             const arr = buffer
                 .get()
                 .filter((p) => now - p.timestamp < lastMillisToInclude);
 
-            if (arr.length < 2 || !animator) {
+            if (arr.length < 5 || !animator || isDecelerating(arr)) {
                 return;
             }
 
@@ -137,12 +137,12 @@ export default function interactionToZoom(
                     });
                     x = a;
                 },
-                200,
+                250,
                 0.5,
                 x
             );
 
-            smoother(prevPoint.x - v.x * 200);
+            smoother(prevPoint.x - v.x * 250);
         };
 
         const onMouseup = () => {
@@ -154,4 +154,29 @@ export default function interactionToZoom(
         document.addEventListener("mouseup", onMouseup, false);
         document.addEventListener("mousemove", onMousemove, false);
     }
+}
+
+/**
+ * Split the array into two vectors and compare their lengths to find out if
+ * the mouse movement is decelerating.
+ * @param {{point: Point, timestamp: number}[]} arr
+ */
+function isDecelerating(arr) {
+    const mid = arr[Math.floor(arr.length / 2)];
+
+    const ap = mid.point
+        .subtract(arr[0].point)
+        .multiply(mid.timestamp - arr[0].timestamp);
+    const bp = arr
+        .at(-1)
+        .point.subtract(mid.point)
+        .multiply(arr.at(-1).timestamp - mid.timestamp);
+
+    const a = ap.length;
+    const b = bp.length;
+
+    // Found by trial and error
+    const maxRatio = 0.4;
+
+    return b / a < maxRatio;
 }
