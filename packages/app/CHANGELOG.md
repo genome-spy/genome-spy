@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.48.0](https://github.com/genome-spy/genome-spy/compare/v0.47.0...v0.48.0) (2024-02-20)
+
+
+### Features
+
+* **core:** add inertia to drag-to-pan interaction ([#240](https://github.com/genome-spy/genome-spy/issues/240)) ([8b00907](https://github.com/genome-spy/genome-spy/commit/8b00907ec3d970165f7808da00977a911fc6bb59))
+
+
+
+
+
 # [0.47.0](https://github.com/genome-spy/genome-spy/compare/v0.46.1...v0.47.0) (2024-02-16)
 
 
