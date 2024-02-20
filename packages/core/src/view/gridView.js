@@ -1273,11 +1273,11 @@ class Scrollbar extends UnitView {
         this.interpolateViewportOffset = makeLerpSmoother(
             this.context.animator,
             (value) => {
-                this.viewportOffset = value;
+                this.viewportOffset = value.x;
             },
             50,
             0.4,
-            this.viewportOffset
+            { x: this.viewportOffset }
         );
 
         this.addInteractionEventListener("mousedown", (coords, event) => {
@@ -1309,10 +1309,11 @@ class Scrollbar extends UnitView {
                     this.#maxScrollOffset
                 );
 
-                this.interpolateViewportOffset(
-                    (scrollOffset / this.#maxScrollOffset) *
-                        this.#maxViewportOffset
-                );
+                this.interpolateViewportOffset({
+                    x:
+                        (scrollOffset / this.#maxScrollOffset) *
+                        this.#maxViewportOffset,
+                });
             };
 
             const onMouseup = () => {

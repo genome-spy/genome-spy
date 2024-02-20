@@ -26,19 +26,20 @@ export default class Inertia {
         this.smoother = makeLerpSmoother(
             animator,
             (value) => {
-                const delta = value - this.lastValue;
-                this.lastValue = value;
+                const delta = value.x - this.lastValue;
+                this.lastValue = value.x;
                 this.callback?.(delta);
             },
             40,
-            0.1
+            0.1,
+            { x: 0 }
         );
     }
 
     cancel() {
         // decelelerate rapidly
         this.targetValue = lerp([this.lastValue, this.targetValue], 0.3);
-        this.smoother(this.targetValue);
+        this.smoother({ x: this.targetValue });
     }
 
     /**
@@ -61,7 +62,7 @@ export default class Inertia {
         );
         this.targetValue = this.lastValue + delta;
 
-        this.smoother(this.targetValue);
+        this.smoother({ x: this.targetValue });
     }
 }
 

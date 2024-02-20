@@ -90,24 +90,38 @@ export default class Animator {
  * Read more at: https://www.gamedeveloper.com/programming/improved-lerp-smoothing-
  *
  * @param {import("../utils/animator.js").default} animator
- * @param {(value: number) => void} callback Function to be called with the interpolated value
+ * @param {(value: T) => void} callback Function to be called with the interpolated value
  * @param {number} halfLife Time until half of the value is reached, in milliseconds
  * @param {number} stopAt Stop animation when the value is within this distance from the target
- * @param {number} [initialValue] Initial value
- * @returns {((target: number) => void) & { stop: () => void}} Function that activates the transition with a new target value
+ * @param {T} initialValue Initial value
+ * @returns {((target: T) => void) & { stop: () => void}} Function that activates the transition with a new target value
+ * @template {Record<string, number>} T
  */
 export function makeLerpSmoother(
     animator,
     callback,
     halfLife,
     stopAt,
-    initialValue = 0
+    initialValue
 ) {
     let lastTimeStamp = 0;
     let settled = true;
 
-    let current = initialValue;
+    let current = structuredClone(initialValue);
     let target = current;
+
+    /**
+     * Smoother for a scalar.
+     * Based on: https://twitter.com/FreyaHolmer/status/1757836988495847568
+     *
+     * @param {number} current
+     * @param {number} target
+     * @param {number} tD
+     * @param {number} halfLife
+     */
+    function lerpSmooth(current, target, tD, halfLife) {
+        return target + (current - target) * Math.pow(2, -tD / halfLife);
+    }
 
     /**
      * @param {number} [timestamp]
@@ -120,12 +134,20 @@ export function makeLerpSmoother(
         const tD = timestamp - lastTimeStamp;
         lastTimeStamp = timestamp;
 
-        // Lerp smoothing: https://twitter.com/FreyaHolmer/status/1757836988495847568
-        current = target + (current - target) * Math.pow(2, -tD / halfLife);
+        for (const key of /** @type {(keyof T)[]} */ (Object.keys(target))) {
+            current[key] = /** @type {T[keyof T]}*/ (
+                lerpSmooth(current[key], target[key], tD, halfLife)
+            );
+        }
 
         callback(current);
 
-        if (Math.abs(target - current) < stopAt) {
+        let maxDiff = -Infinity;
+        for (const key of Object.keys(target)) {
+            maxDiff = Math.max(maxDiff, Math.abs(target[key] - current[key]));
+        }
+
+        if (maxDiff < stopAt) {
             current = target;
             callback(current);
             settled = true;
@@ -136,7 +158,7 @@ export function makeLerpSmoother(
     }
 
     /**
-     * @param {number} value
+     * @param {T} value
      */
     function setTarget(value) {
         target = value;

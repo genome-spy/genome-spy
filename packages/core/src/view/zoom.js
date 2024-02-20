@@ -46,14 +46,20 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
     handleZoom = recordTimeStamp(handleZoom);
 
     if (event.type == "wheel") {
+        // TODO: Wheel-zoom inertia should probably be moved here and the faked wheel
+        // events in genomeSpy.js and inertia.js should be retired.
+
         event.uiEvent.preventDefault(); // TODO: Only if there was something zoomable
 
         const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
         const wheelMultiplier = wheelEvent.deltaMode ? 120 : 1;
 
-        if (wheelEvent.deltaX === 0 && wheelEvent.deltaY === 0) {
+        if (!wheelEvent.deltaX && !wheelEvent.deltaY) {
             return;
         }
+
+        // Stop drag-to-pan inertia
+        smoother?.stop();
 
         let { x, y } = event.point;
 
@@ -62,9 +68,6 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
         // to its center if the mark has only primary positional channels.
         // This allows the user to rapidly zoom closer without having to
         // continuously adjust the cursor position.
-
-        // Stop drag-to-pan inertia
-        smoother?.stop();
 
         if (hover) {
             const e = hover.mark.encoders;
@@ -102,7 +105,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
         }
 
         /** @type {RingBuffer<{point: Point, timestamp: number}>} */
-        const buffer = new RingBuffer(30);
+        const eventBuffer = new RingBuffer(30);
 
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
         mouseEvent.preventDefault();
@@ -113,7 +116,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
             moveEvent
         ) => {
             const point = Point.fromMouseEvent(moveEvent);
-            buffer.push({ point, timestamp: performance.now() });
+            eventBuffer.push({ point, timestamp: performance.now() });
 
             const delta = point.subtract(prevPoint);
 
@@ -132,7 +135,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
             const lastMillisToInclude = 160;
 
             const now = performance.now();
-            const arr = buffer
+            const arr = eventBuffer
                 .get()
                 .filter((p) => now - p.timestamp < lastMillisToInclude);
 
@@ -148,25 +151,30 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
                 .multiply(1 / (a.timestamp - b.timestamp));
 
             let x = prevPoint.x;
+            let y = prevPoint.y;
 
             smoother = makeLerpSmoother(
                 animator,
-                (a) => {
+                (p) => {
                     handleZoom({
-                        x: a,
-                        y: prevPoint.y,
-                        xDelta: x - a,
-                        yDelta: 0,
+                        x: p.x,
+                        y: p.y,
+                        xDelta: x - p.x,
+                        yDelta: y - p.y,
                         zDelta: 0,
                     });
-                    x = a;
+                    x = p.x;
+                    y = p.y;
                 },
                 150,
                 0.5,
-                x
+                { x, y }
             );
 
-            smoother(prevPoint.x - v.x * 250);
+            smoother({
+                x: prevPoint.x - v.x * 250,
+                y: prevPoint.y - v.y * 250,
+            });
         };
 
         const onMouseup = () => {
