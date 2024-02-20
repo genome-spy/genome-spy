@@ -94,7 +94,7 @@ export default class Animator {
  * @param {number} halfLife Time until half of the value is reached, in milliseconds
  * @param {number} stopAt Stop animation when the value is within this distance from the target
  * @param {number} [initialValue] Initial value
- * @returns {(target: number) => void} Function that activates the transition with a new target value
+ * @returns {((target: number) => void) & { stop: () => void}} Function that activates the transition with a new target value
  */
 export function makeLerpSmoother(
     animator,
@@ -113,14 +113,12 @@ export function makeLerpSmoother(
      * @param {number} [timestamp]
      */
     function smoothUpdate(timestamp) {
-        timestamp ??= +document.timeline.currentTime;
+        if (settled) {
+            return;
+        }
 
-        // If settled, the animation loop may have been stopped, so we need to
-        // wait until the next frame to get a proper time delta.
-        const tD = settled ? 0 : timestamp - lastTimeStamp;
+        const tD = timestamp - lastTimeStamp;
         lastTimeStamp = timestamp;
-
-        settled = false;
 
         // Lerp smoothing: https://twitter.com/FreyaHolmer/status/1757836988495847568
         current = target + (current - target) * Math.pow(2, -tD / halfLife);
@@ -140,10 +138,18 @@ export function makeLerpSmoother(
     /**
      * @param {number} value
      */
-    return function setTarget(value) {
+    function setTarget(value) {
         target = value;
         if (settled) {
-            smoothUpdate();
+            settled = false;
+            lastTimeStamp = +document.timeline.currentTime;
+            smoothUpdate(lastTimeStamp);
         }
+    }
+
+    setTarget.stop = () => {
+        settled = true;
     };
+
+    return setTarget;
 }

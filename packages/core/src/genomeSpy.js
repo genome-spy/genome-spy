@@ -36,6 +36,7 @@ import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
 import createBindingInputs from "./utils/inputBinding.js";
+import { isStillZooming } from "./view/zoom.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -687,8 +688,10 @@ export default class GenomeSpy {
                     this.tooltip.handleMouseMove(event);
                     this._tooltipUpdateRequested = false;
 
-                    if (event.buttons == 0) {
-                        // Disable during dragging
+                    // Disable picking during dragging. Also postpone picking until
+                    // the user has stopped zooming as reading pixels from the
+                    // picking buffer is slow and ruins smooth animations.
+                    if (event.buttons == 0 && !isStillZooming()) {
                         this.renderPickingFramebuffer();
                         this._handlePicking(point.x, point.y);
                     }
@@ -711,7 +714,11 @@ export default class GenomeSpy {
                     this._wheelInertia.cancel();
                 }
 
-                if (event.type == "mousedown" || event.type == "mouseup") {
+                if (
+                    (event.type == "mousedown" || event.type == "mouseup") &&
+                    !isStillZooming()
+                ) {
+                    // Actually, only needed when clicking on a mark
                     this.renderPickingFramebuffer();
                 } else if (event.type == "wheel") {
                     lastWheelEvent = now;
