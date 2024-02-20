@@ -161,7 +161,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
                     });
                     x = a;
                 },
-                250,
+                150,
                 0.5,
                 x
             );
