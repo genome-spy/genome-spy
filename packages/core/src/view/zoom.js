@@ -14,6 +14,27 @@ import Point from "./layout/point.js";
 /** @type {ReturnType<typeof makeLerpSmoother>} */
 let smoother;
 
+let lastTimestamp = 0;
+
+export function isStillZooming() {
+    const delta = performance.now() - lastTimestamp;
+    return delta < 50;
+}
+
+/**
+ *
+ * @param {T} fn
+ * @returns {T}
+ * @template {Function} T
+ */
+function recordTimeStamp(fn) {
+    // @ts-ignore
+    return function (...args) {
+        lastTimestamp = performance.now();
+        fn(...args);
+    };
+}
+
 /**
  * @param {import("../utils/interactionEvent.js").default} event
  * @param {import("./layout/rectangle.js").default} coords
@@ -21,18 +42,18 @@ let smoother;
  * @param {import("../types/viewContext.js").Hover} [hover]
  * @param {import("../utils/animator.js").default} [animator]
  */
-export default function interactionToZoom(
-    event,
-    coords,
-    handleZoom,
-    hover,
-    animator
-) {
+export function interactionToZoom(event, coords, handleZoom, hover, animator) {
+    handleZoom = recordTimeStamp(handleZoom);
+
     if (event.type == "wheel") {
         event.uiEvent.preventDefault(); // TODO: Only if there was something zoomable
 
         const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
         const wheelMultiplier = wheelEvent.deltaMode ? 120 : 1;
+
+        if (wheelEvent.deltaX === 0 && wheelEvent.deltaY === 0) {
+            return;
+        }
 
         let { x, y } = event.point;
 
@@ -41,6 +62,9 @@ export default function interactionToZoom(
         // to its center if the mark has only primary positional channels.
         // This allows the user to rapidly zoom closer without having to
         // continuously adjust the cursor position.
+
+        // Stop drag-to-pan inertia
+        smoother?.stop();
 
         if (hover) {
             const e = hover.mark.encoders;

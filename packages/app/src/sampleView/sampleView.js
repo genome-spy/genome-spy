@@ -31,7 +31,7 @@ import { watch } from "../state/watch.js";
 import { createSelector } from "@reduxjs/toolkit";
 import { LocationManager, getSampleLocationAt } from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
-import interactionToZoom from "@genome-spy/core/view/zoom.js";
+import { interactionToZoom } from "@genome-spy/core/view/zoom.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 import {

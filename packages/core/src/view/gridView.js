@@ -16,7 +16,7 @@ import ContainerView from "./containerView.js";
 import LayerView from "./layerView.js";
 import createTitle from "./title.js";
 import UnitView from "./unitView.js";
-import interactionToZoom from "./zoom.js";
+import { interactionToZoom } from "./zoom.js";
 import clamp from "../utils/clamp.js";
 import { makeLerpSmoother } from "../utils/animator.js";
 
