@@ -1,7 +1,10 @@
 import { expect, test } from "vitest";
 import { range } from "d3-array";
 import { processData } from "../flowTestUtils.js";
-import IdentifierTransform, { BLOCK_SIZE, DEFAULT_AS } from "./identifier.js";
+import IdentifierTransform, {
+    BLOCK_SIZE,
+    UNIQUE_ID_KEY,
+} from "./identifier.js";
 
 test("An IdentifierTransform adds identifiers correctly", () => {
     const data = range(BLOCK_SIZE * 2).map((x) => ({ data: x }));
@@ -14,15 +17,18 @@ test("An IdentifierTransform adds identifiers correctly", () => {
     // The fist block is skipped
     const firstId = BLOCK_SIZE;
 
-    expect(identifiedData[0]).toEqual({ data: 0, [DEFAULT_AS]: firstId });
-    expect(identifiedData[1]).toEqual({ data: 1, [DEFAULT_AS]: firstId + 1 });
+    expect(identifiedData[0]).toEqual({ data: 0, [UNIQUE_ID_KEY]: firstId });
+    expect(identifiedData[1]).toEqual({
+        data: 1,
+        [UNIQUE_ID_KEY]: firstId + 1,
+    });
     expect(identifiedData[BLOCK_SIZE]).toEqual({
         data: BLOCK_SIZE,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE,
+        [UNIQUE_ID_KEY]: firstId + BLOCK_SIZE,
     });
     expect(identifiedData[BLOCK_SIZE + 1]).toEqual({
         data: BLOCK_SIZE + 1,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE + 1,
+        [UNIQUE_ID_KEY]: firstId + BLOCK_SIZE + 1,
     });
 });
 
@@ -37,15 +43,18 @@ test("Another transform instance adds identifiers correctly", () => {
     // The fist block was skipped and the previous test case consumed two blocks
     const firstId = BLOCK_SIZE * 3;
 
-    expect(identifiedData[0]).toEqual({ data: 0, [DEFAULT_AS]: firstId });
-    expect(identifiedData[1]).toEqual({ data: 1, [DEFAULT_AS]: firstId + 1 });
+    expect(identifiedData[0]).toEqual({ data: 0, [UNIQUE_ID_KEY]: firstId });
+    expect(identifiedData[1]).toEqual({
+        data: 1,
+        [UNIQUE_ID_KEY]: firstId + 1,
+    });
     expect(identifiedData[BLOCK_SIZE]).toEqual({
         data: BLOCK_SIZE,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE,
+        [UNIQUE_ID_KEY]: firstId + BLOCK_SIZE,
     });
     expect(identifiedData[BLOCK_SIZE + 1]).toEqual({
         data: BLOCK_SIZE + 1,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE + 1,
+        [UNIQUE_ID_KEY]: firstId + BLOCK_SIZE + 1,
     });
 });
 
@@ -57,10 +66,10 @@ test("IdentifierTransform recycles allocated blocks", () => {
 
     let firstId = BLOCK_SIZE * 5;
 
-    expect(identifiedData[0]).toEqual({ data: 0, [DEFAULT_AS]: firstId });
+    expect(identifiedData[0]).toEqual({ data: 0, [UNIQUE_ID_KEY]: firstId });
     expect(identifiedData[BLOCK_SIZE]).toEqual({
         data: BLOCK_SIZE,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE,
+        [UNIQUE_ID_KEY]: firstId + BLOCK_SIZE,
     });
 
     data = range(BLOCK_SIZE * 3).map((x) => ({ data: x }));
@@ -69,15 +78,15 @@ test("IdentifierTransform recycles allocated blocks", () => {
     transform.reset();
     identifiedData = processData(transform, data);
 
-    expect(identifiedData[0]).toEqual({ data: 0, [DEFAULT_AS]: firstId });
+    expect(identifiedData[0]).toEqual({ data: 0, [UNIQUE_ID_KEY]: firstId });
     expect(identifiedData[BLOCK_SIZE]).toEqual({
         data: BLOCK_SIZE,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE,
+        [UNIQUE_ID_KEY]: firstId + BLOCK_SIZE,
     });
 
     // ... and reserve one extra
     expect(identifiedData[BLOCK_SIZE * 2]).toEqual({
         data: BLOCK_SIZE * 2,
-        [DEFAULT_AS]: firstId + BLOCK_SIZE * 2,
+        [UNIQUE_ID_KEY]: firstId + BLOCK_SIZE * 2,
     });
 });

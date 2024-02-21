@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 
 import Collector from "./collector.js";
+import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
 
 const data = [1, 5, 2, 4, 3].map((x) => ({ x }));
 
@@ -75,6 +76,38 @@ test("Collector collects, groups, and sorts data", () => {
             [2, 2],
         ])
     );
+});
+
+test("Collector builds a working index for unique ids", () => {
+    const collector = new Collector({
+        type: "collect",
+        groupby: ["a"],
+    });
+
+    const data = [
+        { a: 1, x: 1, [UNIQUE_ID_KEY]: 8 },
+        { a: 1, x: 2, [UNIQUE_ID_KEY]: 2 },
+        { a: 1, x: 3, [UNIQUE_ID_KEY]: 4 },
+        { a: 1, x: 4, [UNIQUE_ID_KEY]: 6 },
+        { a: 2, x: 5, [UNIQUE_ID_KEY]: 9 },
+        { a: 2, x: 6, [UNIQUE_ID_KEY]: 7 },
+        { a: 2, x: 7, [UNIQUE_ID_KEY]: 3 },
+        { a: 2, x: 8, [UNIQUE_ID_KEY]: 1 },
+    ];
+
+    for (const d of data) {
+        collector.handle(d);
+    }
+    collector.complete();
+
+    expect(collector.findDatumByUniqueId(8)).toEqual(data[0]);
+    expect(collector.findDatumByUniqueId(2)).toEqual(data[1]);
+    expect(collector.findDatumByUniqueId(4)).toEqual(data[2]);
+    expect(collector.findDatumByUniqueId(6)).toEqual(data[3]);
+    expect(collector.findDatumByUniqueId(9)).toEqual(data[4]);
+    expect(collector.findDatumByUniqueId(7)).toEqual(data[5]);
+    expect(collector.findDatumByUniqueId(3)).toEqual(data[6]);
+    expect(collector.findDatumByUniqueId(1)).toEqual(data[7]);
 });
 
 test("Collector throws on incomplete flow", () => {
