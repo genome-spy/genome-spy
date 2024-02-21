@@ -1,10 +1,12 @@
 import { InternMap } from "internmap";
-import { group } from "d3-array";
+import { bisector, group } from "d3-array";
 import { compare } from "vega-util";
 import iterateNestedMaps from "../utils/iterateNestedMaps.js";
 import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode.js";
 import { field } from "../utils/field.js";
 import { asArray } from "../utils/arrayUtils.js";
+import { radixSortIntoLookupArray } from "../utils/radixSort.js";
+import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
 
 /**
  * Collects (materializes) the data that flows through this node.
@@ -24,7 +26,20 @@ export default class Collector extends FlowNode {
      */
     #buffer = [];
 
-    /** */
+    #uniqueIdAccessor = field(UNIQUE_ID_KEY);
+
+    /**
+     * @type {number[]}
+     */
+    #uniqueIdIndex;
+
+    /**
+     * Start and end indices of all facets if they are concatenated into a single array.
+     * Used together with the uniqueIdIndex for looking up data items by their unique id.
+     * @type {{start: number, stop: number, facetId: import("../spec/channel.js").Scalar[]}[]}
+     */
+    #facetIndices;
+
     get behavior() {
         return BEHAVIOR_COLLECTS;
     }
@@ -122,6 +137,7 @@ export default class Collector extends FlowNode {
             sortData(data);
         }
 
+        this.#buildUniqueIdIndex();
         this.#propagateToChildren();
 
         super.complete();
@@ -133,16 +149,16 @@ export default class Collector extends FlowNode {
 
     #propagateToChildren() {
         if (this.children.length) {
-            for (const [key, data] of this.facetBatches.entries()) {
-                if (key) {
+            for (const [facetId, data] of this.facetBatches.entries()) {
+                if (facetId) {
                     /** @type {import("../types/flowBatch.js").FacetBatch} */
-                    const facetBatch = { type: "facet", facetId: key };
+                    const facetBatch = { type: "facet", facetId };
                     for (const child of this.children) {
                         child.beginBatch(facetBatch);
                     }
                 }
-                for (const datum of data) {
-                    this._propagate(datum);
+                for (let i = 0, n = data.length; i < n; i++) {
+                    this._propagate(data[i]);
                 }
             }
         }
@@ -214,6 +230,70 @@ export default class Collector extends FlowNode {
             throw new Error(
                 "Data propagation is not completed! No data are available."
             );
+        }
+    }
+
+    #buildUniqueIdIndex() {
+        /** @type {Datum} */
+        const obj = this.facetBatches.values().next().value?.[0];
+        if (obj == null || !(UNIQUE_ID_KEY in obj)) {
+            return; // No unique ids in the data
+        }
+
+        this.#facetIndices = [];
+        let cumulativePos = 0;
+
+        /** @type {number[]} */
+        const ids = [];
+
+        for (const [facetId, data] of this.facetBatches) {
+            this.#facetIndices.push({
+                start: cumulativePos,
+                stop: cumulativePos + data.length,
+                facetId,
+            });
+            cumulativePos += data.length;
+
+            for (let i = 0, n = data.length; i < n; i++) {
+                ids.push(this.#uniqueIdAccessor(data[i]));
+            }
+        }
+
+        this.#uniqueIdIndex = radixSortIntoLookupArray(ids);
+    }
+
+    /**
+     * Use an index to find a datum by its unique id.
+     *
+     * @param {number} uniqueId
+     */
+    findDatumByUniqueId(uniqueId) {
+        if (this.#uniqueIdIndex == null) {
+            return;
+        }
+
+        const getDatum = (/** @type {number} */ i) => {
+            // TODO: Bisect
+            const facet = this.#facetIndices.find(
+                (f) => f.start <= i && i < f.stop
+            );
+            if (!facet) {
+                return;
+            }
+            const data = this.facetBatches.get(facet.facetId);
+            return data[i - facet.start];
+        };
+
+        const a = this.#uniqueIdAccessor;
+
+        const b = bisector((i) => a(getDatum(i))).left;
+
+        const index = b(this.#uniqueIdIndex, uniqueId);
+        if (index >= 0) {
+            const datum = getDatum(this.#uniqueIdIndex[index]);
+            if (datum && a(datum) === uniqueId) {
+                return datum;
+            }
         }
     }
 }

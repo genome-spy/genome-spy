@@ -846,16 +846,16 @@ export default class GenomeSpy {
                             coords.containsPoint(x, y)
                         )
                     ) {
-                        const accessor = view.mark.encoders.uniqueId.accessor;
-                        view.getCollector().visitData((d) => {
-                            if (accessor(d) == uniqueId) {
-                                this._currentHover = {
-                                    mark: view.mark,
-                                    datum: d,
-                                    uniqueId,
-                                };
-                            }
-                        });
+                        const datum = view
+                            .getCollector()
+                            .findDatumByUniqueId(uniqueId);
+                        if (datum) {
+                            this._currentHover = {
+                                mark: view.mark,
+                                datum,
+                                uniqueId,
+                            };
+                        }
                     }
                     if (this._currentHover) {
                         return VISIT_STOP;

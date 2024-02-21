@@ -1,6 +1,6 @@
 import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
 
-export const DEFAULT_AS = "_uniqueId";
+export const UNIQUE_ID_KEY = "_uniqueId";
 
 export const BLOCK_SIZE = 10000;
 
@@ -38,7 +38,7 @@ export default class IdentifierTransform extends FlowNode {
         super();
         this.params = params;
 
-        this.as = params.as ?? DEFAULT_AS;
+        this.as = params.as ?? UNIQUE_ID_KEY;
 
         /**
          * The block indexes reserved by this transform instance.
