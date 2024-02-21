@@ -233,6 +233,10 @@ export default class Collector extends FlowNode {
         }
     }
 
+    /**
+     * Builds an index for looking up data items by their unique id.
+     * Using a sorted index and binary search for O(log n) complexity.
+     */
     #buildUniqueIdIndex() {
         /** @type {Datum} */
         const obj = this.facetBatches.values().next().value?.[0];
@@ -246,6 +250,8 @@ export default class Collector extends FlowNode {
         /** @type {number[]} */
         const ids = [];
 
+        const a = this.#uniqueIdAccessor;
+
         for (const [facetId, data] of this.facetBatches) {
             this.#facetIndices.push({
                 start: cumulativePos,
@@ -255,7 +261,7 @@ export default class Collector extends FlowNode {
             cumulativePos += data.length;
 
             for (let i = 0, n = data.length; i < n; i++) {
-                ids.push(this.#uniqueIdAccessor(data[i]));
+                ids.push(a(data[i]));
             }
         }
 
@@ -272,23 +278,21 @@ export default class Collector extends FlowNode {
             return;
         }
 
+        const facetBisector = bisector((f) => f.start).right;
+        const a = this.#uniqueIdAccessor;
+        const indexBisector = bisector((i) => a(getDatum(i))).left;
+
         const getDatum = (/** @type {number} */ i) => {
-            // TODO: Bisect
-            const facet = this.#facetIndices.find(
-                (f) => f.start <= i && i < f.stop
-            );
-            if (!facet) {
+            const fi = facetBisector(this.#facetIndices, i);
+            const facet = this.#facetIndices[fi - 1];
+            if (!facet || i >= facet.stop) {
                 return;
             }
             const data = this.facetBatches.get(facet.facetId);
             return data[i - facet.start];
         };
 
-        const a = this.#uniqueIdAccessor;
-
-        const b = bisector((i) => a(getDatum(i))).left;
-
-        const index = b(this.#uniqueIdIndex, uniqueId);
+        const index = indexBisector(this.#uniqueIdIndex, uniqueId);
         if (index >= 0) {
             const datum = getDatum(this.#uniqueIdIndex[index]);
             if (datum && a(datum) === uniqueId) {
