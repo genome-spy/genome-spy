@@ -13,6 +13,12 @@ import { asArray } from "../utils/arrayUtils.js";
  * Grouping is primarily intended for handling faceted data.
  */
 export default class Collector extends FlowNode {
+    /**
+     * @typedef {import("./flowNode.js").Datum} Datum
+     * @typedef {import("./flowNode.js").Data} Data
+     */
+
+    /** */
     get behavior() {
         return BEHAVIOR_COLLECTS;
     }
@@ -28,18 +34,18 @@ export default class Collector extends FlowNode {
         /** @type {(function(Collector):void)[]} */
         this.observers = [];
 
-        /** @type {Map<any | any[], import("./flowNode.js").Data>} TODO: proper type for key */
-        this.facetBatches = undefined;
+        // TODO: Consider nested maps instead of InternMap
+        /** @type {Map<any | any[], Data>} TODO: proper type for key */
+        this.facetBatches = new InternMap([], JSON.stringify);
 
         this._init();
     }
 
     _init() {
-        /** @type {import("./flowNode.js").Data} */
+        /** @type {Data} */
         this._data = [];
 
-        // TODO: Consider nested maps
-        this.facetBatches = new InternMap([], JSON.stringify);
+        this.facetBatches.clear();
         this.facetBatches.set(undefined, this._data);
     }
 
@@ -49,8 +55,7 @@ export default class Collector extends FlowNode {
     }
 
     /**
-     *
-     * @param {import("./flowNode.js").Datum} datum
+     * @param {Datum} datum
      */
     handle(datum) {
         this._data.push(datum);
@@ -146,7 +151,7 @@ export default class Collector extends FlowNode {
     }
 
     /**
-     * @returns {Iterable<import("./flowNode.js").Datum>}
+     * @returns {Iterable<Datum>}
      */
     getData() {
         this._checkStatus();
@@ -173,7 +178,7 @@ export default class Collector extends FlowNode {
 
     /**
      *
-     * @param {(datum: import("./flowNode.js").Datum) => void} visitor
+     * @param {(datum: Datum) => void} visitor
      */
     visitData(visitor) {
         this._checkStatus();
@@ -209,8 +214,8 @@ export default class Collector extends FlowNode {
  * Like D3's group but without InternMap, which is slow.
  * TODO: Implement multi-level grouping
  *
- * @param {import("./flowNode.js").Datum[]} data
- * @param {(data: import("./flowNode.js").Datum) => import("../spec/channel.js").Scalar} accessor
+ * @param {Datum[]} data
+ * @param {(data: Datum) => import("../spec/channel.js").Scalar} accessor
  */
 function groupBy(data, accessor) {
     const groups = new Map();
