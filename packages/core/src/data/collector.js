@@ -18,6 +18,12 @@ export default class Collector extends FlowNode {
      * @typedef {import("./flowNode.js").Data} Data
      */
 
+    /**
+     * Current batch that is being collected.
+     * @type {Data}
+     */
+    #buffer = [];
+
     /** */
     get behavior() {
         return BEHAVIOR_COLLECTS;
@@ -35,30 +41,29 @@ export default class Collector extends FlowNode {
         this.observers = [];
 
         // TODO: Consider nested maps instead of InternMap
-        /** @type {Map<any | any[], Data>} TODO: proper type for key */
+        /** @type {Map<import("../spec/channel.js").Scalar[], Data>} TODO: proper type for key */
         this.facetBatches = new InternMap([], JSON.stringify);
 
-        this._init();
+        this.#init();
     }
 
-    _init() {
-        /** @type {Data} */
-        this._data = [];
+    #init() {
+        this.#buffer = [];
 
         this.facetBatches.clear();
-        this.facetBatches.set(undefined, this._data);
+        this.facetBatches.set(undefined, this.#buffer);
     }
 
     reset() {
         super.reset();
-        this._init();
+        this.#init();
     }
 
     /**
      * @param {Datum} datum
      */
     handle(datum) {
-        this._data.push(datum);
+        this.#buffer.push(datum);
     }
 
     /**
@@ -66,12 +71,15 @@ export default class Collector extends FlowNode {
      */
     beginBatch(flowBatch) {
         if (isFacetBatch(flowBatch)) {
-            this._data = [];
-            this.facetBatches.set(asArray(flowBatch.facetId), this._data);
+            this.#buffer = [];
+            this.facetBatches.set(asArray(flowBatch.facetId), this.#buffer);
         }
     }
 
     complete() {
+        // Free some memory
+        this.#buffer = [];
+
         const sort = this.params?.sort;
         // Vega's "compare" function is incredibly slow (uses megamorphic field accessor)
         // TODO: Implement a replacement for static data types
@@ -89,6 +97,8 @@ export default class Collector extends FlowNode {
                 throw new Error("TODO: Support faceted data!");
             }
 
+            const data = this.facetBatches.get(undefined);
+
             const accessors = this.params.groupby.map((fieldName) =>
                 field(fieldName)
             );
@@ -96,10 +106,10 @@ export default class Collector extends FlowNode {
                 accessors.length > 1
                     ? // There's something strange in d3-array's typings
                       /** @type {Map<any, any>} */ /** @type {any} */ (
-                          group(this._data, ...accessors)
+                          group(data, ...accessors)
                       )
                     : // D3's group is SLOW!
-                      groupBy(this._data, accessors[0]);
+                      groupBy(data, accessors[0]);
 
             this.facetBatches.clear();
             for (const [key, data] of iterateNestedMaps(groups)) {
@@ -154,7 +164,7 @@ export default class Collector extends FlowNode {
      * @returns {Iterable<Datum>}
      */
     getData() {
-        this._checkStatus();
+        this.#checkStatus();
 
         switch (this.facetBatches.size) {
             case 0:
@@ -181,7 +191,7 @@ export default class Collector extends FlowNode {
      * @param {(datum: Datum) => void} visitor
      */
     visitData(visitor) {
-        this._checkStatus();
+        this.#checkStatus();
 
         for (const data of this.facetBatches.values()) {
             for (let i = 0; i < data.length; i++) {
@@ -201,7 +211,7 @@ export default class Collector extends FlowNode {
         return count;
     }
 
-    _checkStatus() {
+    #checkStatus() {
         if (!this.completed) {
             throw new Error(
                 "Data propagation is not completed! No data are available."
