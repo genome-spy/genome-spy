@@ -176,9 +176,7 @@ export default class Collector extends FlowNode {
                 return {
                     [Symbol.iterator]: function* generator() {
                         for (const data of groups.values()) {
-                            for (let i = 0; i < data.length; i++) {
-                                yield data[i];
-                            }
+                            yield* data;
                         }
                     },
                 };
