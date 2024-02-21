@@ -11,9 +11,11 @@ export default function radixSort(arr) {
 
     let buffer = new Array(arr.length);
     let bufferPtr = buffer;
+    const counts = new Array(16);
 
     for (let digitIndex = 0; digitIndex < maxDigits; digitIndex++) {
-        let counts = new Array(16).fill(0);
+        counts.fill(0);
+
         const shift = digitIndex * 4;
         const pow = Math.pow(16, digitIndex);
 
@@ -70,4 +72,59 @@ function getDigits(arr) {
         max = Math.max(max, arr[i]);
     }
     return Math.floor(Math.log2(max) / 4) + 1;
+}
+
+/**
+ * @param {number[]} arr An array of unsigned integers
+ */
+export function radixSortIntoLookupArray(arr) {
+    const maxDigits = getDigits(arr);
+    let indexes = Array.from({ length: arr.length }, (_, i) => i);
+    let buffer = new Array(arr.length);
+    const counts = new Array(16);
+
+    for (let digitIndex = 0; digitIndex < maxDigits; digitIndex++) {
+        counts.fill(0);
+
+        const shift = digitIndex * 4;
+        const pow = Math.pow(16, digitIndex);
+
+        /**
+         * @param {*} i number
+         */
+        // eslint-disable-next-line no-loop-func
+        const getDigit = (i) => {
+            const value = arr[indexes[i]]; // Use index to access array value
+
+            if (digitIndex >= MAX_INTEGER_DIGIT) {
+                if (value > MAX_INTEGER) {
+                    return Math.floor(value / pow) % 16;
+                } else {
+                    return 0;
+                }
+            } else {
+                return (value >> shift) & 0xf;
+            }
+        };
+
+        // Count occurrences of each digit
+        for (let i = 0; i < arr.length; i++) {
+            counts[getDigit(i)]++;
+        }
+
+        // Prefix sum to get starting indexes
+        for (let i = 1; i < 16; i++) {
+            counts[i] += counts[i - 1];
+        }
+
+        // Sort indexes based on current digit
+        for (let i = arr.length - 1; i >= 0; i--) {
+            buffer[--counts[getDigit(i)]] = indexes[i];
+        }
+
+        // Swap buffer and indexes for next iteration
+        [indexes, buffer] = [buffer, indexes];
+    }
+
+    return indexes; // Return the sorted index array
 }
