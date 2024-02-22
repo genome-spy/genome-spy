@@ -31,7 +31,7 @@ export default class Collector extends FlowNode {
     /**
      * @type {number[]}
      */
-    #uniqueIdIndex;
+    #uniqueIdIndex = [];
 
     /**
      * Start and end indices of all facets if they are concatenated into a single array.
@@ -238,13 +238,14 @@ export default class Collector extends FlowNode {
      * Using a sorted index and binary search for O(log n) complexity.
      */
     #buildUniqueIdIndex() {
+        this.#facetIndices = [];
+
         /** @type {Datum} */
         const obj = this.facetBatches.values().next().value?.[0];
         if (obj == null || !(UNIQUE_ID_KEY in obj)) {
             return; // No unique ids in the data
         }
 
-        this.#facetIndices = [];
         let cumulativePos = 0;
 
         /** @type {number[]} */
@@ -274,7 +275,7 @@ export default class Collector extends FlowNode {
      * @param {number} uniqueId
      */
     findDatumByUniqueId(uniqueId) {
-        if (this.#uniqueIdIndex == null) {
+        if (!this.#uniqueIdIndex.length) {
             return;
         }
 
