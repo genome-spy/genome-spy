@@ -1,10 +1,12 @@
 import { InternMap } from "internmap";
-import { group } from "d3-array";
+import { bisector, group } from "d3-array";
 import { compare } from "vega-util";
 import iterateNestedMaps from "../utils/iterateNestedMaps.js";
 import FlowNode, { BEHAVIOR_COLLECTS, isFacetBatch } from "./flowNode.js";
 import { field } from "../utils/field.js";
 import { asArray } from "../utils/arrayUtils.js";
+import { radixSortIntoLookupArray } from "../utils/radixSort.js";
+import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
 
 /**
  * Collects (materializes) the data that flows through this node.
@@ -13,6 +15,31 @@ import { asArray } from "../utils/arrayUtils.js";
  * Grouping is primarily intended for handling faceted data.
  */
 export default class Collector extends FlowNode {
+    /**
+     * @typedef {import("./flowNode.js").Datum} Datum
+     * @typedef {import("./flowNode.js").Data} Data
+     */
+
+    /**
+     * Current batch that is being collected.
+     * @type {Data}
+     */
+    #buffer = [];
+
+    #uniqueIdAccessor = field(UNIQUE_ID_KEY);
+
+    /**
+     * @type {number[]}
+     */
+    #uniqueIdIndex = [];
+
+    /**
+     * Start and end indices of all facets if they are concatenated into a single array.
+     * Used together with the uniqueIdIndex for looking up data items by their unique id.
+     * @type {{start: number, stop: number, facetId: import("../spec/channel.js").Scalar[]}[]}
+     */
+    #facetIndices;
+
     get behavior() {
         return BEHAVIOR_COLLECTS;
     }
@@ -28,32 +55,30 @@ export default class Collector extends FlowNode {
         /** @type {(function(Collector):void)[]} */
         this.observers = [];
 
-        /** @type {Map<any | any[], import("./flowNode.js").Data>} TODO: proper type for key */
-        this.facetBatches = undefined;
+        // TODO: Consider nested maps instead of InternMap
+        /** @type {Map<import("../spec/channel.js").Scalar[], Data>} TODO: proper type for key */
+        this.facetBatches = new InternMap([], JSON.stringify);
 
-        this._init();
+        this.#init();
     }
 
-    _init() {
-        /** @type {import("./flowNode.js").Data} */
-        this._data = [];
+    #init() {
+        this.#buffer = [];
 
-        // TODO: Consider nested maps
-        this.facetBatches = new InternMap([], JSON.stringify);
-        this.facetBatches.set(undefined, this._data);
+        this.facetBatches.clear();
+        this.facetBatches.set(undefined, this.#buffer);
     }
 
     reset() {
         super.reset();
-        this._init();
+        this.#init();
     }
 
     /**
-     *
-     * @param {import("./flowNode.js").Datum} datum
+     * @param {Datum} datum
      */
     handle(datum) {
-        this._data.push(datum);
+        this.#buffer.push(datum);
     }
 
     /**
@@ -61,12 +86,15 @@ export default class Collector extends FlowNode {
      */
     beginBatch(flowBatch) {
         if (isFacetBatch(flowBatch)) {
-            this._data = [];
-            this.facetBatches.set(asArray(flowBatch.facetId), this._data);
+            this.#buffer = [];
+            this.facetBatches.set(asArray(flowBatch.facetId), this.#buffer);
         }
     }
 
     complete() {
+        // Free some memory
+        this.#buffer = [];
+
         const sort = this.params?.sort;
         // Vega's "compare" function is incredibly slow (uses megamorphic field accessor)
         // TODO: Implement a replacement for static data types
@@ -84,6 +112,8 @@ export default class Collector extends FlowNode {
                 throw new Error("TODO: Support faceted data!");
             }
 
+            const data = this.facetBatches.get(undefined);
+
             const accessors = this.params.groupby.map((fieldName) =>
                 field(fieldName)
             );
@@ -91,10 +121,10 @@ export default class Collector extends FlowNode {
                 accessors.length > 1
                     ? // There's something strange in d3-array's typings
                       /** @type {Map<any, any>} */ /** @type {any} */ (
-                          group(this._data, ...accessors)
+                          group(data, ...accessors)
                       )
                     : // D3's group is SLOW!
-                      groupBy(this._data, accessors[0]);
+                      groupBy(data, accessors[0]);
 
             this.facetBatches.clear();
             for (const [key, data] of iterateNestedMaps(groups)) {
@@ -107,6 +137,7 @@ export default class Collector extends FlowNode {
             sortData(data);
         }
 
+        this.#buildUniqueIdIndex();
         this.#propagateToChildren();
 
         super.complete();
@@ -118,16 +149,16 @@ export default class Collector extends FlowNode {
 
     #propagateToChildren() {
         if (this.children.length) {
-            for (const [key, data] of this.facetBatches.entries()) {
-                if (key) {
+            for (const [facetId, data] of this.facetBatches.entries()) {
+                if (facetId) {
                     /** @type {import("../types/flowBatch.js").FacetBatch} */
-                    const facetBatch = { type: "facet", facetId: key };
+                    const facetBatch = { type: "facet", facetId };
                     for (const child of this.children) {
                         child.beginBatch(facetBatch);
                     }
                 }
-                for (const datum of data) {
-                    this._propagate(datum);
+                for (let i = 0, n = data.length; i < n; i++) {
+                    this._propagate(data[i]);
                 }
             }
         }
@@ -146,10 +177,10 @@ export default class Collector extends FlowNode {
     }
 
     /**
-     * @returns {Iterable<import("./flowNode.js").Datum>}
+     * @returns {Iterable<Datum>}
      */
     getData() {
-        this._checkStatus();
+        this.#checkStatus();
 
         switch (this.facetBatches.size) {
             case 0:
@@ -161,9 +192,7 @@ export default class Collector extends FlowNode {
                 return {
                     [Symbol.iterator]: function* generator() {
                         for (const data of groups.values()) {
-                            for (let i = 0; i < data.length; i++) {
-                                yield data[i];
-                            }
+                            yield* data;
                         }
                     },
                 };
@@ -173,10 +202,10 @@ export default class Collector extends FlowNode {
 
     /**
      *
-     * @param {(datum: import("./flowNode.js").Datum) => void} visitor
+     * @param {(datum: Datum) => void} visitor
      */
     visitData(visitor) {
-        this._checkStatus();
+        this.#checkStatus();
 
         for (const data of this.facetBatches.values()) {
             for (let i = 0; i < data.length; i++) {
@@ -196,11 +225,80 @@ export default class Collector extends FlowNode {
         return count;
     }
 
-    _checkStatus() {
+    #checkStatus() {
         if (!this.completed) {
             throw new Error(
                 "Data propagation is not completed! No data are available."
             );
+        }
+    }
+
+    /**
+     * Builds an index for looking up data items by their unique id.
+     * Using a sorted index and binary search for O(log n) complexity.
+     */
+    #buildUniqueIdIndex() {
+        this.#facetIndices = [];
+
+        /** @type {Datum} */
+        const obj = this.facetBatches.values().next().value?.[0];
+        if (obj == null || !(UNIQUE_ID_KEY in obj)) {
+            return; // No unique ids in the data
+        }
+
+        let cumulativePos = 0;
+
+        /** @type {number[]} */
+        const ids = [];
+
+        const a = this.#uniqueIdAccessor;
+
+        for (const [facetId, data] of this.facetBatches) {
+            this.#facetIndices.push({
+                start: cumulativePos,
+                stop: cumulativePos + data.length,
+                facetId,
+            });
+            cumulativePos += data.length;
+
+            for (let i = 0, n = data.length; i < n; i++) {
+                ids.push(a(data[i]));
+            }
+        }
+
+        this.#uniqueIdIndex = radixSortIntoLookupArray(ids);
+    }
+
+    /**
+     * Use an index to find a datum by its unique id.
+     *
+     * @param {number} uniqueId
+     */
+    findDatumByUniqueId(uniqueId) {
+        if (!this.#uniqueIdIndex.length) {
+            return;
+        }
+
+        const facetBisector = bisector((f) => f.start).right;
+        const a = this.#uniqueIdAccessor;
+        const indexBisector = bisector((i) => a(getDatum(i))).left;
+
+        const getDatum = (/** @type {number} */ i) => {
+            const fi = facetBisector(this.#facetIndices, i);
+            const facet = this.#facetIndices[fi - 1];
+            if (!facet || i >= facet.stop) {
+                return;
+            }
+            const data = this.facetBatches.get(facet.facetId);
+            return data[i - facet.start];
+        };
+
+        const index = indexBisector(this.#uniqueIdIndex, uniqueId);
+        if (index >= 0) {
+            const datum = getDatum(this.#uniqueIdIndex[index]);
+            if (datum && a(datum) === uniqueId) {
+                return datum;
+            }
         }
     }
 }
@@ -209,8 +307,8 @@ export default class Collector extends FlowNode {
  * Like D3's group but without InternMap, which is slow.
  * TODO: Implement multi-level grouping
  *
- * @param {import("./flowNode.js").Datum[]} data
- * @param {(data: import("./flowNode.js").Datum) => import("../spec/channel.js").Scalar} accessor
+ * @param {Datum[]} data
+ * @param {(data: Datum) => import("../spec/channel.js").Scalar} accessor
  */
 function groupBy(data, accessor) {
     const groups = new Map();

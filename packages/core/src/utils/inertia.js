@@ -37,6 +37,10 @@ export default class Inertia {
     }
 
     cancel() {
+        if (this.lastValue === this.targetValue) {
+            return;
+        }
+
         // decelelerate rapidly
         this.targetValue = lerp([this.lastValue, this.targetValue], 0.3);
         this.smoother({ x: this.targetValue });

@@ -3,9 +3,10 @@
  *
  * Yields arrays that contain the compound key and the grouped data items.
  *
- * @param {Map<any, any>} map The root
+ * @param {Map<any, T>} map The root
  * @param {any[]} [path] The path so far.
- * @returns {Generator<[any[], any[]]>}
+ * @returns {Generator<[any[], T]>}
+ * @template T
  */
 export default function* iterateNestedMaps(map, path = []) {
     for (const [key, value] of map.entries()) {
