@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.48.2](https://github.com/genome-spy/genome-spy/compare/v0.48.1...v0.48.2) (2024-02-22)
+
+
+### Bug Fixes
+
+* **core:** 32 instead of 24 bits for uniqueId in picking ([7ae8b7c](https://github.com/genome-spy/genome-spy/commit/7ae8b7c31817746251cdb2c5fdd211a2abd86ffe)), closes [#218](https://github.com/genome-spy/genome-spy/issues/218)
+
+
+### Performance Improvements
+
+* **core:** improve picking and tooltip performance ([#243](https://github.com/genome-spy/genome-spy/issues/243)) ([17e92fc](https://github.com/genome-spy/genome-spy/commit/17e92fc4486406732b25b2c74a79a6ff3a7ec8ce))
+
+
+
+
+
 ## [0.48.1](https://github.com/genome-spy/genome-spy/compare/v0.48.0...v0.48.1) (2024-02-20)
 
 
