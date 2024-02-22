@@ -151,7 +151,9 @@ export function makeLerpSmoother(
             current = target;
             callback(current);
             settled = true;
-            animator.requestRender();
+            if (maxDiff != 0) {
+                animator.requestRender();
+            }
         } else {
             animator.requestTransition((t) => smoothUpdate(t));
         }
