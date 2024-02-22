@@ -1,3 +1,5 @@
+import { Scalar } from "./channel.js";
+
 export interface ExprRef {
     /**
      * The expression string.
@@ -5,9 +7,7 @@ export interface ExprRef {
     expr: string;
 }
 
-// Adapted from: https://github.com/vega/vega-lite/blob/main/src/parameter.ts
-
-export interface VariableParameter {
+export interface ParameterBase {
     /**
      * A unique name for the variable parameter. Parameter names should be valid
      * JavaScript identifiers: they should contain only alphanumeric characters
@@ -16,6 +16,12 @@ export interface VariableParameter {
      */
     name: string;
 
+    push?: "outer";
+}
+
+// Adapted from: https://github.com/vega/vega-lite/blob/main/src/parameter.ts
+
+export interface VariableParameter extends ParameterBase {
     /**
      * The [initial value](http://vega.github.io/vega-lite/docs/value.html) of the parameter.
      *
@@ -144,3 +150,100 @@ export interface BindDirect {
 }
 
 export type Binding = BindCheckbox | BindRadioSelect | BindRange | BindInput;
+
+// ----------------------------------------------------------------------------
+// Adapted from: https://github.com/vega/vega-lite/blob/main/src/selection.ts
+
+type Vector2<T> = [T, T];
+
+export type SelectionType = "point" | "interval";
+export type SelectionInit = Scalar;
+export type SelectionInitInterval =
+    | Vector2<boolean>
+    | Vector2<number>
+    | Vector2<string>;
+
+export type InteractionEventType = "click" | "dblclick" | "mouseover";
+
+export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
+    /**
+     * Determines the default event processing and data query for the selection. Vega-Lite currently supports two selection types:
+     *
+     * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
+     * - `"interval"` -- to select a continuous range of data values on `drag`.
+     */
+    type: T;
+
+    /**
+     */
+    on?: string;
+
+    /**
+     * An array of encoding channels. The corresponding data field values
+     * must match for a data tuple to fall within the selection.
+     *
+     * __See also:__ The [projection with `encodings` and `fields` section](https://vega.github.io/vega-lite/docs/selection.html#project) in the documentation.
+     */
+    encodings?: SingleDefUnitChannel[];
+
+    /**
+     * An array of field names whose values must match for a data tuple to
+     * fall within the selection.
+     *
+     * __See also:__ The [projection with `encodings` and `fields` section](https://vega.github.io/vega-lite/docs/selection.html#project) in the documentation.
+     */
+    fields?: FieldName[];
+}
+
+export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
+    /**
+     * Controls whether data values should be toggled (inserted or removed from a point selection)
+     * or only ever inserted into point selections.
+     *
+     * One of:
+     * - `true` -- the default behavior, which corresponds to `"event.shiftKey"`.  As a result, data values are toggled when the user interacts with the shift-key pressed.
+     * - `false` -- disables toggling behaviour; the selection will only ever contain a single data value corresponding to the most recent interaction.
+     * - A [Vega expression](https://vega.github.io/vega/docs/expressions/) which is re-evaluated as the user interacts. If the expression evaluates to `true`, the data value is toggled into or out of the point selection. If the expression evaluates to `false`, the point selection is first cleared, and the data value is then inserted. For example, setting the value to the Vega expression `"true"` will toggle data values
+     * without the user pressing the shift-key.
+     *
+     * __Default value:__ `true`
+     *
+     * __See also:__ [`toggle` examples](https://vega.github.io/vega-lite/docs/selection.html#toggle) in the documentation.
+     */
+    toggle?: string | boolean;
+}
+
+export interface IntervalSelectionConfig
+    extends BaseSelectionConfig<"interval"> {
+    // TODO
+}
+
+export interface SelectionParameter<T extends SelectionType = SelectionType>
+    extends ParameterBase {
+    /**
+     * Determines the default event processing and data query for the selection. Vega-Lite currently supports two selection types:
+     *
+     * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
+     * - `"interval"` -- to select a continuous range of data values on `drag`.
+     */
+    select:
+        | T
+        | (T extends "point"
+              ? PointSelectionConfig
+              : T extends "interval"
+              ? IntervalSelectionConfig
+              : never);
+
+    /**
+     * Initialize the selection with a mapping between [projected channels or field names](https://vega.github.io/vega-lite/docs/selection.html#project) and initial values.
+     *
+     * __See also:__ [`init`](https://vega.github.io/vega-lite/docs/value.html) documentation.
+     */
+    value?: T extends "point"
+        ? SelectionInit | SelectionInitMapping[]
+        : T extends "interval"
+        ? SelectionInitIntervalMapping
+        : never;
+}
+
+export type Parameter = VariableParameter | SelectionParameter;

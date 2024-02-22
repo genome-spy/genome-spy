@@ -1,5 +1,4 @@
 import { GenomeConfig } from "./genome.js";
-import { VariableParameter } from "./parameter.js";
 import { ViewSpec } from "./view.js";
 
 interface RootConfig {

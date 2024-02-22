@@ -173,6 +173,22 @@ describe("Nested ParamMediators", () => {
         childSetter(20);
         expect(result).toBe(30);
     });
+
+    test("Pushing to outer parameter", () => {
+        const parent = new ParamMediator();
+        const child = new ParamMediator(() => parent);
+
+        parent.registerParam({ name: "foo", value: 1 });
+        const childSetter = child.registerParam({ name: "foo", push: "outer" });
+
+        expect(parent.findValue("foo")).toBe(1);
+        expect(child.findValue("foo")).toBe(1);
+
+        childSetter(2);
+
+        expect(parent.findValue("foo")).toBe(2);
+        expect(child.findValue("foo")).toBe(2);
+    });
 });
 
 test("activateExprRefProps", async () => {

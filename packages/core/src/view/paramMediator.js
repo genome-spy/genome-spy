@@ -9,7 +9,7 @@ import createFunction from "../utils/expression.js";
  */
 export default class ParamMediator {
     /**
-     * @typedef {import("../spec/parameter.js").VariableParameter} VariableParameter
+     * @typedef {import("../spec/parameter.js").Parameter} Parameter
      * @typedef {(value: any) => void} ParameterSetter
      */
 
@@ -28,7 +28,7 @@ export default class ParamMediator {
     /** @type {Map<string, ExprRefFunction>} */
     #expressions = new Map();
 
-    /** @type {Map<string, VariableParameter>} */
+    /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
     /** @type {() => ParamMediator} */
@@ -48,32 +48,54 @@ export default class ParamMediator {
     }
 
     /**
-     * @param {VariableParameter} param
+     * @param {Parameter} param
      * @returns {ParameterSetter}
      */
     registerParam(param) {
+        const name = param.name;
+
         if ("value" in param && "expr" in param) {
             throw new Error(
-                "Parameter must not have both value and expr: " + param.name
+                `The parameter "${name}" must not have both value and expr properties!`
             );
         }
 
         /** @type {ParameterSetter} */
         let setter;
 
-        if ("value" in param) {
-            setter = this.allocateSetter(param.name, param.value);
+        if (param.push == "outer") {
+            const outerMediator = this.findMediatorForParam(name);
+            if (!outerMediator) {
+                throw new Error(
+                    `Parameter "${name}" not found in outer scope!`
+                );
+            }
+
+            const outerProps = outerMediator.paramConfigs.get(name);
+            if ("expr" in outerProps || "select" in outerProps) {
+                throw new Error(
+                    `The outer parameter "${name}" must not have expr or select properties!`
+                );
+            }
+            setter = outerMediator.getSetter(name);
+            // The following will become a bit fragile if the view hierarchy is going to
+            // support mutation (i.e. adding/removing children) in future.
+            this.#allocatedSetters.set(name, setter);
+        } else if ("value" in param) {
+            setter = this.allocateSetter(name, param.value);
         } else if ("expr" in param) {
             const expr = this.createExpression(param.expr);
             // TODO: getSetter(param) should return a setter that throws if
             // modifying the value is attempted.
-            const realSetter = this.allocateSetter(param.name, expr(null));
+            const realSetter = this.allocateSetter(name, expr(null));
             expr.addListener(() => realSetter(expr(null)));
             // NOP
             setter = (_) => undefined;
+        } else {
+            setter = this.allocateSetter(name, null);
         }
 
-        this.#paramConfigs.set(param.name, param);
+        this.#paramConfigs.set(name, param);
 
         return setter;
     }
@@ -148,7 +170,7 @@ export default class ParamMediator {
      * Returns configs for all parameters that have been registered using `registerParam`.
      */
     get paramConfigs() {
-        return /** @type {ReadonlyMap<string, VariableParameter>} */ (
+        return /** @type {ReadonlyMap<string, Parameter>} */ (
             this.#paramConfigs
         );
     }
