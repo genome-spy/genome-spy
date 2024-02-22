@@ -171,7 +171,7 @@ export function generateScaleGlsl(
         ? "uvec2"
         : hp
         ? "uint"
-        : discrete
+        : discrete || channel == "uniqueId"
         ? "uint"
         : "float";
 

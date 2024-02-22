@@ -95,11 +95,14 @@ export class GeometryBuilder {
                 f,
                 numComponents: largeHp ? 2 : 1,
                 arrayReference: largeHp ? largeHpArray : undefined,
-                targetArrayType: isDiscrete(ce.scale.type)
-                    ? Uint16Array
-                    : hp
-                    ? Uint32Array
-                    : Float32Array,
+                targetArrayType:
+                    channel == "uniqueId"
+                        ? Uint32Array
+                        : isDiscrete(ce.scale.type)
+                        ? Uint16Array
+                        : hp
+                        ? Uint32Array
+                        : Float32Array,
             });
         }
 

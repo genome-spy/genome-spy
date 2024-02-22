@@ -13,10 +13,9 @@ out highp vec4 vPickingColor;
 bool setupPicking() {
     if (uPickingEnabled) {
 #ifdef uniqueId_DEFINED
-        int id = int(getScaled_uniqueId());
-        // TODO: Take the sign bit into account
+        uint id = attr_uniqueId;
         vPickingColor = vec4(
-            ivec4(id >> 0, id >> 8, id >> 16, 0xFF) & 0xFF
+            ivec4(id >> 0, id >> 8, id >> 16, id >> 24) & 0xFF
         ) / float(0xFF);
 #else
         vPickingColor = vec4(1.0);

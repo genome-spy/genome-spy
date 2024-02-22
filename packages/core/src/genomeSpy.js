@@ -822,7 +822,10 @@ export default class GenomeSpy {
         const pixelValue = this._glHelper.readPickingPixel(x, y);
 
         const uniqueId =
-            pixelValue[0] | (pixelValue[1] << 8) | (pixelValue[2] << 16);
+            pixelValue[0] |
+            (pixelValue[1] << 8) |
+            (pixelValue[2] << 16) |
+            (pixelValue[3] << 24);
 
         if (uniqueId == 0) {
             this._currentHover = null;
@@ -834,10 +837,6 @@ export default class GenomeSpy {
         }
 
         if (!this._currentHover) {
-            // We are doing an exhaustive search of the data. This is a bit slow with
-            // millions of items.
-            // TODO: Optimize by indexing or something
-
             this.viewRoot.visit((view) => {
                 if (view instanceof UnitView) {
                     if (
