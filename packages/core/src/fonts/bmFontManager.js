@@ -132,7 +132,9 @@ export default class BmFontManager {
             fontEntry.texture = await texturePromise;
             fontEntry.metrics = await metricsPromise;
         } catch (error) {
-            console.log("Cannot load font. Using default.", error);
+            console.warn(
+                `Cannot load font: "${key.family}". Using the embedded default font.`
+            );
 
             fontEntry.metrics = this._defaultFontEntry.metrics;
             fontEntry.texture = this._defaultFontEntry.texture;
@@ -171,11 +173,15 @@ export default class BmFontManager {
 
         let promise = this._metadataPromises.get(dir);
         if (!promise) {
-            promise = fetch(this.fontRepository + dir + "/METADATA.pb")
+            const url = this.fontRepository + dir + "/METADATA.pb";
+            promise = fetch(url)
                 .then((response) => {
                     if (!response.ok) {
                         throw new Error(
-                            "Could not load font metadata: " + response.status
+                            "Could not load font metadata. Response status: " +
+                                response.status +
+                                ", url: " +
+                                url
                         );
                     }
                     return response;
@@ -183,7 +189,7 @@ export default class BmFontManager {
                 .then((response) => response.text())
                 .then((text) => parseMetadataPb(text))
                 .catch((error) => {
-                    console.warn(error);
+                    console.warn(error.message);
                     return undefined;
                 });
 
