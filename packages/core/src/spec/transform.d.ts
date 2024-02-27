@@ -17,12 +17,30 @@ export interface IdentifierParams extends TransformParamsBase {
      */
     as?: string;
 }
-export interface FilterParams extends TransformParamsBase {
+export interface ExprFilterParams extends TransformParamsBase {
     type: "filter";
 
     /** An expression string. The data object is removed if the expression evaluates to false. */
     expr: string;
 }
+
+export interface SelectionFilterParams extends TransformParamsBase {
+    type: "filter";
+
+    /**
+     * A selection parameter. The data object is removed if it is not part of the selection.
+     */
+    param: string;
+
+    /**
+     * If true, the filter retains all data objects when the selection is empty.
+
+     * **Default:** `true`
+     */
+    empty?: boolean;
+}
+
+export type FilterParams = ExprFilterParams | SelectionFilterParams;
 
 export interface FormulaParams extends TransformParamsBase {
     type: "formula";

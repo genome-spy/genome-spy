@@ -121,6 +121,8 @@ export default class ParamMediator {
      * @template T
      */
     allocateSetter(paramName, initialValue, passive = false) {
+        validateParameterName(paramName);
+
         if (this.#allocatedSetters.has(paramName)) {
             throw new Error(
                 "Setter already allocated for parameter: " + paramName
@@ -369,4 +371,21 @@ export function activateExprRefProps(paramMediator, props, listener) {
     }
 
     return /** @type {T} */ (activatedProps);
+}
+
+/**
+ * Validates a parameter name. If the name is invalid, throws an error.
+ * Otherwise, returns the name.
+ *
+ * @param {string} name
+ * @returns {string} the name
+ */
+export function validateParameterName(name) {
+    if (!/^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(name)) {
+        throw new Error(
+            `Invalid parameter name: ${name}. Must be a valid JavaScript identifier.`
+        );
+    }
+
+    return name;
 }
