@@ -1,4 +1,4 @@
-import { Scalar } from "./channel.js";
+import { ChannelWithScale, Scalar } from "./channel.js";
 
 export interface ExprRef {
     /**
@@ -176,7 +176,7 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
 
     /**
      */
-    on?: string;
+    on?: "click" | "mouseover";
 
     /**
      * An array of encoding channels. The corresponding data field values
@@ -184,7 +184,7 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
      *
      * __See also:__ The [projection with `encodings` and `fields` section](https://vega.github.io/vega-lite/docs/selection.html#project) in the documentation.
      */
-    encodings?: SingleDefUnitChannel[];
+    encodings?: ChannelWithScale[];
 
     /**
      * An array of field names whose values must match for a data tuple to
@@ -192,25 +192,26 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
      *
      * __See also:__ The [projection with `encodings` and `fields` section](https://vega.github.io/vega-lite/docs/selection.html#project) in the documentation.
      */
-    fields?: FieldName[];
+    fields?: string[];
 }
 
 export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
     /**
      * Controls whether data values should be toggled (inserted or removed from a point selection)
-     * or only ever inserted into point selections.
+     * when clicking with the shift key pressed.
      *
-     * One of:
-     * - `true` -- the default behavior, which corresponds to `"event.shiftKey"`.  As a result, data values are toggled when the user interacts with the shift-key pressed.
-     * - `false` -- disables toggling behaviour; the selection will only ever contain a single data value corresponding to the most recent interaction.
-     * - A [Vega expression](https://vega.github.io/vega/docs/expressions/) which is re-evaluated as the user interacts. If the expression evaluates to `true`, the data value is toggled into or out of the point selection. If the expression evaluates to `false`, the point selection is first cleared, and the data value is then inserted. For example, setting the value to the Vega expression `"true"` will toggle data values
-     * without the user pressing the shift-key.
+     * - `true` -- additional values can be selected by shift-clicking.
+     * - `false` -- only a single value can be selected at a time.
      *
      * __Default value:__ `true`
-     *
-     * __See also:__ [`toggle` examples](https://vega.github.io/vega-lite/docs/selection.html#toggle) in the documentation.
      */
-    toggle?: string | boolean;
+    toggle?: boolean;
+
+    /**
+     * A set of fields that uniquely identify a tuple. Used for bookmarking point selections
+     * in the GenomeSpy App.
+     */
+    keyFields?: string[];
 }
 
 export interface IntervalSelectionConfig

@@ -18,6 +18,9 @@ import {
 import createDomain from "../utils/domainArray.js";
 import AxisResolution from "./axisResolution.js";
 import View from "./view.js";
+import { createSinglePointSelection } from "../selection/selection.js";
+import { isString } from "vega-util";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 
 /**
  *
@@ -84,6 +87,50 @@ export default class UnitView extends View {
         );
 
         this.needsAxes = { x: true, y: true };
+
+        this.#setupPointSelection();
+    }
+
+    #setupPointSelection() {
+        for (const [name, param] of this.paramMediator.paramConfigs) {
+            if (!("select" in param)) {
+                continue;
+            }
+
+            const select = param.select;
+            const type = isString(select) ? select : select.type;
+            if (type === "point") {
+                // Handle projection-free point selections
+
+                const none = -1;
+                let lastId = none;
+
+                const setter = this.paramMediator.getSetter(name);
+
+                const getHoveredDatum = () => {
+                    const h = this.context.getCurrentHover();
+                    return h?.mark?.unitView === this ? h.datum : null;
+                };
+
+                const on =
+                    !isString(select) && "on" in select ? select.on : "click";
+
+                this.addInteractionEventListener(
+                    on == "mouseover" ? "mousemove" : "click",
+                    (rect, event) => {
+                        const datum = getHoveredDatum();
+                        const id = datum ? datum[UNIQUE_ID_KEY] : none;
+                        if (id != lastId) {
+                            lastId = id;
+                            const selection = createSinglePointSelection(
+                                getHoveredDatum()
+                            );
+                            setter(selection);
+                        }
+                    }
+                );
+            }
+        }
     }
 
     /**

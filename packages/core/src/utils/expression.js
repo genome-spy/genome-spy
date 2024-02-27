@@ -11,6 +11,7 @@ import {
 import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
+import { selectionTest } from "../selection/selection.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -33,6 +34,7 @@ const functionContext = {
     lerp,
     linearstep,
     smoothstep,
+    selectionTest,
 };
 
 /**
