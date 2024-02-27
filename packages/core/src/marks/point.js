@@ -177,6 +177,10 @@ export default class PointMark extends Mark {
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
+        if (!collector) {
+            console.debug("No collector");
+            return;
+        }
         const itemCount = collector.getItemCount();
 
         const builder = new PointVertexBuilder({

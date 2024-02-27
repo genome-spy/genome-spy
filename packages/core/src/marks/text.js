@@ -216,6 +216,10 @@ export default class TextMark extends Mark {
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
+        if (!collector) {
+            console.debug("No collector");
+            return;
+        }
         const data = collector.getData();
         const encoding = this.encoding;
 

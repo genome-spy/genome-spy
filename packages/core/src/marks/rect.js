@@ -177,6 +177,10 @@ export default class RectMark extends Mark {
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
+        if (!collector) {
+            console.debug("No collector");
+            return;
+        }
         const numItems = collector.getItemCount();
 
         const builder = new RectVertexBuilder({
