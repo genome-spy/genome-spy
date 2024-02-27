@@ -75,7 +75,14 @@ export default function createFunction(expr, globalObject = {}) {
         const fn = Function(
             "datum",
             "globalObject",
-            `"use strict"; return (${generatedCode.code});`
+            `"use strict";
+            try {
+                return (${generatedCode.code});
+            } catch (e) {
+                throw new Error("Error evaluating expression: " + ${JSON.stringify(
+                    expr
+                )} + ", " + e.message, e);
+            }`
         ).bind(functionContext);
 
         /** @type { ExpressionFunction } */
