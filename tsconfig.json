@@ -15,6 +15,6 @@
     "strict": false,
     "noImplicitAny": true,
     "types": [],
-    "skipLibCheck": true
+    "skipLibCheck": false
   }
 }
