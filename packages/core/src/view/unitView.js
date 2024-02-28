@@ -245,18 +245,32 @@ export default class UnitView extends View {
     }
 
     /**
+     * @type {Map<Channel, import("../types/encoder.js").Accessor>}
+     */
+    #accessors = new Map();
+
+    /**
      *
      * @param {Channel} channel
      */
     getAccessor(channel) {
-        return this._cache("accessor/" + channel, () => {
-            const encoding = this.mark.encoding; // Mark provides encodings with defaults and possible modifications
-            if (encoding && encoding[channel]) {
-                return this.context.accessorFactory.createAccessor(
-                    encoding[channel]
-                );
-            }
-        });
+        if (this.#accessors.has(channel)) {
+            return this.#accessors.get(channel);
+        }
+
+        /** @type {import("../types/encoder.js").Accessor} */
+        let accessor;
+
+        const encoding = this.mark.encoding; // Mark provides encodings with defaults and possible modifications
+        if (encoding && encoding[channel]) {
+            accessor = this.context.accessorFactory.createAccessor(
+                encoding[channel],
+                this.paramMediator
+            );
+        }
+
+        this.#accessors.set(channel, accessor);
+        return accessor;
     }
 
     /**
@@ -346,23 +360,16 @@ export default class UnitView extends View {
             /** @type {DomainArray} */
             let domain;
 
-            const encodingSpec = this.mark.encoding[channel];
+            const accessor = this.getAccessor(channel);
+            if (accessor) {
+                domain = createDomain(type);
 
-            if (encodingSpec) {
-                const accessor =
-                    this.context.accessorFactory.createAccessor(encodingSpec);
-                if (accessor) {
-                    domain = createDomain(type);
-
-                    if (accessor.constant) {
-                        domain.extend(accessor({}));
-                    } else {
-                        const collector = this.getCollector();
-                        if (collector?.completed) {
-                            collector.visitData((d) =>
-                                domain.extend(accessor(d))
-                            );
-                        }
+                if (accessor.constant) {
+                    domain.extend(accessor({}));
+                } else {
+                    const collector = this.getCollector();
+                    if (collector?.completed) {
+                        collector.visitData((d) => domain.extend(accessor(d)));
                     }
                 }
             }

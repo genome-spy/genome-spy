@@ -358,7 +358,7 @@ export default class Mark {
      * the ranges of the visual channels.
      */
     initializeEncoders() {
-        this.encoders = createEncoders(this);
+        this.encoders = createEncoders(this.unitView, this.encoding);
     }
 
     /**

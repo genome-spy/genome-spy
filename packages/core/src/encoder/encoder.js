@@ -8,11 +8,11 @@ import { isExprRef } from "../view/paramMediator.js";
  *
  * TODO: This method should have a test. But how to mock Mark...
  *
- * @param {import("../marks/mark.js").default} mark
- * @param {import("../spec/channel.js").Encoding} [encoding] Taken from the mark if not provided
+ * @param {import("../view/unitView.js").default} unitView
+ * @param {import("../spec/channel.js").Encoding} encoding
  * @returns {Partial<Record<Channel, Encoder>>}
  */
-export default function createEncoders(mark, encoding) {
+export default function createEncoders(unitView, encoding) {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../types/encoder.js").Encoder} Encoder
@@ -21,44 +21,24 @@ export default function createEncoders(mark, encoding) {
     /** @type {Partial<Record<Channel, Encoder>>} */
     const encoders = {};
 
-    if (!encoding) {
-        encoding = mark.encoding;
-    }
-
     for (const [channel, channelDef] of Object.entries(encoding)) {
         if (!channelDef) {
             continue;
         }
 
-        const channelWithScale =
-            ((isChannelDefWithScale(channelDef) &&
-                channelDef.resolutionChannel) ??
-                (isChannelWithScale(channel) && channel)) ||
-            undefined;
-
-        const resolution = mark.unitView.getScaleResolution(channelWithScale);
-
-        encoders[channel] = createEncoder(
-            mark,
-            encoding[channel],
-            resolution?.scale,
-            mark.unitView.getAccessor(channel),
-            channel
-        );
+        encoders[channel] = createEncoder(unitView, channel, encoding[channel]);
     }
 
     return encoders;
 }
 
 /**
- * @param {import("../marks/mark.js").default} mark
- * @param {import("../spec/channel.js").ChannelDef} channelDef
- * @param {any} scale
- * @param {Accessor} accessor
+ * @param {import("../view/unitView.js").default} unitView
  * @param {Channel} channel
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @returns {Encoder}
  */
-export function createEncoder(mark, channelDef, scale, accessor, channel) {
+export function createEncoder(unitView, channel, channelDef) {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../types/encoder.js").Encoder} Encoder
@@ -68,9 +48,19 @@ export function createEncoder(mark, channelDef, scale, accessor, channel) {
     /** @type {Encoder} */
     let encoder;
 
+    const accessor = unitView.getAccessor(channel);
+
+    const channelWithScale =
+        ((isChannelDefWithScale(channelDef) && channelDef.resolutionChannel) ??
+            (isChannelWithScale(channel) && channel)) ||
+        undefined;
+
+    const resolution = unitView.getScaleResolution(channelWithScale);
+    let scale = resolution?.scale;
+
     if (isValueDef(channelDef)) {
         if (isExprRef(channelDef.value)) {
-            const fn = mark.unitView.paramMediator.createExpression(
+            const fn = unitView.paramMediator.createExpression(
                 channelDef.value.expr
             );
             encoder = /** @type {Encoder} */ ((datum) => fn(null));
@@ -344,7 +334,7 @@ export function isColorChannel(channel) {
  * @param {import("../spec/channel.js").Channel} channel
  */
 export function isDiscreteChannel(channel) {
-    return ["shape", "squeeze"].includes(channel);
+    return ["shape"].includes(channel);
 }
 
 /**
@@ -369,7 +359,6 @@ export function isChannelWithScale(channel) {
         "angle",
         "dx",
         "dy",
-        "sample",
     ].includes(channel);
 }
 

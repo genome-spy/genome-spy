@@ -19,6 +19,7 @@ import { ChannelDef } from "../spec/channel.js";
 import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
 import { Scalar } from "../spec/channel.js";
+import { Datum } from "../data/flowNode.js";
 
 export interface AccessorMetadata {
     /** True if the accessor returns the same value for all objects */
@@ -28,7 +29,7 @@ export interface AccessorMetadata {
     fields: string[];
 }
 
-export type Accessor = ((datum: any) => any) & AccessorMetadata;
+export type Accessor = ((datum: Datum) => Scalar) & AccessorMetadata;
 
 export interface EncoderMetadata {
     /** True if the accessor returns the same value for all objects */
@@ -44,7 +45,7 @@ export interface EncoderMetadata {
     accessor: Accessor;
 
     /** Converts ordinal values to index numbers */
-    indexer?: (value: any) => number;
+    indexer?: (value: Scalar) => number;
 
     channelDef: ChannelDef;
 
@@ -52,9 +53,9 @@ export interface EncoderMetadata {
     applyMetadata: (target: Function) => void;
 }
 
-export type Encoder = ((datum: object) => Scalar) & EncoderMetadata;
+export type Encoder = ((datum: Datum) => Scalar) & EncoderMetadata;
 
-export type NumberEncoder = ((datum: object) => number) & EncoderMetadata;
+export type NumberEncoder = ((datum: Datum) => number) & EncoderMetadata;
 
 export interface ScaleMetadata {
     /** Scale type */
