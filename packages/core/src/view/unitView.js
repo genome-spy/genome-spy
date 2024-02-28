@@ -21,6 +21,7 @@ import View from "./view.js";
 import { createSinglePointSelection } from "../selection/selection.js";
 import { isString } from "vega-util";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import createAccessor from "../encoder/accessor.js";
 
 /**
  *
@@ -263,7 +264,8 @@ export default class UnitView extends View {
 
         const encoding = this.mark.encoding; // Mark provides encodings with defaults and possible modifications
         if (encoding && encoding[channel]) {
-            accessor = this.context.accessorFactory.createAccessor(
+            accessor = createAccessor(
+                channel,
                 encoding[channel],
                 this.paramMediator
             );

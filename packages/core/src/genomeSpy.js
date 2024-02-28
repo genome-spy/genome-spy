@@ -6,7 +6,6 @@ import SPINNER from "./img/90-ring-with-bg.svg";
 import css from "./styles/genome-spy.css.js";
 import Tooltip from "./utils/ui/tooltip.js";
 
-import AccessorFactory from "./encoder/accessor.js";
 import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
@@ -71,7 +70,6 @@ export default class GenomeSpy {
         /** Root level configuration object */
         this.spec = spec;
 
-        this.accessorFactory = new AccessorFactory();
         this.viewFactory = new ViewFactory();
 
         /** @type {(function(string):object[])[]} */
@@ -434,7 +432,6 @@ export default class GenomeSpy {
         /** @type {import("./types/viewContext.js").default} */
         const context = {
             dataFlow: new DataFlow(),
-            accessorFactory: this.accessorFactory,
             glHelper: this._glHelper,
             animator: this.animator,
             genomeStore: this.genomeStore,

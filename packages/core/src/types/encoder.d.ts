@@ -15,18 +15,34 @@ import {
     ScaleDiverging,
     ScaleContinuousNumeric,
 } from "d3-scale";
-import { ChannelDef } from "../spec/channel.js";
+import { Channel, ChannelDef } from "../spec/channel.js";
 import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
 import { Scalar } from "../spec/channel.js";
 import { Datum } from "../data/flowNode.js";
 
 export interface AccessorMetadata {
-    /** True if the accessor returns the same value for all objects */
+    /**
+     *  True if the accessor returns the same value for all objects
+     */
     constant: boolean;
 
-    /** The fields that the return value is based on (if any) */
+    /**
+     * The fields that the return value is based on (if any)
+     */
     fields: string[];
+
+    /**
+     * If the accessed data needs to be passed to a scale function
+     * before visual encoding, indicates with channel has the scale.
+     * If no scale is needed, this is undefined.
+     */
+    scaleChannel: Channel;
+
+    /**
+     * The ChannelDef that the accessor is based on
+     */
+    channelDef: ChannelDef;
 }
 
 export type Accessor = ((datum: Datum) => Scalar) & AccessorMetadata;

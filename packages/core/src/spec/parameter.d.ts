@@ -209,7 +209,9 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
 
     /**
      * A set of fields that uniquely identify a tuple. Used for bookmarking point selections
-     * in the GenomeSpy App.
+     * in the GenomeSpy App. Still work in progress.
+     *
+     * TODO: Or maybe use the `key` channel? https://vega.github.io/vega-lite/docs/encoding.html#key
      */
     keyFields?: string[];
 }

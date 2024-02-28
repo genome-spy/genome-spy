@@ -12,6 +12,7 @@ import { ExprRef } from "./parameter.js";
 import { Scale } from "./scale.js";
 import { GenomeAxis } from "./axis.js";
 
+// TODO: Rename Scalar to PrimitiveValue
 export type Scalar = string | number | boolean;
 export type Value = Scalar | ExprRef | null;
 
@@ -39,8 +40,7 @@ export type ChannelWithScale =
     | "shape"
     | "angle"
     | "dx"
-    | "dy"
-    | "sample"; // Needed for collecting sample ids (domain) from multiple views
+    | "dy";
 
 export type ChannelWithoutScale =
     | "uniqueId"
@@ -48,7 +48,8 @@ export type ChannelWithoutScale =
     | "text"
     | "facetIndex"
     | "semanticScore"
-    | "uniqueId";
+    | "uniqueId"
+    | "sample"; // Needed for collecting sample ids (domain) from multiple views
 
 export type Channel = ChannelWithScale | ChannelWithoutScale;
 
@@ -112,6 +113,10 @@ export interface FieldDefBase<F> {
     field?: F;
 }
 
+export type FieldDef<F extends Field, T extends Type = any> =
+    | SecondaryFieldDef<F>
+    | TypedFieldDef<F, T>;
+
 export type TypedFieldDef<
     F extends Field,
     T extends Type = any
@@ -155,17 +160,27 @@ export interface ValueDefBase<V extends Value = Scalar> {
 
 export type ValueDef<V extends Value = Scalar> = ValueDefBase<V> & TitleMixins;
 
-export interface DatumDefBase {
+export interface DatumDef<
+    F extends Field = string,
+    V extends Scalar | ExprRef = Scalar | ExprRef
+> extends Partial<TypeMixins<Type>>,
+        BandMixins,
+        TitleMixins {
     /**
      * A constant value in data domain.
      */
-    datum?: Scalar | ExprRef;
+    datum?: V;
 }
 
-export type DatumDef = DatumDefBase & TitleMixins;
-
-export interface ExprDef {
-    /** An expression. Properties of the data can be accessed through the `datum` object. */
+export interface ExprDef<
+    F extends Field = string,
+    V extends Scalar | ExprRef = Scalar | ExprRef
+> extends Partial<TypeMixins<Type>>,
+        BandMixins,
+        TitleMixins {
+    /**
+     *  An expression. Properties of the data can be accessed through the `datum` object.
+     */
     expr: string;
 }
 
@@ -186,11 +201,6 @@ export type MarkPropDatumDef<T extends Type> = LegendMixins &
     ScaleDatumDef &
     TypeMixins<T>;
 
-export type MarkPropFieldOrDatumOrExprDef<
-    F extends Field,
-    T extends Type = Type
-> = MarkPropFieldDef<F, T> | MarkPropDatumDef<T> | MarkPropExprDef;
-
 export interface LegendMixins {
     /**
      * An object defining properties of the legend.
@@ -203,11 +213,82 @@ export interface LegendMixins {
     // TODO: legend?: Legend<ExprRef | SignalRef> | null;
 }
 
+export type ConditionalTemplate =
+    | FieldDef<any>
+    | DatumDef
+    | ValueDef<any>
+    | ExprRef;
+
+export type Conditional<CD extends ConditionalTemplate> =
+    ConditionalParameter<CD>;
+
+// Source of ParameterPredicate: https://github.com/vega/vega-lite/blob/main/src/predicate.ts
+export interface ParameterPredicate {
+    /**
+     * Filter using a parameter name.
+     */
+    param: string;
+
+    /**
+     * For selection parameters, the predicate of empty selections returns true by default.
+     * Override this behavior, by setting this property `empty: false`.
+     */
+    empty?: boolean;
+}
+
+export type ConditionalParameter<CD extends ConditionalTemplate> =
+    ParameterPredicate & CD;
+
+export interface ConditionValueDefMixins<V extends Value = Value> {
+    /**
+     * One or more value definition(s) with [a parameter or a test predicate](https://vega.github.io/vega-lite/docs/condition.html).
+     *
+     * __Note:__ A field definition's `condition` property can only contain [conditional value definitions](https://vega.github.io/vega-lite/docs/condition.html#value)
+     * since Vega-Lite only allows at most one encoded field per encoding channel.
+     */
+    condition?: Conditional<ValueDef<V>> | Conditional<ValueDef<V>>[];
+}
+
+/**
+ * A FieldDef with Condition<ValueDef>
+ * {
+ *   condition: {value: ...},
+ *   field: ...,
+ *   ...
+ * }
+ */
+export type FieldOrDatumDefWithCondition<
+    F extends FieldDef<any, any> | DatumDef<any>,
+    V extends Value = Value
+> = F & ConditionValueDefMixins<V | ExprRef>;
+
+/**
+ * @minProperties 1
+ */
+export type ValueDefWithCondition<
+    F extends FieldDef<any> | DatumDef<any>,
+    V extends Value = Value
+> = Partial<ValueDef<V | ExprRef>> & {
+    /**
+     * A field definition or one or more value definition(s) with a parameter predicate.
+     */
+    condition?: Conditional<F> | Conditional<ValueDef<V | ExprRef>>;
+};
+
+export type MarkPropFieldOrDatumOrExprDef<
+    F extends Field,
+    T extends Type = Type
+> = MarkPropFieldDef<F, T> | MarkPropDatumDef<T> | MarkPropExprDef<T>;
+
 export type MarkPropDef<
     F extends Field,
     V extends Value,
     T extends Type = Type
-> = MarkPropFieldOrDatumOrExprDef<F, T> | ValueDef<V>;
+> =
+    | FieldOrDatumDefWithCondition<MarkPropFieldDef<F, T>, V>
+    | FieldOrDatumDefWithCondition<DatumDef<F, T>, V>
+    | FieldOrDatumDefWithCondition<ExprDef<F, T>, V>
+    | ValueDefWithCondition<MarkPropFieldOrDatumOrExprDef<F, T>, V>;
 
 export type ColorDef<F extends Field> = MarkPropDef<F, string | null>;
 
@@ -307,7 +388,7 @@ export interface StringFieldDef<F extends Field>
 export type TextDef<F extends Field> =
     | StringFieldDef<F>
     | StringDatumDef
-    | ExprDef;
+    | ExprDef; // TODO: Conditions
 
 export type ChannelDef<F extends Field = string> =
     Encoding<F>[keyof Encoding<F>];

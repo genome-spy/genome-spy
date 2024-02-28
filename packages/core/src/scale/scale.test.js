@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { expect, test } from "vitest";
 /*!
  * Adapted from vega-encode:

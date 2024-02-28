@@ -1,75 +1,75 @@
-import { accessorFields, constant } from "vega-util";
-import { isDatumDef, isExprDef, isFieldDef } from "./encoder.js";
+import { constant } from "vega-util";
+import {
+    isChannelDefWithScale,
+    isChannelWithScale,
+    isDatumDef,
+    isExprDef,
+    isFieldDef,
+    isValueDef,
+} from "./encoder.js";
 import { field } from "../utils/field.js";
+import { isExprRef } from "../view/paramMediator.js";
 
-export default class AccessorFactory {
-    /** @type {Creator[]} */
-    #accessorCreators = [];
-
-    /**
-     * @typedef {import("../types/encoder.js").Accessor} Accessor
-     * @typedef {import("../view/paramMediator.js").default} ParamMediator
-     * @typedef {(channel: import("../spec/channel.js").ChannelDef, paramMediator: ParamMediator) => Accessor} Creator
-     */
-    constructor() {
-        this.register((channelDef) => {
-            if (isFieldDef(channelDef)) {
-                try {
-                    const accessor = /** @type {Accessor} */ (
-                        field(channelDef.field)
-                    );
-                    accessor.constant = false;
-                    accessor.fields = accessorFields(accessor);
-                    return accessor;
-                } catch (e) {
-                    throw new Error(`Invalid field definition: ${e.message}`);
-                }
-            }
-        });
-
-        this.register((channelDef, paramMediator) => {
-            if (isExprDef(channelDef)) {
-                // TODO: If parameters change, the data should be re-evaluated
-                const fn = paramMediator.createExpression(channelDef.expr);
-                const accessor = /** @type {Accessor} */ (
-                    /** @type {any} */ (fn)
-                );
-                accessor.constant = false;
-                accessor.fields = accessorFields(fn);
-                return accessor;
-            }
-        });
-
-        this.register((channelDef) => {
-            if (isDatumDef(channelDef)) {
-                const c = /** @type {any} */ (constant(channelDef.datum));
-                const accessor = /** @type {Accessor} */ (c);
-                accessor.constant = true; // Can be optimized downstream
-                accessor.fields = [];
-                return accessor;
-            }
-        });
+/**
+ * @param {import("../spec/channel.js").Channel} channel
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @param {import("../view/paramMediator.js").default} paramMediator
+ * @returns {import("../types/encoder.js").Accessor}
+ */
+export default function createAccessor(channel, channelDef, paramMediator) {
+    if (!channel) {
+        // TODO: Don't call with an undefined channel
+        return;
     }
 
-    /**
-     *
-     * @param {Creator} creator
-     */
-    register(creator) {
-        this.#accessorCreators.push(creator);
+    function asAccessor(/** @type {Function} */ fn) {
+        const a = /** @type {import("../types/encoder.js").Accessor} */ (fn);
+        a.constant = false;
+        a.fields ??= [];
+        a.channelDef = channelDef;
+
+        a.scaleChannel =
+            ((isChannelDefWithScale(channelDef) &&
+                channelDef.resolutionChannel) ??
+                (isChannelWithScale(channel) && channel)) ||
+            undefined;
+
+        return a;
     }
 
-    /**
-     *
-     * @param {import("../spec/channel.js").ChannelDef} encoding
-     * @param {ParamMediator} paramMediator
-     */
-    createAccessor(encoding, paramMediator) {
-        for (const creator of this.#accessorCreators) {
-            const accessor = creator(encoding, paramMediator);
-            if (accessor) {
-                return accessor;
-            }
+    if (isFieldDef(channelDef)) {
+        try {
+            const a = asAccessor(field(channelDef.field));
+            return a;
+        } catch (e) {
+            throw new Error(`Invalid field definition: ${e.message}`);
         }
+    } else if (isExprDef(channelDef)) {
+        // TODO: If parameters change, the data should be re-evaluated
+        const a = asAccessor(paramMediator.createExpression(channelDef.expr));
+        return a;
+    } else if (isDatumDef(channelDef)) {
+        const a = asAccessor(constant(channelDef.datum));
+        a.constant = true; // Can be optimized downstream
+        return a;
+    } else if (isValueDef(channelDef)) {
+        if (isExprRef(channelDef.value)) {
+            const a = asAccessor(
+                paramMediator.createExpression(channelDef.value.expr)
+            );
+            a.constant = true;
+            return a;
+        } else {
+            const value = channelDef.value;
+            const a = asAccessor(() => value);
+            a.constant = true;
+            return a;
+        }
+    } else {
+        throw new Error(
+            `Invalid channel definition: ${JSON.stringify(
+                channelDef
+            )}. Cannot create an accessor for channel ${channel}!`
+        );
     }
 }

@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
-import AccessorFactory from "./accessor.js";
-
-const af = new AccessorFactory();
+import ParamMediator from "../view/paramMediator.js";
+import createAccessor from "./accessor.js";
 
 const datum = {
     a: 1,
@@ -10,38 +9,30 @@ const datum = {
 };
 
 test("Creates a field accessor", () => {
-    const a = af.createAccessor({ field: "a" });
+    const a = createAccessor("x", { field: "a" }, new ParamMediator());
     expect(a(datum)).toEqual(1);
     expect(a.constant).toBeFalsy();
     expect(a.fields).toEqual(["a"]);
 });
 
 test("Creates an expression accessor", () => {
-    const a = af.createAccessor({ expr: `datum.b + datum['x\.c']` });
+    const a = createAccessor(
+        "x",
+        { expr: `datum.b + datum['x\.c']` },
+        new ParamMediator()
+    );
     expect(a(datum)).toEqual(5);
     expect(a.constant).toBeFalsy();
     expect(a.fields.sort()).toEqual(["b", "x.c"].sort());
 });
 
 test("Creates a constant accessor", () => {
-    const a = af.createAccessor({ datum: 0 });
+    const a = createAccessor("x", { datum: 0 }, new ParamMediator());
     expect(a(datum)).toEqual(0);
     expect(a.constant).toBeTruthy();
     expect(a.fields).toEqual([]);
 });
 
-test("Returns undefined on incomplete encoding spec", () => {
-    expect(af.createAccessor({})).toBeUndefined();
-});
-
-test("Registers and creates a custom accessor", () => {
-    const af = new AccessorFactory();
-    af.register((encoding) => {
-        if (encoding.iddqd && encoding.idkfa) {
-            return (datum) =>
-                `${datum[encoding.iddqd]}-${datum[encoding.idkfa]}`;
-        }
-    });
-
-    expect(af.createAccessor({ iddqd: "a", idkfa: "b" })(datum)).toEqual("1-2");
+test("Throws on incomplete encoding spec", () => {
+    expect(() => createAccessor("x", {}, new ParamMediator())).toThrow();
 });
