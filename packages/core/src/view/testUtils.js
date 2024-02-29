@@ -7,7 +7,6 @@
  */
 
 import { checkForDuplicateScaleNames, initializeData } from "./viewUtils.js";
-import AccessorFactory from "../encoder/accessor.js";
 import DataFlow from "../data/dataFlow.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./viewFactory.js";
 import GenomeStore from "../genome/genomeStore.js";
@@ -35,8 +34,6 @@ export function createTestViewContext(viewFactoryOptions = {}) {
 
     // @ts-expect-error
     const c = /** @type {ViewContext} */ ({
-        accessorFactory: new AccessorFactory(),
-
         createView: function (spec, parent, defaultName) {
             throw new Error("Not implemented: createView");
         },
