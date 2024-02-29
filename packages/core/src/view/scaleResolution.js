@@ -21,7 +21,6 @@ import mergeObjects from "../utils/mergeObjects.js";
 import createScale, { configureScale } from "../scale/scale.js";
 
 import {
-    getChannelDefWithScale,
     isColorChannel,
     isDiscreteChannel,
     isPositionalChannel,
@@ -32,7 +31,7 @@ import {
     isChromosomalLocus,
     isChromosomalLocusInterval,
 } from "../genome/genome.js";
-import { NominalDomain } from "../utils/domainArray.js";
+import createDomain, { NominalDomain } from "../utils/domainArray.js";
 import { easeCubicInOut } from "d3-ease";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
 import eerp from "../utils/eerp.js";
@@ -52,7 +51,7 @@ export const INDEX = "index";
 
 /**
  * @template {ChannelWithScale}[T=ChannelWithScale]
- * @typedef {{view: import("./unitView.js").default, channel: T}} ResolutionMember
+ * @typedef {{view: import("./unitView.js").default, channel: T, channelDef: import("../spec/channel.js").ChannelDefWithScale}} ResolutionMember
  *
  */
 /**
@@ -164,9 +163,9 @@ export default class ScaleResolution {
      *
      * @param {UnitView} view
      * @param {ChannelWithScale} channel
+     * @param {import("../spec/channel.js").ChannelDefWithScale} channelDef
      */
-    pushUnitView(view, channel) {
-        const channelDef = getChannelDefWithScale(view, channel);
+    pushUnitView(view, channel, channelDef) {
         const type = channelDef.type;
         const name = channelDef?.scale?.name;
 
@@ -190,7 +189,7 @@ export default class ScaleResolution {
             // TODO: Use the same merging logic as in: https://github.com/vega/vega-lite/blob/master/src/scale.ts
         }
 
-        this.members.push({ view, channel });
+        this.members.push({ view, channel, channelDef });
     }
 
     /**
@@ -227,10 +226,7 @@ export default class ScaleResolution {
      */
     #getMergedScaleProps() {
         const propArray = this.members
-            .map(
-                (member) =>
-                    getChannelDefWithScale(member.view, member.channel).scale
-            )
+            .map((member) => member.channelDef.scale)
             .filter((props) => props !== undefined);
 
         // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
@@ -379,7 +375,16 @@ export default class ScaleResolution {
         return this.#reduceDomains((member) =>
             isSecondaryChannel(member.channel)
                 ? undefined
-                : member.view.getConfiguredDomain(member.channel)
+                : member.view
+                ? member.view.getConfiguredDomain(member.channel)
+                : // For testing purposes - use channelDef it the view is not available
+                member.channelDef.scale?.domain
+                ? createDomain(
+                      member.channelDef.type,
+                      // @ts-ignore
+                      member.channelDef.scale.domain
+                  )
+                : undefined
         );
     }
 
@@ -841,6 +846,8 @@ export default class ScaleResolution {
         const domains = this.members
             .filter(
                 (member) =>
+                    // View is missing if ScaleResolution is used within tests
+                    !member.view ||
                     !member.view
                         .getLayoutAncestors()
                         // TODO: Should check until the resolved scale resolution

@@ -19,26 +19,32 @@ export default function createEncoders(unitView, encoding) {
     /** @type {Partial<Record<Channel, Encoder>>} */
     const encoders = {};
 
+    const scaleSource = (
+        /** @type {import("../spec/channel.js").ChannelWithScale}*/ channel
+    ) => unitView.getScaleResolution(channel)?.scale;
+
     for (const [channel, channelDef] of Object.entries(encoding)) {
         if (!channelDef) {
             continue;
         }
 
-        encoders[channel] = createEncoder(unitView, channel, encoding[channel]);
+        encoders[channel] = createEncoder(
+            unitView.getAccessor(channel),
+            scaleSource
+        );
     }
 
     return encoders;
 }
 
 /**
- * @param {import("../view/unitView.js").default} unitView
- * @param {Channel} channel
- * @param {import("../spec/channel.js").ChannelDef} channelDef
+ *
+ * @param {Accessor} accessor
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
  * @returns {Encoder}
  */
-export function createEncoder(unitView, channel, channelDef) {
+export function createEncoder(accessor, scaleSource) {
     /**
-     * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../types/encoder.js").Encoder} Encoder
      * @typedef {import("../types/encoder.js").Accessor} Accessor
      */
@@ -46,12 +52,9 @@ export function createEncoder(unitView, channel, channelDef) {
     /** @type {Encoder} */
     let encoder;
 
-    const accessor = unitView.getAccessor(channel);
-    const scaleChannel = accessor.scaleChannel;
+    const { channel, scaleChannel, channelDef } = accessor;
 
-    const scale = accessor.scaleChannel
-        ? unitView.getScaleResolution(scaleChannel)?.scale
-        : undefined;
+    const scale = accessor.scaleChannel ? scaleSource(scaleChannel) : undefined;
 
     if (scaleChannel) {
         if (!scale && scaleChannel) {

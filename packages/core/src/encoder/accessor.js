@@ -27,6 +27,7 @@ export default function createAccessor(channel, channelDef, paramMediator) {
         a.constant = false;
         a.fields ??= [];
         a.channelDef = channelDef;
+        a.channel = channel;
 
         a.scaleChannel =
             ((isChannelDefWithScale(channelDef) &&

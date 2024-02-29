@@ -14,6 +14,7 @@ import {
     getPrimaryChannel,
     isChannelWithScale,
     isPrimaryPositionalChannel,
+    getChannelDefWithScale,
 } from "../encoder/encoder.js";
 import createDomain from "../utils/domainArray.js";
 import AxisResolution from "./axisResolution.js";
@@ -239,7 +240,8 @@ export default class UnitView extends View {
                 }
                 view.resolutions[type][targetChannel].pushUnitView(
                     this,
-                    channel
+                    channel,
+                    getChannelDefWithScale(this, channel)
                 );
             }
         }
