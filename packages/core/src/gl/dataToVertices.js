@@ -12,7 +12,7 @@ import {
     makeAttributeName,
     splitLargeHighPrecision,
 } from "./glslScaleGenerator.js";
-import { isContinuous, isDiscrete } from "vega-scale";
+import { isContinuous } from "vega-scale";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
@@ -40,7 +40,7 @@ export class GeometryBuilder {
         this.variableEncoders = Object.fromEntries(
             Object.entries(encoders).filter(
                 ([channel, e]) =>
-                    attributes.includes(channel) && e && e.scale && !e.constant
+                    attributes.includes(channel) && e && !e.constant
             )
         );
 
@@ -67,9 +67,10 @@ export class GeometryBuilder {
             }
 
             const accessor = ce.accessor;
-
-            const hp = isHighPrecisionScale(ce.scale.type);
-            const largeHp = hp && isLargeGenome(ce.scale.domain());
+            const numberAccessor = accessor.asNumberAccessor();
+            const scale = ce.scale;
+            const hp = scale && isHighPrecisionScale(scale.type);
+            const largeHp = hp && isLargeGenome(scale.domain());
             const largeHpArray = [0, 0];
 
             const indexer = ce.indexer;
@@ -84,8 +85,9 @@ export class GeometryBuilder {
             const f = indexer
                 ? (d) => indexer(accessor(d))
                 : largeHp
-                ? (d) => splitLargeHighPrecision(accessor(d), largeHpArray)
-                : accessor;
+                ? (d) =>
+                      splitLargeHighPrecision(numberAccessor(d), largeHpArray)
+                : numberAccessor;
 
             const attributeName = sharedChannels
                 ? makeAttributeName(sharedChannels)
@@ -98,7 +100,7 @@ export class GeometryBuilder {
                 targetArrayType:
                     channel == "uniqueId"
                         ? Uint32Array
-                        : isDiscrete(ce.scale.type)
+                        : indexer
                         ? Uint16Array
                         : hp
                         ? Uint32Array
@@ -191,8 +193,8 @@ export class GeometryBuilder {
         const x2e = getContinuousEncoder(this.variableEncoders.x2);
 
         if (xe) {
-            const xa = xe.accessor;
-            const x2a = x2e ? x2e.accessor : xa;
+            const xa = xe.accessor.asNumberAccessor();
+            const x2a = x2e ? x2e.accessor.asNumberAccessor() : xa;
 
             /** @type {[number, number]} */
             const dataDomain = [xa(data[lo]), x2a(data[hi - 1])];

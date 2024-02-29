@@ -517,7 +517,8 @@ export default class Mark {
                     const encoder = this.encoders[channel];
 
                     const indexer = encoder.indexer;
-                    const hp = isHighPrecisionScale(encoder.scale.type);
+                    const scale = encoder.scale;
+                    const hp = scale && isHighPrecisionScale(scale.type);
                     const largeHp = hp && isLargeGenome(encoder.scale.domain());
 
                     /**

@@ -4,7 +4,8 @@ import { create } from "../view/testUtils.js";
 import UnitView from "../view/unitView.js";
 
 describe("Encoder", async () => {
-    // Using a simple unit view as a stub
+    // This is an unideal solution because mark generates ChannelDefs
+    // based on defaults.
     const unitView = await create(
         {
             data: { values: [{}] },
@@ -46,11 +47,6 @@ describe("Encoder", async () => {
     test("Inverts a value", () => {
         expect(encoders.y.invert(0.5)).toBeCloseTo(5);
         expect(() => encoders.size.invert(123)).toThrow();
-    });
-
-    test("Accessors are provided", () => {
-        expect(encoders.y.accessor).toBeDefined();
-        expect(encoders.x.accessor).toBeUndefined();
     });
 
     // TODO: Test indexer

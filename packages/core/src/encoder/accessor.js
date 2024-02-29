@@ -34,6 +34,9 @@ export default function createAccessor(channel, channelDef, paramMediator) {
                 (isChannelWithScale(channel) && channel)) ||
             undefined;
 
+        a.asNumberAccessor = () =>
+            /** @type {import("../types/encoder.js").Accessor<number>} */ (a);
+
         return a;
     }
 
@@ -57,6 +60,12 @@ export default function createAccessor(channel, channelDef, paramMediator) {
             const a = asAccessor(
                 paramMediator.createExpression(channelDef.value.expr)
             );
+            if (a.fields.length > 0) {
+                throw new Error(
+                    "Expression in ValueDef cannot access datum fields: " +
+                        channelDef.value.expr
+                );
+            }
             a.constant = true;
             return a;
         } else {

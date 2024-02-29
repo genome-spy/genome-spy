@@ -15,7 +15,7 @@ import {
     ScaleDiverging,
     ScaleContinuousNumeric,
 } from "d3-scale";
-import { Channel, ChannelDef } from "../spec/channel.js";
+import { ChannelDef, ChannelWithScale } from "../spec/channel.js";
 import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
 import { Scalar } from "../spec/channel.js";
@@ -37,7 +37,7 @@ export interface AccessorMetadata {
      * before visual encoding, indicates with channel has the scale.
      * If no scale is needed, this is undefined.
      */
-    scaleChannel: Channel;
+    scaleChannel: ChannelWithScale;
 
     /**
      * The ChannelDef that the accessor is based on
@@ -45,7 +45,9 @@ export interface AccessorMetadata {
     channelDef: ChannelDef;
 }
 
-export type Accessor = ((datum: Datum) => Scalar) & AccessorMetadata;
+export type Accessor<T = Scalar> = ((datum: Datum) => T) & {
+    asNumberAccessor: () => Accessor<number>;
+} & AccessorMetadata;
 
 export interface EncoderMetadata {
     /** True if the accessor returns the same value for all objects */
@@ -64,9 +66,6 @@ export interface EncoderMetadata {
     indexer?: (value: Scalar) => number;
 
     channelDef: ChannelDef;
-
-    /** Copies metadata to the target function */
-    applyMetadata: (target: Function) => void;
 }
 
 export type Encoder = ((datum: Datum) => Scalar) & EncoderMetadata;
@@ -82,7 +81,7 @@ export interface ScaleMetadata {
 }
 
 export type D3Scale =
-    | ScaleContinuousNumeric<any, any>
+    | ScaleContinuousNumeric<any, any, any>
     | ScaleLinear<any, any>
     | ScalePower<any, any>
     | ScaleLogarithmic<any, any>
@@ -97,5 +96,7 @@ export type D3Scale =
     | ScaleOrdinal<any, any>
     | ScaleBand<any>
     | ScalePoint<any>;
+
+export type GenericScale = any;
 
 export type VegaScale = (D3Scale | ScaleIndex | ScaleLocus) & ScaleMetadata;

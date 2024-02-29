@@ -1,7 +1,5 @@
 import { isDiscrete } from "vega-scale";
 import createIndexer from "../utils/indexer.js";
-import scaleNull from "../utils/scaleNull.js";
-import { isExprRef } from "../view/paramMediator.js";
 
 /**
  * Creates an object that contains encoders for every channel of a mark
@@ -49,99 +47,57 @@ export function createEncoder(unitView, channel, channelDef) {
     let encoder;
 
     const accessor = unitView.getAccessor(channel);
+    const scaleChannel = accessor.scaleChannel;
 
-    const channelWithScale =
-        ((isChannelDefWithScale(channelDef) && channelDef.resolutionChannel) ??
-            (isChannelWithScale(channel) && channel)) ||
-        undefined;
+    const scale = accessor.scaleChannel
+        ? unitView.getScaleResolution(scaleChannel)?.scale
+        : undefined;
 
-    const resolution = unitView.getScaleResolution(channelWithScale);
-    let scale = resolution?.scale;
-
-    if (isValueDef(channelDef)) {
-        if (isExprRef(channelDef.value)) {
-            const fn = unitView.paramMediator.createExpression(
-                channelDef.value.expr
+    if (scaleChannel) {
+        if (!scale && scaleChannel) {
+            throw new Error(
+                `Missing scale! "${channel}": ${JSON.stringify(channelDef)}`
             );
-            encoder = /** @type {Encoder} */ ((datum) => fn(null));
-            encoder.constant = true;
-            encoder.constantValue = false;
-            encoder.accessor = accessor;
-        } else {
-            const value = channelDef.value;
-            encoder = /** @type {Encoder} */ ((datum) => value);
-            encoder.constant = true;
-            encoder.constantValue = true;
-            encoder.accessor = undefined;
         }
-    } else if (accessor) {
-        if (channel == "text") {
-            // TODO: Define somewhere channels that don't use a scale
-            encoder = /** @type {Encoder} */ ((datum) => undefined);
-            encoder.accessor = accessor;
-            encoder.constant = accessor.constant;
-        } else {
-            if (!scale) {
-                if (!isChannelWithScale(channel)) {
-                    // Channels like uniqueId are passed as is.
-                    scale = scaleNull();
-                } else {
-                    throw new Error(
-                        `Missing scale! "${channel}": ${JSON.stringify(
-                            channelDef
-                        )}`
-                    );
-                }
-            }
 
-            encoder = /** @type {Encoder} */ (
-                (datum) => scale(accessor(datum))
-            );
+        // @ts-ignore Bad d3 types
+        encoder = /** @type {Encoder} */ ((datum) => scale(accessor(datum)));
+        encoder.scale = scale;
 
-            if (isDiscrete(scale.type)) {
-                // TODO: pass the found values back to the scale/resolution
-                const indexer = createIndexer();
-                // Warning: There's a chance that the domain and indexer get out of sync.
-                // TODO: Make this more robust
-                indexer.addAll(scale.domain());
-                encoder.indexer = indexer;
-            }
-
-            encoder.constant = accessor.constant;
-            encoder.accessor = accessor;
-            encoder.scale = scale;
+        if (isDiscrete(scale.type) && "domain" in scale) {
+            // TODO: pass the found values back to the scale/resolution
+            // Warning: There's a chance that the domain and indexer get out of sync.
+            // TODO: Make this more robust
+            const indexer = createIndexer();
+            indexer.addAll(scale.domain());
+            encoder.indexer = indexer;
         }
+
+        // @ts-ignore Bad d3 types
+        encoder.invert =
+            "invert" in scale
+                ? // @ts-ignore Bad d3 types
+                  (value) => scale.invert(value)
+                : () => {
+                      throw new Error(
+                          "No invert method available for scale: " +
+                              JSON.stringify(channelDef)
+                      );
+                  };
     } else {
-        throw new Error(
-            `Missing value or accessor (field, expr, datum) on channel "${channel}": ${JSON.stringify(
-                channelDef
-            )}`
-        );
+        encoder = /** @type {Encoder} */ ((datum) => accessor(datum));
+        encoder.invert = () => {
+            throw new Error(
+                "No scale available, cannot invert: " +
+                    JSON.stringify(channelDef)
+            );
+        };
     }
 
-    // TODO: Modifier should be inverted too
-    encoder.invert = scale
-        ? (value) => scale.invert(value)
-        : (value) => {
-              throw new Error(
-                  "No scale available, cannot invert: " +
-                      JSON.stringify(channelDef)
-              );
-          };
-
-    // Just to provide a convenient access to the config
+    encoder.constant = accessor.constant;
+    encoder.accessor = accessor;
+    // TODO: Accessor already has the channelDef
     encoder.channelDef = channelDef;
-
-    /** @param {Encoder} target */
-    encoder.applyMetadata = (target) => {
-        for (const prop in encoder) {
-            if (prop in encoder) {
-                // @ts-ignore
-                target[prop] = encoder[prop];
-            }
-        }
-        return target;
-    };
 
     return encoder;
 }
