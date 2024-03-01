@@ -516,7 +516,6 @@ export default class Mark {
 
                     const encoder = this.encoders[channel];
 
-                    const indexer = encoder.indexer;
                     const scale = encoder.scale;
                     const hp = scale && isHighPrecisionScale(scale.type);
                     const largeHp = hp && isLargeGenome(encoder.scale.domain());
@@ -528,11 +527,12 @@ export default class Mark {
                      *
                      * @type {function(import("../spec/channel.js").Scalar):(number | number[])}
                      */
-                    const adjuster = indexer
-                        ? indexer
-                        : largeHp
-                        ? splitLargeHighPrecision
-                        : (d) => +d;
+                    const adjuster =
+                        scale && isDiscrete(scale.type) && "domain" in scale
+                            ? (d) => scale.domain().indexOf(d)
+                            : largeHp
+                            ? splitLargeHighPrecision
+                            : (d) => +d;
 
                     dynamicMarkUniforms.push(generated.markUniformGlsl);
 

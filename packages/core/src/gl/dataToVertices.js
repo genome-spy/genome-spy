@@ -477,10 +477,9 @@ export class TextVertexBuilder extends GeometryBuilder {
 
         const e = encoders;
 
-        const channelDef =
-            /** @type {import("../spec/channel.js").TextDef<string>} */ (
-                e.text.channelDef
-            );
+        const channelDef = /** @type {import("../spec/channel.js").TextDef} */ (
+            e.text.channelDef
+        );
         /** @type {(value: any) => string} */
         this.numberFormat =
             !isValueDef(channelDef) &&
