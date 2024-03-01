@@ -244,11 +244,10 @@ export interface ConditionValueDefMixins<V extends Value = Value> {
  *   ...
  * }
  */
-export type FieldOrDatumDefWithCondition<T extends Type = Type> = (
-    | FieldDef<T>
-    | DatumDef<T>
-) &
-    ConditionValueDefMixins<Value | ExprRef>;
+export type FieldOrDatumDefWithCondition<
+    F extends FieldDef<any> | DatumDef<any>,
+    V extends Value = Value
+> = F & ConditionValueDefMixins<V | ExprRef>;
 
 /**
  * @minProperties 1
@@ -268,7 +267,8 @@ export type MarkPropFieldOrDatumOrExprDef<T extends Type = Type> =
     | MarkPropExprDef<T>;
 
 export type MarkPropDef<V extends Value, T extends Type = Type> =
-    | FieldOrDatumDefWithCondition<T>
+    | FieldOrDatumDefWithCondition<MarkPropFieldDef<T>, V>
+    | FieldOrDatumDefWithCondition<DatumDef, V>
     | ValueDefWithCondition<V>;
 
 export type ColorDef = MarkPropDef<string | null>;
