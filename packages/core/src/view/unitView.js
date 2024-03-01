@@ -22,7 +22,6 @@ import View from "./view.js";
 import { createSinglePointSelection } from "../selection/selection.js";
 import { isString } from "vega-util";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import { createAccessor } from "../encoder/accessor.js";
 
 /**
  *
@@ -42,6 +41,7 @@ export default class UnitView extends View {
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
      * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionTarget
+     * @typedef {((datum: import("../data/flowNode.js").Datum) => import("../spec/channel.js").Scalar) & { fieldDef: import("../spec/channel.js").FieldDef}} FieldAccessor
      *
      */
 
@@ -248,33 +248,16 @@ export default class UnitView extends View {
     }
 
     /**
-     * @type {Map<Channel, import("../types/encoder.js").Accessor>}
+     * @type {Map<Channel, FieldAccessor>}
      */
-    #accessors = new Map();
+    #fieldAccessors = new Map();
 
     /**
      *
      * @param {Channel} channel
      */
     getAccessor(channel) {
-        if (this.#accessors.has(channel)) {
-            return this.#accessors.get(channel);
-        }
-
-        /** @type {import("../types/encoder.js").Accessor} */
-        let accessor;
-
-        const encoding = this.mark.encoding; // Mark provides encodings with defaults and possible modifications
-        if (encoding && encoding[channel]) {
-            accessor = createAccessor(
-                channel,
-                encoding[channel],
-                this.paramMediator
-            );
-        }
-
-        this.#accessors.set(channel, accessor);
-        return accessor;
+        return this.mark.encoders[channel]?.accessor;
     }
 
     /**

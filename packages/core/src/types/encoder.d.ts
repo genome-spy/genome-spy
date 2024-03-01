@@ -89,9 +89,6 @@ export interface Encoder {
 
     accessor: Accessor;
 
-    /** Converts ordinal values to index numbers */
-    indexer?: (value: Scalar) => number;
-
     channelDef: ChannelDef;
 }
 

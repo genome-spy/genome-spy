@@ -12,7 +12,8 @@ import {
     makeAttributeName,
     splitLargeHighPrecision,
 } from "./glslScaleGenerator.js";
-import { isContinuous } from "vega-scale";
+import { isContinuous, isDiscrete } from "vega-scale";
+import createIndexer from "../utils/indexer.js";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
@@ -73,7 +74,12 @@ export class GeometryBuilder {
             const largeHp = hp && isLargeGenome(scale.domain());
             const largeHpArray = [0, 0];
 
-            const indexer = ce.indexer;
+            /** @type {ReturnType<typeof createIndexer>} */
+            let indexer;
+            if (scale && isDiscrete(scale.type) && "domain" in scale) {
+                indexer = createIndexer();
+                indexer.addAll(scale.domain());
+            }
 
             /**
              * Discrete variables both numeric and strings must be "indexed",

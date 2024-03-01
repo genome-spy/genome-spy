@@ -11,6 +11,9 @@ import DataFlow from "../data/dataFlow.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./viewFactory.js";
 import GenomeStore from "../genome/genomeStore.js";
 import BmFontManager from "../fonts/bmFontManager.js";
+import { reconfigureScales } from "./scaleResolution.js";
+import UnitView from "./unitView.js";
+import ContainerView from "./containerView.js";
 
 /**
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
@@ -89,6 +92,18 @@ export async function createAndInitialize(spec, viewClass) {
     const view = await create(spec, viewClass);
 
     checkForDuplicateScaleNames(view);
+
+    if (view instanceof UnitView) {
+        view.mark.initializeEncoders();
+    } else if (view instanceof ContainerView) {
+        view.visit((v) => {
+            if (v instanceof UnitView) {
+                v.mark.initializeEncoders();
+            }
+        });
+    }
+
     await initializeData(view, view.context.dataFlow);
+    reconfigureScales(view);
     return view;
 }

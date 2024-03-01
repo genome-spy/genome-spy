@@ -1,5 +1,4 @@
-import { isDiscrete } from "vega-scale";
-import createIndexer from "../utils/indexer.js";
+import { createAccessor } from "./accessor.js";
 
 /**
  * Creates an object that contains encoders for every channel of a mark
@@ -29,7 +28,7 @@ export default function createEncoders(unitView, encoding) {
         }
 
         encoders[channel] = createEncoder(
-            unitView.getAccessor(channel),
+            createAccessor(channel, channelDef, unitView.paramMediator),
             scaleSource
         );
     }
@@ -66,15 +65,6 @@ export function createEncoder(accessor, scaleSource) {
         // @ts-ignore Bad d3 types
         encoder = /** @type {Encoder} */ ((datum) => scale(accessor(datum)));
         encoder.scale = scale;
-
-        if (isDiscrete(scale.type) && "domain" in scale) {
-            // TODO: pass the found values back to the scale/resolution
-            // Warning: There's a chance that the domain and indexer get out of sync.
-            // TODO: Make this more robust
-            const indexer = createIndexer();
-            indexer.addAll(scale.domain());
-            encoder.indexer = indexer;
-        }
 
         // @ts-ignore Bad d3 types
         encoder.invert =

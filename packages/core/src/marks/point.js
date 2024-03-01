@@ -136,7 +136,7 @@ export default class PointMark extends Mark {
         // Build a sorted sample that allows for computing p-quantiles
         const semanticScoreAccessor = this.unitView
             .getAccessor("semanticScore")
-            .asNumberAccessor();
+            ?.asNumberAccessor();
         if (semanticScoreAccessor) {
             // n chosen using Stetson-Harrison
             // TODO: Throw on missing scores

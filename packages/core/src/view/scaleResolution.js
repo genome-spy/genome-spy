@@ -237,9 +237,10 @@ export default class ScaleResolution {
      * Returns the merged scale properties supplemented with inferred properties
      * and domain.
      *
+     * @param {boolean} [extractDataDomain]
      * @returns {import("../spec/scale.js").Scale}
      */
-    #getScaleProps() {
+    #getScaleProps(extractDataDomain = false) {
         const mergedProps = this.#getMergedScaleProps();
         if (mergedProps === null || mergedProps.type == "null") {
             // No scale (pass-thru)
@@ -256,7 +257,7 @@ export default class ScaleResolution {
             props.type = getDefaultScaleType(this.channel, this.type);
         }
 
-        const domain = this.#getInitialDomain();
+        const domain = this.#getInitialDomain(extractDataDomain);
 
         if (domain && domain.length > 0) {
             props.domain = domain;
@@ -356,13 +357,19 @@ export default class ScaleResolution {
         }
     }
 
-    #getInitialDomain() {
+    /**
+     *
+     * @param {boolean} extractDataDomain
+     */
+    #getInitialDomain(extractDataDomain = false) {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
             this.getConfiguredDomain() ??
             (this.type == LOCUS
                 ? this.getGenome().getExtent()
-                : this.getDataDomain())
+                : extractDataDomain
+                ? this.getDataDomain()
+                : [])
         );
     }
 
@@ -416,7 +423,7 @@ export default class ScaleResolution {
         const domainWasInitialized = this.#isDomainInitialized();
         const previousDomain = scale.domain();
 
-        const props = this.#getScaleProps();
+        const props = this.#getScaleProps(true);
         configureScale({ ...props, range: undefined }, scale);
 
         // Annotate the scale with the new props
@@ -462,6 +469,11 @@ export default class ScaleResolution {
         const scale = createScale({ ...props, range: undefined });
         // Annotate the scale with props
         scale.props = props;
+
+        if ("unknown" in scale) {
+            // Never allow implicit domain construction
+            scale.unknown(null);
+        }
 
         this.#scale = scale;
         this.#configureRange();
