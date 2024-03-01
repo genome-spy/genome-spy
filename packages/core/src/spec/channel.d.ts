@@ -97,7 +97,7 @@ export interface TypeMixins<T extends Type> {
     type: T;
 }
 
-export interface FieldDefBase<F> {
+export interface FieldDefBase {
     /**
      * __Required.__ A string defining the name of the field from which to pull a data value
      * or an object defining iterated values from the [`repeat`](https://vega.github.io/vega-lite/docs/repeat.html) operator.
@@ -110,26 +110,20 @@ export interface FieldDefBase<F> {
      * See more details about escaping in the [field documentation](https://vega.github.io/vega-lite/docs/field.html).
      * 2) `field` is not required if `aggregate` is `count`.
      */
-    field?: F;
+    field?: string;
 }
 
-export type FieldDef<F extends Field, T extends Type = any> =
-    | SecondaryFieldDef<F>
-    | TypedFieldDef<F, T>;
+export type FieldDef<T extends Type = Type> =
+    | SecondaryFieldDef
+    | TypedFieldDef<T>;
 
-export type TypedFieldDef<
-    F extends Field,
-    T extends Type = any
-> = FieldDefBase<F> & TitleMixins & TypeMixins<T>;
+export type TypedFieldDef<T extends Type = Type> = FieldDefBase &
+    TitleMixins &
+    TypeMixins<T>;
 
-export type ScaleFieldDef<F extends Field, T extends Type> = TypedFieldDef<
-    F,
-    T
-> &
-    ScaleMixins;
+export type ScaleFieldDef<T extends Type> = TypedFieldDef<T> & ScaleMixins;
 
-export type FieldDefWithoutScale<F extends Field> = FieldDefBase<F> &
-    TitleMixins;
+export type FieldDefWithoutScale = FieldDefBase & TitleMixins;
 
 export interface ScaleMixins {
     /**
@@ -160,10 +154,8 @@ export interface ValueDefBase<V extends Value = Scalar> {
 
 export type ValueDef<V extends Value = Scalar> = ValueDefBase<V> & TitleMixins;
 
-export interface DatumDef<
-    F extends Field = string,
-    V extends Scalar | ExprRef = Scalar | ExprRef
-> extends Partial<TypeMixins<Type>>,
+export interface DatumDef<V extends Scalar | ExprRef = Scalar | ExprRef>
+    extends Partial<TypeMixins<Type>>,
         BandMixins,
         TitleMixins {
     /**
@@ -172,10 +164,7 @@ export interface DatumDef<
     datum?: V;
 }
 
-export interface ExprDef<
-    F extends Field = string,
-    V extends Scalar | ExprRef = Scalar | ExprRef
-> extends Partial<TypeMixins<Type>>,
+export interface ExprDef<>extends Partial<TypeMixins<Type>>,
         BandMixins,
         TitleMixins {
     /**
@@ -187,10 +176,8 @@ export interface ExprDef<
 /**
  * Field definition of a mark property, which can contain a legend.
  */
-export type MarkPropFieldDef<
-    F extends Field,
-    T extends Type = Type
-> = ScaleFieldDef<F, T> & LegendMixins;
+export type MarkPropFieldDef<T extends Type = Type> = ScaleFieldDef<T> &
+    LegendMixins;
 
 export type MarkPropExprDef<T extends Type = Type> = ExprDef &
     TypeMixins<T> &
@@ -246,7 +233,7 @@ export interface ConditionValueDefMixins<V extends Value = Value> {
      * __Note:__ A field definition's `condition` property can only contain [conditional value definitions](https://vega.github.io/vega-lite/docs/condition.html#value)
      * since Vega-Lite only allows at most one encoded field per encoding channel.
      */
-    condition?: Conditional<ValueDef<V>> | Conditional<ValueDef<V>>[];
+    condition?: Conditional<ValueDef<V>>; // | Conditional<ValueDef<V>>[];
 }
 
 /**
@@ -257,42 +244,36 @@ export interface ConditionValueDefMixins<V extends Value = Value> {
  *   ...
  * }
  */
-export type FieldOrDatumDefWithCondition<
-    F extends FieldDef<any, any> | DatumDef<any>,
-    V extends Value = Value
-> = F & ConditionValueDefMixins<V | ExprRef>;
+export type FieldOrDatumDefWithCondition<T extends Type = Type> = (
+    | FieldDef<T>
+    | DatumDef<T>
+) &
+    ConditionValueDefMixins<Value | ExprRef>;
 
 /**
  * @minProperties 1
  */
-export type ValueDefWithCondition<
-    F extends FieldDef<any> | DatumDef<any>,
-    V extends Value = Value
-> = Partial<ValueDef<V | ExprRef>> & {
+export type ValueDefWithCondition<V extends Value = Value> = Partial<
+    ValueDef<V | ExprRef>
+> & {
     /**
      * A field definition or one or more value definition(s) with a parameter predicate.
      */
-    condition?: Conditional<F> | Conditional<ValueDef<V | ExprRef>>;
+    condition?: Conditional<FieldDef> | Conditional<ValueDef<V | ExprRef>>;
 };
 
-export type MarkPropFieldOrDatumOrExprDef<
-    F extends Field,
-    T extends Type = Type
-> = MarkPropFieldDef<F, T> | MarkPropDatumDef<T> | MarkPropExprDef<T>;
+export type MarkPropFieldOrDatumOrExprDef<T extends Type = Type> =
+    | MarkPropFieldDef<T>
+    | MarkPropDatumDef<T>
+    | MarkPropExprDef<T>;
 
-export type MarkPropDef<
-    F extends Field,
-    V extends Value,
-    T extends Type = Type
-> =
-    | FieldOrDatumDefWithCondition<MarkPropFieldDef<F, T>, V>
-    | FieldOrDatumDefWithCondition<DatumDef<F, T>, V>
-    | FieldOrDatumDefWithCondition<ExprDef<F, T>, V>
-    | ValueDefWithCondition<MarkPropFieldOrDatumOrExprDef<F, T>, V>;
+export type MarkPropDef<V extends Value, T extends Type = Type> =
+    | FieldOrDatumDefWithCondition<T>
+    | ValueDefWithCondition<V>;
 
-export type ColorDef<F extends Field> = MarkPropDef<F, string | null>;
+export type ColorDef = MarkPropDef<string | null>;
 
-export type SecondaryFieldDef<F extends Field> = FieldDefBase<F> & TitleMixins;
+export type SecondaryFieldDef = FieldDefBase & TitleMixins;
 
 export type NumericValueDef = ValueDef<number>;
 
@@ -300,8 +281,7 @@ export type ScaleDatumDef = ScaleMixins & DatumDef;
 
 export type PositionDatumDefBase = ScaleDatumDef & TypeMixins<Type>;
 
-export type PositionFieldDef<F extends Field> = PositionFieldDefBase<F> &
-    PositionMixins;
+export type PositionFieldDef = PositionFieldDefBase & PositionMixins;
 
 export type PositionDatumDef = PositionDatumDefBase & PositionMixins;
 
@@ -324,7 +304,7 @@ export interface PositionMixins extends BandMixins {
     axis?: GenomeAxis | null;
 }
 
-export type PositionFieldDefBase<F extends Field> = ScaleFieldDef<F, Type>;
+export type PositionFieldDefBase = ScaleFieldDef<Type>;
 
 export interface ChromPosDefBase extends BandMixins {
     /**
@@ -359,39 +339,29 @@ export type ChromPosDef = SecondaryChromPosDef &
     TypeMixins<"locus"> &
     ScaleMixins;
 
-export type PositionDef<F extends Field> =
-    | PositionFieldDef<F>
+export type PositionDef =
+    | PositionFieldDef
     | ChromPosDef
     | PositionDatumDef
     | PositionExprDef
     | PositionValueDef;
 
-export type Position2Def<F extends Field> =
-    | (SecondaryFieldDef<F> & BandMixins)
+export type Position2Def =
+    | (SecondaryFieldDef & BandMixins)
     | SecondaryChromPosDef
     | (DatumDef & BandMixins)
     | (ExprDef & BandMixins)
     | PositionValueDef;
 
-export type NumericMarkPropDef<F extends Field> = MarkPropDef<F, number>;
+export type NumericMarkPropDef = MarkPropDef<number>;
 
-export type ShapeDef<F extends Field> = MarkPropDef<
-    F,
-    string | null,
-    TypeForShape
->;
+export type ShapeDef = MarkPropDef<string | null, TypeForShape>;
 
-export interface StringFieldDef<F extends Field>
-    extends FieldDefWithoutScale<F>,
-        FormatMixins {}
+export interface StringFieldDef extends FieldDefWithoutScale, FormatMixins {}
 
-export type TextDef<F extends Field> =
-    | StringFieldDef<F>
-    | StringDatumDef
-    | ExprDef; // TODO: Conditions
+export type TextDef = StringFieldDef | StringDatumDef | ExprDef; // TODO: Conditions
 
-export type ChannelDef<F extends Field = string> =
-    Encoding<F>[keyof Encoding<F>];
+export type ChannelDef = Encoding[keyof Encoding];
 
 // TODO: Does this make sense?
 export type ChannelDefWithScale = ScaleMixins & TypeMixins<Type>;
@@ -409,37 +379,37 @@ export interface XIndexDef {
     buildIndex?: boolean;
 }
 
-export interface Encoding<F extends Field = string> {
+export interface Encoding {
     /**
      * X coordinates of the marks.
      *
      * The `value` of this channel can be a number between zero and one.
      */
-    x?: PositionDef<F> & XIndexDef;
+    x?: PositionDef & XIndexDef;
 
     /**
      * Y coordinates of the marks.
      *
      * The `value` of this channel can be a number between zero and one.
      */
-    y?: PositionDef<F>;
+    y?: PositionDef;
 
     /**
      * X2 coordinates of the marks.
      *
      * The `value` of this channel can be a number between zero and one.
      */
-    x2?: Position2Def<F>;
+    x2?: Position2Def;
 
     /**
      * Y2 coordinates of the marks.
      *
      * The `value` of this channel can be a number between zero and one.
      */
-    y2?: Position2Def<F>;
+    y2?: Position2Def;
 
-    dx?: NumericMarkPropDef<F>;
-    dy?: NumericMarkPropDef<F>;
+    dx?: NumericMarkPropDef; // TODO: Not a mark property. Fix types.
+    dy?: NumericMarkPropDef;
 
     /**
      * Color of the marks – either fill or stroke color based on  the `filled` property of mark definition.
@@ -448,14 +418,14 @@ export interface Encoding<F extends Field = string> {
      * 1) For fine-grained control over both fill and stroke colors of the marks, please use the `fill` and `stroke` channels. The `fill` or `stroke` encodings have higher precedence than `color`, thus may override the `color` encoding if conflicting encodings are specified.
      * 2) See the scale documentation for more information about customizing [color scheme](https://vega.github.io/vega-lite/docs/scale.html#scheme).
      */
-    color?: ColorDef<F>;
+    color?: ColorDef;
 
     /**
      * Fill color of the marks.
      *
      * _Note:_ The `fill` encoding has higher precedence than `color`, thus may override the `color` encoding if conflicting encodings are specified.
      */
-    fill?: ColorDef<F>;
+    fill?: ColorDef;
 
     /**
      * Stroke color of the marks.
@@ -463,39 +433,39 @@ export interface Encoding<F extends Field = string> {
      * _Note:_ The `stroke` encoding has higher precedence than `color`, thus may override the `color` encoding if conflicting encodings are specified.
      */
 
-    stroke?: ColorDef<F>;
+    stroke?: ColorDef;
 
     /**
      * Opacity of the marks.
      */
-    opacity?: NumericMarkPropDef<F>;
+    opacity?: NumericMarkPropDef;
 
     /**
      * Fill opacity of the marks.
      */
-    fillOpacity?: NumericMarkPropDef<F>;
+    fillOpacity?: NumericMarkPropDef;
 
     /**
      * Stroke opacity of the marks.
      */
-    strokeOpacity?: NumericMarkPropDef<F>;
+    strokeOpacity?: NumericMarkPropDef;
 
     /**
      * Stroke width of the marks.
      */
-    strokeWidth?: NumericMarkPropDef<F>;
+    strokeWidth?: NumericMarkPropDef;
 
     /**
      * Size of the mark.
      * - For `"point"` – the symbol size, or pixel area of the mark.
      * - For `"text"` – the text's font size.
      */
-    size?: NumericMarkPropDef<F>;
+    size?: NumericMarkPropDef;
 
     /**
      * Rotation angle of point and text marks.
      */
-    angle?: NumericMarkPropDef<F>;
+    angle?: NumericMarkPropDef;
 
     /**
      * Shape of the mark.
@@ -504,32 +474,32 @@ export interface Encoding<F extends Field = string> {
      * - plotting shapes: `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`, `"triangle-down"`, `"triangle-right"`, or `"triangle-left"`.
      * - centered directional shape `"triangle"`
      */
-    shape?: ShapeDef<F>;
+    shape?: ShapeDef;
 
     /**
      * Text of the `text` mark.
      */
-    text?: TextDef<F>;
+    text?: TextDef;
 
     /**
      * Facet identifier for interactive filtering, sorting, and grouping in the App.
      */
-    sample?: FieldDefWithoutScale<F>;
+    sample?: FieldDefWithoutScale;
 
     /**
      * For internal use
      */
     // TODO: proper type
-    uniqueId?: FieldDefWithoutScale<F>;
+    uniqueId?: FieldDefWithoutScale;
 
     // TODO: proper type
-    search?: FieldDefWithoutScale<F>;
+    search?: FieldDefWithoutScale;
 
     /**
      * For internal use
      */
     // TODO: proper type
-    facetIndex?: FieldDefWithoutScale<F>;
+    facetIndex?: FieldDefWithoutScale;
 
-    semanticScore?: FieldDefWithoutScale<F>;
+    semanticScore?: FieldDefWithoutScale;
 }
