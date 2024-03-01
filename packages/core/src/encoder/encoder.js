@@ -1,4 +1,4 @@
-import { createAccessor } from "./accessor.js";
+import { createConditionalAccessors } from "./accessor.js";
 
 /**
  * Creates an object that contains encoders for every channel of a mark
@@ -27,8 +27,12 @@ export default function createEncoders(unitView, encoding) {
             continue;
         }
 
-        encoders[channel] = createEncoder(
-            createAccessor(channel, channelDef, unitView.paramMediator),
+        encoders[channel] = createSimpleOrConditionalEncoder(
+            createConditionalAccessors(
+                channel,
+                channelDef,
+                unitView.paramMediator
+            ),
             scaleSource
         );
     }
@@ -37,7 +41,54 @@ export default function createEncoders(unitView, encoding) {
 }
 
 /**
- *
+ * @param {import("../types/encoder.js").PredicateAndAccessor[]} predicateAndAccessorArray
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
+ * @returns {Encoder}
+ */
+export function createSimpleOrConditionalEncoder(
+    predicateAndAccessorArray,
+    scaleSource
+) {
+    /**
+     * @typedef {import("../types/encoder.js").Encoder} Encoder
+     * @typedef {import("../types/encoder.js").Accessor} Accessor
+     * @typedef {import("../data/flowNode.js").Datum} Datum
+     */
+    if (predicateAndAccessorArray.length === 1) {
+        return createEncoder(
+            predicateAndAccessorArray[0].accessor,
+            scaleSource
+        );
+    }
+
+    const predicates = predicateAndAccessorArray.map((a) => a.predicate);
+
+    const encoders = predicateAndAccessorArray.map((a) =>
+        createEncoder(a.accessor, scaleSource)
+    );
+
+    const encoder = Object.assign(
+        (/** @type {Datum} */ datum) => {
+            for (let i = 0; i < encoders.length; i++) {
+                if (predicates[i](datum)) {
+                    return encoders[i](datum);
+                }
+            }
+        },
+        {
+            constant: false,
+            accessor: /** @type {Accessor[]} */ (
+                encoders.map((e) => e.accessor)
+            ),
+            scale: encoders.map((e) => e.scale).find((s) => s),
+            channelDef: predicateAndAccessorArray.at(-1).accessor.channelDef,
+        }
+    );
+
+    return encoder;
+}
+
+/**
  * @param {Accessor} accessor
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
  * @returns {Encoder}
@@ -46,53 +97,35 @@ export function createEncoder(accessor, scaleSource) {
     /**
      * @typedef {import("../types/encoder.js").Encoder} Encoder
      * @typedef {import("../types/encoder.js").Accessor} Accessor
+     * @typedef {import("../data/flowNode.js").Datum} Datum
      */
-
-    /** @type {Encoder} */
-    let encoder;
 
     const { channel, scaleChannel, channelDef } = accessor;
 
     const scale = accessor.scaleChannel ? scaleSource(scaleChannel) : undefined;
 
-    if (scaleChannel) {
-        if (!scale && scaleChannel) {
-            throw new Error(
-                `Missing scale! "${channel}": ${JSON.stringify(channelDef)}`
-            );
-        }
-
-        // @ts-ignore Bad d3 types
-        encoder = /** @type {Encoder} */ ((datum) => scale(accessor(datum)));
-        encoder.scale = scale;
-
-        // @ts-ignore Bad d3 types
-        encoder.invert =
-            "invert" in scale
-                ? // @ts-ignore Bad d3 types
-                  (value) => scale.invert(value)
-                : () => {
-                      throw new Error(
-                          "No invert method available for scale: " +
-                              JSON.stringify(channelDef)
-                      );
-                  };
-    } else {
-        encoder = /** @type {Encoder} */ ((datum) => accessor(datum));
-        encoder.invert = () => {
-            throw new Error(
-                "No scale available, cannot invert: " +
-                    JSON.stringify(channelDef)
-            );
-        };
+    if (scaleChannel && !scale) {
+        throw new Error(
+            `Missing scale! "${channel}": ${JSON.stringify(channelDef)}`
+        );
     }
 
-    encoder.constant = accessor.constant;
-    encoder.accessor = accessor;
-    // TODO: Accessor already has the channelDef
-    encoder.channelDef = channelDef;
-
-    return encoder;
+    return Object.assign(
+        scale
+            ? (/** @type {Datum} */ datum) =>
+                  scale(
+                      // @ts-ignore Bad d3 types
+                      accessor(datum)
+                  )
+            : (/** @type {Datum} */ datum) => accessor(datum),
+        {
+            scale,
+            constant: accessor.constant,
+            accessor,
+            // TODO: Accessor already has the channelDef
+            channelDef,
+        }
+    );
 }
 
 /**

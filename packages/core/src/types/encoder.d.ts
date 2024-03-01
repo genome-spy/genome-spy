@@ -79,15 +79,11 @@ export interface Encoder {
     /** True if the accessor returns the same value for all objects */
     constant: boolean;
 
-    /** True the encoder returns a "value" without a scale */
-    constantValue: boolean;
-
-    invert(value: Scalar): Scalar;
-
     /** Scale, if the encoder has one */
     scale?: VegaScale;
 
-    accessor: Accessor;
+    /** An accessor, or if the ChannelDef has conditions, all the accessors */
+    accessor: Accessor | Accessor[];
 
     channelDef: ChannelDef;
 }

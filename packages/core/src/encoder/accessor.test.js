@@ -67,7 +67,7 @@ describe("createConditionalAccessors", () => {
         paramMediator
     );
 
-    test("Creates a corret number of accessors", () =>
+    test("Creates a correct number of accessors", () =>
         expect(a.length).toBe(2));
 
     // Conditional accessor
