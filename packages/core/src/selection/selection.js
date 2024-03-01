@@ -1,4 +1,5 @@
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import { validateParameterName } from "../view/paramMediator.js";
 
 /**
  * @param {import("../data/flowNode.js").Datum} datum
@@ -33,6 +34,15 @@ export function selectionTest(selection, datum, empty = true) {
     } else {
         throw new Error("Not a selection: " + JSON.stringify(selection));
     }
+}
+
+/**
+ * @param {{param: string, empty?: boolean}} params
+ */
+export function makeSelectionTestExpression(params) {
+    return `selectionTest(${validateParameterName(params.param)}, datum, ${!!(
+        params.empty ?? true
+    )})`;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { validateParameterName } from "../../view/paramMediator.js";
+import { makeSelectionTestExpression } from "../../selection/selection.js";
 import FlowNode from "../flowNode.js";
 
 export default class FilterTransform extends FlowNode {
@@ -22,9 +22,7 @@ export default class FilterTransform extends FlowNode {
         if (isExprFilterParams(this.params)) {
             expression = this.params.expr;
         } else if (isSelectionFilterParams(this.params)) {
-            expression = `selectionTest(${validateParameterName(
-                this.params.param
-            )}, datum, ${!!(this.params.empty ?? true)})`;
+            expression = makeSelectionTestExpression(this.params);
         } else {
             throw new Error(
                 "Invalid filter params: " + JSON.stringify(this.params)

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import ScaleResolution from "../view/scaleResolution.js";
-import createAccessor from "./accessor.js";
+import { createAccessor } from "./accessor.js";
 import ParamMediator from "../view/paramMediator.js";
 import { createEncoder } from "./encoder.js";
 

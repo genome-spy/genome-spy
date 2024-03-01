@@ -117,7 +117,7 @@ export function isValueDef(channelDef) {
 
 /**
  * @param {import("../spec/channel.js").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel.js").FieldDefBase<string>}
+ * @returns {channelDef is import("../spec/channel.js").FieldDefBase}
  */
 export function isFieldDef(channelDef) {
     return channelDef && "field" in channelDef;
@@ -180,6 +180,25 @@ export function isChromPosDef(channelDef) {
  */
 export function isExprDef(channelDef) {
     return channelDef && "expr" in channelDef;
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").FieldOrDatumDefWithCondition}
+ */
+export function isFieldOrDatumDefWithCondition(channelDef) {
+    return (
+        (isFieldDef(channelDef) || isDatumDef(channelDef)) &&
+        "condition" in channelDef
+    );
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").ValueDefWithCondition}
+ */
+export function isValueDefWithCondition(channelDef) {
+    return isValueDef(channelDef) && "condition" in channelDef;
 }
 
 /**

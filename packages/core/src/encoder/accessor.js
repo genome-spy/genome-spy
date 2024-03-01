@@ -5,10 +5,13 @@ import {
     isDatumDef,
     isExprDef,
     isFieldDef,
+    isFieldOrDatumDefWithCondition,
     isValueDef,
+    isValueDefWithCondition,
 } from "./encoder.js";
 import { field } from "../utils/field.js";
-import { isExprRef } from "../view/paramMediator.js";
+import { isExprRef, makeConstantExprRef } from "../view/paramMediator.js";
+import { makeSelectionTestExpression } from "../selection/selection.js";
 
 /**
  * @param {import("../spec/channel.js").Channel} channel
@@ -16,7 +19,7 @@ import { isExprRef } from "../view/paramMediator.js";
  * @param {import("../view/paramMediator.js").default} paramMediator
  * @returns {import("../types/encoder.js").Accessor}
  */
-export default function createAccessor(channel, channelDef, paramMediator) {
+export function createAccessor(channel, channelDef, paramMediator) {
     if (!channel) {
         // TODO: Don't call with an undefined channel
         return;
@@ -82,4 +85,43 @@ export default function createAccessor(channel, channelDef, paramMediator) {
             )}. Cannot create an accessor for channel ${channel}!`
         );
     }
+}
+
+/**
+ * Returns an array of acessors and their predicates. A returned array with
+ * a single element indicates that no conditions are present.
+ * The default accessor is always the last element in the array.
+ *
+ * @param {import("../spec/channel.js").Channel} channel
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @param {import("../view/paramMediator.js").default} paramMediator
+ */
+export function createConditionalAccessors(channel, channelDef, paramMediator) {
+    /** @type {import("../types/encoder.js").PredicateAndAccessor[]} */
+    const conditionalAccessors = [];
+
+    if (
+        isFieldOrDatumDefWithCondition(channelDef) ||
+        isValueDefWithCondition(channelDef)
+    ) {
+        const condition = channelDef.condition;
+
+        const accessor = createAccessor(channel, condition, paramMediator);
+
+        conditionalAccessors.push({
+            predicate: paramMediator.createExpression(
+                makeSelectionTestExpression(condition)
+            ),
+            param: condition.param,
+            accessor,
+        });
+    }
+
+    conditionalAccessors.push({
+        predicate: makeConstantExprRef(true), // Always true (default accessor)
+        param: null,
+        accessor: createAccessor(channel, channelDef, paramMediator),
+    });
+
+    return conditionalAccessors;
 }

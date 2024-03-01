@@ -20,8 +20,17 @@ import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
 import { Scalar } from "../spec/channel.js";
 import { Datum } from "../data/flowNode.js";
+import { ExprRefFunction } from "../view/paramMediator.js";
 
-export interface AccessorMetadata {
+export interface Accessor<T = Scalar> {
+    (datum: Datum): T;
+
+    /**
+     * @returns A new accessor that returns the same value as this accessor,
+     * but typed as a number
+     */
+    asNumberAccessor(): Accessor<number>;
+
     /**
      * True if the accessor returns the same value for all objects
      */
@@ -50,19 +59,32 @@ export interface AccessorMetadata {
     channelDef: ChannelDef;
 }
 
-export type Accessor<T = Scalar> = ((datum: Datum) => T) & {
-    asNumberAccessor: () => Accessor<number>;
-} & AccessorMetadata;
+export interface PredicateAndAccessor<T = Scalar> {
+    /**
+     * Conditional accessor is used when the predicate is true
+     */
+    predicate: ExprRefFunction;
 
-export interface EncoderMetadata {
+    /**
+     * The parameter the predicate is based on
+     */
+    param: string;
+
+    accessor: Accessor<T>;
+}
+
+export interface Encoder {
+    (datum: Datum): Scalar;
+
     /** True if the accessor returns the same value for all objects */
     constant: boolean;
 
     /** True the encoder returns a "value" without a scale */
     constantValue: boolean;
 
-    invert: (value: Scalar) => Scalar;
+    invert(value: Scalar): Scalar;
 
+    /** Scale, if the encoder has one */
     scale?: VegaScale;
 
     accessor: Accessor;
@@ -72,10 +94,6 @@ export interface EncoderMetadata {
 
     channelDef: ChannelDef;
 }
-
-export type Encoder = ((datum: Datum) => Scalar) & EncoderMetadata;
-
-export type NumberEncoder = ((datum: Datum) => number) & EncoderMetadata;
 
 export interface ScaleMetadata {
     /** Scale type */

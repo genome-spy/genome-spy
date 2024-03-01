@@ -22,7 +22,7 @@ import View from "./view.js";
 import { createSinglePointSelection } from "../selection/selection.js";
 import { isString } from "vega-util";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import createAccessor from "../encoder/accessor.js";
+import { createAccessor } from "../encoder/accessor.js";
 
 /**
  *

@@ -389,3 +389,22 @@ export function validateParameterName(name) {
 
     return name;
 }
+
+/**
+ * Creates a function that always returns the same value.
+ * Provides functionality for creating a constant expression reference.
+ * They just do nothing.
+ *
+ * @param {any} value
+ * @returns {ExprRefFunction}
+ */
+export function makeConstantExprRef(value) {
+    return Object.assign(() => value, {
+        addListener: () => undefined,
+        invalidate: () => undefined,
+        identifier: () => "constant",
+        fields: [],
+        globals: [],
+        code: JSON.stringify(value),
+    });
+}
