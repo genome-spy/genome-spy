@@ -110,7 +110,7 @@ export default class ScaleResolution {
         this.channel = channel;
         /** @type {ResolutionMember[]} The involved views */
         this.members = [];
-        /** @type {string} Data type (quantitative, nominal, etc...) */
+        /** @type {import("../spec/channel.js").Type} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
         /** @type {string} An optional unique identifier for the scale */
@@ -379,20 +379,21 @@ export default class ScaleResolution {
      * @return { DomainArray }
      */
     getConfiguredDomain() {
-        return this.#reduceDomains((member) =>
-            isSecondaryChannel(member.channel)
-                ? undefined
-                : member.view
-                ? member.view.getConfiguredDomain(member.channel)
-                : // For testing purposes - use channelDef it the view is not available
-                member.channelDef.scale?.domain
-                ? createDomain(
-                      member.channelDef.type,
-                      // @ts-ignore
-                      member.channelDef.scale.domain
-                  )
-                : undefined
-        );
+        const domains = this.members
+            .map((member) => member.channelDef)
+            .filter((channelDef) => channelDef.scale?.domain)
+            .map((channelDef) =>
+                // TODO: Handle ExprRefs and Param in domain
+                createDomain(
+                    channelDef.type,
+                    // Chrom/pos must be linearized first
+                    this.fromComplexInterval(channelDef.scale.domain)
+                )
+            );
+
+        if (domains.length > 0) {
+            return domains.reduce((acc, curr) => acc.extendAll(curr));
+        }
     }
 
     /**
@@ -404,9 +405,7 @@ export default class ScaleResolution {
         // TODO: Optimize: extract domain only once if the views share the data.
         // In fact, this should be a responsibility of collectors.
         return this.#reduceDomains((member) =>
-            isSecondaryChannel(member.channel)
-                ? undefined
-                : member.view.extractDataDomain(member.channel)
+            member.view.extractDataDomain(member.channel, this.type)
         );
     }
 

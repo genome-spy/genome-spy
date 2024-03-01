@@ -6,15 +6,12 @@ import TextMark from "../marks/text.js";
 
 import ScaleResolution from "./scaleResolution.js";
 import {
-    isSecondaryChannel,
-    secondaryChannels,
     isPositionalChannel,
     isChannelDefWithScale,
     primaryPositionalChannels,
     getPrimaryChannel,
     isChannelWithScale,
     isPrimaryPositionalChannel,
-    getChannelDefWithScale,
 } from "../encoder/encoder.js";
 import createDomain from "../utils/domainArray.js";
 import AxisResolution from "./axisResolution.js";
@@ -241,16 +238,11 @@ export default class UnitView extends View {
                 view.resolutions[type][targetChannel].pushUnitView(
                     this,
                     channel,
-                    getChannelDefWithScale(this, channel)
+                    channelDef
                 );
             }
         }
     }
-
-    /**
-     * @type {Map<Channel, FieldAccessor>}
-     */
-    #fieldAccessors = new Map();
 
     /**
      *
@@ -284,48 +276,6 @@ export default class UnitView extends View {
     }
 
     /**
-     * @param {Channel} channel A primary channel
-     */
-    #validateDomainQuery(channel) {
-        if (isSecondaryChannel(channel)) {
-            throw new Error(
-                `getDomain(${channel}), must only be called for primary channels!`
-            );
-        }
-
-        const channelDef = this.mark.encoding[channel];
-        // TODO: Broken. Fix.
-        if (!isChannelDefWithScale(channelDef)) {
-            throw new Error("The channel has no scale, cannot get domain!");
-        }
-
-        return channelDef;
-    }
-
-    /**
-     * Returns the domain of the specified channel of this domain/mark.
-     *
-     * @param {import("../spec/channel.js").ChannelWithScale} channel A primary channel
-     * @returns {DomainArray}
-     */
-    getConfiguredDomain(channel) {
-        const channelDef = this.#validateDomainQuery(channel);
-
-        const specDomain =
-            channelDef && channelDef.scale && channelDef.scale.domain;
-        if (specDomain) {
-            const scaleResolution = this.getScaleResolution(
-                channelDef.resolutionChannel ?? channel
-            );
-            return createDomain(
-                channelDef.type ?? "nominal",
-                // Chrom/pos must be linearized first
-                scaleResolution.fromComplexInterval(specDomain)
-            );
-        }
-    }
-
-    /**
      * Extracts the domain from the data.
      *
      * TODO: Optimize! Now this performs redundant work if multiple views share the same collector.
@@ -336,43 +286,26 @@ export default class UnitView extends View {
      * (with aggregate and extent).
      *
      * @param {Channel} channel
+     * @param {import("../spec/channel.js").Type} type
      * @returns {DomainArray}
      */
-    extractDataDomain(channel) {
-        const channelDef = this.#validateDomainQuery(channel);
-        const type = channelDef.type ?? "nominal"; // TODO: Should check that this is a channel without scale
+    extractDataDomain(channel, type) {
+        /** @type {DomainArray} */
+        let domain;
 
-        /** @param {Channel} channel */
-        const extract = (channel) => {
-            /** @type {DomainArray} */
-            let domain;
+        const accessor = this.getAccessor(channel);
+        if (accessor) {
+            domain = createDomain(type);
 
-            const accessor = this.getAccessor(channel);
-            if (accessor) {
-                domain = createDomain(type);
-
-                if (accessor.constant) {
-                    domain.extend(accessor({}));
-                } else {
-                    const collector = this.getCollector();
-                    if (collector?.completed) {
-                        collector.visitData((d) => domain.extend(accessor(d)));
-                    }
+            if (accessor.constant) {
+                domain.extend(accessor({}));
+            } else {
+                const collector = this.getCollector();
+                if (collector?.completed) {
+                    collector.visitData((d) => domain.extend(accessor(d)));
                 }
             }
-            return domain;
-        };
-
-        let domain = extract(channel);
-
-        const secondaryChannel = secondaryChannels[channel];
-        if (secondaryChannel) {
-            const secondaryDomain = extract(secondaryChannel);
-            if (secondaryDomain) {
-                domain.extendAll(secondaryDomain);
-            }
         }
-
         return domain;
     }
 

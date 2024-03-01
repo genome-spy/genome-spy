@@ -66,6 +66,7 @@ describe("Test domain handling", () => {
         ],
     };
 
+    /** -- This should be moved to ScaleResolution's test
     test("Uses domain from the scale properties", () => {
         const spec = {
             data: dataSpec,
@@ -84,6 +85,7 @@ describe("Test domain handling", () => {
             expect(r(view.getConfiguredDomain("y"))).toEqual([0, 1000])
         );
     });
+    */
 
     test("Includes a constant in the data domain", () => {
         const spec = {
@@ -96,7 +98,9 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec, UnitView).then((view) =>
-            expect(r(view.extractDataDomain("x"))).toEqual([123, 123])
+            expect(r(view.extractDataDomain("x", "quantitative"))).toEqual([
+                123, 123,
+            ])
         );
     });
 
@@ -111,23 +115,9 @@ describe("Test domain handling", () => {
         };
 
         return createAndInitialize(spec, UnitView).then((view) =>
-            expect(r(view.extractDataDomain("y"))).toEqual([1, 3])
-        );
-    });
-
-    test("Extracts domain from the data when a secondary channel is being used", () => {
-        const spec = {
-            data: dataSpec,
-            mark: "rect",
-            encoding: {
-                x: { field: "a", type: "quantitative" },
-                y: { field: "a", type: "quantitative" },
-                y2: { field: "b", type: "quantitative" },
-            },
-        };
-
-        return createAndInitialize(spec, UnitView).then((view) =>
-            expect(r(view.extractDataDomain("y"))).toEqual([1, 5])
+            expect(r(view.extractDataDomain("y", "quantitative"))).toEqual([
+                1, 3,
+            ])
         );
     });
 });
