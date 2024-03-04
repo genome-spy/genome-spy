@@ -85,7 +85,6 @@ export function generateConstantValueGlsl(channel, value) {
     }
 
     let glsl = `
-#define ${channel}_DEFINED
 ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
     // Constant value
     return ${vec};
@@ -114,7 +113,6 @@ export function generateDynamicValueGlslAndUniform(channel) {
     const uniformGlsl = `    // Dynamic value\n    uniform ${dataType} ${uniformName};`;
 
     let scaleGlsl = `
-#define ${channel}_DEFINED
 ${dataType} ${SCALED_FUNCTION_PREFIX}${channel}() {
     // Dynamic value
     return ${uniformName};
@@ -176,8 +174,6 @@ export function generateScaleGlsl(
     glsl.push("/".repeat(70));
     glsl.push(`// Channel: ${channel}`);
     glsl.push("");
-
-    glsl.push(`#define ${channel}_DEFINED`);
 
     const { transform } = splitScaleType(scale.type);
 

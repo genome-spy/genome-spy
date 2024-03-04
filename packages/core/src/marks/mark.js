@@ -572,6 +572,8 @@ export default class Mark {
                     });
                 }
             }
+
+            scaleCode.push(`#define ${channel}_DEFINED`);
         }
 
         const vertexPrecision = "precision highp float;\nprecision highp int;";
