@@ -51,8 +51,12 @@ export const INDEX = "index";
 
 /**
  * @template {ChannelWithScale}[T=ChannelWithScale]
- * @typedef {{view: import("./unitView.js").default, channel: T, channelDef: import("../spec/channel.js").ChannelDefWithScale}} ResolutionMember
  *
+ * @typedef {object} ScaleResolutionMember
+ * @prop {import("./unitView.js").default} view TODO: Get rid of the view reference
+ * @prop {T} channel
+ * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
+ * @prop {(channel: ChannelWithScale, type: import("../spec/channel.js").Type) => DomainArray} dataDomainSource
  */
 /**
  * Resolution takes care of merging domains and scales from multiple views.
@@ -108,7 +112,7 @@ export default class ScaleResolution {
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {ResolutionMember[]} The involved views */
+        /** @type {ScaleResolutionMember[]} The involved views */
         this.members = [];
         /** @type {import("../spec/channel.js").Type} Data type (quantitative, nominal, etc...) */
         this.type = null;
@@ -161,11 +165,10 @@ export default class ScaleResolution {
      * Add a view to this resolution.
      * N.B. This is expected to be called in depth-first order
      *
-     * @param {UnitView} view
-     * @param {ChannelWithScale} channel
-     * @param {import("../spec/channel.js").ChannelDefWithScale} channelDef
+     * @param {ScaleResolutionMember} newMember
      */
-    pushUnitView(view, channel, channelDef) {
+    pushUnitView(newMember) {
+        const { channel, channelDef } = newMember;
         const type = channelDef.type;
         const name = channelDef?.scale?.name;
 
@@ -189,7 +192,7 @@ export default class ScaleResolution {
             // TODO: Use the same merging logic as in: https://github.com/vega/vega-lite/blob/master/src/scale.ts
         }
 
-        this.members.push({ view, channel, channelDef });
+        this.members.push(newMember);
     }
 
     /**
@@ -405,7 +408,7 @@ export default class ScaleResolution {
         // TODO: Optimize: extract domain only once if the views share the data.
         // In fact, this should be a responsibility of collectors.
         return this.#reduceDomains((member) =>
-            member.view.extractDataDomain(member.channel, this.type)
+            member.dataDomainSource(member.channel, this.type)
         );
     }
 
@@ -646,7 +649,7 @@ export default class ScaleResolution {
 
         // TODO: Intersect the domain with zoom extent
 
-        const animator = this.members[0]?.view.context.animator;
+        const animator = this.#viewContext.animator;
 
         const scale = this.scale;
         const from = /** @type {number[]} */ (scale.domain());
@@ -786,7 +789,7 @@ export default class ScaleResolution {
         }
 
         // TODO: Support multiple assemblies
-        const genome = this.members[0].view.context.genomeStore?.getGenome();
+        const genome = this.#viewContext.genomeStore?.getGenome();
         if (!genome) {
             throw new Error("No genome has been defined!");
         }
@@ -842,15 +845,11 @@ export default class ScaleResolution {
         return /** @type {number[]} */ (interval);
     }
 
-    #getViewPaths() {
-        return this.members.map((v) => v.view.getPathString()).join(", ");
-    }
-
     /**
      * Iterate all participanting views and reduce (union) their domains using an accessor.
      * Accessor may return the an explicitly configured domain or a domain extracted from the data.
      *
-     * @param {function(ResolutionMember):DomainArray} domainAccessor
+     * @param {function(ScaleResolutionMember):DomainArray} domainAccessor
      * @returns {DomainArray}
      */
     #reduceDomains(domainAccessor) {

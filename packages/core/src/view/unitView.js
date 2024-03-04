@@ -218,10 +218,11 @@ export default class UnitView extends View {
                         targetChannel
                     );
                 }
-                view.resolutions[type][targetChannel].pushUnitView(
-                    this,
-                    channel
-                );
+                view.resolutions[type][targetChannel].pushUnitView({
+                    view: this,
+                    channel,
+                    channelDef,
+                });
             } else if (type == "scale" && isChannelWithScale(channel)) {
                 if (!view.resolutions[type][targetChannel]) {
                     const resolution = new ScaleResolution(targetChannel);
@@ -235,11 +236,12 @@ export default class UnitView extends View {
                         );
                     });
                 }
-                view.resolutions[type][targetChannel].pushUnitView(
-                    this,
+                view.resolutions[type][targetChannel].pushUnitView({
+                    view: this,
                     channel,
-                    channelDef
-                );
+                    channelDef,
+                    dataDomainSource: this.extractDataDomain.bind(this),
+                });
             }
         }
     }
