@@ -25,9 +25,9 @@ import {
     toHighPrecisionDomainUniform,
     dedupeEncodingFields,
     generateDynamicValueGlslAndUniform,
-    isLargeGenome,
     splitLargeHighPrecision,
     getRangeForGlsl,
+    getAttributeAndArrayTypes,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -41,6 +41,7 @@ import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
 import ViewError from "../view/viewError.js";
 import { isExprRef } from "../view/paramMediator.js";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -225,7 +226,7 @@ export default class Mark {
 
         if (this.isPickingParticipant()) {
             encoding.uniqueId = {
-                field: "_uniqueId", // TODO: Use constant
+                field: UNIQUE_ID_KEY,
             };
         }
 
@@ -514,11 +515,12 @@ export default class Mark {
                         throw new Error("Bug!");
                     }
 
-                    const encoder = this.encoders[channel];
+                    const scale = this.encoders[channel].scale;
 
-                    const scale = encoder.scale;
-                    const hp = scale && isHighPrecisionScale(scale.type);
-                    const largeHp = hp && isLargeGenome(encoder.scale.domain());
+                    const { largeHp, discrete } = getAttributeAndArrayTypes(
+                        scale,
+                        channel
+                    );
 
                     /**
                      * Discrete variables both numeric and strings must be "indexed",
@@ -528,7 +530,7 @@ export default class Mark {
                      * @type {function(import("../spec/channel.js").Scalar):(number | number[])}
                      */
                     const adjuster =
-                        scale && isDiscrete(scale.type) && "domain" in scale
+                        discrete && "domain" in scale
                             ? (d) => scale.domain().indexOf(d)
                             : largeHp
                             ? splitLargeHighPrecision

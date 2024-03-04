@@ -161,19 +161,7 @@ export function generateScaleGlsl(
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeName = RANGE_PREFIX + primary;
 
-    // The attribute has discrete values
-    const discrete = isDiscrete(scale.type);
-
-    const hp = isHighPrecisionScale(scale.type);
-    const largeHp = hp && isLargeGenome(scale.domain());
-
-    const attributeType = largeHp
-        ? "uvec2"
-        : hp
-        ? "uint"
-        : discrete || channel == "uniqueId"
-        ? "uint"
-        : "float";
+    const { hp, attributeType } = getAttributeAndArrayTypes(scale, channel);
 
     const domainLength = scale.domain ? scale.domain().length : undefined;
 
@@ -549,6 +537,37 @@ function makeFunctionCall(name, ...args) {
     }
 
     return `${name}(${fixedArgs.join(", ")})`;
+}
+
+/**
+ *
+ * @param {import("../types/encoder.js").VegaScale} scale
+ * @param {import("../spec/channel.js").Channel} channel
+ */
+export function getAttributeAndArrayTypes(scale, channel) {
+    const discrete = scale && isDiscrete(scale.type);
+    const hp = scale && isHighPrecisionScale(scale.type);
+    const largeHp = hp && isLargeGenome(scale.domain());
+
+    /**
+     * @type {{attributeType: string, arrayConstructor: Uint32ArrayConstructor | Uint16ArrayConstructor | Float32ArrayConstructor}}
+     */
+    const props = largeHp
+        ? { attributeType: "uvec2", arrayConstructor: Uint32Array }
+        : hp
+        ? { attributeType: "uint", arrayConstructor: Uint32Array }
+        : discrete
+        ? { attributeType: "uint", arrayConstructor: Uint16Array }
+        : channel == "uniqueId"
+        ? { attributeType: "uint", arrayConstructor: Uint32Array }
+        : { attributeType: "float", arrayConstructor: Float32Array };
+
+    return Object.assign(props, {
+        numComponents: +(props.attributeType.match(/^vec([234])$/)?.[1] ?? 1),
+        discrete,
+        hp,
+        largeHp,
+    });
 }
 
 /**

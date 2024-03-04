@@ -7,12 +7,11 @@ import { createBinningRangeIndexer } from "../utils/binnedIndex.js";
 import { isValueDef } from "../encoder/encoder.js";
 import {
     dedupeEncodingFields,
-    isHighPrecisionScale,
-    isLargeGenome,
+    getAttributeAndArrayTypes,
     makeAttributeName,
     splitLargeHighPrecision,
 } from "./glslScaleGenerator.js";
-import { isContinuous, isDiscrete } from "vega-scale";
+import { isContinuous } from "vega-scale";
 import createIndexer from "../utils/indexer.js";
 
 /**
@@ -29,7 +28,7 @@ export class GeometryBuilder {
 
     /**
      * @param {object} object
-     * @param {Record<string, Encoder>} object.encoders
+     * @param {Record<import("../spec/channel.js").Channel, Encoder>} object.encoders
      * @param {string[]} [object.attributes]
      * @param {number} [object.numVertices] If the number of data items is known, a
      *      preallocated TypedArray is used
@@ -38,12 +37,16 @@ export class GeometryBuilder {
         this.encoders = encoders;
 
         // Encoders for variable channels
-        this.variableEncoders = Object.fromEntries(
-            Object.entries(encoders).filter(
-                ([channel, e]) =>
-                    attributes.includes(channel) && e && !e.constant
-            )
-        );
+
+        this.variableEncoders =
+            /** @type {Record<import("../spec/channel.js").Channel, Encoder>} */ (
+                Object.fromEntries(
+                    Object.entries(encoders).filter(
+                        ([channel, e]) =>
+                            attributes.includes(channel) && e && !e.constant
+                    )
+                )
+            );
 
         const dedupedEncodingFields = [
             ...dedupeEncodingFields(encoders).entries(),
@@ -70,13 +73,14 @@ export class GeometryBuilder {
             const accessor = ce.accessor;
             const numberAccessor = accessor.asNumberAccessor();
             const scale = ce.scale;
-            const hp = scale && isHighPrecisionScale(scale.type);
-            const largeHp = hp && isLargeGenome(scale.domain());
+
+            const { largeHp, arrayConstructor, discrete, numComponents } =
+                getAttributeAndArrayTypes(scale, channel);
             const largeHpArray = [0, 0];
 
             /** @type {ReturnType<typeof createIndexer>} */
             let indexer;
-            if (scale && isDiscrete(scale.type) && "domain" in scale) {
+            if (scale && discrete && "domain" in scale) {
                 indexer = createIndexer();
                 indexer.addAll(scale.domain());
             }
@@ -101,16 +105,9 @@ export class GeometryBuilder {
 
             this.variableBuilder.addConverter(attributeName, {
                 f,
-                numComponents: largeHp ? 2 : 1,
+                numComponents,
                 arrayReference: largeHp ? largeHpArray : undefined,
-                targetArrayType:
-                    channel == "uniqueId"
-                        ? Uint32Array
-                        : indexer
-                        ? Uint16Array
-                        : hp
-                        ? Uint32Array
-                        : Float32Array,
+                targetArrayType: arrayConstructor,
             });
         }
 
