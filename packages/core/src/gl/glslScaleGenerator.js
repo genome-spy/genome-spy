@@ -10,10 +10,8 @@ import { color as d3color } from "d3-color";
 import {
     getDiscreteRangeMapper,
     isColorChannel,
-    isDatumDef,
     isDiscreteChannel,
     getPrimaryChannel,
-    isValueDef,
     isFieldDef,
 } from "../encoder/encoder.js";
 import { asArray, peek } from "../utils/arrayUtils.js";
@@ -24,6 +22,7 @@ import scaleNull from "../utils/scaleNull.js";
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
 export const RANGE_PREFIX = "range_";
+export const ACCESSOR_FUNCTION_PREFIX = "accessor_";
 export const SCALE_FUNCTION_PREFIX = "scale_";
 export const SCALED_FUNCTION_PREFIX = "getScaled_";
 export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
@@ -52,12 +51,36 @@ function splitScaleType(type) {
 }
 
 /**
+ *
+ * @param {Channel} channel
+ * @param {number} conditionNumber
+ * @returns {string}
+ */
+export function makeAccessorFunctionName(channel, conditionNumber) {
+    return `${ACCESSOR_FUNCTION_PREFIX}${channel}_${conditionNumber}`;
+}
+
+/**
+ * @typedef {object} AccessorParts
+ * @prop {Channel} channel
+ * @prop {string} accessorGlsl
+ * @prop {string} accessorFunctionName
+ * @prop {string} [attributeName]
+ * @prop {string} [attributeGlsl]
+ * @prop {string} [uniformName]
+ * @prop {string} [uniformGlsl]
+ * @prop {(x: any) => any} [adjuster]
+ */
+
+/**
  * Generates GLSL code for a constant value.
  *
  * @param {Channel} channel
+ * @param {number} conditionNumber
  * @param {number | number[] | string | boolean} value
+ * @returns {AccessorParts}
  */
-export function generateConstantValueGlsl(channel, value) {
+export function generateConstantValueGlsl(channel, conditionNumber, value) {
     /** @type {VectorizedValue} */
     let vec;
     if (isDiscreteChannel(channel)) {
@@ -84,12 +107,21 @@ export function generateConstantValueGlsl(channel, value) {
         vec = vectorize(value);
     }
 
-    let glsl = `
-${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
+    const accessorFunctionName = makeAccessorFunctionName(
+        channel,
+        conditionNumber
+    );
+    const accessorGlsl = `
+${vec.type} ${accessorFunctionName}() {
     // Constant value
     return ${vec};
 }`;
-    return glsl;
+
+    return {
+        channel,
+        accessorGlsl,
+        accessorFunctionName,
+    };
 }
 
 /**
@@ -97,8 +129,10 @@ ${vec.type} ${SCALED_FUNCTION_PREFIX}${channel}() {
  * used as dynamic mark properties that map to encoding channels.
  *
  * @param {Channel} channel
+ * @param {number} conditionNumber
+ * @returns {AccessorParts}
  */
-export function generateDynamicValueGlslAndUniform(channel) {
+export function generateDynamicValueGlslAndUniform(channel, conditionNumber) {
     let dataType = "float";
     /** @type {(x: any) => any} */
     let adjuster = (x) => x;
@@ -112,8 +146,12 @@ export function generateDynamicValueGlslAndUniform(channel) {
 
     const uniformGlsl = `    // Dynamic value\n    uniform ${dataType} ${uniformName};`;
 
-    let scaleGlsl = `
-${dataType} ${SCALED_FUNCTION_PREFIX}${channel}() {
+    const accessorFunctionName = makeAccessorFunctionName(
+        channel,
+        conditionNumber
+    );
+    let accessorGlsl = `
+${dataType} ${accessorFunctionName}() {
     // Dynamic value
     return ${uniformName};
 }`;
@@ -122,42 +160,93 @@ ${dataType} ${SCALED_FUNCTION_PREFIX}${channel}() {
         channel,
         uniformName,
         uniformGlsl,
-        scaleGlsl,
+        accessorGlsl,
+        accessorFunctionName,
         adjuster,
+    };
+}
+
+/**
+ * @param {Channel} channel
+ * @param {any} scale
+ * @param {number} conditionNumber
+ * @param {Channel[]} [sharedQuantitativeChannels] Channels that share the same quantitative field
+ * @returns {AccessorParts}
+ */
+export function generateDataGlsl(
+    channel,
+    scale,
+    conditionNumber,
+    sharedQuantitativeChannels = [channel]
+) {
+    const { attributeType } = getAttributeAndArrayTypes(scale, channel);
+    const attributeName =
+        ATTRIBUTE_PREFIX + makeAttributeName(sharedQuantitativeChannels);
+
+    const attributeGlsl = `in highp ${attributeType} ${attributeName};`;
+
+    const accessorFunctionName = makeAccessorFunctionName(
+        channel,
+        conditionNumber
+    );
+
+    const accessorGlsl = `
+${attributeType} ${accessorFunctionName}() {
+    return ${attributeName};
+}`;
+
+    return {
+        channel,
+        attributeName,
+        attributeGlsl,
+        accessorGlsl,
+        accessorFunctionName,
+    };
+}
+/**
+ * @param {Channel} channel
+ * @param {any} scale
+ * @param {number} conditionNumber
+ * @returns {AccessorParts}
+ */
+export function generateDatumGlslAndUniform(channel, scale, conditionNumber) {
+    const { attributeType } = getAttributeAndArrayTypes(scale, channel);
+
+    // TODO: Use uniform prefix
+    const uniformName = ATTRIBUTE_PREFIX + makeAttributeName(channel);
+    const uniformGlsl = `    uniform highp ${attributeType} ${uniformName};`;
+
+    const accessorFunctionName = makeAccessorFunctionName(
+        channel,
+        conditionNumber
+    );
+    const accessorGlsl = `
+${attributeType} ${accessorFunctionName}() {
+    return ${uniformName};
+}`;
+
+    return {
+        channel,
+        uniformName,
+        uniformGlsl,
+        accessorGlsl,
+        accessorFunctionName,
     };
 }
 
 /**
  *
  * @param {Channel} channel
- * @param {import("../view/scaleResolution.js").default} scaleResolution TODO: typing
+ * @param {any} scale
  * @param {import("../spec/channel.js").ChannelDef} channelDef
- * @param {Channel[]} [sharedQuantitativeChannels] Channels that share the same quantitative field
  */
 // eslint-disable-next-line complexity
-export function generateScaleGlsl(
-    channel,
-    scaleResolution,
-    channelDef,
-    sharedQuantitativeChannels = [channel]
-) {
-    if (isValueDef(channelDef)) {
-        throw new Error(
-            `Cannot create scale for "value": ${JSON.stringify(channelDef)}`
-        );
-    }
-
-    /**
-     * Typecast to any to make it easier to handle all the different scale variants
-     * @type {any}
-     */
-    const scale = scaleResolution ? scaleResolution.scale : scaleNull();
+export function generateScaleGlsl(channel, scale, channelDef) {
+    scale ??= scaleNull();
 
     const primary = getPrimaryChannel(channel);
-    const attributeName =
-        ATTRIBUTE_PREFIX + makeAttributeName(sharedQuantitativeChannels);
     const domainUniformName = DOMAIN_PREFIX + primary;
-    const rangeName = RANGE_PREFIX + primary;
+    const rangeUniformName = RANGE_PREFIX + primary;
 
     const { hp, attributeType } = getAttributeAndArrayTypes(scale, channel);
 
@@ -188,14 +277,18 @@ export function generateScaleGlsl(
     let functionCall;
     switch (transform) {
         case "linear":
-            functionCall = makeScaleCall("scaleLinear", "domain", rangeName);
+            functionCall = makeScaleCall(
+                "scaleLinear",
+                "domain",
+                rangeUniformName
+            );
             break;
 
         case "log":
             functionCall = makeScaleCall(
                 "scaleLog",
                 "domain",
-                rangeName,
+                rangeUniformName,
                 scale.base()
             );
             break;
@@ -204,7 +297,7 @@ export function generateScaleGlsl(
             functionCall = makeScaleCall(
                 "scaleSymlog",
                 "domain",
-                rangeName,
+                rangeUniformName,
                 scale.constant()
             );
             break;
@@ -214,7 +307,7 @@ export function generateScaleGlsl(
             functionCall = makeScaleCall(
                 "scalePow",
                 "domain",
-                rangeName,
+                rangeUniformName,
                 scale.exponent()
             );
             break;
@@ -224,7 +317,7 @@ export function generateScaleGlsl(
             functionCall = makeScaleCall(
                 "scaleBandHp",
                 "domain",
-                rangeName,
+                rangeUniformName,
                 scale.paddingInner(),
                 scale.paddingOuter(),
                 scale.align(),
@@ -237,7 +330,7 @@ export function generateScaleGlsl(
             functionCall = makeScaleCall(
                 "scaleBand",
                 "domain",
-                rangeName,
+                rangeUniformName,
                 scale.paddingInner(),
                 scale.paddingOuter(),
                 scale.align(),
@@ -287,17 +380,17 @@ export function generateScaleGlsl(
             }
             rangeUniform = `    uniform ${getFloatVectorType(
                 range.length
-            )} ${rangeName};`;
+            )} ${rangeUniformName};`;
         } else if (range.length && range.every(isNumber)) {
             const vectorizedRange = vectorizeRange(range);
 
             glsl.push(
-                `const ${vectorizedRange.type} ${rangeName} = ${vectorizedRange};`
+                `const ${vectorizedRange.type} ${rangeUniformName} = ${vectorizedRange};`
             );
         }
     }
 
-    const returnType = isColorChannel(channel) ? "vec3" : "float";
+    const returnType = getScaledDataTypeForChannel(channel);
 
     /**
      * An optional interpolator function that maps the transformed value to the range.
@@ -323,10 +416,6 @@ export function generateScaleGlsl(
         }
         interpolate = `getDiscreteColor(${textureUniformName}, int(transformed)).r`;
     }
-
-    const [attributeGlsl, markUniformGlsl] = isDatumDef(channelDef)
-        ? [undefined, `    uniform highp ${attributeType} ${attributeName};`]
-        : [`in highp ${attributeType} ${attributeName};`, undefined];
 
     /** @type {string[]} Channel's scale function*/
     const scaleBody = [];
@@ -393,12 +482,6 @@ ${returnType} ${SCALE_FUNCTION_PREFIX}${channel}(${attributeType} value) {
 ${scaleBody.map((x) => `    ${x}\n`).join("")}
 }`);
 
-    // A convenience getter for the scaled value
-    glsl.push(`
-${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
-    return ${SCALE_FUNCTION_PREFIX}${channel}(${attributeName});
-}`);
-
     const concatenated = glsl.join("\n");
 
     if (usesDomain && channel == primary) {
@@ -413,14 +496,10 @@ ${returnType} ${SCALED_FUNCTION_PREFIX}${channel}() {
     }
 
     return {
-        attributeName,
-        attributeGlsl,
-        // Ends up in the Mark uniform block
-        markUniformGlsl,
         glsl: concatenated,
         domainUniformName,
         domainUniform,
-        rangeName,
+        rangeUniformName,
         rangeUniform,
     };
 }
@@ -488,6 +567,17 @@ function getFloatVectorType(numComponents) {
         default:
             throw new Error("Invalid number of components: " + numComponents);
     }
+}
+
+/**
+ * @param {Channel} channel
+ */
+export function getScaledDataTypeForChannel(channel) {
+    return isColorChannel(channel)
+        ? "vec3"
+        : channel == "uniqueId"
+        ? "uint"
+        : "float";
 }
 
 /**
