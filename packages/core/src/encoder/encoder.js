@@ -77,9 +77,10 @@ export function createSimpleOrConditionalEncoder(
         },
         {
             constant: false,
-            accessor: /** @type {Accessor[]} */ (
-                encoders.map((e) => e.accessor)
+            accessors: /** @type {Accessor[]} */ (
+                encoders.map((e) => e.accessors[0])
             ),
+            dataAccessor: encoders.map((e) => e.dataAccessor).find((a) => a),
             scale: encoders.map((e) => e.scale).find((s) => s),
             channelDef: predicateAndAccessorArray.at(-1).accessor.channelDef,
         }
@@ -121,7 +122,8 @@ export function createEncoder(accessor, scaleSource) {
         {
             scale,
             constant: accessor.constant,
-            accessor,
+            accessors: [accessor],
+            dataAccessor: accessor.constant ? undefined : accessor,
             // TODO: Accessor already has the channelDef
             channelDef,
         }

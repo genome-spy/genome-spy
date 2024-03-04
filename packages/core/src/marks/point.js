@@ -134,9 +134,8 @@ export default class PointMark extends Mark {
 
         // Semantic zooming is currently solely a feature of point mark.
         // Build a sorted sample that allows for computing p-quantiles
-        const semanticScoreAccessor = this.unitView
-            .getAccessor("semanticScore")
-            ?.asNumberAccessor();
+        const semanticScoreAccessor =
+            this.encoders["semanticScore"]?.dataAccessor?.asNumberAccessor();
         if (semanticScoreAccessor) {
             // n chosen using Stetson-Harrison
             // TODO: Throw on missing scores

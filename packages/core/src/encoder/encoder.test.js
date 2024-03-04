@@ -58,14 +58,24 @@ describe("Encoder", () => {
         })
     );
 
-    test("Returns a value", () => expect(e.x(datum)).toEqual(42));
+    test("has single accessors", () => {
+        expect(e.accessors.length).toBe(1);
+    });
 
-    test("Accesses a field and uses a scale", () => expect(e.y(datum)).toBe(1));
+    test("provides a data accessor for a FieldDef", () =>
+        expect(e.y.dataAccessor.fields).toContain("a"));
+
+    test("doesn't provide a data accessor for a ValueDef", () =>
+        expect(e.x.dataAccessor).toBeUndefined());
+
+    test("returns a value", () => expect(e.x(datum)).toEqual(42));
+
+    test("accesses a field and uses a scale", () => expect(e.y(datum)).toBe(1));
 
     // TODO: Text ExprRef
 });
 
-describe("Conditional encoder", () => {
+describe("Conditional encoder with a field and a conditional value", () => {
     const pm = new ParamMediator();
     const setter = pm.allocateSetter("p", createSinglePointSelection(null));
 
@@ -74,15 +84,19 @@ describe("Conditional encoder", () => {
         scaleSource
     );
 
-    test("has multiple accessors", () =>
-        expect(isArray(e.accessor)).toBeTruthy());
+    test("has multiple accessors", () => {
+        expect(e.accessors.length).toBe(2);
+    });
 
-    test("encodes the default when predicate is false", () => {
+    test("accesses the field using the dataAccessor", () =>
+        expect(e.dataAccessor(datum)).toBe(100));
+
+    test("encodes the default when a predicate is false", () => {
         setter(createSinglePointSelection(null));
         expect(e(datum)).toBe(10);
     });
 
-    test("encodes a conditional when predicate is true", () => {
+    test("encodes the conditional value when a predicate is true", () => {
         setter(createSinglePointSelection(datum));
         expect(e(datum)).toBe(5000);
     });

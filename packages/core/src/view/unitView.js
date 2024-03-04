@@ -247,11 +247,13 @@ export default class UnitView extends View {
     }
 
     /**
+     * Returns an accessor that accesses a field or an evaluated expression,
+     * if there is one.
      *
      * @param {Channel} channel
      */
-    getAccessor(channel) {
-        return this.mark.encoders[channel]?.accessor;
+    getDataAccessor(channel) {
+        return this.mark.encoders[channel]?.dataAccessor;
     }
 
     /**
@@ -262,7 +264,7 @@ export default class UnitView extends View {
      */
     getFacetAccessor(whoIsAsking) {
         // TODO: Rewrite, call getFacetFields
-        const sampleAccessor = this.getAccessor("sample");
+        const sampleAccessor = this.getDataAccessor("sample");
         if (sampleAccessor) {
             return sampleAccessor;
         }
@@ -295,7 +297,7 @@ export default class UnitView extends View {
         /** @type {DomainArray} */
         let domain;
 
-        const accessor = this.getAccessor(channel);
+        const accessor = this.getDataAccessor(channel);
         if (accessor) {
             domain = createDomain(type);
 

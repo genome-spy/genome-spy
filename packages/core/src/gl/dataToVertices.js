@@ -70,7 +70,7 @@ export class GeometryBuilder {
                 continue;
             }
 
-            const accessor = ce.accessor;
+            const accessor = ce.dataAccessor;
             const numberAccessor = accessor.asNumberAccessor();
             const scale = ce.scale;
 
@@ -195,9 +195,10 @@ export class GeometryBuilder {
         const xe = getContinuousEncoder(this.variableEncoders.x);
         const x2e = getContinuousEncoder(this.variableEncoders.x2);
 
-        if (xe) {
-            const xa = xe.accessor.asNumberAccessor();
-            const x2a = x2e ? x2e.accessor.asNumberAccessor() : xa;
+        // Only index variable data
+        if (xe && !xe.constant && (!x2e || !x2e.constant)) {
+            const xa = xe.dataAccessor.asNumberAccessor();
+            const x2a = x2e ? x2e.dataAccessor.asNumberAccessor() : xa;
 
             /** @type {[number, number]} */
             const dataDomain = [xa(data[lo]), x2a(data[hi - 1])];
@@ -526,7 +527,7 @@ export class TextVertexBuilder extends GeometryBuilder {
             // alphabetic
         }
 
-        const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
+        const accessor = this.encoders.text; // accessor or constant value
 
         const vertexCoord = [0, 0];
         this.updateVertexCoord(vertexCoord);

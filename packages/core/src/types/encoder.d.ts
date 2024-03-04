@@ -26,7 +26,7 @@ export interface Accessor<T = Scalar> {
     (datum: Datum): T;
 
     /**
-     * @returns A new accessor that returns the same value as this accessor,
+     * Returns a new accessor that returns the same value as this accessor,
      * but typed as a number
      */
     asNumberAccessor(): Accessor<number>;
@@ -73,27 +73,42 @@ export interface PredicateAndAccessor<T = Scalar> {
     accessor: Accessor<T>;
 }
 
+/**
+ * Wraps one or more accessors, uses an optional scale to encode the data.
+ */
 export interface Encoder {
     (datum: Datum): Scalar;
 
-    /** True if the accessor returns the same value for all objects */
+    /**
+     * True if the accessor returns the same value for all objects
+     */
     constant: boolean;
 
-    /** Scale, if the encoder has one */
+    /**
+     * Scale, if the encoder has one
+     */
     scale?: VegaScale;
 
-    /** An accessor, or if the ChannelDef has conditions, all the accessors */
-    accessor: Accessor | Accessor[];
+    /**
+     * An accessor, or if the ChannelDef has conditions, all the accessors.
+     */
+    accessors: Accessor[];
 
+    /**
+     * The encoded channel may have a maximum of one accessor accessing the
+     * data fields. It's this one.
+     */
+    dataAccessor?: Accessor;
+
+    /**
+     * The ChannelDef that the encoder is based on
+     */
     channelDef: ChannelDef;
 }
 
 export interface ScaleMetadata {
     /** Scale type */
     type: string;
-
-    /** Whether to use emulated 64 bit floating point in WebGL */
-    fp64?: boolean;
 }
 
 export type D3Scale =

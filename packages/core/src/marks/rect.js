@@ -255,13 +255,13 @@ export default class RectMark extends Mark {
         const scaleType = e.x.scale.type;
 
         if (isDiscrete(scaleType)) {
-            const a = e.x.accessor;
+            const a = e.x.dataAccessor;
             // TODO: Binary search
             return data.find((d) => x == a(d));
         } else {
             // TODO: Handle point features on locus/index scales
-            const a = e.x.accessor;
-            const a2 = e.x2.accessor;
+            const a = e.x.dataAccessor;
+            const a2 = e.x2.dataAccessor;
             // TODO: Binary search
             return data.find((d) => x >= a(d) && x < a2(d));
         }
