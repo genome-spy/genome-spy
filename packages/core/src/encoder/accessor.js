@@ -27,8 +27,8 @@ export function createAccessor(channel, channelDef, paramMediator) {
 
     function asAccessor(/** @type {Function} */ fn) {
         const a = /** @type {import("../types/encoder.js").Accessor} */ (fn);
-        a.constant = false;
         a.fields ??= [];
+        a.constant = a.fields.length === 0;
         a.channelDef = channelDef;
         a.channel = channel;
 
@@ -46,19 +46,15 @@ export function createAccessor(channel, channelDef, paramMediator) {
 
     if (isFieldDef(channelDef)) {
         try {
-            const a = asAccessor(field(channelDef.field));
-            return a;
+            return asAccessor(field(channelDef.field));
         } catch (e) {
             throw new Error(`Invalid field definition: ${e.message}`);
         }
     } else if (isExprDef(channelDef)) {
         // TODO: If parameters change, the data should be re-evaluated
-        const a = asAccessor(paramMediator.createExpression(channelDef.expr));
-        return a;
+        return asAccessor(paramMediator.createExpression(channelDef.expr));
     } else if (isDatumDef(channelDef)) {
-        const a = asAccessor(constant(channelDef.datum));
-        a.constant = true; // Can be optimized downstream
-        return a;
+        return asAccessor(constant(channelDef.datum));
     } else if (isValueDef(channelDef)) {
         if (isExprRef(channelDef.value)) {
             const a = asAccessor(
@@ -70,13 +66,10 @@ export function createAccessor(channel, channelDef, paramMediator) {
                         channelDef.value.expr
                 );
             }
-            a.constant = true;
             return a;
         } else {
             const value = channelDef.value;
-            const a = asAccessor(() => value);
-            a.constant = true;
-            return a;
+            return asAccessor(() => value);
         }
     } else {
         throw new Error(
