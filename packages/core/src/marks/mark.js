@@ -33,6 +33,7 @@ import {
     generateDatumGlslAndUniform,
     generateConditionalEncoderGlsl,
     PARAM_PREFIX,
+    ATTRIBUTE_PREFIX,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -437,9 +438,9 @@ export default class Mark {
 
         /**
          * Prevent duplicate registration.
-         * @type {Set<string>}
+         * @type {Map<string, "single" | "multi" | "range">}
          */
-        const parameterUniforms = new Set();
+        const selectionParameterUniforms = new Map();
 
         for (const predicate of paramPredicates) {
             const param = predicate.param;
@@ -456,10 +457,11 @@ export default class Mark {
             if (isSinglePointSelection(selection)) {
                 // Register a mark uniform for each param. The uniform will have
                 // the value of uniqueId of the selected datum.
-                if (!parameterUniforms.has(param)) {
-                    parameterUniforms.add(param);
+                if (!selectionParameterUniforms.has(param)) {
                     const uniformName =
                         PARAM_PREFIX + validateParameterName(param);
+                    selectionParameterUniforms.set(param, "single");
+
                     dynamicMarkUniforms.push(`    // Selection parameter`);
                     dynamicMarkUniforms.push(
                         `    uniform highp uint ${uniformName};`
@@ -670,6 +672,21 @@ export default class Mark {
 
             scaleCode.push(generateConditionalEncoderGlsl(channel, accessors));
         }
+
+        // Generate a function that checks if the datum is subject to any point selection
+        const conditions = [...selectionParameterUniforms.entries()]
+            .filter(([, v]) => v == "single")
+            .map(
+                ([param]) =>
+                    `${PARAM_PREFIX}${param} == ${ATTRIBUTE_PREFIX}uniqueId`
+            );
+        scaleCode.push(
+            "bool isPointSelected() {",
+            this.encoders.uniqueId && conditions.length > 0
+                ? `    return ${conditions.join(" || ")};`
+                : "    return false;",
+            "}"
+        );
 
         const vertexPrecision = "precision highp float;\nprecision highp int;";
 

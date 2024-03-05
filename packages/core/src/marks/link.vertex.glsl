@@ -168,7 +168,11 @@ void main(void) {
 
     vNormalLengthInPixels = strip.y * paddedSize;
     
-    if (uShape == SHAPE_ARC && uArcFadingDistance[0] > 0.0 && uArcFadingDistance[1] > 0.0) {
+    if (uShape == SHAPE_ARC &&
+        uArcFadingDistance[0] > 0.0 &&
+        uArcFadingDistance[1] > 0.0 &&
+        (!uNoFadingOnPointSelection || !isPointSelected()))
+    {
         float d = distanceFromLine(p1, p4, p);
         float distanceOpacity = smoothstep(uArcFadingDistance[1], uArcFadingDistance[0], d);    
 

@@ -1,3 +1,4 @@
+import { Datum } from "../data/flowNode.js";
 import { ChannelWithScale, Scalar } from "../spec/channel.js";
 
 export interface SelectionBase {
