@@ -1,4 +1,3 @@
-import { constant } from "vega-util";
 import {
     isChannelDefWithScale,
     isChannelWithScale,
@@ -62,6 +61,28 @@ export function createAccessor(channel, channelDef, paramMediator) {
         return a;
     }
 
+    /**
+     *
+     * @param {Scalar | import("../spec/parameter.js").ExprRef} potentialExprRef
+     */
+    function potentialExprRefToAccessor(potentialExprRef) {
+        if (isExprRef(potentialExprRef)) {
+            const a = asAccessor(
+                paramMediator.createExpression(potentialExprRef.expr)
+            );
+            if (a.fields.length > 0) {
+                throw new Error(
+                    "Expression in DatumDef/ValueDef cannot access data fields: " +
+                        potentialExprRef.expr
+                );
+            }
+            return a;
+        } else {
+            const v = potentialExprRef;
+            return asAccessor(() => v);
+        }
+    }
+
     if (isFieldDef(channelDef)) {
         try {
             return asAccessor(field(channelDef.field));
@@ -72,23 +93,9 @@ export function createAccessor(channel, channelDef, paramMediator) {
         // TODO: If parameters change, the data should be re-evaluated
         return asAccessor(paramMediator.createExpression(channelDef.expr));
     } else if (isDatumDef(channelDef)) {
-        return asAccessor(constant(channelDef.datum));
+        return potentialExprRefToAccessor(channelDef.datum);
     } else if (isValueDef(channelDef)) {
-        if (isExprRef(channelDef.value)) {
-            const a = asAccessor(
-                paramMediator.createExpression(channelDef.value.expr)
-            );
-            if (a.fields.length > 0) {
-                throw new Error(
-                    "Expression in ValueDef cannot access data fields: " +
-                        channelDef.value.expr
-                );
-            }
-            return a;
-        } else {
-            const value = channelDef.value;
-            return asAccessor(() => value);
-        }
+        return potentialExprRefToAccessor(channelDef.value);
     } else {
         throw new Error(
             `Invalid channel definition: ${JSON.stringify(

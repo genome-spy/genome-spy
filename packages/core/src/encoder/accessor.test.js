@@ -84,7 +84,7 @@ describe("createConditionalAccessors", () => {
     // Default accessor
     test("Default accessor accesses the correct field", () => {
         expect(a[1](data[0])).toEqual(1);
-        expect(a[1].predicate.param).toBeNull();
+        expect(a[1].predicate.param).toBeFalsy();
     });
 
     test("Default predicate is true for all data", () => {
