@@ -51,6 +51,7 @@ const datum = {
 
 describe("Encoder", () => {
     const pm = new ParamMediator();
+    /** @type {Partial<Record<import("../spec/channel.js").Channel, import("../types/encoder.js").Encoder>} */
     const e = Object.fromEntries(
         Object.entries(encoding).map(([channel, channelDef]) => {
             const accessor = createAccessor(channel, channelDef, pm);
@@ -58,8 +59,8 @@ describe("Encoder", () => {
         })
     );
 
-    test("has single accessors", () => {
-        expect(e.accessors.length).toBe(1);
+    test("has a single accessors", () => {
+        expect(e.x.accessors?.length).toBe(1);
     });
 
     test("provides a data accessor for a FieldDef", () =>

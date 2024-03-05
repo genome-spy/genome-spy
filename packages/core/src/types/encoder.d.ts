@@ -57,20 +57,18 @@ export interface Accessor<T = Scalar> {
      * The ChannelDef that the accessor is based on
      */
     channelDef: ChannelDef;
+
+    /**
+     * This accessor should be used when the predicate is true
+     */
+    predicate: Predicate;
 }
 
-export interface PredicateAndAccessor<T = Scalar> {
-    /**
-     * Conditional accessor is used when the predicate is true
-     */
-    predicate: ExprRefFunction;
-
+export interface Predicate extends ExprRefFunction {
     /**
      * The parameter the predicate is based on
      */
-    param: string;
-
-    accessor: Accessor<T>;
+    param?: string;
 }
 
 /**

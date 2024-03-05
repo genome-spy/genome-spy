@@ -15,17 +15,26 @@ import { makeSelectionTestExpression } from "../selection/selection.js";
 
 /**
  * @param {import("../spec/channel.js").Channel} channel
- * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @param {import("../spec/channel.js").ChannelDef | import("../spec/channel.js").Conditional<import("../spec/channel.js").ChannelDef>} channelDef
  * @param {import("../view/paramMediator.js").default} paramMediator
  * @returns {import("../types/encoder.js").Accessor}
  */
 export function createAccessor(channel, channelDef, paramMediator) {
+    /**
+     * @typedef {import("../data/flowNode.js").Datum} Datum
+     * @typedef {import("../spec/channel.js").Scalar} Scalar
+     */
+
     if (!channel) {
         // TODO: Don't call with an undefined channel
         return;
     }
 
-    function asAccessor(/** @type {Function} */ fn) {
+    /**
+     * @param {(datum?: Datum) => Scalar} fn
+     * @returns {import("../types/encoder.js").Accessor<Scalar>}
+     */
+    function asAccessor(fn) {
         const a = /** @type {import("../types/encoder.js").Accessor} */ (fn);
         a.fields ??= [];
         a.constant = a.fields.length === 0;
@@ -37,6 +46,15 @@ export function createAccessor(channel, channelDef, paramMediator) {
                 channelDef.resolutionChannel) ??
                 (isChannelWithScale(channel) && channel)) ||
             undefined;
+
+        if ("param" in channelDef) {
+            a.predicate = paramMediator.createExpression(
+                makeSelectionTestExpression(channelDef)
+            );
+            a.predicate.param = channelDef.param;
+        } else {
+            a.predicate = makeConstantExprRef(true); // Always true (default accessor)
+        }
 
         a.asNumberAccessor = () =>
             /** @type {import("../types/encoder.js").Accessor<number>} */ (a);
@@ -62,7 +80,7 @@ export function createAccessor(channel, channelDef, paramMediator) {
             );
             if (a.fields.length > 0) {
                 throw new Error(
-                    "Expression in ValueDef cannot access datum fields: " +
+                    "Expression in ValueDef cannot access data fields: " +
                         channelDef.value.expr
                 );
             }
@@ -90,31 +108,22 @@ export function createAccessor(channel, channelDef, paramMediator) {
  * @param {import("../view/paramMediator.js").default} paramMediator
  */
 export function createConditionalAccessors(channel, channelDef, paramMediator) {
-    /** @type {import("../types/encoder.js").PredicateAndAccessor[]} */
+    /** @type {import("../types/encoder.js").Accessor[]} */
     const conditionalAccessors = [];
 
+    // TODO: Support an array of conditions
     if (
         isFieldOrDatumDefWithCondition(channelDef) ||
         isValueDefWithCondition(channelDef)
     ) {
-        const condition = channelDef.condition;
-
-        const accessor = createAccessor(channel, condition, paramMediator);
-
-        conditionalAccessors.push({
-            predicate: paramMediator.createExpression(
-                makeSelectionTestExpression(condition)
-            ),
-            param: condition.param,
-            accessor,
-        });
+        conditionalAccessors.push(
+            createAccessor(channel, channelDef.condition, paramMediator)
+        );
     }
 
-    conditionalAccessors.push({
-        predicate: makeConstantExprRef(true), // Always true (default accessor)
-        param: null,
-        accessor: createAccessor(channel, channelDef, paramMediator),
-    });
+    conditionalAccessors.push(
+        createAccessor(channel, channelDef, paramMediator)
+    );
 
     return conditionalAccessors;
 }

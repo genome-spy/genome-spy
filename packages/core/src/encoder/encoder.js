@@ -41,31 +41,23 @@ export default function createEncoders(unitView, encoding) {
 }
 
 /**
- * @param {import("../types/encoder.js").PredicateAndAccessor[]} predicateAndAccessorArray
+ * @param {import("../types/encoder.js").Accessor[]} accessors
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
  * @returns {Encoder}
  */
-export function createSimpleOrConditionalEncoder(
-    predicateAndAccessorArray,
-    scaleSource
-) {
+export function createSimpleOrConditionalEncoder(accessors, scaleSource) {
     /**
      * @typedef {import("../types/encoder.js").Encoder} Encoder
      * @typedef {import("../types/encoder.js").Accessor} Accessor
      * @typedef {import("../data/flowNode.js").Datum} Datum
      */
-    if (predicateAndAccessorArray.length === 1) {
-        return createEncoder(
-            predicateAndAccessorArray[0].accessor,
-            scaleSource
-        );
+    if (accessors.length === 1) {
+        return createEncoder(accessors[0], scaleSource);
     }
 
-    const predicates = predicateAndAccessorArray.map((a) => a.predicate);
+    const predicates = accessors.map((a) => a.predicate);
 
-    const encoders = predicateAndAccessorArray.map((a) =>
-        createEncoder(a.accessor, scaleSource)
-    );
+    const encoders = accessors.map((a) => createEncoder(a, scaleSource));
 
     const encoder = Object.assign(
         (/** @type {Datum} */ datum) => {
@@ -82,7 +74,7 @@ export function createSimpleOrConditionalEncoder(
             ),
             dataAccessor: encoders.map((e) => e.dataAccessor).find((a) => a),
             scale: encoders.map((e) => e.scale).find((s) => s),
-            channelDef: predicateAndAccessorArray.at(-1).accessor.channelDef,
+            channelDef: accessors.at(-1).channelDef,
         }
     );
 
