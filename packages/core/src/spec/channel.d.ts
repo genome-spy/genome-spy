@@ -233,7 +233,7 @@ export interface ConditionValueDefMixins<V extends Value = Value> {
      * __Note:__ A field definition's `condition` property can only contain [conditional value definitions](https://vega.github.io/vega-lite/docs/condition.html#value)
      * since Vega-Lite only allows at most one encoded field per encoding channel.
      */
-    condition?: Conditional<ValueDef<V>>; // | Conditional<ValueDef<V>>[];
+    condition?: Conditional<ValueDef<V>> | Conditional<ValueDef<V>>[];
 }
 
 /**

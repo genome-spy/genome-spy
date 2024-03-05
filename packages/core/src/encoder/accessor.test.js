@@ -67,8 +67,39 @@ describe("createConditionalAccessors", () => {
         paramMediator
     );
 
-    test("Creates a correct number of accessors", () =>
-        expect(a.length).toBe(2));
+    const b = createConditionalAccessors(
+        "x",
+        {
+            field: "a",
+            type: "quantitative",
+            condition: [
+                { param: "p", value: 123 },
+                { param: "p", value: 234 },
+            ],
+        },
+        paramMediator
+    );
+
+    const c = createConditionalAccessors(
+        "x",
+        {
+            value: 123,
+            condition: {
+                param: "p",
+                field: "a",
+                type: "quantitative",
+            },
+        },
+        paramMediator
+    );
+
+    // TODO: Add more combinations of datum, field, expr, etc
+
+    test("Creates a correct number of accessors", () => {
+        expect(a.length).toBe(2);
+        expect(b.length).toBe(3);
+        expect(c.length).toBe(2);
+    });
 
     // Conditional accessor
     test("Conditional accessor accesses the correct field", () => {
@@ -90,5 +121,41 @@ describe("createConditionalAccessors", () => {
     test("Default predicate is true for all data", () => {
         expect(a[1].predicate(data[0])).toBeTruthy();
         expect(a[1].predicate(data[1])).toBeTruthy();
+    });
+
+    test("Throws if multiple non-constant accessors are used", () => {
+        expect(() =>
+            createConditionalAccessors(
+                "x",
+                {
+                    field: "a",
+                    type: "quantitative",
+                    condition: {
+                        param: "p",
+                        // @ts-expect-error
+                        field: "b",
+                        type: "quantitative",
+                    },
+                },
+                paramMediator
+            )
+        ).toThrow();
+
+        expect(() =>
+            createConditionalAccessors(
+                "x",
+                {
+                    field: "a",
+                    type: "quantitative",
+                    condition: {
+                        param: "p",
+                        // @ts-expect-error
+                        expr: "datum.b",
+                        type: "quantitative",
+                    },
+                },
+                paramMediator
+            )
+        ).toThrow();
     });
 });

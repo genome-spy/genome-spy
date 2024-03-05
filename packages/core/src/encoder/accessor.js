@@ -123,14 +123,25 @@ export function createConditionalAccessors(channel, channelDef, paramMediator) {
         isFieldOrDatumDefWithCondition(channelDef) ||
         isValueDefWithCondition(channelDef)
     ) {
-        conditionalAccessors.push(
-            createAccessor(channel, channelDef.condition, paramMediator)
-        );
+        const conditions = Array.isArray(channelDef.condition)
+            ? channelDef.condition
+            : [channelDef.condition];
+
+        for (const condition of conditions) {
+            conditionalAccessors.push(
+                createAccessor(channel, condition, paramMediator)
+            );
+        }
     }
 
     conditionalAccessors.push(
         createAccessor(channel, channelDef, paramMediator)
     );
 
+    if (conditionalAccessors.filter((a) => !a.constant).length > 1) {
+        throw new Error(
+            "Only one accessor can be non-constant. Channel: " + channel
+        );
+    }
     return conditionalAccessors;
 }
