@@ -16,7 +16,7 @@ import {
 } from "../encoder/encoder.js";
 import { asArray, peek } from "../utils/arrayUtils.js";
 import { InternMap } from "internmap";
-import { isExprRef } from "../view/paramMediator.js";
+import { isExprRef, validateParameterName } from "../view/paramMediator.js";
 import scaleNull from "../utils/scaleNull.js";
 
 export const ATTRIBUTE_PREFIX = "attr_";
@@ -26,6 +26,7 @@ export const ACCESSOR_FUNCTION_PREFIX = "accessor_";
 export const SCALE_FUNCTION_PREFIX = "scale_";
 export const SCALED_FUNCTION_PREFIX = "getScaled_";
 export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
+export const PARAM_PREFIX = "uParam_";
 
 // https://stackoverflow.com/a/47543127
 const FLT_MAX = 3.402823466e38;
@@ -505,6 +506,47 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
 }
 
 /**
+ *
+ * @param {Channel} channel
+ * @param {import("../types/encoder.js").Accessor[]} accessors
+ */
+export function generateConditionalEncoderGlsl(channel, accessors) {
+    const type = getScaledDataTypeForChannel(channel);
+
+    /** @type {string[]}  */
+    const conditions = [];
+    /** @type {string[]}  */
+    const statements = [];
+
+    for (let i = 0; i < accessors.length; i++) {
+        const accessor = accessors[i];
+        const accessorFunctionName = makeAccessorFunctionName(channel, i);
+        const param = accessor.predicate.param;
+
+        // Hardcoded condition for single point selection ... for now.
+        conditions.push(
+            param
+                ? `${ATTRIBUTE_PREFIX}uniqueId == ${
+                      PARAM_PREFIX + validateParameterName(param)
+                  }`
+                : null
+        );
+
+        statements.push(
+            accessor.scaleChannel
+                ? `return ${SCALE_FUNCTION_PREFIX}${channel}(${accessorFunctionName}());`
+                : `return ${accessorFunctionName}();`
+        );
+    }
+
+    return `${type} ${SCALED_FUNCTION_PREFIX}${channel}() {
+${ifElseGlsl(conditions, statements)}
+}
+
+#define ${channel}_DEFINED`;
+}
+
+/**
  * Adds a trailing decimal zero so that GLSL is happy.
  *
  * @param {number} number
@@ -791,3 +833,40 @@ export const getRangeForGlsl = (scale, channel) =>
         : scale.range
         ? scale.range()
         : undefined;
+
+/**
+ * @param {string[]} conditions
+ * @param {string[]} statements
+ * @returns {string}
+ */
+export function ifElseGlsl(conditions, statements) {
+    if (conditions.length != statements.length) {
+        throw new Error("Unequal array lengths");
+    }
+
+    const n = conditions.length;
+
+    if (n == 0) {
+        return "";
+    } else if (n == 1 && conditions[0] == null) {
+        return statements[0];
+    }
+
+    const parts = [];
+    for (let i = 0; i < n; i++) {
+        const condition = conditions[i];
+        const ifelse =
+            i == 0
+                ? `if (${condition})`
+                : condition == null && i == n - 1
+                ? `else`
+                : `else if (${condition})`;
+        parts.push(
+            `    ${ifelse} {
+        ${statements[i]}
+    }`
+        );
+    }
+
+    return parts.join("\n");
+}

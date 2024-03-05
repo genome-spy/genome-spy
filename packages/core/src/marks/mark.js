@@ -31,10 +31,8 @@ import {
     getAttributeAndArrayTypes,
     generateDataGlsl,
     generateDatumGlslAndUniform,
-    getScaledDataTypeForChannel,
-    SCALED_FUNCTION_PREFIX,
-    SCALE_FUNCTION_PREFIX,
-    makeAccessorFunctionName,
+    generateConditionalEncoderGlsl,
+    PARAM_PREFIX,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -47,8 +45,9 @@ import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
 import ViewError from "../view/viewError.js";
-import { isExprRef } from "../view/paramMediator.js";
+import { isExprRef, validateParameterName } from "../view/paramMediator.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import { isSinglePointSelection } from "../selection/selection.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -431,22 +430,67 @@ export default class Mark {
         /** @type {string[]} */
         const dynamicMarkUniforms = [];
 
-        for (const [channel, encoder] of Object.entries(encoders)) {
-            if (!shaderChannels.includes(channel)) {
-                continue;
+        const paramPredicates = Object.values(encoders)
+            .flatMap((e) => e.accessors)
+            .map((a) => a.predicate)
+            .filter((p) => p.param);
+
+        /**
+         * Prevent duplicate registration.
+         * @type {Set<string>}
+         */
+        const parameterUniforms = new Set();
+
+        for (const predicate of paramPredicates) {
+            const param = predicate.param;
+            const selection = this.unitView.paramMediator.getValue(param);
+
+            // The selection is supposed to have an empty value at this point
+            // so that we can figure out the type of the selection.
+            if (!selection) {
+                throw new Error(
+                    `Cannot infer selection type as the parameter "${param}" has no value. Please ensure that the parameter is properly defined!`
+                );
             }
 
-            const channelDef = encoder.channelDef;
+            if (isSinglePointSelection(selection)) {
+                // Register a mark uniform for each param. The uniform will have
+                // the value of uniqueId of the selected datum.
+                if (!parameterUniforms.has(param)) {
+                    parameterUniforms.add(param);
+                    const uniformName =
+                        PARAM_PREFIX + validateParameterName(param);
+                    dynamicMarkUniforms.push(`    // Selection parameter`);
+                    dynamicMarkUniforms.push(
+                        `    uniform highp uint ${uniformName};`
+                    );
+                    this.#callAfterShaderCompilation.push(() => {
+                        this.registerMarkUniformValue(
+                            uniformName,
+                            { expr: param },
+                            (
+                                /** @type {import("../types/selectionTypes.js").SinglePointSelection} */ selection
+                            ) => selection.uniqueId ?? 0
+                        );
+                    });
+                }
+            } else {
+                throw new Error(
+                    `Unsupported selection (${param}) in condition: ${JSON.stringify(
+                        selection
+                    )}`
+                );
+            }
+        }
 
-            const conditionNumber = 0;
-            const scale = encoder.scale;
-
-            // Generate accessors -------------------------------
-
-            const accessorFunctionName = makeAccessorFunctionName(
-                channel,
-                conditionNumber
-            );
+        /**
+         * @param {Channel} channel
+         * @param {import("../types/encoder.js").Accessor} accessor
+         * @param {number} conditionNumber
+         * @param {import("../types/encoder.js").VegaScale} scale
+         */
+        const addAccessor = (channel, accessor, conditionNumber, scale) => {
+            const channelDef = accessor.channelDef;
 
             if (isValueDef(channelDef)) {
                 if (isExprRef(channelDef.value)) {
@@ -520,7 +564,7 @@ export default class Mark {
                 ]);
                 const { attributeGlsl, accessorGlsl } = generateDataGlsl(
                     channel,
-                    encoder.scale,
+                    scale,
                     conditionNumber,
                     fields?.includes(channel) ? fields : undefined
                 );
@@ -529,7 +573,7 @@ export default class Mark {
             } else if (isExprDef(channelDef)) {
                 const { attributeGlsl, accessorGlsl } = generateDataGlsl(
                     channel,
-                    encoder.scale,
+                    scale,
                     conditionNumber
                 );
                 attributeCode.add(attributeGlsl);
@@ -542,17 +586,24 @@ export default class Mark {
                     this.unitView
                 );
             }
+        };
+
+        for (const [channel, encoder] of Object.entries(encoders)) {
+            if (!shaderChannels.includes(channel)) {
+                continue;
+            }
+
+            const { channelDef, accessors, scale } = encoder;
+
+            // Generate accessors, one for each condition -------------
+
+            for (let i = 0; i < accessors.length; i++) {
+                addAccessor(channel, accessors[i], i, scale);
+            }
 
             // Generate scale if needed -------------------------------
 
-            const type = getScaledDataTypeForChannel(channel);
-
-            if (!scale) {
-                scaleCode.push(`
-${type} ${SCALED_FUNCTION_PREFIX}${channel}() {
-    return ${accessorFunctionName}();
-}`);
-            } else {
+            if (scale) {
                 const resolutionChannel =
                     (isChannelDefWithScale(channelDef) &&
                         channelDef.resolutionChannel) ||
@@ -563,23 +614,22 @@ ${type} ${SCALED_FUNCTION_PREFIX}${channel}() {
                     ? this.unitView.getScaleResolution(resolutionChannel)
                     : null;
 
-                const generated = generateScaleGlsl(channel, scale, channelDef);
+                const {
+                    glsl,
+                    domainUniform,
+                    domainUniformName,
+                    rangeUniform,
+                    rangeUniformName,
+                } = generateScaleGlsl(channel, scale, channelDef);
 
-                scaleCode.push(generated.glsl);
-                dynamicMarkUniforms.push(generated.domainUniform);
-                dynamicMarkUniforms.push(generated.rangeUniform);
+                scaleCode.push(glsl);
+                dynamicMarkUniforms.push(domainUniform);
+                dynamicMarkUniforms.push(rangeUniform);
 
-                // A convenience getter for the scaled value
-                scaleCode.push(`
-${type} ${SCALED_FUNCTION_PREFIX}${channel}() {
-    return ${SCALE_FUNCTION_PREFIX}${channel}(${accessorFunctionName}());
-}`);
-
-                if (generated.rangeUniform) {
+                if (rangeUniform) {
                     this.#callAfterShaderCompilation.push(() => {
-                        const rangeSetter = this.createMarkUniformSetter(
-                            generated.rangeUniformName
-                        );
+                        const rangeSetter =
+                            this.createMarkUniformSetter(rangeUniformName);
 
                         const set = () =>
                             rangeSetter(getRangeForGlsl(scale, channel));
@@ -591,11 +641,10 @@ ${type} ${SCALED_FUNCTION_PREFIX}${channel}() {
                     });
                 }
 
-                if (generated.domainUniform) {
+                if (domainUniform) {
                     this.#callAfterShaderCompilation.push(() => {
-                        const domainSetter = this.createMarkUniformSetter(
-                            generated.domainUniformName
-                        );
+                        const domainSetter =
+                            this.createMarkUniformSetter(domainUniformName);
                         const set = () => {
                             const domain = isDiscrete(scale.type)
                                 ? [0, scale.domain().length]
@@ -617,7 +666,9 @@ ${type} ${SCALED_FUNCTION_PREFIX}${channel}() {
                 }
             }
 
-            scaleCode.push(`#define ${channel}_DEFINED`);
+            // Generate conditional encoder -------------------------------
+
+            scaleCode.push(generateConditionalEncoderGlsl(channel, accessors));
         }
 
         const vertexPrecision = "precision highp float;\nprecision highp int;";

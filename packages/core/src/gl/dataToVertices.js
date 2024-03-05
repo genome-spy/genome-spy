@@ -60,6 +60,11 @@ export class GeometryBuilder {
 
         // Create converters and updaters for all variable channels.
         for (const [channel, ce] of Object.entries(this.variableEncoders)) {
+            const accessor = ce.dataAccessor;
+            if (!accessor) {
+                continue;
+            }
+
             // Only add the first of the shared channels as all the rest are same
             // For example, if both x and x2 are using the same field, only x is
             // added to the array builder with the name "x_x2".
@@ -70,7 +75,6 @@ export class GeometryBuilder {
                 continue;
             }
 
-            const accessor = ce.dataAccessor;
             const numberAccessor = accessor.asNumberAccessor();
             const scale = ce.scale;
 
