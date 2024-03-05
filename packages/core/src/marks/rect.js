@@ -126,7 +126,8 @@ export default class RectMark extends Mark {
 
     #isStroked() {
         const sw = this.encoding.strokeWidth;
-        return !(isValueDef(sw) && !sw.value);
+        // True if there's any chance for a stroke to be drawn
+        return !(isValueDef(sw) && !sw.value) || "condition" in sw;
     }
 
     async initializeGraphics() {

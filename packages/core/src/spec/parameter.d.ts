@@ -176,7 +176,7 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
 
     /**
      */
-    on?: "click" | "mouseover";
+    on?: "click" | "mouseover" | "pointerover";
 
     /**
      * An array of encoding channels. The corresponding data field values

@@ -115,7 +115,9 @@ export default class UnitView extends View {
                     !isString(select) && "on" in select ? select.on : "click";
 
                 this.addInteractionEventListener(
-                    on == "mouseover" ? "mousemove" : "click",
+                    ["mouseover", "pointerover"].includes(on)
+                        ? "mousemove"
+                        : "click",
                     (rect, event) => {
                         const datum = getHoveredDatum();
                         const id = datum ? datum[UNIQUE_ID_KEY] : none;
