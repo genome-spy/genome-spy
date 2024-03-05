@@ -143,7 +143,7 @@ export function generateDynamicValueGlslAndUniform(channel, conditionNumber) {
         adjuster = (x) => cssColorToArray(x);
     }
 
-    const uniformName = `u${capitalize(channel)}`;
+    const uniformName = `u${capitalize(channel)}_${conditionNumber}`;
 
     const uniformGlsl = `    // Dynamic value\n    uniform ${dataType} ${uniformName};`;
 
