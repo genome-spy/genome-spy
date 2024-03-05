@@ -146,6 +146,9 @@ export default class GenomeSpy {
          * @type {HTMLElement}
          */
         this._inputBindingContainer = undefined;
+
+        /** @type {Point} */
+        this._mouseDownCoords = undefined;
     }
 
     get #canvasWrapper() {
@@ -782,7 +785,14 @@ export default class GenomeSpy {
                         ?.forEach((listener) => listener(e));
                 }
 
-                dispatchEvent(event);
+                if (
+                    event.type != "click" ||
+                    // Suppress click events if the mouse has been dragged
+                    this._mouseDownCoords?.subtract(Point.fromMouseEvent(event))
+                        .length < 3
+                ) {
+                    dispatchEvent(event);
+                }
             }
         };
 
@@ -796,7 +806,9 @@ export default class GenomeSpy {
             "contextmenu",
         ].forEach((type) => canvas.addEventListener(type, listener));
 
-        canvas.addEventListener("mousedown", () => {
+        canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {
+            this._mouseDownCoords = Point.fromMouseEvent(e);
+
             document.addEventListener(
                 "mouseup",
                 () => this.tooltip.popEnabledState(),
