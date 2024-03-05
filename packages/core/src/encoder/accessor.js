@@ -51,8 +51,10 @@ export function createAccessor(channel, channelDef, paramMediator) {
                 makeSelectionTestExpression(channelDef)
             );
             a.predicate.param = channelDef.param;
+            a.predicate.empty = channelDef.empty ?? true;
         } else {
             a.predicate = makeConstantExprRef(true); // Always true (default accessor)
+            a.predicate.empty = false;
         }
 
         a.asNumberAccessor = () =>

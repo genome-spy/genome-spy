@@ -521,13 +521,16 @@ export function generateConditionalEncoderGlsl(channel, accessors) {
     for (let i = 0; i < accessors.length; i++) {
         const accessor = accessors[i];
         const accessorFunctionName = makeAccessorFunctionName(channel, i);
-        const param = accessor.predicate.param;
+        const { param, empty } = accessor.predicate;
+
+        const paramUniform = PARAM_PREFIX + validateParameterName(param);
+        const idAttribute = ATTRIBUTE_PREFIX + "uniqueId";
 
         // Hardcoded condition for single point selection ... for now.
         conditions.push(
             param
-                ? `${ATTRIBUTE_PREFIX}uniqueId == ${
-                      PARAM_PREFIX + validateParameterName(param)
+                ? `${idAttribute} == ${paramUniform}${
+                      empty ? ` || ${paramUniform} == uint(0)` : ""
                   }`
                 : null
         );

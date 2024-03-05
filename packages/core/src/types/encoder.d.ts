@@ -69,6 +69,13 @@ export interface Predicate extends ExprRefFunction {
      * The parameter the predicate is based on
      */
     param?: string;
+
+    /**
+     * If true, the predicate is true for empty selections.
+     *
+     * **Default:** `true`
+     */
+    empty?: boolean;
 }
 
 /**
