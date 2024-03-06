@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.49.0](https://github.com/genome-spy/genome-spy/compare/v0.48.2...v0.49.0) (2024-03-06)
+
+
+### Features
+
+* **core:** point selections and conditional encoding ([#245](https://github.com/genome-spy/genome-spy/issues/245)) ([864b070](https://github.com/genome-spy/genome-spy/commit/864b070baad0b386071dae33a8022674af119f91))
+
+
+
+
+
 ## [0.48.2](https://github.com/genome-spy/genome-spy/compare/v0.48.1...v0.48.2) (2024-02-22)
 
 **Note:** Version bump only for package @genome-spy/app
