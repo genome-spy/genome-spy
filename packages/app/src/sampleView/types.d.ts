@@ -1,4 +1,4 @@
-import { SampleHierarchy } from "./sampleState";
+import { SampleHierarchy } from "./sampleState.js";
 
 /**
  * An identifier for an abstract attribute. Allows for retrieving an accessor and information.

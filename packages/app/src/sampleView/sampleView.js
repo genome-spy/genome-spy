@@ -388,6 +388,7 @@ export default class SampleView extends ContainerView {
             return; // NOP
         }
 
+        // @ts-expect-error - Abusing ScaleResolution to collect sample identifiers. 'sample' has no scale.
         const resolution = this.getScaleResolution("sample");
         if (resolution) {
             // Use destructuring to get rid of the extra properties of DomainArray.

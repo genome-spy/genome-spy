@@ -117,10 +117,13 @@ export default class SearchField extends LitElement {
             sensitivity: "base",
         });
         for (const view of this.genomeSpy.getSearchableViews()) {
-            const sa = view.getDataAccessor("search");
+            const sa =
+                /** @type {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => string}*/ (
+                    view.getDataAccessor("search")
+                );
 
-            const xa = view.getDataAccessor("x");
-            const x2a = view.getDataAccessor("x2");
+            const xa = view.getDataAccessor("x").asNumberAccessor();
+            const x2a = view.getDataAccessor("x2").asNumberAccessor();
             const xResolution = view.getScaleResolution("x");
 
             // TODO: y
