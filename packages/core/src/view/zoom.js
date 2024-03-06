@@ -71,10 +71,10 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
 
         if (hover) {
             const e = hover.mark.encoders;
-            if (e.x && !e.x2 && !e.x.constantValue) {
+            if (e.x && !e.x2 && !e.x.constant) {
                 x = +e.x(hover.datum) * coords.width + coords.x;
             }
-            if (e.y && !e.y2 && !e.y.constantValue) {
+            if (e.y && !e.y2 && !e.y.constant) {
                 y = (1 - +e.y(hover.datum)) * coords.height + coords.y;
             }
         }

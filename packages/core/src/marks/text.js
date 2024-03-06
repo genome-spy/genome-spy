@@ -216,11 +216,15 @@ export default class TextMark extends Mark {
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
+        if (!collector) {
+            console.debug("No collector");
+            return;
+        }
         const data = collector.getData();
         const encoding = this.encoding;
 
         // Count the total number of characters to that we can pre-allocate a typed array
-        const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
+        const accessor = this.encoders.text; // accessor or constant value
         let charCount = 0;
         /** @type {function(any):any} */
         const numberFormat =

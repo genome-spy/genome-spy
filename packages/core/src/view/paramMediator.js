@@ -1,5 +1,6 @@
 import { isString } from "vega-util";
 import createFunction from "../utils/expression.js";
+import { createSinglePointSelection } from "../selection/selection.js";
 
 /**
  * A class that manages parameters and expressions.
@@ -9,7 +10,7 @@ import createFunction from "../utils/expression.js";
  */
 export default class ParamMediator {
     /**
-     * @typedef {import("../spec/parameter.js").VariableParameter} VariableParameter
+     * @typedef {import("../spec/parameter.js").Parameter} Parameter
      * @typedef {(value: any) => void} ParameterSetter
      */
 
@@ -28,7 +29,7 @@ export default class ParamMediator {
     /** @type {Map<string, ExprRefFunction>} */
     #expressions = new Map();
 
-    /** @type {Map<string, VariableParameter>} */
+    /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
     /** @type {() => ParamMediator} */
@@ -48,32 +49,65 @@ export default class ParamMediator {
     }
 
     /**
-     * @param {VariableParameter} param
+     * @param {Parameter} param
      * @returns {ParameterSetter}
      */
     registerParam(param) {
+        const name = param.name;
+
         if ("value" in param && "expr" in param) {
             throw new Error(
-                "Parameter must not have both value and expr: " + param.name
+                `The parameter "${name}" must not have both value and expr properties!`
             );
         }
 
         /** @type {ParameterSetter} */
         let setter;
 
-        if ("value" in param) {
-            setter = this.allocateSetter(param.name, param.value);
+        if (param.push == "outer") {
+            const outerMediator = this.findMediatorForParam(name);
+            if (!outerMediator) {
+                throw new Error(
+                    `Parameter "${name}" not found in outer scope!`
+                );
+            }
+
+            const outerProps = outerMediator.paramConfigs.get(name);
+            if ("expr" in outerProps || "select" in outerProps) {
+                throw new Error(
+                    `The outer parameter "${name}" must not have expr or select properties!`
+                );
+            }
+            setter = outerMediator.getSetter(name);
+            // The following will become a bit fragile if the view hierarchy is going to
+            // support mutation (i.e. adding/removing children) in future.
+            this.#allocatedSetters.set(name, setter);
+        } else if ("value" in param) {
+            setter = this.allocateSetter(name, param.value);
         } else if ("expr" in param) {
             const expr = this.createExpression(param.expr);
             // TODO: getSetter(param) should return a setter that throws if
             // modifying the value is attempted.
-            const realSetter = this.allocateSetter(param.name, expr(null));
+            const realSetter = this.allocateSetter(name, expr(null));
             expr.addListener(() => realSetter(expr(null)));
             // NOP
             setter = (_) => undefined;
+        } else {
+            setter = this.allocateSetter(name, null);
         }
 
-        this.#paramConfigs.set(param.name, param);
+        if ("select" in param) {
+            const type = isString(param.select)
+                ? param.select
+                : param.select.type;
+
+            // Set initial value so that production rules in shaders can be generated, etc.
+            if (type == "point") {
+                setter(createSinglePointSelection(null));
+            }
+        }
+
+        this.#paramConfigs.set(name, param);
 
         return setter;
     }
@@ -87,6 +121,8 @@ export default class ParamMediator {
      * @template T
      */
     allocateSetter(paramName, initialValue, passive = false) {
+        validateParameterName(paramName);
+
         if (this.#allocatedSetters.has(paramName)) {
             throw new Error(
                 "Setter already allocated for parameter: " + paramName
@@ -148,7 +184,7 @@ export default class ParamMediator {
      * Returns configs for all parameters that have been registered using `registerParam`.
      */
     get paramConfigs() {
-        return /** @type {ReadonlyMap<string, VariableParameter>} */ (
+        return /** @type {ReadonlyMap<string, Parameter>} */ (
             this.#paramConfigs
         );
     }
@@ -289,6 +325,22 @@ export function withoutExprRef(x) {
 }
 
 /**
+ * @param {Parameter} param
+ * @returns {param is import("../spec/parameter.js").VariableParameter}
+ */
+export function isVariableParameter(param) {
+    return ("expr" in param || "bind" in param) && !("select" in param);
+}
+
+/**
+ * @param {Parameter} param
+ * @returns {param is import("../spec/parameter.js").SelectionParameter}
+ */
+export function isSelectionParameter(param) {
+    return !("expr" in param || "bind" in param) && "select" in param;
+}
+
+/**
  * Takes a record of properties that may have ExprRefs as values. Converts the
  * ExprRefs to getters and setups a listener that is called when any of the
  * expressions (upstream parameters) change.
@@ -335,4 +387,40 @@ export function activateExprRefProps(paramMediator, props, listener) {
     }
 
     return /** @type {T} */ (activatedProps);
+}
+
+/**
+ * Validates a parameter name. If the name is invalid, throws an error.
+ * Otherwise, returns the name.
+ *
+ * @param {string} name
+ * @returns {string} the name
+ */
+export function validateParameterName(name) {
+    if (!/^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(name)) {
+        throw new Error(
+            `Invalid parameter name: ${name}. Must be a valid JavaScript identifier.`
+        );
+    }
+
+    return name;
+}
+
+/**
+ * Creates a function that always returns the same value.
+ * Provides functionality for creating a constant expression reference.
+ * They just do nothing.
+ *
+ * @param {any} value
+ * @returns {ExprRefFunction}
+ */
+export function makeConstantExprRef(value) {
+    return Object.assign(() => value, {
+        addListener: () => undefined,
+        invalidate: () => undefined,
+        identifier: () => "constant",
+        fields: [],
+        globals: [],
+        code: JSON.stringify(value),
+    });
 }

@@ -8,8 +8,8 @@ const sampleData = [
     { group: "b", choice: "y", value: 3 },
 ];
 
-/** @type {import("./stack.js").StackParams} */
-const baseConf = {
+/** @type {import("../../spec/transform.js").StackParams} */
+const baseParams = {
     type: "stack",
     field: "value",
     groupby: ["group"],
@@ -23,7 +23,7 @@ const baseConf = {
 
 /**
  *
- * @param {import("./stack.js").StackParams} params
+ * @param {import("../../spec/transform.js").StackParams} params
  * @param {any[]} data
  */
 function transform(params, data) {
@@ -32,7 +32,7 @@ function transform(params, data) {
 
 describe("Stack transform", () => {
     test("No field", () => {
-        const conf = Object.assign({}, baseConf, {
+        const conf = Object.assign({}, baseParams, {
             field: undefined,
         });
 
@@ -44,7 +44,7 @@ describe("Stack transform", () => {
     });
 
     test("Zero offset", () => {
-        expect(transform(baseConf, sampleData)).toEqual([
+        expect(transform(baseParams, sampleData)).toEqual([
             { group: "a", choice: "q", value: 1, z0: 0, z1: 1 },
             { group: "b", choice: "x", value: 1, z0: 0, z1: 1 },
             { group: "b", choice: "y", value: 3, z0: 1, z1: 4 },
@@ -52,7 +52,7 @@ describe("Stack transform", () => {
     });
 
     test("Normalize offset", () => {
-        const conf = Object.assign({}, baseConf, {
+        const conf = Object.assign({}, baseParams, {
             offset: "normalize",
         });
 
@@ -64,7 +64,7 @@ describe("Stack transform", () => {
     });
 
     test("Center offset", () => {
-        const conf = Object.assign({}, baseConf, {
+        const conf = Object.assign({}, baseParams, {
             offset: "center",
         });
 
@@ -76,7 +76,7 @@ describe("Stack transform", () => {
     });
 
     test("Descending sort", () => {
-        const conf = Object.assign({}, baseConf, {
+        const conf = Object.assign({}, baseParams, {
             sort: {
                 field: "value",
                 order: "descending",

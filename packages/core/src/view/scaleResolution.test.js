@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { describe, expect, test } from "vitest";
 import { createAndInitialize } from "./testUtils.js";
 import createDomain, { toRegularArray as r } from "../utils/domainArray.js";

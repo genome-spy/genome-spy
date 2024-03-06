@@ -117,10 +117,13 @@ export default class SearchField extends LitElement {
             sensitivity: "base",
         });
         for (const view of this.genomeSpy.getSearchableViews()) {
-            const sa = view.getAccessor("search");
+            const sa =
+                /** @type {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => string}*/ (
+                    view.getDataAccessor("search")
+                );
 
-            const xa = view.getAccessor("x");
-            const x2a = view.getAccessor("x2");
+            const xa = view.getDataAccessor("x").asNumberAccessor();
+            const x2a = view.getDataAccessor("x2").asNumberAccessor();
             const xResolution = view.getScaleResolution("x");
 
             // TODO: y
@@ -258,7 +261,7 @@ export default class SearchField extends LitElement {
 
         for (const view of this.genomeSpy?.getSearchableViews() || []) {
             const viewTitle = view.getTitleText() ?? view.spec.name;
-            const a = view.getAccessor("search");
+            const a = view.getDataAccessor("search");
             const fieldString = a.fields.join(", "); // TODO: Field title
 
             const examples = sampleIterable(

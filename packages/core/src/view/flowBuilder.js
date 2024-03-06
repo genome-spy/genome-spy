@@ -35,6 +35,8 @@ export function buildDataFlow(root, existingFlow) {
 
     /** @type {FlowNode[]} "Current nodes" on the path from view root to the current view */
     const nodeStack = [];
+    /** @type {{view: View, nodeStackDepth: number}[]} */
+    const viewStack = [];
 
     /** @type {FlowNode} */
     let currentNode;
@@ -59,6 +61,7 @@ export function buildDataFlow(root, existingFlow) {
         }
         currentNode.addChild(node);
         currentNode = node;
+        nodeStack.push(node);
         return node;
     }
 
@@ -108,10 +111,16 @@ export function buildDataFlow(root, existingFlow) {
         }
     }
 
+    function isInBranchWithIdentifier() {
+        return (
+            nodeStack.findLastIndex(
+                (node) => node instanceof IdentifierTransform
+            ) > nodeStack.findLastIndex((node) => node instanceof DataSource)
+        );
+    }
+
     /** @param {View} view */
     const processView = (view) => {
-        nodeStack.push(currentNode);
-
         if (view.spec.data) {
             const dataSource = isNamedData(view.spec.data)
                 ? new NamedSource(
@@ -122,6 +131,7 @@ export function buildDataFlow(root, existingFlow) {
                 : createDataSource(view.spec.data, view);
 
             currentNode = dataSource;
+            nodeStack.push(dataSource);
             dataFlow.addDataSource(dataSource, view);
         }
 
@@ -148,13 +158,24 @@ export function buildDataFlow(root, existingFlow) {
                 }
             }
 
-            if (view.mark.isPickingParticipant()) {
+            if (
+                view.mark.isPickingParticipant() &&
+                !isInBranchWithIdentifier()
+            ) {
+                // TODO: If two branches receive the same data, they should have
+                // a shared identifier transform. However, unique ids cannot be
+                // assigned right after the data source, because some transforms,
+                // (e.g, RegexFold) may generate new tuples.
+                //
                 appendTransform(new CloneTransform());
                 appendTransform(
                     new IdentifierTransform({ type: "identifier" })
                 );
             }
 
+            // TODO: Handle cases where the spec contains terminal collector nodes
+            // (with custom sort configuration, for example). Now a new collector
+            // is always appended to the end of the current branch.
             const collector = new Collector({
                 type: "collect",
                 groupby: view.getFacetFields(),
@@ -178,10 +199,18 @@ export function buildDataFlow(root, existingFlow) {
 
     for (const dataTree of dataTrees) {
         visitTree(dataTree, {
-            preOrder: (node) => processView(node.ref),
+            preOrder: (node) => {
+                viewStack.push({
+                    view: node.ref,
+                    nodeStackDepth: nodeStack.length,
+                });
+                processView(node.ref);
+            },
             // eslint-disable-next-line no-loop-func
             postOrder: () => {
-                currentNode = nodeStack.pop();
+                const { nodeStackDepth } = viewStack.pop();
+                nodeStack.length = nodeStackDepth;
+                currentNode = nodeStack.at(-1);
             },
         });
     }

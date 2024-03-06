@@ -11,7 +11,7 @@ test("isViewSpec", () => {
     expect(factory.isViewSpec({ layer: [] })).toBeTruthy();
     expect(factory.isViewSpec({ hconcat: [] })).toBeTruthy();
     expect(factory.isViewSpec({ vconcat: [] })).toBeTruthy();
-    expect(factory.isViewSpec({ concat: [] })).toBeTruthy();
+    expect(factory.isViewSpec({ concat: [], columns: 1 })).toBeTruthy();
 
     expect(() => factory.isViewSpec({ mark: "rect", layer: [] })).toThrow();
 });
@@ -20,6 +20,6 @@ test("Throws if importing is not allowed", () => {
     const factory = new ViewFactory({ allowImport: false });
 
     expect(() =>
-        factory.createOrImportView({ import: { url: "" } })
+        factory.createOrImportView({ import: { url: "" } }, undefined)
     ).rejects.toThrow();
 });

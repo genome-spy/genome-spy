@@ -15,7 +15,7 @@ import {
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { SampleSpec } from "./sampleView.js";
-import { VariableParameter } from "./parameter.js";
+import { Parameter } from "./parameter.js";
 
 export interface SizeDef {
     /** Size in pixels */
@@ -112,7 +112,7 @@ export interface ViewSpecBase extends ResolveSpec {
     /**
      * Dynamic variables that parameterize a visualization.
      */
-    params?: VariableParameter[];
+    params?: Parameter[];
 
     data?: Data;
     transform?: TransformParams[];
@@ -255,7 +255,7 @@ export interface ImportSpec {
      * Dynamic variables that parameterize a visualization. Parameters defined
      * here override the parameters defined in the imported specification.
      */
-    params?: VariableParameter[] | Record<string, any>;
+    params?: Parameter[] | Record<string, any>;
 
     /**
      * The method to import a specification.

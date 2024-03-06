@@ -7,11 +7,13 @@
  */
 
 import { checkForDuplicateScaleNames, initializeData } from "./viewUtils.js";
-import AccessorFactory from "../encoder/accessor.js";
 import DataFlow from "../data/dataFlow.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./viewFactory.js";
 import GenomeStore from "../genome/genomeStore.js";
 import BmFontManager from "../fonts/bmFontManager.js";
+import { reconfigureScales } from "./scaleResolution.js";
+import UnitView from "./unitView.js";
+import ContainerView from "./containerView.js";
 
 /**
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
@@ -35,8 +37,6 @@ export function createTestViewContext(viewFactoryOptions = {}) {
 
     // @ts-expect-error
     const c = /** @type {ViewContext} */ ({
-        accessorFactory: new AccessorFactory(),
-
         createView: function (spec, parent, defaultName) {
             throw new Error("Not implemented: createView");
         },
@@ -92,6 +92,18 @@ export async function createAndInitialize(spec, viewClass) {
     const view = await create(spec, viewClass);
 
     checkForDuplicateScaleNames(view);
+
+    if (view instanceof UnitView) {
+        view.mark.initializeEncoders();
+    } else if (view instanceof ContainerView) {
+        view.visit((v) => {
+            if (v instanceof UnitView) {
+                v.mark.initializeEncoders();
+            }
+        });
+    }
+
     await initializeData(view, view.context.dataFlow);
+    reconfigureScales(view);
     return view;
 }

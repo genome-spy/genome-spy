@@ -11,6 +11,7 @@ import {
 import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
+import { selectionTest } from "../selection/selection.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -33,6 +34,7 @@ const functionContext = {
     lerp,
     linearstep,
     smoothstep,
+    selectionTest,
 };
 
 /**
@@ -61,7 +63,7 @@ const cg = codegenExpression({
  * @prop { string[] } globals
  * @prop { string } code
  *
- * @typedef { ((datum?: object) => any) & ExpressionProps } ExpressionFunction
+ * @typedef { ((datum?: import("../data/flowNode.js").Datum) => any) & ExpressionProps } ExpressionFunction
  *
  * @param {string} expr
  * @returns {ExpressionFunction}
@@ -75,7 +77,14 @@ export default function createFunction(expr, globalObject = {}) {
         const fn = Function(
             "datum",
             "globalObject",
-            `"use strict"; return (${generatedCode.code});`
+            `"use strict";
+            try {
+                return (${generatedCode.code});
+            } catch (e) {
+                throw new Error("Error evaluating expression: " + ${JSON.stringify(
+                    expr
+                )} + ", " + e.message, e);
+            }`
         ).bind(functionContext);
 
         /** @type { ExpressionFunction } */

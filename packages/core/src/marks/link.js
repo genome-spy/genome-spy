@@ -35,6 +35,7 @@ export default class LinkMark extends Mark {
                 clampApex: false,
                 maxChordLength: 50000,
                 arcFadingDistance: false,
+                noFadingOnPointSelection: true,
 
                 linkShape: "arc",
                 orient: "vertical",
@@ -138,10 +139,19 @@ export default class LinkMark extends Mark {
             props.segments,
             (x) => x + 1
         );
+        this.registerMarkUniformValue(
+            "uNoFadingOnPointSelection",
+            props.noFadingOnPointSelection,
+            (x) => !!x
+        );
     }
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
+        if (!collector) {
+            console.debug("No collector");
+            return;
+        }
         const itemCount = collector.getItemCount();
 
         const builder = new LinkVertexBuilder({

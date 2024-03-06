@@ -7,12 +7,12 @@ import { createBinningRangeIndexer } from "../utils/binnedIndex.js";
 import { isValueDef } from "../encoder/encoder.js";
 import {
     dedupeEncodingFields,
-    isHighPrecisionScale,
-    isLargeGenome,
+    getAttributeAndArrayTypes,
     makeAttributeName,
     splitLargeHighPrecision,
 } from "./glslScaleGenerator.js";
-import { isContinuous, isDiscrete } from "vega-scale";
+import { isContinuous } from "vega-scale";
+import createIndexer from "../utils/indexer.js";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
@@ -28,7 +28,7 @@ export class GeometryBuilder {
 
     /**
      * @param {object} object
-     * @param {Record<string, Encoder>} object.encoders
+     * @param {Record<import("../spec/channel.js").Channel, Encoder>} object.encoders
      * @param {string[]} [object.attributes]
      * @param {number} [object.numVertices] If the number of data items is known, a
      *      preallocated TypedArray is used
@@ -37,12 +37,16 @@ export class GeometryBuilder {
         this.encoders = encoders;
 
         // Encoders for variable channels
-        this.variableEncoders = Object.fromEntries(
-            Object.entries(encoders).filter(
-                ([channel, e]) =>
-                    attributes.includes(channel) && e && e.scale && !e.constant
-            )
-        );
+
+        this.variableEncoders =
+            /** @type {Record<import("../spec/channel.js").Channel, Encoder>} */ (
+                Object.fromEntries(
+                    Object.entries(encoders).filter(
+                        ([channel, e]) =>
+                            attributes.includes(channel) && e && !e.constant
+                    )
+                )
+            );
 
         const dedupedEncodingFields = [
             ...dedupeEncodingFields(encoders).entries(),
@@ -56,6 +60,11 @@ export class GeometryBuilder {
 
         // Create converters and updaters for all variable channels.
         for (const [channel, ce] of Object.entries(this.variableEncoders)) {
+            const accessor = ce.dataAccessor;
+            if (!accessor) {
+                continue;
+            }
+
             // Only add the first of the shared channels as all the rest are same
             // For example, if both x and x2 are using the same field, only x is
             // added to the array builder with the name "x_x2".
@@ -66,13 +75,19 @@ export class GeometryBuilder {
                 continue;
             }
 
-            const accessor = ce.accessor;
+            const numberAccessor = accessor.asNumberAccessor();
+            const scale = ce.scale;
 
-            const hp = isHighPrecisionScale(ce.scale.type);
-            const largeHp = hp && isLargeGenome(ce.scale.domain());
+            const { largeHp, arrayConstructor, discrete, numComponents } =
+                getAttributeAndArrayTypes(scale, channel);
             const largeHpArray = [0, 0];
 
-            const indexer = ce.indexer;
+            /** @type {ReturnType<typeof createIndexer>} */
+            let indexer;
+            if (scale && discrete && "domain" in scale) {
+                indexer = createIndexer();
+                indexer.addAll(scale.domain());
+            }
 
             /**
              * Discrete variables both numeric and strings must be "indexed",
@@ -84,8 +99,9 @@ export class GeometryBuilder {
             const f = indexer
                 ? (d) => indexer(accessor(d))
                 : largeHp
-                ? (d) => splitLargeHighPrecision(accessor(d), largeHpArray)
-                : accessor;
+                ? (d) =>
+                      splitLargeHighPrecision(numberAccessor(d), largeHpArray)
+                : numberAccessor;
 
             const attributeName = sharedChannels
                 ? makeAttributeName(sharedChannels)
@@ -93,16 +109,9 @@ export class GeometryBuilder {
 
             this.variableBuilder.addConverter(attributeName, {
                 f,
-                numComponents: largeHp ? 2 : 1,
+                numComponents,
                 arrayReference: largeHp ? largeHpArray : undefined,
-                targetArrayType:
-                    channel == "uniqueId"
-                        ? Uint32Array
-                        : isDiscrete(ce.scale.type)
-                        ? Uint16Array
-                        : hp
-                        ? Uint32Array
-                        : Float32Array,
+                targetArrayType: arrayConstructor,
             });
         }
 
@@ -190,9 +199,10 @@ export class GeometryBuilder {
         const xe = getContinuousEncoder(this.variableEncoders.x);
         const x2e = getContinuousEncoder(this.variableEncoders.x2);
 
-        if (xe) {
-            const xa = xe.accessor;
-            const x2a = x2e ? x2e.accessor : xa;
+        // Only index variable data
+        if (xe && !xe.constant && (!x2e || !x2e.constant)) {
+            const xa = xe.dataAccessor.asNumberAccessor();
+            const x2a = x2e ? x2e.dataAccessor.asNumberAccessor() : xa;
 
             /** @type {[number, number]} */
             const dataDomain = [xa(data[lo]), x2a(data[hi - 1])];
@@ -469,10 +479,9 @@ export class TextVertexBuilder extends GeometryBuilder {
 
         const e = encoders;
 
-        const channelDef =
-            /** @type {import("../spec/channel.js").TextDef<string>} */ (
-                e.text.channelDef
-            );
+        const channelDef = /** @type {import("../spec/channel.js").TextDef} */ (
+            e.text.channelDef
+        );
         /** @type {(value: any) => string} */
         this.numberFormat =
             !isValueDef(channelDef) &&
@@ -522,7 +531,7 @@ export class TextVertexBuilder extends GeometryBuilder {
             // alphabetic
         }
 
-        const accessor = this.encoders.text.accessor || this.encoders.text; // accessor or constant value
+        const accessor = this.encoders.text; // accessor or constant value
 
         const vertexCoord = [0, 0];
         this.updateVertexCoord(vertexCoord);

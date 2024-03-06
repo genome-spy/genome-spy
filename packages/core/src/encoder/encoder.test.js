@@ -1,101 +1,104 @@
 import { describe, expect, test } from "vitest";
-import AccessorFactory from "./accessor.js";
-import { scale as vegaScale } from "vega-scale";
 
-import { createEncoder } from "./encoder.js";
+import { createAccessor, createConditionalAccessors } from "./accessor.js";
+import ParamMediator from "../view/paramMediator.js";
+import { createEncoder, createSimpleOrConditionalEncoder } from "./encoder.js";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import { createSinglePointSelection } from "../selection/selection.js";
+import { isArray } from "vega-util";
+import { scaleLinear } from "d3-scale";
+
+/** @type {import("../spec/channel.js").Encoding} */
+const encoding = {
+    x: { value: 42 },
+    y: {
+        field: "a",
+        type: "quantitative",
+        scale: { domain: [0, 100], range: [0, 1] },
+    },
+    size: {
+        field: "a",
+        type: "quantitative",
+        scale: { domain: [0, 100], range: [0, 10] },
+        condition: {
+            param: "p",
+            empty: false,
+            value: 5000,
+        },
+    },
+};
+
+const scaleSource = (
+    /** @type {import("../spec/channel.js").ChannelWithScale} */ channel
+) => {
+    // @ts-ignore
+    const props = encoding[channel].scale ?? encoding[channel].condition?.scale;
+
+    return Object.assign(
+        scaleLinear().domain(props.domain).range(props.range),
+        {
+            type: "linear",
+        }
+    );
+};
+
+const datum = {
+    a: 100,
+    b: 6,
+    c: "Pink Floyd",
+    [UNIQUE_ID_KEY]: 1234,
+};
 
 describe("Encoder", () => {
-    /** @type {Record<string, import("../view/viewUtils.js").ChannelDef>} */
-    const encodingSpecs = {
-        x: { value: 0 },
-        y: { field: "a" },
-        z: { datum: 2 },
-        size: { value: 5 },
-    };
+    const pm = new ParamMediator();
+    /** @type {Partial<Record<import("../spec/channel.js").Channel, import("../types/encoder.js").Encoder>>} */
+    const e = Object.fromEntries(
+        Object.entries(encoding).map(([channel, channelDef]) => {
+            const accessor = createAccessor(channel, channelDef, pm);
+            return [channel, createEncoder(accessor, scaleSource)];
+        })
+    );
 
-    const scaleLinear = vegaScale("linear");
-
-    /** @type {Record<string, import("./encoder.js").VegaScale>} */
-    const scales = {
-        y: scaleLinear().domain([0, 10]),
-        z: scaleLinear().domain([0, 20]),
-    };
-
-    const accessorFactory = new AccessorFactory();
-
-    /** @param {Record<string, import("../view/viewUtils.js").ChannelDef>} encoding */
-    function createEncoders(encoding) {
-        /** @type {Record<string, import("./encoder.js").Encoder>} */
-        const encoders = {};
-        for (const [channel, channelDef] of Object.entries(encoding)) {
-            encoders[channel] = createEncoder(
-                null, // TODO: stub the mark
-                channelDef,
-                scales[channel],
-                accessorFactory.createAccessor(encodingSpecs[channel]),
-                channel
-            );
-        }
-        return encoders;
-    }
-
-    const datum = {
-        a: 5,
-        b: 6,
-        c: "Pink Floyd",
-    };
-
-    test("Throws on a broken spec", () =>
-        expect(() => createEncoders({ x: {} })).toThrow());
-
-    const encoders = createEncoders(encodingSpecs);
-
-    test("The encoder object contains all channels", () =>
-        expect(
-            ["x", "y", "z", "size"].every(
-                (channel) => typeof encoders[channel] === "function"
-            )
-        ).toBeTruthy());
-
-    test("Returns a value", () => expect(encoders.x(datum)).toEqual(0));
-
-    test("Encodes and returns a constant using a scale", () =>
-        expect(encoders.z(datum)).toBeCloseTo(0.1));
-
-    test("Accesses a field and uses a scale", () =>
-        expect(encoders.y(datum)).toBeCloseTo(0.5));
-
-    /*
-    test("Accesses a field on a secondary channel and uses the scale from the primary", () =>
-        expect(encoders.y2(datum)).toBeCloseTo(0.6));
-        */
-
-    test("Constant encoder is annotated", () => {
-        expect(encoders.y.constant).toBeFalsy();
-        expect(encoders.z.constant).toBeTruthy();
-        expect(encoders.size.constant).toBeTruthy();
+    test("has a single accessors", () => {
+        expect(e.x.accessors?.length).toBe(1);
     });
 
-    test("Constant value encoder is annotated", () => {
-        expect(encoders.y.constantValue).toBeFalsy();
-        expect(encoders.z.constantValue).toBeFalsy();
-        expect(encoders.size.constantValue).toBeTruthy();
-    });
+    test("provides a data accessor for a FieldDef", () =>
+        expect(e.y.dataAccessor.fields).toContain("a"));
 
-    test("Inverts a value", () => {
-        expect(encoders.y.invert(0.5)).toBeCloseTo(5);
-        expect(encoders.z.invert(0.5)).toBeCloseTo(10);
-        // A value, no scale, can't invert
-        expect(() => encoders.size.invert(123)).toThrow();
-    });
+    test("doesn't provide a data accessor for a ValueDef", () =>
+        expect(e.x.dataAccessor).toBeUndefined());
 
-    test("Accessors are provided", () => {
-        expect(encoders.y.accessor).toBeDefined();
-        expect(encoders.z.accessor).toBeDefined();
-        expect(encoders.x.accessor).toBeUndefined();
-    });
+    test("returns a value", () => expect(e.x(datum)).toEqual(42));
 
-    // TODO: Test indexer
+    test("accesses a field and uses a scale", () => expect(e.y(datum)).toBe(1));
 
     // TODO: Text ExprRef
+});
+
+describe("Conditional encoder with a field and a conditional value", () => {
+    const pm = new ParamMediator();
+    const setter = pm.allocateSetter("p", createSinglePointSelection(null));
+
+    const e = createSimpleOrConditionalEncoder(
+        createConditionalAccessors("size", encoding.size, pm),
+        scaleSource
+    );
+
+    test("has multiple accessors", () => {
+        expect(e.accessors.length).toBe(2);
+    });
+
+    test("accesses the field using the dataAccessor", () =>
+        expect(e.dataAccessor(datum)).toBe(100));
+
+    test("encodes the default when a predicate is false", () => {
+        setter(createSinglePointSelection(null));
+        expect(e(datum)).toBe(10);
+    });
+
+    test("encodes the conditional value when a predicate is true", () => {
+        setter(createSinglePointSelection(datum));
+        expect(e(datum)).toBe(5000);
+    });
 });

@@ -1,7 +1,6 @@
 import { TemplateResult } from "lit";
 import View, { BroadcastMessage } from "../view/view.js";
 import DataFlow from "../data/dataFlow.js";
-import AccessorFactory from "../encoder/accessor.js";
 import WebGLHelper from "../gl/webGLHelper.js";
 import Animator from "../utils/animator.js";
 import GenomeStore from "../genome/genomeStore.js";
@@ -9,9 +8,8 @@ import BmFontManager from "../fonts/bmFontManager.js";
 import Mark from "../marks/mark.js";
 import { Datum } from "../data/flowNode.js";
 import { ImportSpec, ViewSpec } from "../spec/view.js";
-import ContainerView from "./containerView.js";
+import ContainerView from "../view/containerView.js";
 import { BroadcastEventType } from "../genomeSpy.js";
-import ParamMediator from "../view/paramMediator.js";
 
 export interface Hover {
     mark: Mark;
@@ -25,7 +23,6 @@ export type DataLoadingStatus = "loading" | "complete" | "error";
  */
 export default interface ViewContext {
     dataFlow: DataFlow<View>;
-    accessorFactory: AccessorFactory;
     glHelper: WebGLHelper;
     animator: Animator;
     genomeStore?: GenomeStore;

@@ -1,4 +1,4 @@
-import { RootSpec } from "@genome-spy/core/spec/root";
+import { RootSpec } from "@genome-spy/core/spec/root.js";
 
 export interface RemoteBookmarkConfig {
     url: string;

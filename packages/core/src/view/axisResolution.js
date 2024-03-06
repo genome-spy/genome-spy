@@ -13,9 +13,18 @@ import coalesce from "../utils/coalesce.js";
 import mergeObjects from "../utils/mergeObjects.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 
+/**
+ * @template {import("../spec/channel.js").PositionalChannel}[T=PositionalChannel]
+ *
+ * @typedef {object} AxisResolutionMember
+ * @prop {import("./unitView.js").default} view
+ * @prop {T} channel
+ * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
+ */
 export default class AxisResolution {
     /**
-     * @typedef { import("./unitView.js").default} UnitView
+     * @typedef {import("./unitView.js").default} UnitView
+     * @typedef {import("../spec/channel.js").PositionalChannel} PositionalChannel
      */
 
     /**
@@ -23,7 +32,7 @@ export default class AxisResolution {
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {import("./scaleResolution.js").ResolutionMember<import("../spec/channel.js").PositionalChannel>[]} The involved views */
+        /** @type {AxisResolutionMember[]} The involved views */
         this.members = [];
     }
 
@@ -35,10 +44,10 @@ export default class AxisResolution {
      * N.B. This is expected to be called in depth-first order, AFTER the
      * scales have been resolved.
      *
-     * @param {UnitView} view
-     * @param {import("../spec/channel.js").PositionalChannel} channel TODO: Do something for this
+     * @param {AxisResolutionMember} newMember
      */
-    pushUnitView(view, channel) {
+    pushUnitView(newMember) {
+        const { view } = newMember;
         const newScaleResolution = view.getScaleResolution(this.channel);
 
         if (!newScaleResolution) {
@@ -52,7 +61,7 @@ export default class AxisResolution {
             throw new Error("Shared axes must have a shared scale!");
         }
 
-        this.members.push({ view, channel });
+        this.members.push(newMember);
     }
 
     getAxisProps() {
@@ -81,7 +90,7 @@ export default class AxisResolution {
     }
 
     getTitle() {
-        /** @param {import("./scaleResolution.js").ResolutionMember} member} */
+        /** @param {AxisResolutionMember} member} */
         const computeTitle = (member) => {
             const channelDef = getChannelDefWithScale(
                 member.view,

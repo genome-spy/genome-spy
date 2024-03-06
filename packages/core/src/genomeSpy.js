@@ -6,7 +6,6 @@ import SPINNER from "./img/90-ring-with-bg.svg";
 import css from "./styles/genome-spy.css.js";
 import Tooltip from "./utils/ui/tooltip.js";
 
-import AccessorFactory from "./encoder/accessor.js";
 import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
@@ -71,7 +70,6 @@ export default class GenomeSpy {
         /** Root level configuration object */
         this.spec = spec;
 
-        this.accessorFactory = new AccessorFactory();
         this.viewFactory = new ViewFactory();
 
         /** @type {(function(string):object[])[]} */
@@ -148,6 +146,9 @@ export default class GenomeSpy {
          * @type {HTMLElement}
          */
         this._inputBindingContainer = undefined;
+
+        /** @type {Point} */
+        this._mouseDownCoords = undefined;
     }
 
     get #canvasWrapper() {
@@ -434,7 +435,6 @@ export default class GenomeSpy {
         /** @type {import("./types/viewContext.js").default} */
         const context = {
             dataFlow: new DataFlow(),
-            accessorFactory: this.accessorFactory,
             glHelper: this._glHelper,
             animator: this.animator,
             genomeStore: this.genomeStore,
@@ -785,7 +785,14 @@ export default class GenomeSpy {
                         ?.forEach((listener) => listener(e));
                 }
 
-                dispatchEvent(event);
+                if (
+                    event.type != "click" ||
+                    // Suppress click events if the mouse has been dragged
+                    this._mouseDownCoords?.subtract(Point.fromMouseEvent(event))
+                        .length < 3
+                ) {
+                    dispatchEvent(event);
+                }
             }
         };
 
@@ -799,7 +806,9 @@ export default class GenomeSpy {
             "contextmenu",
         ].forEach((type) => canvas.addEventListener(type, listener));
 
-        canvas.addEventListener("mousedown", () => {
+        canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {
+            this._mouseDownCoords = Point.fromMouseEvent(e);
+
             document.addEventListener(
                 "mouseup",
                 () => this.tooltip.popEnabledState(),
@@ -972,7 +981,7 @@ export default class GenomeSpy {
         /** @type {UnitView[]} */
         const views = [];
         this.viewRoot.visit((view) => {
-            if (view instanceof UnitView && view.getAccessor("search")) {
+            if (view instanceof UnitView && view.getDataAccessor("search")) {
                 views.push(view);
             }
         });

@@ -1,18 +1,15 @@
-import { isDiscrete } from "vega-scale";
-import createIndexer from "../utils/indexer.js";
-import scaleNull from "../utils/scaleNull.js";
-import { isExprRef } from "../view/paramMediator.js";
+import { createConditionalAccessors } from "./accessor.js";
 
 /**
  * Creates an object that contains encoders for every channel of a mark
  *
  * TODO: This method should have a test. But how to mock Mark...
  *
- * @param {import("../marks/mark.js").default} mark
- * @param {import("../spec/channel.js").Encoding} [encoding] Taken from the mark if not provided
+ * @param {import("../view/unitView.js").default} unitView
+ * @param {import("../spec/channel.js").Encoding} encoding
  * @returns {Partial<Record<Channel, Encoder>>}
  */
-export default function createEncoders(mark, encoding) {
+export default function createEncoders(unitView, encoding) {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../types/encoder.js").Encoder} Encoder
@@ -21,29 +18,22 @@ export default function createEncoders(mark, encoding) {
     /** @type {Partial<Record<Channel, Encoder>>} */
     const encoders = {};
 
-    if (!encoding) {
-        encoding = mark.encoding;
-    }
+    const scaleSource = (
+        /** @type {import("../spec/channel.js").ChannelWithScale}*/ channel
+    ) => unitView.getScaleResolution(channel)?.scale;
 
     for (const [channel, channelDef] of Object.entries(encoding)) {
         if (!channelDef) {
             continue;
         }
 
-        const channelWithScale =
-            ((isChannelDefWithScale(channelDef) &&
-                channelDef.resolutionChannel) ??
-                (isChannelWithScale(channel) && channel)) ||
-            undefined;
-
-        const resolution = mark.unitView.getScaleResolution(channelWithScale);
-
-        encoders[channel] = createEncoder(
-            mark,
-            encoding[channel],
-            resolution?.scale,
-            mark.unitView.getAccessor(channel),
-            channel
+        encoders[channel] = createSimpleOrConditionalEncoder(
+            createConditionalAccessors(
+                channel,
+                channelDef,
+                unitView.paramMediator
+            ),
+            scaleSource
         );
     }
 
@@ -51,109 +41,85 @@ export default function createEncoders(mark, encoding) {
 }
 
 /**
- * @param {import("../marks/mark.js").default} mark
- * @param {import("../spec/channel.js").ChannelDef} channelDef
- * @param {any} scale
- * @param {Accessor} accessor
- * @param {Channel} channel
+ * @param {import("../types/encoder.js").Accessor[]} accessors
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
  * @returns {Encoder}
  */
-export function createEncoder(mark, channelDef, scale, accessor, channel) {
+export function createSimpleOrConditionalEncoder(accessors, scaleSource) {
     /**
-     * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../types/encoder.js").Encoder} Encoder
      * @typedef {import("../types/encoder.js").Accessor} Accessor
+     * @typedef {import("../data/flowNode.js").Datum} Datum
      */
+    if (accessors.length === 1) {
+        return createEncoder(accessors[0], scaleSource);
+    }
 
-    /** @type {Encoder} */
-    let encoder;
+    const predicates = accessors.map((a) => a.predicate);
 
-    if (isValueDef(channelDef)) {
-        if (isExprRef(channelDef.value)) {
-            const fn = mark.unitView.paramMediator.createExpression(
-                channelDef.value.expr
-            );
-            encoder = /** @type {Encoder} */ ((datum) => fn(null));
-            encoder.constant = true;
-            encoder.constantValue = false;
-            encoder.accessor = accessor;
-        } else {
-            const value = channelDef.value;
-            encoder = /** @type {Encoder} */ ((datum) => value);
-            encoder.constant = true;
-            encoder.constantValue = true;
-            encoder.accessor = undefined;
-        }
-    } else if (accessor) {
-        if (channel == "text") {
-            // TODO: Define somewhere channels that don't use a scale
-            encoder = /** @type {Encoder} */ ((datum) => undefined);
-            encoder.accessor = accessor;
-            encoder.constant = accessor.constant;
-        } else {
-            if (!scale) {
-                if (!isChannelWithScale(channel)) {
-                    // Channels like uniqueId are passed as is.
-                    scale = scaleNull();
-                } else {
-                    throw new Error(
-                        `Missing scale! "${channel}": ${JSON.stringify(
-                            channelDef
-                        )}`
-                    );
+    const encoders = accessors.map((a) => createEncoder(a, scaleSource));
+
+    const encoder = Object.assign(
+        (/** @type {Datum} */ datum) => {
+            for (let i = 0; i < encoders.length; i++) {
+                if (predicates[i](datum)) {
+                    return encoders[i](datum);
                 }
             }
-
-            encoder = /** @type {Encoder} */ (
-                (datum) => scale(accessor(datum))
-            );
-
-            if (isDiscrete(scale.type)) {
-                // TODO: pass the found values back to the scale/resolution
-                const indexer = createIndexer();
-                // Warning: There's a chance that the domain and indexer get out of sync.
-                // TODO: Make this more robust
-                indexer.addAll(scale.domain());
-                encoder.indexer = indexer;
-            }
-
-            encoder.constant = accessor.constant;
-            encoder.accessor = accessor;
-            encoder.scale = scale;
+        },
+        {
+            constant: false,
+            accessors: /** @type {Accessor[]} */ (
+                encoders.map((e) => e.accessors[0])
+            ),
+            dataAccessor: encoders.map((e) => e.dataAccessor).find((a) => a),
+            scale: encoders.map((e) => e.scale).find((s) => s),
+            channelDef: accessors.at(-1).channelDef,
         }
-    } else {
+    );
+
+    return encoder;
+}
+
+/**
+ * @param {Accessor} accessor
+ * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
+ * @returns {Encoder}
+ */
+export function createEncoder(accessor, scaleSource) {
+    /**
+     * @typedef {import("../types/encoder.js").Encoder} Encoder
+     * @typedef {import("../types/encoder.js").Accessor} Accessor
+     * @typedef {import("../data/flowNode.js").Datum} Datum
+     */
+
+    const { channel, scaleChannel, channelDef } = accessor;
+
+    const scale = accessor.scaleChannel ? scaleSource(scaleChannel) : undefined;
+
+    if (scaleChannel && !scale) {
         throw new Error(
-            `Missing value or accessor (field, expr, datum) on channel "${channel}": ${JSON.stringify(
-                channelDef
-            )}`
+            `Missing scale! "${channel}": ${JSON.stringify(channelDef)}`
         );
     }
 
-    // TODO: Modifier should be inverted too
-    encoder.invert = scale
-        ? (value) => scale.invert(value)
-        : (value) => {
-              throw new Error(
-                  "No scale available, cannot invert: " +
-                      JSON.stringify(channelDef)
-              );
-          };
-
-    // Just to provide a convenient access to the config
-    encoder.channelDef = channelDef;
-
-    /** @param {Encoder} target */
-    encoder.applyMetadata = (target) => {
-        for (const prop in encoder) {
-            if (prop in encoder) {
-                // @ts-ignore
-                target[prop] = encoder[prop];
-            }
+    return Object.assign(
+        scale
+            ? (/** @type {Datum} */ datum) =>
+                  scale(
+                      // @ts-ignore Bad d3 types
+                      accessor(datum)
+                  )
+            : (/** @type {Datum} */ datum) => accessor(datum),
+        {
+            scale,
+            constant: accessor.constant,
+            accessors: [accessor],
+            dataAccessor: accessor.constant ? undefined : accessor,
+            // TODO: Accessor already has the channelDef
+            channelDef,
         }
-        return target;
-    };
-
-    return encoder;
+    );
 }
 
 /**
@@ -168,7 +134,7 @@ export function isValueDef(channelDef) {
 
 /**
  * @param {import("../spec/channel.js").ChannelDef} channelDef
- * @returns {channelDef is import("../spec/channel.js").FieldDefBase<string>}
+ * @returns {channelDef is import("../spec/channel.js").FieldDefBase}
  */
 export function isFieldDef(channelDef) {
     return channelDef && "field" in channelDef;
@@ -231,6 +197,25 @@ export function isChromPosDef(channelDef) {
  */
 export function isExprDef(channelDef) {
     return channelDef && "expr" in channelDef;
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").FieldOrDatumDefWithCondition}
+ */
+export function isFieldOrDatumDefWithCondition(channelDef) {
+    return (
+        (isFieldDef(channelDef) || isDatumDef(channelDef)) &&
+        "condition" in channelDef
+    );
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").ValueDefWithCondition}
+ */
+export function isValueDefWithCondition(channelDef) {
+    return isValueDef(channelDef) && "condition" in channelDef;
 }
 
 /**
@@ -344,7 +329,7 @@ export function isColorChannel(channel) {
  * @param {import("../spec/channel.js").Channel} channel
  */
 export function isDiscreteChannel(channel) {
-    return ["shape", "squeeze"].includes(channel);
+    return ["shape"].includes(channel);
 }
 
 /**
@@ -369,7 +354,6 @@ export function isChannelWithScale(channel) {
         "angle",
         "dx",
         "dy",
-        "sample",
     ].includes(channel);
 }
 

@@ -48,7 +48,7 @@ function testSimpleCoverage(reads, coverageSegments) {
 /**
  *
  * @param {[number, number, number][]} reads Start, end, weight
- * @param {[number, number, number][]} coverageSemgments Start, end, coverage
+ * @param {[number, number, number][]} coverageSegments Start, end, coverage
  */
 function testWeightedCoverage(reads, coverageSegments) {
     /** @type {CoverageParams} */

@@ -126,7 +126,8 @@ export default class RectMark extends Mark {
 
     #isStroked() {
         const sw = this.encoding.strokeWidth;
-        return !(isValueDef(sw) && !sw.value);
+        // True if there's any chance for a stroke to be drawn
+        return !(isValueDef(sw) && !sw.value) || "condition" in sw;
     }
 
     async initializeGraphics() {
@@ -177,6 +178,10 @@ export default class RectMark extends Mark {
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
+        if (!collector) {
+            console.debug("No collector");
+            return;
+        }
         const numItems = collector.getItemCount();
 
         const builder = new RectVertexBuilder({
@@ -251,13 +256,13 @@ export default class RectMark extends Mark {
         const scaleType = e.x.scale.type;
 
         if (isDiscrete(scaleType)) {
-            const a = e.x.accessor;
+            const a = e.x.dataAccessor;
             // TODO: Binary search
             return data.find((d) => x == a(d));
         } else {
             // TODO: Handle point features on locus/index scales
-            const a = e.x.accessor;
-            const a2 = e.x2.accessor;
+            const a = e.x.dataAccessor;
+            const a2 = e.x2.dataAccessor;
             // TODO: Binary search
             return data.find((d) => x >= a(d) && x < a2(d));
         }

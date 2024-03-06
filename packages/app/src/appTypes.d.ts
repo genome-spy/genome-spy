@@ -1,4 +1,4 @@
-import { BookmarkEntry } from "./bookmark/databaseSchema";
+import { BookmarkEntry } from "./bookmark/databaseSchema.js";
 
 export type UrlHash = Partial<BookmarkEntry>;
 

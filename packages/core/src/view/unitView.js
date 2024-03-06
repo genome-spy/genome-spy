@@ -6,8 +6,6 @@ import TextMark from "../marks/text.js";
 
 import ScaleResolution from "./scaleResolution.js";
 import {
-    isSecondaryChannel,
-    secondaryChannels,
     isPositionalChannel,
     isChannelDefWithScale,
     primaryPositionalChannels,
@@ -18,6 +16,9 @@ import {
 import createDomain from "../utils/domainArray.js";
 import AxisResolution from "./axisResolution.js";
 import View from "./view.js";
+import { createSinglePointSelection } from "../selection/selection.js";
+import { isString } from "vega-util";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 
 /**
  *
@@ -37,6 +38,7 @@ export default class UnitView extends View {
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
      * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionTarget
+     * @typedef {((datum: import("../data/flowNode.js").Datum) => import("../spec/channel.js").Scalar) & { fieldDef: import("../spec/channel.js").FieldDef}} FieldAccessor
      *
      */
 
@@ -84,6 +86,52 @@ export default class UnitView extends View {
         );
 
         this.needsAxes = { x: true, y: true };
+
+        this.#setupPointSelection();
+    }
+
+    #setupPointSelection() {
+        for (const [name, param] of this.paramMediator.paramConfigs) {
+            if (!("select" in param)) {
+                continue;
+            }
+
+            const select = param.select;
+            const type = isString(select) ? select : select.type;
+            if (type === "point") {
+                // Handle projection-free point selections
+
+                const none = -1;
+                let lastId = none;
+
+                const setter = this.paramMediator.getSetter(name);
+
+                const getHoveredDatum = () => {
+                    const h = this.context.getCurrentHover();
+                    return h?.mark?.unitView === this ? h.datum : null;
+                };
+
+                const on =
+                    !isString(select) && "on" in select ? select.on : "click";
+
+                this.addInteractionEventListener(
+                    ["mouseover", "pointerover"].includes(on)
+                        ? "mousemove"
+                        : "click",
+                    (rect, event) => {
+                        const datum = getHoveredDatum();
+                        const id = datum ? datum[UNIQUE_ID_KEY] : none;
+                        if (id != lastId) {
+                            lastId = id;
+                            const selection = createSinglePointSelection(
+                                getHoveredDatum()
+                            );
+                            setter(selection);
+                        }
+                    }
+                );
+            }
+        }
     }
 
     /**
@@ -172,10 +220,11 @@ export default class UnitView extends View {
                         targetChannel
                     );
                 }
-                view.resolutions[type][targetChannel].pushUnitView(
-                    this,
-                    channel
-                );
+                view.resolutions[type][targetChannel].pushUnitView({
+                    view: this,
+                    channel,
+                    channelDef,
+                });
             } else if (type == "scale" && isChannelWithScale(channel)) {
                 if (!view.resolutions[type][targetChannel]) {
                     const resolution = new ScaleResolution(targetChannel);
@@ -189,27 +238,24 @@ export default class UnitView extends View {
                         );
                     });
                 }
-                view.resolutions[type][targetChannel].pushUnitView(
-                    this,
-                    channel
-                );
+                view.resolutions[type][targetChannel].pushUnitView({
+                    view: this,
+                    channel,
+                    channelDef,
+                    dataDomainSource: this.extractDataDomain.bind(this),
+                });
             }
         }
     }
 
     /**
+     * Returns an accessor that accesses a field or an evaluated expression,
+     * if there is one.
      *
      * @param {Channel} channel
      */
-    getAccessor(channel) {
-        return this._cache("accessor/" + channel, () => {
-            const encoding = this.mark.encoding; // Mark provides encodings with defaults and possible modifications
-            if (encoding && encoding[channel]) {
-                return this.context.accessorFactory.createAccessor(
-                    encoding[channel]
-                );
-            }
-        });
+    getDataAccessor(channel) {
+        return this.mark.encoders[channel]?.dataAccessor;
     }
 
     /**
@@ -220,7 +266,7 @@ export default class UnitView extends View {
      */
     getFacetAccessor(whoIsAsking) {
         // TODO: Rewrite, call getFacetFields
-        const sampleAccessor = this.getAccessor("sample");
+        const sampleAccessor = this.getDataAccessor("sample");
         if (sampleAccessor) {
             return sampleAccessor;
         }
@@ -236,48 +282,6 @@ export default class UnitView extends View {
     }
 
     /**
-     * @param {Channel} channel A primary channel
-     */
-    #validateDomainQuery(channel) {
-        if (isSecondaryChannel(channel)) {
-            throw new Error(
-                `getDomain(${channel}), must only be called for primary channels!`
-            );
-        }
-
-        const channelDef = this.mark.encoding[channel];
-        // TODO: Broken. Fix.
-        if (!isChannelDefWithScale(channelDef)) {
-            throw new Error("The channel has no scale, cannot get domain!");
-        }
-
-        return channelDef;
-    }
-
-    /**
-     * Returns the domain of the specified channel of this domain/mark.
-     *
-     * @param {import("../spec/channel.js").ChannelWithScale} channel A primary channel
-     * @returns {DomainArray}
-     */
-    getConfiguredDomain(channel) {
-        const channelDef = this.#validateDomainQuery(channel);
-
-        const specDomain =
-            channelDef && channelDef.scale && channelDef.scale.domain;
-        if (specDomain) {
-            const scaleResolution = this.getScaleResolution(
-                channelDef.resolutionChannel ?? channel
-            );
-            return createDomain(
-                channelDef.type ?? "nominal",
-                // Chrom/pos must be linearized first
-                scaleResolution.fromComplexInterval(specDomain)
-            );
-        }
-    }
-
-    /**
      * Extracts the domain from the data.
      *
      * TODO: Optimize! Now this performs redundant work if multiple views share the same collector.
@@ -288,49 +292,25 @@ export default class UnitView extends View {
      * (with aggregate and extent).
      *
      * @param {Channel} channel
+     * @param {import("../spec/channel.js").Type} type
      * @returns {DomainArray}
      */
-    extractDataDomain(channel) {
-        const channelDef = this.#validateDomainQuery(channel);
-        const type = channelDef.type ?? "nominal"; // TODO: Should check that this is a channel without scale
+    extractDataDomain(channel, type) {
+        /** @type {DomainArray} */
+        let domain = createDomain(type);
 
-        /** @param {Channel} channel */
-        const extract = (channel) => {
-            /** @type {DomainArray} */
-            let domain;
-
-            const encodingSpec = this.mark.encoding[channel];
-
-            if (encodingSpec) {
-                const accessor =
-                    this.context.accessorFactory.createAccessor(encodingSpec);
-                if (accessor) {
-                    domain = createDomain(type);
-
-                    if (accessor.constant) {
-                        domain.extend(accessor({}));
-                    } else {
-                        const collector = this.getCollector();
-                        if (collector?.completed) {
-                            collector.visitData((d) =>
-                                domain.extend(accessor(d))
-                            );
-                        }
+        (this.mark.encoders[channel]?.accessors ?? [])
+            .filter((a) => a.scaleChannel)
+            .forEach((accessor) => {
+                if (accessor.constant) {
+                    domain.extend(accessor({}));
+                } else {
+                    const collector = this.getCollector();
+                    if (collector?.completed) {
+                        collector.visitData((d) => domain.extend(accessor(d)));
                     }
                 }
-            }
-            return domain;
-        };
-
-        let domain = extract(channel);
-
-        const secondaryChannel = secondaryChannels[channel];
-        if (secondaryChannel) {
-            const secondaryDomain = extract(secondaryChannel);
-            if (secondaryDomain) {
-                domain.extendAll(secondaryDomain);
-            }
-        }
+            });
 
         return domain;
     }

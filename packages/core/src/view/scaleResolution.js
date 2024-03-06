@@ -21,7 +21,6 @@ import mergeObjects from "../utils/mergeObjects.js";
 import createScale, { configureScale } from "../scale/scale.js";
 
 import {
-    getChannelDefWithScale,
     isColorChannel,
     isDiscreteChannel,
     isPositionalChannel,
@@ -32,7 +31,7 @@ import {
     isChromosomalLocus,
     isChromosomalLocusInterval,
 } from "../genome/genome.js";
-import { NominalDomain } from "../utils/domainArray.js";
+import createDomain, { NominalDomain } from "../utils/domainArray.js";
 import { easeCubicInOut } from "d3-ease";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
 import eerp from "../utils/eerp.js";
@@ -52,8 +51,12 @@ export const INDEX = "index";
 
 /**
  * @template {ChannelWithScale}[T=ChannelWithScale]
- * @typedef {{view: import("./unitView.js").default, channel: T}} ResolutionMember
  *
+ * @typedef {object} ScaleResolutionMember
+ * @prop {import("./unitView.js").default} view TODO: Get rid of the view reference
+ * @prop {T} channel
+ * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
+ * @prop {(channel: ChannelWithScale, type: import("../spec/channel.js").Type) => DomainArray} dataDomainSource
  */
 /**
  * Resolution takes care of merging domains and scales from multiple views.
@@ -109,9 +112,9 @@ export default class ScaleResolution {
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {ResolutionMember[]} The involved views */
+        /** @type {ScaleResolutionMember[]} The involved views */
         this.members = [];
-        /** @type {string} Data type (quantitative, nominal, etc...) */
+        /** @type {import("../spec/channel.js").Type} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
         /** @type {string} An optional unique identifier for the scale */
@@ -162,11 +165,10 @@ export default class ScaleResolution {
      * Add a view to this resolution.
      * N.B. This is expected to be called in depth-first order
      *
-     * @param {UnitView} view
-     * @param {ChannelWithScale} channel
+     * @param {ScaleResolutionMember} newMember
      */
-    pushUnitView(view, channel) {
-        const channelDef = getChannelDefWithScale(view, channel);
+    pushUnitView(newMember) {
+        const { channel, channelDef } = newMember;
         const type = channelDef.type;
         const name = channelDef?.scale?.name;
 
@@ -190,7 +192,7 @@ export default class ScaleResolution {
             // TODO: Use the same merging logic as in: https://github.com/vega/vega-lite/blob/master/src/scale.ts
         }
 
-        this.members.push({ view, channel });
+        this.members.push(newMember);
     }
 
     /**
@@ -227,10 +229,7 @@ export default class ScaleResolution {
      */
     #getMergedScaleProps() {
         const propArray = this.members
-            .map(
-                (member) =>
-                    getChannelDefWithScale(member.view, member.channel).scale
-            )
+            .map((member) => member.channelDef.scale)
             .filter((props) => props !== undefined);
 
         // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
@@ -241,9 +240,10 @@ export default class ScaleResolution {
      * Returns the merged scale properties supplemented with inferred properties
      * and domain.
      *
+     * @param {boolean} [extractDataDomain]
      * @returns {import("../spec/scale.js").Scale}
      */
-    #getScaleProps() {
+    #getScaleProps(extractDataDomain = false) {
         const mergedProps = this.#getMergedScaleProps();
         if (mergedProps === null || mergedProps.type == "null") {
             // No scale (pass-thru)
@@ -260,7 +260,7 @@ export default class ScaleResolution {
             props.type = getDefaultScaleType(this.channel, this.type);
         }
 
-        const domain = this.#getInitialDomain();
+        const domain = this.#getInitialDomain(extractDataDomain);
 
         if (domain && domain.length > 0) {
             props.domain = domain;
@@ -360,13 +360,19 @@ export default class ScaleResolution {
         }
     }
 
-    #getInitialDomain() {
+    /**
+     *
+     * @param {boolean} extractDataDomain
+     */
+    #getInitialDomain(extractDataDomain = false) {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
             this.getConfiguredDomain() ??
             (this.type == LOCUS
                 ? this.getGenome().getExtent()
-                : this.getDataDomain())
+                : extractDataDomain
+                ? this.getDataDomain()
+                : [])
         );
     }
 
@@ -376,11 +382,21 @@ export default class ScaleResolution {
      * @return { DomainArray }
      */
     getConfiguredDomain() {
-        return this.#reduceDomains((member) =>
-            isSecondaryChannel(member.channel)
-                ? undefined
-                : member.view.getConfiguredDomain(member.channel)
-        );
+        const domains = this.members
+            .map((member) => member.channelDef)
+            .filter((channelDef) => channelDef.scale?.domain)
+            .map((channelDef) =>
+                // TODO: Handle ExprRefs and Param in domain
+                createDomain(
+                    channelDef.type,
+                    // Chrom/pos must be linearized first
+                    this.fromComplexInterval(channelDef.scale.domain)
+                )
+            );
+
+        if (domains.length > 0) {
+            return domains.reduce((acc, curr) => acc.extendAll(curr));
+        }
     }
 
     /**
@@ -392,9 +408,7 @@ export default class ScaleResolution {
         // TODO: Optimize: extract domain only once if the views share the data.
         // In fact, this should be a responsibility of collectors.
         return this.#reduceDomains((member) =>
-            isSecondaryChannel(member.channel)
-                ? undefined
-                : member.view.extractDataDomain(member.channel)
+            member.dataDomainSource(member.channel, this.type)
         );
     }
 
@@ -411,7 +425,7 @@ export default class ScaleResolution {
         const domainWasInitialized = this.#isDomainInitialized();
         const previousDomain = scale.domain();
 
-        const props = this.#getScaleProps();
+        const props = this.#getScaleProps(true);
         configureScale({ ...props, range: undefined }, scale);
 
         // Annotate the scale with the new props
@@ -457,6 +471,11 @@ export default class ScaleResolution {
         const scale = createScale({ ...props, range: undefined });
         // Annotate the scale with props
         scale.props = props;
+
+        if ("unknown" in scale) {
+            // Never allow implicit domain construction
+            scale.unknown(null);
+        }
 
         this.#scale = scale;
         this.#configureRange();
@@ -630,7 +649,7 @@ export default class ScaleResolution {
 
         // TODO: Intersect the domain with zoom extent
 
-        const animator = this.members[0]?.view.context.animator;
+        const animator = this.#viewContext.animator;
 
         const scale = this.scale;
         const from = /** @type {number[]} */ (scale.domain());
@@ -770,7 +789,7 @@ export default class ScaleResolution {
         }
 
         // TODO: Support multiple assemblies
-        const genome = this.members[0].view.context.genomeStore?.getGenome();
+        const genome = this.#viewContext.genomeStore?.getGenome();
         if (!genome) {
             throw new Error("No genome has been defined!");
         }
@@ -826,21 +845,19 @@ export default class ScaleResolution {
         return /** @type {number[]} */ (interval);
     }
 
-    #getViewPaths() {
-        return this.members.map((v) => v.view.getPathString()).join(", ");
-    }
-
     /**
      * Iterate all participanting views and reduce (union) their domains using an accessor.
      * Accessor may return the an explicitly configured domain or a domain extracted from the data.
      *
-     * @param {function(ResolutionMember):DomainArray} domainAccessor
+     * @param {function(ScaleResolutionMember):DomainArray} domainAccessor
      * @returns {DomainArray}
      */
     #reduceDomains(domainAccessor) {
         const domains = this.members
             .filter(
                 (member) =>
+                    // View is missing if ScaleResolution is used within tests
+                    !member.view ||
                     !member.view
                         .getLayoutAncestors()
                         // TODO: Should check until the resolved scale resolution

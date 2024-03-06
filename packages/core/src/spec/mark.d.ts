@@ -387,6 +387,15 @@ export interface LinkProps extends SecondaryPositionProps {
     arcFadingDistance?: [number, number] | false | ExprRef;
 
     /**
+     * Disables fading of the link when an mark instance is subject to any point selection.
+     * As the fading distance is unavailable as a visual channel, this property allows for
+     * enhancing the visibility of the selected links.
+     *
+     * **Default value:** `true`
+     */
+    noFadingOnPointSelection?: boolean | ExprRef;
+
+    /**
      * The minimum stroke width of the links when pointing with the mouse cursor.
      * Allows making very thin links easier to point at.
      *

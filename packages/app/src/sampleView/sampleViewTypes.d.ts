@@ -38,7 +38,7 @@ export interface LocationContext {
     getSampleHierarchy: () => SampleHierarchy;
     getHeight: () => number;
     getSummaryHeight: () => number;
-    onLocationUpdate: ({ sampleHeight: number }) => void;
+    onLocationUpdate: (arg: { sampleHeight: number }) => void;
     viewContext: ViewContext;
     isStickySummaries: () => boolean;
 }

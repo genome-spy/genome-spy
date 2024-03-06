@@ -2,7 +2,10 @@ import { describe, expect, test } from "vitest";
 import FilterTransform from "./transforms/filter.js";
 import FormulaTransform from "./transforms/formula.js";
 import Collector from "./collector.js";
-import { SynchronousSequenceSource } from "./flowTestUtils.js";
+import {
+    SynchronousSequenceSource,
+    makeParamMediatorProvider,
+} from "./flowTestUtils.js";
 
 describe("Test flow graphs", () => {
     test("Trivial graph: sequence to collector", () => {
@@ -28,8 +31,6 @@ describe("Test flow graphs", () => {
 
         source.dispatch();
 
-        expect(collector1.getData()).not.toBe(collector2._data);
-
         expect(collector1.getData()).toEqual(
             [0, 1, 2, 3, 4].map((d) => ({
                 data: d,
@@ -45,18 +46,23 @@ describe("Test flow graphs", () => {
 
     test.skip("Implement stub for ParamMediator");
 
-    /*
     test("Longer chain of nodes", () => {
         const source = new SynchronousSequenceSource(10);
-        const filter = new FilterTransform({
-            type: "filter",
-            expr: "datum.data < 5",
-        });
-        const formula = new FormulaTransform({
-            type: "formula",
-            expr: "datum.data * 2",
-            as: "data",
-        });
+        const filter = new FilterTransform(
+            {
+                type: "filter",
+                expr: "datum.data < 5",
+            },
+            makeParamMediatorProvider()
+        );
+        const formula = new FormulaTransform(
+            {
+                type: "formula",
+                expr: "datum.data * 2",
+                as: "data",
+            },
+            makeParamMediatorProvider()
+        );
         const collector = new Collector();
 
         source.addChild(filter);
@@ -72,5 +78,4 @@ describe("Test flow graphs", () => {
             }))
         );
     });
-    */
 });

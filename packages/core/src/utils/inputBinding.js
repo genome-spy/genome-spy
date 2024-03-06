@@ -1,6 +1,7 @@
 import { html } from "lit";
 import { debounce } from "./debounce.js";
 import { tickStep } from "d3-array";
+import { isVariableParameter } from "../view/paramMediator.js";
 
 /**
  * @param {import("../view/paramMediator.js").default} mediator
@@ -12,6 +13,9 @@ export default function createBindingInputs(mediator) {
     const inputs = [];
 
     for (const param of mediator.paramConfigs.values()) {
+        if (!isVariableParameter(param)) {
+            continue;
+        }
         const bind = param.bind;
         if (!bind || !("input" in bind)) {
             continue;

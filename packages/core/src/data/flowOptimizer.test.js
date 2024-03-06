@@ -10,6 +10,7 @@ import DataFlow from "./dataFlow.js";
 import { combineIdenticalDataSources } from "./flowOptimizer.js";
 import InlineSource from "./sources/inlineSource.js";
 import UrlSource from "./sources/urlSource.js";
+import { makeParamMediatorProvider } from "./flowTestUtils.js";
 
 test("validateLinks() detects broken graph", () => {
     const root = new FlowNode();
@@ -132,14 +133,12 @@ describe("removeRedundantCloneTransforms", () => {
     });
 });
 
-const viewStub = {
-    paramMediator: {
-        registerParam: () => {},
-        allocateSetter: () => {},
-        createExpression: () => {},
-    },
-    getBaseUrl: () => "",
-};
+/** @type {import("../view/view.js").default} */
+const viewStub = /** @type {any} */ (
+    Object.assign(makeParamMediatorProvider(), {
+        getBaseUrl: () => "",
+    })
+);
 
 describe("Merge indentical data sources", () => {
     test("Merges correctly", () => {
@@ -191,8 +190,8 @@ describe("Merge indentical data sources", () => {
         /** @type {DataFlow<string>} */
         const dataFlow = new DataFlow();
 
-        const a = new InlineSource({ values: [1, 2, 3] });
-        const b = new InlineSource({ values: [1, 2, 3] });
+        const a = new InlineSource({ values: [1, 2, 3] }, viewStub);
+        const b = new InlineSource({ values: [1, 2, 3] }, viewStub);
 
         dataFlow.addDataSource(a, "a");
         dataFlow.addDataSource(b, "b");

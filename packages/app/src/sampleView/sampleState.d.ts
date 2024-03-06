@@ -1,5 +1,5 @@
 import { AnyAction } from "redux";
-import { AttributeIdentifier } from "./types";
+import { AttributeIdentifier } from "./types.js";
 
 /**
  * Sample metadata

@@ -165,6 +165,10 @@ export default class RuleMark extends Mark {
 
     updateGraphicsData() {
         const collector = this.unitView.getCollector();
+        if (!collector) {
+            console.debug("No collector");
+            return;
+        }
         const itemCount = collector.getItemCount();
 
         const builder = new RuleVertexBuilder({

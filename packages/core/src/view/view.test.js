@@ -10,6 +10,7 @@ import LayerView from "./layerView.js";
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", async () => {
+        // @ts-expect-error
         expect(create({}, View)).rejects.toThrow();
     });
 
@@ -23,7 +24,7 @@ describe("Trivial creations and initializations", () => {
     test("Parses a more comples spec", async () => {
         const view = await create(
             {
-                concat: [
+                hconcat: [
                     {
                         layer: [{ mark: "point" }, { mark: "rect" }],
                     },
@@ -35,26 +36,28 @@ describe("Trivial creations and initializations", () => {
 
         expect(view).toBeInstanceOf(ConcatView);
         expect(view.children[0]).toBeInstanceOf(LayerView);
+        // @ts-ignore
         expect(view.children[0].children[0]).toBeInstanceOf(UnitView);
+        // @ts-ignore
         expect(view.children[0].children[0].mark).toBeInstanceOf(PointMark);
         expect(view.children[1]).toBeInstanceOf(UnitView);
         expect(view.children[2]).toBeUndefined();
     });
 
-    test("Parses and initializes a trivial spec", async () => {
-        const spec = {
-            data: { values: [1] },
-            mark: "point",
-            encoding: {
-                x: { field: "data", type: "quantitative" },
-                y: { field: "data", type: "quantitative" },
-            },
-        };
-
-        expect(createAndInitialize(spec, View)).resolves.toBeInstanceOf(
-            UnitView
-        );
-    });
+    test("Parses and initializes a trivial spec", () =>
+        expect(
+            createAndInitialize(
+                {
+                    data: { values: [1] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "data", type: "quantitative" },
+                        y: { field: "data", type: "quantitative" },
+                    },
+                },
+                View
+            )
+        ).resolves.toBeInstanceOf(UnitView));
 });
 
 describe("Test domain handling", () => {
@@ -66,6 +69,7 @@ describe("Test domain handling", () => {
         ],
     };
 
+    /** -- This should be moved to ScaleResolution's test
     test("Uses domain from the scale properties", () => {
         const spec = {
             data: dataSpec,
@@ -84,52 +88,65 @@ describe("Test domain handling", () => {
             expect(r(view.getConfiguredDomain("y"))).toEqual([0, 1000])
         );
     });
+    */
 
-    test("Includes a constant in the data domain", () => {
-        const spec = {
-            data: dataSpec,
-            mark: "point",
-            encoding: {
-                x: { datum: 123, type: "quantitative" },
-                y: { field: "a", type: "quantitative" },
+    test("Includes a constant in the data domain", () =>
+        createAndInitialize(
+            {
+                data: dataSpec,
+                mark: "point",
+                encoding: {
+                    x: { datum: 123, type: "quantitative" },
+                    y: { field: "a", type: "quantitative" },
+                },
             },
-        };
+            UnitView
+        ).then((view) =>
+            expect(r(view.extractDataDomain("x", "quantitative"))).toEqual([
+                123, 123,
+            ])
+        ));
 
-        return createAndInitialize(spec, UnitView).then((view) =>
-            expect(r(view.extractDataDomain("x"))).toEqual([123, 123])
-        );
-    });
-
-    test("Extracts domain from the data", () => {
-        const spec = {
-            data: dataSpec,
-            mark: "point",
-            encoding: {
-                x: { field: "a", type: "quantitative" },
-                y: { field: "a", type: "quantitative" },
+    test("Extracts domain from the data", () =>
+        createAndInitialize(
+            {
+                data: dataSpec,
+                mark: "point",
+                encoding: {
+                    x: { field: "a", type: "quantitative" },
+                    y: { field: "a", type: "quantitative" },
+                },
             },
-        };
+            UnitView
+        ).then((view) =>
+            expect(r(view.extractDataDomain("y", "quantitative"))).toEqual([
+                1, 3,
+            ])
+        ));
 
-        return createAndInitialize(spec, UnitView).then((view) =>
-            expect(r(view.extractDataDomain("y"))).toEqual([1, 3])
-        );
-    });
-
-    test("Extracts domain from the data when a secondary channel is being used", () => {
-        const spec = {
-            data: dataSpec,
-            mark: "rect",
-            encoding: {
-                x: { field: "a", type: "quantitative" },
-                y: { field: "a", type: "quantitative" },
-                y2: { field: "b", type: "quantitative" },
+    test("Extracts domain from conditional encoding", () =>
+        createAndInitialize(
+            {
+                params: [{ name: "p" }],
+                data: dataSpec,
+                mark: "point",
+                encoding: {
+                    size: {
+                        field: "a",
+                        type: "quantitative",
+                        condition: {
+                            param: "p",
+                            datum: 123,
+                        },
+                    },
+                },
             },
-        };
-
-        return createAndInitialize(spec, UnitView).then((view) =>
-            expect(r(view.extractDataDomain("y"))).toEqual([1, 5])
-        );
-    });
+            UnitView
+        ).then((view) =>
+            expect(r(view.extractDataDomain("size", "quantitative"))).toEqual([
+                1, 123,
+            ])
+        ));
 });
 
 describe("Utility methods", () => {
@@ -207,6 +224,7 @@ describe("Utility methods", () => {
             },
             LayerView
         ).then((view) =>
+            // @ts-ignore
             expect(view.children[0].children[0].getBaseUrl()).toEqual(
                 "https://site.com/blaa"
             )

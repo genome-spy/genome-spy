@@ -35,19 +35,17 @@ const spec = {
 };
 
 describe("Axes resolve properly", () => {
-    const sharedSpec = {
-        ...spec,
-        resolve: { scale: { y: "shared" }, axis: { y: "shared" } },
-    };
-
     test("Independent axes are independent", async () => {
-        const independentSpec = {
-            ...spec,
-            resolve: { scale: { y: "shared" }, axis: { y: "independent" } },
-        };
+        const view = await createAndInitialize(
+            {
+                ...spec,
+                resolve: { scale: { y: "shared" }, axis: { y: "independent" } },
+            },
+            View
+        );
 
-        const view = await createAndInitialize(independentSpec, View);
         const [r0, r1] = [0, 1].map((i) =>
+            // @ts-ignore
             view.children[i].getAxisResolution("y")
         );
 
@@ -57,7 +55,14 @@ describe("Axes resolve properly", () => {
     });
 
     test("Shared axes have joined titles", async () => {
-        const view = await createAndInitialize(sharedSpec, View);
+        const view = await createAndInitialize(
+            {
+                ...spec,
+                resolve: { scale: { y: "shared" }, axis: { y: "shared" } },
+            },
+            View
+        );
+        // @ts-ignore
         expect(view.children[0].getAxisResolution("y").getTitle()).toEqual(
             "a, b"
         );

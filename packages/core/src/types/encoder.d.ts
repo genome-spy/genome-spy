@@ -15,57 +15,109 @@ import {
     ScaleDiverging,
     ScaleContinuousNumeric,
 } from "d3-scale";
-import { ChannelDef } from "../spec/channel.js";
+import { Channel, ChannelDef, ChannelWithScale } from "../spec/channel.js";
 import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
 import { Scalar } from "../spec/channel.js";
+import { Datum } from "../data/flowNode.js";
+import { ExprRefFunction } from "../view/paramMediator.js";
 
-export interface AccessorMetadata {
-    /** True if the accessor returns the same value for all objects */
+export interface Accessor<T = Scalar> {
+    (datum: Datum): T;
+
+    /**
+     * Returns a new accessor that returns the same value as this accessor,
+     * but typed as a number
+     */
+    asNumberAccessor(): Accessor<number>;
+
+    /**
+     * True if the accessor returns the same value for all objects
+     */
     constant: boolean;
 
-    /** The fields that the return value is based on (if any) */
+    /**
+     * The fields that the return value is based on (if any)
+     */
     fields: string[];
-}
 
-export type Accessor = ((datum: any) => any) & AccessorMetadata;
+    /**
+     * The channel that the accessor is based on
+     */
+    channel: Channel;
 
-export interface EncoderMetadata {
-    /** True if the accessor returns the same value for all objects */
-    constant: boolean;
+    /**
+     * If the accessed data needs to be passed to a scale function
+     * before visual encoding, indicates with channel has the scale.
+     * If no scale is needed, this is undefined.
+     */
+    scaleChannel: ChannelWithScale;
 
-    /** True the encoder returns a "value" without a scale */
-    constantValue: boolean;
-
-    invert: (value: Scalar) => Scalar;
-
-    scale?: VegaScale;
-
-    accessor: Accessor;
-
-    /** Converts ordinal values to index numbers */
-    indexer?: (value: any) => number;
-
+    /**
+     * The ChannelDef that the accessor is based on
+     */
     channelDef: ChannelDef;
 
-    /** Copies metadata to the target function */
-    applyMetadata: (target: Function) => void;
+    /**
+     * This accessor should be used when the predicate is true
+     */
+    predicate: Predicate;
 }
 
-export type Encoder = ((datum: object) => Scalar) & EncoderMetadata;
+export interface Predicate extends ExprRefFunction {
+    /**
+     * The parameter the predicate is based on
+     */
+    param?: string;
 
-export type NumberEncoder = ((datum: object) => number) & EncoderMetadata;
+    /**
+     * If true, the predicate is true for empty selections.
+     *
+     * **Default:** `true`
+     */
+    empty?: boolean;
+}
+
+/**
+ * Wraps one or more accessors, uses an optional scale to encode the data.
+ */
+export interface Encoder {
+    (datum: Datum): Scalar;
+
+    /**
+     * True if the accessor returns the same value for all objects
+     */
+    constant: boolean;
+
+    /**
+     * Scale, if the encoder has one
+     */
+    scale?: VegaScale;
+
+    /**
+     * An accessor, or if the ChannelDef has conditions, all the accessors.
+     */
+    accessors: Accessor[];
+
+    /**
+     * The encoded channel may have a maximum of one accessor accessing the
+     * data fields. It's this one.
+     */
+    dataAccessor?: Accessor;
+
+    /**
+     * The ChannelDef that the encoder is based on
+     */
+    channelDef: ChannelDef;
+}
 
 export interface ScaleMetadata {
     /** Scale type */
     type: string;
-
-    /** Whether to use emulated 64 bit floating point in WebGL */
-    fp64?: boolean;
 }
 
 export type D3Scale =
-    | ScaleContinuousNumeric<any, any>
+    | ScaleContinuousNumeric<any, any, any>
     | ScaleLinear<any, any>
     | ScalePower<any, any>
     | ScaleLogarithmic<any, any>
@@ -80,5 +132,7 @@ export type D3Scale =
     | ScaleOrdinal<any, any>
     | ScaleBand<any>
     | ScalePoint<any>;
+
+export type GenericScale = any;
 
 export type VegaScale = (D3Scale | ScaleIndex | ScaleLocus) & ScaleMetadata;

@@ -11,7 +11,7 @@ export default async function dataTooltipHandler(datum, mark, params) {
      */
     const legend = (key, datum) => {
         for (const [channel, encoder] of Object.entries(mark.encoders)) {
-            if (encoder?.accessor?.fields.includes(key)) {
+            if (encoder?.dataAccessor?.fields.includes(key)) {
                 switch (channel) {
                     case "color":
                     case "fill":
