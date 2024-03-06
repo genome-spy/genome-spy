@@ -7,12 +7,15 @@ test("CoalesceProperties works as expected", () => {
 
     const coalesced = coalesceProperties(
         () => props,
+        // @ts-expect-error
         () => defaults
     );
 
     expect(coalesced.a).toEqual(1);
+    // @ts-expect-error
     expect(coalesced.b).toEqual(11);
     expect(coalesced.c).toEqual(2);
+    // @ts-expect-error
     expect(coalesced.undef).toBeUndefined();
 
     expect("a" in coalesced).toBeTruthy();

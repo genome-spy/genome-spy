@@ -9,7 +9,7 @@ const sampleData = [
 ];
 
 /**
- * @param {import("./flattenDelimited.js").FlattenDelimitedParams} params
+ * @param {import("../../spec/transform.js").FlattenDelimitedParams} params
  * @param {any[]} data
  */
 function transform(params, data) {
@@ -17,15 +17,18 @@ function transform(params, data) {
 }
 
 describe("FlattenDelimited transform", () => {
+    /**
+     * @typedef {import("../../spec/transform.js").FlattenDelimitedParams} FlattenDelimitedParams
+     */
     test("With a single field", () => {
-        /** @type {import("./flattenDelimited.js").FlattenDelimitedParams} */
-        const config = {
+        /** @type {FlattenDelimitedParams} */
+        const params = {
             type: "flattenDelimited",
             field: "a",
             separator: ", ",
         };
 
-        expect(transform(config, sampleData)).toEqual([
+        expect(transform(params, sampleData)).toEqual([
             { id: 1, a: "q", b: "a-s-d" },
             { id: 1, a: "w", b: "a-s-d" },
             { id: 1, a: "e", b: "a-s-d" },
@@ -37,15 +40,15 @@ describe("FlattenDelimited transform", () => {
     });
 
     test("With two fields", () => {
-        /** @type {import("./flattenDelimited.js").FlattenDelimitedParams} */
-        const config = {
+        /** @type {FlattenDelimitedParams} */
+        const params = {
             type: "flattenDelimited",
             field: ["a", "b"],
             as: ["a", "c"],
             separator: [", ", "-"],
         };
 
-        expect(transform(config, sampleData)).toEqual([
+        expect(transform(params, sampleData)).toEqual([
             { id: 1, a: "q", b: "a-s-d", c: "a" },
             { id: 1, a: "w", b: "a-s-d", c: "s" },
             { id: 1, a: "e", b: "a-s-d", c: "d" },
@@ -64,24 +67,24 @@ describe("FlattenDelimited transform", () => {
             },
         ];
 
-        /** @type {import("./flattenDelimited.js").FlattenDelimitedParams} */
-        const config = {
+        /** @type {FlattenDelimitedParams} */
+        const params = {
             type: "flattenDelimited",
             field: ["a", "b"],
             separator: ["-", "-"],
         };
 
-        expect(() => transform(config, data)).toThrow();
+        expect(() => transform(params, data)).toThrow();
     });
 
     test("Throws on mismatching spec lengths", () => {
-        /** @type {import("./flattenDelimited.js").FlattenDelimitedParams} */
-        const config = {
+        /** @type {FlattenDelimitedParams} */
+        const params = {
             type: "flattenDelimited",
             field: ["a", "b"],
             separator: ["a"],
         };
 
-        expect(() => transform(config, sampleData)).toThrow();
+        expect(() => transform(params, sampleData)).toThrow();
     });
 });

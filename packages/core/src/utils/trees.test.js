@@ -3,8 +3,10 @@ import { nodesToTrees, visitTree } from "./trees.js";
 import { describe } from "vitest";
 
 describe("NodesToTrees", () => {
+    const NULL = /** @type {any} */ (null);
+
     test("NodesToTrees converts an array of nodes to a tree", () => {
-        const a = { parent: null };
+        const a = { parent: NULL };
         const b = { parent: a };
         const c = { parent: a };
         const d = { parent: b };
@@ -41,10 +43,10 @@ describe("NodesToTrees", () => {
     });
 
     test("NodesToTrees converts two disjoint node arrays to two trees", () => {
-        const a = { parent: null };
+        const a = { parent: NULL };
         const b = { parent: a };
 
-        const c = { parent: null };
+        const c = { parent: NULL };
         const d = { parent: c };
 
         const nodes = [a, b, c, d];
@@ -84,6 +86,7 @@ describe("VisitTree", () => {
                     children: [
                         {
                             id: "d",
+                            /** @type {any[]} */
                             children: [],
                         },
                         {
@@ -99,7 +102,9 @@ describe("VisitTree", () => {
             ],
         };
 
+        /** @type {any[]} */
         const visitedPre = [];
+        /** @type {any[]} */
         const visitedPost = [];
 
         visitTree(tree, {

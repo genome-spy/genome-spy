@@ -197,7 +197,7 @@ test("activateExprRefProps", async () => {
     const fooSetter = pm.registerParam({ name: "foo", value: 7 });
     const barSetter = pm.registerParam({ name: "bar", value: 11 });
 
-    /** @type {Record<string, any | import("../spec/parameter.js").ExprRef} */
+    /** @type {Record<string, any | import("../spec/parameter.js").ExprRef>} */
     const props = {
         a: 42,
         b: { expr: "foo" },

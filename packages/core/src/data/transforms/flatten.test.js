@@ -3,7 +3,7 @@ import { processData } from "../flowTestUtils.js";
 import FlattenTransform from "./flatten.js";
 
 /**
- * @param {import("./flatten.js").FlattenParams} params
+ * @param {import("../../spec/transform.js").FlattenParams} params
  * @param {any[]} data
  */
 function transform(params, data) {
@@ -11,8 +11,11 @@ function transform(params, data) {
 }
 
 describe("Flatten transform", () => {
+    /**
+     * @typedef {import("../../spec/transform.js").FlattenParams} FlattenParams
+     */
     test("With a single field", () => {
-        /** @type {import("./flattenDelimited.js").FlattenParams} */
+        /** @type {FlattenParams} */
         const params = { type: "flatten", fields: ["foo"] };
 
         const input = [
@@ -30,7 +33,7 @@ describe("Flatten transform", () => {
     });
 
     test("With an index field", () => {
-        /** @type {import("./flattenDelimited.js").FlattenParams} */
+        /** @type {FlattenParams} */
         const params = { type: "flatten", fields: ["foo"], index: "idx" };
 
         const input = [
@@ -48,7 +51,7 @@ describe("Flatten transform", () => {
     });
 
     test("With multiple fields", () => {
-        /** @type {import("./flattenDelimited.js").FlattenParams} */
+        /** @type {FlattenParams} */
         const params = { type: "flatten", fields: ["foo", "bar"] };
 
         const input = [
@@ -66,18 +69,18 @@ describe("Flatten transform", () => {
     });
 
     test("Throws on mismatching spec lengths", () => {
-        /** @type {import("./flattenDelimited.js").FlattenParams} */
+        /** @type {FlattenParams} */
         const params = {
             type: "flatten",
             fields: ["a", "b"],
             as: ["a"],
         };
 
-        expect(() => transform(params, sampleData)).toThrow();
+        expect(() => transform(params, [])).toThrow();
     });
 
     test("Missing fields property treats the input object as an array", () => {
-        /** @type {import("./flattenDelimited.js").FlattenParams} */
+        /** @type {FlattenParams} */
         const params = {
             type: "flatten",
         };

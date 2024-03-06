@@ -51,7 +51,7 @@ const datum = {
 
 describe("Encoder", () => {
     const pm = new ParamMediator();
-    /** @type {Partial<Record<import("../spec/channel.js").Channel, import("../types/encoder.js").Encoder>} */
+    /** @type {Partial<Record<import("../spec/channel.js").Channel, import("../types/encoder.js").Encoder>>} */
     const e = Object.fromEntries(
         Object.entries(encoding).map(([channel, channelDef]) => {
             const accessor = createAccessor(channel, channelDef, pm);

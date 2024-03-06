@@ -16,6 +16,12 @@ import { validTicks } from "./ticks.js";
 test("validTicks uses count correctly", function () {
     var data = [0, 1, 2, 3, 4, 5, 6, 7];
 
+    /**
+     *
+     * @param {T} x
+     * @returns {T}
+     * @template T
+     */
     var identity = function (x) {
         return x;
     };

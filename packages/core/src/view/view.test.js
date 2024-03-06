@@ -10,6 +10,7 @@ import LayerView from "./layerView.js";
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", async () => {
+        // @ts-expect-error
         expect(create({}, View)).rejects.toThrow();
     });
 
@@ -23,7 +24,7 @@ describe("Trivial creations and initializations", () => {
     test("Parses a more comples spec", async () => {
         const view = await create(
             {
-                concat: [
+                hconcat: [
                     {
                         layer: [{ mark: "point" }, { mark: "rect" }],
                     },
@@ -35,26 +36,28 @@ describe("Trivial creations and initializations", () => {
 
         expect(view).toBeInstanceOf(ConcatView);
         expect(view.children[0]).toBeInstanceOf(LayerView);
+        // @ts-ignore
         expect(view.children[0].children[0]).toBeInstanceOf(UnitView);
+        // @ts-ignore
         expect(view.children[0].children[0].mark).toBeInstanceOf(PointMark);
         expect(view.children[1]).toBeInstanceOf(UnitView);
         expect(view.children[2]).toBeUndefined();
     });
 
-    test("Parses and initializes a trivial spec", async () => {
-        const spec = {
-            data: { values: [1] },
-            mark: "point",
-            encoding: {
-                x: { field: "data", type: "quantitative" },
-                y: { field: "data", type: "quantitative" },
-            },
-        };
-
-        expect(createAndInitialize(spec, View)).resolves.toBeInstanceOf(
-            UnitView
-        );
-    });
+    test("Parses and initializes a trivial spec", () =>
+        expect(
+            createAndInitialize(
+                {
+                    data: { values: [1] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "data", type: "quantitative" },
+                        y: { field: "data", type: "quantitative" },
+                    },
+                },
+                View
+            )
+        ).resolves.toBeInstanceOf(UnitView));
 });
 
 describe("Test domain handling", () => {
@@ -219,6 +222,7 @@ describe("Utility methods", () => {
             },
             LayerView
         ).then((view) =>
+            // @ts-ignore
             expect(view.children[0].children[0].getBaseUrl()).toEqual(
                 "https://site.com/blaa"
             )
