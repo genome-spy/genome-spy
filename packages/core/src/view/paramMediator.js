@@ -325,6 +325,22 @@ export function withoutExprRef(x) {
 }
 
 /**
+ * @param {Parameter} param
+ * @returns {param is import("../spec/parameter.js").VariableParameter}
+ */
+export function isVariableParameter(param) {
+    return ("expr" in param || "bind" in param) && !("select" in param);
+}
+
+/**
+ * @param {Parameter} param
+ * @returns {param is import("../spec/parameter.js").SelectionParameter}
+ */
+export function isSelectionParameter(param) {
+    return !("expr" in param || "bind" in param) && "select" in param;
+}
+
+/**
  * Takes a record of properties that may have ExprRefs as values. Converts the
  * ExprRefs to getters and setups a listener that is called when any of the
  * expressions (upstream parameters) change.
