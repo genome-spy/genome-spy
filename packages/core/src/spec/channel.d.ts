@@ -258,7 +258,10 @@ export type ValueDefWithCondition<V extends Value = Value> = Partial<
     /**
      * A field definition or one or more value definition(s) with a parameter predicate.
      */
-    condition?: Conditional<FieldDef> | Conditional<ValueDef<V | ExprRef>>;
+    condition?:
+        | Conditional<FieldDef>
+        | Conditional<DatumDef>
+        | Conditional<ValueDef<V | ExprRef>>;
 };
 
 export type MarkPropFieldOrDatumOrExprDef<T extends Type = Type> =

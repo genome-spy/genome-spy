@@ -205,15 +205,15 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
      *
      * __Default value:__ `true`
      */
-    toggle?: boolean;
-
+    // TODO TODO TODO TODO TODO TODO TODO TODO
+    //toggle?: boolean;
     /**
      * A set of fields that uniquely identify a tuple. Used for bookmarking point selections
      * in the GenomeSpy App. Still work in progress.
      *
      * TODO: Or maybe use the `key` channel? https://vega.github.io/vega-lite/docs/encoding.html#key
      */
-    keyFields?: string[];
+    //keyFields?: string[];
 }
 
 export interface IntervalSelectionConfig
@@ -237,16 +237,19 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
               ? IntervalSelectionConfig
               : never);
 
-    /**
+    /*
      * Initialize the selection with a mapping between [projected channels or field names](https://vega.github.io/vega-lite/docs/selection.html#project) and initial values.
      *
      * __See also:__ [`init`](https://vega.github.io/vega-lite/docs/value.html) documentation.
      */
+    /*
+    // TODO TODO TODO TODO TODO TODO TODO TODO 
     value?: T extends "point"
         ? SelectionInit | SelectionInitMapping[]
         : T extends "interval"
         ? SelectionInitIntervalMapping
         : never;
+        */
 }
 
 export type Parameter = VariableParameter | SelectionParameter;

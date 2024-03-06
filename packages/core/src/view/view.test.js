@@ -127,6 +127,7 @@ describe("Test domain handling", () => {
     test("Extracts domain from conditional encoding", () =>
         createAndInitialize(
             {
+                params: [{ name: "p" }],
                 data: dataSpec,
                 mark: "point",
                 encoding: {
@@ -134,6 +135,7 @@ describe("Test domain handling", () => {
                         field: "a",
                         type: "quantitative",
                         condition: {
+                            param: "p",
                             datum: 123,
                         },
                     },
