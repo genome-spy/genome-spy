@@ -297,21 +297,21 @@ export default class UnitView extends View {
      */
     extractDataDomain(channel, type) {
         /** @type {DomainArray} */
-        let domain;
+        let domain = createDomain(type);
 
-        const accessor = this.getDataAccessor(channel);
-        if (accessor) {
-            domain = createDomain(type);
-
-            if (accessor.constant) {
-                domain.extend(accessor({}));
-            } else {
-                const collector = this.getCollector();
-                if (collector?.completed) {
-                    collector.visitData((d) => domain.extend(accessor(d)));
+        (this.mark.encoders[channel]?.accessors ?? [])
+            .filter((a) => a.scaleChannel)
+            .forEach((accessor) => {
+                if (accessor.constant) {
+                    domain.extend(accessor({}));
+                } else {
+                    const collector = this.getCollector();
+                    if (collector?.completed) {
+                        collector.visitData((d) => domain.extend(accessor(d)));
+                    }
                 }
-            }
-        }
+            });
+
         return domain;
     }
 

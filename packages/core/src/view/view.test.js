@@ -87,39 +87,61 @@ describe("Test domain handling", () => {
     });
     */
 
-    test("Includes a constant in the data domain", () => {
-        const spec = {
-            data: dataSpec,
-            mark: "point",
-            encoding: {
-                x: { datum: 123, type: "quantitative" },
-                y: { field: "a", type: "quantitative" },
+    test("Includes a constant in the data domain", () =>
+        createAndInitialize(
+            {
+                data: dataSpec,
+                mark: "point",
+                encoding: {
+                    x: { datum: 123, type: "quantitative" },
+                    y: { field: "a", type: "quantitative" },
+                },
             },
-        };
-
-        return createAndInitialize(spec, UnitView).then((view) =>
+            UnitView
+        ).then((view) =>
             expect(r(view.extractDataDomain("x", "quantitative"))).toEqual([
                 123, 123,
             ])
-        );
-    });
+        ));
 
-    test("Extracts domain from the data", () => {
-        const spec = {
-            data: dataSpec,
-            mark: "point",
-            encoding: {
-                x: { field: "a", type: "quantitative" },
-                y: { field: "a", type: "quantitative" },
+    test("Extracts domain from the data", () =>
+        createAndInitialize(
+            {
+                data: dataSpec,
+                mark: "point",
+                encoding: {
+                    x: { field: "a", type: "quantitative" },
+                    y: { field: "a", type: "quantitative" },
+                },
             },
-        };
-
-        return createAndInitialize(spec, UnitView).then((view) =>
+            UnitView
+        ).then((view) =>
             expect(r(view.extractDataDomain("y", "quantitative"))).toEqual([
                 1, 3,
             ])
-        );
-    });
+        ));
+
+    test("Extracts domain from conditional encoding", () =>
+        createAndInitialize(
+            {
+                data: dataSpec,
+                mark: "point",
+                encoding: {
+                    size: {
+                        field: "a",
+                        type: "quantitative",
+                        condition: {
+                            datum: 123,
+                        },
+                    },
+                },
+            },
+            UnitView
+        ).then((view) =>
+            expect(r(view.extractDataDomain("size", "quantitative"))).toEqual([
+                1, 123,
+            ])
+        ));
 });
 
 describe("Utility methods", () => {
