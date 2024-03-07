@@ -10,6 +10,15 @@
       "height": 200,
       "view": { "stroke": "lightgray" },
       "name": "Points",
+      "params": [
+        {
+          "name": "pointSelection",
+          "select": {
+            "type": "point",
+            "on": "pointerover"
+          }
+        }
+      ],
       "data": {
         "sequence": { "start": 0, "stop": 200000, "as": "x" }
       },
@@ -21,13 +30,7 @@
           "as": "y"
         }
       ],
-      "mark": {
-        "type": "point",
-        "size": {
-          "expr": "400 * pow(min(1, zoomLevel / 25), 1.8)"
-        },
-        "opacity": 0.6
-      },
+      "mark": "point",
       "encoding": {
         "x": {
           "field": "x",
@@ -39,12 +42,39 @@
           "field": "y",
           "type": "quantitative",
           "title": "The magnificent y axis!"
+        },
+        "size": {
+          "value": { "expr": "400 * pow(min(1, zoomLevel / 25), 1.8)" },
+          "condition": {
+            "param": "pointSelection",
+            "empty": false,
+            "value": {
+              "expr": "clamp(1600 * pow(min(1, zoomLevel / 25), 1.8), 100, 1600)"
+            }
+          }
+        },
+        "opacity": {
+          "value": 0.6,
+          "condition": {
+            "param": "pointSelection",
+            "empty": false,
+            "value": 1
+          }
         }
       }
     },
     {
       "view": { "stroke": "lightgray" },
       "name": "Text",
+      "params": [
+        {
+          "name": "textSelection",
+          "select": {
+            "type": "point",
+            "on": "pointerover"
+          }
+        }
+      ],
       "data": {
         "sequence": { "start": 0, "stop": 300 }
       },
@@ -74,9 +104,7 @@
         "x": {
           "field": "x",
           "type": "quantitative",
-          "scale": {
-            "zoom": false
-          }
+          "buildIndex": false
         },
         "y": {
           "field": "y",
@@ -97,11 +125,24 @@
           "type": "quantitative",
           "scale": {
             "range": [1, 0]
+          },
+          "condition": {
+            "param": "textSelection",
+            "value": 1,
+            "empty": false
           }
         },
         "angle": {
           "field": "x",
           "type": "quantitative"
+        },
+        "color": {
+          "value": "black",
+          "condition": {
+            "param": "textSelection",
+            "value": "#ff4433",
+            "empty": false
+          }
         }
       },
 
