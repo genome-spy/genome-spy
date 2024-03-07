@@ -141,8 +141,19 @@ export interface ScaleMixins {
      * An alternative channel for scale resolution.
      *
      * This is mainly for internal use and allows using `color` channel to resolve `fill` and `stroke` channels under certain circumstances.
+     *
+     * @internal
      */
     resolutionChannel?: ChannelWithScale;
+
+    /**
+     * Whether the field or evaluated expr should be included in the scale's domain.
+     *
+     * **Default value:** `true`
+     *
+     * @internal
+     */
+    contributesToScaleDomain: boolean;
 }
 
 export interface ValueDefBase<V extends Value = Scalar> {
@@ -157,6 +168,7 @@ export type ValueDef<V extends Value = Scalar> = ValueDefBase<V> & TitleMixins;
 export interface DatumDef<V extends Scalar | ExprRef = Scalar | ExprRef>
     extends Partial<TypeMixins<Type>>,
         BandMixins,
+        ScaleMixins,
         TitleMixins {
     /**
      * A constant value in data domain.

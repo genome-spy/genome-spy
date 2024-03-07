@@ -163,6 +163,7 @@ export default class UnitView extends View {
      *
      * @param {ResolutionTarget} [type] If not specified, both scales and axes are resolved.
      */
+    // eslint-disable-next-line complexity
     resolve(type) {
         if (!type) {
             this.resolve("scale");
@@ -239,11 +240,16 @@ export default class UnitView extends View {
                     });
                 }
 
-                const dataDomainSource = this.getLayoutAncestors()
-                    // TODO: Should check until the resolved scale resolution
-                    .some((view) => !view.options.contributesToScaleDomain)
-                    ? undefined
-                    : this.extractDataDomain.bind(this);
+                const dataDomainSource =
+                    this.getLayoutAncestors()
+                        // TODO: Should check until the resolved scale resolution
+                        .some(
+                            (view) => !view.options.contributesToScaleDomain
+                        ) ||
+                    (isChannelDefWithScale(channelDef) &&
+                        channelDef.contributesToScaleDomain === false)
+                        ? undefined
+                        : this.extractDataDomain.bind(this);
 
                 view.resolutions[type][targetChannel].pushUnitView({
                     view: this,
