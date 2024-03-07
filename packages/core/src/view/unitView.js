@@ -238,11 +238,18 @@ export default class UnitView extends View {
                         );
                     });
                 }
+
+                const dataDomainSource = this.getLayoutAncestors()
+                    // TODO: Should check until the resolved scale resolution
+                    .some((view) => !view.options.contributesToScaleDomain)
+                    ? undefined
+                    : this.extractDataDomain.bind(this);
+
                 view.resolutions[type][targetChannel].pushUnitView({
                     view: this,
                     channel,
                     channelDef,
-                    dataDomainSource: this.extractDataDomain.bind(this),
+                    dataDomainSource,
                 });
             }
         }

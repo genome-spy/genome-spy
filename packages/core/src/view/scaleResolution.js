@@ -405,10 +405,8 @@ export default class ScaleResolution {
      * @return { DomainArray }
      */
     getDataDomain() {
-        // TODO: Optimize: extract domain only once if the views share the data.
-        // In fact, this should be a responsibility of collectors.
         return this.#reduceDomains((member) =>
-            member.dataDomainSource(member.channel, this.type)
+            member.dataDomainSource?.(member.channel, this.type)
         );
     }
 
@@ -854,15 +852,6 @@ export default class ScaleResolution {
      */
     #reduceDomains(domainAccessor) {
         const domains = this.members
-            .filter(
-                (member) =>
-                    // View is missing if ScaleResolution is used within tests
-                    !member.view ||
-                    !member.view
-                        .getLayoutAncestors()
-                        // TODO: Should check until the resolved scale resolution
-                        .some((view) => !view.options.contributesToScaleDomain)
-            )
             .map(domainAccessor)
             .filter((domain) => !!domain);
 
