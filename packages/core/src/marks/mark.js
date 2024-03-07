@@ -951,13 +951,12 @@ export default class Mark {
 
     /**
      * Returns true if this mark instance participates in picking.
-     *
-     * TODO: Check if tooltip is enabled,
-     * TODO: Check if selection (when it's implemented) is enabled
      */
     isPickingParticipant() {
-        // TODO: Should check encoding instead
-        if (this.properties.tooltip === null) {
+        if (
+            this.properties.tooltip === null &&
+            !this.unitView.paramMediator.hasPointSelections()
+        ) {
             // Disabled
             return false;
         }

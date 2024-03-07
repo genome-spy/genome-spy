@@ -238,3 +238,23 @@ test("activateExprRefProps", async () => {
         c: 2,
     });
 });
+
+describe("hasPointSelections()", () => {
+    test("false if there are no point selections", () => {
+        const pm = new ParamMediator();
+        pm.registerParam({ name: "foo", value: 42 });
+        expect(pm.hasPointSelections()).toBe(false);
+    });
+
+    test("true if there are point selections (1/2)", () => {
+        const pm = new ParamMediator();
+        pm.registerParam({ name: "foo", select: "point" });
+        expect(pm.hasPointSelections()).toBe(true);
+    });
+
+    test("true if there are point selections (2/2)", () => {
+        const pm = new ParamMediator();
+        pm.registerParam({ name: "foo", select: { type: "point" } });
+        expect(pm.hasPointSelections()).toBe(true);
+    });
+});

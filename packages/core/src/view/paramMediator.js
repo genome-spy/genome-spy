@@ -295,6 +295,29 @@ export default class ParamMediator {
         const fn = this.createExpression(expr);
         return fn();
     }
+
+    /**
+     * Returns true if this ParamMediator has any parameters that are point selections.
+     * Point selections necessitate the use of uniqueIds in the data.
+     *
+     * @returns {boolean}
+     */
+    hasPointSelections() {
+        for (const param of this.#paramConfigs.values()) {
+            if (isSelectionParameter(param)) {
+                const select = param.select;
+                if (isString(select)) {
+                    if (select == "point") {
+                        return true;
+                    }
+                } else if (select.type == "point") {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }
 
 /**
