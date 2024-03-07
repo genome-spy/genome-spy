@@ -167,7 +167,7 @@ export default class ScaleResolution {
      *
      * @param {ScaleResolutionMember} newMember
      */
-    pushUnitView(newMember) {
+    addMember(newMember) {
         const { channel, channelDef } = newMember;
         const type = channelDef.type;
         const name = channelDef?.scale?.name;
@@ -199,7 +199,7 @@ export default class ScaleResolution {
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
     #isExplicitDomain() {
-        return !!this.getConfiguredDomain();
+        return !!this.#getConfiguredDomain();
     }
 
     #isDomainInitialized() {
@@ -367,7 +367,7 @@ export default class ScaleResolution {
     #getInitialDomain(extractDataDomain = false) {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
-            this.getConfiguredDomain() ??
+            this.#getConfiguredDomain() ??
             (this.type == LOCUS
                 ? this.getGenome().getExtent()
                 : extractDataDomain
@@ -381,7 +381,7 @@ export default class ScaleResolution {
      *
      * @return { DomainArray }
      */
-    getConfiguredDomain() {
+    #getConfiguredDomain() {
         const domains = this.members
             .map((member) => member.channelDef)
             .filter((channelDef) => channelDef.scale?.domain)
@@ -405,9 +405,12 @@ export default class ScaleResolution {
      * @return { DomainArray }
      */
     getDataDomain() {
-        return this.#reduceDomains((member) =>
-            member.dataDomainSource?.(member.channel, this.type)
-        );
+        return this.members
+            .map((member) =>
+                member.dataDomainSource?.(member.channel, this.type)
+            )
+            .filter((domain) => !!domain)
+            .reduce((acc, curr) => acc.extendAll(curr));
     }
 
     /**
@@ -851,23 +854,6 @@ export default class ScaleResolution {
             return this.getGenome().toContinuousInterval(interval);
         }
         return /** @type {number[]} */ (interval);
-    }
-
-    /**
-     * Iterate all participanting views and reduce (union) their domains using an accessor.
-     * Accessor may return the an explicitly configured domain or a domain extracted from the data.
-     *
-     * @param {function(ScaleResolutionMember):DomainArray} domainAccessor
-     * @returns {DomainArray}
-     */
-    #reduceDomains(domainAccessor) {
-        const domains = this.members
-            .map(domainAccessor)
-            .filter((domain) => !!domain);
-
-        if (domains.length) {
-            return domains.reduce((acc, curr) => acc.extendAll(curr));
-        }
     }
 }
 

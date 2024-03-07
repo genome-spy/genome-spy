@@ -46,7 +46,7 @@ export default class AxisResolution {
      *
      * @param {AxisResolutionMember} newMember
      */
-    pushUnitView(newMember) {
+    addMember(newMember) {
         const { view } = newMember;
         const newScaleResolution = view.getScaleResolution(this.channel);
 

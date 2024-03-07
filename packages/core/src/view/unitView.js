@@ -221,7 +221,7 @@ export default class UnitView extends View {
                         targetChannel
                     );
                 }
-                view.resolutions[type][targetChannel].pushUnitView({
+                view.resolutions[type][targetChannel].addMember({
                     view: this,
                     channel,
                     channelDef,
@@ -251,7 +251,7 @@ export default class UnitView extends View {
                         ? undefined
                         : this.extractDataDomain.bind(this);
 
-                view.resolutions[type][targetChannel].pushUnitView({
+                view.resolutions[type][targetChannel].addMember({
                     view: this,
                     channel,
                     channelDef,
