@@ -153,7 +153,7 @@ export interface ScaleMixins {
      *
      * @internal
      */
-    contributesToScaleDomain: boolean;
+    contributesToScaleDomain?: boolean;
 }
 
 export interface ValueDefBase<V extends Value = Scalar> {
