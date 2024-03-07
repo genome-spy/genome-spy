@@ -653,11 +653,17 @@ export default class ScaleResolution {
         const from = /** @type {number[]} */ (scale.domain());
 
         if (duration > 0 && from.length == 2) {
+            // Spans
             const fw = from[1] - from[0];
-            const fc = from[0] + fw / 2;
-
             const tw = to[1] - to[0];
+
+            // Centers
+            const fc = from[0] + fw / 2;
             const tc = to[0] + tw / 2;
+
+            // Constant endpoints. Skip calculation to maintain precision.
+            const ac = from[0] == to[0];
+            const bc = from[1] == to[1];
 
             // TODO: Abort possible previous transition
             await animator.transition({
@@ -665,9 +671,13 @@ export default class ScaleResolution {
                 easingFunction: easeCubicInOut,
                 onUpdate: (t) => {
                     const w = eerp(fw, tw, t);
-                    const wt = (fw - w) / (fw - tw);
+                    const wt = fw == tw ? t : (fw - w) / (fw - tw);
                     const c = wt * tc + (1 - wt) * fc;
-                    scale.domain([c - w / 2, c + w / 2]);
+                    const domain = [
+                        ac ? from[0] : c - w / 2,
+                        bc ? from[1] : c + w / 2,
+                    ];
+                    scale.domain(domain);
                     this.#notifyListeners("domain");
                 },
             });
