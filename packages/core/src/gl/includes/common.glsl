@@ -38,6 +38,17 @@ float linearstep(float edge0, float edge1, float x) {
     return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 }
 
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
 // Fragment shader stuff ////////////////////////////////////////////////////////
 
 // TODO: include the following only in fragment shaders

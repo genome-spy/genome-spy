@@ -8,6 +8,7 @@ out vec2 vTexCoord;
 out vec4 vColor;
 out float vSlope;
 out float vEdgeFadeOpacity;
+out float vGamma;
 
 struct RangeResult {
     float pos;
@@ -203,7 +204,13 @@ void main(void) {
     // Controls antialiasing of the SDF
     vSlope = max(1.0, min(size.x, size.y) / uSdfNumerator);
 
-    vColor = vec4(getScaled_color() * opacity, opacity);
+    vec3 color = getScaled_color();
+
+    // Premultiply alpha
+    vColor = vec4(color * opacity, opacity);
+
+    // Do something like gamma correction for text when the color is close to black or white.
+    vGamma = getGammaForColor(color);
 
     vTexCoord = textureCoord;
 

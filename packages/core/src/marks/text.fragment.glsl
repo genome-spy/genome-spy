@@ -4,6 +4,7 @@ in vec2 vTexCoord;
 in float vEdgeFadeOpacity;
 in vec4 vColor;
 in float vSlope;
+in float vGamma;
 
 out lowp vec4 fragColor;
 
@@ -28,8 +29,9 @@ void main() {
 
     float opa = clamp((sigDist - 0.5) * slope + 0.5, 0.0, 1.0);
 
-    // Raise to the power of 2.2 to do some cheap gamma correction
-    opa *= pow(clamp(vEdgeFadeOpacity, 0.0, 1.0), 2.2);
+    opa *= clamp(vEdgeFadeOpacity, 0.0, 1.0);
+
+    opa = pow(opa, vGamma);
 
     fragColor = vColor * opa;
 
