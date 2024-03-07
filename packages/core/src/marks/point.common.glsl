@@ -6,6 +6,9 @@ layout(std140) uniform Mark {
     */
     uniform bool uInwardStroke;
 
+    /** The minimum point size in pixels when rendering into the picking buffer */
+    uniform float uMinPickingSize;
+
     /** Scale factor for geometric zoom */
     uniform mediump float uScaleFactor;
 

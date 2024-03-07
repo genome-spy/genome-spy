@@ -46,6 +46,8 @@ export default class PointMark extends Mark {
                 sampleFacetPadding: 0.1,
 
                 semanticZoomFraction: 0.02,
+
+                minPickingSize: 2.0,
             })
         );
 
@@ -173,6 +175,7 @@ export default class PointMark extends Mark {
             "uGradientStrength",
             props.fillGradientStrength
         );
+        this.registerMarkUniformValue("uMinPickingSize", props.minPickingSize);
     }
 
     updateGraphicsData() {

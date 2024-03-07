@@ -396,10 +396,11 @@ export interface LinkProps extends SecondaryPositionProps {
     noFadingOnPointSelection?: boolean | ExprRef;
 
     /**
-     * The minimum stroke width of the links when pointing with the mouse cursor.
-     * Allows making very thin links easier to point at.
+     * The minimum picking size invisibly increases the stroke width or point diameter
+     * of marks when pointing them with the mouse cursor, making it easier to select them.
+     * The valus is the minimum size in pixels.
      *
-     * **Default value:** `3.0`
+     * **Default value:** `3.0` for `"link"` and `2.0` for `"point"`
      */
     minPickingSize?: number | ExprRef;
 }

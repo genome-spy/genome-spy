@@ -30,7 +30,10 @@
           "as": "y"
         }
       ],
-      "mark": "point",
+      "mark": {
+        "type": "point",
+        "minPickingSize": 3
+      },
       "encoding": {
         "x": {
           "field": "x",

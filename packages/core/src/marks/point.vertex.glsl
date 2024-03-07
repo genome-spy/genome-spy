@@ -101,7 +101,11 @@ void main(void) {
 	// sqrt(3.0) ensures that the angles of equilateral triangles have enough room
 	float strokePadding = uInwardStroke ? 0.0 : strokeWidth * (circle ? 1.0 : sqrt(3.0));
 	float padding = rotationPadding + strokePadding + aaPadding;
-    gl_PointSize = (diameter + padding) * uDevicePixelRatio;
+
+    gl_PointSize = max(
+        (diameter + padding),
+        uPickingEnabled ? uMinPickingSize : 0.0
+    ) * uDevicePixelRatio;
 
 	vRadius = diameter / 2.0;
 	vRadiusWithPadding = vRadius + padding / 2.0;
