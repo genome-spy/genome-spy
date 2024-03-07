@@ -1270,14 +1270,14 @@ export default class Mark {
             // Because glViewport accepts only integers, we subtract the rounding
             // errors from xyOffsets to guarantee that graphics in clipped
             // and non-clipped viewports align correctly
-            const roundedCoords = physicalGlCoords.map((x) => Math.round(x));
-            const [xError, yError] = physicalGlCoords.map(
-                (x, i) => x - roundedCoords[i]
-            );
+            const roundedCoords =
+                /** @type {[number, number, number, number]} */ (
+                    physicalGlCoords.map((x) => Math.floor(x))
+                );
+            const xError = physicalGlCoords[0] - roundedCoords[0];
+            const yError = physicalGlCoords[1] - roundedCoords[1];
 
-            // @ts-ignore
             gl.viewport(...roundedCoords);
-            // @ts-ignore
             gl.scissor(...roundedCoords);
             gl.enable(gl.SCISSOR_TEST);
 
