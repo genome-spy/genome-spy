@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.50.0](https://github.com/genome-spy/genome-spy/compare/v0.49.0...v0.50.0) (2024-03-08)
+
+
+### Bug Fixes
+
+* **core:** `"link"` mark's other endpoint didn't quite reach the target ([fc10bff](https://github.com/genome-spy/genome-spy/commit/fc10bff3502eae93135f6c7f3082a86f207bac9d))
+* **core:** domain extraction when using bar charts ([75c15c4](https://github.com/genome-spy/genome-spy/commit/75c15c4f8bd61e18c4d6388164f01d8aae8da2ae))
+* **core:** fieldDef typings, allow multiple conditions in ValueDefs ([130b5c8](https://github.com/genome-spy/genome-spy/commit/130b5c8f971b0791a5ad4c90ab0bad2c041694d7))
+* **core:** improve antialiasing of text and link marks ([5feda3f](https://github.com/genome-spy/genome-spy/commit/5feda3f1ca8924500750c45d85afc3a997e83709))
+* **core:** mark property typings, more accurate JSON schema ([fb46978](https://github.com/genome-spy/genome-spy/commit/fb469784131fe74f12d0a611c0e54336768a2df2))
+* **core:** point selections when tooltip is disabled ([aad6b33](https://github.com/genome-spy/genome-spy/commit/aad6b33a3f9a04f9d5d8b6593de02bc656fa4c1d))
+* **core:** precision issue when zooming a scale with a transition animation ([a474eaf](https://github.com/genome-spy/genome-spy/commit/a474eaf38ddc6d79bffd0605d1cce7de380a260d))
+* **core:** rounding of viewport clipping coords ([30f9a21](https://github.com/genome-spy/genome-spy/commit/30f9a21f4863158af1b602c78c2b6600a88fc9ae))
+
+
+### Features
+
+* **core:** support `minPickingSize` in `"point"` mark ([09a478a](https://github.com/genome-spy/genome-spy/commit/09a478ac46929bfacdca53a4ce9298969b6542ff))
+
+
+
+
+
 # [0.49.0](https://github.com/genome-spy/genome-spy/compare/v0.48.2...v0.49.0) (2024-03-06)
 
 
