@@ -136,14 +136,17 @@ The [GenomeSpy app](../../sample-collections/visualizing.md#specifying-a-sample-
 `sample`
 : Defines the track for the sample
 
-### Mapping data
+### Visual Encoding
 
-GenomeSpy provides several methods for controlling the visual channels
+GenomeSpy provides several methods for controlling how data is mapped to visual
+channels. The most common method is to map a field of the data to a channel, but
+you can also use expressions, values, or data values from the domain of a scale.
 
 #### Field
 
-`field` maps a field (or column) of the data to the visual channel. The `field` property
-specifies the data type, which is one of: `"quantitative"`, `"nominal"`, or `"ordinal"`.
+`field` maps a field (or column) of the data to a visual channel. The `field`
+property specifies the data type, which is one of: `"quantitative"`,
+`"nominal"`, or `"ordinal"`, `"index"`, or `"locus"`.
 
 ```json
 {

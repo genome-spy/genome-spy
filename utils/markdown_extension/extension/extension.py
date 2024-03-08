@@ -6,6 +6,47 @@ import re
 from markdown.preprocessors import Preprocessor
 from markdown.extensions import Extension
 
+types_with_links = {
+    'ExprRef': 'https://genomespy.app/docs/grammar/expressions/'
+}
+
+refPattern = re.compile('^#/definitions/(\\w+)$')
+
+def propTypeToString(propType):
+    const = propType.get('const')
+    type = propType.get('type')
+    ref = propType.get('$ref')
+
+    if const:
+        if type == 'string':
+            return '`"{}"`'.format(const)
+        else:
+            return '`{}`'.format(const)
+    if type:
+        if type == 'array':
+            items = propType.get('items')
+            if items:
+                if propType.get('minItems') == 2 and propType.get('maxItems') == 2:
+                    return '[{}, {}]'.format(propTypeToString(items), propTypeToString(items))
+                else:
+                    return propTypeToString(items) + '[]'
+            else:
+                return type
+        else:
+            return str(type)
+    if ref:
+        m = refPattern.match(ref)
+        if m:
+            refType = m.group(1)
+            if refType in types_with_links:
+                return '[{}]({})'.format(refType, types_with_links[refType])
+            else:
+                return '`{}`'.format(refType)
+    return str(propType)
+
+def propTypesToString(propTypes):
+    return ' | '.join([propTypeToString(p) for p in propTypes])
+
 class MyPreprocessor(Preprocessor):
     def __init__(self, schema):
         self.schema = schema
@@ -42,7 +83,17 @@ class MyPreprocessor(Preprocessor):
                 dt = dt + ' <span class="required">Required</span>'
             lines.append(dt)
 
-            for lineno, description_line in enumerate(value.get('description', 'TODO').split('\n\n')):
+            paragraphs = value.get('description', 'TODO').split('\n\n')
+
+            propType = value.get('type')
+            if propType:
+                paragraphs.insert(0, 'Type: ' + propType)
+            
+            propTypes = value.get('anyOf')
+            if propTypes:
+                paragraphs.insert(0, 'Type: ' + propTypesToString(propTypes))
+
+            for lineno, description_line in enumerate(paragraphs):
                 lines.append((':   ' if lineno == 0 else '    ') + description_line)
                 lines.append('')
 

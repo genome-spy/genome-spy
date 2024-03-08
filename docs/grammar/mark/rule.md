@@ -30,59 +30,7 @@ channels and the `color`, `opacity`, and `size` channels.
 
 ## Properties
 
-`size`
-: Type: Number
-
-    The stroke width of the lines in pixels.
-
-    **Default value:** `1`
-
-`minLength`
-: Type: Number
-
-    The minimum length of the rule in pixels. Use this property to ensure that
-    very short rules remain visible even when the user zooms out.
-
-    **Default value:** `0`
-
-`strokeDash`
-: Type: Number[]
-
-    An array of of alternating stroke and gap lengths or `null` for solid
-    strokes.
-
-    **Default value:** `null`
-
-`strokeDashOffset`
-: Type: Number
-
-    An offset for the stroke pattern.
-
-    **Default value:** `0`
-
-`strokeCap`
-: Type: String
-
-    The style of stroke ends. Available choices: `"butt"`, `"round`", and
-    `"square"`.
-
-    **Default value:** `"butt"`
-
-`xOffset`
-: Type: Number
-
-    Offsets of the `x` and `x2` coordinates in pixels. The offset is applied
-    after the viewport scaling and translation.
-
-    **Default value:** `0`
-
-`yOffset`
-: Type: Number
-
-    Offsets of the `y` and `y2` coordinates in pixels. The offset is applied
-    after the viewport scaling and translation.
-
-    **Default value:** `0`
+SCHEMA RuleProps
 
 ## Examples
 

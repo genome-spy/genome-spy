@@ -24,60 +24,11 @@ point mutations at genomic loci.
 
 In addition to standard [position](./index.md#channels) channels and
 `color`, `opacity`, and `strokeWidth` channels, point mark has the following
-channels:
-
-`size`
-: Type: Number
-
-    The area of the point in pixels. In practice, the area is less because
-    the shapes do not fill their rectangular container. Example: the diameter
-    of a circle with the size of `100` is 10 (sqrt(100)) pixels.
-
-    **Default value:** `100`
-
-`shape`
-: Type: String
-
-    One of `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`,
-    `"triangle-down"`, `"triangle-right"`, `"triangle-left"`, `"tick-up"`,
-    `"tick-down"`, `"tick-right"`, or `"tick-left"`.
-
-    **Default value:** `"circle"`
-
-`dx`
-: Type: Number
-
-    The horizontal offset between the text and its anchor point, in pixels.
-    Applied after the rotation by `angle`.
-
-    **Default value:** `0`
-
-`dy`
-: Type: Number
-
-    The vertical offset between the text and its anchor point, in pixels.
-    Applied after the rotation by `angle`.
-
-    **Default value:** `0`
+channels: `size`, `shape`, `dx`, and `dy`.
 
 ## Properties
 
-`fillGradientStrength`
-: Type: Number
-
-    Gradient strength controls the amount of the gradient eye-candy effect.
-    Valid values are between `0` and `1`.
-
-    **Default value:** `0`
-
-`geometricZoomBound`
-: Type: Number
-
-    Enables [geometric zooming](#geometric-zoom).
-    The value is the base two logarithmic zoom level where the maximum point
-    size is reached.
-
-    **Default value:** `0`
+SCHEMA PointProps
 
 ## Examples
 

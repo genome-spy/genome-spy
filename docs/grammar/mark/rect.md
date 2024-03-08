@@ -36,60 +36,12 @@ Rect mark displays each data item as a rectangle.
 ## Channels
 
 Rect mark supports the primary and secondary [position](./index.md#channels)
-channels and the `color`, `stroke`, `fill`, `opacity`, `strokeOpecity`,
+channels and the `color`, `stroke`, `fill`, `opacity`, `strokeOpacity`,
 `fillOpacity`, and `strokeWidth` channels.
 
 ## Properties
 
-`minHeight`
-: Type: Number
-
-    The minimum height of a rectangle in pixels. The property clamps rectangles'
-    heights.
-
-    **Default value:** `0`
-
-`minWidth`
-: Type: Number
-
-    The minimum width of a rectangle in pixels. The property clamps rectangles'
-    widths when the viewport is zoomed out.
-
-    This property also reduces flickering of very narrow rectangles, thus, the
-    value should generally be at least one.
-
-    **Default value:** `1`
-
-`minOpacity`
-: Type: Number
-
-    Clamps the minimum size-dependent opacity. The property does not affect the
-    `opacity` channel. Valid values are between `0` and `1`.
-
-    When a rectangle would be smaller than what is specified in `minHeight` and
-    `minWidth`, it is faded out proportionally. Example: a rectangle would be
-    rendered as one pixel wide, but `minWidth` clamps it to five pixels. The
-    rectangle is actually rendered as five pixels wide, but its opacity is
-    multiplied by 0.2. With this setting, you can limit the factor to, for
-    example, 0.5 to keep the rectangles more clearly visible.
-
-    **Default value:** `0`
-
-`xOffset`
-: Type: Number
-
-    Offsets of the `x` and `x2` coordinates in pixels. The offset is applied
-    after the viewport scaling and translation.
-
-    **Default value:** `0`
-
-`yOffset`
-: Type: Number
-
-    Offsets of the `y` and `y2` coordinates in pixels. The offset is applied
-    after the viewport scaling and translation.
-
-    **Default value:** `0`
+SCHEMA RectProps
 
 ## Examples
 

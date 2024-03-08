@@ -34,99 +34,11 @@ how the curve is drawn.
 
 In addition to the primary and secondary [position](./index.md#channels)
 channels and the `color` and `opacity` channels, link mark supports the following
-channels:
-
-`size`
-: Type: Number
-
-    The stroke width.
+channels: `size`.
 
 ## Properties
 
-`linkShape`
-: Type: String
-
-    The shape of the link. Can be one of `"arc"`, `"dome"`, `"diagonal"`, or
-    `"line"`.
-
-    The `"arc"` shape draws a circular arc between the two points. The apex of the
-    arc resides on the left side of the line that connects the two points.
-    The `"dome"` shape draws a vertical or horizontal arc with a specific height.
-    The primary positional channel determines the apex of the arc and the secondary
-    determines the endpoint placement.
-    The `"diagonal"` shape draws an "S"-shaped curve between the two points.
-    The `"line"` shape draws a straight line between the two points. See an
-    [example](#different-link-shapes-and-orientations) of the different shapes below.
-
-    **Default value:** `"arc"`
-
-`orient`
-: Type: String
-
-    The orientation of the link. Can be one of `"vertical"` or `"horizontal"`.
-    Only affects the `"dome"` and `"diagonal"` shapes.
-
-    **Default value:** `"vertical"`
-
-`clampApex`
-: Type: Boolean
-
-    Whether the apex of the `"dome"` shape is clamped to the viewport edge. When over a
-    half of the dome is located outside the viewport, clamping allows for more accurate
-    reading of the value encoded by the apex' position.
-
-    **Default value:** `false`
-
-`arcHeightFactor`
-: Type: Number
-
-    Scaling factor for the `"arc`" shape's height. The default value `1.0` produces
-    roughly circular arcs.
-
-    **Default value:** `1.0`
-
-`minArcHeight`
-: Type: Number
-
-    The minimum height of an `"arc"` shape. Makes very short links more clearly visible.
-
-    **Default value:** `1.5`
-
-`maxChordLength`
-: Type: Number
-
-    The maximum length of `"arc"` shape's chord in pixels. The chord is the line segment
-    between the two points that define the arc. Limiting the chord length serves two purposes
-    when zooming in close enough:
-    1) it prevents the arc from becoming a straight line and
-    2) it mitigates the limited precision of floating point numbers in arc rendering.
-
-    **Default value:** `50000`
-
-`arcFadingDistance`
-: Type: [Number, Number] | false
-
-    The range of the `"arc"` shape's fading distance in pixels. This property allows for
-    making the arc's opacity fade out as it extends away from the chord. The fading distance
-    is interpolated from one to zero between the interval defined by this property.
-    Both `false` and `[0, 0]` disable fading.
-
-    **Default value:** `false`
-
-`segments`
-: Type: Number
-
-    Number of segments in the bézier curve. Affects the rendering quality and speed.
-
-    **Default value:** `101`
-
-`minPickingSize`
-: Type: Number
-
-    The minimum stroke width of the links when pointing with the mouse cursor.
-    Allows making very thin links easier to point at.
-
-    **Default value:** `3.0`
+SCHEMA LinkProps
 
 ## Examples
 

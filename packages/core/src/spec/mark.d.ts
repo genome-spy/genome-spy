@@ -10,9 +10,24 @@ export interface MarkPropsBase {
 
     // Channels.
 
+    /**
+     * Position on the x axis.
+     */
     x?: number | ExprRef;
+
+    /**
+     * Position on the y axis.
+     */
     y?: number | ExprRef;
+
+    /**
+     * Color of the mark. Affects either `fill` or `stroke`, depending on the `filled` property.
+     */
     color?: string | ExprRef;
+
+    /**
+     * Opacity of the mark. Affects `fillOpacity` or `strokeOpacity`, depending on the `filled` property.
+     */
     opacity?: number | ExprRef;
 
     /**
@@ -48,7 +63,9 @@ export interface MarkPropsBase {
     minBufferSize?: number;
 
     /**
-     * Tooltip handler. If `null`, no tooltip is shown.
+     * Tooltip handler. If `null`, no tooltip is shown. If string, specifies
+     * the [tooltip handler](https://genomespy.app/docs/api/#custom-tooltip-handlers)
+     * to use.
      */
     tooltip?: Tooltip;
 }
@@ -73,12 +90,12 @@ export interface FillAndStrokeProps {
     filled?: boolean;
 
     /**
-     * The fill color
+     * The fill color.
      */
     fill?: string | ExprRef;
 
     /**
-     * The fill opacity. Value between [0, 1].
+     * The fill opacity. Value between `0` and `1`.
      */
     fillOpacity?: number | ExprRef;
 
@@ -88,13 +105,20 @@ export interface FillAndStrokeProps {
     stroke?: string | ExprRef;
 
     /**
-     * The stroke opacity. Value between [0, 1].
+     * The stroke opacity. Value between `0` and `1`.
      */
     strokeOpacity?: number | ExprRef;
 }
 
 export interface SecondaryPositionProps {
+    /**
+     * The secondary position on the x axis.
+     */
     x2?: number | ExprRef;
+
+    /**
+     * The secondary position on the y axis.
+     */
     y2?: number | ExprRef;
 }
 
@@ -385,11 +409,12 @@ export interface PointProps
 
     /**
      * One of `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`,
-     * `"triangle-down"`, `"triangle-right"`, or `"triangle-left"`.
+     * `"triangle-down"`, `"triangle-right"`, `"triangle-left"`, `"tick-up"`,
+     * `"tick-down"`, `"tick-right"`, or `"tick-left"`
      *
      * **Default value:** `"circle"`
      */
-    shape?: string;
+    shape?: string | ExprRef;
 
     /**
      * Should the stroke only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
@@ -402,7 +427,7 @@ export interface PointProps
 
     /**
      * Gradient strength controls the amount of the gradient eye-candy effect in the fill color.
-     * Valid values are between 0 and 1.
+     * Valid values are between `0` and `1`.
      *
      * **Default value:** `0`
      */
@@ -432,7 +457,16 @@ export interface LinkProps
     type: "link";
 
     /**
-     * The shape of the link path. Either `"arc"`, `"diagonal"`, `"line"`, or `"dome"`.
+     * The shape of the link path.
+     *
+     * The `"arc"` shape draws a circular arc between the two points. The apex of the
+     * arc resides on the left side of the line that connects the two points.
+     * The `"dome"` shape draws a vertical or horizontal arc with a specific height.
+     * The primary positional channel determines the apex of the arc and the secondary
+     * determines the endpoint placement.
+     * The `"diagonal"` shape draws an "S"-shaped curve between the two points.
+     * The `"line"` shape draws a straight line between the two points. See an
+     * [example](#different-link-shapes-and-orientations) of the different shapes below.
      *
      * **Default value:** `"arc"`
      */
@@ -459,7 +493,7 @@ export interface LinkProps
      * The number of segments in the bézier curve. Affects the rendering quality and performance.
      * Use a higher value for a smoother curve.
      *
-     * **Default value:* `101`
+     * **Default value:** `101`
      */
     segments?: number | ExprRef;
 
