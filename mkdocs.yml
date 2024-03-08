@@ -74,6 +74,7 @@ nav:
           - Scales: "grammar/scale.md"
           - Importing Views: "grammar/import.md"
           - Expressions: "grammar/expressions.md"
+          - Parameters: "grammar/parameters.md"
 
     - Working with Genomic Data:
           - Genomic Coordinates: "genomic-data/genomic-coordinates.md"
