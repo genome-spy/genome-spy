@@ -11,6 +11,9 @@ import { isValueDef } from "../encoder/encoder.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { isDiscrete } from "vega-scale";
 
+/**
+ * @extends {Mark<import("../spec/mark.js").RectProps>}
+ */
 export default class RectMark extends Mark {
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -18,27 +21,24 @@ export default class RectMark extends Mark {
     constructor(unitView) {
         super(unitView);
 
-        Object.defineProperties(
-            this.defaultProperties,
-            Object.getOwnPropertyDescriptors({
-                x2: undefined,
-                y2: undefined,
-                filled: true,
-                color: "#4c78a8",
-                opacity: 1.0,
-                strokeWidth: 3,
-                cornerRadius: 0.0,
+        this.augmentDefaultProperties({
+            x2: undefined,
+            y2: undefined,
+            filled: true,
+            color: "#4c78a8",
+            opacity: 1.0,
+            strokeWidth: 3,
+            cornerRadius: 0.0,
 
-                minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
-                minHeight: 0.5,
-                minOpacity: 1.0,
-
-                tessellationZoomThreshold: 10, // This works with genomes, but likely breaks with other data. TODO: Fix, TODO: log2
-                tessellationTiles: 35, // TODO: Tiles per unit (bp)
-            })
-        );
+            minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
+            minHeight: 0.5,
+            minOpacity: 1.0,
+        });
     }
 
+    /**
+     * @returns {import("../spec/channel.js").Channel[]}
+     */
     getAttributes() {
         return [
             "uniqueId",

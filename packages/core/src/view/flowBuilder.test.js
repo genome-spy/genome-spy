@@ -23,7 +23,7 @@ function byPath(root, path) {
     return root;
 }
 
-/** @type {import("../spec/mark.js").MarkConfigAndType} */
+/** @type {import("../spec/mark.js").MarkProps} */
 const mark = {
     type: "rect",
     tooltip: null,

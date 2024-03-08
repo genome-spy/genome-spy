@@ -22,14 +22,19 @@ import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 
 /**
  *
- * @type {Object.<string, typeof import("../marks/mark.js").default>}
+ * @type {Record<import("../spec/mark.js").MarkType, typeof import("../marks/mark.js").default>}
  * TODO: Find a proper place, make extendible
  */
 export const markTypes = {
+    // @ts-ignore TODO: fix
     point: PointMark,
+    // @ts-ignore
     rect: RectMark,
+    // @ts-ignore
     rule: RuleMark,
+    // @ts-ignore
     link: LinkMark,
+    // @ts-ignore
     text: TextMark,
 };
 

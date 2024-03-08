@@ -64,7 +64,10 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
  * @callback DrawFunction
  * @param {number} offset
  * @param {number} count
- *
+ */
+
+/**
+ * @template {MarkProps} [P=MarkProps]
  */
 export default class Mark {
     /**
@@ -146,9 +149,8 @@ export default class Mark {
         /** @type {RangeMap<any>} keep track of facet locations within the vertex array */
         this.rangeMap = new RangeMap();
 
-        // TODO: Implement https://vega.github.io/vega-lite/docs/config.html
-        /** @type {MarkProps} */
-        this.defaultProperties = {
+        // TODO: Implement config: https://vega.github.io/vega-lite/docs/config.html
+        this.defaultProperties = /** @type {P} */ ({
             get clip() {
                 // TODO: Cache once the scales have been resolved
                 // TODO: Only check channels that are used
@@ -169,22 +171,31 @@ export default class Mark {
              * This property is intended for internal usage.
              */
             minBufferSize: 0,
-        };
+        });
 
         /**
          * A properties object that contains the configured mark properties or
          * default values as fallback.
          *
-         * TODO: Proper and comprehensive typings for mark properties
-         *
-         * @type {Partial<MarkProps>}
+         * @type {P}
          * @readonly
          */
         this.properties = coalesceProperties(
             typeof this.unitView.spec.mark == "object"
-                ? () => /** @type {MarkProps} */ (this.unitView.spec.mark)
-                : () => /** @type {MarkProps} */ ({}),
+                ? () => /** @type {P} */ (this.unitView.spec.mark)
+                : () => /** @type {P} */ ({}),
             () => this.defaultProperties
+        );
+    }
+
+    /**
+     * @param {Partial<P>} props
+     * @protected
+     */
+    augmentDefaultProperties(props) {
+        Object.defineProperties(
+            this.defaultProperties,
+            Object.getOwnPropertyDescriptors(props)
         );
     }
 
@@ -195,7 +206,8 @@ export default class Mark {
     /**
      * Returns attribute info for WebGL attributes that match visual channels.
      *
-     * @returns {string[]}
+     * @returns {import("../spec/channel.js").Channel[]}
+     * @protected
      */
     getAttributes() {
         // override
@@ -251,7 +263,7 @@ export default class Mark {
      * Handles dynamic properties that are not bound to uniforms but need
      * to trigger a graphics update, i.e., rebuild the vertex buffer.
      *
-     * @param {(keyof MarkProps)[]} props
+     * @param {(keyof P)[]} props
      * @protected
      */
     setupExprRefsNeedingGraphicsUpdate(props) {

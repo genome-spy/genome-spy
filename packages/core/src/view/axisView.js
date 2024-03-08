@@ -594,7 +594,7 @@ export function createGenomeAxis(axisProps, type) {
         if (axisProps.chromLabels) {
             chromLayerSpec.layer.push(createChromosomeLabels());
 
-            /** @type {import("../spec/mark.js").MarkProps} */
+            /** @type {import("../spec/mark.js").TextProps} */
             let labelMarkSpec;
 
             // TODO: Simplify the following mess
@@ -608,7 +608,7 @@ export function createGenomeAxis(axisProps, type) {
                                 /** @type {import("../spec/view.js").UnitSpec} */ view
                             ) => {
                                 labelMarkSpec =
-                                    /** @type {import("../spec/mark.js").MarkProps} */ (
+                                    /** @type {import("../spec/mark.js").TextProps} */ (
                                         view.mark
                                     );
                             }

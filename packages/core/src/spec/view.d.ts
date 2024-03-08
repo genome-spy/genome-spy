@@ -6,12 +6,7 @@ import {
     FacetFieldDef,
     PrimaryPositionalChannel,
 } from "./channel.js";
-import {
-    FillAndStrokeProps,
-    MarkConfigAndType,
-    MarkType,
-    RectProps,
-} from "./mark.js";
+import { FillAndStrokeProps, MarkProps, MarkType, RectProps } from "./mark.js";
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { SampleSpec } from "./sampleView.js";
@@ -166,7 +161,7 @@ export interface ViewSpecBase extends ResolveSpec {
 
 export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
     view?: ViewBackground;
-    mark: MarkType | MarkConfigAndType;
+    mark: MarkType | MarkProps;
 }
 
 export interface AggregateSamplesSpec {

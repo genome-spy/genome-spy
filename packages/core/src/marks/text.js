@@ -37,6 +37,8 @@ const baselines = {
  * - Valve's SDF paper: https://doi.org/10.1145/1281500.1281665
  * - Multi-channel SDF fonts: https://github.com/Chlumsky/msdfgen
  * - Google's web fonts as SDFs: https://github.com/etiennepinchon/aframe-fonts
+ *
+ * @extends {Mark<import("../spec/mark.js").TextProps>}
  */
 export default class TextMark extends Mark {
     /**
@@ -48,52 +50,49 @@ export default class TextMark extends Mark {
     constructor(unitView) {
         super(unitView);
 
-        Object.defineProperties(
-            this.defaultProperties,
-            Object.getOwnPropertyDescriptors({
-                x: 0.5,
-                y: 0.5,
-                x2: undefined,
-                y2: undefined,
-                text: "",
-                size: 11.0,
-                color: "black",
-                opacity: 1.0,
+        this.augmentDefaultProperties({
+            x: 0.5,
+            y: 0.5,
+            x2: undefined,
+            y2: undefined,
+            text: "",
+            size: 11.0,
+            color: "black",
+            opacity: 1.0,
 
-                // Use the built-in default
-                font: undefined,
-                fontStyle: undefined,
-                fontWeight: undefined,
+            // Use the built-in default
+            font: undefined,
+            fontStyle: undefined,
+            fontWeight: undefined,
 
-                align: "center",
-                baseline: "middle",
-                dx: 0,
-                dy: 0,
-                angle: 0,
+            align: "center",
+            baseline: "middle",
+            dx: 0,
+            dy: 0,
+            angle: 0,
 
-                /** When only primary channel is defined with band/locus scale */
-                fitToBand: false,
+            /** When only primary channel is defined with band/locus scale */
+            fitToBand: false,
 
-                squeeze: true,
-                paddingX: 0,
-                paddingY: 0,
-                flushX: true,
-                flushY: true,
+            squeeze: true,
+            paddingX: 0,
+            paddingY: 0,
+            flushX: true,
+            flushY: true,
 
-                /** Stretch letters so that they can be used with sequence logos etc... */
-                logoLetters: false,
+            /** Stretch letters so that they can be used with sequence logos etc... */
+            logoLetters: false,
 
-                viewportEdgeFadeWidthTop: 0,
-                viewportEdgeFadeWidthRight: 0,
-                viewportEdgeFadeWidthBottom: 0,
-                viewportEdgeFadeWidthLeft: 0,
+            viewportEdgeFadeWidthTop: 0,
+            viewportEdgeFadeWidthRight: 0,
+            viewportEdgeFadeWidthBottom: 0,
+            viewportEdgeFadeWidthLeft: 0,
 
-                viewportEdgeFadeDistanceTop: -Infinity,
-                viewportEdgeFadeDistanceRight: -Infinity,
-                viewportEdgeFadeDistanceBottom: -Infinity,
-                viewportEdgeFadeDistanceLeft: -Infinity,
-            })
-        );
+            viewportEdgeFadeDistanceTop: -Infinity,
+            viewportEdgeFadeDistanceRight: -Infinity,
+            viewportEdgeFadeDistanceBottom: -Infinity,
+            viewportEdgeFadeDistanceLeft: -Infinity,
+        });
 
         this.font = this.properties.font
             ? unitView.context.fontManager.getFont(
@@ -110,6 +109,9 @@ export default class TextMark extends Mark {
         ]);
     }
 
+    /**
+     * @returns {import("../spec/channel.js").Channel[]}
+     */
     getAttributes() {
         return [
             "uniqueId",

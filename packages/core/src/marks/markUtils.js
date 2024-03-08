@@ -123,3 +123,43 @@ export function fixFill(encoding, filled) {
         }
     }
 }
+
+/**
+ * @param {import("../spec/mark.js").MarkProps} props
+ * @returns {props is import("../spec/mark.js").PointProps}
+ */
+export function isPointProps(props) {
+    return props.type === "point";
+}
+
+/**
+ * @param {import("../spec/mark.js").MarkProps} props
+ * @returns {props is import("../spec/mark.js").RectProps}
+ */
+export function isRectProps(props) {
+    return props.type === "point";
+}
+
+/**
+ * @param {import("../spec/mark.js").MarkProps} props
+ * @returns {props is import("../spec/mark.js").RuleProps}
+ */
+export function isRuleProps(props) {
+    return props.type === "point";
+}
+
+/**
+ * @param {import("../spec/mark.js").MarkProps} props
+ * @returns {props is import("../spec/mark.js").TextProps}
+ */
+export function isTextProps(props) {
+    return props.type === "point";
+}
+
+/**
+ * @param {import("../spec/mark.js").MarkProps} props
+ * @returns {props is import("../spec/mark.js").LinkProps}
+ */
+export function isLinkProps(props) {
+    return props.type === "point";
+}

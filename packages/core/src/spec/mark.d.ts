@@ -5,17 +5,91 @@ import { Tooltip } from "./tooltip.js";
 
 export type MarkType = "rect" | "point" | "rule" | "text" | "link";
 
+export interface MarkPropsBase {
+    type: MarkType;
+
+    // Channels.
+
+    x?: number | ExprRef;
+    y?: number | ExprRef;
+    color?: string | ExprRef;
+    opacity?: number | ExprRef;
+
+    /**
+     * If true, the mark is clipped to the UnitView's rectangle. By default, clipping
+     * is enabled for marks that have zoomable positional scales.
+     */
+    clip?: boolean | "never";
+
+    /**
+     * Offsets of the `x` and `x2` coordinates in pixels. The offset is applied
+     * after the viewport scaling and translation.
+     *
+     * **Default value:** `0`
+     */
+    xOffset?: number;
+
+    /**
+     * Offsets of the `y` and `y2` coordinates in pixels. The offset is applied
+     * after the viewport scaling and translation.
+     *
+     * **Default value:** `0`
+     */
+    yOffset?: number;
+
+    /**
+     * Minimum size for WebGL buffers (number of data items).
+     * Allows for using `bufferSubData()` to update graphics.
+     *
+     * This property is intended for internal use.
+     *
+     * @internal
+     */
+    minBufferSize?: number;
+
+    /**
+     * Tooltip handler. If `null`, no tooltip is shown.
+     */
+    tooltip?: Tooltip;
+}
+
+export interface SizeProps {
+    /**
+     * Stroke width of `"link"` and `"rule"` marks in pixels, the area of the
+     * bounding square of `"point"` mark, or the font size of `"text"` mark.
+     */
+    size?: number | ExprRef;
+}
+
 export interface FillAndStrokeProps {
-    /** The fill color */
+    /**
+     * The stroke width in pixels.
+     */
+    strokeWidth?: number | ExprRef;
+
+    /**
+     * Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`).
+     */
+    filled?: boolean;
+
+    /**
+     * The fill color
+     */
     fill?: string | ExprRef;
 
-    /** The fill opacity. Value between [0, 1]. */
+    /**
+     * The fill opacity. Value between [0, 1].
+     */
     fillOpacity?: number | ExprRef;
 
-    /** The stroke color */
+    /**
+     * The stroke color
+     */
     stroke?: string | ExprRef;
 
-    /** The stroke opacity. Value between [0, 1]. */
+    /**
+     * The stroke opacity. Value between [0, 1].
+     */
     strokeOpacity?: number | ExprRef;
 }
 
@@ -31,6 +105,17 @@ export interface AngleProps {
      * **Default value:** `0`
      */
     angle?: number | ExprRef;
+}
+
+export interface MinPickingSizeProps {
+    /**
+     * The minimum picking size invisibly increases the stroke width or point diameter
+     * of marks when pointing them with the mouse cursor, making it easier to select them.
+     * The valus is the minimum size in pixels.
+     *
+     * **Default value:** `3.0` for `"link"` and `2.0` for `"point"`
+     */
+    minPickingSize?: number | ExprRef;
 }
 
 /**
@@ -49,7 +134,12 @@ export interface ViewportEdgeFadeProps {
     viewportEdgeFadeDistanceLeft?: number;
 }
 
-export interface RectProps extends SecondaryPositionProps {
+export interface RectProps
+    extends MarkPropsBase,
+        SecondaryPositionProps,
+        FillAndStrokeProps {
+    type: "rect";
+
     /**
      * Clamps the minimum size-dependent opacity. The property does not affect the
      * `opacity` channel. Valid values are between `0` and `1`.
@@ -120,7 +210,12 @@ export interface RectProps extends SecondaryPositionProps {
     cornerRadiusBottomRight?: number | ExprRef;
 }
 
-export interface RuleProps extends SecondaryPositionProps {
+export interface RuleProps
+    extends MarkPropsBase,
+        SecondaryPositionProps,
+        SizeProps {
+    type: "rule";
+
     /**
      * The minimum length of the rule in pixels. Use this property to ensure that
      * very short ranged rules remain visible even when the user zooms out.
@@ -152,9 +247,13 @@ export interface RuleProps extends SecondaryPositionProps {
 }
 
 export interface TextProps
-    extends SecondaryPositionProps,
+    extends MarkPropsBase,
+        SecondaryPositionProps,
         AngleProps,
-        ViewportEdgeFadeProps {
+        ViewportEdgeFadeProps,
+        SizeProps {
+    type: "text";
+
     /**
      * The text to display. The format of numeric data can be customized by
      * setting a [format specifier](https://github.com/d3/d3-format#locale_format)
@@ -276,7 +375,14 @@ export interface TextProps
     logoLetters?: boolean | ExprRef;
 }
 
-export interface PointProps extends AngleProps {
+export interface PointProps
+    extends MarkPropsBase,
+        FillAndStrokeProps,
+        AngleProps,
+        SizeProps,
+        MinPickingSizeProps {
+    type: "point";
+
     /**
      * One of `"circle"`, `"square"`, `"cross"`, `"diamond"`, `"triangle-up"`,
      * `"triangle-down"`, `"triangle-right"`, or `"triangle-left"`.
@@ -318,7 +424,13 @@ export interface PointProps extends AngleProps {
     geometricZoomBound?: number;
 }
 
-export interface LinkProps extends SecondaryPositionProps {
+export interface LinkProps
+    extends MarkPropsBase,
+        SecondaryPositionProps,
+        SizeProps,
+        MinPickingSizeProps {
+    type: "link";
+
     /**
      * The shape of the link path. Either `"arc"`, `"diagonal"`, `"line"`, or `"dome"`.
      *
@@ -394,78 +506,11 @@ export interface LinkProps extends SecondaryPositionProps {
      * **Default value:** `true`
      */
     noFadingOnPointSelection?: boolean | ExprRef;
-
-    /**
-     * The minimum picking size invisibly increases the stroke width or point diameter
-     * of marks when pointing them with the mouse cursor, making it easier to select them.
-     * The valus is the minimum size in pixels.
-     *
-     * **Default value:** `3.0` for `"link"` and `2.0` for `"point"`
-     */
-    minPickingSize?: number | ExprRef;
 }
 
-// TODO: Mark-specific configs
-export interface MarkProps
-    extends PointProps,
-        RectProps,
-        TextProps,
-        RuleProps,
-        LinkProps,
-        FillAndStrokeProps {
-    // Channels.
-    x?: number | ExprRef;
-    y?: number | ExprRef;
-    color?: string | ExprRef;
-    opacity?: number | ExprRef;
-    size?: number | ExprRef;
-
-    /**
-     * Whether the `color` represents the `fill` color (`true`) or the `stroke` color (`false`).
-     */
-    filled?: boolean;
-
-    /**
-     * If true, the mark is clipped to the UnitView's rectangle. By default, clipping
-     * is enabled for marks that have zoomable positional scales.
-     */
-    clip?: boolean | "never";
-
-    /**
-     * Offsets of the `x` and `x2` coordinates in pixels. The offset is applied
-     * after the viewport scaling and translation.
-     *
-     * **Default value:** `0`
-     */
-    xOffset?: number;
-
-    /**
-     * Offsets of the `y` and `y2` coordinates in pixels. The offset is applied
-     * after the viewport scaling and translation.
-     *
-     * **Default value:** `0`
-     */
-    yOffset?: number;
-
-    /**
-     * TODO
-     */
-    tooltip?: Tooltip;
-
-    /**
-     * The stroke width in pixels.
-     */
-    strokeWidth?: number | ExprRef;
-
-    /**
-     * Minimum size for WebGL buffers (number of data items).
-     * Allows for using `bufferSubData()` to update graphics.
-     *
-     * This property is intended for internal use.
-     */
-    minBufferSize?: number;
-}
-
-export interface MarkConfigAndType extends MarkProps {
-    type: MarkType;
-}
+export type MarkProps =
+    | RectProps
+    | TextProps
+    | RuleProps
+    | LinkProps
+    | PointProps;

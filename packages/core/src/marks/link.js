@@ -10,6 +10,9 @@ import { isChannelDefWithScale } from "../encoder/encoder.js";
 const LINK_SHAPES = ["arc", "dome", "diagonal", "line"];
 const ORIENTS = ["vertical", "horizontal"];
 
+/**
+ * @extends {Mark<import("../spec/mark.js").LinkProps>}
+ */
 export default class LinkMark extends Mark {
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -17,30 +20,27 @@ export default class LinkMark extends Mark {
     constructor(unitView) {
         super(unitView);
 
-        Object.defineProperties(
-            this.defaultProperties,
-            Object.getOwnPropertyDescriptors({
-                x: 0.0,
-                x2: undefined,
-                y: 0.0,
-                y2: undefined,
-                size: 1.0,
-                color: "black",
-                opacity: 1.0,
+        this.augmentDefaultProperties({
+            x: 0.0,
+            x2: undefined,
+            y: 0.0,
+            y2: undefined,
+            size: 1.0,
+            color: "black",
+            opacity: 1.0,
 
-                segments: 101, // Performance is affected more by the fill rate, i.e. number of pixels
-                arcHeightFactor: 1.0,
-                minArcHeight: 1.5,
-                minPickingSize: 3.0,
-                clampApex: false,
-                maxChordLength: 50000,
-                arcFadingDistance: false,
-                noFadingOnPointSelection: true,
+            segments: 101, // Performance is affected more by the fill rate, i.e. number of pixels
+            arcHeightFactor: 1.0,
+            minArcHeight: 1.5,
+            minPickingSize: 3.0,
+            clampApex: false,
+            maxChordLength: 50000,
+            arcFadingDistance: false,
+            noFadingOnPointSelection: true,
 
-                linkShape: "arc",
-                orient: "vertical",
-            })
-        );
+            linkShape: "arc",
+            orient: "vertical",
+        });
 
         /**
          * Only available if "WebGL Draft Extensions" is enabled in chrome://flags
@@ -53,6 +53,9 @@ export default class LinkMark extends Mark {
         );
     }
 
+    /**
+     * @returns {import("../spec/channel.js").Channel[]}
+     */
     getAttributes() {
         return [
             "uniqueId",
@@ -62,7 +65,6 @@ export default class LinkMark extends Mark {
             "y",
             "y2",
             "size",
-            "height",
             "color",
             "opacity",
         ];

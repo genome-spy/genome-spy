@@ -835,7 +835,7 @@ export function createBackgroundStroke(viewBackground) {
             size: viewBackground.strokeWidth ?? 1.0,
             color: viewBackground.stroke ?? "lightgray",
             strokeCap: "square",
-            strokeOpacity: viewBackground.strokeOpacity ?? 1.0,
+            opacity: viewBackground.strokeOpacity ?? 1.0,
             type: "rule",
             clip: false,
             tooltip: null,

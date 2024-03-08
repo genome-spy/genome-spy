@@ -17,6 +17,9 @@ import { fixFill, fixStroke } from "./markUtils.js";
 /** @type {Record<string, import("../spec/channel.js").ChannelDef>} */
 const defaultEncoding = {};
 
+/**
+ * @extends {Mark<import("../spec/mark.js").PointProps>}
+ */
 export default class PointMark extends Mark {
     #semanticZoomFraction = () => 0;
 
@@ -26,30 +29,28 @@ export default class PointMark extends Mark {
     constructor(unitView) {
         super(unitView);
 
-        Object.defineProperties(
-            this.defaultProperties,
-            Object.getOwnPropertyDescriptors({
-                x: 0.5,
-                y: 0.5,
-                color: "#4c78a8",
-                filled: true,
-                opacity: 1.0,
-                size: 100.0,
-                semanticScore: 0.0, // TODO: Should be datum instead of value. But needs fixing.
-                shape: "circle",
-                strokeWidth: 2.0,
-                fillGradientStrength: 0.0,
-                dx: 0,
-                dy: 0,
-                angle: 0,
+        this.augmentDefaultProperties({
+            x: 0.5,
+            y: 0.5,
+            color: "#4c78a8",
+            filled: true,
+            opacity: 1.0,
+            size: 100.0,
+            // @ts-expect-error - TODO: Should be datum instead of value. But needs fixing.
+            semanticScore: 0.0,
+            shape: "circle",
+            strokeWidth: 2.0,
+            fillGradientStrength: 0.0,
+            dx: 0,
+            dy: 0,
+            angle: 0,
 
-                sampleFacetPadding: 0.1,
+            sampleFacetPadding: 0.1,
 
-                semanticZoomFraction: 0.02,
+            semanticZoomFraction: 0.02,
 
-                minPickingSize: 2.0,
-            })
-        );
+            minPickingSize: 2.0,
+        });
 
         // TODO: This mess should be simplified
         // TODO: createExpression should accept constant values or ExprRefs and allow
@@ -70,9 +71,11 @@ export default class PointMark extends Mark {
         }
     }
 
+    /**
+     * @returns {import("../spec/channel.js").Channel[]}
+     */
     getAttributes() {
         return [
-            "inwardStroke",
             "uniqueId",
             "facetIndex",
             "x",
@@ -81,7 +84,6 @@ export default class PointMark extends Mark {
             "semanticScore",
             "shape",
             "strokeWidth",
-            "gradientStrength",
             "dx",
             "dy",
             "fill",

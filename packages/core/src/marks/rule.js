@@ -12,6 +12,9 @@ import COMMON_SHADER from "./rule.common.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 
+/**
+ * @extends {Mark<import("../spec/mark.js").RuleProps>}
+ */
 export default class RuleMark extends Mark {
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -21,24 +24,24 @@ export default class RuleMark extends Mark {
 
         this.dashTextureSize = 0;
 
-        Object.defineProperties(
-            this.defaultProperties,
-            Object.getOwnPropertyDescriptors({
-                x2: undefined,
-                y2: undefined,
-                size: 1,
-                color: "black",
-                opacity: 1.0,
+        this.augmentDefaultProperties({
+            x2: undefined,
+            y2: undefined,
+            size: 1,
+            color: "black",
+            opacity: 1.0,
 
-                minLength: 0.0,
-                /** @type {number[]} */
-                strokeDash: null,
-                strokeDashOffset: 0,
-                strokeCap: "butt",
-            })
-        );
+            minLength: 0.0,
+            /** @type {number[]} */
+            strokeDash: null,
+            strokeDashOffset: 0,
+            strokeCap: "butt",
+        });
     }
 
+    /**
+     * @returns {import("../spec/channel.js").Channel[]}
+     */
     getAttributes() {
         return [
             "uniqueId",
