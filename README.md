@@ -4,7 +4,7 @@
 
 ![npm version](https://img.shields.io/npm/v/@genome-spy/core)
 
-GenomeSpy is a visualization toolkit for genomic (and other) data. It has a [Vega-Lite](https://vega.github.io/vega-lite/) inspired visualization grammar and high-performance, WebGL-powered graphics rendering.
+GenomeSpy is a visualization toolkit for genomic (and other) data. It has a [Vega-Lite](https://vega.github.io/vega-lite/) inspired visualization grammar and a high-performance, WebGL-powered graphics renderer.
 
 The software is still work in progress. Documentation and examples for the current version can be found at https://genomespy.app/
 
@@ -53,7 +53,7 @@ research and innovation programme under grant agreement No. 965193
 ([RESCUER](https://www.rescuer.uio.no/)), the Sigrid Jusélius Foundation and
 the Cancer Foundation Finland.
 
-Contains code from:
+Contains some code copied and adapted from the following MIT-licensed projects:
 
 - Vega and Vega-Lite ([LICENSE](https://github.com/vega/vega-lite/blob/master/LICENSE))
 - TWGL ([LICENSE](https://github.com/greggman/twgl.js/blob/master/LICENSE.md))
