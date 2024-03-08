@@ -139,7 +139,7 @@ export default class LinkMark extends Mark {
         this.registerMarkUniformValue(
             "uSegmentBreaks",
             props.segments,
-            (x) => x + 1
+            (x) => x
         );
         this.registerMarkUniformValue(
             "uNoFadingOnPointSelection",
@@ -207,6 +207,14 @@ export default class LinkMark extends Mark {
     render(options) {
         const gl = this.gl;
 
+        const getInstanceVertexCount = () => {
+            const breaks = /** @type {Float32Array} */ (
+                this.markUniformInfo.uniforms.uSegmentBreaks
+            )[0];
+
+            return (breaks + 1) * 2;
+        };
+
         return this._baseInstanceExt
             ? this.createRenderCallback((offset, count) => {
                   // Using the following extension, which, however, is only a draft and
@@ -216,9 +224,7 @@ export default class LinkMark extends Mark {
                   this._baseInstanceExt.drawArraysInstancedBaseInstanceWEBGL(
                       gl.TRIANGLE_STRIP,
                       0,
-                      /** @type {Float32Array} */ (
-                          this.markUniformInfo.uniforms.uSegmentBreaks
-                      )[0] * 2,
+                      getInstanceVertexCount(),
                       count,
                       offset
                   );
@@ -254,9 +260,7 @@ export default class LinkMark extends Mark {
                   gl.drawArraysInstanced(
                       gl.TRIANGLE_STRIP,
                       0,
-                      /** @type {Float32Array} */ (
-                          this.markUniformInfo.uniforms.uSegmentBreaks
-                      )[0] * 2,
+                      getInstanceVertexCount(),
                       count
                   );
               }, options);
