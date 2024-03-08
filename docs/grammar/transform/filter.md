@@ -5,7 +5,7 @@ The `"filter"` transform removes data objects based on a predicate
 
 ## Parameters
 
-SCHEMA FilterParams
+SCHEMA ExprFilterParams
 
 ## Example
 
