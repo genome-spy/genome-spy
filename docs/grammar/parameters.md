@@ -6,9 +6,10 @@
 
 Parameters enable various dynamic behaviors in GenomeSpy visualizations, such as
 interactive selections, conditional encoding, and data filtering with
-[expressions](./expressions.md). They are a fundamental concept in GenomeSpy's
-visualization grammar, heavily inspired by the
-[parameter](https://vega.github.io/vega-lite/docs/parameter.html) concept from
+[expressions](./expressions.md). They also enable parameterization when
+[importing](./import.md) specification fragments from external files or named
+templates. Parameters in GenomeSpy are heavily inspired by the
+[parameters](https://vega.github.io/vega-lite/docs/parameter.html) concept of
 Vega-Lite.
 
 ## Examples
