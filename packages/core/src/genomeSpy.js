@@ -384,7 +384,7 @@ export default class GenomeSpy {
         });
         canvasWrapper.appendChild(this.loadingIndicatorsElement);
 
-        this.tooltip = new Tooltip(canvasWrapper);
+        this.tooltip = new Tooltip(this.container);
 
         this.loadingMessageElement
             .querySelector(".message")
