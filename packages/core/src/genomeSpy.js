@@ -10,7 +10,6 @@ import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
     calculateCanvasSize,
-    calculateViewRootSize,
 } from "./view/viewUtils.js";
 import UnitView from "./view/unitView.js";
 
@@ -365,7 +364,7 @@ export default class GenomeSpy {
             canvasWrapper,
             () =>
                 this.viewRoot
-                    ? calculateCanvasSize(calculateViewRootSize(this.viewRoot))
+                    ? calculateCanvasSize(this.viewRoot.getSize())
                     : { width: undefined, height: undefined },
             this.spec.background,
             { powerPreference: this.options.powerPreference ?? "default" }
@@ -542,7 +541,7 @@ export default class GenomeSpy {
         );
 
         this.#canvasWrapper.style.flexGrow =
-            calculateViewRootSize(this.viewRoot).height.grow > 0 ? "1" : "0";
+            this.viewRoot.getSize().height.grow > 0 ? "1" : "0";
 
         this.#initializeParameterBindings();
 

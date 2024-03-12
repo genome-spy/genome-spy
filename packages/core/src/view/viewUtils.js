@@ -245,13 +245,6 @@ export function findUniqueViewNames(root) {
 export const isCustomViewName = (name) => !/^(layer|concat)\d+$/.test(name);
 
 /**
- * @param {View} viewRoot
- */
-export function calculateViewRootSize(viewRoot) {
-    return viewRoot.getSize().addPadding(viewRoot.getOverhang());
-}
-
-/**
  * @param {import("./layout/flexLayout.js").FlexDimensions} viewRootSize
  */
 export function calculateCanvasSize(viewRootSize) {
