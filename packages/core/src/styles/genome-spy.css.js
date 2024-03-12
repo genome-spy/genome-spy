@@ -11,6 +11,7 @@ const css = `
   overflow: hidden;
 }
 .genome-spy canvas {
+  display: block;
   transform: scale(1, 1);
   opacity: 1;
   transition: transform 0.6s, opacity 0.6s;
