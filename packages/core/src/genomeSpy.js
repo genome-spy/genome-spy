@@ -288,6 +288,9 @@ export default class GenomeSpy {
         // Do some hacks to stop css animations of the loading indicators.
         // Otherwise they fire animation frames even when their opacity is zero.
         // TODO: Instead of this, replace the animated spinners with static images.
+        // Or even better, once more widely supported, use `allow-discrete`
+        // https://developer.mozilla.org/en-US/docs/Web/CSS/transition-behavior
+        // to enable transition of the display property.
         if (isSomethingVisible()) {
             this.loadingIndicatorsElement.style.display = "block";
         } else {
