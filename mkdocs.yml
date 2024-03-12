@@ -11,6 +11,7 @@ theme:
         text: Lato
 plugins:
     - social
+    - search
 markdown_extensions:
     - markdown.extensions.def_list
     - pymdownx.magiclink
