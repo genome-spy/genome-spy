@@ -6,47 +6,20 @@ import re
 from markdown.preprocessors import Preprocessor
 from markdown.extensions import Extension
 
+docs_baseurl = 'https://genomespy.app/docs'
+
 types_with_links = {
-    'ExprRef': 'https://genomespy.app/docs/grammar/expressions/'
+    'ExprRef': '/grammar/expressions/',
+    'SizeDef': '/grammar/composition/concat/#sizedef',
+    'Step': '/grammar/composition/concat/#child-sizing',
+    'VariableParameter': '/grammar/parameters/',
+    'SelectionParameter': '/grammar/parameters/',
+    'UrlImport': '/grammar/import/#urlimport',
+    'TemplateImport': '/grammar/import/#templateimport',
+    'default': '/grammar/types/'
 }
 
 refPattern = re.compile('^#/definitions/(\\w+)$')
-
-def propTypeToString(propType):
-    const = propType.get('const')
-    type = propType.get('type')
-    ref = propType.get('$ref')
-
-    if const:
-        if type == 'string':
-            return '`"{}"`'.format(const)
-        else:
-            return '`{}`'.format(const)
-    if type:
-        if type == 'array':
-            items = propType.get('items')
-            if items:
-                if propType.get('minItems') == 2 and propType.get('maxItems') == 2:
-                    return '[{}, {}]'.format(propTypeToString(items), propTypeToString(items))
-                else:
-                    return propTypeToString(items) + '[]'
-            else:
-                return type
-        else:
-            return str(type)
-    if ref:
-        m = refPattern.match(ref)
-        if m:
-            refType = m.group(1)
-            if refType in types_with_links:
-                return '[{}]({})'.format(refType, types_with_links[refType])
-            else:
-                return '`{}`'.format(refType)
-    return str(propType)
-
-def propTypesToString(propTypes):
-    return ' | '.join([propTypeToString(p) for p in propTypes])
-
 class MyPreprocessor(Preprocessor):
     def __init__(self, schema):
         self.schema = schema
@@ -63,6 +36,59 @@ class MyPreprocessor(Preprocessor):
 
         return new_lines
 
+
+    def refToString(self, ref):
+        m = refPattern.match(ref)
+        if m:
+            type_name = m.group(1)
+            ref_type = self.schema['definitions'][type_name]
+            any_of = ref_type.get('anyOf')
+            enum = ref_type.get('enum')
+            type = ref_type.get('type')
+
+            if any_of:
+                return self.propTypesToString(any_of)
+            if enum:
+                if type == 'string':
+                    return ' | '.join(['`"{}"`'.format(e) for e in enum])
+                else:
+                    return ' | '.join(['`{}`'.format(e) for e in enum])
+            if type_name in types_with_links:
+                return '[{}]({})'.format(type_name, docs_baseurl + types_with_links[type_name])
+            else:
+                return '[{}]({})'.format(type_name, docs_baseurl + types_with_links['default'])
+        return ref
+
+    def propTypeToString(self, prop_type):
+        const = prop_type.get('const')
+        type = prop_type.get('type')
+        ref = prop_type.get('$ref')
+
+        if const:
+            if type == 'string':
+                return '`"{}"`'.format(const)
+            else:
+                return '`{}`'.format(const)
+
+        if type:
+            if type == 'array':
+                items = prop_type.get('items')
+                if items:
+                    if prop_type.get('minItems') == 2 and prop_type.get('maxItems') == 2:
+                        return '[{}, {}]'.format(self.propTypeToString(items), self.propTypeToString(items))
+                    else:
+                        return self.propTypeToString(items) + '[]'
+                else:
+                    return type
+            else:
+                return str(type)
+        if ref:
+            return self.refToString(ref)
+        return str(prop_type)
+
+    def propTypesToString(self, propTypes):
+        return ' | '.join([self.propTypeToString(p) for p in propTypes])
+
     def getType(self, type_name):
         type = self.schema['definitions'][type_name]
         if not type:
@@ -70,20 +96,32 @@ class MyPreprocessor(Preprocessor):
         
         lines = []
 
-        requiredFields = type.get('required', [])
+        required_fields = type.get('required', [])
 
-        properties = type['properties']
+        anyOf = type.get('anyOf')
+        if anyOf:
+            lines.append('Type: ' + self.propTypesToString(anyOf))
+            return lines
+
+        properties = type.get('properties')
+        if not properties:
+            return ['No properties']
+
         for (property, value) in properties.items():
             if value.get('const', "") != "":
                 # Skip contants such as types of transforms
                 continue
 
             dt = '`{}`'.format(property)
-            if property in requiredFields:
+            if property in required_fields:
                 dt = dt + ' <span class="required">Required</span>'
             lines.append(dt)
 
             paragraphs = value.get('description', 'TODO').split('\n\n')
+
+            ref = value.get('$ref')
+            if ref:
+                paragraphs.insert(0, 'Type: ' + self.refToString(ref))
 
             propType = value.get('type')
             if propType:
@@ -91,7 +129,7 @@ class MyPreprocessor(Preprocessor):
             
             propTypes = value.get('anyOf')
             if propTypes:
-                paragraphs.insert(0, 'Type: ' + propTypesToString(propTypes))
+                paragraphs.insert(0, 'Type: ' + self.propTypesToString(propTypes))
 
             for lineno, description_line in enumerate(paragraphs):
                 lines.append((':   ' if lineno == 0 else '    ') + description_line)

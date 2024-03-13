@@ -146,6 +146,10 @@ the remaining space is distributed in proportions of 1:2.
 
 </genome-spy-doc-embed></div>
 
+### SizeDef
+
+SCHEMA SizeDef
+
 The size may have both absolute (`px`) and proportional (`grow`) components.
 When views are nested, both the absolute and proportional sizes are added up.
 Thus, the width of the above example is `{ "px": 40, "grow": 3 }`. The spacing

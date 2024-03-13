@@ -51,66 +51,7 @@ encoded into mark instances.
 
 ### Properties
 
-`data`
-: Specifies a [data source](./data/index.md). If omitted, the data source is inherited
-from the parent view.
-
-`transform`
-: An array of [transformations](./transform/index.md) applied to the data before
-visual encoding.
-
-`mark`
-: The graphical mark presenting the data objects.
-
-`encoding`
-: Specifies how data is encoded using the visual channels.
-
-`name`
-: An internal name that can be used for referring the view. For referencing purposes,
-the name should be unique within the whole view hierarchy.
-
-`width`
-: Width of the view. Check [child sizing](./composition/concat.md#child-sizing) for details.
-
-`height`
-: Height of the view. Check [child sizing](./composition/concat.md#child-sizing) for details.
-
-`viewportWidth`
-: Width of the scrollable view. Check [child sizing](./composition/concat.md#child-sizing) for details.
-
-`viewportHeight`
-: Height of the scrollable view. Check [child sizing](./composition/concat.md#child-sizing) for details.
-
-`view`
-: View background. An object with the following [`"rect"`](./mark/rect.md) mark's properties:
-`fill`, `stroke`, `strokeWidth`, `fillOpacity`, `strokeOpacity`, and `borderRadius`.
-
-`padding`
-: Padding applied to the view. Accepts either a number reprenting pixels or a
-PaddingConfig. Example: `padding: { top: 10, right: 20, bottom: 10, left: 20 }`
-
-`title`
-: View title. Accepts a string or a
-[title specification](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/spec/title.d.ts)
-object. N.B.: Currently, GenomeSpy doesn't do bound calculation, and you need to
-manually specify proper `padding` for the view to ensure that the title is visible.
-
-`description`
-: A description of the view. Can be used for documentation. The description of the
-top-level view is shown in the toolbar of the [GenomeSpy _app_](../sample-collections/index.md).
-
-`baseUrl`
-: The base URL for relative [URL data sources](./data/index.md). The base URLs are
-inherited in the view hierarchy unless overridden with this property. By default,
-the top-level view's base URL equals to the visualization specification's base URL.
-
-`opacity`
-: Configures a static or dynamic opacity of the view. The latter enables semantic zooming. TODO: Elaborate.
-
-`visible`
-: The default visibility of the view. An invisible view is removed from the
-layout and not rendered. For context, see
-[toggleable view visibility](../sample-collections/visualizing.md#toggleable-view-visibility).
+SCHEMA UnitSpec
 
 ## View composition for more complex visualizations
 

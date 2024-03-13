@@ -65,17 +65,25 @@ export type ViewBackground = Pick<
 >;
 
 export interface ViewSpecBase extends ResolveSpec {
+    /**
+     * An internal name that can be used for referring the view. For referencing
+     * purposes, the name should be unique within the view hierarchy.
+     */
     name?: string;
 
     /**
      * Height of the view. If a number, it is interpreted as pixels.
+     * Check [child sizing](https://genomespy.app/docs/grammar/composition/concat/#child-sizing)
+     * for details.
      *
-     * **Default:** `"container"`
+     * **Default value:** `"container"`
      */
     height?: SizeDef | number | Step | "container";
 
     /**
      * Width of the view. If a number, it is interpreted as pixels.
+     * Check [child sizing](https://genomespy.app/docs/grammar/composition/concat/#child-sizing)
+     * for details.
      *
      * **Default:** `"container"`
      */
@@ -83,7 +91,8 @@ export interface ViewSpecBase extends ResolveSpec {
 
     /**
      * Optional viewport height of the view. If the view size exceeds the viewport height,
-     * it will be shown with scrollbars. This property implicitly enables clipping.
+     * it will be shown with [scrollbars](https://genomespy.app/docs/grammar/composition/concat/#scrollable-viewports).
+     * This property implicitly enables clipping.
      *
      * **Default:** `null` (same as `height`)
      */
@@ -91,38 +100,66 @@ export interface ViewSpecBase extends ResolveSpec {
 
     /**
      * Optional viewport width of the view. If the view size exceeds the viewport width,
-     * it will be shown with scrollbars. This property implicitly enables clipping.
+     * it will be shown with [scrollbars](https://genomespy.app/docs/grammar/composition/concat/#scrollable-viewports).
+     * This property implicitly enables clipping.
      *
      * **Default:** `null` (same as `width`)
      */
     viewportWidth?: SizeDef | number | "container";
 
     /**
-     * Padding in pixels.
+     * Padding applied to the view. Accepts either a number representing pixels or a
+     * PaddingConfig. Example: `padding: { top: 10, right: 20, bottom: 10, left: 20 }`
      *
-     * **Default:* `0`
+     * **Default value:** `0`
      */
     padding?: PaddingConfig;
 
     /**
-     * Dynamic variables that parameterize a visualization.
+     * Dynamic variables that [parameterize](https://genomespy.app/docs/grammar/parameters/)
+     * a visualization.
      */
     params?: Parameter[];
 
+    /**
+     * Specifies a [data source](https://genomespy.app/docs/grammar/data/).
+     * If omitted, the data source is inherited from the parent view.
+     */
     data?: Data;
+
+    /**
+     * An array of [transformations](https://genomespy.app/docs/grammar/transform/)
+     * applied to the data before visual encoding.
+     */
     transform?: TransformParams[];
+
+    /**
+     * Specifies how data are [encoded](https://genomespy.app/docs/grammar/mark/#encoding)
+     * using the visual channels.
+     */
     encoding?: Encoding;
+
+    /**
+     * View title.
+     * N.B.: Currently, GenomeSpy doesn't do bound calculation, and you need to
+     * manually specify proper padding for the view to ensure that the title is
+     * visible.
+     */
     title?: string | Title;
 
     /**
-     * A description of the view. Multiple lines can be provided as an array.
+     * A description of the view. Can be used for documentation. The description
+     * of the top-level view is shown in the toolbar of the [GenomeSpy
+     * App](https://genomespy.app/docs/sample-collections/).
      */
     description?: string | string[];
 
     /**
-     * Optional base URL for constructing request URLs. When set, all views
-     * deeper in the hierarchy inherit this base URL, using it for importing
-     * loading data and importing specifications.
+     * The base URL for relative URL data sources and URL
+     * [imports](https://genomespy.app/docs/grammar/import/#importing-from-a-url).
+     * The base URLs are inherited in the view hierarchy unless overridden with
+     * this property. By default, the top-level view's base URL equals to the
+     * visualization specification's base URL.
      */
     baseUrl?: string;
 
@@ -135,37 +172,50 @@ export interface ViewSpecBase extends ResolveSpec {
     opacity?: ViewOpacityDef;
 
     /**
-     * Visibility of the view. An invisible view is removed from the layout
-     * and not rendered.
+     * The default visibility of the view. An invisible view is removed from the
+     * layout and not rendered. For context, see [toggleable view
+     * visibility](https://genomespy.app/docs/sample-collections/visualizing/#toggleable-view-visibility).
      *
      * **Default:** `true`
      */
-    // TODO: Detach invisible views from the data flow.
     visible?: boolean;
 
     /**
-     * Is the visibility configurable interactively from the App.
+     * Is the visibility configurable interactively from the [GenomeSpy
+     * App](https://genomespy.app/docs/sample-collections/).
      * Configurability requires that the view has an explicitly specified name
-     * that is *unique* in within the view specification.
+     * that is *unique* in within the view hierarchy.
      *
      * **Default:** `false` for children of `layer`, `true` for others.
      */
     configurableVisibility?: boolean;
 
     /**
-     * Templates that can be reused within the view specification by importing
-     * them with the template key.
+     * [Templates](https://genomespy.app/docs/grammar/import/#repeating-with-named-templates)
+     * that can be reused within the view specification by importing them with the template key.
      */
     templates?: Record<string, ViewSpec>;
 }
 
 export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
+    /**
+     * The background of the view, including fill, stroke, and stroke width.
+     */
     view?: ViewBackground;
+
+    /**
+     * The graphical mark presenting the data objects.
+     */
     mark: MarkType | MarkProps;
 }
 
+// TODO: Some fancy generic typing that would make Aggregating available only
+// inside SampleSpec.
 export interface AggregateSamplesSpec {
-    // TODO: Introduce a type (UnitSpec | LayerSpec) that can ba used in SampleView and here
+    /**
+     * Specifies views that [aggregate](https://genomespy.app/docs/sample-collections/visualizing/#aggregation)
+     * multiple samples within the GenomeSpy App.
+     */
     aggregateSamples?: (UnitSpec | LayerSpec)[];
 }
 
@@ -196,6 +246,11 @@ export type ResolutionBehavior =
     | "forced";
 
 export interface ResolveSpec {
+    /**
+     * Specifies how scales and axes are
+     * [resolved](https://genomespy.app/docs/grammar/composition/#scale-and-axis-resolution)
+     * in the view hierarchy.
+     */
     resolve?: Partial<
         Record<
             ResolutionTarget,
