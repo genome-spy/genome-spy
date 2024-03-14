@@ -34,9 +34,7 @@ following assemblies are provided: `"hg38"`, `"hg19"`, `"hg18"`, `"mm10"`,
 ## Custom genomes
 
 At minimum, a custom genome needs a list of contigs and their sizes, which
-can be loaded from a `"chrom.sizes"` file or provided inline.
-[Cytoband](tracks.md#cytoband-track) and [Gene
-annotation](tracks.md#gene-annotations) tracks require additional files.
+can be loaded from a `"chrom.sizes"` file or provided within the specification.
 
 ### As files
 
@@ -56,11 +54,9 @@ The directory must have the following structure:
 
 ```
 hg99/hg99.chrom.sizes
-hg99/cytoBand.hg99.txt (optional)
-hg99/refSeq_genes_scored_compressed.hg99.txt (optional)
 ```
 
-### Inline
+### Within the Specification
 
 Example:
 
@@ -80,8 +76,6 @@ Example:
   ...
 }
 ```
-
-Cytobands and genome annotations cannot be provided inline.
 
 ## Encoding genomic coordinates
 
@@ -133,11 +127,15 @@ GenomeSpy's [`"locus"`](../grammar/scale.md#locus-scale) scale expects
 **half-open**, **zero-based** coordinates.
 
 Read more about coordinates at the [UCSC Genome Browser
-Blog](http://genome.ucsc.edu/blog/the-ucsc-genome-browser-coordinate-counting-systems/).
+Blog](https://genome-blog.gi.ucsc.edu/blog/2016/12/12/the-ucsc-genome-browser-coordinate-counting-systems/).
 
 ## Examples
 
 ### Point features
+
+Point features cover a single position on a chromosome. An example of a point
+feature is a single nucleotide variant (SNV), where a nucleotide has been
+replaced by another.
 
 <div><genome-spy-doc-embed height="80">
 
@@ -165,6 +163,10 @@ Blog](http://genome.ucsc.edu/blog/the-ucsc-genome-browser-coordinate-counting-sy
 </genome-spy-doc-embed></div>
 
 ### Segment features
+
+Segment features cover a range of positions on a chromosome. They are defined by
+their two end positions. An example of a segment feature is a copy number
+variant (CNV), where a region of the genome has been duplicated or deleted.
 
 <div><genome-spy-doc-embed height="80">
 

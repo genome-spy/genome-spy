@@ -77,8 +77,8 @@ nav:
           - Expressions: "grammar/expressions.md"
           - Parameters: "grammar/parameters.md"
           - Types: "grammar/types.md"
-
     - Working with Genomic Data:
+          - "genomic-data/index.md"
           - Genomic Coordinates: "genomic-data/genomic-coordinates.md"
           - Examples: "genomic-data/examples.md"
     - Working with Sample Collections:
