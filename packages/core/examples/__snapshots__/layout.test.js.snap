@@ -1259,7 +1259,7 @@ ViewCoords {
       "viewName": "grid1",
     },
   ],
-  "coords": "Rectangle: x: 0, y: 0, width: 1500, height: 330",
+  "coords": "Rectangle: x: 0, y: 0, width: 1500, height: 310",
   "viewName": "viewRoot",
 }
 `;
@@ -1337,7 +1337,7 @@ ViewCoords {
       "viewName": "grid0",
     },
   ],
-  "coords": "Rectangle: x: 0, y: 0, width: 304, height: 264",
+  "coords": "Rectangle: x: 0, y: 0, width: 252, height: 232",
   "viewName": "implicitRoot",
 }
 `;

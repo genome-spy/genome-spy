@@ -3,10 +3,7 @@ import { describe, expect, test } from "vitest";
 
 import DebugginViewRenderingContext from "../src/view/renderingContext/debuggingViewRenderingContext";
 import Rectangle from "../src/view/layout/rectangle";
-import {
-    calculateCanvasSize,
-    calculateViewRootSize,
-} from "../src/view/viewUtils";
+import { calculateCanvasSize } from "../src/view/viewUtils";
 
 import specFirst from "./first.json";
 import specPoint2D from "./point2d.json";
@@ -30,7 +27,7 @@ async function specToLayout(spec) {
     });
     const renderingContext = new DebugginViewRenderingContext({});
 
-    const canvasSize = calculateCanvasSize(calculateViewRootSize(view));
+    const canvasSize = calculateCanvasSize(view.getSize());
     const rect = Rectangle.create(
         0,
         0,
