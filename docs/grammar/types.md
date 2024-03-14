@@ -12,6 +12,10 @@ SCHEMA CompareParams
 
 SCHEMA DynamicOpacity
 
+## ExprRef
+
+SCHEMA ExprRef
+
 ## Paddings
 
 SCHEMA Paddings
