@@ -1148,13 +1148,16 @@ export default class Mark {
     /**
      * @param {DrawFunction} draw A function that draws a range of vertices
      * @param {import("./mark.js").MarkRenderingOptions} options
+     * @returns {function():void}
      */
     createRenderCallback(draw, options) {
         if (!this.bufferInfo) {
-            throw new ViewError(
-                `${this.getType()} mark has no data. This is bug.`,
-                this.unitView
-            );
+            // This happens if the layout is computed before the data flow has propagated.
+            // However, it's not a big deal, because this will be called again at the end
+            // of the initialization process.
+
+            // Return no operation
+            return () => undefined;
         }
 
         // eslint-disable-next-line consistent-this
