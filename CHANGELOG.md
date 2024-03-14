@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.50.1](https://github.com/genome-spy/genome-spy/compare/v0.50.0...v0.50.1) (2024-03-14)
+
+
+### Bug Fixes
+
+* **core:** canvas sizing when it doesn't fill the whole container ([393cab5](https://github.com/genome-spy/genome-spy/commit/393cab50501f6c868120d4d40f5ea25316e3416c))
+* **core:** clipped tooltip ([e48ad69](https://github.com/genome-spy/genome-spy/commit/e48ad698975bf7925750c6e4e91e06fcaeb21f30))
+* **core:** silence the "mark has no data" error ([30b251b](https://github.com/genome-spy/genome-spy/commit/30b251b7d526d8de03a4d5aaae0b8f087f729f39)), closes [#247](https://github.com/genome-spy/genome-spy/issues/247)
+
+
+
+
+
 # [0.50.0](https://github.com/genome-spy/genome-spy/compare/v0.49.0...v0.50.0) (2024-03-08)
 
 
