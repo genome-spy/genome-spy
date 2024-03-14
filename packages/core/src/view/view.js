@@ -732,7 +732,7 @@ function isDynamicOpacity(opacity) {
  * @returns {function(number):number}
  */
 function createViewOpacityFunction(view) {
-    const opacityDef = view.spec.opacity;
+    const opacityDef = "opacity" in view.spec ? view.spec.opacity : undefined;
 
     if (opacityDef !== undefined) {
         if (isNumber(opacityDef)) {
