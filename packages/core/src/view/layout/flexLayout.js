@@ -228,6 +228,15 @@ export class FlexDimensions {
             }
         );
     }
+
+    /**
+     * Returns true if either of the dimensions is growing
+     *
+     * @returns {boolean}
+     */
+    isGrowing() {
+        return !!(this.width.grow || this.height.grow);
+    }
 }
 
 /**

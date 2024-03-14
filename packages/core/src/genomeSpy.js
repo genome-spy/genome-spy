@@ -318,10 +318,12 @@ export default class GenomeSpy {
             this.renderAll();
         };
 
-        // TODO: Size should be observed only if the content is not absolutely sized
-        const resizeObserver = new ResizeObserver(resizeCallback);
-        resizeObserver.observe(this.container);
-        this._destructionCallbacks.push(() => resizeObserver.disconnect());
+        if (this.viewRoot.getSize().isGrowing()) {
+            // TODO: Size should be observed only if the content is not absolutely sized
+            const resizeObserver = new ResizeObserver(resizeCallback);
+            resizeObserver.observe(this.container);
+            this._destructionCallbacks.push(() => resizeObserver.disconnect());
+        }
 
         /** @type {() => void} */
         let remove = null;
