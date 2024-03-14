@@ -37,14 +37,15 @@ the `type` property:
 
 ## Encoding
 
-While mark properties are static, _i.e._, same for all mark instances, `encoding`
-allows for mapping data to the visual channels.
+While mark properties are static, _i.e._, same for all mark instances,
+`encoding` allows for mapping data to [visual channels](#channels) and using
+data-driven visual encoding.
 
 It's worth noting that while all visual encoding channels are also available as
 static properties, not all properties can be used for encoding. Only certain
 properties are suitable for encoding data in a meaningful way.
 
-```json title="Example: Using of the encoding property"
+```json title="Example: Specifying visual channels with the encoding property"
 {
   ...,
   "mark": "rect",
@@ -86,7 +87,7 @@ mark instance is placed at the center of the respective axis.
 ##### Secondary channels
 
 Some marks, such as `"rect"` and `"rule"`, also support secondary positional channels,
-which allow specifying a range that the mark should cover in the visualization.
+which allow specifying an interval that the mark should cover in the visualization.
 
 `x2`
 : The secondary position on the _x_ axis
@@ -106,7 +107,7 @@ which allow specifying a range that the mark should cover in the visualization.
 : Stroke color
 
 `opacity`
-: Opacity of the mark. Affetcts `fillOpacity` or `strokeOpacity`, depending on the `filled` property.
+: Opacity of the mark. Affects `fillOpacity` or `strokeOpacity`, depending on the `filled` property.
 
 `fillOpacity`
 : Fill opacity
@@ -118,35 +119,41 @@ which allow specifying a range that the mark should cover in the visualization.
 : Stroke width in pixels
 
 `size`
-: Depends on the mark. `point`: the area of the rectangle that encloses the mark instance. `rule`: stroke width. `text`: font size.
+: Depends on the mark. `"point"`: the area of the rectangle that encloses the mark instance. `"rule"` and `"link"`: stroke width. `"text"`: font size.
 
 `shape`
-: Shape of `point` marks.
+: Shape of `"point"` marks.
 
-`angle`:
-: Rotational angle of `point` marks.
+`angle`
+: Rotational angle of `"point"` and `"text"` marks.
 
 `text`
-: Text that the `text` mark should render for a text mark instance.
+: Text that the `"text"` mark should render for a mark instance.
 
 #### Channels for sample collections
 
 The [GenomeSpy app](../../sample-collections/visualizing.md#specifying-a-sample-view) supports an additional channel.
 
 `sample`
-: Defines the track for the sample
+: Defines the track (or facet) for the sample
 
 ### Visual Encoding
 
 GenomeSpy provides several methods for controlling how data is mapped to visual
-channels. The most common method is to map a field of the data to a channel, but
-you can also use expressions, values, or data values from the domain of a scale.
+channels. The most common method is to map a [field](#field) of the data to a
+channel, but you can also use [expressions](#expression), [values](#value), or
+[data values](#datum) belonging to the data domain.
+
+Expect for the `value` method, all methods require specifying the data type
+using the `type` property, which must be one of: `"quantitative"`, `"nominal"`,
+or `"ordinal"`, `"index"`, or
+[`"locus"`](../../genomic-data/genomic-coordinates.md#encoding-genomic-coordinates).
+The first three types are equivalent to the [Vega-Lite
+types](https://vega.github.io/vega-lite/docs/type.html) of the same name.
 
 #### Field
 
-`field` maps a field (or column) of the data to a visual channel. The `field`
-property specifies the data type, which is one of: `"quantitative"`,
-`"nominal"`, or `"ordinal"`, `"index"`, or `"locus"`.
+`field` maps a field (or column) of the data to a visual channel.
 
 ```json
 {

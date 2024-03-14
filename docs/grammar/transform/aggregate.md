@@ -4,6 +4,11 @@ The `"aggregate"` transform is currently minimal – it adds a new `count` field
 that contains the number of data items in a group. More aggregate operations
 will be added later.
 
+!!! warning
+
+    The parameterization will change in the future to support other aggregate
+    operations.
+
 ## Parameters
 
 SCHEMA AggregateParams

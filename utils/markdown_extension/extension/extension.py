@@ -9,6 +9,7 @@ from markdown.extensions import Extension
 docs_baseurl = 'https://genomespy.app/docs'
 
 types_with_links = {
+    'Encoding': '/grammar/mark/#encoding',
     'ExprRef': '/grammar/expressions/',
     'SizeDef': '/grammar/composition/concat/#sizedef',
     'Step': '/grammar/composition/concat/#child-sizing',
@@ -16,7 +17,21 @@ types_with_links = {
     'SelectionParameter': '/grammar/parameters/',
     'UrlImport': '/grammar/import/#urlimport',
     'TemplateImport': '/grammar/import/#templateimport',
-    'default': '/grammar/types/'
+    'LinkProps': '/grammar/mark/link/#properties',
+    'PointProps': '/grammar/mark/point/#properties',
+    'RectProps': '/grammar/mark/rect/#properties',
+    'RuleProps': '/grammar/mark/rule/#properties',
+    'TextProps': '/grammar/mark/text/#properties',
+    'UrlData': '/grammar/data/eager/',
+    'InlineData': '/grammar/data/eager/',
+    'NamedData': '/grammar/data/eager/',
+    'Generator': '/grammar/data/eager/',
+    'LazyData': '/grammar/data/lazy/',
+    'default': '/grammar/types/',
+}
+
+types_with_descriptions = {
+    'Field': 'string (field name)',
 }
 
 refPattern = re.compile('^#/definitions/(\\w+)$')
@@ -53,6 +68,8 @@ class MyPreprocessor(Preprocessor):
                     return ' | '.join(['`"{}"`'.format(e) for e in enum])
                 else:
                     return ' | '.join(['`{}`'.format(e) for e in enum])
+            if type_name in types_with_descriptions:
+                return types_with_descriptions[type_name]
             if type_name in types_with_links:
                 return '[{}]({})'.format(type_name, docs_baseurl + types_with_links[type_name])
             else:
@@ -77,7 +94,11 @@ class MyPreprocessor(Preprocessor):
                     if prop_type.get('minItems') == 2 and prop_type.get('maxItems') == 2:
                         return '[{}, {}]'.format(self.propTypeToString(items), self.propTypeToString(items))
                     else:
-                        return self.propTypeToString(items) + '[]'
+                        string = self.propTypeToString(items)
+                        if "|" in string:
+                            return '({})[]'.format(string)
+                        else:
+                            return '{}[]'.format(string)
                 else:
                     return type
             else:

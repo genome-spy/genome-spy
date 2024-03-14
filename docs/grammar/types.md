@@ -1,6 +1,6 @@
 # Types Used in the Grammar
 
-!!! warning
+!!! note
 
     The list is still incomplete.
 
@@ -12,9 +12,9 @@ SCHEMA CompareParams
 
 SCHEMA DynamicOpacity
 
-## ViewOpacityDef
+## Paddings
 
-SCHEMA ViewOpacityDef
+SCHEMA Paddings
 
 ## Step
 
@@ -31,3 +31,7 @@ SCHEMA Title
 ## ViewBackground
 
 SCHEMA ViewBackground
+
+## ViewOpacityDef
+
+SCHEMA ViewOpacityDef

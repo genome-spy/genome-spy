@@ -13,10 +13,16 @@ import { SampleSpec } from "./sampleView.js";
 import { Parameter } from "./parameter.js";
 
 export interface SizeDef {
-    /** Size in pixels */
+    /**
+     * Size in pixels
+     */
     px?: number;
 
-    /** Share of the remaining space */
+    /**
+     * Share of the remaining space. See [child
+     * sizing](https://genomespy.app/docs/grammar/composition/concat/#child-sizing)
+     * for details.
+     */
     grow?: number;
 }
 
@@ -34,9 +40,15 @@ export interface FacetMapping {
  */
 export interface DynamicOpacity {
     channel?: PrimaryPositionalChannel;
-    /** Stops expressed as units (base pairs, for example) per pixel. */
+
+    /**
+     * Stops expressed as units (base pairs, for example) per pixel.
+     */
     unitsPerPixel: number[];
-    /** Opacity values that match the given stops. */
+
+    /**
+     * Opacity values that match the given stops.
+     */
     values: number[];
 }
 
@@ -108,8 +120,12 @@ export interface ViewSpecBase extends ResolveSpec {
     viewportWidth?: SizeDef | number | "container";
 
     /**
-     * Padding applied to the view. Accepts either a number representing pixels or a
-     * PaddingConfig. Example: `padding: { top: 10, right: 20, bottom: 10, left: 20 }`
+     * Padding applied to the view. Accepts either a number representing pixels or an
+     * object specifying separate paddings for each edge.
+     *
+     * Examples:
+     * - `padding: 10`
+     * - `padding: { top: 10, right: 20, bottom: 10, left: 20 }`
      *
      * **Default value:** `0`
      */
@@ -164,14 +180,6 @@ export interface ViewSpecBase extends ResolveSpec {
     baseUrl?: string;
 
     /**
-     * Opacity of the view and all its children.
-     *
-     * **Default:** `1.0`
-     */
-    // TODO: Should be available only in Unit and Layer views.
-    opacity?: ViewOpacityDef;
-
-    /**
      * The default visibility of the view. An invisible view is removed from the
      * layout and not rendered. For context, see [toggleable view
      * visibility](https://genomespy.app/docs/sample-collections/visualizing/#toggleable-view-visibility).
@@ -197,7 +205,22 @@ export interface ViewSpecBase extends ResolveSpec {
     templates?: Record<string, ViewSpec>;
 }
 
-export interface UnitSpec extends ViewSpecBase, AggregateSamplesSpec {
+export interface DynamicOpacitySpec {
+    /**
+     * Opacity of the view and all its children. Allows implementing semantic
+     * zooming where the layers are faded in and out as the user zooms in and out.
+     *
+     * TODO: Write proper documentation with examples.
+     *
+     * **Default:** `1.0`
+     */
+    opacity?: ViewOpacityDef;
+}
+
+export interface UnitSpec
+    extends ViewSpecBase,
+        DynamicOpacitySpec,
+        AggregateSamplesSpec {
     /**
      * The background of the view, including fill, stroke, and stroke width.
      */
@@ -219,7 +242,10 @@ export interface AggregateSamplesSpec {
     aggregateSamples?: (UnitSpec | LayerSpec)[];
 }
 
-export interface LayerSpec extends ViewSpecBase, AggregateSamplesSpec {
+export interface LayerSpec
+    extends ViewSpecBase,
+        DynamicOpacitySpec,
+        AggregateSamplesSpec {
     view?: ViewBackground;
     layer: (LayerSpec | UnitSpec | ImportSpec)[];
 }

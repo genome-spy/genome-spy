@@ -76,6 +76,9 @@ package.
 
 ## Bioinformatic Formats
 
+Most bioinformatic data formats are supported through [lazy](lazy.md) data. The
+following formats are supported as eager data with the `url` source.
+
 ### FASTA
 
 The type of _FASTA_ format is `"fasta"` as shown in the example below:
