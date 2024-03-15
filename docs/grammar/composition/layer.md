@@ -58,11 +58,12 @@ To specify multiple layers, use the `layer` property:
 }
 ```
 
-The provided array may contain both single view specifications and layered
+The provided array may contain both [single
+view](../index.md#a-single-view-specification) specifications and layer
 specifications. The encodings and data that are specified in a layer view
-propagate to its descendants. For example, in the above example, the "Bar" and
-"Label" views inherit the data and the encodings for the `x` and `y` channels
-from their parent, the layer view.
+propagate to its descendants. For example, in the above example, the `"Bar"` and
+`"Label"` views inherit the data and encodings for the `x` and `y` channels from
+their parent, the layer view.
 
 ## Resolve
 
@@ -82,15 +83,13 @@ another layer is used for the baseline.
   "name": "The Root",
   "description": "Lollipop plot example",
 
-  "resolve": { "axis": { "y": "independent" } },
-
   "layer": [
     {
       "name": "Baseline",
       "data": { "values": [0] },
       "mark": "rule",
       "encoding": {
-        "y": { "field": "data", "type": "quantitative", "axis": null },
+        "y": { "field": "data", "type": "quantitative", "title": null },
         "color": { "value": "lightgray" }
       }
     },
@@ -135,7 +134,7 @@ another layer is used for the baseline.
           "mark": {
             "type": "point",
             "size": 500,
-            "strokeWidth": 0
+            "filled": true
           },
 
           "encoding": {
