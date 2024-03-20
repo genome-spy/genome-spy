@@ -125,9 +125,8 @@ export function optimizeFlowGraph(root) {
  * @param {import("./dataFlow.js").default<any>} dataFlow
  */
 export function optimizeDataFlow(dataFlow) {
+    combineIdenticalDataSources(dataFlow);
     for (const dataSource of dataFlow.dataSources) {
         optimizeFlowGraph(dataSource);
     }
-
-    combineIdenticalDataSources(dataFlow);
 }
