@@ -58,7 +58,13 @@ export default class AxisResolution {
             this.scaleResolution &&
             newScaleResolution !== this.scaleResolution
         ) {
-            throw new Error("Shared axes must have a shared scale!");
+            throw new Error(
+                `Shared axes must have a shared scale! Channel: ${
+                    this.channel
+                }, existing views: [${this.members
+                    .map((m) => m.view.getPathString())
+                    .join(", ")}], new view: ${view.getPathString()}.`
+            );
         }
 
         this.members.push(newMember);
