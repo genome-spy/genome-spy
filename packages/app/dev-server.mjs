@@ -10,6 +10,7 @@ async function createServer() {
 
     const vite = await createViteServer({
         server: { middlewareMode: true },
+        appType: "mpa",
     });
 
     const __dirname = new URL(".", import.meta.url).pathname;
