@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.50.2](https://github.com/genome-spy/genome-spy/compare/v0.50.1...v0.50.2) (2024-03-22)
+
+
+### Bug Fixes
+
+* **core:** data source merging in flowOptimizer ([854492a](https://github.com/genome-spy/genome-spy/commit/854492a6c15f79a4c4e359799cfaa6c97ffb4588))
+* **core:** don't override `baseUrl` when importing views using a url ([d08bce8](https://github.com/genome-spy/genome-spy/commit/d08bce8e68def1cd47dd7ac7d2be8bac32f3e6fb))
+* **core:** missing padding when the root view didn't fill the whole container ([32b9b6d](https://github.com/genome-spy/genome-spy/commit/32b9b6dc48f3732e81832bc4001e553867aaf484)), closes [#250](https://github.com/genome-spy/genome-spy/issues/250)
+* **core:** randomly missing axes ([7d27354](https://github.com/genome-spy/genome-spy/commit/7d27354ffb8b3715ec943d9eb51906a3e2b948d9))
+
+
+
+
+
 ## [0.50.1](https://github.com/genome-spy/genome-spy/compare/v0.50.0...v0.50.1) (2024-03-14)
 
 
