@@ -32,13 +32,16 @@ the imported specification. Thus, you can publish a view (or a track as known in
 genome browsers) by placing its specification and data available in the same
 directory on a web server.
 
+The URL import supports parameters, which are described below within the
+[named templates](#repeating-with-named-templates).
+
 ```json title="Example"
 {
   ...,
   "vconcat": [
     ...,
     { "import": { "url": "includes/annotations.json" } },
-    { "import": { "url": "https://genomespy.app/tracks/cosmic/census_hg38.json" } }
+    { "import": { "url": "https://example.site/tracks/annotations.json" } }
   ]
 }
 ```

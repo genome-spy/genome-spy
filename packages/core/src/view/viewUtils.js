@@ -1,5 +1,4 @@
 import { isObject, isString } from "vega-util";
-import { loader as vegaLoader } from "vega-loader";
 
 import UnitView from "./unitView.js";
 // eslint-disable-next-line no-unused-vars
@@ -8,6 +7,7 @@ import { buildDataFlow } from "./flowBuilder.js";
 import { optimizeDataFlow } from "../data/flowOptimizer.js";
 import { isFieldDef, primaryPositionalChannels } from "../encoder/encoder.js";
 import { rollup } from "d3-array";
+import { concatUrl, getDirectory } from "../utils/url.js";
 
 /**
  *
@@ -146,30 +146,39 @@ export function findEncodedFields(view) {
  */
 export async function loadExternalViewSpec(spec, baseUrl, viewContext) {
     const importParam = spec.import;
-    if ("url" in importParam) {
-        const loader = vegaLoader({ baseURL: baseUrl });
-        const url = importParam.url;
-
-        const importedSpec = JSON.parse(
-            await loader.load(url).catch((/** @type {Error} */ e) => {
-                throw new Error(
-                    `Could not load imported view spec: ${url} \nReason: ${e.message}`
-                );
-            })
-        );
-
-        if (viewContext.isViewSpec(importedSpec)) {
-            importedSpec.baseUrl = url.match(/^[^?#]*\//)?.[0];
-            return importedSpec;
-        } else {
-            throw new Error(
-                `The imported spec "${url}" is not a view spec: ${JSON.stringify(
-                    spec
-                )}`
-            );
-        }
-    } else {
+    if (!("url" in importParam)) {
         throw new Error("Not an url import: " + JSON.stringify(importParam));
+    }
+
+    const url = concatUrl(baseUrl, importParam.url);
+
+    /** @type {import("../spec/view.js").ViewSpec} */
+    let importedSpec;
+
+    try {
+        const result = await fetch(url);
+        if (!result.ok) {
+            throw new Error(`${result.status} ${result.statusText}`);
+        }
+        importedSpec = await result.json();
+    } catch (e) {
+        throw new Error(
+            `Could not load imported view spec: ${url}. Reason: ${e.message}`
+        );
+    }
+
+    if (viewContext.isViewSpec(importedSpec)) {
+        importedSpec.baseUrl = concatUrl(
+            getDirectory(importParam.url),
+            importedSpec.baseUrl
+        );
+        return importedSpec;
+    } else {
+        throw new Error(
+            `The imported spec "${url}" is not a view spec: ${JSON.stringify(
+                spec
+            )}`
+        );
     }
 }
 

@@ -1,10 +1,11 @@
-import { loader as vegaLoader, read } from "vega-loader";
+import { read } from "vega-loader";
 import { getFormat } from "./dataUtils.js";
 import DataSource from "./dataSource.js";
 import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../view/paramMediator.js";
+import { concatUrl } from "../../utils/url.js";
 
 /**
  * @param {Partial<import("../../spec/data.js").Data>} data
@@ -46,18 +47,21 @@ export default class UrlSource extends DataSource {
         }
 
         /** @param {string} url */
-        const load = async (url) =>
-            // TODO: Support chunked loading
-            /** @type {string} */ (
-                vegaLoader({
-                    baseURL: this.baseUrl,
-                })
-                    .load(url)
-                    .catch((/** @type {Error} */ e) => {
-                        // TODO: Include baseurl in the error message. Should be normalized, however.
-                        throw new Error(`${url}: ${e.message}`);
-                    })
-            );
+        const load = async (url) => {
+            try {
+                const fullUrl = concatUrl(this.baseUrl, url);
+                const result = await fetch(fullUrl);
+                if (!result.ok) {
+                    throw new Error(`${result.status} ${result.statusText}`);
+                }
+                // TODO: what about binary data (for arrow), etc?
+                return result.text();
+            } catch (e) {
+                throw new Error(
+                    `Could not load data: ${url}. Reason: ${e.message}`
+                );
+            }
+        };
 
         /**
          * @param {string} text

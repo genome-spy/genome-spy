@@ -12,7 +12,7 @@ import {
 import { isNumber, isString, span } from "vega-util";
 import { scaleLog } from "d3-scale";
 import { isFieldDef, getPrimaryChannel } from "../encoder/encoder.js";
-import { appendToBaseUrl } from "../utils/url.js";
+import { concatUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
@@ -645,7 +645,7 @@ export default class View {
      * @returns {string}
      */
     getBaseUrl() {
-        return appendToBaseUrl(
+        return concatUrl(
             () => this.dataParent?.getBaseUrl(),
             this.spec.baseUrl
         );
