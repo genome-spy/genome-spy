@@ -1,5 +1,4 @@
 import { isObject, isString } from "vega-util";
-import { loader as vegaLoader } from "vega-loader";
 import { html } from "lit";
 
 import GenomeSpy from "./genomeSpy.js";
@@ -113,7 +112,11 @@ export async function loadSpec(url) {
     let spec;
 
     try {
-        spec = JSON.parse(await vegaLoader().load(url));
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`${response.status} ${response.statusText}`);
+        }
+        spec = await response.json();
     } catch (e) {
         throw new Error(
             `Could not load or parse configuration: ${url}, reason: ${e.message}`

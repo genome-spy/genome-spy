@@ -1,7 +1,7 @@
 import { isObject, isString } from "vega-util";
-import { loader as vegaLoader } from "vega-loader";
 
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
+import { loadSpec } from "@genome-spy/core/index.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
@@ -99,29 +99,4 @@ function applyOptions(genomeSpy, opt) {
     if (opt.namedDataProvider) {
         genomeSpy.registerNamedDataProvider(opt.namedDataProvider);
     }
-}
-
-/**
- * Loads the spec from the given url and sets the baseUrl if it is not
- * defined in the spec.
- *
- * @param {string} url
- */
-export async function loadSpec(url) {
-    let spec;
-
-    try {
-        spec = JSON.parse(await vegaLoader().load(url));
-    } catch (e) {
-        throw new Error(
-            `Could not load or parse configuration: ${url}, reason: ${e.message}`
-        );
-    }
-
-    if (!spec.baseUrl) {
-        const m = url.match(/^[^?#]*\//);
-        spec.baseUrl = (m && m[0]) || "./";
-    }
-
-    return spec;
 }
