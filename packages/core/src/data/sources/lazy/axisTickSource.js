@@ -35,6 +35,13 @@ export default class AxisTickSource extends SingleAxisLazySource {
         this.params = params;
     }
 
+    async load() {
+        // Force the ticks to be recalculated. This is needed because the async
+        // initialization process and non-deterministic order of events.
+        this.ticks = null;
+        this.onDomainChanged();
+    }
+
     onDomainChanged() {
         // Note, although this function is async, it is not awaited. Data are updated
         // synchronously to ensure that the new ticks are available before the next frame is drawn.
@@ -61,7 +68,7 @@ export default class AxisTickSource extends SingleAxisLazySource {
             ? validTicks(scale, axisParams.values, count)
             : tickValues(scale, count);
 
-        if (!shallowArrayEquals(ticks, this.ticks)) {
+        if (this.ticks == null || !shallowArrayEquals(ticks, this.ticks)) {
             this.ticks = ticks;
 
             const format = tickFormat(scale, requestedCount, axisParams.format);
