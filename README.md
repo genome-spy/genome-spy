@@ -31,7 +31,7 @@ The [embed-examples](./packages/embed-examples/) package contains examples of ho
 1. `git clone git@github.com:genome-spy/genome-spy.git`
 2. `cd genome-spy`
 3. `npm install` (use npm7!)
-4. `npm start` (starts the App)
+4. `npm start` (starts a development server with the app package)
 
 The `packages/core/examples` directory contains some random view specification that can be accessed through urls like `http://localhost:8080/?spec=examples/first.json`.
 

@@ -1,6 +1,8 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
+  "description": "Points should be placed in the middle of the bars",
+
   "data": {
     "values": ["A", "B", "C", "D", "E", "F", "G"]
   },

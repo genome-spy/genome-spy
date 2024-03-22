@@ -1,6 +1,8 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
+  "description": "Using parameters to control scale's range",
+
   "params": [
     {
       "name": "maxSize",
