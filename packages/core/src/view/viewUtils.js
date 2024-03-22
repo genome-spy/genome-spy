@@ -254,18 +254,24 @@ export function findUniqueViewNames(root) {
 export const isCustomViewName = (name) => !/^(layer|concat)\d+$/.test(name);
 
 /**
- * @param {import("./layout/flexLayout.js").FlexDimensions} viewRootSize
+ * @param {import("./view.js").default} viewRoot
  */
-export function calculateCanvasSize(viewRootSize) {
+export function calculateCanvasSize(viewRoot) {
+    const size = viewRoot.getSize();
+    const padding = viewRoot.getPadding();
+
     // If a dimension has an absolutely specified size (in pixels), use it for the canvas size.
     // However, if the dimension has a growing component, the canvas should be fit to the
     // container.
     // TODO: Enforce the minimum size (in case of both absolute and growing components).
 
-    /** @param {import("./layout/flexLayout.js").SizeDef} dim */
-    const f = (dim) => (dim.grow > 0 ? undefined : dim.px);
+    /**
+     * @param {import("./layout/flexLayout.js").SizeDef} dim
+     * @param {number} totalPad
+     */
+    const f = (dim, totalPad) => (dim.grow > 0 ? undefined : dim.px + totalPad);
     return {
-        width: f(viewRootSize.width),
-        height: f(viewRootSize.height),
+        width: f(size.width, padding.horizontalTotal),
+        height: f(size.height, padding.verticalTotal),
     };
 }

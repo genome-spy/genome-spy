@@ -27,7 +27,7 @@ async function specToLayout(spec) {
     });
     const renderingContext = new DebugginViewRenderingContext({});
 
-    const canvasSize = calculateCanvasSize(view.getSize());
+    const canvasSize = calculateCanvasSize(view);
     const rect = Rectangle.create(
         0,
         0,

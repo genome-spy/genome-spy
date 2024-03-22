@@ -366,7 +366,7 @@ export default class GenomeSpy {
             canvasWrapper,
             () =>
                 this.viewRoot
-                    ? calculateCanvasSize(this.viewRoot.getSize())
+                    ? calculateCanvasSize(this.viewRoot)
                     : { width: undefined, height: undefined },
             this.spec.background,
             { powerPreference: this.options.powerPreference ?? "default" }
