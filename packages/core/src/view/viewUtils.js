@@ -249,11 +249,6 @@ export function findUniqueViewNames(root) {
 }
 
 /**
- * @param {string} name
- */
-export const isCustomViewName = (name) => !/^(layer|concat)\d+$/.test(name);
-
-/**
  * @param {import("./view.js").default} viewRoot
  */
 export function calculateCanvasSize(viewRoot) {

@@ -5,10 +5,7 @@ import { live } from "lit/directives/live.js";
 import { ref, createRef } from "lit/directives/ref.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
 import LayerView from "@genome-spy/core/view/layerView.js";
-import {
-    findUniqueViewNames,
-    isCustomViewName,
-} from "@genome-spy/core/view/viewUtils.js";
+import { findUniqueViewNames } from "@genome-spy/core/view/viewUtils.js";
 import { watch } from "../state/watch.js";
 import { queryDependency } from "../utils/dependency.js";
 import { nestPaths } from "../utils/nestPaths.js";
@@ -133,12 +130,18 @@ class ViewSettingsButton extends LitElement {
             });
         }
 
+        /**
+         * @param {View} view
+         */
+        const isIncluded = (view) =>
+            isConfigurable(view) || hasVariableBindings(view);
+
         // Do some flattening to the hierarchy, filter some levels out
         const paths = nodes
-            .filter(
-                (view) => isCustomViewName(view.name) && isConfigurable(view)
-            )
-            .map((view) => [...view.getDataAncestors()].reverse());
+            .filter(isIncluded)
+            .map((view) =>
+                [...view.getDataAncestors()].filter(isIncluded).reverse()
+            );
 
         this.nestedPaths = nestPaths(paths);
     }
@@ -264,5 +267,10 @@ class ViewSettingsButton extends LitElement {
 const isConfigurable = (/** @type {View} */ view) =>
     view.spec.configurableVisibility ??
     !(view.layoutParent && view.layoutParent instanceof LayerView);
+
+const hasVariableBindings = (/** @type {View} */ view) =>
+    [...view.paramMediator.paramConfigs.values()].some(
+        (param) => isVariableParameter(param) && param.bind
+    );
 
 customElements.define("genome-spy-view-visibility", ViewSettingsButton);
