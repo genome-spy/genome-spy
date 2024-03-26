@@ -884,6 +884,31 @@ $form-control-border: 1px solid $form-control-border-color;
     }
 }
 
+.group-arbitrarily-form {
+    span.na {
+        color: gray;
+        font-style: italic;
+        font-size: 90%;
+    }
+
+    div.table {
+        color: $form-control-color;
+        border: $form-control-border;
+        border-radius: 0.25em;
+        overflow-x: auto;
+        max-height: 20em;
+
+        padding: 0.375em 0.75em;
+
+        margin: 0;
+    }
+
+    &.gs-form-group select {
+        padding-top: 0.1em;
+        padding-bottom: 0.1em;
+    }
+}
+
 .gs-alert {
     display: flex;
     align-items: center;

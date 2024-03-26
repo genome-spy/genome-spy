@@ -169,6 +169,13 @@ patient (the category) has multiple samples, this action allows you to retain
 all samples from the top-5 patients based on the highest number of mutations
 (the another attribute) in any of their samples.
 
+#### Create custom groups
+
+Use this action to manually select and group multiple categories together
+according to your specific requirements. This feature allows you to create new
+groups that contain any combination of categories from your data, giving you the
+flexibility to organize and view your data in customized groupings.
+
 #### Group by categorical attribute
 
 This action stratifies the data based on the selected categorical attribute. The

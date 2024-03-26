@@ -139,11 +139,16 @@ export function messageBox(content, options = {}) {
                               `
                             : nothing
                     }
-                    <button class="btn" @click=${close}>${
+                    <button class="btn btn-primary" @click=${close}>${
             options.okLabel
         }</button>
                 </div>
             </div>`;
         render(template, modal.content);
+
+        const input = /** @type {HTMLElement} */ (
+            modal.content.querySelector(":is(input, select)")
+        );
+        input?.focus();
     });
 }

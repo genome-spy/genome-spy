@@ -1,3 +1,4 @@
+import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ComparisonOperatorType } from "./sampleOperations.js";
 import { Sample } from "./sampleState.js";
 import { AttributeIdentifier } from "./types.js";
@@ -59,4 +60,15 @@ export interface FilterByNominal extends PayloadWithAttribute {
 
 export interface RetainMatched extends PayloadWithAttribute {
     attribute: AttributeIdentifier;
+}
+
+/** Which categories belong to which group */
+export type CustomGroups = Record<string, Scalar[]>;
+
+export interface GroupCustom extends PayloadWithAttribute {
+    /**
+     * A record where the keys are group names and the values are arrays of
+     * categories or sample ids.
+     */
+    groups: CustomGroups;
 }

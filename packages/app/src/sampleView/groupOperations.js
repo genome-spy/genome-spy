@@ -220,3 +220,27 @@ export const formatThresholdInterval = (t1, t2) =>
     `${t1.operator == "lt" ? "[" : "("}${thresholdFormat(
         t1.operand
     )}, ${thresholdFormat(t2.operand)}${t2.operator == "lte" ? "]" : ")"}`;
+
+/**
+ *
+ * @param {function(any):any} fieldAccessor
+ * @param {import("./payloadTypes.js").CustomGroups} groups
+ */
+export function makeCustomGroupAccessor(fieldAccessor, groups) {
+    /**
+     * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
+     * @type {Map<Scalar, Scalar>}
+     */
+    const lookupTable = new Map();
+
+    for (const [groupName, categories] of Object.entries(groups)) {
+        for (const category of categories) {
+            lookupTable.set(category, groupName);
+        }
+    }
+
+    /**
+     * @type {(datum: any) => Scalar}
+     */
+    return (datum) => lookupTable.get(fieldAccessor(datum));
+}

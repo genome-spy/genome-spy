@@ -6,6 +6,7 @@ import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 import { advancedAttributeFilterDialog } from "./advancedAttributeFilterDialog.js";
 import groupByThresholdsDialog from "./groupByThresholdsDialog.js";
 import retainFirstNCategoriesDialog from "./retainFirstNCategoriesDialog.js";
+import createCustomGroupsDialog from "./createCustomGroupsDialog.js";
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
@@ -65,10 +66,18 @@ export default function generateAttributeContextMenu(
 
     if (type != "quantitative") {
         if (type != "identifier") {
-            addActions(
-                actions.groupByNominal({ attribute }),
-                actions.retainFirstOfEach({ attribute })
-            );
+            addActions(actions.groupByNominal({ attribute }));
+        }
+
+        items.push({
+            icon: faObjectGroup,
+            label: "Create custom groups...",
+            callback: () => createCustomGroupsDialog(attributeInfo, sampleView),
+        });
+
+        if (type != "identifier") {
+            addActions(actions.retainFirstOfEach({ attribute }));
+
             items.push(
                 actionToItem(
                     actions.retainFirstNCategories({
@@ -111,7 +120,6 @@ export default function generateAttributeContextMenu(
             label: "Group by thresholds...",
             callback: () => groupByThresholdsDialog(attributeInfo, sampleView),
         });
-
         if (isDefined(attributeValue)) {
             addActions(
                 actions.filterByQuantitative({

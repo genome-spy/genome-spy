@@ -4,6 +4,7 @@ import {
     groupSamplesByAccessor,
     groupSamplesByQuartiles,
     groupSamplesByThresholds,
+    makeCustomGroupAccessor,
     removeGroup,
 } from "./groupOperations.js";
 import {
@@ -28,6 +29,7 @@ import {
     faTrashAlt,
     faCheck,
 } from "@fortawesome/free-solid-svg-icons";
+import { map } from "lit/directives/map.js";
 
 /**
  * @typedef {import("./sampleState.js").SampleHierarchy} SampleHierarchy
@@ -50,6 +52,7 @@ const RETAIN_FIRST_N_CATEGORIES = "retainFirstNCategories";
 const FILTER_BY_NOMINAL = "filterByNominal";
 const FILTER_BY_QUANTITATIVE = "filterByQuantitative";
 const REMOVE_UNDEFINED = "removeUndefined";
+const GROUP_CUSTOM = "groupCustomCategories";
 const GROUP_BY_NOMINAL = "groupByNominal";
 const GROUP_BY_QUARTILES = "groupToQuartiles";
 const GROUP_BY_THRESHOLDS = "groupByThresholds";
@@ -223,6 +226,28 @@ export function createSampleSlice(getAttributeInfo) {
                 applyToSamples(state, (samples) =>
                     filterUndefined(samples, getAccessor(action.payload, state))
                 );
+            },
+
+            [GROUP_CUSTOM]: (
+                state,
+                /** @type {PayloadAction<import("./payloadTypes.js").GroupCustom>} */
+                action
+            ) => {
+                const accessor = makeCustomGroupAccessor(
+                    getAccessor(action.payload, state),
+                    action.payload.groups
+                );
+                applyToGroups(state, (sampleGroup) =>
+                    groupSamplesByAccessor(
+                        sampleGroup,
+                        accessor,
+                        Object.keys(action.payload.groups)
+                    )
+                );
+
+                state.groupMetadata.push({
+                    attribute: action.payload.attribute,
+                });
             },
 
             [GROUP_BY_NOMINAL]: (
@@ -462,14 +487,18 @@ const verboseOps = {
 };
 
 /**
- * @param {any[]} values
+ * @param {Iterable<any>} values
+ * @param {boolean} [braces]
  * @returns
  */
-function formatSet(values) {
-    return html`{${values.map(
+export function formatSet(values, braces = true) {
+    const joined = html`${map(
+        values,
         (value, i) => html`${i > 0 ? ", " : ""}<strong>${value}</strong>`
-    )}}`;
+    )}`;
+    return braces ? html`{${joined}}` : joined;
 }
+
 /**
  * Describes an action for displaying it in menus or provenance tracking.
  *
@@ -593,6 +622,27 @@ export function getActionInfo(action, getAttributeInfo) {
                 `,
                 icon: faTrashAlt,
             };
+        case GROUP_CUSTOM: {
+            const groups =
+                /** @type {import("./payloadTypes.js").CustomGroups} */ (
+                    payload.groups
+                );
+            const provenanceTitle = html`Create custom groups based on
+            ${attributeTitle}.
+            ${map(
+                Object.entries(groups),
+                ([groupName, categories], i) =>
+                    html`${i > 0 ? ", " : ""}<strong>${groupName}</strong> =
+                        ${formatSet(categories)}`
+            )}`;
+
+            return {
+                ...template,
+                title: "Group arbitrarily...",
+                provenanceTitle,
+                icon: faObjectGroup,
+            };
+        }
         case GROUP_BY_NOMINAL:
             return {
                 ...template,
