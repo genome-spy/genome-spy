@@ -1,10 +1,11 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faObjectGroup, faPaste } from "@fortawesome/free-solid-svg-icons";
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import { createModal, messageBox } from "../utils/ui/modal.js";
 import { makeCustomGroupAccessor } from "./groupOperations.js";
 import { map } from "lit/directives/map.js";
 import { formatSet } from "./sampleSlice.js";
+import { styleMap } from "lit/directives/style-map.js";
 
 /**
  * Stratify chosen categories into arbitrary groups. The categories may be
@@ -18,9 +19,27 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
     /**
      * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
      */
+    const [type, types] =
+        attributeInfo.type == "identifier"
+            ? ["Identifier", "identifiers"]
+            : ["Category", "categories"];
 
     /** */
     const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+
+    const scale =
+        /** @type {import("d3-scale").ScaleOrdinal<Scalar, Scalar>} */ (
+            attributeInfo.scale
+        );
+
+    const categoryToMarker = scale
+        ? (/** @type {Scalar} */ value) => html`<span
+              class="color"
+              style=${styleMap({
+                  backgroundColor: scale(value)?.toString() ?? "inherit",
+              })}
+          ></span>`
+        : () => nothing;
 
     const values = new Set(
         extractValues(
@@ -79,7 +98,7 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
 
     const templateButtons = () => html` <div class="modal-buttons">
         <button class="btn" @click=${() => pasteCategoriesModal()}>
-            ${icon(faPaste).node[0]} Paste categories
+            ${icon(faPaste).node[0]} Paste ${types}
         </button>
 
         <div style="flex-grow: 1"></div>
@@ -191,7 +210,7 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
             if (notFound.size > 0) {
                 messageBox(
                     html`<p>
-                        The following categories were not found:
+                        The following ${types} were not found:
                         ${formatSet(notFound, false)}
                     </p>`
                 );
@@ -226,7 +245,7 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
             return html`<tr>
                 <td>
                     ${category != null
-                        ? category
+                        ? html`${categoryToMarker(category)}${category}`
                         : html`<span class="na">NA</span>`}
                 </td>
                 <td>
@@ -261,6 +280,10 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
         const template = html`<div class="gs-form-group group-arbitrarily-form">
             <div class="table">
                 <table>
+                    <tr>
+                        <th>${type}</th>
+                        <th>Group</th>
+                    </tr>
                     ${map(values, makeTableRow)}
                 </table>
             </div>
@@ -270,7 +293,7 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
             html`${templateTitle}
                 <div class="modal-body">
                     <p>
-                        Use the table below to combine multiple categories into
+                        Use the table below to combine multiple ${types} into
                         custom groups.
                     </p>
                     ${template}
