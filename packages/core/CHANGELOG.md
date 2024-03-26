@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.51.0](https://github.com/genome-spy/genome-spy/compare/v0.50.2...v0.51.0) (2024-03-26)
+
+
+### Bug Fixes
+
+* **app:** don't show views with non-configurable visibility in the menu ([4dc6165](https://github.com/genome-spy/genome-spy/commit/4dc61656a4a282ede59d535db6c4d8faf67c9521))
+
+
+
+
+
 ## [0.50.2](https://github.com/genome-spy/genome-spy/compare/v0.50.1...v0.50.2) (2024-03-22)
 
 
