@@ -50,6 +50,7 @@ function getFileList(specRoot, dir) {
             .readdirSync(joinedPath, { withFileTypes: true })
             .filter(
                 (f) =>
+                    !(dir == "examples" && f.name == "data") &&
                     !/^[_.]/.test(f.name) &&
                     (path.extname(f.name) == ".json" || f.isDirectory())
             )

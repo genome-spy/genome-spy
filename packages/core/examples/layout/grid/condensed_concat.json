@@ -1,7 +1,9 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "data": { "url": "../sincos.csv" },
+  "data": {
+    "url": "../../data/sincos.csv"
+  },
   "encoding": {
     "x": { "field": "x", "type": "quantitative" },
     "y": { "field": "sin", "type": "quantitative" }

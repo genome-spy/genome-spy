@@ -6,12 +6,12 @@ import Rectangle from "../src/view/layout/rectangle";
 import { calculateCanvasSize } from "../src/view/viewUtils";
 
 import specFirst from "./first.json";
-import specPoint2D from "./point2d.json";
-import specComplexGridLayout from "./layout/complex_grid_layout.json";
-import specComplexGridLayout2 from "./layout/complex_grid_layout2.json";
-import specConcatPointsText from "./layout/concat_points_text.json";
-import specSharedAxisAtRoot from "./layout/shared_axis_at_root.json";
-import specCondensedConcat from "./layout/condensed_concat.json";
+import specPoint2D from "./marks/point/point2d.json";
+import specComplexGridLayout from "./layout/grid/complex_grid_layout.json";
+import specComplexGridLayout2 from "./layout/grid/complex_grid_layout2.json";
+import specConcatPointsText from "./layout/grid/concat_points_text.json";
+import specSharedAxisAtRoot from "./layout/grid/shared_axis_at_root.json";
+import specCondensedConcat from "./layout/grid/condensed_concat.json";
 import View from "../src/view/view";
 
 /**
@@ -47,27 +47,27 @@ describe("Test layout process", () => {
         expect(await specToLayout(specFirst)).toMatchSnapshot();
     });
 
-    test("point2d.json", async () => {
+    test("marks/point/point2d.json", async () => {
         expect(await specToLayout(specPoint2D)).toMatchSnapshot();
     });
 
-    test("layout/complex_grid_layout.json", async () => {
+    test("layout/grid/complex_grid_layout.json", async () => {
         expect(await specToLayout(specComplexGridLayout)).toMatchSnapshot();
     });
 
-    test("layout/complex_grid_layout2.json", async () => {
+    test("layout/grid/complex_grid_layout2.json", async () => {
         expect(await specToLayout(specComplexGridLayout2)).toMatchSnapshot();
     });
 
-    test("layout/concat_points_text.json", async () => {
+    test("layout/grid/concat_points_text.json", async () => {
         expect(await specToLayout(specConcatPointsText)).toMatchSnapshot();
     });
 
-    test("layout/shared_axis_at_root.json", async () => {
+    test("layout/grid/shared_axis_at_root.json", async () => {
         expect(await specToLayout(specSharedAxisAtRoot)).toMatchSnapshot();
     });
 
-    test("layout/condensed_concat.json", async () => {
+    test("layout/grid/condensed_concat.json", async () => {
         expect(await specToLayout(specCondensedConcat)).toMatchSnapshot();
     });
 });

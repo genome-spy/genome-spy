@@ -3,7 +3,9 @@
 
   "description": "A grid view inside a scrollable viewport",
 
-  "data": { "url": "../sincos.csv" },
+  "data": {
+    "url": "../../data/sincos.csv"
+  },
 
   "encoding": {
     "x": { "field": "x", "type": "quantitative" },

@@ -17,7 +17,7 @@
 
       "data": {
         "url": {
-          "expr": "'data/' + dataset + '-table.csv'"
+          "expr": "'../data/' + dataset + '-table.csv'"
         }
       },
 
