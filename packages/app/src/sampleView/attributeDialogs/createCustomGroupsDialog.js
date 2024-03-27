@@ -150,9 +150,8 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
         let categoryText = "";
 
         const template = html` <p>
-                Select a large number of categories by pasting them into the
-                text area below. The categories should be separated by a
-                newline.
+                Select a large number of ${types} by pasting them into the text
+                area below. The ${types} should be separated by a newline.
             </p>
             <div class="gs-form-group">
                 <label for="paste-group-name">Group name</label>
@@ -166,10 +165,10 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
                         ).value;
                     }}
                 />
-                <label for="paste-group-categories">Categories</label>
+                <label for="paste-group-categories">${capitalize(types)}</label>
                 <textarea
                     id="paste-group-categories"
-                    placeholder="Type or paste categories here, one per line"
+                    placeholder="Type or paste ${types} here, one per line"
                     rows="8"
                     @change=${(/** @type {UIEvent}*/ event) => {
                         categoryText = /** @type {HTMLInputElement} */ (
@@ -181,7 +180,7 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
 
         messageBox(template, {
             cancelButton: true,
-            title: "Paste categories",
+            title: `Paste ${types}`,
         }).then((ok) => {
             if (!ok) {
                 return;
@@ -321,4 +320,11 @@ function extractValues(attributeInfo, samples, sampleHierarchy) {
     return /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */ (
         samples.map((sampleId) => a(sampleId, sampleHierarchy))
     );
+}
+
+/**
+ * @param {string} s
+ */
+function capitalize(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
 }
