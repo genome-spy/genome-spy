@@ -46,11 +46,21 @@ export function createModal(type = "default", container = document.body) {
                     return;
                 }
 
+                if (
+                    /** @type {HTMLElement} */ (event.target).closest(
+                        ".modal-buttons"
+                    )
+                ) {
+                    return;
+                }
+
                 const button = /** @type {HTMLButtonElement} */ (
                     root.querySelector(".btn-primary")
                 );
-                button.click();
-                event.stopPropagation();
+                if (button) {
+                    button.click();
+                    event.stopPropagation();
+                }
                 break;
             }
             default:
