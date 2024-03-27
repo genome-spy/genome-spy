@@ -1,10 +1,10 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faObjectGroup, faPaste } from "@fortawesome/free-solid-svg-icons";
 import { html, nothing, render } from "lit";
-import { createModal, messageBox } from "../utils/ui/modal.js";
-import { makeCustomGroupAccessor } from "./groupOperations.js";
+import { createModal, messageBox } from "../../utils/ui/modal.js";
+import { makeCustomGroupAccessor } from "../groupOperations.js";
 import { map } from "lit/directives/map.js";
-import { formatSet } from "./sampleSlice.js";
+import { formatSet } from "../sampleSlice.js";
 import { styleMap } from "lit/directives/style-map.js";
 
 /**
@@ -12,8 +12,8 @@ import { styleMap } from "lit/directives/style-map.js";
  * nominal / ordinal values or sample identifiers – anything that is not
  * quantitative.
  *
- * @param {import("./types.js").AttributeInfo} attributeInfo
- * @param {import("./sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ * @param {import("../sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export default function createCustomGroupsDialog(attributeInfo, sampleView) {
     /**
@@ -49,7 +49,7 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
         )
     );
 
-    /** @type {import("./payloadTypes.js").CustomGroups} */
+    /** @type {import("../payloadTypes.js").CustomGroups} */
     const groups = {};
 
     const setGroup = (
@@ -312,9 +312,9 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
 /**
  * N.B. This is copy-paste from advanced filter. TODO: dedupe
  *
- * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("../types.js").AttributeInfo} attributeInfo
  * @param {string[]} samples
- * @param {import("./sampleSlice.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../sampleSlice.js").SampleHierarchy} sampleHierarchy
  */
 function extractValues(attributeInfo, samples, sampleHierarchy) {
     const a = attributeInfo.accessor;

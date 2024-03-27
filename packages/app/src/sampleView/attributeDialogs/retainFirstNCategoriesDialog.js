@@ -1,11 +1,11 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faFilter } from "@fortawesome/free-solid-svg-icons";
 import { html, render } from "lit";
-import { createModal } from "../utils/ui/modal.js";
+import { createModal } from "../../utils/ui/modal.js";
 
 /**
- * @param {import("./types.js").AttributeInfo} attributeInfo
- * @param {import("./sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ * @param {import("../sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export default function retainFirstNCategoriesDialog(
     attributeInfo,
