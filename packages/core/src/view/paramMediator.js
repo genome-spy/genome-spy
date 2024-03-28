@@ -193,7 +193,6 @@ export default class ParamMediator {
      *
      * @param {string} paramName
      * @returns {ParamMediator}
-     * @protected
      */
     findMediatorForParam(paramName) {
         if (this.#paramValues.has(paramName)) {

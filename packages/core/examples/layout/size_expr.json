@@ -1,0 +1,28 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Displaying view dimensions.",
+
+  "data": { "values": [{}] },
+
+  "hconcat": [
+    {
+      "width": { "grow": 1 },
+      "view": { "stroke": "lightgray" },
+      "mark": {
+        "type": "text",
+        "size": 20,
+        "text": { "expr": "'' + width + ' x ' + height" }
+      }
+    },
+    {
+      "width": { "grow": 2 },
+      "view": { "stroke": "lightgray" },
+      "mark": {
+        "type": "text",
+        "size": 20,
+        "text": { "expr": "'' + width + ' x ' + height" }
+      }
+    }
+  ]
+}

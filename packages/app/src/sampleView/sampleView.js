@@ -99,11 +99,6 @@ export default class SampleView extends ContainerView {
         this.childCoords = Rectangle.ZERO;
         this.sidebarCoords = Rectangle.ZERO;
 
-        this.#sampleHeightParam = this.paramMediator.allocateSetter(
-            "height",
-            0
-        );
-
         this.locationManager = new LocationManager({
             getSampleHierarchy: () => this.sampleHierarchy,
             getHeight: () => this.childCoords.height,
@@ -111,7 +106,7 @@ export default class SampleView extends ContainerView {
                 this.#gridChild.summaryViews.getSize().height.px,
             onLocationUpdate: ({ sampleHeight }) => {
                 this.groupPanel.updateGroups();
-                this.#sampleHeightParam(sampleHeight);
+                this.#sampleHeightParam?.(sampleHeight);
             },
             viewContext: this.context,
             isStickySummaries: () => this.#stickySummaries,
@@ -244,17 +239,24 @@ export default class SampleView extends ContainerView {
     }
 
     async initializeChildren() {
+        const childSpec = structuredClone(this.spec.spec);
+        childSpec.params ??= [];
+        childSpec.params.push({
+            name: "height",
+            value: 0,
+        });
+
         this.#gridChild = new SampleGridChild(
-            this.context.createView(
-                this.spec.spec,
-                this,
-                this,
-                "sample-facets"
-            ),
+            this.context.createView(childSpec, this, this, "sample-facets"),
             this,
             0,
             this.spec.view
         );
+
+        this.#sampleHeightParam =
+            this.#gridChild.view.paramMediator.getSetter("height");
+
+        // TODO: Hack the sample height to sidebar as well.
 
         /**
          * Container for group markers and metadata.

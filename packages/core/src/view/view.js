@@ -58,7 +58,11 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @prop {boolean} [blockEncodingInheritance]
  *      Don't inherit encodings from parent. Default: false.
  * @prop {boolean} [contributesToScaleDomain]
- *      Whether ScaleResolution should include this view or its children in the domain. Default: true
+ *      Whether ScaleResolution should include this view or its children in the
+ *      domain. Default: true
+ * @prop {boolean} [layersChildren]
+ *      View's children are layered on top of each other and they have the same
+ *      coordinates as their parent.
  */
 export default class View {
     /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
@@ -69,6 +73,12 @@ export default class View {
 
     /** @type {Record<string, InteractionEventListener[]>} */
     #nonCapturingInteractionEventListeners = {};
+
+    /** @type {(value: number) => void} */
+    #widthSetter;
+
+    /** @type {(value: number) => void} */
+    #heightSetter;
 
     /**
      * @type {function(number):number}
@@ -127,6 +137,7 @@ export default class View {
 
         /**
          * Whether GridView or equivalent should draw axis and grid lines for this view.
+         * TODO: Use view options for this.
          * @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, boolean>}
          */
         this.needsAxes = { x: false, y: false };
@@ -140,6 +151,19 @@ export default class View {
             for (const param of spec.params) {
                 this.paramMediator.registerParam(param);
             }
+        }
+
+        // All descendants of a layer view have the same coordinates - no need to redefine.
+        if (!this.layoutParent?.options.layeredChildren) {
+            // Width and height can be overriden by the view spec. Typically it
+            // doesn't make much sense, but it's used in the App's SampleView
+            // to set the height to sample facets' height.
+            const allocateIfFree = (/** @type {string} */ name) =>
+                this.paramMediator.findMediatorForParam(name)
+                    ? undefined
+                    : this.paramMediator.allocateSetter(name, 0);
+            this.#heightSetter = allocateIfFree("height");
+            this.#widthSetter = allocateIfFree("width");
         }
     }
 
@@ -502,6 +526,9 @@ export default class View {
             options.facetId,
             options.clipRect ? coords.intersect(options.clipRect) : coords
         );
+
+        this.#widthSetter?.(coords.width);
+        this.#heightSetter?.(coords.height);
 
         // override
     }
