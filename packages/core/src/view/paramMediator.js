@@ -6,6 +6,9 @@ import { createSinglePointSelection } from "../selection/selection.js";
  * A class that manages parameters and expressions.
  * Supports nesting and scoped parameters.
  *
+ * TODO: The proposed JavaScript signals may provide a better way to implement this.
+ * https://github.com/proposal-signals/proposal-signals
+ *
  * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, invalidate: () => void, identifier: () => string}} ExprRefFunction
  */
 export default class ParamMediator {
