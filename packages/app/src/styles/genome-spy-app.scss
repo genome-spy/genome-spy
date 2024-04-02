@@ -661,6 +661,7 @@ $menu-line-height: 22px;
     }
 
     .collapse {
+        all: unset;
         position: absolute;
         right: $basic-spacing;
         top: $basic-spacing;
@@ -669,7 +670,12 @@ $menu-line-height: 22px;
         font-size: 1.1em;
 
         border-radius: 2px;
+        padding: 0 0.2em;
         cursor: pointer;
+
+        &:focus {
+            outline: revert;
+        }
 
         svg {
             transition: transform 0.5s;
