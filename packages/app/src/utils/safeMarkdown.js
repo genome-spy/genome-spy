@@ -1,4 +1,4 @@
-import snarkdown from "snarkdown";
+import { micromark } from "micromark";
 import addBaseUrl from "@genome-spy/core/utils/addBaseUrl.js";
 
 /**
@@ -13,7 +13,8 @@ import addBaseUrl from "@genome-spy/core/utils/addBaseUrl.js";
  * @param {SafeMarkdownOptions} [options]
  */
 export default function safeMarkdown(markdown, options = {}) {
-    const html = snarkdown(markdown);
+    const html = micromark(markdown);
+
     const doc = new DOMParser().parseFromString(
         `<!DOCTYPE html><html><body><div>${html}</div></body></html>`,
         "text/html"
@@ -38,7 +39,7 @@ export default function safeMarkdown(markdown, options = {}) {
     }
 
     const elem = doc.body.removeChild(doc.querySelector("body > div"));
-    elem.className = "snarkdown";
+    elem.className = "markdown";
 
     return /** @type {HTMLElement} */ (elem);
 }

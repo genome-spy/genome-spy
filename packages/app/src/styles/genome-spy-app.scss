@@ -643,10 +643,20 @@ $menu-line-height: 22px;
             padding-right: 3em;
         }
 
-        .modal-body.markdown img {
-            max-width: 350px;
-            display: block;
-            margin: 1em auto;
+        .markdown {
+            img {
+                max-width: 350px;
+                display: block;
+                margin: 1em auto;
+            }
+
+            p:first-child {
+                margin-top: 0;
+            }
+
+            p:last-child {
+                margin-bottom: 0;
+            }
         }
     }
 
@@ -1020,14 +1030,6 @@ $form-control-border: 1px solid $form-control-border-color;
 
     .panes > :not(.active-tab) {
         display: none;
-    }
-}
-
-.snarkdown {
-    br {
-        content: "A";
-        display: block;
-        margin-bottom: 0.5em;
     }
 }
 
