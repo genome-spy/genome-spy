@@ -17,3 +17,21 @@ export default function addBaseUrl(url, baseUrl) {
 
     return url;
 }
+
+/**
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+export function endWithSlash(url) {
+    if (!url) {
+        return url;
+    }
+
+    if (/[?#]/.test(url)) {
+        throw new Error(
+            `Invalid base URL: ${url} - cannot contain query or hash.`
+        );
+    }
+    return url.endsWith("/") ? url : url + "/";
+}

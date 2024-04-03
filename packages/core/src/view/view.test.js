@@ -164,7 +164,15 @@ describe("Utility methods", () => {
                 layer: [],
             },
             LayerView
-        ).then((view) => expect(view.getBaseUrl()).toEqual("blaa"));
+        ).then((view) => expect(view.getBaseUrl()).toEqual("blaa/"));
+
+        await createAndInitialize(
+            {
+                baseUrl: "blaa/",
+                layer: [],
+            },
+            LayerView
+        ).then((view) => expect(view.getBaseUrl()).toEqual("blaa/"));
 
         await createAndInitialize(
             {
@@ -172,7 +180,9 @@ describe("Utility methods", () => {
                 layer: [],
             },
             LayerView
-        ).then((view) => expect(view.getBaseUrl()).toEqual("https://site.com"));
+        ).then((view) =>
+            expect(view.getBaseUrl()).toEqual("https://site.com/")
+        );
 
         await createAndInitialize(
             {
@@ -187,7 +197,7 @@ describe("Utility methods", () => {
             LayerView
         ).then((view) =>
             expect(view.children[0].getBaseUrl()).toEqual(
-                "https://site.com/blaa"
+                "https://site.com/blaa/"
             )
         );
 
@@ -204,7 +214,7 @@ describe("Utility methods", () => {
             LayerView
         ).then((view) =>
             expect(view.children[0].getBaseUrl()).toEqual(
-                "https://another-site.com"
+                "https://another-site.com/"
             )
         );
 
@@ -226,7 +236,7 @@ describe("Utility methods", () => {
         ).then((view) =>
             // @ts-ignore
             expect(view.children[0].children[0].getBaseUrl()).toEqual(
-                "https://site.com/blaa"
+                "https://site.com/blaa/"
             )
         );
     });

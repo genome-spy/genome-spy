@@ -18,6 +18,7 @@ import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
 import ParamMediator, { isExprRef } from "./paramMediator.js";
 import { InternMap } from "internmap";
+import { endWithSlash } from "../utils/addBaseUrl.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -674,7 +675,7 @@ export default class View {
     getBaseUrl() {
         return concatUrl(
             () => this.dataParent?.getBaseUrl(),
-            this.spec.baseUrl
+            endWithSlash(this.spec.baseUrl)
         );
     }
 
