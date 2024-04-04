@@ -5,6 +5,7 @@ theme:
     custom_dir: custom_theme/
     features:
         - navigation.indexes
+        - content.action.edit
     palette:
         primary: indigo
     font:
@@ -12,6 +13,7 @@ theme:
 plugins:
     - social
     - search
+    - git-revision-date-localized
 markdown_extensions:
     - markdown.extensions.def_list
     - pymdownx.magiclink
@@ -32,7 +34,7 @@ extra_javascript:
 extra_css:
     - stylesheets/extra.css
 repo_url: https://github.com/genome-spy/genome-spy
-
+edit_uri: edit/master/docs/
 nav:
     - Introduction: "index.md"
     - Getting Started: "getting-started.md"
