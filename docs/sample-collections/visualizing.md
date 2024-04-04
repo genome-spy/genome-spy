@@ -71,8 +71,7 @@ while the top layer might show single-nucleotide variants.
       ...,
       // The sample channel identifies the track
       "sample": {
-        "field": "sampleId",
-        "type": "nominal"
+        "field": "sampleId"
       }
     }
   }
@@ -217,6 +216,45 @@ In addition, the following properties are supported:
 : Spacing between attribute columns in pixels.
 
     **Default value:** `1`
+
+### Handling variable sample heights
+
+The height of a single sample depend on the number of samples and the height of
+the sample view. Moreover, the end user can
+[toggle](./analyzing.md#peeking-samples) between a bird's eye view and a closeup
+view making the height very dynamic.
+
+To adapt the maximum size of [`"point"`](../grammar/mark/point.md) marks to the
+height of the samples, you need to specify a dynamic
+[scale](../grammar/scale.md) range for the `size` channel. The following example
+demonstrates how to use [expressions](../grammar/expressions.md) and the
+`height` [parameter](../grammar/parameters.md) adjust the point size:
+
+```json title="Dynamic point sizes"
+"encoding": {
+  "size": {
+    "field": "VAF",
+    "type": "quantitative",
+    "scale": {
+      "domain": [0, 1],
+      "range": [
+        { "expr": "0" },
+        { "expr": "pow(clamp(height * 0.65, 2, 18), 2)" }
+      ]
+    }
+  },
+  ...
+}
+```
+
+In this example, the `height` parameter contains the height of a single sample.
+By multiplying it with `0.65`, the points get some padding at the top and
+bottom. To prevent the points from becoming too small or excessively large, the
+`clamp` function is used to limit the point's diameter to a minimum of `2` and a
+maximum of `18` pixels. As the `size` channel encodes the _area_, not the
+diameter of the points, the `pow` function is used to square the value. The
+technique shown here is used in the
+[PARPiCL](https://genomespy.app/examples/?spec=PARPiCL/parpicl.json) example.
 
 ### Aggregation
 
