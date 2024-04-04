@@ -31,7 +31,7 @@ extra_javascript:
     - app/index.js
 extra_css:
     - stylesheets/extra.css
-repo_url: https://github.com/tuner/genome-spy
+repo_url: https://github.com/genome-spy/genome-spy
 
 nav:
     - Introduction: "index.md"
