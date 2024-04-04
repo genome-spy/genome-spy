@@ -3,7 +3,7 @@
 Genome browser applications typically couple the visual representations to
 specific file formats and provide few customization options. GenomeSpy has a
 more abstract approach to visualization, providing combinatorial building blocks
-such as [marks](mark/index.md), [transformations](transform/), and
+such as [marks](mark/index.md), [transformations](transform/index.md), and
 [scales](scale.md). As a result, users can author tailored visualizations that
 display the underlying data more effectively.
 

@@ -254,7 +254,7 @@ The tabix-based `"gff3"` source enables the retrieval of hierarchical data, such
 as genomic annotations stored in GFF3 files. The object format GenomeSpy uses
 is described in [gff-js](https://github.com/GMOD/gff-js#object-format)'s
 documentation. The [flatten](../transform/flatten.md) and
-[project](../tranform/project.md) transforms are useful when extracting the
+[project](../transform/project.md) transforms are useful when extracting the
 child features and attributes from the hierarchical data structure. See the
 example below.
 
