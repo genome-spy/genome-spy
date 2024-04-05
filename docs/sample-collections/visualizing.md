@@ -247,7 +247,7 @@ demonstrates how to use [expressions](../grammar/expressions.md) and the
 }
 ```
 
-In this example, the `height` parameter contains the height of a single sample.
+In this example, the `height` parameter, contains the height of a single sample.
 By multiplying it with `0.65`, the points get some padding at the top and
 bottom. To prevent the points from becoming too small or excessively large, the
 `clamp` function is used to limit the point's diameter to a minimum of `2` and a
@@ -356,6 +356,14 @@ make it available to all users. A simplified example:
   }
 ]
 ```
+
+!!! tip "Providing the user with an initial state"
+
+    If you want to provide the user with an initial state comprising specific
+    actions performed on the samples, a particular visible genomic region, etc.,
+    you can create a bookmark with the desired settings and set the
+    `initialBookmark` property to the name of the bookmark. See documentation
+    above for details.
 
 ## Toggleable View Visibility
 
