@@ -21,13 +21,13 @@ page for more information.
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://cdn.jsdelivr.net/npm/@genome-spy/app@0.37.x/dist/style.css"
+      href="https://cdn.jsdelivr.net/npm/@genome-spy/app@0.51.x/dist/style.css"
     />
   </head>
   <body>
     <script
       type="text/javascript"
-      src="https://cdn.jsdelivr.net/npm/@genome-spy/app@0.37.x"
+      src="https://cdn.jsdelivr.net/npm/@genome-spy/app@0.51.x"
     ></script>
 
     <script>
@@ -228,7 +228,7 @@ To adapt the maximum size of [`"point"`](../grammar/mark/point.md) marks to the
 height of the samples, you need to specify a dynamic
 [scale](../grammar/scale.md) range for the `size` channel. The following example
 demonstrates how to use [expressions](../grammar/expressions.md) and the
-`height` [parameter](../grammar/parameters.md) adjust the point size:
+`height` [parameter](../grammar/parameters.md) to adjust the point size:
 
 ```json title="Dynamic point sizes"
 "encoding": {
@@ -247,13 +247,13 @@ demonstrates how to use [expressions](../grammar/expressions.md) and the
 }
 ```
 
-In this example, the `height` parameter, contains the height of a single sample.
-By multiplying it with `0.65`, the points get some padding at the top and
-bottom. To prevent the points from becoming too small or excessively large, the
-`clamp` function is used to limit the point's diameter to a minimum of `2` and a
-maximum of `18` pixels. As the `size` channel encodes the _area_, not the
-diameter of the points, the `pow` function is used to square the value. The
-technique shown here is used in the
+In this example, the `height` parameter, provided by the sample view, contains
+the height of a single sample. By multiplying it with `0.65`, the points get
+some padding at the top and bottom. To prevent the points from becoming too
+small or excessively large, the `clamp` function is used to limit the point's
+diameter to a minimum of `2` and a maximum of `18` pixels. As the `size` channel
+encodes the _area_, not the diameter of the points, the `pow` function is used
+to square the value. The technique shown here is used in the
 [PARPiCL](https://genomespy.app/examples/?spec=PARPiCL/parpicl.json) example.
 
 ### Aggregation
@@ -338,7 +338,7 @@ If undefined, the default state without any performed actions will be loaded.
 The remote bookmark file consists of an array of bookmark objects. The easiest
 way to create such bookmark objects is to create a bookmark in the app and
 choose _Share_ from the submenu (:fontawesome-solid-ellipsis-vertical:) of the
-bookmark item. The sharing dialog provides the bookmark in an URL-encoded format
+bookmark item. The sharing dialog provides the bookmark in a URL-encoded format
 and as a JSON object. Just copy-paste the JSON object into the bookmark file to
 make it available to all users. A simplified example:
 
@@ -362,7 +362,7 @@ make it available to all users. A simplified example:
     If you want to provide the user with an initial state comprising specific
     actions performed on the samples, a particular visible genomic region, etc.,
     you can create a bookmark with the desired settings and set the
-    `initialBookmark` property to the name of the bookmark. See documentation
+    `initialBookmark` property to the bookmark's name. See the documentation
     above for details.
 
 ## Toggleable View Visibility
