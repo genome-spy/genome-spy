@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 # Creates a compressed version of RefSeq genes:
+# 
 # 1) Exons of all overlapping isoforms are merged
-# 2) Exons are run-length encoded
+# 2) Exon coordinates are delta-encoded to reduce file size.
+#    The encoding is decoded using the "flattenCompressedExons" transform:
+#    https://genomespy.app/docs/grammar/transform/flatten-compressed-exons/
 #
 # Original RefSeqGene format:
 # https://genome.ucsc.edu/FAQ/FAQformat.html#format1
