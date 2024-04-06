@@ -53,7 +53,7 @@ research and innovation programme under grant agreement No. 965193
 ([RESCUER](https://www.rescuer.uio.no/)), the Sigrid Jusélius Foundation and
 the Cancer Foundation Finland.
 
-Contains some code copied and adapted from the following MIT-licensed projects:
+Contains some code copied and adapted from the following projects:
 
 - Vega and Vega-Lite ([LICENSE](https://github.com/vega/vega-lite/blob/master/LICENSE))
 - TWGL ([LICENSE](https://github.com/greggman/twgl.js/blob/master/LICENSE.md))
