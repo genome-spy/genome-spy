@@ -39,6 +39,10 @@ The `packages/core/private/` directory is in `.gitignore` and served by the deve
 
 If you want to use or develop the core library, launch a single-page app using: `npm -w @genome-spy/core run dev`
 
+### Contributing guidelines
+
+Please see the [CONTRIBUTING.md](./CONTRIBUTING.md) file for more information.
+
 ## About
 
 Copyright (c) 2019-2024 Kari Lavikka. See [LICENSE](LICENSE) for details.
