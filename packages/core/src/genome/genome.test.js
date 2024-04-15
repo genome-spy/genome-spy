@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterAll, describe, expect, test, vi } from "vitest";
 import Genome from "./genome.js";
 
 describe("Human genome, chromosome names prefixed with 'chr'", () => {
@@ -187,6 +187,48 @@ describe("C. elegans genome, chromosome names prefixed with 'chr'", () => {
 
     test("Maps unprefixed names to continuous", () => {
         expect(g.toContinuous("III", 10)).toEqual(30351865);
+    });
+});
+
+describe("Load chrom.sizes file from a URL", () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
+    fetchSpy.mockImplementation((/** @type {string} */ url) => {
+        if (url !== "http://example.com/chrom.sizes") {
+            throw new Error(`Unexpected URL: ${url}`);
+        }
+        return Promise.resolve(
+            // @ts-expect-error
+            {
+                text() {
+                    return Promise.resolve(
+                        "chr1\t1000\nchr2\t2000\nchr3\t3000\nchrX\t4000"
+                    );
+                },
+                ok: true,
+            }
+        );
+    });
+
+    afterAll(() => {
+        fetchSpy.mockRestore();
+    });
+
+    test("Throw if the deprecated baseUrl property is provided", () => {
+        expect(
+            () =>
+                new Genome({
+                    name: "random",
+                    // @ts-expect-error
+                    baseUrl: "http://example.com",
+                })
+        ).toThrow(/removed/);
+    });
+
+    test("Loads and parses a genome", async () => {
+        const g = new Genome({ name: "random", url: "chrom.sizes" });
+        await g.load("http://example.com");
+
+        expect(g.parseInterval("chr2")).toEqual([1000, 3000]);
     });
 });
 
