@@ -1,45 +1,32 @@
-import React, { forwardRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { embed } from "@genome-spy/core";
+import type { ViewSpecBase, RootSpec } from "@genome-spy/core"
+import { EmbedResult } from '@genome-spy/core/types/embedApi.js';
 
-interface GenomeSpySpec {
-    baseUrl?: readonly string;
-    // TODO
+interface IGenomeSpyProps {
+    spec: ViewSpecBase;
+    onEmbed: (api: Promise<EmbedResult>) => void; 
 }
 
-interface GenomeSpyData {
-    // TODO
-}
-
-function GenomeSpy ({spec: GenomeSpySpec, data: GenomeSpyData}, embedRef) {
-
-    const [error, setError] = useState<string|undefined>()
-    const getBaseUrl = (): string => 'TODO' // TODO: how to get base URL? 
+export default function GenomeSpy ({ spec, onEmbed }: IGenomeSpyProps) {
+    const embedRef = useRef<HTMLDivElement>(null)
+    const [error, setError] = useState<string | undefined>()
 
     useEffect(() => {
-        async function embedToDoc(container, conf) {
-            const baseUrl = getBaseUrl();
-            const dataBaseUrl = `${baseUrl}/data/`
-
+        async function embedToDoc(container: HTMLDivElement | null, config: RootSpec) {
             try {
-                conf.baseUrl = conf.baseUrl || dataBaseUrl
-                await embed(container, conf, { bare: true })
+               const api = await embed(container, config, { bare: true })
+               onEmbed(api)
             } catch (e) {
-                setError(e.toString()) 
+                setError(e!.toString()) 
             }
         }
-
         embedToDoc(embedRef.current, spec)
-
-        return () => {
-            // TODO: how to clean up?
-        }
     }, [])
 
     return (
-        <div class="embed-container" ref={embedRef}>
+        <div className="embed-container" ref={embedRef}>
             {error && <pre>{error}</pre>}
         </div>
     )
 }
-
-export default forwardRef(GenomeSpy)
