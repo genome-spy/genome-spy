@@ -23,36 +23,20 @@ const App = () => {
                     y: {
                         field: "y",
                         type: "quantitative",
-                        scale: { domain: [-1, 1] },
+                        scale: { domain: [0, 1] },
                     },
                 },
             },
         ],
     }
-
-    const generateData = () => {
-        const pi = 3.141;
-        const count = 20;
-        const offset = performance.now() / 1000;
-    
-        const data = [];
-    
-        for (let i = 0; i < count; i++) {
-            const f = (i / count + offset * 0.3) * pi * 2;
-            const d = Math.sin(offset * 1 + (i / count) * 3);
-            data.push({
-                id: i + 1,
-                x: Math.sin(f) * d,
-                y: Math.cos(f) * d,
-                size: 1 - Math.abs(d),
-            });
-        }
-    
-        return data;
-    };
+    const data = [
+        { id: 1, x: 1, y: 0.2, }, 
+        { id: 2, x: 2, y: 0.5 },
+        { id: 3, x: 3, y: 1 },
+    ]
 
     const updateData = (api) => {
-        api.updateNamedData("dynamicData", generateData());
+        api.updateNamedData("dynamicData", data);
     }
 
     return (
