@@ -5,27 +5,32 @@ import { EmbedResult } from '@genome-spy/core/types/embedApi.js';
 
 interface IGenomeSpyProps {
     spec: ViewSpecBase;
-    onEmbed: (api: Promise<EmbedResult>) => void; 
+    onEmbed: (api: EmbedResult) => void; 
 }
 
 export default function GenomeSpy ({ spec, onEmbed }: IGenomeSpyProps) {
-    const embedRef = useRef<HTMLDivElement>(null)
+    const containerRef = useRef<HTMLDivElement>(null)
+    const apiRef = useRef<EmbedResult|null>(null)
     const [error, setError] = useState<string | undefined>()
 
     useEffect(() => {
-        async function embedToDoc(container: HTMLDivElement | null, config: RootSpec) {
+        async function embedInContainer(container: HTMLDivElement | null, config: RootSpec) {
             try {
-               const api = await embed(container, config, { bare: true })
+               const api: EmbedResult = await embed(container, config, { bare: true })
                onEmbed(api)
+               apiRef.current = api
             } catch (e) {
                 setError(e!.toString()) 
             }
         }
-        embedToDoc(embedRef.current, spec)
+        embedInContainer(containerRef.current, spec)
+        return  () => {
+            apiRef.current?.finalize()
+        }
     }, [])
 
     return (
-        <div className="embed-container" ref={embedRef}>
+        <div className="embed-container" ref={containerRef}>
             {error && <pre>{error}</pre>}
         </div>
     )
