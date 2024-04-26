@@ -10,8 +10,8 @@
   "author": "Kari Lavikka",
   "license": "MIT",
   "dependencies": {
-    "@genome-spy/core": "^0.51.0",
-    "@genome-spy/react-component": "^0.52.0",
+    "@genome-spy/core": "^0.52.0",
+    "@genome-spy/react-component": "^0.51.0",
     "@gmod/indexedfasta": "^2.0.4",
     "buffer": "^6.0.3",
     "lit": "^3.1.2",
