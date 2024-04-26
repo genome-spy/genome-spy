@@ -27,42 +27,47 @@ name of the assembly to the top level view specification:
 
 ## Supported genomes
 
-By default, GenomeSpy loads genomes from the _genomespy.app_ website. The
-following assemblies are provided: `"hg38"`, `"hg19"`, `"hg18"`, `"mm10"`,
-`"mm9"`, and `"dm6"`.
+GenomeSpy bundles a few common built-in genome assemblies: `"hg38"`, `"hg19"`,
+`"hg18"`, `"mm10"`, `"mm9"`, and `"dm6"`.
 
 ## Custom genomes
 
-At minimum, a custom genome needs a list of contigs and their sizes, which
-can be loaded from a `"chrom.sizes"` file or provided within the specification.
+Custom genome assemblies can be provided in two ways: as a `chrom.sizes` file or within the
+the specification.
 
-### As files
+### As a `chrom.sizes` file
 
-The `baseUrl` property specifies the location of genomes:
-
-```json
-{
-  "genome": {
-    "name": "hg99",
-    "baseUrl": "https://your.site/genomes/"
-  },
-  ...
-}
-```
-
-The directory must have the following structure:
-
-```
-hg99/hg99.chrom.sizes
-```
-
-### Within the Specification
+The `chrom.sizes` file is a two-column text file with the chromosome names and
+their sizes. You may want to use the UCSC Genome Browser's
+[fetchChromSizes](http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/fetchChromSizes)
+script to download the sizes for a genome assembly. GenomeSpy does not filter
+out any alternative contigs or haplotypes, so you may want to preprocess the
+file before using it.
 
 Example:
 
 ```json
 {
   "genome": {
+    "name": "hg19",
+    "url": "https://genomespy.app/data/genomes/hg19/chrom.sizes"
+  },
+  ...
+}
+```
+
+### Within the specification
+
+You can provide the genome assembly directly in the specification using the
+`contigs` property. The contigs are an array of objects with the `name` and
+`size` properties.
+
+Example:
+
+```json
+{
+  "genome": {
+    "name": "dm6",
     "contigs": [
       {"name": "chr3R", "size": 32079331 },
       {"name": "chr3L", "size": 28110227 },

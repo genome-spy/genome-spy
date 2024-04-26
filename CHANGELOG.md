@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.52.0](https://github.com/genome-spy/genome-spy/compare/v0.51.0...v0.52.0) (2024-04-26)
+
+
+### Bug Fixes
+
+* **app:** actions were invoked twice when a focused OK button was activated using Enter key ([5609151](https://github.com/genome-spy/genome-spy/commit/56091516dab1612fc3e8e732fef695eec25f4cc1))
+* **app:** paragraphs margins in bookmark descriptions ([42b30cf](https://github.com/genome-spy/genome-spy/commit/42b30cfbb7a708a72fa46cb9c07f922efb426a24))
+* **app:** styling of the collapse button in bookmark tour ([817e434](https://github.com/genome-spy/genome-spy/commit/817e434585b12173db1807700124764d7ce36bd6))
+* **core:** automatically append slash to baseUrls in the view spec ([5834209](https://github.com/genome-spy/genome-spy/commit/5834209e67698d173938f7c922db820210fdf193))
+* **core:** bundle the genome assemblies into the JavaScript library ([80d1645](https://github.com/genome-spy/genome-spy/commit/80d16453260546979675dfcdd9ab5b1ff7649e23))
+
+
+### Features
+
+* **core:** publish view `width` and `height` as parameters ([fa8a2bc](https://github.com/genome-spy/genome-spy/commit/fa8a2bc3f2a9cac1dc15b4591a87219be25fdce1))
+
+
+
+
+
 # [0.51.0](https://github.com/genome-spy/genome-spy/compare/v0.50.2...v0.51.0) (2024-03-26)
 
 

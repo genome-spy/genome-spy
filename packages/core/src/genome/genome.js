@@ -1,10 +1,9 @@
 import { bisect } from "d3-array";
 import { tsvParseRows } from "d3-dsv";
-import { loader } from "vega-loader";
 import { isObject } from "vega-util";
 import { formatRange } from "./locusFormat.js";
-
-const defaultBaseUrl = "https://genomespy.app/data/genomes/";
+import { getContigs } from "./genomes.js";
+import { concatUrl } from "../utils/url.js";
 
 /**
  * @typedef {import("../spec/genome.js").GenomeConfig} GenomeConfig
@@ -33,11 +32,17 @@ export default class Genome {
      * @param {GenomeConfig} config
      */
     constructor(config) {
-        this.config = config;
+        this.config = { name: "custom", ...config };
 
-        if (!this.config.contigs && typeof this.config.name !== "string") {
+        if ("baseUrl" in config) {
             throw new Error(
-                "No name has been defined for the genome assembly!"
+                "The `baseUrl` property in genome config has been removed in GenomeSpy v0.52.0. Use `url` instead. See https://genomespy.app/docs/genomic-data/genomic-coordinates/."
+            );
+        }
+
+        if (!isGenomeConfig(config)) {
+            throw new Error(
+                "Not a genome configuration: " + JSON.stringify(config)
             );
         }
 
@@ -55,8 +60,19 @@ export default class Genome {
 
         this.totalSize = 0;
 
-        if (this.config.contigs) {
+        if (isInlineGenomeConfig(this.config)) {
             this.setChromSizes(this.config.contigs);
+        } else if (isUrlGenomeConfig(this.config)) {
+            // Nop
+        } else {
+            const contigs = getContigs(this.config.name);
+            if (contigs) {
+                this.setChromSizes(contigs);
+            } else {
+                throw new Error(
+                    `Unknown genome: ${this.config.name}. Please provide contigs or a URL. See https://genomespy.app/docs/genomic-data/genomic-coordinates/.`
+                );
+            }
         }
     }
 
@@ -68,28 +84,21 @@ export default class Genome {
      * @param {string} baseUrl
      */
     async load(baseUrl) {
-        if (this.config.contigs) {
+        if (!isUrlGenomeConfig(this.config)) {
             return;
         }
 
-        if (this.config.baseUrl) {
-            this.baseUrl = /^http(s)?/.test(this.config.baseUrl)
-                ? this.config.baseUrl
-                : baseUrl + "/" + this.config.baseUrl;
-        } else {
-            this.baseUrl = defaultBaseUrl;
-        }
-
         try {
-            this.setChromSizes(
-                parseChromSizes(
-                    await loader({ baseURL: this.baseUrl }).load(
-                        `${this.config.name}/${this.name}.chrom.sizes`
-                    )
-                )
-            );
+            const fullUrl = concatUrl(baseUrl, this.config.url);
+            const result = await fetch(fullUrl);
+            if (!result.ok) {
+                throw new Error(`${result.status} ${result.statusText}`);
+            }
+            this.setChromSizes(parseChromSizes(await result.text()));
         } catch (e) {
-            throw new Error(`Could not load chrom sizes: ${e.message}`);
+            throw new Error(
+                `Could not load chrom sizes: ${this.config.url}. Reason: ${e.message}`
+            );
         }
     }
 
@@ -354,10 +363,10 @@ export default class Genome {
  * @param {string} chromSizesData
  */
 export function parseChromSizes(chromSizesData) {
-    // TODO: Support other organisms too
-    return tsvParseRows(chromSizesData)
-        .filter((row) => /^chr[0-9A-Z]+$/.test(row[0]))
-        .map(([name, size]) => ({ name, size: parseInt(size) }));
+    return tsvParseRows(chromSizesData).map(([name, size]) => ({
+        name,
+        size: parseInt(size),
+    }));
 }
 
 /**
@@ -376,4 +385,33 @@ export function isChromosomalLocus(value) {
  */
 export function isChromosomalLocusInterval(value) {
     return value.every(isChromosomalLocus);
+}
+
+/**
+ * @param {any} value
+ * @returns {value is GenomeConfig}
+ */
+export function isGenomeConfig(value) {
+    return (
+        isObject(value) &&
+        ("name" in value ||
+            isUrlGenomeConfig(value) ||
+            isInlineGenomeConfig(value))
+    );
+}
+
+/**
+ * @param {any} value
+ * @returns {value is import("../spec/genome.js").UrlGenomeConfig               }
+ */
+export function isUrlGenomeConfig(value) {
+    return isGenomeConfig(value) && "url" in value;
+}
+
+/**
+ * @param {any} value
+ * @returns {value is import("../spec/genome.js").InlineGenomeConfig}
+ */
+export function isInlineGenomeConfig(value) {
+    return isGenomeConfig(value) && "contigs" in value;
 }
