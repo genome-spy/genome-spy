@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.52.0](https://github.com/genome-spy/genome-spy/compare/v0.51.0...v0.52.0) (2024-04-26)
+
+**Note:** Version bump only for package @genome-spy/embed-examples
+
+
+
+
+
 # [0.51.0](https://github.com/genome-spy/genome-spy/compare/v0.50.2...v0.51.0) (2024-03-26)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
