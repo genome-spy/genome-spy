@@ -1,5 +1,5 @@
 import { read } from "vega-loader";
-import { getFormat } from "./dataUtils.js";
+import { getFormat, responseType } from "./dataUtils.js";
 import DataSource from "./dataSource.js";
 import {
     activateExprRefProps,
@@ -40,6 +40,9 @@ export default class UrlSource extends DataSource {
         /** @type {string[]} */
         const urls = Array.isArray(url) ? url : [url];
 
+        const format = getFormat(this.params);
+        const type = responseType(format.type);
+
         if (urls.length === 0 || !urls[0]) {
             this.reset();
             this.complete();
@@ -54,8 +57,11 @@ export default class UrlSource extends DataSource {
                 if (!result.ok) {
                     throw new Error(`${result.status} ${result.statusText}`);
                 }
-                // TODO: what about binary data (for arrow), etc?
-                return result.text();
+                // @ts-ignore
+                return typeof result[type] == "function"
+                    ? // @ts-ignore
+                      result[type]()
+                    : result.text();
             } catch (e) {
                 throw new Error(
                     `Could not load data: ${url}. Reason: ${e.message}`
@@ -64,13 +70,13 @@ export default class UrlSource extends DataSource {
         };
 
         /**
-         * @param {string} text
+         * @param {any} content
          * @param {string} [url]
          */
-        const readAndParse = (text, url) => {
+        const readAndParse = (content, url) => {
             try {
                 /** @type {any[]} */
-                const data = read(text, getFormat(this.params));
+                const data = read(content, format);
                 this.beginBatch({ type: "file", url: url });
                 for (const d of data) {
                     this._propagate(d);
@@ -89,7 +95,6 @@ export default class UrlSource extends DataSource {
         } catch (e) {
             this.setLoadingStatus("error", e.message);
         }
-
         this.complete();
     }
 }

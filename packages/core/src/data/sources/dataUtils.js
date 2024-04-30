@@ -1,3 +1,4 @@
+import { formats } from "vega-loader";
 import { withoutExprRef } from "../../view/paramMediator.js";
 import { isInlineData } from "./inlineSource.js";
 
@@ -27,6 +28,14 @@ export function getFormat(params) {
     }
 
     return format;
+}
+
+/**
+ * @param {string} type
+ * @returns {string}
+ */
+export function responseType(type) {
+    return formats(type)?.responseType ?? "text";
 }
 
 /**
