@@ -1,3 +1,9 @@
 {
+  "compilerOptions": {
+    "jsx": "react",
+    "paths": {
+      "@genome-spy/react-component": ["packages/react-component/src"]
+    }
+  },
   "extends": "../../tsconfig.json"
 }
