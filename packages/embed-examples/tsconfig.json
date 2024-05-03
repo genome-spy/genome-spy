@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "jsx": "react",
+    "jsx": "react-jsx",
     "paths": {
       "@genome-spy/react-component": ["packages/react-component/src"]
     }
