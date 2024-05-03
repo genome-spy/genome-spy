@@ -135,9 +135,7 @@ export interface Axis extends BaseAxis {
 
 export interface BaseAxis<
     N = number,
-    NS = number,
     B = boolean,
-    BNS = number | boolean,
     S = string,
     C = string,
     FW = string,

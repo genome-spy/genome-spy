@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable global-require */
 /*
  * Adapted from: https://stackoverflow.com/a/18639999/1547896
