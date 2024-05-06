@@ -55,8 +55,8 @@ group at the [University of Helsinki](https://www.helsinki.fi/en).
 This project has received funding from the European Union's Horizon 2020
 research and innovation programme under grant agreement No. 965193
 ([DECIDER](https://www.deciderproject.eu/)) and No. 847912
-([RESCUER](https://www.rescuer.uio.no/)), the Sigrid Jusélius Foundation and
-the Cancer Foundation Finland.
+([RESCUER](https://www.rescuer.uio.no/)), Biomedicum Helsinki Foundation, Sigrid
+Jusélius Foundation, and the Cancer Foundation Finland.
 
 Contains some code copied and adapted from the following projects:
 
