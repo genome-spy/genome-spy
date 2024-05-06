@@ -3,6 +3,7 @@
 ![Teaser](https://raw.githubusercontent.com/genome-spy/genome-spy/master/docs/img/teaser.png)
 
 ![npm version](https://img.shields.io/npm/v/@genome-spy/core)
+[![DOI](https://zenodo.org/badge/153765756.svg)](https://zenodo.org/doi/10.5281/zenodo.7852281)
 
 GenomeSpy is a visualization toolkit for genomic (and other) data. It has a [Vega-Lite](https://vega.github.io/vega-lite/) inspired visualization grammar and a high-performance, WebGL-powered graphics renderer.
 
