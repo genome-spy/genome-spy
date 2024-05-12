@@ -28,7 +28,7 @@ export default class AxisMeasureSource extends SingleAxisLazySource {
     /** @type {Object.<number, string>} */
     measureLabeledValues = {};
 
-    updateSpanLabeledValues() {
+    updateMeasureLabeledValues() {
         this.measureValues = Array.from(
             { length: Math.floor(Math.log10(this.genome.totalSize)) + 1 },
             (_, i) => this.params.multiplierValue * 10 ** i
@@ -65,7 +65,7 @@ export default class AxisMeasureSource extends SingleAxisLazySource {
 
         super(view, paramsWithDefaults.channel);
         this.params = paramsWithDefaults;
-        this.updateSpanLabeledValues();
+        this.updateMeasureLabeledValues();
     }
     /** Function that calculates the domain coordinates
      * of the measure, given the alignment parameter,
