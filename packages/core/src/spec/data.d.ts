@@ -197,6 +197,7 @@ export interface LazyData {
 export type LazyDataParams =
     | AxisTicksData
     | AxisGenomeData
+    | AxisMeasureData
     | IndexedFastaData
     | BigWigData
     | BigBedData
@@ -241,6 +242,58 @@ export interface AxisGenomeData {
 
     /** Which channel's scale domain to use */
     channel: PrimaryPositionalChannel;
+}
+
+export interface AxisMeasureData {
+    type: "axisMeasure";
+
+    /**
+     * Which channel's scale domain to monitor.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * Optional min measure size in pixels.
+     * It has to be big enough to fit the measure/span label.
+     * The measure size in pixels will vary between this minimum value and
+     * 10 times this value, when it switches to the next smaller span value.
+     *
+     * __Default value:__ `50`
+     */
+    minMeasureSize?: number;
+
+    /**
+     * Optional value of threshold to hide measure.
+     * If measure size in domain units (e.g. DNA bases) is less than or equal
+     * to this threshold, hide the measure to avoid "flickering" caused
+     * by rounding.
+     * The measure is not really necessary at this zoom level,
+     * as the axis ticks are filling that need.
+     *
+     * __Default value:__ `10`
+     */
+    hideMeasureThreshold?: number;
+
+    /**
+     * Optional multiplier value which can be used to create a different set
+     * of measures from the powers of 10: 1, 100, 1000, etc.
+     * e.g. : 5, 500, 5000 for multiplierValue = 5
+     *
+     * __Default value:__ `1`
+     */
+    multiplierValue?: number;
+
+    /**
+     * Optional positioning of the measure on the current axis scale domain:
+     * 'left', 'center' or 'right'
+     * For "y" channel axes, these values can be:
+     * 'bottom', 'center' or 'top'
+     *
+     * __Default value:__ `center`
+     */
+    alignMeasure?: string;
 }
 
 export interface IndexedFastaData extends DebouncedData {

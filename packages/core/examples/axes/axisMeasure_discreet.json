@@ -1,0 +1,132 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": "Adding a \"discreet\" axis measure for a genome axis with default parameters",
+  "genome": {
+    "name": "hg38"
+  },
+  "vconcat": [
+    {
+      "height": 40,
+      "data": {
+        "values": [
+          {
+            "chrom": "chr3",
+            "pos": 134567890
+          },
+          {
+            "chrom": "chr4",
+            "pos": 123456789
+          },
+          {
+            "chrom": "chr9",
+            "pos": 34567890
+          }
+        ]
+      },
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "pos",
+          "type": "locus",
+          "scale": {
+            "name": "genomeScale",
+            "domain": [
+              {
+                "chrom": "chr3"
+              },
+              {
+                "chrom": "chr9"
+              }
+            ]
+          }
+        },
+        "size": {
+          "value": 200
+        }
+      }
+    },
+    {
+      "name": "axis_measure",
+      "height": 20,
+      "data": {
+        "lazy": {
+          "type": "axisMeasure"
+        }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "rule"
+          },
+          "encoding": {
+            "x": {
+              "field": "startPos",
+              "type": "locus",
+              "axis": null
+            },
+            "y": {
+              "value": 0.2
+            },
+            "y2": {
+              "value": 0.8
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "rule"
+          },
+          "encoding": {
+            "x": {
+              "field": "endPos",
+              "type": "locus",
+              "axis": null
+            },
+            "y": {
+              "value": 0.2
+            },
+            "y2": {
+              "value": 0.8
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "rule"
+          },
+          "encoding": {
+            "x": {
+              "field": "startPos",
+              "type": "locus",
+              "axis": null
+            },
+            "x2": {
+              "field": "endPos",
+              "type": "locus",
+              "axis": null
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "bottom",
+            "y": 0.5
+          },
+          "encoding": {
+            "x": {
+              "field": "centerPos",
+              "type": "locus",
+              "axis": null
+            },
+            "text": {
+              "field": "measureLabel"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
