@@ -8,12 +8,12 @@
  *
  * @param {T} template The template object that
  * @returns {(function(T):T) & { properties: string[] }}
- * @template T
+ * @template {object} [T=object]
  */
 export default function createCloner(template) {
     // TODO: Check that only properties, not methods get cloned
     const properties = /** @type {string[]} */ (
-        Object.keys(template).filter((k) => typeof k == "string")
+        getAllProperties(template).filter((k) => typeof k == "string")
     );
 
     const cloner = /** @type {(function(T):T) & { properties: string[] }} */ (
@@ -31,4 +31,21 @@ export default function createCloner(template) {
     cloner.properties = properties;
 
     return cloner;
+}
+
+/**
+ * Needed for proxied Apache Arrow tables.
+ *
+ * @param {object} obj
+ */
+export function getAllProperties(obj) {
+    /** @type {string[]} */
+    let props = [];
+    do {
+        props = props.concat(Object.keys(obj));
+        obj = Object.getPrototypeOf(obj);
+    } while (obj && obj !== Object.prototype); // Traverse until the end of the prototype chain
+
+    const uniqueProps = Array.from(new Set(props));
+    return uniqueProps;
 }

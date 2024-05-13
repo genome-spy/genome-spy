@@ -1,4 +1,5 @@
-import createCloner from "../../utils/cloner.js";
+import { shallowArrayEquals } from "../../utils/arrayUtils.js";
+import createCloner, { getAllProperties } from "../../utils/cloner.js";
 import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode.js";
 
 /**
@@ -9,15 +10,26 @@ export default class CloneTransform extends FlowNode {
         return BEHAVIOR_CLONES;
     }
 
+    /** @type {string[]} */
+    #lastBatchFields;
+
     constructor() {
         super();
 
         /** @param {any} datum */
         const setupCloner = (datum) => {
-            const clone = createCloner(datum);
+            // Create a new cloner if the fields have changed
+            const fields = getAllProperties(datum);
+            if (
+                !this.#lastBatchFields ||
+                !shallowArrayEquals(fields, this.#lastBatchFields)
+            ) {
+                this.#lastBatchFields = fields;
+                const clone = createCloner(datum);
 
-            /** @param {any} datum */
-            this.handle = (datum) => this._propagate(clone(datum));
+                /** @param {any} datum */
+                this.handle = (datum) => this._propagate(clone(datum));
+            }
 
             this.handle(datum);
         };
@@ -31,7 +43,6 @@ export default class CloneTransform extends FlowNode {
          */
         this.beginBatch = (flowBatch) => {
             if (isFileBatch(flowBatch)) {
-                // TODO: Only create new cloner if the props change
                 this.handle = setupCloner;
             }
             super.beginBatch(flowBatch);

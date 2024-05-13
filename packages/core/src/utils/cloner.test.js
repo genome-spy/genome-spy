@@ -1,10 +1,11 @@
 import { expect, test } from "vitest";
-import createCloner from "./cloner.js";
+import createCloner, { getAllProperties } from "./cloner.js";
 
 const template = {
+    1: "iddqd",
     a: 1,
-    b: "xyzzy",
-    3: "iddqd",
+    c: "xyzzy",
+    b: "idclip",
 };
 
 test("Cloner clones object properly", () => {
@@ -14,11 +15,21 @@ test("Cloner clones object properly", () => {
     expect(makeClone(template)).not.toBe(template);
 
     const another = {
+        1: "hello",
         a: 2,
-        b: "idkfa",
-        3: "hello",
+        c: "idkfa",
+        b: "idclip",
     };
 
     expect(makeClone(another)).toEqual(another);
     expect(makeClone(another)).not.toBe(another);
+});
+
+test("getAllProperties", () => {
+    expect(getAllProperties(template)).toEqual(["1", "a", "c", "b"]);
+
+    const obj = Object.create(template);
+    obj.d = 42;
+
+    expect(getAllProperties(obj)).toEqual(["d", "1", "a", "c", "b"]);
 });
