@@ -118,7 +118,10 @@ export default class SingleAxisLazySource extends DataSource {
     }
 
     /**
-     * Resets the data flow and propagates the data.
+     * Resets the data flow and propagates the data, which should be an array of data chunks.
+     * A chunk is an ordinary array of data objects. Typically all data objects are stored
+     * in a single chunk, but sometimes they may be split into multiple chunks, e.g., one per
+     * chromosome.
      *
      * @param {import("../../flowNode.js").Datum[][]} chunks An array of data chunks.
      * @protected
