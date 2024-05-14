@@ -13,10 +13,13 @@ export default class CloneTransform extends FlowNode {
     /** @type {string[]} */
     #lastBatchFields;
 
+    /** @type {(datum: import("../flowNode.js").Datum) => import("../flowNode.js").Datum} */
+    #clone = (datum) => datum;
+
     constructor() {
         super();
 
-        /** @param {any} datum */
+        /** @param {import("../flowNode.js").Datum} datum */
         const setupCloner = (datum) => {
             // Create a new cloner if the fields have changed
             const fields = getAllProperties(datum);
@@ -25,11 +28,12 @@ export default class CloneTransform extends FlowNode {
                 !shallowArrayEquals(fields, this.#lastBatchFields)
             ) {
                 this.#lastBatchFields = fields;
-                const clone = createCloner(datum);
-
-                /** @param {any} datum */
-                this.handle = (datum) => this._propagate(clone(datum));
+                this.#clone = createCloner(datum);
             }
+
+            const clone = this.#clone;
+            /** @param {any} datum */
+            this.handle = (datum) => this._propagate(clone(datum));
 
             this.handle(datum);
         };
