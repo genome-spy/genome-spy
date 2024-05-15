@@ -1,7 +1,6 @@
 {
-  "packages": [
-    "packages/*"
-  ],
+  "$schema": "node_modules/@lerna-lite/cli/schemas/lerna-schema.json",
+  "packages": ["packages/*"],
   "useWorkspaces": true,
   "version": "0.52.0",
   "command": {
