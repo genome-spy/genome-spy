@@ -41,7 +41,8 @@
     "pretty-quick": "pretty-quick",
     "prepare": "husky install",
     "pre-commit": "lint-staged",
-    "version": "git rm package-lock.json && npm install && npm i --save-dev rollup && git add package-lock.json"
+    "publish": "lerna publish --changelog-include-commits-client-login \" by @%l\"",
+    "preview:publish": "lerna publish --changelog-include-commits-client-login \" by @%l\" --dry-run"
   },
   "workspaces": [
     "./packages/*"
