@@ -1,13 +1,14 @@
 import { field } from "../../utils/field.js";
 import numberExtractor from "../../utils/numberExtractor.js";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
+import { BEHAVIOR_CLONES } from "../flowNode.js";
+import Transform from "./transform.js";
 
 /**
  * Flattens "run-length encoded" exons. The transforms inputs the start
  * coordinate of the gene body and a comma-delimited string of alternating
  * intron and exon lengths. A new datum is created for each exon.
  */
-export default class FlattenCompressedExonsTransform extends FlowNode {
+export default class FlattenCompressedExonsTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }

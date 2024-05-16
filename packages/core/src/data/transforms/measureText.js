@@ -1,13 +1,14 @@
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import fontMetadata from "../../fonts/Lato-Regular.json";
 import getMetrics from "../../fonts/bmFontMetrics.js";
 import { field } from "../../utils/field.js";
+import Transform from "./transform.js";
 
 /**
  * Measures text length. This is mainly intended for reading-direction arrows
  * in gene annotations.
  */
-export default class MeasureTextTransform extends FlowNode {
+export default class MeasureTextTransform extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }

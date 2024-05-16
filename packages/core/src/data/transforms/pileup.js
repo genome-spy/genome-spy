@@ -2,11 +2,12 @@
 import FlatQueue from "flatqueue";
 import { isNumber } from "vega-util";
 import { field } from "../../utils/field.js";
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import Transform from "./transform.js";
 
 const maxDepth = 65536;
 
-export default class PileupTransform extends FlowNode {
+export default class PileupTransform extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }

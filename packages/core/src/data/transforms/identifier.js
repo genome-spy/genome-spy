@@ -1,4 +1,5 @@
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import Transform from "./transform.js";
 
 export const UNIQUE_ID_KEY = "_uniqueId";
 
@@ -25,7 +26,7 @@ const reservationMap = [null];
  * This is mainly used for creating ids that can be used for picking, i.e.,
  * selecting rendered data items by hovering or clicking.
  */
-export default class IdentifierTransform extends FlowNode {
+export default class IdentifierTransform extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }

@@ -1,8 +1,9 @@
 import { accessorName } from "vega-util";
 import { field } from "../../utils/field.js";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
+import { BEHAVIOR_CLONES } from "../flowNode.js";
+import Transform from "./transform.js";
 
-export default class ProjectTransform extends FlowNode {
+export default class ProjectTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }

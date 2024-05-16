@@ -1,9 +1,10 @@
 import { compare } from "vega-util";
 import { groups as d3groups, sum as d3sum } from "d3-array";
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
+import Transform from "./transform.js";
 
-export default class StackTransform extends FlowNode {
+export default class StackTransform extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }

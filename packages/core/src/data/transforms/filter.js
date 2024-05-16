@@ -1,7 +1,7 @@
 import { makeSelectionTestExpression } from "../../selection/selection.js";
-import FlowNode from "../flowNode.js";
+import Transform from "./transform.js";
 
-export default class FilterTransform extends FlowNode {
+export default class FilterTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").FilterParams} params

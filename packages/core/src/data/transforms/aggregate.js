@@ -1,10 +1,11 @@
 import { group as d3group } from "d3-array";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
+import { BEHAVIOR_CLONES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
 import iterateNestedMaps from "../../utils/iterateNestedMaps.js";
+import Transform from "./transform.js";
 import AGGREGATE_OPS from "./aggregateOps.js";
 
-export default class AggregateTransform extends FlowNode {
+export default class AggregateTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }

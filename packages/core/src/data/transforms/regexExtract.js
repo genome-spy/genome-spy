@@ -1,8 +1,9 @@
 import { isString } from "vega-util";
 import { field } from "../../utils/field.js";
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import Transform from "./transform.js";
 
-export default class RegexExtractTransform extends FlowNode {
+export default class RegexExtractTransform extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }

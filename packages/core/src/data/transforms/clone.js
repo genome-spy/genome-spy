@@ -1,11 +1,12 @@
 import { shallowArrayEquals } from "../../utils/arrayUtils.js";
 import createCloner, { getAllProperties } from "../../utils/cloner.js";
-import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode.js";
+import { BEHAVIOR_CLONES, isFileBatch } from "../flowNode.js";
+import Transform from "./transform.js";
 
 /**
  * Clones the data objects that pass through.
  */
-export default class CloneTransform extends FlowNode {
+export default class CloneTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }

@@ -1,8 +1,9 @@
 import { asArray } from "../../utils/arrayUtils.js";
 import { field } from "../../utils/field.js";
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import Transform from "./transform.js";
 
-export default class LinearizeGenomicCoordinate extends FlowNode {
+export default class LinearizeGenomicCoordinate extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }
