@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.53.1](https://github.com/genome-spy/genome-spy/compare/v0.53.0...v0.53.1) (2024-05-16)
+
+### Bug Fixes
+
+* **core:** minify favicon svg and remove namespaced attributes ([e9a3619](https://github.com/genome-spy/genome-spy/commit/e9a3619fe52dc3264a195f68ae81978444ffdf18)) by @tuner
+
 # [0.53.0](https://github.com/genome-spy/genome-spy/compare/v0.52.0...v0.53.0) (2024-05-16)
 
 ### Bug Fixes
