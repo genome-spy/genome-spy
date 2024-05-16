@@ -730,6 +730,36 @@ export default class ScaleResolution {
         return 1.0;
     }
 
+    /**
+     * Returns the length of the axis in pixels. Chooses the smallest of the views.
+     * They should all be the same, but some exotic configuration might break that assumption.
+     *
+     * This method is needed because positional channels have unit ranges and the
+     * length of the axis is not directly available from the scale. Ideally, ranges would
+     * be configured as pixels, but that is yet to be materialized.
+     */
+    getAxisLength() {
+        if (this.channel !== "x" && this.channel !== "y") {
+            throw new Error(
+                "Axis length is only defined for x and y channels!"
+            );
+        }
+
+        // Here's a problem: if the view has been hidden, it may have stale coords.
+        // TODO: They should be cleared when the layout is invalidated.
+        // Alternatively, scale ranges could be set in pixels.
+        const lengths = this.members
+            .map(
+                (m) =>
+                    m.view.coords?.[this.channel === "x" ? "width" : "height"]
+            )
+            .filter((len) => len > 0);
+
+        return lengths.length
+            ? lengths.reduce((a, b) => Math.min(a, b), 10000)
+            : 0;
+    }
+
     #getZoomExtent() {
         const props = this.scale.props;
         const zoom = props.zoom;

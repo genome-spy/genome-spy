@@ -64,23 +64,6 @@ export default class SingleAxisLazySource extends DataSource {
     }
 
     /**
-     * Returns the length of the axis in pixels. Chooses the smallest of the views.
-     * They should all be the same, but some exotic configuration might break that assumption.
-     */
-    getAxisLength() {
-        const lengths = this.scaleResolution.members
-            .map(
-                (m) =>
-                    m.view.coords?.[this.channel === "x" ? "width" : "height"]
-            )
-            .filter((len) => len > 0);
-
-        return lengths.length
-            ? lengths.reduce((a, b) => Math.min(a, b), 10000)
-            : 0;
-    }
-
-    /**
      * Convenience getter for genome.
      *
      * @protected

@@ -111,7 +111,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         await this.initializedPromise;
 
         // TODO: Postpone the initial load until layout is computed and remove 700.
-        const length = this.getAxisLength() || 700;
+        const length = this.scaleResolution.getAxisLength() || 700;
 
         const reductionLevel = findReductionLevel(
             domain,

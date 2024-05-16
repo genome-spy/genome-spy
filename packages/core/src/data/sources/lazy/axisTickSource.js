@@ -47,8 +47,8 @@ export default class AxisTickSource extends SingleAxisLazySource {
         // synchronously to ensure that the new ticks are available before the next frame is drawn.
 
         const scale = this.scaleResolution.scale;
+        const axisLength = this.scaleResolution.getAxisLength();
         const axisParams = this.params.axis;
-        const axisLength = this.getAxisLength();
 
         /**
          * Make ticks more dense in small plots.
