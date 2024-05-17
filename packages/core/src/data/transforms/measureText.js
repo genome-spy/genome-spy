@@ -15,16 +15,16 @@ export default class MeasureTextTransform extends Transform {
 
     /**
      *
-     * @param {import("../../spec/transform.js").MeasureTextParams} config
+     * @param {import("../../spec/transform.js").MeasureTextParams} params
      */
-    constructor(config) {
-        super();
+    constructor(params) {
+        super(params);
 
         const metrics = getMetrics(fontMetadata);
-        const accessor = field(config.field);
-        const as = config.as;
+        const accessor = field(params.field);
+        const as = params.as;
         // TODO: Support custom fonts.
-        const size = config.fontSize;
+        const size = params.fontSize;
 
         /**
          *

@@ -35,6 +35,10 @@ export default class SequenceSource extends DataSource {
         }
     }
 
+    get label() {
+        return "sequenceSource";
+    }
+
     loadSynchronously() {
         const as = withoutExprRef(this.sequence.as) ?? "data";
         const start = withoutExprRef(this.sequence.start) ?? 0;

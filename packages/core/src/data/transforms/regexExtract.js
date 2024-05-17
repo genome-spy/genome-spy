@@ -12,7 +12,7 @@ export default class RegexExtractTransform extends Transform {
      * @param {import("../../spec/transform.js").RegexExtractParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         const re = new RegExp(params.regex);
         const as = typeof params.as == "string" ? [params.as] : params.as;

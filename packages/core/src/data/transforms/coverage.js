@@ -25,7 +25,7 @@ export default class CoverageTransform extends Transform {
      * @param {import("../../spec/transform.js").CoverageParams} params
      */
     constructor(params) {
-        super();
+        super(params);
         this.params = params;
 
         this.startAccessor = field(params.start);

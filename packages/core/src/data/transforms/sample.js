@@ -9,7 +9,7 @@ export default class SampleTransform extends Transform {
      * @param {import("../../spec/transform.js").SampleParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         this.k = params.size || 500;
         this.reset();

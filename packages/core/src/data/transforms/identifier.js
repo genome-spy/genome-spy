@@ -36,7 +36,7 @@ export default class IdentifierTransform extends Transform {
      * @param {import("../../spec/transform.js").IdentifierParams} params
      */
     constructor(params) {
-        super();
+        super(params);
         this.params = params;
 
         this.as = params.as ?? UNIQUE_ID_KEY;

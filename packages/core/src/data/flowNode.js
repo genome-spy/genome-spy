@@ -29,6 +29,12 @@ export const BEHAVIOR_COLLECTS = 1 << 2;
  * @typedef {Datum[]} Data
  */
 export default class FlowNode {
+    stats = {
+        count: 0,
+        /** @type {Datum} */
+        first: null,
+    };
+
     /**
      * An object that provides a paramMediator. (Most likely a View)
      *
@@ -39,6 +45,15 @@ export default class FlowNode {
 
     get behavior() {
         return 0;
+    }
+
+    /**
+     * A human-readable label for the node. Used for debugging and logging.
+     *
+     * @returns {string}
+     */
+    get label() {
+        return undefined;
     }
 
     /**
@@ -67,6 +82,9 @@ export default class FlowNode {
         for (const child of this.children) {
             child.reset();
         }
+
+        this.stats.count = 0;
+        this.stats.first = null;
     }
 
     /**
@@ -84,13 +102,19 @@ export default class FlowNode {
     #updatePropagator() {
         this._propagate = Function(
             "children",
+            "stats",
             range(this.children.length)
                 .map((i) => `const child${i} = children[${i}];`)
                 .join("\n") +
                 `return function propagate(datum) {${range(this.children.length)
                     .map((i) => `child${i}.handle(datum);`)
-                    .join("\n")}}`
-        )(this.children);
+                    .join("\n")}
+                    if (stats.count === 0) {
+                        stats.first = datum;
+                    }
+                    stats.count++;
+                };`
+        )(this.children, this.stats);
     }
 
     /**
@@ -227,7 +251,7 @@ export default class FlowNode {
         const childTree = this.children
             .map((child) => child.subtreeToString(depth + 1))
             .join("");
-        return `${" ".repeat(depth * 2)}* ${this.constructor.name}${
+        return `${" ".repeat(depth * 2)}* ${this.label}${
             ("identifier" in this && this.identifier
                 ? ": " + this.identifier
                 : "") ?? ""
@@ -293,8 +317,7 @@ export default class FlowNode {
     }
 
     /**
-     *
-     * @param {any} datum
+     * @param {Datum} datum
      * @protected
      */
     _propagate(datum) {

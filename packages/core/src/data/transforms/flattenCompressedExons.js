@@ -18,7 +18,7 @@ export default class FlattenCompressedExonsTransform extends Transform {
      * @param {import("../../spec/transform.js").FlattenCompressedExonsParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         const exonsAccessor = field(params.exons ?? "exons");
         const startAccessor = field(params.start ?? "start");

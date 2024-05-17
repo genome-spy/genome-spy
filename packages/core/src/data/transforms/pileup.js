@@ -17,7 +17,7 @@ export default class PileupTransform extends Transform {
      * @param {import("../../spec/transform.js").PileupParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         this.params = params;
     }

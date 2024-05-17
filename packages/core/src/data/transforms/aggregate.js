@@ -16,7 +16,7 @@ export default class AggregateTransform extends Transform {
      * @typedef {import("../flowNode.js").Datum} Datum
      */
     constructor(params) {
-        super();
+        super(params);
         this.params = params;
 
         /** @type {any[]} */

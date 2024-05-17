@@ -12,7 +12,7 @@ export default class FlattenSequenceTransform extends Transform {
      * @param {import("../../spec/transform.js").FlattenSequenceParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         const accessor = field(params.field ?? "sequence");
         const [asPos, asSequence] = params.as ?? ["pos", "sequence"];

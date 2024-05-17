@@ -8,7 +8,7 @@ export default class FilterTransform extends Transform {
      * @param {import("../flowNode.js").ParamMediatorProvider} paramMediatorProvider
      */
     constructor(params, paramMediatorProvider) {
-        super(paramMediatorProvider);
+        super(params, paramMediatorProvider);
 
         this.params = params;
 

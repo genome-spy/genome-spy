@@ -13,7 +13,7 @@ export default class ProjectTransform extends Transform {
      * @param {import("../../spec/transform.js").ProjectParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         if (params.as && params.as.length != params.fields.length) {
             throw new Error(`"fields" and "as" have unequal lengths!`);

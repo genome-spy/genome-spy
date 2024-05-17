@@ -27,6 +27,10 @@ export default class InlineSource extends DataSource {
         }
     }
 
+    get label() {
+        return "inlineSource";
+    }
+
     loadSynchronously() {
         const values = this.params.values;
 

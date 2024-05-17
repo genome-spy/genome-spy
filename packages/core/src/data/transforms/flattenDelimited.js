@@ -12,7 +12,7 @@ export default class FlattenDelimitedTransform extends Transform {
      * @param {import("../../spec/transform.js").FlattenDelimitedParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         // TODO: Validate config. string elements, etc...
 

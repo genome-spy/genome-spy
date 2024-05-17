@@ -16,7 +16,7 @@ export default class RegexFoldTransform extends Transform {
      * @param {import("../../spec/transform.js").RegexFoldParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         const columnRegex = asArray(params.columnRegex).map(
             (re) => new RegExp(re)

@@ -54,6 +54,10 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         this.#initialize();
     }
 
+    get label() {
+        return "bigWigSource";
+    }
+
     #initialize() {
         this.initializedPromise = new Promise((resolve, reject) => {
             Promise.all([

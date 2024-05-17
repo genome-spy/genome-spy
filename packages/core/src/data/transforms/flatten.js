@@ -12,7 +12,7 @@ export default class FlattenTransform extends Transform {
      * @param {import("../../spec/transform.js").FlattenParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         const indexField = params.index;
 

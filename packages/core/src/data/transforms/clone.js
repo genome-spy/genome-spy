@@ -18,7 +18,7 @@ export default class CloneTransform extends Transform {
     #clone = (datum) => datum;
 
     constructor() {
-        super();
+        super({ type: "clone" });
 
         /** @param {import("../flowNode.js").Datum} datum */
         const setupCloner = (datum) => {

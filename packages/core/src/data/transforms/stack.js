@@ -13,7 +13,7 @@ export default class StackTransform extends Transform {
      * @param {import("../../spec/transform.js").StackParams} params
      */
     constructor(params) {
-        super();
+        super(params);
         this.params = params;
 
         /** @type {any[]} */

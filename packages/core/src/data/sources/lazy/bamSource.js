@@ -71,6 +71,10 @@ export default class BamSource extends SingleAxisWindowedSource {
         });
     }
 
+    get label() {
+        return "bamSource";
+    }
+
     /**
      * @param {number[]} interval linearized domain
      */
