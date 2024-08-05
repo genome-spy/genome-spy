@@ -42,7 +42,7 @@ export interface Title {
     offset?: number;
 
     /**
-     * Default title orientation (`"top"`, `"bottom"`, `"left"`, or `"right"`)
+     * Default title orientation (`"none"`, `"top"`, `"bottom"`, `"left"`, or `"right"`)
      */
     orient?: TitleOrient;
 
