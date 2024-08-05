@@ -188,14 +188,44 @@ export interface StackParams extends TransformParamsBase {
     baseField?: Field;
 }
 
+export type AggregateOp =
+    | "count"
+    | "valid"
+    | "sum"
+    | "min"
+    | "max"
+    | "mean"
+    | "median"
+    | "variance";
+
 export interface AggregateParams extends TransformParamsBase {
     type: "aggregate";
 
     /**
-     * Which fields to use for grouping. Missing `groupby` results in a single
-     * group that includes all the data items.
+     * The fields by which to group the data. If these are not defined, all data
+     * objects will be grouped into a single category.
      */
     groupby?: Field[];
+
+    /**
+     * The data fields to apply aggregate functions to. This array should
+     * correspond with the `ops` and `as` arrays. If no fields or operations
+     * are specified, a count aggregation will be applied by default.
+     */
+    fields?: Field[];
+
+    /**
+     * The aggregation operations to be performed on the fields, such as `"sum"`,
+     * `"average"`, or `"count"`.
+     */
+    ops?: AggregateOp[];
+
+    /**
+     * The names for the output fields corresponding to each aggregated field.
+     * If not provided, names will be automatically created using the operation
+     * and field names (e.g., `sum_field`, `average_field`).
+     */
+    as?: string[];
 }
 
 export interface FlattenParams extends TransformParamsBase {
