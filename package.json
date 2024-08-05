@@ -9,6 +9,7 @@
     "@commitlint/config-conventional": "^16.2.4",
     "@lerna-lite/cli": "^3.4.0",
     "@lerna-lite/publish": "^3.4.0",
+    "@lerna-lite/run": "^3.7.1",
     "@rollup/plugin-replace": "^5.0.0",
     "@typescript-eslint/eslint-plugin": "^7.8.0",
     "@typescript-eslint/parser": "^7.8.0",
