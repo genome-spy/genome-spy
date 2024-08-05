@@ -59,6 +59,15 @@ If you want to use or develop the core library, launch a single-page app using:
 
 Please see the [CONTRIBUTING.md](./CONTRIBUTING.md) file for more information.
 
+## Citing
+
+If you use GenomeSpy in your research, please cite the following paper:  
+Kari Lavikka, Jaana Oikkonen, Yilin Li, Taru Muranen, Giulia Micoli, Giovanni
+Marchi, Alexandra Lahtinen, Kaisa Huhtinen, Rainer Lehtonen, Sakari Hietanen,
+Johanna Hynninen, Anni Virtanen, Sampsa Hautaniemi, Deciphering cancer genomes
+with GenomeSpy: a grammar-based visualization toolkit, _GigaScience_, Volume 13,
+2024, giae040, https://doi.org/10.1093/gigascience/giae040
+
 ## About
 
 Copyright (c) 2019-2024 Kari Lavikka. See [LICENSE](LICENSE) for details.
