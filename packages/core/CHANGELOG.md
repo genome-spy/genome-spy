@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.54.0](https://github.com/genome-spy/genome-spy/compare/v0.53.1...v0.54.0) (2024-08-06)
+
+
+### Bug Fixes
+
+* incorrect grid lines when `"excluded"` scale and axis resolutions are used ([a09719f](https://github.com/genome-spy/genome-spy/commit/a09719f21f3760d7b05b1a60639276f6bc820564))
+
+
+### Features
+
+* **core:** add aggregate functions to `"aggregate"`transform ([a73d229](https://github.com/genome-spy/genome-spy/commit/a73d229bdbfa1aa7e4c782d329c301035e88d0b5))
+
+
+
+
+
 ## [0.53.1](https://github.com/genome-spy/genome-spy/compare/v0.53.0...v0.53.1) (2024-05-16)
 
 ### Bug Fixes
