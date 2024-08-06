@@ -1136,14 +1136,18 @@ export class GridChild {
             "x",
             "y",
         ])) {
-            if (view.needsAxes[channel]) {
+            if (
+                view.needsAxes[channel] &&
+                // Handle a special case where the child view has an excluded resolution
+                // but no scale or axis, e.g., when only values are used on a channel.
+                view.getConfiguredOrDefaultResolution(channel, "axis") !=
+                    "excluded"
+            ) {
                 const r = view.getAxisResolution(channel);
                 if (!r) {
                     continue;
                 }
 
-                // TODO: Optimization: the same grid view could be reused for all children
-                // because they share the axis and scale resolutions anyway.
                 await createAxisGrid(r, channel, view);
             }
         }
