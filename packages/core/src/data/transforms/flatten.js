@@ -14,6 +14,8 @@ export default class FlattenTransform extends Transform {
     constructor(params) {
         super(params);
 
+        this.params = params;
+
         const indexField = params.index;
 
         if (params.fields) {

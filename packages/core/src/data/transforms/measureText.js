@@ -20,6 +20,8 @@ export default class MeasureTextTransform extends Transform {
     constructor(params) {
         super(params);
 
+        this.params = params;
+
         const metrics = getMetrics(fontMetadata);
         const accessor = field(params.field);
         const as = params.as;

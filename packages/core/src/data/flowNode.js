@@ -52,7 +52,7 @@ export default class FlowNode {
      * @returns {string}
      */
     get label() {
-        return undefined;
+        return `(${this.constructor.name})`;
     }
 
     /**

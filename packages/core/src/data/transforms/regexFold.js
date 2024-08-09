@@ -18,6 +18,8 @@ export default class RegexFoldTransform extends Transform {
     constructor(params) {
         super(params);
 
+        this.params = params;
+
         const columnRegex = asArray(params.columnRegex).map(
             (re) => new RegExp(re)
         );

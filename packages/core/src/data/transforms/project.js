@@ -15,6 +15,8 @@ export default class ProjectTransform extends Transform {
     constructor(params) {
         super(params);
 
+        this.params = params;
+
         if (params.as && params.as.length != params.fields.length) {
             throw new Error(`"fields" and "as" have unequal lengths!`);
         }
