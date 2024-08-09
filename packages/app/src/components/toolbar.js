@@ -4,6 +4,7 @@ import {
     faInfoCircle,
     faQuestionCircle,
     faExpandArrowsAlt,
+    faBug,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
@@ -15,6 +16,7 @@ import packageJson from "../../package.json";
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
+import { showDataflowDebuggerDialog } from "./dataflowDebugger.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -103,6 +105,17 @@ export default class Toolbar extends LitElement {
                 href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
                 >v${packageJson.version}</a
             >
+
+            <button
+                class="tool-btn"
+                title="Dataflow Debugger"
+                @click=${() =>
+                    showDataflowDebuggerDialog(
+                        this.app.genomeSpy.viewRoot.context.dataFlow
+                    )}
+            >
+                ${icon(faBug).node[0]}
+            </button>
 
             ${this.app.appContainer.requestFullscreen
                 ? html`

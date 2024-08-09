@@ -39,7 +39,6 @@ export default class FlowNode {
      * An object that provides a paramMediator. (Most likely a View)
      *
      * @type {ParamMediatorProvider}
-     * @protected
      */
     paramMediatorProvider = null;
 
@@ -106,13 +105,14 @@ export default class FlowNode {
             range(this.children.length)
                 .map((i) => `const child${i} = children[${i}];`)
                 .join("\n") +
-                `return function propagate(datum) {${range(this.children.length)
-                    .map((i) => `child${i}.handle(datum);`)
-                    .join("\n")}
+                `return function propagate(datum) {
                     if (stats.count === 0) {
-                        stats.first = datum;
+                        stats.first = structuredClone(datum);
                     }
                     stats.count++;
+                ${range(this.children.length)
+                    .map((i) => `child${i}.handle(datum);`)
+                    .join("\n")}
                 };`
         )(this.children, this.stats);
     }

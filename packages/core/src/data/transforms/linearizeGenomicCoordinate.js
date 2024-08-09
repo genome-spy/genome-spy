@@ -14,9 +14,15 @@ export default class LinearizeGenomicCoordinate extends Transform {
      * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
-        super(params);
+        params = {
+            channel: "x",
+            ...params,
+        };
 
-        const channel = params.channel ?? "x";
+        super(params);
+        this.params = params;
+
+        const channel = params.channel;
 
         if (!["x", "y"].includes(channel)) {
             throw new Error("Invalid channel: " + channel);
