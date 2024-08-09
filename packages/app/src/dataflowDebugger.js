@@ -35,8 +35,10 @@ export function showDataflowDebuggerDialog(dataFlow) {
                     <input
                         type="checkbox"
                         .checked=${hideTrivial}
-                        @change=${(e) => {
-                            hideTrivial = e.target.checked;
+                        @change=${(/** @type {MouseEvent} */ e) => {
+                            hideTrivial = /** @type {HTMLInputElement} */ (
+                                e.target
+                            ).checked;
                             renderAll();
                         }}
                     />
