@@ -1,7 +1,8 @@
 import { html, nothing, render } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";
-import { messageBox } from "../utils/ui/modal.js";
-import { handleTabClick } from "../utils/ui/tabs.js";
+import { messageBox } from "./utils/ui/modal.js";
+import { handleTabClick } from "./utils/ui/tabs.js";
+import InlineSource from "@genome-spy/core/data/sources/inlineSource.js";
 
 /**
  *
@@ -15,6 +16,11 @@ export function showDataflowDebuggerDialog(dataFlow) {
     /** @type {import( "@genome-spy/core/data/flowNode.js").default} */
     let selectedFlowNode = null;
 
+    /**
+     * Should trivial InlineSources be hidden, i.e., those that propagate a single dummy object.
+     */
+    let hideTrivial = true;
+
     const h = html`
         <p>
             The dataflow debugger shows the data sources and subsequent
@@ -24,6 +30,20 @@ export function showDataflowDebuggerDialog(dataFlow) {
         </p>
 
         <div class="gs-data-flow-debugger">
+            <div class="gs-form-group">
+                <label class="checkbox">
+                    <input
+                        type="checkbox"
+                        .checked=${hideTrivial}
+                        @change=${(e) => {
+                            hideTrivial = e.target.checked;
+                            renderAll();
+                        }}
+                    />
+                    Hide trivial InlineSources that propagate a single dummy
+                    object
+                </label>
+            </div>
             <div ${ref(propsRef)}></div>
         </div>
     `;
@@ -33,7 +53,11 @@ export function showDataflowDebuggerDialog(dataFlow) {
         okLabel: "Close",
     });
 
-    render(getHtml(), propsRef.value);
+    function renderAll() {
+        render(getHtml(), /** @type {HTMLElement} */ (propsRef.value));
+    }
+
+    renderAll();
 
     /**
      * @param {import("@genome-spy/core/data/flowNode.js").default} flowNode
@@ -41,12 +65,21 @@ export function showDataflowDebuggerDialog(dataFlow) {
     function onNodeClick(flowNode) {
         selectedFlowNode = flowNode;
 
-        render(getHtml(), propsRef.value);
+        render(getHtml(), /** @type {HTMLElement} */ (propsRef.value));
     }
 
     function getHtml() {
         return html`<ul class="gs-data-flow-hierarchy">
-                ${dataSources.map(flowNodeToHtml)}
+                ${dataSources
+                    .filter(
+                        (dataSource) =>
+                            !(
+                                hideTrivial &&
+                                dataSource instanceof InlineSource &&
+                                dataSource.isTrivial()
+                            )
+                    )
+                    .map(flowNodeToHtml)}
             </ul>
             ${selectedFlowNode
                 ? html`
@@ -66,6 +99,7 @@ export function showDataflowDebuggerDialog(dataFlow) {
             "params" in flowNode ? /** @type {any} */ (flowNode.params) : null;
 
         /** @type {import("@genome-spy/core/view/view.js").default} */
+        // @ts-ignore
         const view = "view" in flowNode ? flowNode.view : null;
 
         return html`

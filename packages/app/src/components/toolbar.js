@@ -16,7 +16,7 @@ import packageJson from "../../package.json";
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
-import { showDataflowDebuggerDialog } from "./dataflowDebugger.js";
+import { showDataflowDebuggerDialog } from "../dataflowDebugger.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
