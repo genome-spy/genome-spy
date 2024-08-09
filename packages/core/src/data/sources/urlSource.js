@@ -34,6 +34,10 @@ export default class UrlSource extends DataSource {
         return JSON.stringify({ params: this.params, baseUrl: this.baseUrl });
     }
 
+    get label() {
+        return "urlSource";
+    }
+
     async load() {
         const url = withoutExprRef(this.params.url);
 

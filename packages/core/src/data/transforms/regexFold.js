@@ -1,12 +1,13 @@
 import { asArray } from "../../utils/arrayUtils.js";
-import FlowNode, { BEHAVIOR_CLONES, isFileBatch } from "../flowNode.js";
+import { BEHAVIOR_CLONES, isFileBatch } from "../flowNode.js";
+import Transform from "./transform.js";
 
 /**
  * Folds fields using a regex
  *
  * See: https://vega.github.io/vega/docs/transforms/fold/
  */
-export default class RegexFoldTransform extends FlowNode {
+export default class RegexFoldTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -15,7 +16,9 @@ export default class RegexFoldTransform extends FlowNode {
      * @param {import("../../spec/transform.js").RegexFoldParams} params
      */
     constructor(params) {
-        super();
+        super(params);
+
+        this.params = params;
 
         const columnRegex = asArray(params.columnRegex).map(
             (re) => new RegExp(re)

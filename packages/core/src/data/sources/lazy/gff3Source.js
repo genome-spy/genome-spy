@@ -20,6 +20,10 @@ export default class Gff3Source extends TabixSource {
         });
     }
 
+    get label() {
+        return "gff3Source";
+    }
+
     /**
      * @param {string[]} lines
      */

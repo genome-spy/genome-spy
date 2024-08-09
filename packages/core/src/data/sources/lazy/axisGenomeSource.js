@@ -13,6 +13,10 @@ export default class AxisGenomeSource extends SingleAxisLazySource {
         super(view, params.channel);
     }
 
+    get label() {
+        return "axisGenomeSource";
+    }
+
     async load() {
         this.publishData([this.genome.chromosomes]);
     }

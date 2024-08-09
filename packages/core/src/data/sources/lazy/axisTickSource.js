@@ -35,6 +35,10 @@ export default class AxisTickSource extends SingleAxisLazySource {
         this.params = params;
     }
 
+    get label() {
+        return "axisTickSource";
+    }
+
     async load() {
         // Force the ticks to be recalculated. This is needed because the async
         // initialization process and non-deterministic order of events.

@@ -27,6 +27,24 @@ export default class InlineSource extends DataSource {
         }
     }
 
+    get label() {
+        return "inlineSource";
+    }
+
+    /**
+     * Returns true if the data source emits a single dummy datum.
+     */
+    isTrivial() {
+        const values = this.params.values;
+        /** @type {any} */
+        const value = Array.isArray(values) ? values[0] : values;
+        return !!(
+            value &&
+            Object.keys(value).length == 0 &&
+            value.constructor === Object
+        );
+    }
+
     loadSynchronously() {
         const values = this.params.values;
 

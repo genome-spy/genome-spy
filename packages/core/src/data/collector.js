@@ -44,6 +44,10 @@ export default class Collector extends FlowNode {
         return BEHAVIOR_COLLECTS;
     }
 
+    get label() {
+        return "collect";
+    }
+
     /**
      * @param {import("../spec/transform.js").CollectParams} [params]
      */

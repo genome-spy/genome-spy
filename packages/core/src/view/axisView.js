@@ -271,7 +271,7 @@ function createAxis(axisProps, type) {
      */
     const createDomain = () => ({
         name: "domain",
-        data: { values: [0] },
+        data: { values: [{}] },
         mark: {
             type: "rule",
             clip: false,
@@ -334,7 +334,7 @@ function createAxis(axisProps, type) {
      */
     const createTitle = () => ({
         name: "title",
-        data: { values: [0] },
+        data: { values: [{}] },
         mark: {
             type: "text",
             clip: false,

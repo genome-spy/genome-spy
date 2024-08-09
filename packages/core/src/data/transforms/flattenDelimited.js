@@ -1,8 +1,9 @@
 import { asArray } from "../../utils/arrayUtils.js";
 import { field } from "../../utils/field.js";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
+import { BEHAVIOR_CLONES } from "../flowNode.js";
+import Transform from "./transform.js";
 
-export default class FlattenDelimitedTransform extends FlowNode {
+export default class FlattenDelimitedTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -11,7 +12,7 @@ export default class FlattenDelimitedTransform extends FlowNode {
      * @param {import("../../spec/transform.js").FlattenDelimitedParams} params
      */
     constructor(params) {
-        super();
+        super(params);
 
         // TODO: Validate config. string elements, etc...
 

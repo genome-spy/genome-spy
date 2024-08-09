@@ -4,6 +4,8 @@ import { reconfigureScales } from "../../../view/scaleResolution.js";
 
 /**
  * Base class for data sources that listen a domain and propagate data lazily.
+ *
+ * @abstract
  */
 export default class SingleAxisLazySource extends DataSource {
     /**

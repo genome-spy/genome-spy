@@ -35,6 +35,10 @@ export default class NamedSource extends DataSource {
         return this.params.name;
     }
 
+    get label() {
+        return "namedSource";
+    }
+
     /**
      * Update the named data. If data is omitted, a data provider is used instead.
      *

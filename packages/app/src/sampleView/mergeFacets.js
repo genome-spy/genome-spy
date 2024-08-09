@@ -71,6 +71,10 @@ export default class MergeSampleFacets extends FlowNode {
         });
     }
 
+    get label() {
+        return "MergeSampleFacets";
+    }
+
     initialize() {
         this.#sampleCountSetter = this.paramMediator.allocateSetter(
             SAMPLE_COUNT_VARIABLE,
