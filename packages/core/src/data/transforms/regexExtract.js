@@ -14,6 +14,8 @@ export default class RegexExtractTransform extends Transform {
     constructor(params) {
         super(params);
 
+        this.params = params;
+
         const re = new RegExp(params.regex);
         const as = typeof params.as == "string" ? [params.as] : params.as;
         const accessor = field(params.field);

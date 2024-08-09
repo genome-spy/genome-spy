@@ -14,6 +14,8 @@ export default class FlattenSequenceTransform extends Transform {
     constructor(params) {
         super(params);
 
+        this.params = params;
+
         const accessor = field(params.field ?? "sequence");
         const [asPos, asSequence] = params.as ?? ["pos", "sequence"];
 

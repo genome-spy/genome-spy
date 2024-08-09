@@ -11,6 +11,8 @@ export default class SampleTransform extends Transform {
     constructor(params) {
         super(params);
 
+        this.params = params;
+
         this.k = params.size || 500;
         this.reset();
     }
