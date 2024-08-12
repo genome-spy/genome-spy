@@ -123,14 +123,16 @@ ${JSON.stringify(params, null, 2)}</pre
                         <p>
                             The first data object propagated by the flow node:
                         </p>
-                        ${flowNode.children.length > 0
+                        ${flowNode.children.length == 0
+                            ? html`<p>
+                                  The node has no children, nothing was
+                                  propagated.
+                              </p>`
+                            : flowNode.stats.count > 0
                             ? html`<pre>
 ${JSON.stringify(flowNode.stats.first, null, 2)}</pre
                               >`
-                            : html`<p>
-                                  The node has no children, nothing was
-                                  propagated.
-                              </p>`}
+                            : html`<p>Nothing data was propagated</p>`}
                     </div>
                     <div>
                         <ul>
