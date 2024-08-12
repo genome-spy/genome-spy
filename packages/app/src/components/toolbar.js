@@ -69,8 +69,8 @@ export default class Toolbar extends LitElement {
          * The first entry in the description array is shown as a title in the toolbar
          */
 
-        const description = this.app.config.description
-            ? asArray(this.app.config.description)
+        const description = this.app.rootSpec.description
+            ? asArray(this.app.rootSpec.description)
             : [];
 
         if (description.length > 1) {
@@ -106,17 +106,18 @@ export default class Toolbar extends LitElement {
                 >v${packageJson.version}</a
             >
 
-            <button
-                class="tool-btn"
-                title="Dataflow Debugger"
-                @click=${() =>
-                    showDataflowDebuggerDialog(
-                        this.app.genomeSpy.viewRoot.context.dataFlow
-                    )}
-            >
-                ${icon(faBug).node[0]}
-            </button>
-
+            ${this.app.options.showDebuggerButton
+                ? html` <button
+                      class="tool-btn"
+                      title="Dataflow Debugger"
+                      @click=${() =>
+                          showDataflowDebuggerDialog(
+                              this.app.genomeSpy.viewRoot.context.dataFlow
+                          )}
+                  >
+                      ${icon(faBug).node[0]}
+                  </button>`
+                : nothing}
             ${this.app.appContainer.requestFullscreen
                 ? html`
                       <button
