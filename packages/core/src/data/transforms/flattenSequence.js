@@ -1,7 +1,8 @@
 import { field } from "../../utils/field.js";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
+import { BEHAVIOR_CLONES } from "../flowNode.js";
+import Transform from "./transform.js";
 
-export default class FlattenSequenceTransform extends FlowNode {
+export default class FlattenSequenceTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -11,7 +12,9 @@ export default class FlattenSequenceTransform extends FlowNode {
      * @param {import("../../spec/transform.js").FlattenSequenceParams} params
      */
     constructor(params) {
-        super();
+        super(params);
+
+        this.params = params;
 
         const accessor = field(params.field ?? "sequence");
         const [asPos, asSequence] = params.as ?? ["pos", "sequence"];

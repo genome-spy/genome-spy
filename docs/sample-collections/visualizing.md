@@ -31,7 +31,10 @@ page for more information.
     ></script>
 
     <script>
-      genomeSpyApp.embed(document.body, "spec.json", {});
+      genomeSpyApp.embed(document.body, "spec.json", {
+        // Show the dataflow inspector button in the toolbar (default: true)
+        showInspectorButton: true,
+      });
     </script>
   </body>
 </html>

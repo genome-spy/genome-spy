@@ -3,7 +3,6 @@ import FlowNode from "../flowNode.js";
 export default class DataSource extends FlowNode {
     /**
      * @type {import("../../view/view.js").default}
-     * @protected
      */
     view;
 

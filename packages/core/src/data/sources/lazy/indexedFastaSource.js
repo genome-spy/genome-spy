@@ -53,6 +53,10 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
         });
     }
 
+    get label() {
+        return "bigWigSource";
+    }
+
     /**
      * @param {number[]} interval linearized domain
      */

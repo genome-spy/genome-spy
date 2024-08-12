@@ -54,6 +54,10 @@ export default class BigBedSource extends SingleAxisWindowedSource {
         this.#initialize();
     }
 
+    get label() {
+        return "bigBedSource";
+    }
+
     #initialize() {
         this.initializedPromise = new Promise((resolve, reject) => {
             Promise.all([

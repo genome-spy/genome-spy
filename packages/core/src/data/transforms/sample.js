@@ -1,15 +1,17 @@
-import FlowNode from "../flowNode.js";
+import Transform from "./transform.js";
 
 /**
  * A reservoir sampler, based on: https://www.wikiwand.com/en/Reservoir_sampling
  */
-export default class SampleTransform extends FlowNode {
+export default class SampleTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").SampleParams} params
      */
     constructor(params) {
-        super();
+        super(params);
+
+        this.params = params;
 
         this.k = params.size || 500;
         this.reset();

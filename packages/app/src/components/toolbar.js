@@ -4,6 +4,7 @@ import {
     faInfoCircle,
     faQuestionCircle,
     faExpandArrowsAlt,
+    faBug,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
@@ -15,6 +16,7 @@ import packageJson from "../../package.json";
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
+import { showDataflowInspectorDialog } from "../dataflowInspector.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -67,8 +69,8 @@ export default class Toolbar extends LitElement {
          * The first entry in the description array is shown as a title in the toolbar
          */
 
-        const description = this.app.config.description
-            ? asArray(this.app.config.description)
+        const description = this.app.rootSpec.description
+            ? asArray(this.app.rootSpec.description)
             : [];
 
         if (description.length > 1) {
@@ -104,6 +106,18 @@ export default class Toolbar extends LitElement {
                 >v${packageJson.version}</a
             >
 
+            ${this.app.options.showInspectorButton
+                ? html` <button
+                      class="tool-btn"
+                      title="Dataflow Inspector"
+                      @click=${() =>
+                          showDataflowInspectorDialog(
+                              this.app.genomeSpy.viewRoot.context.dataFlow
+                          )}
+                  >
+                      ${icon(faBug).node[0]}
+                  </button>`
+                : nothing}
             ${this.app.appContainer.requestFullscreen
                 ? html`
                       <button

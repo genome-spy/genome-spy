@@ -1,10 +1,11 @@
 import { bisector } from "d3-array";
-import FlowNode, { BEHAVIOR_COLLECTS } from "../flowNode.js";
+import { BEHAVIOR_COLLECTS } from "../flowNode.js";
 import { topKSlice } from "../../utils/topK.js";
 import ReservationMap from "../../utils/reservationMap.js";
 import { field } from "../../utils/field.js";
+import Transform from "./transform.js";
 
-export default class FilterScoredLabelsTransform extends FlowNode {
+export default class FilterScoredLabelsTransform extends Transform {
     get behavior() {
         return BEHAVIOR_COLLECTS;
     }
@@ -15,7 +16,7 @@ export default class FilterScoredLabelsTransform extends FlowNode {
      * @param {import("../../view/view.js").default} view
      */
     constructor(params, view) {
-        super();
+        super(params);
 
         this.params = params;
 

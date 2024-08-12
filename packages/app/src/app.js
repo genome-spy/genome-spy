@@ -37,14 +37,17 @@ export default class App {
     /**
      *
      * @param {HTMLElement} appContainerElement
-     * @param {import("./spec/appSpec.js").AppRootSpec} config
-     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions} options
+     * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
+     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean}>} options
      */
-    constructor(appContainerElement, config, options = {}) {
+    constructor(appContainerElement, rootSpec, options = {}) {
         // eslint-disable-next-line consistent-this
         const self = this;
 
-        this.config = config;
+        this.rootSpec = rootSpec;
+        this.options = options;
+
+        options.showInspectorButton ??= true;
 
         // App has a specialized handler for input bindings
         options.inputBindingContainer = "none";
@@ -71,8 +74,8 @@ export default class App {
          * @type {import("./bookmark/bookmarkDatabase.js").default}
          */
         this.localBookmarkDatabase =
-            typeof config.specId == "string"
-                ? new IDBBookmarkDatabase(config.specId)
+            typeof rootSpec.specId == "string"
+                ? new IDBBookmarkDatabase(rootSpec.specId)
                 : undefined;
 
         /**
@@ -116,7 +119,7 @@ export default class App {
 
         this.genomeSpy = new GenomeSpy(
             elem("genome-spy-container"),
-            this.config,
+            this.rootSpec,
             options
         );
 
@@ -173,9 +176,9 @@ export default class App {
          * Initiate async fetching of the remote bookmark entries.
          * @type {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>}
          */
-        const remoteBookmarkPromise = this.config.bookmarks?.remote
-            ? vegaLoader({ baseURL: this.config.baseUrl })
-                  .load(this.config.bookmarks.remote.url)
+        const remoteBookmarkPromise = this.rootSpec.bookmarks?.remote
+            ? vegaLoader({ baseURL: this.rootSpec.baseUrl })
+                  .load(this.rootSpec.bookmarks.remote.url)
                   .then((/** @type {string} */ str) =>
                       Promise.resolve(JSON.parse(str))
                   )
@@ -274,7 +277,7 @@ export default class App {
      * Restore state from url. If not restored, load a bookmark if requested in config.
      */
     async _restoreStateFromUrlOrBookmark() {
-        const remoteConf = this.config.bookmarks?.remote;
+        const remoteConf = this.rootSpec.bookmarks?.remote;
         const remoteDb = this.globalBookmarkDatabase;
 
         const restored = await this._restoreStateFromUrl();
@@ -353,7 +356,7 @@ export default class App {
         const hash = window.location.hash;
         const bookmarkHashMatch = hash.match(/^#bookmark:(.+)$/)?.[1];
         if (bookmarkHashMatch) {
-            const remoteConf = this.config.bookmarks?.remote;
+            const remoteConf = this.rootSpec.bookmarks?.remote;
             const remoteDb = this.globalBookmarkDatabase;
             if (remoteConf && remoteDb) {
                 const name = (await remoteDb.getNames()).find(

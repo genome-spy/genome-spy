@@ -1,6 +1,7 @@
-import FlowNode, { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import Transform from "./transform.js";
 
-export default class FormulaTransform extends FlowNode {
+export default class FormulaTransform extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }
@@ -11,7 +12,7 @@ export default class FormulaTransform extends FlowNode {
      * @param {import("../flowNode.js").ParamMediatorProvider} paramMediatorProvider
      */
     constructor(params, paramMediatorProvider) {
-        super(paramMediatorProvider);
+        super(params, paramMediatorProvider);
 
         this.params = params;
 

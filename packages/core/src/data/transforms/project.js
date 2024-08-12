@@ -1,8 +1,9 @@
 import { accessorName } from "vega-util";
 import { field } from "../../utils/field.js";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
+import { BEHAVIOR_CLONES } from "../flowNode.js";
+import Transform from "./transform.js";
 
-export default class ProjectTransform extends FlowNode {
+export default class ProjectTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -12,7 +13,9 @@ export default class ProjectTransform extends FlowNode {
      * @param {import("../../spec/transform.js").ProjectParams} params
      */
     constructor(params) {
-        super();
+        super(params);
+
+        this.params = params;
 
         if (params.as && params.as.length != params.fields.length) {
             throw new Error(`"fields" and "as" have unequal lengths!`);

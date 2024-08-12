@@ -1,7 +1,8 @@
 import FlatQueue from "flatqueue";
 
 import { field } from "../../utils/field.js";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
+import { BEHAVIOR_CLONES } from "../flowNode.js";
+import Transform from "./transform.js";
 
 /**
  * Computes coverage for sorted segments
@@ -11,7 +12,7 @@ import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
  * way to implement it is a separate transform that bins the coverage
  * segments and calculates weighted averages.
  */
-export default class CoverageTransform extends FlowNode {
+export default class CoverageTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -24,7 +25,7 @@ export default class CoverageTransform extends FlowNode {
      * @param {import("../../spec/transform.js").CoverageParams} params
      */
     constructor(params) {
-        super();
+        super(params);
         this.params = params;
 
         this.startAccessor = field(params.start);

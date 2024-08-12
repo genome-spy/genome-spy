@@ -1,8 +1,9 @@
 import { asArray } from "../../utils/arrayUtils.js";
 import { field } from "../../utils/field.js";
-import FlowNode, { BEHAVIOR_CLONES } from "../flowNode.js";
+import { BEHAVIOR_CLONES } from "../flowNode.js";
+import Transform from "./transform.js";
 
-export default class FlattenTransform extends FlowNode {
+export default class FlattenTransform extends Transform {
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -11,7 +12,9 @@ export default class FlattenTransform extends FlowNode {
      * @param {import("../../spec/transform.js").FlattenParams} params
      */
     constructor(params) {
-        super();
+        super(params);
+
+        this.params = params;
 
         const indexField = params.index;
 
