@@ -3,13 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.54.0](https://github.com/genome-spy/genome-spy/compare/v0.53.1...v0.54.0) (2024-08-06)
+# [0.55.0](https://github.com/genome-spy/genome-spy/compare/v0.54.0...v0.55.0) (2024-08-12)
 
 **Note:** Version bump only for package @genome-spy/react-component
 
+# [0.54.0](https://github.com/genome-spy/genome-spy/compare/v0.53.1...v0.54.0) (2024-08-06)
 
-
-
+**Note:** Version bump only for package @genome-spy/react-component
 
 ## [0.53.1](https://github.com/genome-spy/genome-spy/compare/v0.53.0...v0.53.1) (2024-05-16)
 
